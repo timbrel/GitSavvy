@@ -3,9 +3,6 @@ Panel-only, file-specific:
  ☐ git: open current file on github (based on remotes)
  ☐ git: quick commit current file
  ☐ git: quick log current file
- ☐ git: revert current line / selection
- ☐ git: stage current line / selection
- ☐ git: stage current hunk
  ☐ git: view file at HEAD
 
 In-file functionality:
@@ -40,6 +37,12 @@ Special views:
    ☐ unstage hunk
  ☐ git: diff current file
  ☐ git: show
+ ☐ git: stage pieces of current file
+   ☐ stage hunk under cursor
+   ☐ stage line under cursor
+ ☐ git: unstage pieces of current file
+   ☐ unstage hunk under cursor
+   ☐ unstage line under cursor
  ☐ git: status
    ☐ refresh
    ☐ file-specific:
