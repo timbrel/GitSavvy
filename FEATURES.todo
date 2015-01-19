@@ -23,7 +23,7 @@ Panel-only, repo-specific:
  ☐ git: pull
  ☐ git: push
  ☐ git: quick commit
- ☐ git: quick stage
+ ✔ git: quick stage @done (15-01-19 00:27)
  ☐ git: quick log
  ☐ git: stash
    ☐ git: stash including untracked files
