@@ -1,0 +1,68 @@
+Panel-only, file-specific:
+ ☐ git: init
+ ☐ git: open current file on github (based on remotes)
+ ☐ git: quick commit current file
+ ☐ git: quick log current file
+ ☐ git: revert current line / selection
+ ☐ git: stage current line / selection
+ ☐ git: stage current hunk
+ ☐ git: view file at HEAD
+
+In-file functionality:
+ ☐ gutter icons indicating inserted, modified, removed lines (and grayed when staged)
+
+Panel-only, repo-specific:
+ ☐ git: amend previous commit
+ ☐ git: checkout
+ ☐ git: checkout new branch
+ ☐ git: commit
+ ☐ git: commit including unstaged files
+ ☐ git: fetch
+ ☐ git: log
+ ☐ git: merge
+ ☐ git: pull
+ ☐ git: push
+ ☐ git: quick commit
+ ☐ git: quick stage
+ ☐ git: quick log
+ ☐ git: stash
+   ☐ git: stash including untracked files
+   ☐ git: apply stash
+ ☐ git: tag
+
+Special views:
+ ☐ git: blame
+ ☐ git: commit
+ ☐ git: diff
+   ☐ stage hunk
+   ☐ stage line
+ ☐ git: diff cached
+   ☐ unstage hunk
+ ☐ git: diff current file
+ ☐ git: show
+ ☐ git: status
+   ☐ refresh
+   ☐ file-specific:
+     ☐ stage file
+     ☐ unstage file
+     ☐ discard file
+     ☐ reset file to head
+     ☐ ignore file
+     ☐ open file
+   ☐ multiple files:
+     ☐ stage all unstaged files
+     ☐ stage all unstaged and untracked files
+     ☐ unstage all files
+     ☐ discard everything
+     ☐ ignore pattern
+   ☐ commit:
+     ☐ commit
+     ☐ commit, add unstaged
+     ☐ amend previous commit
+   ☐ stashes
+     ☐ apply stash
+     ☐ pop stash
+     ☐ create stash
+     ☐ create stash including untracked files
+     ☐ discard stash
+
