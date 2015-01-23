@@ -1,3 +1,4 @@
+import os
 import subprocess
 import shutil
 from collections import namedtuple
@@ -40,9 +41,36 @@ class BaseCommand():
 
     @property
     def repo_path(self):
-        return "/Users/daleb/Library/Application Support/Sublime Text 3/Packages/GitBetter"
+        # The below condition will be true if run from a WindowCommand and false from a TextCommand.
+        view = self.window.active_view() if hasattr(self, "window") else self.view
+        repo_path = view.settings().get("git_better.repo_path")
 
-    def git(self, *args, stdin=None):
+        if not repo_path:
+            working_dir = os.path.dirname(self.file_path)
+            cmd = self.git("rev-parse", "--show-toplevel", working_dir=working_dir)
+            repo_path = cmd.stdout.strip()
+            view.settings().set("git_better.repo_path", repo_path)
+
+        return repo_path
+
+    @property
+    def file_path(self):
+        # The below condition will be true if run from a WindowCommand and false from a TextCommand.
+        view = self.window.active_view() if hasattr(self, "window") else self.view
+        fpath = view.settings().get("git_better.file_path")
+
+        if not fpath:
+            fpath = view.file_name()
+            view.settings().set("git_better.file_path", fpath)
+
+        # print("getting file_path for view {}: {}".format(view.id(), fpath))
+        # print("getting file_path for view {}: {}".format(view.id(), ""))
+        # fpath = str(fpath)
+
+        # print("returning file_path:", fpath)
+        return fpath
+
+    def git(self, *args, stdin=None, working_dir=None):
         command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
         log.info("-- " + " ".join(command))
 
@@ -51,7 +79,7 @@ class BaseCommand():
                                  stdin=subprocess.PIPE,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
-                                 cwd=self.repo_path)
+                                 cwd=working_dir or self.repo_path)
             stdout, stderr = p.communicate(stdin.encode(encoding="UTF-8") if stdin else None)
             stdout, stderr = stdout.decode(), stderr.decode()
 

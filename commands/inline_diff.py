@@ -22,10 +22,14 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
 
     def run(self):
         file_view = self.window.active_view()
-        file_path = file_view.file_name()
-        title = messages.INLINE_DIFF_TITLE + file_path
+        title = messages.INLINE_DIFF_TITLE + os.path.basename(self.file_path)
         syntax_file = file_view.settings().get("syntax")
         original_color_scheme = file_view.settings().get("color_scheme")
+
+        grafted_settings = {
+            "git_better.file_path": self.file_path,
+            "git_better.repo_path": self.repo_path
+        }
 
         for view in self.window.views():
             if view.settings().get("git_better_view") == "inline_diff":
@@ -37,11 +41,12 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
             diff_view.set_scratch(True)
             diff_view.set_read_only(True)
 
-        diff_view.settings().set("file_path", file_path)
         diff_view.settings().set("git_better_diff_view", True)
         diff_view.set_name(title)
         diff_view.set_syntax_file(syntax_file)
         self.augment_color_scheme(diff_view, original_color_scheme)
+        for k, v in grafted_settings.items():
+            diff_view.settings().set(k, v)
 
         self.window.focus_view(diff_view)
 
@@ -84,7 +89,7 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
     """
 
     def run(self, edit, cursor=None):
-        file_path = self.view.settings().get("file_path")
+        file_path = self.file_path
         head_staged_object = self.get_file_object_hash(file_path)
         head_staged_object_contents = self.get_object_contents(head_staged_object)
         saved_file_contents = self.get_file_contents(file_path)
@@ -218,8 +223,8 @@ class InlineDiffStageLineCommand(TextCommand, BaseCommand):
         # Git lines are 1-indexed; Sublime rows are 0-indexed.
         line_number = self.view.rowcol(region.begin())[0] + 1
         diff_lines = self.get_single_line_diff(line_number)
-        file_path = os.path.relpath(self.view.settings().get("file_path"), self.repo_path)
-        header = messages.DIFF_HEADER.format(path=file_path)
+        filename = os.path.relpath(self.file_path, self.repo_path)
+        header = messages.DIFF_HEADER.format(path=filename)
 
         full_diff = header + diff_lines + "\n"
         cmd = self.git("apply", "--unidiff-zero", "--cached", "-", stdin=full_diff)
