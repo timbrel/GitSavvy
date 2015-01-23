@@ -19,5 +19,19 @@
         "context": [
             { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
         ]
+    },
+    {
+        "keys": ["."],
+        "command": "inline_diff_goto_next_hunk",
+        "context": [
+            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": [","],
+        "command": "inline_diff_goto_previous_hunk",
+        "context": [
+            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+        ]
     }
 ]

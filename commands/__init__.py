@@ -3,5 +3,7 @@ from .inline_diff import (
     InlineDiffCommand,
     InlineDiffRefreshCommand,
     InlineDiffStageLineCommand,
-    InlineDiffStageHunkCommand
+    InlineDiffStageHunkCommand,
+    InlineDiffGotoNextHunk,
+    InlineDiffGotoPreviousHunk
 )

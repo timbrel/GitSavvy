@@ -282,3 +282,43 @@ class InlineDiffStageHunkCommand(InlineDiffStageBase):
             return
 
         return "\n".join(hunk_ref.hunk.raw_lines)
+
+
+class InlineDiffGotoBase(TextCommand):
+
+    def run(self, edit):
+        selections = self.view.sel()
+        if len(selections) == 0:
+            return
+        region = selections[0]
+
+        # Git lines are 1-indexed; Sublime rows are 0-indexed.
+        current_line_number = self.view.rowcol(region.begin())[0] + 1
+
+        new_cursor_pt = self.get_target_cursor_pos(current_line_number)
+        if new_cursor_pt:
+            self.view.sel().clear()
+            self.view.sel().add(new_cursor_pt)
+            self.view.show_at_center(self.view.line(new_cursor_pt))
+
+
+class InlineDiffGotoNextHunk(InlineDiffGotoBase):
+
+    def get_target_cursor_pos(self, current_line_number):
+        for hunk_ref in current_diff_view_hunks:
+            if hunk_ref.section_start > current_line_number:
+                break
+
+        return self.view.text_point(hunk_ref.section_start, 0)
+
+
+class InlineDiffGotoPreviousHunk(InlineDiffGotoBase):
+
+    def get_target_cursor_pos(self, current_line_number):
+        previous_hunk_ref = None
+        for hunk_ref in current_diff_view_hunks:
+            if hunk_ref.section_end < current_line_number:
+                previous_hunk_ref = hunk_ref
+
+        if previous_hunk_ref:
+            return self.view.text_point(previous_hunk_ref.section_start, 0)
