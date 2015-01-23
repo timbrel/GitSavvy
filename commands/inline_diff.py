@@ -8,7 +8,7 @@ from sublime_plugin import WindowCommand, TextCommand
 from ..common import messages, util
 from .base_command import BaseCommand
 
-HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "head_start", "line_types", "lines"))
+HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
 
 current_diff_view_hunks = None
 
@@ -166,7 +166,7 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
             # Store information about this hunk, with proper references, so actions
             # can be taken when triggered by the user (e.g. stage line X in diff_view).
             current_diff_view_hunks.append(HunkReference(
-                section_start, section_end, hunk.head_start, line_types, raw_lines
+                section_start, section_end, hunk, line_types, raw_lines
             ))
 
             # Discard the first character of every diff-line (`+`, `-`).
@@ -235,23 +235,23 @@ class InlineDiffStageLineCommand(TextCommand, BaseCommand):
     @staticmethod
     def get_single_line_diff(line_no):
         # Find the correct hunk.
-        for hunk in current_diff_view_hunks:
-            if hunk.section_start <= line_no and hunk.section_end >= line_no:
+        for hunk_ref in current_diff_view_hunks:
+            if hunk_ref.section_start <= line_no and hunk_ref.section_end >= line_no:
                 break
         # Correct hunk not found.
         else:
             return
 
-        section_start = hunk.section_start + 1
+        section_start = hunk_ref.section_start + 1
 
         # Determine head/staged starting line.
         index_in_hunk = line_no - section_start
-        line = hunk.lines[index_in_hunk]
-        line_type = hunk.line_types[index_in_hunk]
+        line = hunk_ref.lines[index_in_hunk]
+        line_type = hunk_ref.line_types[index_in_hunk]
 
         # Removed lines are always first with `git diff -U0 ...`. Therefore, the
         # line to remove will be the Nth line, where N is the line index in the hunk.
-        head_start = hunk.head_start if line_type == "+" else hunk.head_start + index_in_hunk
+        head_start = hunk_ref.hunk.head_start if line_type == "+" else hunk_ref.hunk.head_start + index_in_hunk
         # TODO: Investigate this off-by-one ???
         head_start += 1
 
