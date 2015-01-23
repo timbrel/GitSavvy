@@ -1,14 +1,30 @@
 [
     {
-        "keys": ["s"],
-        "command": "inline_diff_stage_line",
+        "keys": ["l"],
+        "command": "inline_diff_stage_or_reset_line",
         "context": [
             { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": ["h"],
-        "command": "inline_diff_stage_hunk",
+        "command": "inline_diff_stage_or_reset_hunk",
+        "context": [
+            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["L"],
+        "command": "inline_diff_stage_or_reset_line",
+        "args": { "reset": true },
+        "context": [
+            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["H"],
+        "command": "inline_diff_stage_or_reset_hunk",
+        "args": { "reset": true },
         "context": [
             { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
         ]

@@ -211,9 +211,9 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
         self.view.add_regions("git-better-removed-lines", remove_regions, scope="gitbetter.change.removal")
 
 
-class InlineDiffStageBase(TextCommand, BaseCommand):
+class InlineDiffStageOrResetBase(TextCommand, BaseCommand):
 
-    def run(self, edit):
+    def run(self, edit, reset=False):
         selections = self.view.sel()
         region = selections[0]
         # For now, only support staging selections of length 0.
@@ -227,13 +227,15 @@ class InlineDiffStageBase(TextCommand, BaseCommand):
         header = messages.DIFF_HEADER.format(path=filename)
 
         full_diff = header + diff_lines + "\n"
-        cmd = self.git("apply", "--unidiff-zero", "--cached", "-", stdin=full_diff)
+        reset_or_stage_flag = "-R" if reset else "--cached"
+        cmd = self.git("apply", "--unidiff-zero", reset_or_stage_flag, "-", stdin=full_diff)
+        print("which one?", reset_or_stage_flag)
         if cmd.success:
             cursor = self.view.sel()[0].begin()
             self.view.run_command("inline_diff_refresh", {"cursor": cursor})
 
 
-class InlineDiffStageLineCommand(InlineDiffStageBase):
+class InlineDiffStageOrResetLineCommand(InlineDiffStageOrResetBase):
 
     @staticmethod
     def get_diff_from_line(line_no):
@@ -269,7 +271,7 @@ class InlineDiffStageLineCommand(InlineDiffStageBase):
                 )
 
 
-class InlineDiffStageHunkCommand(InlineDiffStageBase):
+class InlineDiffStageOrResetHunkCommand(InlineDiffStageOrResetBase):
 
     @staticmethod
     def get_diff_from_line(line_no):
