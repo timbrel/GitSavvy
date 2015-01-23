@@ -290,9 +290,7 @@ class InlineDiffGotoBase(TextCommand):
 
     def run(self, edit):
         selections = self.view.sel()
-        if len(selections) == 0:
-            return
-        region = selections[0]
+        region = self.view.text_point(0, 0) if len(selections) == 0 else selections[0]
 
         # Git lines are 1-indexed; Sublime rows are 0-indexed.
         current_line_number = self.view.rowcol(region.begin())[0] + 1
