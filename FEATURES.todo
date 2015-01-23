@@ -37,9 +37,10 @@ Special views:
    ☐ unstage hunk
  ☐ git: diff current file
  ☐ git: show
- ☐ git: stage pieces of current file
+ ☐ git: inline-diff current file
    ☐ stage hunk under cursor
    ☐ stage line under cursor
+   ☐ quick navigation between hunks
  ☐ git: unstage pieces of current file
    ☐ unstage hunk under cursor
    ☐ unstage line under cursor

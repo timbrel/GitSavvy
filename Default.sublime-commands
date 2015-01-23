@@ -1,0 +1,6 @@
+[
+    {
+        "caption": "git: inline diff current file",
+        "command": "inline_diff"
+    }
+]
