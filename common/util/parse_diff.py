@@ -31,6 +31,9 @@ def _split_into_hunks(lines):
     lines_iter = enumerate(lines)
     start = 0
 
+    if len(lines) < 1:
+        return
+
     for line_number, line in lines_iter:
         if not line.startswith(("+", "-")) and line_number != 0:
             yield islice(lines, start, line_number)

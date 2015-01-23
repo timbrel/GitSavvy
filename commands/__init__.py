@@ -1,2 +1,6 @@
 from .quick_stage import QuickStageCommand
-from .inline_diff import InlineDiffCommand, InlineDiffRefreshCommand
+from .inline_diff import (
+    InlineDiffCommand,
+    InlineDiffRefreshCommand,
+    InlineDiffStageLineCommand
+)

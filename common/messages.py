@@ -35,3 +35,8 @@ REMOVED_LINE_STYLE = """
     </dict>
 </dict>
 """
+
+DIFF_HEADER = """diff --git a/{path} b/{path}
+--- a/{path}
++++ b/{path}
+"""

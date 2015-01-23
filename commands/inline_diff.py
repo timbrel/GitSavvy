@@ -1,11 +1,16 @@
 import os
 from xml.etree import ElementTree
+from collections import namedtuple
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
 from ..common import messages, util
 from .base_command import BaseCommand
+
+HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "head_start", "line_types", "lines"))
+
+current_diff_view_hunks = None
 
 
 class InlineDiffCommand(WindowCommand, BaseCommand):
@@ -33,6 +38,7 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
             diff_view.set_read_only(True)
 
         diff_view.settings().set("file_path", file_path)
+        diff_view.settings().set("git_better_diff_view", True)
         diff_view.set_name(title)
         diff_view.set_syntax_file(syntax_file)
         self.augment_color_scheme(diff_view, original_color_scheme)
@@ -77,7 +83,7 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
     and removed lines with different colors.
     """
 
-    def run(self, edit):
+    def run(self, edit, cursor=None):
         file_path = self.view.settings().get("file_path")
         head_staged_object = self.get_file_object_hash(file_path)
         head_staged_object_contents = self.get_object_contents(head_staged_object)
@@ -96,6 +102,13 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
         self.view.set_read_only(False)
         self.view.replace(edit, sublime.Region(0, self.view.size()), inline_diff_contents)
         self.view.sel().clear()
+        if cursor is not None:
+            pt = sublime.Region(cursor, cursor)
+            self.view.sel().add(pt)
+            # Sublime seems to scroll right when a `-` line is removed from
+            # the diff view.  As a work around, center and show the beginning
+            # of the line that the user was on when staging a line.
+            self.view.show_at_center(self.view.line(pt).begin())
         self.highlight_regions(replaced_lines)
         self.view.set_read_only(True)
 
@@ -122,6 +135,9 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
         return cmd.stdout.split("\n")[0] if cmd.success else None
 
     def get_inline_diff_contents(self, original_contents, diff):
+        global current_diff_view_hunks
+        current_diff_view_hunks = []
+
         lines = original_contents.split("\n")
         replaced_lines = []
 
@@ -135,17 +151,24 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
             head_end = head_start + hunk.head_length
 
             # Remove the `@@` header line.
-            raw_lines = hunk.raw_lines[1:]
+            diff_lines = hunk.raw_lines[1:]
 
             section_start = head_start + adjustment
-            section_end = section_start + len(raw_lines)
-            line_types = [line[0] for line in raw_lines]
+            section_end = section_start + len(diff_lines)
+            line_types = [line[0] for line in diff_lines]
+            raw_lines = [line[1:] for line in diff_lines]
+
+            # Store information about this hunk, with proper references, so actions
+            # can be taken when triggered by the user (e.g. stage line X in diff_view).
+            current_diff_view_hunks.append(HunkReference(
+                section_start, section_end, hunk.head_start, line_types, raw_lines
+            ))
 
             # Discard the first character of every diff-line (`+`, `-`).
-            lines = lines[:section_start] + [line[1:] for line in raw_lines] + lines[head_end + adjustment:]
+            lines = lines[:section_start] + raw_lines + lines[head_end + adjustment:]
             replaced_lines.append((section_start, section_end, line_types))
 
-            adjustment += len(raw_lines) - hunk.head_length
+            adjustment += len(diff_lines) - hunk.head_length
 
         return "\n".join(lines), replaced_lines
 
@@ -181,3 +204,58 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
 
         self.view.add_regions("git-better-added-lines", add_regions, scope="gitbetter.change.addition")
         self.view.add_regions("git-better-removed-lines", remove_regions, scope="gitbetter.change.removal")
+
+
+class InlineDiffStageLineCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        selections = self.view.sel()
+        region = selections[0]
+        # For now, only support staging single-line selections of length 0.
+        if len(selections) > 1 or not region.empty():
+            return
+
+        # Git lines are 1-indexed; Sublime rows are 0-indexed.
+        line_number = self.view.rowcol(region.begin())[0] + 1
+        diff_lines = self.get_single_line_diff(line_number)
+        file_path = os.path.relpath(self.view.settings().get("file_path"), self.repo_path)
+        header = messages.DIFF_HEADER.format(path=file_path)
+
+        full_diff = header + diff_lines + "\n"
+        cmd = self.git("apply", "--unidiff-zero", "--cached", "-", stdin=full_diff)
+        if cmd.success:
+            cursor = self.view.sel()[0].begin()
+            self.view.run_command("inline_diff_refresh", {"cursor": cursor})
+
+    @staticmethod
+    def get_single_line_diff(line_no):
+        # Find the correct hunk.
+        for hunk in current_diff_view_hunks:
+            if hunk.section_start <= line_no and hunk.section_end >= line_no:
+                break
+        # Correct hunk not found.
+        else:
+            return
+
+        section_start = hunk.section_start + 1
+
+        # Determine head/staged starting line.
+        index_in_hunk = line_no - section_start
+        line = hunk.lines[index_in_hunk]
+        line_type = hunk.line_types[index_in_hunk]
+
+        # Removed lines are always first with `git diff -U0 ...`. Therefore, the
+        # line to remove will be the Nth line, where N is the line index in the hunk.
+        head_start = hunk.head_start if line_type == "+" else hunk.head_start + index_in_hunk
+        # TODO: Investigate this off-by-one ???
+        head_start += 1
+
+        return ("@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"
+                "{line_type}{line}").format(
+                    head_start=head_start,
+                    head_length="0" if line_type == "+" else "1",
+                    new_start=head_start,
+                    new_length="1" if line_type == "+" else "0",
+                    line_type=line_type,
+                    line=line
+                )
