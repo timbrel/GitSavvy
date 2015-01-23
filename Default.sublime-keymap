@@ -1,0 +1,23 @@
+[
+    {
+        "keys": ["s"],
+        "command": "inline_diff_stage_line",
+        "context": [
+            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["h"],
+        "command": "inline_diff_stage_hunk",
+        "context": [
+            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["r"],
+        "command": "inline_diff_refresh",
+        "context": [
+            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+        ]
+    }
+]
