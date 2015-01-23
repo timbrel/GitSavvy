@@ -264,3 +264,37 @@ class InlineDiffStageLineCommand(TextCommand, BaseCommand):
                     line_type=line_type,
                     line=line
                 )
+
+
+class InlineDiffStageHunkCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        selections = self.view.sel()
+        region = selections[0]
+        # For now, only support staging single-line selections of length 0.
+        if len(selections) > 1 or not region.empty():
+            return
+
+        # Git lines are 1-indexed; Sublime rows are 0-indexed.
+        line_number = self.view.rowcol(region.begin())[0] + 1
+        diff_lines = self.get_hunk_diff(line_number)
+        filename = os.path.relpath(self.file_path, self.repo_path)
+        header = messages.DIFF_HEADER.format(path=filename)
+
+        full_diff = header + diff_lines + "\n"
+        cmd = self.git("apply", "--unidiff-zero", "--cached", "-", stdin=full_diff)
+        if cmd.success:
+            cursor = self.view.sel()[0].begin()
+            self.view.run_command("inline_diff_refresh", {"cursor": cursor})
+
+    @staticmethod
+    def get_hunk_diff(line_no):
+        # Find the correct hunk.
+        for hunk_ref in current_diff_view_hunks:
+            if hunk_ref.section_start <= line_no and hunk_ref.section_end >= line_no:
+                break
+        # Correct hunk not found.
+        else:
+            return
+
+        return "\n".join(hunk_ref.hunk.raw_lines)
