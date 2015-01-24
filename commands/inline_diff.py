@@ -31,16 +31,7 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
             "git_better.repo_path": self.repo_path
         }
 
-        for view in self.window.views():
-            if view.settings().get("git_better_view") == "inline_diff":
-                diff_view = view
-                break
-        else:
-            diff_view = self.window.new_file()
-            diff_view.settings().set("git_better_view", "inline_diff")
-            diff_view.set_scratch(True)
-            diff_view.set_read_only(True)
-
+        diff_view = self.get_diff_view()
         diff_view.settings().set("git_better_diff_view", True)
         diff_view.set_name(title)
         diff_view.set_syntax_file(syntax_file)
@@ -51,6 +42,18 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
         self.window.focus_view(diff_view)
 
         diff_view.run_command("inline_diff_refresh")
+
+    def get_diff_view(self):
+        for view in self.window.views():
+            if view.settings().get("git_better_view") == "inline_diff":
+                break
+        else:
+            view = self.window.new_file()
+            view.settings().set("git_better_view", "inline_diff")
+            view.set_scratch(True)
+            view.set_read_only(True)
+
+        return view
 
     def augment_color_scheme(self, target_view, original_color_scheme):
         original_path = os.path.abspath(sublime.packages_path() + "/../" + original_color_scheme)
