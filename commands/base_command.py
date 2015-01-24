@@ -137,7 +137,7 @@ class BaseCommand():
             dst_hash,
             status,
             status_score
-            )
+        )
 
     def get_indexed(self):
         stdout = self.git("diff-index", "-z", "--cached", "HEAD")
