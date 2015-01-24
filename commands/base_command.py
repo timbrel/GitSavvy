@@ -63,11 +63,6 @@ class BaseCommand():
             fpath = view.file_name()
             view.settings().set("git_better.file_path", fpath)
 
-        # print("getting file_path for view {}: {}".format(view.id(), fpath))
-        # print("getting file_path for view {}: {}".format(view.id(), ""))
-        # fpath = str(fpath)
-
-        # print("returning file_path:", fpath)
         return fpath
 
     def git(self, *args, stdin=None, working_dir=None):
