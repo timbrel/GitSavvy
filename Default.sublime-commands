@@ -2,5 +2,9 @@
     {
         "caption": "git: inline diff current file",
         "command": "inline_diff"
+    },
+    {
+        "caption": "git: quick stage",
+        "command": "quick_stage"
     }
 ]
