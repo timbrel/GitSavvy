@@ -3,7 +3,7 @@ from xml.etree import ElementTree
 from collections import namedtuple
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from ..common import messages, util
 from .base_command import BaseCommand
@@ -204,6 +204,13 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
 
         self.view.add_regions("git-better-added-lines", add_regions, scope="gitbetter.change.addition")
         self.view.add_regions("git-better-removed-lines", remove_regions, scope="gitbetter.change.removal")
+
+
+class InlineDiffFocusEventListener(EventListener):
+
+    def on_activated(self, view):
+        if view.settings().get("git_better_diff_view") == True:
+            view.run_command("inline_diff_refresh")
 
 
 class InlineDiffStageOrResetBase(TextCommand, BaseCommand):
