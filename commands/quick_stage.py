@@ -1,6 +1,6 @@
 from collections import namedtuple
 import sublime
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import WindowCommand
 
 from ..common import messages
 from .base_command import BaseCommand
@@ -8,7 +8,7 @@ from .base_command import BaseCommand
 MenuOption = namedtuple("MenuOption", ["requires_action", "menu_text", "filename", "is_untracked"])
 
 
-class QuickStageCommand(WindowCommand, TextCommand, BaseCommand):
+class QuickStageCommand(WindowCommand, BaseCommand):
 
     """
     Displays a quick bar menu of unstaged files in the current git repository,
@@ -62,8 +62,7 @@ class QuickStageCommand(WindowCommand, TextCommand, BaseCommand):
 
             sublime.set_timeout_async(self.run, 10)
 
-        # self.window.show_quick_panel(menu_entries, on_selection, sublime.MONOSPACE_FONT)
-        self.window.window().show_quick_panel(menu_entries, on_selection, sublime.MONOSPACE_FONT)
+        self.window.show_quick_panel(menu_entries, on_selection, sublime.MONOSPACE_FONT)
 
     def get_menu_options(self):
         status_entries = self.get_status()
