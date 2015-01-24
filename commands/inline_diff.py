@@ -5,10 +5,52 @@ from collections import namedtuple
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
-from ..common import messages, util
+from ..common import util
 from .base_command import BaseCommand
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
+
+
+INLINE_DIFF_TITLE = "DIFF: "
+
+STYLES_HEADER = """
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+"""
+
+ADDED_LINE_STYLE = """
+ <dict>
+    <key>name</key>
+    <string>GitBetter Added Line</string>
+    <key>scope</key>
+    <string>gitbetter.change.addition</string>
+    <key>settings</key>
+    <dict>
+        <key>background</key>
+        <string>#{}</string>
+    </dict>
+</dict>
+"""
+
+REMOVED_LINE_STYLE = """
+ <dict>
+    <key>name</key>
+    <string>GitBetter Removed Line</string>
+    <key>scope</key>
+    <string>gitbetter.change.removal</string>
+    <key>settings</key>
+    <dict>
+        <key>background</key>
+        <string>#{}</string>
+    </dict>
+</dict>
+"""
+
+DIFF_HEADER = """diff --git a/{path} b/{path}
+--- a/{path}
++++ b/{path}
+"""
+
 
 current_diff_view_hunks = None
 
@@ -23,7 +65,7 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
 
     def run(self):
         file_view = self.window.active_view()
-        title = messages.INLINE_DIFF_TITLE + os.path.basename(self.file_path)
+        title = INLINE_DIFF_TITLE + os.path.basename(self.file_path)
         syntax_file = file_view.settings().get("syntax")
         original_color_scheme = file_view.settings().get("color_scheme")
 
@@ -75,8 +117,8 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
         plist = ElementTree.XML(color_scheme_xml)
         styles = plist.find("./dict/array")
 
-        added_style = messages.ADDED_LINE_STYLE.format("37A832")
-        removed_style = messages.REMOVED_LINE_STYLE.format("A83732")
+        added_style = ADDED_LINE_STYLE.format("37A832")
+        removed_style = REMOVED_LINE_STYLE.format("A83732")
 
         styles.append(ElementTree.XML(added_style))
         styles.append(ElementTree.XML(removed_style))
@@ -87,7 +129,7 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
         augmented_style_path = os.path.join(sublime.packages_path(), "User", "GitBetter", "GitBetter.active-diff-view.tmTheme")
 
         with open(augmented_style_path, "wb") as out_f:
-            out_f.write(messages.STYLES_HEADER.encode("utf-8"))
+            out_f.write(STYLES_HEADER.encode("utf-8"))
             out_f.write(ElementTree.tostring(plist, encoding="utf-8"))
 
         target_view.settings().set("color_scheme", "Packages/User/GitBetter/GitBetter.active-diff-view.tmTheme")

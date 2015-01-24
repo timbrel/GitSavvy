@@ -2,10 +2,14 @@ from collections import namedtuple
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..common import messages
 from .base_command import BaseCommand
 
 MenuOption = namedtuple("MenuOption", ["requires_action", "menu_text", "filename", "is_untracked"])
+
+
+CLEAN_WORKING_DIR = "Nothing to commit, working directory clean."
+ADD_ALL_UNSTAGED_FILES = " ?  All unstaged files"
+ADD_ALL_FILES = " +  All files"
 
 
 class QuickStageCommand(WindowCommand, BaseCommand):
@@ -39,11 +43,11 @@ class QuickStageCommand(WindowCommand, BaseCommand):
             if not selection.requires_action:
                 return
 
-            elif selection.menu_text == messages.ADD_ALL_UNSTAGED_FILES:
+            elif selection.menu_text == ADD_ALL_UNSTAGED_FILES:
                 self.git("add", "--update", ".")
                 scope_of_action = "all unstaged files"
 
-            elif selection.menu_text == messages.ADD_ALL_FILES:
+            elif selection.menu_text == ADD_ALL_FILES:
                 self.git("add", "--all")
                 scope_of_action = "all files"
 
@@ -79,9 +83,9 @@ class QuickStageCommand(WindowCommand, BaseCommand):
             menu_options.append(MenuOption(True, menu_text, filename, entry.status == "?"))
 
         if not menu_options:
-            return [MenuOption(False, messages.CLEAN_WORKING_DIR, None, None)]
+            return [MenuOption(False, CLEAN_WORKING_DIR, None, None)]
 
-        menu_options.append(MenuOption(True, messages.ADD_ALL_UNSTAGED_FILES, None, None))
-        menu_options.append(MenuOption(True, messages.ADD_ALL_FILES, None, None))
+        menu_options.append(MenuOption(True, ADD_ALL_UNSTAGED_FILES, None, None))
+        menu_options.append(MenuOption(True, ADD_ALL_FILES, None, None))
 
         return menu_options
