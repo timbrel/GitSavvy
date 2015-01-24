@@ -37,13 +37,14 @@ Special views:
    ☐ unstage hunk
  ☐ git: diff current file
  ☐ git: show
- ☐ git: inline-diff current file
-   ☐ stage hunk under cursor
-   ☐ stage line under cursor
-   ☐ quick navigation between hunks
- ☐ git: unstage pieces of current file
+ ✔ git: inline-diff current file @done (15-01-23 17:28)
+   ✔ stage hunk under cursor @done (15-01-23 17:28)
+   ✔ stage line under cursor @done (15-01-23 17:28)
+   ✔ quick navigation between hunks @done (15-01-23 17:28)
+ ☐ git: inline-diff current file, cached
    ☐ unstage hunk under cursor
    ☐ unstage line under cursor
+   ☐ quick navigation between hunks
  ☐ git: status
    ☐ refresh
    ☐ file-specific:
