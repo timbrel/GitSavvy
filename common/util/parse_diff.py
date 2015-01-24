@@ -9,6 +9,11 @@ re_metadata = re.compile("^@@ -(\d+)(,(\d+))? \+(\d+)(,(\d+))? @@")
 
 
 def parse_diff(diff_str):
+    """
+    Given the string output from a `git diff` command, parse the string into
+    hunks and, more granularly, meta-data and change information for each of
+    those hunks.
+    """
     hunks = []
 
     raw_hunks = _split_into_hunks(diff_str.splitlines())
@@ -22,6 +27,10 @@ def parse_diff(diff_str):
 
 
 def _split_into_hunks(lines):
+    """
+    Given an array of lines from the output of a `git-diff` command, yield
+    slices of the lines that correspond to the hunks in the diff.
+    """
     # Throw away the first four lines of the git output.
     #   diff --git a/c9d70aa928a3670bc2b879b4a596f10d3e81ba7c b/d95427d30480b29b99b407981c8e048b6e0c902d
     #   index c9d70aa..d95427d 100644
@@ -44,6 +53,10 @@ def _split_into_hunks(lines):
 
 
 def _get_metadata(meta_str):
+    """
+    Given the `@@ ... @@` header from the beginning of a hunk, return
+    the start and length values from that header.
+    """
     match = re_metadata.match(meta_str)
     head_start, _, head_length, saved_start, _, saved_length = match.groups()
     return (int(head_start),
@@ -53,6 +66,12 @@ def _get_metadata(meta_str):
 
 
 def _get_changes(hunk_lines, head_start, saved_start):
+    """
+    Transform a list of `+` or `-` lines from a `git diff` output
+    into tuples with the original raw line, the type of the change,
+    the position of the HEAD- and saved- versions at that line, and
+    the text of the line with the `+` or `-` removed.
+    """
     changes = []
     head_pos = head_start
     saved_pos = saved_start

@@ -11,10 +11,10 @@ MenuOption = namedtuple("MenuOption", ["requires_action", "menu_text", "filename
 class QuickStageCommand(WindowCommand, BaseCommand):
 
     """
-    Displays a quick bar menu of unstaged files in the current git repository,
+    Display a quick panel of unstaged files in the current git repository,
     allowing the user to select one or more files for staging.
 
-    Filenames will be displayed with one of the following indicators:
+    Display filenames with one of the following indicators:
 
         * [M] modified
         * [A] added
@@ -63,6 +63,10 @@ class QuickStageCommand(WindowCommand, BaseCommand):
         self.window.show_quick_panel(menu_entries, on_selection, sublime.MONOSPACE_FONT)
 
     def get_menu_options(self):
+        """
+        Determine the git status of the current working directory, and return
+        a list of menu options for each file that is shown.
+        """
         status_entries = self.get_status()
         menu_options = []
 

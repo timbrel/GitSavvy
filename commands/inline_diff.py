@@ -17,7 +17,8 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
 
     """
     Given an open file in a git-tracked directory, show a new view with the
-    diff (against HEAD) displayed inline.
+    diff (against HEAD) displayed inline.  Allow the user to stage or reset
+    hunks or individual lines, and to navigate between hunks.
     """
 
     def run(self):
@@ -44,6 +45,10 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
         diff_view.run_command("inline_diff_refresh")
 
     def get_diff_view(self):
+        """
+        Return a read-only diff view.  If one already exists, return that.
+        Otherwise, return a new view.
+        """
         for view in self.window.views():
             if view.settings().get("git_better_view") == "inline_diff":
                 break
@@ -56,6 +61,12 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
         return view
 
     def augment_color_scheme(self, target_view, original_color_scheme):
+        """
+        Given the path to a color scheme and a target view, generate a new
+        color scheme from the original with additional inline-diff-related
+        style rules added.  Save this color scheme to disk and set it as
+        the target view's active color scheme.
+        """
         original_path = os.path.abspath(sublime.packages_path() + "/../" + original_color_scheme)
 
         with open(original_path, "rt", encoding="utf-8") as in_f:
@@ -119,6 +130,12 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
         self.view.set_read_only(True)
 
     def get_file_object_hash(self, file_path):
+        """
+        Given an absolute path to a file contained in a git repo, return
+        git's internal object hash associated with the version of that file
+        in the index (if the file is staged) or in the HEAD (if it is not
+        staged).
+        """
         stdout = self.git("ls-files", "-s", file_path)
 
         # 100644 c9d70aa928a3670bc2b879b4a596f10d3e81ba7c 0   SomeFile.py
@@ -127,17 +144,41 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
         return git_file_entry[1]
 
     def get_object_contents(self, object_hash):
+        """
+        Given the object hash to a versioned object in the current git repo,
+        display the contents of that object.
+        """
         return self.git("show", object_hash)
 
     def get_file_contents(self, file_path):
+        """
+        Given an absolute file path, return the text contents of that file
+        as a string.
+        """
         with open(file_path, "rt", encoding="utf-8") as f:
             return f.read()
 
     def get_object_from_string(self, string):
+        """
+        Given a string, pipe the contents of that string to git and have it
+        stored in the current repo, and return an object-hash that can be
+        used to diff against.
+        """
         stdout = self.git("hash-object", "-w", "--stdin", stdin=string)
         return stdout.split("\n")[0]
 
     def get_inline_diff_contents(self, original_contents, diff):
+        """
+        Given a file's original contents and an array of hunks that could be
+        applied to it, return a string with the diff lines inserted inline.
+        Also return an array of inlined-hunk information to be used for
+        diff highlighting.
+
+        Remove any `-` or `+` characters at the beginning of each line, as
+        well as the header summary line.  Additionally, store relevant data
+        as `current_diff_view_hunks` to be used when the user takes an
+        action in the view.
+        """
         global current_diff_view_hunks
         current_diff_view_hunks = []
 
@@ -176,6 +217,12 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
         return "\n".join(lines), replaced_lines
 
     def highlight_regions(self, replaced_lines):
+        """
+        Given an array of tuples, where each tuple contains the start and end
+        of an inlined diff hunk as well as an array of line-types (add/remove)
+        for the lines in that hunk, highlight the added regions in green and
+        the removed regions in red.
+        """
         add_regions = []
         remove_regions = []
 
@@ -211,12 +258,24 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
 
 class InlineDiffFocusEventListener(EventListener):
 
+    """
+    If the current view is an inline-diff view, refresh the view with
+    latest file status when the view regains focus.
+    """
+
     def on_activated(self, view):
+
         if view.settings().get("git_better_diff_view") == True:
             view.run_command("inline_diff_refresh")
 
 
 class InlineDiffStageOrResetBase(TextCommand, BaseCommand):
+
+    """
+    Base class for any stage or reset operation in the inline-diff view.
+    Determine the line number of the current cursor location, and use that
+    to determine what diff to apply to the file (implemented in subclass).
+    """
 
     def run(self, edit, reset=False):
         selections = self.view.sel()
@@ -240,6 +299,13 @@ class InlineDiffStageOrResetBase(TextCommand, BaseCommand):
 
 
 class InlineDiffStageOrResetLineCommand(InlineDiffStageOrResetBase):
+
+    """
+    Given a line number, generate a diff of that single line in the active
+    file, and apply that diff to the file.  If the `reset` flag is set to
+    `True`, apply the patch in reverse (reverting that line to the version
+    in HEAD).
+    """
 
     @staticmethod
     def get_diff_from_line(line_no, reset):
@@ -278,6 +344,12 @@ class InlineDiffStageOrResetLineCommand(InlineDiffStageOrResetBase):
 
 class InlineDiffStageOrResetHunkCommand(InlineDiffStageOrResetBase):
 
+    """
+    Given a line number, generate a diff of the hunk containing that line,
+    and apply that diff to the file.  If the `reset` flag is set to `True`,
+    apply the patch in reverse (reverting that hunk to the version in HEAD).
+    """
+
     @staticmethod
     def get_diff_from_line(line_no, reset):
         # Find the correct hunk.
@@ -292,6 +364,13 @@ class InlineDiffStageOrResetHunkCommand(InlineDiffStageOrResetBase):
 
 
 class InlineDiffGotoBase(TextCommand):
+
+    """
+    Base class for navigation commands in the inline-diff view.  Determine
+    the current line number, get a new target cursor position (implemented
+    in subclass), make that the only cursor active in the view, and center
+    it on the screen.
+    """
 
     def run(self, edit):
         selections = self.view.sel()
@@ -309,6 +388,11 @@ class InlineDiffGotoBase(TextCommand):
 
 class InlineDiffGotoNextHunk(InlineDiffGotoBase):
 
+    """
+    Navigate to the next hunk that appears after the current cursor
+    position.
+    """
+
     def get_target_cursor_pos(self, current_line_number):
         for hunk_ref in current_diff_view_hunks:
             if hunk_ref.section_start > current_line_number:
@@ -318,6 +402,11 @@ class InlineDiffGotoNextHunk(InlineDiffGotoBase):
 
 
 class InlineDiffGotoPreviousHunk(InlineDiffGotoBase):
+
+    """
+    Navigate to the previous hunk that appears immediately before
+    the current cursor position.
+    """
 
     def get_target_cursor_pos(self, current_line_number):
         previous_hunk_ref = None
