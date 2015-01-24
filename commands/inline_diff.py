@@ -95,11 +95,9 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
         saved_file_contents = self.get_file_contents(file_path)
         saved_object = self.get_object_from_string(saved_file_contents)
 
-        cmd = self.git("diff", "-U0", head_staged_object, saved_object)
-        if not cmd.success:
-            return
+        stdout = self.git("diff", "-U0", head_staged_object, saved_object)
 
-        diff = util.parse_diff(cmd.stdout)
+        diff = util.parse_diff(stdout)
 
         inline_diff_contents, replaced_lines = \
             self.get_inline_diff_contents(head_staged_object_contents, diff)
@@ -118,26 +116,23 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
         self.view.set_read_only(True)
 
     def get_file_object_hash(self, file_path):
-        cmd = self.git("ls-files", "-s", file_path)
-        if not cmd.success:
-            return
+        stdout = self.git("ls-files", "-s", file_path)
 
         # 100644 c9d70aa928a3670bc2b879b4a596f10d3e81ba7c 0   SomeFile.py
         #        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        git_file_entry = cmd.stdout.split(" ")
+        git_file_entry = stdout.split(" ")
         return git_file_entry[1]
 
     def get_object_contents(self, object_hash):
-        cmd = self.git("show", object_hash)
-        return cmd.stdout if cmd.success else None
+        return self.git("show", object_hash)
 
     def get_file_contents(self, file_path):
         with open(file_path, "rt", encoding="utf-8") as f:
             return f.read()
 
     def get_object_from_string(self, string):
-        cmd = self.git("hash-object", "-w", "--stdin", stdin=string)
-        return cmd.stdout.split("\n")[0] if cmd.success else None
+        stdout = self.git("hash-object", "-w", "--stdin", stdin=string)
+        return stdout.split("\n")[0]
 
     def get_inline_diff_contents(self, original_contents, diff):
         global current_diff_view_hunks
@@ -228,11 +223,10 @@ class InlineDiffStageOrResetBase(TextCommand, BaseCommand):
 
         full_diff = header + diff_lines + "\n"
         reset_or_stage_flag = "-R" if reset else "--cached"
-        cmd = self.git("apply", "--unidiff-zero", reset_or_stage_flag, "-", stdin=full_diff)
-        print("which one?", reset_or_stage_flag)
-        if cmd.success:
-            cursor = self.view.sel()[0].begin()
-            self.view.run_command("inline_diff_refresh", {"cursor": cursor})
+
+        self.git("apply", "--unidiff-zero", reset_or_stage_flag, "-", stdin=full_diff)
+        cursor = self.view.sel()[0].begin()
+        self.view.run_command("inline_diff_refresh", {"cursor": cursor})
 
 
 class InlineDiffStageOrResetLineCommand(InlineDiffStageOrResetBase):

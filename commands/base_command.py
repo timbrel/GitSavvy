@@ -3,9 +3,10 @@ import subprocess
 import shutil
 from collections import namedtuple
 
+import sublime
+
 from ..common import log
 
-GitResponse = namedtuple("GitResponse", ["success", "stdout", "stderr"])
 FileStatus = namedtuple("FileStatus", ["path", "path_alt", "status", "status_alt"])
 IndexedEntry = namedtuple("IndexEntry", [
     "src_path",
@@ -47,8 +48,8 @@ class BaseCommand():
 
         if not repo_path:
             working_dir = os.path.dirname(self.file_path)
-            cmd = self.git("rev-parse", "--show-toplevel", working_dir=working_dir)
-            repo_path = cmd.stdout.strip()
+            stdout = self.git("rev-parse", "--show-toplevel", working_dir=working_dir)
+            repo_path = stdout.strip()
             view.settings().set("git_better.repo_path", repo_path)
 
         return repo_path
@@ -69,6 +70,12 @@ class BaseCommand():
         command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
         log.info("-- " + " ".join(command))
 
+        def raise_error(msg):
+            sublime.status_message(
+                "Failed to run `git {}`. See console for details.".format(command[1])
+            )
+            raise GitBetterError(msg)
+
         try:
             p = subprocess.Popen(command,
                                  stdin=subprocess.PIPE,
@@ -79,18 +86,21 @@ class BaseCommand():
             stdout, stderr = stdout.decode(), stderr.decode()
 
         except Exception as e:
-            raise GitBetterError("Git command failed: {}".format(e))
+            raise_error(e)
+
+        if not p.returncode == 0:
+            raise_error("`git {}` failed with following output:\n{}".format(
+                command[1], stderr
+            ))
 
         log.info(stdout)
 
-        return GitResponse(p.returncode == 0, stdout, stderr)
+        return stdout
 
     def get_status(self):
-        cmd = self.git("status", "--porcelain", "-z")
-        if not cmd.success:
-            return None
+        stdout = self.git("status", "--porcelain", "-z")
 
-        porcelain_entries = cmd.stdout.split("\x00").__iter__()
+        porcelain_entries = stdout.split("\x00").__iter__()
         entries = []
 
         for entry in porcelain_entries:
@@ -130,10 +140,7 @@ class BaseCommand():
             )
 
     def get_indexed(self):
-        cmd = self.git("diff-index", "-z", "--cached", "HEAD")
-        if not cmd.success:
-            return None
-
-        entries = cmd.stdout.split(":")
+        stdout = self.git("diff-index", "-z", "--cached", "HEAD")
+        entries = stdout.split(":")
 
         return [self._get_indexed_entry(raw_entry) for raw_entry in entries if raw_entry]

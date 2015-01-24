@@ -40,25 +40,23 @@ class QuickStageCommand(WindowCommand, BaseCommand):
                 return
 
             elif selection.menu_text == messages.ADD_ALL_UNSTAGED_FILES:
-                cmd = self.git("add", "--update", ".")
+                self.git("add", "--update", ".")
                 scope_of_action = "all unstaged files"
 
             elif selection.menu_text == messages.ADD_ALL_FILES:
-                cmd = self.git("add", "--all")
+                self.git("add", "--all")
                 scope_of_action = "all files"
 
             elif selection.is_untracked:
-                cmd = self.git("add", "--", selection.filename)
+                self.git("add", "--", selection.filename)
                 scope_of_action = "`{}`".format(selection.filename)
 
             else:
-                cmd = self.git("add", "--update", "--", selection.filename)
+                self.git("add", "--update", "--", selection.filename)
                 scope_of_action = "`{}`".format(selection.filename)
 
-            sublime.status_message("{success} {target}.".format(
-                success="Successfully added" if cmd.success else "Failed to add",
-                target=scope_of_action
-            ))
+            sublime.status_message("Successfully added `{}`.".format(
+                scope_of_action))
 
             sublime.set_timeout_async(self.run, 10)
 
