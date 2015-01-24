@@ -222,7 +222,7 @@ class InlineDiffStageOrResetBase(TextCommand, BaseCommand):
 
         # Git lines are 1-indexed; Sublime rows are 0-indexed.
         line_number = self.view.rowcol(region.begin())[0] + 1
-        diff_lines = self.get_diff_from_line(line_number)
+        diff_lines = self.get_diff_from_line(line_number, reset)
         filename = os.path.relpath(self.file_path, self.repo_path)
         header = messages.DIFF_HEADER.format(path=filename)
 
@@ -238,7 +238,7 @@ class InlineDiffStageOrResetBase(TextCommand, BaseCommand):
 class InlineDiffStageOrResetLineCommand(InlineDiffStageOrResetBase):
 
     @staticmethod
-    def get_diff_from_line(line_no):
+    def get_diff_from_line(line_no, reset):
         # Find the correct hunk.
         for hunk_ref in current_diff_view_hunks:
             if hunk_ref.section_start <= line_no and hunk_ref.section_end >= line_no:
@@ -258,7 +258,8 @@ class InlineDiffStageOrResetLineCommand(InlineDiffStageOrResetBase):
         # line to remove will be the Nth line, where N is the line index in the hunk.
         head_start = hunk_ref.hunk.head_start if line_type == "+" else hunk_ref.hunk.head_start + index_in_hunk
         # TODO: Investigate this off-by-one ???
-        head_start += 1
+        if not reset:
+            head_start += 1
 
         return ("@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"
                 "{line_type}{line}").format(
@@ -274,7 +275,7 @@ class InlineDiffStageOrResetLineCommand(InlineDiffStageOrResetBase):
 class InlineDiffStageOrResetHunkCommand(InlineDiffStageOrResetBase):
 
     @staticmethod
-    def get_diff_from_line(line_no):
+    def get_diff_from_line(line_no, reset):
         # Find the correct hunk.
         for hunk_ref in current_diff_view_hunks:
             if hunk_ref.section_start <= line_no and hunk_ref.section_end >= line_no:
