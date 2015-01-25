@@ -6,45 +6,13 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from ..common import util
+from ..common.theme_generator import ThemeGenerator
 from .base_command import BaseCommand
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
 
 
 INLINE_DIFF_TITLE = "DIFF: "
-
-STYLES_HEADER = """
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-"""
-
-ADDED_LINE_STYLE = """
- <dict>
-    <key>name</key>
-    <string>GitBetter Added Line</string>
-    <key>scope</key>
-    <string>gitbetter.change.addition</string>
-    <key>settings</key>
-    <dict>
-        <key>background</key>
-        <string>#{}</string>
-    </dict>
-</dict>
-"""
-
-REMOVED_LINE_STYLE = """
- <dict>
-    <key>name</key>
-    <string>GitBetter Removed Line</string>
-    <key>scope</key>
-    <string>gitbetter.change.removal</string>
-    <key>settings</key>
-    <dict>
-        <key>background</key>
-        <string>#{}</string>
-    </dict>
-</dict>
-"""
 
 DIFF_HEADER = """diff --git a/{path} b/{path}
 --- a/{path}
@@ -109,30 +77,10 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
         style rules added.  Save this color scheme to disk and set it as
         the target view's active color scheme.
         """
-        original_path = os.path.abspath(sublime.packages_path() + "/../" + original_color_scheme)
-
-        with open(original_path, "rt", encoding="utf-8") as in_f:
-            color_scheme_xml = in_f.read()
-
-        plist = ElementTree.XML(color_scheme_xml)
-        styles = plist.find("./dict/array")
-
-        added_style = ADDED_LINE_STYLE.format("37A832")
-        removed_style = REMOVED_LINE_STYLE.format("A83732")
-
-        styles.append(ElementTree.XML(added_style))
-        styles.append(ElementTree.XML(removed_style))
-
-        if not os.path.exists(os.path.join(sublime.packages_path(), "User", "GitBetter")):
-            os.makedirs(os.path.join(sublime.packages_path(), "User", "GitBetter"))
-
-        augmented_style_path = os.path.join(sublime.packages_path(), "User", "GitBetter", "GitBetter.active-diff-view.tmTheme")
-
-        with open(augmented_style_path, "wb") as out_f:
-            out_f.write(STYLES_HEADER.encode("utf-8"))
-            out_f.write(ElementTree.tostring(plist, encoding="utf-8"))
-
-        target_view.settings().set("color_scheme", "Packages/User/GitBetter/GitBetter.active-diff-view.tmTheme")
+        themeGenerator = ThemeGenerator(original_color_scheme)
+        themeGenerator.add_scoped_style("GitBetter Added Line", "gitbetter.change.addition", background="#37A832")
+        themeGenerator.add_scoped_style("GitBetter Removed Line", "gitbetter.change.removal", background="#A83732")
+        themeGenerator.apply_new_theme("active-diff-view", target_view)
 
 
 class InlineDiffRefreshCommand(TextCommand, BaseCommand):
