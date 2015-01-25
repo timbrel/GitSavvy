@@ -1,21 +1,21 @@
 [
     {
         "keys": ["l"],
-        "command": "inline_diff_stage_or_reset_line",
+        "command": "gg_inline_diff_stage_or_reset_line",
         "context": [
             { "key": "setting.git_gadget.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": ["h"],
-        "command": "inline_diff_stage_or_reset_hunk",
+        "command": "gg_inline_diff_stage_or_reset_hunk",
         "context": [
             { "key": "setting.git_gadget.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": ["L"],
-        "command": "inline_diff_stage_or_reset_line",
+        "command": "gg_inline_diff_stage_or_reset_line",
         "args": { "reset": true },
         "context": [
             { "key": "setting.git_gadget.inline_diff_view", "operator": "equal", "operand": true }
@@ -23,7 +23,7 @@
     },
     {
         "keys": ["H"],
-        "command": "inline_diff_stage_or_reset_hunk",
+        "command": "gg_inline_diff_stage_or_reset_hunk",
         "args": { "reset": true },
         "context": [
             { "key": "setting.git_gadget.inline_diff_view", "operator": "equal", "operand": true }
@@ -31,21 +31,21 @@
     },
     {
         "keys": ["r"],
-        "command": "inline_diff_refresh",
+        "command": "gg_inline_diff_refresh",
         "context": [
             { "key": "setting.git_gadget.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": ["."],
-        "command": "inline_diff_goto_next_hunk",
+        "command": "gg_inline_diff_goto_next_hunk",
         "context": [
             { "key": "setting.git_gadget.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": [","],
-        "command": "inline_diff_goto_previous_hunk",
+        "command": "gg_inline_diff_goto_previous_hunk",
         "context": [
             { "key": "setting.git_gadget.inline_diff_view", "operator": "equal", "operand": true }
         ]

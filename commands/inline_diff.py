@@ -22,7 +22,7 @@ DIFF_HEADER = """diff --git a/{path} b/{path}
 current_diff_view_hunks = None
 
 
-class InlineDiffCommand(WindowCommand, BaseCommand):
+class GgInlineDiffCommand(WindowCommand, BaseCommand):
 
     """
     Given an open file in a git-tracked directory, show a new view with the
@@ -51,7 +51,7 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
 
         self.window.focus_view(diff_view)
 
-        diff_view.run_command("inline_diff_refresh")
+        diff_view.run_command("gg_inline_diff_refresh")
 
     def get_diff_view(self):
         """
@@ -82,7 +82,7 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
         themeGenerator.apply_new_theme("active-diff-view", target_view)
 
 
-class InlineDiffRefreshCommand(TextCommand, BaseCommand):
+class GgInlineDiffRefreshCommand(TextCommand, BaseCommand):
 
     """
     Diff the original view's file against the HEAD or staged version of that
@@ -245,7 +245,7 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
         self.view.add_regions("git-better-removed-lines", remove_regions, scope="git_gadget.change.removal")
 
 
-class InlineDiffFocusEventListener(EventListener):
+class GgInlineDiffFocusEventListener(EventListener):
 
     """
     If the current view is an inline-diff view, refresh the view with
@@ -255,10 +255,10 @@ class InlineDiffFocusEventListener(EventListener):
     def on_activated(self, view):
 
         if view.settings().get("git_gadget.inline_diff_view") == True:
-            view.run_command("inline_diff_refresh")
+            view.run_command("gg_inline_diff_refresh")
 
 
-class InlineDiffStageOrResetBase(TextCommand, BaseCommand):
+class GgInlineDiffStageOrResetBase(TextCommand, BaseCommand):
 
     """
     Base class for any stage or reset operation in the inline-diff view.
@@ -284,10 +284,10 @@ class InlineDiffStageOrResetBase(TextCommand, BaseCommand):
 
         self.git("apply", "--unidiff-zero", reset_or_stage_flag, "-", stdin=full_diff)
         cursor = self.view.sel()[0].begin()
-        self.view.run_command("inline_diff_refresh", {"cursor": cursor})
+        self.view.run_command("gg_inline_diff_refresh", {"cursor": cursor})
 
 
-class InlineDiffStageOrResetLineCommand(InlineDiffStageOrResetBase):
+class GgInlineDiffStageOrResetLineCommand(GgInlineDiffStageOrResetBase):
 
     """
     Given a line number, generate a diff of that single line in the active
@@ -331,7 +331,7 @@ class InlineDiffStageOrResetLineCommand(InlineDiffStageOrResetBase):
                 )
 
 
-class InlineDiffStageOrResetHunkCommand(InlineDiffStageOrResetBase):
+class GgInlineDiffStageOrResetHunkCommand(GgInlineDiffStageOrResetBase):
 
     """
     Given a line number, generate a diff of the hunk containing that line,
@@ -352,7 +352,7 @@ class InlineDiffStageOrResetHunkCommand(InlineDiffStageOrResetBase):
         return "\n".join(hunk_ref.hunk.raw_lines)
 
 
-class InlineDiffGotoBase(TextCommand):
+class GgInlineDiffGotoBase(TextCommand):
 
     """
     Base class for navigation commands in the inline-diff view.  Determine
@@ -375,7 +375,7 @@ class InlineDiffGotoBase(TextCommand):
             self.view.show_at_center(self.view.line(new_cursor_pt))
 
 
-class InlineDiffGotoNextHunk(InlineDiffGotoBase):
+class GgInlineDiffGotoNextHunk(GgInlineDiffGotoBase):
 
     """
     Navigate to the next hunk that appears after the current cursor
@@ -390,7 +390,7 @@ class InlineDiffGotoNextHunk(InlineDiffGotoBase):
         return self.view.text_point(hunk_ref.section_start, 0)
 
 
-class InlineDiffGotoPreviousHunk(InlineDiffGotoBase):
+class GgInlineDiffGotoPreviousHunk(GgInlineDiffGotoBase):
 
     """
     Navigate to the previous hunk that appears immediately before

@@ -1,10 +1,10 @@
-from .quick_stage import QuickStageCommand
+from .quick_stage import GgQuickStageCommand
 from .inline_diff import (
-    InlineDiffCommand,
-    InlineDiffRefreshCommand,
-    InlineDiffFocusEventListener,
-    InlineDiffStageOrResetLineCommand,
-    InlineDiffStageOrResetHunkCommand,
-    InlineDiffGotoNextHunk,
-    InlineDiffGotoPreviousHunk
+    GgInlineDiffCommand,
+    GgInlineDiffRefreshCommand,
+    GgInlineDiffFocusEventListener,
+    GgInlineDiffStageOrResetLineCommand,
+    GgInlineDiffStageOrResetHunkCommand,
+    GgInlineDiffGotoNextHunk,
+    GgInlineDiffGotoPreviousHunk
 )
