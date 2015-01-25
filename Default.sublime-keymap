@@ -3,14 +3,14 @@
         "keys": ["l"],
         "command": "inline_diff_stage_or_reset_line",
         "context": [
-            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_better.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": ["h"],
         "command": "inline_diff_stage_or_reset_hunk",
         "context": [
-            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_better.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
@@ -18,7 +18,7 @@
         "command": "inline_diff_stage_or_reset_line",
         "args": { "reset": true },
         "context": [
-            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_better.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
@@ -26,28 +26,28 @@
         "command": "inline_diff_stage_or_reset_hunk",
         "args": { "reset": true },
         "context": [
-            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_better.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": ["r"],
         "command": "inline_diff_refresh",
         "context": [
-            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_better.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": ["."],
         "command": "inline_diff_goto_next_hunk",
         "context": [
-            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_better.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": [","],
         "command": "inline_diff_goto_previous_hunk",
         "context": [
-            { "key": "setting.git_better_diff_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_better.inline_diff_view", "operator": "equal", "operand": true }
         ]
     }
 ]

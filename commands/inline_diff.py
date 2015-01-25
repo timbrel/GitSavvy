@@ -42,7 +42,7 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
         }
 
         diff_view = self.get_diff_view()
-        diff_view.settings().set("git_better_diff_view", True)
+        diff_view.settings().set("git_better.inline_diff_view", True)
         diff_view.set_name(title)
         diff_view.set_syntax_file(syntax_file)
         self.augment_color_scheme(diff_view, original_color_scheme)
@@ -254,7 +254,7 @@ class InlineDiffFocusEventListener(EventListener):
 
     def on_activated(self, view):
 
-        if view.settings().get("git_better_diff_view") == True:
+        if view.settings().get("git_better.inline_diff_view") == True:
             view.run_command("inline_diff_refresh")
 
 
