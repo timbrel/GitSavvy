@@ -59,12 +59,12 @@ class ThemeGenerator():
         Save the transformed theme to disk and return the path to that theme,
         relative to the Sublime packages directory.
         """
-        if not os.path.exists(os.path.join(sublime.packages_path(), "User", "GitBetter")):
-            os.makedirs(os.path.join(sublime.packages_path(), "User", "GitBetter"))
+        if not os.path.exists(os.path.join(sublime.packages_path(), "User", "GitGadget")):
+            os.makedirs(os.path.join(sublime.packages_path(), "User", "GitGadget"))
 
         path_in_packages = os.path.join("User",
-                                        "GitBetter",
-                                        "GitBetter.{}.thTheme".format(name))
+                                        "GitGadget",
+                                        "GitGadget.{}.thTheme".format(name))
 
         full_path = os.path.join(sublime.packages_path(), path_in_packages)
 

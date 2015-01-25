@@ -23,7 +23,7 @@ IndexedEntry.__new__.__defaults__ = (None, ) * 8
 git_path = None
 
 
-class GitBetterError(Exception):
+class GitGadgetError(Exception):
     pass
 
 
@@ -53,17 +53,17 @@ class BaseCommand():
         """
         Return the absolute path to the git repo that contains the file that this
         view interacts with.  Like `file_path`, this can be overridden by setting
-        the view's `git_better.repo_path` setting.
+        the view's `git_gadget.repo_path` setting.
         """
         # The below condition will be true if run from a WindowCommand and false from a TextCommand.
         view = self.window.active_view() if hasattr(self, "window") else self.view
-        repo_path = view.settings().get("git_better.repo_path")
+        repo_path = view.settings().get("git_gadget.repo_path")
 
         if not repo_path:
             working_dir = os.path.dirname(self.file_path)
             stdout = self.git("rev-parse", "--show-toplevel", working_dir=working_dir)
             repo_path = stdout.strip()
-            view.settings().set("git_better.repo_path", repo_path)
+            view.settings().set("git_gadget.repo_path", repo_path)
 
         return repo_path
 
@@ -73,16 +73,16 @@ class BaseCommand():
         Return the absolute path to the file this view interacts with. In most
         cases, this will be the open file.  However, for views with special
         functionality, this default behavior can be overridden by setting the
-        view's `git_better.file_path` setting.
+        view's `git_gadget.file_path` setting.
         """
         # The below condition will be true if run from a WindowCommand and false
         # from a TextCommand.
         view = self.window.active_view() if hasattr(self, "window") else self.view
-        fpath = view.settings().get("git_better.file_path")
+        fpath = view.settings().get("git_gadget.file_path")
 
         if not fpath:
             fpath = view.file_name()
-            view.settings().set("git_better.file_path", fpath)
+            view.settings().set("git_gadget.file_path", fpath)
 
         return fpath
 
@@ -103,7 +103,7 @@ class BaseCommand():
             sublime.status_message(
                 "Failed to run `git {}`. See console for details.".format(command[1])
             )
-            raise GitBetterError(msg)
+            raise GitGadgetError(msg)
 
         try:
             p = subprocess.Popen(command,

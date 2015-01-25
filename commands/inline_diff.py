@@ -37,12 +37,12 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
         original_color_scheme = file_view.settings().get("color_scheme")
 
         grafted_settings = {
-            "git_better.file_path": self.file_path,
-            "git_better.repo_path": self.repo_path
+            "git_gadget.file_path": self.file_path,
+            "git_gadget.repo_path": self.repo_path
         }
 
         diff_view = self.get_diff_view()
-        diff_view.settings().set("git_better.inline_diff_view", True)
+        diff_view.settings().set("git_gadget.inline_diff_view", True)
         diff_view.set_name(title)
         diff_view.set_syntax_file(syntax_file)
         self.augment_color_scheme(diff_view, original_color_scheme)
@@ -59,11 +59,11 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
         Otherwise, return a new view.
         """
         for view in self.window.views():
-            if view.settings().get("git_better_view") == "inline_diff":
+            if view.settings().get("git_gadget_view") == "inline_diff":
                 break
         else:
             view = self.window.new_file()
-            view.settings().set("git_better_view", "inline_diff")
+            view.settings().set("git_gadget_view", "inline_diff")
             view.set_scratch(True)
             view.set_read_only(True)
 
@@ -77,8 +77,8 @@ class InlineDiffCommand(WindowCommand, BaseCommand):
         the target view's active color scheme.
         """
         themeGenerator = ThemeGenerator(original_color_scheme)
-        themeGenerator.add_scoped_style("GitBetter Added Line", "gitbetter.change.addition", background="#37A832")
-        themeGenerator.add_scoped_style("GitBetter Removed Line", "gitbetter.change.removal", background="#A83732")
+        themeGenerator.add_scoped_style("GitGadget Added Line", "git_gadget.change.addition", background="#37A832")
+        themeGenerator.add_scoped_style("GitGadget Removed Line", "git_gadget.change.removal", background="#A83732")
         themeGenerator.apply_new_theme("active-diff-view", target_view)
 
 
@@ -241,8 +241,8 @@ class InlineDiffRefreshCommand(TextCommand, BaseCommand):
             l = add_regions if region_type == "+" else remove_regions
             l.append(sublime.Region(region_start, region_end))
 
-        self.view.add_regions("git-better-added-lines", add_regions, scope="gitbetter.change.addition")
-        self.view.add_regions("git-better-removed-lines", remove_regions, scope="gitbetter.change.removal")
+        self.view.add_regions("git-better-added-lines", add_regions, scope="git_gadget.change.addition")
+        self.view.add_regions("git-better-removed-lines", remove_regions, scope="git_gadget.change.removal")
 
 
 class InlineDiffFocusEventListener(EventListener):
@@ -254,7 +254,7 @@ class InlineDiffFocusEventListener(EventListener):
 
     def on_activated(self, view):
 
-        if view.settings().get("git_better.inline_diff_view") == True:
+        if view.settings().get("git_gadget.inline_diff_view") == True:
             view.run_command("inline_diff_refresh")
 
 
