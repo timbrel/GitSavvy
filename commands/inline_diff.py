@@ -1,5 +1,4 @@
 import os
-from xml.etree import ElementTree
 from collections import namedtuple
 
 import sublime
@@ -278,7 +277,7 @@ class InlineDiffStageOrResetBase(TextCommand, BaseCommand):
         line_number = self.view.rowcol(region.begin())[0] + 1
         diff_lines = self.get_diff_from_line(line_number, reset)
         filename = os.path.relpath(self.file_path, self.repo_path)
-        header = messages.DIFF_HEADER.format(path=filename)
+        header = DIFF_HEADER.format(path=filename)
 
         full_diff = header + diff_lines + "\n"
         reset_or_stage_flag = "-R" if reset else "--cached"
