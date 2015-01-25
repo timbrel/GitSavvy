@@ -41,7 +41,7 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
             "git_gadget.repo_path": self.repo_path
         }
 
-        diff_view = self.get_diff_view()
+        diff_view = self.get_read_only_view("inline_diff")
         diff_view.settings().set("git_gadget.inline_diff_view", True)
         diff_view.set_name(title)
         diff_view.set_syntax_file(syntax_file)
@@ -52,22 +52,6 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
         self.window.focus_view(diff_view)
 
         diff_view.run_command("gg_inline_diff_refresh")
-
-    def get_diff_view(self):
-        """
-        Return a read-only diff view.  If one already exists, return that.
-        Otherwise, return a new view.
-        """
-        for view in self.window.views():
-            if view.settings().get("git_gadget_view") == "inline_diff":
-                break
-        else:
-            view = self.window.new_file()
-            view.settings().set("git_gadget_view", "inline_diff")
-            view.set_scratch(True)
-            view.set_read_only(True)
-
-        return view
 
     def augment_color_scheme(self, target_view, original_color_scheme):
         """

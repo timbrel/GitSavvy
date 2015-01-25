@@ -199,3 +199,21 @@ class BaseCommand():
             for raw_entry in stdout.split(":")
             if raw_entry
         ]
+
+    def get_read_only_view(self, name):
+        """
+        Return a read-only diff view.  If one already exists, return that.
+        Otherwise, return a new view.
+        """
+        view_type = "git_gadget.{}_view".format(name)
+
+        for view in self.window.views():
+            if view.settings().get(view_type) == True:
+                break
+        else:
+            view = self.window.new_file()
+            view.settings().set(view_type, True)
+            view.set_scratch(True)
+            view.set_read_only(True)
+
+        return view
