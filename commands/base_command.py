@@ -7,7 +7,7 @@ import sublime
 
 from ..common import log
 
-FileStatus = namedtuple("FileStatus", ["path", "path_alt", "status", "status_alt"])
+FileStatus = namedtuple("FileStatus", ["path", "path_alt", "index_status", "working_status"])
 IndexedEntry = namedtuple("IndexEntry", [
     "src_path",
     "dst_path",
@@ -141,11 +141,11 @@ class BaseCommand():
         for entry in porcelain_entries:
             if not entry:
                 continue
-            status = entry[0]
-            status_alt = entry[1].strip() or None
+            index_status = entry[0]
+            working_status = entry[1].strip() or None
             path = entry[3:]
-            path_alt = porcelain_entries.__next__() if status == "R" else None
-            entries.append(FileStatus(path, path_alt, status, status_alt))
+            path_alt = porcelain_entries.__next__() if index_status == "R" else None
+            entries.append(FileStatus(path, path_alt, index_status, working_status))
 
         return entries
 

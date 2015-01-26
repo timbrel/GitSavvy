@@ -75,12 +75,11 @@ class GgQuickStageCommand(WindowCommand, BaseCommand):
         menu_options = []
 
         for entry in status_entries:
-            if entry.status in ("A", "M"):
-                continue
-            filename = (entry.path if not entry.status == "R"
-                        else entry.path + " <- " + entry.path_alt)
-            menu_text = "[{0}] {1}".format(entry.status, filename)
-            menu_options.append(MenuOption(True, menu_text, filename, entry.status == "?"))
+            if entry.working_status in ("M", "D", "?"):
+                filename = (entry.path if not entry.index_status == "R"
+                            else entry.path + " <- " + entry.path_alt)
+                menu_text = "[{0}] {1}".format(entry.working_status, filename)
+                menu_options.append(MenuOption(True, menu_text, filename, entry.index_status == "?"))
 
         if not menu_options:
             return [MenuOption(False, CLEAN_WORKING_DIR, None, None)]
