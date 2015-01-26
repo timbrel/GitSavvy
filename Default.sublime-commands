@@ -6,5 +6,9 @@
     {
         "caption": "git: quick stage",
         "command": "gg_quick_stage"
+    },
+    {
+        "caption": "git: status",
+        "command": "gg_show_status"
     }
 ]
