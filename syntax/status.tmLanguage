@@ -58,7 +58,7 @@
 					<key>match</key>
 					<string>^    (.+)$</string>
 					<key>name</key>
-					<string>meta.git-gadget.status.staged-file</string>
+					<string>meta.git-gadget.status.file-staged</string>
 				</dict>
 			</array>
 		</dict>
@@ -85,7 +85,7 @@
 					<key>match</key>
 					<string>^    (.+)$</string>
 					<key>name</key>
-					<string>meta.git-gadget.status.unstaged-file</string>
+					<string>meta.git-gadget.status.file-unstaged</string>
 				</dict>
 			</array>
 		</dict>
@@ -112,7 +112,7 @@
 					<key>match</key>
 					<string>^    (.+)$</string>
 					<key>name</key>
-					<string>meta.git-gadget.status.untracked-file</string>
+					<string>meta.git-gadget.status.file-untracked</string>
 				</dict>
 			</array>
 		</dict>
@@ -139,7 +139,7 @@
 					<key>match</key>
 					<string>^    (.+)$</string>
 					<key>name</key>
-					<string>meta.git-gadget.status.conflict-file</string>
+					<string>meta.git-gadget.status.file-conflict</string>
 				</dict>
 			</array>
 		</dict>
@@ -166,7 +166,7 @@
 					<key>match</key>
 					<string>^    (.+)$</string>
 					<key>name</key>
-					<string>meta.git-gadget.status.stash</string>
+					<string>meta.git-gadget.status.saved_stash</string>
 				</dict>
 			</array>
 		</dict>

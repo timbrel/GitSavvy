@@ -22,7 +22,7 @@ patterns:
     '0': { name: keyword.other.git-gadget.staged-files-header }
   end: '^$'
   patterns:
-  - name: meta.git-gadget.status.staged-file
+  - name: meta.git-gadget.status.file-staged
     match: '^    (.+)$'
 
 - comment: Unstaged section
@@ -32,7 +32,7 @@ patterns:
     '0': { name: keyword.other.section.git-gadget.unstaged-files-header }
   end: '^$'
   patterns:
-  - name: meta.git-gadget.status.unstaged-file
+  - name: meta.git-gadget.status.file-unstaged
     match: '^    (.+)$'
 
 - comment: Untracked section
@@ -42,7 +42,7 @@ patterns:
     '0': { name: keyword.other.git-gadget.untracked-files-header }
   end: '^$'
   patterns:
-  - name: meta.git-gadget.status.untracked-file
+  - name: meta.git-gadget.status.file-untracked
     match: '^    (.+)$'
 
 - comment: Untracked section
@@ -52,7 +52,7 @@ patterns:
     '0': { name: keyword.other.git-gadget.conflict-files-header }
   end: '^$'
   patterns:
-  - name: meta.git-gadget.status.conflict-file
+  - name: meta.git-gadget.status.file-conflict
     match: '^    (.+)$'
 
 - comment: Untracked section
@@ -62,7 +62,7 @@ patterns:
     '0': { name: keyword.other.git-gadget.stashes-header }
   end: '^$'
   patterns:
-  - name: meta.git-gadget.status.stash
+  - name: meta.git-gadget.status.saved_stash
     match: '^    (.+)$'
 
 - comment: Key-bindings menu
