@@ -65,7 +65,7 @@
         "command": "gg_status_open_file",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
     {
@@ -73,7 +73,7 @@
         "command": "gg_status_stage_file",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
     {
@@ -81,7 +81,7 @@
         "command": "gg_status_unstage_file",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
     {
@@ -89,7 +89,7 @@
         "command": "gg_status_discard_file",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
     {
@@ -97,7 +97,7 @@
         "command": "gg_status_open_file_on_remote",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
     {
@@ -105,7 +105,7 @@
         "command": "gg_status_reset_file_to_head",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
     {
@@ -113,7 +113,7 @@
         "command": "gg_status_resolve_conflict_file",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
     {
@@ -121,7 +121,7 @@
         "command": "gg_status_diff_file",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
     {
@@ -129,7 +129,7 @@
         "command": "gg_status_diff_inline",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
 
@@ -142,7 +142,7 @@
         "command": "gg_status_stage_all_files",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
     {
@@ -150,7 +150,7 @@
         "command": "gg_status_stage_all_files_with_untracked",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
     {
@@ -158,7 +158,7 @@
         "command": "gg_status_unstage_all_files",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
     {
@@ -166,7 +166,7 @@
         "command": "gg_status_discard_all_changes",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
     {
@@ -174,7 +174,7 @@
         "command": "gg_status_diff_all_files",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
 
@@ -208,7 +208,7 @@
         "command": "gg_status_ignore_file",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
     {
@@ -216,7 +216,7 @@
         "command": "gg_status_ignore_pattern",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
         ]
     },
 
@@ -229,7 +229,7 @@
         "command": "gg_status_apply_stash",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.saved_stash" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.stashes meta.git-gadget.status.saved_stash" }
         ]
     },
     {
@@ -237,7 +237,7 @@
         "command": "gg_status_pop_stash",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.saved_stash" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.stashes meta.git-gadget.status.saved_stash" }
         ]
     },
     {
@@ -259,7 +259,7 @@
         "command": "gg_status_discard_stash",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.saved_stash" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.stashes meta.git-gadget.status.saved_stash" }
         ]
     },
 

@@ -37,109 +37,28 @@
 		</dict>
 		<dict>
 			<key>begin</key>
-			<string>^  STAGED:$</string>
+			<string>^  ((STAGED)|(UNSTAGED)|(UNTRACKED)|(MERGE CONFLICTS)):$</string>
 			<key>beginCaptures</key>
 			<dict>
 				<key>0</key>
 				<dict>
 					<key>name</key>
-					<string>keyword.other.git-gadget.staged-files-header</string>
+					<string>keyword.other.git-gadget.section-header</string>
 				</dict>
 			</dict>
 			<key>comment</key>
-			<string>Staged section</string>
+			<string>section</string>
 			<key>end</key>
 			<string>^$</string>
 			<key>name</key>
-			<string>meta.git-gadget.status.staged-files</string>
+			<string>meta.git-gadget.status.section</string>
 			<key>patterns</key>
 			<array>
 				<dict>
 					<key>match</key>
 					<string>^    (.+)$</string>
 					<key>name</key>
-					<string>meta.git-gadget.status.file-staged</string>
-				</dict>
-			</array>
-		</dict>
-		<dict>
-			<key>begin</key>
-			<string>^  UNSTAGED:$</string>
-			<key>beginCaptures</key>
-			<dict>
-				<key>0</key>
-				<dict>
-					<key>name</key>
-					<string>keyword.other.section.git-gadget.unstaged-files-header</string>
-				</dict>
-			</dict>
-			<key>comment</key>
-			<string>Unstaged section</string>
-			<key>end</key>
-			<string>^$</string>
-			<key>name</key>
-			<string>meta.git-gadget.status.unstaged-files</string>
-			<key>patterns</key>
-			<array>
-				<dict>
-					<key>match</key>
-					<string>^    (.+)$</string>
-					<key>name</key>
-					<string>meta.git-gadget.status.file-unstaged</string>
-				</dict>
-			</array>
-		</dict>
-		<dict>
-			<key>begin</key>
-			<string>^  UNTRACKED:$</string>
-			<key>beginCaptures</key>
-			<dict>
-				<key>0</key>
-				<dict>
-					<key>name</key>
-					<string>keyword.other.git-gadget.untracked-files-header</string>
-				</dict>
-			</dict>
-			<key>comment</key>
-			<string>Untracked section</string>
-			<key>end</key>
-			<string>^$</string>
-			<key>name</key>
-			<string>meta.git-gadget.status.untracked-files</string>
-			<key>patterns</key>
-			<array>
-				<dict>
-					<key>match</key>
-					<string>^    (.+)$</string>
-					<key>name</key>
-					<string>meta.git-gadget.status.file-untracked</string>
-				</dict>
-			</array>
-		</dict>
-		<dict>
-			<key>begin</key>
-			<string>^  MERGE CONFLICTS:$</string>
-			<key>beginCaptures</key>
-			<dict>
-				<key>0</key>
-				<dict>
-					<key>name</key>
-					<string>keyword.other.git-gadget.conflict-files-header</string>
-				</dict>
-			</dict>
-			<key>comment</key>
-			<string>Untracked section</string>
-			<key>end</key>
-			<string>^$</string>
-			<key>name</key>
-			<string>meta.git-gadget.status.conflict-files</string>
-			<key>patterns</key>
-			<array>
-				<dict>
-					<key>match</key>
-					<string>^    (.+)$</string>
-					<key>name</key>
-					<string>meta.git-gadget.status.file-conflict</string>
+					<string>meta.git-gadget.status.file</string>
 				</dict>
 			</array>
 		</dict>
@@ -155,7 +74,7 @@
 				</dict>
 			</dict>
 			<key>comment</key>
-			<string>Untracked section</string>
+			<string>Stashes section</string>
 			<key>end</key>
 			<string>^$</string>
 			<key>name</key>
