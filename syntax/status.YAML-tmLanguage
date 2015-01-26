@@ -1,0 +1,80 @@
+# [PackageDev] target_format: plist, ext: tmLanguage
+name: GitGadget Status
+scopeName: git-gadget.status
+uuid: 56ea09df-2601-4d20-bb8d-b6834db991c4
+
+patterns:
+- comment: Status summary
+  name: meta.git-gadget.status-summary
+  begin: '^  REMOTE:'
+  beginCaptures:
+    '0': { name: comment.git-gadget.status.summary-header }
+  end: '^$'
+  patterns:
+  - comment: summary header
+    name: comment.git-gadget.status.summary-header
+    match: '^  [A-Z]+:'
+
+- comment: Staged section
+  name: meta.git-gadget.status.staged-files
+  begin: '^  STAGED:$'
+  beginCaptures:
+    '0': { name: keyword.other.git-gadget.staged-files-header }
+  end: '^$'
+  patterns:
+  - name: meta.git-gadget.status.staged-file
+    match: '^    (.+)$'
+
+- comment: Unstaged section
+  name: meta.git-gadget.status.unstaged-files
+  begin: '^  UNSTAGED:$'
+  beginCaptures:
+    '0': { name: keyword.other.section.git-gadget.unstaged-files-header }
+  end: '^$'
+  patterns:
+  - name: meta.git-gadget.status.unstaged-file
+    match: '^    (.+)$'
+
+- comment: Untracked section
+  name: meta.git-gadget.status.untracked-files
+  begin: '^  UNTRACKED:$'
+  beginCaptures:
+    '0': { name: keyword.other.git-gadget.untracked-files-header }
+  end: '^$'
+  patterns:
+  - name: meta.git-gadget.status.untracked-file
+    match: '^    (.+)$'
+
+- comment: Untracked section
+  name: meta.git-gadget.status.conflict-files
+  begin: '^  MERGE CONFLICTS:$'
+  beginCaptures:
+    '0': { name: keyword.other.git-gadget.conflict-files-header }
+  end: '^$'
+  patterns:
+  - name: meta.git-gadget.status.conflict-file
+    match: '^    (.+)$'
+
+- comment: Untracked section
+  name: meta.git-gadget.status.stashes
+  begin: '^  STASHES:$'
+  beginCaptures:
+    '0': { name: keyword.other.git-gadget.stashes-header }
+  end: '^$'
+  patterns:
+  - name: meta.git-gadget.status.stash
+    match: '^    (.+)$'
+
+- comment: Key-bindings menu
+  name: comment.git-gadget.status.key-bindings-menu
+  begin: '^  ####'
+  end: '^-$'
+  patterns:
+  - name: meta.git-gadget.key-bindings-header
+    match: '  ## ([A-Z ]+) ##'
+    captures:
+      '1': { name: support.type.git-gadget.key-bindings-header-text }
+  - name: meta.git-gadget.key-bindings-key-stroke
+    match: '\[([A-Za-z])\]'
+    captures:
+      '1': { name: constant.character.git-gadget-key-binding-key }

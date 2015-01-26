@@ -33,17 +33,15 @@ STASHES_TEMPLATE = """
 {}
 """
 
-STATUS_TEMPLATE = """## GIT STATUS ##
-
+STATUS_TEMPLATE = """
   REMOTE:    {remote_info}
   LOCAL:     {local_info}
   INFO:      Your branch is {branch_info}.
-
 {status_text}
 
-  # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = #
-
+  ###################                   ###############
   ## SELECTED FILE ##                   ## ALL FILES ##
+  ###################                   ###############
 
   [o] open file                         [a] stage all unstaged files
   [s] stage file                        [A] stage all unstaged and untracked files
@@ -55,7 +53,9 @@ STATUS_TEMPLATE = """## GIT STATUS ##
   [f] diff file                         [F] diff all files
   [l] diff file inline
 
+  #############                         #############
   ## ACTIONS ##                         ## STASHES ##
+  #############                         #############
 
   [c] commit                            [t][a] apply stash
   [C] commit, including unstaged        [t][p] pop stash
@@ -64,9 +64,13 @@ STATUS_TEMPLATE = """## GIT STATUS ##
   [i] ignore file                       [t][d] discard stash
   [I] ignore pattern
 
+  ###########
   ## OTHER ##
+  ###########
 
   [r] refresh status
+
+-
 """
 
 MERGE_CONFLICT_PORCELAIN_STATUSES = (
@@ -91,7 +95,7 @@ class GgShowStatusCommand(WindowCommand, BaseCommand):
         title = STATUS_TITLE.format(os.path.basename(repo_path))
         status_view = self.get_read_only_view("status")
         status_view.set_name(title)
-        status_view.set_syntax_file("Packages/GitGadget/GitGadgetSyntax.tmLanguage")
+        status_view.set_syntax_file("Packages/GitGadget/syntax/status.tmLanguage")
         status_view.settings().set("git_gadget.repo_path", repo_path)
         self.window.focus_view(status_view)
 

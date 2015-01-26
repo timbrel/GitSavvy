@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>name</key>
+	<string>GitGadget Status</string>
+	<key>patterns</key>
+	<array>
+		<dict>
+			<key>begin</key>
+			<string>^  REMOTE:</string>
+			<key>beginCaptures</key>
+			<dict>
+				<key>0</key>
+				<dict>
+					<key>name</key>
+					<string>comment.git-gadget.status.summary-header</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>Status summary</string>
+			<key>end</key>
+			<string>^$</string>
+			<key>name</key>
+			<string>meta.git-gadget.status-summary</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>comment</key>
+					<string>summary header</string>
+					<key>match</key>
+					<string>^  [A-Z]+:</string>
+					<key>name</key>
+					<string>comment.git-gadget.status.summary-header</string>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>begin</key>
+			<string>^  STAGED:$</string>
+			<key>beginCaptures</key>
+			<dict>
+				<key>0</key>
+				<dict>
+					<key>name</key>
+					<string>keyword.other.git-gadget.staged-files-header</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>Staged section</string>
+			<key>end</key>
+			<string>^$</string>
+			<key>name</key>
+			<string>meta.git-gadget.status.staged-files</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>match</key>
+					<string>^    (.+)$</string>
+					<key>name</key>
+					<string>meta.git-gadget.status.staged-file</string>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>begin</key>
+			<string>^  UNSTAGED:$</string>
+			<key>beginCaptures</key>
+			<dict>
+				<key>0</key>
+				<dict>
+					<key>name</key>
+					<string>keyword.other.section.git-gadget.unstaged-files-header</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>Unstaged section</string>
+			<key>end</key>
+			<string>^$</string>
+			<key>name</key>
+			<string>meta.git-gadget.status.unstaged-files</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>match</key>
+					<string>^    (.+)$</string>
+					<key>name</key>
+					<string>meta.git-gadget.status.unstaged-file</string>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>begin</key>
+			<string>^  UNTRACKED:$</string>
+			<key>beginCaptures</key>
+			<dict>
+				<key>0</key>
+				<dict>
+					<key>name</key>
+					<string>keyword.other.git-gadget.untracked-files-header</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>Untracked section</string>
+			<key>end</key>
+			<string>^$</string>
+			<key>name</key>
+			<string>meta.git-gadget.status.untracked-files</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>match</key>
+					<string>^    (.+)$</string>
+					<key>name</key>
+					<string>meta.git-gadget.status.untracked-file</string>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>begin</key>
+			<string>^  MERGE CONFLICTS:$</string>
+			<key>beginCaptures</key>
+			<dict>
+				<key>0</key>
+				<dict>
+					<key>name</key>
+					<string>keyword.other.git-gadget.conflict-files-header</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>Untracked section</string>
+			<key>end</key>
+			<string>^$</string>
+			<key>name</key>
+			<string>meta.git-gadget.status.conflict-files</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>match</key>
+					<string>^    (.+)$</string>
+					<key>name</key>
+					<string>meta.git-gadget.status.conflict-file</string>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>begin</key>
+			<string>^  STASHES:$</string>
+			<key>beginCaptures</key>
+			<dict>
+				<key>0</key>
+				<dict>
+					<key>name</key>
+					<string>keyword.other.git-gadget.stashes-header</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>Untracked section</string>
+			<key>end</key>
+			<string>^$</string>
+			<key>name</key>
+			<string>meta.git-gadget.status.stashes</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>match</key>
+					<string>^    (.+)$</string>
+					<key>name</key>
+					<string>meta.git-gadget.status.stash</string>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>begin</key>
+			<string>^  ####</string>
+			<key>comment</key>
+			<string>Key-bindings menu</string>
+			<key>end</key>
+			<string>^-$</string>
+			<key>name</key>
+			<string>comment.git-gadget.status.key-bindings-menu</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>support.type.git-gadget.key-bindings-header-text</string>
+						</dict>
+					</dict>
+					<key>match</key>
+					<string>  ## ([A-Z ]+) ##</string>
+					<key>name</key>
+					<string>meta.git-gadget.key-bindings-header</string>
+				</dict>
+				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>constant.character.git-gadget-key-binding-key</string>
+						</dict>
+					</dict>
+					<key>match</key>
+					<string>\[([A-Za-z])\]</string>
+					<key>name</key>
+					<string>meta.git-gadget.key-bindings-key-stroke</string>
+				</dict>
+			</array>
+		</dict>
+	</array>
+	<key>scopeName</key>
+	<string>git-gadget.status</string>
+	<key>uuid</key>
+	<string>56ea09df-2601-4d20-bb8d-b6834db991c4</string>
+</dict>
+</plist>
