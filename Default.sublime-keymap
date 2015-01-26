@@ -1,4 +1,9 @@
 [
+
+    //////////////////////
+    // INLINE DIFF VIEW //
+    //////////////////////
+
     {
         "keys": ["l"],
         "command": "gg_inline_diff_stage_or_reset_line",
@@ -48,6 +53,225 @@
         "command": "gg_inline_diff_goto_previous_hunk",
         "context": [
             { "key": "setting.git_gadget.inline_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+
+    /////////////////////////////////
+    // STATUS VIEW - SELECTED FILE //
+    /////////////////////////////////
+
+    {
+        "keys": ["o"],
+        "command": "gg_status_open_file",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+    {
+        "keys": ["s"],
+        "command": "gg_status_stage_file",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+    {
+        "keys": ["u"],
+        "command": "gg_status_unstage_file",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+    {
+        "keys": ["d"],
+        "command": "gg_status_discard_file",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+    {
+        "keys": ["h"],
+        "command": "gg_status_open_file_on_remote",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+    {
+        "keys": ["R"],
+        "command": "gg_status_reset_file_to_head",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+    {
+        "keys": ["M"],
+        "command": "gg_status_resolve_conflict_file",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+    {
+        "keys": ["f"],
+        "command": "gg_status_diff_file",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+    {
+        "keys": ["l"],
+        "command": "gg_status_diff_inline",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+
+    /////////////////////////////
+    // STATUS VIEW - ALL FILES //
+    /////////////////////////////
+
+    {
+        "keys": ["a"],
+        "command": "gg_status_stage_all_files",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+    {
+        "keys": ["A"],
+        "command": "gg_status_stage_all_files_with_untracked",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+    {
+        "keys": ["U"],
+        "command": "gg_status_unstage_all_files",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+    {
+        "keys": ["D"],
+        "command": "gg_status_discard_all_changes",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+    {
+        "keys": ["F"],
+        "command": "gg_status_diff_all_files",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+
+    ///////////////////////////
+    // STATUS VIEW - ACTIONS //
+    ///////////////////////////
+
+    {
+        "keys": ["c"],
+        "command": "gg_status_commit",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["C"],
+        "command": "gg_status_commit_unstaged",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["m"],
+        "command": "gg_status_amend",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["i"],
+        "command": "gg_status_ignore_file",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+    {
+        "keys": ["I"],
+        "command": "gg_status_ignore_pattern",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.file" }
+        ]
+    },
+
+    ///////////////////////////
+    // STATUS VIEW - STASHES //
+    ///////////////////////////
+
+    {
+        "keys": ["t", "a"],
+        "command": "gg_status_apply_stash",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.saved_stash" }
+        ]
+    },
+    {
+        "keys": ["t", "p"],
+        "command": "gg_status_pop_stash",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.saved_stash" }
+        ]
+    },
+    {
+        "keys": ["t", "c"],
+        "command": "gg_status_create_stash",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["t", "C"],
+        "command": "gg_status_create_stash_with_untracked",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["t", "d"],
+        "command": "gg_status_discard_stash",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "regex_contains", "operand": "meta.git-gadget.status.saved_stash" }
+        ]
+    },
+
+    ///////////////////////////
+    // STATUS VIEW - STASHES //
+    ///////////////////////////
+
+    {
+        "keys": ["r"],
+        "command": "gg_status_refresh",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
         ]
     }
 ]

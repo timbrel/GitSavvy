@@ -47,7 +47,7 @@ STATUS_TEMPLATE = """
   [s] stage file                        [A] stage all unstaged and untracked files
   [u] unstage file                      [U] unstage all staged files
   [d] discard file                      [D] discard all unstaged changes
-  [h] open file on GitHub
+  [h] open file on remote
   [R] reset file to HEAD
   [M] resolve conflict with Sublimerge
 
