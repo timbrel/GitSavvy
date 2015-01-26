@@ -56,6 +56,7 @@ Special views:
      ☐ reset file to head
      ☐ ignore file
      ☐ open file
+     ☐ resolve merge conflict with Sublimerge
    ☐ multiple files:
      ☐ stage all unstaged files
      ☐ stage all unstaged and untracked files

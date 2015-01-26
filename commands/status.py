@@ -49,6 +49,7 @@ STATUS_TEMPLATE = """
   [d] discard file                      [D] discard all unstaged changes
   [h] open file on GitHub
   [R] reset file to HEAD
+  [M] resolve conflict with Sublimerge
 
   [f] diff file                         [F] diff all files
   [l] diff file inline
