@@ -20,7 +20,7 @@ from .status import (
     # GgStatusResetFileToHeadCommand,
     # GgStatusResolveConflictFileCommand,
     # GgStatusDiffFileCommand,
-    # GgStatusDiffInlineCommand,
+    GgStatusDiffInlineCommand,
     # GgStatusStageAllFilesCommand,
     # GgStatusStageAllFilesWithUntrackedCommand,
     # GgStatusUnstageAllFilesCommand,

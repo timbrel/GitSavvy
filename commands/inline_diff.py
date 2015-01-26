@@ -30,18 +30,20 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
     hunks or individual lines, and to navigate between hunks.
     """
 
-    def run(self):
-        file_view = self.window.active_view()
-        syntax_file = file_view.settings().get("syntax")
+    def run(self, settings=None):
+        if settings is None:
+            file_view = self.window.active_view()
+            syntax_file = file_view.settings().get("syntax")
+            settings = {
+                "git_gadget.file_path": self.file_path,
+                "git_gadget.repo_path": self.repo_path
+            }
+        else:
+            syntax_file = settings["syntax"]
+            del settings["syntax"]
 
-        settings = {
-            "git_gadget.file_path": self.file_path,
-            "git_gadget.repo_path": self.repo_path
-        }
-
-        title = INLINE_DIFF_TITLE + os.path.basename(settings["git_gadget.file_path"])
         diff_view = self.get_read_only_view("inline_diff")
-        diff_view.set_name(title)
+        diff_view.set_name(INLINE_DIFF_TITLE + os.path.basename(settings["git_gadget.file_path"]))
         diff_view.set_syntax_file(syntax_file)
         self.augment_color_scheme(diff_view)
         for k, v in settings.items():

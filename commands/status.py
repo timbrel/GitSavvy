@@ -1,4 +1,5 @@
 import os
+from functools import partial
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -181,15 +182,34 @@ class GgStatusFocusEventListener(EventListener):
 
     def on_activated(self, view):
 
-        if view.settings().get("git_gadget.inline_diff_view") == True:
+        if view.settings().get("git_gadget.status_view") == True:
             view.run_command("gg_status_refresh")
 
 
 class GgStatusOpenFileCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
-        lines = util.view.get_lines_from_regions(self.view, self.view.sel())
+        lines = util.get_lines_from_regions(self.view, self.view.sel())
         file_paths = (line.strip() for line in lines if line[:4] == "    ")
         abs_paths = (os.path.join(self.repo_path, file_path) for file_path in file_paths)
         for path in abs_paths:
             self.view.window().open_file(path)
+
+
+class GgStatusDiffInlineCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        lines = util.get_lines_from_regions(self.view, self.view.sel())
+        file_paths = (line.strip() for line in lines if line[:4] == "    ")
+        sublime.set_timeout_async(partial(self.load_inline_diff_windows, file_paths), 0)
+
+    def load_inline_diff_windows(self, file_paths):
+        for fpath in file_paths:
+            syntax = util.get_syntax_for_file(fpath)
+            print("found syntax:", syntax)
+            settings = {
+                "git_gadget.file_path": fpath,
+                "git_gadget.repo_path": self.repo_path,
+                "syntax": syntax
+            }
+            self.view.window().run_command("gg_inline_diff", {"settings": settings})
