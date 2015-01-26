@@ -44,8 +44,11 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
 
         diff_view = self.get_read_only_view("inline_diff")
         diff_view.set_name(INLINE_DIFF_TITLE + os.path.basename(settings["git_gadget.file_path"]))
-        diff_view.set_syntax_file(syntax_file)
+
+        if syntax_file:
+            diff_view.set_syntax_file(syntax_file)
         self.augment_color_scheme(diff_view)
+
         for k, v in settings.items():
             diff_view.settings().set(k, v)
 
