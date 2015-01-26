@@ -99,6 +99,7 @@ class GgShowStatusCommand(WindowCommand, BaseCommand):
         status_view.set_syntax_file("Packages/GitGadget/syntax/status.tmLanguage")
         status_view.settings().set("git_gadget.repo_path", repo_path)
         self.window.focus_view(status_view)
+        status_view.sel().clear()
 
         status_view.run_command("gg_status_refresh")
 
@@ -117,10 +118,14 @@ class GgStatusRefreshCommand(TextCommand, BaseCommand):
         self.view.replace(edit, sublime.Region(0, self.view.size()), status_contents)
         self.view.set_read_only(True)
 
-        self.view.sel().clear()
+        selections = self.view.sel()
         if cursor is not None:
+            selections.clear()
             pt = sublime.Region(cursor, cursor)
-            self.view.sel().add(pt)
+            selections.add(pt)
+        elif not len(selections):
+            pt = sublime.Region(0, 0)
+            selections.add(pt)
 
     def get_contents(self):
         staged, unstaged, untracked, conflicts = self.sort_status_entries(self.get_status())
