@@ -32,34 +32,32 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
 
     def run(self):
         file_view = self.window.active_view()
-        title = INLINE_DIFF_TITLE + os.path.basename(self.file_path)
         syntax_file = file_view.settings().get("syntax")
-        original_color_scheme = file_view.settings().get("color_scheme")
 
-        grafted_settings = {
+        settings = {
             "git_gadget.file_path": self.file_path,
             "git_gadget.repo_path": self.repo_path
         }
 
+        title = INLINE_DIFF_TITLE + os.path.basename(settings["git_gadget.file_path"])
         diff_view = self.get_read_only_view("inline_diff")
-        diff_view.settings().set("git_gadget.inline_diff_view", True)
         diff_view.set_name(title)
         diff_view.set_syntax_file(syntax_file)
-        self.augment_color_scheme(diff_view, original_color_scheme)
-        for k, v in grafted_settings.items():
+        self.augment_color_scheme(diff_view)
+        for k, v in settings.items():
             diff_view.settings().set(k, v)
 
         self.window.focus_view(diff_view)
 
         diff_view.run_command("gg_inline_diff_refresh")
 
-    def augment_color_scheme(self, target_view, original_color_scheme):
+    def augment_color_scheme(self, target_view):
         """
-        Given the path to a color scheme and a target view, generate a new
-        color scheme from the original with additional inline-diff-related
-        style rules added.  Save this color scheme to disk and set it as
-        the target view's active color scheme.
+        Given a target view, generate a new color scheme from the original with
+        additional inline-diff-related style rules added.  Save this color scheme
+        to disk and set it as the target view's active color scheme.
         """
+        original_color_scheme = target_view.settings().get("color_scheme")
         themeGenerator = ThemeGenerator(original_color_scheme)
         themeGenerator.add_scoped_style("GitGadget Added Line", "git_gadget.change.addition", background="#37A832")
         themeGenerator.add_scoped_style("GitGadget Removed Line", "git_gadget.change.removal", background="#A83732")
