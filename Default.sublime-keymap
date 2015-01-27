@@ -86,7 +86,7 @@
     },
     {
         "keys": ["d"],
-        "command": "gg_status_discard_file",
+        "command": "gg_status_discard_changes_to_file",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
             { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
@@ -95,14 +95,6 @@
     {
         "keys": ["h"],
         "command": "gg_status_open_file_on_remote",
-        "context": [
-            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
-        ]
-    },
-    {
-        "keys": ["R"],
-        "command": "gg_status_reset_file_to_head",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
             { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }

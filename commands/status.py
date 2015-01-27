@@ -49,9 +49,8 @@ KEY_BINDINGS_MENU = """
   [o] open file                         [a] stage all unstaged files
   [s] stage file                        [A] stage all unstaged and untracked files
   [u] unstage file                      [U] unstage all staged files
-  [d] discard file                      [D] discard all unstaged changes
+  [d] discard changes to file           [D] discard all unstaged changes
   [h] open file on remote
-  [R] reset file to HEAD
   [M] resolve conflict with Sublimerge
 
   [f] diff file                         [F] diff all files
