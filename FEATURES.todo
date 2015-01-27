@@ -48,11 +48,11 @@ Special views:
    ☐ unstage line under cursor
    ☐ quick navigation between hunks
  ☐ git: status
-   ☐ refresh
+   ✔ refresh @done (15-01-26 23:22)
    ☐ file-specific:
      ✔ stage file @done (15-01-26 23:12)
      ✔ unstage file @done (15-01-26 23:12)
-     ☐ discard changes to file
+     ✔ discard changes to file @done (15-01-26 23:22)
      ☐ diff file
      ✔ diff file inline @done (15-01-26 15:11)
      ☐ ignore file

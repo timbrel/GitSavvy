@@ -231,3 +231,11 @@ class BaseCommand():
         the file.
         """
         self.git("reset", "HEAD", fpath)
+
+    def checkout_file(self, fpath):
+        """
+        Given an absolute path or path relative to the repo's root, discard
+        any changes made to the file and revert it in the working directory
+        to the state it is in HEAD.
+        """
+        self.git("checkout", "--", fpath)

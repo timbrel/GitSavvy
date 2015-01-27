@@ -15,7 +15,7 @@ from .status import (
     GgStatusOpenFileCommand,
     GgStatusStageFileCommand,
     GgStatusUnstageFileCommand,
-    # GgStatusDiscardChangesToFileCommand,
+    GgStatusDiscardChangesToFileCommand,
     # GgStatusOpenFileOnRemoteCommand,
     # GgStatusResolveConflictFileCommand,
     # GgStatusDiffFileCommand,
