@@ -1,3 +1,5 @@
+import itertools
+
 import sublime
 from plistlib import readPlistFromBytes
 
@@ -21,15 +23,26 @@ def move_cursor(view, line_no, char_no):
     view.show(pt)
 
 
-def get_lines_from_regions(view, regions):
+def _region_within_regions(all_outer, inner):
+    for outer in all_outer:
+        if outer.begin() <= inner.begin() and outer.end() >= inner.end():
+            return True
+    return False
+
+
+def get_lines_from_regions(view, regions, valid_ranges=None):
     full_line_regions = (view.full_line(region) for region in regions)
-    return [line for region in full_line_regions for line in view.substr(region).split("\n")]
+
+    valid_regions = ([region for region in full_line_regions if _region_within_regions(valid_ranges, region)]
+                     if valid_ranges else
+                     full_line_regions)
+
+    return [line for region in valid_regions for line in view.substr(region).split("\n")]
 
 
 def determine_syntax_files():
     syntax_files = sublime.find_resources("*.tmLanguage")
     for syntax_file in syntax_files:
-        print("trying:", syntax_file)
         try:
             # Use `sublime.load_resource`, in case Package is `*.sublime-package`.
             resource = sublime.load_resource(syntax_file)

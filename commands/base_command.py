@@ -217,3 +217,10 @@ class BaseCommand():
             view.set_read_only(True)
 
         return view
+
+    def stage_file(self, fpath):
+        """
+        Given an absolute path or path relative to the repo's root, stage
+        the file.
+        """
+        self.git("add", "-f", "--", fpath)

@@ -13,7 +13,7 @@ from .status import (
     GgStatusRefreshCommand,
     GgStatusFocusEventListener,
     GgStatusOpenFileCommand,
-    # GgStatusStageFileCommand,
+    GgStatusStageFileCommand,
     # GgStatusUnstageFileCommand,
     # GgStatusDiscardFileCommand,
     # GgStatusOpenFileOnRemoteCommand,
