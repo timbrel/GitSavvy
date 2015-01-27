@@ -310,3 +310,24 @@ class GgStatusOpenFileOnRemoteCommand(TextCommand, BaseCommand):
             file_paths = list(file_paths)
             for fpath in file_paths:
                 self.open_file_on_remote(fpath)
+
+
+class GgStatusStageAllFilesCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        self.add_all_tracked_files()
+        self.view.run_command("gg_status_refresh")
+
+
+class GgStatusStageAllFilesWithUntrackedCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        self.add_all_files()
+        self.view.run_command("gg_status_refresh")
+
+
+class GgStatusUnstageAllFilesCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        self.unstage_all_files()
+        self.view.run_command("gg_status_refresh")

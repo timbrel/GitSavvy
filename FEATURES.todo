@@ -60,10 +60,10 @@ Special views:
      ✔ open file on remote @done (15-01-27 00:27)
      ☐ resolve merge conflict with Sublimerge
    ☐ multiple files:
-     ☐ stage all unstaged files
-     ☐ stage all unstaged and untracked files
-     ☐ unstage all files
-     ☐ discard everything
+     ✔ stage all unstaged files @done (15-01-27 00:40)
+     ✔ stage all unstaged and untracked files @done (15-01-27 00:40)
+     ✔ unstage all files @done (15-01-27 00:40)
+     ☐ discard unstaged changes
      ☐ diff all files
      ☐ ignore pattern
    ☐ commit:
