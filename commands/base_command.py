@@ -297,3 +297,11 @@ class BaseCommand():
         Remove all staged files from the index.
         """
         return self.git("reset")
+
+    def discard_all_unstaged(self):
+        """
+        Any changes that are not staged or committed will be reverted
+        to their state in HEAD.  Any new files will be deleted.
+        """
+        self.git("clean", "-df")
+        self.git("checkout", "--")

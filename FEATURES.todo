@@ -63,7 +63,7 @@ Special views:
      ✔ stage all unstaged files @done (15-01-27 00:40)
      ✔ stage all unstaged and untracked files @done (15-01-27 00:40)
      ✔ unstage all files @done (15-01-27 00:40)
-     ☐ discard unstaged changes
+     ✔ discard unstaged changes @done (15-01-27 00:47)
      ☐ diff all files
      ☐ ignore pattern
    ☐ commit:

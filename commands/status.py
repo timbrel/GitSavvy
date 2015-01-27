@@ -331,3 +331,10 @@ class GgStatusUnstageAllFilesCommand(TextCommand, BaseCommand):
     def run(self, edit):
         self.unstage_all_files()
         self.view.run_command("gg_status_refresh")
+
+
+class GgStatusDiscardAllChangesCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        self.discard_all_unstaged()
+        self.view.run_command("gg_status_refresh")

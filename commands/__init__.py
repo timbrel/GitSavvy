@@ -23,7 +23,7 @@ from .status import (
     GgStatusStageAllFilesCommand,
     GgStatusStageAllFilesWithUntrackedCommand,
     GgStatusUnstageAllFilesCommand,
-    # GgStatusDiscardAllChangesCommand,
+    GgStatusDiscardAllChangesCommand,
     # GgStatusDiffAllFilesCommand,
     # GgStatusCommitCommand,
     # GgStatusCommitUnstagedCommand,
