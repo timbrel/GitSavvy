@@ -57,6 +57,7 @@ Special views:
      ✔ diff file inline @done (15-01-26 15:11)
      ☐ ignore file
      ✔ open file @done (15-01-26 12:31)
+     ✔ open file on remote @done (15-01-27 00:27)
      ☐ resolve merge conflict with Sublimerge
    ☐ multiple files:
      ☐ stage all unstaged files

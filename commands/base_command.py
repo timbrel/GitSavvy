@@ -1,7 +1,9 @@
 import os
+import re
 import subprocess
 import shutil
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
+from webbrowser import open as open_in_browser
 
 import sublime
 
@@ -239,3 +241,39 @@ class BaseCommand():
         to the state it is in HEAD.
         """
         self.git("checkout", "--", fpath)
+
+    def open_file_on_remote(self, fpath):
+        """
+        Assume the remote git repo is GitHub and open the URL corresponding
+        to the provided file at path `fpath` at HEAD.
+        """
+        default_name, default_remote_url = self.get_remotes().popitem(last=False)
+
+        if default_remote_url.startswith("git@"):
+            url = default_remote_url.replace(":", "/").replace("git@", "http://")[:-4]
+        elif default_remote_url.startswith("http"):
+            url = default_remote_url[:-4]
+        else:
+            return
+
+        url += "/blob/{commit_hash}/{path}".format(
+            commit_hash=self.get_commit_hash_for_head(),
+            path=fpath
+        )
+
+        open_in_browser(url)
+
+    def get_commit_hash_for_head(self):
+        """
+        Get the SHA1 commit hash for the commit at HEAD.
+        """
+        return self.git("rev-parse", "HEAD").strip()
+
+    def get_remotes(self):
+        """
+        Get a list of remotes, provided as tuples of remote name and remote
+        url/resource.
+        """
+        entries = self.git("remote", "-v").splitlines()
+        print(entries)
+        return OrderedDict(re.match("([a-zA-Z_-]+)\t([^ ]+)", entry).groups() for entry in entries)

@@ -248,7 +248,7 @@ class GgStatusStageFileCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = (line.strip() for line in lines if line[:4] == "    ")
+        file_paths = (line.strip() for line in lines if line)
 
         if file_paths:
             for fpath in file_paths:
@@ -267,7 +267,7 @@ class GgStatusUnstageFileCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = (line.strip() for line in lines)
+        file_paths = (line.strip() for line in lines if line)
 
         if file_paths:
             for fpath in file_paths:
@@ -287,10 +287,26 @@ class GgStatusDiscardChangesToFileCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = (line.strip() for line in lines if line[:4] == "    ")
+        file_paths = (line.strip() for line in lines if line)
 
         if file_paths:
             for fpath in file_paths:
                 self.checkout_file(fpath)
             sublime.status_message("Successfully checked out files from HEAD.")
             self.view.run_command("gg_status_refresh")
+
+
+class GgStatusOpenFileOnRemoteCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        lines = util.get_lines_from_regions(
+            self.view,
+            self.view.sel(),
+            valid_ranges=status_view_section_ranges[self.view.id()]
+        )
+        file_paths = (line.strip() for line in lines if line)
+
+        if file_paths:
+            file_paths = list(file_paths)
+            for fpath in file_paths:
+                self.open_file_on_remote(fpath)
