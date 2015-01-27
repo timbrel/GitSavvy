@@ -304,4 +304,4 @@ class BaseCommand():
         to their state in HEAD.  Any new files will be deleted.
         """
         self.git("clean", "-df")
-        self.git("checkout", "--")
+        self.git("checkout", "--", ".")
