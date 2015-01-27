@@ -183,13 +183,15 @@ class GgStatusRefreshCommand(TextCommand, BaseCommand):
         staged, unstaged, untracked, conflicts = [], [], [], []
 
         for f in file_status_list:
+            if (f.index_status, f.working_status) in MERGE_CONFLICT_PORCELAIN_STATUSES:
+                conflicts.append(f)
+                continue
             if f.index_status == "?":
                 untracked.append(f)
-            elif (f.index_status, f.working_status) in MERGE_CONFLICT_PORCELAIN_STATUSES:
-                conflicts.append(f)
+                continue
             elif f.working_status in ("M", "D"):
                 unstaged.append(f)
-            else:
+            if f.index_status != " ":
                 staged.append(f)
 
         return staged, unstaged, untracked, conflicts
