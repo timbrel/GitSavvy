@@ -133,40 +133,35 @@
         "keys": ["a"],
         "command": "gg_status_stage_all_files",
         "context": [
-            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": ["A"],
         "command": "gg_status_stage_all_files_with_untracked",
         "context": [
-            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": ["U"],
         "command": "gg_status_unstage_all_files",
         "context": [
-            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": ["D"],
         "command": "gg_status_discard_all_changes",
         "context": [
-            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": ["F"],
         "command": "gg_status_diff_all_files",
         "context": [
-            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
         ]
     },
 
