@@ -224,3 +224,10 @@ class BaseCommand():
         the file.
         """
         self.git("add", "-f", "--", fpath)
+
+    def unstage_file(self, fpath):
+        """
+        Given an absolute path or path relative to the repo's root, unstage
+        the file.
+        """
+        self.git("reset", "HEAD", fpath)

@@ -14,7 +14,7 @@ from .status import (
     GgStatusFocusEventListener,
     GgStatusOpenFileCommand,
     GgStatusStageFileCommand,
-    # GgStatusUnstageFileCommand,
+    GgStatusUnstageFileCommand,
     # GgStatusDiscardFileCommand,
     # GgStatusOpenFileOnRemoteCommand,
     # GgStatusResetFileToHeadCommand,

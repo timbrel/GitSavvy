@@ -50,8 +50,8 @@ Special views:
  ☐ git: status
    ☐ refresh
    ☐ file-specific:
-     ☐ stage file
-     ☐ unstage file
+     ✔ stage file @done (15-01-26 23:12)
+     ✔ unstage file @done (15-01-26 23:12)
      ☐ discard file
      ☐ diff file
      ✔ diff file inline @done (15-01-26 15:11)
