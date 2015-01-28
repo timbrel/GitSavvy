@@ -57,10 +57,15 @@ def determine_syntax_files():
 
 
 def get_syntax_for_file(filename):
-    extension = filename.split(".")[-1]
+    extension = get_file_extension(filename)
     try:
         # Return last syntax file applicable to this extension.
         return syntax_file_map[extension][-1]
     except KeyError:
         pass
     return "Packages/Text/Plain text.tmLanguage"
+
+
+def get_file_extension(filename):
+    period_delimited_segments = filename.split(".")
+    return "" if len(period_delimited_segments) < 2 else period_delimited_segments[-1]

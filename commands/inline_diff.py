@@ -48,7 +48,8 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
         diff_view.set_name(title + os.path.basename(settings["git_gadget.file_path"]))
 
         diff_view.set_syntax_file(syntax_file)
-        self.augment_color_scheme(diff_view)
+        file_ext = util.get_file_extension(os.path.basename(settings["git_gadget.file_path"]))
+        self.augment_color_scheme(diff_view, file_ext)
 
         diff_view.settings().set("git_gadget.inline_diff.cached", cached)
         for k, v in settings.items():
@@ -58,7 +59,7 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
 
         diff_view.run_command("gg_inline_diff_refresh")
 
-    def augment_color_scheme(self, target_view):
+    def augment_color_scheme(self, target_view, file_ext):
         """
         Given a target view, generate a new color scheme from the original with
         additional inline-diff-related style rules added.  Save this color scheme
@@ -68,7 +69,7 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
         themeGenerator = ThemeGenerator(original_color_scheme)
         themeGenerator.add_scoped_style("GitGadget Added Line", "git_gadget.change.addition", background="#37A832")
         themeGenerator.add_scoped_style("GitGadget Removed Line", "git_gadget.change.removal", background="#A83732")
-        themeGenerator.apply_new_theme("active-diff-view", target_view)
+        themeGenerator.apply_new_theme("active-diff-view." + file_ext, target_view)
 
 
 class GgInlineDiffRefreshCommand(TextCommand, BaseCommand):
