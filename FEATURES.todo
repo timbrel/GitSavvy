@@ -43,10 +43,10 @@ Special views:
    ✔ reset hunk under cursor @done (15-01-24 01:40)
    ✔ reset line under cursor @done (15-01-24 01:40)
    ✔ quick navigation between hunks @done (15-01-23 17:28)
- ☐ git: inline-diff current file, cached
-   ☐ unstage hunk under cursor
-   ☐ unstage line under cursor
-   ☐ quick navigation between hunks
+ ✔ git: inline-diff current file, cached @done (15-01-28 02:43)
+   ✔ unstage hunk under cursor @done (15-01-28 02:43)
+   ✔ unstage line under cursor @done (15-01-28 02:43)
+   ✔ quick navigation between hunks @done (15-01-28 02:43)
  ☐ git: status
    ✔ refresh @done (15-01-26 23:22)
    ☐ file-specific:
@@ -55,6 +55,7 @@ Special views:
      ✔ discard changes to file @done (15-01-26 23:22)
      ☐ diff file
      ✔ diff file inline @done (15-01-26 15:11)
+     ✔ diff file inline cached for staged files @done (15-01-28 02:43)
      ☐ ignore file
      ✔ open file @done (15-01-26 12:31)
      ✔ open file on remote @done (15-01-27 00:27)

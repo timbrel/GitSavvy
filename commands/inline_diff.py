@@ -12,6 +12,7 @@ HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hu
 
 
 INLINE_DIFF_TITLE = "DIFF: "
+INLINE_DIFF_CACHED_TITLE = "DIFF (cached): "
 
 DIFF_HEADER = """diff --git a/{path} b/{path}
 --- a/{path}
@@ -30,7 +31,8 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
     hunks or individual lines, and to navigate between hunks.
     """
 
-    def run(self, settings=None):
+    def run(self, settings=None, cached=False):
+        print(settings, cached)
         if settings is None:
             file_view = self.window.active_view()
             syntax_file = file_view.settings().get("syntax")
@@ -43,11 +45,13 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
             del settings["syntax"]
 
         diff_view = self.get_read_only_view("inline_diff")
-        diff_view.set_name(INLINE_DIFF_TITLE + os.path.basename(settings["git_gadget.file_path"]))
+        title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
+        diff_view.set_name(title + os.path.basename(settings["git_gadget.file_path"]))
 
         diff_view.set_syntax_file(syntax_file)
         self.augment_color_scheme(diff_view)
 
+        diff_view.settings().set("git_gadget.inline_diff.cached", cached)
         for k, v in settings.items():
             diff_view.settings().set(k, v)
 
@@ -71,25 +75,47 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
 class GgInlineDiffRefreshCommand(TextCommand, BaseCommand):
 
     """
-    Diff the original view's file against the HEAD or staged version of that
-    file.  Remove regions of the staged/head version where changes have occurred
-    and replace them with added/removed lines from the diff.  Highlight added
-    and removed lines with different colors.
+    Diff one version of a file (the base) against another, and display the
+    changes inline.
+
+    If not in `cached` mode, compare the file in the working tree against the
+    same file in the index.  If a line or hunk is selected and the primary
+    action for the view is taken (pressing `l` or `h` for line or hunk,
+    respectively), add that line/hunk to the index.  If a line or hunk is
+    selected and the secondary action for the view is taken (pressing `L` or
+    `H`), remove those changes from the file in the working tree.
+
+    If in `cached` mode, compare the file in the index againt the same file
+    in the HEAD.  If a link or hunk is selected and the primary action for
+    the view is taken, remove that line from the index.  Secondary actions
+    are not supported in `cached` mode.
     """
 
     def run(self, edit, cursor=None):
         file_path = self.file_path
-        indexed_object = self.get_indexed_file_object(file_path)
-        indexed_object_contents = self.get_object_contents(indexed_object)
-        working_tree_file_contents = self.get_file_contents(file_path)
-        working_tree_file_object = self.get_object_from_string(working_tree_file_contents)
+        in_cached_mode = self.view.settings().get("git_gadget.inline_diff.cached")
 
-        stdout = self.git("diff", "-U0", indexed_object, working_tree_file_object)
+        if in_cached_mode:
+            indexed_object = self.get_indexed_file_object(file_path)
+            head_file_object = self.get_head_file_object(file_path)
+            head_file_contents = self.get_object_contents(head_file_object)
 
-        diff = util.parse_diff(stdout)
+            # Display the changes introduced between HEAD and index.
+            stdout = self.git("diff", "-U0", head_file_object, indexed_object)
+            diff = util.parse_diff(stdout)
+            inline_diff_contents, replaced_lines = \
+                self.get_inline_diff_contents(head_file_contents, diff)
+        else:
+            indexed_object = self.get_indexed_file_object(file_path)
+            indexed_object_contents = self.get_object_contents(indexed_object)
+            working_tree_file_contents = self.get_file_contents(file_path)
+            working_tree_file_object = self.get_object_from_string(working_tree_file_contents)
 
-        inline_diff_contents, replaced_lines = \
-            self.get_inline_diff_contents(indexed_object_contents, diff)
+            # Display the changes introduced between index and working dir.
+            stdout = self.git("diff", "-U0", indexed_object, working_tree_file_object)
+            diff = util.parse_diff(stdout)
+            inline_diff_contents, replaced_lines = \
+                self.get_inline_diff_contents(indexed_object_contents, diff)
 
         self.view.set_read_only(False)
         self.view.replace(edit, sublime.Region(0, self.view.size()), inline_diff_contents)
@@ -117,6 +143,19 @@ class GgInlineDiffRefreshCommand(TextCommand, BaseCommand):
         #        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
         git_file_entry = stdout.split(" ")
         return git_file_entry[1]
+
+    def get_head_file_object(self, file_path):
+        """
+        Given an absolute path to a file contained in a git repo, return
+        git's internal object hash associated with the version of that
+        file in the HEAD.
+        """
+        stdout = self.git("ls-tree", "HEAD", file_path)
+
+        # 100644 blob 7317069f30eafd4d7674612679322d59f9fb65a4    SomeFile.py
+        #             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        git_file_entry = stdout.split()  # split by spaces and tabs
+        return git_file_entry[2]
 
     def get_object_contents(self, object_hash):
         """
@@ -253,6 +292,7 @@ class GgInlineDiffStageOrResetBase(TextCommand, BaseCommand):
     """
 
     def run(self, edit, reset=False):
+        in_cached_mode = self.view.settings().get("git_gadget.inline_diff.cached")
         selections = self.view.sel()
         region = selections[0]
         # For now, only support staging selections of length 0.
@@ -266,9 +306,32 @@ class GgInlineDiffStageOrResetBase(TextCommand, BaseCommand):
         header = DIFF_HEADER.format(path=filename)
 
         full_diff = header + diff_lines + "\n"
-        reset_or_stage_flag = "-R" if reset else "--cached"
 
-        self.git("apply", "--unidiff-zero", reset_or_stage_flag, "-", stdin=full_diff)
+        # The three argument combinations below result from the following
+        # three scenarios:
+        #
+        # 1) The user is in non-cached mode and wants to stage a line/hunk, so
+        #    do NOT apply the patch in reverse, but do apply it only against
+        #    the cached/indexed file (not the working tree).
+        # 2) The user is in non-cached mode and wants to undo a line/hunk, so
+        #    DO apply the patch in reverse, and do apply it both against the
+        #    index and the working tree.
+        # 3) The user is in cached mode and wants to undo a line hunk, so DO
+        #    apply the patch in reverse, but only apply it against the cached/
+        #    indexed file.
+        #
+        # NOTE: When in cached mode, the action taken will always be to apply
+        #       the patch in reverse only to the index.
+
+        args = [
+            "apply",
+            "--unidiff-zero",
+            "-R" if (reset or in_cached_mode) else None,
+            "--cached" if (not reset or in_cached_mode) else None,
+            "-"
+        ]
+
+        self.git(*args, stdin=full_diff)
         cursor = self.view.sel()[0].begin()
         self.view.run_command("gg_inline_diff_refresh", {"cursor": cursor})
 

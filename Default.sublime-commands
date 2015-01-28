@@ -4,6 +4,11 @@
         "command": "gg_inline_diff"
     },
     {
+        "caption": "git: inline diff current file (cached)",
+        "command": "gg_inline_diff",
+        "args": { "cached": true }
+    },
+    {
         "caption": "git: quick stage",
         "command": "gg_quick_stage"
     },
