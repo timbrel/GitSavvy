@@ -359,3 +359,12 @@ class GgStatusCommitUnstagedCommand(TextCommand, BaseCommand):
             "gg_commit",
             {"repo_path": self.repo_path, "include_unstaged": True}
         )
+
+
+class GgStatusAmendCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        self.view.window().run_command(
+            "gg_commit",
+            {"repo_path": self.repo_path, "amend": True}
+        )

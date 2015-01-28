@@ -19,5 +19,10 @@
         "caption": "git: commit including unstaged files",
         "command": "gg_commit",
         "args": { "include_unstaged": true }
+    },
+    {
+        "caption": "git: amend previous commit",
+        "command": "gg_commit",
+        "args": { "amend": true }
     }
 ]
