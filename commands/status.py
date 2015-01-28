@@ -338,3 +338,9 @@ class GgStatusDiscardAllChangesCommand(TextCommand, BaseCommand):
     def run(self, edit):
         self.discard_all_unstaged()
         self.view.run_command("gg_status_refresh")
+
+
+class GgStatusCommitCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        self.view.window().run_command("gg_commit", {"repo_path": self.repo_path})

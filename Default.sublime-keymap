@@ -260,5 +260,18 @@
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
         ]
+    },
+
+    /////////////////
+    // COMMIT VIEW //
+    /////////////////
+
+    {
+        "keys": ["super+enter"],
+        "command": "gg_commit_view_do_commit",
+        "context": [
+            { "key": "setting.git_gadget.get_long_text_view", "operator": "equal", "operand": true }
+        ]
     }
+
 ]

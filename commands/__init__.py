@@ -25,7 +25,7 @@ from .status import (
     GgStatusUnstageAllFilesCommand,
     GgStatusDiscardAllChangesCommand,
     # GgStatusDiffAllFilesCommand,
-    # GgStatusCommitCommand,
+    GgStatusCommitCommand,
     # GgStatusCommitUnstagedCommand,
     # GgStatusAmendCommand,
     # GgStatusIgnoreFileCommand,
@@ -35,4 +35,9 @@ from .status import (
     # GgStatusCreateStashCommand,
     # GgStatusCreateStashWithUntrackedCommand,
     # GgStatusDiscardStashCommand
+)
+from .commit import (
+    GgCommitCommand,
+    GgCommitInitializeViewCommand,
+    GgCommitViewDoCommitCommand
 )

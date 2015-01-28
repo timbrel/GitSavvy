@@ -120,8 +120,8 @@ class BaseCommand():
             raise_error(e)
 
         if not p.returncode == 0:
-            raise_error("`git {}` failed with following output:\n{}".format(
-                command[1], stderr
+            raise_error("`git {}` failed with following output:\n{}\n".format(
+                command[1], stdout, stderr
             ))
 
         log.info(stdout)

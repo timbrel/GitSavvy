@@ -10,5 +10,9 @@
     {
         "caption": "git: status",
         "command": "gg_show_status"
+    },
+    {
+        "caption": "git: commit",
+        "command": "gg_commit"
     }
 ]
