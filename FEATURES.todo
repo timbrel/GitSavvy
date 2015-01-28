@@ -13,7 +13,7 @@ Panel-only, repo-specific:
  ☐ git: checkout
  ☐ git: checkout new branch
  ✔ git: commit @done (15-01-27 23:38)
- ☐ git: commit including unstaged files
+ ✔ git: commit including unstaged files @done (15-01-27 23:47)
  ☐ git: fetch
  ☐ git: log
  ☐ git: merge
@@ -68,7 +68,7 @@ Special views:
      ☐ ignore pattern
    ☐ commit:
      ✔ commit @done (15-01-27 23:39)
-     ☐ commit, add unstaged
+     ✔ commit, add unstaged @done (15-01-27 23:47)
      ☐ amend previous commit
    ☐ stashes
      ☐ apply stash

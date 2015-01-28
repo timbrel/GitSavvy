@@ -14,5 +14,10 @@
     {
         "caption": "git: commit",
         "command": "gg_commit"
+    },
+    {
+        "caption": "git: commit including unstaged files",
+        "command": "gg_commit",
+        "args": { "include_unstaged": true }
     }
 ]

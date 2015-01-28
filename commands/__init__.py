@@ -26,7 +26,7 @@ from .status import (
     GgStatusDiscardAllChangesCommand,
     # GgStatusDiffAllFilesCommand,
     GgStatusCommitCommand,
-    # GgStatusCommitUnstagedCommand,
+    GgStatusCommitUnstagedCommand,
     # GgStatusAmendCommand,
     # GgStatusIgnoreFileCommand,
     # GgStatusIgnorePatternCommand,
