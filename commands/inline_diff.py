@@ -169,6 +169,7 @@ class GgInlineDiffRefreshCommand(TextCommand, BaseCommand):
         Given an absolute file path, return the text contents of that file
         as a string.
         """
+        file_path = os.path.join(self.repo_path, file_path)
         with open(file_path, "rt", encoding="utf-8") as f:
             return f.read()
 
