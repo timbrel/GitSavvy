@@ -12,7 +12,7 @@ Panel-only, repo-specific:
  ☐ git: amend previous commit
  ☐ git: checkout
  ☐ git: checkout new branch
- ☐ git: commit
+ ✔ git: commit @done (15-01-27 23:38)
  ☐ git: commit including unstaged files
  ☐ git: fetch
  ☐ git: log
@@ -29,7 +29,7 @@ Panel-only, repo-specific:
 
 Special views:
  ☐ git: blame
- ☐ git: commit
+ ✔ git: commit @done (15-01-27 23:38)
  ☐ git: diff
    ☐ stage hunk
    ☐ stage line
@@ -67,7 +67,7 @@ Special views:
      ☐ diff all files
      ☐ ignore pattern
    ☐ commit:
-     ☐ commit
+     ✔ commit @done (15-01-27 23:39)
      ☐ commit, add unstaged
      ☐ amend previous commit
    ☐ stashes
