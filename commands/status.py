@@ -41,6 +41,10 @@ STATUS_HEADER_TEMPLATE = """
   INFO:      Your branch is {branch_info}.
 """
 
+NO_STATUS_MESSAGE = """
+  Your working directory is clean.
+"""
+
 KEY_BINDINGS_MENU = """
   ###################                   ###############
   ## SELECTED FILE ##                   ## ALL FILES ##
@@ -172,6 +176,8 @@ class GgStatusRefreshCommand(TextCommand, BaseCommand):
             staged_text = STAGED_TEMPLATE.format(staged_lines)
             staged_region = get_region(staged_text)
             status_text += staged_text
+
+        status_text = status_text or NO_STATUS_MESSAGE
 
         contents = header + status_text + KEY_BINDINGS_MENU
 
