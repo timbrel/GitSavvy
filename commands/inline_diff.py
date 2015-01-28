@@ -20,7 +20,7 @@ DIFF_HEADER = """diff --git a/{path} b/{path}
 """
 
 
-current_diff_view_hunks = None
+diff_view_hunks = {}
 
 
 class GgInlineDiffCommand(WindowCommand, BaseCommand):
@@ -32,7 +32,6 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
     """
 
     def run(self, settings=None, cached=False):
-        print(settings, cached)
         if settings is None:
             file_view = self.window.active_view()
             syntax_file = file_view.settings().get("syntax")
@@ -191,11 +190,11 @@ class GgInlineDiffRefreshCommand(TextCommand, BaseCommand):
 
         Remove any `-` or `+` characters at the beginning of each line, as
         well as the header summary line.  Additionally, store relevant data
-        as `current_diff_view_hunks` to be used when the user takes an
+        in `diff_view_hunks` to be used when the user takes an
         action in the view.
         """
-        global current_diff_view_hunks
-        current_diff_view_hunks = []
+        hunks = []
+        diff_view_hunks[self.view.id()] = hunks
 
         lines = original_contents.split("\n")
         replaced_lines = []
@@ -219,7 +218,7 @@ class GgInlineDiffRefreshCommand(TextCommand, BaseCommand):
 
             # Store information about this hunk, with proper references, so actions
             # can be taken when triggered by the user (e.g. stage line X in diff_view).
-            current_diff_view_hunks.append(HunkReference(
+            hunks.append(HunkReference(
                 section_start, section_end, hunk, line_types, raw_lines
             ))
 
@@ -346,10 +345,11 @@ class GgInlineDiffStageOrResetLineCommand(GgInlineDiffStageOrResetBase):
     in HEAD).
     """
 
-    @staticmethod
-    def get_diff_from_line(line_no, reset):
+    def get_diff_from_line(self, line_no, reset):
+        hunks = diff_view_hunks[self.view.id()]
+
         # Find the correct hunk.
-        for hunk_ref in current_diff_view_hunks:
+        for hunk_ref in hunks:
             if hunk_ref.section_start <= line_no and hunk_ref.section_end >= line_no:
                 break
         # Correct hunk not found.
@@ -389,10 +389,11 @@ class GgInlineDiffStageOrResetHunkCommand(GgInlineDiffStageOrResetBase):
     apply the patch in reverse (reverting that hunk to the version in HEAD).
     """
 
-    @staticmethod
-    def get_diff_from_line(line_no, reset):
+    def get_diff_from_line(self, line_no, reset):
+        hunks = diff_view_hunks[self.view.id()]
+
         # Find the correct hunk.
-        for hunk_ref in current_diff_view_hunks:
+        for hunk_ref in hunks:
             if hunk_ref.section_start <= line_no and hunk_ref.section_end >= line_no:
                 break
         # Correct hunk not found.
@@ -433,7 +434,8 @@ class GgInlineDiffGotoNextHunk(GgInlineDiffGotoBase):
     """
 
     def get_target_cursor_pos(self, current_line_number):
-        for hunk_ref in current_diff_view_hunks:
+        hunks = diff_view_hunks[self.view.id()]
+        for hunk_ref in hunks:
             if hunk_ref.section_start > current_line_number:
                 break
 
@@ -448,8 +450,9 @@ class GgInlineDiffGotoPreviousHunk(GgInlineDiffGotoBase):
     """
 
     def get_target_cursor_pos(self, current_line_number):
+        hunks = diff_view_hunks[self.view.id()]
         previous_hunk_ref = None
-        for hunk_ref in current_diff_view_hunks:
+        for hunk_ref in hunks:
             if hunk_ref.section_end < current_line_number:
                 previous_hunk_ref = hunk_ref
 
