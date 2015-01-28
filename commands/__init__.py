@@ -41,3 +41,4 @@ from .commit import (
     GgCommitInitializeViewCommand,
     GgCommitViewDoCommitCommand
 )
+from .quick_commit import GgQuickCommitCommand

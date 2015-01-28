@@ -13,6 +13,10 @@
         "command": "gg_quick_stage"
     },
     {
+        "caption": "git: quick commit",
+        "command": "gg_quick_commit"
+    },
+    {
         "caption": "git: status",
         "command": "gg_show_status"
     },
