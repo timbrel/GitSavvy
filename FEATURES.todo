@@ -32,7 +32,6 @@ Special views:
  ✔ git: commit @done (15-01-27 23:38)
  ☐ git: diff
    ☐ stage hunk
-   ☐ stage line
  ☐ git: diff cached
    ☐ unstage hunk
  ☐ git: diff current file
