@@ -79,17 +79,17 @@ class GgInlineDiffRefreshCommand(TextCommand, BaseCommand):
 
     def run(self, edit, cursor=None):
         file_path = self.file_path
-        head_staged_object = self.get_file_object_hash(file_path)
-        head_staged_object_contents = self.get_object_contents(head_staged_object)
-        saved_file_contents = self.get_file_contents(file_path)
-        saved_object = self.get_object_from_string(saved_file_contents)
+        indexed_object = self.get_indexed_file_object(file_path)
+        indexed_object_contents = self.get_object_contents(indexed_object)
+        working_tree_file_contents = self.get_file_contents(file_path)
+        working_tree_file_object = self.get_object_from_string(working_tree_file_contents)
 
-        stdout = self.git("diff", "-U0", head_staged_object, saved_object)
+        stdout = self.git("diff", "-U0", indexed_object, working_tree_file_object)
 
         diff = util.parse_diff(stdout)
 
         inline_diff_contents, replaced_lines = \
-            self.get_inline_diff_contents(head_staged_object_contents, diff)
+            self.get_inline_diff_contents(indexed_object_contents, diff)
 
         self.view.set_read_only(False)
         self.view.replace(edit, sublime.Region(0, self.view.size()), inline_diff_contents)
@@ -104,7 +104,7 @@ class GgInlineDiffRefreshCommand(TextCommand, BaseCommand):
         self.highlight_regions(replaced_lines)
         self.view.set_read_only(True)
 
-    def get_file_object_hash(self, file_path):
+    def get_indexed_file_object(self, file_path):
         """
         Given an absolute path to a file contained in a git repo, return
         git's internal object hash associated with the version of that file
