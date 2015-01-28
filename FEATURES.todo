@@ -35,7 +35,6 @@ Special views:
  ☐ git: diff cached
    ☐ unstage hunk
  ☐ git: diff current file
- ☐ git: show
  ✔ git: inline-diff current file @done (15-01-23 17:28)
    ✔ stage hunk under cursor @done (15-01-23 17:28)
    ✔ stage line under cursor @done (15-01-23 17:28)
