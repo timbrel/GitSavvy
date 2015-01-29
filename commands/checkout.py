@@ -42,8 +42,7 @@ class GgCheckoutNewBranchCommand(WindowCommand, BaseCommand):
 class GgCheckoutRemoteBranchCommand(WindowCommand, BaseCommand):
 
     def run(self):
-        stdout = self.git("branch", "-r", "--no-color", "--no-column")
-        self.remote_branches = [branch.strip() for branch in stdout.split("\n") if branch]
+        self.remote_branches = self.get_remote_branches()
         self.window.show_quick_panel(self.remote_branches, self.on_selection, sublime.MONOSPACE_FONT)
 
     def on_selection(self, remote_branch_index):

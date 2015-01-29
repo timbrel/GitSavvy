@@ -303,3 +303,10 @@ class BaseCommand():
         changes from all remotes.
         """
         self.git("fetch", remote)
+
+    def get_remote_branches(self):
+        """
+        Return a list of all known branches on remotes.
+        """
+        stdout = self.git("branch", "-r", "--no-color", "--no-column")
+        return [branch.strip() for branch in stdout.split("\n") if branch]
