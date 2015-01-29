@@ -18,7 +18,7 @@ Panel-only, repo-specific:
  ✔ git: fetch @done (15-01-29 00:35)
  ☐ git: log
  ☐ git: merge
- ☐ git: pull
+ ✔ git: pull @done (15-01-29 01:27)
  ☐ git: push
  ☐ git: quick commit
  ✔ git: quick stage @done (15-01-19 00:27)
