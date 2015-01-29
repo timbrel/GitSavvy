@@ -112,7 +112,8 @@ class BaseCommand():
                                  stdin=subprocess.PIPE,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
-                                 cwd=working_dir or self.repo_path)
+                                 cwd=working_dir or self.repo_path,
+                                 env=os.environ)
             stdout, stderr = p.communicate(stdin.encode(encoding="UTF-8") if stdin else None)
             stdout, stderr = stdout.decode(), stderr.decode()
 
