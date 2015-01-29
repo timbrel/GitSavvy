@@ -29,6 +29,10 @@ Panel-only, repo-specific:
 
 Special views:
  ☐ git: blame
+ ☐ git: log graph
+   ☐ syntax-highlighted
+   ☐ pressing `super+enter` on a commit will checkout that commit
+   ☐ pressing `enter` on a commit will display the full commit message in a separate window
  ✔ git: commit @done (15-01-27 23:38)
  ☐ git: diff
    ☐ stage hunk

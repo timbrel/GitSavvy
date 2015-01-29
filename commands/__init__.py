@@ -42,3 +42,7 @@ from .commit import (
     GgCommitViewDoCommitCommand
 )
 from .quick_commit import GgQuickCommitCommand
+from .log_graph import (
+    GgLogGraphCommand,
+    GgLogGraphInitializeCommand
+)

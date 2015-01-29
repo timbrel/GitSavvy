@@ -33,5 +33,9 @@
         "caption": "git: amend previous commit",
         "command": "gg_commit",
         "args": { "amend": true }
+    },
+    {
+        "caption": "git: log graph",
+        "command": "gg_log_graph"
     }
 ]
