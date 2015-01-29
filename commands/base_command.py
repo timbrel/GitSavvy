@@ -267,7 +267,6 @@ class BaseCommand():
         url/resource.
         """
         entries = self.git("remote", "-v").splitlines()
-        print(entries)
         return OrderedDict(re.match("([a-zA-Z_-]+)\t([^ ]+)", entry).groups() for entry in entries)
 
     def add_all_tracked_files(self):

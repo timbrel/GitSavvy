@@ -10,8 +10,9 @@ In-file functionality:
 
 Panel-only, repo-specific:
  ✔ git: amend previous commit @done (15-01-27 23:57)
- ☐ git: checkout
- ☐ git: checkout new branch
+ ✔ git: checkout @done (15-01-29 00:06)
+ ✔ git: checkout new branch @done (15-01-29 00:06)
+ ✔ git: checkout remote branch as local @done (15-01-29 00:06)
  ✔ git: commit @done (15-01-27 23:38)
  ✔ git: commit including unstaged files @done (15-01-27 23:47)
  ☐ git: fetch

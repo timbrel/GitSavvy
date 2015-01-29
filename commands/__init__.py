@@ -47,3 +47,8 @@ from .log_graph import (
     GgLogGraphInitializeCommand
 )
 from .open_file_on_remote import GgOpenFileOnRemoteCommand
+from .checkout import (
+    GgCheckoutBranchCommand,
+    GgCheckoutNewBranchCommand,
+    GgCheckoutRemoteBranchCommand
+)

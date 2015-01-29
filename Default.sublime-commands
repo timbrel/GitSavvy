@@ -41,5 +41,17 @@
     {
         "caption": "git: open file on remote",
         "command": "gg_open_file_on_remote"
+    },
+    {
+        "caption": "git: checkout",
+        "command": "gg_checkout_branch"
+    },
+    {
+        "caption": "git: checkout new branch",
+        "command": "gg_checkout_new_branch"
+    },
+    {
+        "caption": "git: checkout remote branch as local",
+        "command": "gg_checkout_remote_branch"
     }
 ]
