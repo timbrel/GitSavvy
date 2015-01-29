@@ -235,7 +235,7 @@ class BaseCommand():
         """
         self.git("checkout", "--", fpath)
 
-    def open_file_on_remote(self, fpath):
+    def open_file_on_remote(self, fpath, start_line=None, end_line=None):
         """
         Assume the remote git repo is GitHub and open the URL corresponding
         to the provided file at path `fpath` at HEAD.
@@ -249,9 +249,12 @@ class BaseCommand():
         else:
             return
 
-        url += "/blob/{commit_hash}/{path}".format(
+        line_numbers = "#L{}-L{}".format(start_line, end_line) if start_line is not None else ""
+
+        url += "/blob/{commit_hash}/{path}{lines}".format(
             commit_hash=self.get_commit_hash_for_head(),
-            path=fpath
+            path=fpath,
+            lines=line_numbers
         )
 
         open_in_browser(url)

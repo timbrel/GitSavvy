@@ -40,7 +40,8 @@
     },
     {
         "caption": "git: open file on remote",
-        "command": "gg_open_file_on_remote"
+        "command": "gg_open_file_on_remote",
+        "args": { "preselect": true }
     },
     {
         "caption": "git: checkout",
