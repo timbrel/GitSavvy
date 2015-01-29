@@ -296,3 +296,10 @@ class BaseCommand():
         """
         self.git("clean", "-df")
         self.git("checkout", "--", ".")
+
+    def fetch(self, remote=None):
+        """
+        If provided, fetch all changes from `remote`.  Otherwise, fetch
+        changes from all remotes.
+        """
+        self.git("fetch", remote)

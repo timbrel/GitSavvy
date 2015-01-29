@@ -53,5 +53,9 @@
     {
         "caption": "git: checkout remote branch as local",
         "command": "gg_checkout_remote_branch"
+    },
+    {
+        "caption": "git: fetch",
+        "command": "gg_fetch"
     }
 ]

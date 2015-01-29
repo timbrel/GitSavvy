@@ -52,3 +52,4 @@ from .checkout import (
     GgCheckoutNewBranchCommand,
     GgCheckoutRemoteBranchCommand
 )
+from .fetch import GgFetchCommand
