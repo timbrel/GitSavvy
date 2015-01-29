@@ -3,7 +3,7 @@ from sublime_plugin import WindowCommand, TextCommand
 
 from .base_command import BaseCommand
 
-LOG_GRAPH_TITLE = "LOG GRAPH"
+LOG_GRAPH_TITLE = "GRAPH"
 
 
 class GgLogGraphCommand(WindowCommand, BaseCommand):

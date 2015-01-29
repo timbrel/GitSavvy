@@ -1,10 +1,10 @@
 [
     {
-        "caption": "git: inline diff current file",
+        "caption": "git: diff current file inline",
         "command": "gg_inline_diff"
     },
     {
-        "caption": "git: inline diff current file (cached)",
+        "caption": "git: diff current file inline (cached)",
         "command": "gg_inline_diff",
         "args": { "cached": true }
     },
@@ -35,7 +35,7 @@
         "args": { "amend": true }
     },
     {
-        "caption": "git: log graph",
+        "caption": "git: graph",
         "command": "gg_log_graph"
     }
 ]
