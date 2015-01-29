@@ -46,3 +46,4 @@ from .log_graph import (
     GgLogGraphCommand,
     GgLogGraphInitializeCommand
 )
+from .open_file_on_remote import GgOpenFileOnRemoteCommand

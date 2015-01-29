@@ -1,6 +1,6 @@
 Panel-only, file-specific:
  ☐ git: init
- ☐ git: open current file on github (based on remotes)
+ ✔ git: open current file on github (based on remotes) @done (15-01-28 22:29)
  ☐ git: quick commit current file
  ☐ git: quick log current file
  ☐ git: view file at HEAD

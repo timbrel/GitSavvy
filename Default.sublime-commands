@@ -37,5 +37,9 @@
     {
         "caption": "git: graph",
         "command": "gg_log_graph"
+    },
+    {
+        "caption": "git: open file on remote",
+        "command": "gg_open_file_on_remote"
     }
 ]
