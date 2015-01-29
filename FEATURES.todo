@@ -15,7 +15,7 @@ Panel-only, repo-specific:
  ✔ git: checkout remote branch as local @done (15-01-29 00:06)
  ✔ git: commit @done (15-01-27 23:38)
  ✔ git: commit including unstaged files @done (15-01-27 23:47)
- ☐ git: fetch
+ ✔ git: fetch @done (15-01-29 00:35)
  ☐ git: log
  ☐ git: merge
  ☐ git: pull
