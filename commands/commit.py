@@ -9,6 +9,8 @@ COMMIT_HELP_TEXT = """
 ## To cancel the commit, close the window.
 """
 
+COMMIT_TITLE = "COMMIT"
+
 
 class GgCommitCommand(WindowCommand, BaseCommand):
 
@@ -19,6 +21,7 @@ class GgCommitCommand(WindowCommand, BaseCommand):
         view.settings().set("git_gadget.commit_view.include_unstaged", include_unstaged)
         view.settings().set("git_gadget.commit_view.amend", amend)
         view.settings().set("git_gadget.repo_path", repo_path)
+        view.set_name(COMMIT_TITLE)
         view.set_scratch(True)
         view.run_command("gg_commit_initialize_view")
 
