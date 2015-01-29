@@ -3,11 +3,10 @@ import re
 import subprocess
 import shutil
 from collections import namedtuple, OrderedDict
-from webbrowser import open as open_in_browser
 
 import sublime
 
-from ..common import log
+from ..common import log, github
 
 FileStatus = namedtuple("FileStatus", ["path", "path_alt", "index_status", "working_status"])
 IndexedEntry = namedtuple("IndexEntry", [
@@ -242,22 +241,13 @@ class BaseCommand():
         """
         default_name, default_remote_url = self.get_remotes().popitem(last=False)
 
-        if default_remote_url.startswith("git@"):
-            url = default_remote_url.replace(":", "/").replace("git@", "http://")[:-4]
-        elif default_remote_url.startswith("http"):
-            url = default_remote_url[:-4]
-        else:
-            return
-
-        line_numbers = "#L{}-L{}".format(start_line, end_line) if start_line is not None else ""
-
-        url += "/blob/{commit_hash}/{path}{lines}".format(
-            commit_hash=self.get_commit_hash_for_head(),
-            path=fpath,
-            lines=line_numbers
+        github.open_file_in_browser(
+            fpath,
+            default_remote_url,
+            self.get_commit_hash_for_head(),
+            start_line=start_line,
+            end_line=end_line
         )
-
-        open_in_browser(url)
 
     def get_commit_hash_for_head(self):
         """
