@@ -57,5 +57,9 @@
     {
         "caption": "git: fetch",
         "command": "gg_fetch"
+    },
+    {
+        "caption": "git: pull",
+        "command": "gg_pull"
     }
 ]

@@ -53,3 +53,4 @@ from .checkout import (
     GgCheckoutRemoteBranchCommand
 )
 from .fetch import GgFetchCommand
+from .pull import GgPullCommand

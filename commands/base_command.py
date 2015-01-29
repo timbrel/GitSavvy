@@ -310,3 +310,21 @@ class BaseCommand():
         """
         stdout = self.git("branch", "-r", "--no-color", "--no-column")
         return [branch.strip() for branch in stdout.split("\n") if branch]
+
+    def get_current_branch_name(self):
+        """
+        Return the name of the last checkout-out branch.
+        """
+        stdout = self.git("branch")
+        try:
+            correct_line = next(line for line in stdout.split("\n") if line.startswith("*"))
+            return correct_line[2:]
+        except StopIteration:
+            return None
+
+    def pull(self, remote=None, branch=None):
+        """
+        Pull from the specified remote and branch if provided, otherwise
+        perform default `git pull`.
+        """
+        self.git("pull", remote, branch)
