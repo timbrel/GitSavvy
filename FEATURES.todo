@@ -38,7 +38,7 @@ Special views:
    ☐ pressing `super+enter` on a commit will checkout that commit
    ☐ pressing `enter` on a commit will display the full commit message in a separate window
  ✔ git: commit @done (15-01-27 23:38)
-   ☐ github issues integration: if the user types `#`, query github for issues to fill in
+   ✔ github issues integration: if the user types `#`, query github for issues to fill in @done (15-01-30 00:45)
    ☐ github issues integration: support querying other repositories with `owner/some-repo#`
  ☐ git: diff
    ☐ stage hunk

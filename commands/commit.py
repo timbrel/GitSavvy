@@ -76,6 +76,7 @@ class GgShowGithubIssues(TextCommand, BaseCommand):
             issues = []
 
         if not issues:
+            self.view.run_command("gg_insert_github_number", {"text": "#"})
             return
 
         self.menu_items = ["#{} - {}".format(issue["number"], issue["title"]) for issue in issues]
