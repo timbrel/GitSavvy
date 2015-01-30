@@ -19,6 +19,8 @@ class GgPushCommand(WindowCommand, BaseCommand):
         sublime.status_message(START_PUSH_MESSAGE)
         self.push(remote=None, branch=None)
         sublime.status_message(END_PUSH_MESSAGE)
+        if self.window.active_view().settings().get("git_gadget.status_view"):
+            self.window.active_view().run_command("gg_status_refresh")
 
 
 class GgPushToBranchCommand(WindowCommand, BaseCommand):
@@ -75,3 +77,5 @@ class GgPushToBranchCommand(WindowCommand, BaseCommand):
         sublime.status_message(START_PUSH_MESSAGE)
         self.push(remote, branch)
         sublime.status_message(END_PUSH_MESSAGE)
+        if self.window.active_view().settings().get("git_gadget.status_view"):
+            self.window.active_view().run_command("gg_status_refresh")

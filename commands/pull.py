@@ -58,3 +58,5 @@ class GgPullCommand(WindowCommand, BaseCommand):
         sublime.status_message("Starting pull...")
         self.pull(remote, branch)
         sublime.status_message("Pull complete.")
+        if self.window.active_view().settings().get("git_gadget.status_view"):
+            self.window.active_view().run_command("gg_status_refresh")
