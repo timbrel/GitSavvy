@@ -62,5 +62,13 @@
     {
         "caption": "git: pull",
         "command": "gg_pull"
+    },
+    {
+        "caption": "git: ignore current file",
+        "command": "gg_ignore"
+    },
+    {
+        "caption": "git: ignore pattern",
+        "command": "gg_ignore_pattern"
     }
 ]

@@ -28,8 +28,8 @@ from .status import (
     GgStatusCommitCommand,
     GgStatusCommitUnstagedCommand,
     GgStatusAmendCommand,
-    # GgStatusIgnoreFileCommand,
-    # GgStatusIgnorePatternCommand,
+    GgStatusIgnoreFileCommand,
+    GgStatusIgnorePatternCommand,
     # GgStatusApplyStashCommand,
     # GgStatusPopStashCommand,
     # GgStatusCreateStashCommand,
@@ -56,3 +56,4 @@ from .checkout import (
 )
 from .fetch import GgFetchCommand
 from .pull import GgPullCommand
+from .ignore import GgIgnoreCommand, GgIgnorePatternCommand

@@ -397,3 +397,35 @@ class GgStatusAmendCommand(TextCommand, BaseCommand):
             "gg_commit",
             {"repo_path": self.repo_path, "amend": True}
         )
+
+
+class GgStatusIgnoreFileCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        # Valid selections are only in the Staged section.
+        lines = util.get_lines_from_regions(
+            self.view,
+            self.view.sel(),
+            valid_ranges=status_view_section_ranges[self.view.id()]
+        )
+        file_paths = tuple(line.strip() for line in lines if line)
+
+        if file_paths:
+            for fpath in file_paths:
+                self.add_ignore(os.path.join("/", fpath))
+            sublime.status_message("Successfully ignored files.")
+            self.view.run_command("gg_status_refresh")
+
+
+class GgStatusIgnorePatternCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        lines = util.get_lines_from_regions(
+            self.view,
+            self.view.sel(),
+            valid_ranges=status_view_section_ranges[self.view.id()]
+        )
+        file_paths = tuple(line.strip() for line in lines if line)
+
+        if file_paths:
+            self.view.window().run_command("gg_ignore_pattern", {"pre_filled": file_paths[0]})
