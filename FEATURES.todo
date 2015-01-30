@@ -75,7 +75,7 @@ Special views:
      ✔ discard unstaged changes @done (15-01-27 00:47)
      ☐ diff all files
      ✔ ignore pattern @done (15-01-29 21:03)
-   ☐ commit:
+   ✔ commit: @done (15-01-30 00:47)
      ✔ commit @done (15-01-27 23:39)
      ✔ commit, add unstaged @done (15-01-27 23:47)
      ✔ amend previous commit @done (15-01-27 23:57)
