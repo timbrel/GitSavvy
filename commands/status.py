@@ -283,7 +283,7 @@ class GgStatusStageFileCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = (line.strip() for line in lines if line)
+        file_paths = tuple(line.strip() for line in lines if line)
 
         if file_paths:
             for fpath in file_paths:
@@ -302,7 +302,7 @@ class GgStatusUnstageFileCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = (line.strip() for line in lines if line)
+        file_paths = tuple(line.strip() for line in lines if line)
 
         if file_paths:
             for fpath in file_paths:
@@ -322,7 +322,7 @@ class GgStatusDiscardChangesToFileCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = (line.strip() for line in lines if line)
+        file_paths = tuple(line.strip() for line in lines if line)
 
         if file_paths:
             for fpath in file_paths:
@@ -339,7 +339,7 @@ class GgStatusOpenFileOnRemoteCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=status_view_section_ranges[self.view.id()]
         )
-        file_paths = (line.strip() for line in lines if line)
+        file_paths = tuple(line.strip() for line in lines if line)
 
         if file_paths:
             file_paths = list(file_paths)
