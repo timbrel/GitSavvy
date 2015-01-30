@@ -20,7 +20,7 @@ Panel-only, repo-specific:
  ☐ git: log
  ☐ git: merge
  ✔ git: pull @done (15-01-29 01:27)
- ☐ git: push
+ ✔ git: push @done (15-01-29 22:53)
  ✔ git: quick commit @done (15-01-29 21:03)
  ✔ git: quick stage @done (15-01-19 00:27)
  ☐ git: quick log
@@ -32,7 +32,9 @@ Panel-only, repo-specific:
 Special views:
  ☐ git: blame
  ☐ git: log graph
+   ✔ display branches @done (15-01-29 22:53)
    ☐ syntax-highlighted
+   ☐ pressing `super+enter` on a branch name will checkout that branch
    ☐ pressing `super+enter` on a commit will checkout that commit
    ☐ pressing `enter` on a commit will display the full commit message in a separate window
  ✔ git: commit @done (15-01-27 23:38)

@@ -323,6 +323,13 @@ class BaseCommand():
         """
         self.git("pull", remote, branch)
 
+    def push(self, remote=None, branch=None):
+        """
+        Push to the specified remote and branch if provided, otherwise
+        perform default `git push`.
+        """
+        self.git("push", remote, branch)
+
     def add_ignore(self, path_or_pattern):
         """
         Add the provided relative path or pattern to the repo's `.gitignore` file.

@@ -4,14 +4,31 @@ from sublime_plugin import WindowCommand
 from .base_command import BaseCommand
 
 
-class GgPullCommand(WindowCommand, BaseCommand):
+NO_REMOTES_MESSAGE = "You have not configured any remotes."
+START_PUSH_MESSAGE = "Starting push..."
+END_PUSH_MESSAGE = "Push complete."
+
+
+class GgPushCommand(WindowCommand, BaseCommand):
+
+    def run(self):
+        sublime.set_timeout_async(lambda: self.do_push())
+        self.remotes = list(self.get_remotes().keys())
+
+    def do_push(self):
+        sublime.status_message(START_PUSH_MESSAGE)
+        self.push(remote=None, branch=None)
+        sublime.status_message(END_PUSH_MESSAGE)
+
+
+class GgPushToBranchCommand(WindowCommand, BaseCommand):
 
     def run(self):
         self.remotes = list(self.get_remotes().keys())
         self.remote_branches = self.get_remote_branches()
 
         if not self.remotes:
-            self.window.show_quick_panel(["There are no remotes available."], None)
+            self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
         else:
             self.window.show_quick_panel(self.remotes, self.on_select_remote, sublime.MONOSPACE_FONT)
 
@@ -52,9 +69,9 @@ class GgPullCommand(WindowCommand, BaseCommand):
             return
 
         selected_branch = self.branches_on_selected_remote[branch_index].split("/", 1)[1]
-        sublime.set_timeout_async(lambda: self.do_pull(self.selected_remote, selected_branch))
+        sublime.set_timeout_async(lambda: self.do_push(self.selected_remote, selected_branch))
 
-    def do_pull(self, remote, branch):
-        sublime.status_message("Starting pull...")
-        self.pull(remote, branch)
-        sublime.status_message("Pull complete.")
+    def do_push(self, remote, branch):
+        sublime.status_message(START_PUSH_MESSAGE)
+        self.push(remote, branch)
+        sublime.status_message(END_PUSH_MESSAGE)
