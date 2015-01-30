@@ -61,7 +61,11 @@ class BaseCommand():
         repo_path = view.settings().get("git_gadget.repo_path")
 
         if not repo_path:
-            working_dir = os.path.dirname(self.file_path)
+            file_path = self.file_path
+            working_dir = file_path and os.path.dirname(self.file_path)
+            if not working_dir:
+                window_folders = sublime.active_window().folders()
+                working_dir = window_folders[0] if window_folders else None
             stdout = self.git("rev-parse", "--show-toplevel", working_dir=working_dir)
             repo_path = stdout.strip()
             view.settings().set("git_gadget.repo_path", repo_path)
