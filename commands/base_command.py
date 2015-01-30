@@ -151,6 +151,29 @@ class BaseCommand():
 
         return entries
 
+    def get_branch_status(self):
+        """
+        Return a string that gives:
+
+          1) the name of the active branch
+          2) the status of the active local branch
+             compared to its remote counterpart.
+
+        If no remote or tracking branch is defined, do not include remote-data.
+        If HEAD is detached, provide that status instead.
+        """
+        stdout = self.git("status")
+        line_one, line_two, *_ = stdout.split("\n")
+
+        if "HEAD detached at " in line_one:
+            return ("HEAD is in a detached state at" +
+                    line_one.strip().replace("HEAD detached at ", ""))
+
+        branch_name = line_one.strip().replace("On branch ", "")
+        remote_status = line_two.strip().replace("Your branch is ", "").replace("'", "`")
+
+        return "Local branch `{}`, {}".format(branch_name, remote_status)
+
     def _get_indexed_entry(self, raw_entry):
         """
         Parse a diff-index entry into an IndexEntry object.  Each input entry

@@ -36,9 +36,8 @@ STASHES_TEMPLATE = """
 """
 
 STATUS_HEADER_TEMPLATE = """
-  REMOTE:    {remote_info}
-  LOCAL:     {local_info}
-  INFO:      Your branch is {branch_info}.
+  BRANCH:  {branch_status}
+  ROOT:    {repo_root}
 """
 
 NO_STATUS_MESSAGE = """
@@ -138,9 +137,8 @@ class GgStatusRefreshCommand(TextCommand, BaseCommand):
 
     def get_contents(self):
         header = STATUS_HEADER_TEMPLATE.format(
-            remote_info="unimplemented",
-            local_info="unimplemented",
-            branch_info="unimplemented",
+            branch_status=self.get_branch_status(),
+            repo_root=self.repo_path
         )
 
         cursor = len(header)

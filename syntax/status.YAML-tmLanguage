@@ -6,14 +6,20 @@ uuid: 56ea09df-2601-4d20-bb8d-b6834db991c4
 patterns:
 - comment: Status summary
   name: meta.git-gadget.status-summary
-  begin: '^  REMOTE:'
+  begin: '^  BRANCH:'
   beginCaptures:
     '0': { name: comment.git-gadget.status.summary-header }
   end: '^$'
   patterns:
-  - comment: summary header
-    name: comment.git-gadget.status.summary-header
-    match: '^  [A-Z]+:'
+  - comment: root summary
+    name: comment.git-gadget.status.root-summary
+    match: '^  ROOT:.+'
+  - comment: branch names
+    name: constant.other.git-gadget.status.branch-name
+    match: '`[A-Za-z\-_/]+`'
+  - comment: ahead or behind
+    name: keyword.other.git-gadget.status.ahead-behind
+    match: '(ahead)|(behind)'
 
 - comment: section
   name: meta.git-gadget.status.section

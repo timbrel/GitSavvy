@@ -8,7 +8,7 @@
 	<array>
 		<dict>
 			<key>begin</key>
-			<string>^  REMOTE:</string>
+			<string>^  BRANCH:</string>
 			<key>beginCaptures</key>
 			<dict>
 				<key>0</key>
@@ -27,11 +27,27 @@
 			<array>
 				<dict>
 					<key>comment</key>
-					<string>summary header</string>
+					<string>root summary</string>
 					<key>match</key>
-					<string>^  [A-Z]+:</string>
+					<string>^  ROOT:.+</string>
 					<key>name</key>
-					<string>comment.git-gadget.status.summary-header</string>
+					<string>comment.git-gadget.status.root-summary</string>
+				</dict>
+				<dict>
+					<key>comment</key>
+					<string>branch names</string>
+					<key>match</key>
+					<string>`[A-Za-z\-_/]+`</string>
+					<key>name</key>
+					<string>constant.other.git-gadget.status.branch-name</string>
+				</dict>
+				<dict>
+					<key>comment</key>
+					<string>ahead or behind</string>
+					<key>match</key>
+					<string>(ahead)|(behind)</string>
+					<key>name</key>
+					<string>keyword.other.git-gadget.status.ahead-behind</string>
 				</dict>
 			</array>
 		</dict>
