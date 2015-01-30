@@ -1,15 +1,20 @@
 import http.client
 import json
+from base64 import b64encode
 from functools import partial
 from collections import namedtuple
 
 Response = namedtuple("Response", ("payload", "headers", "status", "is_json"))
 
 
-def request(verb, host, port, path, payload=None, timeout=10, https=False, headers=None):
+def request(verb, host, port, path, payload=None, timeout=10, https=False, headers=None, auth=None):
     if not headers:
         headers = {}
     headers["User-Agent"] = "GitGadget Sublime Plug-in"
+
+    if auth:
+        username_password = "{}:{}".format(*auth).encode("ascii")
+        headers["Authorization"] = "Basic {}".format(b64encode(username_password).decode("ascii"))
 
     connection = (http.client.HTTPSConnection(host, port)
                   if https

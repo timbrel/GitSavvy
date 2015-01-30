@@ -2,9 +2,11 @@ import re
 from collections import namedtuple
 from webbrowser import open as open_in_browser
 
+import sublime
+
 from . import interwebs
 
-GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo"))
+GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo", "token"))
 
 
 class FailedGithubRequest(Exception):
@@ -19,14 +21,18 @@ def parse_remote(remote):
     else:
         return None
 
-    match = re.match(r"https?://([a-zA-Z-\.]+)/([a-zA-Z-\.]+)/([a-zA-Z-\.]+)/?", url)
+    match = re.match(r"https?://([a-zA-Z-\.0-9]+)/([a-zA-Z-\.0-9]+)/([a-zA-Z-\.0-9]+)/?", url)
 
     if not match:
         return None
 
     fqdn, owner, repo = match.groups()
 
-    return GitHubRepo(url, fqdn, owner, repo)
+    gadget_settings = sublime.load_settings("GitGadget.sublime-settings")
+    api_tokens = gadget_settings.get("api_tokens")
+    token = api_tokens and api_tokens.get(fqdn, None) or None
+
+    return GitHubRepo(url, fqdn, owner, repo, token)
 
 
 def open_file_in_browser(rel_path, remote, commit_hash, start_line=None, end_line=None):
@@ -62,7 +68,10 @@ def get_issues(github_repo):
         owner=github_repo.owner,
         repo=github_repo.repo
     )
-    response = interwebs.get(fqdn, 443, path, https=True)
+
+    auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
+
+    response = interwebs.get(fqdn, 443, path, https=True, auth=auth)
     if response.status < 200 or response.status > 299 or not response.is_json:
         raise FailedGithubRequest()
 
