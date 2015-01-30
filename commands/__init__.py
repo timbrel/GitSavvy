@@ -58,3 +58,4 @@ from .fetch import GgFetchCommand
 from .pull import GgPullCommand
 from .push import GgPushCommand, GgPushToBranchCommand
 from .ignore import GgIgnoreCommand, GgIgnorePatternCommand
+from .init import GgOfferInit, GgInit

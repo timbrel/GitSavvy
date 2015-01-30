@@ -101,6 +101,10 @@ class BaseCommand():
         log.info("-- " + " ".join(command))
 
         def raise_error(msg):
+            if type(msg) == str and "fatal: Not a git repository" in msg:
+                sublime.set_timeout_async(
+                    lambda: sublime.active_window().run_command("gg_offer_init"))
+
             sublime.status_message(
                 "Failed to run `git {}`. See console for details.".format(command[1])
             )

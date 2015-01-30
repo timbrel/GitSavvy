@@ -76,5 +76,9 @@
     {
         "caption": "git: ignore pattern",
         "command": "gg_ignore_pattern"
+    },
+    {
+        "caption": "git: init",
+        "command": "gg_init"
     }
 ]
