@@ -21,7 +21,7 @@ Panel-only, repo-specific:
  ☐ git: merge
  ✔ git: pull @done (15-01-29 01:27)
  ☐ git: push
- ☐ git: quick commit
+ ✔ git: quick commit @done (15-01-29 21:03)
  ✔ git: quick stage @done (15-01-19 00:27)
  ☐ git: quick log
  ☐ git: stash
@@ -62,7 +62,7 @@ Special views:
      ☐ diff file
      ✔ diff file inline @done (15-01-26 15:11)
      ✔ diff file inline cached for staged files @done (15-01-28 02:43)
-     ☐ ignore file
+     ✔ ignore file @done (15-01-29 21:03)
      ✔ open file @done (15-01-26 12:31)
      ✔ open file on remote @done (15-01-27 00:27)
      ☐ resolve merge conflict with Sublimerge
@@ -72,7 +72,7 @@ Special views:
      ✔ unstage all files @done (15-01-27 00:40)
      ✔ discard unstaged changes @done (15-01-27 00:47)
      ☐ diff all files
-     ☐ ignore pattern
+     ✔ ignore pattern @done (15-01-29 21:03)
    ☐ commit:
      ✔ commit @done (15-01-27 23:39)
      ✔ commit, add unstaged @done (15-01-27 23:47)
