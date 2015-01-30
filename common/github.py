@@ -2,7 +2,13 @@ import re
 from collections import namedtuple
 from webbrowser import open as open_in_browser
 
+from . import interwebs
+
 GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo"))
+
+
+class FailedGithubRequest(Exception):
+    pass
 
 
 def parse_remote(remote):
@@ -41,3 +47,23 @@ def open_file_in_browser(rel_path, remote, commit_hash, start_line=None, end_lin
     )
 
     open_in_browser(url)
+
+
+def get_api_fqdn(github_repo):
+    if github_repo.fqdn[-10:] == "github.com":
+        return False, "api.github.com"
+    return True, github_repo.fqdn
+
+
+def get_issues(github_repo):
+    is_enterprise, fqdn = get_api_fqdn(github_repo)
+    base_path = "/api/v3" if is_enterprise else ""
+    path = base_path + "/repos/{owner}/{repo}/issues".format(
+        owner=github_repo.owner,
+        repo=github_repo.repo
+    )
+    response = interwebs.get(fqdn, 443, path, https=True)
+    if response.status < 200 or response.status > 299 or not response.is_json:
+        raise FailedGithubRequest()
+
+    return response.payload

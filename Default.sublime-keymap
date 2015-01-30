@@ -272,6 +272,14 @@
         "context": [
             { "key": "setting.git_gadget.get_long_text_view", "operator": "equal", "operand": true }
         ]
+    },
+    {
+        "keys": ["#"],
+        "command": "gg_show_github_issues",
+        "context": [
+            { "key": "setting.git_gadget.get_long_text_view", "operator": "equal", "operand": true },
+            { "key": "preceding_text", "operator": "regex_match", "operand": ".*[\\n ]$" }
+        ]
     }
 
 ]

@@ -2,6 +2,8 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
 from .base_command import BaseCommand
+from ..common import github
+
 
 COMMIT_HELP_TEXT = """
 
@@ -56,3 +58,47 @@ class GgCommitViewDoCommitCommand(TextCommand, BaseCommand):
 
         self.view.window().focus_view(self.view)
         self.view.window().run_command("close_file")
+
+
+class GgShowGithubIssues(TextCommand, BaseCommand):
+
+    def run(self, edit, other_repo=False):
+        sublime.set_timeout_async(lambda: self.run_async(other_repo))
+
+    def run_async(self, other_repo):
+        default_remote_name, default_remote = self.get_remotes().popitem(last=False)
+        remote = github.parse_remote(default_remote)
+
+        if not other_repo:
+            issues = github.get_issues(remote)
+        else:
+            # TODO
+            issues = []
+
+        if not issues:
+            return
+
+        self.menu_items = ["#{} - {}".format(issue["number"], issue["title"]) for issue in issues]
+        self.view.show_popup_menu(self.menu_items, self.on_done)
+
+    def on_done(self, selection_id):
+        if selection_id == -1:
+            self.view.run_command("gg_insert_github_number", {"text": "#"})
+        else:
+            selection = self.menu_items[selection_id]
+            number = selection.split(" ")[0]
+            self.view.run_command("gg_insert_github_number", {"text": number})
+
+
+class GgInsertGithubNumber(TextCommand, BaseCommand):
+
+    def run(self, edit, text):
+        text_len = len(text)
+        selected_ranges = []
+
+        for region in self.view.sel():
+            selected_ranges.append((region.begin(), region.end()))
+            self.view.replace(edit, region, text)
+
+        self.view.sel().clear()
+        self.view.sel().add_all([sublime.Region(begin + text_len, end + text_len) for begin, end in selected_ranges])
