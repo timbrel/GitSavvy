@@ -1,9 +1,6 @@
 import sys
 import sublime
 import imp
-from .common import log
-
-log.set_level(0)
 
 if sys.version_info[0] == 2:
     raise ImportWarning("GitGadget does not support Sublime Text 2.")
@@ -22,4 +19,5 @@ else:
         from .common import util
         util.determine_syntax_files()
 
+    from .common.log import GgDisplayPanelCommand
     from .commands import *

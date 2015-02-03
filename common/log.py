@@ -1,28 +1,22 @@
-level = 1
+import sublime
+from sublime_plugin import TextCommand
 
 
-def set_level(lvl):
-    global level
-    if lvl in ("INFO", 0):
-        level = 0
-    elif lvl in ("WARN", 1):
-        level = 1
-    elif lvl in ("ERROR", 2):
-        level = 2
-    else:
-        raise Exception("Invalid")
+PANEL_NAME = "GitGadget"
 
 
-def info(msg):
-    if level >= 0 and msg:
-        print(msg)
+def panel(*msgs):
+    msg = "\n".join(msgs)
+    sublime.active_window().active_view().run_command("gg_display_panel", {"msg": msg})
 
 
-def warn(msg):
-    if level >= 1 and msg:
-        print(msg)
+class GgDisplayPanelCommand(TextCommand):
 
-
-def error(msg):
-    if level >= 2 and msg:
-        print(msg)
+    def run(self, edit, msg=""):
+        panel = self.view.window().create_output_panel(PANEL_NAME)
+        panel.set_read_only(False)
+        panel.erase(edit, sublime.Region(0, panel.size()))
+        panel.insert(edit, 0, msg)
+        panel.set_read_only(True)
+        panel.show(0)
+        self.view.window().run_command("show_panel", {"panel": "output.{}".format(PANEL_NAME)})

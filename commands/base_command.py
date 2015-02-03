@@ -91,7 +91,7 @@ class BaseCommand():
 
         return fpath
 
-    def git(self, *args, stdin=None, working_dir=None):
+    def git(self, *args, stdin=None, working_dir=None, show_panel=False):
         """
         Run the git command specified in `*args` and return the output
         of the git command as a string.
@@ -102,16 +102,18 @@ class BaseCommand():
         the `repo_path` value will be used.
         """
         command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
-        log.info("-- " + " ".join(command))
+        command_str = " ".join(command)
 
         def raise_error(msg):
             if type(msg) == str and "fatal: Not a git repository" in msg:
                 sublime.set_timeout_async(
                     lambda: sublime.active_window().run_command("gg_offer_init"))
+                return
 
             sublime.status_message(
-                "Failed to run `git {}`. See console for details.".format(command[1])
+                "Failed to run `git {}`. See log for details.".format(command[1])
             )
+            log.panel(msg)
             raise GitGadgetError(msg)
 
         try:
@@ -128,11 +130,12 @@ class BaseCommand():
             raise_error(e)
 
         if not p.returncode == 0:
-            raise_error("`git {}` failed with following output:\n{}\n{}".format(
-                command[1], stdout, stderr
+            raise_error("`{}` failed with following output:\n{}\n{}".format(
+                command_str, stdout, stderr
             ))
 
-        log.info(stdout)
+        if show_panel:
+            log.panel("> {}\n{}\n{}".format(command_str, stdout, stderr))
 
         return stdout
 
