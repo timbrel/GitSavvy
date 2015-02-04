@@ -30,7 +30,6 @@ MERGE_CONFLICTS_TEMPLATE = """
 """
 
 STASHES_TEMPLATE = """
-
   STASHES:
 {}
 """
@@ -66,7 +65,7 @@ KEY_BINDINGS_MENU = """
   [c] commit                            [t][a] apply stash
   [C] commit, including unstaged        [t][p] pop stash
   [m] amend previous commit             [t][c] create stash
-                                        [t][C] create stash including untracked files
+                                        [t][u] create stash including untracked files
   [i] ignore file                       [t][d] discard stash
   [I] ignore pattern
 
@@ -177,9 +176,18 @@ class GgStatusRefreshCommand(TextCommand, BaseCommand):
 
         status_text = status_text or NO_STATUS_MESSAGE
 
-        contents = header + status_text + KEY_BINDINGS_MENU
+        contents = header + status_text + self.get_stashes_contents() + KEY_BINDINGS_MENU
 
         return contents, (unstaged_region, conflicts_region, untracked_region, staged_region)
+
+    def get_stashes_contents(self):
+        stash_list = self.get_stashes()
+        if not stash_list:
+            return ""
+
+        stash_lines = ("    ({}) {}".format(stash.id, stash.description) for stash in stash_list)
+
+        return STASHES_TEMPLATE.format("\n".join(stash_lines))
 
     @staticmethod
     def sort_status_entries(file_status_list):
@@ -427,3 +435,74 @@ class GgStatusIgnorePatternCommand(TextCommand, BaseCommand):
 
         if file_paths:
             self.view.window().run_command("gg_ignore_pattern", {"pre_filled": file_paths[0]})
+
+
+class GgStatusApplyStashCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        lines = util.get_lines_from_regions(
+            self.view,
+            self.view.sel()
+        )
+        ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
+
+        if len(ids) > 1:
+            sublime.status_message("You can only apply one stash at a time.")
+            return
+
+        self.apply_stash(ids[0])
+        self.view.run_command("gg_status_refresh")
+
+
+class GgStatusPopStashCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        lines = util.get_lines_from_regions(
+            self.view,
+            self.view.sel()
+        )
+        ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
+
+        if len(ids) > 1:
+            sublime.status_message("You can only pop one stash at a time.")
+            return
+
+        self.pop_stash(ids[0])
+        self.view.run_command("gg_status_refresh")
+
+
+class GgStatusCreateStashCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        self.view.window().show_input_panel("Description:", "", self.on_done, None, None)
+
+    def on_done(self, description):
+        self.create_stash(description)
+        self.view.run_command("gg_status_refresh")
+
+
+class GgStatusCreateStashWithUntrackedCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        self.view.window().show_input_panel("Description:", "", self.on_done, None, None)
+
+    def on_done(self, description):
+        self.create_stash(description, include_untracked=True)
+        self.view.run_command("gg_status_refresh")
+
+
+class GgStatusDiscardStashCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        lines = util.get_lines_from_regions(
+            self.view,
+            self.view.sel()
+        )
+        ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
+
+        if len(ids) > 1:
+            sublime.status_message("You can only drop one stash at a time.")
+            return
+
+        self.drop_stash(ids[0])
+        self.view.run_command("gg_status_refresh")

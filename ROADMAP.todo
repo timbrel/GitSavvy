@@ -48,9 +48,6 @@ v1.0.0:
    ✔ git: quick commit @done (15-01-29 21:03)
    ✔ git: quick stage @done (15-01-19 00:27)
    ☐ git: quick log
-   ☐ git: stash
-     ☐ git: stash including untracked files
-     ☐ git: apply stash
 
   Special views:
    ☐ git: blame
@@ -99,10 +96,10 @@ v1.0.0:
        ✔ commit @done (15-01-27 23:39)
        ✔ commit, add unstaged @done (15-01-27 23:47)
        ✔ amend previous commit @done (15-01-27 23:57)
-     ☐ stashes
-       ☐ apply stash
-       ☐ pop stash
-       ☐ create stash
-       ☐ create stash including untracked files
-       ☐ discard stash
+     ✔ stashes @done (15-02-04 02:12)
+       ✔ apply stash @done (15-02-04 02:12)
+       ✔ pop stash @done (15-02-04 02:12)
+       ✔ create stash @done (15-02-04 02:12)
+       ✔ create stash including untracked files @done (15-02-04 02:12)
+       ✔ discard stash @done (15-02-04 02:12)
 

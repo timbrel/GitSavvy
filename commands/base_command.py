@@ -8,6 +8,7 @@ import sublime
 
 from ..common import log, github
 
+Stash = namedtuple("Stash", ["id", "description"])
 FileStatus = namedtuple("FileStatus", ["path", "path_alt", "index_status", "working_status"])
 IndexedEntry = namedtuple("IndexEntry", [
     "src_path",
@@ -370,3 +371,37 @@ class BaseCommand():
         """
         with open(os.path.join(self.repo_path, ".gitignore"), "at") as ignore_file:
             ignore_file.write(os.linesep + "# added by GitGadget" + os.linesep + path_or_pattern + os.linesep)
+
+    def get_stashes(self):
+        """
+        Return a list of stashes in the repo.
+        """
+        stdout = self.git("stash", "list")
+        return [
+            Stash(*re.match("^stash@\{(\d+)}: .*?: (.*)", entry).groups())
+            for entry in stdout.split("\n") if entry
+        ]
+
+    def apply_stash(self, id):
+        """
+        Apply stash with provided id.
+        """
+        self.git("stash", "apply", "stash@{{{}}}".format(id))
+
+    def pop_stash(self, id):
+        """
+        Pop stash with provided id.
+        """
+        self.git("stash", "pop", "stash@{{{}}}".format(id))
+
+    def create_stash(self, description, include_untracked=False):
+        """
+        Create stash with provided description from working files.
+        """
+        self.git("stash", "save", "-u" if include_untracked else None, description)
+
+    def drop_stash(self, id):
+        """
+        Drop stash with provided id.
+        """
+        self.git("stash", "drop", "stash@{{{}}}".format(id))

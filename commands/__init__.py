@@ -30,11 +30,11 @@ from .status import (
     GgStatusAmendCommand,
     GgStatusIgnoreFileCommand,
     GgStatusIgnorePatternCommand,
-    # GgStatusApplyStashCommand,
-    # GgStatusPopStashCommand,
-    # GgStatusCreateStashCommand,
-    # GgStatusCreateStashWithUntrackedCommand,
-    # GgStatusDiscardStashCommand
+    GgStatusApplyStashCommand,
+    GgStatusPopStashCommand,
+    GgStatusCreateStashCommand,
+    GgStatusCreateStashWithUntrackedCommand,
+    GgStatusDiscardStashCommand
 )
 from .commit import (
     GgCommitCommand,

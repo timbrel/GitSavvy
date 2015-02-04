@@ -216,7 +216,7 @@
         "command": "gg_status_apply_stash",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.stashes meta.git-gadget.status.saved_stash" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.stashes meta.git-gadget.status.saved_stash", "match_all": true }
         ]
     },
     {
@@ -224,7 +224,7 @@
         "command": "gg_status_pop_stash",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.stashes meta.git-gadget.status.saved_stash" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.stashes meta.git-gadget.status.saved_stash", "match_all": true }
         ]
     },
     {
@@ -235,7 +235,7 @@
         ]
     },
     {
-        "keys": ["t", "C"],
+        "keys": ["t", "u"],
         "command": "gg_status_create_stash_with_untracked",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
@@ -246,7 +246,7 @@
         "command": "gg_status_discard_stash",
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.stashes meta.git-gadget.status.saved_stash" }
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.stashes meta.git-gadget.status.saved_stash", "match_all": true }
         ]
     },
 
