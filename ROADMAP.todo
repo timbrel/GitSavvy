@@ -59,6 +59,8 @@ v1.0.0:
      ☐ github issues integration: support querying other repositories with `owner/some-repo#`
    ☐ git: diff
      ☐ stage hunk
+     ☐ open file at selected line
+     ☐ navigate to next/previous hunk
    ☐ git: diff cached
      ☐ unstage hunk
    ☐ git: diff current file
