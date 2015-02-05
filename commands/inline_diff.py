@@ -436,6 +436,8 @@ class GgInlineDiffGotoNextHunk(GgInlineDiffGotoBase):
 
     def get_target_cursor_pos(self, current_line_number):
         hunks = diff_view_hunks[self.view.id()]
+        if not hunks:
+            return
         for hunk_ref in hunks:
             if hunk_ref.section_start > current_line_number:
                 break
