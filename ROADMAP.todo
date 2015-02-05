@@ -85,12 +85,12 @@ v1.0.0:
        ✔ open file @done (15-01-26 12:31)
        ✔ open file on remote @done (15-01-27 00:27)
        ☐ resolve merge conflict with Sublimerge
-     ☐ multiple files:
+     ✔ multiple files: @done (15-02-05 00:07)
        ✔ stage all unstaged files @done (15-01-27 00:40)
        ✔ stage all unstaged and untracked files @done (15-01-27 00:40)
        ✔ unstage all files @done (15-01-27 00:40)
        ✔ discard unstaged changes @done (15-01-27 00:47)
-       ☐ diff all files
+       ✔ diff all files @done (15-02-05 00:07)
        ✔ ignore pattern @done (15-01-29 21:03)
      ✔ commit: @done (15-01-30 00:47)
        ✔ commit @done (15-01-27 23:39)
