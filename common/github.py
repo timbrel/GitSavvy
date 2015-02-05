@@ -73,6 +73,6 @@ def get_issues(github_repo):
 
     response = interwebs.get(fqdn, 443, path, https=True, auth=auth)
     if response.status < 200 or response.status > 299 or not response.is_json:
-        raise FailedGithubRequest()
+        raise FailedGithubRequest(response.payload)
 
     return response.payload

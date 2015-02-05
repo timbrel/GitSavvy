@@ -79,7 +79,7 @@ class GgShowGithubIssues(TextCommand, BaseCommand):
             self.view.run_command("gg_insert_github_number", {"text": "#"})
             return
 
-        self.menu_items = ["#{} - {}".format(issue["number"], issue["title"]) for issue in issues]
+        self.menu_items = ["{} - {}".format(issue["number"], issue["title"]) for issue in issues]
         self.view.show_popup_menu(self.menu_items, self.on_done)
 
     def on_done(self, selection_id):
@@ -88,7 +88,7 @@ class GgShowGithubIssues(TextCommand, BaseCommand):
         else:
             selection = self.menu_items[selection_id]
             number = selection.split(" ")[0]
-            self.view.run_command("gg_insert_github_number", {"text": number})
+            self.view.run_command("gg_insert_github_number", {"text": "#" + number})
 
 
 class GgInsertGithubNumber(TextCommand, BaseCommand):
