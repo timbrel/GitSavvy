@@ -30,6 +30,7 @@ from .status import (
     GgStatusIgnorePatternCommand,
     GgStatusApplyStashCommand,
     GgStatusPopStashCommand,
+    GgStatusShowStashCommand,
     GgStatusCreateStashCommand,
     GgStatusCreateStashWithUntrackedCommand,
     GgStatusDiscardStashCommand

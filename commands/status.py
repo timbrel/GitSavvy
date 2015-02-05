@@ -64,10 +64,10 @@ KEY_BINDINGS_MENU = """
 
   [c] commit                            [t][a] apply stash
   [C] commit, including unstaged        [t][p] pop stash
-  [m] amend previous commit             [t][c] create stash
-                                        [t][u] create stash including untracked files
-  [i] ignore file                       [t][d] discard stash
-  [I] ignore pattern
+  [m] amend previous commit             [t][s] show stash
+                                        [t][c] create stash
+  [i] ignore file                       [t][u] create stash including untracked files
+  [I] ignore pattern                    [t][d] discard stash
 
   ###########
   ## OTHER ##
@@ -469,6 +469,37 @@ class GgStatusPopStashCommand(TextCommand, BaseCommand):
 
         self.pop_stash(ids[0])
         self.view.run_command("gg_status_refresh")
+
+
+class GgStatusShowStashCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        lines = util.get_lines_from_regions(
+            self.view,
+            self.view.sel()
+        )
+        ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
+
+        for stash_id in ids:
+            stash_name = "stash@{{{}}}".format(stash_id)
+            stash_text = self.git("stash", "show", "-p", stash_name)
+            stash_view = self.get_stash_view(stash_name)
+            stash_view.set_read_only(False)
+            stash_view.replace(edit, sublime.Region(0, 0), stash_text)
+            stash_view.set_read_only(True)
+            self.view.sel().add(sublime.Region(0, 0))
+
+    def get_stash_view(self, title):
+        window = self.window if hasattr(self, "window") else self.view.window()
+        repo_path = self.repo_path
+        stash_view = self.get_read_only_view("stash_" + title)
+        stash_view.set_name(title)
+        stash_view.set_syntax_file("Packages/Diff/Diff.tmLanguage")
+        stash_view.settings().set("git_gadget.repo_path", repo_path)
+        window.focus_view(stash_view)
+        stash_view.sel().clear()
+
+        return stash_view
 
 
 class GgStatusCreateStashCommand(TextCommand, BaseCommand):

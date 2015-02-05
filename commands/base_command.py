@@ -241,7 +241,8 @@ class BaseCommand():
         """
         Create and return a read-only view.
         """
-        view = self.window.new_file()
+        window = self.window if hasattr(self, "window") else self.view.window()
+        view = window.new_file()
         view.settings().set("git_gadget.{}_view".format(name), True)
         view.set_scratch(True)
         view.set_read_only(True)

@@ -249,6 +249,14 @@
             { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.stashes meta.git-gadget.status.saved_stash", "match_all": true }
         ]
     },
+    {
+        "keys": ["t", "s"],
+        "command": "gg_status_show_stash",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.stashes meta.git-gadget.status.saved_stash", "match_all": true }
+        ]
+    },
 
     ///////////////////////////
     // STATUS VIEW - STASHES //
