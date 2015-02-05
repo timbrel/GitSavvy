@@ -80,5 +80,14 @@
     {
         "caption": "git: init",
         "command": "gg_init"
+    },
+    {
+        "caption": "git: diff",
+        "command": "gg_diff"
+    },
+    {
+        "caption": "git: diff cached",
+        "command": "gg_diff",
+        "args": { "in_cached_mode": true }
     }
 ]

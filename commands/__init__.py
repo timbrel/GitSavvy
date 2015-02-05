@@ -18,13 +18,11 @@ from .status import (
     GgStatusDiscardChangesToFileCommand,
     GgStatusOpenFileOnRemoteCommand,
     # GgStatusResolveConflictFileCommand,
-    # GgStatusDiffFileCommand,
     GgStatusDiffInlineCommand,
     GgStatusStageAllFilesCommand,
     GgStatusStageAllFilesWithUntrackedCommand,
     GgStatusUnstageAllFilesCommand,
     GgStatusDiscardAllChangesCommand,
-    # GgStatusDiffAllFilesCommand,
     GgStatusCommitCommand,
     GgStatusCommitUnstagedCommand,
     GgStatusAmendCommand,
@@ -59,3 +57,9 @@ from .pull import GgPullCommand
 from .push import GgPushCommand, GgPushToBranchCommand
 from .ignore import GgIgnoreCommand, GgIgnorePatternCommand
 from .init import GgOfferInit, GgInit
+from .diff import (
+    GgDiffCommand,
+    GgDiffRefreshCommand,
+    GgDiffFocusEventListener,
+    GgDiffStageOrResetHunkCommand
+)

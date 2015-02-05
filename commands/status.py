@@ -55,8 +55,8 @@ KEY_BINDINGS_MENU = """
   [h] open file on remote
   [M] resolve conflict with Sublimerge
 
-  [f] diff file                         [F] diff all files
-  [l] diff file inline
+  [l] diff file inline                  [f] diff all files
+                                        [F] diff all cached files
 
   #############                         #############
   ## ACTIONS ##                         ## STASHES ##

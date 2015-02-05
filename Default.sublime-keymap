@@ -109,14 +109,6 @@
         ]
     },
     {
-        "keys": ["f"],
-        "command": "gg_status_diff_file",
-        "context": [
-            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-gadget.status meta.git-gadget.status.section meta.git-gadget.status.file" }
-        ]
-    },
-    {
         "keys": ["l"],
         "command": "gg_status_diff_inline",
         "context": [
@@ -158,8 +150,16 @@
         ]
     },
     {
+        "keys": ["f"],
+        "command": "gg_diff",
+        "context": [
+            { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["F"],
-        "command": "gg_status_diff_all_files",
+        "command": "gg_diff",
+        "args": { "in_cached_mode": true },
         "context": [
             { "key": "setting.git_gadget.status_view", "operator": "equal", "operand": true }
         ]
@@ -279,6 +279,27 @@
         "context": [
             { "key": "setting.git_gadget.get_long_text_view", "operator": "equal", "operand": true },
             { "key": "preceding_text", "operator": "regex_match", "operand": ".*[\\n ]$" }
+        ]
+    },
+
+    ///////////////
+    // DIFF VIEW //
+    ///////////////
+
+    {
+        "keys": ["super+enter"],
+        "command": "gg_diff_stage_or_reset_hunk",
+        "context": [
+            { "key": "setting.git_gadget.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["super+backspace"],
+        "command": "gg_diff_stage_or_reset_hunk",
+        "args": { "reset": true },
+        "context": [
+            { "key": "setting.git_gadget.diff_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_gadget.diff_view.in_cached_mode", "operator": "equal", "operand": false }
         ]
     }
 

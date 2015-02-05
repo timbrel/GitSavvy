@@ -57,13 +57,12 @@ v1.0.0:
    ✔ git: commit @done (15-01-27 23:38)
      ✔ github issues integration: if the user types `#`, query github for issues to fill in @done (15-01-30 00:45)
      ☐ github issues integration: support querying other repositories with `owner/some-repo#`
-   ☐ git: diff
-     ☐ stage hunk
-     ☐ open file at selected line
-     ☐ navigate to next/previous hunk
-   ☐ git: diff cached
-     ☐ unstage hunk
-   ☐ git: diff current file
+   ✔ git: diff @done (15-02-04 23:24)
+     ✔ stage hunk @done (15-02-04 23:24)
+     ✔ reset hunk @done (15-02-04 23:24)
+     ☐ open file at selected hunk
+   ✔ git: diff cached @done (15-02-04 23:25)
+     ✔ unstage hunk @done (15-02-04 23:25)
    ✔ git: inline-diff current file @done (15-01-23 17:28)
      ✔ stage hunk under cursor @done (15-01-23 17:28)
      ✔ stage line under cursor @done (15-01-23 17:28)
@@ -80,7 +79,6 @@ v1.0.0:
        ✔ stage file @done (15-01-26 23:12)
        ✔ unstage file @done (15-01-26 23:12)
        ✔ discard changes to file @done (15-01-26 23:22)
-       ☐ diff file
        ✔ diff file inline @done (15-01-26 15:11)
        ✔ diff file inline cached for staged files @done (15-01-28 02:43)
        ✔ ignore file @done (15-01-29 21:03)
