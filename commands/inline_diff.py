@@ -303,8 +303,7 @@ class GgInlineDiffStageOrResetBase(TextCommand, BaseCommand):
         # Git lines are 1-indexed; Sublime rows are 0-indexed.
         line_number = self.view.rowcol(region.begin())[0] + 1
         diff_lines = self.get_diff_from_line(line_number, reset)
-        filename = os.path.relpath(self.file_path, self.repo_path)
-        header = DIFF_HEADER.format(path=filename)
+        header = DIFF_HEADER.format(path=self.file_path)
 
         full_diff = header + diff_lines + "\n"
 
