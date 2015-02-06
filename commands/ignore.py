@@ -16,12 +16,12 @@ class GsIgnoreCommand(WindowCommand, BaseCommand):
     at the Git repo's root.
     """
 
-    def run(self, file_path):
-        if not file_path:
-            file_path = self.file_path
+    def run(self, file_path_or_pattern):
+        if not file_path_or_pattern:
+            file_path_or_pattern = self.file_path_or_pattern
 
-        self.add_ignore(os.path.join("/", file_path))
-        sublime.status_message("Ignored file `{}`.".format(file_path))
+        self.add_ignore(os.path.join("/", file_path_or_pattern))
+        sublime.status_message("Ignored file `{}`.".format(file_path_or_pattern))
 
 
 class GsIgnorePatternCommand(WindowCommand, BaseCommand):
