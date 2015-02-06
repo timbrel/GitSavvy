@@ -107,34 +107,20 @@ class GsDiffStageOrResetHunkCommand(TextCommand, BaseCommand):
         self.view.run_command("gs_diff_refresh")
 
     def get_hunk_diff(self, pt):
-        header_start = self.get_pt_before(self.diff_starts, pt)
-        header_end = self.get_pt_before(self.diff_header_ends, pt)
+        header_start = self.diff_starts[bisect.bisect(self.diff_starts, pt) - 1]
+        header_end = self.diff_header_ends[bisect.bisect(self.diff_header_ends, pt)]
 
         if not header_end or header_end < header_start:
             # The cursor is not within a hunk.
             return
 
-        diff_start = self.get_pt_before(self.hunk_starts, pt)
-        diff_end = self.get_pt_after(self.hunk_ends, pt)
+        diff_start = self.hunk_starts[bisect.bisect(self.hunk_starts, pt) - 1]
+        diff_end = self.hunk_ends[bisect.bisect(self.hunk_ends, pt)]
 
         header = self.view.substr(sublime.Region(header_start, header_end))
         diff = self.view.substr(sublime.Region(diff_start, diff_end))
 
         return header + diff
-
-    @staticmethod
-    def get_pt_before(candidates, pt):
-        for candidate in reversed(candidates):
-            if candidate <= pt:
-                return candidate
-        return None
-
-    @staticmethod
-    def get_pt_after(candidates, pt):
-        for candidate in candidates:
-            if candidate > pt:
-                return candidate
-        return None
 
 
 class GsDiffOpenFileAtHunkCommand(TextCommand, BaseCommand):
