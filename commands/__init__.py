@@ -40,7 +40,8 @@ from .commit import (
     GgCommitInitializeViewCommand,
     GgCommitViewDoCommitCommand,
     GgShowGithubIssuesCommand,
-    GgInsertGithubNumberCommand
+    GgInsertGhTextCommand,
+    GgShowGithubContributorsCommand
 )
 from .quick_commit import GgQuickCommitCommand
 from .log_graph import (

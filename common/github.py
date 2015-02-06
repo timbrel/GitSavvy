@@ -76,3 +76,20 @@ def get_issues(github_repo):
         raise FailedGithubRequest(response.payload)
 
     return response.payload
+
+
+def get_contributors(github_repo):
+    is_enterprise, fqdn = get_api_fqdn(github_repo)
+    base_path = "/api/v3" if is_enterprise else ""
+    path = base_path + "/repos/{owner}/{repo}/contributors".format(
+        owner=github_repo.owner,
+        repo=github_repo.repo
+    )
+
+    auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
+
+    response = interwebs.get(fqdn, 443, path, https=True, auth=auth)
+    if response.status < 200 or response.status > 299 or not response.is_json:
+        raise FailedGithubRequest(response.payload)
+
+    return response.payload

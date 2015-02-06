@@ -91,7 +91,7 @@ class GgShowGithubIssuesCommand(TextCommand, BaseCommand):
         issues = github.get_issues(remote)
 
         if not issues:
-            self.view.run_command("gg_insert_github_number", {"text": "#"})
+            self.view.run_command("gg_insert_gh_text", {"text": "#"})
             return
 
         self.menu_items = ["{} - {}".format(issue["number"], issue["title"]) for issue in issues]
@@ -99,14 +99,14 @@ class GgShowGithubIssuesCommand(TextCommand, BaseCommand):
 
     def on_done(self, selection_id):
         if selection_id == -1:
-            self.view.run_command("gg_insert_github_number", {"text": "#"})
+            self.view.run_command("gg_insert_gh_text", {"text": "#"})
         else:
             selection = self.menu_items[selection_id]
             number = selection.split(" ")[0]
-            self.view.run_command("gg_insert_github_number", {"text": "#" + number})
+            self.view.run_command("gg_insert_gh_text", {"text": "#" + number})
 
 
-class GgInsertGithubNumberCommand(TextCommand, BaseCommand):
+class GgInsertGhTextCommand(TextCommand, BaseCommand):
 
     def run(self, edit, text):
         text_len = len(text)
@@ -118,3 +118,29 @@ class GgInsertGithubNumberCommand(TextCommand, BaseCommand):
 
         self.view.sel().clear()
         self.view.sel().add_all([sublime.Region(begin + text_len, end + text_len) for begin, end in selected_ranges])
+
+
+class GgShowGithubContributorsCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        sublime.set_timeout_async(lambda: self.run_async())
+
+    def run_async(self):
+        default_remote_name, default_remote = self.get_remotes().popitem(last=False)
+        remote = github.parse_remote(default_remote)
+
+        contributors = github.get_contributors(remote)
+
+        if not contributors:
+            self.view.run_command("gg_insert_gh_text", {"text": "@"})
+            return
+
+        self.menu_items = [contributor["login"] for contributor in contributors]
+        self.view.show_popup_menu(self.menu_items, self.on_done)
+
+    def on_done(self, selection_id):
+        if selection_id == -1:
+            self.view.run_command("gg_insert_gh_text", {"text": "@"})
+        else:
+            selection = self.menu_items[selection_id]
+            self.view.run_command("gg_insert_gh_text", {"text": "@" + selection})

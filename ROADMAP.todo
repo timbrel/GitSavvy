@@ -57,7 +57,7 @@ v1.0.0:
    ✔ git: commit @done (15-01-27 23:38)
      ✔ github issues integration: if the user types `#`, query github for issues to fill in @done (15-01-30 00:45)
      ✔ github issues integration: support querying other repositories with `owner/some-repo#` @done (15-02-05 16:08)
-     ☐ github repo collaborators integration: if the user types `@`, query github for usernames to fill in
+     ✔ github repo collaborators integration: if the user types `@`, query github for usernames to fill in @done (15-02-05 16:21)
    ✔ git: diff @done (15-02-04 23:24)
      ✔ stage hunk @done (15-02-04 23:24)
      ✔ reset hunk @done (15-02-04 23:24)
