@@ -1,26 +1,65 @@
+Future:
+
+  New features:
+    ☐ github: issues
+      ☐ list all issues for remote repository in special view
+      ☐ open new issue
+      ☐ close issue
+      ☐ view details for issues, including comments
+      ☐ add comment
+      ☐ view issue on github
+    ☐ github: pull requests
+      ☐ list all open pull requests in special view
+      ☐ view details for pull requests, including comments
+      ☐ view pull request on github
+      ☐ open new pull request against remote branch
+      ☐ open new pull request against remote owner/repo/branch
+    ☐ verbose log output for debugging/reporting
+      ☐ new setting to enable full git logging to file
+        ☐ commands
+        ☐ stdin
+        ☐ stdout
+        ☐ stderr
+      ☐ command to package up logs for submitting as github issue
+    ☐ teaching/dry-run mode
+      ☐ instead of executing the primary git command, pop up a window that explains the git invocation
+
+  Enhancements:
+    ☐ git: diff file inline
+      ☐ user can perform inline diff for file in working tree against same file in any commit, tag, branch
+
+
 v1.1.0:
 
-  In-file functionality:
-   ☐ gutter icons indicating inserted, modified, removed lines (and grayed when staged)
+  New features:
+    ☐ git: branch
+      ☐ view all branches
+      ☐ syntax-highlighted
+      ☐ checkout branches
+      ☐ delete branches
+        ☐ --force
+      ☐ merge branches
+    ☐ file status in gutter
+      ☐ icons for inserted, modified, removed lines
+      ☐ grayed out icons when changes are staged
+    ☐ git: tags
+      ☐ view all tags
+      ☐ view tags on remote
+      ☐ push tags to remote
+      ☐ add tag
+      ☐ delete tag
+    ☐ git: cherry pick
+    ☐ interactive help system
+      ☐ docs written in markdown in `docs/`
+      ☐ wiki-style browsing when pressing `super-enter` on a link
+      ☐ open docs on particular page/location when certain flags are set on originating view
+      ☐ docs teach about git commands that are being run under the hood
 
-  Inline-diff:
-   ☐ diff file in working tree against any commit, tag, branch, etc
-
-  git:branch view:
-   ☐ view all branches
-   ☐ checkout branches
-   ☐ delete branches
-     ☐ --force
-
-  git: tags view:
-   ☐ view all tags
-   ☐ view tags for remote
-   ☐ push tag to remote
-
-  git: graph view:
-   ☐ pressing `super+enter` on a branch name will checkout that branch
-   ☐ pressing `super+enter` on a commit will checkout that commit
-   ☐ pressing `enter` on a commit will display the full commit message in a separate window
+  Enhancements:
+    ☐ git: graph
+      ☐ pressing `super+enter` on a branch name will checkout that branch
+      ☐ pressing `super+enter` on a commit will checkout that commit
+      ☐ pressing `enter` on a commit will display the full commit message in a separate window
 
 
 v1.0.0:
@@ -51,7 +90,7 @@ v1.0.0:
 
   Special views:
    ☐ git: blame
-   ☐ git: log graph
+   ☐ git: graph
      ✔ display branches @done (15-01-29 22:53)
      ☐ syntax-highlighted
    ✔ git: commit @done (15-01-27 23:38)
