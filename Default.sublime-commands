@@ -89,5 +89,9 @@
         "caption": "git: diff cached",
         "command": "gg_diff",
         "args": { "in_cached_mode": true }
+    },
+    {
+        "caption": "GitSavvy: reload modules (debug)",
+        "command": "gs_reload_modules_debug"
     }
 ]
