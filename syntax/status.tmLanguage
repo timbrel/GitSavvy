@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>name</key>
-	<string>GitGadget Status</string>
+	<string>GitSavvy Status</string>
 	<key>patterns</key>
 	<array>
 		<dict>
@@ -14,7 +14,7 @@
 				<key>0</key>
 				<dict>
 					<key>name</key>
-					<string>comment.git-gadget.status.summary-header</string>
+					<string>comment.git-savvy.status.summary-header</string>
 				</dict>
 			</dict>
 			<key>comment</key>
@@ -22,7 +22,7 @@
 			<key>end</key>
 			<string>^$</string>
 			<key>name</key>
-			<string>meta.git-gadget.status-summary</string>
+			<string>meta.git-savvy.status-summary</string>
 			<key>patterns</key>
 			<array>
 				<dict>
@@ -31,7 +31,7 @@
 					<key>match</key>
 					<string>^  ROOT:.+</string>
 					<key>name</key>
-					<string>comment.git-gadget.status.root-summary</string>
+					<string>comment.git-savvy.status.root-summary</string>
 				</dict>
 				<dict>
 					<key>comment</key>
@@ -39,7 +39,7 @@
 					<key>match</key>
 					<string>`[A-Za-z\-_/]+`</string>
 					<key>name</key>
-					<string>constant.other.git-gadget.status.branch-name</string>
+					<string>constant.other.git-savvy.status.branch-name</string>
 				</dict>
 				<dict>
 					<key>comment</key>
@@ -47,7 +47,7 @@
 					<key>match</key>
 					<string>(ahead)|(behind)</string>
 					<key>name</key>
-					<string>keyword.other.git-gadget.status.ahead-behind</string>
+					<string>keyword.other.git-savvy.status.ahead-behind</string>
 				</dict>
 			</array>
 		</dict>
@@ -59,7 +59,7 @@
 				<key>0</key>
 				<dict>
 					<key>name</key>
-					<string>keyword.other.git-gadget.section-header</string>
+					<string>keyword.other.git-savvy.section-header</string>
 				</dict>
 			</dict>
 			<key>comment</key>
@@ -67,14 +67,14 @@
 			<key>end</key>
 			<string>^$</string>
 			<key>name</key>
-			<string>meta.git-gadget.status.section</string>
+			<string>meta.git-savvy.status.section</string>
 			<key>patterns</key>
 			<array>
 				<dict>
 					<key>match</key>
 					<string>^    (.+)$</string>
 					<key>name</key>
-					<string>meta.git-gadget.status.file</string>
+					<string>meta.git-savvy.status.file</string>
 				</dict>
 			</array>
 		</dict>
@@ -86,7 +86,7 @@
 				<key>0</key>
 				<dict>
 					<key>name</key>
-					<string>keyword.other.git-gadget.stashes-header</string>
+					<string>keyword.other.git-savvy.stashes-header</string>
 				</dict>
 			</dict>
 			<key>comment</key>
@@ -94,14 +94,14 @@
 			<key>end</key>
 			<string>^$</string>
 			<key>name</key>
-			<string>meta.git-gadget.status.stashes</string>
+			<string>meta.git-savvy.status.stashes</string>
 			<key>patterns</key>
 			<array>
 				<dict>
 					<key>match</key>
 					<string>^    (.+)$</string>
 					<key>name</key>
-					<string>meta.git-gadget.status.saved_stash</string>
+					<string>meta.git-savvy.status.saved_stash</string>
 				</dict>
 			</array>
 		</dict>
@@ -113,7 +113,7 @@
 			<key>end</key>
 			<string>^-$</string>
 			<key>name</key>
-			<string>comment.git-gadget.status.key-bindings-menu</string>
+			<string>comment.git-savvy.status.key-bindings-menu</string>
 			<key>patterns</key>
 			<array>
 				<dict>
@@ -122,13 +122,13 @@
 						<key>1</key>
 						<dict>
 							<key>name</key>
-							<string>support.type.git-gadget.key-bindings-header-text</string>
+							<string>support.type.git-savvy.key-bindings-header-text</string>
 						</dict>
 					</dict>
 					<key>match</key>
 					<string>  ## ([A-Z ]+) ##</string>
 					<key>name</key>
-					<string>meta.git-gadget.key-bindings-header</string>
+					<string>meta.git-savvy.key-bindings-header</string>
 				</dict>
 				<dict>
 					<key>captures</key>
@@ -136,19 +136,19 @@
 						<key>1</key>
 						<dict>
 							<key>name</key>
-							<string>constant.character.git-gadget-key-binding-key</string>
+							<string>constant.character.git-savvy-key-binding-key</string>
 						</dict>
 					</dict>
 					<key>match</key>
 					<string>\[([A-Za-z])\]</string>
 					<key>name</key>
-					<string>meta.git-gadget.key-bindings-key-stroke</string>
+					<string>meta.git-savvy.key-bindings-key-stroke</string>
 				</dict>
 			</array>
 		</dict>
 	</array>
 	<key>scopeName</key>
-	<string>git-gadget.status</string>
+	<string>git-savvy.status</string>
 	<key>uuid</key>
 	<string>56ea09df-2601-4d20-bb8d-b6834db991c4</string>
 </dict>

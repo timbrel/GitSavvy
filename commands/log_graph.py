@@ -6,20 +6,20 @@ from .base_command import BaseCommand
 LOG_GRAPH_TITLE = "GRAPH"
 
 
-class GgLogGraphCommand(WindowCommand, BaseCommand):
+class GsLogGraphCommand(WindowCommand, BaseCommand):
 
     def run(self):
         repo_path = self.repo_path
         view = self.window.new_file()
-        view.settings().set("git_gadget.log_graph_view", True)
-        view.settings().set("git_gadget.repo_path", repo_path)
+        view.settings().set("git_savvy.log_graph_view", True)
+        view.settings().set("git_savvy.repo_path", repo_path)
         view.set_name(LOG_GRAPH_TITLE)
         view.set_scratch(True)
         view.set_read_only(True)
-        view.run_command("gg_log_graph_initialize")
+        view.run_command("gs_log_graph_initialize")
 
 
-class GgLogGraphInitializeCommand(TextCommand, BaseCommand):
+class GsLogGraphInitializeCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         branch_graph = self.git("log", "--oneline", "--graph", "--decorate")

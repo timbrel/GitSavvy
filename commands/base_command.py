@@ -25,7 +25,7 @@ IndexedEntry.__new__.__defaults__ = (None, ) * 8
 git_path = None
 
 
-class GitGadgetError(Exception):
+class GitSavvyError(Exception):
     pass
 
 
@@ -55,11 +55,11 @@ class BaseCommand():
         """
         Return the absolute path to the git repo that contains the file that this
         view interacts with.  Like `file_path`, this can be overridden by setting
-        the view's `git_gadget.repo_path` setting.
+        the view's `git_savvy.repo_path` setting.
         """
         # The below condition will be true if run from a WindowCommand and false from a TextCommand.
         view = self.window.active_view() if hasattr(self, "window") else self.view
-        repo_path = view.settings().get("git_gadget.repo_path")
+        repo_path = view.settings().get("git_savvy.repo_path")
 
         if not repo_path:
             file_path = self.file_path
@@ -69,7 +69,7 @@ class BaseCommand():
                 working_dir = window_folders[0] if window_folders else None
             stdout = self.git("rev-parse", "--show-toplevel", working_dir=working_dir)
             repo_path = stdout.strip()
-            view.settings().set("git_gadget.repo_path", repo_path)
+            view.settings().set("git_savvy.repo_path", repo_path)
 
         return repo_path
 
@@ -79,16 +79,16 @@ class BaseCommand():
         Return the absolute path to the file this view interacts with. In most
         cases, this will be the open file.  However, for views with special
         functionality, this default behavior can be overridden by setting the
-        view's `git_gadget.file_path` setting.
+        view's `git_savvy.file_path` setting.
         """
         # The below condition will be true if run from a WindowCommand and false
         # from a TextCommand.
         view = self.window.active_view() if hasattr(self, "window") else self.view
-        fpath = view.settings().get("git_gadget.file_path")
+        fpath = view.settings().get("git_savvy.file_path")
 
         if not fpath:
             fpath = view.file_name()
-            view.settings().set("git_gadget.file_path", fpath)
+            view.settings().set("git_savvy.file_path", fpath)
 
         return fpath
 
@@ -108,14 +108,14 @@ class BaseCommand():
         def raise_error(msg):
             if type(msg) == str and "fatal: Not a git repository" in msg:
                 sublime.set_timeout_async(
-                    lambda: sublime.active_window().run_command("gg_offer_init"))
+                    lambda: sublime.active_window().run_command("gs_offer_init"))
                 return
 
             sublime.status_message(
                 "Failed to run `git {}`. See log for details.".format(command[1])
             )
             log.panel(msg)
-            raise GitGadgetError(msg)
+            raise GitSavvyError(msg)
 
         try:
             p = subprocess.Popen(command,
@@ -243,7 +243,7 @@ class BaseCommand():
         """
         window = self.window if hasattr(self, "window") else self.view.window()
         view = window.new_file()
-        view.settings().set("git_gadget.{}_view".format(name), True)
+        view.settings().set("git_savvy.{}_view".format(name), True)
         view.set_scratch(True)
         view.set_read_only(True)
         return view
@@ -371,7 +371,7 @@ class BaseCommand():
         Add the provided relative path or pattern to the repo's `.gitignore` file.
         """
         with open(os.path.join(self.repo_path, ".gitignore"), "at") as ignore_file:
-            ignore_file.write(os.linesep + "# added by GitGadget" + os.linesep + path_or_pattern + os.linesep)
+            ignore_file.write(os.linesep + "# added by GitSavvy" + os.linesep + path_or_pattern + os.linesep)
 
     def get_stashes(self):
         """

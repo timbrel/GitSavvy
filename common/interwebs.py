@@ -10,7 +10,7 @@ Response = namedtuple("Response", ("payload", "headers", "status", "is_json"))
 def request(verb, host, port, path, payload=None, timeout=10, https=False, headers=None, auth=None):
     if not headers:
         headers = {}
-    headers["User-Agent"] = "GitGadget Sublime Plug-in"
+    headers["User-Agent"] = "GitSavvy Sublime Plug-in"
 
     if auth:
         username_password = "{}:{}".format(*auth).encode("ascii")

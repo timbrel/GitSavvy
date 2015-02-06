@@ -23,7 +23,7 @@ DIFF_HEADER = """diff --git a/{path} b/{path}
 diff_view_hunks = {}
 
 
-class GgInlineDiffCommand(WindowCommand, BaseCommand):
+class GsInlineDiffCommand(WindowCommand, BaseCommand):
 
     """
     Given an open file in a git-tracked directory, show a new view with the
@@ -36,8 +36,8 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
             file_view = self.window.active_view()
             syntax_file = file_view.settings().get("syntax")
             settings = {
-                "git_gadget.file_path": self.file_path,
-                "git_gadget.repo_path": self.repo_path
+                "git_savvy.file_path": self.file_path,
+                "git_savvy.repo_path": self.repo_path
             }
         else:
             syntax_file = settings["syntax"]
@@ -45,19 +45,19 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
 
         diff_view = self.get_read_only_view("inline_diff")
         title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
-        diff_view.set_name(title + os.path.basename(settings["git_gadget.file_path"]))
+        diff_view.set_name(title + os.path.basename(settings["git_savvy.file_path"]))
 
         diff_view.set_syntax_file(syntax_file)
-        file_ext = util.get_file_extension(os.path.basename(settings["git_gadget.file_path"]))
+        file_ext = util.get_file_extension(os.path.basename(settings["git_savvy.file_path"]))
         self.augment_color_scheme(diff_view, file_ext)
 
-        diff_view.settings().set("git_gadget.inline_diff.cached", cached)
+        diff_view.settings().set("git_savvy.inline_diff.cached", cached)
         for k, v in settings.items():
             diff_view.settings().set(k, v)
 
         self.window.focus_view(diff_view)
 
-        diff_view.run_command("gg_inline_diff_refresh")
+        diff_view.run_command("gs_inline_diff_refresh")
 
     def augment_color_scheme(self, target_view, file_ext):
         """
@@ -67,12 +67,12 @@ class GgInlineDiffCommand(WindowCommand, BaseCommand):
         """
         original_color_scheme = target_view.settings().get("color_scheme")
         themeGenerator = ThemeGenerator(original_color_scheme)
-        themeGenerator.add_scoped_style("GitGadget Added Line", "git_gadget.change.addition", background="#37A832")
-        themeGenerator.add_scoped_style("GitGadget Removed Line", "git_gadget.change.removal", background="#A83732")
+        themeGenerator.add_scoped_style("GitSavvy Added Line", "git_savvy.change.addition", background="#37A832")
+        themeGenerator.add_scoped_style("GitSavvy Removed Line", "git_savvy.change.removal", background="#A83732")
         themeGenerator.apply_new_theme("active-diff-view." + file_ext, target_view)
 
 
-class GgInlineDiffRefreshCommand(TextCommand, BaseCommand):
+class GsInlineDiffRefreshCommand(TextCommand, BaseCommand):
 
     """
     Diff one version of a file (the base) against another, and display the
@@ -93,7 +93,7 @@ class GgInlineDiffRefreshCommand(TextCommand, BaseCommand):
 
     def run(self, edit, cursor=None):
         file_path = self.file_path
-        in_cached_mode = self.view.settings().get("git_gadget.inline_diff.cached")
+        in_cached_mode = self.view.settings().get("git_savvy.inline_diff.cached")
 
         if in_cached_mode:
             indexed_object = self.get_indexed_file_object(file_path)
@@ -267,11 +267,11 @@ class GgInlineDiffRefreshCommand(TextCommand, BaseCommand):
             l = add_regions if region_type == "+" else remove_regions
             l.append(sublime.Region(region_start, region_end))
 
-        self.view.add_regions("git-better-added-lines", add_regions, scope="git_gadget.change.addition")
-        self.view.add_regions("git-better-removed-lines", remove_regions, scope="git_gadget.change.removal")
+        self.view.add_regions("git-better-added-lines", add_regions, scope="git_savvy.change.addition")
+        self.view.add_regions("git-better-removed-lines", remove_regions, scope="git_savvy.change.removal")
 
 
-class GgInlineDiffFocusEventListener(EventListener):
+class GsInlineDiffFocusEventListener(EventListener):
 
     """
     If the current view is an inline-diff view, refresh the view with
@@ -280,11 +280,11 @@ class GgInlineDiffFocusEventListener(EventListener):
 
     def on_activated(self, view):
 
-        if view.settings().get("git_gadget.inline_diff_view") == True:
-            view.run_command("gg_inline_diff_refresh")
+        if view.settings().get("git_savvy.inline_diff_view") == True:
+            view.run_command("gs_inline_diff_refresh")
 
 
-class GgInlineDiffStageOrResetBase(TextCommand, BaseCommand):
+class GsInlineDiffStageOrResetBase(TextCommand, BaseCommand):
 
     """
     Base class for any stage or reset operation in the inline-diff view.
@@ -293,7 +293,7 @@ class GgInlineDiffStageOrResetBase(TextCommand, BaseCommand):
     """
 
     def run(self, edit, reset=False):
-        in_cached_mode = self.view.settings().get("git_gadget.inline_diff.cached")
+        in_cached_mode = self.view.settings().get("git_savvy.inline_diff.cached")
         selections = self.view.sel()
         region = selections[0]
         # For now, only support staging selections of length 0.
@@ -333,10 +333,10 @@ class GgInlineDiffStageOrResetBase(TextCommand, BaseCommand):
 
         self.git(*args, stdin=full_diff)
         cursor = self.view.sel()[0].begin()
-        self.view.run_command("gg_inline_diff_refresh", {"cursor": cursor})
+        self.view.run_command("gs_inline_diff_refresh", {"cursor": cursor})
 
 
-class GgInlineDiffStageOrResetLineCommand(GgInlineDiffStageOrResetBase):
+class GsInlineDiffStageOrResetLineCommand(GsInlineDiffStageOrResetBase):
 
     """
     Given a line number, generate a diff of that single line in the active
@@ -381,7 +381,7 @@ class GgInlineDiffStageOrResetLineCommand(GgInlineDiffStageOrResetBase):
                 )
 
 
-class GgInlineDiffStageOrResetHunkCommand(GgInlineDiffStageOrResetBase):
+class GsInlineDiffStageOrResetHunkCommand(GsInlineDiffStageOrResetBase):
 
     """
     Given a line number, generate a diff of the hunk containing that line,
@@ -403,7 +403,7 @@ class GgInlineDiffStageOrResetHunkCommand(GgInlineDiffStageOrResetBase):
         return "\n".join(hunk_ref.hunk.raw_lines)
 
 
-class GgInlineDiffGotoBase(TextCommand):
+class GsInlineDiffGotoBase(TextCommand):
 
     """
     Base class for navigation commands in the inline-diff view.  Determine
@@ -426,7 +426,7 @@ class GgInlineDiffGotoBase(TextCommand):
             self.view.show_at_center(self.view.line(new_cursor_pt))
 
 
-class GgInlineDiffGotoNextHunk(GgInlineDiffGotoBase):
+class GsInlineDiffGotoNextHunk(GsInlineDiffGotoBase):
 
     """
     Navigate to the next hunk that appears after the current cursor
@@ -444,7 +444,7 @@ class GgInlineDiffGotoNextHunk(GgInlineDiffGotoBase):
         return self.view.text_point(hunk_ref.section_start, 0)
 
 
-class GgInlineDiffGotoPreviousHunk(GgInlineDiffGotoBase):
+class GsInlineDiffGotoPreviousHunk(GsInlineDiffGotoBase):
 
     """
     Navigate to the previous hunk that appears immediately before

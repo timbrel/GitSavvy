@@ -13,14 +13,14 @@ CONFIRM_REINITIALIZE = ("It looks like Git is already initialized here.  "
                         "Would you like to re-initialize?")
 
 
-class GgOfferInit(WindowCommand):
+class GsOfferInit(WindowCommand):
 
     def run(self):
         if sublime.ok_cancel_dialog(NO_REPO_MESSAGE):
-            self.window.run_command("gg_init")
+            self.window.run_command("gs_init")
 
 
-class GgInit(WindowCommand, BaseCommand):
+class GsInit(WindowCommand, BaseCommand):
 
     def run(self):
         open_folders = self.window.folders()

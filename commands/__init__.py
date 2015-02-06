@@ -1,68 +1,68 @@
-from .quick_stage import GgQuickStageCommand
+from .quick_stage import GsQuickStageCommand
 from .inline_diff import (
-    GgInlineDiffCommand,
-    GgInlineDiffRefreshCommand,
-    GgInlineDiffFocusEventListener,
-    GgInlineDiffStageOrResetLineCommand,
-    GgInlineDiffStageOrResetHunkCommand,
-    GgInlineDiffGotoNextHunk,
-    GgInlineDiffGotoPreviousHunk
+    GsInlineDiffCommand,
+    GsInlineDiffRefreshCommand,
+    GsInlineDiffFocusEventListener,
+    GsInlineDiffStageOrResetLineCommand,
+    GsInlineDiffStageOrResetHunkCommand,
+    GsInlineDiffGotoNextHunk,
+    GsInlineDiffGotoPreviousHunk
 )
 from .status import (
-    GgShowStatusCommand,
-    GgStatusRefreshCommand,
-    GgStatusFocusEventListener,
-    GgStatusOpenFileCommand,
-    GgStatusStageFileCommand,
-    GgStatusUnstageFileCommand,
-    GgStatusDiscardChangesToFileCommand,
-    GgStatusOpenFileOnRemoteCommand,
-    # GgStatusResolveConflictFileCommand,
-    GgStatusDiffInlineCommand,
-    GgStatusStageAllFilesCommand,
-    GgStatusStageAllFilesWithUntrackedCommand,
-    GgStatusUnstageAllFilesCommand,
-    GgStatusDiscardAllChangesCommand,
-    GgStatusCommitCommand,
-    GgStatusCommitUnstagedCommand,
-    GgStatusAmendCommand,
-    GgStatusIgnoreFileCommand,
-    GgStatusIgnorePatternCommand,
-    GgStatusApplyStashCommand,
-    GgStatusPopStashCommand,
-    GgStatusShowStashCommand,
-    GgStatusCreateStashCommand,
-    GgStatusCreateStashWithUntrackedCommand,
-    GgStatusDiscardStashCommand
+    GsShowStatusCommand,
+    GsStatusRefreshCommand,
+    GsStatusFocusEventListener,
+    GsStatusOpenFileCommand,
+    GsStatusStageFileCommand,
+    GsStatusUnstageFileCommand,
+    GsStatusDiscardChangesToFileCommand,
+    GsStatusOpenFileOnRemoteCommand,
+    # GsStatusResolveConflictFileCommand,
+    GsStatusDiffInlineCommand,
+    GsStatusStageAllFilesCommand,
+    GsStatusStageAllFilesWithUntrackedCommand,
+    GsStatusUnstageAllFilesCommand,
+    GsStatusDiscardAllChangesCommand,
+    GsStatusCommitCommand,
+    GsStatusCommitUnstagedCommand,
+    GsStatusAmendCommand,
+    GsStatusIgnoreFileCommand,
+    GsStatusIgnorePatternCommand,
+    GsStatusApplyStashCommand,
+    GsStatusPopStashCommand,
+    GsStatusShowStashCommand,
+    GsStatusCreateStashCommand,
+    GsStatusCreateStashWithUntrackedCommand,
+    GsStatusDiscardStashCommand
 )
 from .commit import (
-    GgCommitCommand,
-    GgCommitInitializeViewCommand,
-    GgCommitViewDoCommitCommand,
-    GgShowGithubIssuesCommand,
-    GgInsertGhTextCommand,
-    GgShowGithubContributorsCommand
+    GsCommitCommand,
+    GsCommitInitializeViewCommand,
+    GsCommitViewDoCommitCommand,
+    GsShowGithubIssuesCommand,
+    GsInsertGhTextCommand,
+    GsShowGithubContributorsCommand
 )
-from .quick_commit import GgQuickCommitCommand
+from .quick_commit import GsQuickCommitCommand
 from .log_graph import (
-    GgLogGraphCommand,
-    GgLogGraphInitializeCommand
+    GsLogGraphCommand,
+    GsLogGraphInitializeCommand
 )
-from .open_file_on_remote import GgOpenFileOnRemoteCommand
+from .open_file_on_remote import GsOpenFileOnRemoteCommand
 from .checkout import (
-    GgCheckoutBranchCommand,
-    GgCheckoutNewBranchCommand,
-    GgCheckoutRemoteBranchCommand
+    GsCheckoutBranchCommand,
+    GsCheckoutNewBranchCommand,
+    GsCheckoutRemoteBranchCommand
 )
-from .fetch import GgFetchCommand
-from .pull import GgPullCommand
-from .push import GgPushCommand, GgPushToBranchCommand
-from .ignore import GgIgnoreCommand, GgIgnorePatternCommand
-from .init import GgOfferInit, GgInit
+from .fetch import GsFetchCommand
+from .pull import GsPullCommand
+from .push import GsPushCommand, GsPushToBranchCommand
+from .ignore import GsIgnoreCommand, GsIgnorePatternCommand
+from .init import GsOfferInit, GsInit
 from .diff import (
-    GgDiffCommand,
-    GgDiffRefreshCommand,
-    GgDiffFocusEventListener,
-    GgDiffStageOrResetHunkCommand,
-    GgDiffOpenFileAtHunkCommand
+    GsDiffCommand,
+    GsDiffRefreshCommand,
+    GsDiffFocusEventListener,
+    GsDiffStageOrResetHunkCommand,
+    GsDiffOpenFileAtHunkCommand
 )

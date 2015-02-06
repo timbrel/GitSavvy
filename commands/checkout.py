@@ -6,7 +6,7 @@ from .base_command import BaseCommand
 NEW_BRANCH_PROMPT = "Branch name:"
 
 
-class GgCheckoutBranchCommand(WindowCommand, BaseCommand):
+class GsCheckoutBranchCommand(WindowCommand, BaseCommand):
 
     def run(self):
         stdout = self.git("branch", "--no-color", "--no-column")
@@ -29,7 +29,7 @@ class GgCheckoutBranchCommand(WindowCommand, BaseCommand):
         sublime.status_message("Checked out `{}` branch.".format(branch_name))
 
 
-class GgCheckoutNewBranchCommand(WindowCommand, BaseCommand):
+class GsCheckoutNewBranchCommand(WindowCommand, BaseCommand):
 
     def run(self):
         self.window.show_input_panel(NEW_BRANCH_PROMPT, "", self.on_done, None, None)
@@ -39,7 +39,7 @@ class GgCheckoutNewBranchCommand(WindowCommand, BaseCommand):
         sublime.status_message("Created and checked out `{}` branch.".format(branch_name))
 
 
-class GgCheckoutRemoteBranchCommand(WindowCommand, BaseCommand):
+class GsCheckoutRemoteBranchCommand(WindowCommand, BaseCommand):
 
     def run(self):
         self.remote_branches = self.get_remote_branches()

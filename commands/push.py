@@ -9,7 +9,7 @@ START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
 
 
-class GgPushCommand(WindowCommand, BaseCommand):
+class GsPushCommand(WindowCommand, BaseCommand):
 
     def run(self):
         sublime.set_timeout_async(lambda: self.do_push())
@@ -19,11 +19,11 @@ class GgPushCommand(WindowCommand, BaseCommand):
         sublime.status_message(START_PUSH_MESSAGE)
         self.push(remote=None, branch=None)
         sublime.status_message(END_PUSH_MESSAGE)
-        if self.window.active_view().settings().get("git_gadget.status_view"):
-            self.window.active_view().run_command("gg_status_refresh")
+        if self.window.active_view().settings().get("git_savvy.status_view"):
+            self.window.active_view().run_command("gs_status_refresh")
 
 
-class GgPushToBranchCommand(WindowCommand, BaseCommand):
+class GsPushToBranchCommand(WindowCommand, BaseCommand):
 
     def run(self):
         self.remotes = list(self.get_remotes().keys())
@@ -77,5 +77,5 @@ class GgPushToBranchCommand(WindowCommand, BaseCommand):
         sublime.status_message(START_PUSH_MESSAGE)
         self.push(remote, branch)
         sublime.status_message(END_PUSH_MESSAGE)
-        if self.window.active_view().settings().get("git_gadget.status_view"):
-            self.window.active_view().run_command("gg_status_refresh")
+        if self.window.active_view().settings().get("git_savvy.status_view"):
+            self.window.active_view().run_command("gs_status_refresh")

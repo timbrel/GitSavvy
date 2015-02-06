@@ -2,15 +2,15 @@ import sublime
 from sublime_plugin import TextCommand
 
 
-PANEL_NAME = "GitGadget"
+PANEL_NAME = "GitSavvy"
 
 
 def panel(*msgs):
     msg = "\n".join(msgs)
-    sublime.active_window().active_view().run_command("gg_display_panel", {"msg": msg})
+    sublime.active_window().active_view().run_command("gs_display_panel", {"msg": msg})
 
 
-class GgDisplayPanelCommand(TextCommand):
+class GsDisplayPanelCommand(TextCommand):
 
     def run(self, edit, msg=""):
         panel = self.view.window().create_output_panel(PANEL_NAME)

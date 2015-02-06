@@ -7,7 +7,7 @@ from .base_command import BaseCommand
 COMMIT_MSG_PROMPT = "Commit message:"
 
 
-class GgQuickCommitCommand(WindowCommand, BaseCommand):
+class GsQuickCommitCommand(WindowCommand, BaseCommand):
 
     def run(self):
         self.window.show_input_panel(COMMIT_MSG_PROMPT, "", self.on_done, None, None)

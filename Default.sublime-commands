@@ -1,93 +1,93 @@
 [
     {
         "caption": "git: diff current file inline",
-        "command": "gg_inline_diff"
+        "command": "gs_inline_diff"
     },
     {
         "caption": "git: diff current file inline (cached)",
-        "command": "gg_inline_diff",
+        "command": "gs_inline_diff",
         "args": { "cached": true }
     },
     {
         "caption": "git: quick stage",
-        "command": "gg_quick_stage"
+        "command": "gs_quick_stage"
     },
     {
         "caption": "git: quick commit",
-        "command": "gg_quick_commit"
+        "command": "gs_quick_commit"
     },
     {
         "caption": "git: status",
-        "command": "gg_show_status"
+        "command": "gs_show_status"
     },
     {
         "caption": "git: commit",
-        "command": "gg_commit"
+        "command": "gs_commit"
     },
     {
         "caption": "git: commit including unstaged files",
-        "command": "gg_commit",
+        "command": "gs_commit",
         "args": { "include_unstaged": true }
     },
     {
         "caption": "git: amend previous commit",
-        "command": "gg_commit",
+        "command": "gs_commit",
         "args": { "amend": true }
     },
     {
         "caption": "git: graph",
-        "command": "gg_log_graph"
+        "command": "gs_log_graph"
     },
     {
         "caption": "git: open file on remote",
-        "command": "gg_open_file_on_remote",
+        "command": "gs_open_file_on_remote",
         "args": { "preselect": true }
     },
     {
         "caption": "git: checkout",
-        "command": "gg_checkout_branch"
+        "command": "gs_checkout_branch"
     },
     {
         "caption": "git: checkout new branch",
-        "command": "gg_checkout_new_branch"
+        "command": "gs_checkout_new_branch"
     },
     {
         "caption": "git: checkout remote branch as local",
-        "command": "gg_checkout_remote_branch"
+        "command": "gs_checkout_remote_branch"
     },
     {
         "caption": "git: fetch",
-        "command": "gg_fetch"
+        "command": "gs_fetch"
     },
     {
         "caption": "git: pull",
-        "command": "gg_pull"
+        "command": "gs_pull"
     }, {
         "caption": "git: push",
-        "command": "gg_push"
+        "command": "gs_push"
     }, {
         "caption": "git: push to branch",
-        "command": "gg_push_to_branch"
+        "command": "gs_push_to_branch"
     },
     {
         "caption": "git: ignore current file",
-        "command": "gg_ignore"
+        "command": "gs_ignore"
     },
     {
         "caption": "git: ignore pattern",
-        "command": "gg_ignore_pattern"
+        "command": "gs_ignore_pattern"
     },
     {
         "caption": "git: init",
-        "command": "gg_init"
+        "command": "gs_init"
     },
     {
         "caption": "git: diff",
-        "command": "gg_diff"
+        "command": "gs_diff"
     },
     {
         "caption": "git: diff cached",
-        "command": "gg_diff",
+        "command": "gs_diff",
         "args": { "in_cached_mode": true }
     },
     {

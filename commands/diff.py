@@ -12,7 +12,7 @@ DIFF_TITLE = "DIFF: {}"
 DIFF_CACHED_TITLE = "DIFF (cached): {}"
 
 
-class GgDiffCommand(WindowCommand, BaseCommand):
+class GsDiffCommand(WindowCommand, BaseCommand):
 
     def run(self, in_cached_mode=False):
         repo_path = self.repo_path
@@ -20,17 +20,17 @@ class GgDiffCommand(WindowCommand, BaseCommand):
         title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(os.path.basename(repo_path))
         diff_view.set_name(title)
         diff_view.set_syntax_file("Packages/Diff/Diff.tmLanguage")
-        diff_view.settings().set("git_gadget.repo_path", repo_path)
-        diff_view.settings().set("git_gadget.diff_view.in_cached_mode", in_cached_mode)
+        diff_view.settings().set("git_savvy.repo_path", repo_path)
+        diff_view.settings().set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
         self.window.focus_view(diff_view)
         diff_view.sel().clear()
-        diff_view.run_command("gg_diff_refresh")
+        diff_view.run_command("gs_diff_refresh")
 
 
-class GgDiffRefreshCommand(TextCommand, BaseCommand):
+class GsDiffRefreshCommand(TextCommand, BaseCommand):
 
     def run(self, edit, cursors=None):
-        in_cached_mode = self.view.settings().get("git_gadget.diff_view.in_cached_mode")
+        in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
         stdout = self.git("diff", "--cached" if in_cached_mode else None)
 
         self.view.set_read_only(False)
@@ -41,7 +41,7 @@ class GgDiffRefreshCommand(TextCommand, BaseCommand):
             self.view.sel().add(sublime.Region(0, 0))
 
 
-class GgDiffFocusEventListener(EventListener):
+class GsDiffFocusEventListener(EventListener):
 
     """
     If the current view is a diff view, refresh the view with latest tree status
@@ -49,16 +49,15 @@ class GgDiffFocusEventListener(EventListener):
     """
 
     def on_activated(self, view):
-        if view.settings().get("git_gadget.diff_view") == True:
+        if view.settings().get("git_savvy.diff_view") == True:
             # cursors = view.sel()
-            view.run_command("gg_diff_refresh")
-            # view.run_command("gg_diff_refresh", {"cursors": cursors})
+            view.run_command("gs_diff_refresh")
 
 
-class GgDiffStageOrResetHunkCommand(TextCommand, BaseCommand):
+class GsDiffStageOrResetHunkCommand(TextCommand, BaseCommand):
 
     def run(self, edit, reset=False):
-        in_cached_mode = self.view.settings().get("git_gadget.diff_view.in_cached_mode")
+        in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
 
         # Filter out any cursors that are larger than a single point.
         cursor_pts = tuple(cursor.a for cursor in self.view.sel() if cursor.a == cursor.b)
@@ -105,7 +104,7 @@ class GgDiffStageOrResetHunkCommand(TextCommand, BaseCommand):
                 stdin=hunk_diff
             )
 
-        self.view.run_command("gg_diff_refresh")
+        self.view.run_command("gs_diff_refresh")
 
     def get_hunk_diff(self, pt):
         header_start = self.get_pt_before(self.diff_starts, pt)
@@ -138,7 +137,7 @@ class GgDiffStageOrResetHunkCommand(TextCommand, BaseCommand):
         return None
 
 
-class GgDiffOpenFileAtHunkCommand(TextCommand, BaseCommand):
+class GsDiffOpenFileAtHunkCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         # Filter out any cursors that are larger than a single point.

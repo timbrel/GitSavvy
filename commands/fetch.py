@@ -7,7 +7,7 @@ from .base_command import BaseCommand
 ALL_REMOTES = "All remotes."
 
 
-class GgFetchCommand(WindowCommand, BaseCommand):
+class GsFetchCommand(WindowCommand, BaseCommand):
 
     def run(self):
         self.remotes = list(self.get_remotes().keys())

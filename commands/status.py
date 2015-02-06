@@ -91,7 +91,7 @@ MERGE_CONFLICT_PORCELAIN_STATUSES = (
 status_view_section_ranges = {}
 
 
-class GgShowStatusCommand(WindowCommand, BaseCommand):
+class GsShowStatusCommand(WindowCommand, BaseCommand):
 
     """
     Open a status view for the active git repository.
@@ -102,15 +102,15 @@ class GgShowStatusCommand(WindowCommand, BaseCommand):
         title = STATUS_TITLE.format(os.path.basename(repo_path))
         status_view = self.get_read_only_view("status")
         status_view.set_name(title)
-        status_view.set_syntax_file("Packages/GitGadget/syntax/status.tmLanguage")
-        status_view.settings().set("git_gadget.repo_path", repo_path)
+        status_view.set_syntax_file("Packages/GitSavvy/syntax/status.tmLanguage")
+        status_view.settings().set("git_savvy.repo_path", repo_path)
         self.window.focus_view(status_view)
         status_view.sel().clear()
 
-        status_view.run_command("gg_status_refresh")
+        status_view.run_command("gs_status_refresh")
 
 
-class GgStatusRefreshCommand(TextCommand, BaseCommand):
+class GsStatusRefreshCommand(TextCommand, BaseCommand):
 
     """
     Get the current state of the git repo and display file status
@@ -208,7 +208,7 @@ class GgStatusRefreshCommand(TextCommand, BaseCommand):
         return staged, unstaged, untracked, conflicts
 
 
-class GgStatusFocusEventListener(EventListener):
+class GsStatusFocusEventListener(EventListener):
 
     """
     If the current view is an inline-diff view, refresh the view with
@@ -217,11 +217,11 @@ class GgStatusFocusEventListener(EventListener):
 
     def on_activated(self, view):
 
-        if view.settings().get("git_gadget.status_view") == True:
-            view.run_command("gg_status_refresh")
+        if view.settings().get("git_savvy.status_view") == True:
+            view.run_command("gs_status_refresh")
 
 
-class GgStatusOpenFileCommand(TextCommand, BaseCommand):
+class GsStatusOpenFileCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         lines = util.get_lines_from_regions(self.view, self.view.sel())
@@ -231,7 +231,7 @@ class GgStatusOpenFileCommand(TextCommand, BaseCommand):
             self.view.window().open_file(path)
 
 
-class GgStatusDiffInlineCommand(TextCommand, BaseCommand):
+class GsStatusDiffInlineCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         # Unstaged, Untracked, and Conflicts
@@ -259,26 +259,26 @@ class GgStatusDiffInlineCommand(TextCommand, BaseCommand):
         for fpath in non_cached_files:
             syntax = util.get_syntax_for_file(fpath)
             settings = {
-                "git_gadget.file_path": fpath,
-                "git_gadget.repo_path": self.repo_path,
+                "git_savvy.file_path": fpath,
+                "git_savvy.repo_path": self.repo_path,
                 "syntax": syntax
             }
-            self.view.window().run_command("gg_inline_diff", {"settings": settings})
+            self.view.window().run_command("gs_inline_diff", {"settings": settings})
 
         for fpath in cached_files:
             syntax = util.get_syntax_for_file(fpath)
             settings = {
-                "git_gadget.file_path": fpath,
-                "git_gadget.repo_path": self.repo_path,
+                "git_savvy.file_path": fpath,
+                "git_savvy.repo_path": self.repo_path,
                 "syntax": syntax
             }
-            self.view.window().run_command("gg_inline_diff", {
+            self.view.window().run_command("gs_inline_diff", {
                 "settings": settings,
                 "cached": True
             })
 
 
-class GgStatusStageFileCommand(TextCommand, BaseCommand):
+class GsStatusStageFileCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         # Valid selections are in the Unstaged, Untracked, and Conflicts sections.
@@ -295,10 +295,10 @@ class GgStatusStageFileCommand(TextCommand, BaseCommand):
             for fpath in file_paths:
                 self.stage_file(fpath)
             sublime.status_message("Staged files successfully.")
-            self.view.run_command("gg_status_refresh")
+            self.view.run_command("gs_status_refresh")
 
 
-class GgStatusUnstageFileCommand(TextCommand, BaseCommand):
+class GsStatusUnstageFileCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         # Valid selections are only in the Staged section.
@@ -314,10 +314,10 @@ class GgStatusUnstageFileCommand(TextCommand, BaseCommand):
             for fpath in file_paths:
                 self.unstage_file(fpath)
             sublime.status_message("Unstaged files successfully.")
-            self.view.run_command("gg_status_refresh")
+            self.view.run_command("gs_status_refresh")
 
 
-class GgStatusDiscardChangesToFileCommand(TextCommand, BaseCommand):
+class GsStatusDiscardChangesToFileCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         # Valid selections are in the Unstaged, Untracked, and Conflicts sections.
@@ -334,10 +334,10 @@ class GgStatusDiscardChangesToFileCommand(TextCommand, BaseCommand):
             for fpath in file_paths:
                 self.checkout_file(fpath)
             sublime.status_message("Successfully checked out files from HEAD.")
-            self.view.run_command("gg_status_refresh")
+            self.view.run_command("gs_status_refresh")
 
 
-class GgStatusOpenFileOnRemoteCommand(TextCommand, BaseCommand):
+class GsStatusOpenFileOnRemoteCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         lines = util.get_lines_from_regions(
@@ -353,59 +353,59 @@ class GgStatusOpenFileOnRemoteCommand(TextCommand, BaseCommand):
                 self.open_file_on_remote(fpath)
 
 
-class GgStatusStageAllFilesCommand(TextCommand, BaseCommand):
+class GsStatusStageAllFilesCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         self.add_all_tracked_files()
-        self.view.run_command("gg_status_refresh")
+        self.view.run_command("gs_status_refresh")
 
 
-class GgStatusStageAllFilesWithUntrackedCommand(TextCommand, BaseCommand):
+class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         self.add_all_files()
-        self.view.run_command("gg_status_refresh")
+        self.view.run_command("gs_status_refresh")
 
 
-class GgStatusUnstageAllFilesCommand(TextCommand, BaseCommand):
+class GsStatusUnstageAllFilesCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         self.unstage_all_files()
-        self.view.run_command("gg_status_refresh")
+        self.view.run_command("gs_status_refresh")
 
 
-class GgStatusDiscardAllChangesCommand(TextCommand, BaseCommand):
+class GsStatusDiscardAllChangesCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         self.discard_all_unstaged()
-        self.view.run_command("gg_status_refresh")
+        self.view.run_command("gs_status_refresh")
 
 
-class GgStatusCommitCommand(TextCommand, BaseCommand):
+class GsStatusCommitCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
-        self.view.window().run_command("gg_commit", {"repo_path": self.repo_path})
+        self.view.window().run_command("gs_commit", {"repo_path": self.repo_path})
 
 
-class GgStatusCommitUnstagedCommand(TextCommand, BaseCommand):
+class GsStatusCommitUnstagedCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         self.view.window().run_command(
-            "gg_commit",
+            "gs_commit",
             {"repo_path": self.repo_path, "include_unstaged": True}
         )
 
 
-class GgStatusAmendCommand(TextCommand, BaseCommand):
+class GsStatusAmendCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         self.view.window().run_command(
-            "gg_commit",
+            "gs_commit",
             {"repo_path": self.repo_path, "amend": True}
         )
 
 
-class GgStatusIgnoreFileCommand(TextCommand, BaseCommand):
+class GsStatusIgnoreFileCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         # Valid selections are only in the Staged section.
@@ -420,10 +420,10 @@ class GgStatusIgnoreFileCommand(TextCommand, BaseCommand):
             for fpath in file_paths:
                 self.add_ignore(os.path.join("/", fpath))
             sublime.status_message("Successfully ignored files.")
-            self.view.run_command("gg_status_refresh")
+            self.view.run_command("gs_status_refresh")
 
 
-class GgStatusIgnorePatternCommand(TextCommand, BaseCommand):
+class GsStatusIgnorePatternCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         lines = util.get_lines_from_regions(
@@ -434,10 +434,10 @@ class GgStatusIgnorePatternCommand(TextCommand, BaseCommand):
         file_paths = tuple(line.strip() for line in lines if line)
 
         if file_paths:
-            self.view.window().run_command("gg_ignore_pattern", {"pre_filled": file_paths[0]})
+            self.view.window().run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
 
 
-class GgStatusApplyStashCommand(TextCommand, BaseCommand):
+class GsStatusApplyStashCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         lines = util.get_lines_from_regions(
@@ -451,10 +451,10 @@ class GgStatusApplyStashCommand(TextCommand, BaseCommand):
             return
 
         self.apply_stash(ids[0])
-        self.view.run_command("gg_status_refresh")
+        self.view.run_command("gs_status_refresh")
 
 
-class GgStatusPopStashCommand(TextCommand, BaseCommand):
+class GsStatusPopStashCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         lines = util.get_lines_from_regions(
@@ -468,10 +468,10 @@ class GgStatusPopStashCommand(TextCommand, BaseCommand):
             return
 
         self.pop_stash(ids[0])
-        self.view.run_command("gg_status_refresh")
+        self.view.run_command("gs_status_refresh")
 
 
-class GgStatusShowStashCommand(TextCommand, BaseCommand):
+class GsStatusShowStashCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         lines = util.get_lines_from_regions(
@@ -495,34 +495,34 @@ class GgStatusShowStashCommand(TextCommand, BaseCommand):
         stash_view = self.get_read_only_view("stash_" + title)
         stash_view.set_name(title)
         stash_view.set_syntax_file("Packages/Diff/Diff.tmLanguage")
-        stash_view.settings().set("git_gadget.repo_path", repo_path)
+        stash_view.settings().set("git_savvy.repo_path", repo_path)
         window.focus_view(stash_view)
         stash_view.sel().clear()
 
         return stash_view
 
 
-class GgStatusCreateStashCommand(TextCommand, BaseCommand):
+class GsStatusCreateStashCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         self.view.window().show_input_panel("Description:", "", self.on_done, None, None)
 
     def on_done(self, description):
         self.create_stash(description)
-        self.view.run_command("gg_status_refresh")
+        self.view.run_command("gs_status_refresh")
 
 
-class GgStatusCreateStashWithUntrackedCommand(TextCommand, BaseCommand):
+class GsStatusCreateStashWithUntrackedCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         self.view.window().show_input_panel("Description:", "", self.on_done, None, None)
 
     def on_done(self, description):
         self.create_stash(description, include_untracked=True)
-        self.view.run_command("gg_status_refresh")
+        self.view.run_command("gs_status_refresh")
 
 
-class GgStatusDiscardStashCommand(TextCommand, BaseCommand):
+class GsStatusDiscardStashCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         lines = util.get_lines_from_regions(
@@ -536,4 +536,4 @@ class GgStatusDiscardStashCommand(TextCommand, BaseCommand):
             return
 
         self.drop_stash(ids[0])
-        self.view.run_command("gg_status_refresh")
+        self.view.run_command("gs_status_refresh")

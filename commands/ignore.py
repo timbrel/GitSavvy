@@ -9,7 +9,7 @@ from .base_command import BaseCommand
 IGNORE_PATTERN_PROMPT = "Enter pattern to ignore:"
 
 
-class GgIgnoreCommand(WindowCommand, BaseCommand):
+class GsIgnoreCommand(WindowCommand, BaseCommand):
 
     def run(self, file_path):
         if not file_path:
@@ -19,7 +19,7 @@ class GgIgnoreCommand(WindowCommand, BaseCommand):
         sublime.status_message("Ignored file `{}`.".format(file_path))
 
 
-class GgIgnorePatternCommand(WindowCommand, BaseCommand):
+class GsIgnorePatternCommand(WindowCommand, BaseCommand):
 
     def run(self, pre_filled=None):
         self.window.show_input_panel(IGNORE_PATTERN_PROMPT, pre_filled or "", self.on_done, None, None)
@@ -27,5 +27,5 @@ class GgIgnorePatternCommand(WindowCommand, BaseCommand):
     def on_done(self, ignore_pattern):
         self.add_ignore(ignore_pattern)
         sublime.status_message("Ignored pattern `{}`.".format(ignore_pattern))
-        if self.window.active_view().settings().get("git_gadget.status_view"):
-            self.window.active_view().run_command("gg_status_refresh")
+        if self.window.active_view().settings().get("git_savvy.status_view"):
+            self.window.active_view().run_command("gs_status_refresh")

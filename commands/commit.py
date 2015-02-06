@@ -16,24 +16,24 @@ COMMIT_HELP_TEXT = """
 COMMIT_TITLE = "COMMIT"
 
 
-class GgCommitCommand(WindowCommand, BaseCommand):
+class GsCommitCommand(WindowCommand, BaseCommand):
 
     def run(self, repo_path=None, include_unstaged=False, amend=False):
         repo_path = repo_path or self.repo_path
         view = self.window.new_file()
-        view.settings().set("git_gadget.get_long_text_view", True)
-        view.settings().set("git_gadget.commit_view.include_unstaged", include_unstaged)
-        view.settings().set("git_gadget.commit_view.amend", amend)
-        view.settings().set("git_gadget.repo_path", repo_path)
+        view.settings().set("git_savvy.get_long_text_view", True)
+        view.settings().set("git_savvy.commit_view.include_unstaged", include_unstaged)
+        view.settings().set("git_savvy.commit_view.amend", amend)
+        view.settings().set("git_savvy.repo_path", repo_path)
         view.set_name(COMMIT_TITLE)
         view.set_scratch(True)
-        view.run_command("gg_commit_initialize_view")
+        view.run_command("gs_commit_initialize_view")
 
 
-class GgCommitInitializeViewCommand(TextCommand, BaseCommand):
+class GsCommitInitializeViewCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
-        if self.view.settings().get("git_gadget.commit_view.amend"):
+        if self.view.settings().get("git_savvy.commit_view.amend"):
             last_commit_message = self.git("log", "-1", "--pretty=%B")
             initial_text = last_commit_message + COMMIT_HELP_TEXT
         else:
@@ -44,16 +44,16 @@ class GgCommitInitializeViewCommand(TextCommand, BaseCommand):
         self.view.sel().add(sublime.Region(0, 0))
 
 
-class GgCommitViewDoCommitCommand(TextCommand, BaseCommand):
+class GsCommitViewDoCommitCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         view_text = self.view.substr(sublime.Region(0, self.view.size()))
         commit_message = view_text.replace(COMMIT_HELP_TEXT, "")
 
-        if self.view.settings().get("git_gadget.commit_view.include_unstaged"):
+        if self.view.settings().get("git_savvy.commit_view.include_unstaged"):
             self.add_all_tracked_files()
 
-        if self.view.settings().get("git_gadget.commit_view.amend"):
+        if self.view.settings().get("git_savvy.commit_view.amend"):
             self.git("commit", "-q", "--amend", "-F", "-", stdin=commit_message)
         else:
             self.git("commit", "-q", "-F", "-", stdin=commit_message)
@@ -62,7 +62,7 @@ class GgCommitViewDoCommitCommand(TextCommand, BaseCommand):
         self.view.window().run_command("close_file")
 
 
-class GgShowGithubIssuesCommand(TextCommand, BaseCommand):
+class GsShowGithubIssuesCommand(TextCommand, BaseCommand):
 
     def run(self, edit, default_repo=True):
         if not default_repo:
@@ -91,7 +91,7 @@ class GgShowGithubIssuesCommand(TextCommand, BaseCommand):
         issues = github.get_issues(remote)
 
         if not issues:
-            self.view.run_command("gg_insert_gh_text", {"text": "#"})
+            self.view.run_command("gs_insert_gh_text", {"text": "#"})
             return
 
         self.menu_items = ["{} - {}".format(issue["number"], issue["title"]) for issue in issues]
@@ -99,14 +99,14 @@ class GgShowGithubIssuesCommand(TextCommand, BaseCommand):
 
     def on_done(self, selection_id):
         if selection_id == -1:
-            self.view.run_command("gg_insert_gh_text", {"text": "#"})
+            self.view.run_command("gs_insert_gh_text", {"text": "#"})
         else:
             selection = self.menu_items[selection_id]
             number = selection.split(" ")[0]
-            self.view.run_command("gg_insert_gh_text", {"text": "#" + number})
+            self.view.run_command("gs_insert_gh_text", {"text": "#" + number})
 
 
-class GgInsertGhTextCommand(TextCommand, BaseCommand):
+class GsInsertGhTextCommand(TextCommand, BaseCommand):
 
     def run(self, edit, text):
         text_len = len(text)
@@ -120,7 +120,7 @@ class GgInsertGhTextCommand(TextCommand, BaseCommand):
         self.view.sel().add_all([sublime.Region(begin + text_len, end + text_len) for begin, end in selected_ranges])
 
 
-class GgShowGithubContributorsCommand(TextCommand, BaseCommand):
+class GsShowGithubContributorsCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         sublime.set_timeout_async(lambda: self.run_async())
@@ -132,7 +132,7 @@ class GgShowGithubContributorsCommand(TextCommand, BaseCommand):
         contributors = github.get_contributors(remote)
 
         if not contributors:
-            self.view.run_command("gg_insert_gh_text", {"text": "@"})
+            self.view.run_command("gs_insert_gh_text", {"text": "@"})
             return
 
         self.menu_items = [contributor["login"] for contributor in contributors]
@@ -140,7 +140,7 @@ class GgShowGithubContributorsCommand(TextCommand, BaseCommand):
 
     def on_done(self, selection_id):
         if selection_id == -1:
-            self.view.run_command("gg_insert_gh_text", {"text": "@"})
+            self.view.run_command("gs_insert_gh_text", {"text": "@"})
         else:
             selection = self.menu_items[selection_id]
-            self.view.run_command("gg_insert_gh_text", {"text": "@" + selection})
+            self.view.run_command("gs_insert_gh_text", {"text": "@" + selection})

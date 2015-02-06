@@ -4,7 +4,7 @@ from sublime_plugin import WindowCommand
 from .base_command import BaseCommand
 
 
-class GgPullCommand(WindowCommand, BaseCommand):
+class GsPullCommand(WindowCommand, BaseCommand):
 
     def run(self):
         self.remotes = list(self.get_remotes().keys())
@@ -58,5 +58,5 @@ class GgPullCommand(WindowCommand, BaseCommand):
         sublime.status_message("Starting pull...")
         self.pull(remote, branch)
         sublime.status_message("Pull complete.")
-        if self.window.active_view().settings().get("git_gadget.status_view"):
-            self.window.active_view().run_command("gg_status_refresh")
+        if self.window.active_view().settings().get("git_savvy.status_view"):
+            self.window.active_view().run_command("gs_status_refresh")

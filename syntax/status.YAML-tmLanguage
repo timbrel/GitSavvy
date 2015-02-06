@@ -1,56 +1,56 @@
 # [PackageDev] target_format: plist, ext: tmLanguage
-name: GitGadget Status
-scopeName: git-gadget.status
+name: GitSavvy Status
+scopeName: git-savvy.status
 uuid: 56ea09df-2601-4d20-bb8d-b6834db991c4
 
 patterns:
 - comment: Status summary
-  name: meta.git-gadget.status-summary
+  name: meta.git-savvy.status-summary
   begin: '^  BRANCH:'
   beginCaptures:
-    '0': { name: comment.git-gadget.status.summary-header }
+    '0': { name: comment.git-savvy.status.summary-header }
   end: '^$'
   patterns:
   - comment: root summary
-    name: comment.git-gadget.status.root-summary
+    name: comment.git-savvy.status.root-summary
     match: '^  ROOT:.+'
   - comment: branch names
-    name: constant.other.git-gadget.status.branch-name
+    name: constant.other.git-savvy.status.branch-name
     match: '`[A-Za-z\-_/]+`'
   - comment: ahead or behind
-    name: keyword.other.git-gadget.status.ahead-behind
+    name: keyword.other.git-savvy.status.ahead-behind
     match: '(ahead)|(behind)'
 
 - comment: section
-  name: meta.git-gadget.status.section
+  name: meta.git-savvy.status.section
   begin: '^  ((STAGED)|(UNSTAGED)|(UNTRACKED)|(MERGE CONFLICTS)):$'
   beginCaptures:
-    '0': { name: keyword.other.git-gadget.section-header }
+    '0': { name: keyword.other.git-savvy.section-header }
   end: '^$'
   patterns:
-  - name: meta.git-gadget.status.file
+  - name: meta.git-savvy.status.file
     match: '^    (.+)$'
 
 - comment: Stashes section
-  name: meta.git-gadget.status.stashes
+  name: meta.git-savvy.status.stashes
   begin: '^  STASHES:$'
   beginCaptures:
-    '0': { name: keyword.other.git-gadget.stashes-header }
+    '0': { name: keyword.other.git-savvy.stashes-header }
   end: '^$'
   patterns:
-  - name: meta.git-gadget.status.saved_stash
+  - name: meta.git-savvy.status.saved_stash
     match: '^    (.+)$'
 
 - comment: Key-bindings menu
-  name: comment.git-gadget.status.key-bindings-menu
+  name: comment.git-savvy.status.key-bindings-menu
   begin: '^  ####'
   end: '^-$'
   patterns:
-  - name: meta.git-gadget.key-bindings-header
+  - name: meta.git-savvy.key-bindings-header
     match: '  ## ([A-Z ]+) ##'
     captures:
-      '1': { name: support.type.git-gadget.key-bindings-header-text }
-  - name: meta.git-gadget.key-bindings-key-stroke
+      '1': { name: support.type.git-savvy.key-bindings-header-text }
+  - name: meta.git-savvy.key-bindings-key-stroke
     match: '\[([A-Za-z])\]'
     captures:
-      '1': { name: constant.character.git-gadget-key-binding-key }
+      '1': { name: constant.character.git-savvy-key-binding-key }

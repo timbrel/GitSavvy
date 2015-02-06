@@ -29,7 +29,7 @@ def parse_remote(remote):
 
     fqdn, owner, repo = match.groups()
 
-    gadget_settings = sublime.load_settings("GitGadget.sublime-settings")
+    gadget_settings = sublime.load_settings("GitSavvy.sublime-settings")
     api_tokens = gadget_settings.get("api_tokens")
     token = api_tokens and api_tokens.get(fqdn, None) or None
 

@@ -12,7 +12,7 @@ ADD_ALL_UNSTAGED_FILES = " ?  All unstaged files"
 ADD_ALL_FILES = " +  All files"
 
 
-class GgQuickStageCommand(WindowCommand, BaseCommand):
+class GsQuickStageCommand(WindowCommand, BaseCommand):
 
     """
     Display a quick panel of unstaged files in the current git repository,

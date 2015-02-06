@@ -7,7 +7,7 @@ from sublime_plugin import WindowCommand
 from .base_command import BaseCommand
 
 
-class GgOpenFileOnRemoteCommand(WindowCommand, BaseCommand):
+class GsOpenFileOnRemoteCommand(WindowCommand, BaseCommand):
 
     def run(self, preselect=False):
         fpath = os.path.relpath(self.file_path, self.repo_path)
