@@ -100,6 +100,13 @@ class BaseCommand():
 
         return fpath
 
+    def get_rel_path(self, abs_path=None):
+        """
+        Return the file path relative to the repo root.
+        """
+        path = abs_path or self.file_path
+        return os.path.relpath(path, start=self.repo_path)
+
     def git(self, *args, stdin=None, working_dir=None, show_panel=False):
         """
         Run the git command specified in `*args` and return the output
