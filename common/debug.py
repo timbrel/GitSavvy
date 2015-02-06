@@ -8,11 +8,11 @@ from sublime_plugin import WindowCommand
 class GsReloadModulesDebug(WindowCommand):
 
     def run(self):
-        gadget_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
 
-        if gadget_settings.get("dev_mode"):
+        if savvy_settings.get("dev_mode"):
             for _ in range(2):
                 for name, module in sys.modules.items():
-                    if name[0:9] == "GitSavvy":
+                    if name[0:8] == "GitSavvy":
                         print("GitSavvy: reloading submodule", name)
                         imp.reload(module)

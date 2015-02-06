@@ -1,6 +1,8 @@
 import sublime
 from plistlib import readPlistFromBytes
 
+from .parse_diff import parse_diff
+
 syntax_file_map = {}
 
 
