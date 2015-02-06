@@ -326,6 +326,13 @@
             { "key": "setting.git_gadget.diff_view", "operator": "equal", "operand": true },
             { "key": "setting.git_gadget.diff_view.in_cached_mode", "operator": "equal", "operand": false }
         ]
+    },
+    {
+        "keys": ["o"],
+        "command": "gg_diff_open_file_at_hunk",
+        "context": [
+            { "key": "setting.git_gadget.diff_view", "operator": "equal", "operand": true }
+        ]
     }
 
 ]

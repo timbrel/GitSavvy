@@ -63,5 +63,6 @@ from .diff import (
     GgDiffCommand,
     GgDiffRefreshCommand,
     GgDiffFocusEventListener,
-    GgDiffStageOrResetHunkCommand
+    GgDiffStageOrResetHunkCommand,
+    GgDiffOpenFileAtHunkCommand
 )

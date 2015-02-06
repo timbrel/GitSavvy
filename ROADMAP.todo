@@ -61,7 +61,7 @@ v1.0.0:
    ✔ git: diff @done (15-02-04 23:24)
      ✔ stage hunk @done (15-02-04 23:24)
      ✔ reset hunk @done (15-02-04 23:24)
-     ☐ open file at selected hunk
+     ✔ open file at selected hunk @done (15-02-05 17:42)
    ✔ git: diff cached @done (15-02-04 23:25)
      ✔ unstage hunk @done (15-02-04 23:25)
    ✔ git: inline-diff current file @done (15-01-23 17:28)

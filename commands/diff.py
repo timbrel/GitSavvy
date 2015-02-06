@@ -1,4 +1,6 @@
 import os
+import re
+import bisect
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -134,3 +136,30 @@ class GgDiffStageOrResetHunkCommand(TextCommand, BaseCommand):
             if candidate > pt:
                 return candidate
         return None
+
+
+class GgDiffOpenFileAtHunkCommand(TextCommand, BaseCommand):
+
+    def run(self, edit):
+        # Filter out any cursors that are larger than a single point.
+        cursor_pts = tuple(cursor.a for cursor in self.view.sel() if cursor.a == cursor.b)
+
+        diff_starts = tuple(region.a for region in self.view.find_all("^diff"))
+        hunk_starts = tuple(region.a for region in self.view.find_all("^@@"))
+
+        for cursor_pt in cursor_pts:
+            diff_start = diff_starts[bisect.bisect(diff_starts, cursor_pt) - 1]
+            diff_start_line = self.view.substr(self.view.line(diff_start))
+            hunk_start = hunk_starts[bisect.bisect(hunk_starts, cursor_pt) - 1]
+            hunk_line = self.view.substr(self.view.line(hunk_start))
+
+            # Example: "diff --git a/src/js/main.spec.js b/src/js/main.spec.js" --> "src/js/main.spec.js"
+            filename = re.search(r" b/(.+?)$", diff_start_line).groups()[0]
+            # Example: "@@ -9,6 +9,7 @@" --> 9
+            lineno = int(re.search(r"^@@ \-\d+(,-?\d+)? \+(\d+)", hunk_line).groups()[1])
+
+            self.load_file_at_line(filename, lineno)
+
+    def load_file_at_line(self, filename, lineno):
+        full_path = os.path.join(self.repo_path, filename)
+        self.view.window().open_file("{file}:{row}:{col}".format(file=full_path, row=lineno, col=0), sublime.ENCODED_POSITION)
