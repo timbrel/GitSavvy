@@ -289,6 +289,15 @@
             { "key": "preceding_text", "operator": "regex_match", "operand": ".*[\\n ]$" }
         ]
     },
+    {
+        "keys": ["#"],
+        "command": "gg_show_github_issues",
+        "args": { "default_repo": false },
+        "context": [
+            { "key": "setting.git_gadget.get_long_text_view", "operator": "equal", "operand": true },
+            { "key": "preceding_text", "operator": "regex_match", "operand": ".*[\\n ][a-zA-Z\\-_0-9\\.]+/[a-zA-Z\\-_0-9\\.]+$" }
+        ]
+    },
 
     ///////////////
     // DIFF VIEW //

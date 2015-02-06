@@ -39,8 +39,8 @@ from .commit import (
     GgCommitCommand,
     GgCommitInitializeViewCommand,
     GgCommitViewDoCommitCommand,
-    GgShowGithubIssues,
-    GgInsertGithubNumber
+    GgShowGithubIssuesCommand,
+    GgInsertGithubNumberCommand
 )
 from .quick_commit import GgQuickCommitCommand
 from .log_graph import (

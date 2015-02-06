@@ -1,3 +1,5 @@
+import re
+
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
@@ -60,20 +62,33 @@ class GgCommitViewDoCommitCommand(TextCommand, BaseCommand):
         self.view.window().run_command("close_file")
 
 
-class GgShowGithubIssues(TextCommand, BaseCommand):
+class GgShowGithubIssuesCommand(TextCommand, BaseCommand):
 
-    def run(self, edit, other_repo=False):
-        sublime.set_timeout_async(lambda: self.run_async(other_repo))
+    def run(self, edit, default_repo=True):
+        if not default_repo:
+            first_cursor = self.view.sel()[0].begin()
+            text_before_cursor = self.view.substr(sublime.Region(0, first_cursor))
+            nondefault_repo = re.search(r"([a-zA-Z\-_0-9\.]+)/([a-zA-Z\-_0-9\.]+)$", text_before_cursor).groups()
+        else:
+            nondefault_repo = None
 
-    def run_async(self, other_repo):
+        sublime.set_timeout_async(lambda: self.run_async(nondefault_repo))
+
+    def run_async(self, nondefault_repo):
         default_remote_name, default_remote = self.get_remotes().popitem(last=False)
         remote = github.parse_remote(default_remote)
 
-        if not other_repo:
-            issues = github.get_issues(remote)
-        else:
-            # TODO
-            issues = []
+        if nondefault_repo:
+            owner, repo_name = nondefault_repo
+            remote = github.GitHubRepo(
+                url="",
+                fqdn=remote.fqdn,
+                owner=owner,
+                repo=repo_name,
+                token=remote.token
+            )
+
+        issues = github.get_issues(remote)
 
         if not issues:
             self.view.run_command("gg_insert_github_number", {"text": "#"})
@@ -91,7 +106,7 @@ class GgShowGithubIssues(TextCommand, BaseCommand):
             self.view.run_command("gg_insert_github_number", {"text": "#" + number})
 
 
-class GgInsertGithubNumber(TextCommand, BaseCommand):
+class GgInsertGithubNumberCommand(TextCommand, BaseCommand):
 
     def run(self, edit, text):
         text_len = len(text)
