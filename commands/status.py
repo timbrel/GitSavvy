@@ -135,6 +135,10 @@ class GsStatusRefreshCommand(TextCommand, BaseCommand):
             selections.add(pt)
 
     def get_contents(self):
+        """
+        Get the branch status and use that information to build the text to
+        display to the user.
+        """
         header = STATUS_HEADER_TEMPLATE.format(
             branch_status=self.get_branch_status(),
             repo_root=self.repo_path
@@ -181,6 +185,9 @@ class GsStatusRefreshCommand(TextCommand, BaseCommand):
         return contents, (unstaged_region, conflicts_region, untracked_region, staged_region)
 
     def get_stashes_contents(self):
+        """
+        Get a list of stashes to display to the user.
+        """
         stash_list = self.get_stashes()
         if not stash_list:
             return ""
@@ -191,6 +198,9 @@ class GsStatusRefreshCommand(TextCommand, BaseCommand):
 
     @staticmethod
     def sort_status_entries(file_status_list):
+        """
+        Take entries from `git status` and sort them into groups.
+        """
         staged, unstaged, untracked, conflicts = [], [], [], []
 
         for f in file_status_list:
@@ -223,6 +233,11 @@ class GsStatusFocusEventListener(EventListener):
 
 class GsStatusOpenFileCommand(TextCommand, BaseCommand):
 
+    """
+    For every file that is selected or under a cursor, open a that
+    file in a new view.
+    """
+
     def run(self, edit):
         lines = util.get_lines_from_regions(self.view, self.view.sel())
         file_paths = (line.strip() for line in lines if line[:4] == "    ")
@@ -232,6 +247,11 @@ class GsStatusOpenFileCommand(TextCommand, BaseCommand):
 
 
 class GsStatusDiffInlineCommand(TextCommand, BaseCommand):
+
+    """
+    For every file selected or under a cursor, open a new inline-diff view for
+    that file.  If the file is staged, open the inline-diff in cached mode.
+    """
 
     def run(self, edit):
         # Unstaged, Untracked, and Conflicts
@@ -280,6 +300,11 @@ class GsStatusDiffInlineCommand(TextCommand, BaseCommand):
 
 class GsStatusStageFileCommand(TextCommand, BaseCommand):
 
+    """
+    For every file that is selected or under a cursor, if that file is
+    unstaged, stage it.
+    """
+
     def run(self, edit):
         # Valid selections are in the Unstaged, Untracked, and Conflicts sections.
         valid_ranges = status_view_section_ranges[self.view.id()][:3]
@@ -300,6 +325,11 @@ class GsStatusStageFileCommand(TextCommand, BaseCommand):
 
 class GsStatusUnstageFileCommand(TextCommand, BaseCommand):
 
+    """
+    For every file that is selected or under a cursor, if that file is
+    staged, unstage it.
+    """
+
     def run(self, edit):
         # Valid selections are only in the Staged section.
         valid_ranges = (status_view_section_ranges[self.view.id()][3], )
@@ -318,6 +348,11 @@ class GsStatusUnstageFileCommand(TextCommand, BaseCommand):
 
 
 class GsStatusDiscardChangesToFileCommand(TextCommand, BaseCommand):
+
+    """
+    For every file that is selected or under a cursor, if that file is
+    unstaged, reset the file to HEAD.
+    """
 
     def run(self, edit):
         # Valid selections are in the Unstaged, Untracked, and Conflicts sections.
@@ -339,6 +374,11 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, BaseCommand):
 
 class GsStatusOpenFileOnRemoteCommand(TextCommand, BaseCommand):
 
+    """
+    For every file that is selected or under a cursor, open a new browser
+    window to that file on GitHub.
+    """
+
     def run(self, edit):
         lines = util.get_lines_from_regions(
             self.view,
@@ -355,12 +395,20 @@ class GsStatusOpenFileOnRemoteCommand(TextCommand, BaseCommand):
 
 class GsStatusStageAllFilesCommand(TextCommand, BaseCommand):
 
+    """
+    Stage all unstaged files.
+    """
+
     def run(self, edit):
         self.add_all_tracked_files()
         self.view.run_command("gs_status_refresh")
 
 
 class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, BaseCommand):
+
+    """
+    Stage all unstaged files, including new files.
+    """
 
     def run(self, edit):
         self.add_all_files()
@@ -369,12 +417,20 @@ class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, BaseCommand):
 
 class GsStatusUnstageAllFilesCommand(TextCommand, BaseCommand):
 
+    """
+    Unstage all staged changes.
+    """
+
     def run(self, edit):
         self.unstage_all_files()
         self.view.run_command("gs_status_refresh")
 
 
 class GsStatusDiscardAllChangesCommand(TextCommand, BaseCommand):
+
+    """
+    Reset all unstaged files to HEAD.
+    """
 
     def run(self, edit):
         self.discard_all_unstaged()
@@ -383,11 +439,20 @@ class GsStatusDiscardAllChangesCommand(TextCommand, BaseCommand):
 
 class GsStatusCommitCommand(TextCommand, BaseCommand):
 
+    """
+    Open a commit window.
+    """
+
     def run(self, edit):
         self.view.window().run_command("gs_commit", {"repo_path": self.repo_path})
 
 
 class GsStatusCommitUnstagedCommand(TextCommand, BaseCommand):
+
+    """
+    Open a commit window.  When the commit message is provided, stage all unstaged
+    changes and then do the commit.
+    """
 
     def run(self, edit):
         self.view.window().run_command(
@@ -398,6 +463,10 @@ class GsStatusCommitUnstagedCommand(TextCommand, BaseCommand):
 
 class GsStatusAmendCommand(TextCommand, BaseCommand):
 
+    """
+    Open a commit window to amend the previous commit.
+    """
+
     def run(self, edit):
         self.view.window().run_command(
             "gs_commit",
@@ -406,6 +475,11 @@ class GsStatusAmendCommand(TextCommand, BaseCommand):
 
 
 class GsStatusIgnoreFileCommand(TextCommand, BaseCommand):
+
+    """
+    For each file that is selected or under a cursor, add an
+    entry to the git root's `.gitignore` file.
+    """
 
     def run(self, edit):
         # Valid selections are only in the Staged section.
@@ -425,6 +499,12 @@ class GsStatusIgnoreFileCommand(TextCommand, BaseCommand):
 
 class GsStatusIgnorePatternCommand(TextCommand, BaseCommand):
 
+    """
+    For the first file that is selected or under a cursor (other
+    selections/cursors will be ignored), prompt the user for
+    a new pattern to `.gitignore`, prefilled with the filename.
+    """
+
     def run(self, edit):
         lines = util.get_lines_from_regions(
             self.view,
@@ -438,6 +518,10 @@ class GsStatusIgnorePatternCommand(TextCommand, BaseCommand):
 
 
 class GsStatusApplyStashCommand(TextCommand, BaseCommand):
+
+    """
+    Apply the selected stash.  The user can only apply one stash at a time.
+    """
 
     def run(self, edit):
         lines = util.get_lines_from_regions(
@@ -456,6 +540,10 @@ class GsStatusApplyStashCommand(TextCommand, BaseCommand):
 
 class GsStatusPopStashCommand(TextCommand, BaseCommand):
 
+    """
+    Pop the selected stash.  The user can only pop one stash at a time.
+    """
+
     def run(self, edit):
         lines = util.get_lines_from_regions(
             self.view,
@@ -472,6 +560,11 @@ class GsStatusPopStashCommand(TextCommand, BaseCommand):
 
 
 class GsStatusShowStashCommand(TextCommand, BaseCommand):
+
+    """
+    For each selected stash, open a new window to display the diff
+    for that stash.
+    """
 
     def run(self, edit):
         lines = util.get_lines_from_regions(
@@ -504,6 +597,10 @@ class GsStatusShowStashCommand(TextCommand, BaseCommand):
 
 class GsStatusCreateStashCommand(TextCommand, BaseCommand):
 
+    """
+    Create a new stash from the user's unstaged changes.
+    """
+
     def run(self, edit):
         self.view.window().show_input_panel("Description:", "", self.on_done, None, None)
 
@@ -514,6 +611,11 @@ class GsStatusCreateStashCommand(TextCommand, BaseCommand):
 
 class GsStatusCreateStashWithUntrackedCommand(TextCommand, BaseCommand):
 
+    """
+    Create a new stash from the user's unstaged changes, including
+    new files.
+    """
+
     def run(self, edit):
         self.view.window().show_input_panel("Description:", "", self.on_done, None, None)
 
@@ -523,6 +625,11 @@ class GsStatusCreateStashWithUntrackedCommand(TextCommand, BaseCommand):
 
 
 class GsStatusDiscardStashCommand(TextCommand, BaseCommand):
+
+    """
+    Drop the selected stash.  The user can only discard one stash
+    at a time.
+    """
 
     def run(self, edit):
         lines = util.get_lines_from_regions(

@@ -1,3 +1,9 @@
+"""
+Given the resource path to a Sublime theme file, generate a new
+theme and allow the consumer to augment this theme and apply it
+to a view.
+"""
+
 import os
 from xml.etree import ElementTree
 

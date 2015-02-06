@@ -8,6 +8,11 @@ NEW_BRANCH_PROMPT = "Branch name:"
 
 class GsCheckoutBranchCommand(WindowCommand, BaseCommand):
 
+    """
+    Display a panel of all local branches.  Change to the branch the
+    user selected.
+    """
+
     def run(self):
         stdout = self.git("branch", "--no-color", "--no-column")
         branch_entries = (branch.strip() for branch in stdout.split("\n") if branch)
@@ -31,6 +36,10 @@ class GsCheckoutBranchCommand(WindowCommand, BaseCommand):
 
 class GsCheckoutNewBranchCommand(WindowCommand, BaseCommand):
 
+    """
+    Prompt the user for a new branch name, create it, and check it out.
+    """
+
     def run(self):
         self.window.show_input_panel(NEW_BRANCH_PROMPT, "", self.on_done, None, None)
 
@@ -40,6 +49,12 @@ class GsCheckoutNewBranchCommand(WindowCommand, BaseCommand):
 
 
 class GsCheckoutRemoteBranchCommand(WindowCommand, BaseCommand):
+
+    """
+    Display a panel of all remote branches.  When the user makes a selection,
+    create a corresponding local branch, and set it to the HEAD of the
+    selected branch.
+    """
 
     def run(self):
         self.remote_branches = self.get_remote_branches()

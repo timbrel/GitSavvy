@@ -11,6 +11,10 @@ END_PUSH_MESSAGE = "Push complete."
 
 class GsPushCommand(WindowCommand, BaseCommand):
 
+    """
+    Perform a normal `git push`.
+    """
+
     def run(self):
         sublime.set_timeout_async(lambda: self.do_push())
         self.remotes = list(self.get_remotes().keys())
@@ -25,7 +29,16 @@ class GsPushCommand(WindowCommand, BaseCommand):
 
 class GsPushToBranchCommand(WindowCommand, BaseCommand):
 
+    """
+    Through a series of panels, allow the user to push to a specific remote branch.
+    """
+
     def run(self):
+        """
+        Display a panel of all remotes defined for the repo, then proceed to
+        `on_select_remote`.  If no remotes are defined, notify the user and
+        proceed no further.
+        """
         self.remotes = list(self.get_remotes().keys())
         self.remote_branches = self.get_remote_branches()
 
@@ -35,6 +48,10 @@ class GsPushToBranchCommand(WindowCommand, BaseCommand):
             self.window.show_quick_panel(self.remotes, self.on_select_remote, sublime.MONOSPACE_FONT)
 
     def on_select_remote(self, remote_index):
+        """
+        After the user selects a remote, display a panel of branches that are
+        present on that remote, then proceed to `on_select_branch`.
+        """
         # If the user pressed `esc` or otherwise cancelled.
         if remote_index == -1:
             return
@@ -66,6 +83,10 @@ class GsPushToBranchCommand(WindowCommand, BaseCommand):
         sublime.set_timeout(deferred_panel)
 
     def on_select_branch(self, branch_index):
+        """
+        Determine the actual branch name of the user's selection, and proceed
+        to `do_push`.
+        """
         # If the user pressed `esc` or otherwise cancelled.
         if branch_index == -1:
             return
@@ -74,6 +95,9 @@ class GsPushToBranchCommand(WindowCommand, BaseCommand):
         sublime.set_timeout_async(lambda: self.do_push(self.selected_remote, selected_branch))
 
     def do_push(self, remote, branch):
+        """
+        Perform `git push remote branch`.
+        """
         sublime.status_message(START_PUSH_MESSAGE)
         self.push(remote, branch)
         sublime.status_message(END_PUSH_MESSAGE)

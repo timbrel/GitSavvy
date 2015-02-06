@@ -1,3 +1,7 @@
+"""
+Logging functionality that is intended to be consumed by the user.
+"""
+
 import sublime
 from sublime_plugin import TextCommand
 
@@ -11,6 +15,11 @@ def panel(*msgs):
 
 
 class GsDisplayPanelCommand(TextCommand):
+
+    """
+    Given a `msg` string, open a transient text panel at the bottom of the
+    active window, and display the `msg` contents there.
+    """
 
     def run(self, edit, msg=""):
         panel = self.view.window().create_output_panel(PANEL_NAME)

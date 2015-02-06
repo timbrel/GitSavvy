@@ -1,3 +1,7 @@
+"""
+Sublime commands and helper methods related to development and debugging.
+"""
+
 import sys
 import imp
 
@@ -6,6 +10,11 @@ from sublime_plugin import WindowCommand
 
 
 class GsReloadModulesDebug(WindowCommand):
+
+    """
+    When triggered, reload all GitSavvy submodules twice, so as not
+    to worry about load order.
+    """
 
     def run(self):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")

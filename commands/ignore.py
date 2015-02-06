@@ -11,6 +11,11 @@ IGNORE_PATTERN_PROMPT = "Enter pattern to ignore:"
 
 class GsIgnoreCommand(WindowCommand, BaseCommand):
 
+    """
+    Add a `.gitignore` entry for the provided relative path or pattern
+    at the Git repo's root.
+    """
+
     def run(self, file_path):
         if not file_path:
             file_path = self.file_path
@@ -20,6 +25,11 @@ class GsIgnoreCommand(WindowCommand, BaseCommand):
 
 
 class GsIgnorePatternCommand(WindowCommand, BaseCommand):
+
+    """
+    Prompt the user for an ignore pattern and, once entered, create
+    a corresponding `.gitignore` entry at the Git repo's root.
+    """
 
     def run(self, pre_filled=None):
         self.window.show_input_panel(IGNORE_PATTERN_PROMPT, pre_filled or "", self.on_done, None, None)

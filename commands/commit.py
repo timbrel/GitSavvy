@@ -18,6 +18,12 @@ COMMIT_TITLE = "COMMIT"
 
 class GsCommitCommand(WindowCommand, BaseCommand):
 
+    """
+    Display a transient window to capture the user's desired commit message.
+    If the user is amending the previous commit, pre-populate the commit
+    message area with the previous commit message.
+    """
+
     def run(self, repo_path=None, include_unstaged=False, amend=False):
         repo_path = repo_path or self.repo_path
         view = self.window.new_file()
@@ -32,6 +38,11 @@ class GsCommitCommand(WindowCommand, BaseCommand):
 
 class GsCommitInitializeViewCommand(TextCommand, BaseCommand):
 
+    """
+    Fill the view with the commit view help message, and optionally
+    the previous commit message if amending.
+    """
+
     def run(self, edit):
         if self.view.settings().get("git_savvy.commit_view.amend"):
             last_commit_message = self.git("log", "-1", "--pretty=%B")
@@ -45,6 +56,11 @@ class GsCommitInitializeViewCommand(TextCommand, BaseCommand):
 
 
 class GsCommitViewDoCommitCommand(TextCommand, BaseCommand):
+
+    """
+    Take the text of the current view (minus the help message text) and
+    make a commit using the text for the commit message.
+    """
 
     def run(self, edit):
         view_text = self.view.substr(sublime.Region(0, self.view.size()))
@@ -63,6 +79,17 @@ class GsCommitViewDoCommitCommand(TextCommand, BaseCommand):
 
 
 class GsShowGithubIssuesCommand(TextCommand, BaseCommand):
+
+    """
+    Display a panel of GitHub issues to either:
+
+        1) the remote repo, if default_repo is True, or
+        2) another repo on the same remote, if default_repo
+           is False.
+
+    After the user makes their selection, insert the issue
+    number at the current cursor position.
+    """
 
     def run(self, edit, default_repo=True):
         if not default_repo:
@@ -108,6 +135,10 @@ class GsShowGithubIssuesCommand(TextCommand, BaseCommand):
 
 class GsInsertGhTextCommand(TextCommand, BaseCommand):
 
+    """
+    Insert the provided text at the current cursor position(s).
+    """
+
     def run(self, edit, text):
         text_len = len(text)
         selected_ranges = []
@@ -121,6 +152,13 @@ class GsInsertGhTextCommand(TextCommand, BaseCommand):
 
 
 class GsShowGithubContributorsCommand(TextCommand, BaseCommand):
+
+    """
+    Query github for a list of people that have contributed to the GitHub project
+    setup as a remote for the current Git project, and display that list the the
+    user.  When a selection is made, insert that selection at the current cursor
+    position.
+    """
 
     def run(self, edit):
         sublime.set_timeout_async(lambda: self.run_async())

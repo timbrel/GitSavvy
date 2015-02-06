@@ -9,6 +9,13 @@ from .base_command import BaseCommand
 
 class GsOpenFileOnRemoteCommand(WindowCommand, BaseCommand):
 
+    """
+    Open a new browser window to the web-version of the currently opened file.
+    If `preselect` is `True`, include the selected lines in the request.
+
+    At present, this only supports github.com and GitHub enterprise.
+    """
+
     def run(self, preselect=False):
         fpath = os.path.relpath(self.file_path, self.repo_path)
         start_line = None

@@ -15,12 +15,27 @@ CONFIRM_REINITIALIZE = ("It looks like Git is already initialized here.  "
 
 class GsOfferInit(WindowCommand):
 
+    """
+    If a git command fails indicating no git repo was found, this
+    command will ask the user whether they'd like to init a new repo.
+    """
+
     def run(self):
         if sublime.ok_cancel_dialog(NO_REPO_MESSAGE):
             self.window.run_command("gs_init")
 
 
 class GsInit(WindowCommand, BaseCommand):
+
+    """
+    If the active Sublime window has folders added to the project (or if Sublime was
+    opened from the terminal with something like `subl .`), initialize a new Git repo
+    at that location.  If that directory cannot be determined, use the open file's
+    directory.  If there is no open file, prompt the user for the directory to use.
+
+    If the selected directory has previosly been initialized with Git, prompt the user
+    to confirm a re-initialize before proceeding.
+    """
 
     def run(self):
         open_folders = self.window.folders()

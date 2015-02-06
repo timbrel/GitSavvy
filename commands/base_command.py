@@ -1,3 +1,11 @@
+"""
+Define a base command class that:
+  1) provides a consistent interface with `git`,
+  2) implements common git operations in one place, and
+  3) tracks file- and repo- specific data the is necessary
+     for Git operations.
+"""
+
 import os
 import re
 import subprocess

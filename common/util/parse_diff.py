@@ -1,3 +1,7 @@
+"""
+Parse and process output from `git diff` command.
+"""
+
 from collections import namedtuple
 from itertools import islice
 import re

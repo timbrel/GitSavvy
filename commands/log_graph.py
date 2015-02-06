@@ -8,6 +8,11 @@ LOG_GRAPH_TITLE = "GRAPH"
 
 class GsLogGraphCommand(WindowCommand, BaseCommand):
 
+    """
+    Open a new window displaying an ASCII-graphic representation
+    of the repo's branch relationships.
+    """
+
     def run(self):
         repo_path = self.repo_path
         view = self.window.new_file()

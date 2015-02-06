@@ -9,6 +9,11 @@ ALL_REMOTES = "All remotes."
 
 class GsFetchCommand(WindowCommand, BaseCommand):
 
+    """
+    Display a panel of all git remotes for active repository and
+    do a `git fetch` asynchronously.
+    """
+
     def run(self):
         self.remotes = list(self.get_remotes().keys())
         if not self.remotes:

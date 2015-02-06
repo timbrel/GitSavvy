@@ -1,3 +1,7 @@
+"""
+A simple HTTP interface for making GET, PUT and POST requests.
+"""
+
 import http.client
 import json
 from base64 import b64encode
@@ -7,7 +11,12 @@ from collections import namedtuple
 Response = namedtuple("Response", ("payload", "headers", "status", "is_json"))
 
 
-def request(verb, host, port, path, payload=None, timeout=10, https=False, headers=None, auth=None):
+def request(verb, host, port, path, payload=None, https=False, headers=None, auth=None):
+    """
+    Make an HTTP(S) request with the provided HTTP verb, host FQDN, port number, path,
+    payload, protocol, headers, and auth information.  Return a response object with
+    payload, headers, JSON flag, and HTTP status number.
+    """
     if not headers:
         headers = {}
     headers["User-Agent"] = "GitSavvy Sublime Plug-in"

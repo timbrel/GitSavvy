@@ -1,3 +1,8 @@
+"""
+Implements a special view to visualize and stage pieces of a project's
+current diff.
+"""
+
 import os
 import re
 import bisect
@@ -14,6 +19,11 @@ DIFF_CACHED_TITLE = "DIFF (cached): {}"
 
 class GsDiffCommand(WindowCommand, BaseCommand):
 
+    """
+    Create a new view to display the project's diff.  If `in_cached_mode` is set,
+    display a diff of the Git index.
+    """
+
     def run(self, in_cached_mode=False):
         repo_path = self.repo_path
         diff_view = self.get_read_only_view("diff")
@@ -28,6 +38,10 @@ class GsDiffCommand(WindowCommand, BaseCommand):
 
 
 class GsDiffRefreshCommand(TextCommand, BaseCommand):
+
+    """
+    Refresh the diff view with the latest repo state.
+    """
 
     def run(self, edit, cursors=None):
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
@@ -55,6 +69,12 @@ class GsDiffFocusEventListener(EventListener):
 
 
 class GsDiffStageOrResetHunkCommand(TextCommand, BaseCommand):
+
+    """
+    Depending on whether the user is in cached mode an what action
+    the user took, either 1) stage, 2) unstage, or 3) reset the
+    hunk under the user's cursor(s).
+    """
 
     def run(self, edit, reset=False):
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
@@ -107,6 +127,10 @@ class GsDiffStageOrResetHunkCommand(TextCommand, BaseCommand):
         self.view.run_command("gs_diff_refresh")
 
     def get_hunk_diff(self, pt):
+        """
+        Given a cursor position, find and return the diff header and the
+        diff for the selected hunk/file.
+        """
         header_start = self.diff_starts[bisect.bisect(self.diff_starts, pt) - 1]
         header_end = self.diff_header_ends[bisect.bisect(self.diff_header_ends, pt)]
 
@@ -124,6 +148,11 @@ class GsDiffStageOrResetHunkCommand(TextCommand, BaseCommand):
 
 
 class GsDiffOpenFileAtHunkCommand(TextCommand, BaseCommand):
+
+    """
+    For each cursor in the view, identify the hunk in which the cursor lies,
+    and open the file at that hunk in a separate view.
+    """
 
     def run(self, edit):
         # Filter out any cursors that are larger than a single point.
