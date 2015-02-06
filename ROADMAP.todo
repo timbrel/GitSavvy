@@ -2,6 +2,7 @@ Future:
 
   New features:
     ☐ github: issues
+      https://developer.github.com/v3/issues/
       ☐ list all issues for remote repository in special view
       ☐ open new issue
       ☐ close issue
@@ -9,6 +10,7 @@ Future:
       ☐ add comment
       ☐ view issue on github
     ☐ github: pull requests
+      https://developer.github.com/v3/pulls/
       ☐ list all open pull requests in special view
       ☐ view details for pull requests, including comments
       ☐ view pull request on github
