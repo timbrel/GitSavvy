@@ -41,6 +41,9 @@ def fuzzy(event, base=None):
 
         return "over {} hours ago".format(delta.seconds // ONE_HOUR)
 
+    elif delta.days < 2:
+        return "over a day ago"
+
     elif delta.days < 7:
         return "over {} days ago".format(delta.days)
 
