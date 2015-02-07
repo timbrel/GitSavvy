@@ -66,3 +66,7 @@ from .diff import (
     GsDiffStageOrResetHunkCommand,
     GsDiffOpenFileAtHunkCommand
 )
+from .blame import (
+    GsBlameCommand,
+    GsBlameInitializeViewCommand
+)

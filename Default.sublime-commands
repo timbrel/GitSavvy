@@ -91,6 +91,10 @@
         "args": { "in_cached_mode": true }
     },
     {
+        "caption": "git: blame current file",
+        "command": "gs_blame"
+    },
+    {
         "caption": "GitSavvy: reload modules (debug)",
         "command": "gs_reload_modules_debug"
     }

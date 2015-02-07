@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>name</key>
+	<string>GitSavvy Blame</string>
+	<key>patterns</key>
+	<array>
+		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>comment.block.git-savvy.commit-info</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>comment.block.git-savvy.splitter</string>
+				</dict>
+				<key>3</key>
+				<dict>
+					<key>name</key>
+					<string>keyword.other.git-savvy.line-number</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>line</string>
+			<key>match</key>
+			<string>^(.{40}) (\|) (( |\d){1,4})</string>
+			<key>name</key>
+			<string>meta.git-savvy.blame-line</string>
+		</dict>
+		<dict>
+			<key>comment</key>
+			<string>separator</string>
+			<key>match</key>
+			<string>^\-{40} \| \-+$</string>
+			<key>name</key>
+			<string>comment.block.git-savvy.separator</string>
+		</dict>
+	</array>
+	<key>scopeName</key>
+	<string>git-savvy.status</string>
+	<key>uuid</key>
+	<string>56ea09df-2601-4d20-bb8d-b6834db991c4</string>
+</dict>
+</plist>

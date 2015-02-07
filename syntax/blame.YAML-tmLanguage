@@ -1,0 +1,16 @@
+# [PackageDev] target_format: plist, ext: tmLanguage
+name: GitSavvy Blame
+scopeName: git-savvy.status
+uuid: 56ea09df-2601-4d20-bb8d-b6834db991c4
+
+patterns:
+- comment: line
+  name: meta.git-savvy.blame-line
+  match: ^(.{40}) (\|) (( |\d){1,4})
+  captures:
+    '1': { name: comment.block.git-savvy.commit-info }
+    '2': { name: comment.block.git-savvy.splitter }
+    '3': { name: keyword.other.git-savvy.line-number }
+- comment: separator
+  name: comment.block.git-savvy.separator
+  match: ^\-{40} \| \-+$

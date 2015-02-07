@@ -92,6 +92,8 @@ v1.0.0:
 
   Special views:
    ☐ git: blame
+     ✔ show blame view with commit info on the left and lines on the right @done (15-02-07 02:57)
+     ☐ open blame view to same line number as originating view
    ☐ git: graph
      ✔ display branches @done (15-01-29 22:53)
      ☐ syntax-highlighted
