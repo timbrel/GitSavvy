@@ -333,6 +333,18 @@
         "context": [
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
         ]
+    },
+
+    ////////////////
+    // BLAME VIEW //
+    ////////////////
+
+    {
+        "keys": ["super+enter"],
+        "command": "gs_blame_open_commit",
+        "context": [
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
     }
 
 ]

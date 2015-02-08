@@ -1,0 +1,18 @@
+# [PackageDev] target_format: plist, ext: tmLanguage
+name: GitSavvy Commit
+scopeName: git-savvy.commit
+uuid: 0d4c19fb-b197-4d90-806e-7212e542c86b
+
+patterns:
+- comment: commit header
+  name: string.other.quoted-or-unquoted.git-savvy.commit-info
+  match: ^commit 
+- comment: author and date info
+  name: string.other.quoted-or-unquoted.git-savvy.author-and-date
+  match: ^((Author:)|(Date:))
+- comment: diff section
+  name: meta.git-savvy.commit-diff
+  begin: ^(?=diff)
+  end: ^$
+  patterns:
+  - include: source.diff

@@ -1,3 +1,5 @@
+import bisect
+
 import sublime
 
 
@@ -49,3 +51,15 @@ def get_lines_from_regions(view, regions, valid_ranges=None):
                      full_line_regions)
 
     return [line for region in valid_regions for line in view.substr(region).split("\n")]
+
+
+def get_instance_before_pt(view, pt, pattern):
+    instances = tuple(region.a for region in view.find_all(pattern))
+    instance_index = bisect.bisect(instances, pt) - 1
+    return instances[instance_index] if instance_index >= 0 else None
+
+
+def get_instance_after_pt(view, pt, pattern):
+    instances = tuple(region.a for region in view.find_all(pattern))
+    instance_index = bisect.bisect(instances, pt)
+    return instances[instance_index] if instance_index < len(instances) else None

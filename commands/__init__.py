@@ -68,5 +68,7 @@ from .diff import (
 )
 from .blame import (
     GsBlameCommand,
-    GsBlameInitializeViewCommand
+    GsBlameInitializeViewCommand,
+    GsBlameOpenCommitCommand
 )
+from .show_commit import GsShowCommitCommand, GsShowCommitInitializeView

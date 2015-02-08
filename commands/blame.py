@@ -159,3 +159,24 @@ class GsBlameInitializeViewCommand(TextCommand, BaseCommand):
                     right=right)
 
             yield output
+
+
+class GsBlameOpenCommitCommand(TextCommand):
+
+    @util.view.single_cursor_pt
+    def run(self, edit, cursor_pt):
+        hunk_start = util.view.get_instance_before_pt(self.view, cursor_pt, r"^\-+ | \-+")
+        if hunk_start is None:
+            short_hash_row = 1
+        else:
+            hunk_start_row, _ = self.view.rowcol(hunk_start)
+            short_hash_row = hunk_start_row + 2
+
+        short_hash_pos = self.view.text_point(short_hash_row, 0)
+        short_hash = self.view.substr(sublime.Region(short_hash_pos, short_hash_pos + 12))
+
+        # Uncommitted blocks.
+        if not short_hash.strip():
+            return
+
+        self.view.window().run_command("gs_show_commit", {"commit_hash": short_hash})
