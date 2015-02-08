@@ -48,7 +48,7 @@ class GsInlineDiffCommand(WindowCommand, BaseCommand):
         diff_view.set_name(title + os.path.basename(settings["git_savvy.file_path"]))
 
         diff_view.set_syntax_file(syntax_file)
-        file_ext = util.get_file_extension(os.path.basename(settings["git_savvy.file_path"]))
+        file_ext = util.file.get_file_extension(os.path.basename(settings["git_savvy.file_path"]))
         self.augment_color_scheme(diff_view, file_ext)
 
         diff_view.settings().set("git_savvy.inline_diff.cached", cached)

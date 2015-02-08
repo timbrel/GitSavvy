@@ -239,7 +239,7 @@ class GsStatusOpenFileCommand(TextCommand, BaseCommand):
     """
 
     def run(self, edit):
-        lines = util.get_lines_from_regions(self.view, self.view.sel())
+        lines = util.view.get_lines_from_regions(self.view, self.view.sel())
         file_paths = (line.strip() for line in lines if line[:4] == "    ")
         abs_paths = (os.path.join(self.repo_path, file_path) for file_path in file_paths)
         for path in abs_paths:
@@ -256,7 +256,7 @@ class GsStatusDiffInlineCommand(TextCommand, BaseCommand):
     def run(self, edit):
         # Unstaged, Untracked, and Conflicts
         non_cached_sections = status_view_section_ranges[self.view.id()][:3]
-        non_cached_lines = util.get_lines_from_regions(
+        non_cached_lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
             valid_ranges=non_cached_sections
@@ -265,7 +265,7 @@ class GsStatusDiffInlineCommand(TextCommand, BaseCommand):
 
         # Staged
         cached_sections = status_view_section_ranges[self.view.id()][3:]
-        cached_lines = util.get_lines_from_regions(
+        cached_lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
             valid_ranges=cached_sections
@@ -277,7 +277,7 @@ class GsStatusDiffInlineCommand(TextCommand, BaseCommand):
 
     def load_inline_diff_windows(self, non_cached_files, cached_files):
         for fpath in non_cached_files:
-            syntax = util.get_syntax_for_file(fpath)
+            syntax = util.file.get_syntax_for_file(fpath)
             settings = {
                 "git_savvy.file_path": fpath,
                 "git_savvy.repo_path": self.repo_path,
@@ -286,7 +286,7 @@ class GsStatusDiffInlineCommand(TextCommand, BaseCommand):
             self.view.window().run_command("gs_inline_diff", {"settings": settings})
 
         for fpath in cached_files:
-            syntax = util.get_syntax_for_file(fpath)
+            syntax = util.file.get_syntax_for_file(fpath)
             settings = {
                 "git_savvy.file_path": fpath,
                 "git_savvy.repo_path": self.repo_path,
@@ -309,7 +309,7 @@ class GsStatusStageFileCommand(TextCommand, BaseCommand):
         # Valid selections are in the Unstaged, Untracked, and Conflicts sections.
         valid_ranges = status_view_section_ranges[self.view.id()][:3]
 
-        lines = util.get_lines_from_regions(
+        lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
             valid_ranges=valid_ranges
@@ -333,7 +333,7 @@ class GsStatusUnstageFileCommand(TextCommand, BaseCommand):
     def run(self, edit):
         # Valid selections are only in the Staged section.
         valid_ranges = (status_view_section_ranges[self.view.id()][3], )
-        lines = util.get_lines_from_regions(
+        lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
             valid_ranges=valid_ranges
@@ -358,7 +358,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, BaseCommand):
         # Valid selections are in the Unstaged, Untracked, and Conflicts sections.
         valid_ranges = status_view_section_ranges[self.view.id()][:3]
 
-        lines = util.get_lines_from_regions(
+        lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
             valid_ranges=valid_ranges
@@ -380,7 +380,7 @@ class GsStatusOpenFileOnRemoteCommand(TextCommand, BaseCommand):
     """
 
     def run(self, edit):
-        lines = util.get_lines_from_regions(
+        lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
             valid_ranges=status_view_section_ranges[self.view.id()]
@@ -483,7 +483,7 @@ class GsStatusIgnoreFileCommand(TextCommand, BaseCommand):
 
     def run(self, edit):
         # Valid selections are only in the Staged section.
-        lines = util.get_lines_from_regions(
+        lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
             valid_ranges=status_view_section_ranges[self.view.id()]
@@ -506,7 +506,7 @@ class GsStatusIgnorePatternCommand(TextCommand, BaseCommand):
     """
 
     def run(self, edit):
-        lines = util.get_lines_from_regions(
+        lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
             valid_ranges=status_view_section_ranges[self.view.id()]
@@ -524,7 +524,7 @@ class GsStatusApplyStashCommand(TextCommand, BaseCommand):
     """
 
     def run(self, edit):
-        lines = util.get_lines_from_regions(
+        lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel()
         )
@@ -545,7 +545,7 @@ class GsStatusPopStashCommand(TextCommand, BaseCommand):
     """
 
     def run(self, edit):
-        lines = util.get_lines_from_regions(
+        lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel()
         )
@@ -567,7 +567,7 @@ class GsStatusShowStashCommand(TextCommand, BaseCommand):
     """
 
     def run(self, edit):
-        lines = util.get_lines_from_regions(
+        lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel()
         )
@@ -632,7 +632,7 @@ class GsStatusDiscardStashCommand(TextCommand, BaseCommand):
     """
 
     def run(self, edit):
-        lines = util.get_lines_from_regions(
+        lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel()
         )

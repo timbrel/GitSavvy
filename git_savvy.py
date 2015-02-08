@@ -5,7 +5,7 @@ if sys.version_info[0] == 2:
 else:
     def plugin_loaded():
         from .common import util
-        util.determine_syntax_files()
+        util.file.determine_syntax_files()
 
     from .common.log import GsDisplayPanelCommand
     from .common.debug import GsReloadModulesDebug
