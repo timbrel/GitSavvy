@@ -2,6 +2,7 @@ import sublime
 from plistlib import readPlistFromBytes
 
 from .parse_diff import parse_diff
+from . import dates
 
 syntax_file_map = {}
 

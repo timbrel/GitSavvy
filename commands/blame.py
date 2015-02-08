@@ -1,12 +1,11 @@
 import re
 from collections import namedtuple, defaultdict
-from functools import lru_cache
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
 from .base_command import BaseCommand
-from ..common.util import dates
+from ..common import util
 
 
 BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))
@@ -123,8 +122,6 @@ class GsBlameInitializeViewCommand(TextCommand, BaseCommand):
             current_hunk.append(line)
         yield current_hunk
 
-    cache = {}
-
     @staticmethod
     def short_commit_info(commit):
         if commit["long_hash"] == NOT_COMMITED_HASH:
@@ -134,7 +131,7 @@ class GsBlameInitializeViewCommand(TextCommand, BaseCommand):
         if len(summary) > 40:
             summary = summary[:36] + " ..."
         author_info = commit["author"] + " " + commit["author-mail"]
-        time_stamp = dates.fuzzy(commit["author-time"]) if commit["author-time"] else ""
+        time_stamp = util.dates.fuzzy(commit["author-time"]) if commit["author-time"] else ""
 
         return (summary, commit["short_hash"], author_info, time_stamp)
 
