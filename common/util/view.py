@@ -12,6 +12,7 @@ def single_cursor_pt(run):
             return
 
         return run(self, edit, cursors[0].a)
+    return decorated_run
 
 
 ####################
