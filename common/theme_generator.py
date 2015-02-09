@@ -42,11 +42,7 @@ class ThemeGenerator():
     """
 
     def __init__(self, original_color_scheme):
-        original_path = os.path.abspath(sublime.packages_path() + "/../" + original_color_scheme)
-
-        with open(original_path, "rt", encoding="utf-8") as in_f:
-            color_scheme_xml = in_f.read()
-
+        color_scheme_xml = sublime.load_resource(original_color_scheme)
         self.plist = ElementTree.XML(color_scheme_xml)
         self.styles = self.plist.find("./dict/array")
 
