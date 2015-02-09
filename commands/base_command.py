@@ -133,12 +133,18 @@ class BaseCommand():
             raise GitSavvyError(msg)
 
         try:
+            startupinfo = None
+            if os.name == 'nt':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
             p = subprocess.Popen(command,
                                  stdin=subprocess.PIPE,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
                                  cwd=working_dir or self.repo_path,
-                                 env=os.environ)
+                                 env=os.environ,
+                                 startupinfo=startupinfo)
             stdout, stderr = p.communicate(stdin.encode(encoding="UTF-8") if stdin else None)
             stdout, stderr = stdout.decode(), stderr.decode()
 
