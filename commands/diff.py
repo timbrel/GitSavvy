@@ -132,7 +132,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, BaseCommand):
         diff for the selected hunk/file.
         """
         header_start = self.diff_starts[bisect.bisect(self.diff_starts, pt) - 1]
-        header_end = self.diff_header_ends[bisect.bisect(self.diff_header_ends, pt)]
+        header_end = self.diff_header_ends[bisect.bisect(self.diff_header_ends, pt) - 1]
 
         if not header_end or header_end < header_start:
             # The cursor is not within a hunk.
