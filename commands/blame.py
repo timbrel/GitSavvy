@@ -16,7 +16,8 @@ BLAME_TITLE = "BLAME: {}"
 
 class GsBlameCommand(WindowCommand, BaseCommand):
 
-    def run(self, file_path=None, repo_path=None):
+    @util.view.single_cursor_coords
+    def run(self, coords, file_path=None, repo_path=None):
         repo_path = repo_path or self.repo_path
         file_path = file_path or self.file_path
         view = self.window.new_file()
@@ -29,17 +30,20 @@ class GsBlameCommand(WindowCommand, BaseCommand):
         view.settings().set('indent_guide_options', [])
         view.set_name(BLAME_TITLE.format(self.get_rel_path(file_path)))
         view.set_scratch(True)
-        view.run_command("gs_blame_initialize_view")
+        view.run_command("gs_blame_initialize_view", {"coords": coords})
 
 
 class GsBlameInitializeViewCommand(TextCommand, BaseCommand):
 
-    def run(self, edit):
+    def run(self, edit, coords=None):
         content = self.get_content()
         self.view.sel().clear()
         self.view.set_read_only(False)
         self.view.replace(edit, sublime.Region(0, self.view.size()), content)
         self.view.set_read_only(True)
+
+        if coords is not None:
+            self.scroll_to(coords)
 
     def get_content(self):
         blame_porcelain = self.git("blame", "-p", self.file_path)
@@ -160,11 +164,19 @@ class GsBlameInitializeViewCommand(TextCommand, BaseCommand):
 
             yield output
 
+    def scroll_to(self, coords):
+        pattern = r".{{40}} \| {lineno: >4} ".format(lineno=coords[0] + 1)
+        corresponding_region = self.view.find(pattern, 0)
+        blame_view_pt = corresponding_region.b
+
+        self.view.sel().add(sublime.Region(blame_view_pt, blame_view_pt))
+        sublime.set_timeout_async(lambda: self.view.show_at_center(blame_view_pt), 0)
+
 
 class GsBlameOpenCommitCommand(TextCommand):
 
     @util.view.single_cursor_pt
-    def run(self, edit, cursor_pt):
+    def run(self, cursor_pt, edit):
         hunk_start = util.view.get_instance_before_pt(self.view, cursor_pt, r"^\-+ | \-+")
         if hunk_start is None:
             short_hash_row = 1

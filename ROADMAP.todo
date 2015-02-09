@@ -91,9 +91,9 @@ v1.0.0:
    ☐ git: quick log
 
   Special views:
-   ☐ git: blame
+   ✔ git: blame @done (15-02-09 01:12)
      ✔ show blame view with commit info on the left and lines on the right @done (15-02-07 02:57)
-     ☐ open blame view to same line number as originating view
+     ✔ open blame view to same line number as originating view @done (15-02-09 01:12)
      ✔ open commit view from hunk in blame view @done (15-02-08 01:27)
    ☐ git: graph
      ✔ display branches @done (15-01-29 22:53)

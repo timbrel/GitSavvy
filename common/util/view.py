@@ -8,12 +8,26 @@ import sublime
 ##############
 
 def single_cursor_pt(run):
-    def decorated_run(self, edit):
-        cursors = self.view.sel()
+    def decorated_run(self, *args, **kwargs):
+        view = self.view if hasattr(self, "view") else self.window.active_view()
+        cursors = view.sel()
         if not cursors:
             return
 
-        return run(self, edit, cursors[0].a)
+        return run(self, cursors[0].a, *args, **kwargs)
+    return decorated_run
+
+
+def single_cursor_coords(run):
+    def decorated_run(self, *args, **kwargs):
+        view = self.view if hasattr(self, "view") else self.window.active_view()
+        cursors = view.sel()
+        if not cursors:
+            return
+        coords = view.rowcol(cursors[0].a)
+
+        return run(self, coords, *args, **kwargs)
+
     return decorated_run
 
 
