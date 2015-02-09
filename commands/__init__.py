@@ -43,7 +43,7 @@ from .commit import (
     GsInsertGhTextCommand,
     GsShowGithubContributorsCommand
 )
-from .quick_commit import GsQuickCommitCommand
+from .quick_commit import GsQuickCommitCommand, GsQuickStageCurrentFileCommitCommand
 from .log_graph import (
     GsLogGraphCommand,
     GsLogGraphInitializeCommand

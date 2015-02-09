@@ -71,9 +71,8 @@ v1.0.0:
    ✔ git: init @done (15-01-30 00:41)
    ✔ git: open current file on github (based on remotes) @done (15-01-28 22:29)
      ✔ pre-select (in GitHub URL) any lines that are selected in sublime @done (15-01-29 02:04)
-   ☐ git: quick add/commit current file
+   ✔ git: quick add/commit current file @done (15-02-09 01:41)
    ☐ git: quick log current file
-   ☐ git: view file at HEAD
 
   Panel-only, repo-specific:
    ✔ git: amend previous commit @done (15-01-27 23:57)
