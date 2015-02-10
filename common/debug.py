@@ -25,3 +25,5 @@ class GsReloadModulesDebug(WindowCommand):
                     if name[0:8] == "GitSavvy":
                         print("GitSavvy: reloading submodule", name)
                         imp.reload(module)
+
+            sublime.sublime_api.plugin_host_ready()
