@@ -101,5 +101,13 @@
     {
         "caption": "GitSavvy: reload modules (debug)",
         "command": "gs_reload_modules_debug"
+    },
+    {
+        "caption": "git: log",
+        "command": "gs_log"
+    },
+    {
+        "caption": "git: log current file",
+        "command": "gs_log_current_file"
     }
 ]

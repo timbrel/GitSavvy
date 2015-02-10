@@ -72,7 +72,7 @@ v1.0.0:
    ✔ git: open current file on github (based on remotes) @done (15-01-28 22:29)
      ✔ pre-select (in GitHub URL) any lines that are selected in sublime @done (15-01-29 02:04)
    ✔ git: quick add/commit current file @done (15-02-09 01:41)
-   ☐ git: quick log current file
+   ✔ git: quick log current file @done (15-02-10 02:24)
 
   Panel-only, repo-specific:
    ✔ git: amend previous commit @done (15-01-27 23:57)
@@ -82,13 +82,13 @@ v1.0.0:
    ✔ git: commit @done (15-01-27 23:38)
    ✔ git: commit including unstaged files @done (15-01-27 23:47)
    ✔ git: fetch @done (15-01-29 00:35)
-   ☐ git: log
+   ✔ git: log @done (15-02-10 02:24)
    ☐ git: merge
    ✔ git: pull @done (15-01-29 01:27)
    ✔ git: push @done (15-01-29 22:53)
    ✔ git: quick commit @done (15-01-29 21:03)
    ✔ git: quick stage @done (15-01-19 00:27)
-   ☐ git: quick log
+   ✔ git: quick log @done (15-02-10 02:24)
 
   Special views:
    ✔ git: blame @done (15-02-09 01:12)
