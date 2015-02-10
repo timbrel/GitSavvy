@@ -57,6 +57,7 @@ class GsLogCommand(WindowCommand, BaseCommand):
         if index == self._limit:
             self._pagination += self._limit
             sublime.set_timeout_async(lambda: self.run_async(), 1)
+            return
 
         selected_hash = self._hashes[index]
         self.window.run_command("gs_show_commit", {"commit_hash": selected_hash})
