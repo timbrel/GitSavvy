@@ -14,7 +14,13 @@ Sublime Text 3 plugin providing the following features:
 
 GitSavvy is still alpha software, and not yet available via the Sublime [Package Manager](https://packagecontrol.io/).
 
-For now, you'll need to clone down the repository into your Sublime packages directory and restart the editor.
+### Simple
+
+If you have Package Management installed in Sublime, open your command palette and start typing `Package Control: Add Repository`.  At the prompt, enter the following URL: `https://github.com/divmain/GitSavvy`.  This should keep your version auto-updated with any fixes and changes that are released.
+
+### Less simple
+
+If you want more control over what you pull down, or if you'd like to submit changes, you should pull down the repository directly and restart the editor.
 
 ```
 # on a Mac
