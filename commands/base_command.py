@@ -195,17 +195,36 @@ class BaseCommand():
         If no remote or tracking branch is defined, do not include remote-data.
         If HEAD is detached, provide that status instead.
         """
-        stdout = self.git("status")
-        line_one, line_two, *_ = stdout.split("\n")
+        stdout = self.git("status", "-b", "--porcelain").strip()
 
-        if "HEAD detached at " in line_one:
-            return ("HEAD is in a detached state at" +
-                    line_one.strip().replace("HEAD detached at ", ""))
+        if stdout == "## HEAD (no branch)":
+            return "HEAD is in a detached state."
 
-        branch_name = line_one.strip().replace("On branch ", "")
-        remote_status = line_two.strip().replace("Your branch is ", "").replace("'", "`")
+        first_line, *_ = stdout.split("\n", 1)
+        short_status_pattern = r"## ([A-Za-z0-9\-_]+)(\.\.\.([A-Za-z0-9\-_\/]+)( \[((ahead (\d+))(, )?)?(behind (\d+))?\])?)?"
+        status_match = re.match(short_status_pattern, first_line)
 
-        return "Local branch `{}`, {}".format(branch_name, remote_status)
+        if not status_match:
+            branch_name = first_line.split("\n", 2)[1]
+            return "On branch `{}`.".format(branch_name)
+
+        branch, _, remote, _, _, _, ahead, _, _, behind = status_match.groups()
+
+        output = "On branch `{}`".format(branch)
+
+        if remote:
+            output += " tracking `{}`".format(remote)
+
+        if ahead and behind:
+            output += ". You're ahead by {} and behind by {}".format(ahead, behind)
+        elif ahead:
+            output += ". You're ahead by {}".format(ahead)
+        elif behind:
+            output += ". You're behind by {}".format(behind)
+
+        output += "."
+
+        return output
 
     def _get_indexed_entry(self, raw_entry):
         """
