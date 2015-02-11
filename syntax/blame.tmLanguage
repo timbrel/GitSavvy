@@ -28,7 +28,7 @@
 			<key>comment</key>
 			<string>line</string>
 			<key>match</key>
-			<string>^(.{40}) (\|) (( |\d){1,4})</string>
+			<string>^([^|]+) (\|) (( |\d){1,4})</string>
 			<key>name</key>
 			<string>meta.git-savvy.blame-line</string>
 		</dict>
@@ -42,8 +42,8 @@
 		</dict>
 	</array>
 	<key>scopeName</key>
-	<string>git-savvy.status</string>
+	<string>git-savvy.blame</string>
 	<key>uuid</key>
-	<string>56ea09df-2601-4d20-bb8d-b6834db991c4</string>
+	<string>008e3fa7-8ce6-4c03-8d2a-ad30ea800fe9</string>
 </dict>
 </plist>
