@@ -16,7 +16,14 @@ GitSavvy is still alpha software, and not yet available via the Sublime [Package
 
 ### Simple
 
-If you have Package Management installed in Sublime, open your command palette and start typing `Package Control: Add Repository`.  At the prompt, enter the following URL: `https://github.com/divmain/GitSavvy`.  This should keep your version auto-updated with any fixes and changes that are released.
+If you have Package Management installed in Sublime:
+
+1. Open your command palette and start typing `Package Control: Add Repository`.
+2. At the prompt, enter the following URL: `https://github.com/divmain/GitSavvy`.
+3. Open the command palette again and start typing `Package Control: Install Package`.
+4. Type `GitSavvy`.
+
+This should keep your version auto-updated with any fixes and changes that are released.
 
 ### Less simple
 
