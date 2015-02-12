@@ -81,4 +81,7 @@ class ThemeGenerator():
         Apply the transformed theme to the specified target view.
         """
         path_in_packages = self.get_new_theme_path(name)
-        target_view.settings().set("color_scheme", os.path.join("Packages", path_in_packages))
+
+        # Sublime expects `/`-delimited paths, even in Windows.
+        theme_path = os.path.join("Packages", path_in_packages).replace("\\", "/")
+        target_view.settings().set("color_scheme", theme_path)
