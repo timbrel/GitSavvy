@@ -134,7 +134,7 @@ class BaseCommand():
 
         try:
             startupinfo = None
-            if os.name == 'nt':
+            if os.name == "nt":
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
