@@ -29,7 +29,7 @@ patterns:
   end: '^$'
   patterns:
   - name: meta.git-savvy.status.file
-    match: '^    (.+)$'
+    match: '^    (.+)\n$'
 
 - comment: Stashes section
   name: meta.git-savvy.status.stashes
