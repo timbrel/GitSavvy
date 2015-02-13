@@ -420,7 +420,7 @@ class GsInlineDiffGotoBase(TextCommand):
         current_line_number = self.view.rowcol(region.begin())[0] + 1
 
         new_cursor_pt = self.get_target_cursor_pos(current_line_number)
-        if new_cursor_pt:
+        if new_cursor_pt is not None:
             self.view.sel().clear()
             self.view.sel().add(new_cursor_pt)
             self.view.show_at_center(self.view.line(new_cursor_pt))
