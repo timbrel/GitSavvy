@@ -11,6 +11,10 @@ NO_REPO_MESSAGE = ("It looks like you haven't initialized Git in this directory.
 REPO_PATH_PROMPT = "Enter root path of new git repo:"
 CONFIRM_REINITIALIZE = ("It looks like Git is already initialized here.  "
                         "Would you like to re-initialize?")
+NAME_MESSAGE = "Enter your first and last name:"
+EMAIL_MESSAGE = "Enter your email address:"
+NO_CONFIG_MESSAGE = ("It looks like you haven't configured Git yet.  Would you "
+                     "like to enter your name and email for Git to use?")
 
 
 class GsOfferInit(WindowCommand):
@@ -59,3 +63,27 @@ class GsInit(WindowCommand, BaseCommand):
         self.git("init", working_dir=path)
         sublime.status_message("{word_start}nitialized repo successfully.".format(
             word_start="Re-i" if re_init else "I"))
+
+
+class GsSetupUserCommand(WindowCommand, BaseCommand):
+
+    """
+    Set user's name and email address in global Git config.
+    """
+
+    def run(self):
+        if sublime.ok_cancel_dialog(NO_CONFIG_MESSAGE, "OK"):
+            self.get_name()
+
+    def get_name(self):
+        self.window.show_input_panel(NAME_MESSAGE, "", self.on_done_name, None, None)
+
+    def on_done_name(self, name):
+        self.git("config", "--global", "user.name", "\"{}\"".format(name))
+        self.get_email()
+
+    def get_email(self):
+        self.window.show_input_panel(EMAIL_MESSAGE, "", self.on_done_email, None, None)
+
+    def on_done_email(self, email):
+        self.git("config", "--global", "user.email", "\"{}\"".format(email))

@@ -58,7 +58,7 @@ from .fetch import GsFetchCommand
 from .pull import GsPullCommand
 from .push import GsPushCommand, GsPushToBranchCommand
 from .ignore import GsIgnoreCommand, GsIgnorePatternCommand
-from .init import GsOfferInit, GsInit
+from .init import GsOfferInit, GsInit, GsSetupUserCommand
 from .diff import (
     GsDiffCommand,
     GsDiffRefreshCommand,

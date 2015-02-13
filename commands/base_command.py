@@ -134,7 +134,10 @@ class BaseCommand():
             if type(msg) == str and "fatal: Not a git repository" in msg:
                 sublime.set_timeout_async(
                     lambda: sublime.active_window().run_command("gs_offer_init"))
-                return
+
+            elif type(msg) == str and "*** Please tell me who you are." in msg:
+                sublime.set_timeout_async(
+                    lambda: sublime.active_window().run_command("gs_setup_user"))
 
             sublime.status_message(
                 "Failed to run `git {}`. See log for details.".format(command[1])
