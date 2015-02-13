@@ -1,3 +1,4 @@
+import os
 import re
 
 import sublime
@@ -9,9 +10,14 @@ from ..common import github
 
 COMMIT_HELP_TEXT = """
 
-## To make a commit, type your commit message and press SUPER-ENTER.
-## To cancel the commit, close the window.
-"""
+## To make a commit, type your commit message and press {key}-ENTER. To cancel
+## the commit, close the window.
+
+## You may also reference or close a GitHub issue with this commit.  To do so,
+## type `#` followed by the `tab` key.  You will be shown a list of issues
+## related to the current repo.  You may also type `owner/repo#` plus the `tab`
+## key to reference an issue in a different GitHub repo.
+""".format(key="CTRL" if os.name == "nt" else "SUPER")
 
 COMMIT_TITLE = "COMMIT"
 
@@ -118,19 +124,16 @@ class GsShowGithubIssuesCommand(TextCommand, BaseCommand):
         issues = github.get_issues(remote)
 
         if not issues:
-            self.view.run_command("gs_insert_gh_text", {"text": "#"})
             return
 
         self.menu_items = ["{} - {}".format(issue["number"], issue["title"]) for issue in issues]
         self.view.show_popup_menu(self.menu_items, self.on_done)
 
     def on_done(self, selection_id):
-        if selection_id == -1:
-            self.view.run_command("gs_insert_gh_text", {"text": "#"})
-        else:
+        if selection_id != -1:
             selection = self.menu_items[selection_id]
             number = selection.split(" ")[0]
-            self.view.run_command("gs_insert_gh_text", {"text": "#" + number})
+            self.view.run_command("gs_insert_gh_text", {"text": number})
 
 
 class GsInsertGhTextCommand(TextCommand, BaseCommand):
@@ -170,15 +173,12 @@ class GsShowGithubContributorsCommand(TextCommand, BaseCommand):
         contributors = github.get_contributors(remote)
 
         if not contributors:
-            self.view.run_command("gs_insert_gh_text", {"text": "@"})
             return
 
         self.menu_items = [contributor["login"] for contributor in contributors]
         self.view.show_popup_menu(self.menu_items, self.on_done)
 
     def on_done(self, selection_id):
-        if selection_id == -1:
-            self.view.run_command("gs_insert_gh_text", {"text": "@"})
-        else:
+        if selection_id != -1:
             selection = self.menu_items[selection_id]
-            self.view.run_command("gs_insert_gh_text", {"text": "@" + selection})
+            self.view.run_command("gs_insert_gh_text", {"text": selection})
