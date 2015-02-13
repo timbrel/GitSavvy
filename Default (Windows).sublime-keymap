@@ -1,0 +1,49 @@
+[
+
+    /////////////////
+    // COMMIT VIEW //
+    /////////////////
+
+    {
+        "keys": ["ctrl+enter"],
+        "command": "gs_commit_view_do_commit",
+        "context": [
+            { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true }
+        ]
+    },
+
+
+    ///////////////
+    // DIFF VIEW //
+    ///////////////
+
+    {
+        "keys": ["ctrl+enter"],
+        "command": "gs_diff_stage_or_reset_hunk",
+        "context": [
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["ctrl+backspace"],
+        "command": "gs_diff_stage_or_reset_hunk",
+        "args": { "reset": true },
+        "context": [
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.diff_view.in_cached_mode", "operator": "equal", "operand": false }
+        ]
+    },
+
+    ////////////////
+    // BLAME VIEW //
+    ////////////////
+
+    {
+        "keys": ["ctrl+enter"],
+        "command": "gs_blame_open_commit",
+        "context": [
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    }
+
+]

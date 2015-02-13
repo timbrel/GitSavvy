@@ -274,13 +274,8 @@
     // COMMIT VIEW //
     /////////////////
 
-    {
-        "keys": ["super+enter"],
-        "command": "gs_commit_view_do_commit",
-        "context": [
-            { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true }
-        ]
-    },
+    // Per-platform key-mapping for: gs_commit_view_do_commit
+
     {
         "keys": ["#"],
         "command": "gs_show_github_issues",
@@ -311,22 +306,8 @@
     // DIFF VIEW //
     ///////////////
 
-    {
-        "keys": ["super+enter"],
-        "command": "gs_diff_stage_or_reset_hunk",
-        "context": [
-            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
-        ]
-    },
-    {
-        "keys": ["super+backspace"],
-        "command": "gs_diff_stage_or_reset_hunk",
-        "args": { "reset": true },
-        "context": [
-            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
-            { "key": "setting.git_savvy.diff_view.in_cached_mode", "operator": "equal", "operand": false }
-        ]
-    },
+    // Per-platform key-mapping for: gs_diff_stage_or_reset_hunk
+
     {
         "keys": ["o"],
         "command": "gs_diff_open_file_at_hunk",
@@ -339,12 +320,6 @@
     // BLAME VIEW //
     ////////////////
 
-    {
-        "keys": ["super+enter"],
-        "command": "gs_blame_open_commit",
-        "context": [
-            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
-        ]
-    }
+    // Per-platform key-mapping for: gs_blame_open_commit
 
 ]
