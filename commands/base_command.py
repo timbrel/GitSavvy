@@ -201,6 +201,9 @@ class BaseCommand():
             return "HEAD is in a detached state."
 
         first_line, *_ = stdout.split("\n", 1)
+        if first_line.startswith("## Initial commit on "):
+            return "Initial commit on `{}`.".format(first_line[21:])
+
         short_status_pattern = r"## ([A-Za-z0-9\-_]+)(\.\.\.([A-Za-z0-9\-_\/]+)( \[((ahead (\d+))(, )?)?(behind (\d+))?\])?)?"
         status_match = re.match(short_status_pattern, first_line)
 
