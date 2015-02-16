@@ -104,6 +104,7 @@ class GsShowStatusCommand(WindowCommand, BaseCommand):
         status_view.set_name(title)
         status_view.set_syntax_file("Packages/GitSavvy/syntax/status.tmLanguage")
         status_view.settings().set("git_savvy.repo_path", repo_path)
+        status_view.settings().set("word_wrap", False)
         self.window.focus_view(status_view)
         status_view.sel().clear()
 
