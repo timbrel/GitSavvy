@@ -16,9 +16,9 @@ import sublime
 
 from ..common import log, github
 
-Stash = namedtuple("Stash", ["id", "description"])
-FileStatus = namedtuple("FileStatus", ["path", "path_alt", "index_status", "working_status"])
-IndexedEntry = namedtuple("IndexEntry", [
+Stash = namedtuple("Stash", ("id", "description"))
+FileStatus = namedtuple("FileStatus", ("path", "path_alt", "index_status", "working_status"))
+IndexedEntry = namedtuple("IndexEntry", (
     "src_path",
     "dst_path",
     "src_mode",
@@ -27,7 +27,7 @@ IndexedEntry = namedtuple("IndexEntry", [
     "dst_hash",
     "status",
     "status_score"
-    ])
+    ))
 IndexedEntry.__new__.__defaults__ = (None, ) * 8
 
 git_path = None
