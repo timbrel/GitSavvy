@@ -37,6 +37,7 @@ class GsCommitCommand(WindowCommand, BaseCommand):
         view.settings().set("git_savvy.commit_view.include_unstaged", include_unstaged)
         view.settings().set("git_savvy.commit_view.amend", amend)
         view.settings().set("git_savvy.repo_path", repo_path)
+        view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.tmLanguage")
         view.set_name(COMMIT_TITLE)
         view.set_scratch(True)
         view.run_command("gs_commit_initialize_view")
