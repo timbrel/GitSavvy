@@ -109,5 +109,9 @@
     {
         "caption": "git: log current file",
         "command": "gs_log_current_file"
+    },
+    {
+        "caption": "git: merge",
+        "command": "gs_merge"
     }
 ]
