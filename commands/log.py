@@ -50,7 +50,7 @@ class GsLogCommand(WindowCommand, BaseCommand):
         self.window.show_quick_panel(
             self._entries,
             self.on_selection,
-            sublime.MONOSPACE_FONT
+            flags=sublime.MONOSPACE_FONT
         )
 
     def on_selection(self, index):

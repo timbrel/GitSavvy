@@ -45,7 +45,11 @@ class GsPushToBranchCommand(WindowCommand, BaseCommand):
         if not self.remotes:
             self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
         else:
-            self.window.show_quick_panel(self.remotes, self.on_select_remote, sublime.MONOSPACE_FONT)
+            self.window.show_quick_panel(
+                self.remotes,
+                self.on_select_remote,
+                flags=sublime.MONOSPACE_FONT
+                )
 
     def on_select_remote(self, remote_index):
         """
@@ -76,8 +80,8 @@ class GsPushToBranchCommand(WindowCommand, BaseCommand):
             self.window.show_quick_panel(
                 self.branches_on_selected_remote,
                 self.on_select_branch,
-                sublime.MONOSPACE_FONT,
-                pre_selected_index
+                flags=sublime.MONOSPACE_FONT,
+                selected_index=pre_selected_index
             )
 
         sublime.set_timeout(deferred_panel)

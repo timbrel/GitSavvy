@@ -21,7 +21,11 @@ class GsFetchCommand(WindowCommand, BaseCommand):
         else:
             if len(self.remotes) > 1:
                 self.remotes.push(ALL_REMOTES)
-            self.window.show_quick_panel(self.remotes, self.on_selection, sublime.MONOSPACE_FONT)
+            self.window.show_quick_panel(
+                self.remotes,
+                self.on_selection,
+                flags=sublime.MONOSPACE_FONT
+                )
 
     def on_selection(self, remotes_index):
         if remotes_index == -1:

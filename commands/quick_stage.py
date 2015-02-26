@@ -64,7 +64,11 @@ class GsQuickStageCommand(WindowCommand, BaseCommand):
 
             sublime.set_timeout_async(self.run, 10)
 
-        self.window.show_quick_panel(menu_entries, on_selection, sublime.MONOSPACE_FONT)
+        self.window.show_quick_panel(
+            menu_entries,
+            on_selection,
+            flags=sublime.MONOSPACE_FONT
+            )
 
     def get_menu_options(self):
         """

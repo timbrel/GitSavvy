@@ -23,7 +23,11 @@ class GsCheckoutBranchCommand(WindowCommand, BaseCommand):
         if not self.local_inactive_branches:
             self.window.show_quick_panel(["There are no branches available."], None)
         else:
-            self.window.show_quick_panel(self.local_inactive_branches, self.on_selection, sublime.MONOSPACE_FONT)
+            self.window.show_quick_panel(
+                self.local_inactive_branches,
+                self.on_selection,
+                flags=sublime.MONOSPACE_FONT
+                )
 
     def on_selection(self, branch_name_index):
         if branch_name_index == -1:
@@ -58,7 +62,11 @@ class GsCheckoutRemoteBranchCommand(WindowCommand, BaseCommand):
 
     def run(self):
         self.remote_branches = self.get_remote_branches()
-        self.window.show_quick_panel(self.remote_branches, self.on_selection, sublime.MONOSPACE_FONT)
+        self.window.show_quick_panel(
+            self.remote_branches,
+            self.on_selection,
+            flags=sublime.MONOSPACE_FONT
+            )
 
     def on_selection(self, remote_branch_index):
         if remote_branch_index == -1:

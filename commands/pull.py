@@ -22,7 +22,11 @@ class GsPullCommand(WindowCommand, BaseCommand):
         if not self.remotes:
             self.window.show_quick_panel(["There are no remotes available."], None)
         else:
-            self.window.show_quick_panel(self.remotes, self.on_select_remote, sublime.MONOSPACE_FONT)
+            self.window.show_quick_panel(
+                self.remotes,
+                self.on_select_remote,
+                flags=sublime.MONOSPACE_FONT
+                )
 
     def on_select_remote(self, remote_index):
         """
