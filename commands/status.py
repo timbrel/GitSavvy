@@ -253,7 +253,10 @@ class GsStatusDiffInlineCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=non_cached_sections
         )
-        non_cached_files = (line.strip() for line in non_cached_lines if line[:4] == "    ")
+        non_cached_files = (
+            os.path.join(self.repo_path, line.strip())
+            for line in non_cached_lines
+            if line[:4] == "    ")
 
         # Staged
         cached_sections = status_view_section_ranges[self.view.id()][3:]
@@ -262,7 +265,10 @@ class GsStatusDiffInlineCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=cached_sections
         )
-        cached_files = (line.strip() for line in cached_lines if line[:4] == "    ")
+        cached_files = (
+            os.path.join(self.repo_path, line.strip())
+            for line in cached_lines
+            if line[:4] == "    ")
 
         sublime.set_timeout_async(
             partial(self.load_inline_diff_windows, non_cached_files, cached_files), 0)
