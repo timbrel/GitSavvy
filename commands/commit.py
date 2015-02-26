@@ -50,9 +50,13 @@ class GsCommitInitializeViewCommand(TextCommand, BaseCommand):
     """
 
     def run(self, edit):
+        merge_msg_path = os.path.join(self.repo_path, ".git", "MERGE_MSG")
         if self.view.settings().get("git_savvy.commit_view.amend"):
             last_commit_message = self.git("log", "-1", "--pretty=%B")
             initial_text = last_commit_message + COMMIT_HELP_TEXT
+        elif os.path.exists(merge_msg_path):
+            with open(merge_msg_path, "r") as f:
+                initial_text = f.read() + COMMIT_HELP_TEXT
         else:
             initial_text = COMMIT_HELP_TEXT
 
