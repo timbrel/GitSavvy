@@ -7,6 +7,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from ..common import util
 from ..common.theme_generator import ThemeGenerator
 from .base_command import BaseCommand
+from ..common.constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
 
@@ -129,6 +130,8 @@ class GsInlineDiffRefreshCommand(TextCommand, BaseCommand):
             self.view.show_at_center(self.view.line(pt).begin())
         self.highlight_regions(replaced_lines)
         self.view.set_read_only(True)
+
+        sublime.set_timeout_async(lambda: self.verify_not_conflict(), 0)
 
     def get_indexed_file_object(self, file_path):
         """
@@ -269,6 +272,18 @@ class GsInlineDiffRefreshCommand(TextCommand, BaseCommand):
 
         self.view.add_regions("git-better-added-lines", add_regions, scope="git_savvy.change.addition")
         self.view.add_regions("git-better-removed-lines", remove_regions, scope="git_savvy.change.removal")
+
+    def verify_not_conflict(self):
+        fpath = self.get_rel_path()
+        status_file_list = self.get_status()
+        for f in status_file_list:
+            if f.path == fpath:
+                if (f.index_status, f.working_status) in MERGE_CONFLICT_PORCELAIN_STATUSES:
+                    sublime.error_message("Inline-diff cannot be displayed for this file - "
+                                          "it has a merge conflict.")
+                    self.view.window().focus_view(self.view)
+                    self.view.window().run_command("close_file")
+                break
 
 
 class GsInlineDiffFocusEventListener(EventListener):
