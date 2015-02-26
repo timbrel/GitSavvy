@@ -320,7 +320,7 @@ class BaseCommand():
         Given an absolute path or path relative to the repo's root, stage
         the file.
         """
-        self.git("add", "-f", "--", fpath)
+        self.git("add", "-f", "--all", "--", fpath)
 
     def unstage_file(self, fpath):
         """
