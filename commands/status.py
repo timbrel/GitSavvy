@@ -6,6 +6,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from .base_command import BaseCommand
 from ..common import util
+from ..common.constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
 STATUS_TITLE = "STATUS: {}"
 
@@ -77,16 +78,6 @@ KEY_BINDINGS_MENU = """
 
 -
 """
-
-MERGE_CONFLICT_PORCELAIN_STATUSES = (
-    ("D", "D"),  # unmerged, both deleted
-    ("A", "U"),  # unmerged, added by us
-    ("U", "D"),  # unmerged, deleted by them
-    ("U", "A"),  # unmerged, added by them
-    ("D", "U"),  # unmerged, deleted by us
-    ("A", "A"),  # unmerged, both added
-    ("U", "U")  # unmerged, both modified
-)
 
 status_view_section_ranges = {}
 
