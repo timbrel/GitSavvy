@@ -43,5 +43,5 @@ class GsMergeCommand(WindowCommand, BaseCommand):
     def on_selection(self, index):
         if index == -1:
             return
-        branch_name = self._branches[index]
-        self.git("merge", "--log", branch_name)
+        branch = self._branches[index]
+        self.git("merge", "--log", branch.name_with_remote)
