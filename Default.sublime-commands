@@ -111,6 +111,10 @@
         "command": "gs_log_current_file"
     },
     {
+        "caption": "git: log by author",
+        "command": "gs_log_by_author"
+    },
+    {
         "caption": "git: merge",
         "command": "gs_merge"
     },

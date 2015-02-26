@@ -7,10 +7,11 @@ from ..common import util
 
 class GsLogCommand(WindowCommand, BaseCommand):
 
-    def run(self, filename=None, limit=6000):
+    def run(self, filename=None, limit=6000, author=None):
         self._pagination = 0
         self._filename = filename
         self._limit = limit
+        self._author = author
         sublime.set_timeout_async(lambda: self.run_async(), 1)
 
     def run_async(self):
@@ -18,6 +19,7 @@ class GsLogCommand(WindowCommand, BaseCommand):
             "log",
             "-{}".format(self._limit) if self._limit else None,
             "--skip={}".format(self._pagination) if self._pagination else None,
+            "--author={}".format(self._author) if self._author else None,
             '--format=%h%n%H%n%s%n%an%n%at%x00',
             "--" if self._filename else None,
             self._filename
@@ -67,3 +69,31 @@ class GsLogCurrentFileCommand(WindowCommand, BaseCommand):
 
     def run(self):
         self.window.run_command("gs_log", {"filename": self.file_path})
+
+
+class GsLogByAuthorCommand(WindowCommand, BaseCommand):
+
+    """
+    Prompt the user for author pattern, pre-filled with local user's
+    git name and email.  Once provided, display a quick panel with all
+    commits made by the specified author.
+    """
+
+    def run(self):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        name = self.git("config", "user.name").strip()
+        email = self.git("config", "user.email").strip()
+        default_author = "{} <{}>".format(name, email)
+        print(default_author)
+        self.window.show_input_panel(
+            "Enter author pattern:",
+            default_author,
+            self.on_entered,
+            None,
+            None
+            )
+
+    def on_entered(self, author_text):
+        self.window.run_command("gs_log", {"author": author_text})

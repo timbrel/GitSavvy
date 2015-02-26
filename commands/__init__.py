@@ -72,7 +72,7 @@ from .blame import (
     GsBlameOpenCommitCommand
 )
 from .show_commit import GsShowCommitCommand, GsShowCommitInitializeView
-from .log import GsLogCommand, GsLogCurrentFileCommand
+from .log import GsLogCommand, GsLogCurrentFileCommand, GsLogByAuthorCommand
 from .merge import (
     GsMergeCommand,
     GsAbortMergeCommand,
