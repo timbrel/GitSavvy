@@ -82,6 +82,14 @@
         "command": "gs_ignore_pattern"
     },
     {
+        "caption": "git: assume file unchanged",
+        "command": "gs_assume_unchanged"
+    },
+    {
+        "caption": "git: restore file assumed unchanged",
+        "command": "gs_restore_assumed_unchanged"
+    },
+    {
         "caption": "git: init",
         "command": "gs_init"
     },

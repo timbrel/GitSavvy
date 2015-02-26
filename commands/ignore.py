@@ -7,6 +7,7 @@ from .base_command import BaseCommand
 
 
 IGNORE_PATTERN_PROMPT = "Enter pattern to ignore:"
+UNSTAGED_WORKING_STATUSES = ("M", "D")
 
 
 class GsIgnoreCommand(WindowCommand, BaseCommand):
@@ -39,3 +40,71 @@ class GsIgnorePatternCommand(WindowCommand, BaseCommand):
         sublime.status_message("Ignored pattern `{}`.".format(ignore_pattern))
         if self.window.active_view().settings().get("git_savvy.status_view"):
             self.window.active_view().run_command("gs_status_refresh")
+
+
+class GsAssumeUnchangedCommand(WindowCommand, BaseCommand):
+
+    """
+    Prompt the user with a quick panel of unstaged files.  After the selection
+    is made, temporarily treat selected file as unchanged.
+    """
+
+    def run(self):
+        self._unstaged_files = tuple(
+            f.path for f in self.get_status()
+            if f.working_status in UNSTAGED_WORKING_STATUSES
+            )
+
+        self.window.show_quick_panel(
+            self._unstaged_files,
+            self.on_selection,
+            flags=sublime.MONOSPACE_FONT
+        )
+
+    def on_selection(self, index):
+        if index == -1:
+            return
+        fpath = self._unstaged_files[index]
+        self.git("update-index", "--assume-unchanged", fpath)
+
+        if self.window.active_view().settings().get("git_savvy.status_view"):
+            self.window.active_view().run_command("gs_status_refresh")
+
+
+class GsRestoreAssumedUnchangedCommand(WindowCommand, BaseCommand):
+
+    """
+    Show the user a quick panel of previously temporarily-ignored files.  When
+    the selection is made, remove the temporarily-ignored behavior for that file,
+    and display the panel again.
+    """
+
+    def run(self):
+        print("hi there!")
+        all_file_lines = (
+            line.split(" ", 1)
+            for line in self.git("ls-files", "-v").split("\n")
+            )
+
+        self._ignored_files = tuple(f[1] for f in all_file_lines if f[0] == "h")
+
+        if not self._ignored_files:
+            self.window.show_quick_panel(["No files are assumed unchanged."], None)
+        else:
+            self.window.show_quick_panel(
+                self._ignored_files,
+                self.on_selection,
+                flags=sublime.MONOSPACE_FONT
+            )
+
+    def on_selection(self, index):
+        if index == -1:
+            return
+
+        fpath = self._ignored_files[index]
+        self.git("update-index", "--no-assume-unchanged", fpath)
+
+        if self.window.active_view().settings().get("git_savvy.status_view"):
+            self.window.active_view().run_command("gs_status_refresh")
+
+        self.window.run_command("gs_restore_assumed_unchanged")

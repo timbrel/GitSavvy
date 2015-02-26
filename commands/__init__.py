@@ -57,7 +57,12 @@ from .checkout import (
 from .fetch import GsFetchCommand
 from .pull import GsPullCommand
 from .push import GsPushCommand, GsPushToBranchCommand
-from .ignore import GsIgnoreCommand, GsIgnorePatternCommand
+from .ignore import (
+    GsIgnoreCommand,
+    GsIgnorePatternCommand,
+    GsAssumeUnchangedCommand,
+    GsRestoreAssumedUnchangedCommand
+)
 from .init import GsOfferInit, GsInit, GsSetupUserCommand
 from .diff import (
     GsDiffCommand,
