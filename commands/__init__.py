@@ -73,4 +73,8 @@ from .blame import (
 )
 from .show_commit import GsShowCommitCommand, GsShowCommitInitializeView
 from .log import GsLogCommand, GsLogCurrentFileCommand
-from .merge import GsMergeCommand
+from .merge import (
+    GsMergeCommand,
+    GsAbortMergeCommand,
+    GsRestartMergeForFileCommand
+)

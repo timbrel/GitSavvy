@@ -2,7 +2,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from .base_command import BaseCommand
-# from ..common import util
+from ..common.constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
 
 class GsMergeCommand(WindowCommand, BaseCommand):
@@ -45,3 +45,37 @@ class GsMergeCommand(WindowCommand, BaseCommand):
             return
         branch = self._branches[index]
         self.git("merge", "--log", branch.name_with_remote)
+
+
+class GsAbortMergeCommand(WindowCommand, BaseCommand):
+
+    """
+    Reset all files to pre-merge conditions, and abort the merge.
+    """
+
+    def run(self):
+        self.git("reset", "--merge")
+
+
+class GsRestartMergeForFileCommand(WindowCommand, BaseCommand):
+
+    """
+    Reset a single file to pre-merge condition, but do not abort the merge.
+    """
+
+    def run(self):
+        self._conflicts = tuple(
+            f.path for f in self.get_status()
+            if (f.index_status, f.working_status) in MERGE_CONFLICT_PORCELAIN_STATUSES
+            )
+
+        self.window.show_quick_panel(
+            self._conflicts,
+            self.on_selection
+        )
+
+    def on_selection(self, index):
+        if index == -1:
+            return
+        fpath = self._conflicts[index]
+        self.git("checkout", "--conflict=merge", "--", fpath)

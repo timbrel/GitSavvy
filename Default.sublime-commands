@@ -113,5 +113,13 @@
     {
         "caption": "git: merge",
         "command": "gs_merge"
+    },
+    {
+        "caption": "git: abort merge",
+        "command": "gs_abort_merge"
+    },
+    {
+        "caption": "git: restart merge for file...",
+        "command": "gs_restart_merge_for_file"
     }
 ]
