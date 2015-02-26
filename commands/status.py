@@ -150,7 +150,10 @@ class GsStatusRefreshCommand(TextCommand, BaseCommand):
         status_text = ""
 
         if unstaged:
-            unstaged_lines = "\n".join("    " + f.path for f in unstaged)
+            unstaged_lines = "\n".join(
+                "  {} {}".format("-" if f.working_status == "D" else " ", f.path)
+                for f in unstaged
+                )
             unstaged_text = UNSTAGED_TEMPLATE.format(unstaged_lines)
             unstaged_region = get_region(unstaged_text)
             status_text += unstaged_text
@@ -165,7 +168,10 @@ class GsStatusRefreshCommand(TextCommand, BaseCommand):
             untracked_region = get_region(untracked_text)
             status_text += untracked_text
         if staged:
-            staged_lines = "\n".join("    " + f.path for f in staged)
+            staged_lines = "\n".join(
+                "  {} {}".format("-" if f.index_status == "D" else " ", f.path)
+                for f in staged
+                )
             staged_text = STAGED_TEMPLATE.format(staged_lines)
             staged_region = get_region(staged_text)
             status_text += staged_text
@@ -312,7 +318,8 @@ class GsStatusStageFileCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = tuple(line.strip() for line in lines if line)
+        # Remove the leading spaces and hyphen-character for deleted files.
+        file_paths = tuple(line[4:].strip() for line in lines if line)
 
         if file_paths:
             for fpath in file_paths:
@@ -336,7 +343,8 @@ class GsStatusUnstageFileCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = tuple(line.strip() for line in lines if line)
+        # Remove the leading spaces and hyphen-character for deleted files.
+        file_paths = tuple(line[4:].strip() for line in lines if line)
 
         if file_paths:
             for fpath in file_paths:
