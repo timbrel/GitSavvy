@@ -1,10 +1,10 @@
 from sublime_plugin import TextCommand
 
-from ...common.file_and_repo import FileAndRepo
+from ...core.base_command import BaseCommand
 from ..github import open_file_in_browser
 
 
-class GsOpenFileOnRemoteCommand(TextCommand, FileAndRepo):
+class GsOpenFileOnRemoteCommand(TextCommand, BaseCommand):
 
     """
     Open a new browser window to the web-version of the currently opened
@@ -14,7 +14,7 @@ class GsOpenFileOnRemoteCommand(TextCommand, FileAndRepo):
     At present, this only supports github.com and GitHub enterprise.
     """
 
-    def run(self, preselect=False, fpath=None):
+    def run(self, edit, preselect=False, fpath=None):
         fpath = fpath or self.get_rel_path()
         start_line = None
         end_line = None
