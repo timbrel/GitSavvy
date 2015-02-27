@@ -44,7 +44,11 @@ class GsMergeCommand(WindowCommand, BaseCommand):
         if index == -1:
             return
         branch = self._branches[index]
-        self.git("merge", "--log", branch.name_with_remote)
+        try:
+            self.git("merge", "--log", branch.name_with_remote)
+        finally:
+            if self.window.active_view().settings().get("git_savvy.status_view"):
+                self.window.active_view().run_command("gs_status_refresh")
 
 
 class GsAbortMergeCommand(WindowCommand, BaseCommand):
