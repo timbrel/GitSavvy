@@ -1,5 +1,5 @@
 """
-Sublime commands and helper methods related to development and debugging.
+Sublime commands related to development and debugging.
 """
 
 import sys

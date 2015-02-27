@@ -8,6 +8,6 @@ else:
         util.file.determine_syntax_files()
 
     from .common.log import GsDisplayPanelCommand
-    from .common.debug import GsReloadModulesDebug
+    from .common.commands import *
     from .core.commands import *
     from .github.commands import *
