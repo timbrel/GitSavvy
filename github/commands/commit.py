@@ -60,25 +60,7 @@ class GsShowGithubIssuesCommand(TextCommand, BaseCommand):
         if selection_id != -1:
             selection = self.menu_items[selection_id]
             number = selection.split(" ")[0]
-            self.view.run_command("gs_insert_gh_text", {"text": number})
-
-
-class GsInsertGhTextCommand(TextCommand, BaseCommand):
-
-    """
-    Insert the provided text at the current cursor position(s).
-    """
-
-    def run(self, edit, text):
-        text_len = len(text)
-        selected_ranges = []
-
-        for region in self.view.sel():
-            selected_ranges.append((region.begin(), region.end()))
-            self.view.replace(edit, region, text)
-
-        self.view.sel().clear()
-        self.view.sel().add_all([sublime.Region(begin + text_len, end + text_len) for begin, end in selected_ranges])
+            self.view.run_command("gs_insert_text_at_cursor", {"text": number})
 
 
 class GsShowGithubContributorsCommand(TextCommand, BaseCommand):
@@ -108,4 +90,4 @@ class GsShowGithubContributorsCommand(TextCommand, BaseCommand):
     def on_done(self, selection_id):
         if selection_id != -1:
             selection = self.menu_items[selection_id]
-            self.view.run_command("gs_insert_gh_text", {"text": selection})
+            self.view.run_command("gs_insert_text_at_cursor", {"text": selection})
