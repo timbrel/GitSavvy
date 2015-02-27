@@ -14,7 +14,7 @@ from collections import namedtuple, OrderedDict
 import sublime
 
 from ..common import util
-from ..common.file_and_repo import FileAndRepo
+from .file_and_repo import FileAndRepo
 
 Stash = namedtuple("Stash", ("id", "description"))
 FileStatus = namedtuple("FileStatus", ("path", "path_alt", "index_status", "working_status"))
