@@ -43,7 +43,7 @@
         "command": "gs_log_graph"
     },
     {
-        "caption": "git: open file on remote",
+        "caption": "github: open file on remote",
         "command": "gs_open_file_on_remote",
         "args": { "preselect": true }
     },
