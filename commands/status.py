@@ -132,8 +132,9 @@ class GsStatusRefreshCommand(TextCommand, BaseCommand):
 
     def get_contents(self):
         """
-        Get the branch status and use that information to build the text to
-        display to the user.
+        Build string to use as contents of status view.  Includes branch
+        information in the header, per-file information, and a key-bindings
+        menu at the bottom.
         """
         header = STATUS_HEADER_TEMPLATE.format(
             branch_status=self.get_branch_status(),
