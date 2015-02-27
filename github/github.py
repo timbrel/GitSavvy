@@ -9,7 +9,7 @@ from functools import partial
 
 import sublime
 
-from . import interwebs
+from ..common import interwebs
 
 GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo", "token"))
 

@@ -13,7 +13,7 @@ from collections import namedtuple, OrderedDict
 
 import sublime
 
-from ..common import log, github
+from ..common import log
 from ..common.file_and_repo import FileAndRepo
 
 Stash = namedtuple("Stash", ("id", "description"))
@@ -260,21 +260,6 @@ class BaseCommand(FileAndRepo):
         to the state it is in HEAD.
         """
         self.git("checkout", "--", fpath)
-
-    def open_file_on_remote(self, fpath, start_line=None, end_line=None):
-        """
-        Assume the remote git repo is GitHub and open the URL corresponding
-        to the provided file at path `fpath` at HEAD.
-        """
-        default_name, default_remote_url = self.get_remotes().popitem(last=False)
-
-        github.open_file_in_browser(
-            fpath,
-            default_remote_url,
-            self.get_commit_hash_for_head(),
-            start_line=start_line,
-            end_line=end_line
-        )
 
     def get_commit_hash_for_head(self):
         """

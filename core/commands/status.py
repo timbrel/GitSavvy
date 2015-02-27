@@ -401,7 +401,7 @@ class GsStatusOpenFileOnRemoteCommand(TextCommand, BaseCommand):
         if file_paths:
             file_paths = list(file_paths)
             for fpath in file_paths:
-                self.open_file_on_remote(fpath)
+                self.view.run_command("gs_open_file_on_remote", {"fpath": fpath})
 
 
 class GsStatusStageAllFilesCommand(TextCommand, BaseCommand):
