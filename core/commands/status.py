@@ -10,7 +10,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from ..base_command import BaseCommand
 from ...common import util
-from ...common.constants import MERGE_CONFLICT_PORCELAIN_STATUSES
+from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
 STATUS_TITLE = "STATUS: {}"
 

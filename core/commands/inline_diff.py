@@ -7,7 +7,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from ...common import util
 from ...common.theme_generator import ThemeGenerator
 from ..base_command import BaseCommand
-from ...common.constants import MERGE_CONFLICT_PORCELAIN_STATUSES
+from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
 

@@ -2,7 +2,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..base_command import BaseCommand
-from ...common.constants import MERGE_CONFLICT_PORCELAIN_STATUSES
+from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
 
 class GsMergeCommand(WindowCommand, BaseCommand):
