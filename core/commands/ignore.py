@@ -3,7 +3,7 @@ import os
 import sublime
 from sublime_plugin import WindowCommand
 
-from .base_command import BaseCommand
+from ..base_command import BaseCommand
 
 
 IGNORE_PATTERN_PROMPT = "Enter pattern to ignore:"

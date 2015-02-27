@@ -1,7 +1,7 @@
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from .base_command import BaseCommand
+from ..base_command import BaseCommand
 
 LOG_GRAPH_TITLE = "GRAPH"
 

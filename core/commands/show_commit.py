@@ -1,7 +1,7 @@
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from .base_command import BaseCommand
+from ..base_command import BaseCommand
 
 
 SHOW_COMMIT_TITLE = "COMMIT: {}"

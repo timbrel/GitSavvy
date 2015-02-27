@@ -3,7 +3,7 @@ import os
 import sublime
 from sublime_plugin import WindowCommand
 
-from .base_command import BaseCommand
+from ..base_command import BaseCommand
 
 
 NO_REPO_MESSAGE = ("It looks like you haven't initialized Git in this directory.  "

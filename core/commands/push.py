@@ -1,7 +1,7 @@
 import sublime
 from sublime_plugin import WindowCommand
 
-from .base_command import BaseCommand
+from ..base_command import BaseCommand
 
 
 NO_REMOTES_MESSAGE = "You have not configured any remotes."

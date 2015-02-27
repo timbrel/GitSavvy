@@ -10,7 +10,7 @@ import bisect
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
-from .base_command import BaseCommand
+from ..base_command import BaseCommand
 
 
 DIFF_TITLE = "DIFF: {}"

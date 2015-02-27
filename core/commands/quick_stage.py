@@ -2,7 +2,7 @@ from collections import namedtuple
 import sublime
 from sublime_plugin import WindowCommand
 
-from .base_command import BaseCommand
+from ..base_command import BaseCommand
 
 MenuOption = namedtuple("MenuOption", ["requires_action", "menu_text", "filename", "is_untracked"])
 

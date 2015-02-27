@@ -1,7 +1,7 @@
 import sublime
 from sublime_plugin import WindowCommand
 
-from .base_command import BaseCommand
+from ..base_command import BaseCommand
 
 NEW_BRANCH_PROMPT = "Branch name:"
 

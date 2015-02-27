@@ -4,8 +4,8 @@ from collections import namedtuple, defaultdict
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from .base_command import BaseCommand
-from ..common import util
+from ..base_command import BaseCommand
+from ...common import util
 
 
 BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))

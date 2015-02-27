@@ -4,8 +4,8 @@ import re
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from .base_command import BaseCommand
-from ..common import github
+from ..base_command import BaseCommand
+from ...common import github
 
 
 COMMIT_HELP_TEXT = """

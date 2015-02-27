@@ -1,8 +1,8 @@
 import sublime
 from sublime_plugin import WindowCommand
 
-from .base_command import BaseCommand
-from ..common import util
+from ..base_command import BaseCommand
+from ...common import util
 
 
 class GsLogCommand(WindowCommand, BaseCommand):
