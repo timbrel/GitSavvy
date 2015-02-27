@@ -8,7 +8,7 @@ from functools import partial
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 from ...common import util
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
@@ -86,7 +86,7 @@ KEY_BINDINGS_MENU = """
 status_view_section_ranges = {}
 
 
-class GsShowStatusCommand(WindowCommand, BaseCommand):
+class GsShowStatusCommand(WindowCommand, GitCommand):
 
     """
     Open a status view for the active git repository.
@@ -106,7 +106,7 @@ class GsShowStatusCommand(WindowCommand, BaseCommand):
         status_view.run_command("gs_status_refresh")
 
 
-class GsStatusRefreshCommand(TextCommand, BaseCommand):
+class GsStatusRefreshCommand(TextCommand, GitCommand):
 
     """
     Get the current state of the git repo and display file status
@@ -234,7 +234,7 @@ class GsStatusFocusEventListener(EventListener):
             view.run_command("gs_status_refresh")
 
 
-class GsStatusOpenFileCommand(TextCommand, BaseCommand):
+class GsStatusOpenFileCommand(TextCommand, GitCommand):
 
     """
     For every file that is selected or under a cursor, open a that
@@ -249,7 +249,7 @@ class GsStatusOpenFileCommand(TextCommand, BaseCommand):
             self.view.window().open_file(path)
 
 
-class GsStatusDiffInlineCommand(TextCommand, BaseCommand):
+class GsStatusDiffInlineCommand(TextCommand, GitCommand):
 
     """
     For every file selected or under a cursor, open a new inline-diff view for
@@ -307,7 +307,7 @@ class GsStatusDiffInlineCommand(TextCommand, BaseCommand):
             })
 
 
-class GsStatusStageFileCommand(TextCommand, BaseCommand):
+class GsStatusStageFileCommand(TextCommand, GitCommand):
 
     """
     For every file that is selected or under a cursor, if that file is
@@ -333,7 +333,7 @@ class GsStatusStageFileCommand(TextCommand, BaseCommand):
             self.view.run_command("gs_status_refresh")
 
 
-class GsStatusUnstageFileCommand(TextCommand, BaseCommand):
+class GsStatusUnstageFileCommand(TextCommand, GitCommand):
 
     """
     For every file that is selected or under a cursor, if that file is
@@ -358,7 +358,7 @@ class GsStatusUnstageFileCommand(TextCommand, BaseCommand):
             self.view.run_command("gs_status_refresh")
 
 
-class GsStatusDiscardChangesToFileCommand(TextCommand, BaseCommand):
+class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
 
     """
     For every file that is selected or under a cursor, if that file is
@@ -383,7 +383,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, BaseCommand):
             self.view.run_command("gs_status_refresh")
 
 
-class GsStatusOpenFileOnRemoteCommand(TextCommand, BaseCommand):
+class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
 
     """
     For every file that is selected or under a cursor, open a new browser
@@ -404,7 +404,7 @@ class GsStatusOpenFileOnRemoteCommand(TextCommand, BaseCommand):
                 self.view.run_command("gs_open_file_on_remote", {"fpath": fpath})
 
 
-class GsStatusStageAllFilesCommand(TextCommand, BaseCommand):
+class GsStatusStageAllFilesCommand(TextCommand, GitCommand):
 
     """
     Stage all unstaged files.
@@ -415,7 +415,7 @@ class GsStatusStageAllFilesCommand(TextCommand, BaseCommand):
         self.view.run_command("gs_status_refresh")
 
 
-class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, BaseCommand):
+class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, GitCommand):
 
     """
     Stage all unstaged files, including new files.
@@ -426,7 +426,7 @@ class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, BaseCommand):
         self.view.run_command("gs_status_refresh")
 
 
-class GsStatusUnstageAllFilesCommand(TextCommand, BaseCommand):
+class GsStatusUnstageAllFilesCommand(TextCommand, GitCommand):
 
     """
     Unstage all staged changes.
@@ -437,7 +437,7 @@ class GsStatusUnstageAllFilesCommand(TextCommand, BaseCommand):
         self.view.run_command("gs_status_refresh")
 
 
-class GsStatusDiscardAllChangesCommand(TextCommand, BaseCommand):
+class GsStatusDiscardAllChangesCommand(TextCommand, GitCommand):
 
     """
     Reset all unstaged files to HEAD.
@@ -448,7 +448,7 @@ class GsStatusDiscardAllChangesCommand(TextCommand, BaseCommand):
         self.view.run_command("gs_status_refresh")
 
 
-class GsStatusCommitCommand(TextCommand, BaseCommand):
+class GsStatusCommitCommand(TextCommand, GitCommand):
 
     """
     Open a commit window.
@@ -458,7 +458,7 @@ class GsStatusCommitCommand(TextCommand, BaseCommand):
         self.view.window().run_command("gs_commit", {"repo_path": self.repo_path})
 
 
-class GsStatusCommitUnstagedCommand(TextCommand, BaseCommand):
+class GsStatusCommitUnstagedCommand(TextCommand, GitCommand):
 
     """
     Open a commit window.  When the commit message is provided, stage all unstaged
@@ -472,7 +472,7 @@ class GsStatusCommitUnstagedCommand(TextCommand, BaseCommand):
         )
 
 
-class GsStatusAmendCommand(TextCommand, BaseCommand):
+class GsStatusAmendCommand(TextCommand, GitCommand):
 
     """
     Open a commit window to amend the previous commit.
@@ -485,7 +485,7 @@ class GsStatusAmendCommand(TextCommand, BaseCommand):
         )
 
 
-class GsStatusIgnoreFileCommand(TextCommand, BaseCommand):
+class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
 
     """
     For each file that is selected or under a cursor, add an
@@ -508,7 +508,7 @@ class GsStatusIgnoreFileCommand(TextCommand, BaseCommand):
             self.view.run_command("gs_status_refresh")
 
 
-class GsStatusIgnorePatternCommand(TextCommand, BaseCommand):
+class GsStatusIgnorePatternCommand(TextCommand, GitCommand):
 
     """
     For the first file that is selected or under a cursor (other
@@ -528,7 +528,7 @@ class GsStatusIgnorePatternCommand(TextCommand, BaseCommand):
             self.view.window().run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
 
 
-class GsStatusApplyStashCommand(TextCommand, BaseCommand):
+class GsStatusApplyStashCommand(TextCommand, GitCommand):
 
     """
     Apply the selected stash.  The user can only apply one stash at a time.
@@ -549,7 +549,7 @@ class GsStatusApplyStashCommand(TextCommand, BaseCommand):
         self.view.run_command("gs_status_refresh")
 
 
-class GsStatusPopStashCommand(TextCommand, BaseCommand):
+class GsStatusPopStashCommand(TextCommand, GitCommand):
 
     """
     Pop the selected stash.  The user can only pop one stash at a time.
@@ -570,7 +570,7 @@ class GsStatusPopStashCommand(TextCommand, BaseCommand):
         self.view.run_command("gs_status_refresh")
 
 
-class GsStatusShowStashCommand(TextCommand, BaseCommand):
+class GsStatusShowStashCommand(TextCommand, GitCommand):
 
     """
     For each selected stash, open a new window to display the diff
@@ -606,7 +606,7 @@ class GsStatusShowStashCommand(TextCommand, BaseCommand):
         return stash_view
 
 
-class GsStatusCreateStashCommand(TextCommand, BaseCommand):
+class GsStatusCreateStashCommand(TextCommand, GitCommand):
 
     """
     Create a new stash from the user's unstaged changes.
@@ -620,7 +620,7 @@ class GsStatusCreateStashCommand(TextCommand, BaseCommand):
         self.view.run_command("gs_status_refresh")
 
 
-class GsStatusCreateStashWithUntrackedCommand(TextCommand, BaseCommand):
+class GsStatusCreateStashWithUntrackedCommand(TextCommand, GitCommand):
 
     """
     Create a new stash from the user's unstaged changes, including
@@ -635,7 +635,7 @@ class GsStatusCreateStashWithUntrackedCommand(TextCommand, BaseCommand):
         self.view.run_command("gs_status_refresh")
 
 
-class GsStatusDiscardStashCommand(TextCommand, BaseCommand):
+class GsStatusDiscardStashCommand(TextCommand, GitCommand):
 
     """
     Drop the selected stash.  The user can only discard one stash
@@ -657,7 +657,7 @@ class GsStatusDiscardStashCommand(TextCommand, BaseCommand):
         self.view.run_command("gs_status_refresh")
 
 
-class GsStatusLaunchMergeToolCommand(TextCommand, BaseCommand):
+class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):
 
     """
     Launch external merge tool for selected file.

@@ -1,10 +1,10 @@
 from sublime_plugin import TextCommand
 
-from ...core.base_command import BaseCommand
+from ...core.git_command import GitCommand
 from ..github import open_file_in_browser
 
 
-class GsOpenFileOnRemoteCommand(TextCommand, BaseCommand):
+class GsOpenFileOnRemoteCommand(TextCommand, GitCommand):
 
     """
     Open a new browser window to the web-version of the currently opened

@@ -1,13 +1,13 @@
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 
 
 ALL_REMOTES = "All remotes."
 
 
-class GsFetchCommand(WindowCommand, BaseCommand):
+class GsFetchCommand(WindowCommand, GitCommand):
 
     """
     Display a panel of all git remotes for active repository and

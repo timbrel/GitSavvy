@@ -2,7 +2,7 @@ from collections import namedtuple
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 
 MenuOption = namedtuple("MenuOption", ["requires_action", "menu_text", "filename", "is_untracked"])
 
@@ -12,7 +12,7 @@ ADD_ALL_UNSTAGED_FILES = " ?  All unstaged files"
 ADD_ALL_FILES = " +  All files"
 
 
-class GsQuickStageCommand(WindowCommand, BaseCommand):
+class GsQuickStageCommand(WindowCommand, GitCommand):
 
     """
     Display a quick panel of unstaged files in the current git repository,

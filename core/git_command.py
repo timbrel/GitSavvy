@@ -46,7 +46,7 @@ class GitSavvyError(Exception):
     pass
 
 
-class BaseCommand(FileAndRepo):
+class GitCommand(FileAndRepo):
 
     """
     Base class for all Sublime commands that interact with git.

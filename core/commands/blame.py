@@ -4,7 +4,7 @@ from collections import namedtuple, defaultdict
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 from ...common import util
 
 
@@ -14,7 +14,7 @@ NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
 BLAME_TITLE = "BLAME: {}"
 
 
-class GsBlameCommand(WindowCommand, BaseCommand):
+class GsBlameCommand(WindowCommand, GitCommand):
 
     @util.view.single_cursor_coords
     def run(self, coords, file_path=None, repo_path=None):
@@ -33,7 +33,7 @@ class GsBlameCommand(WindowCommand, BaseCommand):
         view.run_command("gs_blame_initialize_view", {"coords": coords})
 
 
-class GsBlameInitializeViewCommand(TextCommand, BaseCommand):
+class GsBlameInitializeViewCommand(TextCommand, GitCommand):
 
     def run(self, edit, coords=None):
         content = self.get_content()

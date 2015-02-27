@@ -1,11 +1,11 @@
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
 
-class GsMergeCommand(WindowCommand, BaseCommand):
+class GsMergeCommand(WindowCommand, GitCommand):
 
     """
     Display a list of branches available to merge against the active branch.
@@ -51,7 +51,7 @@ class GsMergeCommand(WindowCommand, BaseCommand):
                 self.window.active_view().run_command("gs_status_refresh")
 
 
-class GsAbortMergeCommand(WindowCommand, BaseCommand):
+class GsAbortMergeCommand(WindowCommand, GitCommand):
 
     """
     Reset all files to pre-merge conditions, and abort the merge.
@@ -63,7 +63,7 @@ class GsAbortMergeCommand(WindowCommand, BaseCommand):
             self.window.active_view().run_command("gs_status_refresh")
 
 
-class GsRestartMergeForFileCommand(WindowCommand, BaseCommand):
+class GsRestartMergeForFileCommand(WindowCommand, GitCommand):
 
     """
     Reset a single file to pre-merge condition, but do not abort the merge.

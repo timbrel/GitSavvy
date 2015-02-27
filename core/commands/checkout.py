@@ -1,12 +1,12 @@
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 
 NEW_BRANCH_PROMPT = "Branch name:"
 
 
-class GsCheckoutBranchCommand(WindowCommand, BaseCommand):
+class GsCheckoutBranchCommand(WindowCommand, GitCommand):
 
     """
     Display a panel of all local branches.  Change to the branch the
@@ -38,7 +38,7 @@ class GsCheckoutBranchCommand(WindowCommand, BaseCommand):
         sublime.status_message("Checked out `{}` branch.".format(branch_name))
 
 
-class GsCheckoutNewBranchCommand(WindowCommand, BaseCommand):
+class GsCheckoutNewBranchCommand(WindowCommand, GitCommand):
 
     """
     Prompt the user for a new branch name, create it, and check it out.
@@ -52,7 +52,7 @@ class GsCheckoutNewBranchCommand(WindowCommand, BaseCommand):
         sublime.status_message("Created and checked out `{}` branch.".format(branch_name))
 
 
-class GsCheckoutRemoteBranchCommand(WindowCommand, BaseCommand):
+class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
 
     """
     Display a panel of all remote branches.  When the user makes a selection,

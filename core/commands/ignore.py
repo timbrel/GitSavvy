@@ -3,14 +3,14 @@ import os
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 
 
 IGNORE_PATTERN_PROMPT = "Enter pattern to ignore:"
 UNSTAGED_WORKING_STATUSES = ("M", "D")
 
 
-class GsIgnoreCommand(WindowCommand, BaseCommand):
+class GsIgnoreCommand(WindowCommand, GitCommand):
 
     """
     Add a `.gitignore` entry for the provided relative path or pattern
@@ -25,7 +25,7 @@ class GsIgnoreCommand(WindowCommand, BaseCommand):
         sublime.status_message("Ignored file `{}`.".format(file_path_or_pattern))
 
 
-class GsIgnorePatternCommand(WindowCommand, BaseCommand):
+class GsIgnorePatternCommand(WindowCommand, GitCommand):
 
     """
     Prompt the user for an ignore pattern and, once entered, create
@@ -42,7 +42,7 @@ class GsIgnorePatternCommand(WindowCommand, BaseCommand):
             self.window.active_view().run_command("gs_status_refresh")
 
 
-class GsAssumeUnchangedCommand(WindowCommand, BaseCommand):
+class GsAssumeUnchangedCommand(WindowCommand, GitCommand):
 
     """
     Prompt the user with a quick panel of unstaged files.  After the selection
@@ -71,7 +71,7 @@ class GsAssumeUnchangedCommand(WindowCommand, BaseCommand):
             self.window.active_view().run_command("gs_status_refresh")
 
 
-class GsRestoreAssumedUnchangedCommand(WindowCommand, BaseCommand):
+class GsRestoreAssumedUnchangedCommand(WindowCommand, GitCommand):
 
     """
     Show the user a quick panel of previously temporarily-ignored files.  When

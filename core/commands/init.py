@@ -3,7 +3,7 @@ import os
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 
 
 NO_REPO_MESSAGE = ("It looks like you haven't initialized Git in this directory.  "
@@ -29,7 +29,7 @@ class GsOfferInit(WindowCommand):
             self.window.run_command("gs_init")
 
 
-class GsInit(WindowCommand, BaseCommand):
+class GsInit(WindowCommand, GitCommand):
 
     """
     If the active Sublime window has folders added to the project (or if Sublime was
@@ -65,7 +65,7 @@ class GsInit(WindowCommand, BaseCommand):
             word_start="Re-i" if re_init else "I"))
 
 
-class GsSetupUserCommand(WindowCommand, BaseCommand):
+class GsSetupUserCommand(WindowCommand, GitCommand):
 
     """
     Set user's name and email address in global Git config.

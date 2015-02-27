@@ -1,12 +1,12 @@
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 
 LOG_GRAPH_TITLE = "GRAPH"
 
 
-class GsLogGraphCommand(WindowCommand, BaseCommand):
+class GsLogGraphCommand(WindowCommand, GitCommand):
 
     """
     Open a new window displaying an ASCII-graphic representation
@@ -24,7 +24,7 @@ class GsLogGraphCommand(WindowCommand, BaseCommand):
         view.run_command("gs_log_graph_initialize")
 
 
-class GsLogGraphInitializeCommand(TextCommand, BaseCommand):
+class GsLogGraphInitializeCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         branch_graph = self.git("log", "--oneline", "--graph", "--decorate")

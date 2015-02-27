@@ -1,10 +1,10 @@
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 
 
-class GsPullCommand(WindowCommand, BaseCommand):
+class GsPullCommand(WindowCommand, GitCommand):
 
     """
     Through a series of panels, allow the user to pull from a remote branch.

@@ -1,11 +1,11 @@
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 from ...common import util
 
 
-class GsLogCommand(WindowCommand, BaseCommand):
+class GsLogCommand(WindowCommand, GitCommand):
 
     def run(self, filename=None, limit=6000, author=None):
         self._pagination = 0
@@ -65,13 +65,13 @@ class GsLogCommand(WindowCommand, BaseCommand):
         self.window.run_command("gs_show_commit", {"commit_hash": selected_hash})
 
 
-class GsLogCurrentFileCommand(WindowCommand, BaseCommand):
+class GsLogCurrentFileCommand(WindowCommand, GitCommand):
 
     def run(self):
         self.window.run_command("gs_log", {"filename": self.file_path})
 
 
-class GsLogByAuthorCommand(WindowCommand, BaseCommand):
+class GsLogByAuthorCommand(WindowCommand, GitCommand):
 
     """
     Prompt the user for author pattern, pre-filled with local user's

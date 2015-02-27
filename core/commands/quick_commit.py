@@ -1,13 +1,13 @@
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 
 
 COMMIT_MSG_PROMPT = "Commit message:"
 
 
-class GsQuickCommitCommand(WindowCommand, BaseCommand):
+class GsQuickCommitCommand(WindowCommand, GitCommand):
 
     """
     Present the user with a input panel where they can enter a commit message.
@@ -22,7 +22,7 @@ class GsQuickCommitCommand(WindowCommand, BaseCommand):
         sublime.status_message("Committed successfully.")
 
 
-class GsQuickStageCurrentFileCommitCommand(WindowCommand, BaseCommand):
+class GsQuickStageCurrentFileCommitCommand(WindowCommand, GitCommand):
 
     """
     Present the user with a input panel where they can enter a commit message.

@@ -7,11 +7,11 @@ import re
 import sublime
 from sublime_plugin import TextCommand
 
-from ...core.base_command import BaseCommand
+from ...core.git_command import GitCommand
 from .. import github
 
 
-class GsShowGithubIssuesCommand(TextCommand, BaseCommand):
+class GsShowGithubIssuesCommand(TextCommand, GitCommand):
 
     """
     Display a panel of GitHub issues to either:
@@ -63,7 +63,7 @@ class GsShowGithubIssuesCommand(TextCommand, BaseCommand):
             self.view.run_command("gs_insert_text_at_cursor", {"text": number})
 
 
-class GsShowGithubContributorsCommand(TextCommand, BaseCommand):
+class GsShowGithubContributorsCommand(TextCommand, GitCommand):
 
     """
     Query github for a list of people that have contributed to the GitHub project

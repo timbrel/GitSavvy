@@ -1,13 +1,13 @@
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 
 
 SHOW_COMMIT_TITLE = "COMMIT: {}"
 
 
-class GsShowCommitCommand(WindowCommand, BaseCommand):
+class GsShowCommitCommand(WindowCommand, GitCommand):
 
     def run(self, commit_hash):
         repo_path = self.repo_path
@@ -23,7 +23,7 @@ class GsShowCommitCommand(WindowCommand, BaseCommand):
         view.run_command("gs_show_commit_initialize_view")
 
 
-class GsShowCommitInitializeView(TextCommand, BaseCommand):
+class GsShowCommitInitializeView(TextCommand, GitCommand):
 
     def run(self, edit):
         commit_hash = self.view.settings().get("git_savvy.show_commit_view.commit")

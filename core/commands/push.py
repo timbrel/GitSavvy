@@ -1,7 +1,7 @@
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 
 
 NO_REMOTES_MESSAGE = "You have not configured any remotes."
@@ -9,7 +9,7 @@ START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
 
 
-class GsPushCommand(WindowCommand, BaseCommand):
+class GsPushCommand(WindowCommand, GitCommand):
 
     """
     Perform a normal `git push`.
@@ -27,7 +27,7 @@ class GsPushCommand(WindowCommand, BaseCommand):
             self.window.active_view().run_command("gs_status_refresh")
 
 
-class GsPushToBranchCommand(WindowCommand, BaseCommand):
+class GsPushToBranchCommand(WindowCommand, GitCommand):
 
     """
     Through a series of panels, allow the user to push to a specific remote branch.

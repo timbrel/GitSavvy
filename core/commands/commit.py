@@ -4,7 +4,7 @@ import re
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 
 
 COMMIT_HELP_TEXT = """
@@ -21,7 +21,7 @@ COMMIT_HELP_TEXT = """
 COMMIT_TITLE = "COMMIT"
 
 
-class GsCommitCommand(WindowCommand, BaseCommand):
+class GsCommitCommand(WindowCommand, GitCommand):
 
     """
     Display a transient window to capture the user's desired commit message.
@@ -42,7 +42,7 @@ class GsCommitCommand(WindowCommand, BaseCommand):
         view.run_command("gs_commit_initialize_view")
 
 
-class GsCommitInitializeViewCommand(TextCommand, BaseCommand):
+class GsCommitInitializeViewCommand(TextCommand, GitCommand):
 
     """
     Fill the view with the commit view help message, and optionally
@@ -65,7 +65,7 @@ class GsCommitInitializeViewCommand(TextCommand, BaseCommand):
         self.view.sel().add(sublime.Region(0, 0))
 
 
-class GsCommitViewDoCommitCommand(TextCommand, BaseCommand):
+class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
 
     """
     Take the text of the current view (minus the help message text) and

@@ -6,7 +6,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from ...common import util
 from ...common.theme_generator import ThemeGenerator
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
@@ -24,7 +24,7 @@ DIFF_HEADER = """diff --git a/{path} b/{path}
 diff_view_hunks = {}
 
 
-class GsInlineDiffCommand(WindowCommand, BaseCommand):
+class GsInlineDiffCommand(WindowCommand, GitCommand):
 
     """
     Given an open file in a git-tracked directory, show a new view with the
@@ -73,7 +73,7 @@ class GsInlineDiffCommand(WindowCommand, BaseCommand):
         themeGenerator.apply_new_theme("active-diff-view." + file_ext, target_view)
 
 
-class GsInlineDiffRefreshCommand(TextCommand, BaseCommand):
+class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
 
     """
     Diff one version of a file (the base) against another, and display the
@@ -299,7 +299,7 @@ class GsInlineDiffFocusEventListener(EventListener):
             view.run_command("gs_inline_diff_refresh")
 
 
-class GsInlineDiffStageOrResetBase(TextCommand, BaseCommand):
+class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
 
     """
     Base class for any stage or reset operation in the inline-diff view.

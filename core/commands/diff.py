@@ -10,14 +10,14 @@ import bisect
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
-from ..base_command import BaseCommand
+from ..git_command import GitCommand
 
 
 DIFF_TITLE = "DIFF: {}"
 DIFF_CACHED_TITLE = "DIFF (cached): {}"
 
 
-class GsDiffCommand(WindowCommand, BaseCommand):
+class GsDiffCommand(WindowCommand, GitCommand):
 
     """
     Create a new view to display the project's diff.  If `in_cached_mode` is set,
@@ -37,7 +37,7 @@ class GsDiffCommand(WindowCommand, BaseCommand):
         diff_view.run_command("gs_diff_refresh")
 
 
-class GsDiffRefreshCommand(TextCommand, BaseCommand):
+class GsDiffRefreshCommand(TextCommand, GitCommand):
 
     """
     Refresh the diff view with the latest repo state.
@@ -68,7 +68,7 @@ class GsDiffFocusEventListener(EventListener):
             view.run_command("gs_diff_refresh")
 
 
-class GsDiffStageOrResetHunkCommand(TextCommand, BaseCommand):
+class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
 
     """
     Depending on whether the user is in cached mode an what action
@@ -147,7 +147,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, BaseCommand):
         return header + diff
 
 
-class GsDiffOpenFileAtHunkCommand(TextCommand, BaseCommand):
+class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
 
     """
     For each cursor in the view, identify the hunk in which the cursor lies,
