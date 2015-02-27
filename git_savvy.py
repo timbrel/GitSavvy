@@ -9,4 +9,4 @@ else:
 
     from .common.log import GsDisplayPanelCommand
     from .common.debug import GsReloadModulesDebug
-    from .commands import *
+    from .core.commands import *
