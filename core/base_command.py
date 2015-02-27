@@ -13,7 +13,7 @@ from collections import namedtuple, OrderedDict
 
 import sublime
 
-from ..common import log
+from ..common import util
 from ..common.file_and_repo import FileAndRepo
 
 Stash = namedtuple("Stash", ("id", "description"))
@@ -77,7 +77,7 @@ class BaseCommand(FileAndRepo):
             sublime.status_message(
                 "Failed to run `git {}`. See log for details.".format(command[1])
             )
-            log.panel(msg)
+            util.log.panel(msg)
             raise GitSavvyError(msg)
 
         try:
@@ -105,7 +105,7 @@ class BaseCommand(FileAndRepo):
             ))
 
         if show_panel:
-            log.panel("> {}\n{}\n{}".format(command_str, stdout, stderr))
+            util.log.panel("> {}\n{}\n{}".format(command_str, stdout, stderr))
 
         return stdout
 
