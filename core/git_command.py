@@ -97,14 +97,3 @@ class GitCommand(FileAndRepo,
             util.log.panel("> {}\n{}\n{}".format(command_str, stdout, stderr))
 
         return stdout
-
-    def get_read_only_view(self, name):
-        """
-        Create and return a read-only view.
-        """
-        window = self.window if hasattr(self, "window") else self.view.window()
-        view = window.new_file()
-        view.settings().set("git_savvy.{}_view".format(name), True)
-        view.set_scratch(True)
-        view.set_read_only(True)
-        return view

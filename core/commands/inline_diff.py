@@ -44,7 +44,7 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
             syntax_file = settings["syntax"]
             del settings["syntax"]
 
-        diff_view = self.get_read_only_view("inline_diff")
+        diff_view = util.view.get_read_only_view(self, "inline_diff")
         title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
         diff_view.set_name(title + os.path.basename(settings["git_savvy.file_path"]))
 

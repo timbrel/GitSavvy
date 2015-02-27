@@ -11,6 +11,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from ..git_command import GitCommand
+from ...common import util
 
 
 DIFF_TITLE = "DIFF: {}"
@@ -26,7 +27,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
 
     def run(self, in_cached_mode=False):
         repo_path = self.repo_path
-        diff_view = self.get_read_only_view("diff")
+        diff_view = util.view.get_read_only_view(self, "diff")
         title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(os.path.basename(repo_path))
         diff_view.set_name(title)
         diff_view.set_syntax_file("Packages/Diff/Diff.tmLanguage")

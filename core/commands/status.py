@@ -95,7 +95,7 @@ class GsShowStatusCommand(WindowCommand, GitCommand):
     def run(self):
         repo_path = self.repo_path
         title = STATUS_TITLE.format(os.path.basename(repo_path))
-        status_view = self.get_read_only_view("status")
+        status_view = util.view.get_read_only_view(self, "status")
         status_view.set_name(title)
         status_view.set_syntax_file("Packages/GitSavvy/syntax/status.tmLanguage")
         status_view.settings().set("git_savvy.repo_path", repo_path)
@@ -596,7 +596,7 @@ class GsStatusShowStashCommand(TextCommand, GitCommand):
     def get_stash_view(self, title):
         window = self.window if hasattr(self, "window") else self.view.window()
         repo_path = self.repo_path
-        stash_view = self.get_read_only_view("stash_" + title)
+        stash_view = util.view.get_read_only_view(self, "stash_" + title)
         stash_view.set_name(title)
         stash_view.set_syntax_file("Packages/Diff/Diff.tmLanguage")
         stash_view.settings().set("git_savvy.repo_path", repo_path)

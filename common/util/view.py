@@ -31,9 +31,25 @@ def single_cursor_coords(run):
     return decorated_run
 
 
-####################
-# HELPER FUNCTIONS #
-####################
+#############################
+# NEW-VIEW HELPER FUNCTIONS #
+#############################
+
+def get_read_only_view(context, name):
+    """
+    Create and return a read-only view.
+    """
+    window = context.window if hasattr(context, "window") else context.view.window()
+    view = window.new_file()
+    view.settings().set("git_savvy.{}_view".format(name), True)
+    view.set_scratch(True)
+    view.set_read_only(True)
+    return view
+
+
+############################
+# IN-VIEW HELPER FUNCTIONS #
+############################
 
 def move_cursor(view, line_no, char_no):
     # Line numbers are one-based, rows are zero-based.
