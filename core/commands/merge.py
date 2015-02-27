@@ -59,6 +59,8 @@ class GsAbortMergeCommand(WindowCommand, BaseCommand):
 
     def run(self):
         self.git("reset", "--merge")
+        if self.window.active_view().settings().get("git_savvy.status_view"):
+            self.window.active_view().run_command("gs_status_refresh")
 
 
 class GsRestartMergeForFileCommand(WindowCommand, BaseCommand):
@@ -83,3 +85,6 @@ class GsRestartMergeForFileCommand(WindowCommand, BaseCommand):
             return
         fpath = self._conflicts[index]
         self.git("checkout", "--conflict=merge", "--", fpath)
+
+        if self.window.active_view().settings().get("git_savvy.status_view"):
+            self.window.active_view().run_command("gs_status_refresh")
