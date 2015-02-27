@@ -369,7 +369,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = tuple(line.strip() for line in lines if line)
+        file_paths = tuple(line[4:].strip() for line in lines if line)
 
         if file_paths:
             for fpath in file_paths:
@@ -391,7 +391,7 @@ class GsStatusOpenFileOnRemoteCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=status_view_section_ranges[self.view.id()]
         )
-        file_paths = tuple(line.strip() for line in lines if line)
+        file_paths = tuple(line[4:].strip() for line in lines if line)
 
         if file_paths:
             file_paths = list(file_paths)
@@ -494,7 +494,7 @@ class GsStatusIgnoreFileCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=status_view_section_ranges[self.view.id()]
         )
-        file_paths = tuple(line.strip() for line in lines if line)
+        file_paths = tuple(line[4:].strip() for line in lines if line)
 
         if file_paths:
             for fpath in file_paths:
@@ -517,7 +517,7 @@ class GsStatusIgnorePatternCommand(TextCommand, BaseCommand):
             self.view.sel(),
             valid_ranges=status_view_section_ranges[self.view.id()]
         )
-        file_paths = tuple(line.strip() for line in lines if line)
+        file_paths = tuple(line[4:].strip() for line in lines if line)
 
         if file_paths:
             self.view.window().run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
