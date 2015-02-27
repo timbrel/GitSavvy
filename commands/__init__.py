@@ -17,7 +17,7 @@ from .status import (
     GsStatusUnstageFileCommand,
     GsStatusDiscardChangesToFileCommand,
     GsStatusOpenFileOnRemoteCommand,
-    # GsStatusResolveConflictFileCommand,
+    GsStatusLaunchMergeToolCommand,
     GsStatusDiffInlineCommand,
     GsStatusStageAllFilesCommand,
     GsStatusStageAllFilesWithUntrackedCommand,

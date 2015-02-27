@@ -102,7 +102,7 @@
     },
     {
         "keys": ["M"],
-        "command": "gs_status_resolve_conflict_file",
+        "command": "gs_status_launch_merge_tool",
         "context": [
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
             { "key": "selector", "operator": "equal", "operand": "git-savvy.status meta.git-savvy.status.section meta.git-savvy.status.file" }
