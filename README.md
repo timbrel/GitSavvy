@@ -3,8 +3,10 @@
 Sublime Text 3 plugin providing the following features:
 
 - basic Git functionality; `init`, `add`, `commit`, `amend`, `checkout`, `pull`, `push`, etc.
-- inline diff viewing, including quick navigation between modified hunks and the ability to (un)stage files by hunk or by line\
-- GitHub integration including issue/collaborator referencing when committing, and opening the current file on GitHub at the selected line
+- inline diff viewing, including quick navigation between modified hunks and the ability to (un)stage files by hunk or by line (inspired by SourceTree)
+- GitHub integration
+    + issue/collaborator referencing when committing
+    + opening the current file on GitHub at the selected line
 - GitHub-style blame view, showing hunk metadata and ability to view the commit that made the change
 - `git diff` view, allowing user to (un)stage hunks across all files
 - a status dashboard, exposing much of the available functionality
@@ -12,7 +14,7 @@ Sublime Text 3 plugin providing the following features:
 
 ## Installation
 
-GitSavvy is still alpha software, and not yet available via the Sublime [Package Manager](https://packagecontrol.io/).
+GitSavvy is still beta software, and not yet available via the Sublime [Package Manager](https://packagecontrol.io/).
 
 ### Simple
 
