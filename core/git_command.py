@@ -13,7 +13,6 @@ import shutil
 import sublime
 
 from ..common import util
-from .file_and_repo import FileAndRepo
 from .git_mixins.status import StatusMixin
 from .git_mixins.active_branch import ActiveBranchMixin
 from .git_mixins.branches import BranchesMixin
@@ -31,8 +30,7 @@ class GitSavvyError(Exception):
     pass
 
 
-class GitCommand(FileAndRepo,
-                 StatusMixin,
+class GitCommand(StatusMixin,
                  ActiveBranchMixin,
                  BranchesMixin,
                  StashMixin,
