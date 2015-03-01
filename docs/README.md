@@ -4,6 +4,8 @@ You've found GitSavvy's online documentation.
 
 All documentation is in markdown.  Beyond what you might expect, if you see a link to a different page, you can browse to that page by double-clicking on the link or by pressing **SUPER-Enter** while the link is under your cursor (**CTRL-Enter** on Windows).
 
+To return to the previous page, press **SUPER-Backspace** (**CTRL-Backspace** on Windows).
+
 If you run into any issues not addressed here, please feel free to [open an issue](https://github.com/divmain/GitSavvy/issues) and ask for help!
 
 
