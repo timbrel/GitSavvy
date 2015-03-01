@@ -322,4 +322,10 @@
 
     // Per-platform key-mapping for: gs_blame_open_commit
 
+    ///////////////
+    // HELP VIEW //
+    ///////////////
+
+    // Per-platform keymapping for: gs_help_goto_link
+
 ]

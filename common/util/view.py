@@ -47,6 +47,13 @@ def get_read_only_view(context, name):
     return view
 
 
+def get_is_view_of_type(view, typ):
+    """
+    Determine if view is of specified type.
+    """
+    return not not view.settings().get("git_savvy.{}_view".format(typ))
+
+
 ############################
 # IN-VIEW HELPER FUNCTIONS #
 ############################

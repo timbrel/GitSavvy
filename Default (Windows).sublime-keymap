@@ -44,6 +44,26 @@
         "context": [
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
         ]
+    },
+
+    ///////////////
+    // HELP VIEW //
+    ///////////////
+
+    {
+        "keys": ["ctrl+enter"],
+        "command": "gs_help_goto_link",
+        "context": [
+            { "key": "setting.git_savvy.help_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "meta.link.inline.markdown"}
+        ]
+    },
+    {
+        "keys": ["ctrl+backspace"],
+        "command": "gs_help_goto_previous",
+        "context": [
+            { "key": "setting.git_savvy.help_view", "operator": "equal", "operand": true }
+        ]
     }
 
 ]

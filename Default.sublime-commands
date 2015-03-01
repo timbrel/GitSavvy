@@ -133,5 +133,9 @@
     {
         "caption": "git: restart merge for file...",
         "command": "gs_restart_merge_for_file"
+    },
+    {
+        "caption": "GitSavvy: help",
+        "command": "gs_help"
     }
 ]
