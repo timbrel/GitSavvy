@@ -12,6 +12,9 @@ Sublime Text 3 plugin providing the following features:
 - a status dashboard, exposing much of the available functionality
 
 
+**Note:** Sublime Text 2 is not supported.  Also, GitSavvy takes advantage of certain features of ST3 that have bugs in earlier ST3 releases.  For the best experience, use the latest ST3 dev build.
+
+
 ## Installation
 
 GitSavvy is still beta software, and not yet available via the Sublime [Package Manager](https://packagecontrol.io/).
