@@ -11,7 +11,7 @@ If you run into any issues not addressed here, please feel free to [open an issu
 
 ## Highlighted Features
 
-- [Inline-diff](staging.md#inline-diff)
+- [Inline-diff](staging.md#git-diff-current-file-inline)
 - [Status view](status.md)
 - [GitHub integration](github.md)
 
@@ -83,8 +83,8 @@ If you run into any issues not addressed here, please feel free to [open an issu
 ## Special Views
 
 - [Status view](status.md#overview)
-- [Inline-diff view](staging.md#inline-diff-view)
-- [Diff view](staging.md#diff-view)
+- [Inline-diff view](staging.md#git-diff-current-file-inline)
+- [Diff view](staging.md#git-diff)
 - [Commit view](commit.md)
 - [Log-graph view]()
 - [Blame view](history.md#git-blame-current-file)
