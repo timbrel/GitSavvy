@@ -85,9 +85,9 @@ If you run into any issues not addressed here, please feel free to [open an issu
 - [Status view](status.md#overview)
 - [Inline-diff view](staging.md#inline-diff-view)
 - [Diff view](staging.md#diff-view)
-- [Blame view](history.md#blame)
 - [Commit view](commit.md)
 - [Log-graph view]()
+- [Blame view](history.md#git-blame-current-file)
 
 
 ## GitHub Integration
