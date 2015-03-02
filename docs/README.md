@@ -82,7 +82,7 @@ If you run into any issues not addressed here, please feel free to [open an issu
 
 ## Special Views
 
-- [Status view](status.md#status-view)
+- [Status view](status.md#overview)
 - [Inline-diff view](staging.md#inline-diff-view)
 - [Diff view](staging.md#diff-view)
 - [Blame view](history.md#blame)

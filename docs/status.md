@@ -143,7 +143,7 @@ Given a selected stash, delete it without applying it.
 
 ## Additional notes
 
-When opening the status dashboard, GitSavvy attempts to detect the Git repository to display.  This repo is derived from:
+When opening the status dashboard, GitSavvy attempts to detect the Git repository for which information should be displayed.  This repo is derived from:
 
 1. the path of the currently open file;
 2. the path of the originating file while in a GitSavvy special view; or
