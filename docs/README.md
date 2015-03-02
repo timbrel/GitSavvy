@@ -86,8 +86,8 @@ If you run into any issues not addressed here, please feel free to [open an issu
 - [Inline-diff view](staging.md#git-diff-current-file-inline)
 - [Diff view](staging.md#git-diff)
 - [Commit view](commit.md)
-- [Log-graph view]()
 - [Blame view](history.md#git-blame-current-file)
+- [Log-graph view](history.md#git-graph)
 
 
 ## GitHub Integration
