@@ -23,7 +23,7 @@ def get_page_and_anchor(view):
         anchor = ("git-amend-previous-commit"
                   if view.settings().get("git_savvy.commit_view.amend")
                   else None)
-        return "committing.md", anchor
+        return "commit.md", anchor
     if util.view.get_is_view_of_type(view, "diff"):
         anchor = ("git-diff-cached"
                   if view.settings().get("git_savvy.diff_view.in_cached_mode")

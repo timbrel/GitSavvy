@@ -34,11 +34,11 @@ If you run into any issues not addressed here, please feel free to [open an issu
 
 ### Commiting
 
-- [git: commit](commiting.md#git-commit)
-- [git: commit including unstaged files](commiting.md#git-commit-including-unstaged-files)
-- [git: amend previous commit](commiting.md#git-amend-previous-commit)
-- [git: quick commit](commiting.md#git-quick-commit)
-- [git: quick stage current file and commit](commiting.md#git-quick-stage-current-file-and-commit)
+- [git: commit](commit.md#git-commit)
+- [git: commit including unstaged files](commit.md#git-commit-including-unstaged-files)
+- [git: amend previous commit](commit.md#git-amend-previous-commit)
+- [git: quick commit](commit.md#git-quick-commit)
+- [git: quick stage current file and commit](commit.md#git-quick-stage-current-file-and-commit)
 
 
 ### Branch management
@@ -85,8 +85,8 @@ If you run into any issues not addressed here, please feel free to [open an issu
 - [Status view](status.md#status-view)
 - [Inline-diff view](staging.md#inline-diff-view)
 - [Diff view](staging.md#diff-view)
-- [Commit view](commiting.md)
 - [Blame view](history.md#blame)
+- [Commit view](commit.md)
 - [Log-graph view]()
 
 
