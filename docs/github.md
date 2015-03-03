@@ -3,6 +3,16 @@
 GitSavvy provides some basic integration with GitHub.  More features are planned for future versions.  At present, both GitHub.com and GitHub enterprise are supported.
 
 
+## Setup
+
+When interacting with a public repository, no configuration is required.  However, if your repository is private, you will need to add an API key to the GitSavvy configuration.  To do so:
+
+1. [Create a new API token.](https://github.com/settings/tokens/new).  `repo` and `public_repo` should be checked.
+2. After submitting, copy the generated API key.
+3. In the Sublime Menu, open `Preferences > Package Settings > GitSavvy > Settings - User`.
+4. Add your key to the `api_tokens` object (you can find an example in `Preferences > Package Settings > GitSavvy > Settings - Default`).
+
+
 ## `github: open file on remote`
 
 This command is accessible via both the command palette and the status dashboard.  GitSavvy will attempt to determine the GitHub web URL for the file at the current hash, and open a browser with that URL.

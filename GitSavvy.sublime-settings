@@ -1,0 +1,17 @@
+{
+    /*
+        Change this to `true` when doing dev work on GitSavvy.
+     */
+
+    "dev_mode": false,
+
+    /*
+        Enter your github API key in the field below.  To interact with
+        a GitHub Enterprise instance, add a field with the FQDN as the key
+        and the API key as the value.
+     */
+
+    "api_tokens": {
+        // "github.com": "ADD YOUR TOKEN HERE"
+    }
+}

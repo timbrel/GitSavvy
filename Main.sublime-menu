@@ -1,0 +1,29 @@
+[
+  {
+    "id": "preferences",
+    "children": [
+      {
+        "caption": "Package Settings",
+        "mnemonic": "P",
+        "id": "package-settings",
+        "children": [
+          {
+            "caption": "GitSavvy",
+            "children": [
+              {
+                "command": "open_file",
+                "args": {"file": "${packages}/GitSavvy/GitSavvy.sublime-settings"},
+                "caption": "Settings - Default"
+              }, {
+                "command": "open_file",
+                "args": {"file": "${packages}/User/GitSavvy.sublime-settings"},
+                "caption": "Settings – User"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+
+]
