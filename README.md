@@ -18,6 +18,21 @@ Sublime Text 3 plugin providing the following features:
 
 Feature documentation can be found [here](docs/README.md).  It can also be accessed from within Sublime by opening the command palette and typing `GitSavvy: help`.
 
+## Highlights
+
+### Inline-diff
+
+Stage and revert individual lines or hunks.
+
+![inline-diff](https://cloud.githubusercontent.com/assets/5016978/6471628/886430f8-c1a1-11e4-99e9-883837dba86f.gif)
+
+### Status dashboard
+
+![status dashboard](https://cloud.githubusercontent.com/assets/5016978/6471645/b115ff18-c1a1-11e4-9d2e-d3c1ceb64d51.png)
+
+### GitHub integration
+
+![GitHub integration](https://cloud.githubusercontent.com/assets/5016978/6471672/e36e8c00-c1a1-11e4-91a1-dd5481d57c36.png)
 
 ## Installation
 
