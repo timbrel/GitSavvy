@@ -37,7 +37,7 @@ def fuzzy(event, base=None):
 
         elif delta.seconds < TWO_HOURS:
             return "1 hour and {} mins ago".format(
-                (delta.seconds - ONE_HOUR) % ONE_HOUR)
+                delta.seconds % ONE_HOUR // 60)
 
         return "over {} hours ago".format(delta.seconds // ONE_HOUR)
 
