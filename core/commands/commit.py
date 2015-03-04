@@ -1,5 +1,4 @@
 import os
-import re
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
@@ -73,6 +72,9 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
         view_text = self.view.substr(sublime.Region(0, self.view.size()))
         commit_message = view_text.replace(COMMIT_HELP_TEXT, "")
 
