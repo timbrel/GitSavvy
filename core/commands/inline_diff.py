@@ -391,7 +391,10 @@ class GsInlineDiffStageOrResetLineCommand(GsInlineDiffStageOrResetBase):
                 "{line_type}{line}").format(
                     head_start=head_start,
                     head_length="0" if line_type == "+" else "1",
-                    new_start=head_start,
+                    # If head_length is zero, diff will report original start position
+                    # as one less than where the content is inserted, for example:
+                    #   @@ -75,0 +76,3 @@
+                    new_start=head_start + (0 if line_type == "+" else 1),
                     new_length="1" if line_type == "+" else "0",
                     line_type=line_type,
                     line=line
@@ -417,7 +420,18 @@ class GsInlineDiffStageOrResetHunkCommand(GsInlineDiffStageOrResetBase):
         else:
             return
 
-        return "\n".join(hunk_ref.hunk.raw_lines)
+        stand_alone_header = \
+            "@@ -{head_start},{head_length} +{new_start},{new_length} @@".format(
+                head_start=hunk_ref.hunk.head_start,
+                head_length=hunk_ref.hunk.head_length,
+                # If head_length is zero, diff will report original start position
+                # as one less than where the content is inserted, for example:
+                #   @@ -75,0 +76,3 @@
+                new_start=hunk_ref.hunk.head_start + (0 if hunk_ref.hunk.head_length else 1),
+                new_length=hunk_ref.hunk.saved_length
+            )
+
+        return "\n".join([stand_alone_header] + hunk_ref.hunk.raw_lines[1:])
 
 
 class GsInlineDiffGotoBase(TextCommand):
