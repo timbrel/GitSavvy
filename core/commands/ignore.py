@@ -80,7 +80,6 @@ class GsRestoreAssumedUnchangedCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
-        print("hi there!")
         all_file_lines = (
             line.split(" ", 1)
             for line in self.git("ls-files", "-v").split("\n")
