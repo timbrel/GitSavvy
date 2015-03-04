@@ -42,6 +42,9 @@ class GsInit(WindowCommand, GitCommand):
     """
 
     def run(self):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
         open_folders = self.window.folders()
         if open_folders:
             suggested_git_root = open_folders[0]
@@ -72,6 +75,9 @@ class GsSetupUserCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
         if sublime.ok_cancel_dialog(NO_CONFIG_MESSAGE, "OK"):
             self.get_name()
 

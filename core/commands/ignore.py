@@ -50,6 +50,9 @@ class GsAssumeUnchangedCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
         self._unstaged_files = tuple(
             f.path for f in self.get_status()
             if f.working_status in UNSTAGED_WORKING_STATUSES
@@ -80,6 +83,9 @@ class GsRestoreAssumedUnchangedCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
         all_file_lines = (
             line.split(" ", 1)
             for line in self.git("ls-files", "-v").split("\n")

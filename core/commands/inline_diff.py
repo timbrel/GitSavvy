@@ -32,7 +32,10 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
     hunks or individual lines, and to navigate between hunks.
     """
 
-    def run(self, settings=None, cached=False):
+    def run(self, **kwargs):
+        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
+
+    def run_async(self, settings=None, cached=False):
         if settings is None:
             file_view = self.window.active_view()
             syntax_file = file_view.settings().get("syntax")
@@ -310,7 +313,10 @@ class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
     to determine what diff to apply to the file (implemented in subclass).
     """
 
-    def run(self, edit, reset=False):
+    def run(self, edit, **kwargs):
+        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
+
+    def run_async(self, edit, reset=False):
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff.cached")
         selections = self.view.sel()
         region = selections[0]
