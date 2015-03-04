@@ -51,12 +51,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
         stdout = self.git("diff", "--cached" if in_cached_mode else None)
 
-        self.view.set_read_only(False)
-        self.view.replace(edit, sublime.Region(0, self.view.size()), stdout)
-        self.view.set_read_only(True)
-
-        if not len(self.view.sel()):
-            self.view.sel().add(sublime.Region(0, 0))
+        self.view.run_command("gs_replace_view_text", {"text": stdout})
 
 
 class GsDiffFocusEventListener(EventListener):

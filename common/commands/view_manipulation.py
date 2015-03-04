@@ -29,13 +29,15 @@ class GsReplaceViewTextCommand(TextCommand):
     a single cursor at the start of the file.
     """
 
-    def run(self, edit, text):
+    def run(self, edit, text, nuke_cursors=False):
+        cursors_num = len(self.view.sel())
         is_read_only = self.view.is_read_only()
         self.view.set_read_only(False)
         self.view.replace(edit, sublime.Region(0, self.view.size()), text)
         self.view.set_read_only(is_read_only)
 
-        selections = self.view.sel()
-        if not len(selections):
+        if not cursors_num or nuke_cursors:
+            selections = self.view.sel()
+            selections.clear()
             pt = sublime.Region(0, 0)
             selections.add(pt)

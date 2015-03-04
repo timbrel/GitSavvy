@@ -62,9 +62,10 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         else:
             initial_text = COMMIT_HELP_TEXT
 
-        self.view.replace(edit, sublime.Region(0, 0), initial_text)
-        self.view.sel().clear()
-        self.view.sel().add(sublime.Region(0, 0))
+        self.view.run_command("gs_replace_view_text", {
+            "text": initial_text,
+            "nuke_cursors": True
+            })
 
 
 class GsCommitViewDoCommitCommand(TextCommand, GitCommand):

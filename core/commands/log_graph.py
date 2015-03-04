@@ -1,4 +1,3 @@
-import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
 from ..git_command import GitCommand
@@ -28,8 +27,4 @@ class GsLogGraphInitializeCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         branch_graph = self.git("log", "--oneline", "--graph", "--decorate")
-        self.view.set_read_only(False)
-        self.view.replace(edit, sublime.Region(0, self.view.size()), branch_graph)
-        self.view.set_read_only(True)
-        self.view.sel().clear()
-        self.view.sel().add(sublime.Region(0, 0))
+        self.view.run_command("gs_replace_view_text", {"text": branch_graph})

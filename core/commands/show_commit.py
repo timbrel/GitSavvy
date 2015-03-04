@@ -1,4 +1,3 @@
-import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
 from ..git_command import GitCommand
@@ -28,7 +27,4 @@ class GsShowCommitInitializeView(TextCommand, GitCommand):
     def run(self, edit):
         commit_hash = self.view.settings().get("git_savvy.show_commit_view.commit")
         content = self.git("show", commit_hash)
-        self.view.sel().clear()
-        self.view.set_read_only(False)
-        self.view.replace(edit, sublime.Region(0, self.view.size()), content)
-        self.view.set_read_only(True)
+        self.view.run_command("gs_replace_view_text", {"text": content})
