@@ -34,6 +34,9 @@ class GsPushToBranchCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
         """
         Display a panel of all remotes defined for the repo, then proceed to
         `on_select_remote`.  If no remotes are defined, notify the user and

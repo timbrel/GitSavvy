@@ -58,6 +58,9 @@ class GsAbortMergeCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
         self.git("reset", "--merge")
         if self.window.active_view().settings().get("git_savvy.status_view"):
             self.window.active_view().run_command("gs_status_refresh")
@@ -70,6 +73,9 @@ class GsRestartMergeForFileCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
         self._conflicts = tuple(
             f.path for f in self.get_status()
             if (f.index_status, f.working_status) in MERGE_CONFLICT_PORCELAIN_STATUSES

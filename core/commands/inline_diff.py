@@ -316,7 +316,7 @@ class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
     def run(self, edit, **kwargs):
         sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
 
-    def run_async(self, edit, reset=False):
+    def run_async(self, reset=False):
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff.cached")
         selections = self.view.sel()
         region = selections[0]

@@ -15,7 +15,13 @@ class GsQuickCommitCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
-        self.window.show_input_panel(COMMIT_MSG_PROMPT, "", self.on_done, None, None)
+        self.window.show_input_panel(
+            COMMIT_MSG_PROMPT,
+            "",
+            lambda msg: sublime.set_timeout_async(lambda: self.on_done(msg), 0),
+            None,
+            None
+            )
 
     def on_done(self, commit_message):
         self.git("commit", "-q", "-F", "-", stdin=commit_message)
@@ -31,7 +37,13 @@ class GsQuickStageCurrentFileCommitCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
-        self.window.show_input_panel(COMMIT_MSG_PROMPT, "", self.on_done, None, None)
+        self.window.show_input_panel(
+            COMMIT_MSG_PROMPT,
+            "",
+            lambda msg: sublime.set_timeout_async(lambda: self.on_done(msg), 0),
+            None,
+            None
+            )
 
     def on_done(self, commit_message):
         self.git("add", "--", self.file_path)

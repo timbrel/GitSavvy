@@ -31,6 +31,9 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
         menu_options = self.get_menu_options()
         menu_entries = [f.menu_text for f in menu_options]
 
@@ -62,7 +65,7 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
             sublime.status_message("Successfully added `{}`.".format(
                 scope_of_action))
 
-            sublime.set_timeout_async(self.run, 10)
+            sublime.set_timeout_async(self.run_async, 0)
 
         self.window.show_quick_panel(
             menu_entries,
