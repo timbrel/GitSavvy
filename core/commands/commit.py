@@ -28,7 +28,10 @@ class GsCommitCommand(WindowCommand, GitCommand):
     message area with the previous commit message.
     """
 
-    def run(self, repo_path=None, include_unstaged=False, amend=False):
+    def run(self, **kwargs):
+        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
+
+    def run_async(self, repo_path=None, include_unstaged=False, amend=False):
         repo_path = repo_path or self.repo_path
         view = self.window.new_file()
         view.settings().set("git_savvy.get_long_text_view", True)

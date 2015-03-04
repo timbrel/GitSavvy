@@ -25,7 +25,10 @@ class GsDiffCommand(WindowCommand, GitCommand):
     display a diff of the Git index.
     """
 
-    def run(self, in_cached_mode=False):
+    def run(self, **kwargs):
+        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
+
+    def run_async(self, in_cached_mode=False):
         repo_path = self.repo_path
         diff_view = util.view.get_read_only_view(self, "diff")
         title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(os.path.basename(repo_path))
@@ -65,8 +68,7 @@ class GsDiffFocusEventListener(EventListener):
 
     def on_activated(self, view):
         if view.settings().get("git_savvy.diff_view") == True:
-            # cursors = view.sel()
-            view.run_command("gs_diff_refresh")
+            sublime.set_timeout_async(lambda: view.run_command("gs_diff_refresh"))
 
 
 class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
@@ -78,8 +80,6 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, reset=False):
-        in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
-
         # Filter out any cursors that are larger than a single point.
         cursor_pts = tuple(cursor.a for cursor in self.view.sel() if cursor.a == cursor.b)
 
@@ -96,6 +96,11 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
             # The last hunk ends at the end of the file.
             set((self.view.size(), ))
             ))
+
+        sublime.set_timeout_async(lambda: self.apply_diffs_for_pts(cursor_pts, reset), 0)
+
+    def apply_diffs_for_pts(self, cursor_pts, reset):
+        in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
 
         # Apply the diffs in reverse order - otherwise, line number will be off.
         for pt in reversed(cursor_pts):
@@ -125,7 +130,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
                 stdin=hunk_diff
             )
 
-        self.view.run_command("gs_diff_refresh")
+        sublime.set_timeout_async(lambda: self.view.run_command("gs_diff_refresh"))
 
     def get_hunk_diff(self, pt):
         """
