@@ -113,22 +113,13 @@ class GsStatusRefreshCommand(TextCommand, GitCommand):
     and command menu to the user.
     """
 
-    def run(self, edit, cursor=None):
+    def run(self, edit, **kwargs):
+        sublime.set_timeout_async(lambda: self.run_async(**kwargs))
+
+    def run_async(self):
         status_contents, ranges = self.get_contents()
         status_view_section_ranges[self.view.id()] = ranges
-
-        self.view.set_read_only(False)
-        self.view.replace(edit, sublime.Region(0, self.view.size()), status_contents)
-        self.view.set_read_only(True)
-
-        selections = self.view.sel()
-        if cursor is not None:
-            selections.clear()
-            pt = sublime.Region(cursor, cursor)
-            selections.add(pt)
-        elif not len(selections):
-            pt = sublime.Region(0, 0)
-            selections.add(pt)
+        self.view.run_command("gs_replace_view_text", {"text": status_contents})
 
     def get_contents(self):
         """

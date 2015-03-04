@@ -19,3 +19,23 @@ class GsInsertTextAtCursorCommand(TextCommand):
         self.view.sel().clear()
         self.view.sel().add_all([sublime.Region(begin + text_len, end + text_len)
                                  for begin, end in selected_ranges])
+
+
+class GsReplaceViewTextCommand(TextCommand):
+
+    """
+    Replace the contents of the view with the provided text and optional callback.
+    If cursors exist, make sure to place them where they were.  Otherwise, add
+    a single cursor at the start of the file.
+    """
+
+    def run(self, edit, text):
+        is_read_only = self.view.is_read_only()
+        self.view.set_read_only(False)
+        self.view.replace(edit, sublime.Region(0, self.view.size()), text)
+        self.view.set_read_only(is_read_only)
+
+        selections = self.view.sel()
+        if not len(selections):
+            pt = sublime.Region(0, 0)
+            selections.add(pt)
