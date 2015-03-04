@@ -18,6 +18,7 @@ Sublime Text 3 plugin providing the following features:
 
 Feature documentation can be found [here](docs/README.md).  It can also be accessed from within Sublime by opening the command palette and typing `GitSavvy: help`.
 
+
 ## Highlights
 
 ### Inline-diff
@@ -34,24 +35,20 @@ Stage and revert individual lines or hunks.
 
 ![GitHub integration](https://cloud.githubusercontent.com/assets/5016978/6471672/e36e8c00-c1a1-11e4-91a1-dd5481d57c36.png)
 
-## Installation
 
-GitSavvy is still beta software, and not yet available via the Sublime [Package Manager](https://packagecontrol.io/).
+## Installation
 
 ### Simple
 
-If you have Package Management installed in Sublime:
-
-1. Open your command palette and start typing `Package Control: Add Repository`.
+1. Install the [Sublime Text Package Control](https://packagecontrol.io/) plugin if you don't have it already.
+2. Open the command palette and start typing `Package Control: Add Repository`.
 2. At the prompt, enter the following URL: `https://github.com/divmain/GitSavvy`.
 3. Open the command palette again and start typing `Package Control: Install Package`.
 4. Type `GitSavvy`.
 
-This should keep your version auto-updated with any fixes and changes that are released.
-
 ### Less simple
 
-If you want more control over what you pull down, or if you'd like to submit changes, you should pull down the repository directly and restart the editor.
+If you want more control over what you pull down, or if you'd like to submit changes to GitSavvy, you should pull down the repository directly and restart the editor.
 
 ```
 # on a Mac
