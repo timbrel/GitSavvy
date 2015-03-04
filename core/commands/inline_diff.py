@@ -92,7 +92,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
     are not supported in `cached` mode.
     """
 
-    def run(self, edit, cursor=None):
+    def run(self, edit):
         file_path = self.file_path
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff.cached")
 
@@ -118,16 +118,19 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
             inline_diff_contents, replaced_lines = \
                 self.get_inline_diff_contents(indexed_object_contents, diff)
 
+        cursors = self.view.sel()
+        if cursors:
+            row, col = self.view.rowcol(cursors[0].begin())
+
         self.view.set_read_only(False)
         self.view.replace(edit, sublime.Region(0, self.view.size()), inline_diff_contents)
-        self.view.sel().clear()
-        if cursor is not None:
-            pt = sublime.Region(cursor, cursor)
-            self.view.sel().add(pt)
-            # Sublime seems to scroll right when a `-` line is removed from
-            # the diff view.  As a work around, center and show the beginning
-            # of the line that the user was on when staging a line.
-            self.view.show_at_center(self.view.line(pt).begin())
+
+        if cursors:
+            self.view.sel().clear()
+            pt = self.view.text_point(row, 0)
+            self.view.sel().add(sublime.Region(pt, pt))
+            self.view.show_at_center(pt)
+
         self.highlight_regions(replaced_lines)
         self.view.set_read_only(True)
 
@@ -347,8 +350,7 @@ class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
         ]
 
         self.git(*args, stdin=full_diff)
-        cursor = self.view.sel()[0].begin()
-        self.view.run_command("gs_inline_diff_refresh", {"cursor": cursor})
+        self.view.run_command("gs_inline_diff_refresh")
 
 
 class GsInlineDiffStageOrResetLineCommand(GsInlineDiffStageOrResetBase):
