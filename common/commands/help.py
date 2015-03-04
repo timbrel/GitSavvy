@@ -52,7 +52,9 @@ class GsHelp(WindowCommand):
 
         view = util.view.get_read_only_view(self, "help")
         view.set_name("GITSAVVY HELP")
-        view.set_syntax_file("Packages/MarkdownEditing/Markdown.tmLanguage")
+
+        syntax_file = util.file.get_syntax_for_file("*.md")
+        view.set_syntax_file(syntax_file)
 
         view.run_command("gs_help_browse", {"page": page, "anchor": anchor})
 
