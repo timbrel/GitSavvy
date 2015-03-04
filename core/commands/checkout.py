@@ -14,6 +14,9 @@ class GsCheckoutBranchCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
         stdout = self.git("branch", "--no-color", "--no-column")
         branch_entries = (branch.strip() for branch in stdout.split("\n") if branch)
 
@@ -45,6 +48,9 @@ class GsCheckoutNewBranchCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
         self.window.show_input_panel(NEW_BRANCH_PROMPT, "", self.on_done, None, None)
 
     def on_done(self, branch_name):
@@ -61,6 +67,9 @@ class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
         self.remote_branches = self.get_remote_branches()
         self.window.show_quick_panel(
             self.remote_branches,
