@@ -32,5 +32,3 @@ class GsShowCommitInitializeView(TextCommand, GitCommand):
         self.view.set_read_only(False)
         self.view.replace(edit, sublime.Region(0, self.view.size()), content)
         self.view.set_read_only(True)
-
-        start_of_diff = self.view.find("^diff ", 0).a

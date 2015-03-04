@@ -17,7 +17,6 @@ class GsPushCommand(WindowCommand, GitCommand):
 
     def run(self):
         sublime.set_timeout_async(lambda: self.do_push())
-        self.remotes = list(self.get_remotes().keys())
 
     def do_push(self):
         sublime.status_message(START_PUSH_MESSAGE)
