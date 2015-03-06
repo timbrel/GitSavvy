@@ -41,10 +41,8 @@ Stage and revert individual lines or hunks.
 ### Simple
 
 1. Install the [Sublime Text Package Control](https://packagecontrol.io/) plugin if you don't have it already.
-2. Open the command palette and start typing `Package Control: Add Repository`.
-2. At the prompt, enter the following URL: `https://github.com/divmain/GitSavvy`.
-3. Open the command palette again and start typing `Package Control: Install Package`.
-4. Type `GitSavvy`.
+2. Open the command palette and start typing `Package Control: Install Package`.
+3. Enter `GitSavvy`.
 
 ### Less simple
 
