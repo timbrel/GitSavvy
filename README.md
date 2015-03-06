@@ -50,7 +50,9 @@ If you want more control over what you pull down, or if you'd like to submit cha
 
 ```
 # on a Mac
-cd "/Users/$(whoami)/Library/Application Support/Sublime Text 3/Packages"
+cd "$HOME/Library/Application Support/Sublime Text 3/Packages"
+# on Linux
+cd $HOME/.config/sublime-text-3/Packages
 # on Windows (PowerShell)
 cd "$env:appdata\Sublime Text 3\Packages\"
 
