@@ -15,6 +15,7 @@ COMMIT_HELP_TEXT = """
 ## type `#` followed by the `tab` key.  You will be shown a list of issues
 ## related to the current repo.  You may also type `owner/repo#` plus the `tab`
 ## key to reference an issue in a different GitHub repo.
+
 """.format(key="CTRL" if os.name == "nt" else "SUPER")
 
 COMMIT_TITLE = "COMMIT"
@@ -33,10 +34,12 @@ class GsCommitCommand(WindowCommand, GitCommand):
 
     def run_async(self, repo_path=None, include_unstaged=False, amend=False):
         repo_path = repo_path or self.repo_path
+        show_diff = sublime.load_settings("GitSavvy.sublime-settings").get("show_commit_diff")
         view = self.window.new_file()
         view.settings().set("git_savvy.get_long_text_view", True)
         view.settings().set("git_savvy.commit_view.include_unstaged", include_unstaged)
         view.settings().set("git_savvy.commit_view.amend", amend)
+        view.settings().set("git_savvy.commit_view.diff", show_diff)
         view.settings().set("git_savvy.repo_path", repo_path)
         view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.tmLanguage")
         view.set_name(COMMIT_TITLE)
@@ -62,6 +65,10 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         else:
             initial_text = COMMIT_HELP_TEXT
 
+        if self.view.settings().get("git_savvy.commit_view.diff"):
+            stdout = self.git("diff", "--cached")
+            initial_text = initial_text + stdout
+
         self.view.run_command("gs_replace_view_text", {
             "text": initial_text,
             "nuke_cursors": True
@@ -80,7 +87,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
 
     def run_async(self):
         view_text = self.view.substr(sublime.Region(0, self.view.size()))
-        commit_message = view_text.replace(COMMIT_HELP_TEXT, "")
+        commit_message = view_text.split(COMMIT_HELP_TEXT)[0]
 
         if self.view.settings().get("git_savvy.commit_view.include_unstaged"):
             self.add_all_tracked_files()
