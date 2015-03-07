@@ -17,6 +17,11 @@ COMMIT_HELP_TEXT = """
 ## key to reference an issue in a different GitHub repo.
 """.format(key="CTRL" if os.name == "nt" else "SUPER")
 
+COMMIT_SIGN_TEXT = """
+
+Signed-off-by: {name} <{email}>
+"""
+
 COMMIT_TITLE = "COMMIT"
 
 
@@ -92,3 +97,26 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
 
         self.view.window().focus_view(self.view)
         self.view.window().run_command("close_file")
+
+
+class GsCommitViewSignCommand(TextCommand, GitCommand):
+
+    """
+    Sign off the commit with full name and email
+    """
+
+    def run(self, edit):
+        view_text = self.view.substr(sublime.Region(0, self.view.size()))
+        view_text_list = view_text.split(COMMIT_HELP_TEXT)
+
+        config_name = self.git("config", "user.name").strip()
+        config_email = self.git("config", "user.email").strip()
+
+        sign_text = COMMIT_SIGN_TEXT.format(name=config_name, email=config_email)
+        view_text_list[0] += sign_text
+        view_text_list.insert(1, COMMIT_HELP_TEXT)
+
+        self.view.run_command("gs_replace_view_text", {
+            "text": "".join(view_text_list),
+            "nuke_cursors": True
+            })
