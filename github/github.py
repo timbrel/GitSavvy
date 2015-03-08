@@ -24,10 +24,13 @@ def parse_remote(remote):
     an object with original url, FQDN, owner, repo, and the token to use for
     this particular FQDN (if available).
     """
+    if remote.endswith(".git"):
+        remote = remote[:-4]
+        
     if remote.startswith("git@"):
-        url = remote.replace(":", "/").replace("git@", "http://")[:-4]
+        url = remote.replace(":", "/").replace("git@", "http://")
     elif remote.startswith("http"):
-        url = remote[:-4]
+        url = remote
     else:
         return None
 
