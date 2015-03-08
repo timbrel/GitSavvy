@@ -114,9 +114,8 @@ class GsCommitViewSignCommand(TextCommand, GitCommand):
 
         sign_text = COMMIT_SIGN_TEXT.format(name=config_name, email=config_email)
         view_text_list[0] += sign_text
-        view_text_list.insert(1, COMMIT_HELP_TEXT)
 
         self.view.run_command("gs_replace_view_text", {
-            "text": "".join(view_text_list),
+            "text": COMMIT_HELP_TEXT.join(view_text_list),
             "nuke_cursors": True
             })
