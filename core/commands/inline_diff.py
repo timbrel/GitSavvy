@@ -264,8 +264,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
                     region_type = line_type
                     region_start = line.begin()
                 elif region_type != line_type:
-                    # End region with final character of previous line.
-                    region_end = line.begin() - 1
+                    region_end = line.begin()
                     l = add_regions if region_type == "+" else remove_regions
                     l.append(sublime.Region(region_start, region_end))
 
