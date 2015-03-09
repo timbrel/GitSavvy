@@ -356,6 +356,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
     unstaged, reset the file to HEAD.
     """
 
+    @util.actions.destructive(description="discard a file")
     def run(self, edit):
         # Valid selections are in the Unstaged, Untracked, and Conflicts sections.
         valid_ranges = status_view_section_ranges[self.view.id()][:3]
@@ -434,6 +435,7 @@ class GsStatusDiscardAllChangesCommand(TextCommand, GitCommand):
     Reset all unstaged files to HEAD.
     """
 
+    @util.actions.destructive(description="discard all unstaged changes")
     def run(self, edit):
         self.discard_all_unstaged()
         self.view.run_command("gs_status_refresh")

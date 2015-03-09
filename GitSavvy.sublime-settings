@@ -1,8 +1,13 @@
 {
     /*
+        Change this to `false` if you don't wish to be prompted when
+        discarding files.
+     */
+    "prompt_before_destructive_action": true,
+
+    /*
         Change this to `true` when doing dev work on GitSavvy.
      */
-
     "dev_mode": false,
 
     /*
@@ -10,7 +15,6 @@
         a GitHub Enterprise instance, add a field with the FQDN as the key
         and the API key as the value.
      */
-
     "api_tokens": {
         // "github.com": "ADD YOUR TOKEN HERE"
     },
@@ -19,6 +23,5 @@
         Change this to `true` to display a diff for the current commit
         when writing a commit message.
      */
-
     "show_commit_diff": false
 }
