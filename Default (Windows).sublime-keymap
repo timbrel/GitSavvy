@@ -11,6 +11,13 @@
             { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["ctrl+s"],
+        "command": "gs_commit_view_sign",
+        "context": [
+            { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true }
+        ]
+    },
 
 
     ///////////////

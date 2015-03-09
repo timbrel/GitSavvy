@@ -9,13 +9,18 @@ from ..git_command import GitCommand
 COMMIT_HELP_TEXT = """
 
 ## To make a commit, type your commit message and press {key}-ENTER. To cancel
-## the commit, close the window.
+## the commit, close the window. To sign off the commit press {key}-S.
 
 ## You may also reference or close a GitHub issue with this commit.  To do so,
 ## type `#` followed by the `tab` key.  You will be shown a list of issues
 ## related to the current repo.  You may also type `owner/repo#` plus the `tab`
 ## key to reference an issue in a different GitHub repo.
 """.format(key="CTRL" if os.name == "nt" else "SUPER")
+
+COMMIT_SIGN_TEXT = """
+
+Signed-off-by: {name} <{email}>
+"""
 
 COMMIT_TITLE = "COMMIT"
 
@@ -92,3 +97,25 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
 
         self.view.window().focus_view(self.view)
         self.view.window().run_command("close_file")
+
+
+class GsCommitViewSignCommand(TextCommand, GitCommand):
+
+    """
+    Sign off the commit with full name and email
+    """
+
+    def run(self, edit):
+        view_text = self.view.substr(sublime.Region(0, self.view.size()))
+        view_text_list = view_text.split(COMMIT_HELP_TEXT)
+
+        config_name = self.git("config", "user.name").strip()
+        config_email = self.git("config", "user.email").strip()
+
+        sign_text = COMMIT_SIGN_TEXT.format(name=config_name, email=config_email)
+        view_text_list[0] += sign_text
+
+        self.view.run_command("gs_replace_view_text", {
+            "text": COMMIT_HELP_TEXT.join(view_text_list),
+            "nuke_cursors": True
+            })
