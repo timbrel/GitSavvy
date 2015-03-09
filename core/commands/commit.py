@@ -15,6 +15,7 @@ COMMIT_HELP_TEXT = """
 ## type `#` followed by the `tab` key.  You will be shown a list of issues
 ## related to the current repo.  You may also type `owner/repo#` plus the `tab`
 ## key to reference an issue in a different GitHub repo.
+
 """.format(key="CTRL" if os.name == "nt" else "SUPER")
 
 COMMIT_SIGN_TEXT = """
@@ -67,6 +68,10 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         else:
             initial_text = COMMIT_HELP_TEXT
 
+        if(sublime.load_settings('GitSavvy.sublime-settings').get("show_commit_diff")):
+            stdout = self.git("diff", "--cached")
+            initial_text = initial_text + stdout
+
         self.view.run_command("gs_replace_view_text", {
             "text": initial_text,
             "nuke_cursors": True
@@ -85,7 +90,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
 
     def run_async(self):
         view_text = self.view.substr(sublime.Region(0, self.view.size()))
-        commit_message = view_text.replace(COMMIT_HELP_TEXT, "")
+        commit_message = view_text.split(COMMIT_HELP_TEXT)[0]
 
         if self.view.settings().get("git_savvy.commit_view.include_unstaged"):
             self.add_all_tracked_files()
