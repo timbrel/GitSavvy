@@ -37,13 +37,14 @@ class GsCommitCommand(WindowCommand, GitCommand):
     def run(self, **kwargs):
         sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
 
-    def run_async(self, repo_path=None, include_unstaged=False, amend=False):
+    def run_async(self, repo_path=None, include_unstaged=False, amend=False, signed=False):
         repo_path = repo_path or self.repo_path
         view = self.window.new_file()
         view.settings().set("git_savvy.get_long_text_view", True)
         view.settings().set("git_savvy.commit_view.include_unstaged", include_unstaged)
         view.settings().set("git_savvy.commit_view.amend", amend)
         view.settings().set("git_savvy.repo_path", repo_path)
+        view.settings().set("git_savvy.signed", signed)
         view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.tmLanguage")
         view.set_name(COMMIT_TITLE)
         view.set_scratch(True)
@@ -95,10 +96,21 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
         if self.view.settings().get("git_savvy.commit_view.include_unstaged"):
             self.add_all_tracked_files()
 
+        commit_args = ["commit", "-q"]
+
         if self.view.settings().get("git_savvy.commit_view.amend"):
-            self.git("commit", "-q", "--amend", "-F", "-", stdin=commit_message)
-        else:
-            self.git("commit", "-q", "-F", "-", stdin=commit_message)
+            commit_args.append("--amend")
+
+        if self.view.settings().get("git_savvy.signed"):
+            commit_args.append("--gpg-sign")
+
+        commit_args.extend(["-F", "-"])
+
+        commit_kwargs = {
+            "stdin": commit_message
+        }
+
+        self.git(*commit_args, **commit_kwargs)
 
         self.view.window().focus_view(self.view)
         self.view.window().run_command("close_file")
