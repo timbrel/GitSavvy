@@ -106,11 +106,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
 
         commit_args.extend(["-F", "-"])
 
-        commit_kwargs = {
-            "stdin": commit_message
-        }
-
-        self.git(*commit_args, **commit_kwargs)
+        self.git(*commit_args, stdin=commit_message)
 
         self.view.window().focus_view(self.view)
         self.view.window().run_command("close_file")
