@@ -100,3 +100,13 @@ def get_instance_after_pt(view, pt, pattern):
     instances = tuple(region.a for region in view.find_all(pattern))
     instance_index = bisect.bisect(instances, pt)
     return instances[instance_index] if instance_index < len(instances) else None
+
+
+#################
+# MISCELLANEOUS #
+#################
+
+def disable_other_plugins(view):
+    # Disable key-bindings for Vitageous
+    # https://github.com/guillermooo/Vintageous/wiki/Disabling
+    view.settings().set('__vi_external_disable', True)

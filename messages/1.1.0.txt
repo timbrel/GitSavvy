@@ -1,0 +1,28 @@
+Changes since 1.0.0:
+
+  Features:
+   - Always enable panel output for specified commands with `show_panel_for`.
+   - Record input/output of git commands and make available as JSON.
+   - `git: generate changelog` based on commit history since ref.
+   - Add configurable colors for inline-diff view.
+   - Add an option to show a diff in the commit view.
+   - Add a keybinding to the commit view to easily sign off commits.
+
+  UX:
+   - Prompt user when making destructive changes (e.g. discarding).
+
+  Bugs:
+   - Avoid empty sublime.Region for removed newline.
+   - Fix forward slash ignoring on branch names.
+   - Correct GitHub URL for users who copy/paste address out of browser (without `.git`)
+
+  Other:
+   - README updates.
+
+  Contributors:
+   - Oliver Hoffmann
+   - Dale Bustad
+   - Ethan Bustad
+   - Philipp Klose
+   - Harel
+   - Adrian L Lange
