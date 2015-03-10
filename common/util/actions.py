@@ -3,9 +3,9 @@ import sublime
 
 def destructive(description):
     def decorator(fn):
-        settings = sublime.load_settings("GitSavvy.sublime-settings")
 
         def wrapped_fn(*args, **kwargs):
+            settings = sublime.load_settings("GitSavvy.sublime-settings")
             if settings.get("prompt_before_destructive_action"):
                 message = (
                     "You are about to {desc}.  "
