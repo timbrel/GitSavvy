@@ -31,9 +31,23 @@ class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
         self.window.show_input_panel(REF_PROMPT, "", self.on_done, None, None)
 
     def on_done(self, ref):
-        stdout = self.git("log", "--no-merges", "--oneline", "{}..HEAD".format(ref))
-        messages = (line.strip().split(" ", 1)[1] for line in stdout.split("\n") if line)
+        stdout = self.git(
+            "log",
+            "--no-merges",
+            "--pretty=format:%an%x00%s",
+            "{}..HEAD".format(ref)
+            )
+
+        contributors = set()
+        messages = []
+        for line in stdout.split("\n"):
+            if line:
+                contributor, message = line.strip().split("\x00")
+                contributors.add(contributor)
+                messages.append(message)
+
         msg_groups = self.get_message_groups(messages)
+        msg_groups["Contributors"] = contributors
 
         group_strings = (
             GROUP_TEMPLATE.format(
