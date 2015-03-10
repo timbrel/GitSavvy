@@ -96,6 +96,7 @@ class GsShowStatusCommand(WindowCommand, GitCommand):
         repo_path = self.repo_path
         title = STATUS_TITLE.format(os.path.basename(repo_path))
         status_view = util.view.get_read_only_view(self, "status")
+        util.view.disable_other_plugins(status_view)
         status_view.set_name(title)
         status_view.set_syntax_file("Packages/GitSavvy/syntax/status.tmLanguage")
         status_view.settings().set("git_savvy.repo_path", repo_path)
