@@ -1,0 +1,11 @@
+# Welcome to GitSavvy
+
+GitSavvy provides integration between Sublime Text 3 and Git.
+
+If you're a new user and you find yourself asking, _"Can GitSavvy do X?"_, there are two places to look.  First, open your command palette and type `GitSavvy: help`.  This will take you to the offline wiki-style documentation.
+
+You can also check for configurability options by opening `Preferences > Package Settings > GitSavvy > Settings - Default` in the ST3 menu.  Any optional or configurable behavior will be documented here, along with the default values.
+
+If at any time you encounter a bug, or if you wish that GitSavvy included some missing functionality, please open an issue:
+
+    https://github.com/divmain/GitSavvy/issues
