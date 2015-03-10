@@ -44,6 +44,14 @@
         "args": { "amend": true }
     },
     {
+        "caption": "git: amend previous commit (signed)",
+        "command": "gs_commit",
+        "args": {
+            "amend": true,
+            "signed":  true
+        }
+    },
+    {
         "caption": "git: graph",
         "command": "gs_log_graph"
     },
