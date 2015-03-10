@@ -23,5 +23,17 @@
         Change this to `true` to display a diff for the current commit
         when writing a commit message.
      */
-    "show_commit_diff": false
+    "show_commit_diff": false,
+
+    "colors": {
+        /*
+            Colors used by the inline-diff view to display changes.
+         */
+        "inline_diff": {
+            "add_foreground": "#F9F9F4",
+            "add_background": "#37A832",
+            "remove_foreground": "#F9F9F4",
+            "remove_background": "#A83732"
+        }
+    }
 }

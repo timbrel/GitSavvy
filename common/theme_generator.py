@@ -22,15 +22,15 @@ STYLE_TEMPLATE = """
     <key>scope</key>
     <string>{scope}</string>
     <key>settings</key>
+    <dict>
 {properties}
+    </dict>
 </dict>
 """
 
 PROPERTY_TEMPLATE = """
-    <dict>
         <key>{key}</key>
         <string>{value}</string>
-    </dict>
 """
 
 

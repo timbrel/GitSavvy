@@ -69,10 +69,22 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
         additional inline-diff-related style rules added.  Save this color scheme
         to disk and set it as the target view's active color scheme.
         """
+        colors = sublime.load_settings("GitSavvy.sublime-settings").get("colors")
+
         original_color_scheme = target_view.settings().get("color_scheme")
         themeGenerator = ThemeGenerator(original_color_scheme)
-        themeGenerator.add_scoped_style("GitSavvy Added Line", "git_savvy.change.addition", background="#37A832")
-        themeGenerator.add_scoped_style("GitSavvy Removed Line", "git_savvy.change.removal", background="#A83732")
+        themeGenerator.add_scoped_style(
+            "GitSavvy Added Line",
+            "git_savvy.change.addition",
+            background=colors["inline_diff"]["add_background"],
+            foreground=colors["inline_diff"]["add_foreground"]
+            )
+        themeGenerator.add_scoped_style(
+            "GitSavvy Removed Line",
+            "git_savvy.change.removal",
+            background=colors["inline_diff"]["remove_background"],
+            foreground=colors["inline_diff"]["remove_foreground"]
+            )
         themeGenerator.apply_new_theme("active-diff-view." + file_ext, target_view)
 
 
