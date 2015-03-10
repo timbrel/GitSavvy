@@ -68,7 +68,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         else:
             initial_text = COMMIT_HELP_TEXT
 
-        if(sublime.load_settings('GitSavvy.sublime-settings').get("show_commit_diff")):
+        if (sublime.load_settings("GitSavvy.sublime-settings").get("show_commit_diff")):
             stdout = self.git("diff", "--cached")
             initial_text = initial_text + stdout
 
