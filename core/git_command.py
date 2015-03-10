@@ -57,6 +57,10 @@ class GitCommand(StatusMixin,
         command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
         command_str = " ".join(command)
 
+        show_panel_overrides = \
+            sublime.load_settings("GitSavvy.sublime-settings").get("show_panel_for")
+        show_panel = show_panel or args[0] in show_panel_overrides
+
         def raise_error(msg):
             if type(msg) == str and "fatal: Not a git repository" in msg:
                 sublime.set_timeout_async(
