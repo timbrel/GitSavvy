@@ -137,5 +137,9 @@
     {
         "caption": "GitSavvy: help",
         "command": "gs_help"
+    },
+    {
+        "caption": "git: generate changelog",
+        "command": "gs_generate_change_log"
     }
 ]

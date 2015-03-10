@@ -15,3 +15,4 @@ from .blame import *
 from .show_commit import *
 from .log import *
 from .merge import*
+from .changelog import *
