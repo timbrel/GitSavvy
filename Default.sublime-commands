@@ -29,6 +29,11 @@
         "command": "gs_commit"
     },
     {
+        "caption": "git: commit (signed)",
+        "command": "gs_commit",
+        "args": {"signed": true}
+    },
+    {
         "caption": "git: commit including unstaged files",
         "command": "gs_commit",
         "args": { "include_unstaged": true }
