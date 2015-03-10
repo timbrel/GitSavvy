@@ -141,5 +141,17 @@
     {
         "caption": "git: generate changelog",
         "command": "gs_generate_change_log"
+    },
+    {
+        "caption": "GitSavvy: start logging",
+        "command": "gs_start_logging"
+    },
+    {
+        "caption": "GitSavvy: stop logging",
+        "command": "gs_stop_logging"
+    },
+    {
+        "caption": "GitSavvy: view recorded log",
+        "command": "gs_view_git_log"
     }
 ]

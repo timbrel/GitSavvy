@@ -4,3 +4,4 @@ from . import view
 from . import file
 from . import log
 from . import actions
+from . import debug

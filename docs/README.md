@@ -78,6 +78,9 @@ If you run into any issues not addressed here, please feel free to [open an issu
 ### Debug
 
 - [GitSavvy: reload modules (debug)](debug.md#gitsavvy-reload-modules-debug)
+- [GitSavvy: start logging](debug.md#gitsavvy-start-logging)
+- [GitSavvy: stop logging](debug.md#gitsavvy-stop-logging)
+- [GitSavvy: view recorded log](debug.md#gitsavvy-view-recorded-log)
 
 
 ## Special Views

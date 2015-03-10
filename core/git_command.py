@@ -70,6 +70,7 @@ class GitCommand(StatusMixin,
                 "Failed to run `git {}`. See log for details.".format(command[1])
             )
             util.log.panel(msg)
+            util.debug.log_error(msg)
             raise GitSavvyError(msg)
 
         try:
@@ -90,6 +91,9 @@ class GitCommand(StatusMixin,
 
         except Exception as e:
             raise_error(e)
+
+        finally:
+            util.debug.log_git(args, stdin, stdout, stderr)
 
         if not p.returncode == 0:
             raise_error("`{}` failed with following output:\n{}\n{}".format(
