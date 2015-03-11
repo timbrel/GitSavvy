@@ -46,5 +46,10 @@
     /*
         Change this to `false` to suppress the input in the panel output.
      */
-    "show_input_in_output": true
+    "show_input_in_output": true,
+
+    /*
+        Change this to `false` to suppress Git status in ST3 status bar.
+     */
+    "git_status_in_status_bar": true
 }

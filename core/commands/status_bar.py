@@ -26,7 +26,8 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+        if sublime.load_settings("GitSavvy.sublime-settings").get("git_status_in_status_bar"):
+            sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
         # Short-circuit update attempts for files not part of Git repo.
