@@ -9,7 +9,10 @@ from ..git_command import GitCommand
 COMMIT_HELP_TEXT = """
 
 ## To make a commit, type your commit message and press {key}-ENTER. To cancel
-## the commit, close the window. To sign off the commit press {key}-S.
+## the commit, close the window. Press {key}-SHIFT-ENTER to create a GPG signed
+## commit.
+
+## To sign off the commit message press {key}-S.
 
 ## You may also reference or close a GitHub issue with this commit.  To do so,
 ## type `#` followed by the `tab` key.  You will be shown a list of issues
