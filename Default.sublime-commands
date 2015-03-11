@@ -70,7 +70,7 @@
         "caption": "git: push",
         "command": "gs_push"
     }, {
-        "caption": "git: push to branch",
+        "caption": "git: push to existing branch",
         "command": "gs_push_to_branch"
     },
     {

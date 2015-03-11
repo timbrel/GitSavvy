@@ -76,7 +76,7 @@ class GsPushToBranchCommand(WindowCommand, GitCommand):
             pre_selected_index = self.branches_on_selected_remote.index(
                 selected_remote_prefix + current_local_branch)
         except ValueError:
-            pre_selected_index = None
+            pre_selected_index = 0
 
         def deferred_panel():
             self.window.show_quick_panel(
