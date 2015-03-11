@@ -9,6 +9,16 @@ START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
 PUSH_TO_BRANCH_NAME_PROMPT = "Enter remote branch name:"
 
+def do_push(self, remote, branch):
+    """
+    Perform `git push remote branch`.
+    """
+    sublime.status_message(START_PUSH_MESSAGE)
+    self.push(remote, branch)
+    sublime.status_message(END_PUSH_MESSAGE)
+    if self.window.active_view().settings().get("git_savvy.status_view"):
+        self.window.active_view().run_command("gs_status_refresh")
+
 class GsPushCommand(WindowCommand, GitCommand):
 
     """
@@ -16,14 +26,7 @@ class GsPushCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
-        sublime.set_timeout_async(lambda: self.do_push())
-
-    def do_push(self):
-        sublime.status_message(START_PUSH_MESSAGE)
-        self.push(remote=None, branch=None)
-        sublime.status_message(END_PUSH_MESSAGE)
-        if self.window.active_view().settings().get("git_savvy.status_view"):
-            self.window.active_view().run_command("gs_status_refresh")
+        sublime.set_timeout_async(lambda: do_push(self, None, None))
 
 
 class GsPushToBranchCommand(WindowCommand, GitCommand):
@@ -98,18 +101,7 @@ class GsPushToBranchCommand(WindowCommand, GitCommand):
             return
 
         selected_branch = self.branches_on_selected_remote[branch_index].split("/", 1)[1]
-        sublime.set_timeout_async(lambda: self.do_push(self.selected_remote, selected_branch))
-
-    def do_push(self, remote, branch):
-        """
-        Perform `git push remote branch`.
-        """
-        sublime.status_message(START_PUSH_MESSAGE)
-        self.push(remote, branch)
-        sublime.status_message(END_PUSH_MESSAGE)
-        if self.window.active_view().settings().get("git_savvy.status_view"):
-            self.window.active_view().run_command("gs_status_refresh")
-
+        sublime.set_timeout_async(lambda: do_push(self, self.selected_remote, selected_branch))
 
 class GsPushToBranchNameCommand(WindowCommand, GitCommand):
 
@@ -162,8 +154,6 @@ class GsPushToBranchNameCommand(WindowCommand, GitCommand):
         Push to the remote that was previously selected and provided branch
         name.
         """
-        sublime.status_message(START_PUSH_MESSAGE)
-        self.push(self.selected_remote, branch)
-        sublime.status_message(END_PUSH_MESSAGE)
+        sublime.set_timeout_async(lambda: do_push(self, self.selected_remote, branch))
         if self.window.active_view().settings().get("git_savvy.status_view"):
             self.window.active_view().run_command("gs_status_refresh")
