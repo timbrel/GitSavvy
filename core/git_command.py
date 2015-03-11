@@ -57,8 +57,9 @@ class GitCommand(StatusMixin,
         command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
         command_str = " ".join(command)
 
-        show_panel_overrides = \
-            sublime.load_settings("GitSavvy.sublime-settings").get("show_panel_for")
+        gitsavvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+
+        show_panel_overrides = gitsavvy_settings.get("show_panel_for")
         show_panel = show_panel or args[0] in show_panel_overrides
 
         def raise_error(msg):
@@ -105,7 +106,10 @@ class GitCommand(StatusMixin,
             ))
 
         if show_panel:
-            util.log.panel("> {}\n{}\n{}".format(command_str, stdout, stderr))
+            if gitsavvy_settings.get("show_input_in_output"):
+                util.log.panel("> {}\n{}\n{}".format(command_str, stdout, stderr))
+            else:
+                util.log.panel("{}\n{}".format(stdout, stderr))
 
         return stdout
 
