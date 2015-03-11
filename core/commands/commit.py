@@ -99,20 +99,17 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
         if self.view.settings().get("git_savvy.commit_view.include_unstaged"):
             self.add_all_tracked_files()
 
-        commit_args = ["commit"]
-
         show_panel_overrides = \
             sublime.load_settings("GitSavvy.sublime-settings").get("show_panel_for")
 
-        if "commit" not in show_panel_overrides:
-            commit_args.append("-q")
-
-        if self.view.settings().get("git_savvy.commit_view.amend"):
-            commit_args.append("--amend")
-
-        commit_args.extend(["-F", "-"])
-
-        self.git(*commit_args, stdin=commit_message)
+        self.git(
+            "commit",
+            "-q" if "commit" not in show_panel_overrides else None,
+            "--amend" if self.view.settings().get("git_savvy.commit_view.amend") else None,
+            "-F",
+            "-",
+            stdin=commit_message
+            )
 
         self.view.window().focus_view(self.view)
         self.view.window().run_command("close_file")
