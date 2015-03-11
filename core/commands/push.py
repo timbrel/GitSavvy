@@ -7,7 +7,7 @@ from ..git_command import GitCommand
 NO_REMOTES_MESSAGE = "You have not configured any remotes."
 START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
-
+PUSH_TO_BRANCH_NAME_PROMPT = "Enter remote branch name:"
 
 class GsPushCommand(WindowCommand, GitCommand):
 
@@ -106,6 +106,64 @@ class GsPushToBranchCommand(WindowCommand, GitCommand):
         """
         sublime.status_message(START_PUSH_MESSAGE)
         self.push(remote, branch)
+        sublime.status_message(END_PUSH_MESSAGE)
+        if self.window.active_view().settings().get("git_savvy.status_view"):
+            self.window.active_view().run_command("gs_status_refresh")
+
+
+class GsPushToBranchNameCommand(WindowCommand, GitCommand):
+
+    """
+    Prompt for remote and remote branch name, then push.
+    """
+
+    def run(self):
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        """
+        Display a panel of all remotes defined for the repo, then proceed to
+        `on_select_remote`.  If no remotes are defined, notify the user and
+        proceed no further.
+        """
+        self.remotes = list(self.get_remotes().keys())
+        self.remote_branches = self.get_remote_branches()
+
+        if not self.remotes:
+            self.window.show_quick_panel(["There are no remotes available."], None)
+        else:
+            self.window.show_quick_panel(
+                self.remotes,
+                self.on_select_remote,
+                flags=sublime.MONOSPACE_FONT
+                )
+
+    def on_select_remote(self, remote_index):
+        """
+        After the user selects a remote, prompt the user for a branch name.
+        """
+        # If the user pressed `esc` or otherwise cancelled.
+        if remote_index == -1:
+            return
+
+        self.selected_remote = self.remotes[remote_index]
+        current_local_branch = self.get_current_branch_name()
+
+        self.window.show_input_panel(
+            PUSH_TO_BRANCH_NAME_PROMPT,
+            current_local_branch,
+            self.on_entered_branch_name,
+            None,
+            None
+            )
+
+    def on_entered_branch_name(self, branch):
+        """
+        Push to the remote that was previously selected and provided branch
+        name.
+        """
+        sublime.status_message(START_PUSH_MESSAGE)
+        self.push(self.selected_remote, branch)
         sublime.status_message(END_PUSH_MESSAGE)
         if self.window.active_view().settings().get("git_savvy.status_view"):
             self.window.active_view().run_command("gs_status_refresh")
