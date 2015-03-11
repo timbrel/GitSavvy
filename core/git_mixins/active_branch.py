@@ -1,4 +1,5 @@
 import re
+import string
 
 
 class ActiveBranchMixin():
@@ -24,7 +25,7 @@ class ActiveBranchMixin():
           3) remote branch name
           4) boolean indicating whether branch is clean
           5) # commits ahead of remote
-          6) # commits behind of remote 
+          6) # commits behind of remote
         """
         stdout = self.git("status", "-b", "--porcelain").strip()
 
@@ -38,7 +39,9 @@ class ActiveBranchMixin():
         if first_line.startswith("## Initial commit on "):
             return False, True, first_line[21:], clean, None, None, None
 
-        short_status_pattern = r"## ([A-Za-z0-9\-_\/]+)(\.\.\.([A-Za-z0-9\-_\/]+)( \[((ahead (\d+))(, )?)?(behind (\d+))?\])?)?"
+        valid_punctuation = "".join(c for c in string.punctuation if c not in "~^:?*[\\")
+        branch_pattern = "[A-Za-z0-9" + re.escape(valid_punctuation) + "]+?"
+        short_status_pattern = r"## (" + branch_pattern + ")(\.\.\.(" + branch_pattern + ")( \[((ahead (\d+))(, )?)?(behind (\d+))?\])?)?$"
         status_match = re.match(short_status_pattern, first_line)
 
         if not status_match:
