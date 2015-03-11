@@ -221,7 +221,6 @@ class GsStatusFocusEventListener(EventListener):
     """
 
     def on_activated(self, view):
-
         if view.settings().get("git_savvy.status_view") == True:
             view.run_command("gs_status_refresh")
 
@@ -322,7 +321,7 @@ class GsStatusStageFileCommand(TextCommand, GitCommand):
             for fpath in file_paths:
                 self.stage_file(fpath)
             sublime.status_message("Staged files successfully.")
-            self.view.run_command("gs_status_refresh")
+            util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusUnstageFileCommand(TextCommand, GitCommand):
@@ -347,7 +346,7 @@ class GsStatusUnstageFileCommand(TextCommand, GitCommand):
             for fpath in file_paths:
                 self.unstage_file(fpath)
             sublime.status_message("Unstaged files successfully.")
-            self.view.run_command("gs_status_refresh")
+            util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
@@ -373,7 +372,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
             for fpath in file_paths:
                 self.checkout_file(fpath)
             sublime.status_message("Successfully checked out files from HEAD.")
-            self.view.run_command("gs_status_refresh")
+            util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
@@ -405,7 +404,7 @@ class GsStatusStageAllFilesCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         self.add_all_tracked_files()
-        self.view.run_command("gs_status_refresh")
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, GitCommand):
@@ -416,7 +415,7 @@ class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         self.add_all_files()
-        self.view.run_command("gs_status_refresh")
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusUnstageAllFilesCommand(TextCommand, GitCommand):
@@ -427,7 +426,7 @@ class GsStatusUnstageAllFilesCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         self.unstage_all_files()
-        self.view.run_command("gs_status_refresh")
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusDiscardAllChangesCommand(TextCommand, GitCommand):
@@ -439,7 +438,7 @@ class GsStatusDiscardAllChangesCommand(TextCommand, GitCommand):
     @util.actions.destructive(description="discard all unstaged changes")
     def run(self, edit):
         self.discard_all_unstaged()
-        self.view.run_command("gs_status_refresh")
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusCommitCommand(TextCommand, GitCommand):
@@ -499,7 +498,7 @@ class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
             for fpath in file_paths:
                 self.add_ignore(os.path.join("/", fpath))
             sublime.status_message("Successfully ignored files.")
-            self.view.run_command("gs_status_refresh")
+            util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusIgnorePatternCommand(TextCommand, GitCommand):
@@ -540,7 +539,7 @@ class GsStatusApplyStashCommand(TextCommand, GitCommand):
             return
 
         self.apply_stash(ids[0])
-        self.view.run_command("gs_status_refresh")
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusPopStashCommand(TextCommand, GitCommand):
@@ -561,7 +560,7 @@ class GsStatusPopStashCommand(TextCommand, GitCommand):
             return
 
         self.pop_stash(ids[0])
-        self.view.run_command("gs_status_refresh")
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusShowStashCommand(TextCommand, GitCommand):
@@ -611,7 +610,7 @@ class GsStatusCreateStashCommand(TextCommand, GitCommand):
 
     def on_done(self, description):
         self.create_stash(description)
-        self.view.run_command("gs_status_refresh")
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusCreateStashWithUntrackedCommand(TextCommand, GitCommand):
@@ -626,7 +625,7 @@ class GsStatusCreateStashWithUntrackedCommand(TextCommand, GitCommand):
 
     def on_done(self, description):
         self.create_stash(description, include_untracked=True)
-        self.view.run_command("gs_status_refresh")
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusDiscardStashCommand(TextCommand, GitCommand):
@@ -648,7 +647,7 @@ class GsStatusDiscardStashCommand(TextCommand, GitCommand):
             return
 
         self.drop_stash(ids[0])
-        self.view.run_command("gs_status_refresh")
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):

@@ -54,6 +54,19 @@ def get_is_view_of_type(view, typ):
     return not not view.settings().get("git_savvy.{}_view".format(typ))
 
 
+#####################
+# CROSS-APPLICATION #
+#####################
+
+def refresh_gitsavvy(view):
+    """
+    Called after GitSavvy action was taken that may have effected the
+    state of the Git repo.
+    """
+    if view.settings().get("git_savvy.status_view"):
+        view.run_command("gs_status_refresh")
+
+
 ############################
 # IN-VIEW HELPER FUNCTIONS #
 ############################
