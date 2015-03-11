@@ -10,26 +10,27 @@ START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
 PUSH_TO_BRANCH_NAME_PROMPT = "Enter remote branch name:"
 
-def do_push(self, remote, branch):
-    """
-    Perform `git push remote branch`.
-    """
-    sublime.status_message(START_PUSH_MESSAGE)
-    self.push(remote, branch)
-    sublime.status_message(END_PUSH_MESSAGE)
-    util.view.refresh_gitsavvy(self.window.active_view())
+class PushBase(GitCommand):
+    def do_push(self, remote, branch):
+        """
+        Perform `git push remote branch`.
+        """
+        sublime.status_message(START_PUSH_MESSAGE)
+        self.push(remote, branch)
+        sublime.status_message(END_PUSH_MESSAGE)
+        util.view.refresh_gitsavvy(self.window.active_view())
 
-class GsPushCommand(WindowCommand, GitCommand):
+class GsPushCommand(WindowCommand, PushBase):
 
     """
     Perform a normal `git push`.
     """
 
     def run(self):
-        sublime.set_timeout_async(lambda: do_push(self, None, None))
+        sublime.set_timeout_async(lambda: self.do_push(None, None))
 
 
-class GsPushToBranchCommand(WindowCommand, GitCommand):
+class GsPushToBranchCommand(WindowCommand, PushBase):
 
     """
     Through a series of panels, allow the user to push to a specific remote branch.
@@ -101,9 +102,9 @@ class GsPushToBranchCommand(WindowCommand, GitCommand):
             return
 
         selected_branch = self.branches_on_selected_remote[branch_index].split("/", 1)[1]
-        sublime.set_timeout_async(lambda: do_push(self, self.selected_remote, selected_branch))
+        sublime.set_timeout_async(lambda: self.do_push(self.selected_remote, selected_branch))
 
-class GsPushToBranchNameCommand(WindowCommand, GitCommand):
+class GsPushToBranchNameCommand(WindowCommand, PushBase):
 
     """
     Prompt for remote and remote branch name, then push.
@@ -154,4 +155,4 @@ class GsPushToBranchNameCommand(WindowCommand, GitCommand):
         Push to the remote that was previously selected and provided branch
         name.
         """
-        sublime.set_timeout_async(lambda: do_push(self, self.selected_remote, branch))
+        sublime.set_timeout_async(lambda: self.do_push(self.selected_remote, branch))
