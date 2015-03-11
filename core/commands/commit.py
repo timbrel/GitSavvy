@@ -40,14 +40,13 @@ class GsCommitCommand(WindowCommand, GitCommand):
     def run(self, **kwargs):
         sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
 
-    def run_async(self, repo_path=None, include_unstaged=False, amend=False, signed=False):
+    def run_async(self, repo_path=None, include_unstaged=False, amend=False):
         repo_path = repo_path or self.repo_path
         view = self.window.new_file()
         view.settings().set("git_savvy.get_long_text_view", True)
         view.settings().set("git_savvy.commit_view.include_unstaged", include_unstaged)
         view.settings().set("git_savvy.commit_view.amend", amend)
         view.settings().set("git_savvy.repo_path", repo_path)
-        view.settings().set("git_savvy.signed", signed)
         view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.tmLanguage")
         view.set_name(COMMIT_TITLE)
         view.set_scratch(True)
@@ -90,6 +89,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        self.signed_commit = False
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
@@ -104,7 +104,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
         if self.view.settings().get("git_savvy.commit_view.amend"):
             commit_args.append("--amend")
 
-        if self.view.settings().get("git_savvy.signed"):
+        if self.signed_commit:
             commit_args.append("--gpg-sign")
 
         commit_args.extend(["-F", "-"])
@@ -113,6 +113,22 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
 
         self.view.window().focus_view(self.view)
         self.view.window().run_command("close_file")
+
+
+class GsCommitViewDoSignedCommitCommand(GsCommitViewDoCommitCommand):
+
+    """
+    Take the text of the current view (minus the help message text) and
+    make a GPG signed commit using the text for the commit message.
+    """
+
+    def run(self, edit):
+        self.signed_commit = True
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        GsCommitViewDoCommitCommand.run_async(self)
+
 
 
 class GsCommitViewSignCommand(TextCommand, GitCommand):
