@@ -20,7 +20,7 @@ class GsFetchCommand(WindowCommand, GitCommand):
             self.window.show_quick_panel(["There are no remotes available."], None)
         else:
             if len(self.remotes) > 1:
-                self.remotes.push(ALL_REMOTES)
+                self.remotes.append(ALL_REMOTES)
             self.window.show_quick_panel(
                 self.remotes,
                 self.on_selection,

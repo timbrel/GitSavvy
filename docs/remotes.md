@@ -21,3 +21,7 @@ This command performs a simple `git push`.  In recent Git versions, this will re
 ## `git: push to branch`
 
 When running this command, you will be prompted first for the remote you want to push to, and then the branch.
+
+## `git: push to branch name`
+
+When running this command, you will prompted first for the remote you want to push to.  Next, you'll be provided a text field to enter the name of the remote branch.  This is useful if the remote branch does not yet exist.

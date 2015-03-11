@@ -54,14 +54,14 @@ class GsPullCommand(WindowCommand, GitCommand):
             pre_selected_index = self.branches_on_selected_remote.index(
                 selected_remote_prefix + current_local_branch)
         except ValueError:
-            pre_selected_index = None
+            pre_selected_index = 0
 
         def deferred_panel():
             self.window.show_quick_panel(
                 self.branches_on_selected_remote,
                 self.on_select_branch,
-                sublime.MONOSPACE_FONT,
-                pre_selected_index
+                flags=sublime.MONOSPACE_FONT,
+                selected_index=pre_selected_index
             )
 
         sublime.set_timeout(deferred_panel)

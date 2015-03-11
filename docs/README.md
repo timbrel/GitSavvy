@@ -56,6 +56,8 @@ If you run into any issues not addressed here, please feel free to [open an issu
 - [git: fetch](remotes.md#git-fetch)
 - [git: pull](remotes.md#git-pull)
 - [git: push](remotes.md#git-push)
+- [git: push to branch](remotes.md#git-push-to-branch)
+- [git: push to branch name](remotes.md#git-push-to-branch-name)
 
 
 ### History

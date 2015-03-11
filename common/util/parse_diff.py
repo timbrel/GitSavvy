@@ -26,7 +26,10 @@ def parse_diff(diff_str):
         hunk_lines = list(raw_hunk)
         head_start, head_length, saved_start, saved_length = _get_metadata(hunk_lines[0])
         changes = _get_changes(hunk_lines[1:], head_start, saved_start)
-        hunks.append(Hunk(hunk_lines, changes, head_start, head_length, saved_start, saved_length))
+        # Remove lines warning about "No newline at end of file"; change[1] will == `\`.
+        changes_filtered = tuple(change for change in changes if change[1] != "\\")
+        hunks.append(Hunk(hunk_lines, changes_filtered, head_start, head_length, saved_start, saved_length))
+
     return hunks
 
 
@@ -48,7 +51,7 @@ def _split_into_hunks(lines):
         return
 
     for line_number, line in lines_iter:
-        if not line.startswith(("+", "-")) and line_number != 0:
+        if not line.startswith(("+", "-", "\\")) and line_number != 0:
             yield islice(lines, start, line_number)
         if line.startswith("@@"):
             start = line_number

@@ -62,7 +62,9 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         merge_msg_path = os.path.join(self.repo_path, ".git", "MERGE_MSG")
-        if self.view.settings().get("git_savvy.commit_view.amend"):
+
+        option_amend = self.view.settings().get("git_savvy.commit_view.amend")
+        if option_amend:
             last_commit_message = self.git("log", "-1", "--pretty=%B")
             initial_text = last_commit_message + COMMIT_HELP_TEXT
         elif os.path.exists(merge_msg_path):
@@ -72,8 +74,10 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
             initial_text = COMMIT_HELP_TEXT
 
         if sublime.load_settings("GitSavvy.sublime-settings").get("show_commit_diff"):
-            stdout = self.git("diff", "--cached")
-            initial_text = initial_text + stdout
+            if option_amend:
+                initial_text += self.git("diff", "HEAD^")
+            else:
+                initial_text += self.git("diff", "--cached")
 
         self.view.run_command("gs_replace_view_text", {
             "text": initial_text,
@@ -99,17 +103,18 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
         if self.view.settings().get("git_savvy.commit_view.include_unstaged"):
             self.add_all_tracked_files()
 
-        commit_args = ["commit", "-q"]
+        show_panel_overrides = \
+            sublime.load_settings("GitSavvy.sublime-settings").get("show_panel_for")
 
-        if self.view.settings().get("git_savvy.commit_view.amend"):
-            commit_args.append("--amend")
-
-        if self.signed_commit:
-            commit_args.append("--gpg-sign")
-
-        commit_args.extend(["-F", "-"])
-
-        self.git(*commit_args, stdin=commit_message)
+        self.git(
+            "commit",
+            "-q" if "commit" not in show_panel_overrides else None,
+            "--amend" if self.view.settings().get("git_savvy.commit_view.amend") else None,
+            "--gpg-sign" if self.signed_commit else None,
+            "-F",
+            "-",
+            stdin=commit_message
+            )
 
         self.view.window().focus_view(self.view)
         self.view.window().run_command("close_file")

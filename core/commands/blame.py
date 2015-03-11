@@ -97,7 +97,12 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
             next_line = next(lines_iter)
             while not next_line.startswith("\t"):
                 # Iterate through header keys and values.
-                k, v = re.match(r"([^ ]+) (.+)", next_line).groups()
+                try:
+                    k, v = re.match(r"([^ ]+) (.+)", next_line).groups()
+                except AttributeError as e:
+                    # Sometimes git-blame includes keys without values;
+                    # since we don't care about these, simply discard.
+                    print("Skipping blame line: " + repr(next_line))
                 commits[commit_hash][k] = v
                 next_line = next(lines_iter)
 

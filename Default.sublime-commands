@@ -66,12 +66,18 @@
     {
         "caption": "git: pull",
         "command": "gs_pull"
-    }, {
+    },
+    {
         "caption": "git: push",
         "command": "gs_push"
-    }, {
-        "caption": "git: push to branch",
+    },
+    {
+        "caption": "git: push to existing branch",
         "command": "gs_push_to_branch"
+    },
+    {
+        "caption": "git: push to branch name",
+        "command": "gs_push_to_branch_name"
     },
     {
         "caption": "git: ignore current file",

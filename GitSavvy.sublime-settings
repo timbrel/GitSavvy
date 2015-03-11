@@ -41,5 +41,10 @@
         Add entries to this array (e.g. "pull" or "push") if you'd like the
         output of these Git commands to always be shown in a panel.
      */
-    "show_panel_for": []
+    "show_panel_for": [],
+
+    /*
+        Change this to `false` to suppress the input in the panel output.
+     */
+    "show_input_in_output": true
 }
