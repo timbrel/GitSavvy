@@ -65,6 +65,7 @@ def refresh_gitsavvy(view):
     """
     if view.settings().get("git_savvy.status_view"):
         view.run_command("gs_status_refresh")
+    view.run_command("gs_update_status_bar")
 
 
 ############################

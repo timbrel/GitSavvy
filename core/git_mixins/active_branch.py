@@ -84,6 +84,24 @@ class ActiveBranchMixin():
 
         return output
 
+    def get_branch_status_short(self):
+        detached, initial, branch, remote, clean, ahead, behind = \
+            self._get_branch_status_components()
+
+        dirty = "" if clean else "*"
+
+        if detached:
+            return "DETACHED" + dirty
+
+        output = branch + dirty
+
+        if ahead:
+            output += "+" + ahead
+        if behind:
+            output += "-" + behind
+
+        return output
+
     def get_commit_hash_for_head(self):
         """
         Get the SHA1 commit hash for the commit at HEAD.
