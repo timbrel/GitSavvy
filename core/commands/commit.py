@@ -118,7 +118,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
 class GsCommitViewSignCommand(TextCommand, GitCommand):
 
     """
-    Sign off the commit with full name and email
+    Sign off on the commit with full name and email.
     """
 
     def run(self, edit):

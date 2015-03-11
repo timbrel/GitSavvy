@@ -14,6 +14,40 @@ class ActiveBranchMixin():
         except StopIteration:
             return None
 
+    def _get_branch_status_components(self):
+        """
+        Return a tuple of:
+
+          0) boolean indicating whether repo is in detached state
+          1) boolean indicating whether this is initial commit
+          2) active branch name
+          3) remote branch name
+          4) boolean indicating whether branch is clean
+          5) # commits ahead of remote
+          6) # commits behind of remote 
+        """
+        stdout = self.git("status", "-b", "--porcelain").strip()
+
+        first_line, *addl_lines = stdout.split("\n", 2)
+        ## Any additional lines will mean files have changed or are untracked.
+        clean = len(addl_lines) == 0
+
+        if first_line.startswith("## HEAD (no branch)"):
+            return True, False, None, None, clean, None, None
+
+        if first_line.startswith("## Initial commit on "):
+            return False, True, first_line[21:], clean, None, None, None
+
+        short_status_pattern = r"## ([A-Za-z0-9\-_\/]+)(\.\.\.([A-Za-z0-9\-_\/]+)( \[((ahead (\d+))(, )?)?(behind (\d+))?\])?)?"
+        status_match = re.match(short_status_pattern, first_line)
+
+        if not status_match:
+            return False, False, addl_lines[0], None, clean, None, None
+
+        branch, _, remote, _, _, _, ahead, _, _, behind = status_match.groups()
+
+        return False, False, branch, remote, clean, ahead, behind
+
     def get_branch_status(self):
         """
         Return a string that gives:
@@ -25,23 +59,14 @@ class ActiveBranchMixin():
         If no remote or tracking branch is defined, do not include remote-data.
         If HEAD is detached, provide that status instead.
         """
-        stdout = self.git("status", "-b", "--porcelain").strip()
+        detached, initial, branch, remote, clean, ahead, behind = \
+            self._get_branch_status_components()
 
-        if stdout == "## HEAD (no branch)":
+        if detached:
             return "HEAD is in a detached state."
 
-        first_line, *_ = stdout.split("\n", 1)
-        if first_line.startswith("## Initial commit on "):
-            return "Initial commit on `{}`.".format(first_line[21:])
-
-        short_status_pattern = r"## ([A-Za-z0-9\-_\/]+)(\.\.\.([A-Za-z0-9\-_\/]+)( \[((ahead (\d+))(, )?)?(behind (\d+))?\])?)?"
-        status_match = re.match(short_status_pattern, first_line)
-
-        if not status_match:
-            branch_name = first_line.split("\n", 2)[1]
-            return "On branch `{}`.".format(branch_name)
-
-        branch, _, remote, _, _, _, ahead, _, _, behind = status_match.groups()
+        if initial:
+            return "Initial commit on `{}`.".format(branch)
 
         output = "On branch `{}`".format(branch)
 
@@ -56,6 +81,24 @@ class ActiveBranchMixin():
             output += ". You're behind by {}".format(behind)
 
         output += "."
+
+        return output
+
+    def get_branch_status_short(self):
+        detached, initial, branch, remote, clean, ahead, behind = \
+            self._get_branch_status_components()
+
+        dirty = "" if clean else "*"
+
+        if detached:
+            return "DETACHED" + dirty
+
+        output = branch + dirty
+
+        if ahead:
+            output += "+" + ahead
+        if behind:
+            output += "-" + behind
 
         return output
 

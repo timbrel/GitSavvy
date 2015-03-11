@@ -3,6 +3,8 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
+from ...common import util
+
 
 MenuOption = namedtuple("MenuOption", ["requires_action", "menu_text", "filename", "is_untracked"])
 
@@ -64,6 +66,7 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
 
             sublime.status_message("Successfully added `{}`.".format(
                 scope_of_action))
+            util.view.refresh_gitsavvy(self.window.active_view())
 
             sublime.set_timeout_async(self.run_async, 0)
 

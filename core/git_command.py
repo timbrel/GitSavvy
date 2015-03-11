@@ -44,7 +44,7 @@ class GitCommand(StatusMixin,
     Base class for all Sublime commands that interact with git.
     """
 
-    def git(self, *args, stdin=None, working_dir=None, show_panel=False):
+    def git(self, *args, stdin=None, working_dir=None, show_panel=False, throw_on_stderr=True):
         """
         Run the git command specified in `*args` and return the output
         of the git command as a string.
@@ -100,7 +100,7 @@ class GitCommand(StatusMixin,
         finally:
             util.debug.log_git(args, stdin, stdout, stderr)
 
-        if not p.returncode == 0:
+        if not p.returncode == 0 and throw_on_stderr:
             raise_error("`{}` failed with following output:\n{}\n{}".format(
                 command_str, stdout, stderr
             ))
@@ -140,6 +140,9 @@ class GitCommand(StatusMixin,
 
     @property
     def repo_path(self):
+        return self._repo_path()
+
+    def _repo_path(self, throw_on_stderr=True):
         """
         Return the absolute path to the git repo that contains the file that this
         view interacts with.  Like `file_path`, this can be overridden by setting
@@ -156,7 +159,12 @@ class GitCommand(StatusMixin,
             if not working_dir:
                 window_folders = sublime.active_window().folders()
                 working_dir = window_folders[0] if window_folders else None
-            stdout = self.git("rev-parse", "--show-toplevel", working_dir=working_dir)
+            stdout = self.git(
+                "rev-parse",
+                "--show-toplevel",
+                working_dir=working_dir,
+                throw_on_stderr=throw_on_stderr
+                )
             repo_path = stdout.strip()
             view.settings().set("git_savvy.repo_path", repo_path)
 

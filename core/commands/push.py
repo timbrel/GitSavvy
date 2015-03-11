@@ -2,6 +2,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
+from ...common import util
 
 
 NO_REMOTES_MESSAGE = "You have not configured any remotes."
@@ -16,8 +17,7 @@ def do_push(self, remote, branch):
     sublime.status_message(START_PUSH_MESSAGE)
     self.push(remote, branch)
     sublime.status_message(END_PUSH_MESSAGE)
-    if self.window.active_view().settings().get("git_savvy.status_view"):
-        self.window.active_view().run_command("gs_status_refresh")
+    util.view.refresh_gitsavvy(self.window.active_view())
 
 class GsPushCommand(WindowCommand, GitCommand):
 
@@ -155,5 +155,3 @@ class GsPushToBranchNameCommand(WindowCommand, GitCommand):
         name.
         """
         sublime.set_timeout_async(lambda: do_push(self, self.selected_remote, branch))
-        if self.window.active_view().settings().get("git_savvy.status_view"):
-            self.window.active_view().run_command("gs_status_refresh")
