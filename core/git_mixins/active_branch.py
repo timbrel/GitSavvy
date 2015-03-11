@@ -64,3 +64,9 @@ class ActiveBranchMixin():
         Get the SHA1 commit hash for the commit at HEAD.
         """
         return self.git("rev-parse", "HEAD").strip()
+
+    def get_latest_commit_msg_for_head(self):
+        """
+        Get last commit msg for the commit at HEAD.
+        """
+        return self.git("log", "-n 1", "--pretty=format:%h %s", "--abbrev-commit").strip()
