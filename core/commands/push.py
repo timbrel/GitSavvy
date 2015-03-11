@@ -122,7 +122,7 @@ class GsPushToBranchNameCommand(WindowCommand, GitCommand):
         self.remote_branches = self.get_remote_branches()
 
         if not self.remotes:
-            self.window.show_quick_panel(["There are no remotes available."], None)
+            self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
         else:
             self.window.show_quick_panel(
                 self.remotes,
