@@ -22,10 +22,9 @@ patterns:
     match: '(ahead)|(behind)'
   - comment: head summary
     name: comment.git-savvy.status.head-commit
-    match: '^  HEAD:'
-  - comment: head commit sha1
-    name: constant.other.git-savvy.status.sha1
-    match: '    (([0-9]|[A-Z]){7}) '
+    match: '^  HEAD:    ([0-9a-f]{7}) .+'
+    captures:
+      '1': { name: constant.other.git-savvy.status.sha1 }
 
 - comment: section
   name: meta.git-savvy.status.section
