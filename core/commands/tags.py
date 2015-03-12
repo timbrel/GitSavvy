@@ -16,6 +16,7 @@ LOCAL_TEMPLATE = """
 VIEW_HEADER_TEMPLATE = """
   BRANCH:  {branch_status}
   ROOT:    {repo_root}
+  HEAD:    {current_head}
 """
 
 NO_TAGS_MESSAGE = """
@@ -90,7 +91,8 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
         """
         header = VIEW_HEADER_TEMPLATE.format(
             branch_status=self.get_branch_status(),
-            repo_root=self.repo_path
+            repo_root=self.repo_path,
+            current_head=self.get_latest_commit_msg_for_head()
         )
 
         cursor = len(header)

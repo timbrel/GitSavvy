@@ -4,12 +4,27 @@ scopeName: git-savvy.tags
 uuid: a37acb1d-c57c-4f0b-945b-c71234aa0352
 
 patterns:
-- comment: Tags summary
+- comment: Tags view
   name: meta.git-savvy.tags-summary
-  begin: '^  ROOT:.+'
+  begin: '^  BRANCH:'
   beginCaptures:
     '0': { name: comment.git-savvy.tags.summary-header }
   end: '^$'
+  patterns:
+  - comment: root summary
+    name: comment.git-savvy.tags.root-summary
+    match: '^  ROOT:.+'
+  - comment: branch names
+    name: constant.other.git-savvy.tags.branch-name
+    match: '`[A-Za-z\-_/]+`'
+  - comment: ahead or behind
+    name: keyword.other.git-savvy.tags.ahead-behind
+    match: '(ahead)|(behind)'
+  - comment: head summary
+    name: comment.git-savvy.tags.head-commit
+    match: '^  HEAD:    ([0-9a-f]{7}) .+'
+    captures:
+      '1': { name: constant.other.git-savvy.tags.sha1 }
 
 - comment: section
   name: meta.git-savvy.tags.section
