@@ -6,6 +6,8 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from ..git_command import GitCommand
 from ...common import util
 
+TAG_DELETE_MESSAGE = "Tag deleted."
+
 VIEW_TITLE = "TAGS: {}"
 
 LOCAL_TEMPLATE = """
@@ -38,8 +40,7 @@ KEY_BINDINGS_MENU = """
   #############
 
   [c] create (NYI)
-  [d] delete (NYI)
-  [D] delete locally and remotely (NYI)
+  [d] delete
   [p] push to remote(s) (NYI)
   [P] push all tags to remote(s) (NYI)
   [l] view commit
@@ -177,6 +178,30 @@ class GsTagsFocusEventListener(EventListener):
     def on_activated(self, view):
         if view.settings().get("git_savvy.tags_view") == True:
             view.run_command("gs_tags_refresh")
+
+
+class GsTagDeleteCommand(TextCommand, GitCommand):
+
+    """
+    Delete tag(s) in selection.
+    """
+
+    def run(self, edit):
+        valid_ranges = view_section_ranges[self.view.id()][:3]
+
+        lines = util.view.get_lines_from_regions(
+            self.view,
+            self.view.sel(),
+            valid_ranges=valid_ranges
+            )
+
+        items = tuple(line[4:].strip().split() for line in lines if line)
+
+        if items:
+            for item in items:
+                self.git("tag", "-d", item[1])
+            util.view.refresh_gitsavvy(self.view)
+            sublime.status_message(TAG_DELETE_MESSAGE)
 
 
 class GsTagViewLogCommand(TextCommand, GitCommand):

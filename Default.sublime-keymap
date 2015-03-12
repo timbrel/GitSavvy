@@ -346,4 +346,11 @@
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["d"],
+        "command": "gs_tag_delete",
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
 ]
