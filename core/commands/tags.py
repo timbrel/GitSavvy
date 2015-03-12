@@ -7,6 +7,8 @@ from ..git_command import GitCommand
 from ...common import util
 
 TAG_DELETE_MESSAGE = "Tag deleted."
+TAG_CREATE_PROMPT = "Enter tag:"
+TAG_CREATE_MESSAGE_PROMPT = "Enter message:"
 
 VIEW_TITLE = "TAGS: {}"
 
@@ -39,7 +41,7 @@ KEY_BINDINGS_MENU = """
   ## ACTIONS ##
   #############
 
-  [c] create (NYI)
+  [c] create
   [d] delete
   [p] push to remote(s) (NYI)
   [P] push all tags to remote(s) (NYI)
@@ -202,6 +204,62 @@ class GsTagDeleteCommand(TextCommand, GitCommand):
                 self.git("tag", "-d", item[1])
             util.view.refresh_gitsavvy(self.view)
             sublime.status_message(TAG_DELETE_MESSAGE)
+
+
+class GsTagCreateCommand(WindowCommand, GitCommand):
+
+    """
+    Through a series of panels, allow the user to add a tag and message.
+    """
+
+    def run(self):
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        """
+        Prompt the user for a tag name.
+        """
+        self.window.show_input_panel(
+            TAG_CREATE_PROMPT,
+            "",
+            self.on_entered_tag,
+            None,
+            None
+            )
+
+    def on_entered_tag(self, tag_name):
+        """
+        After the user has entered a tag name, prompt the user for a
+        tag message. If the message is empty, use the pre-defined one.
+        """
+        # If the user pressed `esc` or otherwise cancelled.
+        if not tag:
+            return
+
+        # TODO: do some validation
+
+        self.tag_name = tag_name
+        self.window.show_input_panel(
+            TAG_CREATE_MESSAGE_PROMPT,
+            "",
+            self.on_entered_message,
+            None,
+            None
+            )
+
+    def on_entered_message(self, message):
+        """
+        Perform `git tag tag_name -F -`
+        """
+        # If the user pressed `esc` or otherwise cancelled
+        if message == -1:
+            return
+
+        if not message:
+            default_message = sublime.load_settings("GitSavvy.sublime-settings").get("default_tag_message")
+            message = default_message.format(tag_name=self.tag_name)
+
+        self.git("tag", self.tag, "-F", "-", stdin=message)
 
 
 class GsTagViewLogCommand(TextCommand, GitCommand):

@@ -51,5 +51,11 @@
     /*
         Change this to `false` to suppress Git status in ST3 status bar.
      */
-    "git_status_in_status_bar": true
+    "git_status_in_status_bar": true,
+
+    /*
+        When entering a tag message, this will be used if the message is empty.
+        The replacement value "{tag_name}" is optional, but recommended.
+     */
+    "default_tag_message": "Tag {tag_name}"
 }

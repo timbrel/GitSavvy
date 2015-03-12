@@ -353,4 +353,11 @@
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["c"],
+        "command": "gs_tag_create",
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
 ]
