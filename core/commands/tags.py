@@ -42,7 +42,7 @@ KEY_BINDINGS_MENU = """
   [D] delete locally and remotely (NYI)
   [p] push to remote(s) (NYI)
   [P] push all tags to remote(s) (NYI)
-  [l] view commit diff (NYI)
+  [l] view commit
 
   ###########
   ## OTHER ##
@@ -178,3 +178,25 @@ class GsTagsFocusEventListener(EventListener):
         if view.settings().get("git_savvy.tags_view") == True:
             view.run_command("gs_tags_refresh")
 
+
+class GsTagViewLogCommand(TextCommand, GitCommand):
+
+    """
+    Display a panel containing the commit log for the selected tag's hash.
+    """
+
+    def run(self, edit):
+        valid_ranges = view_section_ranges[self.view.id()][:3]
+
+        lines = util.view.get_lines_from_regions(
+            self.view,
+            self.view.sel(),
+            valid_ranges=valid_ranges
+            )
+
+        items = tuple(line[4:].strip().split() for line in lines if line)
+
+        if items:
+            for item in items:
+                self.git("log", "-1", "--pretty=medium", item[0], show_panel=True)
+                break

@@ -339,4 +339,11 @@
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["l"],
+        "command": "gs_tag_view_log",
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
 ]
