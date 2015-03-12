@@ -159,5 +159,9 @@
     {
         "caption": "GitSavvy: view recorded log",
         "command": "gs_view_git_log"
+    },
+    {
+        "caption": "git: tags",
+        "command": "gs_show_tags"
     }
 ]

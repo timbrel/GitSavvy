@@ -1,0 +1,39 @@
+# [PackageDev] target_format: plist, ext: tmLanguage
+name: GitSavvy Tags
+scopeName: git-savvy.tags
+uuid: a37acb1d-c57c-4f0b-945b-c71234aa0352
+
+patterns:
+- comment: Tags summary
+  name: meta.git-savvy.tags-summary
+  begin: '^  ROOT:.+'
+  beginCaptures:
+    '0': { name: comment.git-savvy.tags.summary-header }
+  end: '^$'
+
+- comment: section
+  name: meta.git-savvy.tags.section
+  begin: '^  (LOCAL):$'
+  beginCaptures:
+    '0': { name: keyword.other.git-savvy.section-header }
+  end: '^$'
+  patterns:
+  - name: meta.git-savvy.tags.tag
+    match: '^    ([0-9a-f]{7}) (.+)\n$'
+    captures:
+      '0': { name: constant.other.git-savvy.tags.sha1 }
+      '1': { name: meta.git-savvy.tags.tag }
+
+- comment: Key-bindings menu
+  name: comment.git-savvy.tags.key-bindings-menu
+  begin: '^  ####'
+  end: '^-$'
+  patterns:
+  - name: meta.git-savvy.key-bindings-header
+    match: '  ## ([A-Z ]+) ##'
+    captures:
+      '1': { name: support.type.git-savvy.key-bindings-header-text }
+  - name: meta.git-savvy.key-bindings-key-stroke
+    match: '\[([A-Za-z])\]'
+    captures:
+      '1': { name: constant.character.git-savvy-key-binding-key }
