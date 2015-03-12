@@ -34,10 +34,9 @@ patterns:
   end: '^$'
   patterns:
   - name: meta.git-savvy.tags.tag
-    match: '^    ([0-9a-f]{7}) (.+)\n$'
+    match: '^    ([0-9a-f]{7}) .+\n$'
     captures:
-      '0': { name: constant.other.git-savvy.tags.sha1 }
-      '1': { name: meta.git-savvy.tags.tag }
+      '1': { name: constant.other.git-savvy.tags.sha1 }
 
 - comment: Key-bindings menu
   name: comment.git-savvy.tags.key-bindings-menu

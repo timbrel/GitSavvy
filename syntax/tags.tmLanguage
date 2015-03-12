@@ -89,19 +89,14 @@
 				<dict>
 					<key>captures</key>
 					<dict>
-						<key>0</key>
+						<key>1</key>
 						<dict>
 							<key>name</key>
 							<string>constant.other.git-savvy.tags.sha1</string>
 						</dict>
-						<key>1</key>
-						<dict>
-							<key>name</key>
-							<string>meta.git-savvy.tags.tag</string>
-						</dict>
 					</dict>
 					<key>match</key>
-					<string>^    ([0-9a-f]{7}) (.+)\n$</string>
+					<string>^    ([0-9a-f]{7}) .+\n$</string>
 					<key>name</key>
 					<string>meta.git-savvy.tags.tag</string>
 				</dict>
