@@ -13,6 +13,11 @@ LOCAL_TEMPLATE = """
 {}
 """
 
+REMOTE_TEMPLATE = """
+  REMOTE ({}):
+{}
+"""
+
 VIEW_HEADER_TEMPLATE = """
   BRANCH:  {branch_status}
   ROOT:    {repo_root}
@@ -21,6 +26,10 @@ VIEW_HEADER_TEMPLATE = """
 
 NO_TAGS_MESSAGE = """
   Your repository has no tags.
+"""
+
+LOADING_TAGS_MESSAGE = """
+  Please stand by while fetching tags from remote(s).
 """
 
 KEY_BINDINGS_MENU = """
@@ -79,11 +88,11 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(lambda: self.run_async(**kwargs))
 
     def run_async(self):
-        view_contents, ranges = self.get_contents()
-        view_section_ranges[self.view.id()] = ranges
+        view_contents = self.get_contents(loading=True)
         self.view.run_command("gs_replace_view_text", {"text": view_contents})
+        sublime.set_timeout_async(lambda: self.append_tags())
 
-    def get_contents(self):
+    def get_contents(self, loading=False):
         """
         Build string to use as contents of tags view. Includes repository
         information in the header, per-tag information, and a key-bindings
@@ -95,33 +104,67 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
             current_head=self.get_latest_commit_msg_for_head()
         )
 
-        cursor = len(header)
-        local = self.get_tags()
-        local_region = (sublime.Region(0, 0), ) * 1
+        if loading:
+            return header + LOADING_TAGS_MESSAGE + KEY_BINDINGS_MENU
+        else:
+            view_text = ""
 
-        def get_region(new_text):
-            nonlocal cursor
-            start = cursor
-            cursor += len(new_text)
-            end = cursor
-            return sublime.Region(start, end)
+            cursor = len(header)
+            local, remotes = self.sort_tag_entries(self.get_tags())
+            local_region, remote_region = (sublime.Region(0, 0), ) * 2
 
-        view_text = ""
+            def get_region(new_text):
+                nonlocal cursor
+                start = cursor
+                cursor += len(new_text)
+                end = cursor
+                return sublime.Region(start, end)
 
-        if local:
-            local_lines = "\n".join(
-                "    {} {}".format(t.sha[:7], t.tag)
-                for t in local
-                )
-            local_text = LOCAL_TEMPLATE.format(local_lines)
-            local_region = get_region(local_text)
-            view_text += local_text
 
-        view_text = view_text or NO_TAGS_MESSAGE
+            if local:
+                local_lines = "\n".join(
+                    "    {} {}".format(t.sha[:7], t.tag)
+                    for t in local
+                    )
+                local_text = LOCAL_TEMPLATE.format(local_lines)
+                local_region = get_region(local_text)
+                view_text += local_text
+            if remotes:
+                for group in remotes:
+                    remote_lines = "\n".join(
+                        "    {} {}".format(t.sha[:7], t.tag)
+                        for t in group.entries
+                        )
+                    remote_text = REMOTE_TEMPLATE.format(group.remote, remote_lines)
+                    remote_region = get_region(remote_text)
+                    view_text += remote_text
 
-        contents = header + view_text + KEY_BINDINGS_MENU
+            view_text = view_text or NO_TAGS_MESSAGE
 
-        return contents, (local_region)
+            contents = header + view_text + KEY_BINDINGS_MENU
+
+            return contents, (local_region, remote_region)
+
+    def append_tags(self):
+        view_contents, ranges = self.get_contents()
+        view_section_ranges[self.view.id()] = ranges
+        self.view.run_command("gs_replace_view_text", {"text": view_contents})
+
+    @staticmethod
+    def sort_tag_entries(tag_list):
+        """
+        Take entries from `get_tags` and sort them into groups.
+        """
+        local, remotes = [], []
+
+        for item in tag_list:
+            if hasattr(item, "remote"):
+                # TODO: remove entries that exist locally
+                remotes.append(item)
+            else:
+                local.append(item)
+
+        return local, remotes
 
 
 class GsTagsFocusEventListener(EventListener):

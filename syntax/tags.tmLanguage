@@ -79,7 +79,47 @@
 				</dict>
 			</dict>
 			<key>comment</key>
-			<string>section</string>
+			<string>local section</string>
+			<key>end</key>
+			<string>^$</string>
+			<key>name</key>
+			<string>meta.git-savvy.tags.section</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>constant.other.git-savvy.tags.sha1</string>
+						</dict>
+					</dict>
+					<key>match</key>
+					<string>^    ([0-9a-f]{7}) .+\n$</string>
+					<key>name</key>
+					<string>meta.git-savvy.tags.tag</string>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>begin</key>
+			<string>^  (REMOTE) \((.+)\):$</string>
+			<key>beginCaptures</key>
+			<dict>
+				<key>0</key>
+				<dict>
+					<key>name</key>
+					<string>keyword.other.git-savvy.section-header</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>constant.other.git-savvy.tags.remote-name</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>remote section</string>
 			<key>end</key>
 			<string>^$</string>
 			<key>name</key>

@@ -26,11 +26,24 @@ patterns:
     captures:
       '1': { name: constant.other.git-savvy.tags.sha1 }
 
-- comment: section
+- comment: local section
   name: meta.git-savvy.tags.section
   begin: '^  (LOCAL):$'
   beginCaptures:
     '0': { name: keyword.other.git-savvy.section-header }
+  end: '^$'
+  patterns:
+  - name: meta.git-savvy.tags.tag
+    match: '^    ([0-9a-f]{7}) .+\n$'
+    captures:
+      '1': { name: constant.other.git-savvy.tags.sha1 }
+
+- comment: remote section
+  name: meta.git-savvy.tags.section
+  begin: '^  (REMOTE) \((.+)\):$'
+  beginCaptures:
+    '0': { name: keyword.other.git-savvy.section-header }
+    '2': { name: constant.other.git-savvy.tags.remote-name }
   end: '^$'
   patterns:
   - name: meta.git-savvy.tags.tag
