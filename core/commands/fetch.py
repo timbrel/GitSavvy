@@ -2,6 +2,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
+from ...common import util
 
 
 ALL_REMOTES = "All remotes."
@@ -41,3 +42,4 @@ class GsFetchCommand(WindowCommand, GitCommand):
         sublime.status_message("Starting fetch...")
         self.fetch(remote)
         sublime.status_message("Fetch complete.")
+        util.view.refresh_gitsavvy(self.window.active_view())

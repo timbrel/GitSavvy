@@ -16,4 +16,5 @@ from .show_commit import *
 from .log import *
 from .merge import*
 from .changelog import *
+from .status_bar import *
 from .tags import *

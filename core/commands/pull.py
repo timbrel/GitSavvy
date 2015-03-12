@@ -2,6 +2,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
+from ...common import util
 
 
 class GsPullCommand(WindowCommand, GitCommand):
@@ -85,5 +86,4 @@ class GsPullCommand(WindowCommand, GitCommand):
         sublime.status_message("Starting pull...")
         self.pull(remote, branch)
         sublime.status_message("Pull complete.")
-        if self.window.active_view().settings().get("git_savvy.status_view"):
-            self.window.active_view().run_command("gs_status_refresh")
+        util.view.refresh_gitsavvy(self.window.active_view())

@@ -13,13 +13,18 @@ patterns:
   patterns:
   - comment: root summary
     name: comment.git-savvy.status.root-summary
-    match: '^  ROOT:.+'
+    match: '^  ROOT:.+' 
   - comment: branch names
     name: constant.other.git-savvy.status.branch-name
     match: '`[A-Za-z\-_/]+`'
   - comment: ahead or behind
     name: keyword.other.git-savvy.status.ahead-behind
     match: '(ahead)|(behind)'
+  - comment: head summary
+    name: comment.git-savvy.status.head-commit
+    match: '^  HEAD:    ([0-9a-f]{7}) .+'
+    captures:
+      '1': { name: constant.other.git-savvy.status.sha1 }
 
 - comment: section
   name: meta.git-savvy.status.section
