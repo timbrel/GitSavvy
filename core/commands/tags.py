@@ -34,24 +34,18 @@ VIEW_HEADER_TEMPLATE = """
 
 NO_LOCAL_TAGS_MESSAGE = "    Your repository has no tags."
 NO_REMOTE_TAGS_MESSAGE = "    This remote has no tags."
-LOADING_TAGS_MESSAGE = "    Loading tags from remote.."
+LOADING_TAGS_MESSAGE = "    Loading tags from remote..."
 
 KEY_BINDINGS_MENU = """
-  #############
-  ## ACTIONS ##
-  #############
+  #############                   ###########
+  ## ACTIONS ##                   ## OTHER ##
+  #############                   ###########
 
-  [c] create
+  [c] create                      [r] refresh status
   [d] delete
   [p] push to remote
   [P] push all tags to remote
   [l] view commit
-
-  ###########
-  ## OTHER ##
-  ###########
-
-  [r] refresh status
 
 -
 """
@@ -118,7 +112,6 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
         )
 
         cursor = len(header)
-        tags = self.get_tags(reverse=True)
         regions = []
 
         def get_region(new_text):
@@ -206,12 +199,11 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
 class GsTagsFocusEventListener(EventListener):
 
     """
-    If the current view is a tags view and there are no stored sections
-    for the view, refresh the view when it regains focus.
+    If the current view is a tags view, refresh the view when it regains focus.
     """
 
     def on_activated(self, view):
-        if view.settings().get("git_savvy.tags_view") and not view.id() in view_section_ranges:
+        if view.settings().get("git_savvy.tags_view"):
             view.run_command("gs_tags_refresh")
 
 
@@ -322,7 +314,7 @@ class GsTagCreateCommand(WindowCommand, GitCommand):
 
     def on_entered_message(self, message):
         """
-        Perform `git tag tag_name -F -`
+        Create a tag with the previously specified tag name and the provided message.
         """
         if not message:
             return

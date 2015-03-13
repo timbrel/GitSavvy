@@ -1,5 +1,6 @@
 from collections import namedtuple
 
+
 TagDetails = namedtuple("TagDetails", ("sha", "tag"))
 
 
@@ -24,4 +25,3 @@ class TagsMixin():
         entries = [TagDetails(entry[:40], entry[51:]) for entry in iter(porcelain_entries) if entry]
 
         return entries
-
