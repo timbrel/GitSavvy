@@ -87,13 +87,13 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        sublime.set_timeout_async(lambda: self.run_async())
+        sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
         view_contents, ranges = self.get_contents()
         view_section_ranges[self.view.id()] = ranges
         self.view.run_command("gs_replace_view_text", {"text": view_contents})
-        sublime.set_timeout_async(lambda: self.append_tags())
+        sublime.set_timeout_async(self.append_tags)
 
     def get_contents(self):
         """
@@ -330,7 +330,7 @@ class GsTagPushCommand(TextCommand, GitCommand):
         Push tag(s) to the remote that was previously selected
         """
 
-        #if the user pressed `esc` or otherwise cancelled
+        # If the user pressed `esc` or otherwise cancelled
         if remote_index == -1:
             return
 
@@ -365,6 +365,4 @@ class GsTagViewLogCommand(TextCommand, GitCommand):
         items = tuple(line[4:].strip().split() for line in lines if line)
 
         if items:
-            for item in items:
-                self.git("log", "-1", "--pretty=medium", item[0], show_panel=True)
-                break
+            self.git("log", "-1", "--pretty=medium", items[0][0], show_panel=True)
