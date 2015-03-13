@@ -328,4 +328,54 @@
 
     // Per-platform keymapping for: gs_help_goto_link
 
+    ///////////////
+    // TAGS VIEW //
+    ///////////////
+
+    {
+        "keys": ["r"],
+        "command": "gs_tags_refresh",
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["l"],
+        "command": "gs_tag_view_log",
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags meta.git-savvy.tags.section meta.git-savvy.tags.tag" }
+        ]
+    },
+    {
+        "keys": ["d"],
+        "command": "gs_tag_delete",
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags meta.git-savvy.tags.section meta.git-savvy.tags.tag" }
+        ]
+    },
+    {
+        "keys": ["c"],
+        "command": "gs_tag_create",
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["p"],
+        "command": "gs_tag_push",
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags meta.git-savvy.tags.section meta.git-savvy.tags.tag" }
+        ]
+    },
+    {
+        "keys": ["P"],
+        "command": "gs_tag_push",
+        "args": { "push_all": true },
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
 ]

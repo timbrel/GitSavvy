@@ -21,6 +21,7 @@ from .git_mixins.stage_unstage import StageUnstageMixin
 from .git_mixins.checkout_discard import CheckoutDiscardMixin
 from .git_mixins.remotes import RemotesMixin
 from .git_mixins.ignore import IgnoreMixin
+from .git_mixins.tags import TagsMixin
 
 
 git_path = None
@@ -37,7 +38,8 @@ class GitCommand(StatusMixin,
                  StageUnstageMixin,
                  CheckoutDiscardMixin,
                  RemotesMixin,
-                 IgnoreMixin
+                 IgnoreMixin,
+                 TagsMixin
                  ):
 
     """

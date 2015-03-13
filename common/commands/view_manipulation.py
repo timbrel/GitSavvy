@@ -41,3 +41,16 @@ class GsReplaceViewTextCommand(TextCommand):
             selections.clear()
             pt = sublime.Region(0, 0)
             selections.add(pt)
+
+
+class GsReplaceRegionCommand(TextCommand):
+
+    """
+    Replace the contents of a region within the view with the provided text.
+    """
+
+    def run(self, edit, text, begin, end):
+        is_read_only = self.view.is_read_only()
+        self.view.set_read_only(False)
+        self.view.replace(edit, sublime.Region(begin, end), text)
+        self.view.set_read_only(is_read_only)
