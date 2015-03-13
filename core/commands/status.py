@@ -115,8 +115,8 @@ class GsStatusRefreshCommand(TextCommand, GitCommand):
     and command menu to the user.
     """
 
-    def run(self, edit, **kwargs):
-        sublime.set_timeout_async(lambda: self.run_async(**kwargs))
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
         status_contents, ranges = self.get_contents()
