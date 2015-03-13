@@ -343,14 +343,16 @@
         "keys": ["l"],
         "command": "gs_tag_view_log",
         "context": [
-            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags meta.git-savvy.tags.section meta.git-savvy.tags.tag" }
         ]
     },
     {
         "keys": ["d"],
         "command": "gs_tag_delete",
         "context": [
-            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags meta.git-savvy.tags.section meta.git-savvy.tags.tag" }
         ]
     },
     {
@@ -364,7 +366,8 @@
         "keys": ["p"],
         "command": "gs_tag_push",
         "context": [
-            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags meta.git-savvy.tags.section meta.git-savvy.tags.tag" }
         ]
     },
     {

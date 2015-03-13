@@ -11,6 +11,7 @@ TAG_CREATE_PROMPT = "Enter tag:"
 TAG_CREATE_MESSAGE_PROMPT = "Enter message:"
 START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
+NO_REMOTES_MESSAGE = "You have not configured any remotes."
 
 VIEW_TITLE = "TAGS: {}"
 
@@ -30,13 +31,8 @@ VIEW_HEADER_TEMPLATE = """
   HEAD:    {current_head}
 """
 
-NO_TAGS_MESSAGE = """
-  Your repository has no tags.
-"""
-
-LOADING_TAGS_MESSAGE = """
-  Please stand by while fetching tags from remote(s).
-"""
+NO_LOCAL_TAGS_MESSAGE = "    Your repository has no tags."
+NO_REMOTE_TAGS_MESSAGE = "    This remote has no tags."
 
 KEY_BINDINGS_MENU = """
   #############
@@ -93,11 +89,11 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(lambda: self.run_async(**kwargs))
 
     def run_async(self):
-        view_contents = self.get_contents(loading=True)
+        view_contents, ranges = self.get_contents()
+        view_section_ranges[self.view.id()] = ranges
         self.view.run_command("gs_replace_view_text", {"text": view_contents})
-        sublime.set_timeout_async(lambda: self.append_tags())
 
-    def get_contents(self, loading=False):
+    def get_contents(self):
         """
         Build string to use as contents of tags view. Includes repository
         information in the header, per-tag information, and a key-bindings
@@ -109,67 +105,39 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
             current_head=self.get_latest_commit_msg_for_head()
         )
 
-        if loading:
-            return header + LOADING_TAGS_MESSAGE + KEY_BINDINGS_MENU
+        cursor = len(header)
+        tags = self.get_tags()
+        regions = []
+
+        def get_region(new_text):
+            nonlocal cursor
+            start = cursor
+            cursor += len(new_text)
+            end = cursor
+            return sublime.Region(start, end)
+
+        lines = ""
+        if tags:
+            lines = "\n".join(
+                "    {} {}".format(t.sha[:7], t.tag)
+                for t in tags
+                )
         else:
-            view_text = ""
+            lines = NO_LOCAL_TAGS_MESSAGE
 
-            cursor = len(header)
-            local, remotes = self.sort_tag_entries(self.get_tags())
-            local_region, remote_region = (sublime.Region(0, 0), ) * 2
+        view_text = LOCAL_TEMPLATE.format(lines)
+        regions.append(get_region(view_text))
 
-            def get_region(new_text):
-                nonlocal cursor
-                start = cursor
-                cursor += len(new_text)
-                end = cursor
-                return sublime.Region(start, end)
+        self.remotes = list(self.get_remotes().keys())
+        if self.remotes:
+            for remote in self.remotes:
+                remote_text = REMOTE_TEMPLATE.format(remote, NO_REMOTE_TAGS_MESSAGE)
+                regions.append(get_region(remote_text))
+                view_text += remote_text
 
+        contents = header + view_text + KEY_BINDINGS_MENU
 
-            if local:
-                local_lines = "\n".join(
-                    "    {} {}".format(t.sha[:7], t.tag)
-                    for t in local
-                    )
-                local_text = LOCAL_TEMPLATE.format(local_lines)
-                local_region = get_region(local_text)
-                view_text += local_text
-            if remotes:
-                for group in remotes:
-                    remote_lines = "\n".join(
-                        "    {} {}".format(t.sha[:7], t.tag)
-                        for t in group.entries
-                        )
-                    remote_text = REMOTE_TEMPLATE.format(group.remote, remote_lines)
-                    remote_region = get_region(remote_text)
-                    view_text += remote_text
-
-            view_text = view_text or NO_TAGS_MESSAGE
-
-            contents = header + view_text + KEY_BINDINGS_MENU
-
-            return contents, (local_region, remote_region)
-
-    def append_tags(self):
-        view_contents, ranges = self.get_contents()
-        view_section_ranges[self.view.id()] = ranges
-        self.view.run_command("gs_replace_view_text", {"text": view_contents})
-
-    @staticmethod
-    def sort_tag_entries(tag_list):
-        """
-        Take entries from `get_tags` and sort them into groups.
-        """
-        local, remotes = [], []
-
-        for item in tag_list:
-            if hasattr(item, "remote"):
-                # TODO: remove entries that exist locally
-                remotes.append(item)
-            else:
-                local.append(item)
-
-        return local, remotes
+        return contents, tuple(regions)
 
 
 class GsTagsFocusEventListener(EventListener):
@@ -191,7 +159,8 @@ class GsTagDeleteCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        valid_ranges = view_section_ranges[self.view.id()][:3]
+        # Valid sections are in the Local section
+        valid_ranges = view_section_ranges[self.view.id()][:1]
 
         lines = util.view.get_lines_from_regions(
             self.view,
@@ -200,10 +169,10 @@ class GsTagDeleteCommand(TextCommand, GitCommand):
             )
 
         items = tuple(line[4:].strip().split() for line in lines if line)
-
         if items:
             for item in items:
                 self.git("tag", "-d", item[1])
+
             util.view.refresh_gitsavvy(self.view)
             sublime.status_message(TAG_DELETE_MESSAGE)
 
@@ -273,7 +242,8 @@ class GsTagPushCommand(TextCommand, GitCommand):
 
     def run(self, edit, push_all=False):
         if not push_all:
-            valid_ranges = view_section_ranges[self.view.id()][:3]
+            # Valid sections are in the Local section
+            valid_ranges = view_section_ranges[self.view.id()][:1]
 
             lines = util.view.get_lines_from_regions(
                 self.view,
@@ -293,7 +263,6 @@ class GsTagPushCommand(TextCommand, GitCommand):
         proceed no further.
         """
         self.remotes = list(self.get_remotes().keys())
-
         if not self.remotes:
             self.view.window().show_quick_panel([NO_REMOTES_MESSAGE], None)
         else:
@@ -335,12 +304,10 @@ class GsTagViewLogCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        valid_ranges = view_section_ranges[self.view.id()][:3]
-
         lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
-            valid_ranges=valid_ranges
+            valid_ranges=view_section_ranges[self.view.id()]
             )
 
         items = tuple(line[4:].strip().split() for line in lines if line)
