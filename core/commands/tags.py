@@ -7,9 +7,10 @@ from ..git_command import GitCommand
 from ...common import util
 
 TAG_DELETE_MESSAGE = "Tag deleted."
+TAG_CREATE_MESSAGE = "Tag \"{}\" created."
 TAG_CREATE_PROMPT = "Enter tag:"
 TAG_CREATE_MESSAGE_PROMPT = "Enter message:"
-START_PUSH_MESSAGE = "Starting push..."
+START_PUSH_MESSAGE = "Pushing tag..."
 END_PUSH_MESSAGE = "Push complete."
 NO_REMOTES_MESSAGE = "You have not configured any remotes."
 
@@ -86,20 +87,29 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
     menu to the user.
     """
 
-    def run(self, edit):
+    def run(self, edit, section=None):
+        self.section = section
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        view_contents, ranges = self.get_contents()
-        view_section_ranges[self.view.id()] = ranges
-        self.view.run_command("gs_replace_view_text", {"text": view_contents})
-        sublime.set_timeout_async(self.append_tags)
+        if not self.section:
+            view_contents, ranges = self.get_contents()
+            view_section_ranges[self.view.id()] = ranges
+            self.view.run_command("gs_replace_view_text", {"text": view_contents})
+
+        if not self.section or self.section == 1:
+            sublime.set_timeout_async(self.append_local)
+
+        if not self.section or self.section == 2:
+            sublime.set_timeout_async(self.append_all_remotes)
+        elif isinstance(self.section, str):
+            sublime.set_timeout_async(lambda: self.append_remote(self.section))
 
     def get_contents(self):
         """
-        Build string to use as contents of tags view. Includes repository
-        information in the header, per-tag information, and a key-bindings
-        menu at the bottom.
+        Build a string to use as a base for the contents in the tags view.
+        It includes repository information in the header, sections for tags'
+        locations, and a key-bindings menu at the bottom.
         """
         header = VIEW_HEADER_TEMPLATE.format(
             branch_status=self.get_branch_status(),
@@ -118,8 +128,7 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
             end = cursor
             return sublime.Region(start, end)
 
-        lines = "\n".join("    {} {}".format(t.sha[:7], t.tag) for t in tags)
-        view_text = LOCAL_TEMPLATE.format(lines or NO_LOCAL_TAGS_MESSAGE)
+        view_text = LOCAL_TEMPLATE.format(LOADING_TAGS_MESSAGE)
         regions.append(get_region(view_text))
 
         self.remotes = list(self.get_remotes().keys())
@@ -133,54 +142,76 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
 
         return contents, tuple(regions)
 
-    def append_tags(self):
+    def append_local(self):
         """
-        Fetch, format and append remote tags to the view.
+        Build a string containing tags available in the local repository, then
+        append it to the section, finally updating the stored sections for the view.
         """
-        remotes_length = len(self.remotes)
-        if remotes_length:
-            sections = view_section_ranges[self.view.id()]
+        tags = self.get_tags()
+        lines = "\n".join("    {} {}".format(t.sha[:7], t.tag) for t in tags)
+        text = LOCAL_TEMPLATE.format(lines or NO_LOCAL_TAGS_MESSAGE)
 
-            for remote in self.remotes:
-                remote_text = self.get_remote_text(remote)
-                section_index = self.remotes.index(remote) + 1
-                section = sections[section_index]
-                self.view.run_command("gs_replace_region", {
-                    "text": remote_text,
-                    "begin": section.begin(),
-                    "end": section.end()
-                    })
+        section = view_section_ranges[self.view.id()][0]
+        self.view.run_command("gs_replace_region", {
+            "text": text,
+            "begin": section.begin(),
+            "end": section.end()
+            })
 
-                # Fix the section size
-                section.b = section.a + len(remote_text)
+        # Fix the section sizes
+        section.b = section.a + len(text)
+        self.update_sections(0)
 
-                # Fix the next section size
-                if section_index < remotes_length:
-                    next_section = sections[section_index + 1]
-                    next_section_size = next_section.size()
-                    next_section.a = section.b
-                    next_section.b = next_section.a + next_section_size
-
-    def get_remote_text(self, remote):
+    def append_remote(self, remote):
         """
-        Build string to use as contents of a remote's section in the tag view.
+        Build a string containing tags available in a remote repository, then
+        append it to the section, finally updating the stored sections for the view.
         """
         tags = self.get_tags(remote)
         lines = "\n".join("    {} {}".format(t.sha[:7], t.tag) for t in tags if t.tag[-3:] != "^{}")
-        lines_text = REMOTE_TEMPLATE.format(remote, lines or NO_REMOTE_TAGS_MESSAGE)
+        text = REMOTE_TEMPLATE.format(remote, lines or NO_REMOTE_TAGS_MESSAGE)
 
-        return lines_text
+        index = self.remotes.index(remote)
+        section = view_section_ranges[self.view.id()][index + 1]
+        self.view.run_command("gs_replace_region", {
+            "text": text,
+            "begin": section.begin(),
+            "end": section.end()
+            })
+
+        # Fix the section sizes
+        section.b = section.a + len(text)
+        self.update_sections(index + 1)
+
+    def append_all_remotes(self):
+        """
+        Async "relay" to append all remotes' tags to their relative sections in the view.
+        """
+        for remote in self.remotes:
+            self.append_remote(remote)
+
+    def update_sections(self, index):
+        """
+        Update the stored sections for the view.
+        """
+        sections = view_section_ranges[self.view.id()]
+
+        for section in sections[index + 1:]:
+            section_size = section.size()
+            section.a = sections[index].b
+            section.b = section.a + section_size
+            index += 1
 
 
 class GsTagsFocusEventListener(EventListener):
 
     """
-    If the current view is a tags view, refresh the view with
-    the repository's tags when the view regains focus.
+    If the current view is a tags view and there are no stored sections
+    for the view, refresh the view when it regains focus.
     """
 
     def on_activated(self, view):
-        if view.settings().get("git_savvy.tags_view") == True:
+        if view.settings().get("git_savvy.tags_view") and not view.id() in view_section_ranges:
             view.run_command("gs_tags_refresh")
 
 
@@ -206,8 +237,9 @@ class GsTagDeleteCommand(TextCommand, GitCommand):
             for item in local_items:
                 self.git("tag", "-d", item[1])
 
-            util.view.refresh_gitsavvy(self.view)
             sublime.status_message(TAG_DELETE_MESSAGE)
+            if self.view.settings().get("git_savvy.tags_view"):
+                self.view.run_command("gs_tags_refresh", {"section": 1})
             return
 
         # Remote
@@ -223,15 +255,21 @@ class GsTagDeleteCommand(TextCommand, GitCommand):
 
             remote_items = tuple(line[4:].strip().split() for line in remote_lines if line)
             if remote_items:
-                self.git(
-                    "push",
-                    remote,
+                self.remote = remote
+                sublime.set_timeout_async(lambda: self.do_push(
                     "--delete",
                     *("refs/tags/" + t[1] for t in remote_items)
-                    )
+                    ))
 
-                util.view.refresh_gitsavvy(self.view)
-                sublime.status_message(TAG_DELETE_MESSAGE)
+    def do_push(self, *args):
+        """
+        Perform a `git push` operation, then update the relative section in the view.
+        """
+        self.git("push", self.remote, *args)
+
+        sublime.status_message(TAG_DELETE_MESSAGE)
+        if self.view.settings().get("git_savvy.tags_view"):
+            self.view.run_command("gs_tags_refresh", {"section": self.remote})
 
 
 class GsTagCreateCommand(WindowCommand, GitCommand):
@@ -257,8 +295,8 @@ class GsTagCreateCommand(WindowCommand, GitCommand):
 
     def on_entered_tag(self, tag_name):
         """
-        After the user has entered a tag name, prompt the user for a
-        tag message. If the message is empty, use the pre-defined one.
+        After the user has entered a tag name, validate the tag name, finally
+        prompting the user for a tag message.
         """
         if not tag_name:
             return
@@ -292,6 +330,11 @@ class GsTagCreateCommand(WindowCommand, GitCommand):
         message = message.format(tag_name=self.tag_name)
 
         self.git("tag", self.tag_name, "-F", "-", stdin=message)
+
+        sublime.status_message(TAG_CREATE_MESSAGE.format(self.tag_name))
+        view = self.window.active_view()
+        if view.settings().get("git_savvy.tags_view"):
+            view.run_command("gs_tags_refresh", {"section": 1})
 
 
 class GsTagPushCommand(TextCommand, GitCommand):
@@ -342,25 +385,31 @@ class GsTagPushCommand(TextCommand, GitCommand):
         if remote_index == -1:
             return
 
-        selected_remote = self.remotes[remote_index]
+        self.selected_remote = self.remotes[remote_index]
 
-        sublime.status_message(START_PUSH_MESSAGE)
         if self.push_all:
-            self.git("push", selected_remote, "--tags")
+            sublime.set_timeout_async(lambda: self.do_push("--tags"))
         elif self.items:
-            self.git(
-                "push",
-                selected_remote,
+            sublime.set_timeout_async(lambda: self.do_push(
                 *("refs/tags/" + t[1] for t in self.items)
-                )
+                ))
 
+    def do_push(self, *args):
+        """
+        Perform a `git push` operation, then update the relative section in the view.
+        """
+        sublime.status_message(START_PUSH_MESSAGE)
+        self.git("push", self.selected_remote, *args)
         sublime.status_message(END_PUSH_MESSAGE)
+
+        if self.view.settings().get("git_savvy.tags_view"):
+            self.view.run_command("gs_tags_refresh", {"section": self.selected_remote})
 
 
 class GsTagViewLogCommand(TextCommand, GitCommand):
 
     """
-    Display a panel containing the commit log for the selected tag's hash.
+    Display an output panel containing the commit log for the selected tag's hash.
     """
 
     def run(self, edit):
