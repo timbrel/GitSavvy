@@ -9,6 +9,8 @@ from ...common import util
 TAG_DELETE_MESSAGE = "Tag deleted."
 TAG_CREATE_PROMPT = "Enter tag:"
 TAG_CREATE_MESSAGE_PROMPT = "Enter message:"
+START_PUSH_MESSAGE = "Starting push..."
+END_PUSH_MESSAGE = "Push complete."
 
 VIEW_TITLE = "TAGS: {}"
 
@@ -43,8 +45,8 @@ KEY_BINDINGS_MENU = """
 
   [c] create
   [d] delete
-  [p] push to remote(s) (NYI)
-  [P] push all tags to remote(s) (NYI)
+  [p] push to remote
+  [P] push all tags to remote
   [l] view commit
 
   ###########
@@ -260,6 +262,70 @@ class GsTagCreateCommand(WindowCommand, GitCommand):
             message = default_message.format(tag_name=self.tag_name)
 
         self.git("tag", self.tag, "-F", "-", stdin=message)
+
+
+class GsTagPushCommand(TextCommand, GitCommand):
+
+    """
+    Displays a panel of all remotes defined for the repository, then push
+    selected or all tag(s) to the selected remote.
+    """
+
+    def run(self, edit, push_all=False):
+        if not push_all:
+            valid_ranges = view_section_ranges[self.view.id()][:3]
+
+            lines = util.view.get_lines_from_regions(
+                self.view,
+                self.view.sel(),
+                valid_ranges=valid_ranges
+                )
+
+            self.items = tuple(line[4:].strip().split() for line in lines if line)
+
+        self.push_all = push_all
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        """
+        Display a panel of all remotes defined for the repo, then proceed to
+        `on_select_remote`. If no remotes are defined, notify the user and
+        proceed no further.
+        """
+        self.remotes = list(self.get_remotes().keys())
+
+        if not self.remotes:
+            self.view.window().show_quick_panel([NO_REMOTES_MESSAGE], None)
+        else:
+            self.view.window().show_quick_panel(
+                self.remotes,
+                self.on_select_remote,
+                flags=sublime.MONOSPACE_FONT
+                )
+
+    def on_select_remote(self, remote_index):
+        """
+        Push tag(s) to the remote that was previously selected
+        """
+
+        #if the user pressed `esc` or otherwise cancelled
+        if remote_index == -1:
+            return
+
+        selected_remote = self.remotes[remote_index]
+
+        sublime.status_message(START_PUSH_MESSAGE)
+        if self.push_all:
+            self.git("push", selected_remote, "--tags")
+        elif hasattr(self, "items") and self.items:
+            refs = ""
+            for item in self.items:
+                refs += "refs/tags/" + item[1] + ":"
+            refs = refs[:-1]
+
+            self.git("push", selected_remote, refs)
+
+        sublime.status_message(END_PUSH_MESSAGE)
 
 
 class GsTagViewLogCommand(TextCommand, GitCommand):
