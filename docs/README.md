@@ -50,6 +50,12 @@ If you run into any issues not addressed here, please feel free to [open an issu
 - [git: restart merge for file...](branch_mgmt.md#git-restart-merge-for-file)
 
 
+### Tag management
+
+- [git: tags](tag_mgmt.md#git-tags)
+- [git: quick tag](tag_mgmt.md#git-quick-tag)
+
+
 ### Interacting with remotes
 
 - [git: checkout remote branch as local](remotes.md#git-checkout-remote-branch-as-local)

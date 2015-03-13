@@ -19,6 +19,8 @@ re_link_scope = re.compile(r"\bmeta\.link\.inline\.markdown\b")
 def get_page_and_anchor(view):
     if util.view.get_is_view_of_type(view, "status"):
         return "status.md", None
+    if util.view.get_is_view_of_type(view, "tags"):
+        return "tag_mgmt.md", "git-tags"
     if util.view.get_is_view_of_type(view, "commit"):
         anchor = ("git-amend-previous-commit"
                   if view.settings().get("git_savvy.commit_view.amend")
