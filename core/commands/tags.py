@@ -203,7 +203,6 @@ class GsTagCreateCommand(WindowCommand, GitCommand):
         After the user has entered a tag name, prompt the user for a
         tag message. If the message is empty, use the pre-defined one.
         """
-        # If the user pressed `esc` or otherwise cancelled.
         if not tag_name:
             return
 
@@ -212,7 +211,7 @@ class GsTagCreateCommand(WindowCommand, GitCommand):
         self.tag_name = tag_name
         self.window.show_input_panel(
             TAG_CREATE_MESSAGE_PROMPT,
-            "",
+            sublime.load_settings("GitSavvy.sublime-settings").get("default_tag_message"),
             self.on_entered_message,
             None,
             None
@@ -222,13 +221,10 @@ class GsTagCreateCommand(WindowCommand, GitCommand):
         """
         Perform `git tag tag_name -F -`
         """
-        # If the user pressed `esc` or otherwise cancelled
-        if message == -1:
+        if not message:
             return
 
-        if not message:
-            default_message = sublime.load_settings("GitSavvy.sublime-settings").get("default_tag_message")
-            message = default_message.format(tag_name=self.tag_name)
+        message = message.format(tag_name=self.tag_name)
 
         self.git("tag", self.tag_name, "-F", "-", stdin=message)
 
