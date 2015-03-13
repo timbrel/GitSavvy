@@ -10,7 +10,7 @@ class RemotesMixin():
         url/resource.
         """
         entries = self.git("remote", "-v").splitlines()
-        return OrderedDict(re.match("([a-zA-Z_-]+)\t([^ ]+)", entry).groups() for entry in entries)
+        return OrderedDict(re.match("([0-9a-zA-Z_-]+)\t([^ ]+)", entry).groups() for entry in entries)
 
     def fetch(self, remote=None):
         """
