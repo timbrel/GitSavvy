@@ -191,22 +191,47 @@ class GsTagDeleteCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        # Valid sections are in the Local section
-        valid_ranges = view_section_ranges[self.view.id()][:1]
+        sections = view_section_ranges[self.view.id()]
 
-        lines = util.view.get_lines_from_regions(
+        # Local
+        local_sections = sections[:1]
+        local_lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
-            valid_ranges=valid_ranges
+            valid_ranges=local_sections
             )
 
-        items = tuple(line[4:].strip().split() for line in lines if line)
-        if items:
-            for item in items:
+        local_items = tuple(line[4:].strip().split() for line in local_lines if line)
+        if local_items:
+            for item in local_items:
                 self.git("tag", "-d", item[1])
 
             util.view.refresh_gitsavvy(self.view)
             sublime.status_message(TAG_DELETE_MESSAGE)
+            return
+
+        # Remote
+        remotes = list(self.get_remotes().keys())
+        for remote in remotes:
+            remote_index = remotes.index(remote)
+            remote_sections = (sections[remote_index + 1], )
+            remote_lines = util.view.get_lines_from_regions(
+                self.view,
+                self.view.sel(),
+                valid_ranges=remote_sections
+                )
+
+            remote_items = tuple(line[4:].strip().split() for line in remote_lines if line)
+            if remote_items:
+                self.git(
+                    "push",
+                    remote,
+                    "--delete",
+                    *("refs/tags/" + t[1] for t in remote_items)
+                    )
+
+                util.view.refresh_gitsavvy(self.view)
+                sublime.status_message(TAG_DELETE_MESSAGE)
 
 
 class GsTagCreateCommand(WindowCommand, GitCommand):
