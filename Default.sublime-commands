@@ -163,5 +163,9 @@
     {
         "caption": "git: tags",
         "command": "gs_show_tags"
+    },
+    {
+        "caption": "git: quick tag",
+        "command": "gs_tag_create"
     }
 ]

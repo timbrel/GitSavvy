@@ -235,7 +235,7 @@ class GsTagCreateCommand(WindowCommand, GitCommand):
         tag message. If the message is empty, use the pre-defined one.
         """
         # If the user pressed `esc` or otherwise cancelled.
-        if not tag:
+        if not tag_name:
             return
 
         # TODO: do some validation
@@ -261,7 +261,7 @@ class GsTagCreateCommand(WindowCommand, GitCommand):
             default_message = sublime.load_settings("GitSavvy.sublime-settings").get("default_tag_message")
             message = default_message.format(tag_name=self.tag_name)
 
-        self.git("tag", self.tag, "-F", "-", stdin=message)
+        self.git("tag", self.tag_name, "-F", "-", stdin=message)
 
 
 class GsTagPushCommand(TextCommand, GitCommand):
