@@ -263,9 +263,17 @@ class GsTagCreateCommand(WindowCommand, GitCommand):
         if not tag_name:
             return
 
-        # TODO: do some validation
+        stdout = self.git(
+            "check-ref-format",
+            "--normalize",
+            "refs/tags/" + tag_name,
+            throw_on_stderr=False
+            )
 
-        self.tag_name = tag_name
+        if not stdout:
+            return util.log.panel("\"{}\" is not a valid tag name.".format(tag_name))
+
+        self.tag_name = stdout.strip()[10:]
         self.window.show_input_panel(
             TAG_CREATE_MESSAGE_PROMPT,
             sublime.load_settings("GitSavvy.sublime-settings").get("default_tag_message"),
