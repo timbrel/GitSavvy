@@ -289,7 +289,7 @@ class GsTagPushCommand(TextCommand, GitCommand):
         elif hasattr(self, "items") and self.items:
             refs = ""
             for item in self.items:
-                refs += "refs/tags/" + item[1] + ":"
+                refs += "refs/tags/" + item[1] + " "
             refs = refs[:-1]
 
             self.git("push", selected_remote, refs)
