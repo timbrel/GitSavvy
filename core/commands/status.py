@@ -115,8 +115,8 @@ class GsStatusRefreshCommand(TextCommand, GitCommand):
     and command menu to the user.
     """
 
-    def run(self, edit, **kwargs):
-        sublime.set_timeout_async(lambda: self.run_async(**kwargs))
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
         status_contents, ranges = self.get_contents()
@@ -586,7 +586,7 @@ class GsStatusShowStashCommand(TextCommand, GitCommand):
             stash_view.set_read_only(False)
             stash_view.replace(edit, sublime.Region(0, 0), stash_text)
             stash_view.set_read_only(True)
-            self.view.sel().add(sublime.Region(0, 0))
+            stash_view.sel().add(sublime.Region(0, 0))
 
     def get_stash_view(self, title):
         window = self.window if hasattr(self, "window") else self.view.window()
