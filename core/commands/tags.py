@@ -422,4 +422,14 @@ class GsTagViewLogCommand(TextCommand, GitCommand):
         items = tuple(line[4:].strip().split() for line in lines if line)
 
         if items:
-            self.git("log", "-1", "--pretty=medium", items[0][0], show_panel=True)
+            stdout = self.git("show", items[0][0])
+
+            panel_view = self.view.window().create_output_panel("GitSavvy")
+            panel_view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.tmLanguage")
+            panel_view.settings().set("line_numbers", False)
+            panel_view.set_read_only(False)
+            panel_view.erase(edit, sublime.Region(0, panel_view.size()))
+            panel_view.insert(edit, 0, stdout)
+            panel_view.set_read_only(True)
+            panel_view.show(0)
+            self.view.window().run_command("show_panel", {"panel": "output.{}".format("GitSavvy")})
