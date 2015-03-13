@@ -199,12 +199,13 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
 class GsTagsFocusEventListener(EventListener):
 
     """
-    If the current view is a tags view, refresh the view when it regains focus.
+    If the current view is a tags view, refresh the local tags in
+    the view when it regains focus.
     """
 
     def on_activated(self, view):
         if view.settings().get("git_savvy.tags_view"):
-            view.run_command("gs_tags_refresh")
+            view.run_command("gs_tags_refresh", {"section": 1})
 
 
 class GsTagDeleteCommand(TextCommand, GitCommand):
