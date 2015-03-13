@@ -314,13 +314,12 @@ class GsTagPushCommand(TextCommand, GitCommand):
         sublime.status_message(START_PUSH_MESSAGE)
         if self.push_all:
             self.git("push", selected_remote, "--tags")
-        elif hasattr(self, "items") and self.items:
-            refs = ""
-            for item in self.items:
-                refs += "refs/tags/" + item[1] + " "
-            refs = refs[:-1]
-
-            self.git("push", selected_remote, refs)
+        elif self.items:
+            self.git(
+                "push",
+                selected_remote,
+                *("refs/tags/" + t[1] for t in self.items)
+                )
 
         sublime.status_message(END_PUSH_MESSAGE)
 
