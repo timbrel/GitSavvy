@@ -13,7 +13,7 @@ class TagsMixin():
         """
         entries = []
 
-        stdout = self.git("show-ref", "--tags")
+        stdout = self.git("show-ref", "--tags", throw_on_stderr=False)
         procelain_entries = stdout.split("\n").__iter__()
 
         for entry in procelain_entries:
