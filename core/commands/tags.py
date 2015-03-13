@@ -166,7 +166,7 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
         Build string to use as contents of a remote's section in the tag view.
         """
         tags = self.get_tags(remote)
-        lines = "\n".join("    {} {}".format(t.sha[:7], t.tag) for t in tags)
+        lines = "\n".join("    {} {}".format(t.sha[:7], t.tag) for t in tags if t.tag[-3:] != "^{}")
         lines_text = REMOTE_TEMPLATE.format(remote, lines or NO_REMOTE_TAGS_MESSAGE)
 
         return lines_text
