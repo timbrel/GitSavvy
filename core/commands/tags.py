@@ -33,6 +33,7 @@ VIEW_HEADER_TEMPLATE = """
 
 NO_LOCAL_TAGS_MESSAGE = "    Your repository has no tags."
 NO_REMOTE_TAGS_MESSAGE = "    This remote has no tags."
+LOADING_TAGS_MESSAGE = "    Loading tags from remote.."
 
 KEY_BINDINGS_MENU = """
   #############
@@ -85,13 +86,14 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
     menu to the user.
     """
 
-    def run(self, edit, **kwargs):
-        sublime.set_timeout_async(lambda: self.run_async(**kwargs))
+    def run(self, edit):
+        sublime.set_timeout_async(lambda: self.run_async())
 
     def run_async(self):
         view_contents, ranges = self.get_contents()
         view_section_ranges[self.view.id()] = ranges
         self.view.run_command("gs_replace_view_text", {"text": view_contents})
+        sublime.set_timeout_async(lambda: self.append_tags())
 
     def get_contents(self):
         """
@@ -116,28 +118,58 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
             end = cursor
             return sublime.Region(start, end)
 
-        lines = ""
-        if tags:
-            lines = "\n".join(
-                "    {} {}".format(t.sha[:7], t.tag)
-                for t in tags
-                )
-        else:
-            lines = NO_LOCAL_TAGS_MESSAGE
-
-        view_text = LOCAL_TEMPLATE.format(lines)
+        lines = "\n".join("    {} {}".format(t.sha[:7], t.tag) for t in tags)
+        view_text = LOCAL_TEMPLATE.format(lines or NO_LOCAL_TAGS_MESSAGE)
         regions.append(get_region(view_text))
 
         self.remotes = list(self.get_remotes().keys())
         if self.remotes:
             for remote in self.remotes:
-                remote_text = REMOTE_TEMPLATE.format(remote, NO_REMOTE_TAGS_MESSAGE)
+                remote_text = REMOTE_TEMPLATE.format(remote, LOADING_TAGS_MESSAGE)
                 regions.append(get_region(remote_text))
                 view_text += remote_text
 
         contents = header + view_text + KEY_BINDINGS_MENU
 
         return contents, tuple(regions)
+
+    def append_tags(self):
+        """
+        Fetch, format and append remote tags to the view.
+        """
+        remotes_length = len(self.remotes)
+        if remotes_length:
+            sections = view_section_ranges[self.view.id()]
+
+            for remote in self.remotes:
+                remote_text = self.get_remote_text(remote)
+                section_index = self.remotes.index(remote) + 1
+                section = sections[section_index]
+                self.view.run_command("gs_replace_region", {
+                    "text": remote_text,
+                    "begin": section.begin(),
+                    "end": section.end()
+                    })
+
+                # Fix the section size
+                section.b = section.a + len(remote_text)
+
+                # Fix the next section size
+                if section_index < remotes_length:
+                    next_section = sections[section_index + 1]
+                    next_section_size = next_section.size()
+                    next_section.a = section.b
+                    next_section.b = next_section.a + next_section_size
+
+    def get_remote_text(self, remote):
+        """
+        Build string to use as contents of a remote's section in the tag view.
+        """
+        tags = self.get_tags(remote)
+        lines = "\n".join("    {} {}".format(t.sha[:7], t.tag) for t in tags)
+        lines_text = REMOTE_TEMPLATE.format(remote, lines or NO_REMOTE_TAGS_MESSAGE)
+
+        return lines_text
 
 
 class GsTagsFocusEventListener(EventListener):

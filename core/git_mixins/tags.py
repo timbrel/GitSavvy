@@ -13,10 +13,15 @@ class TagsMixin():
         """
         entries = []
 
-        stdout = self.git("show-ref", "--tags", throw_on_stderr=False)
-        procelain_entries = stdout.split("\n").__iter__()
+        stdout = self.git(
+            "ls-remote" if remote else "show-ref",
+            "--tags",
+            remote if remote else None,
+            throw_on_stderr=False
+            )
+        porcelain_entries = stdout.split("\n").__iter__()
 
-        for entry in procelain_entries:
+        for entry in porcelain_entries:
             if not entry:
                 continue
             sha = entry[:40]
