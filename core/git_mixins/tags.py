@@ -5,7 +5,7 @@ TagDetails = namedtuple("TagDetails", ("sha", "tag"))
 
 class TagsMixin():
 
-    def get_tags(self, remote=None):
+    def get_tags(self, remote=None, reverse=False):
         """
         Return a list of TagDetails object. These objects correspond
         to all tags found in the repository, containing abbreviated
@@ -17,9 +17,11 @@ class TagsMixin():
             remote if remote else None,
             throw_on_stderr=False
             )
-        porcelain_entries = stdout.split("\n").__iter__()
+        porcelain_entries = stdout.split("\n")
+        if reverse:
+            porcelain_entries.reverse()
 
-        entries = [TagDetails(entry[:40], entry[51:]) for entry in porcelain_entries if entry]
+        entries = [TagDetails(entry[:40], entry[51:]) for entry in iter(porcelain_entries) if entry]
 
         return entries
 

@@ -118,7 +118,7 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
         )
 
         cursor = len(header)
-        tags = self.get_tags()
+        tags = self.get_tags(reverse=True)
         regions = []
 
         def get_region(new_text):
@@ -147,7 +147,7 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
         Build a string containing tags available in the local repository, then
         append it to the section, finally updating the stored sections for the view.
         """
-        tags = self.get_tags()
+        tags = self.get_tags(reverse=True)
         lines = "\n".join("    {} {}".format(t.sha[:7], t.tag) for t in tags)
         text = LOCAL_TEMPLATE.format(lines or NO_LOCAL_TAGS_MESSAGE)
 
@@ -167,7 +167,7 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
         Build a string containing tags available in a remote repository, then
         append it to the section, finally updating the stored sections for the view.
         """
-        tags = self.get_tags(remote)
+        tags = self.get_tags(remote, reverse=True)
         lines = "\n".join("    {} {}".format(t.sha[:7], t.tag) for t in tags if t.tag[-3:] != "^{}")
         text = REMOTE_TEMPLATE.format(remote, lines or NO_REMOTE_TAGS_MESSAGE)
 
