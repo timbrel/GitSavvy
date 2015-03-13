@@ -56,6 +56,7 @@ class GitCommand(StatusMixin,
         current working directory for the git process; otherwise,
         the `repo_path` value will be used.
         """
+        args = self._include_global_flags(args)
         command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
         command_str = " ".join(command)
 
@@ -199,3 +200,18 @@ class GitCommand(StatusMixin,
         """
         path = abs_path or self.file_path
         return os.path.relpath(path, start=self.repo_path)
+
+    def _include_global_flags(self, args):
+        """
+        Transforms the Git command arguments with flags indicated in the
+        global GitSavvy settings.
+        """
+        git_cmd, *addl_args = args
+
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        global_flags = savvy_settings.get("global_flags")
+
+        if global_flags and git_cmd in global_flags:
+            args = [git_cmd] + global_flags[git_cmd] + addl_args
+
+        return args

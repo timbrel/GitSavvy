@@ -57,5 +57,13 @@
         When entering a tag message, this will be used if the message is empty.
         The replacement value "{tag_name}" is optional, but recommended.
      */
-    "default_tag_message": "Tag {tag_name}"
+    "default_tag_message": "Tag {tag_name}",
+
+    /*
+        For each command specified, always include the command line flags
+        indicated in the global_flags hash.
+     */
+    "global_flags": {
+        // "pull": ["--dry-run"]
+    }
 }
