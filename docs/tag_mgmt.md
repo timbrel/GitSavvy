@@ -8,7 +8,7 @@ The following commands are provided to manage local and remote tags.
 GitSavvy's tag dashboard displays all local and remote tags, and enables you to:
 
 - create a new tag (`c`)
-- select and delete an existing tag (`d`)
+- select and delete existing tags(s) (`d`)
 - select and push tag(s) to a remote (`p`)
 - push all tags to a remote (`P`), and
 - view the diff commit that is tagged (`l`)
