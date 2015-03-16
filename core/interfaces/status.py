@@ -218,8 +218,8 @@ class GsStatusRefreshCommand(TextCommand, GitCommand):
 class GsStatusFocusEventListener(EventListener):
 
     """
-    If the current view is an inline-diff view, refresh the view with
-    latest file status when the view regains focus.
+    If the current view is a status view, refresh the view with
+    latest repo status when the view regains focus.
     """
 
     def on_activated(self, view):
