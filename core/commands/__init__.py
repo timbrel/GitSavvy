@@ -1,6 +1,5 @@
 from .quick_stage import *
 from .inline_diff import *
-from .status import *
 from .commit import *
 from .quick_commit import *
 from .log_graph import *

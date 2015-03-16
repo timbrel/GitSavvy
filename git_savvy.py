@@ -9,4 +9,5 @@ else:
 
     from .common.commands import *
     from .core.commands import *
+    from .core.interfaces import *
     from .github.commands import *
