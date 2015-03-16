@@ -1,13 +1,18 @@
 from collections import OrderedDict
 
 import sublime
-from sublime_plugin import TextCommand
+from sublime_plugin import TextCommand, EventListener
 
 from . import util
 
 
+interfaces = {}
+subclasses = []
+
+
 class Interface():
 
+    interface_type = ""
     read_only = True
     view_type = ""
     syntax_file = ""
@@ -16,9 +21,10 @@ class Interface():
     dedent = 0
     skip_first_line = False
 
+    regions = []
     template = ""
 
-    def __init__(self, view_attrs=None):
+    def __init__(self, view_attrs=None, view=None):
         self.view_attrs = view_attrs or {}
         subclass_attrs = (getattr(self, attr) for attr in vars(self.__class__).keys())
 
@@ -38,6 +44,13 @@ class Interface():
                         for line in getattr(self, attr).split("\n")
                         ))
 
+        if view:
+            self.view = view
+        else:
+            self.view = self.create_view()
+
+        interfaces[self.view.id()] = self
+
     def create_view(self):
         window = sublime.active_window()
         self.view = window.new_file()
@@ -47,7 +60,7 @@ class Interface():
 
         self.view.set_name(self.title())
         self.view.settings().set("git_savvy.{}_view".format(self.view_type), True)
-        self.view.settings().set("git_savvy.interface", True)
+        self.view.settings().set("git_savvy.interface", self.interface_type)
         self.view.settings().set("word_wrap", self.word_wrap)
         self.view.set_syntax_file(self.syntax_file)
         self.view.set_scratch(True)
@@ -60,12 +73,14 @@ class Interface():
         return self.view
 
     def render(self):
+        if self.regions:
+            self.clear_regions()
         if hasattr(self, "pre_render"):
             self.pre_render()
 
         rendered = self.template
 
-        regions = []
+        self.regions = []
         keyed_content = self.get_keyed_content()
         for key, new_content in keyed_content.items():
             interpol = "{" + key + "}"
@@ -73,14 +88,14 @@ class Interface():
             cursor = 0
             match = rendered.find(interpol)
             while match >= 0:
-                regions.append((key, (match, match+len(new_content))))
+                self.regions.append((key, (match, match+len(new_content))))
                 rendered = rendered[:match] + new_content + rendered[match+interpol_len:]
 
                 match = rendered.find(interpol, cursor)
 
         self.view.run_command("gs_new_content_and_regions", {
             "content": rendered,
-            "regions": regions,
+            "regions": self.regions,
             "nuke_cursors": True
             })
 
@@ -106,6 +121,10 @@ class Interface():
             "key": "git_savvy_interface." + key,
             "content": content
             })
+
+    def clear_regions(self):
+        for key, region_range in self.regions:
+            self.view.erase_regions(key)
 
 
 def partial(key):
@@ -143,3 +162,27 @@ class GsUpdateRegionCommand(TextCommand):
         for region in self.view.get_regions(key):
             self.view.replace(edit, region, content)
         self.view.set_read_only(is_read_only)
+
+
+def register_listeners(InterfaceClass):
+    subclasses.append(InterfaceClass)
+
+
+class GsInterfaceFocusEventListener(EventListener):
+
+    """
+    If the current view is a branch dashboard view, refresh the view with
+    latest repo status when the view regains focus.
+    """
+
+    def on_activated(self, view):
+        interface_type = view.settings().get("git_savvy.interface")
+        if interface_type:
+            for InterfaceSubclass in subclasses:
+                if InterfaceSubclass.interface_type == interface_type:
+                    existing_interface = interfaces.get(view.id(), None)
+                    if existing_interface:
+                        existing_interface.render()
+                    else:
+                        interface = InterfaceSubclass(view=view)
+                        interfaces[interface.view.id()] = interface
