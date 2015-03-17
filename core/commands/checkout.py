@@ -101,4 +101,4 @@ class GsCheckoutCurrentFileCommand(WindowCommand, GitCommand):
     def run(self):
         if self.file_path:
             self.checkout_file(self.file_path)
-            sublime.status_message("Successfully checked out %s from HEAD." % self.file_path)
+            sublime.status_message("Successfully checked out {} from head.".format(self.file_path))
