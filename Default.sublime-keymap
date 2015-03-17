@@ -414,7 +414,7 @@
         ]
     },
     {
-        "keys": ["r"],
+        "keys": ["R"],
         "command": "gs_branches_rename",
         "context": [
             { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }

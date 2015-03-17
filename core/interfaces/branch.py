@@ -48,7 +48,7 @@ class BranchInterface(ui.Interface, GitCommand):
       [c] checkout                                  [p] push selected to remote
       [b] create new branch (from HEAD)             [P] push all branches to remote
       [d] delete                                    [D] delete (force)
-      [r] rename                                    [m] merge selected into active branch
+      [R] rename (local)                            [m] merge selected into active branch
       [t] configure tracking                        [M] fetch and merge into active branch
 
       [f] diff against active
@@ -230,7 +230,33 @@ class GsBranchesRenameCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        pass
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        self.interface = ui.get_interface(self.view.id())
+        selection, line = self.interface.get_selection_line()
+        if not line:
+            return
+
+        local_region = self.view.get_regions("git_savvy_interface.branch_list")[0]
+        if not local_region.contains(selection):
+            sublime.message_dialog("You can only delete local branches.")
+            return
+
+        segments = line.strip("▸ ").split(" ")
+        self.old_name = segments[1]
+
+        self.view.window().show_input_panel(
+            "Enter new branch name (for {}):".format(self.old_name),
+            self.old_name,
+            self.on_entered_name,
+            None,
+            None
+            )
+
+    def on_entered_name(self, new_name):
+        self.git("branch", "-m", self.old_name, new_name)
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
