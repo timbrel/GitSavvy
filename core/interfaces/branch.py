@@ -137,9 +137,6 @@ class GsBranchesCheckoutCommand(TextCommand, GitCommand):
 
     def run_async(self):
         self.interface = ui.get_interface(self.view.id())
-        if not self.interface:
-            return
-
         selection, line = self.interface.get_selection_line()
         if not line:
             return
@@ -150,7 +147,7 @@ class GsBranchesCheckoutCommand(TextCommand, GitCommand):
         local_region = self.view.get_regions("git_savvy_interface.branch_list")[0]
         if local_region.contains(selection):
             self.checkout_ref(branch_name)
-            self.interface.render(nuke_cursors=False)
+            util.view.refresh_gitsavvy(self.view)
             return
 
         remotes = self.get_remotes()
@@ -158,7 +155,7 @@ class GsBranchesCheckoutCommand(TextCommand, GitCommand):
             remote_region = self.view.get_regions("git_savvy_interface.branch_list_" + remote_name)
             if remote_region and remote_region[0].contains(selection):
                 self.checkout_ref("{}/{}".format(remote_name, branch_name))
-                self.interface.render(nuke_cursors=False)
+                util.view.refresh_gitsavvy(self.view)
                 return
 
 
@@ -184,9 +181,6 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
 
     def run_async(self):
         self.interface = ui.get_interface(self.view.id())
-        if not self.interface:
-            return
-
         selection, line = self.interface.get_selection_line()
         if not line:
             return
@@ -214,7 +208,7 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
             branch_name
             )
         sublime.status_message("Deleted local branch.")
-        self.interface.render(nuke_cursors=False)
+        util.view.refresh_gitsavvy(self.view)
 
     @util.actions.destructive(description="delete a remote branch")
     def delete_remote_branch(self, remote, branch_name):
@@ -226,7 +220,7 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
             ":"+branch_name
             )
         sublime.status_message("Deleted remote branch.")
-        self.interface.render(nuke_cursors=False)
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsBranchesRenameCommand(TextCommand, GitCommand):
