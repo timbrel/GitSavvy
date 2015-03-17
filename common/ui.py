@@ -87,7 +87,8 @@ class Interface():
             cursor = 0
             match = rendered.find(interpol)
             while match >= 0:
-                self.regions.append((key, (match, match+len(new_content))))
+                self.adjust(self.regions, match, interpol_len, len(new_content))
+                self.regions.append((key, [match, match+len(new_content)]))
                 rendered = rendered[:match] + new_content + rendered[match+interpol_len:]
 
                 match = rendered.find(interpol, cursor)
@@ -97,6 +98,18 @@ class Interface():
             "regions": self.regions,
             "nuke_cursors": True
             })
+
+    @staticmethod
+    def adjust(regions, idx, orig_len, new_len):
+        """
+        When interpolating template variables, update region ranges for previously-evaluated
+        variables, but which occur later on in the output/template string.
+        """
+        diff = new_len - orig_len
+        for region in regions:
+            if region[1][0] > idx:
+                region[1][0] += diff
+                region[1][1] += diff
 
     def get_keyed_content(self):
         keyed_content = OrderedDict(
