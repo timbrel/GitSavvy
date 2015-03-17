@@ -2,6 +2,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
+from ...common import util
 
 
 NO_REMOTES_MESSAGE = "You have not configured any remotes."
@@ -9,24 +10,27 @@ START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
 PUSH_TO_BRANCH_NAME_PROMPT = "Enter remote branch name:"
 
-class GsPushCommand(WindowCommand, GitCommand):
+class PushBase(GitCommand):
+    def do_push(self, remote, branch):
+        """
+        Perform `git push remote branch`.
+        """
+        sublime.status_message(START_PUSH_MESSAGE)
+        self.push(remote, branch)
+        sublime.status_message(END_PUSH_MESSAGE)
+        util.view.refresh_gitsavvy(self.window.active_view())
+
+class GsPushCommand(WindowCommand, PushBase):
 
     """
     Perform a normal `git push`.
     """
 
     def run(self):
-        sublime.set_timeout_async(lambda: self.do_push())
-
-    def do_push(self):
-        sublime.status_message(START_PUSH_MESSAGE)
-        self.push(remote=None, branch=None)
-        sublime.status_message(END_PUSH_MESSAGE)
-        if self.window.active_view().settings().get("git_savvy.status_view"):
-            self.window.active_view().run_command("gs_status_refresh")
+        sublime.set_timeout_async(lambda: self.do_push(None, None))
 
 
-class GsPushToBranchCommand(WindowCommand, GitCommand):
+class GsPushToBranchCommand(WindowCommand, PushBase):
 
     """
     Through a series of panels, allow the user to push to a specific remote branch.
@@ -100,18 +104,7 @@ class GsPushToBranchCommand(WindowCommand, GitCommand):
         selected_branch = self.branches_on_selected_remote[branch_index].split("/", 1)[1]
         sublime.set_timeout_async(lambda: self.do_push(self.selected_remote, selected_branch))
 
-    def do_push(self, remote, branch):
-        """
-        Perform `git push remote branch`.
-        """
-        sublime.status_message(START_PUSH_MESSAGE)
-        self.push(remote, branch)
-        sublime.status_message(END_PUSH_MESSAGE)
-        if self.window.active_view().settings().get("git_savvy.status_view"):
-            self.window.active_view().run_command("gs_status_refresh")
-
-
-class GsPushToBranchNameCommand(WindowCommand, GitCommand):
+class GsPushToBranchNameCommand(WindowCommand, PushBase):
 
     """
     Prompt for remote and remote branch name, then push.
@@ -130,7 +123,7 @@ class GsPushToBranchNameCommand(WindowCommand, GitCommand):
         self.remote_branches = self.get_remote_branches()
 
         if not self.remotes:
-            self.window.show_quick_panel(["There are no remotes available."], None)
+            self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
         else:
             self.window.show_quick_panel(
                 self.remotes,
@@ -162,8 +155,4 @@ class GsPushToBranchNameCommand(WindowCommand, GitCommand):
         Push to the remote that was previously selected and provided branch
         name.
         """
-        sublime.status_message(START_PUSH_MESSAGE)
-        self.push(self.selected_remote, branch)
-        sublime.status_message(END_PUSH_MESSAGE)
-        if self.window.active_view().settings().get("git_savvy.status_view"):
-            self.window.active_view().run_command("gs_status_refresh")
+        sublime.set_timeout_async(lambda: self.do_push(self.selected_remote, branch))

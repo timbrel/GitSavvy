@@ -21,6 +21,7 @@ from .git_mixins.stage_unstage import StageUnstageMixin
 from .git_mixins.checkout_discard import CheckoutDiscardMixin
 from .git_mixins.remotes import RemotesMixin
 from .git_mixins.ignore import IgnoreMixin
+from .git_mixins.tags import TagsMixin
 
 
 git_path = None
@@ -37,14 +38,15 @@ class GitCommand(StatusMixin,
                  StageUnstageMixin,
                  CheckoutDiscardMixin,
                  RemotesMixin,
-                 IgnoreMixin
+                 IgnoreMixin,
+                 TagsMixin
                  ):
 
     """
     Base class for all Sublime commands that interact with git.
     """
 
-    def git(self, *args, stdin=None, working_dir=None, show_panel=False):
+    def git(self, *args, stdin=None, working_dir=None, show_panel=False, throw_on_stderr=True):
         """
         Run the git command specified in `*args` and return the output
         of the git command as a string.
@@ -54,6 +56,7 @@ class GitCommand(StatusMixin,
         current working directory for the git process; otherwise,
         the `repo_path` value will be used.
         """
+        args = self._include_global_flags(args)
         command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
         command_str = " ".join(command)
 
@@ -61,6 +64,8 @@ class GitCommand(StatusMixin,
 
         show_panel_overrides = gitsavvy_settings.get("show_panel_for")
         show_panel = show_panel or args[0] in show_panel_overrides
+
+        stdout, stderr = None, None
 
         def raise_error(msg):
             if type(msg) == str and "fatal: Not a git repository" in msg:
@@ -100,7 +105,7 @@ class GitCommand(StatusMixin,
         finally:
             util.debug.log_git(args, stdin, stdout, stderr)
 
-        if not p.returncode == 0:
+        if not p.returncode == 0 and throw_on_stderr:
             raise_error("`{}` failed with following output:\n{}\n{}".format(
                 command_str, stdout, stderr
             ))
@@ -140,6 +145,9 @@ class GitCommand(StatusMixin,
 
     @property
     def repo_path(self):
+        return self._repo_path()
+
+    def _repo_path(self, throw_on_stderr=True):
         """
         Return the absolute path to the git repo that contains the file that this
         view interacts with.  Like `file_path`, this can be overridden by setting
@@ -156,7 +164,12 @@ class GitCommand(StatusMixin,
             if not working_dir:
                 window_folders = sublime.active_window().folders()
                 working_dir = window_folders[0] if window_folders else None
-            stdout = self.git("rev-parse", "--show-toplevel", working_dir=working_dir)
+            stdout = self.git(
+                "rev-parse",
+                "--show-toplevel",
+                working_dir=working_dir,
+                throw_on_stderr=throw_on_stderr
+                )
             repo_path = stdout.strip()
             view.settings().set("git_savvy.repo_path", repo_path)
 
@@ -187,3 +200,18 @@ class GitCommand(StatusMixin,
         """
         path = abs_path or self.file_path
         return os.path.relpath(path, start=self.repo_path)
+
+    def _include_global_flags(self, args):
+        """
+        Transforms the Git command arguments with flags indicated in the
+        global GitSavvy settings.
+        """
+        git_cmd, *addl_args = args
+
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        global_flags = savvy_settings.get("global_flags")
+
+        if global_flags and git_cmd in global_flags:
+            args = [git_cmd] + global_flags[git_cmd] + addl_args
+
+        return args

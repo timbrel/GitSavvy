@@ -338,7 +338,12 @@ class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
         # Git lines are 1-indexed; Sublime rows are 0-indexed.
         line_number = self.view.rowcol(region.begin())[0] + 1
         diff_lines = self.get_diff_from_line(line_number, reset)
-        header = DIFF_HEADER.format(path=self.get_rel_path())
+
+        rel_path = self.get_rel_path()
+        if os.name == "nt":
+            # Git expects `/`-delimited relative paths in diff.
+            rel_path = rel_path.replace("\\", "/")
+        header = DIFF_HEADER.format(path=rel_path)
 
         full_diff = header + diff_lines + "\n"
 
@@ -361,13 +366,23 @@ class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
         args = [
             "apply",
             "--unidiff-zero",
-            "-R" if (reset or in_cached_mode) else None,
+            "--reverse" if (reset or in_cached_mode) else None,
             "--cached" if (not reset or in_cached_mode) else None,
             "-"
         ]
 
         self.git(*args, stdin=full_diff)
+        self.save_to_history(args, full_diff)
         self.view.run_command("gs_inline_diff_refresh")
+
+    def save_to_history(self, args, full_diff):
+        """
+        After successful `git apply`, save the apply-data into history
+        attached to the view, for later Undo.
+        """
+        history = self.view.settings().get("git_savvy.inline_diff.history") or []
+        history.append((args, full_diff))
+        self.view.settings().set("git_savvy.inline_diff.history", history)
 
 
 class GsInlineDiffStageOrResetLineCommand(GsInlineDiffStageOrResetBase):
@@ -508,3 +523,27 @@ class GsInlineDiffGotoPreviousHunk(GsInlineDiffGotoBase):
 
         if previous_hunk_ref:
             return self.view.text_point(previous_hunk_ref.section_start, 0)
+
+
+class GsInlineDiffUndo(TextCommand, GitCommand):
+
+    """
+    Undo the last action taken in the inline-diff view, if possible.
+    """
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        history = self.view.settings().get("git_savvy.inline_diff.history") or []
+        if not history:
+            return
+
+        last_args, last_stdin = history.pop()
+        # Toggle the `--reverse` flag.
+        last_args[2] = "--reverse" if not last_args[2] else None
+
+        self.git(*last_args, stdin=last_stdin)
+        self.view.settings().set("git_savvy.inline_diff.history", history)
+
+        self.view.run_command("gs_inline_diff_refresh")

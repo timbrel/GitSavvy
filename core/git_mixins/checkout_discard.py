@@ -15,3 +15,9 @@ class CheckoutDiscardMixin():
         to the state it is in HEAD.
         """
         self.git("checkout", "--", fpath)
+
+    def checkout_ref(self, ref):
+        """
+        Given a ref (local branch, remote branch, tag, etc), check it out.
+        """
+        self.git("checkout", ref)

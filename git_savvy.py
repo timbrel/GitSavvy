@@ -8,5 +8,7 @@ else:
         util.file.determine_syntax_files()
 
     from .common.commands import *
+    from .common.ui import *
     from .core.commands import *
+    from .core.interfaces import *
     from .github.commands import *

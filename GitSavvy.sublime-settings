@@ -46,5 +46,24 @@
     /*
         Change this to `false` to suppress the input in the panel output.
      */
-    "show_input_in_output": true
+    "show_input_in_output": true,
+
+    /*
+        Change this to `false` to suppress Git status in ST3 status bar.
+     */
+    "git_status_in_status_bar": true,
+
+    /*
+        When entering a tag message, this will be used if the message is empty.
+        The replacement value "{tag_name}" is optional, but recommended.
+     */
+    "default_tag_message": "Tag {tag_name}",
+
+    /*
+        For each command specified, always include the command line flags
+        indicated in the global_flags hash.
+     */
+    "global_flags": {
+        // "pull": ["--dry-run"]
+    }
 }

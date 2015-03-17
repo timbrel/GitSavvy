@@ -4,6 +4,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
+from ...common import util
 
 
 IGNORE_PATTERN_PROMPT = "Enter pattern to ignore:"
@@ -23,6 +24,7 @@ class GsIgnoreCommand(WindowCommand, GitCommand):
 
         self.add_ignore(os.path.join("/", file_path_or_pattern))
         sublime.status_message("Ignored file `{}`.".format(file_path_or_pattern))
+        util.view.refresh_gitsavvy(self.window.active_view())
 
 
 class GsIgnorePatternCommand(WindowCommand, GitCommand):
@@ -38,8 +40,7 @@ class GsIgnorePatternCommand(WindowCommand, GitCommand):
     def on_done(self, ignore_pattern):
         self.add_ignore(ignore_pattern)
         sublime.status_message("Ignored pattern `{}`.".format(ignore_pattern))
-        if self.window.active_view().settings().get("git_savvy.status_view"):
-            self.window.active_view().run_command("gs_status_refresh")
+        util.view.refresh_gitsavvy(self.window.active_view())
 
 
 class GsAssumeUnchangedCommand(WindowCommand, GitCommand):
@@ -70,8 +71,7 @@ class GsAssumeUnchangedCommand(WindowCommand, GitCommand):
         fpath = self._unstaged_files[index]
         self.git("update-index", "--assume-unchanged", fpath)
 
-        if self.window.active_view().settings().get("git_savvy.status_view"):
-            self.window.active_view().run_command("gs_status_refresh")
+        util.view.refresh_gitsavvy(self.window.active_view())
 
 
 class GsRestoreAssumedUnchangedCommand(WindowCommand, GitCommand):
@@ -109,7 +109,6 @@ class GsRestoreAssumedUnchangedCommand(WindowCommand, GitCommand):
         fpath = self._ignored_files[index]
         self.git("update-index", "--no-assume-unchanged", fpath)
 
-        if self.window.active_view().settings().get("git_savvy.status_view"):
-            self.window.active_view().run_command("gs_status_refresh")
+        util.view.refresh_gitsavvy(self.window.active_view())
 
         self.window.run_command("gs_restore_assumed_unchanged")

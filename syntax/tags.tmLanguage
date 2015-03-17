@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>name</key>
-	<string>GitSavvy Status</string>
+	<string>GitSavvy Tags</string>
 	<key>patterns</key>
 	<array>
 		<dict>
@@ -14,15 +14,15 @@
 				<key>0</key>
 				<dict>
 					<key>name</key>
-					<string>comment.git-savvy.status.summary-header</string>
+					<string>comment.git-savvy.tags.summary-header</string>
 				</dict>
 			</dict>
 			<key>comment</key>
-			<string>Status summary</string>
+			<string>Tags view</string>
 			<key>end</key>
 			<string>^$</string>
 			<key>name</key>
-			<string>meta.git-savvy.status-summary</string>
+			<string>meta.git-savvy.tags-summary</string>
 			<key>patterns</key>
 			<array>
 				<dict>
@@ -31,15 +31,15 @@
 					<key>match</key>
 					<string>^  ROOT:.+</string>
 					<key>name</key>
-					<string>comment.git-savvy.status.root-summary</string>
+					<string>comment.git-savvy.tags.root-summary</string>
 				</dict>
 				<dict>
 					<key>comment</key>
 					<string>branch names</string>
 					<key>match</key>
-					<string>`[^`]+`</string>
+					<string>`[A-Za-z\-_/]+`</string>
 					<key>name</key>
-					<string>constant.other.git-savvy.status.branch-name</string>
+					<string>constant.other.git-savvy.tags.branch-name</string>
 				</dict>
 				<dict>
 					<key>comment</key>
@@ -47,7 +47,7 @@
 					<key>match</key>
 					<string>(ahead)|(behind)</string>
 					<key>name</key>
-					<string>keyword.other.git-savvy.status.ahead-behind</string>
+					<string>keyword.other.git-savvy.tags.ahead-behind</string>
 				</dict>
 				<dict>
 					<key>captures</key>
@@ -55,7 +55,7 @@
 						<key>1</key>
 						<dict>
 							<key>name</key>
-							<string>constant.other.git-savvy.status.sha1</string>
+							<string>constant.other.git-savvy.tags.sha1</string>
 						</dict>
 					</dict>
 					<key>comment</key>
@@ -63,13 +63,13 @@
 					<key>match</key>
 					<string>^  HEAD:    ([0-9a-f]{7}) .+</string>
 					<key>name</key>
-					<string>comment.git-savvy.status.head-commit</string>
+					<string>comment.git-savvy.tags.head-commit</string>
 				</dict>
 			</array>
 		</dict>
 		<dict>
 			<key>begin</key>
-			<string>^  ((STAGED)|(UNSTAGED)|(UNTRACKED)|(MERGE CONFLICTS)):$</string>
+			<string>^  (LOCAL):$</string>
 			<key>beginCaptures</key>
 			<dict>
 				<key>0</key>
@@ -79,45 +79,66 @@
 				</dict>
 			</dict>
 			<key>comment</key>
-			<string>section</string>
+			<string>local section</string>
 			<key>end</key>
 			<string>^$</string>
 			<key>name</key>
-			<string>meta.git-savvy.status.section</string>
+			<string>meta.git-savvy.tags.section</string>
 			<key>patterns</key>
 			<array>
 				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>constant.other.git-savvy.tags.sha1</string>
+						</dict>
+					</dict>
 					<key>match</key>
-					<string>^  [ \-] (.+)\n$</string>
+					<string>^    ([0-9a-f]{7}) .+\n$</string>
 					<key>name</key>
-					<string>meta.git-savvy.status.file</string>
+					<string>meta.git-savvy.tags.tag</string>
 				</dict>
 			</array>
 		</dict>
 		<dict>
 			<key>begin</key>
-			<string>^  STASHES:$</string>
+			<string>^  (REMOTE) \((.+)\):$</string>
 			<key>beginCaptures</key>
 			<dict>
 				<key>0</key>
 				<dict>
 					<key>name</key>
-					<string>keyword.other.git-savvy.stashes-header</string>
+					<string>keyword.other.git-savvy.section-header</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>constant.other.git-savvy.tags.remote-name</string>
 				</dict>
 			</dict>
 			<key>comment</key>
-			<string>Stashes section</string>
+			<string>remote section</string>
 			<key>end</key>
 			<string>^$</string>
 			<key>name</key>
-			<string>meta.git-savvy.status.stashes</string>
+			<string>meta.git-savvy.tags.section</string>
 			<key>patterns</key>
 			<array>
 				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>constant.other.git-savvy.tags.sha1</string>
+						</dict>
+					</dict>
 					<key>match</key>
-					<string>^    (.+)$</string>
+					<string>^    ([0-9a-f]{7}) .+\n$</string>
 					<key>name</key>
-					<string>meta.git-savvy.status.saved_stash</string>
+					<string>meta.git-savvy.tags.tag</string>
 				</dict>
 			</array>
 		</dict>
@@ -129,7 +150,7 @@
 			<key>end</key>
 			<string>^-$</string>
 			<key>name</key>
-			<string>comment.git-savvy.status.key-bindings-menu</string>
+			<string>comment.git-savvy.tags.key-bindings-menu</string>
 			<key>patterns</key>
 			<array>
 				<dict>
@@ -164,8 +185,8 @@
 		</dict>
 	</array>
 	<key>scopeName</key>
-	<string>git-savvy.status</string>
+	<string>git-savvy.tags</string>
 	<key>uuid</key>
-	<string>56ea09df-2601-4d20-bb8d-b6834db991c4</string>
+	<string>a37acb1d-c57c-4f0b-945b-c71234aa0352</string>
 </dict>
 </plist>

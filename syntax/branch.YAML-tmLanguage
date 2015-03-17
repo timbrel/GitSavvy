@@ -28,23 +28,15 @@ patterns:
 
 - comment: section
   name: meta.git-savvy.status.section
-  begin: '^  ((STAGED)|(UNSTAGED)|(UNTRACKED)|(MERGE CONFLICTS)):$'
+  begin: '^  ((LOCAL)|(REMOTE \([^\)]+\))):$'
   beginCaptures:
     '0': { name: keyword.other.git-savvy.section-header }
   end: '^$'
   patterns:
-  - name: meta.git-savvy.status.file
-    match: '^  [ \-] (.+)\n$'
-
-- comment: Stashes section
-  name: meta.git-savvy.status.stashes
-  begin: '^  STASHES:$'
-  beginCaptures:
-    '0': { name: keyword.other.git-savvy.stashes-header }
-  end: '^$'
-  patterns:
-  - name: meta.git-savvy.status.saved_stash
-    match: '^    (.+)$'
+  - name: meta.git-savvy.branches.branch
+    match: '^    (.+)\n$'
+  - name: string.other.git-savvy.branches.active-branch
+    match: '^  ▸ (.+)\n$'
 
 - comment: Key-bindings menu
   name: comment.git-savvy.status.key-bindings-menu

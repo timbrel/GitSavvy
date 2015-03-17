@@ -77,6 +77,18 @@
         "context": [
             { "key": "setting.git_savvy.help_view", "operator": "equal", "operand": true }
         ]
+    },
+
+    //////////////////////
+    // INLINE DIFF VIEW //
+    //////////////////////
+
+    {
+        "keys": ["super+z"],
+        "command": "gs_inline_diff_undo",
+        "context": [
+            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
+        ]
     }
 
 ]

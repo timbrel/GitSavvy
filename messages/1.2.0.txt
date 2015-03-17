@@ -1,0 +1,25 @@
+Changes since 1.1.0:
+
+  Feature:
+   - Show Git status in ST3 status bar (can be disabled in settings file).
+   - Add `git: push to remote branch name` command to the palette.
+
+  Enhancement:
+   - Correct branch pattern matching when generating status dashboard.
+   - Add Undo feature to inline-diff view.  Useful if you mistakenly blow away a hunk.
+   - Disable Vintageous in status view.
+   - Add HEAD commit hash to status view.
+   - Add an option to suppress the command line args when outputting to a panel.
+
+  Fix:
+   - Inline-diff would not display/behave correctly for files not ending in newline.
+   - Git blame failed for files with boundary commits.
+   - `git: push to branch` would fail when remote branch doesn't exist.
+   - Fetching would fail when more than one remote.
+   - Correct protection for destructive actions.
+
+  Contributors:
+   - Ethan Bustad
+   - Dale Bustad
+   - Adrian L Lange
+   - Jeff Langston

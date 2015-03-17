@@ -30,7 +30,8 @@ class BranchesMixin():
         if not line:
             return None
 
-        pattern = r"(\* )?(remotes/)?([a-zA-Z0-9\-\_\/\\]+) +([0-9a-f]{40}) (\[(([a-zA-Z0-9\-\_\/\\]+): (.+))\] )?(.*)"
+        pattern = r"(\* )?(remotes/)?([a-zA-Z0-9\-\_\/\\]+) +([0-9a-f]{40}) (\[([a-zA-Z0-9\-\_\/\\]+)(: ([^\]]+))?\] )?(.*)"
+        r"((: ))?"
 
         match = re.match(pattern, line)
         if not match:
@@ -41,8 +42,8 @@ class BranchesMixin():
          branch_name,
          commit_hash,
          _,
-         _,
          tracking_branch,
+         _,
          tracking_status,
          commit_msg
          ) = match.groups()
@@ -60,3 +61,9 @@ class BranchesMixin():
             tracking_status,
             active
             )
+
+    def merge(self, branch_name):
+        """
+        Merge `branch_name` into active branch.
+        """
+        self.git("merge", branch_name)

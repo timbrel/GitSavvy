@@ -4,6 +4,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
+from ...common import util
 
 
 NO_REPO_MESSAGE = ("It looks like you haven't initialized Git in this directory.  "
@@ -66,6 +67,7 @@ class GsInit(WindowCommand, GitCommand):
         self.git("init", working_dir=path)
         sublime.status_message("{word_start}nitialized repo successfully.".format(
             word_start="Re-i" if re_init else "I"))
+        util.view.refresh_gitsavvy(self.window.active_view())
 
 
 class GsSetupUserCommand(WindowCommand, GitCommand):

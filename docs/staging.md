@@ -12,6 +12,10 @@ You also have the option of resetting hunks.  To do so, press `H` (shift-H).  Th
 
 If at any time you would like to refresh the view, press `r`.  It will be refreshed automatically whenever you leave the view and then return.
 
+An undo mechanism is also provided.  To undo, press `SUPER-z` on Linux/OSX or `CTRL-z` on Windows.  This is especially useful if you mistakenly reverted a hunk/line and want to get it back.  A full history is kept so that you can undo multiple actions.
+
+However, take note that no guarantees are made here: files can change and reverse-applying a diff may not work properly.  Multiple undos can also have unexpected effects.  Undo is provided as a solution to "oh no, I just did something stupid".
+
 **Note:**  If the file is not present in the index, the comparison is done between the working file and HEAD.  If the file is present in the index, the comparison is done between the working file and the index.
 
 
@@ -23,7 +27,7 @@ First, any changes showing up in cache mode will be the inverse of what you see 
 
 Pressing `h` will unstage the hunk.  `H` is not supported in this view for safety reasons - very rarely would you intentionally unstage a change and also remove it from your working directory.  `l` will unstage a line but, as you might expect, `L` is unsupported.
 
-Browsing between hunks and resetting the view function as they do in standard inline-diff mode.
+Browsing between hunks, undo, and resetting the view function as they do in standard inline-diff mode.
 
 
 ## `git: quick stage`

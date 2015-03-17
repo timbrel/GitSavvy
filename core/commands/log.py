@@ -12,7 +12,7 @@ class GsLogCommand(WindowCommand, GitCommand):
         self._filename = filename
         self._limit = limit
         self._author = author
-        sublime.set_timeout_async(lambda: self.run_async(), 1)
+        sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
         log_output = self.git(
