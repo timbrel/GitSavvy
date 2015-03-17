@@ -63,7 +63,9 @@ def refresh_gitsavvy(view):
     Called after GitSavvy action was taken that may have effected the
     state of the Git repo.
     """
-    if view.settings().get("git_savvy.status_view"):
+    if view.settings().get("git_savvy.interface") is not None:
+        view.run_command("gs_interface_refresh")
+    elif view.settings().get("git_savvy.status_view"):
         view.run_command("gs_status_refresh")
     view.run_command("gs_update_status_bar")
 

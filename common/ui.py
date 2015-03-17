@@ -71,7 +71,7 @@ class Interface():
 
         return self.view
 
-    def render(self):
+    def render(self, nuke_cursors=True):
         if self.regions:
             self.clear_regions()
         if hasattr(self, "pre_render"):
@@ -96,7 +96,7 @@ class Interface():
         self.view.run_command("gs_new_content_and_regions", {
             "content": rendered,
             "regions": self.regions,
-            "nuke_cursors": True
+            "nuke_cursors": nuke_cursors
             })
 
     @staticmethod
@@ -188,13 +188,26 @@ class GsInterfaceFocusEventListener(EventListener):
     """
 
     def on_activated(self, view):
-        interface_type = view.settings().get("git_savvy.interface")
+        view.run_command("gs_interface_refresh")
+
+
+class GsInterfaceRefreshCommand(TextCommand):
+
+    """
+    Re-render GitSavvy interface view.
+    """
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        interface_type = self.view.settings().get("git_savvy.interface")
         if interface_type:
             for InterfaceSubclass in subclasses:
                 if InterfaceSubclass.interface_type == interface_type:
-                    existing_interface = interfaces.get(view.id(), None)
+                    existing_interface = interfaces.get(self.view.id(), None)
                     if existing_interface:
-                        existing_interface.render()
+                        existing_interface.render(nuke_cursors=False)
                     else:
-                        interface = InterfaceSubclass(view=view)
+                        interface = InterfaceSubclass(view=self.view)
                         interfaces[interface.view.id()] = interface
