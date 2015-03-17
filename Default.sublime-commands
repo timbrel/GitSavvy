@@ -109,6 +109,16 @@
         "args": { "in_cached_mode": true }
     },
     {
+        "caption": "git: diff current file",
+        "command": "gs_diff",
+        "args": { "in_current_file": true }
+    },
+    {
+        "caption": "git: diff cached current file",
+        "command": "gs_diff",
+        "args": { "in_cached_mode": true, "in_current_file": true }
+    },
+    {
         "caption": "git: blame current file",
         "command": "gs_blame"
     },
