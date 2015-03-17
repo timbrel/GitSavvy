@@ -462,8 +462,29 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
     Fetch from remote and merge fetched branch into active branch.
     """
 
-    def run(self, edit):
-        pass
+    def run(self, edit, force=False):
+        self.force = force
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        self.interface = ui.get_interface(self.view.id())
+        selection, line = self.interface.get_selection_line()
+        if not line:
+            return
+
+        segments = line.strip("▸ ").split(" ")
+        branch_name = segments[1]
+
+        remotes = self.get_remotes()
+        for remote_name in remotes:
+            remote_region = self.view.get_regions("git_savvy_interface.branch_list_" + remote_name)
+            if remote_region and remote_region[0].contains(selection):
+                sublime.status_message("Fetching from `{}`...".format(remote_name))
+                self.fetch(remote=remote_name)
+                self.merge("{}/{}".format(remote_name, branch_name))
+                sublime.status_message("Fetch and merge complete.")
+                util.view.refresh_gitsavvy(self.view)
+                return
 
 
 class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
