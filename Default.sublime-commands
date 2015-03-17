@@ -167,5 +167,9 @@
     {
         "caption": "git: quick tag",
         "command": "gs_tag_create"
+    },
+    {
+        "caption": "git: branch",
+        "command": "gs_show_branch"
     }
 ]

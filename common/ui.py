@@ -14,7 +14,6 @@ class Interface():
 
     interface_type = ""
     read_only = True
-    view_type = ""
     syntax_file = ""
     word_wrap = False
 
@@ -59,7 +58,7 @@ class Interface():
             self.view.settings().set(k, v)
 
         self.view.set_name(self.title())
-        self.view.settings().set("git_savvy.{}_view".format(self.view_type), True)
+        self.view.settings().set("git_savvy.{}_view".format(self.interface_type), True)
         self.view.settings().set("git_savvy.interface", self.interface_type)
         self.view.settings().set("word_wrap", self.word_wrap)
         self.view.set_syntax_file(self.syntax_file)

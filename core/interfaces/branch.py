@@ -4,7 +4,7 @@ from itertools import groupby
 from ...common import ui
 from ..git_command import GitCommand
 
-from sublime_plugin import WindowCommand
+from sublime_plugin import WindowCommand, TextCommand
 
 
 interfaces = {}
@@ -42,33 +42,17 @@ class BranchInterface(ui.Interface, GitCommand):
 
       LOCAL:
     {branch_list}{remotes}
-      ###########
-      ## LOCAL ##
-      ###########
+      #############
+      ## ACTIONS ##
+      #############
 
-      [n] create new branch
-      [N] create new branch from selected
+      [c] checkout                                  [p] push selected to remote
+      [b] create new branch (from selected)         [P] push all branches to remote
       [d] delete
-      [r] rename
-
-      [c] checkout
-
-      [t] track remote
-
-      [p] push selected to remote
-      [P] push all branches to remote
-
-      [m] merge selected into active branch
+      [r] rename                                    [m] merge selected into active branch
+      [t] configure tracking                        [M] fetch and merge into active branch
 
       [f] diff against active
-
-      [l] fetch and merge into active branch
-
-
-      ###########
-      ## OTHER ##
-      ###########
-
       [r] refresh
 
     -
@@ -141,3 +125,113 @@ class BranchInterface(ui.Interface, GitCommand):
 
 
 ui.register_listeners(BranchInterface)
+
+
+class GsBranchesCheckoutCommand(TextCommand, GitCommand):
+
+    """
+    Checkout the selected branch.
+    """
+
+    def run(self, edit):
+        pass
+
+
+class GsBranchesCreateNewCommand(TextCommand, GitCommand):
+
+    """
+    Create a new branch from selected branch and checkout.
+    """
+
+    def run(self, edit):
+        pass
+
+
+class GsBranchesDeleteCommand(TextCommand, GitCommand):
+
+    """
+    Delete selected branch.
+    """
+
+    def run(self, edit):
+        pass
+
+
+class GsBranchesRenameCommand(TextCommand, GitCommand):
+
+    """
+    Rename selected branch.
+    """
+
+    def run(self, edit):
+        pass
+
+
+class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
+
+    """
+    Configure remote branch to track against for selected branch.
+    """
+
+    def run(self, edit):
+        pass
+
+
+class GsBranchesPushSelectedCommand(TextCommand, GitCommand):
+
+    """
+    Push selected branch to remote.
+    """
+
+    def run(self, edit):
+        pass
+
+
+class GsBranchesPushAllCommand(TextCommand, GitCommand):
+
+    """
+    Push all branches to remote.
+    """
+
+    def run(self, edit):
+        pass
+
+
+class GsBranchesMergeSelectedCommand(TextCommand, GitCommand):
+
+    """
+    Merge selected branch into active branch.
+    """
+
+    def run(self, edit):
+        pass
+
+
+class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
+
+    """
+    Fetch from remote and merge fetched branch into active branch.
+    """
+
+    def run(self, edit):
+        pass
+
+
+class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
+
+    """
+    Show a diff comparing the selected branch to the active branch.
+    """
+
+    def run(self, edit):
+        pass
+
+
+class GsBranchesRefreshCommand(TextCommand, GitCommand):
+
+    """
+    Refresh the branch dashboard.
+    """
+
+    def run(self, edit):
+        pass

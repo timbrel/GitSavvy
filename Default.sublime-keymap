@@ -378,4 +378,87 @@
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
         ]
     },
+
+
+    ///////////////////
+    // BRANCHES VIEW //
+    ///////////////////
+
+    {
+        "keys": ["c"],
+        "command": "gs_branches_checkout",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["b"],
+        "command": "gs_branches_create_new",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["d"],
+        "command": "gs_branches_delete",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["r"],
+        "command": "gs_branches_rename",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["t"],
+        "command": "gs_branches_configure_tracking",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["p"],
+        "command": "gs_branches_push_selected",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["P"],
+        "command": "gs_branches_push_all",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["m"],
+        "command": "gs_branches_merge_selected",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["M"],
+        "command": "gs_branches_fetch_and_merge",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["f"],
+        "command": "gs_branches_diff_branch",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["r"],
+        "command": "gs_branches_refresh",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    }
 ]
