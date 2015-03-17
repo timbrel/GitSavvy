@@ -35,7 +35,15 @@ class GsShowGithubIssuesCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(lambda: self.run_async(nondefault_repo))
 
     def run_async(self, nondefault_repo):
-        default_remote_name, default_remote = self.get_remotes().popitem(last=False)
+        default_remote_name = ""
+        default_remote = ""
+
+        for name, path in self.get_remotes().items():
+            if "github.com" in path:
+                default_remote_name = name
+                default_remote = path
+                break
+
         remote = github.parse_remote(default_remote)
 
         if nondefault_repo:
