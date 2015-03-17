@@ -266,7 +266,83 @@ class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        pass
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        """
+        Display a panel of all remotes defined for the repo, then proceed to
+        `on_select_remote`.  If no remotes are defined, notify the user and
+        proceed no further.
+        """
+        self.interface = ui.get_interface(self.view.id())
+        selection, line = self.interface.get_selection_line()
+        if not line:
+            return
+
+        local_region = self.view.get_regions("git_savvy_interface.branch_list")[0]
+        if not local_region.contains(selection):
+            sublime.message_dialog("You can only setup tracking for local branches.")
+            return
+
+        segments = line.strip("▸ ").split(" ")
+        self.local_branch = segments[1]
+
+        self.remotes = list(self.get_remotes().keys())
+        self.remote_branches = self.get_remote_branches()
+
+        if not self.remotes:
+            self.view.window().show_quick_panel(["There are no remotes available."], None)
+        else:
+            self.view.window().show_quick_panel(
+                self.remotes,
+                self.on_select_remote,
+                flags=sublime.MONOSPACE_FONT
+                )
+
+    def on_select_remote(self, remote_index):
+        """
+        After the user selects a remote, display a panel of branches that are
+        present on that remote, then proceed to `on_select_branch`.
+        """
+        # If the user pressed `esc` or otherwise cancelled.
+        if remote_index == -1:
+            return
+
+        self.selected_remote = self.remotes[remote_index]
+        selected_remote_prefix = self.selected_remote + "/"
+
+        self.branches_on_selected_remote = [
+            branch for branch in self.remote_branches
+            if branch.startswith(selected_remote_prefix)
+        ]
+
+        try:
+            pre_selected_index = self.branches_on_selected_remote.index(
+                selected_remote_prefix + self.local_branch)
+        except ValueError:
+            pre_selected_index = 0
+
+        self.view.window().show_quick_panel(
+            self.branches_on_selected_remote,
+            self.on_select_branch,
+            flags=sublime.MONOSPACE_FONT,
+            selected_index=pre_selected_index
+        )
+
+    def on_select_branch(self, branch_index):
+        """
+        Determine the actual branch name of the user's selection, and proceed
+        to `do_pull`.
+        """
+        # If the user pressed `esc` or otherwise cancelled.
+        if branch_index == -1:
+            return
+        selected_remote_branch = self.branches_on_selected_remote[branch_index].split("/", 1)[1]
+        remote_ref = self.selected_remote + "/" + selected_remote_branch
+
+
+        self.git("branch", "-u", remote_ref, self.local_branch)
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsBranchesPushSelectedCommand(TextCommand, GitCommand):
