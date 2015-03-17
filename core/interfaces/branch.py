@@ -133,17 +133,43 @@ class GsBranchesCheckoutCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        pass
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        self.interface = ui.get_interface(self.view.id())
+        if not self.interface:
+            return
+
+        selection, line = self.interface.get_selection_line()
+        if not line:
+            return
+
+        segments = line.strip("▸ ").split(" ")
+        branch_name = segments[1]
+
+        local_region = self.view.get_regions("git_savvy_interface.branch_list")[0]
+        if local_region.contains(selection):
+            self.checkout_ref(branch_name)
+            self.interface.render(nuke_cursors=False)
+            return
+
+        remotes = self.get_remotes()
+        for remote_name in remotes:
+            remote_region = self.view.get_regions("git_savvy_interface.branch_list_" + remote_name)
+            if remote_region and remote_region[0].contains(selection):
+                self.checkout_ref("{}/{}".format(remote_name, branch_name))
+                self.interface.render(nuke_cursors=False)
+                return
 
 
 class GsBranchesCreateNewCommand(TextCommand, GitCommand):
 
     """
-    Create a new branch from selected branch and checkout.
+    Create a new branch from HEAD and checkout.
     """
 
     def run(self, edit):
-        pass
+        self.view.window().run_command("gs_checkout_new_branch")
 
 
 class GsBranchesDeleteCommand(TextCommand, GitCommand):
