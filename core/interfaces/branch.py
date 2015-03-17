@@ -459,4 +459,4 @@ class GsBranchesRefreshCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        pass
+        util.view.refresh_gitsavvy(self.view)
