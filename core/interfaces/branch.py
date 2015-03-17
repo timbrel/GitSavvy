@@ -340,7 +340,6 @@ class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
         selected_remote_branch = self.branches_on_selected_remote[branch_index].split("/", 1)[1]
         remote_ref = self.selected_remote + "/" + selected_remote_branch
 
-
         self.git("branch", "-u", remote_ref, self.local_branch)
         util.view.refresh_gitsavvy(self.view)
 
@@ -428,8 +427,7 @@ class GsBranchesMergeSelectedCommand(TextCommand, GitCommand):
     Merge selected branch into active branch.
     """
 
-    def run(self, edit, force=False):
-        self.force = force
+    def run(self, edit):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
@@ -462,8 +460,7 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
     Fetch from remote and merge fetched branch into active branch.
     """
 
-    def run(self, edit, force=False):
-        self.force = force
+    def run(self, edit):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
