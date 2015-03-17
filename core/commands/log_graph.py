@@ -29,4 +29,4 @@ class GsLogGraphInitializeCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         branch_graph = self.git("log", "--oneline", "--graph", "--decorate")
-        self.view.run_command("gs_replace_view_text", {"text": branch_graph})
+        self.view.run_command("gs_replace_view_text", {"text": branch_graph, "nuke_cursors": True})
