@@ -205,7 +205,9 @@ class GsInterfaceFocusEventListener(EventListener):
 
     def on_close(self, view):
         if view.settings().get("git_savvy.interface"):
-            del interfaces[view.id()]
+            view_id = view.id()
+            if view_id in interfaces:
+                del interfaces[view.id()]
 
 
 class GsInterfaceRefreshCommand(TextCommand):
