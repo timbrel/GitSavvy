@@ -406,6 +406,14 @@
         ]
     },
     {
+        "keys": ["D"],
+        "command": "gs_branches_delete",
+        "args": { "force": true },
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["r"],
         "command": "gs_branches_rename",
         "context": [

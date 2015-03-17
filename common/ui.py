@@ -138,6 +138,15 @@ class Interface():
         for key, region_range in self.regions:
             self.view.erase_regions(key)
 
+    def get_selection_line(self):
+        selections = self.view.sel()
+        if not selections or len(selections) > 1:
+            sublime.status_message("Please make a selection.")
+            return None
+
+        selection = selections[0]
+        return selection, util.view.get_lines_from_regions(self.view, [selection])[0]
+
 
 def partial(key):
     def decorator(fn):
@@ -178,6 +187,10 @@ class GsUpdateRegionCommand(TextCommand):
 
 def register_listeners(InterfaceClass):
     subclasses.append(InterfaceClass)
+
+
+def get_interface(view_id):
+    return interfaces.get(view_id, None)
 
 
 class GsInterfaceFocusEventListener(EventListener):

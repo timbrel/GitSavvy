@@ -1,13 +1,12 @@
 import os
 from itertools import groupby
 
-from ...common import ui
-from ..git_command import GitCommand
-
+import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-
-interfaces = {}
+from ...common import ui
+from ..git_command import GitCommand
+from ...common import util
 
 
 class GsShowBranchCommand(WindowCommand, GitCommand):
@@ -47,8 +46,8 @@ class BranchInterface(ui.Interface, GitCommand):
       #############
 
       [c] checkout                                  [p] push selected to remote
-      [b] create new branch (from selected)         [P] push all branches to remote
-      [d] delete
+      [b] create new branch (from HEAD)             [P] push all branches to remote
+      [d] delete                                    [D] delete (force)
       [r] rename                                    [m] merge selected into active branch
       [t] configure tracking                        [M] fetch and merge into active branch
 
@@ -153,8 +152,55 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
     Delete selected branch.
     """
 
-    def run(self, edit):
-        pass
+    def run(self, edit, force=False):
+        self.force = force
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        self.interface = ui.get_interface(self.view.id())
+        if not self.interface:
+            return
+
+        selection, line = self.interface.get_selection_line()
+        if not line:
+            return
+
+        segments = line.strip("▸ ").split(" ")
+        branch_name = segments[1]
+
+        local_region = self.view.get_regions("git_savvy_interface.branch_list")[0]
+        if local_region.contains(selection):
+            self.delete_local_branch(branch_name)
+            return
+
+        remotes = self.get_remotes()
+        for remote_name in remotes:
+            remote_region = self.view.get_regions("git_savvy_interface.branch_list_" + remote_name)
+            if remote_region and remote_region[0].contains(selection):
+                self.delete_remote_branch(remote_name, branch_name)
+                return
+
+    @util.actions.destructive(description="delete a local branch")
+    def delete_local_branch(self, branch_name):
+        self.git(
+            "branch",
+            "-D" if self.force else "-d",
+            branch_name
+            )
+        sublime.status_message("Deleted local branch.")
+        self.interface.render(nuke_cursors=False)
+
+    @util.actions.destructive(description="delete a remote branch")
+    def delete_remote_branch(self, remote, branch_name):
+        sublime.status_message("Deleting remote branch...")
+        self.git(
+            "push",
+            "--force" if self.force else None,
+            remote,
+            ":"+branch_name
+            )
+        sublime.status_message("Deleted remote branch.")
+        self.interface.render(nuke_cursors=False)
 
 
 class GsBranchesRenameCommand(TextCommand, GitCommand):
