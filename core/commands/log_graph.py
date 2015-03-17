@@ -1,6 +1,8 @@
+import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
 from ..git_command import GitCommand
+from ...common import util
 
 LOG_GRAPH_TITLE = "GRAPH"
 
@@ -29,3 +31,31 @@ class GsLogGraphInitializeCommand(TextCommand, GitCommand):
     def run(self, edit):
         branch_graph = self.git("log", "--oneline", "--graph", "--all", "--decorate")
         self.view.run_command("gs_replace_view_text", {"text": branch_graph, "nuke_cursors": True})
+
+
+class GsLogGraphActionCommand(TextCommand, GitCommand):
+
+    """
+    Checkout the commit at the selected line.
+    """
+
+    def run(self, edit, action):
+        self.action = action
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        selections = self.view.sel()
+        if len(selections) != 1:
+            return
+
+        lines = util.view.get_lines_from_regions(self.view, selections)
+        if not lines:
+            return
+        line = lines[0]
+
+        commit_hash = line.strip(" |*")[:7]
+        if self.action == "checkout":
+            self.checkout_ref(commit_hash)
+            util.view.refresh_gitsavvy(self.view)
+        elif self.action == "view":
+            self.view.window().run_command("gs_show_commit", {"commit_hash": commit_hash})

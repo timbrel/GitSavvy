@@ -82,6 +82,19 @@
         "context": [
             { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
         ]
+    },
+
+    ////////////////
+    // GRAPH VIEW //
+    ////////////////
+
+    {
+        "keys": ["super+enter"],
+        "command": "gs_log_graph_action",
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ],
+        "args": { "action": "checkout" }
     }
 
 ]
