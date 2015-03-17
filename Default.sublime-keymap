@@ -468,5 +468,12 @@
         "context": [
             { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
         ]
+    },
+    {
+        "keys": ["e"],
+        "command": "gs_branches_toggle_remotes",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
     }
 ]

@@ -32,6 +32,7 @@ class BranchInterface(ui.Interface, GitCommand):
 
     dedent = 4
     skip_first_line = True
+    show_remotes = None
 
     template = """
 
@@ -53,6 +54,7 @@ class BranchInterface(ui.Interface, GitCommand):
 
       [f] diff against active
       [r] refresh
+      [e] toggle display of remote branches
 
     -
     """
@@ -100,6 +102,18 @@ class BranchInterface(ui.Interface, GitCommand):
 
     @ui.partial("remotes")
     def render_remotes(self):
+        if self.show_remotes is None:
+            savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+            self.show_remotes = savvy_settings.get("show_remotes_in_branch_dashboard")
+
+        return (self.render_remotes_on()
+                if self.show_remotes else
+                self.render_remotes_off())
+
+    def render_remotes_off(self):
+        return "\n\n  ** Press [e] to toggle display of remote branches. **\n"
+
+    def render_remotes_on(self):
         output_tmpl = "\n"
         render_fns = []
 
@@ -538,3 +552,15 @@ class GsBranchesRefreshCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         util.view.refresh_gitsavvy(self.view)
+
+
+class GsBranchesToggleRemotesCommand(TextCommand, GitCommand):
+
+    """
+    Toggle display of the remote branches.
+    """
+
+    def run(self, edit):
+        interface = ui.get_interface(self.view.id())
+        interface.show_remotes = not interface.show_remotes
+        interface.render()

@@ -65,5 +65,10 @@
      */
     "global_flags": {
         // "pull": ["--dry-run"]
-    }
+    },
+
+    /*
+        Set this to `true` to display remotes in the branch dashboard by default.
+     */
+    "show_remotes_in_branch_dashboard": false
 }
