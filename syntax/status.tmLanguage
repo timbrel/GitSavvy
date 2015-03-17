@@ -37,7 +37,7 @@
 					<key>comment</key>
 					<string>branch names</string>
 					<key>match</key>
-					<string>`[A-Za-z\-_/]+`</string>
+					<string>`[^`]+`</string>
 					<key>name</key>
 					<string>constant.other.git-savvy.status.branch-name</string>
 				</dict>
