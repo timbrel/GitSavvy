@@ -287,8 +287,13 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
             l = add_regions if region_type == "+" else remove_regions
             l.append(sublime.Region(region_start, region_end))
 
+        self.scroll_to_the_first_change(l)
         self.view.add_regions("git-better-added-lines", add_regions, scope="git_savvy.change.addition")
         self.view.add_regions("git-better-removed-lines", remove_regions, scope="git_savvy.change.removal")
+
+    def scroll_to_the_first_change(self, regions):
+        if regions:
+            self.view.set_viewport_position((regions[0].begin(), regions[0].end()), True)
 
     def verify_not_conflict(self):
         fpath = self.get_rel_path()
