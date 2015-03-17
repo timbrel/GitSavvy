@@ -57,7 +57,7 @@
 			<key>comment</key>
 			<string>merges</string>
 			<key>match</key>
-			<string>Merge branch '(.*?)' (?:of|into) (.*)</string>
+			<string>Merge branch '(.*?)'(?: (?:of|into) (.*))?</string>
 			<key>name</key>
 			<string>git-savvy.graph</string>
 		</dict>
