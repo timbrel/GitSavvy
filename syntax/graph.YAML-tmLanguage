@@ -1,0 +1,26 @@
+# [PackageDev] target_format: plist, ext: tmLanguage
+name: GitSavvy Graph
+scopeName: git-savvy.graph
+fileTypes: []
+uuid: 78c65093-02cc-4b52-a743-70eb6824f07b
+
+
+patterns:
+- comment: graph lines
+  name: comment
+  match: ^([| *\\/]+)
+- comment: SHA
+  name: keyword
+  match: (?:(?<=[\*\|] )|(?<=[\*\|]   ))([0-9a-f]{6,40})
+- comment: branch names
+  name: constant.other.git-savvy.status.branch-name
+  match: (?<= )(\(.*\))(?= )
+- comment: issue numbers
+  name: string
+  match: (?:[Ff]ix(?:e[ds])?|[Rr]esolve[ds]?|[Cc]lose[ds]?)?\s*(?:#\d+|\[.*?\])
+- comment: merges
+  name: git-savvy.graph
+  match: Merge branch '(.*?)' (?:of|into) (.*)
+  captures:
+    '1': {name: string}
+    '2': {name: string}
