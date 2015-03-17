@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>fileTypes</key>
+	<array/>
+	<key>name</key>
+	<string>GitSavvy Graph</string>
+	<key>patterns</key>
+	<array>
+		<dict>
+			<key>comment</key>
+			<string>graph lines</string>
+			<key>match</key>
+			<string>^([| *\\/]+)</string>
+			<key>name</key>
+			<string>comment</string>
+		</dict>
+		<dict>
+			<key>comment</key>
+			<string>SHA</string>
+			<key>match</key>
+			<string>(?:(?&lt;=[\*\|] )|(?&lt;=[\*\|]   ))([0-9a-f]{6,40})</string>
+			<key>name</key>
+			<string>keyword</string>
+		</dict>
+		<dict>
+			<key>comment</key>
+			<string>branch names</string>
+			<key>match</key>
+			<string>(?&lt;= )(\(.*\))(?= )</string>
+			<key>name</key>
+			<string>constant.other.git-savvy.status.branch-name</string>
+		</dict>
+		<dict>
+			<key>comment</key>
+			<string>issue numbers</string>
+			<key>match</key>
+			<string>(?:[Ff]ix(?:e[ds])?|[Rr]esolve[ds]?|[Cc]lose[ds]?)?\s*(?:#\d+|\[.*?\])</string>
+			<key>name</key>
+			<string>string</string>
+		</dict>
+		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>string</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>string</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>merges</string>
+			<key>match</key>
+			<string>Merge branch '(.*?)'(?: (?:of|into) (.*))?</string>
+			<key>name</key>
+			<string>git-savvy.graph</string>
+		</dict>
+	</array>
+	<key>scopeName</key>
+	<string>git-savvy.graph</string>
+	<key>uuid</key>
+	<string>78c65093-02cc-4b52-a743-70eb6824f07b</string>
+</dict>
+</plist>

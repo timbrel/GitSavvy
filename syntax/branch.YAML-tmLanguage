@@ -38,6 +38,10 @@ patterns:
   - name: string.other.git-savvy.branches.active-branch
     match: '^  ▸ (.+)\n$'
 
+- comment: ux note
+  name: support.type.git-savvy.ux-note
+  match: '\*\* [^\*]+ \*\*'
+
 - comment: Key-bindings menu
   name: comment.git-savvy.status.key-bindings-menu
   begin: '^  ####'

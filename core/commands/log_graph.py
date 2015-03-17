@@ -17,6 +17,7 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
         view = self.window.new_file()
         view.settings().set("git_savvy.log_graph_view", True)
         view.settings().set("git_savvy.repo_path", repo_path)
+        view.set_syntax_file("Packages/GitSavvy/syntax/graph.tmLanguage")
         view.set_name(LOG_GRAPH_TITLE)
         view.set_scratch(True)
         view.set_read_only(True)
@@ -26,5 +27,5 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
 class GsLogGraphInitializeCommand(TextCommand, GitCommand):
 
     def run(self, edit):
-        branch_graph = self.git("log", "--oneline", "--graph", "--decorate")
-        self.view.run_command("gs_replace_view_text", {"text": branch_graph})
+        branch_graph = self.git("log", "--oneline", "--graph", "--all", "--decorate")
+        self.view.run_command("gs_replace_view_text", {"text": branch_graph, "nuke_cursors": True})
