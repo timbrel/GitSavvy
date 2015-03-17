@@ -90,3 +90,15 @@ class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
         self.git("checkout", "-b", local_name, "--track", remote_branch)
         sublime.status_message("Checked out `{}` as local branch `{}`.".format(remote_branch, local_name))
         util.view.refresh_gitsavvy(self.window.active_view())
+
+
+class GsCheckoutCurrentFileCommand(WindowCommand, GitCommand):
+
+    """
+    Reset the current active file to HEAD.
+    """
+
+    def run(self):
+        if self.file_path:
+            self.checkout_file(self.file_path)
+            sublime.status_message("Successfully checked out {} from head.".format(self.file_path))

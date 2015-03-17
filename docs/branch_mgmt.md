@@ -13,6 +13,11 @@ You will be shown a panel of local branches.  Once you've made a selection, that
 You will be prompted for a new branch name.  Once entered, that branch will be created and checked out.
 
 
+## `git: checkout current file`
+
+Reset the current active file to HEAD.
+
+
 ## `git: merge`
 
 You will be shown a list of all local _and_ remote branches.  Once selected, that branch will be merged in the current branch.  Any errors will be displayed, and any merge conflicts can be seen and addressed in the status dashboard.
