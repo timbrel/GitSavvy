@@ -72,6 +72,11 @@
         "command": "gs_push"
     },
     {
+        "caption": "git: push (force)",
+        "command": "gs_push",
+        "args": { "force": true }
+    },
+    {
         "caption": "git: push to existing branch",
         "command": "gs_push_to_branch"
     },

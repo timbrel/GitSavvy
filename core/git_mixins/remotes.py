@@ -33,9 +33,9 @@ class RemotesMixin():
         """
         self.git("pull", remote, branch)
 
-    def push(self, remote=None, branch=None):
+    def push(self, remote=None, branch=None, force=False):
         """
         Push to the specified remote and branch if provided, otherwise
         perform default `git push`.
         """
-        self.git("push", remote, branch)
+        self.git("push", "--force" if force else None, remote, branch)
