@@ -61,3 +61,9 @@ class BranchesMixin():
             tracking_status,
             active
             )
+
+    def merge(self, branch_name):
+        """
+        Merge `branch_name` into active branch.
+        """
+        self.git("merge", branch_name)
