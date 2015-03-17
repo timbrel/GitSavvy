@@ -352,7 +352,40 @@ class GsBranchesPushSelectedCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        pass
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        self.interface = ui.get_interface(self.view.id())
+        selection, line = self.interface.get_selection_line()
+        if not line:
+            return
+
+        local_region = self.view.get_regions("git_savvy_interface.branch_list")[0]
+        if not local_region.contains(selection):
+            sublime.message_dialog("You can only delete local branches.")
+            return
+
+        segments = line.strip("▸ ").split(" ")
+        self.branch_name = segments[1]
+
+        self.remotes = list(self.get_remotes().keys())
+
+        if not self.remotes:
+            self.view.window().show_quick_panel(["There are no remotes available."], None)
+        else:
+            self.view.window().show_quick_panel(
+                self.remotes,
+                self.on_select_remote,
+                flags=sublime.MONOSPACE_FONT
+                )
+
+    def on_select_remote(self, remote_index):
+        # If the user pressed `esc` or otherwise cancelled.
+        if remote_index == -1:
+            return
+        selected_remote = self.remotes[remote_index]
+        self.push(remote=selected_remote, branch=self.branch_name)
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsBranchesPushAllCommand(TextCommand, GitCommand):
