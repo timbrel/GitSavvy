@@ -9,7 +9,7 @@ Sublime Text 3 plugin providing the following features:
     + opening the current file on GitHub at the selected line
 - GitHub-style blame view, showing hunk metadata and ability to view the commit that made the change
 - `git diff` view, allowing user to (un)stage hunks across all files
-- a status dashboard, exposing much of the available functionality
+- status, branch, and tag dashboards
 
 **Note:** Sublime Text 2 is not supported.  Also, GitSavvy takes advantage of certain features of ST3 that have bugs in earlier ST3 releases.  For the best experience, use the latest ST3 dev build.
 
