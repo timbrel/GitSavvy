@@ -1,0 +1,30 @@
+Changes since 1.2.0:
+
+  Features:
+   - New `git: branch` dashboard.
+   - New `git: tags` dashboard.
+   - New `git: checkout current file` palette command.
+   - New `git: push (force)` command palette option.
+
+  Under the hood:
+   - Resumable UI interfaces with easy listener registration.
+
+  Enhancements:
+   - Customized Git arguments for `git: graph` palette command.
+   - `git: graph` view shows remote branchs, has syntax highlighting, and can checkout and view commit.
+   - Enable definition of global flags for specific Git commands.
+
+  Fix:
+   - Inline-diffs would fail to apply in certain cases in Windows.
+   - Syntax-highlighting for branch names in status and branch dashboard views.
+   - Parse branch output properly if local branch tracks remote but not ahead/behind.
+   - Allow numbers in names for remote.
+   - Display `git: log` quick panel before keypress in Windows.
+   - Create cursor at pos 0 in stash view, not in status view.
+   - Annoying error when opening new window, due to status bar changes.
+
+  Contributors:
+   - Adrian L Lange
+   - Nicolás Santángelo
+   - Dale Bustad
+   - Laas Toom
