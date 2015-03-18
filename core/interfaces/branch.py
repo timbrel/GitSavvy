@@ -22,6 +22,7 @@ class GsShowBranchCommand(WindowCommand, GitCommand):
 class BranchInterface(ui.Interface, GitCommand):
 
     """
+    Branch dashboard.
     """
 
     interface_type = "branch"
@@ -228,10 +229,9 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
     def delete_remote_branch(self, remote, branch_name):
         sublime.status_message("Deleting remote branch...")
         self.git(
-            "push",
-            "--force" if self.force else None,
-            remote,
-            ":"+branch_name
+            "branch"
+            "-D" if self.force else "-d",
+            "{}/{}".format(remote, branch_name)
             )
         sublime.status_message("Deleted remote branch.")
         util.view.refresh_gitsavvy(self.view)
