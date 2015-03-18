@@ -23,6 +23,8 @@ def get_page_and_anchor(view):
         return "tag_mgmt.md", "git-tags"
     if util.view.get_is_view_of_type(view, "log_graph"):
         return "history.md", "git-graph"
+    if util.view.get_is_view_of_type(view, "branch"):
+        return "branch_mgmt.md", "git-branch"
     if util.view.get_is_view_of_type(view, "commit"):
         anchor = ("git-amend-previous-commit"
                   if view.settings().get("git_savvy.commit_view.amend")
