@@ -29,7 +29,9 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
 class GsLogGraphInitializeCommand(TextCommand, GitCommand):
 
     def run(self, edit):
-        branch_graph = self.git("log", "--oneline", "--graph", "--all", "--decorate")
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        args = savvy_settings.get("git_graph_args")
+        branch_graph = self.git(*args)
         self.view.run_command("gs_replace_view_text", {"text": branch_graph, "nuke_cursors": True})
 
 
