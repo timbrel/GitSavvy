@@ -475,6 +475,13 @@
             { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["h"],
+        "command": "gs_branches_fetch",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     ////////////////
     // GRAPH VIEW //
