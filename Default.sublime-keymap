@@ -379,7 +379,6 @@
         ]
     },
 
-
     ///////////////////
     // BRANCHES VIEW //
     ///////////////////
@@ -475,5 +474,25 @@
         "context": [
             { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
         ]
+    },
+    {
+        "keys": ["h"],
+        "command": "gs_branches_fetch",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+
+    ////////////////
+    // GRAPH VIEW //
+    ////////////////
+
+    {
+        "keys": ["enter"],
+        "command": "gs_log_graph_action",
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ],
+        "args": { "action": "view" }
     }
 ]

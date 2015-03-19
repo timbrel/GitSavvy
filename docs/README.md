@@ -45,6 +45,7 @@ If you run into any issues not addressed here, please feel free to [open an issu
 
 - [git: checkout](branch_mgmt.md#git-checkout)
 - [git: checkout new branch](branch_mgmt.md#git-checkout-new-branch)
+- [git: checkout current file](branch_mgmt.md#git-checkout-current-file)
 - [git: merge](branch_mgmt.md#git-merge)
 - [git: abort merge](branch_mgmt.md#git-abort-merge)
 - [git: restart merge for file...](branch_mgmt.md#git-restart-merge-for-file)

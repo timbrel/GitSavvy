@@ -21,6 +21,10 @@ def get_page_and_anchor(view):
         return "status.md", None
     if util.view.get_is_view_of_type(view, "tags"):
         return "tag_mgmt.md", "git-tags"
+    if util.view.get_is_view_of_type(view, "log_graph"):
+        return "history.md", "git-graph"
+    if util.view.get_is_view_of_type(view, "branch"):
+        return "branch_mgmt.md", "git-branch"
     if util.view.get_is_view_of_type(view, "commit"):
         anchor = ("git-amend-previous-commit"
                   if view.settings().get("git_savvy.commit_view.amend")
@@ -30,7 +34,7 @@ def get_page_and_anchor(view):
         anchor = ("git-diff-cached"
                   if view.settings().get("git_savvy.diff_view.in_cached_mode")
                   else "git-diff")
-        return "history.md", anchor
+        return "staging.md", anchor
 
     if util.view.get_is_view_of_type(view, "inline_diff"):
         anchor = ("git-diff-current-file-inline"

@@ -22,4 +22,6 @@ Pressing `SUPER-Enter` (`CTRL-Enter` in Windows) while your cursor is inside a h
 
 ## `git: graph`
 
-Opens a special view that displays an ASCII-graphic representation of the repo's commit and branch history.  At present, this is a very basic feature - more is planned in future versions.
+Opens a special view that displays an ASCII-graphic representation of the repo's commit and branch history.
+
+Pressing `Enter` while your cursor is over a particular line will display the commit reflected on that line.  Pressing `SUPER-Enter` (`CTRL-Enter` in Windows) will check out the commit.  Not that a successful commit will not be visually reflected in the graph view.

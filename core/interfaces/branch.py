@@ -22,6 +22,7 @@ class GsShowBranchCommand(WindowCommand, GitCommand):
 class BranchInterface(ui.Interface, GitCommand):
 
     """
+    Branch dashboard.
     """
 
     interface_type = "branch"
@@ -51,10 +52,11 @@ class BranchInterface(ui.Interface, GitCommand):
       [d] delete                                    [D] delete (force)
       [R] rename (local)                            [m] merge selected into active branch
       [t] configure tracking                        [M] fetch and merge into active branch
+                                                    [h] fetch remote branches
 
       [f] diff against active
-      [r] refresh
       [e] toggle display of remote branches
+      [r] refresh
 
     -
     """
@@ -564,3 +566,13 @@ class GsBranchesToggleRemotesCommand(TextCommand, GitCommand):
         interface = ui.get_interface(self.view.id())
         interface.show_remotes = not interface.show_remotes
         interface.render()
+
+
+class GsBranchesFetchCommand(TextCommand, GitCommand):
+
+    """
+    Prompt for remote and fetch branches.
+    """
+
+    def run(self, edit):
+        self.view.window().run_command("gs_fetch")

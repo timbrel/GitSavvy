@@ -12,12 +12,12 @@ class RemotesMixin():
         entries = self.git("remote", "-v").splitlines()
         return OrderedDict(re.match("([0-9a-zA-Z_-]+)\t([^ ]+)", entry).groups() for entry in entries)
 
-    def fetch(self, remote=None):
+    def fetch(self, remote=None, prune=True):
         """
         If provided, fetch all changes from `remote`.  Otherwise, fetch
         changes from all remotes.
         """
-        self.git("fetch", remote)
+        self.git("fetch", "--prune" if prune else None, remote)
 
     def get_remote_branches(self):
         """

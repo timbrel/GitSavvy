@@ -70,5 +70,12 @@
     /*
         Set this to `true` to display remotes in the branch dashboard by default.
      */
-    "show_remotes_in_branch_dashboard": false
+    "show_remotes_in_branch_dashboard": false,
+
+    /*
+        Update the desired graph arguments for a customized experience.
+
+        NOTE: Changes you make may break in-view functionality, so use with caution.
+     */
+    "git_graph_args": ["log", "--oneline", "--graph", "--all", "--decorate"]
 }
