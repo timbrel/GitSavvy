@@ -160,7 +160,9 @@ class GitCommand(StatusMixin,
 
         if not repo_path:
             file_path = self.file_path
-            working_dir = file_path and os.path.dirname(self.file_path)
+            file_dir = os.path.dirname(file_path)
+            working_dir = file_path and os.path.isdir(file_dir) and file_dir
+
             if not working_dir:
                 window_folders = sublime.active_window().folders()
                 working_dir = window_folders[0] if window_folders else None
