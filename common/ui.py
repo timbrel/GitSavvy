@@ -23,8 +23,7 @@ class Interface():
     regions = []
     template = ""
 
-    def __init__(self, view_attrs=None, view=None):
-        self.view_attrs = view_attrs or {}
+    def __init__(self, repo_path, view=None):
         subclass_attrs = (getattr(self, attr) for attr in vars(self.__class__).keys())
 
         self.partials = {
@@ -46,17 +45,15 @@ class Interface():
         if view:
             self.view = view
         else:
-            self.view = self.create_view()
+            self.view = self.create_view(repo_path)
 
         interfaces[self.view.id()] = self
 
-    def create_view(self):
+    def create_view(self, repo_path):
         window = sublime.active_window()
         self.view = window.new_file()
 
-        for k, v in self.view_attrs.items():
-            self.view.settings().set(k, v)
-
+        self.view.settings().set("git_savvy.repo_path", repo_path)
         self.view.set_name(self.title())
         self.view.settings().set("git_savvy.{}_view".format(self.interface_type), True)
         self.view.settings().set("git_savvy.interface", self.interface_type)

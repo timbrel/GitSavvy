@@ -16,7 +16,7 @@ class GsShowBranchCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
-        BranchInterface(view_attrs={"git_savvy.repo_path": self.repo_path})
+        BranchInterface(repo_path=self.repo_path)
 
 
 class BranchInterface(ui.Interface, GitCommand):
