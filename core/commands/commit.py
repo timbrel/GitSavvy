@@ -23,7 +23,7 @@ COMMIT_SIGN_TEXT = """
 Signed-off-by: {name} <{email}>
 """
 
-COMMIT_TITLE = "COMMIT"
+COMMIT_TITLE = "COMMIT: {}"
 
 
 class GsCommitCommand(WindowCommand, GitCommand):
@@ -45,7 +45,8 @@ class GsCommitCommand(WindowCommand, GitCommand):
         view.settings().set("git_savvy.commit_view.amend", amend)
         view.settings().set("git_savvy.repo_path", repo_path)
         view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.tmLanguage")
-        view.set_name(COMMIT_TITLE)
+        title = COMMIT_TITLE.format(os.path.basename(repo_path))
+        view.set_name(title)
         view.set_scratch(True)
         view.run_command("gs_commit_initialize_view")
 
