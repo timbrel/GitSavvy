@@ -23,7 +23,28 @@ class Interface():
     regions = []
     template = ""
 
-    def __init__(self, repo_path, view=None):
+    _initialized = False
+
+    def __new__(cls, repo_path=None, **kwargs):
+        """
+        Search for intended interface in active window - if found, bring it
+        to focus and return it instead of creating a new interface.
+        """
+        window = sublime.active_window()
+        for view in window.views():
+            vset = view.settings()
+            if vset.get("git_savvy.interface") == cls.interface_type and \
+               vset.get("git_savvy.repo_path") == repo_path:
+                window.focus_view(view)
+                return interfaces[view.id()]
+
+        return super().__new__(cls)
+
+    def __init__(self, repo_path=None, view=None):
+        if self._initialized:
+            return
+        self._initialized = True
+
         subclass_attrs = (getattr(self, attr) for attr in vars(self.__class__).keys())
 
         self.partials = {
