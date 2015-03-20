@@ -65,6 +65,24 @@ class BranchInterface(ui.Interface, GitCommand):
       REMOTE ({remote_name}):
     {remote_branch_list}"""
 
+    @property
+    def repo_path(self):
+        # we need to use the view_attrs dictionary because view_path needs
+        # to know the path, but when finding existing views there is no
+        # view set yet with view_path is called so GitCommand's version of
+        # repo_path will fail
+        return self.view_attrs["git_savvy.repo_path"]
+
+    def view_path(self):
+        """
+        Returns a unique string to identify this view so that interfaces
+        can reuse the same view if for the same interfaces.
+
+        Such as: /branch/Users/your/repository
+        """
+
+        return "/{}/{}".format(self.interface_type, self.repo_path)
+
     def title(self):
         return "BRANCHES: {}".format(os.path.basename(self.repo_path))
 

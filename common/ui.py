@@ -46,9 +46,27 @@ class Interface():
         if view:
             self.view = view
         else:
-            self.view = self.create_view()
+            self.view = self.prepare_view()
+
+        self.render()
 
         interfaces[self.view.id()] = self
+
+
+    def find_view(self):
+        for _, item in interfaces.items():
+            if item.view_path() == self.view_path() and \
+                item.view.window().id() == sublime.active_window().id():
+
+                return item.view
+
+
+    def prepare_view(self):
+        view = self.find_view() or self.create_view()
+        sublime.active_window().focus_view(view)
+
+        return view
+
 
     def create_view(self):
         window = sublime.active_window()
@@ -65,9 +83,6 @@ class Interface():
         self.view.set_scratch(True)
         self.view.set_read_only(self.read_only)
         util.view.disable_other_plugins(self.view)
-
-        self.render()
-        window.focus_view(self.view)
 
         return self.view
 
