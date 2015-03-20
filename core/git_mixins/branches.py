@@ -52,7 +52,7 @@ class BranchesMixin():
         remote = branch_name.split("/")[0] if is_remote else None
 
         return Branch(
-            "".join(branch_name.split("/")[1:]) if is_remote else branch_name,
+            "/".join(branch_name.split("/")[1:]) if is_remote else branch_name,
             remote,
             branch_name,
             commit_hash,
