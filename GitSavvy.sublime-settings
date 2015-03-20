@@ -31,6 +31,12 @@
      */
     "inline_diff_auto_scoll": false,
 
+    /*
+        Change this to `false` to stop showing a summary of what you are
+        about to commit (same as default git template).
+     */
+    "show_commit_summary": true,
+
     "colors": {
         /*
             Colors used by the inline-diff view to display changes.
