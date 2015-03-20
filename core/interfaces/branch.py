@@ -139,7 +139,7 @@ class BranchInterface(ui.Interface, GitCommand):
         return output_tmpl, render_fns
 
 
-ui.register_listeners(BranchInterface)
+ui.register_interfaces(BranchInterface)
 
 
 class GsBranchesCheckoutCommand(TextCommand, GitCommand):
@@ -152,7 +152,7 @@ class GsBranchesCheckoutCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        self.interface = ui.get_interface(self.view.id())
+        self.interface = ui.get_interface(self.view)
         selection, line = self.interface.get_selection_line()
         if not line:
             return
@@ -196,7 +196,7 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        self.interface = ui.get_interface(self.view.id())
+        self.interface = ui.get_interface(self.view)
         selection, line = self.interface.get_selection_line()
         if not line:
             return
@@ -249,7 +249,7 @@ class GsBranchesRenameCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        self.interface = ui.get_interface(self.view.id())
+        self.interface = ui.get_interface(self.view)
         selection, line = self.interface.get_selection_line()
         if not line:
             return
@@ -290,7 +290,7 @@ class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
         `on_select_remote`.  If no remotes are defined, notify the user and
         proceed no further.
         """
-        self.interface = ui.get_interface(self.view.id())
+        self.interface = ui.get_interface(self.view)
         selection, line = self.interface.get_selection_line()
         if not line:
             return
@@ -370,7 +370,7 @@ class GsBranchesPushSelectedCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        self.interface = ui.get_interface(self.view.id())
+        self.interface = ui.get_interface(self.view)
         selection, line = self.interface.get_selection_line()
         if not line:
             return
@@ -447,7 +447,7 @@ class GsBranchesMergeSelectedCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        self.interface = ui.get_interface(self.view.id())
+        self.interface = ui.get_interface(self.view)
         selection, line = self.interface.get_selection_line()
         if not line:
             return
@@ -480,7 +480,7 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        self.interface = ui.get_interface(self.view.id())
+        self.interface = ui.get_interface(self.view)
         selection, line = self.interface.get_selection_line()
         if not line:
             return
@@ -510,7 +510,7 @@ class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        self.interface = ui.get_interface(self.view.id())
+        self.interface = ui.get_interface(self.view)
         selection, line = self.interface.get_selection_line()
         if not line:
             return
@@ -563,7 +563,7 @@ class GsBranchesToggleRemotesCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
+        interface = ui.get_interface(self.view)
         interface.show_remotes = not interface.show_remotes
         interface.render()
 

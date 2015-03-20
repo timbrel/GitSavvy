@@ -45,6 +45,7 @@ class Interface():
 
         if view:
             self.view = view
+            self.render(False)
         else:
             self.view = self.create_view()
 
@@ -185,12 +186,16 @@ class GsUpdateRegionCommand(TextCommand):
         self.view.set_read_only(is_read_only)
 
 
-def register_listeners(InterfaceClass):
+def register_interfaces(InterfaceClass):
     subclasses.append(InterfaceClass)
 
 
-def get_interface(view_id):
-    return interfaces.get(view_id, None)
+def get_interface(view):
+    iff = interfaces.get(view.id(), None)
+    if not iff:
+        view.run_command("gs_interface_refresh", {'async': False})
+
+    return iff or interfaces.get(view.id(), None)
 
 
 class GsInterfaceFocusEventListener(EventListener):
@@ -216,8 +221,12 @@ class GsInterfaceRefreshCommand(TextCommand):
     Re-render GitSavvy interface view.
     """
 
-    def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+    def run(self, edit, async = True):
+        if async:
+            sublime.set_timeout_async(self.run_async, 0)
+        else:
+            self.run_async() # not actually async
+
 
     def run_async(self):
         interface_type = self.view.settings().get("git_savvy.interface")
