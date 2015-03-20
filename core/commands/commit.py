@@ -63,7 +63,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
     def run(self, edit):
         template = [
             self.commit_message(),
-            COMMIT_HELP_TEXT,
+            COMMIT_HELP_TEXT.lstrip(),
             self.footers()
         ]
         content = "".join(template)
@@ -83,7 +83,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
             with open(merge_msg_path, "r") as f:
                 return f.read()
         else:
-            return ""
+            return "\n\n"
 
     def footers(self):
         footer = ""
