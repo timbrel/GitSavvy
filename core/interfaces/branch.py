@@ -256,7 +256,7 @@ class GsBranchesRenameCommand(TextCommand, GitCommand):
 
         local_region = self.view.get_regions("git_savvy_interface.branch_list")[0]
         if not local_region.contains(selection):
-            sublime.message_dialog("You can only delete local branches.")
+            sublime.message_dialog("You can only rename local branches.")
             return
 
         segments = line.strip("▸ ").split(" ")
