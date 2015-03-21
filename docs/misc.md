@@ -10,4 +10,4 @@ This command will also be suggested to you should you attempt to run a GitSavvy 
 
 ## `git: gui`
 
-Open git's built-in GUI tools Git Gui.
+Open git's built-in GUI tool Git Gui.
