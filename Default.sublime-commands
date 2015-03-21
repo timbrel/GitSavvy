@@ -180,5 +180,9 @@
     {
         "caption": "git: branch",
         "command": "gs_show_branch"
+    },
+    {
+        "caption": "git: gui",
+        "command": "gs_gui"
     }
 ]

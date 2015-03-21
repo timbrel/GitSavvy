@@ -7,3 +7,7 @@ This command will initialize a new repository, or re-initialize a pre-existing o
 When run, you will asked to confirm the root directory of the new Git repository.  GitSavvy will attempt to auto-detect this for you.
 
 This command will also be suggested to you should you attempt to run a GitSavvy command on a file that is not within a valid Git repository.
+
+## `git: gui`
+
+Open git's built-in GUI tools Git Gui.

@@ -5,6 +5,7 @@ from .quick_commit import *
 from .log_graph import *
 from .checkout import *
 from .fetch import *
+from .gui import *
 from .pull import *
 from .push import *
 from .ignore import *
