@@ -44,6 +44,13 @@
     "show_panel_for": [],
 
     /*
+        Use the Sublime configured syntax for COMMIT_EDITMSG rather than
+        the custom bundled syntax that comes with GitSavvy.
+    */
+
+    "use_syntax_for_commit_editmsg": false,
+
+    /*
         Change this to `false` to suppress the input in the panel output.
      */
     "show_input_in_output": true,
