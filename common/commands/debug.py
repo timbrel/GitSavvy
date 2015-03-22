@@ -38,12 +38,8 @@ class GsReloadModulesDebug(WindowCommand):
         # array of interface listeners.  If it's loaded after any of the
         # interface modules then refresh events will be broken.
         modules = ["GitSavvy.common.ui"]
-
-        for module in sys.modules.keys():
-            if module == "GitSavvy.common.ui":
-                continue
-            if module[0:8] == "GitSavvy":
-                modules.append(module)
+        modules += [mod for mod in sys.modules.key()
+                    if mod[0:8] == "GitSavvy" and mod not in modules]
 
         return modules
 
