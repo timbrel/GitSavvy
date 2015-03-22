@@ -65,6 +65,7 @@ class Interface():
 
         if view:
             self.view = view
+            self.render(nuke_cursors=False)
         else:
             self.view = self.create_view(repo_path)
 

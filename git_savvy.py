@@ -8,6 +8,9 @@ else:
     def plugin_loaded():
         from .common import util
         util.file.determine_syntax_files()
+        # Ensure all interfaces are ready.
+        sublime.set_timeout_async(
+            lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
 
     from .common.commands import *
     from .common.ui import *
