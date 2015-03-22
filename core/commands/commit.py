@@ -96,9 +96,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
     def run_async(self):
         view_text = self.view.substr(sublime.Region(0, self.view.size()))
         commit_message = view_text.split(COMMIT_HELP_TEXT)[0]
-
-        if self.view.settings().get("git_savvy.commit_view.include_unstaged"):
-            self.add_all_tracked_files()
+        include_unstaged = self.view.settings().get("git_savvy.commit_view.include_unstaged")
 
         show_panel_overrides = \
             sublime.load_settings("GitSavvy.sublime-settings").get("show_panel_for")
@@ -106,6 +104,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
         self.git(
             "commit",
             "-q" if "commit" not in show_panel_overrides else None,
+            "-a" if include_unstaged else None,
             "--amend" if self.view.settings().get("git_savvy.commit_view.amend") else None,
             "-F",
             "-",
