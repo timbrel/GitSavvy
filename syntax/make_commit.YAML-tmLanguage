@@ -13,3 +13,9 @@ patterns:
 - comment: issue
   name: constant.other.git-savvy.make-commit.issue-ref
   match: (\w+/\w+)?#[0-9]+
+- comment: diff section
+  name: meta.git-savvy.commit-diff
+  begin: ^(?=diff --git a/)
+  end: ^$
+  patterns:
+  - include: source.diff
