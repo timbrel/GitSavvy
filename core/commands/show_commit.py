@@ -17,7 +17,7 @@ class GsShowCommitCommand(WindowCommand, GitCommand):
         view.settings().set("git_savvy.repo_path", repo_path)
         view.settings().set("word_wrap", False)
         view.settings().set("line_numbers", False)
-        view.set_name(SHOW_COMMIT_TITLE.format(commit_hash))
+        view.set_name(SHOW_COMMIT_TITLE.format(commit_hash[:7]))
         view.set_scratch(True)
         view.run_command("gs_show_commit_initialize_view")
 
