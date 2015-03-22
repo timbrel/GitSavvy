@@ -54,9 +54,9 @@ def get_is_view_of_type(view, typ):
     return not not view.settings().get("git_savvy.{}_view".format(typ))
 
 
-#####################
-# CROSS-APPLICATION #
-#####################
+##########
+# GLOBAL #
+##########
 
 def refresh_gitsavvy(view):
     """
@@ -68,6 +68,11 @@ def refresh_gitsavvy(view):
     elif view.settings().get("git_savvy.status_view"):
         view.run_command("gs_status_refresh")
     view.run_command("gs_update_status_bar")
+
+
+def handle_closed_view(view):
+    if view.settings().get("git_savvy.interface") is not None:
+        view.run_command("gs_interface_close")
 
 
 ############################

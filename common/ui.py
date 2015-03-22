@@ -211,21 +211,19 @@ def get_interface(view_id):
     return interfaces.get(view_id, None)
 
 
-class GsInterfaceFocusEventListener(EventListener):
+class GsInterfaceCloseCommand(TextCommand):
 
     """
-    If the current view is a branch dashboard view, refresh the view with
-    latest repo status when the view regains focus.
+    Clean up references to interfaces for closed views.
     """
 
-    def on_activated(self, view):
-        view.run_command("gs_interface_refresh")
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
 
-    def on_close(self, view):
-        if view.settings().get("git_savvy.interface"):
-            view_id = view.id()
-            if view_id in interfaces:
-                del interfaces[view.id()]
+    def run_async(self):
+        view_id = self.view.id()
+        if view_id in interfaces:
+            del interfaces[view_id]
 
 
 class GsInterfaceRefreshCommand(TextCommand):
@@ -239,12 +237,11 @@ class GsInterfaceRefreshCommand(TextCommand):
 
     def run_async(self):
         interface_type = self.view.settings().get("git_savvy.interface")
-        if interface_type:
-            for InterfaceSubclass in subclasses:
-                if InterfaceSubclass.interface_type == interface_type:
-                    existing_interface = interfaces.get(self.view.id(), None)
-                    if existing_interface:
-                        existing_interface.render(nuke_cursors=False)
-                    else:
-                        interface = InterfaceSubclass(view=self.view)
-                        interfaces[interface.view.id()] = interface
+        for InterfaceSubclass in subclasses:
+            if InterfaceSubclass.interface_type == interface_type:
+                existing_interface = interfaces.get(self.view.id(), None)
+                if existing_interface:
+                    existing_interface.render(nuke_cursors=False)
+                else:
+                    interface = InterfaceSubclass(view=self.view)
+                    interfaces[interface.view.id()] = interface

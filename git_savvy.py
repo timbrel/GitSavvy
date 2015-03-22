@@ -1,5 +1,7 @@
 import sys
 
+import sublime
+
 if sys.version_info[0] == 2:
     raise ImportWarning("GitSavvy does not support Sublime Text 2.")
 else:
@@ -9,6 +11,7 @@ else:
 
     from .common.commands import *
     from .common.ui import *
+    from .common.global_events import *
     from .core.commands import *
     from .core.interfaces import *
     from .github.commands import *
