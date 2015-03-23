@@ -159,7 +159,9 @@ class GitCommand(StatusMixin,
         repo_path = view.settings().get("git_savvy.repo_path")
 
         if not repo_path:
-            file_path = self.file_path
+            # if we are in an empty tab for a project self.file_path may
+            # return None in which case we check the windows folder
+            file_path = self.file_path or self.window.folders()[0]
             file_dir = os.path.dirname(file_path)
             working_dir = file_path and os.path.isdir(file_dir) and file_dir
 
