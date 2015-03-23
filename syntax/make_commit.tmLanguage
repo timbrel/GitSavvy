@@ -30,6 +30,23 @@
 			<key>name</key>
 			<string>constant.other.git-savvy.make-commit.issue-ref</string>
 		</dict>
+		<dict>
+			<key>begin</key>
+			<string>^(?=diff --git a/)</string>
+			<key>comment</key>
+			<string>diff section</string>
+			<key>end</key>
+			<string>^$</string>
+			<key>name</key>
+			<string>meta.git-savvy.commit-diff</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>include</key>
+					<string>source.diff</string>
+				</dict>
+			</array>
+		</dict>
 	</array>
 	<key>scopeName</key>
 	<string>git-savvy.make-commit</string>

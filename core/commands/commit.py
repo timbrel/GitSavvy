@@ -26,7 +26,7 @@ COMMIT_SIGN_TEXT = """
 Signed-off-by: {name} <{email}>
 """
 
-COMMIT_TITLE = "COMMIT"
+COMMIT_TITLE = "COMMIT: {}"
 
 
 class GsCommitCommand(WindowCommand, GitCommand):
@@ -48,7 +48,8 @@ class GsCommitCommand(WindowCommand, GitCommand):
         view.settings().set("git_savvy.commit_view.amend", amend)
         view.settings().set("git_savvy.repo_path", repo_path)
         view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.tmLanguage")
-        view.set_name(COMMIT_TITLE)
+        title = COMMIT_TITLE.format(os.path.basename(repo_path))
+        view.set_name(title)
         view.set_scratch(True)
         view.run_command("gs_commit_initialize_view")
 
@@ -99,9 +100,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
     def run_async(self):
         view_text = self.view.substr(sublime.Region(0, self.view.size()))
         commit_message = view_text.split(COMMIT_HELP_TEXT)[0]
-
-        if self.view.settings().get("git_savvy.commit_view.include_unstaged"):
-            self.add_all_tracked_files()
+        include_unstaged = self.view.settings().get("git_savvy.commit_view.include_unstaged")
 
         show_panel_overrides = \
             sublime.load_settings("GitSavvy.sublime-settings").get("show_panel_for")
@@ -109,6 +108,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
         self.git(
             "commit",
             "-q" if "commit" not in show_panel_overrides else None,
+            "-a" if include_unstaged else None,
             "--amend" if self.view.settings().get("git_savvy.commit_view.amend") else None,
             "--gpg-sign" if self.signed_commit else None,
             "-F",

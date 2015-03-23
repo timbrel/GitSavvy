@@ -26,12 +26,22 @@ class GsReloadModulesDebug(WindowCommand):
 
         if savvy_settings.get("dev_mode"):
             for _ in range(2):
-                for name, module in sys.modules.items():
-                    if name[0:8] == "GitSavvy":
-                        print("GitSavvy: reloading submodule", name)
-                        imp.reload(module)
+                for name in self.ordered_modules():
+                    module = sys.modules[name]
+                    print("GitSavvy: reloading submodule", name)
+                    imp.reload(module)
 
             sublime.sublime_api.plugin_host_ready()
+
+    def ordered_modules(self):
+        # common.ui must always be loaded first because it sets up the
+        # array of interface listeners.  If it's loaded after any of the
+        # interface modules then refresh events will be broken.
+        modules = ["GitSavvy.common.ui"]
+        modules += [mod for mod in sys.modules.key()
+                    if mod[0:8] == "GitSavvy" and mod not in modules]
+
+        return modules
 
 
 class GsStartLoggingCommand(WindowCommand):
