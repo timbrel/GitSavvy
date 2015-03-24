@@ -4,7 +4,7 @@
 
 Running this command will open a special "Inline Diff" view related to the open file.  All changes made to the file will be displayed inline; removed lines are displayed in red, and added lines are displayed in green.  All other lines are displayed as normal, with full syntax highlighting.
 
-While in this view, you can navigate between changed hunks using the `,` and `.` keys.  `,` will take you to the previous hunk and `.` will take you to the next hunk.
+While in this view, you can navigate between changed hunks using the `,` and `.` keys.  `,` will take you to the previous hunk and `.` will take you to the next hunk. If you have the `inline_diff_auto_scoll` setting set to `true`, the cursor will be automatically placed on the first hunk when the view is opened.
 
 While the cursor is positioned at a hunk, you can stage that hunk by pressing `h`.  If you'd like to stage a line only, and _not_ the full hunk, move the cursor to the desired line and press `l` (lower-case L).
 
