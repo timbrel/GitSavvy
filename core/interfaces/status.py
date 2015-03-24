@@ -62,7 +62,7 @@ KEY_BINDINGS_MENU = """
   [M] launch external merge tool for conflict
 
   [l] diff file inline                  [f] diff all files
-                                        [F] diff all cached files
+  [e] diff file                         [F] diff all cached files
 
   #############                         #############
   ## ACTIONS ##                         ## STASHES ##
@@ -297,6 +297,63 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
             self.view.window().run_command("gs_inline_diff", {
                 "settings": settings,
                 "cached": True
+            })
+
+class GsStatusDiffCommand(TextCommand, GitCommand):
+
+    """
+    For every file selected or under a cursor, open a new diff view for
+    that file.  If the file is staged, open the diff in cached mode.
+    """
+
+    def run(self, edit):
+        # Unstaged, Untracked, and Conflicts
+        non_cached_sections = status_view_section_ranges[self.view.id()][:3]
+        non_cached_lines = util.view.get_lines_from_regions(
+            self.view,
+            self.view.sel(),
+            valid_ranges=non_cached_sections
+        )
+        non_cached_files = (
+            os.path.join(self.repo_path, line.strip())
+            for line in non_cached_lines
+            if line[:4] == "    ")
+
+        # Staged
+        cached_sections = status_view_section_ranges[self.view.id()][3:]
+        cached_lines = util.view.get_lines_from_regions(
+            self.view,
+            self.view.sel(),
+            valid_ranges=cached_sections
+        )
+        cached_files = (
+            os.path.join(self.repo_path, line.strip())
+            for line in cached_lines
+            if line[:4] == "    ")
+
+        sublime.set_timeout_async(
+            partial(self.load_diff_windows, non_cached_files, cached_files), 0)
+
+    def load_diff_windows(self, non_cached_files, cached_files):
+        for fpath in non_cached_files:
+            settings = {
+                "git_savvy.file_path": fpath,
+                "git_savvy.repo_path": self.repo_path,
+            }
+            self.view.window().run_command("gs_diff", {
+                "settings": settings,
+                "in_current_file": True
+            })
+
+        for fpath in cached_files:
+            settings = {
+                "git_savvy.file_path": fpath,
+                "git_savvy.repo_path": self.repo_path
+            }
+            self.view.window().run_command("gs_diff", {
+                "settings": settings,
+                "in_cached_mode": True,
+                "in_current_file": True
             })
 
 
