@@ -116,6 +116,15 @@
             { "key": "selector", "operator": "equal", "operand": "git-savvy.status meta.git-savvy.status.section meta.git-savvy.status.file" }
         ]
     },
+    {
+        "keys": ["e"],
+        "command": "gs_status_diff",
+        "context": [
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.status meta.git-savvy.status.section meta.git-savvy.status.file" }
+        ]
+    },
+
 
     /////////////////////////////
     // STATUS VIEW - ALL FILES //
