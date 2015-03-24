@@ -153,6 +153,11 @@ class GitCommand(StatusMixin,
         view interacts with.  Like `file_path`, this can be overridden by setting
         the view's `git_savvy.repo_path` setting.
         """
+        def invalid_repo():
+            if throw_on_stderr:
+                raise ValueError("Unable to determine Git repo path.")
+            return None
+
         # The below condition will be true if run from a WindowCommand and false
         # from a TextCommand.
         view = self.window.active_view() if hasattr(self, "window") else self.view
@@ -160,19 +165,27 @@ class GitCommand(StatusMixin,
 
         if not repo_path:
             file_path = self.file_path
-            file_dir = os.path.dirname(file_path)
+            file_dir = os.path.dirname(file_path) if file_path else None
             working_dir = file_path and os.path.isdir(file_dir) and file_dir
 
             if not working_dir:
                 window_folders = sublime.active_window().folders()
-                working_dir = window_folders[0] if window_folders else None
+                if not window_folders or not os.path.isdir(window_folders[0]):
+                    return invalid_repo()
+                working_dir = window_folders[0]
+
             stdout = self.git(
                 "rev-parse",
                 "--show-toplevel",
                 working_dir=working_dir,
                 throw_on_stderr=throw_on_stderr
                 )
+
             repo_path = stdout.strip()
+
+            if not repo_path:
+                return invalid_repo()
+
             view.settings().set("git_savvy.repo_path", repo_path)
 
         return repo_path
