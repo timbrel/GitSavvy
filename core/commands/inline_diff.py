@@ -141,10 +141,13 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         self.view.replace(edit, sublime.Region(0, self.view.size()), inline_diff_contents)
 
         if cursors:
-            self.view.sel().clear()
-            pt = self.view.text_point(row, 0)
-            self.view.sel().add(sublime.Region(pt, pt))
-            self.view.show_at_center(pt)
+            if (row, col) == (0, 0) and sublime.load_settings("GitSavvy.sublime-settings").get("inline_diff_auto_scoll", False):
+                self.view.run_command("gs_inline_diff_goto_next_hunk")
+            else:
+                self.view.sel().clear()
+                pt = self.view.text_point(row, 0)
+                self.view.sel().add(sublime.Region(pt, pt))
+                self.view.show_at_center(pt)
 
         self.highlight_regions(replaced_lines)
         self.view.set_read_only(True)
