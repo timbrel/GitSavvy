@@ -355,14 +355,37 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
 
     """
     For every file that is selected or under a cursor, if that file is
-    unstaged, reset the file to HEAD.
+    unstaged, reset the file to HEAD.  If it is untracked, delete it.
     """
 
-    @util.actions.destructive(description="discard a file")
+    @util.actions.destructive(description="discard one or more files")
     def run(self, edit):
-        # Valid selections are in the Unstaged, Untracked, and Conflicts sections.
-        valid_ranges = status_view_section_ranges[self.view.id()][:3]
+        sections = status_view_section_ranges[self.view.id()]
+        self.discard_untracked(sections)
+        self.discard_unstaged(sections)
+        util.view.refresh_gitsavvy(self.view)
+        sublime.status_message("Successfully discarded changes.")
 
+    def discard_untracked(self, sections):
+        valid_ranges = [
+            sections[2]  # Untracked
+        ]
+        lines = util.view.get_lines_from_regions(
+            self.view,
+            self.view.sel(),
+            valid_ranges=valid_ranges
+        )
+        file_paths = tuple(line[4:].strip() for line in lines if line)
+
+        if file_paths:
+            for fpath in file_paths:
+                self.discard_untracked_file(fpath)
+
+    def discard_unstaged(self, sections):
+        valid_ranges = [
+            sections[0],  # Unstaged section
+            sections[1]   # Merge-conflict section
+        ]
         lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
@@ -373,8 +396,6 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
         if file_paths:
             for fpath in file_paths:
                 self.checkout_file(fpath)
-            sublime.status_message("Successfully checked out files from HEAD.")
-            util.view.refresh_gitsavvy(self.view)
 
 
 class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
