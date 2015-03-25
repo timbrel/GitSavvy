@@ -2,6 +2,7 @@
 name: GitSavvy Blame
 scopeName: git-savvy.blame
 uuid: 008e3fa7-8ce6-4c03-8d2a-ad30ea800fe9
+hidden: true
 
 patterns:
 - comment: line

@@ -4,6 +4,8 @@
 <dict>
 	<key>fileTypes</key>
 	<array/>
+	<key>hidden</key>
+	<true/>
 	<key>name</key>
 	<string>GitSavvy Graph</string>
 	<key>patterns</key>
@@ -14,7 +16,7 @@
 			<key>match</key>
 			<string>^([| *\\/]+)</string>
 			<key>name</key>
-			<string>comment</string>
+			<string>comment.git-savvy.graph.graph-line</string>
 		</dict>
 		<dict>
 			<key>comment</key>
@@ -22,7 +24,7 @@
 			<key>match</key>
 			<string>(?:(?&lt;=[\*\|] )|(?&lt;=[\*\|]   ))([0-9a-f]{6,40})</string>
 			<key>name</key>
-			<string>keyword</string>
+			<string>keyword.git-savvy.graph.commit-hash</string>
 		</dict>
 		<dict>
 			<key>comment</key>
@@ -30,7 +32,7 @@
 			<key>match</key>
 			<string>(?&lt;= )(\(.*\))(?= )</string>
 			<key>name</key>
-			<string>constant.other.git-savvy.status.branch-name</string>
+			<string>constant.other.git-savvy.graph.branch-name</string>
 		</dict>
 		<dict>
 			<key>comment</key>
@@ -38,7 +40,7 @@
 			<key>match</key>
 			<string>(?:[Ff]ix(?:e[ds])?|[Rr]esolve[ds]?|[Cc]lose[ds]?)?\s*(?:#\d+|\[.*?\])</string>
 			<key>name</key>
-			<string>string</string>
+			<string>string.other.git-savvy.graph.issue</string>
 		</dict>
 		<dict>
 			<key>captures</key>
@@ -46,20 +48,20 @@
 				<key>1</key>
 				<dict>
 					<key>name</key>
-					<string>string</string>
+					<string>string.other.git-savvy.graph.merge.branch-name</string>
 				</dict>
 				<key>2</key>
 				<dict>
 					<key>name</key>
-					<string>string</string>
+					<string>string.other.git-savvy.graph.merge.remote</string>
 				</dict>
 			</dict>
 			<key>comment</key>
 			<string>merges</string>
 			<key>match</key>
-			<string>Merge branch '(.*?)'(?: (?:of|into) (.*))?</string>
+			<string>Merge branch '(.*?)'(?: (?:of|into) ([^ ]*) .*)?</string>
 			<key>name</key>
-			<string>git-savvy.graph</string>
+			<string>git-savvy.graph.merge</string>
 		</dict>
 	</array>
 	<key>scopeName</key>

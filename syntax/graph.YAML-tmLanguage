@@ -3,7 +3,7 @@ name: GitSavvy Graph
 scopeName: git-savvy.graph
 fileTypes: []
 uuid: 78c65093-02cc-4b52-a743-70eb6824f07b
-
+hidden: true
 
 patterns:
 - comment: graph lines

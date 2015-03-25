@@ -2,6 +2,7 @@
 name: GitSavvy Status
 scopeName: git-savvy.status
 uuid: 56ea09df-2601-4d20-bb8d-b6834db991c4
+hidden: true
 
 patterns:
 - comment: Status summary

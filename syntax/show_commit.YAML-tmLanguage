@@ -2,6 +2,7 @@
 name: GitSavvy Commit
 scopeName: git-savvy.commit
 uuid: 0d4c19fb-b197-4d90-806e-7212e542c86b
+hidden: true
 
 patterns:
 - comment: commit header
