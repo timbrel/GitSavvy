@@ -30,7 +30,7 @@ class ActiveBranchMixin():
         stdout = self.git("status", "-b", "--porcelain").strip()
 
         first_line, *addl_lines = stdout.split("\n", 2)
-        ## Any additional lines will mean files have changed or are untracked.
+        # Any additional lines will mean files have changed or are untracked.
         clean = len(addl_lines) == 0
 
         if first_line.startswith("## HEAD (no branch)"):
