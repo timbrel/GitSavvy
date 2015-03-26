@@ -26,7 +26,7 @@ def parse_remote(remote):
     """
     if remote.endswith(".git"):
         remote = remote[:-4]
-        
+
     if remote.startswith("git@"):
         url = remote.replace(":", "/").replace("git@", "http://")
     elif remote.startswith("http"):
