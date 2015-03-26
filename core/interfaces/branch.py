@@ -27,7 +27,6 @@ class BranchInterface(ui.Interface, GitCommand):
 
     interface_type = "branch"
     read_only = True
-    view_type = "branches"
     syntax_file = "Packages/GitSavvy/syntax/branch.tmLanguage"
     word_wrap = False
 
