@@ -9,16 +9,19 @@ NO_REMOTES_MESSAGE = "You have not configured any remotes."
 START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
 PUSH_TO_BRANCH_NAME_PROMPT = "Enter remote branch name:"
+SET_UPSTREAM_PROMPT = ("You have not set an upstream for the active branch.  "
+                       "Would you like to set one?")
 
 
 class PushBase(GitCommand):
+    set_upstream = False
 
     def do_push(self, remote, branch, force=False):
         """
         Perform `git push remote branch`.
         """
         sublime.status_message(START_PUSH_MESSAGE)
-        self.push(remote, branch)
+        self.push(remote, branch, set_upstream=self.set_upstream)
         sublime.status_message(END_PUSH_MESSAGE)
         util.view.refresh_gitsavvy(self.window.active_view())
 
@@ -30,7 +33,12 @@ class GsPushCommand(WindowCommand, PushBase):
     """
 
     def run(self, force=False):
-        sublime.set_timeout_async(lambda: self.do_push(None, None, force=force))
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        if savvy_settings.get("prompt_for_tracking_branch") and not self.get_upstream_for_active_branch():
+            if sublime.ok_cancel_dialog(SET_UPSTREAM_PROMPT):
+                self.window.run_command("gs_push_to_branch_name", {"set_upstream": True})
+        else:
+            sublime.set_timeout_async(lambda: self.do_push(None, None, force=force))
 
 
 class GsPushToBranchCommand(WindowCommand, PushBase):
@@ -114,7 +122,8 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
     Prompt for remote and remote branch name, then push.
     """
 
-    def run(self):
+    def run(self, set_upstream=False):
+        self.set_upstream = set_upstream
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):

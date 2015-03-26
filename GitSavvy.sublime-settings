@@ -79,6 +79,12 @@
     "show_remotes_in_branch_dashboard": false,
 
     /*
+        When set to `true`, GitSavvy will offer to set the upstream on `git: push`
+        when tracking branch is not configured.
+     */
+     "prompt_for_tracking_branch": true,
+
+    /*
         Update the desired graph arguments for a customized experience.
 
         NOTE: Changes you make may break in-view functionality, so use with caution.
