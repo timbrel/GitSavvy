@@ -76,16 +76,21 @@ class ActiveBranchMixin():
         if remote:
             output += " tracking `{}`".format(remote)
 
-        if ahead and behind:
-            output += ". You're ahead by {} and behind by {}".format(ahead, behind)
-        elif ahead:
-            output += ". You're ahead by {}".format(ahead)
-        elif behind:
-            output += ". You're behind by {}".format(behind)
-
         output += "."
 
-        return output
+        secondary = ""
+        if ahead and behind:
+            secondary += "You're ahead by {} and behind by {}.".format(ahead, behind)
+        elif ahead:
+            secondary += "You're ahead by {}.".format(ahead)
+        elif behind:
+            secondary += "You're behind by {}.".format(behind)
+
+        if secondary != "":
+            return (output, secondary)
+        else:
+            return (output,)
+
 
     def get_branch_status_short(self):
         detached, initial, branch, remote, clean, ahead, behind = \
