@@ -91,7 +91,7 @@ class Interface():
 
         return self.view
 
-    def render(self, nuke_cursors=True):
+    def render(self, nuke_cursors=False):
         self.clear_regions()
         if hasattr(self, "pre_render"):
             self.pre_render()
@@ -188,17 +188,23 @@ def partial(key):
 class GsNewContentAndRegionsCommand(TextCommand):
 
     def run(self, edit, content, regions, nuke_cursors=False):
-        cursors_num = len(self.view.sel())
+        selections = self.view.sel()
+
+        if selections and not nuke_cursors:
+            cursors_row_col = [self.view.rowcol(cursor.a) for cursor in selections]
+        else:
+            cursors_row_col = [(0, 0)]
+
+        selections.clear()
+
         is_read_only = self.view.is_read_only()
         self.view.set_read_only(False)
         self.view.replace(edit, sublime.Region(0, self.view.size()), content)
         self.view.set_read_only(is_read_only)
 
-        if not cursors_num or nuke_cursors:
-            selections = self.view.sel()
-            selections.clear()
-            pt = sublime.Region(0, 0)
-            selections.add(pt)
+        for row, col in cursors_row_col:
+            pt = self.view.text_point(row, col)
+            selections.add(sublime.Region(pt, pt))
 
         for key, region_range in regions.items():
             a, b = region_range
