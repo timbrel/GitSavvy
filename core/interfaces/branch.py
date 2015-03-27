@@ -564,7 +564,7 @@ class GsBranchesToggleRemotesCommand(TextCommand, GitCommand):
     def run(self, edit):
         interface = ui.get_interface(self.view.id())
         interface.show_remotes = not interface.show_remotes
-        interface.render()
+        interface.render(False)
 
 
 class GsBranchesFetchCommand(TextCommand, GitCommand):

@@ -190,15 +190,22 @@ class GsNewContentAndRegionsCommand(TextCommand):
     def run(self, edit, content, regions, nuke_cursors=False):
         cursors_num = len(self.view.sel())
         is_read_only = self.view.is_read_only()
+        old_view_size = self.view.size()
         self.view.set_read_only(False)
+        if cursors_num > 0 and not nuke_cursors:
+            before_cursor = self.view.sel()[0]
         self.view.replace(edit, sublime.Region(0, self.view.size()), content)
         self.view.set_read_only(is_read_only)
 
-        if not cursors_num or nuke_cursors:
+        if cursors_num == 0 or nuke_cursors:
             selections = self.view.sel()
             selections.clear()
             pt = sublime.Region(0, 0)
             selections.add(pt)
+        elif old_view_size != len(content):
+            selections = self.view.sel()
+            selections.clear()
+            selections.add(before_cursor)
 
         for key, region_range in regions.items():
             a, b = region_range
