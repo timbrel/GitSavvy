@@ -147,6 +147,13 @@ class GitCommand(StatusMixin,
     def repo_path(self):
         return self._repo_path()
 
+    @property
+    def short_repo_path(self):
+        if "HOME" in os.environ:
+            return self.repo_path.replace(os.environ["HOME"], "~")
+        else:
+            return self.repo_path
+
     def _repo_path(self, throw_on_stderr=True):
         """
         Return the absolute path to the git repo that contains the file that this

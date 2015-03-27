@@ -76,7 +76,7 @@ class BranchInterface(ui.Interface, GitCommand):
 
     @ui.partial("git_root")
     def render_git_root(self):
-        return self.repo_path
+        return self.short_repo_path
 
     @ui.partial("head")
     def render_head(self):

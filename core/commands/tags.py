@@ -107,7 +107,7 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
         """
         header = VIEW_HEADER_TEMPLATE.format(
             branch_status=self.get_branch_status(),
-            repo_root=self.repo_path,
+            repo_root=self.short_repo_path,
             current_head=self.get_latest_commit_msg_for_head()
         )
 
