@@ -165,6 +165,9 @@ class Interface():
             self.view.erase_regions(key)
         self.regions = {}
 
+    def get_view_regions(self, key):
+        return self.view.get_regions("git_savvy_interface." + key)
+
     def get_selection_line(self):
         selections = self.view.sel()
         if not selections or len(selections) > 1:

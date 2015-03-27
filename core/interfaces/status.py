@@ -6,85 +6,12 @@ from shutil import rmtree
 from functools import partial
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand, EventListener
+from sublime_plugin import WindowCommand, TextCommand
 
+from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
-
-STATUS_TITLE = "STATUS: {}"
-
-STAGED_TEMPLATE = """
-  STAGED:
-{}
-"""
-
-UNSTAGED_TEMPLATE = """
-  UNSTAGED:
-{}
-"""
-
-UNTRACKED_TEMPLATE = """
-  UNTRACKED:
-{}
-"""
-
-MERGE_CONFLICTS_TEMPLATE = """
-  MERGE CONFLICTS:
-{}
-"""
-
-STASHES_TEMPLATE = """
-  STASHES:
-{}
-"""
-
-STATUS_HEADER_TEMPLATE = """
-  BRANCH:  {branch_status}
-  ROOT:    {repo_root}
-  HEAD:    {current_head}
-"""
-
-NO_STATUS_MESSAGE = """
-  Your working directory is clean.
-"""
-
-KEY_BINDINGS_MENU = """
-  ###################                   ###############
-  ## SELECTED FILE ##                   ## ALL FILES ##
-  ###################                   ###############
-
-  [o] open file                         [a] stage all unstaged files
-  [s] stage file                        [A] stage all unstaged and untracked files
-  [u] unstage file                      [U] unstage all staged files
-  [d] discard changes to file           [D] discard all unstaged changes
-  [h] open file on remote
-  [M] launch external merge tool for conflict
-
-  [l] diff file inline                  [f] diff all files
-                                        [F] diff all cached files
-
-  #############                         #############
-  ## ACTIONS ##                         ## STASHES ##
-  #############                         #############
-
-  [c] commit                            [t][a] apply stash
-  [C] commit, including unstaged        [t][p] pop stash
-  [m] amend previous commit             [t][s] show stash
-                                        [t][c] create stash
-  [i] ignore file                       [t][u] create stash including untracked files
-  [I] ignore pattern                    [t][d] discard stash
-
-  ###########
-  ## OTHER ##
-  ###########
-
-  [r] refresh status
-
--
-"""
-
-status_view_section_ranges = {}
 
 
 class GsShowStatusCommand(WindowCommand, GitCommand):
@@ -94,104 +21,102 @@ class GsShowStatusCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
-        repo_path = self.repo_path
-        title = STATUS_TITLE.format(os.path.basename(repo_path))
-        status_view = util.view.get_read_only_view(self, "status")
-        util.view.disable_other_plugins(status_view)
-        status_view.set_name(title)
-        status_view.set_syntax_file("Packages/GitSavvy/syntax/status.tmLanguage")
-        status_view.settings().set("git_savvy.repo_path", repo_path)
-        status_view.settings().set("word_wrap", False)
-        self.window.focus_view(status_view)
-        status_view.sel().clear()
-
-        status_view.run_command("gs_status_refresh")
+        StatusInterface(repo_path=self.repo_path)
 
 
-class GsStatusRefreshCommand(TextCommand, GitCommand):
+class StatusInterface(ui.Interface, GitCommand):
 
     """
-    Get the current state of the git repo and display file status
-    and command menu to the user.
+    Status dashboard.
     """
 
-    def run(self, edit):
-        sublime.set_timeout_async(self.run_async)
+    interface_type = "status"
+    read_only = True
+    syntax_file = "Packages/GitSavvy/syntax/status.tmLanguage"
+    word_wrap = False
 
-    def run_async(self):
-        status_contents, ranges = self.get_contents()
-        status_view_section_ranges[self.view.id()] = ranges
-        self.view.run_command("gs_replace_view_text", {"text": status_contents})
+    dedent = 4
+    skip_first_line = True
 
-    def get_contents(self):
-        """
-        Build string to use as contents of status view.  Includes branch
-        information in the header, per-file information, and a key-bindings
-        menu at the bottom.
-        """
-        header = STATUS_HEADER_TEMPLATE.format(
-            branch_status=self.get_branch_status(),
-            repo_root=self.repo_path,
-            current_head=self.get_latest_commit_msg_for_head()
-        )
+    template = """
 
-        cursor = len(header)
-        staged, unstaged, untracked, conflicts = self.sort_status_entries(self.get_status())
-        unstaged_region, conflicts_region, untracked_region, staged_region = (sublime.Region(0, 0), ) * 4
+      BRANCH:  {branch_status}
+      ROOT:    {git_root}
+      HEAD:    {head}
 
-        def get_region(new_text):
-            nonlocal cursor
-            start = cursor
-            cursor += len(new_text)
-            end = cursor
-            return sublime.Region(start, end)
+    {< staged_files}
+    {< unstaged_files}
+    {< untracked_files}
+    {< merge_conflicts}
+    {< no_status_message}
+    {< stashes}
+      ###################                   ###############
+      ## SELECTED FILE ##                   ## ALL FILES ##
+      ###################                   ###############
 
-        status_text = ""
+      [o] open file                         [a] stage all unstaged files
+      [s] stage file                        [A] stage all unstaged and untracked files
+      [u] unstage file                      [U] unstage all staged files
+      [d] discard changes to file           [D] discard all unstaged changes
+      [h] open file on remote
+      [M] launch external merge tool for conflict
 
-        if unstaged:
-            unstaged_lines = "\n".join(
-                "  {} {}".format("-" if f.working_status == "D" else " ", f.path)
-                for f in unstaged
-                )
-            unstaged_text = UNSTAGED_TEMPLATE.format(unstaged_lines)
-            unstaged_region = get_region(unstaged_text)
-            status_text += unstaged_text
-        if conflicts:
-            conflicts_lines = "\n".join("    " + f.path for f in conflicts)
-            conflicts_text = MERGE_CONFLICTS_TEMPLATE.format(conflicts_lines)
-            conflicts_region = get_region(conflicts_text)
-            status_text += conflicts_text
-        if untracked:
-            untracked_lines = "\n".join("    " + f.path for f in untracked)
-            untracked_text = UNTRACKED_TEMPLATE.format(untracked_lines)
-            untracked_region = get_region(untracked_text)
-            status_text += untracked_text
-        if staged:
-            staged_lines = "\n".join(
-                "  {} {}".format("-" if f.index_status == "D" else " ", f.path)
-                for f in staged
-                )
-            staged_text = STAGED_TEMPLATE.format(staged_lines)
-            staged_region = get_region(staged_text)
-            status_text += staged_text
+      [l] diff file inline                  [f] diff all files
+                                            [F] diff all cached files
 
-        status_text = status_text or NO_STATUS_MESSAGE
+      #############                         #############
+      ## ACTIONS ##                         ## STASHES ##
+      #############                         #############
 
-        contents = header + status_text + self.get_stashes_contents() + KEY_BINDINGS_MENU
+      [c] commit                            [t][a] apply stash
+      [C] commit, including unstaged        [t][p] pop stash
+      [m] amend previous commit             [t][s] show stash
+                                            [t][c] create stash
+      [i] ignore file                       [t][u] create stash including untracked files
+      [I] ignore pattern                    [t][d] discard stash
 
-        return contents, (unstaged_region, conflicts_region, untracked_region, staged_region)
+      ###########
+      ## OTHER ##
+      ###########
 
-    def get_stashes_contents(self):
-        """
-        Get a list of stashes to display to the user.
-        """
-        stash_list = self.get_stashes()
-        if not stash_list:
-            return ""
+      [r] refresh status
 
-        stash_lines = ("    ({}) {}".format(stash.id, stash.description) for stash in stash_list)
+    -
+    """
 
-        return STASHES_TEMPLATE.format("\n".join(stash_lines))
+    template_staged = """
+      STAGED:
+    {}
+    """
+
+    template_unstaged = """
+      UNSTAGED:
+    {}
+    """
+
+    template_untracked = """
+      UNTRACKED:
+    {}
+    """
+
+    template_merge_conflicts = """
+      MERGE CONFLICTS:
+    {}
+    """
+
+    template_stashes = """
+      STASHES:
+    {}
+    """
+
+    def title(self):
+        return "STATUS: {}".format(os.path.basename(self.repo_path))
+
+    def pre_render(self):
+        (self.staged_entries,
+         self.unstaged_entries,
+         self.untracked_entries,
+         self.conflict_entries) = self.sort_status_entries(self.get_status())
 
     @staticmethod
     def sort_status_entries(file_status_list):
@@ -214,17 +139,70 @@ class GsStatusRefreshCommand(TextCommand, GitCommand):
 
         return staged, unstaged, untracked, conflicts
 
+    @ui.partial("branch_status")
+    def render_branch_status(self):
+        return self.get_branch_status()
 
-class GsStatusFocusEventListener(EventListener):
+    @ui.partial("git_root")
+    def render_git_root(self):
+        return self.repo_path
 
-    """
-    If the current view is a status view, refresh the view with
-    latest repo status when the view regains focus.
-    """
+    @ui.partial("head")
+    def render_head(self):
+        return self.get_latest_commit_msg_for_head()
 
-    def on_activated(self, view):
-        if view.settings().get("git_savvy.status_view") == True:
-            view.run_command("gs_status_refresh")
+    @ui.partial("staged_files")
+    def render_staged_files(self):
+        if not self.staged_entries:
+            return ""
+        return self.template_staged.format("\n".join(
+            "  {} {}".format("-" if f.index_status == "D" else " ", f.path)
+            for f in self.staged_entries
+            ))
+
+    @ui.partial("unstaged_files")
+    def render_unstaged_files(self):
+        if not self.unstaged_entries:
+            return ""
+        return self.template_unstaged.format("\n".join(
+            "  {} {}".format("-" if f.working_status == "D" else " ", f.path)
+            for f in self.unstaged_entries
+            ))
+
+    @ui.partial("untracked_files")
+    def render_untracked_files(self):
+        if not self.untracked_entries:
+            return ""
+        return self.template_untracked.format(
+            "\n".join("    " + f.path for f in self.untracked_entries))
+
+    @ui.partial("merge_conflicts")
+    def render_merge_conflicts(self):
+        if not self.conflict_entries:
+            return ""
+        return self.template_merge_conflicts.format(
+            "\n".join("    " + f.path for f in self.conflict_entries))
+
+    @ui.partial("no_status_message")
+    def render_no_status_message(self):
+        return ("\n    Your working directory is clean.\n"
+                if not (self.staged_entries or
+                        self.unstaged_entries or
+                        self.untracked_entries or
+                        self.conflict_entries)
+                else "")
+
+    @ui.partial("stashes")
+    def render_stashes(self):
+        stash_list = self.get_stashes()
+        if not stash_list:
+            return ""
+
+        return self.template_stashes.format("\n".join(
+            "    ({}) {}".format(stash.id, stash.description) for stash in stash_list))
+
+
+ui.register_listeners(StatusInterface)
 
 
 class GsStatusOpenFileCommand(TextCommand, GitCommand):
@@ -250,8 +228,11 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        # Unstaged, Untracked, and Conflicts
-        non_cached_sections = status_view_section_ranges[self.view.id()][:3]
+        interface = ui.get_interface(self.view.id())
+
+        non_cached_sections = (interface.get_view_regions("unstaged_files") +
+                               interface.get_view_regions("untracked_files") +
+                               interface.get_view_regions("merge_conflicts"))
         non_cached_lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
@@ -262,8 +243,7 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
             for line in non_cached_lines
             if line[:4] == "    ")
 
-        # Staged
-        cached_sections = status_view_section_ranges[self.view.id()][3:]
+        cached_sections = interface.get_view_regions("staged_files")
         cached_lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
@@ -308,8 +288,10 @@ class GsStatusStageFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        # Valid selections are in the Unstaged, Untracked, and Conflicts sections.
-        valid_ranges = status_view_section_ranges[self.view.id()][:3]
+        interface = ui.get_interface(self.view.id())
+        valid_ranges = (interface.get_view_regions("unstaged_files") +
+                        interface.get_view_regions("untracked_files") +
+                        interface.get_view_regions("merge_conflicts"))
 
         lines = util.view.get_lines_from_regions(
             self.view,
@@ -334,8 +316,8 @@ class GsStatusUnstageFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        # Valid selections are only in the Staged section.
-        valid_ranges = (status_view_section_ranges[self.view.id()][3], )
+        interface = ui.get_interface(self.view.id())
+        valid_ranges = interface.get_view_regions("staged_files")
         lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
@@ -360,16 +342,14 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
 
     @util.actions.destructive(description="discard one or more files")
     def run(self, edit):
-        sections = status_view_section_ranges[self.view.id()]
-        self.discard_untracked(sections)
-        self.discard_unstaged(sections)
+        interface = ui.get_interface(self.view.id())
+        self.discard_untracked(interface)
+        self.discard_unstaged(interface)
         util.view.refresh_gitsavvy(self.view)
         sublime.status_message("Successfully discarded changes.")
 
-    def discard_untracked(self, sections):
-        valid_ranges = [
-            sections[2]  # Untracked
-        ]
+    def discard_untracked(self, interface):
+        valid_ranges = interface.get_view_regions("untracked_files")
         lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
@@ -381,11 +361,9 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
             for fpath in file_paths:
                 self.discard_untracked_file(fpath)
 
-    def discard_unstaged(self, sections):
-        valid_ranges = [
-            sections[0],  # Unstaged section
-            sections[1]   # Merge-conflict section
-        ]
+    def discard_unstaged(self, interface):
+        valid_ranges = (interface.get_view_regions("unstaged_files") +
+                        interface.get_view_regions("merge_conflicts"))
         lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
@@ -406,10 +384,16 @@ class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        interface = ui.get_interface(self.view.id())
+        valid_ranges = (interface.get_view_regions("unstaged_files") +
+                        interface.get_view_regions("untracked_files") +
+                        interface.get_view_regions("merge_conflicts") +
+                        interface.get_view_regions("staged_files"))
+
         lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
-            valid_ranges=status_view_section_ranges[self.view.id()]
+            valid_ranges=valid_ranges
         )
         file_paths = tuple(line[4:].strip() for line in lines if line)
 
@@ -509,11 +493,15 @@ class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        # Valid selections are only in the Staged section.
+        interface = ui.get_interface(self.view.id())
+        valid_ranges = (interface.get_view_regions("unstaged_files") +
+                        interface.get_view_regions("untracked_files") +
+                        interface.get_view_regions("merge_conflicts") +
+                        interface.get_view_regions("staged_files"))
         lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
-            valid_ranges=status_view_section_ranges[self.view.id()]
+            valid_ranges=valid_ranges
         )
         file_paths = tuple(line[4:].strip() for line in lines if line)
 
@@ -533,10 +521,15 @@ class GsStatusIgnorePatternCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        interface = ui.get_interface(self.view.id())
+        valid_ranges = (interface.get_view_regions("unstaged_files") +
+                        interface.get_view_regions("untracked_files") +
+                        interface.get_view_regions("merge_conflicts") +
+                        interface.get_view_regions("staged_files"))
         lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
-            valid_ranges=status_view_section_ranges[self.view.id()]
+            valid_ranges=valid_ranges
         )
         file_paths = tuple(line[4:].strip() for line in lines if line)
 
@@ -551,9 +544,11 @@ class GsStatusApplyStashCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        interface = ui.get_interface(self.view.id())
         lines = util.view.get_lines_from_regions(
             self.view,
-            self.view.sel()
+            self.view.sel(),
+            valid_ranges=interface.get_view_regions("stashes")
         )
         ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
 
@@ -572,9 +567,11 @@ class GsStatusPopStashCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        interface = ui.get_interface(self.view.id())
         lines = util.view.get_lines_from_regions(
             self.view,
-            self.view.sel()
+            self.view.sel(),
+            valid_ranges=interface.get_view_regions("stashes")
         )
         ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
 
@@ -594,9 +591,11 @@ class GsStatusShowStashCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        interface = ui.get_interface(self.view.id())
         lines = util.view.get_lines_from_regions(
             self.view,
-            self.view.sel()
+            self.view.sel(),
+            valid_ranges=interface.get_view_regions("stashes")
         )
         ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
 
@@ -659,9 +658,11 @@ class GsStatusDiscardStashCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        interface = ui.get_interface(self.view.id())
         lines = util.view.get_lines_from_regions(
             self.view,
-            self.view.sel()
+            self.view.sel(),
+            valid_ranges=interface.get_view_regions("stashes")
         )
         ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
 
@@ -680,10 +681,15 @@ class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        interface = ui.get_interface(self.view.id())
+        valid_ranges = (interface.get_view_regions("unstaged_files") +
+                        interface.get_view_regions("untracked_files") +
+                        interface.get_view_regions("merge_conflicts") +
+                        interface.get_view_regions("staged_files"))
         lines = util.view.get_lines_from_regions(
             self.view,
             self.view.sel(),
-            valid_ranges=status_view_section_ranges[self.view.id()]
+            valid_ranges=valid_ranges
         )
         file_paths = tuple(line[4:].strip() for line in lines if line)
 
