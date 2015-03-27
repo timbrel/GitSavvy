@@ -39,6 +39,10 @@
         "args": { "amend": true }
     },
     {
+        "caption": "git: open an issue in browser",
+        "command": "gs_open_github_issue"
+    },
+    {
         "caption": "git: graph",
         "command": "gs_log_graph"
     },
