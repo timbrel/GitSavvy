@@ -115,10 +115,6 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
             throw_on_stderr = False
         )
 
-        # detect trying to do a commit with nothing staged
-        if dryrun.find('no changes added') != -1:
-            sublime.error_message(NO_STAGED_FILES)
-
         commented_lines = ("# " + line for line in dryrun.strip().split("\n"))
 
         filtered_lines = []
