@@ -162,7 +162,7 @@ class Interface():
 
     def clear_regions(self):
         for key in self.regions.keys():
-            self.view.erase_regions(key)
+            self.view.erase_regions("git_savvy_interface." + key)
         self.regions = {}
 
     def get_view_regions(self, key):

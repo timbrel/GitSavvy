@@ -231,7 +231,6 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
         interface = ui.get_interface(self.view.id())
 
         non_cached_sections = (interface.get_view_regions("unstaged_files") +
-                               interface.get_view_regions("untracked_files") +
                                interface.get_view_regions("merge_conflicts"))
         non_cached_lines = util.view.get_lines_from_regions(
             self.view,
