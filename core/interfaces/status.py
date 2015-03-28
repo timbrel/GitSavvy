@@ -35,10 +35,7 @@ class StatusInterface(ui.Interface, GitCommand):
     syntax_file = "Packages/GitSavvy/syntax/status.tmLanguage"
     word_wrap = False
 
-    dedent = 4
-    skip_first_line = True
-
-    template = """
+    template = """\
 
       BRANCH:  {branch_status}
       ROOT:    {git_root}

@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from textwrap import dedent
 import re
 
 import sublime
@@ -17,9 +18,6 @@ class Interface():
     read_only = True
     syntax_file = ""
     word_wrap = False
-
-    dedent = 0
-    skip_first_line = False
 
     regions = {}
     template = ""
@@ -54,15 +52,9 @@ class Interface():
             if callable(attr) and hasattr(attr, "key")
             }
 
-        if self.skip_first_line:
-            self.template = self.template[self.template.find("\n") + 1:]
-        if self.dedent:
-            for attr in vars(self.__class__).keys():
-                if attr.startswith("template"):
-                    setattr(self, attr, "\n".join(
-                        line[self.dedent:] if len(line) >= self.dedent else line
-                        for line in getattr(self, attr).split("\n")
-                        ))
+        for attr in vars(self.__class__).keys():
+            if attr.startswith("template"):
+                setattr(self, attr, dedent(getattr(self, attr)))
 
         if view:
             self.view = view
