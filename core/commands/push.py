@@ -21,7 +21,7 @@ class PushBase(GitCommand):
         Perform `git push remote branch`.
         """
         sublime.status_message(START_PUSH_MESSAGE)
-        self.push(remote, branch, set_upstream=self.set_upstream)
+        self.push(remote, branch, set_upstream=self.set_upstream, force=force)
         sublime.status_message(END_PUSH_MESSAGE)
         util.view.refresh_gitsavvy(self.window.active_view())
 

@@ -28,7 +28,7 @@ class GsShowGithubIssuesCommand(TextCommand, GitCommand):
         if not default_repo:
             first_cursor = self.view.sel()[0].begin()
             text_before_cursor = self.view.substr(sublime.Region(0, first_cursor))
-            nondefault_repo = re.search(r"([a-zA-Z\-_0-9\.]+)/([a-zA-Z\-_0-9\.]+)$", text_before_cursor).groups()
+            nondefault_repo = re.search(r"([a-zA-Z\-_0-9\.]+)/([a-zA-Z\-_0-9\.]+)#$", text_before_cursor).groups()
         else:
             nondefault_repo = None
 

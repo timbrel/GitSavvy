@@ -5,3 +5,4 @@ from . import file
 from . import log
 from . import actions
 from . import debug
+from . import diff_string
