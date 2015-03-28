@@ -52,6 +52,7 @@ class GsOpenGithubIssue(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin
         for issue in issues:
             title = issue["title"]
             time = datetime.strptime(issue["created_at"], '%Y-%m-%dT%H:%M:%SZ')
+            time = util.dates.utc_to_local(time)
             details = "#{} opened {} by {}".format(
                 issue["number"],
                 util.dates.fuzzy(time),
