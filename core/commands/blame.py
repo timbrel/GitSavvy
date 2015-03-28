@@ -182,7 +182,7 @@ class GsBlameOpenCommitCommand(TextCommand):
 
     @util.view.single_cursor_pt
     def run(self, cursor_pt, edit):
-        hunk_start = util.view.get_instance_before_pt(self.view, cursor_pt, r"^\-+ | \-+")
+        hunk_start = util.view.get_instance_before_pt(self.view, cursor_pt, r"^\-+ \| \-+")
         if hunk_start is None:
             short_hash_row = 1
         else:
