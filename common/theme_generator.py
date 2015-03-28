@@ -66,7 +66,7 @@ class ThemeGenerator():
 
         path_in_packages = os.path.join("User",
                                         "GitSavvy",
-                                        "GitSavvy.{}.thTheme".format(name))
+                                        "GitSavvy.{}.tmTheme".format(name))
 
         full_path = os.path.join(sublime.packages_path(), path_in_packages)
 

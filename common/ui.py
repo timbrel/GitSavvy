@@ -1,7 +1,9 @@
 from collections import OrderedDict
+from textwrap import dedent
+import re
 
 import sublime
-from sublime_plugin import TextCommand, EventListener
+from sublime_plugin import TextCommand
 
 from . import util
 
@@ -17,10 +19,7 @@ class Interface():
     syntax_file = ""
     word_wrap = False
 
-    dedent = 0
-    skip_first_line = False
-
-    regions = []
+    regions = {}
     template = ""
 
     _initialized = False
@@ -53,15 +52,9 @@ class Interface():
             if callable(attr) and hasattr(attr, "key")
             }
 
-        if self.skip_first_line:
-            self.template = self.template[self.template.find("\n") + 1:]
-        if self.dedent:
-            for attr in vars(self.__class__).keys():
-                if attr.startswith("template"):
-                    setattr(self, attr, "\n".join(
-                        line[self.dedent:] if len(line) >= self.dedent else line
-                        for line in getattr(self, attr).split("\n")
-                        ))
+        for attr in vars(self.__class__).keys():
+            if attr.startswith("template"):
+                setattr(self, attr, dedent(getattr(self, attr)))
 
         if view:
             self.view = view
@@ -90,27 +83,32 @@ class Interface():
 
         return self.view
 
-    def render(self, nuke_cursors=True):
-        if self.regions:
-            self.clear_regions()
+    def render(self, nuke_cursors=False):
+        self.clear_regions()
         if hasattr(self, "pre_render"):
             self.pre_render()
 
         rendered = self.template
 
-        self.regions = []
         keyed_content = self.get_keyed_content()
         for key, new_content in keyed_content.items():
-            interpol = "{" + key + "}"
-            interpol_len = len(interpol)
-            cursor = 0
-            match = rendered.find(interpol)
-            while match >= 0:
-                self.adjust(self.regions, match, interpol_len, len(new_content))
-                self.regions.append((key, [match, match+len(new_content)]))
-                rendered = rendered[:match] + new_content + rendered[match+interpol_len:]
+            new_content_len = len(new_content)
+            pattern = re.compile(r"\{(<+ )?" + key + r"\}")
 
-                match = rendered.find(interpol, cursor)
+            match = pattern.search(rendered)
+            while match:
+                start, end = match.span()
+                backspace_group = match.groups()[0]
+                backspaces = backspace_group.count("<") if backspace_group else 0
+                start -= backspaces
+
+                rendered = rendered[:start] + new_content + rendered[end:]
+
+                self.adjust(start, end - start, new_content_len)
+                if new_content_len:
+                    self.regions[key] = [start, start+new_content_len]
+
+                match = pattern.search(rendered)
 
         self.view.run_command("gs_new_content_and_regions", {
             "content": rendered,
@@ -118,17 +116,18 @@ class Interface():
             "nuke_cursors": nuke_cursors
             })
 
-    @staticmethod
-    def adjust(regions, idx, orig_len, new_len):
+    def adjust(self, idx, orig_len, new_len):
         """
         When interpolating template variables, update region ranges for previously-evaluated
-        variables, but which occur later on in the output/template string.
+        variables, that are situated later on in the output/template string.
         """
-        diff = new_len - orig_len
-        for region in regions:
-            if region[1][0] > idx:
-                region[1][0] += diff
-                region[1][1] += diff
+        shift = new_len - orig_len
+        for key, region in self.regions.items():
+            if region[0] > idx:
+                region[0] += shift
+                region[1] += shift
+            elif region[1] > idx or region[0] == idx:
+                region[1] += shift
 
     def get_keyed_content(self):
         keyed_content = OrderedDict(
@@ -154,8 +153,12 @@ class Interface():
             })
 
     def clear_regions(self):
-        for key, region_range in self.regions:
-            self.view.erase_regions(key)
+        for key in self.regions.keys():
+            self.view.erase_regions("git_savvy_interface." + key)
+        self.regions = {}
+
+    def get_view_regions(self, key):
+        return self.view.get_regions("git_savvy_interface." + key)
 
     def get_selection_line(self):
         selections = self.view.sel()
@@ -177,19 +180,25 @@ def partial(key):
 class GsNewContentAndRegionsCommand(TextCommand):
 
     def run(self, edit, content, regions, nuke_cursors=False):
-        cursors_num = len(self.view.sel())
+        selections = self.view.sel()
+
+        if selections and not nuke_cursors:
+            cursors_row_col = [self.view.rowcol(cursor.a) for cursor in selections]
+        else:
+            cursors_row_col = [(0, 0)]
+
+        selections.clear()
+
         is_read_only = self.view.is_read_only()
         self.view.set_read_only(False)
         self.view.replace(edit, sublime.Region(0, self.view.size()), content)
         self.view.set_read_only(is_read_only)
 
-        if not cursors_num or nuke_cursors:
-            selections = self.view.sel()
-            selections.clear()
-            pt = sublime.Region(0, 0)
-            selections.add(pt)
+        for row, col in cursors_row_col:
+            pt = self.view.text_point(row, col)
+            selections.add(sublime.Region(pt, pt))
 
-        for key, region_range in regions:
+        for key, region_range in regions.items():
             a, b = region_range
             self.view.add_regions("git_savvy_interface." + key, [sublime.Region(a, b)])
 

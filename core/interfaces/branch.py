@@ -30,11 +30,9 @@ class BranchInterface(ui.Interface, GitCommand):
     syntax_file = "Packages/GitSavvy/syntax/branch.tmLanguage"
     word_wrap = False
 
-    dedent = 4
-    skip_first_line = True
     show_remotes = None
 
-    template = """
+    template = """\
 
       BRANCH:  {branch_status}
       ROOT:    {git_root}
