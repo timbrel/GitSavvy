@@ -47,7 +47,7 @@ class GsCommitCommand(WindowCommand, GitCommand):
         view.settings().set("git_savvy.repo_path", repo_path)
 
         gitsavvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        if gitsavvy_settings.get("use_syntax_for_commit_editmsg")
+        if gitsavvy_settings.get("use_syntax_for_commit_editmsg"):
             syntax_file = util.file.get_syntax_for_file("COMMIT_EDITMSG")
             view.set_syntax_file(syntax_file)
         else:
