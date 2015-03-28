@@ -9,9 +9,10 @@ from sublime_plugin import TextCommand
 
 from ...core.git_command import GitCommand
 from .. import github
+from .. import git_mixins
 
 
-class GsShowGithubIssuesCommand(TextCommand, GitCommand):
+class GsShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
 
     """
     Display a panel of GitHub issues to either:
@@ -35,8 +36,7 @@ class GsShowGithubIssuesCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(lambda: self.run_async(nondefault_repo))
 
     def run_async(self, nondefault_repo):
-        default_remote_name, default_remote = self.get_remotes().popitem(last=False)
-        remote = github.parse_remote(default_remote)
+        remote = github.parse_remote(self.get_integrated_remote_url())
 
         if nondefault_repo:
             owner, repo_name = nondefault_repo

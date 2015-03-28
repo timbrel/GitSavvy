@@ -48,6 +48,10 @@
         "args": { "preselect": true }
     },
     {
+        "caption": "github: set remote for integration",
+        "command": "gs_configure_github_remote"
+    },
+    {
         "caption": "git: checkout",
         "command": "gs_checkout_branch"
     },
