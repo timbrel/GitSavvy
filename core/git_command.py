@@ -31,6 +31,19 @@ class GitSavvyError(Exception):
     pass
 
 
+class IsolatedGitCommand(GitCommand):
+    """
+    Allow accessing GitCommand outside the scope of a WindowCommand or
+    TextCommand.  You must manually pass in a valid repository path.
+    """
+    def __init__(self, repo_path=None):
+        self._repo_path = repo_path
+
+    @property
+    def repo_path(self):
+        return self._repo_path
+
+
 class GitCommand(StatusMixin,
                  ActiveBranchMixin,
                  BranchesMixin,

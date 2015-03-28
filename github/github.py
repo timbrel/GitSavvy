@@ -10,6 +10,7 @@ from functools import partial
 import sublime
 
 from ..common import interwebs
+from ..core.git_command import IsolatedGitCommand
 
 GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo", "token"))
 
@@ -41,11 +42,23 @@ def parse_remote(remote):
 
     fqdn, owner, repo = match.groups()
 
+    token = get_github_token()
+
+    return GitHubRepo(url, fqdn, owner, repo, token)
+
+
+def get_github_token():
     savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
     api_tokens = savvy_settings.get("api_tokens")
     token = api_tokens and api_tokens.get(fqdn, None) or None
 
-    return GitHubRepo(url, fqdn, owner, repo, token)
+    # attempt to find token from git config settings
+    if not token:
+        folder = sublime.active_window().folders()[0]
+        gc = IsolatedGitCommand(repo_path=folder)
+        token = gc.git("config", "--get", "github.token").strip() or None
+
+    return token
 
 
 def open_file_in_browser(rel_path, remote, commit_hash, start_line=None, end_line=None):
