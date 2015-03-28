@@ -130,7 +130,7 @@ class GsStatusRefreshCommand(TextCommand, GitCommand):
         menu at the bottom.
         """
         header = STATUS_HEADER_TEMPLATE.format(
-            branch_status="\n           ".join(self.get_branch_status()),
+            branch_status=self.get_branch_status(delim="\n           "),
             repo_root=self.repo_path,
             current_head=self.get_latest_commit_msg_for_head()
         )
