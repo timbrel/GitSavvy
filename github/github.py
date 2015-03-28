@@ -80,6 +80,11 @@ def get_api_fqdn(github_repo):
 
 
 def query_github(api_url_template, github_repo):
+    resp = raw_query_github(api_url_template, github_repo)
+    return resp.payload
+
+
+def raw_query_github(api_url_template, github_repo):
     """
     Takes a URL template that takes `owner` and `repo` template variables
     and as a GitHub repo object.  Do a GET for the provided URL and return
@@ -98,7 +103,15 @@ def query_github(api_url_template, github_repo):
     if response.status < 200 or response.status > 299 or not response.is_json:
         raise FailedGithubRequest(response.payload)
 
-    return response.payload
+    return response
+
+
+def paged_get_issues(remote, page=1):
+    url = "/repos/{owner}/{repo}/issues?page=" + str(page)
+    # raw query is necessary because our view needs the headers to know
+    # the max page for paging
+    return raw_query_github(url, remote)
+
 
 get_issues = partial(query_github, "/repos/{owner}/{repo}/issues")
 get_contributors = partial(query_github, "/repos/{owner}/{repo}/contributors")
