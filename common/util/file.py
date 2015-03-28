@@ -25,7 +25,8 @@ def get_syntax_for_file(filename):
     extension = get_file_extension(filename)
     try:
         # Return last syntax file applicable to this extension.
-        return syntax_file_map[extension][-1]
+        syntaxes = syntax_file_map[filename] or syntax_file_map[extension]
+        return syntaxes[-1]
     except KeyError:
         pass
     return "Packages/Text/Plain text.tmLanguage"
