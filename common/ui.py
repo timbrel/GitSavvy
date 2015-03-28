@@ -87,7 +87,20 @@ class Interface():
         self.clear_regions()
         if hasattr(self, "pre_render"):
             self.pre_render()
+        rendered = self._render_template()
+        self.view.run_command("gs_new_content_and_regions", {
+            "content": rendered,
+            "regions": self.regions,
+            "nuke_cursors": nuke_cursors
+            })
 
+    def _render_template(self):
+        """
+        Generate new content for the view given the interface template
+        and partial content.  As partial content is added to the rendered
+        template, add regions to `self.regions` with the key, start, and
+        end of each partial.
+        """
         rendered = self.template
 
         keyed_content = self.get_keyed_content()
@@ -110,11 +123,7 @@ class Interface():
 
                 match = pattern.search(rendered)
 
-        self.view.run_command("gs_new_content_and_regions", {
-            "content": rendered,
-            "regions": self.regions,
-            "nuke_cursors": nuke_cursors
-            })
+        return rendered
 
     def adjust(self, idx, orig_len, new_len):
         """
