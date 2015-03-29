@@ -23,13 +23,18 @@ class GsPullCommand(WindowCommand, GitCommand):
         self.remotes = list(self.get_remotes().keys())
         self.remote_branches = self.get_remote_branches()
 
+        pre_selected_idx = (self.remotes.index(self.last_remote_used)
+                            if self.last_remote_used in self.remotes
+                            else 0)
+
         if not self.remotes:
             self.window.show_quick_panel(["There are no remotes available."], None)
         else:
             self.window.show_quick_panel(
                 self.remotes,
                 self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT
+                flags=sublime.MONOSPACE_FONT,
+                selected_index=pre_selected_idx
                 )
 
     def on_select_remote(self, remote_index):
@@ -44,6 +49,9 @@ class GsPullCommand(WindowCommand, GitCommand):
         self.selected_remote = self.remotes[remote_index]
         selected_remote_prefix = self.selected_remote + "/"
 
+        # Save the selected remote for automatic selection on next palette command.
+        self.last_remote_used = self.selected_remote
+
         self.branches_on_selected_remote = [
             branch for branch in self.remote_branches
             if branch.startswith(selected_remote_prefix)
@@ -52,17 +60,17 @@ class GsPullCommand(WindowCommand, GitCommand):
         current_local_branch = self.get_current_branch_name()
 
         try:
-            pre_selected_index = self.branches_on_selected_remote.index(
+            pre_selected_idx = self.branches_on_selected_remote.index(
                 selected_remote_prefix + current_local_branch)
         except ValueError:
-            pre_selected_index = 0
+            pre_selected_idx = 0
 
         def deferred_panel():
             self.window.show_quick_panel(
                 self.branches_on_selected_remote,
                 self.on_select_branch,
                 flags=sublime.MONOSPACE_FONT,
-                selected_index=pre_selected_index
+                selected_index=pre_selected_idx
             )
 
         sublime.set_timeout(deferred_panel)

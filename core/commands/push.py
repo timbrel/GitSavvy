@@ -62,10 +62,15 @@ class GsPushToBranchCommand(WindowCommand, PushBase):
         if not self.remotes:
             self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
         else:
+            pre_selected_idx = (self.remotes.index(self.last_remote_used)
+                                if self.last_remote_used in self.remotes
+                                else 0)
+
             self.window.show_quick_panel(
                 self.remotes,
                 self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT
+                flags=sublime.MONOSPACE_FONT,
+                selected_index=pre_selected_idx
                 )
 
     def on_select_remote(self, remote_index):
@@ -78,6 +83,7 @@ class GsPushToBranchCommand(WindowCommand, PushBase):
             return
 
         self.selected_remote = self.remotes[remote_index]
+        self.last_remote_used = self.selected_remote
         selected_remote_prefix = self.selected_remote + "/"
 
         self.branches_on_selected_remote = [
@@ -88,17 +94,17 @@ class GsPushToBranchCommand(WindowCommand, PushBase):
         current_local_branch = self.get_current_branch_name()
 
         try:
-            pre_selected_index = self.branches_on_selected_remote.index(
+            pre_selected_idx = self.branches_on_selected_remote.index(
                 selected_remote_prefix + current_local_branch)
         except ValueError:
-            pre_selected_index = 0
+            pre_selected_idx = 0
 
         def deferred_panel():
             self.window.show_quick_panel(
                 self.branches_on_selected_remote,
                 self.on_select_branch,
                 flags=sublime.MONOSPACE_FONT,
-                selected_index=pre_selected_index
+                selected_index=pre_selected_idx
             )
 
         sublime.set_timeout(deferred_panel)
@@ -138,10 +144,15 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
         if not self.remotes:
             self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
         else:
+            pre_selected_idx = (self.remotes.index(self.last_remote_used)
+                                if self.last_remote_used in self.remotes
+                                else 0)
+
             self.window.show_quick_panel(
                 self.remotes,
                 self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT
+                flags=sublime.MONOSPACE_FONT,
+                selected_index=pre_selected_idx
                 )
 
     def on_select_remote(self, remote_index):
@@ -153,6 +164,7 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
             return
 
         self.selected_remote = self.remotes[remote_index]
+        self.last_remote_used = self.selected_remote
         current_local_branch = self.get_current_branch_name()
 
         self.window.show_input_panel(
