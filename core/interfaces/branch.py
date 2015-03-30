@@ -86,11 +86,11 @@ class BranchInterface(ui.Interface, GitCommand):
             branches = [branch for branch in self._branches if not branch.remote]
 
         return "\n".join(
-            "  {indicator} {hash:.7} {name} {tracking}".format(
+            "  {indicator} {hash:.7} {name}{tracking}".format(
                 indicator="▸" if branch.active else " ",
                 hash=branch.commit_hash,
                 name=branch.name,
-                tracking=("({branch}{status})".format(
+                tracking=(" ({branch}{status})".format(
                     branch=branch.tracking,
                     status=", " + branch.tracking_status if branch.tracking_status else ""
                     )
