@@ -251,7 +251,7 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
             if line[:4] == "    ")
 
         sublime.set_timeout_async(
-            partial(self.load_inline_diff_windows, non_cached_files, cached_files), 0)
+            lambda: self.load_inline_diff_windows(non_cached_files, cached_files), 0)
 
     def load_inline_diff_windows(self, non_cached_files, cached_files):
         for fpath in non_cached_files:
