@@ -85,6 +85,18 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
             background=colors["inline_diff"]["remove_background"],
             foreground=colors["inline_diff"]["remove_foreground"]
             )
+        themeGenerator.add_scoped_style(
+            "GitSavvy Added Line Bold",
+            "git_savvy.change.addition.bold",
+            background=colors["inline_diff"]["add_background_bold"],
+            foreground=colors["inline_diff"]["add_foreground_bold"]
+            )
+        themeGenerator.add_scoped_style(
+            "GitSavvy Removed Line Bold",
+            "git_savvy.change.removal.bold",
+            background=colors["inline_diff"]["remove_background_bold"],
+            foreground=colors["inline_diff"]["remove_foreground_bold"]
+            )
         themeGenerator.apply_new_theme("active-diff-view." + file_ext, target_view)
 
 
@@ -141,10 +153,13 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         self.view.replace(edit, sublime.Region(0, self.view.size()), inline_diff_contents)
 
         if cursors:
-            self.view.sel().clear()
-            pt = self.view.text_point(row, 0)
-            self.view.sel().add(sublime.Region(pt, pt))
-            self.view.show_at_center(pt)
+            if (row, col) == (0, 0) and sublime.load_settings("GitSavvy.sublime-settings").get("inline_diff_auto_scoll", False):
+                self.view.run_command("gs_inline_diff_goto_next_hunk")
+            else:
+                self.view.sel().clear()
+                pt = self.view.text_point(row, 0)
+                self.view.sel().add(sublime.Region(pt, pt))
+                self.view.show_at_center(pt)
 
         self.highlight_regions(replaced_lines)
         self.view.set_read_only(True)
@@ -246,7 +261,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
 
             # Discard the first character of every diff-line (`+`, `-`).
             lines = lines[:section_start] + raw_lines + lines[head_end + adjustment:]
-            replaced_lines.append((section_start, section_end, line_types))
+            replaced_lines.append((section_start, section_end, line_types, raw_lines))
 
             adjustment += len(diff_lines) - hunk.head_length
 
@@ -260,10 +275,11 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         the removed regions in red.
         """
         add_regions = []
+        add_bold_regions = []
         remove_regions = []
+        remove_bold_regions = []
 
-        for section_start, section_end, line_types in replaced_lines:
-
+        for section_start, section_end, line_types, raw_lines in replaced_lines:
             region_start = None
             region_end = None
             region_type = None
@@ -287,8 +303,38 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
             l = add_regions if region_type == "+" else remove_regions
             l.append(sublime.Region(region_start, region_end))
 
-        self.view.add_regions("git-better-added-lines", add_regions, scope="git_savvy.change.addition")
-        self.view.add_regions("git-better-removed-lines", remove_regions, scope="git_savvy.change.removal")
+            # If there are both additions and removals in the hunk, display additional
+            # highlighting for the in-line changes (if similarity is above threshold).
+            if "+" in line_types and "-" in line_types:
+                # Determine start of hunk/section.
+                section_start_idx = self.view.text_point(section_start, 0)
+
+                # Removed lines come first in a hunk.
+                remove_start = section_start_idx
+                first_added_line = line_types.index("+")
+                add_start = section_start_idx + len("\n".join(raw_lines[:first_added_line])) + 1
+
+                removed_part = "\n".join(raw_lines[:first_added_line])
+                added_part = "\n".join(raw_lines[first_added_line:])
+                changes = util.diff_string.get_changes(removed_part, added_part)
+
+                for change in changes:
+                    if change.type in (util.diff_string.DELETE, util.diff_string.REPLACE):
+                        # Display bold color in removed hunk area.
+                        region_start = remove_start + change.old_start
+                        region_end = remove_start + change.old_end
+                        remove_bold_regions.append(sublime.Region(region_start, region_end))
+
+                    if change.type in (util.diff_string.INSERT, util.diff_string.REPLACE):
+                        # Display bold color in added hunk area.
+                        region_start = add_start + change.new_start
+                        region_end = add_start + change.new_end
+                        add_bold_regions.append(sublime.Region(region_start, region_end))
+
+        self.view.add_regions("git-savvy-added-lines", add_regions, scope="git_savvy.change.addition")
+        self.view.add_regions("git-savvy-removed-lines", remove_regions, scope="git_savvy.change.removal")
+        self.view.add_regions("git-savvy-added-bold", add_bold_regions, scope="git_savvy.change.addition.bold")
+        self.view.add_regions("git-savvy-removed-bold", remove_bold_regions, scope="git_savvy.change.removal.bold")
 
     def verify_not_conflict(self):
         fpath = self.get_rel_path()

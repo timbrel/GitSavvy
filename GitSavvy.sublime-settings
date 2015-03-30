@@ -25,6 +25,12 @@
      */
     "show_commit_diff": false,
 
+    /*
+        Change this to `true` to scroll to the first hunk automatically when
+        you open the inline-diff view.
+     */
+    "inline_diff_auto_scoll": false,
+
     "colors": {
         /*
             Colors used by the inline-diff view to display changes.
@@ -32,8 +38,12 @@
         "inline_diff": {
             "add_foreground": "#F9F9F4",
             "add_background": "#37A832",
+            "add_foreground_bold": "#F9F9F4",
+            "add_background_bold": "#287020",
             "remove_foreground": "#F9F9F4",
-            "remove_background": "#A83732"
+            "remove_background": "#A83732",
+            "remove_foreground_bold": "#F9F9F4",
+            "remove_background_bold": "#702820"
         }
     },
 
@@ -42,6 +52,13 @@
         output of these Git commands to always be shown in a panel.
      */
     "show_panel_for": [],
+
+    /*
+        Use the Sublime configured syntax for COMMIT_EDITMSG rather than
+        the custom bundled syntax that comes with GitSavvy.
+    */
+
+    "use_syntax_for_commit_editmsg": false,
 
     /*
         Change this to `false` to suppress the input in the panel output.
@@ -71,6 +88,12 @@
         Set this to `true` to display remotes in the branch dashboard by default.
      */
     "show_remotes_in_branch_dashboard": false,
+
+    /*
+        When set to `true`, GitSavvy will offer to set the upstream on `git: push`
+        when tracking branch is not configured.
+     */
+     "prompt_for_tracking_branch": true,
 
     /*
         Update the desired graph arguments for a customized experience.

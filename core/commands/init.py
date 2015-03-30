@@ -18,16 +18,24 @@ NO_CONFIG_MESSAGE = ("It looks like you haven't configured Git yet.  Would you "
                      "like to enter your name and email for Git to use?")
 
 
+views_with_offer_made = set()
+
+
 class GsOfferInit(WindowCommand):
 
     """
     If a git command fails indicating no git repo was found, this
     command will ask the user whether they'd like to init a new repo.
+
+    Offer only once per session for a given view.
     """
 
     def run(self):
-        if sublime.ok_cancel_dialog(NO_REPO_MESSAGE):
+        active_view_id = self.window.active_view().id()
+        if active_view_id not in views_with_offer_made and sublime.ok_cancel_dialog(NO_REPO_MESSAGE):
             self.window.run_command("gs_init")
+        else:
+            views_with_offer_made.add(active_view_id)
 
 
 class GsInit(WindowCommand, GitCommand):

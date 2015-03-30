@@ -27,15 +27,12 @@ class BranchInterface(ui.Interface, GitCommand):
 
     interface_type = "branch"
     read_only = True
-    view_type = "branches"
     syntax_file = "Packages/GitSavvy/syntax/branch.tmLanguage"
     word_wrap = False
 
-    dedent = 4
-    skip_first_line = True
     show_remotes = None
 
-    template = """
+    template = """\
 
       BRANCH:  {branch_status}
       ROOT:    {git_root}
@@ -73,11 +70,11 @@ class BranchInterface(ui.Interface, GitCommand):
 
     @ui.partial("branch_status")
     def render_branch_status(self):
-        return self.get_branch_status()
+        return self.get_branch_status(delim="\n           ")
 
     @ui.partial("git_root")
     def render_git_root(self):
-        return self.repo_path
+        return self.short_repo_path
 
     @ui.partial("head")
     def render_head(self):
@@ -89,11 +86,11 @@ class BranchInterface(ui.Interface, GitCommand):
             branches = [branch for branch in self._branches if not branch.remote]
 
         return "\n".join(
-            "  {indicator} {hash:.7} {name} {tracking}".format(
+            "  {indicator} {hash:.7} {name}{tracking}".format(
                 indicator="▸" if branch.active else " ",
                 hash=branch.commit_hash,
                 name=branch.name,
-                tracking=("({branch}{status})".format(
+                tracking=(" ({branch}{status})".format(
                     branch=branch.tracking,
                     status=", " + branch.tracking_status if branch.tracking_status else ""
                     )

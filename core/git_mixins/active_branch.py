@@ -30,7 +30,7 @@ class ActiveBranchMixin():
         stdout = self.git("status", "-b", "--porcelain").strip()
 
         first_line, *addl_lines = stdout.split("\n", 2)
-        ## Any additional lines will mean files have changed or are untracked.
+        # Any additional lines will mean files have changed or are untracked.
         clean = len(addl_lines) == 0
 
         if first_line.startswith("## HEAD (no branch)"):
@@ -51,9 +51,9 @@ class ActiveBranchMixin():
 
         return False, False, branch, remote, clean, ahead, behind
 
-    def get_branch_status(self):
+    def get_branch_status(self, delim=None):
         """
-        Return a string that gives:
+        Return a tuple of:
 
           1) the name of the active branch
           2) the status of the active local branch
@@ -61,31 +61,35 @@ class ActiveBranchMixin():
 
         If no remote or tracking branch is defined, do not include remote-data.
         If HEAD is detached, provide that status instead.
+
+        If a delimeter is provided, join tuple components with it, and return
+        that value.
         """
         detached, initial, branch, remote, clean, ahead, behind = \
             self._get_branch_status_components()
 
+        secondary = ""
+
         if detached:
-            return "HEAD is in a detached state."
+            status = "HEAD is in a detached state."
 
-        if initial:
-            return "Initial commit on `{}`.".format(branch)
+        elif initial:
+            status = "Initial commit on `{}`.".format(branch)
 
-        output = "On branch `{}`".format(branch)
+        else:
+            tracking = " tracking `{}`".format(remote)
+            status = "On branch `{}`{}.".format(branch, tracking if remote else "")
 
-        if remote:
-            output += " tracking `{}`".format(remote)
+            if ahead and behind:
+                secondary = "You're ahead by {} and behind by {}.".format(ahead, behind)
+            elif ahead:
+                secondary = "You're ahead by {}.".format(ahead)
+            elif behind:
+                secondary = "You're behind by {}.".format(behind)
 
-        if ahead and behind:
-            output += ". You're ahead by {} and behind by {}".format(ahead, behind)
-        elif ahead:
-            output += ". You're ahead by {}".format(ahead)
-        elif behind:
-            output += ". You're behind by {}".format(behind)
-
-        output += "."
-
-        return output
+        if delim:
+            return delim.join((status, secondary)) if secondary else status
+        return status, secondary
 
     def get_branch_status_short(self):
         detached, initial, branch, remote, clean, ahead, behind = \

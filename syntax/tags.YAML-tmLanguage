@@ -2,6 +2,7 @@
 name: GitSavvy Tags
 scopeName: git-savvy.tags
 uuid: a37acb1d-c57c-4f0b-945b-c71234aa0352
+hidden: true
 
 patterns:
 - comment: Tags view
