@@ -120,12 +120,12 @@
     {
         "caption": "git: diff current file",
         "command": "gs_diff",
-        "args": { "in_current_file": true }
+        "args": { "current_file": true }
     },
     {
-        "caption": "git: diff cached current file",
+        "caption": "git: diff current file (cached)",
         "command": "gs_diff",
-        "args": { "in_cached_mode": true, "in_current_file": true }
+        "args": { "in_cached_mode": true, "current_file": true }
     },
     {
         "caption": "git: blame current file",

@@ -336,24 +336,16 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
 
     def load_diff_windows(self, non_cached_files, cached_files):
         for fpath in non_cached_files:
-            settings = {
-                "git_savvy.file_path": fpath,
-                "git_savvy.repo_path": self.repo_path,
-            }
             self.view.window().run_command("gs_diff", {
-                "settings": settings,
-                "in_current_file": True
+                "file_path": fpath,
+                "current_file": True
             })
 
         for fpath in cached_files:
-            settings = {
-                "git_savvy.file_path": fpath,
-                "git_savvy.repo_path": self.repo_path
-            }
             self.view.window().run_command("gs_diff", {
-                "settings": settings,
+                "file_path": fpath,
                 "in_cached_mode": True,
-                "in_current_file": True
+                "current_file": True
             })
 
 
