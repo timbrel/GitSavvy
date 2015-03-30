@@ -3,7 +3,6 @@ import tempfile
 import subprocess
 import shlex
 from shutil import rmtree
-from functools import partial
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -260,7 +259,8 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
         non_cached_files = (
             os.path.join(self.repo_path, line.strip())
             for line in non_cached_lines
-            if line[:4] == "    ")
+            if line[:4] == "    "
+        )
 
         # Staged
         cached_sections = status_view_section_ranges[self.view.id()][3:]
@@ -272,10 +272,11 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
         cached_files = (
             os.path.join(self.repo_path, line.strip())
             for line in cached_lines
-            if line[:4] == "    ")
+            if line[:4] == "    "
+        )
 
         sublime.set_timeout_async(
-            partial(self.load_inline_diff_windows, non_cached_files, cached_files), 0)
+            lambda: self.load_inline_diff_windows(non_cached_files, cached_files), 0)
 
     def load_inline_diff_windows(self, non_cached_files, cached_files):
         for fpath in non_cached_files:
@@ -317,7 +318,8 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
         non_cached_files = (
             os.path.join(self.repo_path, line.strip())
             for line in non_cached_lines
-            if line[:4] == "    ")
+            if line[:4] == "    "
+        )
 
         # Staged
         cached_sections = status_view_section_ranges[self.view.id()][3:]
@@ -329,10 +331,11 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
         cached_files = (
             os.path.join(self.repo_path, line.strip())
             for line in cached_lines
-            if line[:4] == "    ")
+            if line[:4] == "    "
+        )
 
         sublime.set_timeout_async(
-            partial(self.load_diff_windows, non_cached_files, cached_files), 0)
+            lambda: self.load_diff_windows(non_cached_files, cached_files), 0)
 
     def load_diff_windows(self, non_cached_files, cached_files):
         for fpath in non_cached_files:
