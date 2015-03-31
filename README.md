@@ -1,5 +1,7 @@
 # GitSavvy
 
+[![Codacy Badge](https://www.codacy.com/project/badge/3c214fa790b249f79f5275dbfa6499ca)](https://www.codacy.com/app/dale/GitSavvy)
+
 Sublime Text 3 plugin providing the following features:
 
 - basic Git functionality; `init`, `add`, `commit`, `amend`, `checkout`, `pull`, `push`, etc.

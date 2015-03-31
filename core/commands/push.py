@@ -9,16 +9,19 @@ NO_REMOTES_MESSAGE = "You have not configured any remotes."
 START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
 PUSH_TO_BRANCH_NAME_PROMPT = "Enter remote branch name:"
+SET_UPSTREAM_PROMPT = ("You have not set an upstream for the active branch.  "
+                       "Would you like to set one?")
 
 
 class PushBase(GitCommand):
+    set_upstream = False
 
     def do_push(self, remote, branch, force=False):
         """
         Perform `git push remote branch`.
         """
         sublime.status_message(START_PUSH_MESSAGE)
-        self.push(remote, branch)
+        self.push(remote, branch, set_upstream=self.set_upstream, force=force)
         sublime.status_message(END_PUSH_MESSAGE)
         util.view.refresh_gitsavvy(self.window.active_view())
 
@@ -30,7 +33,12 @@ class GsPushCommand(WindowCommand, PushBase):
     """
 
     def run(self, force=False):
-        sublime.set_timeout_async(lambda: self.do_push(None, None, force=force))
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        if savvy_settings.get("prompt_for_tracking_branch") and not self.get_upstream_for_active_branch():
+            if sublime.ok_cancel_dialog(SET_UPSTREAM_PROMPT):
+                self.window.run_command("gs_push_to_branch_name", {"set_upstream": True})
+        else:
+            sublime.set_timeout_async(lambda: self.do_push(None, None, force=force))
 
 
 class GsPushToBranchCommand(WindowCommand, PushBase):
@@ -54,10 +62,15 @@ class GsPushToBranchCommand(WindowCommand, PushBase):
         if not self.remotes:
             self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
         else:
+            pre_selected_idx = (self.remotes.index(self.last_remote_used)
+                                if self.last_remote_used in self.remotes
+                                else 0)
+
             self.window.show_quick_panel(
                 self.remotes,
                 self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT
+                flags=sublime.MONOSPACE_FONT,
+                selected_index=pre_selected_idx
                 )
 
     def on_select_remote(self, remote_index):
@@ -70,6 +83,7 @@ class GsPushToBranchCommand(WindowCommand, PushBase):
             return
 
         self.selected_remote = self.remotes[remote_index]
+        self.last_remote_used = self.selected_remote
         selected_remote_prefix = self.selected_remote + "/"
 
         self.branches_on_selected_remote = [
@@ -80,17 +94,17 @@ class GsPushToBranchCommand(WindowCommand, PushBase):
         current_local_branch = self.get_current_branch_name()
 
         try:
-            pre_selected_index = self.branches_on_selected_remote.index(
+            pre_selected_idx = self.branches_on_selected_remote.index(
                 selected_remote_prefix + current_local_branch)
         except ValueError:
-            pre_selected_index = 0
+            pre_selected_idx = 0
 
         def deferred_panel():
             self.window.show_quick_panel(
                 self.branches_on_selected_remote,
                 self.on_select_branch,
                 flags=sublime.MONOSPACE_FONT,
-                selected_index=pre_selected_index
+                selected_index=pre_selected_idx
             )
 
         sublime.set_timeout(deferred_panel)
@@ -114,7 +128,8 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
     Prompt for remote and remote branch name, then push.
     """
 
-    def run(self):
+    def run(self, set_upstream=False):
+        self.set_upstream = set_upstream
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
@@ -129,10 +144,15 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
         if not self.remotes:
             self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
         else:
+            pre_selected_idx = (self.remotes.index(self.last_remote_used)
+                                if self.last_remote_used in self.remotes
+                                else 0)
+
             self.window.show_quick_panel(
                 self.remotes,
                 self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT
+                flags=sublime.MONOSPACE_FONT,
+                selected_index=pre_selected_idx
                 )
 
     def on_select_remote(self, remote_index):
@@ -144,6 +164,7 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
             return
 
         self.selected_remote = self.remotes[remote_index]
+        self.last_remote_used = self.selected_remote
         current_local_branch = self.get_current_branch_name()
 
         self.window.show_input_panel(

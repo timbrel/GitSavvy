@@ -4,6 +4,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
 from ..git_command import GitCommand
+from ...common import util
 
 
 COMMIT_HELP_TEXT = """
@@ -47,7 +48,14 @@ class GsCommitCommand(WindowCommand, GitCommand):
         view.settings().set("git_savvy.commit_view.include_unstaged", include_unstaged)
         view.settings().set("git_savvy.commit_view.amend", amend)
         view.settings().set("git_savvy.repo_path", repo_path)
-        view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.tmLanguage")
+
+        gitsavvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        if gitsavvy_settings.get("use_syntax_for_commit_editmsg"):
+            syntax_file = util.file.get_syntax_for_file("COMMIT_EDITMSG")
+            view.set_syntax_file(syntax_file)
+        else:
+            view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.tmLanguage")
+
         title = COMMIT_TITLE.format(os.path.basename(repo_path))
         view.set_name(title)
         view.set_scratch(True)

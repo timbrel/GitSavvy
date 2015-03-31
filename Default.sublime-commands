@@ -48,6 +48,10 @@
         "args": { "preselect": true }
     },
     {
+        "caption": "github: set remote for integration",
+        "command": "gs_configure_github_remote"
+    },
+    {
         "caption": "git: checkout",
         "command": "gs_checkout_branch"
     },
@@ -116,6 +120,16 @@
         "caption": "git: diff cached",
         "command": "gs_diff",
         "args": { "in_cached_mode": true }
+    },
+    {
+        "caption": "git: diff current file",
+        "command": "gs_diff",
+        "args": { "current_file": true }
+    },
+    {
+        "caption": "git: diff current file (cached)",
+        "command": "gs_diff",
+        "args": { "in_cached_mode": true, "current_file": true }
     },
     {
         "caption": "git: blame current file",

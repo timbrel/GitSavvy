@@ -1,0 +1,43 @@
+Lots of changes recently, thanks to eveyone who has contributed and to those who have reported and discussed issues!
+
+Changes since 1.3.0:
+
+  Enhancement:
+   - Last-used remote for push, pull, and fetch palette commands will be pre-selected.
+   - User can now select which remote to use for GitHub integration.
+   - Inline-diff view will highlight words that have changed.
+   - GitSavvy will offer to set tracking branch on `git: push` when unconfigured.
+   - Status view can now discard untracked files.
+   - Re-use existing interface if present.
+   - Remote refs will be pruned on fetch.
+   - Fetch added to branch dashboard.
+   - Optionally scroll to first change in inline-diff view.
+   - Now possible to commit from quick stage panel.
+
+  Refactor:
+   - GitSavvy syntax-files no longer show in command palette.
+   - When commiting including unstaged files, use `git commit -a`.
+   - Port status dashboard to new UI Interface paradigm.
+   - Minutia.
+
+  Fix:
+   - Only offer init once for view with missing `.git` directory.
+   - Cursor position was inconsistent when interfaces would re-render.
+   - Fragile handling of repo_path in edge conditions.
+   - Ensure interfaces are ready when plugins finish loading.
+   - Error would display when file opened at non-real path.
+   - Incorrect behavior when deleting remote branches from branch dashboard.
+   - RegEx for detecting sections in blame view worked but too permissive.
+   - GitHub issue integration would not work in some environments.
+   - Debug reload would break interface refresh.
+
+  Documentation:
+   - Add Codacy badge to README.
+   - Add branch/tag dashboard to README.
+   - Show correct contextual help for diff view.
+   - Update README with new highlights.
+
+  Contributors:
+   - Nicolás Santángelo
+   - Josh Goebel
+   - Dale Bustad

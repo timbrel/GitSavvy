@@ -33,9 +33,21 @@ class RemotesMixin():
         """
         self.git("pull", remote, branch)
 
-    def push(self, remote=None, branch=None, force=False):
+    def push(self, remote=None, branch=None, force=False, set_upstream=False):
         """
         Push to the specified remote and branch if provided, otherwise
         perform default `git push`.
         """
-        self.git("push", "--force" if force else None, remote, branch)
+        self.git(
+            "push",
+            "--force" if force else None,
+            "--set-upstream" if set_upstream else None,
+            remote,
+            branch
+            )
+
+    def get_upstream_for_active_branch(self):
+        """
+        Return ref for remote tracking branch.
+        """
+        return self.git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", throw_on_stderr=False)

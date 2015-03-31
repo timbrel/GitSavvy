@@ -28,13 +28,16 @@ class GsDiffCommand(WindowCommand, GitCommand):
     def run(self, **kwargs):
         sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
 
-    def run_async(self, in_cached_mode=False):
+    def run_async(self, in_cached_mode=False, file_path=None, current_file=False):
         repo_path = self.repo_path
+        if current_file:
+            file_path = self.file_path or file_path
         diff_view = util.view.get_read_only_view(self, "diff")
         title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(os.path.basename(repo_path))
         diff_view.set_name(title)
         diff_view.set_syntax_file("Packages/Diff/Diff.tmLanguage")
         diff_view.settings().set("git_savvy.repo_path", repo_path)
+        diff_view.settings().set("git_savvy.file_path", file_path)
         diff_view.settings().set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
         self.window.focus_view(diff_view)
         diff_view.sel().clear()
@@ -49,7 +52,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 
     def run(self, edit, cursors=None):
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
-        stdout = self.git("diff", "--cached" if in_cached_mode else None)
+        stdout = self.git("diff", "--cached" if in_cached_mode else None, self.file_path)
 
         self.view.run_command("gs_replace_view_text", {"text": stdout})
 

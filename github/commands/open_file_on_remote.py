@@ -2,9 +2,10 @@ from sublime_plugin import TextCommand
 
 from ...core.git_command import GitCommand
 from ..github import open_file_in_browser
+from .. import git_mixins
 
 
-class GsOpenFileOnRemoteCommand(TextCommand, GitCommand):
+class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
 
     """
     Open a new browser window to the web-version of the currently opened
@@ -28,11 +29,9 @@ class GsOpenFileOnRemoteCommand(TextCommand, GitCommand):
                 start_line = self.view.rowcol(first_selection.begin())[0] + 1
                 end_line = self.view.rowcol(last_selection.end())[0] + 1
 
-        default_name, default_remote_url = self.get_remotes().popitem(last=False)
-
         open_file_in_browser(
             fpath,
-            default_remote_url,
+            self.get_integrated_remote_url(),
             self.get_commit_hash_for_head(),
             start_line=start_line,
             end_line=end_line

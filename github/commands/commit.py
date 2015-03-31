@@ -9,9 +9,10 @@ from sublime_plugin import TextCommand
 
 from ...core.git_command import GitCommand
 from .. import github
+from .. import git_mixins
 
 
-class GsShowGithubIssuesCommand(TextCommand, GitCommand):
+class GsShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
 
     """
     Display a panel of GitHub issues to either:
@@ -28,15 +29,14 @@ class GsShowGithubIssuesCommand(TextCommand, GitCommand):
         if not default_repo:
             first_cursor = self.view.sel()[0].begin()
             text_before_cursor = self.view.substr(sublime.Region(0, first_cursor))
-            nondefault_repo = re.search(r"([a-zA-Z\-_0-9\.]+)/([a-zA-Z\-_0-9\.]+)$", text_before_cursor).groups()
+            nondefault_repo = re.search(r"([a-zA-Z\-_0-9\.]+)/([a-zA-Z\-_0-9\.]+)#$", text_before_cursor).groups()
         else:
             nondefault_repo = None
 
         sublime.set_timeout_async(lambda: self.run_async(nondefault_repo))
 
     def run_async(self, nondefault_repo):
-        default_remote_name, default_remote = self.get_remotes().popitem(last=False)
-        remote = github.parse_remote(default_remote)
+        remote = github.parse_remote(self.get_integrated_remote_url())
 
         if nondefault_repo:
             owner, repo_name = nondefault_repo
