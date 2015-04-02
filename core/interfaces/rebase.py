@@ -157,6 +157,11 @@ class GsRebaseSquashCommand(RewriteBase):
         if not short_hash:
             return
 
+        # Cannot squash last commit.
+        if self.interface.entries[-1].short_hash == short_hash:
+            sublime.status_message("Unable to squash most recent commit.")
+            return
+
         commit_chain = [
             self.CommitTemplate(orig_hash=entry.long_hash,
                                 do_commit=entry.short_hash != short_hash)
