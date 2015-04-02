@@ -6,6 +6,12 @@
     "prompt_before_destructive_action": true,
 
     /*
+        Uncomment the setting below to explicitly set which git binary
+        to use.
+     */
+    // "git_path": "/usr/bin/git",
+
+    /*
         Change this to `true` when doing dev work on GitSavvy.
      */
     "dev_mode": false,
