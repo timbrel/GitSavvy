@@ -1,0 +1,53 @@
+# [PackageDev] target_format: plist, ext: tmLanguage
+name: GitSavvy Branch
+scopeName: git-savvy.branch
+uuid: cdefe65b-6603-4494-b969-af100f96472a
+hidden: true
+
+patterns:
+- comment: Rebase summary
+  name: meta.git-savvy.rebase-summary
+  begin: '^  REBASE:'
+  beginCaptures:
+    '0': { name: comment.git-savvy.rebase.summary-header }
+  end: '^$'
+  patterns:
+  - comment: status
+    name: comment.git-savvy.rebase.status
+    match: '^  STATUS:.+'
+
+- name: comment.git-savvy.rebase-graph.separator
+  match: '    ┃'
+
+- name: comment.git-savvy.rebase-graph.end
+  match: '    ┻'
+
+- name: comment.git-savvy.rebase-graph.base
+  match: '    ┳ \(([0-9a-f]{7})\)'
+  captures:
+    '1':
+      name: support.type.git-savvy.rebase.commit_hash
+
+- name: meta.git-savvy.rebase-graph.entry
+  match: '  ([▸ ]) ([?✔✕])  ([0-9a-f]{7})  (.*)\n'
+  captures:
+    '1':
+      name: string.other.git-savvy.rebase.caret
+    '2':
+      name: meta.git-savvy.rebase.commit-status
+    '3':
+      name: support.type.git-savvy.rebase.commit_hash
+
+- comment: Key-bindings menu
+  name: comment.git-savvy.rebase.key-bindings-menu
+  begin: '^  ####'
+  end: '^-$'
+  patterns:
+  - name: meta.git-savvy.key-bindings-header
+    match: '  ## ([A-Z ]+) ##'
+    captures:
+      '1': { name: support.type.git-savvy.key-bindings-header-text }
+  - name: meta.git-savvy.key-bindings-key-stroke
+    match: '\[([A-Za-z])\]'
+    captures:
+      '1': { name: constant.character.git-savvy-key-binding-key }

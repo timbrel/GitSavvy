@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>hidden</key>
+	<true/>
+	<key>name</key>
+	<string>GitSavvy Branch</string>
+	<key>patterns</key>
+	<array>
+		<dict>
+			<key>begin</key>
+			<string>^  REBASE:</string>
+			<key>beginCaptures</key>
+			<dict>
+				<key>0</key>
+				<dict>
+					<key>name</key>
+					<string>comment.git-savvy.rebase.summary-header</string>
+				</dict>
+			</dict>
+			<key>comment</key>
+			<string>Rebase summary</string>
+			<key>end</key>
+			<string>^$</string>
+			<key>name</key>
+			<string>meta.git-savvy.rebase-summary</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>comment</key>
+					<string>status</string>
+					<key>match</key>
+					<string>^  STATUS:.+</string>
+					<key>name</key>
+					<string>comment.git-savvy.rebase.status</string>
+				</dict>
+			</array>
+		</dict>
+		<dict>
+			<key>match</key>
+			<string>    ┃</string>
+			<key>name</key>
+			<string>comment.git-savvy.rebase-graph.separator</string>
+		</dict>
+		<dict>
+			<key>match</key>
+			<string>    ┻</string>
+			<key>name</key>
+			<string>comment.git-savvy.rebase-graph.end</string>
+		</dict>
+		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>support.type.git-savvy.rebase.commit_hash</string>
+				</dict>
+			</dict>
+			<key>match</key>
+			<string>    ┳ \(([0-9a-f]{7})\)</string>
+			<key>name</key>
+			<string>comment.git-savvy.rebase-graph.base</string>
+		</dict>
+		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>string.other.git-savvy.rebase.caret</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>meta.git-savvy.rebase.commit-status</string>
+				</dict>
+				<key>3</key>
+				<dict>
+					<key>name</key>
+					<string>support.type.git-savvy.rebase.commit_hash</string>
+				</dict>
+			</dict>
+			<key>match</key>
+			<string>  ([▸ ]) ([?✔✕])  ([0-9a-f]{7})  (.*)\n</string>
+			<key>name</key>
+			<string>meta.git-savvy.rebase-graph.entry</string>
+		</dict>
+		<dict>
+			<key>begin</key>
+			<string>^  ####</string>
+			<key>comment</key>
+			<string>Key-bindings menu</string>
+			<key>end</key>
+			<string>^-$</string>
+			<key>name</key>
+			<string>comment.git-savvy.rebase.key-bindings-menu</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>support.type.git-savvy.key-bindings-header-text</string>
+						</dict>
+					</dict>
+					<key>match</key>
+					<string>  ## ([A-Z ]+) ##</string>
+					<key>name</key>
+					<string>meta.git-savvy.key-bindings-header</string>
+				</dict>
+				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>constant.character.git-savvy-key-binding-key</string>
+						</dict>
+					</dict>
+					<key>match</key>
+					<string>\[([A-Za-z])\]</string>
+					<key>name</key>
+					<string>meta.git-savvy.key-bindings-key-stroke</string>
+				</dict>
+			</array>
+		</dict>
+	</array>
+	<key>scopeName</key>
+	<string>git-savvy.branch</string>
+	<key>uuid</key>
+	<string>cdefe65b-6603-4494-b969-af100f96472a</string>
+</dict>
+</plist>

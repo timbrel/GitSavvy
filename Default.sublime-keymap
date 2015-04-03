@@ -503,5 +503,18 @@
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
         ],
         "args": { "action": "view" }
+    },
+
+    //////////////////////
+    // REBASE DASHBOARD //
+    //////////////////////
+
+    {
+        "keys": ["s"],
+        "command": "gs_rebase_squash",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "meta.git-savvy.rebase-graph.entry" }
+        ]
     }
 ]

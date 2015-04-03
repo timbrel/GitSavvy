@@ -22,6 +22,8 @@ from .git_mixins.checkout_discard import CheckoutDiscardMixin
 from .git_mixins.remotes import RemotesMixin
 from .git_mixins.ignore import IgnoreMixin
 from .git_mixins.tags import TagsMixin
+from .git_mixins.history import HistoryMixin
+from .git_mixins.rewrite import RewriteMixin
 
 
 git_path = None
@@ -39,7 +41,9 @@ class GitCommand(StatusMixin,
                  CheckoutDiscardMixin,
                  RemotesMixin,
                  IgnoreMixin,
-                 TagsMixin
+                 TagsMixin,
+                 HistoryMixin,
+                 RewriteMixin
                  ):
 
     """
