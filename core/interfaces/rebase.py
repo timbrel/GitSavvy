@@ -162,10 +162,23 @@ class GsRebaseSquashCommand(RewriteBase):
             sublime.status_message("Unable to squash most recent commit.")
             return
 
+        # Generate identical change templates with author/date metadata
+        # in tact.  In case of commit-to-squash, indicate that the changes
+        # should be rolled over into the next change's commit.
         commit_chain = [
-            self.CommitTemplate(orig_hash=entry.long_hash,
-                                do_commit=entry.short_hash != short_hash)
+            self.ChangeTemplate(orig_hash=entry.long_hash,
+                                do_commit=entry.short_hash != short_hash,
+                                msg=entry.raw_body,
+                                datetime=entry.datetime,
+                                author="{} <{}>".format(entry.author, entry.email))
             for entry in self.interface.entries
         ]
+
+        # Take the commit message from the commit-to-squash and append
+        # it to the next commit's message.
+        for idx, commit in enumerate(commit_chain):
+            if not commit.do_commit:
+                commit_chain[idx+1].msg += "\n\n" + commit.msg
+                commit.msg = None
 
         self.make_changes(commit_chain)

@@ -1,20 +1,17 @@
-from collections import namedtuple
+from types import SimpleNamespace
 
 
-CommitTemplate = namedtuple("CommitTemplate", (
-    "orig_hash",
-    "do_commit",  # True, False
-    "msg",        # String or None
-    "datetime",   # String or None
-    "author",     # String or None
-    ))
-
-CommitTemplate.__new__.__defaults__ = (None, ) * 3
+class ChangeTemplate(SimpleNamespace):
+    # orig_hash
+    do_commit = True
+    msg = None
+    datetime = None
+    author = None
 
 
 class RewriteMixin():
 
-    CommitTemplate = CommitTemplate
+    ChangeTemplate = ChangeTemplate
 
     def rewrite_active_branch(self, base_commit, commit_chain):
         branch_name = self.get_current_branch_name()
@@ -35,16 +32,15 @@ class RewriteMixin():
                 # If squashing one commit into the next, do_commit should be
                 # False so that it's changes are included in the next commit.
                 if commit.do_commit:
-                    non_default_msg = commit.msg is not None
-
                     self.git(
                         "commit",
-                        # Re-use commit data and metadata from original commit hash.
-                        "-C",
-                        commit.orig_hash,
-                        "-F" if non_default_msg else None,
-                        "-" if non_default_msg else None,
-                        stdin=commit.msg if non_default_msg else None
+                        "--author",
+                        commit.author,
+                        "--date",
+                        commit.datetime,
+                        "-F",
+                        "-",
+                        stdin=commit.msg
                         )
 
             self.git("branch", "-f", branch_name, "HEAD")
