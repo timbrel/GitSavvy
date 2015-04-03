@@ -25,6 +25,7 @@ class RewriteMixin():
                 self.git(
                     "cherry-pick",
                     "--allow-empty",
+                    "--allow-empty-message",
                     "--no-commit",
                     commit.orig_hash
                     )
