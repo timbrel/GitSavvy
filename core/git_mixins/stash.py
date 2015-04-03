@@ -11,10 +11,13 @@ class StashMixin():
         Return a list of stashes in the repo.
         """
         stdout = self.git("stash", "list")
-        return [
-            Stash(*re.match("^stash@\{(\d+)}: .*?: (.*)", entry).groups())
-            for entry in stdout.split("\n") if entry
-        ]
+        stashes = []
+        for entry in stdout.split("\n"):
+            if not entry:
+                continue
+            num, _, description = re.match("^stash@\\{(\\d+)}: (.*?: )?(.*)", entry).groups()
+            stashes.append(Stash(num, description))
+        return stashes
 
     def apply_stash(self, id):
         """
