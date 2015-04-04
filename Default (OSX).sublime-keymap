@@ -95,6 +95,17 @@
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
         ],
         "args": { "action": "checkout" }
-    }
+    },
 
+    ///////////////
+    // EDIT VIEW //
+    ///////////////
+
+    {
+        "keys": ["super+enter"],
+        "command": "gs_edit_view_complete",
+        "context": [
+            { "key": "setting.git_savvy.edit_view", "operator": "equal", "operand": true }
+        ]
+    }
 ]

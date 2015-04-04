@@ -516,5 +516,13 @@
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
             { "key": "selector", "operator": "equal", "operand": "meta.git-savvy.rebase-graph.entry" }
         ]
+    },
+    {
+        "keys": ["e"],
+        "command": "gs_rebase_edit",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "meta.git-savvy.rebase-graph.entry" }
+        ]
     }
 ]

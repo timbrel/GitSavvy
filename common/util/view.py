@@ -71,6 +71,9 @@ def refresh_gitsavvy(view):
 def handle_closed_view(view):
     if view.settings().get("git_savvy.interface") is not None:
         view.run_command("gs_interface_close")
+    if view.settings().get("git_savvy.edit_view"):
+        view.run_command("gs_edit_view_close")
+
 
 
 ############################

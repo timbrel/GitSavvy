@@ -9,7 +9,10 @@ from . import util
 
 
 interfaces = {}
+edit_views = {}
 subclasses = []
+
+EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press SUPER+Enter.  To cancel, close the view."
 
 
 class Interface():
@@ -264,3 +267,76 @@ class GsInterfaceRefreshCommand(TextCommand):
                 else:
                     interface = InterfaceSubclass(view=self.view)
                     interfaces[interface.view.id()] = interface
+
+
+class EditView():
+
+    def __init__(self, content, on_done, repo_path, help_text=None, window=None):
+        self.window = window or sublime.active_window()
+        self.view = self.window.new_file()
+
+        self.view.set_scratch(True)
+        self.view.set_read_only(False)
+        self.view.set_name("EDIT")
+        self.view.settings().set("word_wrap", False)
+        self.view.settings().set("git_savvy.edit_view", True)
+        self.view.settings().set("git_savvy.repo_path", repo_path)
+
+        self.on_done = on_done
+        self.render(content, help_text)
+
+        edit_views[self.view.id()] = self
+
+    def render(self, starting_content, help_text):
+        regions = {}
+
+        starting_content += "\n\n"
+
+        regions["content"] = (0, len(starting_content))
+        content = starting_content + (help_text or EDIT_DEFAULT_HELP_TEXT)
+        regions["help"] = (len(starting_content), len(content))
+
+        self.view.run_command("gs_new_content_and_regions", {
+            "content": content,
+            "regions": regions,
+            "nuke_cursors": True
+            })
+
+
+class GsEditViewCompleteCommand(TextCommand):
+
+    """
+    Invoke callback with edit view content.
+    """
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        edit_view = edit_views.get(self.view.id(), None)
+        if not edit_view:
+            sublime.error_message("Unable to complete edit.  Please try again.")
+            return
+
+        content_region = self.view.get_regions("git_savvy_interface.content")[0]
+        content = self.view.substr(content_region)
+
+        self.view.window().focus_view(self.view)
+        self.view.window().run_command("close_file")
+
+        edit_view.on_done(content.strip())
+
+
+class GsEditViewCloseCommand(TextCommand):
+
+    """
+    Clean up references to closed edit views.
+    """
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        view_id = self.view.id()
+        if view_id in edit_views:
+            del edit_views[view_id]

@@ -182,3 +182,36 @@ class GsRebaseSquashCommand(RewriteBase):
                 commit.msg = None
 
         self.make_changes(commit_chain)
+
+
+class GsRebaseEditCommand(RewriteBase):
+
+    def run(self, edit):
+        self.interface = ui.get_interface(self.view.id())
+        short_hash = self.get_selected_short_hash()
+
+        for entry in self.interface.entries:
+            if entry.short_hash == short_hash:
+                break
+        else:
+            return
+
+        ui.EditView(content=entry.raw_body,
+                    repo_path=self.repo_path,
+                    window=self.view.window(),
+                    on_done=lambda commit_msg: self.do_edit(entry, commit_msg))
+
+    def do_edit(self, entry_to_edit, commit_msg):
+        # Generate identical change templates with author/date metadata
+        # in tact.  For the edited entry, replace the message with
+        # the content from the temporary edit view.
+
+        commit_chain = [
+            self.ChangeTemplate(orig_hash=entry.long_hash,
+                                do_commit=True,
+                                msg=commit_msg if entry == entry_to_edit else entry.raw_body,
+                                datetime=entry.datetime,
+                                author="{} <{}>".format(entry.author, entry.email))
+            for entry in self.interface.entries
+        ]
+        self.make_changes(commit_chain)
