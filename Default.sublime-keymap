@@ -518,6 +518,13 @@
         ]
     },
     {
+        "keys": ["S"],
+        "command": "gs_rebase_squash_all",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["e"],
         "command": "gs_rebase_edit",
         "context": [

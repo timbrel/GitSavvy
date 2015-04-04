@@ -184,6 +184,33 @@ class GsRebaseSquashCommand(RewriteBase):
         self.make_changes(commit_chain)
 
 
+class GsRebaseSquashAllCommand(RewriteBase):
+
+    def run_async(self):
+
+        # Generate identical change templates with author/date metadata
+        # in tact.  However, set do_commit to false for all but the last change,
+        # in order for diffs to be rolled into that final commit.
+        last_commit_idx = len(self.interface.entries) - 1
+        commit_chain = [
+            self.ChangeTemplate(orig_hash=entry.long_hash,
+                                do_commit=idx == last_commit_idx,
+                                msg=entry.raw_body,
+                                datetime=entry.datetime,
+                                author="{} <{}>".format(entry.author, entry.email))
+            for idx, entry in enumerate(self.interface.entries)
+        ]
+
+        # Take the commit message from the commit-to-squash and append
+        # it to the next commit's message.
+        for idx, commit in enumerate(commit_chain):
+            if not commit.do_commit:
+                commit_chain[idx+1].msg += "\n\n" + commit.msg
+                commit.msg = None
+
+        self.make_changes(commit_chain)
+
+
 class GsRebaseEditCommand(RewriteBase):
 
     def run(self, edit):
