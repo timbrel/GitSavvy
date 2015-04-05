@@ -32,7 +32,7 @@ class RebaseInterface(ui.Interface, GitCommand):
     CARET = "▸"
     SUCCESS = "✔"
     CONFLICT = "✕"
-    UNKNOWN = "?"
+    UNKNOWN = "·"
 
     template = """\
 

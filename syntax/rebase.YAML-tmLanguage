@@ -29,7 +29,7 @@ patterns:
       name: support.type.git-savvy.rebase.commit_hash
 
 - name: meta.git-savvy.rebase-graph.entry
-  match: '  ([▸ ]) ([?✔✕])  ([0-9a-f]{7})  (.*)\n'
+  match: '  ([▸ ]) ([·✔✕])  ([0-9a-f]{7})  (.*)\n'
   captures:
     '1':
       name: string.other.git-savvy.rebase.caret

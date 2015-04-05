@@ -83,7 +83,7 @@
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>  ([▸ ]) ([?✔✕])  ([0-9a-f]{7})  (.*)\n</string>
+			<string>  ([▸ ]) ([·✔✕])  ([0-9a-f]{7})  (.*)\n</string>
 			<key>name</key>
 			<string>meta.git-savvy.rebase-graph.entry</string>
 		</dict>
