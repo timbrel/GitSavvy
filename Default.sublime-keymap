@@ -531,5 +531,21 @@
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
             { "key": "selector", "operator": "equal", "operand": "meta.git-savvy.rebase-graph.entry" }
         ]
+    },
+    {
+        "keys": ["u"],
+        "command": "gs_rebase_move_up",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "meta.git-savvy.rebase-graph.entry" }
+        ]
+    },
+    {
+        "keys": ["d"],
+        "command": "gs_rebase_move_down",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "meta.git-savvy.rebase-graph.entry" }
+        ]
     }
 ]

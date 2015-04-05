@@ -54,4 +54,5 @@ class RewriteMixin():
             # this will be the re-written branch.  On failure, this will be the original
             # branch (since re-defining the branch ref is the last step).
 
+            self.git("reset", "--hard")
             self.git("checkout", branch_name)

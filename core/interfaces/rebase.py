@@ -51,8 +51,8 @@ class RebaseInterface(ui.Interface, GitCommand):
 
       [o] open file                        [s] squash commit with next
       [a] accept file in current state     [S] squash all commits
-      [m] use mine                         [u] move commit up (above previous)
-      [t] use theirs                       [d] move commit down (below next)
+      [m] use mine                         [u] move commit up (before previous)
+      [t] use theirs                       [d] move commit down (after next)
       [M] launch external merge tool       [e] edit commit message
 
       ####################
@@ -242,3 +242,66 @@ class GsRebaseEditCommand(RewriteBase):
             for entry in self.interface.entries
         ]
         self.make_changes(commit_chain)
+
+
+class GsRebaseMoveUpCommand(RewriteBase):
+
+    def run_async(self):
+        short_hash = self.get_selected_short_hash()
+        if not short_hash:
+            return
+        if self.interface.entries[0].short_hash == short_hash:
+            sublime.status_message("Unable to move first commit up.")
+
+        commit_chain = [
+            self.ChangeTemplate(orig_hash=entry.long_hash,
+                                move=entry.short_hash == short_hash,
+                                do_commit=True,
+                                msg=entry.raw_body,
+                                datetime=entry.datetime,
+                                author="{} <{}>".format(entry.author, entry.email))
+            for entry in self.interface.entries
+        ]
+
+        # Take the change to move and swap it with the one before.
+        for idx, commit in enumerate(commit_chain):
+            if commit.move:
+                commit_chain[idx], commit_chain[idx-1] = commit_chain[idx-1], commit_chain[idx]
+                break
+
+        try:
+            self.make_changes(commit_chain)
+        except:
+            sublime.message_dialog("Unable to move commit, most likely due to a conflict.")
+
+
+class GsRebaseMoveDownCommand(RewriteBase):
+
+    def run_async(self):
+        short_hash = self.get_selected_short_hash()
+        if not short_hash:
+            return
+        if self.interface.entries[-1].short_hash == short_hash:
+            sublime.status_message("Unable to move last commit down.")
+            return
+
+        commit_chain = [
+            self.ChangeTemplate(orig_hash=entry.long_hash,
+                                move=entry.short_hash == short_hash,
+                                do_commit=True,
+                                msg=entry.raw_body,
+                                datetime=entry.datetime,
+                                author="{} <{}>".format(entry.author, entry.email))
+            for entry in self.interface.entries
+        ]
+
+        # Take the change to move and swap it with the one following.
+        for idx, commit in enumerate(commit_chain):
+            if commit.move:
+                commit_chain[idx], commit_chain[idx+1] = commit_chain[idx+1], commit_chain[idx]
+                break
+
+        try:
+            self.make_changes(commit_chain)
+        except:
+            sublime.message_dialog("Unable to move commit, most likely due to a conflict.")
