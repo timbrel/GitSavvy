@@ -108,43 +108,49 @@ class RebaseInterface(ui.Interface, GitCommand):
 
     @ui.partial("diverged_commits")
     def render_diverged_commits(self):
-        start = self.base_commit()
-        end = self.rebase_orig_head() if self._in_rebase else "HEAD"
-
-        self.entries = self.log(start_end=(start, end), reverse=True)
-
-        if self._in_rebase:
-            conflict_commit = self.rebase_conflict_at()
-            rewritten = dict(self.rebase_rewritten())
-            commits_info = []
-
-            for entry in self.entries:
-                commit_info = {}
-                was_rewritten = entry.long_hash in rewritten
-                new_hash = rewritten[entry.long_hash][:7] if was_rewritten else None
-                is_conflict = entry.long_hash == conflict_commit
-
-                commit_info["caret"] = self.CARET if is_conflict else " "
-                commit_info["status"] = (self.SUCCESS if was_rewritten else
-                                         self.CONFLICT if is_conflict else
-                                         self.UNKNOWN)
-                commit_info["commit_hash"] = new_hash if was_rewritten else entry.short_hash
-                commit_info["commit_summary"] = ("(was {}) {}".format(entry.short_hash, entry.summary)
-                                                 if was_rewritten else
-                                                 entry.summary)
-                commit_info["conflicts"] = "" if not is_conflict else "YES A CONFLICT"
-
-                commits_info.append(commit_info)
-
-        else:
-            commits_info = [{"caret": " ",
-                             "status": self.UNKNOWN,
-                             "commit_hash": entry.short_hash,
-                             "commit_summary": entry.summary,
-                             "conflicts": ""}
-                            for entry in self.entries]
-
+        commits_info = self.get_diverged_commits_info(
+            start=self.base_commit(),
+            end=self.rebase_orig_head() if self._in_rebase else "HEAD"
+            )
         return self.separator.join(self.commit.format(**commit_info) for commit_info in commits_info)
+
+    def get_diverged_commits_info(self, start, end):
+        self.entries = self.log(start_end=(start, end), reverse=True)
+        return (self._get_diverged_in_rebase()
+                if self._in_rebase else
+                self._get_diverged_outside_rebase())
+
+    def _get_diverged_in_rebase(self):
+        conflict_commit = self.rebase_conflict_at()
+        rewritten = dict(self.rebase_rewritten())
+        commits_info = []
+
+        for entry in self.entries:
+            was_rewritten = entry.long_hash in rewritten
+            new_hash = rewritten[entry.long_hash][:7] if was_rewritten else None
+            is_conflict = entry.long_hash == conflict_commit
+
+            commits_info.append({
+                "caret": self.CARET if is_conflict else " ",
+                "status": (self.SUCCESS if was_rewritten else
+                           self.CONFLICT if is_conflict else
+                           self.UNKNOWN),
+                "commit_hash": new_hash if was_rewritten else entry.short_hash,
+                "commit_summary": ("(was {}) {}".format(entry.short_hash, entry.summary)
+                                   if was_rewritten else
+                                   entry.summary),
+                "conflicts": "" if not is_conflict else "YES A CONFLICT"
+            })
+
+        return commits_info
+
+    def _get_diverged_outside_rebase(self):
+        return [{"caret": " ",
+                 "status": self.UNKNOWN,
+                 "commit_hash": entry.short_hash,
+                 "commit_summary": entry.summary,
+                 "conflicts": ""}
+                for entry in self.entries]
 
     @ui.partial("conflicts_bindings")
     def render_conflicts_bindings(self):
