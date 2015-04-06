@@ -45,23 +45,25 @@ class RebaseInterface(ui.Interface, GitCommand):
         ┃
         ┻
 
-      ###############                      #############
-      ## CONFLICTS ##                      ## COMMITS ##
-      ###############                      #############
+      ########################                  ############
+      ## MANIPULATE COMMITS ##                  ## REBASE ##
+      ########################                  ############
 
-      [o] open file                        [s] squash commit with next
-      [a] accept file in current state     [S] squash all commits
-      [m] use mine                         [u] move commit up (before previous)
-      [t] use theirs                       [d] move commit down (after next)
-      [M] launch external merge tool       [e] edit commit message
+      [s] squash commit with next               [d] define base ref for dashboard
+      [S] squash all commits                    [A] abort rebase
+      [e] edit commit message                   [r] rebase onto...
+      [d] move commit down (after next)         [C] continue rebase
+      [u] move commit up (before previous)      []
 
-      ####################
-      ## REBASE ACTIONS ##
-      ####################
+      ###############
+      ## CONFLICTS ##
+      ###############
 
-      [R] restart rebase
-      [A] abort rebase
-      [F] finalize rebase
+      [o] open file
+      [g] stage file in current state
+      [m] use mine
+      [t] use theirs
+      [M] launch external merge tool
 
     -
     """
