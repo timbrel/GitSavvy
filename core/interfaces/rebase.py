@@ -50,22 +50,24 @@ class RebaseInterface(ui.Interface, GitCommand):
       ########################                  ############
 
       [s] squash commit with next               [d] define base ref for dashboard
-      [S] squash all commits                    [A] abort rebase
-      [e] edit commit message                   [r] rebase onto...
+      [S] squash all commits                    [r] rebase onto...
+      [e] edit commit message                   [A] abort rebase
       [d] move commit down (after next)         [C] continue rebase
-      [u] move commit up (before previous)      []
-
-      ###############
-      ## CONFLICTS ##
-      ###############
-
-      [o] open file
-      [g] stage file in current state
-      [m] use mine
-      [t] use theirs
-      [M] launch external merge tool
-
+      [u] move commit up (before previous)
+    {conflicts_bindings}
     -
+    """
+
+    conflicts_keybindings = """
+    ###############
+    ## CONFLICTS ##
+    ###############
+
+    [o] open file
+    [g] stage file in current state
+    [m] use mine
+    [t] use theirs
+    [M] launch external merge tool
     """
 
     separator = "\n    ┃\n"
@@ -75,12 +77,22 @@ class RebaseInterface(ui.Interface, GitCommand):
     _base_commit_ref = None
     _base_commit = None
 
+    def __init__(self, *args, **kwargs):
+        self.conflicts_keybindings = \
+            "\n".join(line[2:] for line in self.conflicts_keybindings.split("\n"))
+        super().__init__(*args, **kwargs)
+
     def title(self):
         return "REBASE: {}".format(os.path.basename(self.repo_path))
 
+    def pre_render(self):
+        self._in_rebase = self.in_rebase()
+
     @ui.partial("active_branch")
     def render_active_branch(self):
-        return self.get_current_branch_name()
+        return (self.rebase_branch_name()
+                if self._in_rebase else
+                self.get_current_branch_name())
 
     @ui.partial("base_ref")
     def render_base_ref(self):
@@ -92,23 +104,51 @@ class RebaseInterface(ui.Interface, GitCommand):
 
     @ui.partial("status")
     def render_status(self):
-        # Todo
-        return "👍"
+        return "Rebase halted due to CONFLICT." if self._in_rebase else "Ready."
 
     @ui.partial("diverged_commits")
     def render_diverged_commits(self):
-        self.entries = self.log(start_end=(self.base_ref(), "HEAD"), reverse=True)
+        start = self.base_commit()
+        end = self.rebase_orig_head() if self._in_rebase else "HEAD"
 
-        return self.separator.join([
-            self.commit.format(
-                caret=" ",
-                status=self.UNKNOWN,
-                commit_hash=entry.short_hash,
-                commit_summary=entry.summary,
-                conflicts=""
-                )
-            for entry in self.entries
-            ])
+        self.entries = self.log(start_end=(start, end), reverse=True)
+
+        if self._in_rebase:
+            conflict_commit = self.rebase_conflict_at()
+            rewritten = dict(self.rebase_rewritten())
+            commits_info = []
+
+            for entry in self.entries:
+                commit_info = {}
+                was_rewritten = entry.long_hash in rewritten
+                new_hash = rewritten[entry.long_hash][:7] if was_rewritten else None
+                is_conflict = entry.long_hash == conflict_commit
+
+                commit_info["caret"] = self.CARET if is_conflict else " "
+                commit_info["status"] = (self.SUCCESS if was_rewritten else
+                                         self.CONFLICT if is_conflict else
+                                         self.UNKNOWN)
+                commit_info["commit_hash"] = new_hash if was_rewritten else entry.short_hash
+                commit_info["commit_summary"] = ("(was {}) {}".format(entry.short_hash, entry.summary)
+                                                 if was_rewritten else
+                                                 entry.summary)
+                commit_info["conflicts"] = "" if not is_conflict else "YES A CONFLICT"
+
+                commits_info.append(commit_info)
+
+        else:
+            commits_info = [{"caret": " ",
+                             "status": self.UNKNOWN,
+                             "commit_hash": entry.short_hash,
+                             "commit_summary": entry.summary,
+                             "conflicts": ""}
+                            for entry in self.entries]
+
+        return self.separator.join(self.commit.format(**commit_info) for commit_info in commits_info)
+
+    @ui.partial("conflicts_bindings")
+    def render_conflicts_bindings(self):
+        return self.conflicts_keybindings if self._in_rebase else ""
 
     def base_ref(self):
         base_ref = self.view.settings().get("git_savvy.rebase.base_ref")
@@ -118,6 +158,9 @@ class RebaseInterface(ui.Interface, GitCommand):
         return base_ref
 
     def base_commit(self):
+        if self._in_rebase:
+            return self.rebase_onto_commit()
+
         base_ref = self.base_ref()
         if not self._base_commit_ref == base_ref:
             self._base_commit = self.git("merge-base", "HEAD", base_ref).strip()
