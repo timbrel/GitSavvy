@@ -3,7 +3,6 @@ import tempfile
 import subprocess
 import shlex
 from shutil import rmtree
-from functools import partial
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
