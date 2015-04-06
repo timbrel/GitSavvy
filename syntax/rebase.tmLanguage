@@ -38,6 +38,25 @@
 			</array>
 		</dict>
 		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>comment.git-savvy.rebase-graph.separator</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>keyword.other.name.git-savvy.rebase-conflict</string>
+				</dict>
+			</dict>
+			<key>match</key>
+			<string>^(    ┃           )(.+)</string>
+			<key>name</key>
+			<string>meta.git-savvy.rebase-graph.conflict</string>
+		</dict>
+		<dict>
 			<key>match</key>
 			<string>    ┃</string>
 			<key>name</key>
@@ -71,10 +90,29 @@
 					<key>name</key>
 					<string>string.other.git-savvy.rebase.caret</string>
 				</dict>
+				<key>3</key>
+				<dict>
+					<key>name</key>
+					<string>support.type.git-savvy.rebase.commit_hash</string>
+				</dict>
+			</dict>
+			<key>match</key>
+			<string>  ([▸ ]) (·)  ([0-9a-f]{7})  (.*)\n</string>
+			<key>name</key>
+			<string>meta.git-savvy.rebase-graph.entry</string>
+		</dict>
+		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>string.other.git-savvy.rebase.caret</string>
+				</dict>
 				<key>2</key>
 				<dict>
 					<key>name</key>
-					<string>meta.git-savvy.rebase.commit-status</string>
+					<string>entity.name.function.git-savvy.success</string>
 				</dict>
 				<key>3</key>
 				<dict>
@@ -83,7 +121,31 @@
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>  ([▸ ]) ([·✔✕])  ([0-9a-f]{7})  (.*)\n</string>
+			<string>  ([▸ ]) (✔)  ([0-9a-f]{7})  (.*)\n</string>
+			<key>name</key>
+			<string>meta.git-savvy.rebase-graph.entry</string>
+		</dict>
+		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>string.other.git-savvy.rebase.caret</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>string.other.git-savvy.conflict</string>
+				</dict>
+				<key>3</key>
+				<dict>
+					<key>name</key>
+					<string>support.type.git-savvy.rebase.commit_hash</string>
+				</dict>
+			</dict>
+			<key>match</key>
+			<string>  ([▸ ]) (✕)  ([0-9a-f]{7})  (.*)\n</string>
 			<key>name</key>
 			<string>meta.git-savvy.rebase-graph.entry</string>
 		</dict>

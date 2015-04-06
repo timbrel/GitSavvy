@@ -16,6 +16,14 @@ patterns:
     name: comment.git-savvy.rebase.status
     match: '^  STATUS:.+'
 
+- name: meta.git-savvy.rebase-graph.conflict
+  match: '^(    ┃           )(.+)'
+  captures:
+    '1':
+      name: comment.git-savvy.rebase-graph.separator
+    '2':
+      name: keyword.other.name.git-savvy.rebase-conflict
+
 - name: comment.git-savvy.rebase-graph.separator
   match: '    ┃'
 
@@ -29,12 +37,30 @@ patterns:
       name: support.type.git-savvy.rebase.commit_hash
 
 - name: meta.git-savvy.rebase-graph.entry
-  match: '  ([▸ ]) ([·✔✕])  ([0-9a-f]{7})  (.*)\n'
+  match: '  ([▸ ]) (·)  ([0-9a-f]{7})  (.*)\n'
+  captures:
+    '1':
+      name: string.other.git-savvy.rebase.caret
+    '3':
+      name: support.type.git-savvy.rebase.commit_hash
+
+- name: meta.git-savvy.rebase-graph.entry
+  match: '  ([▸ ]) (✔)  ([0-9a-f]{7})  (.*)\n'
   captures:
     '1':
       name: string.other.git-savvy.rebase.caret
     '2':
-      name: meta.git-savvy.rebase.commit-status
+      name: entity.name.function.git-savvy.success
+    '3':
+      name: support.type.git-savvy.rebase.commit_hash
+
+- name: meta.git-savvy.rebase-graph.entry
+  match: '  ([▸ ]) (✕)  ([0-9a-f]{7})  (.*)\n'
+  captures:
+    '1':
+      name: string.other.git-savvy.rebase.caret
+    '2':
+      name: string.other.git-savvy.conflict
     '3':
       name: support.type.git-savvy.rebase.commit_hash
 

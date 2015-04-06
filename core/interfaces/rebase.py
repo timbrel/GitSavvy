@@ -130,6 +130,10 @@ class RebaseInterface(ui.Interface, GitCommand):
             new_hash = rewritten[entry.long_hash][:7] if was_rewritten else None
             is_conflict = entry.long_hash == conflict_commit
 
+            if is_conflict:
+                conflicts = "\n" + "\n".join("    ┃           ! {}".format(file_path)
+                                             for file_path in self._get_conflicts_in_rebase())
+
             commits_info.append({
                 "caret": self.CARET if is_conflict else " ",
                 "status": (self.SUCCESS if was_rewritten else
@@ -139,10 +143,17 @@ class RebaseInterface(ui.Interface, GitCommand):
                 "commit_summary": ("(was {}) {}".format(entry.short_hash, entry.summary)
                                    if was_rewritten else
                                    entry.summary),
-                "conflicts": "" if not is_conflict else "YES A CONFLICT"
+                "conflicts": conflicts if is_conflict else ""
             })
 
         return commits_info
+
+    def _get_conflicts_in_rebase(self):
+        return [
+            entry.path
+            for entry in self.get_status()
+            if entry.index_status == "U" and entry.working_status == "U"
+        ]
 
     def _get_diverged_outside_rebase(self):
         return [{"caret": " ",
