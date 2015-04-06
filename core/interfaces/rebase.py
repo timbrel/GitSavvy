@@ -78,20 +78,6 @@ class RebaseInterface(ui.Interface, GitCommand):
     def title(self):
         return "REBASE: {}".format(os.path.basename(self.repo_path))
 
-    def base_ref(self):
-        base_ref = self.view.settings().get("git_savvy.rebase.base_ref")
-        if not base_ref:
-            base_ref = "master"
-            self.view.settings().set("git_savvy.revase.base_ref", "master")
-        return base_ref
-
-    def base_commit(self):
-        base_ref = self.base_ref()
-        if not self._base_commit_ref == base_ref:
-            self._base_commit = self.git("merge-base", "HEAD", base_ref).strip()
-            self._base_commit_ref = base_ref
-        return self._base_commit
-
     @ui.partial("active_branch")
     def render_active_branch(self):
         return self.get_current_branch_name()
@@ -123,6 +109,20 @@ class RebaseInterface(ui.Interface, GitCommand):
                 )
             for entry in self.entries
             ])
+
+    def base_ref(self):
+        base_ref = self.view.settings().get("git_savvy.rebase.base_ref")
+        if not base_ref:
+            base_ref = "master"
+            self.view.settings().set("git_savvy.revase.base_ref", "master")
+        return base_ref
+
+    def base_commit(self):
+        base_ref = self.base_ref()
+        if not self._base_commit_ref == base_ref:
+            self._base_commit = self.git("merge-base", "HEAD", base_ref).strip()
+            self._base_commit_ref = base_ref
+        return self._base_commit
 
 
 ui.register_listeners(RebaseInterface)
