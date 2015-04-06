@@ -24,6 +24,7 @@ from .git_mixins.ignore import IgnoreMixin
 from .git_mixins.tags import TagsMixin
 from .git_mixins.history import HistoryMixin
 from .git_mixins.rewrite import RewriteMixin
+from .git_mixins.merge import MergeMixin
 
 
 git_path = None
@@ -43,7 +44,8 @@ class GitCommand(StatusMixin,
                  IgnoreMixin,
                  TagsMixin,
                  HistoryMixin,
-                 RewriteMixin
+                 RewriteMixin,
+                 MergeMixin
                  ):
 
     """
