@@ -5,7 +5,7 @@
 	<key>hidden</key>
 	<true/>
 	<key>name</key>
-	<string>GitSavvy Branch</string>
+	<string>GitSavvy Rebase</string>
 	<key>patterns</key>
 	<array>
 		<dict>
@@ -130,7 +130,7 @@
 		</dict>
 	</array>
 	<key>scopeName</key>
-	<string>git-savvy.branch</string>
+	<string>git-savvy.rebase</string>
 	<key>uuid</key>
 	<string>cdefe65b-6603-4494-b969-af100f96472a</string>
 </dict>

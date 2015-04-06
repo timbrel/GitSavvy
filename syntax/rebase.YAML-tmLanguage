@@ -1,6 +1,6 @@
 # [PackageDev] target_format: plist, ext: tmLanguage
-name: GitSavvy Branch
-scopeName: git-savvy.branch
+name: GitSavvy Rebase
+scopeName: git-savvy.rebase
 uuid: cdefe65b-6603-4494-b969-af100f96472a
 hidden: true
 
