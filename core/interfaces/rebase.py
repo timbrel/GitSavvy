@@ -65,8 +65,8 @@ class RebaseInterface(ui.Interface, GitCommand):
 
     [o] open file
     [g] stage file in current state
-    [m] use mine
-    [t] use theirs
+    [y] use version from your commit
+    [b] use version from new base
     [M] launch external merge tool
     """
 
@@ -367,3 +367,87 @@ class GsRebaseMoveDownCommand(RewriteBase):
             self.make_changes(commit_chain)
         except:
             sublime.message_dialog("Unable to move commit, most likely due to a conflict.")
+
+
+class GsRebaseOpenFileCommand(TextCommand, GitCommand):
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        sels = self.view.sel()
+        line_regions = [self.view.line(sel) for sel in sels]
+        abs_paths = [os.path.join(self.repo_path, line[18:])
+                     for reg in line_regions
+                     for line in self.view.substr(reg).split("\n") if line]
+        print(repr(abs_paths))
+        for path in abs_paths:
+            self.view.window().open_file(path)
+
+
+class GsRebaseStageFileCommand(TextCommand, GitCommand):
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        sels = self.view.sel()
+        line_regions = [self.view.line(sel) for sel in sels]
+        paths = (line[18:]
+                 for reg in line_regions
+                 for line in self.view.substr(reg).split("\n") if line)
+        for path in paths:
+            self.stage_file(path)
+        util.view.refresh_gitsavvy(self.view)
+
+
+class GsRebaseUseCommitVersionCommand(TextCommand, GitCommand):
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        sels = self.view.sel()
+        line_regions = [self.view.line(sel) for sel in sels]
+        paths = (line[18:]
+                 for reg in line_regions
+                 for line in self.view.substr(reg).split("\n") if line)
+        for path in paths:
+            self.git("checkout", "--theirs", "--", path)
+            self.stage_file(path)
+        util.view.refresh_gitsavvy(self.view)
+
+
+class GsRebaseUseBaseVersionCommand(TextCommand, GitCommand):
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        sels = self.view.sel()
+        line_regions = [self.view.line(sel) for sel in sels]
+        paths = (line[18:]
+                 for reg in line_regions
+                 for line in self.view.substr(reg).split("\n") if line)
+        for path in paths:
+            self.git("checkout", "--ours", "--", path)
+            self.stage_file(path)
+        util.view.refresh_gitsavvy(self.view)
+
+
+class GsRebaseLaunchMergeToolCommand(TextCommand, GitCommand):
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        sels = self.view.sel()
+        line_regions = [self.view.line(sel) for sel in sels]
+        paths = [os.path.join(self.repo_path, line[18:])
+                 for reg in line_regions
+                 for line in self.view.substr(reg).split("\n") if line]
+        if len(paths) > 1:
+            sublime.error_message("You can only launch merge tool for a single file at a time.")
+            return
+
+        self.launch_tool_for_file(paths[0])

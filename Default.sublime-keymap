@@ -547,5 +547,45 @@
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
             { "key": "selector", "operator": "equal", "operand": "meta.git-savvy.rebase-graph.entry" }
         ]
+    },
+    {
+        "keys": ["o"],
+        "command": "gs_rebase_open_file",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "keyword.other.name.git-savvy.rebase-conflict" }
+        ]
+    },
+    {
+        "keys": ["g"],
+        "command": "gs_rebase_stage_file",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "keyword.other.name.git-savvy.rebase-conflict" }
+        ]
+    },
+    {
+        "keys": ["y"],
+        "command": "gs_rebase_use_commit_version",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "keyword.other.name.git-savvy.rebase-conflict" }
+        ]
+    },
+    {
+        "keys": ["b"],
+        "command": "gs_rebase_use_base_version",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "keyword.other.name.git-savvy.rebase-conflict" }
+        ]
+    },
+    {
+        "keys": ["M"],
+        "command": "gs_rebase_launch_merge_tool",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "keyword.other.name.git-savvy.rebase-conflict" }
+        ]
     }
 ]
