@@ -54,6 +54,7 @@ class RebaseInterface(ui.Interface, GitCommand):
       [e] edit commit message                   [A] abort rebase
       [d] move commit down (after next)         [C] continue rebase
       [u] move commit up (before previous)
+      [w] show commit
     {conflicts_bindings}
     -
     """
@@ -371,6 +372,23 @@ class GsRebaseMoveDownCommand(RewriteBase):
             self.make_changes(commit_chain)
         except:
             sublime.message_dialog("Unable to move commit, most likely due to a conflict.")
+
+
+class GsRebaseShowCommitCommand(RewriteBase):
+
+    def run_async(self):
+        short_hash = self.get_selected_short_hash()
+        if not short_hash:
+            return
+
+        long_hash = None
+        for entry in self.interface.entries:
+            if entry.short_hash == short_hash:
+                long_hash = entry.long_hash
+        if not long_hash:
+            return
+
+        self.view.window().run_command("gs_show_commit", {"commit_hash": long_hash})
 
 
 class GsRebaseOpenFileCommand(TextCommand, GitCommand):
