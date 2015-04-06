@@ -131,8 +131,12 @@ class RebaseInterface(ui.Interface, GitCommand):
             is_conflict = entry.long_hash == conflict_commit
 
             if is_conflict:
-                conflicts = "\n" + "\n".join("    ┃           ! {}".format(file_path)
-                                             for file_path in self._get_conflicts_in_rebase())
+                conflict_paths = self._get_conflicts_in_rebase()
+                conflicts = (
+                    "" if not conflict_paths else
+                    "\n" + "\n".join("    ┃           ! {}".format(file_path)
+                                     for file_path in conflict_paths)
+                    )
 
             commits_info.append({
                 "caret": self.CARET if is_conflict else " ",
