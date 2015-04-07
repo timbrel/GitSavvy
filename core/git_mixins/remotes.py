@@ -23,7 +23,7 @@ class RemotesMixin():
         """
         Return a list of all known branches on remotes.
         """
-        stdout = self.git("branch", "-r", "--no-color", "--no-column")
+        stdout = self.git("branch", "-r", "--no-color")
         return [branch.strip() for branch in stdout.split("\n") if branch]
 
     def pull(self, remote=None, branch=None):
