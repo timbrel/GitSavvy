@@ -17,7 +17,7 @@ COMMIT_HELP_TEXT = """
 ## related to the current repo.  You may also type `owner/repo#` plus the `tab`
 ## key to reference an issue in a different GitHub repo.
 
-""".format(key="CTRL" if os.name == "nt" else "SUPER")
+""".format(key=util.super_key)
 
 COMMIT_SIGN_TEXT = """
 

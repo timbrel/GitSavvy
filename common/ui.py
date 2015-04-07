@@ -12,7 +12,7 @@ interfaces = {}
 edit_views = {}
 subclasses = []
 
-EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press SUPER+Enter.  To cancel, close the view."
+EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press {super_key}+Enter.  To cancel, close the view.\n"
 
 
 class Interface():
@@ -278,6 +278,7 @@ class EditView():
         self.view.set_scratch(True)
         self.view.set_read_only(False)
         self.view.set_name("EDIT")
+        self.view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.tmLanguage")
         self.view.settings().set("word_wrap", False)
         self.view.settings().set("git_savvy.edit_view", True)
         self.view.settings().set("git_savvy.repo_path", repo_path)
@@ -294,6 +295,7 @@ class EditView():
 
         regions["content"] = (0, len(starting_content))
         content = starting_content + (help_text or EDIT_DEFAULT_HELP_TEXT)
+        content = content.format(super_key=util.super_key)
         regions["help"] = (len(starting_content), len(content))
 
         self.view.run_command("gs_new_content_and_regions", {
