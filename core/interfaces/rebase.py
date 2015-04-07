@@ -75,7 +75,6 @@ class RebaseInterface(ui.Interface, GitCommand):
     commit = "  {caret} {status}  {commit_hash}  {commit_summary}{conflicts}"
     conflict = "    ┃           conflict: {path}"
 
-    _base_commit_ref = None
     _base_commit = None
 
     def __init__(self, *args, **kwargs):
@@ -185,9 +184,7 @@ class RebaseInterface(ui.Interface, GitCommand):
             return self.rebase_onto_commit()
 
         base_ref = self.base_ref()
-        if not self._base_commit_ref == base_ref:
-            self._base_commit = self.git("merge-base", "HEAD", base_ref).strip()
-            self._base_commit_ref = base_ref
+        self._base_commit = self.git("merge-base", "HEAD", base_ref).strip()
         return self._base_commit
 
 
