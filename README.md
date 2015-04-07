@@ -5,7 +5,7 @@
 Sublime Text 3 plugin providing the following features:
 
 - basic Git functionality; `init`, `add`, `commit`, `amend`, `checkout`, `pull`, `push`, etc.
-- inline diff viewing, including quick navigation between modified hunks and the ability to (un)stage files by hunk or by line (inspired by SourceTree)
+- inline diff viewing, including quick navigation between modified hunks and the ability to (un)stage files by hunk or by line (respectfully stolen from SourceTree, GitX, et al)
 - GitHub integration
     + issue/collaborator referencing when committing
     + opening the current file on GitHub at the selected line
