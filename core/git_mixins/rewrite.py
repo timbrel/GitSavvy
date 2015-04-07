@@ -87,6 +87,9 @@ class RewriteMixin():
 
     def rebase_rewritten(self):
         path = os.path.join(self._rebase_dir, "rewritten")
-        with open(path, "r") as f:
-            entries = f.read().strip().split("\n")
-            return (entry.split(" ") for entry in entries)
+        try:
+            with open(path, "r") as f:
+                entries = f.read().strip().split("\n")
+                return (entry.split(" ") for entry in entries)
+        except FileNotFoundError:
+            return []

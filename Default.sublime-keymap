@@ -595,5 +595,40 @@
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
             { "key": "selector", "operator": "equal", "operand": "keyword.other.name.git-savvy.rebase-conflict" }
         ]
+    },
+    {
+        "keys": ["f"],
+        "command": "gs_rebase_define_base_ref",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["r"],
+        "command": "gs_rebase_on_top_of",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["c"],
+        "command": "gs_rebase_continue",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["A"],
+        "command": "gs_rebase_abort",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["k"],
+        "command": "gs_rebase_skip",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
     }
 ]

@@ -49,11 +49,11 @@ class RebaseInterface(ui.Interface, GitCommand):
       ## MANIPULATE COMMITS ##                  ## REBASE ##
       ########################                  ############
 
-      [s] squash commit with next               [d] define base ref for dashboard
-      [S] squash all commits                    [r] rebase onto...
-      [e] edit commit message                   [A] abort rebase
-      [d] move commit down (after next)         [C] continue rebase
-      [u] move commit up (before previous)
+      [s] squash commit with next               [f] define base ref for dashboard
+      [S] squash all commits                    [r] rebase branch on top of...
+      [e] edit commit message                   [c] continue rebase
+      [d] move commit down (after next)         [k] skip commit during rebase
+      [u] move commit up (before previous)      [A] abort rebase
       [w] show commit
     {conflicts_bindings}
     -
@@ -473,3 +473,86 @@ class GsRebaseLaunchMergeToolCommand(TextCommand, GitCommand):
             return
 
         self.launch_tool_for_file(paths[0])
+
+
+class GsRebaseDefineBaseRefCommand(TextCommand, GitCommand):
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        self.entries = [branch.name_with_remote
+                        for branch in self.get_branches()
+                        if not branch.active]
+        self.view.window().show_quick_panel(
+            self.entries,
+            self.on_selection
+        )
+
+    def on_selection(self, idx):
+        if idx == -1:
+            return
+
+        self.view.settings().set("git_savvy.rebase.base_ref", self.entries[idx])
+        util.view.refresh_gitsavvy(self.view)
+
+
+class GsRebaseOnTopOfCommand(TextCommand, GitCommand):
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        self.entries = [branch.name_with_remote
+                        for branch in self.get_branches()
+                        if not branch.active]
+        self.view.window().show_quick_panel(
+            self.entries,
+            self.on_selection
+        )
+
+    def on_selection(self, idx):
+        if idx == -1:
+            return
+
+        selection = self.entries[idx]
+
+        self.view.settings().set("git_savvy.rebase.base_ref", selection)
+        self.git("rebase", selection)
+        util.view.refresh_gitsavvy(self.view)
+
+
+class GsRebaseAbortCommand(TextCommand, GitCommand):
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        try:
+            self.git("rebase", "--abort")
+        finally:
+            util.view.refresh_gitsavvy(self.view)
+
+
+class GsRebaseContinueCommand(TextCommand, GitCommand):
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        try:
+            self.git("rebase", "--continue")
+        finally:
+            util.view.refresh_gitsavvy(self.view)
+
+
+class GsRebaseSkipCommand(TextCommand, GitCommand):
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        try:
+            self.git("rebase", "--skip")
+        finally:
+            util.view.refresh_gitsavvy(self.view)
