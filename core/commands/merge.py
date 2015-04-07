@@ -37,7 +37,7 @@ class GsMergeCommand(WindowCommand, GitCommand):
             addl_info.append(branch.tracking_status)
 
         if addl_info:
-            entry += "(" + " - ".join(addl_info) + ")"
+            entry += " (" + " - ".join(addl_info) + ")"
 
         return entry
 
