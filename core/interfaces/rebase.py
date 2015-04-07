@@ -88,6 +88,7 @@ class RebaseInterface(ui.Interface, GitCommand):
 
     def pre_render(self):
         self._in_rebase = self.in_rebase()
+        self.view.settings().set("git_savvy.in_rebase", self._in_rebase)
 
     @ui.partial("active_branch")
     def render_active_branch(self):
