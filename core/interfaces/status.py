@@ -36,9 +36,9 @@ class StatusInterface(ui.Interface, GitCommand):
       ROOT:    {git_root}
       HEAD:    {head}
 
-    {< staged_files}
     {< unstaged_files}
     {< untracked_files}
+    {< staged_files}
     {< merge_conflicts}
     {< no_status_message}
     {< stashes}
