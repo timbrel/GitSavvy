@@ -17,6 +17,27 @@
 			<string>comment.git-savvy.make-commit</string>
 		</dict>
 		<dict>
+			<key>begin</key>
+			<string>^#[^#]</string>
+			<key>comment</key>
+			<string>blah</string>
+			<key>end</key>
+			<string>$</string>
+			<key>name</key>
+			<string>comment</string>
+			<key>patterns</key>
+			<array>
+				<dict>
+					<key>comment</key>
+					<string>git file categories</string>
+					<key>match</key>
+					<string>.*(Changes to be committed|Untracked files|Changes not staged for commit):</string>
+					<key>name</key>
+					<string>storage</string>
+				</dict>
+			</array>
+		</dict>
+		<dict>
 			<key>comment</key>
 			<string>github username</string>
 			<key>match</key>

@@ -8,6 +8,14 @@ patterns:
 - comment: commit header
   name: comment.git-savvy.make-commit
   match: ^##.*
+- comment: blah
+  name: comment
+  begin: ^#[^#]
+  end: $
+  patterns:
+  - comment: git file categories
+    name: storage
+    match: '.*(Changes to be committed|Untracked files|Changes not staged for commit):'
 - comment: github username
   name: constant.other.git-savvy.make-commit.github-username
   match: \@\w*

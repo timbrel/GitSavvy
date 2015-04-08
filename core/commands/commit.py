@@ -6,6 +6,8 @@ from sublime_plugin import WindowCommand, TextCommand
 from ..git_command import GitCommand
 from ...common import util
 
+NO_STAGED_FILES = "No files are currently staged.\n" \
+                  "Perhaps you meant to commit include unstaged files?"
 
 COMMIT_HELP_TEXT = """
 
@@ -67,28 +69,72 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        merge_msg_path = os.path.join(self.repo_path, ".git", "MERGE_MSG")
-
-        option_amend = self.view.settings().get("git_savvy.commit_view.amend")
-        if option_amend:
-            last_commit_message = self.git("log", "-1", "--pretty=%B")
-            initial_text = last_commit_message + COMMIT_HELP_TEXT
-        elif os.path.exists(merge_msg_path):
-            with open(merge_msg_path, "r") as f:
-                initial_text = f.read() + COMMIT_HELP_TEXT
-        else:
-            initial_text = COMMIT_HELP_TEXT
-
-        if sublime.load_settings("GitSavvy.sublime-settings").get("show_commit_diff"):
-            if option_amend:
-                initial_text += self.git("diff", "HEAD^")
-            else:
-                initial_text += self.git("diff", "--cached")
+        template = [
+            self.commit_message(),
+            COMMIT_HELP_TEXT.lstrip(),
+            self.footers()
+        ]
+        content = "".join(template)
 
         self.view.run_command("gs_replace_view_text", {
-            "text": initial_text,
+            "text": content,
             "nuke_cursors": True
             })
+
+    def commit_message(self):
+        merge_msg_path = os.path.join(self.repo_path, ".git", "MERGE_MSG")
+
+        if self.amending():
+            last_commit_message = self.git("log", "-1", "--pretty=%B")
+            return last_commit_message
+        elif os.path.exists(merge_msg_path):
+            with open(merge_msg_path, "r") as f:
+                return f.read()
+        else:
+            return "\n\n"
+
+    def footers(self):
+        footer = ""
+
+        if sublime.load_settings("GitSavvy.sublime-settings").get("show_commit_summary"):
+            footer += self.fetch_commit_summary()
+
+        if sublime.load_settings("GitSavvy.sublime-settings").get("show_commit_diff"):
+            if self.amending():
+                footer += self.git("diff", "HEAD^")
+            else:
+                footer += self.git("diff", "--cached")
+
+        return footer
+
+    def fetch_commit_summary(self):
+        """
+        Fetch the same pre-commit template git would use if you were doing
+        `git commit` (showing staged, unstaged, etc.)
+        """
+
+        include_unstaged = self.view.settings().get("git_savvy.commit_view.include_unstaged")
+
+        dryrun = self.git(
+            "commit",
+            "--dry-run",
+            "--amend" if self.amending() else None,
+            "-a" if include_unstaged else None,
+            throw_on_stderr = False
+        )
+
+        commented_lines = ("# " + line for line in dryrun.strip().split("\n"))
+
+        filtered_lines = []
+        for line in commented_lines:
+            if line.find('(use "git') == -1:
+                filtered_lines.append(line)
+
+        return "\n".join(filtered_lines)
+
+
+    def amending(self):
+        return self.view.settings().get("git_savvy.commit_view.amend")
 
 
 class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
