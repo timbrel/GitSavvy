@@ -10,7 +10,10 @@ from ...common import util
 COMMIT_HELP_TEXT = """
 
 ## To make a commit, type your commit message and press {key}-ENTER. To cancel
-## the commit, close the window. To sign off the commit press {key}-S.
+## the commit, close the window. Press {key}-SHIFT-ENTER to create a GPG signed
+## commit.
+
+## To sign off the commit message press {key}-S.
 
 ## You may also reference or close a GitHub issue with this commit.  To do so,
 ## type `#` followed by the `tab` key.  You will be shown a list of issues
@@ -99,6 +102,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        self.signed_commit = False
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
@@ -114,6 +118,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
             "-q" if "commit" not in show_panel_overrides else None,
             "-a" if include_unstaged else None,
             "--amend" if self.view.settings().get("git_savvy.commit_view.amend") else None,
+            "--gpg-sign" if self.signed_commit else None,
             "-F",
             "-",
             stdin=commit_message
@@ -121,6 +126,22 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
 
         self.view.window().focus_view(self.view)
         self.view.window().run_command("close_file")
+
+
+class GsCommitViewDoSignedCommitCommand(GsCommitViewDoCommitCommand):
+
+    """
+    Take the text of the current view (minus the help message text) and
+    make a GPG signed commit using the text for the commit message.
+    """
+
+    def run(self, edit):
+        self.signed_commit = True
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        GsCommitViewDoCommitCommand.run_async(self)
+
 
 
 class GsCommitViewSignCommand(TextCommand, GitCommand):
