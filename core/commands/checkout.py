@@ -19,7 +19,7 @@ class GsCheckoutBranchCommand(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        stdout = self.git("branch", "--no-color", "--no-column")
+        stdout = self.git("branch", "--no-color")
         branch_entries = (branch.strip() for branch in stdout.split("\n") if branch)
 
         # The line with the active branch will begin with an asterisk.

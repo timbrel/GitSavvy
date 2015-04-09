@@ -22,6 +22,9 @@ from .git_mixins.checkout_discard import CheckoutDiscardMixin
 from .git_mixins.remotes import RemotesMixin
 from .git_mixins.ignore import IgnoreMixin
 from .git_mixins.tags import TagsMixin
+from .git_mixins.history import HistoryMixin
+from .git_mixins.rewrite import RewriteMixin
+from .git_mixins.merge import MergeMixin
 
 
 git_path = None
@@ -39,7 +42,10 @@ class GitCommand(StatusMixin,
                  CheckoutDiscardMixin,
                  RemotesMixin,
                  IgnoreMixin,
-                 TagsMixin
+                 TagsMixin,
+                 HistoryMixin,
+                 RewriteMixin,
+                 MergeMixin
                  ):
 
     """
@@ -132,13 +138,13 @@ class GitCommand(StatusMixin,
 
         global git_path
         git_path = (git_path or
-                    sublime.load_settings("GitSavvy.sublime-settings").get("gitPath") or
+                    sublime.load_settings("GitSavvy.sublime-settings").get("git_path") or
                     shutil.which("git")
                     )
 
         if not git_path:
             msg = ("Your Git binary cannot be found.  If it is installed, add it "
-                   "to your PATH environment variable, or add a `gitPath` setting "
+                   "to your PATH environment variable, or add a `git_path` setting "
                    "in the `User/GitSavvy.sublime-settings` file.")
             sublime.error_message(msg)
             raise ValueError("Git binary not found.")

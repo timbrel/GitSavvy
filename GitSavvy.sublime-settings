@@ -6,6 +6,12 @@
     "prompt_before_destructive_action": true,
 
     /*
+        Uncomment the setting below to explicitly set which git binary
+        to use.
+     */
+    // "git_path": "/usr/bin/git",
+
+    /*
         Change this to `true` when doing dev work on GitSavvy.
      */
     "dev_mode": false,
@@ -81,7 +87,9 @@
         indicated in the global_flags hash.
      */
     "global_flags": {
-        // "pull": ["--dry-run"]
+        // --no-columns is not supported in Git versions <1.7.11.  If Git is configured
+        //   to use columns globally, --no-columns should be added here.
+        // "branch": ["--no-columns"]
     },
 
     /*

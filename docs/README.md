@@ -36,7 +36,6 @@ If you run into any issues not addressed here, please feel free to [open an issu
 
 - [git: commit](commit.md#git-commit)
 - [git: commit including unstaged files](commit.md#git-commit-including-unstaged-files)
-- [git: amend previous commit](commit.md#git-amend-previous-commit)
 - [git: quick commit](commit.md#git-quick-commit)
 - [git: quick stage current file and commit](commit.md#git-quick-stage-current-file-and-commit)
 
@@ -55,6 +54,12 @@ If you run into any issues not addressed here, please feel free to [open an issu
 
 - [git: tags](tag_mgmt.md#git-tags)
 - [git: quick tag](tag_mgmt.md#git-quick-tag)
+
+
+### Modifying history
+
+- [git: rebase](rebase.md)
+- [git: amend previous commit](commit.md#git-amend-previous-commit)
 
 
 ### Interacting with remotes

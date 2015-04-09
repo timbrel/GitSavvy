@@ -194,5 +194,9 @@
     {
         "caption": "git: branch",
         "command": "gs_show_branch"
+    },
+    {
+        "caption": "git: rebase",
+        "command": "gs_show_rebase"
     }
 ]
