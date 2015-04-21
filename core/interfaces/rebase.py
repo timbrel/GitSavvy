@@ -55,6 +55,9 @@ class RebaseInterface(ui.Interface, GitCommand):
       [d] move commit down (after next)         [k] skip commit during rebase
       [u] move commit up (before previous)      [A] abort rebase
       [w] show commit
+
+      [{super_key}-Z] undo previous action
+      [{super_key}-Y] redo action
     {conflicts_bindings}
     -
     """
@@ -88,6 +91,15 @@ class RebaseInterface(ui.Interface, GitCommand):
     def pre_render(self):
         self._in_rebase = self.in_rebase()
         self.view.settings().set("git_savvy.in_rebase", self._in_rebase)
+        cached_pre_rebase_state = self.view.settings().get("git_savvy.rebase_in_progress")
+        if cached_pre_rebase_state:
+            branch_state, target_branch = cached_pre_rebase_state
+            self.complete_action(
+                branch_state,
+                True,
+                "rebased on top of {}".format(target_branch)
+                )
+            self.view.settings().set("git_savvy.rebase_in_progress", None)
 
     @ui.partial("active_branch")
     def render_active_branch(self):
@@ -105,7 +117,26 @@ class RebaseInterface(ui.Interface, GitCommand):
 
     @ui.partial("status")
     def render_status(self):
-        return "Rebase halted due to CONFLICT." if self._in_rebase else "Ready."
+        if self._in_rebase:
+            return "Rebase halted due to CONFLICT."
+
+        log = self.view.settings().get("git_savvy.rebase_log") or []
+        log_len = len(log)
+        saved_cursor = self.view.settings().get("git_savvy.rebase_log_cursor")
+        cursor = saved_cursor if saved_cursor is not None else log_len - 1
+
+        if cursor < 0 and log_len > 0:
+            return "Redo available."
+
+        try:
+            cursor_entry = log[cursor]
+        except IndexError:
+            return "Ready."
+
+        if cursor == log_len - 1:
+            return "Successfully {}. Undo available.".format(cursor_entry["description"])
+
+        return "Successfully {}. Undo/redo available.".format(cursor_entry["description"])
 
     @ui.partial("diverged_commits")
     def render_diverged_commits(self):
@@ -114,6 +145,10 @@ class RebaseInterface(ui.Interface, GitCommand):
             end=self.rebase_orig_head() if self._in_rebase else "HEAD"
             )
         return self.separator.join(self.commit.format(**commit_info) for commit_info in commits_info)
+
+    @ui.partial("super_key")
+    def render_super_key(self):
+        return util.super_key
 
     def get_diverged_commits_info(self, start, end):
         self.entries = self.log(start_end=(start, end), reverse=True)
@@ -187,6 +222,116 @@ class RebaseInterface(ui.Interface, GitCommand):
         self._base_commit = self.git("merge-base", "HEAD", base_ref).strip()
         return self._base_commit
 
+    def get_branch_ref(self, branch_name):
+        stdout = self.git("show-ref", "refs/heads/" + branch_name)
+        return stdout.strip().split(" ")[0]
+
+    def get_branch_state(self):
+        branch_name = self.get_current_branch_name()
+        ref = self.get_branch_ref(branch_name)
+        return branch_name, ref
+
+    def complete_action(self, branch_state, success, description):
+        log = self.view.settings().get("git_savvy.rebase_log") or []
+        cursor = self.view.settings().get("git_savvy.rebase_log_cursor") or (len(log) - 1)
+        log = log[:cursor+1]
+
+        branch_name, ref_before = branch_state
+        log.append({
+            "description": description,
+            "branch_name": branch_name,
+            "ref_before": ref_before,
+            "ref_after": self.get_branch_ref(branch_name),
+            "success": success
+            })
+
+        cursor = len(log) - 1
+
+        self.set_log(log, cursor)
+
+    def get_log(self):
+        settings = self.view.settings()
+        return settings.get("git_savvy.rebase_log"), settings.get("git_savvy.rebase_log_cursor")
+
+    def set_log(self, log, cursor):
+        self.view.settings().set("git_savvy.rebase_log", log)
+        self.view.settings().set("git_savvy.rebase_log_cursor", cursor)
+
+
+class GsRebaseUndoCommand(TextCommand, GitCommand):
+
+    """
+    Revert branch HEAD to point to commit prior to previous action.
+    """
+
+    def run(self, edit):
+        self.interface = ui.get_interface(self.view.id())
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        log, cursor = self.interface.get_log()
+        if log is None or cursor is None or cursor == -1:
+            return
+
+        branch_name, ref = self.interface.get_branch_state()
+
+        current = log[cursor]
+        if current["branch_name"] != branch_name:
+            sublime.error_message("Current branch does not match expected. Cannot undo.")
+            return
+
+        try:
+            self.checkout_ref(current["ref_before"])
+            self.git("branch", "-f", branch_name, "HEAD")
+            cursor -= 1
+
+        except Exception as e:
+            sublime.error_message("Error encountered. Cannot undo.")
+            raise e
+
+        finally:
+            self.checkout_ref(branch_name)
+            self.interface.set_log(log, cursor)
+            util.view.refresh_gitsavvy(self.view)
+
+
+class GsRebaseRedoCommand(TextCommand, GitCommand):
+
+    """
+    If an undo action was taken, set branch HEAD to point to commit of
+    un-done action.
+    """
+
+    def run(self, edit):
+        self.interface = ui.get_interface(self.view.id())
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        log, cursor = self.interface.get_log()
+        if log is None or cursor is None or cursor == len(log) - 1:
+            return
+
+        branch_name, ref = self.interface.get_branch_state()
+
+        undone_action = log[cursor+1]
+        if undone_action["branch_name"] != branch_name:
+            sublime.error_message("Current branch does not match expected. Cannot redo.")
+            return
+
+        try:
+            self.checkout_ref(undone_action["ref_before"])
+            self.git("branch", "-f", branch_name, "HEAD")
+            cursor += 1
+
+        except Exception as e:
+            sublime.error_message("Error encountered. Cannot redo.")
+            raise e
+
+        finally:
+            self.checkout_ref(branch_name)
+            self.interface.set_log(log, cursor)
+            util.view.refresh_gitsavvy(self.view)
+
 
 ui.register_listeners(RebaseInterface)
 
@@ -210,11 +355,22 @@ class RewriteBase(TextCommand, GitCommand):
         line_str = self.view.substr(line)
         return line_str[7:14]
 
-    def make_changes(self, commit_chain):
-        self.rewrite_active_branch(
-            base_commit=self.interface.base_commit(),
-            commit_chain=commit_chain
-            )
+    def make_changes(self, commit_chain, description):
+        branch_state = self.interface.get_branch_state()
+        success = True
+
+        try:
+            self.rewrite_active_branch(
+                base_commit=self.interface.base_commit(),
+                commit_chain=commit_chain
+                )
+
+        except Exception as e:
+            success = False
+            raise e
+
+        finally:
+            self.interface.complete_action(branch_state, success, description)
 
         util.view.refresh_gitsavvy(self.view)
 
@@ -250,7 +406,7 @@ class GsRebaseSquashCommand(RewriteBase):
                 commit_chain[idx+1].msg += "\n\n" + commit.msg
                 commit.msg = None
 
-        self.make_changes(commit_chain)
+        self.make_changes(commit_chain, "squashed " + short_hash)
 
 
 class GsRebaseSquashAllCommand(RewriteBase):
@@ -277,7 +433,7 @@ class GsRebaseSquashAllCommand(RewriteBase):
                 commit_chain[idx+1].msg += "\n\n" + commit.msg
                 commit.msg = None
 
-        self.make_changes(commit_chain)
+        self.make_changes(commit_chain, "squashed all commits")
 
 
 class GsRebaseEditCommand(RewriteBase):
@@ -310,7 +466,7 @@ class GsRebaseEditCommand(RewriteBase):
                                 author="{} <{}>".format(entry.author, entry.email))
             for entry in self.interface.entries
         ]
-        self.make_changes(commit_chain)
+        self.make_changes(commit_chain, "edited " + entry_to_edit.short_hash)
 
 
 class GsRebaseMoveUpCommand(RewriteBase):
@@ -339,7 +495,7 @@ class GsRebaseMoveUpCommand(RewriteBase):
                 break
 
         try:
-            self.make_changes(commit_chain)
+            self.make_changes(commit_chain, "moved " + short_hash + " up")
         except:
             sublime.message_dialog("Unable to move commit, most likely due to a conflict.")
 
@@ -371,7 +527,7 @@ class GsRebaseMoveDownCommand(RewriteBase):
                 break
 
         try:
-            self.make_changes(commit_chain)
+            self.make_changes(commit_chain, "moved " + short_hash + " down")
         except:
             sublime.message_dialog("Unable to move commit, most likely due to a conflict.")
 
@@ -404,7 +560,6 @@ class GsRebaseOpenFileCommand(TextCommand, GitCommand):
         abs_paths = [os.path.join(self.repo_path, line[18:])
                      for reg in line_regions
                      for line in self.view.substr(reg).split("\n") if line]
-        print(repr(abs_paths))
         for path in abs_paths:
             self.view.window().open_file(path)
 
@@ -518,6 +673,10 @@ class GsRebaseOnTopOfCommand(TextCommand, GitCommand):
             return
 
         selection = self.entries[idx]
+
+        interface = ui.get_interface(self.view.id())
+        branch_state = interface.get_branch_state()
+        self.view.settings().set("git_savvy.rebase_in_progress", (branch_state, selection))
 
         self.view.settings().set("git_savvy.rebase.base_ref", selection)
         self.git("rebase", selection)

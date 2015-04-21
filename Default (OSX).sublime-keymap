@@ -107,5 +107,24 @@
         "context": [
             { "key": "setting.git_savvy.edit_view", "operator": "equal", "operand": true }
         ]
+    },
+
+    /////////////////
+    // REBASE VIEW //
+    /////////////////
+
+    {
+        "keys": ["super+z"],
+        "command": "gs_rebase_undo",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+        ]
+    },
+    {
+        "keys": ["super+y"],
+        "command": "gs_rebase_redo",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+        ]
     }
 ]
