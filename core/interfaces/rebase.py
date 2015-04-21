@@ -193,6 +193,10 @@ ui.register_listeners(RebaseInterface)
 
 class RewriteBase(TextCommand, GitCommand):
 
+    """
+    Base class for all commit manipulation actions.
+    """
+
     def run(self, edit):
         self.interface = ui.get_interface(self.view.id())
         sublime.set_timeout_async(self.run_async, 0)
