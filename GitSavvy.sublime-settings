@@ -83,6 +83,16 @@
     "default_tag_message": "Tag {tag_name}",
 
     /*
+        The filename for extra customized info to be displayed after the default
+        COMMIT_HELP_TEXT, such as commit message rules/tips/conventions.
+        Place this file at the root of the repo, and it should be commited to the
+        repo as well.
+        The file name defaults to `.commit_help`.
+        If this file is not presented, the functionality is totally ignored.
+     */
+    "commit_help_extra_file": ".commit_help",
+
+    /*
         For each command specified, always include the command line flags
         indicated in the global_flags hash.
      */
