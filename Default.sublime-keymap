@@ -510,7 +510,7 @@
     //////////////////////
 
     {
-        "keys": ["s"],
+        "keys": ["q"],
         "command": "gs_rebase_squash",
         "context": [
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
@@ -519,7 +519,7 @@
         ]
     },
     {
-        "keys": ["S"],
+        "keys": ["Q"],
         "command": "gs_rebase_squash_all",
         "context": [
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
@@ -570,7 +570,7 @@
         ]
     },
     {
-        "keys": ["g"],
+        "keys": ["s"],
         "command": "gs_rebase_stage_file",
         "context": [
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
