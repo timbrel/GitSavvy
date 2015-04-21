@@ -319,7 +319,7 @@ class GsRebaseRedoCommand(TextCommand, GitCommand):
             return
 
         try:
-            self.checkout_ref(undone_action["ref_before"])
+            self.checkout_ref(undone_action["ref_after"])
             self.git("branch", "-f", branch_name, "HEAD")
             cursor += 1
 
