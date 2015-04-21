@@ -25,28 +25,11 @@ class GsShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemote
     number at the current cursor position.
     """
 
-    def run(self, edit, default_repo=True):
-        if not default_repo:
-            first_cursor = self.view.sel()[0].begin()
-            text_before_cursor = self.view.substr(sublime.Region(0, first_cursor))
-            nondefault_repo = re.search(r"([a-zA-Z\-_0-9\.]+)/([a-zA-Z\-_0-9\.]+)#$", text_before_cursor).groups()
-        else:
-            nondefault_repo = None
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async)
 
-        sublime.set_timeout_async(lambda: self.run_async(nondefault_repo))
-
-    def run_async(self, nondefault_repo):
+    def run_async(self):
         remote = github.parse_remote(self.get_integrated_remote_url())
-
-        if nondefault_repo:
-            owner, repo_name = nondefault_repo
-            remote = github.GitHubRepo(
-                url="",
-                fqdn=remote.fqdn,
-                owner=owner,
-                repo=repo_name,
-                token=remote.token
-            )
 
         issues = github.get_issues(remote)
 
