@@ -5,14 +5,14 @@
     /////////////////
 
     {
-        "keys": ["super+enter"],
+        "keys": ["ctrl+enter"],
         "command": "gs_commit_view_do_commit",
         "context": [
             { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true }
         ]
     },
     {
-        "keys": ["super+s"],
+        "keys": ["ctrl+s"],
         "command": "gs_commit_view_sign",
         "context": [
             { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true }
@@ -24,14 +24,14 @@
     ///////////////
 
     {
-        "keys": ["super+enter"],
+        "keys": ["ctrl+enter"],
         "command": "gs_diff_stage_or_reset_hunk",
         "context": [
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
-        "keys": ["super+backspace"],
+        "keys": ["ctrl+backspace"],
         "command": "gs_diff_stage_or_reset_hunk",
         "args": { "reset": true },
         "context": [
@@ -45,7 +45,7 @@
     ////////////////
 
     {
-        "keys": ["super+enter"],
+        "keys": ["ctrl+enter"],
         "command": "gs_blame_open_commit",
         "context": [
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
@@ -57,7 +57,7 @@
     ///////////////
 
     {
-        "keys": ["super+enter"],
+        "keys": ["ctrl+enter"],
         "command": "gs_help_goto_link",
         "context": [
             { "key": "setting.git_savvy.help_view", "operator": "equal", "operand": true },
@@ -65,7 +65,7 @@
         ]
     },
     {
-        "keys": ["super+backspace"],
+        "keys": ["ctrl+backspace"],
         "command": "gs_help_goto_previous",
         "context": [
             { "key": "setting.git_savvy.help_view", "operator": "equal", "operand": true }
@@ -77,7 +77,7 @@
     //////////////////////
 
     {
-        "keys": ["super+z"],
+        "keys": ["ctrl+z"],
         "command": "gs_inline_diff_undo",
         "context": [
             { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
@@ -89,7 +89,7 @@
     ////////////////
 
     {
-        "keys": ["super+enter"],
+        "keys": ["ctrl+enter"],
         "command": "gs_log_graph_action",
         "context": [
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
@@ -102,7 +102,7 @@
     ///////////////
 
     {
-        "keys": ["super+enter"],
+        "keys": ["ctrl+enter"],
         "command": "gs_edit_view_complete",
         "context": [
             { "key": "setting.git_savvy.edit_view", "operator": "equal", "operand": true }

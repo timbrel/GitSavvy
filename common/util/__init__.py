@@ -9,4 +9,4 @@ from . import actions
 from . import debug
 from . import diff_string
 
-super_key = "CTRL" if os.name == "nt" else "SUPER"
+super_key = "SUPER" if os.name == "posix" else "CTRL"
