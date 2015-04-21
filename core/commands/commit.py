@@ -68,6 +68,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         merge_msg_path = os.path.join(self.repo_path, ".git", "MERGE_MSG")
+        gitsavvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
 
         option_amend = self.view.settings().get("git_savvy.commit_view.amend")
         if option_amend:
@@ -79,7 +80,13 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         else:
             initial_text = COMMIT_HELP_TEXT
 
-        if sublime.load_settings("GitSavvy.sublime-settings").get("show_commit_diff"):
+        commit_help_extra_file = gitsavvy_settings.get("commit_help_extra_file") or ".commit_help"
+        commit_help_extra_path = os.path.join(self.repo_path, commit_help_extra_file)
+        if os.path.exists(commit_help_extra_path):
+            with open(commit_help_extra_path, "r", encoding="utf-8") as f:
+                initial_text += f.read()
+
+        if gitsavvy_settings.get("show_commit_diff"):
             if option_amend:
                 initial_text += self.git("diff", "HEAD^")
             else:
