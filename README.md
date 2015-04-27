@@ -36,7 +36,7 @@ Feature documentation can be found [here](docs/README.md).  It can also be acces
 | Github integration | Rebase dashboard |
 |:------------------:|:----------------:|
 | ![github-integration](https://cloud.githubusercontent.com/assets/5016978/6704029/8fcaddbe-cd00-11e4-83b6-32276a2c2b65.gif) | ![git_rebase](https://cloud.githubusercontent.com/assets/5016978/7017776/5ca9ceca-dcb1-11e4-8fcb-552551f7743a.gif) |
-| Reference issues and collaborators in commits.  Open files on GitHub in the browser, with lines pre-selected. | Squash, edit, move, rebase.
+| Reference issues and collaborators in commits.  Open files on GitHub in the browser, with lines pre-selected. | Squash, edit, move, rebase, undo, redo.
 
 
 ## Installation
