@@ -21,13 +21,13 @@ Commits are shown in order of application, where the base commit (or inferred ro
 
 ### Manipulating commits
 
-#### Squash commit with next (`s`)
+#### Squash commit with next (`q`)
 
 The selected commit will be squashed with the commit below it.  The two commit messages will be combined into the one below.
 
 **Note:** This command cannot be performed while a rebase is ongoing.
 
-#### Squash all commits (`S`)
+#### Squash all commits (`Q`)
 
 All commits listed in the view, from the base to HEAD, will be squashed into a single commit.  All commit messages will be combined into the single commit that results from this operation.
 
@@ -90,7 +90,7 @@ If you are unable to address merge conflicts that arise, or wish to abort the in
 
 Selecting a conflicting file and running this command will open the selected file in a new view, ready for you to make modifications.
 
-#### Stage file in current state (`g`)
+#### Stage file in current state (`s`)
 
 If you've addressed merge conflicts manually or with an external merge tool, select the file in question and run this command to add the file to the index.  This command (or one of the "use version X" commands) must be run before continuing a rebase when conflicts occur.
 

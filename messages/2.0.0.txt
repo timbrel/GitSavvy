@@ -1,0 +1,38 @@
+# GitSavvy 2.0
+
+Things have been moving a bit more slowly with GitSavvy lately, but 2.0 brings
+a significant new feature: the **rebase dashboard**.
+
+The dashboard will show all commits made since the last common ancestor.  You
+can take action on those commits, including the ability to re-order, edit
+commit messages, and squash.  Once you've started an actual rebase (this is
+distinguished from the other actions in the dashboard), any conflicts will
+be displayed and you'll have options for resolving.
+
+If you've used `git rebase --interactive` from the terminal, there may be one surprise in that all actions take _immediate_ effect.  However, the dashboard
+also supports unlimited Undo/Redo.  The goal is to make rebase accessible for
+users that aren't familiar - if you have any UX feedback, please open an issue.
+
+Changes since 1.4.1:
+
+  Features:
+   - Rebase dashboard, including re-ordering, squashing, message editing, conflict resolution, and undo/redo.
+
+  Enhancement:
+   - Add option to append customized message to the default commit help.
+
+  UX:
+   - Move unstaged and untracked sections to top of status dashboard.
+   - Don't include `--no-columns` flag on `git branch`.
+   - Add space in `git: merge` palette between branch name and tracking info.
+
+  Bug:
+   - Native line-ending was used on Windows when autocrlf is false.
+   - When staging directory, ignored files were also staged.
+   - Status dashboard would not display after `git init`.
+   - Update key-bindings on Linux to use CTRL-* instead of SUPER-*.
+   - Status dashboard failed to render; stash list didn't include "WIP on branchname".
+
+  Contributors:
+   - Dale Bustad
+   - old9
