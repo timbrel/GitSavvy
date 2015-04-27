@@ -119,4 +119,12 @@ class ActiveBranchMixin():
         """
         Get last commit msg for the commit at HEAD.
         """
-        return self.git("log", "-n 1", "--pretty=format:%h %s", "--abbrev-commit").strip()
+        stdout = self.git(
+            "log",
+            "-n 1",
+            "--pretty=format:%h %s",
+            "--abbrev-commit",
+            throw_on_stderr=False
+            ).strip()
+
+        return stdout or "No commits yet."
