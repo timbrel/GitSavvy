@@ -45,6 +45,8 @@ class RebaseInterface(ui.Interface, GitCommand):
         ┃
         ┻
 
+        ** All actions take immediate effect, but can be undone. **
+
       ########################                  ############
       ## MANIPULATE COMMITS ##                  ## REBASE ##
       ########################                  ############

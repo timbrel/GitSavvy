@@ -36,6 +36,10 @@ patterns:
     '1':
       name: support.type.git-savvy.rebase.commit_hash
 
+- comment: ux note
+  name: keyword.other.git-savvy.ux-note
+  match: '\*\* [^\*]+ \*\*'
+
 - name: meta.git-savvy.rebase-graph.entry
   match: '  ([▸ ]) (·)  ([0-9a-f]{7})  (.*)\n'
   captures:

@@ -83,6 +83,14 @@
 			<string>comment.git-savvy.rebase-graph.base</string>
 		</dict>
 		<dict>
+			<key>comment</key>
+			<string>ux note</string>
+			<key>match</key>
+			<string>\*\* [^\*]+ \*\*</string>
+			<key>name</key>
+			<string>keyword.other.git-savvy.ux-note</string>
+		</dict>
+		<dict>
 			<key>captures</key>
 			<dict>
 				<key>1</key>
