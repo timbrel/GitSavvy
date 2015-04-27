@@ -348,7 +348,7 @@ class GsStatusStageFileCommand(TextCommand, GitCommand):
 
         if file_paths:
             for fpath in file_paths:
-                self.stage_file(fpath)
+                self.stage_file(fpath, force=False)
             sublime.status_message("Staged files successfully.")
             util.view.refresh_gitsavvy(self.view)
 

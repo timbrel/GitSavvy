@@ -1,11 +1,17 @@
 class StageUnstageMixin():
 
-    def stage_file(self, fpath):
+    def stage_file(self, fpath, force=True):
         """
         Given an absolute path or path relative to the repo's root, stage
         the file.
         """
-        self.git("add", "-f", "--all", "--", fpath)
+        self.git(
+            "add",
+            "-f" if force else None,
+            "--all",
+            "--",
+            fpath
+            )
 
     def unstage_file(self, fpath):
         """
