@@ -294,8 +294,7 @@ class EditView():
         starting_content += "\n\n"
 
         regions["content"] = (0, len(starting_content))
-        content = starting_content + (help_text or EDIT_DEFAULT_HELP_TEXT)
-        content = content.format(super_key=util.super_key)
+        content = starting_content + (help_text or EDIT_DEFAULT_HELP_TEXT).format(super_key=util.super_key)
         regions["help"] = (len(starting_content), len(content))
 
         self.view.run_command("gs_new_content_and_regions", {
