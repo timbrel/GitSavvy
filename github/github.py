@@ -102,3 +102,5 @@ def query_github(api_url_template, github_repo):
 
 get_issues = partial(query_github, "/repos/{owner}/{repo}/issues")
 get_contributors = partial(query_github, "/repos/{owner}/{repo}/contributors")
+get_forks = partial(query_github, "/repos/{owner}/{repo}/forks")
+get_repo_data = partial(query_github, "/repos/{owner}/{repo}")

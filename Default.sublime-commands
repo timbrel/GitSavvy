@@ -52,6 +52,10 @@
         "command": "gs_configure_github_remote"
     },
     {
+        "caption": "github: add fork as remote",
+        "command": "gs_add_fork_as_remote"
+    },
+    {
         "caption": "git: checkout",
         "command": "gs_checkout_branch"
     },
