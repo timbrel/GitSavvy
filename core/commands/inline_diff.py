@@ -122,6 +122,12 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
     def run(self, edit):
         file_path = self.file_path
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff.cached")
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        ignore_eol_arg = (
+            "--ignore-space-at-eol"
+            if savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
+            else None
+        )
 
         if in_cached_mode:
             indexed_object = self.get_indexed_file_object(file_path)
@@ -129,7 +135,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
             head_file_contents = self.get_object_contents(head_file_object)
 
             # Display the changes introduced between HEAD and index.
-            stdout = self.git("diff", "-U0", head_file_object, indexed_object)
+            stdout = self.git("diff", "-U0", ignore_eol_arg, head_file_object, indexed_object)
             diff = util.parse_diff(stdout)
             inline_diff_contents, replaced_lines = \
                 self.get_inline_diff_contents(head_file_contents, diff)
@@ -140,7 +146,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
             working_tree_file_object = self.get_object_from_string(working_tree_file_contents)
 
             # Display the changes introduced between index and working dir.
-            stdout = self.git("diff", "-U0", indexed_object, working_tree_file_object)
+            stdout = self.git("diff", "-U0", ignore_eol_arg, indexed_object, working_tree_file_object)
             diff = util.parse_diff(stdout)
             inline_diff_contents, replaced_lines = \
                 self.get_inline_diff_contents(indexed_object_contents, diff)
@@ -153,7 +159,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         self.view.replace(edit, sublime.Region(0, self.view.size()), inline_diff_contents)
 
         if cursors:
-            if (row, col) == (0, 0) and sublime.load_settings("GitSavvy.sublime-settings").get("inline_diff_auto_scoll", False):
+            if (row, col) == (0, 0) and savvy_settings.get("inline_diff_auto_scoll", False):
                 self.view.run_command("gs_inline_diff_goto_next_hunk")
             else:
                 self.view.sel().clear()
@@ -375,6 +381,12 @@ class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
 
     def run_async(self, reset=False):
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff.cached")
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        ignore_ws = (
+            "--ignore-whitespace"
+            if savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
+            else None
+        )
         selections = self.view.sel()
         region = selections[0]
         # For now, only support staging selections of length 0.
@@ -414,6 +426,7 @@ class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
             "--unidiff-zero",
             "--reverse" if (reset or in_cached_mode) else None,
             "--cached" if (not reset or in_cached_mode) else None,
+            ignore_ws,
             "-"
         ]
 
