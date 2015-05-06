@@ -1,0 +1,17 @@
+Changes since 2.0.0:
+
+  Feature:
+   - Easily add GitHub fork as local remote.
+
+  Enhancement:
+   - Checkout remote branch as local in branch dashboard.
+   - Support ignoring EOL whitespace in inline diff view.
+
+  Bug:
+   - Rebase edit would fail when content contained format key.
+   - Branch names with dots would not always be recognized.
+
+  Contributors:
+   - Dale Bustad
+   - David Devlin
+   - Pavel Savchenko
