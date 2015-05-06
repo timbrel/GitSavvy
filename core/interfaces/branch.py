@@ -49,7 +49,7 @@ class BranchInterface(ui.Interface, GitCommand):
       [d] delete                                    [D] delete (force)
       [R] rename (local)                            [m] merge selected into active branch
       [t] configure tracking                        [M] fetch and merge into active branch
-                                                    [h] fetch remote branches
+      [o] checkout remote as local                  [h] fetch remote branches
 
       [f] diff against active
       [e] toggle display of remote branches
@@ -149,8 +149,42 @@ class GsBranchesCheckoutCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        self.interface = ui.get_interface(self.view.id())
-        selection, line = self.interface.get_selection_line()
+        interface = ui.get_interface(self.view.id())
+        selection, line = interface.get_selection_line()
+        if not line:
+            return
+
+        segments = line.strip("▸ ").split(" ")
+        branch_name = segments[1]
+
+        local_region = interface.get_view_regions("branch_list")[0]
+        if local_region.contains(selection):
+            self.checkout_ref(branch_name)
+            util.view.refresh_gitsavvy(self.view)
+            return
+
+        remotes = self.get_remotes()
+        for remote_name in remotes:
+            remote_region_list = interface.get_view_regions("branch_list_" + remote_name)
+            if remote_region_list and remote_region_list[0].contains(selection):
+                self.checkout_ref("{}/{}".format(remote_name, branch_name))
+                util.view.refresh_gitsavvy(self.view)
+                return
+
+
+class GsBranchesCheckoutAsLocalCommand(TextCommand, GitCommand):
+
+    """
+    Create a new local branch that shares HEAD with the selected remote branch,
+    then check it out.
+    """
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        interface = ui.get_interface(self.view.id())
+        selection, line = interface.get_selection_line()
         if not line:
             return
 
@@ -159,15 +193,20 @@ class GsBranchesCheckoutCommand(TextCommand, GitCommand):
 
         local_region = self.view.get_regions("git_savvy_interface.branch_list")[0]
         if local_region.contains(selection):
-            self.checkout_ref(branch_name)
-            util.view.refresh_gitsavvy(self.view)
+            # No-op if selection is a local branch.
             return
 
         remotes = self.get_remotes()
         for remote_name in remotes:
-            remote_region = self.view.get_regions("git_savvy_interface.branch_list_" + remote_name)
-            if remote_region and remote_region[0].contains(selection):
-                self.checkout_ref("{}/{}".format(remote_name, branch_name))
+            remote_region_list = interface.get_view_regions("branch_list_" + remote_name)
+            if remote_region_list and remote_region_list[0].contains(selection):
+                self.git(
+                    "checkout",
+                    "-b",
+                    branch_name,
+                    "--track",
+                    "{}/{}".format(remote_name, branch_name)
+                    )
                 util.view.refresh_gitsavvy(self.view)
                 return
 
