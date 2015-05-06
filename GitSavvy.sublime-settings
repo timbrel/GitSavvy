@@ -54,6 +54,13 @@
     },
 
     /*
+        Change this to `true` when you would like inline diff to
+        ignore EOL whitespace changes.
+        See details in https://github.com/divmain/GitSavvy/issues/177
+     */
+    "inline_diff_ignore_eol_whitespaces": false,
+
+    /*
         Add entries to this array (e.g. "pull" or "push") if you'd like the
         output of these Git commands to always be shown in a panel.
      */
