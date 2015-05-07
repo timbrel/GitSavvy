@@ -16,12 +16,18 @@ SET_UPSTREAM_PROMPT = ("You have not set an upstream for the active branch.  "
 class PushBase(GitCommand):
     set_upstream = False
 
-    def do_push(self, remote, branch, force=False):
+    def do_push(self, remote, branch, force=False, local_branch=None):
         """
         Perform `git push remote branch`.
         """
         sublime.status_message(START_PUSH_MESSAGE)
-        self.push(remote, branch, set_upstream=self.set_upstream, force=force)
+        self.push(
+            remote,
+            branch,
+            set_upstream=self.set_upstream,
+            force=force,
+            local_branch=local_branch
+            )
         sublime.status_message(END_PUSH_MESSAGE)
         util.view.refresh_gitsavvy(self.window.active_view())
 
@@ -36,7 +42,10 @@ class GsPushCommand(WindowCommand, PushBase):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         if savvy_settings.get("prompt_for_tracking_branch") and not self.get_upstream_for_active_branch():
             if sublime.ok_cancel_dialog(SET_UPSTREAM_PROMPT):
-                self.window.run_command("gs_push_to_branch_name", {"set_upstream": True})
+                self.window.run_command("gs_push_to_branch_name", {
+                    "set_upstream": True,
+                    "force": force
+                    })
         else:
             sublime.set_timeout_async(lambda: self.do_push(None, None, force=force))
 
@@ -128,8 +137,9 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
     Prompt for remote and remote branch name, then push.
     """
 
-    def run(self, set_upstream=False):
+    def run(self, set_upstream=False, force=False):
         self.set_upstream = set_upstream
+        self.force = force
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
@@ -180,4 +190,8 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
         Push to the remote that was previously selected and provided branch
         name.
         """
-        sublime.set_timeout_async(lambda: self.do_push(self.selected_remote, branch))
+        sublime.set_timeout_async(lambda: self.do_push(
+            self.selected_remote,
+            branch,
+            self.force,
+            local_branch=self.get_current_branch_name()))
