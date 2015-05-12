@@ -61,7 +61,7 @@ class GsCheckoutNewBranchCommand(WindowCommand, GitCommand):
         pattern = r"^(?!\.|.*\.\..*|.*@.*|\/)[a-zA-Z0-9\-\_\/\.]+(?<!\.lock)(?<!\/)(?<!\.)\b$"
         match = re.match(pattern, branch_name)
         if not match:
-            sublime.status_message("`{}` is a invalid branch name.".format(branch_name))
+            sublime.error_message("`{}` is a invalid branch name.\nRead more on $(man git-check-ref-format)".format(branch_name))
             sublime.set_timeout_async(self.run_async(branch_name))
             return None
 
