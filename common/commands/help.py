@@ -178,4 +178,6 @@ class GsHelpGotoPrevious(TextCommand):
 
         settings.set("git_savvy.help.history", history)
 
-        self.view.run_command("gs_help_browse", {"page": page, "anchor": anchor, "add_to_history": False})
+        self.view.run_command("gs_help_browse", {"page": page,
+                                                 "anchor": anchor,
+                                                 "add_to_history": False})

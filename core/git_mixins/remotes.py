@@ -33,17 +33,17 @@ class RemotesMixin():
         """
         self.git("pull", remote, branch)
 
-    def push(self, remote=None, branch=None, force=False, set_upstream=False):
+    def push(self, remote=None, branch=None, force=False, local_branch=None, set_upstream=False):
         """
         Push to the specified remote and branch if provided, otherwise
         perform default `git push`.
         """
-        self.git(
+        return self.git(
             "push",
             "--force" if force else None,
             "--set-upstream" if set_upstream else None,
             remote,
-            branch
+            branch if not local_branch else "{}:{}".format(local_branch, branch)
             )
 
     def get_upstream_for_active_branch(self):
