@@ -1,0 +1,23 @@
+{
+	"build_systems": [],
+	"folders":
+	[
+		{
+			"folder_exclude_patterns":
+			[
+				".git",
+				"__pycache__"
+			],
+			"path": "."
+		}
+	],
+	"settings":
+	{
+		"rulers":
+		[
+			100
+		],
+		"tab_size": 4,
+		"translate_tabs_to_spaces": true
+	}
+}

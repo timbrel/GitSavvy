@@ -42,6 +42,10 @@ Running this command opens a branch dashboard where you can view and manipulate 
 
 Checks out the selected branch.  If you have uncommitted changes, the action may fail.
 
+#### Checkout remote branch as local (`o`)
+
+Creates a local branch that tracks the selected remote branch, then checks it out.  If you have uncommitted changes, the action may fail.
+
 #### Create new branch (`b`)
 
 You will be prompted for a new branch name.  Once entered, a branch will be created from HEAD and will be checked out.
