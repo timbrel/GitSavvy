@@ -26,6 +26,7 @@ class ActiveBranchMixin():
           4) boolean indicating whether branch is clean
           5) # commits ahead of remote
           6) # commits behind of remote
+          7) boolean indicating whether the remote branch is gone
         """
         stdout = self.git("status", "-b", "--porcelain").strip()
 
@@ -34,22 +35,22 @@ class ActiveBranchMixin():
         clean = len(addl_lines) == 0
 
         if first_line.startswith("## HEAD (no branch)"):
-            return True, False, None, None, clean, None, None
+            return True, False, None, None, clean, None, None, False
 
         if first_line.startswith("## Initial commit on "):
-            return False, True, first_line[21:], clean, None, None, None
+            return False, True, first_line[21:], clean, None, None, None, False
 
         valid_punctuation = "".join(c for c in string.punctuation if c not in "~^:?*[\\")
         branch_pattern = "[A-Za-z0-9" + re.escape(valid_punctuation) + "]+?"
-        short_status_pattern = "## (" + branch_pattern + ")(\.\.\.(" + branch_pattern + ")( \[((ahead (\d+))(, )?)?(behind (\d+))?\])?)?$"
+        short_status_pattern = "## (" + branch_pattern + ")(\.\.\.(" + branch_pattern + ")( \[((ahead (\d+))(, )?)?(behind (\d+))?(gone)?\])?)?$"
         status_match = re.match(short_status_pattern, first_line)
 
         if not status_match:
-            return False, False, addl_lines[0], None, clean, None, None
+            return False, False, None if clean else addl_lines[0], None, clean, None, None, False
 
-        branch, _, remote, _, _, _, ahead, _, _, behind = status_match.groups()
+        branch, _, remote, _, _, _, ahead, _, _, behind, gone = status_match.groups()
 
-        return False, False, branch, remote, clean, ahead, behind
+        return False, False, branch, remote, clean, ahead, behind, bool(gone)
 
     def get_branch_status(self, delim=None):
         """
@@ -65,7 +66,7 @@ class ActiveBranchMixin():
         If a delimeter is provided, join tuple components with it, and return
         that value.
         """
-        detached, initial, branch, remote, clean, ahead, behind = \
+        detached, initial, branch, remote, clean, ahead, behind, gone = \
             self._get_branch_status_components()
 
         secondary = ""
@@ -86,6 +87,8 @@ class ActiveBranchMixin():
                 secondary = "You're ahead by {}.".format(ahead)
             elif behind:
                 secondary = "You're behind by {}.".format(behind)
+            elif gone:
+                secondary = "The remote branch is gone."
 
         if delim:
             return delim.join((status, secondary)) if secondary else status
