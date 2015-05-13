@@ -1,3 +1,4 @@
+import re
 import sublime
 from sublime_plugin import WindowCommand
 
@@ -53,10 +54,17 @@ class GsCheckoutNewBranchCommand(WindowCommand, GitCommand):
     def run(self):
         sublime.set_timeout_async(self.run_async)
 
-    def run_async(self):
-        self.window.show_input_panel(NEW_BRANCH_PROMPT, "", self.on_done, None, None)
+    def run_async(self, name=""):
+        self.window.show_input_panel(NEW_BRANCH_PROMPT, name, self.on_done, None, None)
 
     def on_done(self, branch_name):
+        pattern = r"^(?!\.|.*\.\..*|.*@.*|\/)[a-zA-Z0-9\-\_\/\.]+(?<!\.lock)(?<!\/)(?<!\.)\b$"
+        match = re.match(pattern, branch_name)
+        if not match:
+            sublime.error_message("`{}` is a invalid branch name.\nRead more on $(man git-check-ref-format)".format(branch_name))
+            sublime.set_timeout_async(self.run_async(branch_name))
+            return None
+
         self.git("checkout", "-b", branch_name)
         sublime.status_message("Created and checked out `{}` branch.".format(branch_name))
         util.view.refresh_gitsavvy(self.window.active_view())
