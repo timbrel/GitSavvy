@@ -212,8 +212,9 @@ class RebaseInterface(ui.Interface, GitCommand):
     def base_ref(self):
         base_ref = self.view.settings().get("git_savvy.rebase.base_ref")
         if not base_ref:
-            base_ref = "master"
-            self.view.settings().set("git_savvy.revase.base_ref", "master")
+            project_settings = sublime.active_window().project_data().get('settings', {})
+            base_ref = project_settings.get("rebase_default_base_ref", "master")
+            self.view.settings().set("git_savvy.rebase.base_ref", base_ref)
         return base_ref
 
     def base_commit(self):
