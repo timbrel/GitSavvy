@@ -62,7 +62,20 @@ This will display the selected commit data and meta-data in a new window, includ
 
 When initially opening the rebase dashboard, GitSavvy will attempt to determine the root commit of the branch, i.e. the HEAD when you typed `git checkout -b BRANCH_NAME`.  This commit is used as the starting point for the information that is displayed.
 
-In most cases, this will default to `master`.  However, if you would like to compare the current branch against something other than local `master`, using this command will allow you to make that selection.
+In most cases, this will default to `master`.  However, if you would like to compare the current branch against something other than local `master`, using this command will allow you to make that selection. You can override the default per-project by adding a `rebase_default_base_ref` to your `.sublime-project` file:
+
+```json
+{
+    "folders": [
+        {
+           "path": "XYZ"
+        }
+    ],
+    "settings": {
+        "rebase_default_base_ref": "develop"
+    }
+}
+```
 
 #### Rebase branch on top of other branch (`r`)
 
