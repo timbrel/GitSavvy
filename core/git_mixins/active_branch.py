@@ -95,7 +95,7 @@ class ActiveBranchMixin():
         return status, secondary
 
     def get_branch_status_short(self):
-        detached, initial, branch, remote, clean, ahead, behind = \
+        detached, initial, branch, remote, clean, ahead, behind, gone = \
             self._get_branch_status_components()
 
         dirty = "" if clean else "*"
