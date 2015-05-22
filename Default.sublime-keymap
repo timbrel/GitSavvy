@@ -511,6 +511,13 @@
         ],
         "args": { "action": "view" }
     },
+    {
+        "keys": ["m"],
+        "command": "gs_log_graph_more_info",
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     //////////////////////
     // REBASE DASHBOARD //

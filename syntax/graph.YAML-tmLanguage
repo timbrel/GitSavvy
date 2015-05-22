@@ -12,6 +12,9 @@ patterns:
 - comment: SHA
   name: keyword.git-savvy.graph.commit-hash
   match: (?:(?<=[\*\|] )|(?<=[\*\|]   ))([0-9a-f]{6,40})
+- comment: by name
+  name: keyword.git-savvy.graph.by-name
+  match: (`.*`)
 - comment: branch names
   name: constant.other.git-savvy.graph.branch-name
   match: (?<= )(\(.*\))(?= )

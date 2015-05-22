@@ -61,3 +61,31 @@ class GsLogGraphActionCommand(TextCommand, GitCommand):
             util.view.refresh_gitsavvy(self.view)
         elif self.action == "view":
             self.view.window().run_command("gs_show_commit", {"commit_hash": commit_hash})
+
+class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
+
+    """
+    Show all info about a commit in a quick panel
+    """
+
+    def run(self, edit):
+        selections = self.view.sel()
+        if len(selections) != 1:
+            return
+
+        lines = util.view.get_lines_from_regions(self.view, selections)
+        if not lines:
+            return
+        line = lines[0]
+
+        commit_hash = line.strip(" |*")[:7]
+        if (len(commit_hash) <= 3) :
+            return
+
+        text = self.git("show", commit_hash, "--format=fuller", "--quiet")
+        output_view = self.view.window().create_output_panel("show_commit_info")
+        output_view.set_read_only(False)
+        output_view.insert(edit, 0, text)
+        output_view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.tmLanguage")
+        output_view.set_read_only(True)
+        self.view.window().run_command("show_panel", {"panel": "output.show_commit_info"})

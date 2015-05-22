@@ -28,6 +28,14 @@
 		</dict>
 		<dict>
 			<key>comment</key>
+			<string>by name</string>
+			<key>match</key>
+			<string>(`.*`)</string>
+			<key>name</key>
+			<string>keyword.git-savvy.graph.by-name</string>
+		</dict>
+		<dict>
+			<key>comment</key>
 			<string>branch names</string>
 			<key>match</key>
 			<string>(?&lt;= )(\(.*\))(?= )</string>

@@ -125,5 +125,5 @@
 
         NOTE: Changes you make may break in-view functionality, so use with caution.
      */
-    "git_graph_args": ["log", "--oneline", "--graph", "--all", "--decorate"]
+    "git_graph_args": ["log", "--pretty=format:%h%d (%ar) by `%an` %s", "--graph", "--all"]
 }
