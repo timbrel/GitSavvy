@@ -8,10 +8,10 @@ hidden: true
 patterns:
 - comment: graph lines
   name: comment.git-savvy.graph.graph-line
-  match: ^([| *\\/]+)
+  match: ^([| *\\/_]+)
 - comment: SHA
   name: keyword.git-savvy.graph.commit-hash
-  match: (?:(?<=[\*\|] )|(?<=[\*\|]   ))([0-9a-f]{6,40})
+  match: (?:(?<=[\\\*\|] )|(?<=[\\\*\|]   ))([0-9a-f]{6,40})
 - comment: by name
   name: keyword.git-savvy.graph.by-name
   match: (`.*`)
