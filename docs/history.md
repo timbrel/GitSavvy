@@ -24,4 +24,5 @@ Pressing `SUPER-Enter` (`CTRL-Enter` in Windows) while your cursor is inside a h
 
 Opens a special view that displays an ASCII-graphic representation of the repo's commit and branch history.
 
-Pressing `m` while your cursor is over a particular line will display a quick panel with show more info about that commit. Pressing `Enter` while your cursor is over a particular line will display the commit reflected on that line.  Pressing `SUPER-Enter` (`CTRL-Enter` in Windows) will check out the commit.  Not that a successful commit will not be visually reflected in the graph view.
+Use `n`or `down` to go to next commit and use `p`or `up` to go to previous commit.
+Pressing `m` while your cursor is over a particular line will display a quick panel with  more info about that commit. If you have the `log_graph_view_toggle_more` setting set to `false` it will not show more content about the commit when browsing log. Pressing `Enter` while your cursor is over a particular line will display the commit reflected on that line.  Pressing `SUPER-Enter` (`CTRL-Enter` in Windows) will check out the commit.  Not that a successful commit will not be visually reflected in the graph view.
