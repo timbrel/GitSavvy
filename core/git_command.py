@@ -242,7 +242,7 @@ class GitCommand(StatusMixin,
         global_flags = savvy_settings.get("global_flags")
 
         if global_flags and git_cmd in global_flags:
-            args = [git_cmd] + global_flags[git_cmd] + addl_args
+            args = [git_cmd] + addl_args + global_flags[git_cmd]
 
         return args
 
