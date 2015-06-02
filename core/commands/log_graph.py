@@ -14,7 +14,7 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
     of the repo's branch relationships.
     """
 
-    def run(self):
+    def run(self, additional_flag = ''):
         repo_path = self.repo_path
         view = self.window.new_file()
         view.settings().set("git_savvy.log_graph_view", True)
@@ -24,14 +24,15 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
         view.set_name(LOG_GRAPH_TITLE)
         view.set_scratch(True)
         view.set_read_only(True)
-        view.run_command("gs_log_graph_initialize")
+        view.run_command("gs_log_graph_initialize", {"additional_flag": additional_flag})
 
 
 class GsLogGraphInitializeCommand(TextCommand, GitCommand):
 
-    def run(self, edit):
+    def run(self, edit, additional_flag):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         args = savvy_settings.get("git_graph_args")
+        args.append(additional_flag)
         branch_graph = self.git(*args)
         self.view.run_command("gs_replace_view_text", {"text": branch_graph, "nuke_cursors": True})
 
