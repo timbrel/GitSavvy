@@ -66,7 +66,7 @@ class GsLogGraphActionCommand(TextCommand, GitCommand):
 class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
 
     """
-    Show all info about a commit in a quick panel
+    Show all info about a commit in a quick panel.
     """
 
     def run(self, edit):
@@ -95,15 +95,14 @@ class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
 class GsLogGraphNextCommitCommand(TextCommand, GitCommand):
 
     """
-    move cursor to next commit
+    Move cursor to next commit.
     """
 
-    def run(self, edit, forward):
+    def run(self, edit, forward = True):
         selections = self.view.sel()
         if len(selections) != 1:
             return
 
-        # command to move one down
         self.view.window().run_command("move", {"by": "lines", "forward": forward})
         lines = util.view.get_lines_from_regions(self.view, selections)
         if not lines:
@@ -118,11 +117,12 @@ class GsLogGraphNextCommitCommand(TextCommand, GitCommand):
 
 class GsLogGraphToggleMoreInfoCommand(TextCommand, WindowCommand, GitCommand):
 
+    """
+    Toggle log_graph_view_toggle_more setting.
+    """
     def run(self, edit):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        toggle_more = savvy_settings.get("log_graph_view_toggle_more")
+        savvy_settings.set("log_graph_view_toggle_more", not toggle_more)
 
-        if (savvy_settings.get("log_graph_view_toggle_more")):
-            savvy_settings.set("log_graph_view_toggle_more", False)
-        else:
-            savvy_settings.set("log_graph_view_toggle_more", True)
         self.view.run_command("gs_log_graph_more_info")

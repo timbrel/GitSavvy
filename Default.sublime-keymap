@@ -519,7 +519,7 @@
         ]
     },
     {
-        "keys": ["n"],
+        "keys": ["."],
         "command": "gs_log_graph_next_commit",
         "args": {"forward": true},
         "context": [
@@ -527,23 +527,7 @@
         ]
     },
     {
-        "keys": ["p"],
-        "command": "gs_log_graph_next_commit",
-        "args": {"forward": false},
-        "context": [
-            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
-        ]
-    },
-    {
-        "keys": ["down"],
-        "command": "gs_log_graph_next_commit",
-        "args": {"forward": true},
-        "context": [
-            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
-        ]
-    },
-    {
-        "keys": ["up"],
+        "keys": [","],
         "command": "gs_log_graph_next_commit",
         "args": {"forward": false},
         "context": [
