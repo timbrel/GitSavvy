@@ -81,7 +81,7 @@ class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
         line = lines[0]
 
         commit_hash = line.strip(" /_\|*")[:7]
-        if (len(commit_hash) <= 3) :
+        if len(commit_hash) <= 3 :
             return
 
         text = self.git("show", commit_hash, "--format=fuller", "--quiet")
@@ -111,8 +111,9 @@ class GsLogGraphNextCommitCommand(TextCommand, GitCommand):
         line = lines[0]
 
         commit_hash = line.strip(" /_\|*")[:7]
-        if (len(commit_hash) > 3) :
+        if len(commit_hash) > 3 :
             self.view.window().run_command("gs_log_graph_more_info")
+            self.view.window().run_command("show_at_center")
         else :
             self.view.window().run_command("gs_log_graph_next_commit", {"forward": forward})
 
