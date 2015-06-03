@@ -49,11 +49,11 @@ class GsLogCommand(WindowCommand, GitCommand):
 
         self.window.show_quick_panel(
             self._entries,
-            self.on_selection,
+            self.on_hash_selection,
             flags=sublime.MONOSPACE_FONT
         )
 
-    def on_selection(self, index):
+    def on_hash_selection(self, index):
         if index == -1:
             return
         if index == self._limit:
@@ -61,8 +61,32 @@ class GsLogCommand(WindowCommand, GitCommand):
             sublime.set_timeout_async(lambda: self.run_async(), 1)
             return
 
-        selected_hash = self._hashes[index]
-        self.window.run_command("gs_show_commit", {"commit_hash": selected_hash})
+        self._selected_hash = self._hashes[index]
+
+        self.window.show_quick_panel(
+            [
+                "Show commit",
+                "Compare commit against working directory",
+                "Compare commit against index"
+            ],
+            self.on_output_selection,
+            flags=sublime.MONOSPACE_FONT
+        )
+
+    def on_output_selection(self, index):
+        if index == -1:
+            return
+
+        if index == 0:
+            self.window.run_command("gs_show_commit", {"commit_hash": self._selected_hash})
+
+        if index in [1, 2]:
+            self.window.run_command("gs_diff", {
+                "in_cached_mode": index == 2,
+                "file_path": self._filename,
+                "current_file": bool(self._filename),
+                "base_commit": self._selected_hash
+            })
 
 
 class GsLogCurrentFileCommand(WindowCommand, GitCommand):
