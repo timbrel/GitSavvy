@@ -6,6 +6,11 @@ Opens a panel with a chronological list of all ancestors of the current commit. 
 
 By default, the list is paginated at 6,000 commits for performance reasons.  To view the next 6,000 commits, start typing `>>> NEXT`.  Whens selected, you will see a list with the next 6,000 commits.
 
+On selection of a commit you can choose from the following options:
+- `Show commit`: Display the commit.
+- `Compare commit against working directory`: Display the diff between the commit and the working directory.
+- `Compare commit against index`: Display the diff between the commit and staged changes in the index.
+
 ## `git: log current file`
 
 Performs a similar function to `git: log`, but restricts your search to the history of the currently open file.
