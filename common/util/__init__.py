@@ -1,4 +1,4 @@
-import os
+import sys
 
 from .parse_diff import parse_diff
 from . import dates
@@ -9,4 +9,4 @@ from . import actions
 from . import debug
 from . import diff_string
 
-super_key = "SUPER" if os.name == "posix" else "CTRL"
+super_key = "SUPER" if sys.platform == "darwin" else "CTRL"
