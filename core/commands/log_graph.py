@@ -74,6 +74,11 @@ class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        show_more = savvy_settings.get("graph_show_more_commit_info")
+        if not show_more:
+            return
+
         selections = self.view.sel()
         if len(selections) != 1:
             return
