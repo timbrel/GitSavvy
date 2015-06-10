@@ -136,5 +136,7 @@ class GsLogGraphToggleMoreInfoCommand(TextCommand, WindowCommand, GitCommand):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         show_more = savvy_settings.get("graph_show_more_commit_info")
         savvy_settings.set("graph_show_more_commit_info", not show_more)
+        if not show_more:
+            self.view.window().run_command("hide_panel")
 
         self.view.run_command("gs_log_graph_more_info")
