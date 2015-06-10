@@ -7,10 +7,10 @@ hidden: true
 patterns:
 - comment: commit header
   name: string.other.quoted-or-unquoted.git-savvy.commit-info
-  match: ^commit 
+  match: ^commit
 - comment: author and date info
   name: string.other.quoted-or-unquoted.git-savvy.author-and-date
-  match: ^((Author:)|(Date:))
+  match: ^((Author:)|(Date:)|(Merge:)|(AuthorDate:)|(Commit:)|(CommitDate:))
 - comment: diff section
   name: meta.git-savvy.commit-diff
   begin: ^(?=diff)

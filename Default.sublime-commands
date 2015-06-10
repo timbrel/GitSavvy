@@ -39,8 +39,13 @@
         "args": { "amend": true }
     },
     {
-        "caption": "git: graph",
+        "caption": "git: graph current branch",
         "command": "gs_log_graph"
+    },
+    {
+        "caption": "git: graph all branches",
+        "command": "gs_log_graph",
+        "args": { "all_branches": true }
     },
     {
         "caption": "github: open file on remote",

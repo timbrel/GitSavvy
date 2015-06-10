@@ -20,7 +20,7 @@
 			<key>comment</key>
 			<string>author and date info</string>
 			<key>match</key>
-			<string>^((Author:)|(Date:))</string>
+			<string>^((Author:)|(Date:)|(Merge:)|(AuthorDate:)|(Commit:)|(CommitDate:))</string>
 			<key>name</key>
 			<string>string.other.quoted-or-unquoted.git-savvy.author-and-date</string>
 		</dict>

@@ -121,9 +121,18 @@
     "prompt_for_tracking_branch": true,
 
     /*
+        When set to `true`, GitSavvy will automatically display more info about the
+        current commit in a quick panel.  When set to `false`, this function must
+        be invoked manually.
+     */
+    "graph_show_more_commit_info": true,
+
+    /*
         Update the desired graph arguments for a customized experience.
+        Do not add "--all" in this setting, it is added in graph all branches
 
         NOTE: Changes you make may break in-view functionality, so use with caution.
      */
-    "git_graph_args": ["log", "--oneline", "--graph", "--all", "--decorate"]
+    // "git_graph_args": ["log", "--pretty=format:%h%d (%ar) by `%an` %s", "--graph"],
+    "git_graph_args": ["log", "--oneline", "--graph", "--decorate"]
 }

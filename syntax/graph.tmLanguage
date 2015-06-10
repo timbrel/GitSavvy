@@ -14,7 +14,7 @@
 			<key>comment</key>
 			<string>graph lines</string>
 			<key>match</key>
-			<string>^([| *\\/]+)</string>
+			<string>^([| *\\/_]+)</string>
 			<key>name</key>
 			<string>comment.git-savvy.graph.graph-line</string>
 		</dict>
@@ -22,9 +22,17 @@
 			<key>comment</key>
 			<string>SHA</string>
 			<key>match</key>
-			<string>(?:(?&lt;=[\*\|] )|(?&lt;=[\*\|]   ))([0-9a-f]{6,40})</string>
+			<string>(?:(?&lt;=[\\\*\|] )|(?&lt;=[\\\*\|]   ))([0-9a-f]{6,40})</string>
 			<key>name</key>
 			<string>keyword.git-savvy.graph.commit-hash</string>
+		</dict>
+		<dict>
+			<key>comment</key>
+			<string>by name</string>
+			<key>match</key>
+			<string>(`.*`)</string>
+			<key>name</key>
+			<string>keyword.git-savvy.graph.by-name</string>
 		</dict>
 		<dict>
 			<key>comment</key>

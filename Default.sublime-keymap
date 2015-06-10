@@ -511,6 +511,29 @@
         ],
         "args": { "action": "view" }
     },
+    {
+        "keys": ["m"],
+        "command": "gs_log_graph_toggle_more_info",
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["."],
+        "command": "gs_log_graph_next_commit",
+        "args": {"forward": true},
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": [","],
+        "command": "gs_log_graph_next_commit",
+        "args": {"forward": false},
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     //////////////////////
     // REBASE DASHBOARD //
