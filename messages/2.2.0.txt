@@ -1,0 +1,23 @@
+Changes since 2.1.0:
+
+  Feature:
+   - After selecting a commit from the `git: log` panel, you can now show the commit, compare that commit against your working directory, or compare that commit against the git index.
+
+  Enhancement:
+   - Navigation inside `git: graph` view.
+   - Quick panel inside `git: graph` view, displaying extra commit info.
+   - Add `git: graph all branches` command.
+   - Make default comparison configurable in Rebase dashboard.
+   - Validate branch name when creating.
+
+  Bug:
+   - `git push --force` would fail when no upstream set but upstream exists.
+   - `super_key` was not set to `CTRL` on Linux
+   - Branch status would not display correctly when remote tracking branch disappeared.
+   - The inclusion of global Git flags would cause exclusion of dynamic args.
+
+  Contributors:
+   - Simon
+   - Dale Bustad
+   - Max Mykhailenko
+   - David Devlin
