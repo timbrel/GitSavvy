@@ -14,7 +14,7 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
     of the repo's branch relationships.
     """
 
-    def run(self, additional_flag = ''):
+    def run(self, additional_flag=""):
         repo_path = self.repo_path
         view = self.window.new_file()
         view.settings().set("git_savvy.log_graph_view", True)
@@ -64,6 +64,7 @@ class GsLogGraphActionCommand(TextCommand, GitCommand):
         elif self.action == "view":
             self.view.window().run_command("gs_show_commit", {"commit_hash": commit_hash})
 
+
 class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
 
     """
@@ -81,7 +82,7 @@ class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
         line = lines[0]
 
         commit_hash = line.strip(" /_\|*")[:7]
-        if len(commit_hash) <= 3 :
+        if len(commit_hash) <= 3:
             return
 
         text = self.git("show", commit_hash, "--format=fuller", "--quiet")
@@ -99,7 +100,7 @@ class GsLogGraphNextCommitCommand(TextCommand, GitCommand):
     Move cursor to next commit.
     """
 
-    def run(self, edit, forward = True):
+    def run(self, edit, forward=True):
         selections = self.view.sel()
         if len(selections) != 1:
             return
@@ -111,17 +112,19 @@ class GsLogGraphNextCommitCommand(TextCommand, GitCommand):
         line = lines[0]
 
         commit_hash = line.strip(" /_\|*")[:7]
-        if len(commit_hash) > 3 :
+        if len(commit_hash) > 3:
             self.view.window().run_command("gs_log_graph_more_info")
             self.view.window().run_command("show_at_center")
-        else :
+        else:
             self.view.window().run_command("gs_log_graph_next_commit", {"forward": forward})
+
 
 class GsLogGraphToggleMoreInfoCommand(TextCommand, WindowCommand, GitCommand):
 
     """
     Toggle log_graph_view_toggle_more setting.
     """
+
     def run(self, edit):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         toggle_more = savvy_settings.get("log_graph_view_toggle_more")
