@@ -45,7 +45,7 @@
     {
         "caption": "git: graph all branches",
         "command": "gs_log_graph",
-        "args": { "additional_flag": "--all" }
+        "args": { "all_branches": true }
     },
     {
         "caption": "github: open file on remote",
