@@ -124,12 +124,12 @@ class GsLogGraphNextCommitCommand(TextCommand, GitCommand):
 class GsLogGraphToggleMoreInfoCommand(TextCommand, WindowCommand, GitCommand):
 
     """
-    Toggle log_graph_view_toggle_more setting.
+    Toggle `graph_show_more_commit_info` setting.
     """
 
     def run(self, edit):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        toggle_more = savvy_settings.get("log_graph_view_toggle_more")
-        savvy_settings.set("log_graph_view_toggle_more", not toggle_more)
+        show_more = savvy_settings.get("graph_show_more_commit_info")
+        savvy_settings.set("graph_show_more_commit_info", not show_more)
 
         self.view.run_command("gs_log_graph_more_info")

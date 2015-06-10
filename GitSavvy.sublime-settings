@@ -121,9 +121,11 @@
     "prompt_for_tracking_branch": true,
 
     /*
-        When set to `true`, GitSavvy will display more info about current commit in a quick panel, when you are in git graph view.
+        When set to `true`, GitSavvy will automatically display more info about the
+        current commit in a quick panel.  When set to `false`, this function must
+        be invoked manually.
      */
-    "log_graph_view_toggle_more": true,
+    "graph_show_more_commit_info": true,
 
     /*
         Update the desired graph arguments for a customized experience.
