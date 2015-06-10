@@ -17,7 +17,7 @@ class RemotesMixin():
         If provided, fetch all changes from `remote`.  Otherwise, fetch
         changes from all remotes.
         """
-        self.git("fetch", "--prune" if prune else None, remote)
+        self.git("fetch", "--prune" if prune else None, remote if remote else "--all")
 
     def get_remote_branches(self):
         """
