@@ -1,6 +1,7 @@
 # GitSavvy
 
 [![Codacy Badge](https://www.codacy.com/project/badge/3c214fa790b249f79f5275dbfa6499ca)](https://www.codacy.com/app/dale/GitSavvy)
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/divmain/GitSavvy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 Sublime Text 3 plugin providing the following features:
 
