@@ -45,7 +45,7 @@ patterns:
   end: '^$'
   patterns:
   - name: meta.git-savvy.status.saved_stash
-    match: '^    (.+)$'
+    match: '^    (.+)\n$'
 
 - comment: Key-bindings menu
   name: comment.git-savvy.status.key-bindings-menu
