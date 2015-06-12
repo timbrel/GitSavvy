@@ -117,7 +117,7 @@
 			<array>
 				<dict>
 					<key>match</key>
-					<string>^    (.+)$</string>
+					<string>^    (.+)\n$</string>
 					<key>name</key>
 					<string>meta.git-savvy.status.saved_stash</string>
 				</dict>
