@@ -17,7 +17,7 @@ patterns:
     match: '^  STATUS:.+'
 
 - name: meta.git-savvy.rebase-graph.conflict
-  match: '^(    ┃           )(.+)'
+  match: '^(    ┃           )(.+)\n'
   captures:
     '1':
       name: comment.git-savvy.rebase-graph.separator

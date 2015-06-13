@@ -52,7 +52,7 @@
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>^(    ┃           )(.+)</string>
+			<string>^(    ┃           )(.+)\n</string>
 			<key>name</key>
 			<string>meta.git-savvy.rebase-graph.conflict</string>
 		</dict>
