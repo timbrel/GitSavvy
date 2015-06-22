@@ -135,7 +135,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
             head_file_contents = self.get_object_contents(head_file_object)
 
             # Display the changes introduced between HEAD and index.
-            stdout = self.git("diff", "-U0", ignore_eol_arg, head_file_object, indexed_object)
+            stdout = self.git("diff", "--no-color", "-U0", ignore_eol_arg, head_file_object, indexed_object)
             diff = util.parse_diff(stdout)
             inline_diff_contents, replaced_lines = \
                 self.get_inline_diff_contents(head_file_contents, diff)
@@ -146,7 +146,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
             working_tree_file_object = self.get_object_from_string(working_tree_file_contents)
 
             # Display the changes introduced between index and working dir.
-            stdout = self.git("diff", "-U0", ignore_eol_arg, indexed_object, working_tree_file_object)
+            stdout = self.git("diff", "--no-color", "-U0", ignore_eol_arg, indexed_object, working_tree_file_object)
             diff = util.parse_diff(stdout)
             inline_diff_contents, replaced_lines = \
                 self.get_inline_diff_contents(indexed_object_contents, diff)
@@ -204,7 +204,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         Given the object hash to a versioned object in the current git repo,
         display the contents of that object.
         """
-        return self.git("show", object_hash)
+        return self.git("show", "--no-color", object_hash)
 
     def get_file_contents(self, file_path):
         """

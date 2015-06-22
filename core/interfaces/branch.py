@@ -570,7 +570,7 @@ class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
         comparison_branch_name = remote + "/" + branch_name if remote else branch_name
         active_branch_name = self.get_current_branch_name()
 
-        diff_contents = self.git("diff", "{}..{}".format(comparison_branch_name, active_branch_name))
+        diff_contents = self.git("diff", "--no-color", "{}..{}".format(comparison_branch_name, active_branch_name))
 
         repo_path = self.repo_path
         view = self.view.window().new_file()

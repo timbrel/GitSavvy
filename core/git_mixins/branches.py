@@ -19,7 +19,7 @@ class BranchesMixin():
         """
         Return a list of all local and remote branches.
         """
-        stdout = self.git("branch", "-a", "-vv", "--no-abbrev")
+        stdout = self.git("branch", "-a", "-vv", "--no-abbrev", "--no-color")
         return (branch
                 for branch in (self._parse_branch_line(line) for line in stdout.split("\n"))
                 if branch)

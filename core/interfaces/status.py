@@ -646,7 +646,7 @@ class GsStatusShowStashCommand(TextCommand, GitCommand):
 
         for stash_id in ids:
             stash_name = "stash@{{{}}}".format(stash_id)
-            stash_text = self.git("stash", "show", "-p", stash_name)
+            stash_text = self.git("stash", "show", "--no-color", "-p", stash_name)
             stash_view = self.get_stash_view(stash_name)
             stash_view.set_read_only(False)
             stash_view.replace(edit, sublime.Region(0, 0), stash_text)
