@@ -55,7 +55,8 @@ class GsCommitCommand(WindowCommand, GitCommand):
 
         title = COMMIT_TITLE.format(os.path.basename(repo_path))
         view.set_name(title)
-        view.set_scratch(True)
+        if not gitsavvy_settings.get("prompt_on_abort_commit"):
+            view.set_scratch(True)
         view.run_command("gs_commit_initialize_view")
 
 
@@ -127,6 +128,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
             )
 
         self.view.window().focus_view(self.view)
+        self.view.set_scratch(True)  # ignore dirty on actual commit
         self.view.window().run_command("close_file")
 
 
