@@ -137,7 +137,8 @@
     "git_graph_args": ["log", "--oneline", "--graph", "--decorate"],
 
     /*
-        Set to False to abort commit and drop message without a prompt
+        When set to `true`, GitSavvy will prompt for confirmation when closing
+        the commit message view.
     */
     "prompt_on_abort_commit": false
 }
