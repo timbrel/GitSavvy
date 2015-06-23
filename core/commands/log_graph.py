@@ -93,7 +93,7 @@ class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
         if len(commit_hash) <= 3:
             return
 
-        text = self.git("show", commit_hash, "--format=fuller", "--quiet")
+        text = self.git("show", commit_hash, "--no-color", "--format=fuller", "--quiet")
         output_view = self.view.window().create_output_panel("show_commit_info")
         output_view.set_read_only(False)
         output_view.insert(edit, 0, text)

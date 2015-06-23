@@ -56,7 +56,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         base_commit = self.view.settings().get("git_savvy.diff_view.base_commit")
 
         stdout = self.git(
-            "diff", base_commit,  "--cached" if in_cached_mode else None, "--", self.file_path)
+            "diff", "--no-color", base_commit,  "--cached" if in_cached_mode else None, "--", self.file_path)
 
         self.view.run_command("gs_replace_view_text", {"text": stdout})
 

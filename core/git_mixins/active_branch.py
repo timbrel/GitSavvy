@@ -8,7 +8,7 @@ class ActiveBranchMixin():
         """
         Return the name of the last checkout-out branch.
         """
-        stdout = self.git("branch")
+        stdout = self.git("branch", "--no-color")
         try:
             correct_line = next(line for line in stdout.split("\n") if line.startswith("*"))
             return correct_line[2:]
