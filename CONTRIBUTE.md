@@ -21,6 +21,20 @@ Some other things to remember:
 
 I'm busy and travel sometimes for work - so if I don't respond immediately, please be patient.  I promise to reply!
 
+## Commit message structure
+
+Please follow the following commit message structure when submitting your pull request to GitSavvy:
+
+    TYPE: Short commit message
+
+    Detailed
+    commit
+    info
+
+For the value of **`TYPE`**, prefer using the common **`Feature`**, **`Enhancement`**, and **`Bug`**.
+
+This is done in order to help us automate tasks such as changelog generation.
+
 
 # Bugs
 
