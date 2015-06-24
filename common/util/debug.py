@@ -53,3 +53,18 @@ def log_on_exception(fn):
                 "exception": repr(e)
                 })
             raise e
+
+
+def pprint(*args):
+    """
+    Pretty print since we can not use debugger
+    """
+    import pprint
+
+    # pp = pprint.PrettyPrinter(indent=4)
+    for arg in args:
+        if arg.__class__.__name__ == 'str':
+            print(arg)
+        else:
+            pprint.pprint(arg)
+
