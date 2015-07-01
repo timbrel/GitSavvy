@@ -63,7 +63,7 @@ def pprint(*args):
 
     # pp = pprint.PrettyPrinter(indent=4)
     for arg in args:
-        if arg.__class__.__name__ == 'str':
+        if isinstance(arg, str):
             print(arg)
         else:
             pprint.pprint(arg)
