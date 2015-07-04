@@ -14,6 +14,7 @@ If you run into any issues not addressed here, please feel free to [open an issu
 - [Inline-diff](staging.md#git-diff-current-file-inline)
 - [Status view](status.md)
 - [GitHub integration](github.md)
+- [git-flow support](flow.md)
 
 
 ## Command Palette
@@ -137,3 +138,13 @@ GitSavvy also supports some basic interpolation when specifying your args.  If o
 
 - `{FILE_PATH}` - the path to the currently opened file.
 - `{REPO_PATH}` - the path to the currently opened file's repo path.
+
+
+## [git-flow](https://github.com/nvie/gitflow) Support
+
+- [flow: init](flow.md#flow-init)
+- [flow: feature/release/hotfix/support start](flow.md#flow-featurereleasehotfixsupport-start)
+- [flow: feature/release/hotfix/support finish](flow.md#flow-featurereleasehotfixsupport-finish)
+- [flow: feature/release/hotfix publish](flow.md#flow-featurereleasehotfix-publish)
+- [flow: feature/release track](flow.md#flow-featurerelease-track)
+- [flow: feature pull](flow.md#flow-feature-pull)
