@@ -112,3 +112,28 @@ If you run into any issues not addressed here, please feel free to [open an issu
 - [github: open file on remote](github.md#github-open-file-on-remote)
 - [issues integration in commit view](github.md#issues-integration)
 - [contributors integration in commit view](github.md#contributors-integration)
+
+
+## Custom Commands
+
+If you have the need, you can add your own commands that take advantage of GitSavvy's access to your repo.  To do so, create a new `User.sublime-commands` file in your `User` Package directory.  Then, add an entry like so:
+
+```json
+[
+    {
+        "caption": "git: pull --rebase",
+        "command": "gs_custom",
+        "args": {
+            "output_to_panel": true,           
+            "args": ["pull", "--rebase"],
+            "start_msg": "Starting pull (rebase)...",
+            "complete_msg": "Pull complete.",
+        }
+    }
+]
+```
+
+GitSavvy also supports some basic interpolation when specifying your args.  If one of these strings is provided as an element of your args array, the appropriate string will be substituted.  The following strings are currently supported:
+
+- `{FILE_PATH}` - the path to the currently opened file.
+- `{REPO_PATH}` - the path to the currently opened file's repo path.
