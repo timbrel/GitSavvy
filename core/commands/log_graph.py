@@ -17,10 +17,10 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
     def run(self, all_branches=False):
         repo_path = self.repo_path
         view = self.window.new_file()
+        view.set_syntax_file("Packages/GitSavvy/syntax/graph.tmLanguage")
         view.settings().set("git_savvy.log_graph_view", True)
         view.settings().set("git_savvy.repo_path", repo_path)
         view.settings().set("word_wrap", False)
-        view.set_syntax_file("Packages/GitSavvy/syntax/graph.tmLanguage")
         view.set_name(LOG_GRAPH_TITLE)
         view.set_scratch(True)
         view.set_read_only(True)

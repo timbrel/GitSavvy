@@ -82,9 +82,14 @@ The selected branch will be merged into the active branch.  If the merge cannot 
 
 This action also merged the selected branch into active.  However, it only works for remote branches, and will first fetch from the selected remote before the branch is merged.
 
-#### Diff selected branch against active (`f`)
+#### Diff code selected branch against active (`f`)
 
 A scratch view will be opened, showing the diff between the selected branch and the active branch.
+
+
+#### Diff history of selected and active branches (`H`)
+
+A scratch view will be opened, showing the commit diff between the selected branch and the active branch.
 
 #### Toggle display of remote branches (`e`)
 
