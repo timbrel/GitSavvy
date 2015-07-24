@@ -215,5 +215,65 @@
     {
         "caption": "git: reset (reflog)",
         "command": "gs_reset_reflog"
+    },
+    {
+        "caption": "flow: init",
+        "command": "gs_git_flow_init"
+    },
+    {
+        "caption": "flow: feature start",
+        "command": "gs_git_flow_feature_start"
+    },
+    {
+        "caption": "flow: feature finish",
+        "command": "gs_git_flow_feature_finish"
+    },
+    {
+        "caption": "flow: release start",
+        "command": "gs_git_flow_release_start"
+    },
+    {
+        "caption": "flow: release finish",
+        "command": "gs_git_flow_release_finish"
+    },
+    {
+        "caption": "flow: hotfix start",
+        "command": "gs_git_flow_hotfix_start"
+    },
+    {
+        "caption": "flow: hotfix finish",
+        "command": "gs_git_flow_hotfix_finish"
+    },
+    {
+        "caption": "flow: support start",
+        "command": "gs_git_flow_support_start"
+    },
+    {
+        "caption": "flow: feature publish",
+        "command": "gs_git_flow_feature_publish"
+    },
+    {
+        "caption": "flow: feature pull",
+        "command": "gs_git_flow_feature_pull"
+    },
+    {
+        "caption": "flow: feature track",
+        "command": "gs_git_flow_feature_track"
+    },
+    {
+        "caption": "flow: release publish",
+        "command": "gs_git_flow_release_publish"
+    },
+    {
+        "caption": "flow: release pull",
+        "command": "gs_git_flow_release_pull"
+    },
+    {
+        "caption": "flow: release track",
+        "command": "gs_git_flow_release_track"
+    },
+    {
+        "caption": "flow: hotfix publish",
+        "command": "gs_git_flow_hotfix_publish"
     }
 ]
