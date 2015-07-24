@@ -8,6 +8,7 @@ from ...common import util
 from ...common.theme_generator import ThemeGenerator
 from ..git_command import GitCommand
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
+from ...common.util import debug
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
 
@@ -414,7 +415,7 @@ class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
         # 2) The user is in non-cached mode and wants to undo a line/hunk, so
         #    DO apply the patch in reverse, and do apply it both against the
         #    index and the working tree.
-        # 3) The user is in cached mode and wants to undo a line hunk, so DO
+        # 3) The user is in cached mode and wants to undo a line/hunk, so DO
         #    apply the patch in reverse, but only apply it against the cached/
         #    indexed file.
         #
@@ -455,11 +456,27 @@ class GsInlineDiffStageOrResetLineCommand(GsInlineDiffStageOrResetBase):
 
     def get_diff_from_line(self, line_no, reset):
         hunks = diff_view_hunks[self.view.id()]
+        add_length_earlier_in_diff = 0
+        cur_hunk_begin_on_minus = 0
+        cur_hunk_begin_on_plus = 0
 
         # Find the correct hunk.
         for hunk_ref in hunks:
             if hunk_ref.section_start <= line_no and hunk_ref.section_end >= line_no:
                 break
+            else:
+                # we loop through all hooks before selected hunk.
+                # used create a correct diff when stage, unstage
+                # need to make undo work properly.
+                for type in hunk_ref.line_types:
+                    if type == "+":
+                        add_length_earlier_in_diff += 1
+                    elif type == "-":
+                        add_length_earlier_in_diff -= 1
+                    else:
+                        # should never happen that it will raise.
+                        raise ValueError('type have to be eather "+" or "-"')
+
         # Correct hunk not found.
         else:
             return
@@ -471,25 +488,49 @@ class GsInlineDiffStageOrResetLineCommand(GsInlineDiffStageOrResetBase):
         line = hunk_ref.lines[index_in_hunk]
         line_type = hunk_ref.line_types[index_in_hunk]
 
+        # need to make undo work properly when undoing
+        # a specific line.
+        for type in hunk_ref.line_types[:index_in_hunk]:
+            if type == "-":
+                cur_hunk_begin_on_minus += 1
+            else:
+                # type will be +
+                cur_hunk_begin_on_plus += 1
+
         # Removed lines are always first with `git diff -U0 ...`. Therefore, the
         # line to remove will be the Nth line, where N is the line index in the hunk.
         head_start = hunk_ref.hunk.head_start if line_type == "+" else hunk_ref.hunk.head_start + index_in_hunk
-        # TODO: Investigate this off-by-one ???
-        if not reset:
-            head_start += 1
 
-        return ("@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"
+        if reset:
+            xhead_start = head_start - index_in_hunk + (0 if line_type == "+" else add_length_earlier_in_diff)
+
+            return ("@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"
                 "{line_type}{line}").format(
-                    head_start=head_start,
-                    head_length="0" if line_type == "+" else "1",
-                    # If head_length is zero, diff will report original start position
-                    # as one less than where the content is inserted, for example:
-                    #   @@ -75,0 +76,3 @@
-                    new_start=head_start + (0 if line_type == "+" else 1),
-                    new_length="1" if line_type == "+" else "0",
-                    line_type=line_type,
-                    line=line
-                )
+                head_start=(xhead_start if xhead_start >= 0 else cur_hunk_begin_on_plus),
+                head_length="0" if line_type == "+" else "1",
+                # If head_length is zero, diff will report original start position
+                # as one less than where the content is inserted, for example:
+                #   @@ -75,0 +76,3 @@
+                new_start=head_start - 1 - cur_hunk_begin_on_minus + index_in_hunk + add_length_earlier_in_diff + (1 if line_type == "+" else 0),
+                new_length="1" if line_type == "+" else "0",
+                line_type=line_type,
+                line=line
+            )
+
+        else:
+            head_start += 1
+            return ("@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"
+                "{line_type}{line}").format(
+                head_start=head_start + (-1 if line_type == "-" else 0),
+                head_length="0" if line_type == "+" else "1",
+                # If head_length is zero, diff will report original start position
+                # as one less than where the content is inserted, for example:
+                #   @@ -75,0 +76,3 @@
+                new_start=head_start + (-1 if line_type == "-" else 0),
+                new_length="1" if line_type == "+" else "0",
+                line_type=line_type,
+                line=line
+            )
 
 
 class GsInlineDiffStageOrResetHunkCommand(GsInlineDiffStageOrResetBase):
@@ -502,18 +543,32 @@ class GsInlineDiffStageOrResetHunkCommand(GsInlineDiffStageOrResetBase):
 
     def get_diff_from_line(self, line_no, reset):
         hunks = diff_view_hunks[self.view.id()]
+        add_length_earlier_in_diff = 0
 
         # Find the correct hunk.
         for hunk_ref in hunks:
             if hunk_ref.section_start <= line_no and hunk_ref.section_end >= line_no:
                 break
+            else:
+                # we loop through all hooks before selected hunk.
+                # used create a correct diff when stage, unstage
+                # need to make undo work properly.
+                for type in hunk_ref.line_types:
+                    if type == "+":
+                        add_length_earlier_in_diff += 1
+                    elif type == "-":
+                        add_length_earlier_in_diff -= 1
+                    else:
+                        # should never happen that it will raise.
+                        raise ValueError('type have to be eather "+" or "-"')
+
         # Correct hunk not found.
         else:
             return
 
         stand_alone_header = \
             "@@ -{head_start},{head_length} +{new_start},{new_length} @@".format(
-                head_start=hunk_ref.hunk.head_start,
+                head_start=hunk_ref.hunk.head_start + (add_length_earlier_in_diff if reset else 0),
                 head_length=hunk_ref.hunk.head_length,
                 # If head_length is zero, diff will report original start position
                 # as one less than where the content is inserted, for example:
