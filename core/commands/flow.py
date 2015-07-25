@@ -18,8 +18,20 @@ class FlowCommon(WindowCommand, GitCommand):
     Populates gitflow settings and includes useful methods
     for option selection and branch retrieval.
     """
+
+    def get_flow_version(self):
+        """
+        Return git-flow version, or None if git-flow is not installed
+        """
+        if not hasattr(self, 'flow_version'):
+            # We don't want to pollute the status bar and panel with error messages
+            # if git flow isn't installed, so we set throw_on_stderr to False
+            flow_version = self.git("flow", "version", throw_on_stderr=False)
+            self.flow_version = flow_version if flow_version else None
+        return self.flow_version
+
     def get_flow_settings(self):
-        flow_ver = self.git("flow", "version")
+        flow_ver = self.get_flow_version()
         self.flow_settings = {
             'flow.version': flow_ver,
         }
@@ -32,6 +44,9 @@ class FlowCommon(WindowCommand, GitCommand):
         self.get_flow_settings()
         if not self.flow_settings['branch.master']:
             self.window.show_quick_panel([INIT_REQUIRED_MSG], None)
+
+    def is_visible(self, **kwargs):
+        return True if self.get_flow_version() else False
 
     def _generic_select(self, help_text, options, callback,
                         no_opts="There are no branches available"):
