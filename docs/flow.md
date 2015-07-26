@@ -1,6 +1,6 @@
 # git-flow
 
-The excellent [git-flow](https://github.com/nvie/gitflow) extension is fully supported, allowing to run flow commands with sublime commands.
+The excellent [git-flow](https://github.com/nvie/gitflow) extension is fully supported, allowing to run flow commands with sublime commands. These commands will only be visible if have installed `git-flow`.
 
 Most commands attempt to mirror `git-flow` 's interface with the added ability to select a target from local branches/remotes.
 
