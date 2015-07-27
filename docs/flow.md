@@ -27,3 +27,7 @@ When running this command you will be prompted to provide a feature name. The co
 ## `flow: feature pull`
 
 This will pull a feature from a given remote (not necessarily the configured default remote) and check it out. You will be first prompted to select a remote and then to provide a feature name.
+
+## Hiding git-flow commands
+
+If you do not use git-flow, you can hide these commands by setting `show_git_flow_commands` to `false` in `Packages/User/GitSavvy.sublime-settings`.
