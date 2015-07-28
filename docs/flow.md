@@ -1,6 +1,6 @@
 # git-flow
 
-The excellent [git-flow](https://github.com/nvie/gitflow) extension is fully supported, allowing to run flow commands with sublime commands.
+The excellent [git-flow](https://github.com/nvie/gitflow) extension is fully supported, allowing you to run flow commands with sublime commands. To enable `git-flow` integration you must set `show_git_flow_commands` to `true` in `Packages/User/GitSavvy.sublime-settings`.
 
 Most commands attempt to mirror `git-flow` 's interface with the added ability to select a target from local branches/remotes.
 
@@ -27,7 +27,3 @@ When running this command you will be prompted to provide a feature name. The co
 ## `flow: feature pull`
 
 This will pull a feature from a given remote (not necessarily the configured default remote) and check it out. You will be first prompted to select a remote and then to provide a feature name.
-
-## Hiding git-flow commands
-
-If you do not use git-flow, you can hide these commands by setting `show_git_flow_commands` to `false` in `Packages/User/GitSavvy.sublime-settings`.
