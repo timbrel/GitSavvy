@@ -211,10 +211,27 @@ class RebaseInterface(ui.Interface, GitCommand):
 
     def base_ref(self):
         base_ref = self.view.settings().get("git_savvy.rebase.base_ref")
+
         if not base_ref:
             project_settings = sublime.active_window().project_data().get('settings', {})
             base_ref = project_settings.get("rebase_default_base_ref", "master")
+            branches = list(self.get_branches())
+
+            # Check that the base_ref we return is a valid branch
+            if base_ref not in [branch.name_with_remote for branch in branches]:
+                # base_ref isn't a valid branch, so we'll try to pick a sensible alternative
+                local_branches = [branch for branch in branches if not branch.remote]
+                inactive_local_branches = [branch for branch in local_branches if not branch.active]
+
+                if inactive_local_branches:
+                    base_ref = inactive_local_branches[0].name_with_remote
+                elif local_branches:
+                    base_ref = local_branches[0].name_with_remote
+                else:
+                    base_ref = "HEAD"
+
             self.view.settings().set("git_savvy.rebase.base_ref", base_ref)
+
         return base_ref
 
     def base_commit(self):
