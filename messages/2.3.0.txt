@@ -1,0 +1,29 @@
+Changes since 2.2.1:
+
+  Feature:
+   - Git-Flow commands now supported (but disabled by default).
+   - `git reset`, using either commit log or branch reflog.
+   - Custom git commands now supported (see docs in README).
+   - New branch history comparison in the Branch dashboard.
+
+  Enhancement:
+   - Rebase dashboard now handles case where master doesn't exist.
+   - Add option to prompt before discarding and closing commit message window.
+
+  Fix:
+   - Several issues with inline-diff view behavior. BIG THANKS to @stoivo!
+   - Branch matching regex did not match dots in remote branch name.
+   - Branch dashboard failed to show branch when commit includes "..".
+   - Rebase conflict shortcuts did not execute anywhere on line.
+   - Stash shortcuts did not execute when cursor was at end of line.
+   - Git fetch did not retrieve all data when no remote specified.
+   - `global_flags` were not always placed correctly in Git command.
+
+  Other:
+   - Update contributor guidelines.
+
+  Contributors:
+   - Simon (@stoivo)
+   - David Devlin
+   - Pavel Savchenko
+   - Dale Bustad
