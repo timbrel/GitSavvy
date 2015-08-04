@@ -7,9 +7,23 @@
 
     /*
         Uncomment the setting below to explicitly set which git binary
-        to use.
+        to use.  An empty string will search PATH for "git".  The setting may
+        be a direct string to a git binary, e.g.:
+
+            "git_path": "/usr/bin/git",
+
+        Or it may be a dictionary keyed off what sublime.platform() returns,
+        so it may be customized on a per-platform basis.  e.g.:
+
+            "git_path": {
+                "default": "",
+                "windows": "C:/Program Files/Git/cmd/git.exe"
+            },
      */
-    // "git_path": "/usr/bin/git",
+    "git_path": {
+        "default": "",
+        "windows": "C:/Program Files/Git/cmd/git.exe"
+    },
 
     /*
         Change this to `true` when doing dev work on GitSavvy.

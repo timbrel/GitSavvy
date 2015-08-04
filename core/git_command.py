@@ -137,10 +137,17 @@ class GitCommand(StatusMixin,
         """
 
         global git_path
-        git_path = (git_path or
-                    sublime.load_settings("GitSavvy.sublime-settings").get("git_path") or
-                    shutil.which("git")
-                    )
+        if not git_path:
+            git_path_setting = sublime.load_settings("GitSavvy.sublime-settings").get("git_path")
+            if isinstance(git_path_setting, dict):
+                git_path = git_path_setting.get(sublime.platform())
+                if not git_path:
+                    git_path = git_path_setting.get('default')
+            else:
+                git_path = git_path_setting
+
+            if not git_path:
+                git_path = shutil.which("git")
 
         if not git_path:
             msg = ("Your Git binary cannot be found.  If it is installed, add it "
