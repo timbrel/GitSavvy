@@ -105,7 +105,7 @@ class GitCommand(StatusMixin,
                                  env=os.environ,
                                  startupinfo=startupinfo)
             stdout, stderr = p.communicate(stdin.encode(encoding="UTF-8") if stdin else None)
-            stdout, stderr = stdout.decode(), stderr.decode()
+            stdout, stderr = self.decode_stdout(stdout), stderr.decode()
 
         except Exception as e:
             raise_error(e)
@@ -125,6 +125,19 @@ class GitCommand(StatusMixin,
                 util.log.panel("{}\n{}".format(stdout, stderr))
 
         return stdout
+
+    def decode_stdout(self, stdout):
+        try:
+            return stdout.decode()
+        except UnicodeDecodeError as err:
+            msg = (
+                "GitSavvy was unable to parse content successfully. Would you "
+                "like to fallback to the default encoding?  Text may not "
+                "appear as expected."
+            )
+            if sublime.ok_cancel_dialog(msg, "Fallback?"):
+                return stdout.decode("windows-1252")
+            raise err
 
     @property
     def encoding(self):
