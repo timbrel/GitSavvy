@@ -25,6 +25,24 @@ A GitHub-style blame view is displayed.  Each hunk of the file will be shown on 
 
 Pressing `SUPER-Enter` (`CTRL-Enter` in Windows) while your cursor is inside a hunk will take you to that specific commit.
 
+### Blame options
+When run, you will be prompted for how you want the blame view to search for changes:
+
+#### Default
+Use default `git blame` behaviour.
+
+#### Ignore whitespace
+Ignore whitespace only changes when finding the last commit that changed the line (`git blame -w`).
+
+#### Detect moved or copied lines within same file
+Ignore whitespace, and detect when lines have been moved or copied within the file, attributing lines to the original commit rather than the commit that moved or copied them (`git blame -w -M`).
+
+#### Detect moved or copied lines within same commit
+Ignore whitespace, and detect when lines have been moved or copied from any file modified in the same commit, attributing lines to the original commit rather than the commit that moved or copied them (`git blame -w -C`).
+
+#### Detect moved or copied lines across all commits
+Ignore whitespace, and detect when lines have been moved or copied from any file across the full commit history of the repository, attributing lines to the original commit rather than the commit that moved or copied them (`git blame -w -CCC`).
+
 ## `git: graph current branch`
 
 Opens a special view that displays an ASCII-graphic representation of the repo's commit and branch history.
