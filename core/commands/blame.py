@@ -18,25 +18,54 @@ class GsBlameCommand(WindowCommand, GitCommand):
 
     @util.view.single_cursor_coords
     def run(self, coords, file_path=None, repo_path=None):
-        repo_path = repo_path or self.repo_path
-        file_path = file_path or self.file_path
+        self._coords = coords
+        self.__file_path = file_path or self.file_path
+        self.__repo_path = repo_path or self.repo_path
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        self.window.show_quick_panel(
+            [
+                "Default",
+                "Ignore whitespace",
+                "Detect moved or copied lines within same file",
+                "Detect moved or copied lines within same commit",
+                "Detect moved or copied lines across all commits",
+            ],
+            self.on_option_selection
+        )
+
+    def on_option_selection(self, index):
+        if index == -1:
+            return
+
+        ignore_whitespace = "-w" if index > 0 else None
+        detect_move_or_copy = [None, None, "-M", "-C", "-CCC"][index]
+
         view = self.window.new_file()
         view.set_syntax_file("Packages/GitSavvy/syntax/blame.tmLanguage")
         view.settings().set("git_savvy.blame_view", True)
-        view.settings().set("git_savvy.repo_path", repo_path)
-        view.settings().set("git_savvy.file_path", file_path)
+        view.settings().set("git_savvy.repo_path", self.__repo_path)
+        view.settings().set("git_savvy.file_path", self.__file_path)
         view.settings().set("word_wrap", False)
         view.settings().set("line_numbers", False)
         view.settings().set('indent_guide_options', [])
-        view.set_name(BLAME_TITLE.format(self.get_rel_path(file_path)))
+        view.set_name(BLAME_TITLE.format(self.get_rel_path(self.__file_path)))
         view.set_scratch(True)
-        view.run_command("gs_blame_initialize_view", {"coords": coords})
+        view.run_command("gs_blame_initialize_view", {
+            "coords": self._coords,
+            "ignore_whitespace": ignore_whitespace,
+            "detect_move_or_copy": detect_move_or_copy
+        })
 
 
 class GsBlameInitializeViewCommand(TextCommand, GitCommand):
 
-    def run(self, edit, coords=None):
-        content = self.get_content()
+    def run(self, edit, coords=None, ignore_whitespace=None, detect_move_or_copy=None):
+        content = self.get_content(
+            ignore_whitespace=ignore_whitespace,
+            detect_move_or_copy=detect_move_or_copy
+        )
         self.view.sel().clear()
         self.view.set_read_only(False)
         self.view.replace(edit, sublime.Region(0, self.view.size()), content)
@@ -45,8 +74,10 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
         if coords is not None:
             self.scroll_to(coords)
 
-    def get_content(self):
-        blame_porcelain = self.git("blame", "-p", self.file_path)
+    def get_content(self, ignore_whitespace=None, detect_move_or_copy=None):
+        blame_porcelain = self.git(
+            "blame", "-p", ignore_whitespace, detect_move_or_copy, self.file_path
+        )
         blamed_lines, commits = self.parse_blame(blame_porcelain.splitlines())
 
         commit_infos = {
