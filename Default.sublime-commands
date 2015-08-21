@@ -181,11 +181,11 @@
         "command": "gs_generate_change_log"
     },
     {
-        "caption": "GitSavvy: start logging",
+        "caption": "GitSavvy: enable logging",
         "command": "gs_start_logging"
     },
     {
-        "caption": "GitSavvy: stop logging",
+        "caption": "GitSavvy: disable logging",
         "command": "gs_stop_logging"
     },
     {
