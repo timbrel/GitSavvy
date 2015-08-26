@@ -26,7 +26,7 @@ class GsCustomCommand(WindowCommand, GitCommand):
         if not args:
             sublime.error_message("Custom command must provide args.")
 
-        for idx, arg in args:
+        for idx, arg in enumerate(args):
             if arg == "{REPO_PATH}":
                 args[idx] = self.repo_path
             elif arg == "{FILE_PATH}":
