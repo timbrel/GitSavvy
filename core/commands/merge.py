@@ -45,8 +45,14 @@ class GsMergeCommand(WindowCommand, GitCommand):
         if index == -1:
             return
         branch = self._branches[index]
+
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         try:
-            self.git("merge", "--log", branch.name_with_remote)
+            self.git(
+                "merge",
+                "--log" if savvy_settings.get("merge_log") else None,
+                branch.name_with_remote
+                )
         finally:
             util.view.refresh_gitsavvy(self.window.active_view())
 
