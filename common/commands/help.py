@@ -40,7 +40,7 @@ def get_page_and_anchor(view):
 
     if util.view.get_is_view_of_type(view, "inline_diff"):
         anchor = ("git-diff-current-file-inline"
-                  if view.settings().set("git_savvy.inline_diff.cached")
+                  if view.settings().get("git_savvy.inline_diff.cached")
                   else "git-diff-current-file-inline-cached")
         return "staging.md", anchor
 
