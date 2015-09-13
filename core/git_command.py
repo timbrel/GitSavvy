@@ -198,7 +198,7 @@ class GitCommand(StatusMixin,
         view = self.window.active_view() if hasattr(self, "window") else self.view
         repo_path = view.settings().get("git_savvy.repo_path")
 
-        if not repo_path:
+        if not repo_path or not os.path.exists(repo_path):
             file_path = self.file_path
             file_dir = os.path.dirname(file_path) if file_path else None
             working_dir = file_path and os.path.isdir(file_dir) and file_dir
