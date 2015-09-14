@@ -1,0 +1,23 @@
+This is a smaller release, but includes fixes some folks have been waiting on.
+
+Changes since 2.3.0:
+
+  Enhancement:
+   - Additional `git: blame` display options.options.
+   - Debug/logging commands have been renamed.
+   - `git_path` can now be customized on a per-platform basis.
+   - Add `merge_log` setting to toggle `--log` inclusion in `git merge`.
+
+  Bug:
+   - Provide fallcack for when Git command decoding fails.
+   - `GitSavvy: help` no longer fails in Inline-Diff mode.
+   - Custom commands would not always be invoked properly.
+   - Github integration would not work for remotes with underscore characters.
+   - GitSavvy now fails more gracefully when previously existing repo is deleted.
+
+  Contributors:
+   - Pavel Savchenko
+   - John Burnett
+   - Simon
+   - Dale Bustad
+   - David Devlin
