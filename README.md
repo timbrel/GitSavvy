@@ -102,6 +102,8 @@ Feature documentation can be found [here](docs/README.md).  It can also be acces
 2. Open the command palette and start typing `Package Control: Install Package`.
 3. Enter `GitSavvy`.
 
+**Note:** If you're using 64-bit Windows, the path to the Git binary may not be as you expect.  If GitSavvy fails to operate correctly in this configuration, make sure to confirm the Git path you're using in the config.
+
 ### Less simple
 
 If you want more control over what you pull down, or if you'd like to submit changes to GitSavvy, you should pull down the repository directly and restart the editor.
