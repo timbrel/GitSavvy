@@ -1,0 +1,11 @@
+Changes since 2.4.0:
+
+  Enhancement:
+   - Pre-select first file in status dashboard on initial creation.
+   - Add navigation to files in status dashboard.
+
+  Documentation:
+   - Add note about Git path in Windows 64-bit.
+
+  Contributors:
+   - Dale Bustad
