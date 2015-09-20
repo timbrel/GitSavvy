@@ -166,5 +166,11 @@
         merges.  This will mean commit summaries will be included in the merge commit
         message.
     */
-    "merge_log": true
+    "merge_log": true,
+
+    /*
+        When set to `true`, GitSavvy will prompt for confirmation before actually
+        performing a `git push --force` operation.
+     */
+    "confirm_force_push": true
 }

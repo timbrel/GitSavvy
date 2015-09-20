@@ -11,6 +11,8 @@ END_PUSH_MESSAGE = "Push complete."
 PUSH_TO_BRANCH_NAME_PROMPT = "Enter remote branch name:"
 SET_UPSTREAM_PROMPT = ("You have not set an upstream for the active branch.  "
                        "Would you like to set one?")
+CONFIRM_FORCE_PUSH = ("You are about to `git push --force`. Would you  "
+                      "like to proceed?")
 
 
 class PushBase(GitCommand):
@@ -20,6 +22,11 @@ class PushBase(GitCommand):
         """
         Perform `git push remote branch`.
         """
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        if force and savvy_settings.get("confirm_force_push"):
+            if not sublime.ok_cancel_dialog(CONFIRM_FORCE_PUSH):
+                return
+
         sublime.status_message(START_PUSH_MESSAGE)
         self.push(
             remote,
