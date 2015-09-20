@@ -30,6 +30,19 @@ from .git_mixins.merge import MergeMixin
 git_path = None
 
 
+UTF8_PARSE_ERROR_MSG = (
+    "GitSavvy was unable to parse content successfully. Would you "
+    "like to fallback to the default encoding?  Text may not "
+    "appear as expected."
+)
+
+FALLBACK_PARSE_ERROR_MSG = (
+    "The Git command returned data that unparsable.  This may happen "
+    "if you have checked binary data into your repository.  The current "
+    "operation has been aborted."
+)
+
+
 class GitSavvyError(Exception):
     pass
 
@@ -129,15 +142,14 @@ class GitCommand(StatusMixin,
     def decode_stdout(self, stdout):
         try:
             return stdout.decode()
-        except UnicodeDecodeError as err:
-            msg = (
-                "GitSavvy was unable to parse content successfully. Would you "
-                "like to fallback to the default encoding?  Text may not "
-                "appear as expected."
-            )
-            if sublime.ok_cancel_dialog(msg, "Fallback?"):
-                return stdout.decode("windows-1252")
-            raise err
+        except UnicodeDecodeError as unicode_err:
+            if sublime.ok_cancel_dialog(UTF8_PARSE_ERROR_MSG, "Fallback?"):
+                try:
+                    return stdout.decode("windows-1252")
+                except UnicodeDecodeError as fallback_err:
+                    sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
+                    raise fallback_err
+            raise unicode_err
 
     @property
     def encoding(self):
