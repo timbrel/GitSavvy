@@ -112,6 +112,9 @@ class StatusInterface(ui.Interface, GitCommand):
          self.untracked_entries,
          self.conflict_entries) = self.sort_status_entries(self.get_status())
 
+    def on_new_dashboard(self):
+        self.view.run_command("gs_status_select_first_file")
+
     @staticmethod
     def sort_status_entries(file_status_list):
         """
@@ -786,3 +789,20 @@ class GsStatusNavigateFileCommand(TextCommand, GitCommand):
             if file_region.b < current_position:
                 return file_region.a
         return None
+
+
+class GsStatusSelectFirstFileCommand(TextCommand):
+
+    """
+    Select the first file when new status dashboard is created.
+    """
+
+    def run(self, edit):
+        regions = self.view.find_by_selector("meta.git-savvy.status.file")
+        if not regions:
+            return
+
+        pos = regions[0].a + 4
+        sel = self.view.sel()
+        sel.clear()
+        sel.add(sublime.Region(pos, pos))

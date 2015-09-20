@@ -63,7 +63,8 @@ class Interface():
             self.view = view
             self.render(nuke_cursors=False)
         else:
-            self.view = self.create_view(repo_path)
+            self.create_view(repo_path)
+            sublime.set_timeout_async(self.on_new_dashboard, 0)
 
         interfaces[self.view.id()] = self
 
@@ -180,6 +181,9 @@ class Interface():
 
         selection = selections[0]
         return selection, util.view.get_lines_from_regions(self.view, [selection])[0]
+
+    def on_new_dashboard(self):
+        pass
 
 
 def partial(key):
