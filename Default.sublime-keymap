@@ -267,13 +267,29 @@
         ]
     },
 
-    ///////////////////////////
-    // STATUS VIEW - STASHES //
-    ///////////////////////////
+    //////////////////////////////
+    // STATUS VIEW - NAVIGATION //
+    //////////////////////////////
 
     {
         "keys": ["r"],
         "command": "gs_status_refresh",
+        "context": [
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["."],
+        "command": "gs_status_navigate_file",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": [","],
+        "command": "gs_status_navigate_file",
+        "args": { "forward": false },
         "context": [
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
         ]
