@@ -158,7 +158,7 @@
 						</dict>
 					</dict>
 					<key>match</key>
-					<string>\[([A-Za-z])\]</string>
+					<string>\[([A-Za-z\,\.])\]</string>
 					<key>name</key>
 					<string>meta.git-savvy.key-bindings-key-stroke</string>
 				</dict>

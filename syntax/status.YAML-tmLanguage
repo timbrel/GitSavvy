@@ -57,6 +57,6 @@ patterns:
     captures:
       '1': { name: support.type.git-savvy.key-bindings-header-text }
   - name: meta.git-savvy.key-bindings-key-stroke
-    match: '\[([A-Za-z])\]'
+    match: '\[([A-Za-z\,\.])\]'
     captures:
       '1': { name: constant.character.git-savvy-key-binding-key }
