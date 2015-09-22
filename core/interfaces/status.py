@@ -766,9 +766,15 @@ class GsStatusNavigateFileCommand(TextCommand, GitCommand):
                         for region in self.view.find_by_selector("meta.git-savvy.status.file")
                         for file_region in self.view.lines(region)]
 
-        new_position = (self.forward(current_position, file_regions)
+        stash_regions = [stash_region
+                        for region in self.view.find_by_selector("meta.git-savvy.status.saved_stash")
+                        for stash_region in self.view.lines(region)]
+
+        available_regions = file_regions + stash_regions
+
+        new_position = (self.forward(current_position, available_regions)
                         if forward
-                        else self.backward(current_position, file_regions))
+                        else self.backward(current_position, available_regions))
 
         if new_position is None:
             return
