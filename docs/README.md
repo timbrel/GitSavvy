@@ -129,16 +129,31 @@ If you have the need, you can add your own commands that take advantage of GitSa
             "args": ["pull", "--rebase"],
             "start_msg": "Starting pull (rebase)...",
             "complete_msg": "Pull complete.",
+            "run_in_thread": false  # SEE WARNING BELOW
         }
     }
 ]
 ```
 
-GitSavvy also supports some basic interpolation when specifying your args.  If one of these strings is provided as an element of your args array, the appropriate string will be substituted.  The following strings are currently supported:
+### Arguments
 
-- `{FILE_PATH}` - the path to the currently opened file.
-- `{REPO_PATH}` - the path to the currently opened file's repo path.
+Your custom command may be further customized by setting the following arguments:
 
+* `output_to_panel` - send the command output to a panel when complete
+* `args`            - arguments to pass to the `git` command
+
+      GitSavvy also supports some basic interpolation when specifying your `args`. If one of these strings is provided as an element of your `args` array, the appropriate string will be substituted. The following strings are currently supported:
+      
+       - `{FILE_PATH}` - the path to the currently opened file.
+       - `{REPO_PATH}` - the path to the currently opened file's repo path.
+
+* `start_msg`       - a message to display in status bar when the command starts
+* `complete_msg`    - a message to display in status bar when the command completes
+* `run_in_thread`   - when true, your command will be run in a separate child thread, independent of the async UI thread
+
+      **:boom: Warning**
+  
+      Take *extra* care when enabling `run_in_thread`; while it can be useful for long running `git` commands, if handled incorrectly, running such a background thread can have undesirable effects.
 
 ## [git-flow](https://github.com/nvie/gitflow) Support
 
