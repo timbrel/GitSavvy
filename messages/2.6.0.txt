@@ -1,0 +1,14 @@
+Changes since 2.5.0:
+
+  Fix:
+   - Update status dashboard syntax to highlight , and .
+   - Status dashboard , and . can navigate to stashes.
+
+  Enhancement:
+   - Display message to user if fallback decoding fails.
+   - Add option to confirm `git push --force`.
+
+  Contributors:
+   - David Mohl
+   - Pavel Savchenko
+   - Dale Bustad
