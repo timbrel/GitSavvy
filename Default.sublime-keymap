@@ -54,6 +54,12 @@
         "context": [
             { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
         ]
+    },    {
+        "keys": ["o"],
+        "command": "gs_inline_diff_open_file",
+        "context": [
+            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
+        ]
     },
 
     /////////////////////////////////
