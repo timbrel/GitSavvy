@@ -7,17 +7,27 @@ from ..git_command import GitCommand
 from ...common import util
 
 
-COMMIT_HELP_TEXT = """
-
-## To make a commit, type your commit message and press {key}-ENTER. To cancel
-## the commit, close the window. To sign off the commit press {key}-S.
-
+COMMIT_HELP_TEXT_EXTRA = """
 ## You may also reference or close a GitHub issue with this commit.  To do so,
 ## type `#` followed by the `tab` key.  You will be shown a list of issues
 ## related to the current repo.  You may also type `owner/repo#` plus the `tab`
 ## key to reference an issue in a different GitHub repo.
 
-""".format(key=util.super_key)
+"""
+
+COMMIT_HELP_TEXT_ALT = """
+
+## To make a commit, type your commit message and close the window. To cancel
+## the commit, delete the commit message and close the window. To sign off on
+## the commit, press {key}-S.
+""".format(key=util.super_key) + COMMIT_HELP_TEXT_EXTRA
+
+
+COMMIT_HELP_TEXT = """
+
+## To make a commit, type your commit message and press {key}-ENTER. To cancel
+## the commit, close the window. To sign off on the commit, press {key}-S.
+""".format(key=util.super_key) + COMMIT_HELP_TEXT_EXTRA
 
 COMMIT_SIGN_TEXT = """
 
@@ -42,12 +52,13 @@ class GsCommitCommand(WindowCommand, GitCommand):
         repo_path = repo_path or self.repo_path
         view = self.window.new_file()
         view.settings().set("git_savvy.get_long_text_view", True)
+        view.settings().set("git_savvy.commit_view", True)
         view.settings().set("git_savvy.commit_view.include_unstaged", include_unstaged)
         view.settings().set("git_savvy.commit_view.amend", amend)
         view.settings().set("git_savvy.repo_path", repo_path)
 
-        gitsavvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        if gitsavvy_settings.get("use_syntax_for_commit_editmsg"):
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        if savvy_settings.get("use_syntax_for_commit_editmsg"):
             syntax_file = util.file.get_syntax_for_file("COMMIT_EDITMSG")
             view.set_syntax_file(syntax_file)
         else:
@@ -55,7 +66,7 @@ class GsCommitCommand(WindowCommand, GitCommand):
 
         title = COMMIT_TITLE.format(os.path.basename(repo_path))
         view.set_name(title)
-        if not gitsavvy_settings.get("prompt_on_abort_commit"):
+        if not savvy_settings.get("prompt_on_abort_commit"):
             view.set_scratch(True)
         view.run_command("gs_commit_initialize_view")
 
@@ -69,25 +80,30 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         merge_msg_path = os.path.join(self.repo_path, ".git", "MERGE_MSG")
-        gitsavvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+
+        help_text = (COMMIT_HELP_TEXT_ALT
+                     if savvy_settings.get("commit_on_close")
+                     else COMMIT_HELP_TEXT)
+        self.view.settings().set("git_savvy.commit_view.help_text", help_text)
 
         option_amend = self.view.settings().get("git_savvy.commit_view.amend")
         if option_amend:
             last_commit_message = self.git("log", "-1", "--pretty=%B")
-            initial_text = last_commit_message + COMMIT_HELP_TEXT
+            initial_text = last_commit_message + help_text
         elif os.path.exists(merge_msg_path):
             with open(merge_msg_path, "r") as f:
-                initial_text = f.read() + COMMIT_HELP_TEXT
+                initial_text = f.read() + help_text
         else:
-            initial_text = COMMIT_HELP_TEXT
+            initial_text = help_text
 
-        commit_help_extra_file = gitsavvy_settings.get("commit_help_extra_file") or ".commit_help"
+        commit_help_extra_file = savvy_settings.get("commit_help_extra_file") or ".commit_help"
         commit_help_extra_path = os.path.join(self.repo_path, commit_help_extra_file)
         if os.path.exists(commit_help_extra_path):
             with open(commit_help_extra_path, "r", encoding="utf-8") as f:
                 initial_text += f.read()
 
-        if gitsavvy_settings.get("show_commit_diff"):
+        if savvy_settings.get("show_commit_diff"):
             if option_amend:
                 initial_text += self.git("diff", "--no-color", "HEAD^")
             else:
@@ -111,7 +127,8 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
 
     def run_async(self):
         view_text = self.view.substr(sublime.Region(0, self.view.size()))
-        commit_message = view_text.split(COMMIT_HELP_TEXT)[0]
+        help_text = self.view.settings().get("git_savvy.commit_view.help_text")
+        commit_message = view_text.split(help_text)[0]
         include_unstaged = self.view.settings().get("git_savvy.commit_view.include_unstaged")
 
         show_panel_overrides = \
@@ -140,7 +157,8 @@ class GsCommitViewSignCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         view_text = self.view.substr(sublime.Region(0, self.view.size()))
-        view_text_list = view_text.split(COMMIT_HELP_TEXT)
+        help_text = self.view.settings().get("git_savvy.commit_view.help_text")
+        view_text_list = view_text.split(help_text)
 
         config_name = self.git("config", "user.name").strip()
         config_email = self.git("config", "user.email").strip()
@@ -149,6 +167,27 @@ class GsCommitViewSignCommand(TextCommand, GitCommand):
         view_text_list[0] += sign_text
 
         self.view.run_command("gs_replace_view_text", {
-            "text": COMMIT_HELP_TEXT.join(view_text_list),
+            "text": help_text.join(view_text_list),
             "nuke_cursors": True
             })
+
+
+class GsCommitViewCloseCommand(TextCommand, GitCommand):
+
+    """
+    Perform commit action on commit view close if `commit_on_close` setting
+    is enabled.
+    """
+
+    def run(self, edit):
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        if savvy_settings.get("commit_on_close"):
+            view_text = self.view.substr(sublime.Region(0, self.view.size()))
+            help_text = self.view.settings().get("git_savvy.commit_view.help_text")
+            message_txt = (view_text.split(help_text)[0]
+                           if help_text in view_text
+                           else "")
+            message_txt = message_txt.strip()
+
+            if message_txt:
+                self.view.run_command("gs_commit_view_do_commit")

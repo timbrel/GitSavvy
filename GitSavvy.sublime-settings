@@ -172,5 +172,12 @@
         When set to `true`, GitSavvy will prompt for confirmation before actually
         performing a `git push --force` operation.
      */
-    "confirm_force_push": true
+    "confirm_force_push": true,
+
+    /*
+        When set to `true`, closing the commit message window will result in a commit
+        action being taken, except in cases where the message is empty.  The same is
+        also true for amending commits.
+     */
+    "commit_on_close": false
 }
