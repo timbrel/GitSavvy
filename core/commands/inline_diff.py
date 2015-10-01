@@ -579,6 +579,48 @@ class GsInlineDiffStageOrResetHunkCommand(GsInlineDiffStageOrResetBase):
 
         return "\n".join([stand_alone_header] + hunk_ref.hunk.raw_lines[1:])
 
+class GsInlineDiffOpenFile(TextCommand):
+
+    """ Should open file at current hunk. """
+
+    def run(self, edit):
+        selections = self.view.sel()
+        region = self.view.line(0) if len(selections) == 0 else selections[0]
+
+        # Git lines are 1-indexed; Sublime rows are 0-indexed.
+        current_line_number = self.view.rowcol(region.begin())[0] + 1
+        current_column_number = self.view.rowcol(region.begin())[1] + 1
+
+        cur_hunk = self.get_current_hunk(current_line_number)
+        if not cur_hunk:
+            # do something when it is outside a hunk
+            # TODO
+            return
+
+        # line in current hunk
+        index = current_line_number - cur_hunk.section_start - 1
+
+        if cur_hunk.hunk.changes[index][1] == "+":
+            # if it is lines we  added we want to open at the line we press open on
+            # not the start of the hunk
+            self.open_file(cur_hunk.hunk.changes[index][3], current_column_number)
+        else :
+            # line deleted and starting on top of hunk
+            self.open_file(cur_hunk.hunk.changes[index][3], 0)
+
+    def open_file(self, row, col):
+        file_name = self.view.settings().get("git_savvy.file_path")
+        self.view.window().open_file("{file}:{row}:{col}".format(file=file_name, row=row, col=col), sublime.ENCODED_POSITION)
+
+    def get_current_hunk(self, current_line_number):
+        hunks = diff_view_hunks[self.view.id()]
+        if not hunks:
+            return
+        for hunk_ref in hunks:
+            if hunk_ref.section_start <= current_line_number and hunk_ref.section_end >= current_line_number:
+                return hunk_ref
+        return None
+
 
 class GsInlineDiffGotoBase(TextCommand):
 
