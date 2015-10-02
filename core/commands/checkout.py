@@ -58,7 +58,7 @@ class GsCheckoutNewBranchCommand(WindowCommand, GitCommand):
         self.window.show_input_panel(NEW_BRANCH_PROMPT, name, self.on_done, None, None)
 
     def on_done(self, branch_name):
-        pattern = r"^(?!\.|.*\.\..*|.*@.*|\/)[a-zA-Z0-9\-\_\/\.]+(?<!\.lock)(?<!\/)(?<!\.)\b$"
+        pattern = r"^(?!\.|.*\.\..*|.*@.*|\/)[a-zA-Z0-9\-\_\/\.]+(?<!\.lock)(?<!\/)(?<!\.)$"
         match = re.match(pattern, branch_name)
         if not match:
             sublime.error_message("`{}` is a invalid branch name.\nRead more on $(man git-check-ref-format)".format(branch_name))
