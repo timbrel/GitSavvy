@@ -579,47 +579,64 @@ class GsInlineDiffStageOrResetHunkCommand(GsInlineDiffStageOrResetBase):
 
         return "\n".join([stand_alone_header] + hunk_ref.hunk.raw_lines[1:])
 
+
 class GsInlineDiffOpenFile(TextCommand):
 
-    """ Should open file at current hunk. """
+    """
+    Opens an editable view of the file being diff'd.
+    """
 
-    def run(self, edit):
-        selections = self.view.sel()
-        region = self.view.line(0) if len(selections) == 0 else selections[0]
-
-        # Git lines are 1-indexed; Sublime rows are 0-indexed.
-        current_line_number = self.view.rowcol(region.begin())[0] + 1
-        current_column_number = self.view.rowcol(region.begin())[1] + 1
-
-        cur_hunk = self.get_current_hunk(current_line_number)
-        if not cur_hunk:
-            # do something when it is outside a hunk
-            # TODO
+    @util.view.single_cursor_coords
+    def run(self, coords, edit):
+        if not coords:
             return
+        cursor_line, cursor_column = coords
 
-        # line in current hunk
-        index = current_line_number - cur_hunk.section_start - 1
-
-        if cur_hunk.hunk.changes[index][1] == "+":
-            # if it is lines we  added we want to open at the line we press open on
-            # not the start of the hunk
-            self.open_file(cur_hunk.hunk.changes[index][3], current_column_number)
-        else :
-            # line deleted and starting on top of hunk
-            self.open_file(cur_hunk.hunk.changes[index][3], 0)
+        # Git lines/columns are 1-indexed; Sublime rows/columns are 0-indexed.
+        row, col = self.get_editable_position(cursor_line + 1, cursor_column + 1)
+        self.open_file(row, col)
 
     def open_file(self, row, col):
         file_name = self.view.settings().get("git_savvy.file_path")
-        self.view.window().open_file("{file}:{row}:{col}".format(file=file_name, row=row, col=col), sublime.ENCODED_POSITION)
+        self.view.window().open_file(
+            "{file}:{row}:{col}".format(
+                file=file_name,
+                row=row,
+                col=col
+                ),
+            sublime.ENCODED_POSITION
+            )
 
-    def get_current_hunk(self, current_line_number):
+    def get_editable_position(self, line_no, col_no):
+        hunk_ref = self.get_closest_hunk_ref_before(line_no)
+
+        # No diff hunks exist before the selected line.
+        if not hunk_ref:
+            return line_no, col_no
+
+        # The selected line is within the hunk.
+        if hunk_ref.section_end >= line_no:
+            hunk_change_index = line_no - hunk_ref.section_start - 1
+            change = hunk_ref.hunk.changes[hunk_change_index]
+            # If a removed line is selected, the cursor will be offset by non-existant
+            # columns of the removed lines.  Therefore, move the cursor to column zero
+            # when removed line is selected.
+            return change.saved_pos, col_no if change.type == "+" else 0
+
+        # The selected line is after the hunk.
+        else:
+            lines_after_hunk_end = line_no - hunk_ref.section_end - 1
+            # Adjust line position for remove-only hunks.
+            if all(change.type == "-" for change in hunk_ref.hunk.changes):
+                lines_after_hunk_end += 1
+            hunk_end_in_saved = hunk_ref.hunk.saved_start + hunk_ref.hunk.saved_length
+            return hunk_end_in_saved + lines_after_hunk_end, col_no
+
+    def get_closest_hunk_ref_before(self, line_no):
         hunks = diff_view_hunks[self.view.id()]
-        if not hunks:
-            return
-        for hunk_ref in hunks:
-            if hunk_ref.section_start <= current_line_number and hunk_ref.section_end >= current_line_number:
+        for hunk_ref in reversed(hunks):
+            if hunk_ref.section_start < line_no:
                 return hunk_ref
-        return None
 
 
 class GsInlineDiffGotoBase(TextCommand):

@@ -6,7 +6,7 @@ Running this command will open a special "Inline Diff" view related to the open 
 
 While in this view, you can navigate between changed hunks using the `,` and `.` keys.  `,` will take you to the previous hunk and `.` will take you to the next hunk. If you have the `inline_diff_auto_scoll` setting set to `true`, the cursor will be automatically placed on the first hunk when the view is opened.
 
-To open the file to make a change(s) to it, use `o`. It will open it on the exact line and letter(called column).
+If you'd like to make changes to the file, press `o` and you will be taken to the same cursor position in an editable window.
 
 While the cursor is positioned at a hunk, you can stage that hunk by pressing `h`.  If you'd like to stage a line only, and _not_ the full hunk, move the cursor to the desired line and press `l` (lower-case L).
 

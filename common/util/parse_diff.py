@@ -86,7 +86,7 @@ def _get_changes(hunk_lines, head_start, saved_start):
     for raw_line in hunk_lines:
         change_type = raw_line[0]
         text = raw_line[1:]
-        changes.append((raw_line, change_type, head_pos, saved_pos, text))
+        changes.append(Change(raw_line, change_type, head_pos, saved_pos, text))
         if change_type == "-":
             head_pos += 1
         elif change_type == "+":
