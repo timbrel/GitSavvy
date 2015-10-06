@@ -21,9 +21,21 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
         view.settings().set("git_savvy.log_graph_view", True)
         view.settings().set("git_savvy.repo_path", repo_path)
         view.settings().set("word_wrap", False)
+        view.settings().set("all_branches", all_branches)
         view.set_name(LOG_GRAPH_TITLE)
         view.set_scratch(True)
         view.set_read_only(True)
+        view.run_command("gs_log_graph_initialize", {"all_branches": all_branches})
+
+class GsLogGraphRefreshCommand(WindowCommand, GitCommand):
+
+    """
+    Refresh the current graph view with the latest commits.
+    """
+
+    def run(self):
+        view = self.window.active_view()
+        all_branches = view.settings().get("all_branches")
         view.run_command("gs_log_graph_initialize", {"all_branches": all_branches})
 
 
