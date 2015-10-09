@@ -1,0 +1,13 @@
+Changes since 2.6.0:
+
+  Enhancement:
+   - Pressing `o` from the inline-diff will open the file at the same cursor position.
+   - `git: graph` view can now be refreshed.
+   - `commit_on_close` configuration option added more Git-like commit view experience.
+
+  Bug:
+   - Branch dashboard would not display branches ending in hyphen char.
+
+  Contributors:
+   - Dale Bustad
+   - Simon
