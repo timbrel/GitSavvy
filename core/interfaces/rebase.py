@@ -191,10 +191,31 @@ class RebaseInterface(ui.Interface, GitCommand):
         return commits_info
 
     def _get_conflicts_in_rebase(self):
+        """
+        Look for unmerged conflicts in status, which are one of:
+           DD    unmerged, both deleted
+           AU    unmerged, added by us
+           UD    unmerged, deleted by them
+           UA    unmerged, added by them
+           DU    unmerged, deleted by us
+           AA    unmerged, both added
+           UU    unmerged, both modified
+
+        FIXME: Currently, we ignore scenarios with D (delete) since they require
+        a different set of commands to handle them in rebase dashbaord.
+        """
         return [
             entry.path
             for entry in self.get_status()
-            if entry.index_status == "U" and entry.working_status == "U"
+            if (
+                # (entry.index_status == "D" and entry.working_status == "D") or
+                (entry.index_status == "A" and entry.working_status == "U") or
+                # (entry.index_status == "U" and entry.working_status == "D") or
+                (entry.index_status == "U" and entry.working_status == "A") or
+                # (entry.index_status == "D" and entry.working_status == "U") or
+                (entry.index_status == "A" and entry.working_status == "A") or
+                (entry.index_status == "U" and entry.working_status == "U")
+            )
         ]
 
     def _get_diverged_outside_rebase(self):
