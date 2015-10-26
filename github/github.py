@@ -68,6 +68,26 @@ def open_file_in_browser(rel_path, remote, commit_hash, start_line=None, end_lin
     open_in_browser(url)
 
 
+def open_repo(remote):
+    """
+    Open the GitHub repo in a new browser window, given the specified remote.
+    """
+    github_repo = parse_remote(remote)
+    if not github_repo:
+        return None
+    open_in_browser(github_repo.url)
+
+
+def open_issues(remote):
+    """
+    Open the GitHub issues in a new browser window, given the specified remote.
+    """
+    github_repo = parse_remote(remote)
+    if not github_repo:
+        return None
+    open_in_browser("{}/issues".format(github_repo.url))
+
+
 def get_api_fqdn(github_repo):
     """
     Determine if the provided GitHub repo object refers to a GitHub-
