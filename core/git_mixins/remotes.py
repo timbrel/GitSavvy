@@ -31,7 +31,8 @@ class RemotesMixin():
             if "origin/HEAD -> " in branch_name:
                 branches[idx] = branch_name[15:]
 
-        return branches
+        # Remove any duplicate branch names.
+        return [branch for idx, branch in enumerate(branches) if branches.index(branch) == idx]
 
     def pull(self, remote=None, branch=None):
         """
