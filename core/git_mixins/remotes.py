@@ -24,7 +24,14 @@ class RemotesMixin():
         Return a list of all known branches on remotes.
         """
         stdout = self.git("branch", "-r", "--no-color")
-        return [branch.strip() for branch in stdout.split("\n") if branch]
+        branches = [branch.strip() for branch in stdout.split("\n") if branch]
+
+        # Clean up "origin/HEAD -> origin/master" to "origin/master" if present.
+        for idx, branch_name in enumerate(branches):
+            if "origin/HEAD -> " in branch_name:
+                branches[idx] = branch_name[15:]
+
+        return branches
 
     def pull(self, remote=None, branch=None):
         """

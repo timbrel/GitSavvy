@@ -25,6 +25,16 @@ This command is accessible via both the command palette and the status dashboard
 When run from within a file (not the status dashboard), any selected lines will also be preselected on GitHub in the browser.
 
 
+## `github: open issues`
+
+This command will open a new browser window, displaying the issues page for the integrated GitHub remote.
+
+
+## `github: open repo`
+
+This command will open a new browser window, displaying the landing page for the integrated GitHub remote.
+
+
 ## `issues integration in commit view`
 
 When writing a commit message, you can easily reference GitHub issues.  Type `#` followed by pressing the `Tab` key.  A pop-up will be shown with a list of the open issues for the repo.  If you'd like to reference issues from a separate repository, you can do so by typing `owner/repo#` and pressing `Tab`.  For example, to reference a GitSavvy issue you might type `divmain/GitSavvy#`, press `Tab`, and a list of GitSavvy issues will be displayed in the pop-up.

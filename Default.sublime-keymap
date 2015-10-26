@@ -300,6 +300,14 @@
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["tab"],
+        "command": "gs_show_branch",
+        "args": { "commandeer_active_view": true },
+        "context": [
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     /////////////////
     // COMMIT VIEW //
@@ -527,6 +535,14 @@
             { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["tab"],
+        "command": "gs_show_rebase",
+        "args": { "commandeer_active_view": true },
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     ////////////////
     // GRAPH VIEW //
@@ -700,6 +716,14 @@
     {
         "keys": ["k"],
         "command": "gs_rebase_skip",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["tab"],
+        "command": "gs_show_status",
+        "args": { "commandeer_active_view": true },
         "context": [
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
         ]

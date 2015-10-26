@@ -15,8 +15,11 @@ class GsShowBranchCommand(WindowCommand, GitCommand):
     Open a branch dashboard for the active Git repository.
     """
 
-    def run(self):
-        BranchInterface(repo_path=self.repo_path)
+    def run(self, commandeer_active_view=False):
+        active_view = sublime.active_window().active_view()
+        interface = BranchInterface(repo_path=self.repo_path)
+        if commandeer_active_view and active_view != interface.view:
+            active_view.close()
 
 
 class BranchInterface(ui.Interface, GitCommand):
@@ -54,7 +57,9 @@ class BranchInterface(ui.Interface, GitCommand):
       [f] diff against active
       [H] diff history against active
       [e] toggle display of remote branches
-      [r] refresh
+
+      [tab] transition to rebase dashboard
+      [r]   refresh
 
     -
     """
