@@ -86,6 +86,7 @@ class RebaseInterface(ui.Interface, GitCommand):
     conflict = "    ┃           conflict: {path}"
 
     _base_commit = None
+    _active_conflicts = None
 
     def __init__(self, *args, **kwargs):
         self.conflicts_keybindings = \
@@ -164,6 +165,7 @@ class RebaseInterface(ui.Interface, GitCommand):
                 self._get_diverged_outside_rebase())
 
     def _get_diverged_in_rebase(self):
+        self._active_conflicts = None
         conflict_commit = self.rebase_conflict_at()
         rewritten = dict(self.rebase_rewritten())
         commits_info = []
@@ -174,11 +176,11 @@ class RebaseInterface(ui.Interface, GitCommand):
             is_conflict = entry.long_hash == conflict_commit
 
             if is_conflict:
-                conflict_paths = self._get_conflicts_in_rebase()
+                self._active_conflicts = self._get_conflicts_in_rebase()
                 conflicts = (
-                    "" if not conflict_paths else
-                    "\n" + "\n".join("    ┃           ! {}".format(file_path)
-                                     for file_path in conflict_paths)
+                    "" if not self._active_conflicts else
+                    "\n" + "\n".join("    ┃           ! {}".format(conflict.path)
+                                     for conflict in self._active_conflicts)
                     )
 
             commits_info.append({
@@ -205,19 +207,16 @@ class RebaseInterface(ui.Interface, GitCommand):
            DU    unmerged, deleted by us
            AA    unmerged, both added
            UU    unmerged, both modified
-
-        FIXME: Currently, we ignore scenarios with D (delete) since they require
-        a different set of commands to handle them in rebase dashbaord.
         """
         return [
-            entry.path
+            entry
             for entry in self.get_status()
             if (
-                # (entry.index_status == "D" and entry.working_status == "D") or
+                (entry.index_status == "D" and entry.working_status == "D") or
                 (entry.index_status == "A" and entry.working_status == "U") or
-                # (entry.index_status == "U" and entry.working_status == "D") or
+                (entry.index_status == "U" and entry.working_status == "D") or
                 (entry.index_status == "U" and entry.working_status == "A") or
-                # (entry.index_status == "D" and entry.working_status == "U") or
+                (entry.index_status == "D" and entry.working_status == "U") or
                 (entry.index_status == "A" and entry.working_status == "A") or
                 (entry.index_status == "U" and entry.working_status == "U")
             )
@@ -632,16 +631,27 @@ class GsRebaseUseCommitVersionCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
+        interface = ui.get_interface(self.view.id())
+        conflicts = interface._active_conflicts
+
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
         paths = (line[18:]
                  for reg in line_regions
                  for line in self.view.substr(reg).split("\n") if line)
         for path in paths:
-            self.git("checkout", "--theirs", "--", path)
-            self.stage_file(path)
+            if self.is_commit_version_deleted(path, conflicts):
+                self.git("rm", "--", path)
+            else:
+                self.git("checkout", "--theirs", "--", path)
+                self.stage_file(path)
         util.view.refresh_gitsavvy(self.view)
 
+    def is_commit_version_deleted(self, path, conflicts):
+        for conflict in conflicts:
+            if conflict.path == path:
+                return conflict.working_status == "D"
+        return False
 
 class GsRebaseUseBaseVersionCommand(TextCommand, GitCommand):
 
@@ -649,15 +659,27 @@ class GsRebaseUseBaseVersionCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
+        interface = ui.get_interface(self.view.id())
+        conflicts = interface._active_conflicts
+
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
         paths = (line[18:]
                  for reg in line_regions
                  for line in self.view.substr(reg).split("\n") if line)
         for path in paths:
-            self.git("checkout", "--ours", "--", path)
-            self.stage_file(path)
+            if self.is_base_version_deleted(path, conflicts):
+                self.git("rm", "--", path)
+            else:
+                self.git("checkout", "--ours", "--", path)
+                self.stage_file(path)
         util.view.refresh_gitsavvy(self.view)
+
+    def is_base_version_deleted(self, path, conflicts):
+        for conflict in conflicts:
+            if conflict.path == path:
+                return conflict.index_status == "D"
+        return False
 
 
 class GsRebaseLaunchMergeToolCommand(TextCommand, GitCommand):
@@ -666,16 +688,31 @@ class GsRebaseLaunchMergeToolCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
+        interface = ui.get_interface(self.view.id())
+        conflicts = interface._active_conflicts
+
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
-        paths = [os.path.join(self.repo_path, line[18:])
+        paths = [line[18:]
                  for reg in line_regions
                  for line in self.view.substr(reg).split("\n") if line]
         if len(paths) > 1:
             sublime.error_message("You can only launch merge tool for a single file at a time.")
             return
 
-        self.launch_tool_for_file(paths[0])
+        path = paths[0]
+
+        if self.is_either_version_deleted(path, conflicts):
+            sublime.error_message("Cannot open merge tool for file that has been deleted.")
+            return
+
+        self.launch_tool_for_file(os.path.join(self.repo_path, path))
+
+    def is_either_version_deleted(self, path, conflicts):
+        for conflict in conflicts:
+            if conflict.path == path:
+                return conflict.index_status == "D" or conflict.working_status == "D"
+        return False
 
 
 class GsRebaseDefineBaseRefCommand(TextCommand, GitCommand):
