@@ -9,7 +9,8 @@ Branch = namedtuple("Branch", (
     "commit_msg",
     "tracking",
     "tracking_status",
-    "active"
+    "active",
+    "description"
     ))
 
 
@@ -21,11 +22,11 @@ class BranchesMixin():
         """
         stdout = self.git("branch", "-a", "-vv", "--no-abbrev", "--no-color")
         return (branch
-                for branch in (self._parse_branch_line(line) for line in stdout.split("\n"))
+                for branch in (self._parse_branch_line(self, line) for line in stdout.split("\n"))
                 if branch)
 
     @staticmethod
-    def _parse_branch_line(line):
+    def _parse_branch_line(self, line):
         line = line.strip()
         if not line:
             return None
@@ -51,6 +52,12 @@ class BranchesMixin():
         active = bool(is_active)
         remote = branch_name.split("/")[0] if is_remote else None
 
+        description = self.git(
+            "config",
+            "branch.{}.description".format(branch_name),
+            throw_on_stderr=False
+            ).strip("\n")
+
         return Branch(
             "/".join(branch_name.split("/")[1:]) if is_remote else branch_name,
             remote,
@@ -59,7 +66,8 @@ class BranchesMixin():
             commit_msg,
             tracking_branch,
             tracking_status,
-            active
+            active,
+            description
             )
 
     def merge(self, branch_name):

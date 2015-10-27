@@ -56,8 +56,9 @@ class BranchInterface(ui.Interface, GitCommand):
 
       [f] diff against active
       [H] diff history against active
-      [e] toggle display of remote branches
+      [E] edit branch description
 
+      [e] toggle display of remote branches
       [tab] transition to rebase dashboard
       [r]   refresh
 
@@ -92,10 +93,11 @@ class BranchInterface(ui.Interface, GitCommand):
             branches = [branch for branch in self._branches if not branch.remote]
 
         return "\n".join(
-            "  {indicator} {hash:.7} {name}{tracking}".format(
+            "  {indicator} {hash:.7} {name}{tracking} {description}".format(
                 indicator="▸" if branch.active else " ",
                 hash=branch.commit_hash,
                 name=branch.name,
+                description=branch.description,
                 tracking=(" ({branch}{status})".format(
                     branch=branch.tracking,
                     status=", " + branch.tracking_status if branch.tracking_status else ""
@@ -679,3 +681,46 @@ class GsBranchesDiffBranchHistoryCommand(TextCommand, GitCommand):
         args.append("{}..{}".format(branchA, branchB))
         diff_contents += self.git(*args)
         return diff_contents
+
+class GsBranchesEditBranchDescriptionCommand(TextCommand, GitCommand):
+
+    """
+    Save a description for the selected branch
+    """
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        self.interface = ui.get_interface(self.view.id())
+        _, line = self.interface.get_selection_line()
+        if not line:
+            return
+
+        segments = line.strip("▸ ").split(" ")
+        self.branch_name = segments[1]
+
+        current_description = self.git(
+            "config",
+            "branch.{}.description".format(self.branch_name),
+            throw_on_stderr=False
+            ).strip(" \n")
+
+        self.view.window().show_input_panel(
+            "Enter new description (for {}):".format(self.branch_name),
+            current_description,
+            self.on_entered_description,
+            None,
+            None
+            )
+
+    def on_entered_description(self, new_description):
+        unset = None if new_description else "--unset"
+
+        self.git(
+            "config",
+            unset,
+            "branch.{}.description".format(self.branch_name),
+            new_description.strip("\n")
+            )
+        util.view.refresh_gitsavvy(self.view)
