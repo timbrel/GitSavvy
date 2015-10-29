@@ -76,7 +76,6 @@ class Interface():
         self.view.settings().set("git_savvy.repo_path", repo_path)
         self.view.set_name(self.title())
         self.view.settings().set("git_savvy.{}_view".format(self.interface_type), True)
-        self.view.settings().set("git_savvy.is_interface", True)
         self.view.settings().set("git_savvy.interface", self.interface_type)
         self.view.settings().set("word_wrap", self.word_wrap)
         self.view.set_syntax_file(self.syntax_file)

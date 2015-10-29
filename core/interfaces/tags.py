@@ -29,11 +29,8 @@ class GsShowTagsCommand(WindowCommand, GitCommand):
     Open a branch dashboard for the active Git repository.
     """
 
-    def run(self, commandeer_active_view=False):
-        active_view = sublime.active_window().active_view()
-        interface = TagsInterface(repo_path=self.repo_path)
-        if commandeer_active_view and active_view != interface.view:
-            active_view.close()
+    def run(self):
+        TagsInterface(repo_path=self.repo_path)
 
 
 class TagsInterface(ui.Interface, GitCommand):
@@ -63,7 +60,7 @@ class TagsInterface(ui.Interface, GitCommand):
 
       [c] create                      [r]   refresh dashboard
       [d] delete                      [e]   toggle display of remote branches
-      [p] push to remote              [tab] transition to status dashboard
+      [p] push to remote              [tab] transition to next dashboard
       [P] push all tags to remote
       [l] view commit
 

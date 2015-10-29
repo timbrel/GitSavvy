@@ -14,11 +14,8 @@ class GsShowRebaseCommand(WindowCommand, GitCommand):
     Open a status view for the active git repository.
     """
 
-    def run(self, commandeer_active_view=False):
-        active_view = sublime.active_window().active_view()
-        interface = RebaseInterface(repo_path=self.repo_path)
-        if commandeer_active_view and active_view != interface.view:
-            active_view.close()
+    def run(self):
+        RebaseInterface(repo_path=self.repo_path)
 
 
 class RebaseInterface(ui.Interface, GitCommand):
@@ -61,7 +58,7 @@ class RebaseInterface(ui.Interface, GitCommand):
       [u] move commit up (before previous)      [A] abort rebase
       [w] show commit
 
-      [tab] transition to tags dashboard
+      [tab] transition to next dashboard
 
       [{super_key}-Z] undo previous action
       [{super_key}-Y] redo action

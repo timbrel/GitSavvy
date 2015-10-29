@@ -309,8 +309,8 @@
     },
     {
         "keys": ["tab"],
-        "command": "gs_show_branch",
-        "args": { "commandeer_active_view": true },
+        "command": "gs_tab_cycle",
+        "args": { "source": "status" },
         "context": [
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
         ]
@@ -450,8 +450,8 @@
     },
     {
         "keys": ["tab"],
-        "command": "gs_show_status",
-        "args": { "commandeer_active_view": true },
+        "command": "gs_tab_cycle",
+        "args": { "source": "tags" },
         "context": [
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
         ]
@@ -576,8 +576,8 @@
     },
     {
         "keys": ["tab"],
-        "command": "gs_show_rebase",
-        "args": { "commandeer_active_view": true },
+        "command": "gs_tab_cycle",
+        "args": { "source": "branch" },
         "context": [
             { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
         ]
@@ -621,6 +621,14 @@
         "keys": [","],
         "command": "gs_log_graph_next_commit",
         "args": {"forward": false},
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["tab"],
+        "command": "gs_tab_cycle",
+        "args": { "source": "graph" },
         "context": [
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
         ]
@@ -761,8 +769,8 @@
     },
     {
         "keys": ["tab"],
-        "command": "gs_show_tags",
-        "args": { "commandeer_active_view": true },
+        "command": "gs_tab_cycle",
+        "args": { "source": "rebase" },
         "context": [
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
         ]

@@ -15,11 +15,8 @@ class GsShowStatusCommand(WindowCommand, GitCommand):
     Open a status view for the active git repository.
     """
 
-    def run(self, commandeer_active_view=False):
-        active_view = sublime.active_window().active_view()
-        interface = StatusInterface(repo_path=self.repo_path)
-        if commandeer_active_view and active_view != interface.view:
-            active_view.close()
+    def run(self):
+        StatusInterface(repo_path=self.repo_path)
 
 
 class StatusInterface(ui.Interface, GitCommand):
@@ -76,7 +73,7 @@ class StatusInterface(ui.Interface, GitCommand):
       ###########
 
       [r]   refresh status
-      [tab] transition to branch dashboard
+      [tab] transition to next dashboard
       [.]   move cursor to next file
       [,]   move cursor to previous file
 
