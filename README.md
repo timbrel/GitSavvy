@@ -14,6 +14,8 @@ Sublime Text 3 plugin providing the following features:
 - `git diff` view, allowing user to (un)stage hunks across all files
 - status, branch, tag, and rebase dashboards
 
+**Note:** Due to a bug present in earlier Git versions, GitSavvy only supports Git versions at or greater than 1.7.10.3.
+
 **Note:** Sublime Text 2 is not supported.  Also, GitSavvy takes advantage of certain features of ST3 that have bugs in earlier ST3 releases.  For the best experience, use the latest ST3 dev build.
 
 
