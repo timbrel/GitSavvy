@@ -22,7 +22,6 @@ class Interface():
     syntax_file = ""
     word_wrap = False
 
-    regions = {}
     template = ""
 
     _initialized = False
@@ -46,6 +45,8 @@ class Interface():
         if self._initialized:
             return
         self._initialized = True
+
+        self.regions = {}
 
         subclass_attrs = (getattr(self, attr) for attr in vars(self.__class__).keys())
 
