@@ -31,9 +31,9 @@ git_path = None
 
 
 UTF8_PARSE_ERROR_MSG = (
-    "GitSavvy was unable to parse content successfully. Would you "
-    "like to fallback to the default encoding?  Text may not "
-    "appear as expected."
+    "GitSavvy was unable to parse Git output as UTF-8. Would "
+    "you like to use the fallback encoding specified in GitSavvy "
+    "settings? Text may not appear as expected."
 )
 
 FALLBACK_PARSE_ERROR_MSG = (
@@ -81,9 +81,9 @@ class GitCommand(StatusMixin,
         command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
         command_str = " ".join(command)
 
-        gitsavvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
 
-        show_panel_overrides = gitsavvy_settings.get("show_panel_for")
+        show_panel_overrides = savvy_settings.get("show_panel_for")
         show_panel = show_panel or args[0] in show_panel_overrides
 
         stdout, stderr = None, None
@@ -118,7 +118,7 @@ class GitCommand(StatusMixin,
                                  env=os.environ,
                                  startupinfo=startupinfo)
             stdout, stderr = p.communicate(stdin.encode(encoding="UTF-8") if stdin else None)
-            stdout, stderr = self.decode_stdout(stdout), stderr.decode()
+            stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
 
         except Exception as e:
             raise_error(e)
@@ -132,20 +132,22 @@ class GitCommand(StatusMixin,
             ))
 
         if show_panel:
-            if gitsavvy_settings.get("show_input_in_output"):
+            if savvy_settings.get("show_input_in_output"):
                 util.log.panel("> {}\n{}\n{}".format(command_str, stdout, stderr))
             else:
                 util.log.panel("{}\n{}".format(stdout, stderr))
 
         return stdout
 
-    def decode_stdout(self, stdout):
+    def decode_stdout(self, stdout, savvy_settings):
+        fallback_encoding = savvy_settings.get("fallback_encoding")
+        silent_fallback = savvy_settings.get("silent_fallback")
         try:
             return stdout.decode()
         except UnicodeDecodeError as unicode_err:
-            if sublime.ok_cancel_dialog(UTF8_PARSE_ERROR_MSG, "Fallback?"):
+            if silent_fallback or sublime.ok_cancel_dialog(UTF8_PARSE_ERROR_MSG, "Fallback?"):
                 try:
-                    return stdout.decode("windows-1252")
+                    return stdout.decode(fallback_encoding)
                 except UnicodeDecodeError as fallback_err:
                     sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
                     raise fallback_err

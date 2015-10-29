@@ -181,5 +181,31 @@
         action being taken, except in cases where the message is empty.  The same is
         also true for amending commits.
      */
-    "commit_on_close": false
+    "commit_on_close": false,
+
+    /*
+        This encoding will be used whenever Git's output cannot be correctly parsed
+        as UTF-8.  Modify this value if you regularly with files and Git history
+        with a different text encoding.
+
+        Example:
+            "fallback_encoding": "gbk"
+     */
+    "fallback_encoding": "windows-1252",
+
+    /*
+        This setting should only be set to true in the following conditions:
+
+          - you have installed the "Codecs33" package from Package Control
+          - you are running Linux or OS X
+          - you would like to use non-supported codecs like "gbk" for the
+            `fallback_encoding` value
+     */
+    "load_additional_codecs": false,
+
+    /*
+        Set this value to true if you'd like GitSavvy to automatically attempt
+        to decode using the `fallback_encoding` value, without prompting.
+     */
+    "silent_fallback": false
 }
