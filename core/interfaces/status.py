@@ -395,7 +395,6 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
     unstaged, reset the file to HEAD.  If it is untracked, delete it.
     """
 
-    @util.actions.destructive(description="discard one or more files")
     def run(self, edit):
         interface = ui.get_interface(self.view.id())
         self.discard_untracked(interface)
@@ -412,9 +411,13 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
         )
         file_paths = tuple(line[4:].strip() for line in lines if line)
 
-        if file_paths:
+        @util.actions.destructive(description="discard one or more untracked files")
+        def do_discard():
             for fpath in file_paths:
                 self.discard_untracked_file(fpath)
+
+        if file_paths:
+            do_discard()
 
     def discard_unstaged(self, interface):
         valid_ranges = (interface.get_view_regions("unstaged_files") +
@@ -426,9 +429,13 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
         )
         file_paths = tuple(line[4:].strip() for line in lines if line)
 
-        if file_paths:
+        @util.actions.destructive(description="discard one or more unstaged files")
+        def do_discard():
             for fpath in file_paths:
                 self.checkout_file(fpath)
+
+        if file_paths:
+            do_discard()
 
 
 class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
