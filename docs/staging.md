@@ -43,10 +43,8 @@ You also have the option of staging all unstaged files (excluding untracked file
 
 This command will open a special diff view.  Output from `git diff` will be displayed.  If you position your cursor over a hunk and press `SUPER-Enter` (`CTRL-Enter` in Windows), that hunk will be staged.
 
-Use `o` to open the file at the beginning of the hunk. If you like to use 
-`--ignore_all_space` or `-w`, to toggle this option use `s` (space). As well as the 
-option to toggle "--word-diff" with using `w` (word). And remember that you can not
-stage anything if any of there option is enabled.
+Use `o` to open the file at the beginning of the hunk.  Pressing `s` will toggle whether the diff ignores whitespice changes.  Pressing `w` will toggle whether the `--word-diff` mode is used.  And remember that you can not stage anything if either of these modes are enabled.
+
 
 ## `git: diff cached`
 

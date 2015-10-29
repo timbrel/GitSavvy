@@ -39,8 +39,8 @@ class GsDiffCommand(WindowCommand, GitCommand):
         diff_view.settings().set("git_savvy.repo_path", repo_path)
         diff_view.settings().set("git_savvy.file_path", file_path)
         diff_view.settings().set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
-        diff_view.settings().set("git_savvy.diff_view.in_ignore_all_space", False)
-        diff_view.settings().set("git_savvy.diff_view.in_word_diff", False)
+        diff_view.settings().set("git_savvy.diff_view.ignore_whitespace", False)
+        diff_view.settings().set("git_savvy.diff_view.show_word_diff", False)
         diff_view.settings().set("git_savvy.diff_view.base_commit", base_commit)
 
         self.window.focus_view(diff_view)
@@ -56,14 +56,14 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 
     def run(self, edit, cursors=None):
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
-        in_ignore_all_space = self.view.settings().get("git_savvy.diff_view.in_ignore_all_space")
-        in_word_diff = self.view.settings().get("git_savvy.diff_view.in_word_diff")
+        ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
+        show_word_diff = self.view.settings().get("git_savvy.diff_view.show_word_diff")
         base_commit = self.view.settings().get("git_savvy.diff_view.base_commit")
 
         stdout = self.git(
             "diff",
-            "--ignore-all-space" if in_ignore_all_space else None,
-            "--word-diff" if in_word_diff else None,
+            "--ignore-all-space" if ignore_whitespace else None,
+            "--word-diff" if show_word_diff else None,
             "--no-color", base_commit,
             "--cached" if in_cached_mode else None,
             "--",
@@ -74,14 +74,15 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 class GsDiffToggleSetting(TextCommand):
 
     """
-    Toggle view settings: `in_ignore_all_space` or `in_word_diff`.
+    Toggle view settings: `ignore_whitespace` or `show_word_diff`.
     """
 
     def run(self, edit, setting):
         setting_str = "git_savvy.diff_view.{}".format(setting)
-        view = self.view
-        view.settings().set(setting_str, not view.settings().get(setting_str))
-        view.run_command("gs_diff_refresh")
+        settings = self.view.settings()
+        settings.set(setting_str, not settings.get(setting_str))
+        print("{} is now {}".format(setting, settings.get(setting_str)))
+        self.view.run_command("gs_diff_refresh")
 
 
 class GsDiffFocusEventListener(EventListener):
@@ -105,9 +106,9 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, reset=False):
-        in_ignore_all_space = self.view.settings().get("git_savvy.diff_view.in_ignore_all_space")
-        in_word_diff        = self.view.settings().get("git_savvy.diff_view.in_word_diff")
-        if in_ignore_all_space or in_word_diff:
+        ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
+        show_word_diff = self.view.settings().get("git_savvy.diff_view.show_word_diff")
+        if ignore_whitespace or show_word_diff:
             sublime.error_message("You have to be in a clean diff to stage.")
             return None
 
