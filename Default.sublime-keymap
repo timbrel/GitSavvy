@@ -361,6 +361,22 @@
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["s"],
+        "command": "gs_diff_toggle_setting",
+        "args": { "setting": "in_ignore_all_space" },
+        "context": [
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["w"],
+        "command": "gs_diff_toggle_setting",
+        "args": { "setting": "in_word_diff" },
+        "context": [
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     ////////////////
     // BLAME VIEW //
