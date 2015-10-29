@@ -221,6 +221,13 @@
             { "key": "selector", "operator": "equal", "operand": "git-savvy.status meta.git-savvy.status.section meta.git-savvy.status.file" }
         ]
     },
+    {
+        "keys": ["P"],
+        "command": "gs_push",
+        "context": [
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
+        ]
+    },
 
     ///////////////////////////
     // STATUS VIEW - STASHES //
