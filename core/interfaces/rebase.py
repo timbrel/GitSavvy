@@ -61,7 +61,7 @@ class RebaseInterface(ui.Interface, GitCommand):
       [u] move commit up (before previous)      [A] abort rebase
       [w] show commit
 
-      [tab] transition to status dashboard
+      [tab] transition to tags dashboard
 
       [{super_key}-Z] undo previous action
       [{super_key}-Y] redo action

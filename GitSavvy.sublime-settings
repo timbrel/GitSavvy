@@ -126,6 +126,11 @@
     "show_remotes_in_branch_dashboard": false,
 
     /*
+        Set this to `true` to display remotes in the tags dashboard by default.
+     */
+    "show_remotes_in_tags_dashboard": false,
+
+    /*
         When set to `true`, GitSavvy will offer to set the upstream on `git: push`
         when tracking branch is not configured.
      */

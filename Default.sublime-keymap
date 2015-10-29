@@ -374,6 +374,14 @@
     {
         "keys": ["r"],
         "command": "gs_tags_refresh",
+        "args": { "reset_remotes": true },
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["e"],
+        "command": "gs_tags_toggle_remotes",
         "context": [
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
         ]
@@ -413,6 +421,14 @@
         "keys": ["P"],
         "command": "gs_tag_push",
         "args": { "push_all": true },
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["tab"],
+        "command": "gs_show_status",
+        "args": { "commandeer_active_view": true },
         "context": [
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
         ]
@@ -722,7 +738,7 @@
     },
     {
         "keys": ["tab"],
-        "command": "gs_show_status",
+        "command": "gs_show_tags",
         "args": { "commandeer_active_view": true },
         "context": [
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
