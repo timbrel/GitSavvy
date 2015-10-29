@@ -17,7 +17,9 @@ patterns:
   match: (`.*`)
 - comment: branch names
   name: constant.other.git-savvy.graph.branch-name
-  match: (?<= )(\(.*\))(?= )
+  # match all sting starting on '(' and end on ')'
+  # and not contain any '(' or ')' in the string
+  match: (?<= )(\([^()]*\))(?= )
 - comment: issue numbers
   name: string.other.git-savvy.graph.issue
   match: (?:[Ff]ix(?:e[ds])?|[Rr]esolve[ds]?|[Cc]lose[ds]?)?\s*(?:#\d+|\[.*?\])
