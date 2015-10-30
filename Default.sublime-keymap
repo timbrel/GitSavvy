@@ -582,6 +582,13 @@
             { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["E"],
+        "command": "gs_branches_edit_branch_description",
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     ////////////////
     // GRAPH VIEW //
