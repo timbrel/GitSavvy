@@ -38,7 +38,7 @@
 			<key>comment</key>
 			<string>branch names</string>
 			<key>match</key>
-			<string>(?&lt;= )(\(.*\))(?= )</string>
+			<string>(?&lt;= )(\([^()]*\))(?= )</string>
 			<key>name</key>
 			<string>constant.other.git-savvy.graph.branch-name</string>
 		</dict>

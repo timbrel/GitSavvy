@@ -20,6 +20,7 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
         view.set_syntax_file("Packages/GitSavvy/syntax/graph.tmLanguage")
         view.settings().set("git_savvy.log_graph_view", True)
         view.settings().set("git_savvy.repo_path", repo_path)
+        view.settings().set("git_savvy.tabbable", True)
         view.settings().set("word_wrap", False)
         view.settings().set("all_branches", all_branches)
         view.set_name(LOG_GRAPH_TITLE)

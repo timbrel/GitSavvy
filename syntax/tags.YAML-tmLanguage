@@ -52,6 +52,10 @@ patterns:
     captures:
       '1': { name: constant.other.git-savvy.tags.sha1 }
 
+- comment: ux note
+  name: support.type.git-savvy.ux-note
+  match: '\*\* [^\*]+ \*\*'
+
 - comment: Key-bindings menu
   name: comment.git-savvy.tags.key-bindings-menu
   begin: '^  ####'

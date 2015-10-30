@@ -22,7 +22,6 @@ class Interface():
     syntax_file = ""
     word_wrap = False
 
-    regions = {}
     template = ""
 
     _initialized = False
@@ -46,6 +45,8 @@ class Interface():
         if self._initialized:
             return
         self._initialized = True
+
+        self.regions = {}
 
         subclass_attrs = (getattr(self, attr) for attr in vars(self.__class__).keys())
 
@@ -75,7 +76,7 @@ class Interface():
         self.view.settings().set("git_savvy.repo_path", repo_path)
         self.view.set_name(self.title())
         self.view.settings().set("git_savvy.{}_view".format(self.interface_type), True)
-        self.view.settings().set("git_savvy.is_interface", True)
+        self.view.settings().set("git_savvy.tabbable", True)
         self.view.settings().set("git_savvy.interface", self.interface_type)
         self.view.settings().set("word_wrap", self.word_wrap)
         self.view.set_syntax_file(self.syntax_file)
@@ -182,6 +183,13 @@ class Interface():
 
         selection = selections[0]
         return selection, util.view.get_lines_from_regions(self.view, [selection])[0]
+
+    def get_selection_lines_in_region(self, region):
+        return util.view.get_lines_from_regions(
+            self.view,
+            self.view.sel(),
+            valid_ranges=self.get_view_regions(region)
+            )
 
     def on_new_dashboard(self):
         pass

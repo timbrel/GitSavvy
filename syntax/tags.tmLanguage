@@ -145,6 +145,14 @@
 			</array>
 		</dict>
 		<dict>
+			<key>comment</key>
+			<string>ux note</string>
+			<key>match</key>
+			<string>\*\* [^\*]+ \*\*</string>
+			<key>name</key>
+			<string>support.type.git-savvy.ux-note</string>
+		</dict>
+		<dict>
 			<key>begin</key>
 			<string>^  ####</string>
 			<key>comment</key>

@@ -15,11 +15,8 @@ class GsShowStatusCommand(WindowCommand, GitCommand):
     Open a status view for the active git repository.
     """
 
-    def run(self, commandeer_active_view=False):
-        active_view = sublime.active_window().active_view()
-        interface = StatusInterface(repo_path=self.repo_path)
-        if commandeer_active_view and active_view != interface.view:
-            active_view.close()
+    def run(self):
+        StatusInterface(repo_path=self.repo_path)
 
 
 class StatusInterface(ui.Interface, GitCommand):
@@ -66,16 +63,17 @@ class StatusInterface(ui.Interface, GitCommand):
       [c] commit                            [t][a] apply stash
       [C] commit, including unstaged        [t][p] pop stash
       [m] amend previous commit             [t][s] show stash
-                                            [t][c] create stash
-      [i] ignore file                       [t][u] create stash including untracked files
-      [I] ignore pattern                    [t][d] discard stash
+      [P] push current branch               [t][c] create stash
+                                            [t][u] create stash including untracked files
+      [i] ignore file                       [t][d] discard stash
+      [I] ignore pattern                    
 
       ###########
       ## OTHER ##
       ###########
 
       [r]   refresh status
-      [tab] transition to branch dashboard
+      [tab] transition to next dashboard
       [.]   move cursor to next file
       [,]   move cursor to previous file
 
@@ -394,7 +392,6 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
     unstaged, reset the file to HEAD.  If it is untracked, delete it.
     """
 
-    @util.actions.destructive(description="discard one or more files")
     def run(self, edit):
         interface = ui.get_interface(self.view.id())
         self.discard_untracked(interface)
@@ -411,9 +408,13 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
         )
         file_paths = tuple(line[4:].strip() for line in lines if line)
 
-        if file_paths:
+        @util.actions.destructive(description="discard one or more untracked files")
+        def do_discard():
             for fpath in file_paths:
                 self.discard_untracked_file(fpath)
+
+        if file_paths:
+            do_discard()
 
     def discard_unstaged(self, interface):
         valid_ranges = (interface.get_view_regions("unstaged_files") +
@@ -425,9 +426,13 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
         )
         file_paths = tuple(line[4:].strip() for line in lines if line)
 
-        if file_paths:
+        @util.actions.destructive(description="discard one or more unstaged files")
+        def do_discard():
             for fpath in file_paths:
                 self.checkout_file(fpath)
+
+        if file_paths:
+            do_discard()
 
 
 class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):

@@ -78,6 +78,12 @@
     "show_panel_for": [],
 
     /*
+        Add entries to this array (e.g. "pull" or "push") if you'd like any
+        open panel to be closed at the beginning of the operation.
+     */
+    "close_panel_for": [],
+
+    /*
         Use the Sublime configured syntax for COMMIT_EDITMSG rather than
         the custom bundled syntax that comes with GitSavvy.
     */
@@ -124,6 +130,11 @@
         Set this to `true` to display remotes in the branch dashboard by default.
      */
     "show_remotes_in_branch_dashboard": false,
+
+    /*
+        Set this to `true` to display remotes in the tags dashboard by default.
+     */
+    "show_remotes_in_tags_dashboard": false,
 
     /*
         When set to `true`, GitSavvy will offer to set the upstream on `git: push`
@@ -176,5 +187,51 @@
         action being taken, except in cases where the message is empty.  The same is
         also true for amending commits.
      */
-    "commit_on_close": false
+    "commit_on_close": false,
+
+    /*
+        This encoding will be used whenever Git's output cannot be correctly parsed
+        as UTF-8.  Modify this value if you regularly with files and Git history
+        with a different text encoding.
+
+        Example:
+            "fallback_encoding": "gbk"
+     */
+    "fallback_encoding": "windows-1252",
+
+    /*
+        This setting should only be set to true in the following conditions:
+
+          - you have installed the "Codecs33" package from Package Control
+          - you are running Linux or OS X
+          - you would like to use non-supported codecs like "gbk" for the
+            `fallback_encoding` value
+     */
+    "load_additional_codecs": false,
+
+    /*
+        Set this value to true if you'd like GitSavvy to automatically attempt
+        to decode using the `fallback_encoding` value, without prompting.
+     */
+    "silent_fallback": false,
+
+    /*
+        GitSavvy allows you to press `Tab` to cycle from one dashboard interface
+        to the next.  This setting defines the order of that cycle.  The following
+        are valid entries, and can be included in your preferred order:
+
+            status
+            branch
+            rebase
+            tags
+            graph
+
+     */
+    "tab_order": [
+        "status",
+        "branch",
+        "rebase",
+        "tags",
+        "graph"
+    ]
 }
