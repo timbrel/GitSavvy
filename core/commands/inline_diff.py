@@ -160,7 +160,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         self.view.replace(edit, sublime.Region(0, self.view.size()), inline_diff_contents)
 
         if cursors:
-            if (row, col) == (0, 0) and savvy_settings.get("inline_diff_auto_scoll", False):
+            if (row, col) == (0, 0) and savvy_settings.get("inline_diff_auto_scroll", False):
                 self.view.run_command("gs_inline_diff_goto_next_hunk")
             else:
                 self.view.sel().clear()
