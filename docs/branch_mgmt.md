@@ -86,7 +86,6 @@ This action also merged the selected branch into active.  However, it only works
 
 A scratch view will be opened, showing the diff between the selected branch and the active branch.
 
-
 #### Diff history of selected and active branches (`H`)
 
 A scratch view will be opened, showing the commit diff between the selected branch and the active branch.
@@ -96,3 +95,7 @@ A scratch view will be opened, showing the commit diff between the selected bran
 By default, remote branches are not displayed in the branch dashboard.  In many cases, there are many remote branches that would overwhelm the interface.  To view, press `e`.  To hide, press `e` again.
 
 If you would like the default behavior to be inverted, set `show_remotes_in_branch_dashboard` in `GitSavvy.sublime-settings`.
+
+#### Edit branch description (`E`)
+
+You will be prompted to enter a short branch description. Enter an empty one to clear the existing one.

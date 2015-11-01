@@ -35,9 +35,13 @@ patterns:
   end: '^$'
   patterns:
   - name: meta.git-savvy.branches.branch
-    match: '^    (.+)\n$'
+    match: '^    [0-9a-f]{7} [^ ]+( .*)\n$'
+    captures:
+      '1': { name: comment.git-savvy.branches.branch.extra-info }
   - name: string.other.git-savvy.branches.active-branch
-    match: '^  ▸ (.+)\n$'
+    match: '^  ▸ [0-9a-f]{7} [^ ]+( .*)\n$'
+    captures:
+      '1': { name: comment.git-savvy.branches.branch.extra-info }
 
 - comment: ux note
   name: support.type.git-savvy.ux-note

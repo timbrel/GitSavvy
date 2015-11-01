@@ -89,14 +89,22 @@
 			<key>patterns</key>
 			<array>
 				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>comment.git-savvy.branches.branch.extra-info</string>
+						</dict>
+					</dict>
 					<key>match</key>
-					<string>^    (.+)\n$</string>
+					<string>^    [0-9a-f]{7} [^ ]+( .*)\n$</string>
 					<key>name</key>
 					<string>meta.git-savvy.branches.branch</string>
 				</dict>
 				<dict>
 					<key>match</key>
-					<string>^  ▸ (.+)\n$</string>
+					<string>^  ▸ [0-9a-f]{7} [^ ]+( .*)\n$</string>
 					<key>name</key>
 					<string>string.other.git-savvy.branches.active-branch</string>
 				</dict>
