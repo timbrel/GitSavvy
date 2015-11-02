@@ -55,9 +55,10 @@ class BranchInterface(ui.Interface, GitCommand):
       [H] diff history against active
       [E] edit branch description
 
-      [e] toggle display of remote branches
-      [tab] transition to next dashboard
-      [r]   refresh
+      [e]         toggle display of remote branches
+      [tab]       transition to next dashboard
+      [SHIFT-tab] transition to previous dashboard
+      [r]         refresh
 
     -
     """

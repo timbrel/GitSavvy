@@ -315,6 +315,14 @@
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["shift+tab"],
+        "command": "gs_tab_cycle",
+        "args": { "source": "status", "reverse": true },
+        "context": [
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     /////////////////
     // COMMIT VIEW //
@@ -456,6 +464,14 @@
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["shift+tab"],
+        "command": "gs_tab_cycle",
+        "args": { "source": "tags", "reverse": true },
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     ///////////////////
     // BRANCHES VIEW //
@@ -589,6 +605,14 @@
             { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["shift+tab"],
+        "command": "gs_tab_cycle",
+        "args": { "source": "branch", "reverse": true },
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     ////////////////
     // GRAPH VIEW //
@@ -636,6 +660,14 @@
         "keys": ["tab"],
         "command": "gs_tab_cycle",
         "args": { "source": "graph" },
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["shift+tab"],
+        "command": "gs_tab_cycle",
+        "args": { "source": "graph", "reverse": true },
         "context": [
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
         ]
@@ -778,6 +810,14 @@
         "keys": ["tab"],
         "command": "gs_tab_cycle",
         "args": { "source": "rebase" },
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["shift+tab"],
+        "command": "gs_tab_cycle",
+        "args": { "source": "rebase", "reverse": true },
         "context": [
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
         ]

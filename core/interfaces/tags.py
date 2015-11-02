@@ -58,10 +58,10 @@ class TagsInterface(ui.Interface, GitCommand):
       ## ACTIONS ##                   ## OTHER ##
       #############                   ###########
 
-      [c] create                      [r]   refresh dashboard
-      [d] delete                      [e]   toggle display of remote branches
-      [p] push to remote              [tab] transition to next dashboard
-      [P] push all tags to remote
+      [c] create                      [r]         refresh dashboard
+      [d] delete                      [e]         toggle display of remote branches
+      [p] push to remote              [tab]       transition to next dashboard
+      [P] push all tags to remote     [SHIFT-tab] transition to previous dashboard
       [l] view commit
 
     -

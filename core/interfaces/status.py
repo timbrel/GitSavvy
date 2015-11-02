@@ -66,16 +66,17 @@ class StatusInterface(ui.Interface, GitCommand):
       [P] push current branch               [t][c] create stash
                                             [t][u] create stash including untracked files
       [i] ignore file                       [t][d] discard stash
-      [I] ignore pattern                    
+      [I] ignore pattern
 
       ###########
       ## OTHER ##
       ###########
 
-      [r]   refresh status
-      [tab] transition to next dashboard
-      [.]   move cursor to next file
-      [,]   move cursor to previous file
+      [r]         refresh status
+      [tab]       transition to next dashboard
+      [SHIFT-tab] transition to previous dashboard
+      [.]         move cursor to next file
+      [,]         move cursor to previous file
 
     -
     """
