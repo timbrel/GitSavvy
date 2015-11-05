@@ -103,6 +103,14 @@
 					<string>meta.git-savvy.branches.branch</string>
 				</dict>
 				<dict>
+					<key>captures</key>
+					<dict>
+						<key>1</key>
+						<dict>
+							<key>name</key>
+							<string>comment.git-savvy.branches.branch.extra-info</string>
+						</dict>
+					</dict>
 					<key>match</key>
 					<string>^  ▸ [0-9a-f]{7} [^ ]+( .*)\n$</string>
 					<key>name</key>
@@ -153,7 +161,7 @@
 						</dict>
 					</dict>
 					<key>match</key>
-					<string>\[([A-Za-z]+)\]</string>
+					<string>\[([A-Za-z\-]+)\]</string>
 					<key>name</key>
 					<string>meta.git-savvy.key-bindings-key-stroke</string>
 				</dict>
