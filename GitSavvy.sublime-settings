@@ -46,7 +46,7 @@
         Change this to `true` to scroll to the first hunk automatically when
         you open the inline-diff view.
      */
-    "inline_diff_auto_scoll": false,
+    "inline_diff_auto_scroll": false,
 
     "colors": {
         /*
