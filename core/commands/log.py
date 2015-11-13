@@ -6,6 +6,7 @@ from ...common import util
 
 
 class GsLogCommand(WindowCommand, GitCommand):
+    cherry_branch = None
 
     def run(self, filename=None, limit=6000, author=None):
         self._pagination = 0
@@ -21,6 +22,8 @@ class GsLogCommand(WindowCommand, GitCommand):
             "--skip={}".format(self._pagination) if self._pagination else None,
             "--author={}".format(self._author) if self._author else None,
             '--format=%h%n%H%n%s%n%an%n%at%x00',
+            '--cherry' if self.cherry_branch else None,
+            '..{}'.format(self.cherry_branch) if self.cherry_branch else None,
             "--" if self._filename else None,
             self._filename
         ).strip("\x00")

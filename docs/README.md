@@ -33,7 +33,7 @@ If you run into any issues not addressed here, please feel free to [open an issu
 - [git: diff cached](staging.md#git-diff-cached)
 
 
-### Commiting
+### Committing
 
 - [git: commit](commit.md#git-commit)
 - [git: commit including unstaged files](commit.md#git-commit-including-unstaged-files)
@@ -80,6 +80,9 @@ If you run into any issues not addressed here, please feel free to [open an issu
 - [git: log by author](history.md#git-log-by-author)
 - [git: blame current file](history.md#git-blame-current-file)
 - [git: graph](history.md#git-graph)
+- [git: reset](misc.md#git-reset)
+- [git: reset (reflog)](misc.md#git-reset-reflog)
+- [git: cherry-pick](misc.md#git-cherry-pick)
 
 
 ### Ignoring files
