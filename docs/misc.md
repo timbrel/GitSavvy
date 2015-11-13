@@ -17,3 +17,11 @@ When run, you will be asked to select a commit from a list of previous commits. 
 ## `git: reset (reflog)`
 
 Like `git: reset`, this command will change the HEAD of the current branch to a previous commit, but uses `git reflog` rather than `git log` as the source of available commits.
+
+## `git: cherry-pick`
+
+This command applies a commit from a different branch to the current branch.
+
+Running the command first prompts for branch selection; then it displays a limited log with commits unique to the chosen branch. Upon selection, the commit is [cherry-picked][1] into the current branch.
+
+[1]: https://git-scm.com/docs/git-cherry-pick

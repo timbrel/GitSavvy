@@ -225,6 +225,10 @@
         "command": "gs_reset_reflog"
     },
     {
+        "caption": "git: cherry-pick",
+        "command": "gs_cherry_pick"
+    },
+    {
         "caption": "flow: init",
         "command": "gs_git_flow_init"
     },
