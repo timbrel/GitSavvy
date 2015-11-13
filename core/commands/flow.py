@@ -209,7 +209,7 @@ class GenericSelectTargetBranch(object):
 
         if name is None:
             if self.curbranch.startswith(self.prefix):
-                name = self.curbranch.replace(self.prefix, '')
+                self.cur_name = name = self.curbranch.replace(self.prefix, '')
             else:
                 self.branches = [b.replace(self.prefix, '')
                                  for b in self.get_local_branches()
@@ -226,7 +226,7 @@ class GenericSelectTargetBranch(object):
     def on_select_current(self, index):
         if index != 1:
             return None
-        return self.complete_flow()
+        return self.complete_flow(name=self.cur_name)
 
     def on_name_selected(self, index):
         value = self.get_value(self.branches, index)
