@@ -8,6 +8,10 @@ from ..git_command import GitCommand
 from ...common import util
 
 
+def filter_quick_panel(fn):
+    return lambda idx: fn(idx) if idx != -1 else None
+
+
 class GsShowRebaseCommand(WindowCommand, GitCommand):
 
     """
@@ -715,46 +719,78 @@ class GsRebaseLaunchMergeToolCommand(TextCommand, GitCommand):
 
 class GsRebaseDefineBaseRefCommand(TextCommand, GitCommand):
 
+    base_types = [
+        "Use branch as base.",
+        "Use ref as base."
+    ]
+
     def run(self, edit):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        self.entries = [branch.name_with_remote
-                        for branch in self.get_branches()
-                        if not branch.active]
         self.view.window().show_quick_panel(
-            self.entries,
-            self.on_selection
+            self.base_types,
+            filter_quick_panel(self.on_type_select)
         )
 
-    def on_selection(self, idx):
-        if idx == -1:
-            return
+    def on_type_select(self, type_idx):
+        if type_idx == 0:
+            branches = [branch.name_with_remote
+                             for branch in self.get_branches()
+                             if not branch.active]
+            self.view.window().show_quick_panel(
+                branches,
+                filter_quick_panel(lambda idx: self.set_base_ref(branches[idx]))
+            )
+        elif type_idx == 1:
+            self.view.window().show_input_panel(
+                "Enter ref to use for base:",
+                "",
+                lambda entry: self.set_base_ref(entry) if entry else None,
+                None,
+                None
+            )
 
-        self.view.settings().set("git_savvy.rebase.base_ref", self.entries[idx])
+    def set_base_ref(self, ref):
+        self.view.settings().set("git_savvy.rebase.base_ref", ref)
         util.view.refresh_gitsavvy(self.view)
 
 
 class GsRebaseOnTopOfCommand(TextCommand, GitCommand):
 
+    base_types = [
+        "Rebase on top of branch.",
+        "Rebase on top of ref."
+    ]
+
     def run(self, edit):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        self.entries = [branch.name_with_remote
-                        for branch in self.get_branches()
-                        if not branch.active]
         self.view.window().show_quick_panel(
-            self.entries,
-            self.on_selection
+            self.base_types,
+            filter_quick_panel(self.on_type_select)
         )
 
-    def on_selection(self, idx):
-        if idx == -1:
-            return
+    def on_type_select(self, type_idx):
+        if type_idx == 0:
+            entries = [branch.name_with_remote
+                            for branch in self.get_branches()
+                            if not branch.active]
+            self.view.window().show_quick_panel(
+                entries,
+                filter_quick_panel(lambda idx: self.set_base_ref(entries[idx]))
+            )
+        elif type_idx == 1:
+            self.view.window().show_input_panel(
+                "Enter commit or other ref to use for rebase:",
+                "",
+                lambda entry: self.set_base_ref(entry) if entry else None,
+                None,
+                None
+            )
 
-        selection = self.entries[idx]
-
+    def set_base_ref(self, selection):
         interface = ui.get_interface(self.view.id())
         branch_state = interface.get_branch_state()
         self.view.settings().set("git_savvy.rebase_in_progress", (branch_state, selection))
