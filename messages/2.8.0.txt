@@ -1,0 +1,41 @@
+Changes since 2.7.1:
+
+  Feature:
+   - Press Tab to transition between dashboards in a single view (or Shift-Tab for reverse) (configurable).
+   - Add a simple stand-alone cherry-pick command.
+   - Diff view can toggle `ignore_all_space` and `word_diff` options.
+   - Show and edit branch descriptions in branch dashboard.
+   - Add international codec support including GBK, BIG5, EUC-KR, EUC-JP, etc.
+   - Open issues and repo page on GitHub remote through command palette.
+
+  Enhancement:
+   - Rebase dashboard supports non-branch base.
+   - Add syntax highlighting for `git: graph` view.
+   - Add option to auto-close panel for specified Git operations.
+   - Add key-binding to push from status dashboard.
+   - Fork UX in rebase-conflict scenario when one side is deleted.
+   - Add syntax highlighting for comments and tracking info in branch dashboard.
+
+  Fix:
+   - Add empty line to beginning of tags inferface.
+   - Always pass the branch name on git flow * finish (fixes issues with certain git-flow releases).
+   - Attempting to discard staged file needn't trigger destructive-action warning.
+   - Potential issue with interfaces sharing region keys.
+   - Remote duplicate branch names when determining remote branches.
+   - `git:pull` would fail if ORIGIN/HEAD known.
+   - All types of unmerged conflicts were not shown correctly.
+   - Unintentional default settings for show_panel_for and close_panel_for.
+   - Dashboard syntax did not support multi-character key name.
+
+  Documentation:
+   - Define lowest-supported Git version.
+
+  Housekeeping:
+   - Port tags dashboard to interface pattern.
+
+
+  Contributors:
+   - Pavel Savchenko
+   - Dale Bustad
+   - Simon
+   - marcinruszkiewicz
