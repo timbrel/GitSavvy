@@ -48,6 +48,7 @@ class TagsInterface(ui.Interface, GitCommand):
     remotes = None
 
     template = """\
+
       BRANCH:  {branch_status}
       ROOT:    {repo_root}
       HEAD:    {head}
