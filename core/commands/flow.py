@@ -35,7 +35,7 @@ class FlowCommon(WindowCommand, GitCommand):
 
     def is_visible(self, **kwargs):
         gitsavvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        return gitsavvy_settings.get("show_git_flow_commands")
+        return gitsavvy_settings.get("show_git_flow_commands") or False
 
     def _generic_select(self, help_text, options, callback,
                         no_opts="There are no branches available"):

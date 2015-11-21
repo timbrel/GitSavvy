@@ -86,7 +86,7 @@ class GitCommand(StatusMixin,
         show_panel_overrides = savvy_settings.get("show_panel_for")
         show_panel = show_panel or args[0] in show_panel_overrides
 
-        close_panel_for = savvy_settings.get("close_panel_for")
+        close_panel_for = savvy_settings.get("close_panel_for") or []
         if args[0] in close_panel_for:
             sublime.active_window().run_command("hide_panel", {"cancel": True})
 
