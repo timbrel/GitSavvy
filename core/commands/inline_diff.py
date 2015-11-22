@@ -167,6 +167,10 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
                 pt = self.view.text_point(row, 0)
                 self.view.sel().add(sublime.Region(pt, pt))
                 self.view.show_at_center(pt)
+                # The following shouldn't strictly be necessary, but Sublime sometimes jumps
+                # to the right when show_at_center for a column-zero-point occurs.
+                _, vp_y = self.view.viewport_position()
+                self.view.set_viewport_position((0, vp_y), False)
 
         self.highlight_regions(replaced_lines)
         self.view.set_read_only(True)
