@@ -64,9 +64,10 @@ class GsCommitCommand(WindowCommand, GitCommand):
         else:
             view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.tmLanguage")
 
+        commit_on_close = savvy_settings.get("commit_on_close")
         title = COMMIT_TITLE.format(os.path.basename(repo_path))
         view.set_name(title)
-        if not savvy_settings.get("prompt_on_abort_commit"):
+        if commit_on_close or not savvy_settings.get("prompt_on_abort_commit"):
             view.set_scratch(True)
         view.run_command("gs_commit_initialize_view")
 
