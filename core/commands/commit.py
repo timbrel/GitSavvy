@@ -125,13 +125,15 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
     make a commit using the text for the commit message.
     """
 
-    def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+    def run(self, edit, message=None):
+        sublime.set_timeout_async(lambda: self.run_async(commit_message=message), 0)
 
-    def run_async(self):
-        view_text = self.view.substr(sublime.Region(0, self.view.size()))
-        help_text = self.view.settings().get("git_savvy.commit_view.help_text")
-        commit_message = view_text.split(help_text)[0]
+    def run_async(self, commit_message=None):
+        if commit_message is None:
+            view_text = self.view.substr(sublime.Region(0, self.view.size()))
+            help_text = self.view.settings().get("git_savvy.commit_view.help_text")
+            commit_message = view_text.split(help_text)[0]
+
         include_unstaged = self.view.settings().get("git_savvy.commit_view.include_unstaged")
 
         show_panel_overrides = \
@@ -193,4 +195,4 @@ class GsCommitViewCloseCommand(TextCommand, GitCommand):
             message_txt = message_txt.strip()
 
             if message_txt:
-                self.view.run_command("gs_commit_view_do_commit")
+                self.view.run_command("gs_commit_view_do_commit", {"message": message_txt})
