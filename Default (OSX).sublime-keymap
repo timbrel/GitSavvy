@@ -8,7 +8,8 @@
         "keys": ["super+enter"],
         "command": "gs_commit_view_do_commit",
         "context": [
-            { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.commit_on_close", "operator": "equal", "operand": false }
         ]
     },
     {
