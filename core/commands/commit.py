@@ -149,9 +149,12 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
             stdin=commit_message
             )
 
-        self.view.window().focus_view(self.view)
-        self.view.set_scratch(True)  # ignore dirty on actual commit
-        self.view.window().run_command("close_file")
+        # ensure view is not already closed (i.e.: when "commit_on_close" enabled)
+        is_commit_view = self.view.settings().get("git_savvy.commit_view")
+        if is_commit_view and self.view.window():
+            self.view.window().focus_view(self.view)
+            self.view.set_scratch(True)  # ignore dirty on actual commit
+            self.view.window().run_command("close_file")
 
 
 class GsCommitViewSignCommand(TextCommand, GitCommand):
