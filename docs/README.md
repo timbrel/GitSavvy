@@ -122,7 +122,7 @@ If you run into any issues not addressed here, please feel free to [open an issu
 
 If you have the need, you can add your own commands that take advantage of GitSavvy's access to your repo.  To do so, create a new `User.sublime-commands` file in your `User` Package directory.  Then, add an entry like so:
 
-```json
+```javascript
 [
     {
         "caption": "git: pull --rebase",
@@ -132,7 +132,7 @@ If you have the need, you can add your own commands that take advantage of GitSa
             "args": ["pull", "--rebase"],
             "start_msg": "Starting pull (rebase)...",
             "complete_msg": "Pull complete.",
-            "run_in_thread": false  # SEE WARNING BELOW
+            "run_in_thread": false  // SEE WARNING BELOW
         }
     }
 ]
