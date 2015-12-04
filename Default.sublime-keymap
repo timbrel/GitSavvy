@@ -286,7 +286,7 @@
 
     {
         "keys": ["r"],
-        "command": "gs_status_refresh",
+        "command": "gs_interface_refresh",
         "context": [
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
         ]
