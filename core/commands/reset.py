@@ -4,17 +4,47 @@ from .log import GsLogCommand
 from ...common import util
 
 
+GIT_RESET_MODES = ["--mixed", "--soft", "--hard", "--merge", "--keep"]
+
+
 class GsResetCommand(GsLogCommand):
 
     def on_hash_selection(self, index):
         if index == -1:
             return
+
         if index == self._limit:
             self._pagination += self._limit
             sublime.set_timeout_async(lambda: self.run_async(), 1)
             return
 
-        self.git("reset", "--mixed", self._hashes[index])
+        self._selected_hash = self._hashes[index]
+
+        use_reset_mode = sublime.load_settings("GitSavvy.sublime-settings").get("use_reset_mode")
+
+        if use_reset_mode:
+            self.on_reset(use_reset_mode)
+        else:
+            reset_modes = [reset_mode[2:] for reset_mode in GIT_RESET_MODES]
+            reset_modes[0] = reset_modes[0] + " (default)"
+
+            self.window.show_quick_panel(
+                reset_modes, self.on_reset_mode_selection, flags=sublime.MONOSPACE_FONT
+            )
+
+    def on_reset_mode_selection(self, index):
+        if 0 <= index < len(GIT_RESET_MODES):
+            self.on_reset(GIT_RESET_MODES[index])
+
+    def on_reset(self, reset_mode):
+        # Split the reset mode to support multiple args, e.g. "--mixed -N"
+        args = reset_mode.split() + [self._selected_hash]
+        do_reset = lambda: self.git("reset", *args)
+
+        if reset_mode == "--hard":
+            util.actions.destructive("perform a hard reset")(do_reset)()
+        else:
+            do_reset()
 
 
 class GsResetReflogCommand(GsResetCommand):

@@ -233,5 +233,11 @@
         "rebase",
         "tags",
         "graph"
-    ]
+    ],
+
+    /*
+        Set this value to a valid git reset mode (e.g. --hard, --soft) to skip
+        reset mode prompt and always use that reset mode.
+     */
+    "use_reset_mode": null
 }
