@@ -10,7 +10,7 @@ import bisect
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
-from ..git_command import GitCommand
+from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 
 
@@ -55,19 +55,36 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, cursors=None):
+        if self.view.settings().get("git_savvy.disable_diff"):
+            return
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
         ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
         show_word_diff = self.view.settings().get("git_savvy.diff_view.show_word_diff")
         base_commit = self.view.settings().get("git_savvy.diff_view.base_commit")
 
-        stdout = self.git(
-            "diff",
-            "--ignore-all-space" if ignore_whitespace else None,
-            "--word-diff" if show_word_diff else None,
-            "--no-color", base_commit,
-            "--cached" if in_cached_mode else None,
-            "--",
-            self.file_path)
+        try:
+            stdout = self.git(
+                "diff",
+                "--ignore-all-space" if ignore_whitespace else None,
+                "--word-diff" if show_word_diff else None,
+                "--no-color", base_commit,
+                "--cached" if in_cached_mode else None,
+                "--",
+                self.file_path)
+        except GitSavvyError as err:
+            # When the output of the above Git command fails to correctly parse,
+            # the expected notification will be displayed to the user.  However,
+            # once the userpresses OK, a new refresh event will be triggered on
+            # the view.
+            #
+            # This causes an infinite loop of increasingly frustrating error
+            # messages, ultimately resulting in psychosis and serious medical
+            # bills.  This is a better, though somewhat cludgy, alternative.
+            #
+            if err.args and type(err.args[0]) == UnicodeDecodeError:
+                self.view.settings().set("git_savvy.disable_diff", True)
+                return
+            raise err
 
         self.view.run_command("gs_replace_view_text", {"text": stdout})
 
