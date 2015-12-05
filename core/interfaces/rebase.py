@@ -240,7 +240,8 @@ class RebaseInterface(ui.Interface, GitCommand):
         base_ref = self.view.settings().get("git_savvy.rebase.base_ref")
 
         if not base_ref:
-            project_settings = sublime.active_window().project_data().get('settings', {})
+            project_data = sublime.active_window().project_data() or {}
+            project_settings = project_data.get('settings', {})
             base_ref = project_settings.get("rebase_default_base_ref", "master")
             branches = list(self.get_branches())
 
