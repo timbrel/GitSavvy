@@ -1,4 +1,4 @@
-import sublime
+import sublime, datetime
 from sublime_plugin import TextCommand
 from webbrowser import open as open_in_browser
 
@@ -8,13 +8,46 @@ from .. import git_mixins
 from ...common import interwebs
 from ...common import util
 
+def time_delta(dt):
+    """
+    Format the date / time difference between the supplied date and
+    the current time using approximate measurement boundaries.
+    Adapated from http://code.activestate.com/recipes/576880-convert-datetime-in-python-to-user-friendly-repres/
+    """
+    now = datetime.datetime.now()
+    delta = now - dt
+    o = {"day":0, "hour": 0, "minute": 0, "second": 0}
+    o["year"] = delta.days // 365
+    o["month"] = delta.days // 30 - (12 * o["year"])
+    if o["year"] == 0: 
+        o["day"]= delta.days % 30
+        if o["day"] + o["month"] == 0:
+            o["hour"] = delta.seconds // 3600
+            o["minute"] = delta.seconds // 60 - (60 * o["hour"])
+            if o["minute"] + o["hour"] == 0:
+                o["second"] = delta.seconds - (60 * o["minute"]) - (3600 * o["hour"])
+
+    fmt = []
+    for period in ['year', 'month', 'day', 'hour', 'minute', 'second']:
+        value = o[period]
+        if value:
+            if value > 1:
+                period += "s"
+            fmt.append("%s %s" % (value, period))
+    return ", ".join(fmt) + " ago"
+
+def friendly_time(timestamp):
+    try:
+        return time_delta(datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ")).format()
+    except:
+        return "at {}".format(timestamp)
 
 def create_palette_entry(pr):
     return [
         "{number} {title}".format(number=pr["number"], title=pr["title"]),
-        "created by {user} at {time_stamp}".format(
-            user=pr["head"]["user"]["login"],
-            time_stamp=pr["created_at"]
+        "created by {user} {time_stamp}".format(
+            user=pr["user"]["login"],
+            time_stamp=friendly_time(pr["created_at"])
             )
     ]
 
