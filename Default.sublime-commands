@@ -61,6 +61,10 @@
         "command": "gs_open_github_repo"
     },
     {
+        "caption": "github: pull request",
+        "command": "gs_pull_request"
+    },
+    {
         "caption": "github: set remote for integration",
         "command": "gs_configure_github_remote"
     },
