@@ -34,9 +34,9 @@ This command will open a new browser window, displaying the issues page for the 
 
 This command will open a new browser window, displaying the landing page for the integrated GitHub remote.
 
-## `github: pull request`
+## `github: review pull request`
 
-This command will display all open pull requests for the integrated GitHub remote.  Once you have made a selection, you can either checkout the pull request as a detached HEAD, checkout the pull request as a local branch, view the diff of the pull request, or open the pull request in the browser.
+This command will display all open pull requests for the integrated GitHub remote.  Once you have made a selection, you can either checkout the pull request as a detached HEAD, checkout the pull request as a local branch, create a branch but not check it out, view the diff of the pull request, or open the pull request in the browser.
 
 
 ## `issues integration in commit view`
