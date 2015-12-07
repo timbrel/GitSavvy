@@ -47,6 +47,7 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
         self.view.window().show_quick_panel(
             ["Checkout as detached HEAD.",
              "Checkout as local branch.",
+             "Create local branch, but do not checkout.",
              "View diff.",
              "Open in browser."],
             self.on_select_action
@@ -67,8 +68,16 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
                 None
                 )
         elif idx == 2:
-            self.view_diff_for_pr()
+            self.view.window().show_input_panel(
+                "Enter branch name for PR {}:".format(self.pr["number"]),
+                "pull-request-{}".format(self.pr["number"]),
+                self.create_branch_for_pr,
+                None,
+                None
+                )
         elif idx == 3:
+            self.view_diff_for_pr()
+        elif idx == 4:
             self.open_pr_in_browser()
 
     def fetch_and_checkout_pr(self, branch_name=None):
@@ -89,6 +98,21 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
 
         sublime.status_message("Checking out PR...")
         self.checkout_ref(branch_name or self.pr["head"]["sha"])
+
+    def create_branch_for_pr(self, branch_name):
+        sublime.status_message("Fetching PR commit...")
+        self.git(
+            "fetch",
+            self.pr["head"]["repo"]["clone_url"],
+            self.pr["head"]["ref"]
+            )
+
+        sublime.status_message("Creating local branch for PR...")
+        self.git(
+            "branch",
+            branch_name,
+            self.pr["head"]["sha"]
+            )
 
     def view_diff_for_pr(self):
         response = interwebs.get_url(self.pr["diff_url"])
