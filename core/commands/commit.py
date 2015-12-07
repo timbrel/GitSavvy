@@ -64,9 +64,12 @@ class GsCommitCommand(WindowCommand, GitCommand):
         else:
             view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.tmLanguage")
 
+        commit_on_close = savvy_settings.get("commit_on_close")
+        view.settings().set("git_savvy.commit_on_close", commit_on_close)
+
         title = COMMIT_TITLE.format(os.path.basename(repo_path))
         view.set_name(title)
-        if not savvy_settings.get("prompt_on_abort_commit"):
+        if commit_on_close or not savvy_settings.get("prompt_on_abort_commit"):
             view.set_scratch(True)
         view.run_command("gs_commit_initialize_view")
 
@@ -122,13 +125,15 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
     make a commit using the text for the commit message.
     """
 
-    def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+    def run(self, edit, message=None):
+        sublime.set_timeout_async(lambda: self.run_async(commit_message=message), 0)
 
-    def run_async(self):
-        view_text = self.view.substr(sublime.Region(0, self.view.size()))
-        help_text = self.view.settings().get("git_savvy.commit_view.help_text")
-        commit_message = view_text.split(help_text)[0]
+    def run_async(self, commit_message=None):
+        if commit_message is None:
+            view_text = self.view.substr(sublime.Region(0, self.view.size()))
+            help_text = self.view.settings().get("git_savvy.commit_view.help_text")
+            commit_message = view_text.split(help_text)[0]
+
         include_unstaged = self.view.settings().get("git_savvy.commit_view.include_unstaged")
 
         show_panel_overrides = \
@@ -144,9 +149,12 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
             stdin=commit_message
             )
 
-        self.view.window().focus_view(self.view)
-        self.view.set_scratch(True)  # ignore dirty on actual commit
-        self.view.window().run_command("close_file")
+        # ensure view is not already closed (i.e.: when "commit_on_close" enabled)
+        is_commit_view = self.view.settings().get("git_savvy.commit_view")
+        if is_commit_view and self.view.window():
+            self.view.window().focus_view(self.view)
+            self.view.set_scratch(True)  # ignore dirty on actual commit
+            self.view.window().run_command("close_file")
 
 
 class GsCommitViewSignCommand(TextCommand, GitCommand):
@@ -190,4 +198,4 @@ class GsCommitViewCloseCommand(TextCommand, GitCommand):
             message_txt = message_txt.strip()
 
             if message_txt:
-                self.view.run_command("gs_commit_view_do_commit")
+                self.view.run_command("gs_commit_view_do_commit", {"message": message_txt})
