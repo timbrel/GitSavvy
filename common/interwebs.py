@@ -4,6 +4,7 @@ A simple HTTP interface for making GET, PUT and POST requests.
 
 import http.client
 import json
+from urllib.parse import urlparse
 from base64 import b64encode
 from functools import partial
 from collections import namedtuple
@@ -11,7 +12,7 @@ from collections import namedtuple
 Response = namedtuple("Response", ("payload", "headers", "status", "is_json"))
 
 
-def request(verb, host, port, path, payload=None, https=False, headers=None, auth=None):
+def request(verb, host, port, path, payload=None, https=False, headers=None, auth=None, redirect=True):
     """
     Make an HTTP(S) request with the provided HTTP verb, host FQDN, port number, path,
     payload, protocol, headers, and auth information.  Return a response object with
@@ -32,19 +33,48 @@ def request(verb, host, port, path, payload=None, https=False, headers=None, aut
 
     response = connection.getresponse()
     response_payload = response.read()
-    headers = dict(response.getheaders())
+    response_headers = dict(response.getheaders())
     status = response.status
 
-    is_json = "application/json" in headers["Content-Type"]
+    is_json = "application/json" in response_headers["Content-Type"]
     if is_json:
         response_payload = json.loads(response_payload.decode("utf-8"))
 
     response.close()
     connection.close()
 
-    return Response(response_payload, headers, status, is_json)
+    if redirect and verb == "GET" and status == 301 or status == 302:
+        return request_url(
+            verb,
+            response_headers["Location"],
+            headers=headers,
+            auth=auth
+            )
+
+    return Response(response_payload, response_headers, status, is_json)
+
+
+def request_url(verb, url, payload=None, headers=None, auth=None):
+    parsed = urlparse(url)
+    https = parsed.scheme == "https"
+    return request(
+        verb,
+        parsed.hostname,
+        parsed.port or 443 if https else 80,
+        parsed.path,
+        payload=payload,
+        https=https,
+        headers=headers,
+        auth=([parsed.username, parsed.password]
+              if parsed.username and parsed.password
+              else None)
+        )
 
 
 get = partial(request, "GET")
 post = partial(request, "POST")
 put = partial(request, "PUT")
+
+get_url = partial(request_url, "GET")
+post_url = partial(request_url, "POST")
+put_url = partial(request_url, "PUT")
