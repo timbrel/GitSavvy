@@ -76,7 +76,7 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
         self.git(
             "fetch",
             self.pr["head"]["repo"]["clone_url"],
-            self.pr["head"]["sha"]
+            self.pr["head"]["ref"]
             )
 
         if branch_name:
