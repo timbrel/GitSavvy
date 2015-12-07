@@ -59,10 +59,12 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
         if idx == 0:
             self.fetch_and_checkout_pr()
         elif idx == 1:
-            self.view.window.show_input_panel(
+            self.view.window().show_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
                 "pull-request-{}".format(self.pr["number"]),
-                self.fetch_and_checkout_pr
+                self.fetch_and_checkout_pr,
+                None,
+                None
                 )
         elif idx == 2:
             self.view_diff_for_pr()
