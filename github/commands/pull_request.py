@@ -13,7 +13,7 @@ def create_palette_entry(pr):
     return [
         "{number} {title}".format(number=pr["number"], title=pr["title"]),
         "created by {user} at {time_stamp}".format(
-            user=pr["head"]["user"]["login"],
+            user=pr["user"]["login"],
             time_stamp=pr["created_at"]
             )
     ]
