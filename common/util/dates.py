@@ -6,17 +6,19 @@ TWO_HOURS = 7200
 ONE_DAY = 86400
 
 
-def fuzzy(event, base=None):
+def fuzzy(event, base=None, date_format=None):
     if not base:
         base = datetime.now()
 
-    if type(event) == str:
+    if date_format:
+        event = datetime.strptime(event, date_format)
+    elif type(event) == str:
         event = datetime.fromtimestamp(int(event))
     elif type(event) == int:
         event = datetime.fromtimestamp(event)
     elif type(event) != datetime:
         raise Exception(
-            "Cannot convert object of type {} to fuzzy date string".format(event))
+            "Cannot convert object `{}` to fuzzy date string".format(event))
 
     delta = base - event
 
