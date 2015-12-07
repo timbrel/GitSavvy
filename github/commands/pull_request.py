@@ -12,7 +12,7 @@ from ...common import util
 def create_palette_entry(pr):
     return [
         "{number}: {title}".format(number=pr["number"], title=pr["title"]),
-        "created by {user} {time_stamp}".format(
+        "Created by {user}, {time_stamp}.".format(
             user=pr["user"]["login"],
             time_stamp=util.dates.fuzzy(pr["created_at"], date_format="%Y-%m-%dT%H:%M:%SZ")
             )
