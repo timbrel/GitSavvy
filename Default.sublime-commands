@@ -61,7 +61,7 @@
         "command": "gs_open_github_repo"
     },
     {
-        "caption": "github: pull request",
+        "caption": "github: review pull request",
         "command": "gs_pull_request"
     },
     {
