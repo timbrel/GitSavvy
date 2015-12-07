@@ -502,7 +502,8 @@ class GsStatusDiscardAllChangesCommand(TextCommand, GitCommand):
     Reset all unstaged files to HEAD.
     """
 
-    @util.actions.destructive(description="discard all unstaged changes")
+    @util.actions.destructive(description="discard all unstaged changes, "
+                                          "and delete all untracked files")
     def run(self, edit):
         self.discard_all_unstaged()
         util.view.refresh_gitsavvy(self.view)
