@@ -3,8 +3,17 @@ import sublime
 from .log import GsLogCommand
 from ...common import util
 
-
-GIT_RESET_MODES = ["--mixed", "--soft", "--hard", "--merge", "--keep"]
+PADDING = "                                                "
+GIT_RESET_MODES = [
+    # See analysis at http://stackoverflow.com/questions/34149356/what-exactly-is-the-difference-between-all-the-git-reset-modes/34155307#34155307
+    ["--mixed" + PADDING, "unstage staged, keep unstaged, don't touch working (safe)"],
+    ["--soft", "just move HEAD, stage differences (safe)"],
+    ["--hard", "discard staged, discard unstaged, update working (unsafe)"],
+    ["--merge", "discard staged, keep unstaged, update working (abort if unsafe)"],
+    ["--keep", "unstage staged, keep unstaged, update working (abort if unsafe)"]
+    # For reference, in case we ever include the (very similar) checkout command
+    # ["--checkout", "keep staged, keep unstaged, update working, move branches (abort if unsafe)"]
+]
 
 
 class GsResetCommand(GsLogCommand):
@@ -25,16 +34,13 @@ class GsResetCommand(GsLogCommand):
         if use_reset_mode:
             self.on_reset(use_reset_mode)
         else:
-            reset_modes = [reset_mode[2:] for reset_mode in GIT_RESET_MODES]
-            reset_modes[0] = reset_modes[0] + " (default)"
-
             self.window.show_quick_panel(
-                reset_modes, self.on_reset_mode_selection, flags=sublime.MONOSPACE_FONT
+                GIT_RESET_MODES, self.on_reset_mode_selection, flags=sublime.MONOSPACE_FONT
             )
 
     def on_reset_mode_selection(self, index):
         if 0 <= index < len(GIT_RESET_MODES):
-            self.on_reset(GIT_RESET_MODES[index])
+            self.on_reset(GIT_RESET_MODES[index][0].strip())
 
     def on_reset(self, reset_mode):
         # Split the reset mode to support multiple args, e.g. "--mixed -N"
