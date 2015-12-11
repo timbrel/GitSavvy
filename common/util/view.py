@@ -107,11 +107,11 @@ def get_lines_from_regions(view, regions, valid_ranges=None):
     if valid_ranges == []:
         return []
 
-    full_line_regions = (view.full_line(region) for region in regions)
+    line_regions = (view.line(region) for region in regions)
 
-    valid_regions = ([region for region in full_line_regions if _region_within_regions(valid_ranges, region)]
+    valid_regions = ([region for region in line_regions if _region_within_regions(valid_ranges, region)]
                      if valid_ranges else
-                     full_line_regions)
+                     line_regions)
 
     return [line for region in valid_regions for line in view.substr(region).split("\n")]
 
