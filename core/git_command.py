@@ -267,7 +267,7 @@ class GitCommand(StatusMixin,
         Return the file path relative to the repo root.
         """
         path = abs_path or self.file_path
-        return os.path.relpath(path, start=self.repo_path)
+        return os.path.relpath(os.path.realpath(path), start=os.path.realpath(self.repo_path))
 
     def _include_global_flags(self, args):
         """
