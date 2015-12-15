@@ -23,7 +23,7 @@ patterns:
     match: '(ahead)|(behind)'
   - comment: head summary
     name: comment.git-savvy.tags.head-commit
-    match: '^  HEAD:    ([0-9a-f]{7}) .+'
+    match: '^  HEAD:    ([0-9a-f]{7,40}) .+'
     captures:
       '1': { name: constant.other.git-savvy.tags.sha1 }
 
@@ -35,7 +35,7 @@ patterns:
   end: '^$'
   patterns:
   - name: meta.git-savvy.tags.tag
-    match: '^    ([0-9a-f]{7}) .+\n$'
+    match: '^    ([0-9a-f]{7,40}) .+\n$'
     captures:
       '1': { name: constant.other.git-savvy.tags.sha1 }
 
@@ -48,7 +48,7 @@ patterns:
   end: '^$'
   patterns:
   - name: meta.git-savvy.tags.tag
-    match: '^    ([0-9a-f]{7}) .+\n$'
+    match: '^    ([0-9a-f]{7,40}) .+\n$'
     captures:
       '1': { name: constant.other.git-savvy.tags.sha1 }
 

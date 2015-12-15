@@ -31,7 +31,7 @@ patterns:
   match: '    ┻'
 
 - name: comment.git-savvy.rebase-graph.base
-  match: '    ┳ \(([0-9a-f]{7})\)'
+  match: '    ┳ \(([0-9a-f]{7,40})\)'
   captures:
     '1':
       name: support.type.git-savvy.rebase.commit_hash
@@ -41,7 +41,7 @@ patterns:
   match: '\*\* [^\*]+ \*\*'
 
 - name: meta.git-savvy.rebase-graph.entry
-  match: '  ([▸ ]) (·)  ([0-9a-f]{7})  (.*)\n'
+  match: '  ([▸ ]) (·)  ([0-9a-f]{7,40})  (.*)\n'
   captures:
     '1':
       name: string.other.git-savvy.rebase.caret
@@ -49,7 +49,7 @@ patterns:
       name: support.type.git-savvy.rebase.commit_hash
 
 - name: meta.git-savvy.rebase-graph.entry
-  match: '  ([▸ ]) (✔)  ([0-9a-f]{7})  (.*)\n'
+  match: '  ([▸ ]) (✔)  ([0-9a-f]{7,40})  (.*)\n'
   captures:
     '1':
       name: string.other.git-savvy.rebase.caret
@@ -59,7 +59,7 @@ patterns:
       name: support.type.git-savvy.rebase.commit_hash
 
 - name: meta.git-savvy.rebase-graph.entry
-  match: '  ([▸ ]) (✕)  ([0-9a-f]{7})  (.*)\n'
+  match: '  ([▸ ]) (✕)  ([0-9a-f]{7,40})  (.*)\n'
   captures:
     '1':
       name: string.other.git-savvy.rebase.caret

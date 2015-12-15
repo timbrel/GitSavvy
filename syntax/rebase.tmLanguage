@@ -78,7 +78,7 @@
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>    ┳ \(([0-9a-f]{7})\)</string>
+			<string>    ┳ \(([0-9a-f]{7,40})\)</string>
 			<key>name</key>
 			<string>comment.git-savvy.rebase-graph.base</string>
 		</dict>
@@ -105,7 +105,7 @@
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>  ([▸ ]) (·)  ([0-9a-f]{7})  (.*)\n</string>
+			<string>  ([▸ ]) (·)  ([0-9a-f]{7,40})  (.*)\n</string>
 			<key>name</key>
 			<string>meta.git-savvy.rebase-graph.entry</string>
 		</dict>
@@ -129,7 +129,7 @@
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>  ([▸ ]) (✔)  ([0-9a-f]{7})  (.*)\n</string>
+			<string>  ([▸ ]) (✔)  ([0-9a-f]{7,40})  (.*)\n</string>
 			<key>name</key>
 			<string>meta.git-savvy.rebase-graph.entry</string>
 		</dict>
@@ -153,7 +153,7 @@
 				</dict>
 			</dict>
 			<key>match</key>
-			<string>  ([▸ ]) (✕)  ([0-9a-f]{7})  (.*)\n</string>
+			<string>  ([▸ ]) (✕)  ([0-9a-f]{7,40})  (.*)\n</string>
 			<key>name</key>
 			<string>meta.git-savvy.rebase-graph.entry</string>
 		</dict>

@@ -23,7 +23,7 @@ patterns:
     match: '(ahead)|(behind)'
   - comment: head summary
     name: comment.git-savvy.status.head-commit
-    match: '^  HEAD:    ([0-9a-f]{7}) .+'
+    match: '^  HEAD:    ([0-9a-f]{7,40}) .+'
     captures:
       '1': { name: constant.other.git-savvy.status.sha1 }
 
@@ -35,11 +35,11 @@ patterns:
   end: '^$'
   patterns:
   - name: meta.git-savvy.branches.branch
-    match: '^    [0-9a-f]{7} [^ ]+( .*)\n$'
+    match: '^    [0-9a-f]{7,40} [^ ]+( .*)\n$'
     captures:
       '1': { name: comment.git-savvy.branches.branch.extra-info }
   - name: string.other.git-savvy.branches.active-branch
-    match: '^  ▸ [0-9a-f]{7} [^ ]+( .*)\n$'
+    match: '^  ▸ [0-9a-f]{7,40} [^ ]+( .*)\n$'
     captures:
       '1': { name: comment.git-savvy.branches.branch.extra-info }
 
