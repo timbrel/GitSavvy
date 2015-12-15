@@ -58,4 +58,5 @@ class RemotesMixin():
         """
         Return ref for remote tracking branch.
         """
-        return self.git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", throw_on_stderr=False)
+        return self.git("rev-parse", "--abbrev-ref", "--symbolic-full-name",
+                        "@{u}", throw_on_stderr=False).strip()
