@@ -131,3 +131,28 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
 
     def open_pr_in_browser(self):
         open_in_browser(self.pr["html_url"])
+
+
+class GsCreatePullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+    """
+    Create pull request of the current commit on the current repo.
+    """
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        base_remote = github.parse_remote(self.get_integrated_remote_url())
+        remote_branch = self.get_active_remote_branch()
+        if not remote_branch:
+            sublime.message_dialog("Unable to determine remote.")
+        else:
+            owner = github.parse_remote(self.get_remotes()[remote_branch.remote]).owner
+            self.open_comparision_in_browser(base_remote.url, owner, remote_branch.name)
+
+    def open_comparision_in_browser(self, url, owner, branch):
+        open_in_browser("{}/compare/{}:{}?expand=1".format(
+            url,
+            owner,
+            branch
+        ))
