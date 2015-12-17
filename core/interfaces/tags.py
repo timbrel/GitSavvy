@@ -1,4 +1,5 @@
 import os
+import re
 from itertools import groupby
 
 import sublime
@@ -16,11 +17,33 @@ NO_LOCAL_TAGS_MESSAGE = "    Your repository has no tags."
 NO_REMOTE_TAGS_MESSAGE = "    Unable to retrieve tags for this remote."
 LOADING_TAGS_MESSAGE = "    Loading tags from remote..."
 
+TAG_PARSE_FAIL_MESSAGE = "The last tag cannot be parsed."
 TAG_CREATE_PROMPT = "Enter tag:"
 TAG_CREATE_MESSAGE = "Tag \"{}\" created."
 TAG_CREATE_MESSAGE_PROMPT = "Enter message:"
 START_PUSH_MESSAGE = "Pushing tag..."
 END_PUSH_MESSAGE = "Push complete."
+
+
+def smart_incremented_tag(tag, release):
+    """
+    Automatic increment of a given tag depending on the type of release.
+    """
+    r = re.compile(r"^([0-9A-Za-z-]*[A-Za-z-])*?([0-9]+)\.([0-9]+)\.([0-9]+)(.*?)$")
+    m = r.match(tag)
+    if m:
+        prefix, major, minor, patch, _ = m.groups()
+        prefix = "" if not prefix else prefix
+        if release == "major":
+            major = str(int(major)+1)
+            minor = patch = "0"
+        elif release == "minor":
+            minor = str(int(minor)+1)
+            patch = "0"
+        elif release == "patch":
+            patch = str(int(patch)+1)
+        return prefix + major + "." + minor + "." + patch
+    return None
 
 
 class GsShowTagsCommand(WindowCommand, GitCommand):
@@ -252,15 +275,28 @@ class GsTagCreateCommand(TextCommand, GitCommand):
     Through a series of panels, allow the user to add a tag and message.
     """
 
-    def run(self, edit):
+    def run(self, edit, release=None):
         self.window = self.view.window()
+        self.release = release
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
         """
         Prompt the user for a tag name.
         """
-        self.window.show_input_panel(TAG_CREATE_PROMPT, "", self.on_entered_name, None, None)
+        if not self.release:
+            self.window.show_input_panel(TAG_CREATE_PROMPT, "", self.on_entered_name, None, None)
+        else:
+            tagname = None
+            local_tags = self.get_tags(reverse=True)
+            if local_tags:
+                last_tagname = local_tags[0].tag.replace("refs/tags/", "")
+                tagname = smart_incremented_tag(last_tagname, self.release)
+
+            if tagname:
+                self.on_entered_name(tagname)
+            else:
+                sublime.error_message(TAG_PARSE_FAIL_MESSAGE)
 
     def on_entered_name(self, tag_name):
         """

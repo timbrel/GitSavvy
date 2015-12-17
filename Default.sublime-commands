@@ -213,6 +213,21 @@
         "command": "gs_tag_create"
     },
     {
+        "caption": "git: quick tag patch",
+        "command": "gs_tag_create",
+        "args": { "release": "patch" }
+    },
+    {
+        "caption": "git: quick tag minor",
+        "command": "gs_tag_create",
+        "args": { "release": "minor" }
+    },
+    {
+        "caption": "git: quick tag major",
+        "command": "gs_tag_create",
+        "args": { "release": "major" }
+    },
+    {
         "caption": "git: branch",
         "command": "gs_show_branch"
     },
