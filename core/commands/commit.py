@@ -155,6 +155,9 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
             self.view.window().focus_view(self.view)
             self.view.set_scratch(True)  # ignore dirty on actual commit
             self.view.window().run_command("close_file")
+        else:
+            sublime.set_timeout_async(
+                lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
 
 
 class GsCommitViewSignCommand(TextCommand, GitCommand):
