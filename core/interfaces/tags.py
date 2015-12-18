@@ -395,9 +395,8 @@ class GsSmartTagCommand(TextCommand, GitCommand):
         release_type = self.release_types[action]
 
         tag_name = None
-        local_tags = self.get_tags(reverse=True)
-        if local_tags:
-            last_tag_name = local_tags[0].tag.replace("refs/tags/", "")
+        last_tag_name = self.get_lastest_local_tag()
+        if last_tag_name:
             tag_name = smart_incremented_tag(last_tag_name, release_type)
 
         if not tag_name:
