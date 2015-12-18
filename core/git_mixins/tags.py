@@ -31,7 +31,6 @@ class TagsMixin():
         Return the latest tag. get_tags() fails to return an ordered list.
         """
 
-        sha = self.git("rev-list", "--tags", "--max-count=1").strip()
+        sha = self.git("rev-list", "--tags", "--max-count=1", throw_on_stderr=False).strip()
         tag = self.git("describe", "--tags", sha, throw_on_stderr=False).strip()
-
         return tag
