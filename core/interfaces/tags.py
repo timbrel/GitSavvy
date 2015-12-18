@@ -313,7 +313,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
     Through a series of panels, allow the user to add a tag and message.
     """
 
-    def run(self, edit, tag_name=None):
+    def run(self, edit, tag_name=""):
         self.window = self.view.window()
         self.tag_name = tag_name
         sublime.set_timeout_async(self.run_async)
