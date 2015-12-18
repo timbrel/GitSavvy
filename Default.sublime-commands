@@ -110,6 +110,11 @@
         "args": { "force": true }
     },
     {
+        "caption": "git: push all tags",
+        "command": "gs_tag_push",
+        "args": { "push_all": true }
+    },
+    {
         "caption": "git: push to existing branch",
         "command": "gs_push_to_branch"
     },
