@@ -26,11 +26,14 @@ class TagsMixin():
 
         return entries
 
-    def get_lastest_local_tag(self):
+    def get_lastest_local_tag(self, all_branches=False):
         """
         Return the latest tag. get_tags() fails to return an ordered list.
         """
+        if all_branches:
+            sha = self.git("rev-list", "--tags", "--max-count=1", throw_on_stderr=False).strip()
+            tag = self.git("describe", "--tags", sha, throw_on_stderr=False).strip()
+        else:
+            tag = self.git("describe", "--tags", "--abbrev=0", throw_on_stderr=False).strip()
 
-        sha = self.git("rev-list", "--tags", "--max-count=1", throw_on_stderr=False).strip()
-        tag = self.git("describe", "--tags", sha, throw_on_stderr=False).strip()
         return tag
