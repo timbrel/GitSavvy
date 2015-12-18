@@ -446,7 +446,6 @@ class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
     def run(self, edit):
         interface = ui.get_interface(self.view.id())
         valid_ranges = (interface.get_view_regions("unstaged_files") +
-                        interface.get_view_regions("untracked_files") +
                         interface.get_view_regions("merge_conflicts") +
                         interface.get_view_regions("staged_files"))
 
