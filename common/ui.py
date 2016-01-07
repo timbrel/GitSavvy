@@ -332,13 +332,15 @@ class GsEditViewCompleteCommand(TextCommand):
             sublime.error_message("Unable to complete edit.  Please try again.")
             return
 
-        content_region = self.view.get_regions("git_savvy_interface.content")[0]
-        content = self.view.substr(content_region)
+        help_region = self.view.get_regions("git_savvy_interface.help")[0]
+        content_before = self.view.substr(sublime.Region(0, help_region.begin()))
+        content_after = self.view.substr(sublime.Region(help_region.end(), self.view.size() - 1))
+        content = (content_before + content_after).strip()
 
         self.view.window().focus_view(self.view)
         self.view.window().run_command("close_file")
 
-        edit_view.on_done(content.strip())
+        edit_view.on_done(content)
 
 
 class GsEditViewCloseCommand(TextCommand):
