@@ -8,11 +8,12 @@ from ...common import util
 class GsLogCommand(WindowCommand, GitCommand):
     cherry_branch = None
 
-    def run(self, filename=None, limit=6000, author=None):
+    def run(self, filename=None, limit=6000, author=None, log_current_file=False):
         self._pagination = 0
         self._filename = filename
         self._limit = limit
         self._author = author
+        self._log_current_file = log_current_file
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
@@ -57,6 +58,15 @@ class GsLogCommand(WindowCommand, GitCommand):
         )
 
     def on_hash_selection(self, index):
+        options_array = [
+                "Show commit",
+                "Compare commit against working directory",
+                "Compare commit against index"
+        ]
+
+        if self._log_current_file:
+            options_array.append("Show file at commit")
+
         if index == -1:
             return
         if index == self._limit:
@@ -67,11 +77,7 @@ class GsLogCommand(WindowCommand, GitCommand):
         self._selected_hash = self._hashes[index]
 
         self.window.show_quick_panel(
-            [
-                "Show commit",
-                "Compare commit against working directory",
-                "Compare commit against index"
-            ],
+            options_array,
             self.on_output_selection,
             flags=sublime.MONOSPACE_FONT
         )
@@ -91,11 +97,14 @@ class GsLogCommand(WindowCommand, GitCommand):
                 "base_commit": self._selected_hash
             })
 
+        if index == 3:
+            self.window.run_command("gs_show_file_at_commit", {"commit_hash": self._selected_hash, "filepath": self._filename})
+
 
 class GsLogCurrentFileCommand(WindowCommand, GitCommand):
 
     def run(self):
-        self.window.run_command("gs_log", {"filename": self.file_path})
+        self.window.run_command("gs_log", {"filename": self.file_path, "log_current_file": True})
 
 
 class GsLogByAuthorCommand(WindowCommand, GitCommand):

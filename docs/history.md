@@ -13,7 +13,8 @@ On selection of a commit you can choose from the following options:
 
 ## `git: log current file`
 
-Performs a similar function to `git: log`, but restricts your search to the history of the currently open file.
+Performs a similar function to `git: log`, but restricts your search to the history of the currently open file.  Has additional option upon selection of a commit:
+- `Show file at commit`: Display the file at the time of the commit.
 
 ## `git: log by author`
 
