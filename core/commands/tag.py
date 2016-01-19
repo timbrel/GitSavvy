@@ -136,13 +136,13 @@ class GsSmartTagCommand(TextCommand, GitCommand):
     """
 
     release_types = [
-        "major",
-        "minor",
         "patch",
-        "premajor",
-        "preminor",
+        "minor",
+        "major",
+        "prerelease",
         "prepatch",
-        "prerelease"
+        "preminor",
+        "premajor"
     ]
 
     def run(self, edit):
