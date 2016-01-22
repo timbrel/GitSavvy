@@ -1,0 +1,36 @@
+Changes since 2.8.1:
+
+  Feature:
+   - `git: log current file` now has an option to view file at chosen commit.commit
+   - Add `git: push all tags` command.
+   - New `git: smart tag` commands for easy semantic versioning.
+   - Directly checkout or view diff of GitHub pull requests with `github: review pull request`.
+   - Basic support for opening new GitHub pull request from GitSavvy.
+
+  Enhancement:
+   - User is prompted for reset type (with hints) after running `git: reset`.
+
+  Fix:
+   - Editing commit message would fail if previous content deleted before new content entered.
+   - Dashboards would not refresh after commit if commit_on_close enabled.
+   - GitSavvy would attempt to open untracked file on remote.
+   - Pushing a single tag would not work in tag dashboard.
+   - `git: fetch` could not fetch commit directly.
+   - Unclear destructive-action prompt for status-dashboard `D`.
+   - Endless loop when some poor soul tries to diff a binary file as text.
+   - Rebase dashboard failed if no directories added to active window.
+   - Incorrect syntax highlighting in docs/README.md
+   - Inline-diff view would sometimes jump to the right after staging hunks.
+   - Refresh command in status dashboard was incorrectly wired-up.
+
+  Other:
+   - Add a GitSavvy diff syntax witch supports word diffs.
+
+  Contributors:
+   - Pavel Savchenko
+   - Steve Bennett
+   - Dale Bustad
+   - Craig Campbell
+   - Nicolás Santángelo
+   - Randy Lai
+   - David Devlin
