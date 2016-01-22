@@ -181,7 +181,7 @@ class GsTagsToggleRemotesCommand(TextCommand, GitCommand):
 class GsTagsRefreshCommand(TextCommand, GitCommand):
 
     """
-    Refresh the branch dashboard.
+    Refresh the tags dashboard.
     """
 
     def run(self, edit, reset_remotes=False):
@@ -309,9 +309,10 @@ class GsTagViewLogCommand(TextCommand, GitCommand):
         local_lines = interface.get_selection_lines_in_region("local_tags")
         commit_hashes = [line[4:11] for line in local_lines if line]
 
-        for remote_name, remote in interface.remotes.items():
-            lines = interface.get_selection_lines_in_region("remote_tags_list_" + remote_name)
-            commit_hashes.extend(line[4:11] for line in lines if line[:4] == "    ")
+        if interface.remotes:
+            for remote_name, remote in interface.remotes.items():
+                lines = interface.get_selection_lines_in_region("remote_tags_list_" + remote_name)
+                commit_hashes.extend(line[4:11] for line in lines if line[:4] == "    ")
 
         window = self.view.window()
         for commit_hash in commit_hashes:
