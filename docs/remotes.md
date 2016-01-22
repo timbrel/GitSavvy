@@ -14,6 +14,8 @@ Assuming you've recently fetched, this command allows you to create a local bran
 
 When running this command, you will be prompted first for the remote you want to pull from, and then the branch.  If your local branch tracks a remote, that branch name will be pre-selected at the second prompt.
 
+**For the following commands you need to configure a username and password in git, so GitSavvy can use it.**
+
 ## `git: push`
 
 This command performs a simple `git push`.  In recent Git versions, this will result in a push to the tracking branch if it exists, else a remote branch with the same name as the local.
