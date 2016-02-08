@@ -1,5 +1,7 @@
 import re
 from collections import namedtuple
+import sublime
+
 
 Branch = namedtuple("Branch", (
     "name",
@@ -52,7 +54,11 @@ class BranchesMixin():
         active = bool(is_active)
         remote = branch_name.split("/")[0] if is_remote else None
 
-        description = self.git(
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        enable_branch_descriptions = savvy_settings.get("enable_branch_descriptions")
+
+        hide_description = is_remote or not enable_branch_descriptions
+        description = "" if hide_description else self.git(
             "config",
             "branch.{}.description".format(branch_name),
             throw_on_stderr=False
