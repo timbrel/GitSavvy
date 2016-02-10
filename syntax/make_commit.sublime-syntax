@@ -1,0 +1,24 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+name: GitSavvy Make Commit
+hidden: true
+scope: git-savvy.make-commit
+contexts:
+  main:
+    - match: ^##.*
+      comment: commit header
+      scope: comment.git-savvy.make-commit
+    - match: \@\w*
+      comment: github username
+      scope: constant.other.git-savvy.make-commit.github-username
+    - match: '(\w+/\w+)?#[0-9]+'
+      comment: issue
+      scope: constant.other.git-savvy.make-commit.issue-ref
+    - match: ^(?=diff --git a/)
+      comment: diff section
+      push:
+        - meta_scope: meta.git-savvy.commit-diff
+        - match: ^$
+          pop: true
+        - include: scope:source.diff
