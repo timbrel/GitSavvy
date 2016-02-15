@@ -1,3 +1,4 @@
+import re
 import sublime
 from sublime_plugin import WindowCommand
 
@@ -110,26 +111,42 @@ class GsLogCurrentFileCommand(WindowCommand, GitCommand):
 class GsLogByAuthorCommand(WindowCommand, GitCommand):
 
     """
-    Prompt the user for author pattern, pre-filled with local user's
-    git name and email.  Once provided, display a quick panel with all
-    commits made by the specified author.
+    Prompt the user for author pattern, open a quick panel will all
+    committers to select from. Ordered by most commits git name and
+    email.  Once provided, display a quick panel with all commits
+    made by the specified author.
     """
 
     def run(self):
         sublime.set_timeout_async(self.run_async, 0)
 
+    def author(self, name, email):
+        return "{} <{}>".format(name, email)
+
     def run_async(self):
         name = self.git("config", "user.name").strip()
         email = self.git("config", "user.email").strip()
-        default_author = "{} <{}>".format(name, email)
-        print(default_author)
-        self.window.show_input_panel(
-            "Enter author pattern:",
-            default_author,
-            self.on_entered,
-            None,
-            None
-            )
+        self._entries = []
 
-    def on_entered(self, author_text):
+        commiter_str = self.git("shortlog", "-sne", "HEAD")
+        for line in commiter_str.split('\n'):
+            m = re.search('\s*(\d*)\s*(.*)\s<(.*)>', line)
+            if m is None:
+                continue
+            # groups will be (count of commits, name, email)
+            self._entries.append(m.groups())
+
+        self.window.show_quick_panel(
+            list(self.author(ent[1], ent[2]) for ent in self._entries),
+            self.on_entered,
+            flags=sublime.MONOSPACE_FONT,
+            selected_index=(list(line[2] for line in self._entries)).index(email)
+        )
+
+    def on_entered(self, index):
+        if index == -1:
+            return
+
+        author_text = self.author(self._entries[index][1], self._entries[index][2])
+        print(author_text)
         self.window.run_command("gs_log", {"author": author_text})
