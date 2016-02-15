@@ -29,6 +29,7 @@ class StatusInterface(ui.Interface, GitCommand):
     read_only = True
     syntax_file = "Packages/GitSavvy/syntax/status.tmLanguage"
     word_wrap = False
+    tab_size = 2
 
     template = """\
 

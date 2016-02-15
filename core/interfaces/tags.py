@@ -39,6 +39,7 @@ class TagsInterface(ui.Interface, GitCommand):
     read_only = True
     syntax_file = "Packages/GitSavvy/syntax/tags.tmLanguage"
     word_wrap = False
+    tab_size = 2
 
     show_remotes = None
     remotes = None
