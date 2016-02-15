@@ -111,17 +111,14 @@ class GsLogCurrentFileCommand(WindowCommand, GitCommand):
 class GsLogByAuthorCommand(WindowCommand, GitCommand):
 
     """
-    Prompt the user for author pattern, open a quick panel will all
-    committers to select from. Ordered by most commits git name and
-    email.  Once provided, display a quick panel with all commits
-    made by the specified author.
+    Open a quick panel containing all committers for the active
+    repository, ordered by most commits, Git name, and email.
+    Once selected, display a quick panel with all commits made
+    by the specified author.
     """
 
     def run(self):
         sublime.set_timeout_async(self.run_async, 0)
-
-    def author(self, name, email):
-        return "{} <{}>".format(name, email)
 
     def run_async(self):
         name = self.git("config", "user.name").strip()
@@ -133,11 +130,12 @@ class GsLogByAuthorCommand(WindowCommand, GitCommand):
             m = re.search('\s*(\d*)\s*(.*)\s<(.*)>', line)
             if m is None:
                 continue
-            # groups will be (count of commits, name, email)
-            self._entries.append(m.groups())
+            commit_count, author_name, author_email = m.groups()
+            author_text = "{} <{}>".format(author_name, author_email)
+            self._entries.append((commit_count, author_name, author_email, author_text))
 
         self.window.show_quick_panel(
-            list(self.author(ent[1], ent[2]) for ent in self._entries),
+            [entry[3] for entry in self._entries],
             self.on_entered,
             flags=sublime.MONOSPACE_FONT,
             selected_index=(list(line[2] for line in self._entries)).index(email)
@@ -147,6 +145,5 @@ class GsLogByAuthorCommand(WindowCommand, GitCommand):
         if index == -1:
             return
 
-        author_text = self.author(self._entries[index][1], self._entries[index][2])
-        print(author_text)
+        author_text = self._entries[index][3]
         self.window.run_command("gs_log", {"author": author_text})
