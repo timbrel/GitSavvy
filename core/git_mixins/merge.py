@@ -2,10 +2,12 @@ import os
 import tempfile
 import subprocess
 import shlex
-from shutil import rmtree
-
+import filecmp
+from shutil import rmtree, copyfile
 
 import sublime
+
+from ...common import util
 
 
 class MergeMixin():
@@ -16,13 +18,27 @@ class MergeMixin():
         launch the configured merge tool against the four versions of that
         file (our version, their version, common ancestor, merged version).
         """
-        merge_cmd_tmpl = self.get_merge_cmd_tmpl()
-        base_content, ours_content, theirs_content = self.get_versioned_content(fpath)
+        tool = self.get_configured_tool()
+        if not tool:
+            sublime.error_message("You have not configured a merge tool for Git.")
+            return
+        merge_cmd_tmpl = self.get_merge_cmd_tmpl(tool)
+        if not merge_cmd_tmpl:
+            sublime.error_message("You have not configured a merge tool for Git.")
+            return
+
+        versioned_content = self.get_versioned_content(fpath)
+        if not versioned_content:
+            sublime.error_message("Unable to merge selected file.")
+            return
+
+        base_content, ours_content, theirs_content = versioned_content
 
         temp_dir = tempfile.mkdtemp()
         base_path = os.path.join(temp_dir, "base")
         ours_path = os.path.join(temp_dir, "ours")
         theirs_path = os.path.join(temp_dir, "theirs")
+        backup_path = os.path.join(temp_dir, "backup")
         merge_path = os.path.join(self.repo_path, fpath)
 
         merge_cmd = merge_cmd_tmpl.replace("$REMOTE", theirs_path)
@@ -38,6 +54,7 @@ class MergeMixin():
                 ours.write(ours_content)
             with open(theirs_path, "w") as theirs:
                 theirs.write(theirs_content)
+            copyfile(merge_path, backup_path)
 
             startupinfo = None
             if os.name == "nt":
@@ -50,20 +67,38 @@ class MergeMixin():
                 env=os.environ,
                 startupinfo=startupinfo
                 )
-            p.wait()
+            ret_code = p.wait()
 
+            tool = self.get_configured_tool()
+            trust_exit = self.git(
+                'config', '--bool', 'mergetool.{}.trustExitCode'.format(tool)) == 'true'
+
+            if ret_code == 0:
+                if trust_exit:
+                    # use return code regardless of changes to file
+                    self.resolve_merge(merge_path)
+                elif filecmp.cmp(backup_path, merge_path, shallow=False):
+                    # or check if the file was modified
+                    self.resolve_merge(merge_path)
+            else:
+                sublime.error_message("Merge tool failed with status %s, reverting" % ret_code)
+                copyfile(backup_path, merge_path)
         except Exception as e:
             rmtree(temp_dir)
             raise e
 
-    def get_merge_cmd_tmpl(self):
+    def resolve_merge(self, path):
+        self.git("add", path)
+        sublime.set_timeout_async(
+            lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
+
+    def get_configured_tool(self):
+        return self.git("config", "merge.tool").strip()
+
+    def get_merge_cmd_tmpl(self, tool):
         """
         Query Git for the command to invoke the external merge tool.
         """
-        tool = self.git("config", "merge.tool").strip()
-        if not tool:
-            sublime.error_message("You have not configured a merge tool for Git.")
-            return
         return self.git("config", "mergetool.{}.cmd".format(tool))
 
     def get_versioned_content(self, fpath):
@@ -76,7 +111,6 @@ class MergeMixin():
         entries = tuple(entry for entry in entries if entry)
 
         if not len(entries) == 3:
-            sublime.error_message("Unable to merge selected file.")
             return
 
         # 100644 ffba696331701a1007320c5df88c50f4b0cf0ab9 1   example.js
