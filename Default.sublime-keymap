@@ -704,6 +704,15 @@
         ]
     },
     {
+        "keys": ["p"],
+        "command": "gs_rebase_drop",
+        "context": [
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "meta.git-savvy.rebase-graph.entry" },
+            { "key": "setting.git_savvy.in_rebase", "operator": "equal", "operand": false }
+        ]
+    },
+    {
         "keys": ["u"],
         "command": "gs_rebase_move_up",
         "context": [

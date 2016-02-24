@@ -58,8 +58,9 @@ class RebaseInterface(ui.Interface, GitCommand):
       [q] squash commit with next               [f] define base ref for dashboard
       [Q] squash all commits                    [r] rebase branch on top of...
       [e] edit commit message                   [c] continue rebase
-      [d] move commit down (after next)         [k] skip commit during rebase
-      [u] move commit up (before previous)      [A] abort rebase
+      [p] drop commit                           [k] skip commit during rebase
+      [d] move commit down (after next)         [A] abort rebase
+      [u] move commit up (before previous)
       [w] show commit
 
       [tab]       transition to next dashboard
@@ -514,6 +515,28 @@ class GsRebaseEditCommand(RewriteBase):
             for entry in self.interface.entries
         ]
         self.make_changes(commit_chain, "edited " + entry_to_edit.short_hash)
+
+
+class GsRebaseDropCommand(RewriteBase):
+
+    def run_async(self):
+        short_hash = self.get_selected_short_hash()
+        if not short_hash:
+            return
+
+        # Generate identical change templates with author/date metadata
+        # in tact.  In case of commit-to-squash, indicate that the changes
+        # should be rolled over into the next change's commit.
+        commit_chain = [
+            self.ChangeTemplate(orig_hash=entry.long_hash,
+                                do_commit=entry.short_hash != short_hash,
+                                msg=entry.raw_body,
+                                datetime=entry.datetime,
+                                author="{} <{}>".format(entry.author, entry.email))
+            for entry in self.interface.entries
+        ]
+
+        self.make_changes(commit_chain, "dropped " + short_hash)
 
 
 class GsRebaseMoveUpCommand(RewriteBase):
