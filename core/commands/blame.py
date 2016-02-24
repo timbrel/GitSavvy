@@ -191,11 +191,11 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
                 left = commit_info[i] if i < left_len else left_fallback
                 right = partition[i].contents if i < right_len else right_fallback
                 lineno = partition[i].final_lineno if i < right_len else right_fallback
-                output += "{left: <{left_pad}} | {lineno: >4} {right}\n".format(
-                    left=left,
-                    left_pad=left_pad,
-                    lineno=lineno,
-                    right=right)
+
+                output += "{left: <{left_pad}} |".format(left=left, left_pad=left_pad)
+                if len(right):
+                    output += " {lineno: >4} {right}".format(lineno=lineno, right=right)
+                output += "\n"
 
             yield output
 
