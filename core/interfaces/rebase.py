@@ -487,7 +487,6 @@ class GsRebaseSquashAllCommand(RewriteBase):
 class GsRebaseEditCommand(RewriteBase):
 
     def run(self, edit):
-        self.interface = ui.get_interface(self.view.id())
         short_hash = self.get_selected_short_hash()
 
         for entry in self.interface.entries:
