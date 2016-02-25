@@ -12,6 +12,19 @@ def filter_quick_panel(fn):
     return lambda idx: fn(idx) if idx != -1 else None
 
 
+def move_cursor(view, line_change):
+    sels = view.sel()
+    new_sels = []
+    for sel in sels:
+        a_row, a_col = view.rowcol(sel.a)
+        b_row, b_col = view.rowcol(sel.b)
+        new_a_pt = view.text_point(a_row + line_change, a_col)
+        new_b_pt = view.text_point(b_row + line_change, b_col)
+        new_sels.append(sublime.Region(new_a_pt, new_b_pt))
+    sels.clear()
+    sels.add_all(new_sels)
+
+
 class GsShowRebaseCommand(WindowCommand, GitCommand):
 
     """
@@ -55,7 +68,7 @@ class RebaseInterface(ui.Interface, GitCommand):
       ## MANIPULATE COMMITS ##                  ## REBASE ##
       ########################                  ############
 
-      [q] squash commit with next               [f] define base ref for dashboard
+      [q] squash commit with previous           [f] define base ref for dashboard
       [Q] squash all commits                    [r] rebase branch on top of...
       [e] edit commit message                   [c] continue rebase
       [p] drop commit                           [k] skip commit during rebase
@@ -441,12 +454,13 @@ class GsRebaseSquashCommand(RewriteBase):
         if not short_hash:
             return
 
-        # Cannot squash last commit.
-        if self.interface.entries[-1].short_hash == short_hash:
-            sublime.status_message("Unable to squash most recent commit.")
+        # Cannot squash first commit.
+        if self.interface.entries[0].short_hash == short_hash:
+            sublime.status_message("Unable to squash first commit.")
             return
 
         squash_idx, to_squash, entry_before_squash = self.get_idx_entry_and_prev(short_hash)
+        _, _, two_entries_before_squash = self.get_idx_entry_and_prev(entry_before_squash.short_hash)
 
         # Generate identical change templates with author/date metadata in tact.
         commit_chain = [
@@ -455,14 +469,15 @@ class GsRebaseSquashCommand(RewriteBase):
                                 msg=entry.raw_body,
                                 datetime=entry.datetime,
                                 author="{} <{}>".format(entry.author, entry.email))
-            for entry in self.interface.entries[squash_idx:]
+            for entry in self.interface.entries[squash_idx-1:]
         ]
 
         # Take the commit message from the commit-to-squash and append
         # it to the next commit's message.
-        commit_chain[1].msg += "\n\n" + to_squash.raw_body
+        commit_chain[0].msg += "\n\n" + to_squash.raw_body
 
-        self.make_changes(commit_chain, "squashed " + short_hash, entry_before_squash.long_hash)
+        self.make_changes(commit_chain, "squashed " + short_hash, two_entries_before_squash.long_hash)
+        move_cursor(self.view, -2)
 
 
 class GsRebaseSquashAllCommand(RewriteBase):
@@ -551,19 +566,6 @@ class GsRebaseDropCommand(RewriteBase):
         ]
 
         self.make_changes(commit_chain, "dropped " + short_hash, entry_before_drop.long_hash)
-
-
-def move_cursor(view, line_change):
-    sels = view.sel()
-    new_sels = []
-    for sel in sels:
-        a_row, a_col = view.rowcol(sel.a)
-        b_row, b_col = view.rowcol(sel.b)
-        new_a_pt = view.text_point(a_row + line_change, a_col)
-        new_b_pt = view.text_point(b_row + line_change, b_col)
-        new_sels.append(sublime.Region(new_a_pt, new_b_pt))
-    sels.clear()
-    sels.add_all(new_sels)
 
 
 class GsRebaseMoveUpCommand(RewriteBase):
