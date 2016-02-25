@@ -553,6 +553,19 @@ class GsRebaseDropCommand(RewriteBase):
         self.make_changes(commit_chain, "dropped " + short_hash, entry_before_drop.long_hash)
 
 
+def move_cursor(view, line_change):
+    sels = view.sel()
+    new_sels = []
+    for sel in sels:
+        a_row, a_col = view.rowcol(sel.a)
+        b_row, b_col = view.rowcol(sel.b)
+        new_a_pt = view.text_point(a_row + line_change, a_col)
+        new_b_pt = view.text_point(b_row + line_change, b_col)
+        new_sels.append(sublime.Region(new_a_pt, new_b_pt))
+    sels.clear()
+    sels.add_all(new_sels)
+
+
 class GsRebaseMoveUpCommand(RewriteBase):
 
     def run_async(self):
@@ -561,6 +574,7 @@ class GsRebaseMoveUpCommand(RewriteBase):
             return
         if self.interface.entries[0].short_hash == short_hash:
             sublime.status_message("Unable to move first commit up.")
+            return
 
         move_idx, to_move, entry_before_move = self.get_idx_entry_and_prev(short_hash)
 
@@ -589,6 +603,7 @@ class GsRebaseMoveUpCommand(RewriteBase):
 
         try:
             self.make_changes(commit_chain, "moved " + short_hash + " up", base_commit_hash)
+            move_cursor(self.view, -2)
         except:
             sublime.message_dialog("Unable to move commit, most likely due to a conflict.")
 
@@ -620,6 +635,7 @@ class GsRebaseMoveDownCommand(RewriteBase):
 
         try:
             self.make_changes(commit_chain, "moved " + short_hash + " down", entry_before_move.long_hash)
+            move_cursor(self.view, 2)
         except:
             sublime.message_dialog("Unable to move commit, most likely due to a conflict.")
 
