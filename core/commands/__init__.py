@@ -17,6 +17,7 @@ from .merge import*
 from .changelog import *
 from .status_bar import *
 from .reset import *
+from .remote import *
 from .custom import *
 from .flow import *
 from .cherry_pick import *

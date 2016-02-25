@@ -77,6 +77,15 @@
         "command": "gs_create_pull_request"
     },
     {
+        "caption": "git: remote add",
+        "command": "gs_remote_add"
+
+    },
+    {
+        "caption": "git: remote remove",
+        "command": "gs_remote_remove"
+    },
+    {
         "caption": "git: checkout",
         "command": "gs_checkout_branch"
     },
