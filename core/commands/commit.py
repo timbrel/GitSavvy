@@ -92,7 +92,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
 
         option_amend = self.view.settings().get("git_savvy.commit_view.amend")
         if option_amend:
-            last_commit_message = self.git("log", "-1", "--pretty=%B")
+            last_commit_message = self.git("log", "-1", "--pretty=%B").strip()
             initial_text = last_commit_message + help_text
         elif os.path.exists(merge_msg_path):
             with open(merge_msg_path, "r") as f:
