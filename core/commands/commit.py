@@ -107,10 +107,12 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
                 initial_text += f.read()
 
         if savvy_settings.get("show_commit_diff"):
-            if option_amend:
-                initial_text += self.git("diff", "--no-color", "HEAD^")
-            else:
-                initial_text += self.git("diff", "--no-color", "--cached")
+            initial_text += self.git(
+                "diff",
+                "--no-color",
+                "--cached",
+                "HEAD^" if option_amend else None
+            )
 
         self.view.run_command("gs_replace_view_text", {
             "text": initial_text,
