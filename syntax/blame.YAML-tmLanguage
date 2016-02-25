@@ -14,4 +14,4 @@ patterns:
     '3': { name: keyword.other.git-savvy.line-number }
 - comment: separator
   name: comment.block.git-savvy.separator
-  match: ^\-{40} \| \-+$
+  match: ^\-{40,48} \| \-+$
