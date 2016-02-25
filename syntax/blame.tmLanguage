@@ -38,7 +38,7 @@
 			<key>comment</key>
 			<string>separator</string>
 			<key>match</key>
-			<string>^\-{40} \| \-+$</string>
+			<string>^\-{40,48} \| \-+$</string>
 			<key>name</key>
 			<string>comment.block.git-savvy.separator</string>
 		</dict>
