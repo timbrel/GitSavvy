@@ -404,13 +404,23 @@ class RewriteBase(TextCommand, GitCommand):
         line_str = self.view.substr(line)
         return line_str[7:14]
 
-    def make_changes(self, commit_chain, description):
+    def get_idx_entry_and_prev(self, short_hash):
+        for idx, entry in enumerate(self.interface.entries):
+            if entry.short_hash == short_hash:
+                selected_idx, selected_entry = idx, entry
+                break
+            entry_before_selected = entry
+
+        return selected_idx, selected_entry, entry_before_selected
+
+    def make_changes(self, commit_chain, description, base_commit=None):
+        base_commit = base_commit or self.interface.base_commit()
         branch_state = self.interface.get_branch_state()
         success = True
 
         try:
             self.rewrite_active_branch(
-                base_commit=self.interface.base_commit(),
+                base_commit=base_commit,
                 commit_chain=commit_chain
                 )
 
@@ -436,26 +446,23 @@ class GsRebaseSquashCommand(RewriteBase):
             sublime.status_message("Unable to squash most recent commit.")
             return
 
-        # Generate identical change templates with author/date metadata
-        # in tact.  In case of commit-to-squash, indicate that the changes
-        # should be rolled over into the next change's commit.
+        squash_idx, to_squash, entry_before_squash = self.get_idx_entry_and_prev(short_hash)
+
+        # Generate identical change templates with author/date metadata in tact.
         commit_chain = [
             self.ChangeTemplate(orig_hash=entry.long_hash,
                                 do_commit=entry.short_hash != short_hash,
                                 msg=entry.raw_body,
                                 datetime=entry.datetime,
                                 author="{} <{}>".format(entry.author, entry.email))
-            for entry in self.interface.entries
+            for entry in self.interface.entries[squash_idx:]
         ]
 
         # Take the commit message from the commit-to-squash and append
         # it to the next commit's message.
-        for idx, commit in enumerate(commit_chain):
-            if not commit.do_commit:
-                commit_chain[idx+1].msg += "\n\n" + commit.msg
-                commit.msg = None
+        commit_chain[1].msg += "\n\n" + to_squash.raw_body
 
-        self.make_changes(commit_chain, "squashed " + short_hash)
+        self.make_changes(commit_chain, "squashed " + short_hash, entry_before_squash.long_hash)
 
 
 class GsRebaseSquashAllCommand(RewriteBase):
@@ -503,19 +510,26 @@ class GsRebaseEditCommand(RewriteBase):
                     on_done=lambda commit_msg: self.do_edit(entry, commit_msg))
 
     def do_edit(self, entry_to_edit, commit_msg):
+        short_hash = entry_to_edit.short_hash
+        edit_idx, to_edit, entry_before_edit = self.get_idx_entry_and_prev(short_hash)
+
         # Generate identical change templates with author/date metadata
         # in tact.  For the edited entry, replace the message with
         # the content from the temporary edit view.
-
         commit_chain = [
             self.ChangeTemplate(orig_hash=entry.long_hash,
                                 do_commit=True,
                                 msg=commit_msg if entry == entry_to_edit else entry.raw_body,
                                 datetime=entry.datetime,
                                 author="{} <{}>".format(entry.author, entry.email))
-            for entry in self.interface.entries
+            for entry in self.interface.entries[edit_idx:]
         ]
-        self.make_changes(commit_chain, "edited " + entry_to_edit.short_hash)
+
+        self.make_changes(
+            commit_chain,
+            "edited " + entry_to_edit.short_hash,
+            entry_before_edit.long_hash
+        )
 
 
 class GsRebaseDropCommand(RewriteBase):
@@ -524,20 +538,19 @@ class GsRebaseDropCommand(RewriteBase):
         short_hash = self.get_selected_short_hash()
         if not short_hash:
             return
+        drop_idx, to_drop, entry_before_drop = self.get_idx_entry_and_prev(short_hash)
 
-        # Generate identical change templates with author/date metadata
-        # in tact.  In case of commit-to-squash, indicate that the changes
-        # should be rolled over into the next change's commit.
+        # Generate identical change templates with author/date metadata in tact.
         commit_chain = [
             self.ChangeTemplate(orig_hash=entry.long_hash,
-                                do_commit=entry.short_hash != short_hash,
+                                do_commit=True,
                                 msg=entry.raw_body,
                                 datetime=entry.datetime,
                                 author="{} <{}>".format(entry.author, entry.email))
-            for entry in self.interface.entries
+            for entry in self.interface.entries[drop_idx+1:]
         ]
 
-        self.make_changes(commit_chain, "dropped " + short_hash)
+        self.make_changes(commit_chain, "dropped " + short_hash, entry_before_drop.long_hash)
 
 
 class GsRebaseMoveUpCommand(RewriteBase):
@@ -549,24 +562,33 @@ class GsRebaseMoveUpCommand(RewriteBase):
         if self.interface.entries[0].short_hash == short_hash:
             sublime.status_message("Unable to move first commit up.")
 
+        move_idx, to_move, entry_before_move = self.get_idx_entry_and_prev(short_hash)
+
+        # Find the base commit - this is tricky because you have to use the two
+        # commits previous to the selected commit as the base commit.  If
+        # the selected commit is the second visible commit, we'll fall back
+        # to the default base commit hash.
+        if self.interface.entries[1].short_hash == short_hash:
+            base_commit_hash = None
+        else:
+            _, _, two_entries_before_move = self.get_idx_entry_and_prev(entry_before_move.short_hash)
+            base_commit_hash = two_entries_before_move.long_hash
+
         commit_chain = [
             self.ChangeTemplate(orig_hash=entry.long_hash,
-                                move=entry.short_hash == short_hash,
                                 do_commit=True,
                                 msg=entry.raw_body,
                                 datetime=entry.datetime,
                                 author="{} <{}>".format(entry.author, entry.email))
-            for entry in self.interface.entries
+            # Start at the commit prior to the selected commit.
+            for entry in self.interface.entries[move_idx-1:]
         ]
 
         # Take the change to move and swap it with the one before.
-        for idx, commit in enumerate(commit_chain):
-            if commit.move:
-                commit_chain[idx], commit_chain[idx-1] = commit_chain[idx-1], commit_chain[idx]
-                break
+        commit_chain[0], commit_chain[1] = commit_chain[1], commit_chain[0]
 
         try:
-            self.make_changes(commit_chain, "moved " + short_hash + " up")
+            self.make_changes(commit_chain, "moved " + short_hash + " up", base_commit_hash)
         except:
             sublime.message_dialog("Unable to move commit, most likely due to a conflict.")
 
@@ -581,6 +603,8 @@ class GsRebaseMoveDownCommand(RewriteBase):
             sublime.status_message("Unable to move last commit down.")
             return
 
+        move_idx, to_move, entry_before_move = self.get_idx_entry_and_prev(short_hash)
+
         commit_chain = [
             self.ChangeTemplate(orig_hash=entry.long_hash,
                                 move=entry.short_hash == short_hash,
@@ -588,17 +612,14 @@ class GsRebaseMoveDownCommand(RewriteBase):
                                 msg=entry.raw_body,
                                 datetime=entry.datetime,
                                 author="{} <{}>".format(entry.author, entry.email))
-            for entry in self.interface.entries
+            for entry in self.interface.entries[move_idx:]
         ]
 
         # Take the change to move and swap it with the one following.
-        for idx, commit in enumerate(commit_chain):
-            if commit.move:
-                commit_chain[idx], commit_chain[idx+1] = commit_chain[idx+1], commit_chain[idx]
-                break
+        commit_chain[0], commit_chain[1] = commit_chain[1], commit_chain[0]
 
         try:
-            self.make_changes(commit_chain, "moved " + short_hash + " down")
+            self.make_changes(commit_chain, "moved " + short_hash + " down", entry_before_move.long_hash)
         except:
             sublime.message_dialog("Unable to move commit, most likely due to a conflict.")
 
