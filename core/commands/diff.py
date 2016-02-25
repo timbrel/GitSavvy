@@ -32,7 +32,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
         repo_path = self.repo_path
         if current_file:
             file_path = self.file_path or file_path
-        diff_view = util.view.get_read_only_view(self, "diff")
+        diff_view = util.view.get_scratch_view(self, "diff", read_only=True)
         title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(os.path.basename(repo_path))
         diff_view.set_name(title)
         diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.tmLanguage")

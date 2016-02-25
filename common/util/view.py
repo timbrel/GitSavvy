@@ -35,7 +35,7 @@ def single_cursor_coords(run):
 # NEW-VIEW HELPER FUNCTIONS #
 #############################
 
-def get_read_only_view(context, name):
+def get_scratch_view(context, name, read_only=True):
     """
     Create and return a read-only view.
     """
@@ -43,7 +43,7 @@ def get_read_only_view(context, name):
     view = window.new_file()
     view.settings().set("git_savvy.{}_view".format(name), True)
     view.set_scratch(True)
-    view.set_read_only(True)
+    view.set_read_only(read_only)
     return view
 
 

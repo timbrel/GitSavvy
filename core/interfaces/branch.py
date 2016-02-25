@@ -661,7 +661,7 @@ class GsBranchesDiffBranchHistoryCommand(TextCommand, GitCommand):
 
         repo_path = self.repo_path
 
-        view = util.view.get_read_only_view(self, "log_graph")
+        view = util.view.get_scratch_view(self, "log_graph", read_only=True)
         view.settings().set("git_savvy.repo_path", repo_path)
         view.settings().set("word_wrap", False)
         view.set_syntax_file("Packages/GitSavvy/syntax/graph.tmLanguage")

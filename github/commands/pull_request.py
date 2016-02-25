@@ -119,7 +119,7 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
         print("getting", self.pr["diff_url"])
         print(repr(response.payload.decode("utf-8")))
 
-        diff_view = util.view.get_read_only_view(self, "pr_diff")
+        diff_view = util.view.get_scratch_view(self, "pr_diff", read_only=True)
         diff_view.set_name("PR #{}".format(self.pr["number"]))
         diff_view.set_syntax_file("Packages/Diff/Diff.tmLanguage")
 

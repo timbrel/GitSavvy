@@ -672,7 +672,7 @@ class GsStatusShowStashCommand(TextCommand, GitCommand):
     def get_stash_view(self, title):
         window = self.window if hasattr(self, "window") else self.view.window()
         repo_path = self.repo_path
-        stash_view = util.view.get_read_only_view(self, "stash_" + title)
+        stash_view = util.view.get_scratch_view(self, "stash_" + title, read_only=True)
         stash_view.set_name(title)
         stash_view.set_syntax_file("Packages/Diff/Diff.tmLanguage")
         stash_view.settings().set("git_savvy.repo_path", repo_path)
