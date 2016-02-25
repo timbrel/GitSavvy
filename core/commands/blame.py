@@ -185,18 +185,17 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
             commit_info = commit_infos[partition[0].commit_hash]
             left_len = len(commit_info)
             right_len = len(partition)
-            total_lines = max(left_len, right_len)
             total_lines = len(max((commit_info, partition), key=len))
 
             for i in range(total_lines):
                 left = commit_info[i] if i < left_len else left_fallback
                 right = partition[i].contents if i < right_len else right_fallback
                 lineno = partition[i].final_lineno if i < right_len else right_fallback
-                output += "{left: <{left_pad}} | {lineno: >4} {right}\n".format(
-                    left=left,
-                    left_pad=left_pad,
-                    lineno=lineno,
-                    right=right)
+
+                output += "{left: <{left_pad}} |".format(left=left, left_pad=left_pad)
+                if len(right):
+                    output += " {lineno: >4} {right}".format(lineno=lineno, right=right)
+                output += "\n"
 
             yield output
 

@@ -7,7 +7,7 @@ hidden: true
 patterns:
 - comment: line
   name: meta.git-savvy.blame-line
-  match: ^([^|]+) (\|) (( |\d){1,4})
+  match: ^([^|]+) (\|)(\n| (( |\d){1,4}))
   captures:
     '1': { name: comment.block.git-savvy.commit-info }
     '2': { name: comment.block.git-savvy.splitter }

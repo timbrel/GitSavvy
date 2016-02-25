@@ -30,7 +30,7 @@
 			<key>comment</key>
 			<string>line</string>
 			<key>match</key>
-			<string>^([^|]+) (\|) (( |\d){1,4})</string>
+			<string>^([^|]+) (\|)(\n| (( |\d){1,4}))</string>
 			<key>name</key>
 			<string>meta.git-savvy.blame-line</string>
 		</dict>
