@@ -23,3 +23,4 @@ from .flow import *
 from .cherry_pick import *
 from .tag import *
 from .show_file_at_commit import *
+from .git_add import *

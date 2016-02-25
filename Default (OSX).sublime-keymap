@@ -41,6 +41,18 @@
         ]
     },
 
+    //////////////////
+    // GIT-ADD VIEW //
+    //////////////////
+
+    {
+        "keys": ["super+enter"],
+        "command": "gs_add_edit_commit",
+        "context": [
+            { "key": "setting.git_savvy.git_add_view", "operator": "equal", "operand": true }
+        ]
+    },
+
     ////////////////
     // BLAME VIEW //
     ////////////////
