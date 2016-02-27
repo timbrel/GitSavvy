@@ -294,7 +294,7 @@ class EditView():
         self.view.set_scratch(True)
         self.view.set_read_only(False)
         self.view.set_name("EDIT")
-        self.view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.tmLanguage")
+        self.view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
         self.view.settings().set("word_wrap", False)
         self.view.settings().set("git_savvy.edit_view", True)
         self.view.settings().set("git_savvy.repo_path", repo_path)
