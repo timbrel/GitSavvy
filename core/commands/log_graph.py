@@ -123,7 +123,16 @@ class GsLogGraphNextCommitCommand(TextCommand, GitCommand):
 
     def run(self, edit, forward=True):
         selections = self.view.sel()
-        if len(selections) != 1:
+        if len(selections) != 1 or selections[0].a != selections[0].b:
+            return
+
+        current_row, _ = self.view.rowcol(selections[0].a)
+        max_row, _ = self.view.rowcol(self.view.size())
+        # The last commit displayed will be followed by one empty line.
+        max_row -= 1
+
+        # plugin_host will crash if we attempt to move the cursor past the view size
+        if current_row >= max_row and forward:
             return
 
         self.view.window().run_command("move", {"by": "lines", "forward": forward})
