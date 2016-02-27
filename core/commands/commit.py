@@ -62,7 +62,7 @@ class GsCommitCommand(WindowCommand, GitCommand):
             syntax_file = util.file.get_syntax_for_file("COMMIT_EDITMSG")
             view.set_syntax_file(syntax_file)
         else:
-            view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.tmLanguage")
+            view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
 
         commit_on_close = savvy_settings.get("commit_on_close")
         view.settings().set("git_savvy.commit_on_close", commit_on_close)

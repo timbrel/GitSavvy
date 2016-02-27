@@ -6,7 +6,7 @@ syntax_file_map = {}
 
 
 def determine_syntax_files():
-    syntax_files = sublime.find_resources("*.tmLanguage")
+    syntax_files = sublime.find_resources("*.sublime-syntax")
     for syntax_file in syntax_files:
         try:
             # Use `sublime.load_resource`, in case Package is `*.sublime-package`.
@@ -24,7 +24,7 @@ def determine_syntax_files():
 def get_syntax_for_file(filename):
     extension = get_file_extension(filename)
     syntaxes = syntax_file_map.get(filename, None) or syntax_file_map.get(extension, None)
-    return syntaxes[-1] if syntaxes else "Packages/Text/Plain text.tmLanguage"
+    return syntaxes[-1] if syntaxes else "Packages/Text/Plain text.sublime-syntax"
 
 
 def get_file_extension(filename):
