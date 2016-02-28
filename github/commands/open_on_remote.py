@@ -1,7 +1,7 @@
 from sublime_plugin import TextCommand
 
 from ...core.git_command import GitCommand
-from ..github import open_file_in_browser#, open_repo, open_issues
+from ..github import open_file_in_browser  # , open_repo, open_issues
 from ..github import open_repo
 from ..github import open_issues
 
