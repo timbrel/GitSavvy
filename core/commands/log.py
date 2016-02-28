@@ -98,7 +98,9 @@ class GsLogCommand(WindowCommand, GitCommand):
             })
 
         if index == 3:
-            self.window.run_command("gs_show_file_at_commit", {"commit_hash": self._selected_hash, "filepath": self._filename})
+            self.window.run_command(
+                "gs_show_file_at_commit",
+                {"commit_hash": self._selected_hash, "filepath": self._filename})
 
 
 class GsLogCurrentFileCommand(WindowCommand, GitCommand):

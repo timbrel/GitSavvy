@@ -18,6 +18,7 @@ def create_palette_entry(pr):
             )
     ]
 
+
 class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
 
     """

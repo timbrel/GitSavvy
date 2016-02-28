@@ -38,7 +38,7 @@ class GsTabCycleCommand(TextCommand, GitCommand):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         tab_order = savvy_settings.get("tab_order")
 
-        if reverse == True:
+        if reverse is True:
             tab_order.reverse()
 
         source_idx = tab_order.index(source)

@@ -80,7 +80,7 @@ class TagsInterface(ui.Interface, GitCommand):
         if not self.remotes and self.show_remotes:
             self.remotes = self.get_remotes()
             for name, uri in self.remotes.items():
-                self.remotes[name] = { "uri": uri }
+                self.remotes[name] = {"uri": uri}
 
     @ui.partial("branch_status")
     def render_branch_status(self):
@@ -170,12 +170,11 @@ class GsTagsToggleRemotesCommand(TextCommand, GitCommand):
     def run(self, edit, show=None):
         interface = ui.get_interface(self.view.id())
         interface.remotes = None
-        if show == None:
+        if show is None:
             interface.show_remotes = not interface.show_remotes
         else:
             interface.show_remotes = show
         interface.render()
-
 
 
 class GsTagsRefreshCommand(TextCommand, GitCommand):
@@ -190,7 +189,6 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
             interface.remotes = None
 
         util.view.refresh_gitsavvy(self.view)
-
 
 
 class GsTagDeleteCommand(TextCommand, GitCommand):

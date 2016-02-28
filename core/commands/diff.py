@@ -88,6 +88,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 
         self.view.run_command("gs_replace_view_text", {"text": stdout})
 
+
 class GsDiffToggleSetting(TextCommand):
 
     """
@@ -231,4 +232,7 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
 
     def load_file_at_line(self, filename, lineno):
         full_path = os.path.join(self.repo_path, filename)
-        self.view.window().open_file("{file}:{row}:{col}".format(file=full_path, row=lineno, col=0), sublime.ENCODED_POSITION)
+        self.view.window().open_file(
+            "{file}:{row}:{col}".format(file=full_path, row=lineno, col=0),
+            sublime.ENCODED_POSITION
+            )

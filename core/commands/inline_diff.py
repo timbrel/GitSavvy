@@ -507,15 +507,18 @@ class GsInlineDiffStageOrResetLineCommand(GsInlineDiffStageOrResetBase):
 
         if reset:
             xhead_start = head_start - index_in_hunk + (0 if line_type == "+" else add_length_earlier_in_diff)
+            xnew_start = head_start - cur_hunk_begin_on_minus + index_in_hunk + add_length_earlier_in_diff - 1
 
-            return ("@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"
+            return (
+                "@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"
                 "{line_type}{line}").format(
                 head_start=(xhead_start if xhead_start >= 0 else cur_hunk_begin_on_plus),
                 head_length="0" if line_type == "+" else "1",
                 # If head_length is zero, diff will report original start position
                 # as one less than where the content is inserted, for example:
                 #   @@ -75,0 +76,3 @@
-                new_start=head_start - 1 - cur_hunk_begin_on_minus + index_in_hunk + add_length_earlier_in_diff + (1 if line_type == "+" else 0),
+                new_start=xhead_start + (1 if line_type == "+" else 0),
+
                 new_length="1" if line_type == "+" else "0",
                 line_type=line_type,
                 line=line
@@ -523,7 +526,8 @@ class GsInlineDiffStageOrResetLineCommand(GsInlineDiffStageOrResetBase):
 
         else:
             head_start += 1
-            return ("@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"
+            return (
+                "@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"
                 "{line_type}{line}").format(
                 head_start=head_start + (-1 if line_type == "-" else 0),
                 head_length="0" if line_type == "+" else "1",

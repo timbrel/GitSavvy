@@ -656,6 +656,7 @@ class GsRebaseUseCommitVersionCommand(TextCommand, GitCommand):
                 return conflict.working_status == "D"
         return False
 
+
 class GsRebaseUseBaseVersionCommand(TextCommand, GitCommand):
 
     def run(self, edit):
@@ -737,8 +738,8 @@ class GsRebaseDefineBaseRefCommand(TextCommand, GitCommand):
     def on_type_select(self, type_idx):
         if type_idx == 0:
             branches = [branch.name_with_remote
-                             for branch in self.get_branches()
-                             if not branch.active]
+                        for branch in self.get_branches()
+                        if not branch.active]
             self.view.window().show_quick_panel(
                 branches,
                 filter_quick_panel(lambda idx: self.set_base_ref(branches[idx]))
@@ -776,8 +777,8 @@ class GsRebaseOnTopOfCommand(TextCommand, GitCommand):
     def on_type_select(self, type_idx):
         if type_idx == 0:
             entries = [branch.name_with_remote
-                            for branch in self.get_branches()
-                            if not branch.active]
+                       for branch in self.get_branches()
+                       if not branch.active]
             self.view.window().show_quick_panel(
                 entries,
                 filter_quick_panel(lambda idx: self.set_base_ref(entries[idx]))
