@@ -459,22 +459,27 @@ class GsRebaseSquashCommand(RewriteBase):
             sublime.status_message("Unable to squash first commit.")
             return
 
-        squash_idx, to_squash, entry_before_squash = self.get_idx_entry_and_prev(short_hash)
-        _, _, two_entries_before_squash = self.get_idx_entry_and_prev(entry_before_squash.short_hash)
+        squash_idx, to_squash, before_squash = self.get_idx_entry_and_prev(short_hash)
+        _, _, two_entries_before_squash = self.get_idx_entry_and_prev(before_squash.short_hash)
 
         # Generate identical change templates with author/date metadata in tact.
         commit_chain = [
             self.ChangeTemplate(orig_hash=entry.long_hash,
-                                do_commit=entry.short_hash != short_hash,
+                                do_commit=True,
                                 msg=entry.raw_body,
                                 datetime=entry.datetime,
                                 author="{} <{}>".format(entry.author, entry.email))
             for entry in self.interface.entries[squash_idx-1:]
         ]
 
-        # Take the commit message from the commit-to-squash and append
-        # it to the next commit's message.
-        commit_chain[0].msg += "\n\n" + to_squash.raw_body
+        # The first commit (the one immediately previous to the selected commit) will
+        # not be commited again.  However, the second commit (the selected) must include
+        # the diff from the first, and all the meta-data for the squashed commit must
+        # match the first.
+        commit_chain[0].do_commit = False
+        commit_chain[1].msg = commit_chain[0].msg + "\n\n" + commit_chain[1].msg
+        commit_chain[1].datetime = commit_chain[0].datetime
+        commit_chain[1].author = commit_chain[0].author
 
         self.make_changes(commit_chain, "squashed " + short_hash, two_entries_before_squash.long_hash)
         move_cursor(self.view, -2)
