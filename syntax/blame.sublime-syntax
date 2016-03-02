@@ -1,0 +1,18 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+name: GitSavvy Blame
+hidden: true
+scope: git-savvy.blame
+contexts:
+  main:
+    - match: '^([^|]+) (\|) (( |\d){1,4})'
+      comment: line
+      scope: meta.git-savvy.blame-line
+      captures:
+        1: comment.block.git-savvy.commit-info
+        2: comment.block.git-savvy.splitter
+        3: keyword.other.git-savvy.line-number
+    - match: '^\-{40,48} \| \-+$'
+      comment: separator
+      scope: comment.block.git-savvy.separator

@@ -1,0 +1,15 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+name: GitSavvy Diff
+hidden: true
+scope: git-savvy.diff
+contexts:
+  main:
+    - include: scope:source.diff
+    - match: '\{\+.+?\+\}'
+      comment: Add block
+      scope: markup.inserted.git-savvy.add-block
+    - match: '\[\-.+?\-\]'
+      comment: Delete block
+      scope: markup.deleted.git-savvy.delete-block

@@ -43,7 +43,7 @@ class RebaseInterface(ui.Interface, GitCommand):
 
     interface_type = "rebase"
     read_only = True
-    syntax_file = "Packages/GitSavvy/syntax/rebase.tmLanguage"
+    syntax_file = "Packages/GitSavvy/syntax/rebase.sublime-syntax"
     word_wrap = False
 
     CARET = "▸"

@@ -27,7 +27,7 @@ class BranchInterface(ui.Interface, GitCommand):
 
     interface_type = "branch"
     read_only = True
-    syntax_file = "Packages/GitSavvy/syntax/branch.tmLanguage"
+    syntax_file = "Packages/GitSavvy/syntax/branch.sublime-syntax"
     word_wrap = False
     tab_size = 2
 
@@ -581,7 +581,7 @@ class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
 
         repo_path = self.repo_path
         view = self.view.window().new_file()
-        view.set_syntax_file("Packages/Diff/Diff.tmLanguage")
+        view.set_syntax_file("Packages/Diff/Diff.sublime-syntax")
         view.settings().set("git_savvy.repo_path", repo_path)
         view.settings().set("word_wrap", False)
         view.set_name("BRANCH COMPARISON")
@@ -664,7 +664,7 @@ class GsBranchesDiffBranchHistoryCommand(TextCommand, GitCommand):
         view = util.view.get_scratch_view(self, "log_graph", read_only=True)
         view.settings().set("git_savvy.repo_path", repo_path)
         view.settings().set("word_wrap", False)
-        view.set_syntax_file("Packages/GitSavvy/syntax/graph.tmLanguage")
+        view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
         view.set_name("BRANCH COMMIT COMPARISON")
 
         view.run_command("gs_replace_view_text", {"text": diff_contents, "nuke_cursors": True})

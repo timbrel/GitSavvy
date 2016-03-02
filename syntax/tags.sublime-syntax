@@ -1,0 +1,72 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+name: GitSavvy Tags
+hidden: true
+scope: git-savvy.tags
+contexts:
+  main:
+    - match: "^  BRANCH:"
+      comment: Tags view
+      captures:
+        0: comment.git-savvy.tags.summary-header
+      push:
+        - meta_scope: meta.git-savvy.tags-summary
+        - match: ^$
+          pop: true
+        - match: ^  ROOT:.+
+          comment: root summary
+          scope: comment.git-savvy.tags.root-summary
+        - match: '`[A-Za-z\-_/]+`'
+          comment: branch names
+          scope: constant.other.git-savvy.tags.branch-name
+        - match: (ahead)|(behind)
+          comment: ahead or behind
+          scope: keyword.other.git-savvy.tags.ahead-behind
+        - match: "^  HEAD:    ([0-9a-f]{7,40}) .+"
+          comment: head summary
+          scope: comment.git-savvy.tags.head-commit
+          captures:
+            1: constant.other.git-savvy.tags.sha1
+    - match: ^  (LOCAL):$
+      comment: local section
+      captures:
+        0: keyword.other.git-savvy.section-header
+      push:
+        - meta_scope: meta.git-savvy.tags.section
+        - match: ^$
+          pop: true
+        - match: '^    ([0-9a-f]{7,40}) .+\n$'
+          scope: meta.git-savvy.tags.tag
+          captures:
+            1: constant.other.git-savvy.tags.sha1
+    - match: ^  (REMOTE) \((.+)\):$
+      comment: remote section
+      captures:
+        0: keyword.other.git-savvy.section-header
+        2: constant.other.git-savvy.tags.remote-name
+      push:
+        - meta_scope: meta.git-savvy.tags.section
+        - match: ^$
+          pop: true
+        - match: '^    ([0-9a-f]{7,40}) .+\n$'
+          scope: meta.git-savvy.tags.tag
+          captures:
+            1: constant.other.git-savvy.tags.sha1
+    - match: '\*\* [^\*]+ \*\*'
+      comment: ux note
+      scope: support.type.git-savvy.ux-note
+    - match: "^  ####"
+      comment: Key-bindings menu
+      push:
+        - meta_scope: comment.git-savvy.tags.key-bindings-menu
+        - match: ^-$
+          pop: true
+        - match: "  ## ([A-Z ]+) ##"
+          scope: meta.git-savvy.key-bindings-header
+          captures:
+            1: support.type.git-savvy.key-bindings-header-text
+        - match: '\[([A-Za-z\-]+)\]'
+          scope: meta.git-savvy.key-bindings-key-stroke
+          captures:
+            1: constant.character.git-savvy-key-binding-key
