@@ -6,13 +6,22 @@ hidden: true
 scope: git-savvy.blame
 contexts:
   main:
-    - match: '^([^|]+) (\|) (( |\d){1,4})'
-      comment: line
-      scope: meta.git-savvy.blame-line
-      captures:
-        1: comment.block.git-savvy.commit-info
-        2: comment.block.git-savvy.splitter
-        3: keyword.other.git-savvy.line-number
-    - match: '^\-{40,48} \| \-+$'
+    - match: '^\-+ \| \-+$'
       comment: separator
-      scope: comment.block.git-savvy.separator
+      scope: comment.block.git-savvy.splitter
+    - match: '(\|)\s+(\d*).*'
+      captures:
+        1: comment.block.git-savvy.splitter
+        2: constant.numeric.line-number.git-savvy
+    - match: '^[0-9a-f]{12}'
+      comment: SHA
+      scope: meta.blame-line.git-savvy constant.numeric.commit-hash.git-savvy
+    - match: '^(.*) (<)([a-zA-Z0-9\-.]*@[a-zA-Z0-9\-.]*)(>)'
+      comment: name + email
+      captures:
+        1: entity.name.tag.git-savvy
+        2: punctuation.definition.other.begin.git-savvy
+        3: string.other.mail.git-savvy
+        4: punctuation.definition.other.end.git-savvy
+    - match: '[^|]+'
+      scope: comment.block.git-savvy.commit-info
