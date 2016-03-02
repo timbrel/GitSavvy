@@ -4,27 +4,59 @@
 name: GitSavvy Graph
 file_extensions: []
 hidden: true
-scope: git-savvy.graph
+scope: git-savvy
 contexts:
   main:
-    - match: '^([| *\\/_]+)'
+    - match: '([| \\/_]+)'
       comment: graph lines
       scope: comment.git-savvy.graph.graph-line
-    - match: '(?:(?<=[\\\*\|] )|(?<=[\\\*\|]   ))([0-9a-f]{6,40})'
+    - match: \*
+      scope: keyword.commit.git-savvy
+    - match: \s*([0-9a-f]{6,40})\b
       comment: SHA
-      scope: keyword.git-savvy.graph.commit-hash
+      scope: constant.numeric.commit-hash.git-savvy
+    - match: \s*\(
+      comment: branch-name
+      scope: punctuation.expression.begin.git-savvy
+      push:
+        - match: \)
+          scope: punctuation.expression.end.git-savvy
+          pop: true
+        - match: (tag)(:) ([^ ,)]+)
+          captures:
+            1: keyword.storage.type.git-savvy.graph
+            2: punctuation.separator.other.git-savvy
+            3: entity.name.tag.branch-name.git-savvy
+        - match: ','
+          scope: punctuation.separator.other.git-savvy
+        - match: '->'
+          scope: punctuation.separator.key-value.git-savvy
+        - match: ([^ ,)]+)
+          scope: constant.other.git.branch.git-savvy
+    - match: (?=\S)
+      push: message
+
+
+  message:
     - match: (`.*`)
       comment: by name
-      scope: keyword.git-savvy.graph.by-name
-    - match: '(?<= )(\([^()]*\))(?= )'
-      comment: branch names
-      scope: constant.other.git-savvy.graph.branch-name
+      scope: keyword.by-name.git-savvy
     - match: '(?:[Ff]ix(?:e[ds])?|[Rr]esolve[ds]?|[Cc]lose[ds]?)?\s*(?:#\d+|\[.*?\])'
       comment: issue numbers
-      scope: string.other.git-savvy.graph.issue
-    - match: "Merge branch '(.*?)'(?: (?:of|into) ([^ ]*) .*)?"
+      scope: string.other.issue.git-savvy
+    - match: 'Merge branch ('')(.*?)('')\s*(?:(?:of|into)\s+(.*))?'
       comment: merges
-      scope: git-savvy.graph.merge
+      scope: git-savvy.merge
       captures:
-        1: string.other.git-savvy.graph.merge.branch-name
-        2: string.other.git-savvy.graph.merge.remote
+        1: punctuation.string.begin.git-savvy
+        2: string.other.merge.branch-name.git-savvy
+        3: punctuation.string.end.git-savvy
+        4: string.other.merge.remote.git-savvy
+    - match: 'Merge pull request (#\d+) from (.*)'
+      captures:
+        1: string.other.issue.git-savvy
+        2: string.other.merge.remote.git-savvy
+    - match: ':'
+      scope: punctuation.separator.key-value.git-savvy
+    - match: $
+      pop: true
