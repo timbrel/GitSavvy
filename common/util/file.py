@@ -24,7 +24,7 @@ def determine_syntax_files():
 def get_syntax_for_file(filename):
     extension = get_file_extension(filename)
     syntaxes = syntax_file_map.get(filename, None) or syntax_file_map.get(extension, None)
-    return syntaxes[-1] if syntaxes else "Packages/Text/Plain text.sublime-syntax"
+    return syntaxes[-1] if syntaxes else "Packages/Text/Plain text.tmLanguage"
 
 
 def get_file_extension(filename):
