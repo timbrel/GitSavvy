@@ -4,12 +4,62 @@
 name: GitSavvy Diff
 hidden: true
 scope: git-savvy.diff
+first_line_match: |-
+  (?x)^
+      (===\ modified\ file
+      |==== \s* // .+ \s - \s .+ \s+ ====
+      |Index:[ ]
+      |---\ [^%]
+      |\*\*\*.*\d{4}\s*$
+      |\d+(,\d+)* (a|d|c) \d+(,\d+)* $
+      |diff\ --git[ ]
+      )
 contexts:
   main:
-    - include: scope:source.diff
-    - match: '\{\+.+?\+\}'
+
+    - match: '(^(((-{3}) .+)|((\*{3}) .+))$\n?|^(={4}) .+(?= - ))'
+      comment: Needs to be first.
+      scope: meta.diff.header.from-file
+      captures:
+        4: punctuation.definition.from-file.diff
+        6: punctuation.definition.from-file.diff
+        7: punctuation.definition.from-file.diff
+    - match: '(^(\+{3}) .+$\n?| (-) .* (={4})$\n?)'
+      scope: meta.diff.header.to-file
+      captures:
+        2: punctuation.definition.to-file.diff
+        3: punctuation.definition.to-file.diff
+        4: punctuation.definition.to-file.diff
+
+    - match: ^(@@)\s*(.+?)\s*(@@)($\n?)?
+      scope: meta.diff.range.unified
+      captures:
+        1: punctuation.definition.range.diff
+        2: meta.toc-list.line-number.diff
+        3: punctuation.definition.range.diff
+
+    - match: '(\{)(\+.+?\+)(\})'
       comment: Add block
       scope: markup.inserted.git-savvy.add-block
-    - match: '\[\-.+?\-\]'
+      captures:
+        1: punctuation.definition.inserted.diff
+        2: punctuation.definition.inserted.diff
+        3: punctuation.definition.inserted.diff
+    - match: ^(((>)( .*)?)|((\+).*))$\n?
+      scope: markup.inserted.diff
+      captures:
+        3: punctuation.definition.inserted.diff
+        6: punctuation.definition.inserted.diff
+
+    - match: '(\[)(\-.+?)(\-\])'
       comment: Delete block
       scope: markup.deleted.git-savvy.delete-block
+      captures:
+        1: punctuation.definition.inserted.diff
+        2: punctuation.definition.inserted.diff
+        3: punctuation.definition.inserted.diff
+    - match: ^(((<)( .*)?)|((-).*))$\n?
+      scope: markup.deleted.diff
+      captures:
+        3: punctuation.definition.inserted.diff
+        6: punctuation.definition.inserted.diff

@@ -581,7 +581,7 @@ class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
 
         repo_path = self.repo_path
         view = self.view.window().new_file()
-        view.set_syntax_file("Packages/Diff/Diff.sublime-syntax")
+        view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
         view.settings().set("git_savvy.repo_path", repo_path)
         view.settings().set("word_wrap", False)
         view.set_name("BRANCH COMPARISON")
