@@ -31,7 +31,7 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
 
     def run_async(self):
         # Short-circuit update attempts for files not part of Git repo.
-        if not self.file_path or not self._repo_path(throw_on_stderr=False):
+        if not self._repo_path(throw_on_stderr=False):
             self.view.erase_status("gitsavvy-repo-status")
             return
 
