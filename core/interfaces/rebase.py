@@ -418,6 +418,8 @@ class RewriteBase(TextCommand, GitCommand):
         return line_str[7:14]
 
     def get_idx_entry_and_prev(self, short_hash):
+        entry_before_selected = None
+
         for idx, entry in enumerate(self.interface.entries):
             if entry.short_hash == short_hash:
                 selected_idx, selected_entry = idx, entry
@@ -481,7 +483,11 @@ class GsRebaseSquashCommand(RewriteBase):
         commit_chain[1].datetime = commit_chain[0].datetime
         commit_chain[1].author = commit_chain[0].author
 
-        self.make_changes(commit_chain, "squashed " + short_hash, two_entries_before_squash.long_hash)
+        self.make_changes(
+            commit_chain,
+            "squashed " + short_hash,
+            two_entries_before_squash.long_hash if two_entries_before_squash else None
+        )
         move_cursor(self.view, -2)
 
 
@@ -548,7 +554,7 @@ class GsRebaseEditCommand(RewriteBase):
         self.make_changes(
             commit_chain,
             "edited " + entry_to_edit.short_hash,
-            entry_before_edit.long_hash
+            entry_before_edit.long_hash if entry_before_edit else None
         )
 
 
@@ -570,7 +576,11 @@ class GsRebaseDropCommand(RewriteBase):
             for entry in self.interface.entries[drop_idx+1:]
         ]
 
-        self.make_changes(commit_chain, "dropped " + short_hash, entry_before_drop.long_hash)
+        self.make_changes(
+            commit_chain,
+            "dropped " + short_hash,
+            entry_before_drop.long_hash if entry_before_drop else None
+        )
 
 
 class GsRebaseMoveUpCommand(RewriteBase):
