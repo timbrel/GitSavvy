@@ -18,4 +18,4 @@ contexts:
         - meta_scope: meta.git-savvy.commit-diff
         - match: ^$
           pop: true
-        - include: scope:source.diff
+        - include: scope:git-savvy.diff

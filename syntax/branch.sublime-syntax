@@ -36,14 +36,16 @@ contexts:
         - meta_scope: meta.git-savvy.status.section
         - match: ^$
           pop: true
-        - match: '^    [0-9a-f]{7,40} [^ ]+( .*)\n$'
+        - match: '^    [0-9a-f]{7,40} ([^ ]+) (.*)\n$'
           scope: meta.git-savvy.branches.branch
           captures:
-            1: comment.git-savvy.branches.branch.extra-info
-        - match: '^  ▸ [0-9a-f]{7,40} [^ ]+( .*)\n$'
+            1: meta.toc-list
+            2: comment.git-savvy.branches.branch.extra-info
+        - match: '^  ▸ [0-9a-f]{7,40} ([^ ]+) (.*)\n$'
           scope: string.other.git-savvy.branches.active-branch
           captures:
-            1: comment.git-savvy.branches.branch.extra-info
+            1: meta.toc-list
+            2: comment.git-savvy.branches.branch.extra-info
     - match: '\*\* [^\*]+ \*\*'
       comment: ux note
       scope: support.type.git-savvy.ux-note

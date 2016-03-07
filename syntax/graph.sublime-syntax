@@ -40,7 +40,7 @@ contexts:
   message:
     - match: (`.*`)
       comment: by name
-      scope: keyword.by-name.git-savvy
+      scope: keyword.by-name.git-savvy.
     - match: '(?:[Ff]ix(?:e[ds])?|[Rr]esolve[ds]?|[Cc]lose[ds]?)?\s*(?:#\d+|\[.*?\])'
       comment: issue numbers
       scope: string.other.issue.git-savvy
