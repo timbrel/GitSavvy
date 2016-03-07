@@ -16,26 +16,23 @@ first_line_match: |-
       )
 contexts:
   main:
-
-    - match: '(^(((-{3}) .+)|((\*{3}) .+))$\n?|^(={4}) .+(?= - ))'
+    - match: '(^(-{3}) a/(.+)$\n?)'
       comment: Needs to be first.
       scope: meta.diff.header.from-file
       captures:
-        4: punctuation.definition.from-file.diff
-        6: punctuation.definition.from-file.diff
-        7: punctuation.definition.from-file.diff
-    - match: '(^(\+{3}) .+$\n?| (-) .* (={4})$\n?)'
+        1: punctuation.definition.from-file.diff
+        3: meta.toc-list
+    - match: '(^(\+{3}) b/(.+)$\n)'
       scope: meta.diff.header.to-file
       captures:
-        2: punctuation.definition.to-file.diff
-        3: punctuation.definition.to-file.diff
-        4: punctuation.definition.to-file.diff
+        1: punctuation.definition.to-file.diff
+        3: dont.need.meta.toc-list
 
     - match: ^(@@)\s*(.+?)\s*(@@)($\n?)?
       scope: meta.diff.range.unified
       captures:
         1: punctuation.definition.range.diff
-        2: meta.toc-list.line-number.diff
+        2: punctuation.definition.range.diff
         3: punctuation.definition.range.diff
 
     - match: '(\{)(\+.+?\+)(\})'

@@ -38,18 +38,21 @@ contexts:
       captures:
         1: string.other.git-savvy.rebase.caret
         3: support.type.git-savvy.rebase.commit_hash
+        4: meta.toc-list
     - match: '  ([▸ ]) (✔)  ([0-9a-f]{7,40})  (.*)\n'
       scope: meta.git-savvy.rebase-graph.entry
       captures:
         1: string.other.git-savvy.rebase.caret
         2: entity.name.function.git-savvy.success
         3: support.type.git-savvy.rebase.commit_hash
+        4: meta.toc-list
     - match: '  ([▸ ]) (✕)  ([0-9a-f]{7,40})  (.*)\n'
       scope: meta.git-savvy.rebase-graph.entry
       captures:
         1: string.other.git-savvy.rebase.caret
         2: string.other.git-savvy.conflict
         3: support.type.git-savvy.rebase.commit_hash
+        4: meta.toc-list
     - match: "^  ####"
       comment: Key-bindings menu
       push:
