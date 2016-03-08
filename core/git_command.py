@@ -67,7 +67,7 @@ class GitCommand(StatusMixin,
 
     _last_remotes_used = {}
 
-    def git(self, *args, stdin=None, working_dir=None, show_panel=False, throw_on_stderr=True):
+    def git(self, *args, stdin=None, working_dir=None, show_panel=False, throw_on_stderr=True, decode=True):
         """
         Run the git command specified in `*args` and return the output
         of the git command as a string.
@@ -122,13 +122,22 @@ class GitCommand(StatusMixin,
                                  env=os.environ,
                                  startupinfo=startupinfo)
             stdout, stderr = p.communicate(stdin.encode(encoding="UTF-8") if stdin else None)
-            stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
+            if decode:
+                stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
 
         except Exception as e:
             raise_error(e)
 
         finally:
-            util.debug.log_git(args, stdin, stdout, stderr)
+            if decode:
+                util.debug.log_git(args, stdin, stdout, stderr)
+            else:
+                util.debug.log_git(
+                    args,
+                    stdin,
+                    self.decode_stdout(stdout, savvy_settings),
+                    stderr.decode()
+                )
 
         if not p.returncode == 0 and throw_on_stderr:
             raise_error("`{}` failed with following output:\n{}\n{}".format(

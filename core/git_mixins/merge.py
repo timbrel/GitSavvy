@@ -48,11 +48,11 @@ class MergeMixin():
         merge_cmd_args = shlex.split(merge_cmd)
 
         try:
-            with open(base_path, "w") as base:
+            with open(base_path, "wb") as base:
                 base.write(base_content)
-            with open(ours_path, "w") as ours:
+            with open(ours_path, "wb") as ours:
                 ours.write(ours_content)
-            with open(theirs_path, "w") as theirs:
+            with open(theirs_path, "wb") as theirs:
                 theirs.write(theirs_content)
             copyfile(merge_path, backup_path)
 
@@ -119,8 +119,8 @@ class MergeMixin():
         #        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
         base_hash, ours_hash, theirs_hash = (entry.split(" ")[1] for entry in entries)
 
-        base_content = self.git("show", base_hash)
-        ours_content = self.git("show", ours_hash)
-        theirs_content = self.git("show", theirs_hash)
+        base_content = self.git("show", base_hash, decode=False)
+        ours_content = self.git("show", ours_hash, decode=False)
+        theirs_content = self.git("show", theirs_hash, decode=False)
 
         return base_content, ours_content, theirs_content
