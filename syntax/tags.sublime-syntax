@@ -40,7 +40,7 @@ contexts:
           scope: meta.git-savvy.tags.tag
           captures:
             1: constant.other.git-savvy.tags.sha1
-            2: meta.toc-list
+            2: gitsavvy.gotosymbol
     - match: ^  (REMOTE) \((.+)\):$
       comment: remote section
       captures:
@@ -54,7 +54,7 @@ contexts:
           scope: meta.git-savvy.tags.tag
           captures:
             1: constant.other.git-savvy.tags.sha1
-            2: meta.toc-list
+            2: gitsavvy.gotosymbol
     - match: '\*\* [^\*]+ \*\*'
       comment: ux note
       scope: support.type.git-savvy.ux-note

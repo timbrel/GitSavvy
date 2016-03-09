@@ -39,12 +39,12 @@ contexts:
         - match: '^    [0-9a-f]{7,40} ([^ ]+) (.*)\n$'
           scope: meta.git-savvy.branches.branch
           captures:
-            1: meta.toc-list
+            1: gitsavvy.gotosymbol
             2: comment.git-savvy.branches.branch.extra-info
         - match: '^  ▸ [0-9a-f]{7,40} ([^ ]+) (.*)\n$'
           scope: string.other.git-savvy.branches.active-branch
           captures:
-            1: meta.toc-list
+            1: gitsavvy.gotosymbol
             2: comment.git-savvy.branches.branch.extra-info
     - match: '\*\* [^\*]+ \*\*'
       comment: ux note
