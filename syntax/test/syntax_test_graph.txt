@@ -1,0 +1,31 @@
+# SYNTAX TEST "Packages/GitSavvy/syntax/graph.sublime-syntax"
+* 2b17192 (HEAD -> develop, origin/master, origin/HEAD, master) replace all references to .tmLanguage to .sublime-syntax
+# <-  keyword.commit
+#  ^ constant.numeric.commit-hash
+#           ^ constant.other.git.branch
+#                     ^ constant.other.git.branch
+#               ^ punctuation.separator.key-value
+* f483ab7 update blame syntax format
+* 6929182 update make_commit syntax format
+* ede734e update diff syntax format
+# <- keyword.commit
+#  ^ constant.numeric.commit-hash
+* c39b5de (divmain/master) Fix: plugin_host would crash when navigating past end of graph view
+* 1bca3e0 Fix: When amending, prepopulated commit message would include two extra spaces.
+* 76ceacf Fix: When amending with show_commit_diff enabled, unstaged changes were displayed.
+*   b7f8e07 Merge pull request #359 from dnicolson/blame-commit-lengths
+#                               ^ string.other.issue
+#                                         ^ string.other.merge.remote
+|\
+# <- comment.git-savvy.graph.graph-line
+#^ comment.git-savvy.graph.graph-line
+| * 160f645 Support 40-48 character commit messages
+|/
+#^ comment.git-savvy.graph.graph-line
+* 40cdf58 Feature: (not a branch name)
+#                ^ punctuation.separator.key-value
+#                    ^ - constant.other.git.branch
+* 6da4bec Change `get_read_only_view` to more broad `get_scratch_view`.
+* 66b5d4e (tag: 2.9.1) Fix: User was unable to view tag commit when remotes were not displayed in tags dashboard.
+#           ^ storage.type
+#               ^ entity.name.tag

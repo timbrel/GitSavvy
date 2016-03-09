@@ -24,7 +24,7 @@ contexts:
           pop: true
         - match: (tag)(:) ([^ ,)]+)
           captures:
-            1: keyword.storage.type.git-savvy.graph
+            1: storage.type.git-savvy.graph
             2: punctuation.separator.other.git-savvy
             3: entity.name.tag.branch-name.git-savvy
         - match: ','
