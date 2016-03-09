@@ -38,7 +38,7 @@ contexts:
           pop: true
         - match: '^  [ \-] (.+)\n$'
           captures:
-              1: meta.git-savvy.status.file meta.toc-list
+              1: meta.git-savvy.status.file gitsavvy.gotosymbol
     - match: ^  STASHES:$
       comment: Stashes section
       captures:

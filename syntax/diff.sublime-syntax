@@ -21,12 +21,12 @@ contexts:
       scope: meta.diff.header.from-file
       captures:
         1: punctuation.definition.from-file.diff
-        3: meta.toc-list
+        3: gitsavvy.gotosymbol
     - match: '(^(\+{3}) b/(.+)$\n)'
       scope: meta.diff.header.to-file
       captures:
         1: punctuation.definition.to-file.diff
-        3: dont.need.meta.toc-list
+        3: dont.need.gitsavvy.gotosymbol
 
     - match: ^(@@)\s*(.+?)\s*(@@)($\n?)?
       scope: meta.diff.range.unified
