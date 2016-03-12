@@ -27,7 +27,7 @@ class StatusInterface(ui.Interface, GitCommand):
 
     interface_type = "status"
     read_only = True
-    syntax_file = "Packages/GitSavvy/syntax/status.tmLanguage"
+    syntax_file = "Packages/GitSavvy/syntax/status.sublime-syntax"
     word_wrap = False
     tab_size = 2
 
@@ -674,7 +674,7 @@ class GsStatusShowStashCommand(TextCommand, GitCommand):
         repo_path = self.repo_path
         stash_view = util.view.get_scratch_view(self, "stash_" + title, read_only=True)
         stash_view.set_name(title)
-        stash_view.set_syntax_file("Packages/Diff/Diff.tmLanguage")
+        stash_view.set_syntax_file("Packages/Diff/Diff.sublime-syntax")
         stash_view.settings().set("git_savvy.repo_path", repo_path)
         window.focus_view(stash_view)
         stash_view.sel().clear()

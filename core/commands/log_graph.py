@@ -17,7 +17,7 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
     def run(self, all_branches=False):
         repo_path = self.repo_path
         view = self.window.new_file()
-        view.set_syntax_file("Packages/GitSavvy/syntax/graph.tmLanguage")
+        view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
         view.settings().set("git_savvy.log_graph_view", True)
         view.settings().set("git_savvy.repo_path", repo_path)
         view.settings().set("git_savvy.tabbable", True)
@@ -110,7 +110,7 @@ class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
         output_view = self.view.window().create_output_panel("show_commit_info")
         output_view.set_read_only(False)
         output_view.insert(edit, 0, text)
-        output_view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.tmLanguage")
+        output_view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
         output_view.set_read_only(True)
         self.view.window().run_command("show_panel", {"panel": "output.show_commit_info"})
 

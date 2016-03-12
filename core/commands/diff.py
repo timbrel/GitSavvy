@@ -35,7 +35,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
         diff_view = util.view.get_scratch_view(self, "diff", read_only=True)
         title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(os.path.basename(repo_path))
         diff_view.set_name(title)
-        diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.tmLanguage")
+        diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
         diff_view.settings().set("git_savvy.repo_path", repo_path)
         diff_view.settings().set("git_savvy.file_path", file_path)
         diff_view.settings().set("git_savvy.diff_view.in_cached_mode", in_cached_mode)

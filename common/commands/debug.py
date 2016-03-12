@@ -74,7 +74,7 @@ class GsViewGitLog(WindowCommand):
         log = debug.get_log()
         view = self.window.new_file()
         view.set_scratch(True)
-        view.settings().set("syntax", "Packages/JavaScript/JSON.tmLanguage")
+        view.settings().set("syntax", "Packages/JavaScript/JSON.sublime-syntax")
         view.run_command("gs_replace_view_text", {
             "text": log,
             "nuke_cursors": True

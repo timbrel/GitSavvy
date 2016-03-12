@@ -1,0 +1,21 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+name: GitSavvy Commit
+hidden: true
+scope: git-savvy.commit
+contexts:
+  main:
+    - match: ^commit
+      comment: commit header
+      scope: string.other.quoted-or-unquoted.git-savvy.commit-info
+    - match: ^((Author:)|(Date:)|(Merge:)|(AuthorDate:)|(Commit:)|(CommitDate:))
+      comment: author and date info
+      scope: string.other.quoted-or-unquoted.git-savvy.author-and-date
+    - match: ^(?=diff)
+      comment: diff section
+      push:
+        - meta_scope: meta.git-savvy.commit-diff
+        - match: ^$
+          pop: true
+        - include: scope:source.diff
