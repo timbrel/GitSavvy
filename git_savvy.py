@@ -32,7 +32,6 @@ else:
                 "you don't have the Codecs33 package installed, or you've "
                 "entered an unsupported encoding.")
 
-
     from .common.commands import *
     from .common.ui import *
     from .common.global_events import *
