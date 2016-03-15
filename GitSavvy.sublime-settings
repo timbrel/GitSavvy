@@ -247,5 +247,11 @@
         problems because of this, feel free to turn this setting off, and the
         descriptions will not be displayed.
      */
-    "enable_branch_descriptions": true
+    "enable_branch_descriptions": true,
+
+    /*
+        When set to `true`, GitSavvy will become Vintagoues friendly.
+        You might need to restart Sublime in order to get this working.
+     */
+    "vintageous_friendly": false
 }

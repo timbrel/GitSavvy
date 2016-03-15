@@ -31,56 +31,108 @@ class StatusInterface(ui.Interface, GitCommand):
     word_wrap = False
     tab_size = 2
 
-    template = """\
+    if sublime.load_settings("GitSavvy.sublime-settings").get('vintageous_friendly', False):
+        template = """\
 
-      BRANCH:  {branch_status}
-      ROOT:    {git_root}
-      HEAD:    {head}
+          BRANCH:  {branch_status}
+          ROOT:    {git_root}
+          HEAD:    {head}
 
-    {< unstaged_files}
-    {< untracked_files}
-    {< staged_files}
-    {< merge_conflicts}
-    {< no_status_message}
-    {< stashes}
-      ###################                   ###############
-      ## SELECTED FILE ##                   ## ALL FILES ##
-      ###################                   ###############
+        {< unstaged_files}
+        {< untracked_files}
+        {< staged_files}
+        {< merge_conflicts}
+        {< no_status_message}
+        {< stashes}
+          ###################                   ###############
+          ## SELECTED FILE ##                   ## ALL FILES ##
+          ###################                   ###############
 
-      [o] open file                         [a] stage all unstaged files
-      [s] stage file                        [A] stage all unstaged and untracked files
-      [u] unstage file                      [U] unstage all staged files
-      [d] discard changes to file           [D] discard all unstaged changes
-      [h] open file on remote
-      [M] launch external merge tool for conflict
+          [o] open file                         [a] stage all unstaged files
+          [s] stage file                        [A] stage all unstaged and untracked files
+          [u] unstage file                      [U] unstage all staged files
+          [d] discard changes to file           [D] discard all unstaged changes
+          [h] open file on remote
+          [M] launch external merge tool for conflict
 
-      [l] diff file inline                  [f] diff all files
-      [e] diff file                         [F] diff all cached files
+          [l] diff file inline                  [f] diff all files
+          [e] diff file                         [F] diff all cached files
 
-      #############                         #############
-      ## ACTIONS ##                         ## STASHES ##
-      #############                         #############
+          #############                         #############
+          ## ACTIONS ##                         ## STASHES ##
+          #############                         #############
 
-      [c] commit                            [t][a] apply stash
-      [C] commit, including unstaged        [t][p] pop stash
-      [m] amend previous commit             [t][s] show stash
-      [P] push current branch               [t][c] create stash
-                                            [t][u] create stash including untracked files
-      [i] ignore file                       [t][d] discard stash
-      [I] ignore pattern
+          [c] commit                            [t][a] apply stash
+          [C] commit, including unstaged        [t][p] pop stash
+          [m] amend previous commit             [t][s] show stash
+          [P] push current branch               [t][c] create stash
+                                                [t][u] create stash including untracked files
+          [i] ignore file                       [t][d] discard stash
+          [I] ignore pattern
 
-      ###########
-      ## OTHER ##
-      ###########
+          ###########
+          ## OTHER ##
+          ###########
 
-      [r]         refresh status
-      [tab]       transition to next dashboard
-      [SHIFT-tab] transition to previous dashboard
-      [.]         move cursor to next file
-      [,]         move cursor to previous file
+          [r]         refresh status
+          [tab]       transition to next dashboard
+          [SHIFT-tab] transition to previous dashboard
+          [j]         move cursor to next file
+          [k]         move cursor to previous file
 
-    -
-    """
+        -
+        """
+    else:
+        template = """\
+
+          BRANCH:  {branch_status}
+          ROOT:    {git_root}
+          HEAD:    {head}
+
+        {< unstaged_files}
+        {< untracked_files}
+        {< staged_files}
+        {< merge_conflicts}
+        {< no_status_message}
+        {< stashes}
+          ###################                   ###############
+          ## SELECTED FILE ##                   ## ALL FILES ##
+          ###################                   ###############
+
+          [o] open file                         [a] stage all unstaged files
+          [s] stage file                        [A] stage all unstaged and untracked files
+          [u] unstage file                      [U] unstage all staged files
+          [d] discard changes to file           [D] discard all unstaged changes
+          [h] open file on remote
+          [M] launch external merge tool for conflict
+
+          [l] diff file inline                  [f] diff all files
+          [e] diff file                         [F] diff all cached files
+
+          #############                         #############
+          ## ACTIONS ##                         ## STASHES ##
+          #############                         #############
+
+          [c] commit                            [t][a] apply stash
+          [C] commit, including unstaged        [t][p] pop stash
+          [m] amend previous commit             [t][s] show stash
+          [P] push current branch               [t][c] create stash
+                                                [t][u] create stash including untracked files
+          [i] ignore file                       [t][d] discard stash
+          [I] ignore pattern
+
+          ###########
+          ## OTHER ##
+          ###########
+
+          [r]         refresh status
+          [tab]       transition to next dashboard
+          [SHIFT-tab] transition to previous dashboard
+          [.]         move cursor to next file
+          [,]         move cursor to previous file
+
+        -
+        """
 
     template_staged = """
       STAGED:
