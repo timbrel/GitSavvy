@@ -778,8 +778,8 @@ class GsStatusNavigateFileCommand(TextCommand, GitCommand):
                         for file_region in self.view.lines(region)]
 
         stash_regions = [stash_region
-                        for region in self.view.find_by_selector("meta.git-savvy.status.saved_stash")
-                        for stash_region in self.view.lines(region)]
+                         for region in self.view.find_by_selector("meta.git-savvy.status.saved_stash")
+                         for stash_region in self.view.lines(region)]
 
         available_regions = file_regions + stash_regions
 

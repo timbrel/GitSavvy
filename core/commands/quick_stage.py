@@ -96,7 +96,7 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
         unstaged_count = 0
 
         for entry in status_entries:
-            if entry.index_status!="?" and entry.index_status!=" ":
+            if entry.index_status != "?" and entry.index_status != " ":
                 staged_count += 1
             if entry.working_status in ("M", "D", "?"):
                 unstaged_count += 1

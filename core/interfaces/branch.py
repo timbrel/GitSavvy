@@ -605,9 +605,9 @@ class GsBranchesToggleRemotesCommand(TextCommand, GitCommand):
     Toggle display of the remote branches.
     """
 
-    def run(self, edit, show = None):
+    def run(self, edit, show=None):
         interface = ui.get_interface(self.view.id())
-        if show == None:
+        if show is None:
             interface.show_remotes = not interface.show_remotes
         else:
             interface.show_remotes = show
@@ -680,6 +680,7 @@ class GsBranchesDiffBranchHistoryCommand(TextCommand, GitCommand):
         args.append("{}..{}".format(branchA, branchB))
         diff_contents += self.git(*args)
         return diff_contents
+
 
 class GsBranchesEditBranchDescriptionCommand(TextCommand, GitCommand):
 

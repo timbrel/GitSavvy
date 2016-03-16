@@ -28,6 +28,7 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
         view.set_read_only(True)
         view.run_command("gs_log_graph_initialize", {"all_branches": all_branches})
 
+
 class GsLogGraphRefreshCommand(WindowCommand, GitCommand):
 
     """
