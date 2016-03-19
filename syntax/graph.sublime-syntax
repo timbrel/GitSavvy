@@ -38,13 +38,13 @@ contexts:
 
 
   message:
-    - match: (`.*`)
+    - match: (`[^`]*`)
       comment: by name
       scope: keyword.by-name.git-savvy.
     - match: '(?:[Ff]ix(?:e[ds])?|[Rr]esolve[ds]?|[Cc]lose[ds]?)?\s*(?:#\d+|\[.*?\])'
       comment: issue numbers
       scope: string.other.issue.git-savvy
-    - match: 'Merge branch ('')(.*?)('')\s*(?:(?:of|into)\s+(.*))?'
+    - match: Merge branch (')(.*?)(')\s*(?:(?:of|into)\s+(.*))?
       comment: merges
       scope: git-savvy.merge
       captures:
@@ -52,7 +52,7 @@ contexts:
         2: string.other.merge.branch-name.git-savvy
         3: punctuation.string.end.git-savvy
         4: string.other.merge.remote.git-savvy
-    - match: 'Merge pull request (#\d+) from (.*)'
+    - match: Merge pull request (#\d+) from (.*)
       captures:
         1: string.other.issue.git-savvy
         2: string.other.merge.remote.git-savvy
