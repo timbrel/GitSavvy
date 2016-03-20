@@ -964,6 +964,14 @@
         ]
     },
     {
+        "keys": ["o"],
+        "command": "gs_vintageous_enter_insert_mode",
+        "context": [
+            { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
+            { "key": "vi_command_mode_aware" }
+        ]
+    },
+    {
         "keys": ["escape"],
         "command": "gs_vintageous_enter_normal_mode",
         "context": [
