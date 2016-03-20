@@ -82,6 +82,10 @@ class Interface():
         self.view.settings().set("git_savvy.tabbable", True)
         self.view.settings().set("git_savvy.interface", self.interface_type)
         self.view.settings().set("word_wrap", self.word_wrap)
+        if sublime.load_settings("GitSavvy.sublime-settings").get("vintageous_friendly", False) is True:
+            self.view.settings().set("git_savvy.handle_keys", False)
+        else:
+            self.view.settings().set("git_savvy.handle_keys", True)
         self.view.set_syntax_file(self.syntax_file)
         self.view.set_scratch(True)
         self.view.set_read_only(self.read_only)
@@ -359,3 +363,25 @@ class GsEditViewCloseCommand(TextCommand):
         view_id = self.view.id()
         if view_id in edit_views:
             del edit_views[view_id]
+
+class GsVintageousEnterInsertModeCommand(TextCommand):
+
+    """
+    Enters insert MODE in vintageous.
+    Toggles git_savvy.handle_keys back on.
+    """
+
+    def run(self, edit):
+        self.view.settings().set("git_savvy.handle_keys", True)
+        self.view.run_command("_enter_insert_mode")
+
+class GsVintageousEnterNormalModeCommand(TextCommand):
+
+    """
+    Enters normal MODE in vintageous.
+    Toggles git_savvy.handle_keys back off.
+    """
+
+    def run(self, edit):
+        self.view.settings().set('git_savvy.handle_keys', False)
+        self.view.run_command("_enter_normal_mode")
