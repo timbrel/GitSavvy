@@ -21,7 +21,6 @@ class GsPullCommand(WindowCommand, GitCommand):
         proceed no further.
         """
         self.remotes = list(self.get_remotes().keys())
-        self.remote_branches = self.get_remote_branches()
 
         pre_selected_idx = (self.remotes.index(self.last_remote_used)
                             if self.last_remote_used in self.remotes
@@ -47,21 +46,17 @@ class GsPullCommand(WindowCommand, GitCommand):
             return
 
         self.selected_remote = self.remotes[remote_index]
-        selected_remote_prefix = self.selected_remote + "/"
 
         # Save the selected remote for automatic selection on next palette command.
         self.last_remote_used = self.selected_remote
 
-        self.branches_on_selected_remote = [
-            branch for branch in self.remote_branches
-            if branch.startswith(selected_remote_prefix)
-        ]
+        self.branches_on_selected_remote = self.list_remote_branches(self.selected_remote)
 
         current_local_branch = self.get_current_branch_name()
 
         try:
             pre_selected_idx = self.branches_on_selected_remote.index(
-                selected_remote_prefix + current_local_branch)
+                self.selected_remote + "/" + current_local_branch)
         except ValueError:
             pre_selected_idx = 0
 

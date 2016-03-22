@@ -19,12 +19,15 @@ class RemotesMixin():
         """
         self.git("fetch", "--prune" if prune else None, remote if remote else "--all")
 
-    def get_remote_branches(self):
+    def list_remote_branches(self, remote=None):
         """
-        Return a list of all known branches on remotes.
+        Return a list of all known branches on all remotes, or a specified remote.
         """
         stdout = self.git("branch", "-r", "--no-color")
         branches = [branch.strip() for branch in stdout.split("\n") if branch]
+
+        if remote:
+            branches = [branch for branch in branches if branch.startswith(remote+"/")]
 
         # Clean up "origin/HEAD -> origin/master" to "origin/master" if present.
         for idx, branch_name in enumerate(branches):

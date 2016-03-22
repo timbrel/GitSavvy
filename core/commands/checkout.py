@@ -82,7 +82,7 @@ class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        self.remote_branches = self.get_remote_branches()
+        self.remote_branches = self.list_remote_branches()
         self.window.show_quick_panel(
             self.remote_branches,
             self.on_selection,
