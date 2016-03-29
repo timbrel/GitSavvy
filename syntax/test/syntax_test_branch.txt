@@ -1,0 +1,51 @@
+# SYNTAX TEST "Packages/GitSavvy/syntax/branch.sublime-syntax"
+
+  BRANCH:  On branch `develop`.
+#  <- meta.git-savvy.status-summary
+#  ^ comment
+#           ^ -comment
+#                       ^ constant.other
+  ROOT:    ~/.config/sublime-text-3/Packages/GitSavvy
+#  ^ comment
+  HEAD:    aaf90ba improve blame syntax
+#  ^ comment
+#            ^ constant.other
+
+  LOCAL:
+#  <- meta.git-savvy.status -meta.git-savvy.status-summary
+#  ^ keyword.other
+  ▸ aaf90ba develop
+# ^ string.other
+#    ^ string.other
+#           ^ string.other
+  ▸ aaf90ba develop (origin/develop)
+# ^ string.other
+#    ^ string.other
+#           ^ string.other
+#                   ^ comment -string
+    2b17192 master
+#    ^ -string.other
+#           ^ -string.other
+    f21e6a8 old (origin/develop, ahead 13, behind 40)
+#    ^ -string.other -comment
+#           ^ -string.other -comment
+#                  ^ comment -string
+
+  ** Press [e] to toggle display of remote branches. **
+# <- - meta.git-savvy.status
+#   ^ support.type
+
+  #############
+#    ^ comment
+  ## ACTIONS ##
+# ^ comment
+#     ^ support.type
+#            ^ comment
+  #############
+#          ^ comment
+
+  [c] checkout                                  [p] push selected to remote
+# ^ comment
+#  ^ constant.character
+#   ^ comment
+  [b] create new branch (from HEAD)             [P] push all branches to remote

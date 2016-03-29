@@ -1,18 +1,17 @@
 import sublime
-from plistlib import readPlistFromBytes
+import yaml
 
 
 syntax_file_map = {}
 
 
 def determine_syntax_files():
-    syntax_files = sublime.find_resources("*.tmLanguage")
+    syntax_files = sublime.find_resources("*.sublime-syntax")
     for syntax_file in syntax_files:
         try:
             # Use `sublime.load_resource`, in case Package is `*.sublime-package`.
             resource = sublime.load_resource(syntax_file)
-            plist = readPlistFromBytes(bytearray(resource, encoding="utf-8"))
-            for extension in plist["fileTypes"]:
+            for extension in yaml.load(resource)["file_extensions"]:
                 if extension not in syntax_file_map:
                     syntax_file_map[extension] = []
                 extension_list = syntax_file_map[extension]

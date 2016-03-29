@@ -27,7 +27,7 @@ class GsAddEditCommand(WindowCommand, GitCommand):
     def run_async(self):
         git_add_view = util.view.get_scratch_view(self, "git_add", read_only=False)
         git_add_view.set_name(TITLE.format(os.path.basename(self.repo_path)))
-        git_add_view.set_syntax_file("Packages/GitSavvy/syntax/diff.tmLanguage")
+        git_add_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime_syntax")
         git_add_view.settings().set("git_savvy.repo_path", self.repo_path)
         git_add_view.settings().set("translate_tabs_to_spaces", False)
 
