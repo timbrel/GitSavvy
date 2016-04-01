@@ -758,7 +758,7 @@
     {
         "keys": ["k"],
         "command": "gs_log_graph_next_commit",
-        "args": {"forward": true},
+        "args": {"forward": false},
         "context": [
             { "key": "setting.git_savvy.handle_keys", "operator": "equal", "operand": true },
             { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },

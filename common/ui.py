@@ -82,10 +82,10 @@ class Interface():
         self.view.settings().set("git_savvy.tabbable", True)
         self.view.settings().set("git_savvy.interface", self.interface_type)
         self.view.settings().set("word_wrap", self.word_wrap)
-        sublime_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        if sublime_settings.get("vintageous_friendly", False) is True:
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        if savvy_settings.get("vintageous_friendly", False) is True:
             self.view.settings().set("git_savvy.handle_keys", False)
-            self.view.settings().set("git_savvy.should_enter_insert_mode", sublime_settings.get("vintageous_enter_insert_mode", False))
+            self.view.settings().set("git_savvy.should_enter_insert_mode", savvy_settings.get("vintageous_enter_insert_mode", False))
         else:
             self.view.settings().set("git_savvy.handle_keys", True)
             self.view.settings().set("git_savvy.should_enter_insert_mode", False)
