@@ -253,5 +253,11 @@
         When set to `true`, GitSavvy will become Vintagoues friendly.
         You might need to restart Sublime in order to get this working.
      */
-    "vintageous_friendly": false
+    "vintageous_friendly": false,
+
+    /*
+        When set to `true`, all the views will start in INSERT mode.
+        Ignored if `vintageous_friendly` is `false`.
+     */
+    "vintageous_enter_insert_mode": false
 }
