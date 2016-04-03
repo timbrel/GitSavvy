@@ -1,0 +1,26 @@
+# SYNTAX TEST "Packages/GitSavvy/syntax/blame.sublime-syntax"
+update blame syntax format                   |    1 %YAML 1.2
+# ^ comment.block
+#                     ^ comment.block
+#                                            ^ comment.block.git-savvy.splitter
+#                                                 ^ constant.numeric.line-number
+f483ab7eb511                                 |    2 ---
+#                                            ^ comment.block.git-savvy.splitter
+#  ^ constant.numeric.commit-hash
+gwenzek <guillaume.wenzek@gmail.com>         |    3 # http://www.sublimetext.com/docs/3/syntax.html
+#                                            ^ comment.block.git-savvy.splitter
+#  ^ entity.name.tag
+#           ^ string.other.mail
+Feb 10, 2016                                 |    4 name: GitSavvy Blame
+                                             |    5 hidden: true
+                                             |    6 scope: git-savvy.blame
+                                             |    7 contexts:
+                                             |    8   main:
+-------------------------------------------- | ----------------------------------------------------------------------------------
+#  ^ comment.block.git-savvy.splitter
+#                                            ^ comment.block.git-savvy.splitter
+#                                                       ^ comment.block.git-savvy.splitter
+improve blame syntax                         |    9     - match: '^\-+ \| \-+$'
+aaf90bac23e2                                 |
+gwenzek <guillaume.wenzek@polytechnique.edu> |
+over 3 days ago                              |

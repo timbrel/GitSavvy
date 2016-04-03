@@ -43,7 +43,7 @@ class GsBlameCommand(WindowCommand, GitCommand):
         detect_move_or_copy = [None, None, "-M", "-C", "-CCC"][index]
 
         view = self.window.new_file()
-        view.set_syntax_file("Packages/GitSavvy/syntax/blame.tmLanguage")
+        view.set_syntax_file("Packages/GitSavvy/syntax/blame.sublime-syntax")
         view.settings().set("git_savvy.blame_view", True)
         view.settings().set("git_savvy.repo_path", self.__repo_path)
         view.settings().set("git_savvy.file_path", self.__file_path)

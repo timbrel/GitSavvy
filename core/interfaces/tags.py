@@ -37,7 +37,7 @@ class TagsInterface(ui.Interface, GitCommand):
 
     interface_type = "tags"
     read_only = True
-    syntax_file = "Packages/GitSavvy/syntax/tags.tmLanguage"
+    syntax_file = "Packages/GitSavvy/syntax/tags.sublime-syntax"
     word_wrap = False
     tab_size = 2
 
