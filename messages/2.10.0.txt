@@ -1,0 +1,51 @@
+Changes since 2.9.1:
+
+  Feature:
+   - Log by author prompt with a list of committers
+   - Use `Goto Symbol` to navigate in all views
+   - Add `git add --edit` equivalent.
+   - Add and remove remotes
+   - resolve conflict (stage merged file) on successful merge
+   - allow prompt to specify custom command argument
+   - Use sublime new syntax file
+
+  Enhancement:
+   - Squash in rebase dashboard now behaves like `git rebase -i`.
+   - Move cursor in rebase dashboard when moving commits up/down.
+   - Rebase dashboard actions only effect selected commit and those that follow.
+   - Drop commit from rebase dashboard.
+
+  Fix:
+   - Launching merge tool would fail for non-ASCII files.
+   - Could not squash into first commit after squash direction change.
+   - plugin_host would crash when navigating past end of graph view
+   - When amending, prepopulated commit message would include two extra spaces.
+   - When amending with show_commit_diff enabled, unstaged changes were displayed.
+   - Update language definition for non-trailing spaces
+   - Set tab size for dashboards to enable code folding for sections.
+   - Allow user to disable display of branch descriptions.
+
+  Improve:
+   - Blame syntax
+   - Graph syntax
+   - Diff syntax
+   - Inline diff syntax
+   - Update blame syntax
+   - Make_commit syntax
+   - Diff syntax
+   - Show_commit syntax
+   - Graph syntax
+   - Tags syntax
+   - Rebase syntax
+   - Branch syntax
+   - Status syntax
+
+  Contributors:
+   - David Devlin
+   - Felix
+   - Pavel Savchenko
+   - Dave Nicolson
+   - gwenzek
+   - Simon
+   - Randy Lai
+   - Dale Bustad
