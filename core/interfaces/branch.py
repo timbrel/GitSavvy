@@ -347,7 +347,6 @@ class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
         self.local_branch = segments[1]
 
         self.remotes = list(self.get_remotes().keys())
-        self.remote_branches = self.get_remote_branches()
 
         if not self.remotes:
             self.view.window().show_quick_panel(["There are no remotes available."], None)
@@ -368,16 +367,11 @@ class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
             return
 
         self.selected_remote = self.remotes[remote_index]
-        selected_remote_prefix = self.selected_remote + "/"
-
-        self.branches_on_selected_remote = [
-            branch for branch in self.remote_branches
-            if branch.startswith(selected_remote_prefix)
-        ]
+        self.branches_on_selected_remote = self.list_remote_branches(self.selected_remote)
 
         try:
             pre_selected_index = self.branches_on_selected_remote.index(
-                selected_remote_prefix + self.local_branch)
+                self.selected_remote + "/" + self.local_branch)
         except ValueError:
             pre_selected_index = 0
 

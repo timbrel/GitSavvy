@@ -73,7 +73,6 @@ class GsPushToBranchCommand(WindowCommand, PushBase):
         proceed no further.
         """
         self.remotes = list(self.get_remotes().keys())
-        self.remote_branches = self.get_remote_branches()
 
         if not self.remotes:
             self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
@@ -100,18 +99,13 @@ class GsPushToBranchCommand(WindowCommand, PushBase):
 
         self.selected_remote = self.remotes[remote_index]
         self.last_remote_used = self.selected_remote
-        selected_remote_prefix = self.selected_remote + "/"
-
-        self.branches_on_selected_remote = [
-            branch for branch in self.remote_branches
-            if branch.startswith(selected_remote_prefix)
-        ]
+        self.branches_on_selected_remote = self.list_remote_branches(self.selected_remote)
 
         current_local_branch = self.get_current_branch_name()
 
         try:
             pre_selected_idx = self.branches_on_selected_remote.index(
-                selected_remote_prefix + current_local_branch)
+                self.selected_remote + "/" + current_local_branch)
         except ValueError:
             pre_selected_idx = 0
 
@@ -156,7 +150,6 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
         proceed no further.
         """
         self.remotes = list(self.get_remotes().keys())
-        self.remote_branches = self.get_remote_branches()
 
         if not self.remotes:
             self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)

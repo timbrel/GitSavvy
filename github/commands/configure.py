@@ -19,7 +19,6 @@ class GsConfigureGithubRemoteCommand(WindowCommand, GitCommand):
         proceed no further.
         """
         self.remotes = list(self.get_remotes().keys())
-        self.remote_branches = self.get_remote_branches()
 
         if not self.remotes:
             self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
