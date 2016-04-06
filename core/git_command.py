@@ -297,10 +297,15 @@ class GitCommand(StatusMixin,
     def last_remote_used(self):
         """
         With this getter and setter, keep global track of last remote used
-        for each repo.  Will return whatever was set last, or "origin" if
-        never set.
+        for each repo.  Will return whatever was set last, or active remote
+        if never set. If there is no tracking remote, use "origin".
         """
-        return self._last_remotes_used.get(self.repo_path, "origin")
+        remote = self._last_remotes_used.get(self.repo_path)
+        if not remote:
+            remote = self.get_upstream_for_active_branch().split("/")[0]
+        if not remote:
+            remote = "origin"
+        return remote
 
     @last_remote_used.setter
     def last_remote_used(self, value):
