@@ -91,7 +91,7 @@ A GitSavvy window will be opened to display the diff between the working directo
 
 #### Commit (`c`)
 
-A GitSavvy window will be opened, where you will be prompted to enter a commit message.  More information can be found [here](commiting.md#git-commit).
+A GitSavvy window will be opened, where you will be prompted to enter a commit message.  More information can be found [here](commit.md#git-commit).
 
 #### Commit including unstaged (`C`)
 
