@@ -1,5 +1,5 @@
 import sublime
-# import yaml
+from ..vendor import yaml
 
 
 syntax_file_map = {}
@@ -7,8 +7,6 @@ syntax_file_map = {}
 
 def determine_syntax_files():
     syntax_files = sublime.find_resources("*.sublime-syntax")
-    # Temporary fix to get GitSavvy loading.
-    return
     for syntax_file in syntax_files:
         try:
             # Use `sublime.load_resource`, in case Package is `*.sublime-package`.
