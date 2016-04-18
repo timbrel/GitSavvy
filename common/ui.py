@@ -82,6 +82,13 @@ class Interface():
         self.view.settings().set("git_savvy.tabbable", True)
         self.view.settings().set("git_savvy.interface", self.interface_type)
         self.view.settings().set("word_wrap", self.word_wrap)
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        if savvy_settings.get("vintageous_friendly", False) is True:
+            self.view.settings().set("git_savvy.handle_keys", False)
+            self.view.settings().set("git_savvy.should_enter_insert_mode", savvy_settings.get("vintageous_enter_insert_mode", False))
+        else:
+            self.view.settings().set("git_savvy.handle_keys", True)
+            self.view.settings().set("git_savvy.should_enter_insert_mode", False)
         self.view.set_syntax_file(self.syntax_file)
         self.view.set_scratch(True)
         self.view.set_read_only(self.read_only)
@@ -222,6 +229,10 @@ class GsNewContentAndRegionsCommand(TextCommand):
         self.view.replace(edit, sublime.Region(0, self.view.size()), content)
         self.view.set_read_only(is_read_only)
 
+        view_settings = self.view.settings()
+        if view_settings.get("git_savvy.interface") and view_settings.get("git_savvy.should_enter_insert_mode"):
+            self.view.run_command("gs_vintageous_enter_insert_mode")
+
         for row, col in cursors_row_col:
             pt = self.view.text_point(row, col)
             selections.add(sublime.Region(pt, pt))
@@ -359,3 +370,25 @@ class GsEditViewCloseCommand(TextCommand):
         view_id = self.view.id()
         if view_id in edit_views:
             del edit_views[view_id]
+
+class GsVintageousEnterInsertModeCommand(TextCommand):
+
+    """
+    Enters insert MODE in vintageous.
+    Toggles git_savvy.handle_keys back on.
+    """
+
+    def run(self, edit):
+        self.view.settings().set("git_savvy.handle_keys", True)
+        self.view.run_command("_enter_insert_mode")
+
+class GsVintageousEnterNormalModeCommand(TextCommand):
+
+    """
+    Enters normal MODE in vintageous.
+    Toggles git_savvy.handle_keys back off.
+    """
+
+    def run(self, edit):
+        self.view.settings().set('git_savvy.handle_keys', False)
+        self.view.run_command("_enter_normal_mode")

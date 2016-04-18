@@ -23,6 +23,18 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
         view.settings().set("git_savvy.tabbable", True)
         view.settings().set("word_wrap", False)
         view.settings().set("all_branches", all_branches)
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        if savvy_settings.get("vintageous_friendly", False) is True:
+            view.settings().set("git_savvy.handle_keys", False)
+            view.settings().set("git_savvy.vintageous_friendly", True)
+            should_enter_insert_mode = savvy_settings.get("vintageous_enter_insert_mode", False)
+            view.settings().set("git_savvy.should_enter_insert_mode", should_enter_insert_mode)
+            if should_enter_insert_mode is True:
+                view.run_command("gs_vintageous_enter_insert_mode")
+        else:
+            view.settings().set("git_savvy.handle_keys", True)
+            view.settings().set("git_savvy.vintageous_friendly", False)
+            view.settings().set("git_savvy.should_enter_insert_mode", False)
         view.set_name(LOG_GRAPH_TITLE)
         view.set_scratch(True)
         view.set_read_only(True)

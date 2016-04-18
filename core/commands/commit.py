@@ -64,6 +64,10 @@ class GsCommitCommand(WindowCommand, GitCommand):
         else:
             view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
 
+        if savvy_settings.get("vintageous_friendly", False) is True:
+            if savvy_settings.get("vintageous_enter_insert_mode", False) is True:
+                view.run_command("gs_vintageous_enter_insert_mode")
+
         commit_on_close = savvy_settings.get("commit_on_close")
         view.settings().set("git_savvy.commit_on_close", commit_on_close)
 

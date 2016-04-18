@@ -133,6 +133,10 @@ def get_instance_after_pt(view, pt, pattern):
 #################
 
 def disable_other_plugins(view):
-    # Disable key-bindings for Vitageous
-    # https://github.com/guillermooo/Vintageous/wiki/Disabling
-    view.settings().set('__vi_external_disable', True)
+    if sublime.load_settings("GitSavvy.sublime-settings").get('vintageous_friendly', False) is False:
+        # Disable key-bindings for Vitageous
+        # https://github.com/guillermooo/Vintageous/wiki/Disabling
+        view.settings().set('__vi_external_disable', True)
+        view.settings().set('git_savvy.vintageous_friendly', False)
+    else:
+        view.settings().set('git_savvy.vintageous_friendly', True)

@@ -76,8 +76,8 @@ class StatusInterface(ui.Interface, GitCommand):
       [r]         refresh status
       [tab]       transition to next dashboard
       [SHIFT-tab] transition to previous dashboard
-      [.]         move cursor to next file
-      [,]         move cursor to previous file
+      [{key_next_file}]         move cursor to next file
+      [{key_previous_file}]         move cursor to previous file
 
     -
     """
@@ -201,6 +201,20 @@ class StatusInterface(ui.Interface, GitCommand):
 
         return self.template_stashes.format("\n".join(
             "    ({}) {}".format(stash.id, stash.description) for stash in stash_list))
+
+    @ui.partial("key_next_file")
+    def render_key_next_file(self):
+        if sublime.load_settings("GitSavvy.sublime-settings").get("vintageous_friendly", False) is False:
+            return "."
+        else:
+            return "j"
+
+    @ui.partial("key_previous_file")
+    def render_key_previous_file(self):
+        if sublime.load_settings("GitSavvy.sublime-settings").get("vintageous_friendly", False) is False:
+            return ","
+        else:
+            return "k"
 
 
 ui.register_listeners(StatusInterface)
