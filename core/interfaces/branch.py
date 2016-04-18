@@ -618,64 +618,6 @@ class GsBranchesFetchCommand(TextCommand, GitCommand):
         self.view.window().run_command("gs_fetch")
 
 
-class GsBranchesDiffBranchHistoryCommand(TextCommand, GitCommand):
-
-    """
-    Show a view of all commits diff between branches.
-    """
-
-    def run(self, edit):
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
-        self.interface = ui.get_interface(self.view.id())
-        selection, line = self.interface.get_selection_line()
-        if not line:
-            return
-
-        segments = line.strip("▸ ").split(" ")
-        branch_name = segments[1]
-
-        local_region = self.view.get_regions("git_savvy_interface.branch_list")[0]
-        if local_region.contains(selection):
-            self.show_commits(branch_name)
-            return
-
-        remotes = self.get_remotes()
-        for remote_name in remotes:
-            remote_region = self.view.get_regions("git_savvy_interface.branch_list_" + remote_name)
-            if remote_region and remote_region[0].contains(selection):
-                self.show_commits(branch_name, remote=remote_name)
-                return
-
-    def show_commits(self, branch_name, remote=None):
-        active_branch_name = self.get_current_branch_name()
-        comparison_branch_name = remote + "/" + branch_name if remote else branch_name
-        diff_contents = self.get_commit_branch_sting(comparison_branch_name, active_branch_name)
-
-        repo_path = self.repo_path
-
-        view = util.view.get_scratch_view(self, "log_graph", read_only=True)
-        view.settings().set("git_savvy.repo_path", repo_path)
-        view.settings().set("word_wrap", False)
-        view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
-        view.set_name("BRANCH COMMIT COMPARISON")
-
-        view.run_command("gs_replace_view_text", {"text": diff_contents, "nuke_cursors": True})
-
-    def get_commit_branch_sting(self, branchA, branchB):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        args = savvy_settings.get("git_graph_args")
-        diff_contents = "Commits on {} and not on {}\n".format(branchA, branchB)
-        args.append("{}..{}".format(branchB, branchA))
-        diff_contents += self.git(*args)
-        diff_contents += "\n\nCommits on {} and not on {}\n".format(branchB, branchA)
-        args.pop()
-        args.append("{}..{}".format(branchA, branchB))
-        diff_contents += self.git(*args)
-        return diff_contents
-
-
 class GsBranchesEditBranchDescriptionCommand(TextCommand, GitCommand):
 
     """
