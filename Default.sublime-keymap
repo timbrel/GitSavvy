@@ -345,6 +345,26 @@
         ]
     },
     {
+        "keys": ["j"],
+        "command": "gs_status_navigate_file",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["k"],
+        "command": "gs_status_navigate_file",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["tab"],
         "command": "gs_tab_cycle",
         "args": { "source": "status" },
@@ -731,6 +751,26 @@
         "args": {"forward": false},
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["j"],
+        "command": "gs_log_graph_next_commit",
+        "args": {"forward": true},
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["k"],
+        "command": "gs_log_graph_next_commit",
+        "args": {"forward": false},
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
         ]
     },
