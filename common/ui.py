@@ -230,6 +230,9 @@ class GsNewContentAndRegionsCommand(TextCommand):
             a, b = region_range
             self.view.add_regions("git_savvy_interface." + key, [sublime.Region(a, b)])
 
+        if self.view.settings().get("git_savvy.interface"):
+            self.view.run_command("gs_handle_vintageous")
+
 
 class GsUpdateRegionCommand(TextCommand):
 

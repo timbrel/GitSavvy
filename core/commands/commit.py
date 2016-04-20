@@ -64,6 +64,8 @@ class GsCommitCommand(WindowCommand, GitCommand):
         else:
             view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
 
+        view.run_command("gs_handle_vintageous")
+
         commit_on_close = savvy_settings.get("commit_on_close")
         view.settings().set("git_savvy.commit_on_close", commit_on_close)
 

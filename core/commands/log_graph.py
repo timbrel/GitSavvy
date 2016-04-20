@@ -53,6 +53,8 @@ class GsLogGraphInitializeCommand(TextCommand, GitCommand):
         self.view.run_command("gs_replace_view_text", {"text": branch_graph, "nuke_cursors": True})
         self.view.run_command("gs_log_graph_more_info")
 
+        self.view.run_command("gs_handle_vintageous")
+
 
 class GsLogGraphActionCommand(TextCommand, GitCommand):
 
