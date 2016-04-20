@@ -53,11 +53,7 @@ class GsLogGraphInitializeCommand(TextCommand, GitCommand):
         self.view.run_command("gs_replace_view_text", {"text": branch_graph, "nuke_cursors": True})
         self.view.run_command("gs_log_graph_more_info")
 
-        if savvy_settings.get("vintageous_friendly", False) is True:
-            view_settings = self.view.settings()
-            view_settings.set("git_savvy.vintageous_friendly", True)
-            if savvy_settings.get("vintageous_enter_insert_mode", False) is True:
-                self.view.run_command("_enter_insert_mode")
+        self.view.run_command("gs_handle_vintageous")
 
 
 class GsLogGraphActionCommand(TextCommand, GitCommand):

@@ -230,13 +230,8 @@ class GsNewContentAndRegionsCommand(TextCommand):
             a, b = region_range
             self.view.add_regions("git_savvy_interface." + key, [sublime.Region(a, b)])
 
-        view_settings = self.view.settings()
-        if view_settings.get("git_savvy.interface"):
-            savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-            if savvy_settings.get("vintageous_friendly", False) is True:
-                view_settings.set("git_savvy.vintageous_friendly", True)
-                if savvy_settings.get("vintageous_enter_insert_mode", False) is True:
-                    self.view.run_command("_enter_insert_mode")
+        if self.view.settings().get("git_savvy.interface"):
+            self.view.run_command("gs_handle_vintageous")
 
 
 class GsUpdateRegionCommand(TextCommand):
