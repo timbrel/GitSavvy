@@ -8,6 +8,7 @@
         "keys": ["super+enter"],
         "command": "gs_commit_view_do_commit",
         "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true },
             { "key": "setting.git_savvy.commit_on_close", "operator": "equal", "operand": false }
         ]
@@ -16,6 +17,7 @@
         "keys": ["super+s"],
         "command": "gs_commit_view_sign",
         "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true }
         ]
     },
@@ -28,6 +30,7 @@
         "keys": ["super+enter"],
         "command": "gs_diff_stage_or_reset_hunk",
         "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
         ]
     },
@@ -36,6 +39,7 @@
         "command": "gs_diff_stage_or_reset_hunk",
         "args": { "reset": true },
         "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
             { "key": "setting.git_savvy.diff_view.in_cached_mode", "operator": "equal", "operand": false }
         ]
@@ -49,6 +53,7 @@
         "keys": ["super+enter"],
         "command": "gs_add_edit_commit",
         "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.git_add_view", "operator": "equal", "operand": true }
         ]
     },
@@ -61,6 +66,7 @@
         "keys": ["super+enter"],
         "command": "gs_blame_open_commit",
         "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
         ]
     },
@@ -73,6 +79,7 @@
         "keys": ["super+enter"],
         "command": "gs_help_goto_link",
         "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.help_view", "operator": "equal", "operand": true },
             { "key": "selector", "operator": "equal", "operand": "meta.link.inline.markdown"}
         ]
@@ -81,6 +88,7 @@
         "keys": ["super+backspace"],
         "command": "gs_help_goto_previous",
         "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.help_view", "operator": "equal", "operand": true }
         ]
     },
@@ -93,6 +101,7 @@
         "keys": ["super+z"],
         "command": "gs_inline_diff_undo",
         "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
@@ -105,6 +114,7 @@
         "keys": ["super+enter"],
         "command": "gs_log_graph_action",
         "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
         ],
         "args": { "action": "checkout" }
@@ -118,6 +128,7 @@
         "keys": ["super+enter"],
         "command": "gs_edit_view_complete",
         "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.edit_view", "operator": "equal", "operand": true }
         ]
     },
@@ -130,6 +141,7 @@
         "keys": ["super+z"],
         "command": "gs_rebase_undo",
         "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
         ]
     },
@@ -137,6 +149,7 @@
         "keys": ["super+y"],
         "command": "gs_rebase_redo",
         "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
         ]
     }
