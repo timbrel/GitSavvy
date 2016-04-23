@@ -32,13 +32,15 @@ class GsBlameCommand(WindowCommand, GitCommand):
                 "Detect moved or copied lines within same commit",
                 "Detect moved or copied lines across all commits",
             ],
-            self.on_option_selection
+            self.on_option_selection,
+            selected_index=self.quick_panel_blame_idx
         )
 
     def on_option_selection(self, index):
         if index == -1:
             return
 
+        self.quick_panel_blame_idx = index
         ignore_whitespace = "-w" if index > 0 else None
         detect_move_or_copy = [None, None, "-M", "-C", "-CCC"][index]
 
