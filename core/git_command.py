@@ -66,6 +66,8 @@ class GitCommand(StatusMixin,
     """
 
     _last_remotes_used = {}
+    _quick_panel_blame_idx = 1
+    _quick_panel_log_idx = 1
 
     def git(self, *args, stdin=None, working_dir=None, show_panel=False, throw_on_stderr=True, decode=True):
         """
@@ -314,3 +316,21 @@ class GitCommand(StatusMixin,
         class attribute dict.
         """
         self._last_remotes_used[self.repo_path] = value
+
+    @property
+    def quick_panel_blame_idx(self):
+        """ Index for quick panel blame options"""
+        return self._quick_panel_blame_idx
+
+    @quick_panel_blame_idx.setter
+    def quick_panel_blame_idx(self, value):
+        self._quick_panel_blame_idx = value
+
+    @property
+    def quick_panel_log_idx(self):
+        """ Index for quick panel blame options"""
+        return self._quick_panel_log_idx
+
+    @quick_panel_log_idx.setter
+    def quick_panel_log_idx(self, value):
+        self._quick_panel_log_idx = value

@@ -80,13 +80,15 @@ class GsLogCommand(WindowCommand, GitCommand):
         self.window.show_quick_panel(
             options_array,
             self.on_output_selection,
-            flags=sublime.MONOSPACE_FONT
+            flags=sublime.MONOSPACE_FONT,
+            selected_index=self.quick_panel_log_idx
         )
 
     def on_output_selection(self, index):
         if index == -1:
             return
 
+        self.quick_panel_log_idx = index
         if index == 0:
             self.window.run_command("gs_show_commit", {"commit_hash": self._selected_hash})
 
