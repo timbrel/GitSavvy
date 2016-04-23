@@ -21,4 +21,4 @@ class IgnoreMixin():
                 linesep = os.linesep
 
         with open(os.path.join(self.repo_path, ".gitignore"), "at") as ignore_file:
-            ignore_file.write(linesep + "# added by GitSavvy" + linesep + path_or_pattern + linesep)
+            ignore_file.write(linesep + path_or_pattern + linesep)
