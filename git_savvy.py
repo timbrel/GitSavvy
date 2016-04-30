@@ -7,7 +7,7 @@ if sys.version_info[0] == 2:
 else:
     def plugin_loaded():
         from .common import util
-        util.file.determine_syntax_files()
+        sublime.set_timeout_async(util.file.determine_syntax_files)
 
         # Ensure all interfaces are ready.
         sublime.set_timeout_async(
