@@ -3,6 +3,7 @@ import os
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
+from ..commands import *
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
@@ -913,3 +914,18 @@ class GsRebaseSkipCommand(TextCommand, GitCommand):
             self.git("rebase", "--skip")
         finally:
             util.view.refresh_gitsavvy(self.view)
+
+
+class GsRebaseNavigateCommitsCommand(GsNavigate):
+
+    """
+    Move cursor to the next (or previous) selectable commit in the dashboard.
+    """
+
+    def get_available_regions(self):
+        return [
+            branch_region
+            for region in self.view.find_by_selector(
+                "meta.git-savvy.rebase-graph.entry"
+            )
+            for branch_region in self.view.lines(region)]

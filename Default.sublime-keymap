@@ -1034,6 +1034,48 @@
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
         ]
     },
+    ///////////////////////////////////
+    // REBASE DASHBOARD - NAVIGATION //
+    ///////////////////////////////////
+
+    {
+        "keys": ["."],
+        "command": "gs_rebase_navigate_commits",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": [","],
+        "command": "gs_rebase_navigate_commits",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["j"],
+        "command": "gs_rebase_navigate_commits",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["k"],
+        "command": "gs_rebase_navigate_commits",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
     {
         "keys": ["tab"],
         "command": "gs_tab_cycle",
