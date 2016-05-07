@@ -3,6 +3,7 @@ import os
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
+from ..commands import *
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
@@ -316,3 +317,15 @@ class GsTagViewLogCommand(TextCommand, GitCommand):
         window = self.view.window()
         for commit_hash in commit_hashes:
             window.run_command("gs_show_commit", {"commit_hash": commit_hash})
+
+
+class GsTagsNavigateTagCommand(GsNavigate):
+
+    """
+    Move cursor to the next (or previous) selectable file in the dashboard.
+    """
+
+    def get_available_regions(self):
+        return [file_region
+                for region in self.view.find_by_selector("meta.git-savvy.tag.name")
+                for file_region in self.view.lines(region)]

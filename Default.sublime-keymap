@@ -528,6 +528,49 @@
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
         ]
     },
+
+    ////////////////////////////
+    // TAGS VIEW - NAVIGATION //
+    ////////////////////////////
+
+    {
+        "keys": ["."],
+        "command": "gs_tags_navigate_tag",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": [","],
+        "command": "gs_tags_navigate_tag",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["j"],
+        "command": "gs_tags_navigate_tag",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["k"],
+        "command": "gs_tags_navigate_tag",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
     {
         "keys": ["tab"],
         "command": "gs_tab_cycle",
