@@ -15,7 +15,7 @@ contexts:
     - match: '(\w+/\w+)?#[0-9]+'
       comment: issue
       scope: constant.other.git-savvy.make-commit.issue-ref
-    - match: ^(?=diff --git a/)
+    - match: ^(?=diff --git)
       comment: diff section
       push:
         - meta_scope: meta.git-savvy.commit-diff
