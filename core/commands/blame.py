@@ -1,5 +1,6 @@
 import re
 from collections import namedtuple, defaultdict
+import unicodedata
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
@@ -80,6 +81,7 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
         blame_porcelain = self.git(
             "blame", "-p", ignore_whitespace, detect_move_or_copy, self.file_path
         )
+        blame_porcelain = unicodedata.normalize('NFC', blame_porcelain)
         blamed_lines, commits = self.parse_blame(blame_porcelain.splitlines())
 
         commit_infos = {
