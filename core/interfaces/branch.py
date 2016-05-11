@@ -4,6 +4,7 @@ from itertools import groupby
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
+from ..commands import *
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
@@ -662,44 +663,16 @@ class GsBranchesEditBranchDescriptionCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesNavigateBranchesCommand(TextCommand, GitCommand):
+class GsBranchesNavigateBranchesCommand(GsNavigate):
 
     """
     Move cursor to the next (or previous) selectable branch in the dashboard.
     """
 
-    def run(self, edit, forward=True):
-        sel = self.view.sel()
-        if not sel:
-            return
-        current_position = sel[0].a
-        branch_regions = [
+    def get_available_regions(self):
+        return [
             branch_region
             for region in self.view.find_by_selector(
                 "meta.git-savvy.branches.branch"
             )
             for branch_region in self.view.lines(region)]
-
-        new_position = (self.forward(current_position, branch_regions)
-                        if forward
-                        else self.backward(current_position, branch_regions))
-
-        if new_position is None:
-            return
-
-        sel.clear()
-        # Position the cursor at the beginning of the branch name.
-        new_position += 4
-        sel.add(sublime.Region(new_position, new_position))
-
-    def forward(self, current_position, file_regions):
-        for file_region in file_regions:
-            if file_region.a > current_position:
-                return file_region.a
-        return None
-
-    def backward(self, current_position, file_regions):
-        for file_region in reversed(file_regions):
-            if file_region.b < current_position:
-                return file_region.a
-        return None

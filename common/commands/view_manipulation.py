@@ -55,6 +55,7 @@ class GsReplaceRegionCommand(TextCommand):
         self.view.replace(edit, sublime.Region(begin, end), text)
         self.view.set_read_only(is_read_only)
 
+
 class GsHandleVintageousCommand(TextCommand):
 
     """

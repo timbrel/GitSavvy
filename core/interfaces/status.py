@@ -3,6 +3,7 @@ import os
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
+from ..commands import *
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
@@ -761,18 +762,13 @@ class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(lambda: self.launch_tool_for_file(file_paths[0]), 0)
 
 
-class GsStatusNavigateFileCommand(TextCommand, GitCommand):
+class GsStatusNavigateFileCommand(GsNavigate):
 
     """
     Move cursor to the next (or previous) selectable file in the dashboard.
     """
 
-    def run(self, edit, forward=True):
-        sel = self.view.sel()
-        if not sel:
-            return
-        current_position = sel[0].a
-
+    def get_available_regions(self):
         file_regions = [file_region
                         for region in self.view.find_by_selector("meta.git-savvy.status.file")
                         for file_region in self.view.lines(region)]
@@ -781,31 +777,7 @@ class GsStatusNavigateFileCommand(TextCommand, GitCommand):
                          for region in self.view.find_by_selector("meta.git-savvy.status.saved_stash")
                          for stash_region in self.view.lines(region)]
 
-        available_regions = file_regions + stash_regions
-
-        new_position = (self.forward(current_position, available_regions)
-                        if forward
-                        else self.backward(current_position, available_regions))
-
-        if new_position is None:
-            return
-
-        sel.clear()
-        # Position the cursor at the beginning of the file name.
-        new_position += 4
-        sel.add(sublime.Region(new_position, new_position))
-
-    def forward(self, current_position, file_regions):
-        for file_region in file_regions:
-            if file_region.a > current_position:
-                return file_region.a
-        return None
-
-    def backward(self, current_position, file_regions):
-        for file_region in reversed(file_regions):
-            if file_region.b < current_position:
-                return file_region.a
-        return None
+        return file_regions + stash_regions
 
 
 class GsStatusSelectFirstFileCommand(TextCommand):
