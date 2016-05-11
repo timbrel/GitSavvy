@@ -65,6 +65,9 @@ def refresh_gitsavvy(view):
     """
     if view.settings().get("git_savvy.interface") is not None:
         view.run_command("gs_interface_refresh")
+    if view.settings().get("git_savvy.branch_commit_history_view") is not None:
+        view.run_command("gs_branches_diff_commit_history_refresh")
+
     view.run_command("gs_update_status_bar")
 
 

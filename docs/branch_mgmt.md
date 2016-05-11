@@ -88,7 +88,7 @@ A scratch view will be opened, showing the diff between the selected branch and 
 
 #### Diff history of selected and active branches (`H`)
 
-A scratch view will be opened, showing the commit diff between the selected branch and the active branch.
+A scratch view will be opened, showing the commit diff between the selected branch and the active branch. Hitting `Enter` will open a panel where you can choose to `show commit`, `Checkout commit`,  `Cherry-pick commit` and `Refresh`. Refresh is also available by pressing `r`.
 
 #### Toggle display of remote branches (`e`)
 

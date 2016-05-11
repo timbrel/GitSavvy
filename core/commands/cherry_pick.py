@@ -1,13 +1,15 @@
 import sublime
+from sublime_plugin import TextCommand
 
 from .log import GsLogCommand
 from ..git_mixins.branches import BranchesMixin
+from ...common import util
 
 
 class GsCherryPickCommand(GsLogCommand, BranchesMixin):
-    def run_async(self, target_hash=None):
-        if target_hash:
-            return self.cherry_pick(target_hash)
+    def run_async(self):
+        if self._target_hash:
+            return self.cherry_pick(self._target_hash)
 
         self.select_commit = super().run_async
 
@@ -38,3 +40,4 @@ class GsCherryPickCommand(GsLogCommand, BranchesMixin):
         self.git("cherry-pick", commit_hash)
         sublime.status_message("Commit %s cherry-picked successfully." %
                                commit_hash)
+        util.view.refresh_gitsavvy(self.window.active_view())

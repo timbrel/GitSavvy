@@ -9,12 +9,13 @@ from ...common import util
 class GsLogCommand(WindowCommand, GitCommand):
     cherry_branch = None
 
-    def run(self, filename=None, limit=6000, author=None, log_current_file=False):
+    def run(self, filename=None, limit=6000, author=None, log_current_file=False, target_hash=None):
         self._pagination = 0
         self._filename = filename
         self._limit = limit
         self._author = author
         self._log_current_file = log_current_file
+        self._target_hash = target_hash
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):

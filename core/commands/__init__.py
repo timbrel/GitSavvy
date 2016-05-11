@@ -12,6 +12,7 @@ from .init import *
 from .diff import *
 from .blame import *
 from .show_commit import *
+from .branch_commit_history import *
 from .log import *
 from .merge import*
 from .changelog import *
