@@ -1,5 +1,8 @@
+import builtins
+import functools
 import importlib
 import sys
+import types
 from contextlib import contextmanager
 
 import sublime_plugin
@@ -72,7 +75,8 @@ def reload_modules(main, modules):
         print("reloading", name)
         return module.__loader__.load_module(name)
 
-    with intercepting_imports(module_reloader):
+    with intercepting_imports(module_reloader), \
+         importing_fromlist_aggresively(modules):
         # Now, import all the modules back, in order, starting with the main
         # module. This will reload all the modules directly or indirectly
         # referenced by the main one, i.e. usually most of our modules.
@@ -85,6 +89,76 @@ def reload_modules(main, modules):
         # the imports below (if not all) are no-ops though.
         for name in module_names:
             importlib.import_module(name)
+
+
+@contextmanager
+def importing_fromlist_aggresively(modules):
+    orig___import__ = builtins.__import__
+    @functools.wraps(orig___import__)
+    def __import__(name, globals=None, locals=None, fromlist=(), level=0):
+        # Given an import statement like this:
+        #
+        #     from .some.module import something
+        #
+        # The original __import__ performs roughly the following steps:
+        #
+        #   - Import ".some.module", just like the importlib.import_module()
+        #     function would do, i.e. resolve packages, calculate the absolute
+        #     name, check sys.modules for that module, invoke import hooks and
+        #     so on...
+        #
+        #   - For each name specified in the "fromlist" (a "something" in our
+        #     case), ensure the module have that name in its namespace. This
+        #     could be:
+        #
+        #       - a regular name defined within that module, like a function
+        #         named "something", and in this case we're done;
+        #
+        #       - or, in case the module is missing that attribute, there's a
+        #         chance that the requested name refers to a submodule of that
+        #         module, ".some.module.something", and we need to import it.
+        #         Once imported it will take care to register itself within
+        #         the parent's namespace.
+        #
+        # This looks natural and it is indeed in case of loading a module for
+        # the first time. But things start to behave slightly different once
+        # you try to reload a module.
+        #
+        # The main difference is that during the reload the module code is
+        # executed with its dictionary retained. And this has an undesired
+        # effect on handling the "fromlist" as described above: the second
+        # part (involving import of a submodule) is only executed when the
+        # module dictionary is missing the submodule name, which is not the
+        # case during the reload.
+        #
+        # This is generally not a problem: the name refers to the submodule
+        # imported earlier anyway. But we need to import it in order to force
+        # the necessary hook to reload that submodule too.
+
+        module = orig___import__(name, globals, locals, fromlist, level)
+        if fromlist and module.__name__ in modules:
+            # Refer to _handle_fromlist() from "importlib/_bootstrap.py"
+            if '*' in fromlist:
+                fromlist = list(fromlist)
+                fromlist.remove('*')
+                fromlist.extend(getattr(module, '__all__', []))
+            for x in fromlist:
+                # Here's an altered part of logic.
+                #
+                # The original __import__ doesn't even try to import a
+                # submodule if its name is already in the module namespace,
+                # but we do that for certain set of the known submodule.
+                if isinstance(getattr(module, x, None), types.ModuleType):
+                    from_name = '{}.{}'.format(module.__name__, x)
+                    if from_name in modules:
+                        importlib.import_module(from_name)
+        return module
+
+    builtins.__import__ = __import__
+    try:
+        yield
+    finally:
+        builtins.__import__ = orig___import__
 
 
 @contextmanager
