@@ -7,6 +7,31 @@ import sublime_plugin
 
 def reload_plugin():
     """Reload the GitSavvy plugin among with all its modules."""
+    from GitSavvy import git_savvy
+
+    modules = {name: module for name, module in sys.modules.items()
+               if name.startswith("GitSavvy.")}
+    try:
+        reload_modules(git_savvy, modules)
+    finally:
+        ensure_loaded(git_savvy, modules)
+
+
+def ensure_loaded(main, modules):
+    # Ensures all modules were put back into the sys.modules registry. This
+    # keeps the plugin at least in a partially working state, even if some of
+    # the modules failed to reload.
+    missing_modules = {name: module for name, module in modules.items()
+                       if name not in sys.modules}
+    if missing_modules:
+        for name, module in missing_modules:
+            sys.modules[name] = modules
+            print("NO RELOAD", name)
+        sublime_plugin.reload_plugin(git_savvy.__name__)
+
+
+def reload_modules(main, modules):
+    """Implements the machinery for reloading a given plugin module."""
     #
     # Here's the approach in general:
     #
@@ -26,17 +51,12 @@ def reload_plugin():
     # This makes the modules reload in the very same order as they were loaded
     # initially, as if they were imported from scratch.
     #
-    from GitSavvy import git_savvy
-
-    sublime_plugin.unload_module(git_savvy)
-
-    modules = {name: module for name, module in sys.modules.items()
-               if name.startswith("GitSavvy.")}
+    sublime_plugin.unload_module(main)
 
     # Insert the main "git_savvy" module at the beginning to make the reload
     # order be as close to the order of the "natural" import as possible.
-    module_names = [git_savvy.__name__] + sorted(name for name in modules
-                                                 if name != git_savvy.__name__)
+    module_names = [main.__name__] + sorted(name for name in modules
+                                            if name != main.__name__)
 
     # First, remove all the loaded modules from the sys.modules cache,
     # otherwise the reloading hook won't be called.
@@ -56,7 +76,7 @@ def reload_plugin():
         # Now, import all the modules back, in order, starting with the main
         # module. This will reload all the modules directly or indirectly
         # referenced by the main one, i.e. usually most of our modules.
-        sublime_plugin.reload_plugin(git_savvy.__name__)
+        sublime_plugin.reload_plugin(main.__name__)
 
         # Be sure to bring back *all* the modules that used to be loaded, not
         # only these imported through the main one. Otherwise, some of them
