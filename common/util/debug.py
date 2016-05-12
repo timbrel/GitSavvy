@@ -1,4 +1,5 @@
 import json
+import pprint as _pprint
 
 
 _log = []
@@ -55,16 +56,27 @@ def log_on_exception(fn):
             raise e
 
 
-def pprint(*args):
+def dump_var(name, value, width=79, end='\n', **kwargs):
+    is_str = isinstance(value, str)
+
+    prefix = "{}{}".format(name, ': ' if is_str else '=')
+    line_prefix = end + ' '*len(prefix)
+    if not is_str:
+        value = _pprint.pformat(value, width=max(49, width-len(prefix)))
+
+    print(prefix + line_prefix.join(value.splitlines()), end=end, **kwargs)
+
+
+def dump(*args, **kwargs):
+    for i, arg in enumerate(args):
+        dump_var("_arg{}".format(i), arg)
+    for name, arg in sorted(kwargs.items()):
+        dump_var(name, arg)
+
+
+# backward-compatibility
+def pprint(*args, **kwargs):
     """
     Pretty print since we can not use debugger
     """
-    import pprint
-
-    # pp = pprint.PrettyPrinter(indent=4)
-    for arg in args:
-        if isinstance(arg, str):
-            print(arg)
-        else:
-            pprint.pprint(arg)
-
+    dump(*args, **kwargs)
