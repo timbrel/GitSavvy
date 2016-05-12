@@ -16,24 +16,28 @@ def reload_plugin():
                if name.startswith("GitSavvy.")}
     try:
         reload_modules(git_savvy, modules)
+    except:
+        reload_modules(git_savvy, modules, perform_reload=False)
+        raise
     finally:
         ensure_loaded(git_savvy, modules)
 
 
 def ensure_loaded(main, modules):
-    # Ensures all modules were put back into the sys.modules registry. This
-    # keeps the plugin at least in a partially working state, even if some of
-    # the modules failed to reload.
+    # More simple (comparing to reload_modules(perform_reload=False)) and dumb
+    # approach to ensure all modules are back. Quite useful when debugging the
+    # "reload" module itself, i.e. for cases when reloading might fail due to
+    # bugs in reload_modules().
     missing_modules = {name: module for name, module in modules.items()
                        if name not in sys.modules}
     if missing_modules:
         for name, module in missing_modules:
             sys.modules[name] = modules
-            print("NO RELOAD", name)
+            print("restored", name, "XXX RELOAD BUG!")
         sublime_plugin.reload_plugin(git_savvy.__name__)
 
 
-def reload_modules(main, modules):
+def reload_modules(main, modules, perform_reload=True):
     """Implements the machinery for reloading a given plugin module."""
     #
     # Here's the approach in general:
@@ -54,7 +58,8 @@ def reload_modules(main, modules):
     # This makes the modules reload in the very same order as they were loaded
     # initially, as if they were imported from scratch.
     #
-    sublime_plugin.unload_module(main)
+    if perform_reload:
+        sublime_plugin.unload_module(main)
 
     # Insert the main "git_savvy" module at the beginning to make the reload
     # order be as close to the order of the "natural" import as possible.
@@ -72,8 +77,17 @@ def reload_modules(main, modules):
     def module_reloader(name):
         module = modules[name]
         sys.modules[name] = module  # restore the module back
-        print("reloading", name)
-        return module.__loader__.load_module(name)
+
+        if perform_reload:
+            print("reloading", name)
+            try:
+                return module.__loader__.load_module(name)
+            except:
+                if name in sys.modules:
+                    del sys.modules[name]  # to indicate an error
+                raise
+        else:
+            return module
 
     with intercepting_imports(module_reloader), \
          importing_fromlist_aggresively(modules):
