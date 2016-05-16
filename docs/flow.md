@@ -4,8 +4,9 @@ Vincent Driessen's [git-flow](https://github.com/nvie/gitflow) extension is full
 
 Most commands attempt to mirror `git-flow` 's interface with the added ability to select a target from local branches/remotes.
 
-#### Note
-Requires _version **0.4.1**_ and above.
+#### Notes
+- Requires _version **0.4.1**_ and above.
+- In some environments, like OS X, Sublime Text does not inherit the shell PATH environment value, and prevents `git-flow` extension from being located. This can be fixed with a plugin such as [SublimeFixMacPath](https://github.com/int3h/SublimeFixMacPath).
 
 ## `flow: init`
 
