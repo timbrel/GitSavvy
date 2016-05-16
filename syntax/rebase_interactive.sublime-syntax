@@ -1,0 +1,61 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+name: GitSavvy Rebase Interactive
+hidden: true
+scope: git-savvy.rebase.interactive
+variables:
+  pick: 'pick|p'
+  reword: reword|r
+  edit: edit|e
+  squash: squash|s
+  fixup: fixup|f
+  exec: exec|x
+  drop: drop|d
+contexts:
+  main:
+    - match: '^({{pick}}) (\w*) (.*)\n'
+      comment: action hash message
+      captures:
+        0: meta.git-savvy.rebase-interactive.line
+        1: constant.other.git-savvy.rebase.interactive.pick
+        2: constant.numeric.commit-hash.git-savvy
+    - match: '^({{reword}}) (\w*) (.*)\n'
+      comment: action hash message
+      captures:
+        0: meta.git-savvy.rebase-interactive.line
+        1: constant.other.git-savvy.rebase.interactive.reword
+        2: constant.numeric.commit-hash.git-savvy
+    - match: '^({{edit}}) (\w*) (.*)\n'
+      comment: action hash message
+      captures:
+        0: meta.git-savvy.rebase-interactive.line
+        1: constant.other.git-savvy.rebase.interactive.edit
+        2: constant.numeric.commit-hash.git-savvy
+    - match: '^({{squash}}) (\w*) (.*)\n'
+      comment: action hash message
+      captures:
+        0: meta.git-savvy.rebase-interactive.line
+        1: constant.other.git-savvy.rebase.interactive.squash
+        2: constant.numeric.commit-hash.git-savvy
+    - match: '^({{fixup}}) (\w*) (.*)\n'
+      comment: action hash message
+      captures:
+        0: meta.git-savvy.rebase-interactive.line
+        1: constant.other.git-savvy.rebase.interactive.fixup
+        2: constant.numeric.commit-hash.git-savvy
+    - match: '^({{exec}}) (\w*) (.*)\n'
+      comment: action hash message
+      captures:
+        0: meta.git-savvy.rebase-interactive.line
+        1: constant.other.git-savvy.rebase.interactive.exec
+        2: constant.numeric.commit-hash.git-savvy
+    - match: '^({{drop}}) (\w*) (.*)\n'
+      comment: action hash message
+      captures:
+        0: meta.git-savvy.rebase-interactive.line
+        1: constant.other.git-savvy.rebase.interactive.drop
+        2: constant.numeric.commit-hash.git-savvy
+
+    - match: '^#.*'
+      scope: comment.block.git-savvy.commit-info
