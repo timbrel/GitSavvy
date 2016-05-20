@@ -3,13 +3,12 @@ Sublime commands related to development and debugging.
 """
 
 import sys
-import imp
 import urllib
 
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..util import debug
+from ..util import debug, reload
 
 REPORT_URL_TEMPLATE = "https://github.com/divmain/GitSavvy/issues/new?{q}"
 
@@ -17,31 +16,15 @@ REPORT_URL_TEMPLATE = "https://github.com/divmain/GitSavvy/issues/new?{q}"
 class GsReloadModulesDebug(WindowCommand):
 
     """
-    When triggered, reload all GitSavvy submodules twice, so as not
-    to worry about load order.
+    When triggered, reload all GitSavvy submodules.
     """
 
     def run(self):
+        reload.reload_plugin()
+
+    def is_visible(self):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-
-        if savvy_settings.get("dev_mode"):
-            for _ in range(2):
-                for name in self.ordered_modules():
-                    module = sys.modules[name]
-                    print("GitSavvy: reloading submodule", name)
-                    imp.reload(module)
-
-            sublime.sublime_api.plugin_host_ready()
-
-    def ordered_modules(self):
-        # common.ui must always be loaded first because it sets up the
-        # array of interface listeners.  If it's loaded after any of the
-        # interface modules then refresh events will be broken.
-        modules = ["GitSavvy.common.ui"]
-        modules += [mod for mod in sys.modules.keys()
-                    if mod[0:8] == "GitSavvy" and mod not in modules]
-
-        return modules
+        return savvy_settings.get("dev_mode")
 
 
 class GsStartLoggingCommand(WindowCommand):

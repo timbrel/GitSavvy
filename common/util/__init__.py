@@ -8,5 +8,6 @@ from . import log
 from . import actions
 from . import debug
 from . import diff_string
+from . import reload
 
 super_key = "SUPER" if sys.platform == "darwin" else "CTRL"
