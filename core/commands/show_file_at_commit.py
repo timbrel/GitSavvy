@@ -1,3 +1,4 @@
+import re
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
@@ -29,5 +30,6 @@ class GsShowFileAtCommitCommand(WindowCommand, GitCommand):
         filepath = view.settings().get("filepath")
         repopath = view.settings().get("git_savvy.repo_path")
         filename = filepath[len(repopath)+1:]
+        filename = re.sub('\\\\','/', filename)
         content = self.git("show", commit_hash + ':' + filename)
         view.run_command("gs_replace_view_text", {"text": content, "nuke_cursors": True})
