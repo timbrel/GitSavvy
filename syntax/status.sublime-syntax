@@ -36,7 +36,7 @@ contexts:
         - meta_scope: meta.git-savvy.status.section
         - match: ^$
           pop: true
-        - match: '^  [ \-] (.+)\n$'
+        - match: '^(  [ \-] .+\n)$'
           captures:
               1: meta.git-savvy.status.file gitsavvy.gotosymbol
     - match: ^  STASHES:$
