@@ -292,14 +292,14 @@ class RebaseInterface(ui.Interface, GitCommand):
     def get_branch_state(self):
         branch_name = self.get_current_branch_name()
         ref = self.get_branch_ref(branch_name)
-        return branch_name, ref
+        index_status = self.get_status()
+        return branch_name, ref, index_status
 
-    def complete_action(self, branch_state, success, description):
+    def complete_action(self, branch_name, ref_before, success, description):
         log = self.view.settings().get("git_savvy.rebase_log") or []
         cursor = self.view.settings().get("git_savvy.rebase_log_cursor") or (len(log) - 1)
         log = log[:cursor+1]
 
-        branch_name, ref_before = branch_state
         log.append({
             "description": description,
             "branch_name": branch_name,
@@ -431,8 +431,14 @@ class RewriteBase(TextCommand, GitCommand):
 
     def make_changes(self, commit_chain, description, base_commit=None):
         base_commit = base_commit or self.interface.base_commit()
-        branch_state = self.interface.get_branch_state()
+        branch_name, ref, changed_files = self.interface.get_branch_state()
         success = True
+
+        if len(changed_files):
+            sublime.message_dialog(
+                "Unable to perform rebase actions while repo is in unclean state."
+            )
+            return
 
         try:
             self.rewrite_active_branch(
@@ -445,7 +451,7 @@ class RewriteBase(TextCommand, GitCommand):
             raise e
 
         finally:
-            self.interface.complete_action(branch_state, success, description)
+            self.interface.complete_action(branch_name, ref, success, description)
 
         util.view.refresh_gitsavvy(self.view)
 
