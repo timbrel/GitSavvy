@@ -60,6 +60,7 @@ If you run into any issues not addressed here, please feel free to [open an issu
 ### Modifying history
 
 - [git: rebase](rebase.md)
+- [git: rebase from terminal](rebase.md#git-rebase-from-terminal)
 - [git: amend previous commit](commit.md#git-amend-previous-commit)
 
 

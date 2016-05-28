@@ -6,15 +6,15 @@ hidden: true
 scope: git-savvy.make-commit
 contexts:
   main:
-    - match: ^##.*
-      comment: commit header
-      scope: comment.git-savvy.make-commit
     - match: \@\w*
       comment: github username
       scope: constant.other.git-savvy.make-commit.github-username
     - match: '(\w+/\w+)?#[0-9]+'
       comment: issue
       scope: constant.other.git-savvy.make-commit.issue-ref
+    - match: ^#{1,2}.*
+      comment: commit header
+      scope: comment.git-savvy.make-commit
     - match: ^(?=diff --git)
       comment: diff section
       push:

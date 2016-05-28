@@ -122,3 +122,7 @@ This is equivalent to `git checkout --ours -- FILE_PATH`.  This is correct becau
 #### Resolve conflict with external merge tool (`M`)
 
 When a conflict occurs, selecting the file in question and running this command will launch the external merge tool to resolve the conflict.  Once complete, if the merge tool does not automatically do so, press `g` to add the resolved version to the index.
+
+## `git: rebase from terminal`
+
+As many users does set there EDITOR to `subl -nw`. Then when you run  `git rebase -i master` it will open a new window of sublime and have syntax highlighting. As well as keyboard shortcut for change lines to different command. `control+shift+s` for squash, `control+shift+r` for reword and etc.
