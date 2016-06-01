@@ -1,4 +1,16 @@
 [
+    // Open readme and settings
+    {
+        "caption": "Preferences: GitSavvy Settings - Default",
+        "command": "open_file",
+        "args": {"file": "${packages}/GitSavvy/GitSavvy.sublime-settings"}
+    },
+    {
+        "caption": "Preferences: GitSavvy Settings - User",
+        "command": "open_file",
+        "args": {"file": "${packages}/User/GitSavvy.sublime-settings"}
+    },
+
     {
         "caption": "git: diff current file inline",
         "command": "gs_inline_diff"
