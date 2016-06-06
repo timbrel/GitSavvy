@@ -42,9 +42,14 @@ class TagsMixin():
         Sorts tags using LooseVersion if there's a tag matching the semver format.
         """
 
-        semver_test = re.compile('\d+\.\d+\.\d+')
-        semver_entries = [True for entry in entries if semver_test.match(entry.tag)]
-        semver_tags_present = len(semver_entries) > 0
-        if semver_tags_present:
-            entries = sorted(entries, key=lambda entry: LooseVersion(entry.tag), reverse=True)
-        return entries
+        semver_test = re.compile('v?\d+\.\d+\.?\d*')
+
+        semver_entries, regular_entries = [], []
+        for entry in entries:
+            if semver_test.match(entry.tag):
+                semver_entries.append(entry)
+            else:
+                regular_entries.append(entry)
+        if len(semver_entries):
+            semver_entries = sorted(semver_entries, key=lambda entry: LooseVersion(entry.tag), reverse=True)
+        return semver_entries + regular_entries
