@@ -70,7 +70,13 @@ class GitCommand(StatusMixin,
     _quick_panel_log_idx = 1
     _quick_panel_branch_diff_history_idx = 1
 
-    def git(self, *args, stdin=None, working_dir=None, show_panel=False, throw_on_stderr=True, decode=True):
+    def git(self, *args,
+            stdin=None,
+            working_dir=None,
+            show_panel=False,
+            throw_on_stderr=True,
+            decode=True,
+            custom_environ=None):
         """
         Run the git command specified in `*args` and return the output
         of the git command as a string.
@@ -117,12 +123,14 @@ class GitCommand(StatusMixin,
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
+            environ = os.environ.copy()
+            environ.update(custom_environ or {})
             p = subprocess.Popen(command,
                                  stdin=subprocess.PIPE,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
                                  cwd=working_dir or self.repo_path,
-                                 env=os.environ,
+                                 env=environ,
                                  startupinfo=startupinfo)
             stdout, stderr = p.communicate(stdin.encode(encoding="UTF-8") if stdin else None)
             if decode:
