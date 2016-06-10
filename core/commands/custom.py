@@ -6,18 +6,17 @@ from ..git_command import GitCommand
 from ...common import util
 
 
-ALL_REMOTES = "All remotes."
-
-
 class CustomCommandThread(threading.Thread):
-    def __init__(self, func, *args, **kwargs):
+    def __init__(self, func, *args, custom_environ=None, **kwargs):
+        self.custom_environ = custom_environ
         super(CustomCommandThread, self).__init__(**kwargs)
         self.cmd_args = args
         self.cmd_func = func
         self.daemon = True
 
     def run(self):
-        return self.cmd_func(*self.cmd_args)
+        return self.cmd_func(*self.cmd_args,
+                             custom_environ=self.custom_environ)
 
 
 class GsCustomCommand(WindowCommand, GitCommand):
@@ -52,7 +51,8 @@ class GsCustomCommand(WindowCommand, GitCommand):
                   start_msg="Starting custom command...",
                   complete_msg="Completed custom command.",
                   run_in_thread=False,
-                  custom_argument=None):
+                  custom_argument=None,
+                  custom_environ=None):
 
         for idx, arg in enumerate(args):
             if arg == "{REPO_PATH}":
@@ -65,10 +65,10 @@ class GsCustomCommand(WindowCommand, GitCommand):
         sublime.status_message(start_msg)
         if run_in_thread:
             stdout = ''
-            cmd_thread = CustomCommandThread(self.git, *args)
+            cmd_thread = CustomCommandThread(self.git, *args, custom_environ=custom_environ)
             cmd_thread.start()
         else:
-            stdout = self.git(*args)
+            stdout = self.git(*args, custom_environ=custom_environ)
         sublime.status_message(complete_msg)
 
         if output_to_panel:
