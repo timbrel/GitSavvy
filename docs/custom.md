@@ -23,6 +23,7 @@ Your custom command may be further customized by setting the following arguments
 * `complete_msg`    - a message to display in status bar when the command completes
 * `prompt_msg`      - when using "{PROMPT_ARG}" argument in command, this determines the prompt message
 * `run_in_thread`   - when true, your command will be run in a separate child thread, independent of the async UI thread
+* `custom_environ`   - Can be used to set custom environment variables for this custom command, see example below
 
       **:boom: Warning**
   
@@ -73,6 +74,27 @@ Here are some more real-life examples of custom command usage:
             "start_msg": "Starting gui blame...",
             "complete_msg": "Gui blame started",
             "run_in_thread": true  // SEE WARNING ABOVE !
+        }
+    },
+    {
+        "caption": "git: rebase fixup commits",
+        "command": "gs_custom",
+        "args": {
+            "output_to_panel": true,
+            "args": ["rebase", "-p", "-i", "--autosquash", "{PROMPT_ARG}"],
+            "custom_environ": {"EDITOR": "cat"},
+            "prompt_msg": "Rebase from commit: "
+        }
+    },
+    {
+        "caption": "git: rebase interactive (rebase -i)",
+        "command": "gs_custom",
+        "args": {
+            "args": ["rebase", "-i", "{PROMPT_ARG}"],
+            "prompt_msg": "Rebase from",
+            "start_msg": "Starting rebase interactive...",
+            "complete_msg": "Rebase interactive started",
+            "custom_environ": {"EDITOR": "/usr/local/bin/subl -nw"},
         }
     }
 ]
