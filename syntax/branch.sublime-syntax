@@ -56,7 +56,8 @@ contexts:
       comment: Key-bindings menu
       push:
         - meta_scope: comment.git-savvy.status.key-bindings-menu
-        - match: ^-$
+        - match: ^-\n$
+          scope: comment.git-savvy.key-bindings-menu.end
           pop: true
         - match: "  ## ([A-Z ]+) ##"
           scope: meta.git-savvy.key-bindings-header
