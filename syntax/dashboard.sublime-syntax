@@ -1,6 +1,8 @@
 %YAML 1.2
 ---
 # http://www.sublimetext.com/docs/3/syntax.html
+# This is a base syntax which is used in
+# `status`, `branch`, `rebase` and `tags`
 name: GitSavvy Dashboard
 hidden: true
 scope: git-savvy.dashboard
@@ -39,6 +41,7 @@ contexts:
           captures:
             1: comment.git-savvy.status.summary-header.title.head
             2: constant.other.git-savvy.status.sha1
+
     - match: "^  (#{3,})"
       comment: Key-bindings menu
       captures:
@@ -72,6 +75,7 @@ contexts:
             - match: \s+([\w\s,\(\)]+)
               captures:
                 1: comment.git-savvy.key-bindings-menu.key-binding-description
+
     - match: '(\*\*) ([^\*]+) (\*\*)'
       comment: ux note
       scope: support.type.git-savvy.ux-note
