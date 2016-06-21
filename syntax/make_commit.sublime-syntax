@@ -12,7 +12,7 @@ contexts:
     - match: '(\w+/\w+)?#[0-9]+'
       comment: issue
       scope: constant.other.git-savvy.make-commit.issue-ref
-    - match: ^#{1,2}.*
+    - match: ^#{1,2}.*\n$
       comment: commit header
       scope: comment.git-savvy.make-commit
     - match: ^(?=diff --git)

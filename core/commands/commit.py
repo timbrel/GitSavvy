@@ -7,7 +7,7 @@ from ..git_command import GitCommand
 from ...common import util
 
 
-COMMIT_HELP_TEXT_EXTRA = """
+COMMIT_HELP_TEXT_EXTRA = """##
 ## You may also reference or close a GitHub issue with this commit.  To do so,
 ## type `#` followed by the `tab` key.  You will be shown a list of issues
 ## related to the current repo.  You may also type `owner/repo#` plus the `tab`
