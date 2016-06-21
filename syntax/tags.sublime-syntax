@@ -8,31 +8,29 @@ contexts:
   main:
     - include: "Packages/GitSavvy/syntax/dashboard.sublime-syntax"
 
-    - match: ^  (LOCAL):$
+    - match: ^  LOCAL:$
       comment: local section
-      captures:
-        0: keyword.other.git-savvy.section-header
+      scope: keyword.other.git-savvy.section-header.tags.local
       push:
-        - meta_scope: meta.git-savvy.tags.section
-        - match: ^$
-          pop: true
-        - match: '^    ([0-9a-f]{7,40}) (.+)\n$'
-          scope: meta.git-savvy.tags.tag
-          captures:
-            1: constant.other.git-savvy.tags.sha1
-            2: meta.git-savvy.tag.name gitsavvy.gotosymbol
+        - meta_scope: meta.git-savvy.section.tags.local
+        - include: section
 
-    - match: ^  (REMOTE) \((.+)\):$
+    - match: ^  REMOTE (\()(.+)(\)):$
       comment: remote section
+      scope: keyword.other.git-savvy.section-header.tags.remote
       captures:
-        0: keyword.other.git-savvy.section-header
+        1: punctuation.definition.git-savvy.section-header.remote
         2: constant.other.git-savvy.tags.remote-name
+        3: punctuation.definition.git-savvy.section-header.remote
       push:
-        - meta_scope: meta.git-savvy.tags.section
-        - match: ^$
-          pop: true
-        - match: '^    ([0-9a-f]{7,40}) (.+)\n$'
-          scope: meta.git-savvy.tags.tag
-          captures:
-            1: constant.other.git-savvy.tags.sha1
-            2: meta.git-savvy.tag.name gitsavvy.gotosymbol
+        - meta_scope: meta.git-savvy.section.tags.remote
+        - include: section
+
+  section:
+    - match: ^$
+      pop: true
+    - match: '^    ([0-9a-f]{7,40}) (.+)\n$'
+      scope: meta.git-savvy.tags.tag
+      captures:
+        1: constant.other.git-savvy.tags.sha1
+        2: meta.git-savvy.tag.name gitsavvy.gotosymbol
