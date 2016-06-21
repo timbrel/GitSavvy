@@ -1,21 +1,5 @@
 # SYNTAX TEST "Packages/GitSavvy/syntax/status.sublime-syntax"
 
-  BRANCH:  On branch `develop`.
-#  <- meta.git-savvy.status-summary
-#  ^ comment
-#           ^ -comment
-#                       ^ constant.other
-#                    ^ punctuation.definition.git-savvy.branch.start
-#                            ^ punctuation.definition.git-savvy.branch.end
-  ROOT:    ~/.config/sublime-text-3/Packages/GitSavvy
-#  ^ comment
-#              ^ comment.git-savvy.status.root-summary.root.info
-#  ^ comment.git-savvy.status.summary-header.title.root
-  HEAD:    aaf90ba improve blame syntax
-#  ^ comment
-#            ^ constant.other
-#  ^ comment.git-savvy.status.summary-header.title.head
-
   UNSTAGED:
 #  ^ keyword.other.git-savvy.section-header.unstaged
     syntax/status.sublime-syntax
@@ -35,47 +19,3 @@
 #  ^ keyword.other.git-savvy.section-header.merge-conflicts
     syntax/status.sublime-syntax
 #     ^ meta.git-savvy.status.section.merge-conflicts
-
-
-  ###################                   ###############
-#  ^ punctuation.definition.git-savvy.section
-#                                                     ^ punctuation.definition.git-savvy.section
-  ## SELECTED FILE ##                   ## ALL FILES ##
-#  ^ punctuation.definition.git-savvy.section
-#      ^ support.type.git-savvy.key-bindings-header-text
-  ###################                   ###############
-#  ^ punctuation.definition.git-savvy.section
-#                                        ^ punctuation.definition.git-savvy.section
-  [o] open file                         [a] stage all unstaged files
-# ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#  ^ constant.character.git-savvy-key-binding-key
-#   ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#       ^ comment.git-savvy.key-bindings-menu.key-binding-description
-#                                       ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#                                        ^ constant.character.git-savvy-key-binding-key
-#                                         ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#                                             ^ comment.git-savvy.key-bindings-menu.key-binding-description
-  [t][a] apply stash
-# ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#  ^ constant.character.git-savvy-key-binding-key
-#   ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#    ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#     ^ constant.character.git-savvy-key-binding-key
-#      ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#            ^ comment.git-savvy.key-bindings-menu.key-binding-description
-
-  [SHIFT-tab] transition to previous dashboard
-# ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#     ^ constant.character.git-savvy-key-binding-key
-#           ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#                ^ comment.git-savvy.key-bindings-menu.key-binding-description
-  [.]         move cursor to next file
-# ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#  ^ constant.character.git-savvy-key-binding-key
-#   ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#                ^ comment.git-savvy.key-bindings-menu.key-binding-description
-  [,]         move cursor to previous file
-# ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#  ^ constant.character.git-savvy-key-binding-key
-#   ^ punctuation.definition.git-savvy.key-bindings-key-stroke
-#                 ^ comment.git-savvy.key-bindings-menu.key-binding-description

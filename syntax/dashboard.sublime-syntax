@@ -1,0 +1,83 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+name: GitSavvy Dashboard
+hidden: true
+scope: git-savvy.dashboard
+contexts:
+  main:
+    - match: "^  BRANCH:"
+      comment: Summary Header
+      scope: comment.git-savvy.status.summary-header.title.branch
+      push:
+        - meta_scope: meta.git-savvy.status-summary
+        - match: ^$
+          pop: true
+
+        - match: ^  (ROOT:)(.+)
+          comment: root summary
+          scope: comment.git-savvy.status.root-summary
+          captures:
+            1: comment.git-savvy.status.summary-header.title.root
+            2: comment.git-savvy.status.root-summary.root.info
+
+        - match: "(`)([^`]+)(`)"
+          comment: branch names
+          scope: constant.other.git-savvy.status.branch
+          captures:
+            1: punctuation.definition.git-savvy.branch.start
+            2: constant.other.git-savvy.status.branch-name
+            3: punctuation.definition.git-savvy.branch.end
+
+        - match: (ahead)|(behind)
+          comment: ahead or behind
+          scope: keyword.other.git-savvy.status.ahead-behind
+
+        - match: ^  (HEAD:)\s+([0-9a-f]{7,40}) .+
+          comment: head summary
+          scope: comment.git-savvy.status.head-summary
+          captures:
+            1: comment.git-savvy.status.summary-header.title.head
+            2: constant.other.git-savvy.status.sha1
+    - match: "^  (#{3,})"
+      comment: Key-bindings menu
+      captures:
+        1: punctuation.definition.git-savvy.section
+      push:
+        - meta_scope: comment.git-savvy.status.key-bindings-menu
+
+        - match: ^-\n$
+          scope: comment.git-savvy.key-bindings-menu.end
+          pop: true
+
+        - match: "#{3,}"
+          scope: punctuation.definition.git-savvy.section
+
+        - match: "  (##) ([A-Z ]+) (##)"
+          scope: meta.git-savvy.key-bindings-header
+          captures:
+            1: punctuation.definition.git-savvy.section
+            2: support.type.git-savvy.key-bindings-header-text
+            3: punctuation.definition.git-savvy.section
+
+        - match: '(\[)([A-Za-z\,\.\-]+)(\])'
+          scope: meta.git-savvy.key-bindings-key-stroke
+          captures:
+            1: punctuation.definition.git-savvy.key-bindings-key-stroke
+            2: constant.character.git-savvy-key-binding-key
+            3: punctuation.definition.git-savvy.key-bindings-key-stroke
+          push:
+            - match: (?=\[|$)
+              pop: true
+            - match: \s+([\w\s,\(\)]+)
+              captures:
+                1: comment.git-savvy.key-bindings-menu.key-binding-description
+    - match: '(\*\*) ([^\*]+) (\*\*)'
+      comment: ux note
+      scope: support.type.git-savvy.ux-note
+      captures:
+        1: punctuation.definition.git-savvy.note
+        2: support.type.git-savvy.ux-note.text
+        3: punctuation.definition.git-savvy.note
+
+
