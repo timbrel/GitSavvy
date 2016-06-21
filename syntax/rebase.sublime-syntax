@@ -30,9 +30,6 @@ contexts:
       scope: comment.git-savvy.rebase-graph.base
       captures:
         1: support.type.git-savvy.rebase.commit_hash
-    - match: '\*\* [^\*]+ \*\*'
-      comment: ux note
-      scope: keyword.other.git-savvy.ux-note
     - match: '  ([▸ ]) (·)  ([0-9a-f]{7,40})  (.*)\n'
       scope: meta.git-savvy.rebase-graph.entry
       captures:
