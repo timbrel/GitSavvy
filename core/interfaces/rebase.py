@@ -49,19 +49,19 @@ class RebaseInterface(ui.Interface, GitCommand):
 
     CARET = "▸"
     SUCCESS = "✔"
-    CONFLICT = "✕"
-    UNKNOWN = "·"
+    CONFLICT = "✘"
+    UNKNOWN = "●"
 
     template = """\
 
       REBASE:  {active_branch} --> {base_ref} ({base_commit})
       STATUS:  {status}
 
-        ┳ ({base_commit})
-        ┃
+        ┬ ({base_commit})
+        │
     {diverged_commits}
-        ┃
-        ┻
+        │
+        ┴
 
         ** All actions take immediate effect, but can be undone. **
 
@@ -98,9 +98,9 @@ class RebaseInterface(ui.Interface, GitCommand):
     [M] launch external merge tool
     """
 
-    separator = "\n    ┃\n"
+    separator = "\n    │\n"
     commit = "  {caret} {status}  {commit_hash}  {commit_summary}{conflicts}"
-    conflict = "    ┃           conflict: {path}"
+    conflict = "    │           conflict: {path}"
 
     _base_commit = None
     _active_conflicts = None
@@ -196,7 +196,7 @@ class RebaseInterface(ui.Interface, GitCommand):
                 self._active_conflicts = self._get_conflicts_in_rebase()
                 conflicts = (
                     "" if not self._active_conflicts else
-                    "\n" + "\n".join("    ┃           ! {}".format(conflict.path)
+                    "\n" + "\n".join("    │           ! {}".format(conflict.path)
                                      for conflict in self._active_conflicts)
                     )
 
