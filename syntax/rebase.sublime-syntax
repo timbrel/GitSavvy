@@ -6,34 +6,39 @@ hidden: true
 scope: git-savvy.rebase
 contexts:
   main:
+    - include: "Packages/GitSavvy/syntax/dashboard.sublime-syntax"
     - match: "^  REBASE:"
       comment: Rebase summary
-      captures:
-        0: comment.git-savvy.rebase.summary-header
+      scope: comment.git-savvy.status.summary-header.title.rebase
       push:
         - meta_scope: meta.git-savvy.rebase-summary
         - match: ^$
           pop: true
-        - match: ^  STATUS:.+
-          comment: status
-          scope: comment.git-savvy.rebase.status
-    - match: ^(    ┃           )(.+)\n
+        - match: ^  (STATUS:).+
+          captures:
+            1: comment.git-savvy.status.summary-header.title.status.rebase
+
+    - match: ^(    [┃│]           )(.+)\n
       scope: meta.git-savvy.rebase-graph.conflict
       captures:
         1: comment.git-savvy.rebase-graph.separator
         2: keyword.other.name.git-savvy.rebase-conflict
-    - match: "    ┃"
+    - match: "    [┃│]"
       scope: comment.git-savvy.rebase-graph.separator
-    - match: "    ┻"
+    - match: "    [┻┴]"
       scope: comment.git-savvy.rebase-graph.end
-    - match: '    ┳ \(([0-9a-f]{7,40})\)'
+    - match: '    [┳┬] (\()([0-9a-f]{7,40})(\))'
       scope: comment.git-savvy.rebase-graph.base
       captures:
-        1: support.type.git-savvy.rebase.commit_hash
-    - match: '  ([▸ ]) (·)  ([0-9a-f]{7,40})  (.*)\n'
+        1: punctuation.definition.git-savvy.rebase-graph.base
+        2: support.type.git-savvy.rebase.commit_hash
+        3: punctuation.definition.git-savvy.rebase-graph.base
+
+    - match: '  ([▸ ]) ([·●])  ([0-9a-f]{7,40})  (.*)\n'
       scope: meta.git-savvy.rebase-graph.entry
       captures:
         1: string.other.git-savvy.rebase.caret
+        2: comment.git-savvy.rebase-graph.commit-node
         3: support.type.git-savvy.rebase.commit_hash
         4: gitsavvy.gotosymbol
     - match: '  ([▸ ]) (✔)  ([0-9a-f]{7,40})  (.*)\n'
@@ -43,11 +48,11 @@ contexts:
         2: entity.name.function.git-savvy.success
         3: support.type.git-savvy.rebase.commit_hash
         4: gitsavvy.gotosymbol
-    - match: '  ([▸ ]) (✕)  ([0-9a-f]{7,40})  (.*)\n'
+    - match: '  ([▸ ]) ([✕✘])  ([0-9a-f]{7,40})  (.*)\n'
       scope: meta.git-savvy.rebase-graph.entry
       captures:
         1: string.other.git-savvy.rebase.caret
         2: string.other.git-savvy.conflict
         3: support.type.git-savvy.rebase.commit_hash
         4: gitsavvy.gotosymbol
-    - include: "Packages/GitSavvy/syntax/dashboard.sublime-syntax"
+
