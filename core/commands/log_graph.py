@@ -5,6 +5,7 @@ from ..git_command import GitCommand
 from ...common import util
 
 LOG_GRAPH_TITLE = "GRAPH"
+COMMIT_NODE_CHAR = "●"
 
 
 class GsLogGraphCommand(WindowCommand, GitCommand):
@@ -50,6 +51,8 @@ class GsLogGraphInitializeCommand(TextCommand, GitCommand):
             args.append("--all")
 
         branch_graph = self.git(*args)
+        if COMMIT_NODE_CHAR != "*":
+            branch_graph = branch_graph.replace("*", COMMIT_NODE_CHAR)
         self.view.run_command("gs_replace_view_text", {"text": branch_graph, "nuke_cursors": True})
         self.view.run_command("gs_log_graph_more_info")
 
@@ -76,7 +79,7 @@ class GsLogGraphActionCommand(TextCommand, GitCommand):
             return
         line = lines[0]
 
-        commit_hash = line.strip(" /_\|*")[:7]
+        commit_hash = line.strip(" /_\|"+COMMIT_NODE_CHAR)[:7]
         if self.action == "checkout":
             self.checkout_ref(commit_hash)
             util.view.refresh_gitsavvy(self.view)

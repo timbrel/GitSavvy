@@ -10,19 +10,24 @@ contexts:
     - match: '([| \\/_]+)'
       comment: graph lines
       scope: comment.git-savvy.graph.graph-line
-    - match: \*
-      scope: keyword.commit.git-savvy
+
+    - match: '[*●]'
+      scope: keyword.graph.commit.git-savvy
+
     - match: \s*([0-9a-f]{6,40})\b
       comment: SHA
-      scope: constant.numeric.commit-hash.git-savvy
+      scope: constant.numeric.graph.commit-hash.git-savvy
+
     - match: \s*\(
       comment: branch-name
       scope: punctuation.expression.begin.git-savvy
       push:
+        - meta_scope: meta.graph.branch.git-savvy
         - match: \)
           scope: punctuation.expression.end.git-savvy
           pop: true
         - match: (tag)(:) ([^ ,)]+)
+          scope: meta.graph.tag.git-savvy
           captures:
             1: storage.type.git-savvy.graph
             2: punctuation.separator.other.git-savvy
@@ -30,7 +35,7 @@ contexts:
         - match: ','
           scope: punctuation.separator.other.git-savvy
         - match: '->'
-          scope: punctuation.separator.key-value.git-savvy
+          scope: punctuation.separator.key-value.branch.git-savvy
         - match: ([^ ,)]+)
           scope: constant.other.git.branch.git-savvy
     - match: (?=\S)
@@ -38,24 +43,31 @@ contexts:
 
 
   message:
+    - meta_scope: meta.graph.message.git-savvy
     - match: (`[^`]*`)
       comment: by name
       scope: keyword.by-name.git-savvy.
+
     - match: '(?:[Ff]ix(?:e[ds])?|[Rr]esolve[ds]?|[Cc]lose[ds]?)?\s*(?:#\d+|\[.*?\])'
       comment: issue numbers
       scope: string.other.issue.git-savvy
+
     - match: Merge branch (')(.*?)(')\s*(?:(?:of|into)\s+(.*))?
       comment: merges
-      scope: git-savvy.merge
+      scope: meta.git-savvy.grph.merge
       captures:
         1: punctuation.string.begin.git-savvy
         2: string.other.merge.branch-name.git-savvy
         3: punctuation.string.end.git-savvy
         4: string.other.merge.remote.git-savvy
+
     - match: Merge pull request (#\d+) from (.*)
+      scope: meta.git-savvy.grph.merge
       captures:
+        0: meta.git-savvy.grph.merge.pull-request
         1: string.other.issue.git-savvy
         2: string.other.merge.remote.git-savvy
+
     - match: ':'
       scope: punctuation.separator.key-value.git-savvy
     - match: $
