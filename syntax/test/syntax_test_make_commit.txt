@@ -1,0 +1,15 @@
+// SYNTAX TEST "Packages/GitSavvy/syntax/make_commit.sublime-syntax"
+
+This is for @aziz and close #76 aziz/git#123 aziz/good
+//          ^^^^^ constant.other.git-savvy.make-commit.github-username
+//                          ^^^ constant.other.git-savvy.make-commit.issue-ref
+//                              ^^^^^^^^^^^^ constant.other.git-savvy.make-commit.issue-ref
+
+## To make a commit, type your commit message and press SUPER-ENTER. To cancel
+// <- comment.git-savvy.make-commit
+// <- punctuation.definition.comment.make-commit.header.git-savvy
+// ^ comment.git-savvy.make-commit
+
+##
+// <- comment.git-savvy.make-commit
+// <- punctuation.definition.comment.make-commit.header.git-savvy
