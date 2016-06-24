@@ -16,52 +16,79 @@ first_line_match: |-
       )
 contexts:
   main:
-    - match: '(^(-{3}) a/(.+)$\n?)'
+    - match: ^diff.+$
+      scope: punctuation.definition.command.diff
+
+    - match: ^index.+$
+      scope: punctuation.definition.index.diff
+
+    - match: ^new file mode.+$
+      scope: punctuation.definition.new-file-mode.diff
+
+    - match: ^(-{3}) (a/)?(.+)$\n?
       comment: |
         Header the tells the user which file that the diff is for.
         The header part needs to be before the Add/Delete block/sections since
-        both start on + or -. We dont want there header lines to be marked
+        both start on + or -. We dont want the header lines to be marked
         green or read.
       scope: meta.diff.header.from-file
       captures:
         1: punctuation.definition.from-file.diff
-        3: gitsavvy.gotosymbol
-    - match: '(^(\+{3}) b/(.+)$\n)'
+        2: punctuation.definition.from-file.file-alias.diff
+        3: meta.filename.diff gitsavvy.gotosymbol
+
+    - match: ^(\+{3}) (b/)(.+)$\n?
       scope: meta.diff.header.to-file
       captures:
         1: punctuation.definition.to-file.diff
-        3: dont.need.gitsavvy.gotosymbol
+        2: punctuation.definition.to-file.file-alias.diff
+        3: meta.filename.diff dont.need.gitsavvy.gotosymbol
 
-    - match: ^(@@)\s*(.+?)\s*(@@)($\n?)?
+    - match: ^(@@)\s*(.+?)\s*(@@)\s(.*)$\n?
       scope: meta.diff.range.unified
       captures:
         1: punctuation.definition.range.diff
-        2: punctuation.definition.range.diff
+        2: meta.range.unified.line-numbers.diff
         3: punctuation.definition.range.diff
+        4: meta.range.content-begin.diff
 
-    - match: '(\{)(\+.+?\+)(\})'
+    - match: ^(>)( .*)?$\n?
+      scope: markup.inserted.diff
+      captures:
+        1: punctuation.definition.inserted.diff
+        2: markup.inserted.diff.content
+
+    - match: ^(<)( .*)?$\n?
+      scope: markup.deleted.diff
+      captures:
+        1: punctuation.definition.deleted.diff
+        2: markup.deleted.diff.content
+
+    - match: ^(\+)(.*)$\n?
+      scope: markup.inserted.diff
+      captures:
+        1: punctuation.definition.inserted.diff
+        2: markup.inserted.diff.content
+
+    - match: ^(-)(.*)$\n?
+      scope: markup.deleted.diff
+      captures:
+        1: punctuation.definition.deleted.diff
+        2: markup.deleted.diff.content
+
+    - match: (\{\+)(.+?)(\+\})
       comment: Add block/sections
       scope: markup.inserted.git-savvy.add-block
       captures:
         1: punctuation.definition.inserted.diff
-        2: punctuation.definition.inserted.diff
+        2: markup.inserted.git-savvy.add-block.content
         3: punctuation.definition.inserted.diff
-    - match: ^(((>)( .*)?)|((\+).*))$\n?
-      scope: markup.inserted.diff
-      captures:
-        3: punctuation.definition.inserted.diff
-        6: punctuation.definition.inserted.diff
 
-    - match: '(\[)(\-.+?)(\-\])'
+    - match: (\[\-)(.+?)(\-\])
       comment: Delete block/sections
       scope: markup.deleted.git-savvy.delete-block
       captures:
-        1: punctuation.definition.inserted.diff
-        2: punctuation.definition.inserted.diff
-        3: punctuation.definition.inserted.diff
-    - match: ^(((<)( .*)?)|((-).*))$\n?
-      scope: markup.deleted.diff
-      captures:
-        3: punctuation.definition.inserted.diff
-        6: punctuation.definition.inserted.diff
+        1: punctuation.definition.deleted.diff
+        2: markup.deleted.git-savvy.delete-block.content
+        3: punctuation.definition.deleted.diff
 
