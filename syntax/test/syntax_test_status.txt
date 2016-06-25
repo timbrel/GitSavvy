@@ -4,6 +4,11 @@
 #  ^ keyword.other.git-savvy.section-header.unstaged
     syntax/status.sublime-syntax
 #     ^ meta.git-savvy.status.section.unstaged
+    Color Schemes/GitSavvy.tmTheme
+#  ^ meta.git-savvy.status.file
+#    ^ gitsavvy.gotosymbol
+  - Color Schemes/Knockdown.tmTheme
+#    ^ meta.git-savvy.status.file gitsavvy.gotosymbol meta.git-savvy.status.file.removed
 
   STAGED:
 #  ^ keyword.other.git-savvy.section-header.staged

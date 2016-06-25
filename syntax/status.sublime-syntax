@@ -46,6 +46,13 @@ contexts:
   section:
     - match: ^$
       pop: true
-    - match: '^(  [ \-] .+\n)$'
+    - match: ^(    \w.+)$
       captures:
-          1: meta.git-savvy.status.file gitsavvy.gotosymbol
+          0: meta.git-savvy.status.file
+          1: gitsavvy.gotosymbol
+    - match: ^(  (-) (\w.+))$
+      captures:
+          0: meta.git-savvy.status.file
+          1: gitsavvy.gotosymbol
+          2: meta.git-savvy.status.file.removed.punctuation
+          3: meta.git-savvy.status.file.removed

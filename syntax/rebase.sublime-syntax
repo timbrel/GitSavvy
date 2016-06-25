@@ -9,14 +9,14 @@ contexts:
     - include: "Packages/GitSavvy/syntax/dashboard.sublime-syntax"
     - match: "^  REBASE:"
       comment: Rebase summary
-      scope: comment.git-savvy.status.summary-header.title.rebase
+      scope: comment.git-savvy.summary-header.title.rebase
       push:
         - meta_scope: meta.git-savvy.rebase-summary
         - match: ^$
           pop: true
         - match: ^  (STATUS:).+
           captures:
-            1: comment.git-savvy.status.summary-header.title.status.rebase
+            1: comment.git-savvy.summary-header.title.status.rebase
 
     - match: ^(    [┃│]           )(.+)\n
       scope: meta.git-savvy.rebase-graph.conflict

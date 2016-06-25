@@ -10,44 +10,44 @@ contexts:
   main:
     - match: "^  BRANCH:"
       comment: Summary Header
-      scope: comment.git-savvy.status.summary-header.title.branch
+      scope: comment.git-savvy.summary-header.title.branch
       push:
-        - meta_scope: meta.git-savvy.status-summary
+        - meta_scope: meta.git-savvy.summary-header
         - match: ^$
           pop: true
 
         - match: ^  (ROOT:)(.+)
           comment: root summary
-          scope: comment.git-savvy.status.root-summary
+          scope: comment.git-savvy.summary-header.root-summary
           captures:
-            1: comment.git-savvy.status.summary-header.title.root
-            2: comment.git-savvy.status.root-summary.root.info
+            1: comment.git-savvy.summary-header.title.root
+            2: comment.git-savvy.summary-header.root.info
 
         - match: "(`)([^`]+)(`)"
           comment: branch names
-          scope: constant.other.git-savvy.status.branch
+          scope: constant.other.git-savvy.summary-header.branch
           captures:
             1: punctuation.definition.git-savvy.branch.start
-            2: constant.other.git-savvy.status.branch-name
+            2: constant.other.git-savvy.summary-header.branch-name
             3: punctuation.definition.git-savvy.branch.end
 
         - match: (ahead)|(behind)
           comment: ahead or behind
-          scope: keyword.other.git-savvy.status.ahead-behind
+          scope: keyword.other.git-savvy.summary-header.ahead-behind
 
         - match: ^  (HEAD:)\s+([0-9a-f]{7,40}) .+
           comment: head summary
-          scope: comment.git-savvy.status.head-summary
+          scope: comment.git-savvy.summary-header.head-summary
           captures:
-            1: comment.git-savvy.status.summary-header.title.head
-            2: constant.other.git-savvy.status.sha1
+            1: comment.git-savvy.summary-header.title.head
+            2: constant.other.git-savvy.sha1
 
     - match: "^  (#{3,})"
       comment: Key-bindings menu
       captures:
         1: punctuation.definition.git-savvy.section
       push:
-        - meta_scope: comment.git-savvy.status.key-bindings-menu
+        - meta_scope: comment.git-savvy.key-bindings-menu
 
         - match: ^-\n$
           scope: comment.git-savvy.key-bindings-menu.end

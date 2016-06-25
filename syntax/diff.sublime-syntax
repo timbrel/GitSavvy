@@ -25,6 +25,9 @@ contexts:
     - match: ^new file mode.+$
       scope: punctuation.definition.new-file-mode.diff
 
+    - match: ^deleted file mode.+$
+      scope: punctuation.definition.deleted-file-mode.diff
+
     - match: ^(-{3}) (a/)?(.+)$\n?
       comment: |
         Header the tells the user which file that the diff is for.
@@ -37,7 +40,7 @@ contexts:
         2: punctuation.definition.from-file.file-alias.diff
         3: meta.filename.diff gitsavvy.gotosymbol
 
-    - match: ^(\+{3}) (b/)(.+)$\n?
+    - match: ^(\+{3}) (b/)?(.+)$\n?
       scope: meta.diff.header.to-file
       captures:
         1: punctuation.definition.to-file.diff

@@ -12,6 +12,11 @@ new file mode 100644
 # ^ punctuation.definition.from-file.diff
 #   ^^^^^^^^^ meta.filename.diff gitsavvy.gotosymbol
 
++++ /dev/null
+# <- punctuation.definition.to-file.diff
+# ^ punctuation.definition.to-file.diff
+#   ^^^^^^^^^ meta.filename.diff dont.need.gitsavvy.gotosymbol
+
 --- a/syntax/rebase.sublime-syntax
 # <- punctuation.definition.from-file.diff
 # ^ punctuation.definition.from-file.diff

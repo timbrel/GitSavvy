@@ -1,10 +1,10 @@
 # SYNTAX TEST "Packages/GitSavvy/syntax/rebase.sublime-syntax"
 
   REBASE:  status-syntax-improvements --> master (a3b397c)
-#  ^ comment.git-savvy.status.summary-header.title.rebase
+#  ^ comment.git-savvy.summary-header.title.rebase
 #                 ^ meta.git-savvy.rebase-summary
   STATUS:  Ready.
-#  ^ comment.git-savvy.status.summary-header.title.status.rebase
+#  ^ comment.git-savvy.summary-header.title.status.rebase
 #            ^ meta.git-savvy.rebase-summary
 
     ┬ (a3b397c)
