@@ -6,39 +6,32 @@ hidden: true
 scope: git-savvy.status
 contexts:
   main:
-    - match: "^  BRANCH:"
-      comment: Status summary
-      captures:
-        0: comment.git-savvy.status.summary-header
+    - include: "Packages/GitSavvy/syntax/dashboard.sublime-syntax"
+
+    - match: ^  STAGED:$
+      scope: keyword.other.git-savvy.section-header.staged
       push:
-        - meta_scope: meta.git-savvy.status-summary
-        - match: ^$
-          pop: true
-        - match: ^  ROOT:.+
-          comment: root summary
-          scope: comment.git-savvy.status.root-summary
-        - match: "`[^`]+`"
-          comment: branch names
-          scope: constant.other.git-savvy.status.branch-name
-        - match: (ahead)|(behind)
-          comment: ahead or behind
-          scope: keyword.other.git-savvy.status.ahead-behind
-        - match: "^  HEAD:    ([0-9a-f]{7,40} )?.+"
-          comment: head summary
-          scope: comment.git-savvy.status.head-commit
-          captures:
-            1: constant.other.git-savvy.status.sha1
-    - match: ^  ((STAGED)|(UNSTAGED)|(UNTRACKED)|(MERGE CONFLICTS)):$
-      comment: section
-      captures:
-        0: keyword.other.git-savvy.section-header
+        - meta_scope: meta.git-savvy.status.section.staged
+        - include: section
+
+    - match: ^  UNSTAGED:$
+      scope: keyword.other.git-savvy.section-header.unstaged
       push:
-        - meta_scope: meta.git-savvy.status.section
-        - match: ^$
-          pop: true
-        - match: '^(  [ \-] .+\n)$'
-          captures:
-              1: meta.git-savvy.status.file gitsavvy.gotosymbol
+        - meta_scope: meta.git-savvy.status.section.unstaged
+        - include: section
+
+    - match: ^  UNTRACKED:$
+      scope: keyword.other.git-savvy.section-header.untracked
+      push:
+        - meta_scope: meta.git-savvy.status.section.untracked
+        - include: section
+
+    - match: ^  MERGE CONFLICTS:$
+      scope: keyword.other.git-savvy.section-header.merge-conflicts
+      push:
+        - meta_scope: meta.git-savvy.status.section.merge-conflicts
+        - include: section
+
     - match: ^  STASHES:$
       comment: Stashes section
       captures:
@@ -49,18 +42,10 @@ contexts:
           pop: true
         - match: ^    (.+)\n$
           scope: meta.git-savvy.status.saved_stash
-    - match: "^  ####"
-      comment: Key-bindings menu
-      push:
-        - meta_scope: comment.git-savvy.status.key-bindings-menu
-        - match: ^-\n$
-          scope: comment.git-savvy.key-bindings-menu.end
-          pop: true
-        - match: "  ## ([A-Z ]+) ##"
-          scope: meta.git-savvy.key-bindings-header
-          captures:
-            1: support.type.git-savvy.key-bindings-header-text
-        - match: '\[([A-Za-z\,\.\-]+)\]'
-          scope: meta.git-savvy.key-bindings-key-stroke
-          captures:
-            1: constant.character.git-savvy-key-binding-key
+
+  section:
+    - match: ^$
+      pop: true
+    - match: '^(  [ \-] .+\n)$'
+      captures:
+          1: meta.git-savvy.status.file gitsavvy.gotosymbol

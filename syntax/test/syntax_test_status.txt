@@ -1,0 +1,21 @@
+# SYNTAX TEST "Packages/GitSavvy/syntax/status.sublime-syntax"
+
+  UNSTAGED:
+#  ^ keyword.other.git-savvy.section-header.unstaged
+    syntax/status.sublime-syntax
+#     ^ meta.git-savvy.status.section.unstaged
+
+  STAGED:
+#  ^ keyword.other.git-savvy.section-header.staged
+    syntax/status.sublime-syntax
+#     ^ meta.git-savvy.status.section.staged
+
+  UNTRACKED:
+#  ^ keyword.other.git-savvy.section-header.untracked
+    syntax/status.sublime-syntax
+#     ^ meta.git-savvy.status.section.untracked
+
+  MERGE CONFLICTS:
+#  ^ keyword.other.git-savvy.section-header.merge-conflicts
+    syntax/status.sublime-syntax
+#     ^ meta.git-savvy.status.section.merge-conflicts

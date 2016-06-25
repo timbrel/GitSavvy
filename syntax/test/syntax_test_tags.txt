@@ -1,0 +1,16 @@
+# SYNTAX TEST "Packages/GitSavvy/syntax/tags.sublime-syntax"
+
+  LOCAL:
+#  ^ keyword.other.git-savvy.section-header.tags.local
+    77dec1d 2.10.1
+#    ^ constant.other.git-savvy.tags.sha1
+#            ^ meta.git-savvy.tag.name gitsavvy.gotosymbol
+
+  REMOTE (origin):
+#    ^ keyword.other.git-savvy.section-header.tags.remote
+#        ^ punctuation.definition.git-savvy.section-header.remote
+#            ^ constant.other.git-savvy.tags.remote-name
+#               ^ punctuation.definition.git-savvy.section-header.remote
+    77dec1d 2.10.1
+#    ^ constant.other.git-savvy.tags.sha1
+#              ^ meta.git-savvy.tag.name gitsavvy.gotosymbol
