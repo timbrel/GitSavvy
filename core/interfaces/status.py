@@ -44,6 +44,10 @@ class StatusInterface(ui.Interface, GitCommand):
     {< merge_conflicts}
     {< no_status_message}
     {< stashes}
+    {< help}
+    """
+
+    template_help = """
       ###################                   ###############
       ## SELECTED FILE ##                   ## ALL FILES ##
       ###################                   ###############
@@ -75,6 +79,7 @@ class StatusInterface(ui.Interface, GitCommand):
       ###########
 
       [r]         refresh status
+      [?]         toggle this help menu
       [tab]       transition to next dashboard
       [SHIFT-tab] transition to previous dashboard
       [.]         move cursor to next file
@@ -202,6 +207,14 @@ class StatusInterface(ui.Interface, GitCommand):
 
         return self.template_stashes.format("\n".join(
             "    ({}) {}".format(stash.id, stash.description) for stash in stash_list))
+
+    @ui.partial("help")
+    def render_help(self):
+        help_hidden = self.view.settings().get("git_savvy.help_hidden")
+        if help_hidden:
+            return ""
+        else:
+            return self.template_help
 
 
 ui.register_listeners(StatusInterface)

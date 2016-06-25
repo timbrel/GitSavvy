@@ -65,6 +65,10 @@ class RebaseInterface(ui.Interface, GitCommand):
 
         ** All actions take immediate effect, but can be undone. **
 
+    {< help}
+    """
+
+    template_help = """
       ########################                  ############
       ## MANIPULATE COMMITS ##                  ## REBASE ##
       ########################                  ############
@@ -77,6 +81,7 @@ class RebaseInterface(ui.Interface, GitCommand):
       [u] move commit up (before previous)
       [w] show commit
 
+      [?]         toggle this help menu
       [tab]       transition to next dashboard
       [SHIFT-tab] transition to previous dashboard
 
@@ -174,6 +179,14 @@ class RebaseInterface(ui.Interface, GitCommand):
     @ui.partial("super_key")
     def render_super_key(self):
         return util.super_key
+
+    @ui.partial("help")
+    def render_help(self):
+        help_hidden = self.view.settings().get("git_savvy.help_hidden")
+        if help_hidden:
+            return ""
+        else:
+            return self.template_help.format(super_key=util.super_key, conflicts_bindings=self.render_conflicts_bindings())
 
     def get_diverged_commits_info(self, start, end):
         self.entries = self.log(start_end=(start, end), reverse=True)

@@ -63,7 +63,7 @@ contexts:
             2: support.type.git-savvy.key-bindings-header-text
             3: punctuation.definition.git-savvy.section
 
-        - match: '(\[)([A-Za-z\,\.\-]+)(\])'
+        - match: '(\[)([A-Za-z\,\.\-\?]+)(\])'
           scope: meta.git-savvy.key-bindings-key-stroke
           captures:
             1: punctuation.definition.git-savvy.key-bindings-key-stroke

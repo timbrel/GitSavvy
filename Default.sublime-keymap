@@ -320,6 +320,14 @@
     //////////////////////////////
 
     {
+        "keys": ["?"],
+        "command": "gs_interface_toggle_help",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["r"],
         "command": "gs_interface_refresh",
         "context": [
@@ -468,6 +476,14 @@
     // TAGS VIEW //
     ///////////////
 
+    {
+        "keys": ["?"],
+        "command": "gs_interface_toggle_help",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
     {
         "keys": ["r"],
         "command": "gs_tags_refresh",
@@ -695,6 +711,14 @@
     {
         "keys": ["H"],
         "command": "gs_branches_diff_commit_history",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["?"],
+        "command": "gs_interface_toggle_help",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
@@ -1042,6 +1066,14 @@
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
             { "key": "setting.git_savvy.in_rebase", "operator": "equal", "operand": false }
+        ]
+    },
+    {
+        "keys": ["?"],
+        "command": "gs_interface_toggle_help",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
         ]
     },
     {

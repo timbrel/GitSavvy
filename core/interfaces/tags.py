@@ -53,15 +53,18 @@ class TagsInterface(ui.Interface, GitCommand):
 
       LOCAL:
     {local_tags}{remote_tags}
+    {< help}
+    """
+    template_help = """
       #############                   ###########
       ## ACTIONS ##                   ## OTHER ##
       #############                   ###########
 
       [c] create                      [r]         refresh dashboard
-      [d] delete                      [e]         toggle display of remote branches
-      [p] push to remote              [tab]       transition to next dashboard
-      [P] push all tags to remote     [SHIFT-tab] transition to previous dashboard
-      [l] view commit
+      [d] delete                      [?]         toggle this help menu
+      [p] push to remote              [e]         toggle display of remote branches
+      [P] push all tags to remote     [tab]       transition to next dashboard
+      [l] view commit                 [SHIFT-tab] transition to previous dashboard
 
     -
     """
@@ -128,6 +131,14 @@ class TagsInterface(ui.Interface, GitCommand):
             render_fns.append(render_remote)
 
         return output_tmpl, render_fns
+
+    @ui.partial("help")
+    def render_help(self):
+        help_hidden = self.view.settings().get("git_savvy.help_hidden")
+        if help_hidden:
+            return ""
+        else:
+            return self.template_help
 
     def get_remote_tags_list(self, remote, remote_name):
         if "tags" in remote:
