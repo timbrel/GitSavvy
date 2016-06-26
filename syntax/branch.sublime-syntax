@@ -40,5 +40,5 @@ contexts:
         0: meta.git-savvy.branches.branch
         1: string.other.git-savvy.branches.active-branch.symbol
         2: string.other.git-savvy.branches.active-branch.sha1
-        3: string.other.git-savvy.branches.active-branch.name. gitsavvy.gotosymbol
+        3: string.other.git-savvy.branches.active-branch.name gitsavvy.gotosymbol
         4: comment.git-savvy.branches.active-branch.extra-info
