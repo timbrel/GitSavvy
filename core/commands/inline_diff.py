@@ -21,7 +21,7 @@ DIFF_HEADER = """diff --git a/{path} b/{path}
 +++ b/{path}
 """
 
-
+inline_diff_views = {}
 diff_view_hunks = {}
 
 
@@ -48,17 +48,24 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
             syntax_file = settings["syntax"]
             del settings["syntax"]
 
-        diff_view = util.view.get_scratch_view(self, "inline_diff", read_only=True)
-        title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
-        diff_view.set_name(title + os.path.basename(settings["git_savvy.file_path"]))
+        view_key = "{0}+{1}".format(cached, settings["git_savvy.file_path"])
 
-        diff_view.set_syntax_file(syntax_file)
-        file_ext = util.file.get_file_extension(os.path.basename(settings["git_savvy.file_path"]))
-        self.augment_color_scheme(diff_view, file_ext)
+        if view_key in inline_diff_views and inline_diff_views[view_key] in sublime.active_window().views():
+            diff_view = inline_diff_views[view_key]
+        else:
+            diff_view = util.view.get_scratch_view(self, "inline_diff", read_only=True)
+            title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
+            diff_view.set_name(title + os.path.basename(settings["git_savvy.file_path"]))
 
-        diff_view.settings().set("git_savvy.inline_diff.cached", cached)
-        for k, v in settings.items():
-            diff_view.settings().set(k, v)
+            diff_view.set_syntax_file(syntax_file)
+            file_ext = util.file.get_file_extension(os.path.basename(settings["git_savvy.file_path"]))
+            self.augment_color_scheme(diff_view, file_ext)
+
+            diff_view.settings().set("git_savvy.inline_diff.cached", cached)
+            for k, v in settings.items():
+                diff_view.settings().set(k, v)
+
+            inline_diff_views[view_key] = diff_view
 
         self.window.focus_view(diff_view)
 
