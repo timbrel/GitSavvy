@@ -1,7 +1,7 @@
 # SYNTAX TEST "Packages/GitSavvy/syntax/dashboard.sublime-syntax"
 
   BRANCH:  On branch `develop`.
-#  <- meta.git-savvy.status-summary
+#  <- meta.git-savvy.summary-header
 #  ^ comment
 #           ^ -comment
 #                       ^ constant.other
@@ -9,12 +9,12 @@
 #                            ^ punctuation.definition.git-savvy.branch.end
   ROOT:    ~/.config/sublime-text-3/Packages/GitSavvy
 #  ^ comment
-#              ^ comment.git-savvy.status.root-summary.root.info
-#  ^ comment.git-savvy.status.summary-header.title.root
+#              ^ comment.git-savvy.summary-header.root.info
+#  ^ comment.git-savvy.summary-header.title.root
   HEAD:    aaf90ba improve blame syntax
 #  ^ comment
 #            ^ constant.other
-#  ^ comment.git-savvy.status.summary-header.title.head
+#  ^ comment.git-savvy.summary-header.title.head
 
   ** Press [e] to toggle display of remote branches. **
 # <- - meta.git-savvy.status

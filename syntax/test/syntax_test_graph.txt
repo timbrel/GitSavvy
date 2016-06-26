@@ -1,19 +1,27 @@
 # SYNTAX TEST "Packages/GitSavvy/syntax/graph.sublime-syntax"
 * 2b17192 (HEAD -> develop, origin/master, origin/HEAD, master) replace all references to .tmLanguage to .sublime-syntax
-# <-  keyword.commit
-#  ^ constant.numeric.commit-hash
+# <-  keyword.graph.commit
+#  ^ constant.numeric.graph.commit-hash
 #           ^ constant.other.git.branch
 #                     ^ constant.other.git.branch
-#               ^ punctuation.separator.key-value
+#               ^ punctuation.separator.key-value.branch
+#         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.graph.branch.git-savvy
+#                                                                    ^  meta.graph.message.git-savvy
 * f483ab7 update blame syntax format
 * 6929182 update make_commit syntax format
 * ede734e update diff syntax format
-# <- keyword.commit
-#  ^ constant.numeric.commit-hash
+# <- keyword.graph.commit
+#  ^ constant.numeric.graph.commit-hash
 * c39b5de (divmain/master) Fix: plugin_host would crash when navigating past end of graph view
 * 1bca3e0 Fix: When amending, prepopulated commit message would include two extra spaces.
 * 76ceacf Fix: When amending with show_commit_diff enabled, unstaged changes were displayed.
+*   83a486e Merge branch 'master' of github.com:divmain/GitSavvy
+#           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.grph.merge
+#                                         ^ string.other.merge.remote
+
 *   b7f8e07 Merge pull request #359 from dnicolson/blame-commit-lengths
+#           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.grph.merge
+#           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.grph.merge.pull-request
 #                               ^ string.other.issue
 #                                         ^ string.other.merge.remote
 |\
@@ -29,3 +37,4 @@
 * 66b5d4e (tag: 2.9.1) Fix: User was unable to view tag commit when remotes were not displayed in tags dashboard.
 #           ^ storage.type
 #               ^ entity.name.tag
+#          ^^^^^^^^^^ meta.graph.tag.git-savvy

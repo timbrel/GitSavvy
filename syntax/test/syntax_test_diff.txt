@@ -1,0 +1,72 @@
+# SYNTAX TEST "Packages/GitSavvy/syntax/diff.sublime-syntax"
+
+diff --git a/core/git_mixins/tags.py b/core/git_mixins/tags.py
+# ^ punctuation.definition.command.diff
+index a59222e..d6d3a74 100644
+# ^ punctuation.definition.index.diff
+new file mode 100644
+# ^ punctuation.definition.new-file-mode.diff
+
+--- /dev/null
+# <- punctuation.definition.from-file.diff
+# ^ punctuation.definition.from-file.diff
+#   ^^^^^^^^^ meta.filename.diff gitsavvy.gotosymbol
+
++++ /dev/null
+# <- punctuation.definition.to-file.diff
+# ^ punctuation.definition.to-file.diff
+#   ^^^^^^^^^ meta.filename.diff dont.need.gitsavvy.gotosymbol
+
+--- a/syntax/rebase.sublime-syntax
+# <- punctuation.definition.from-file.diff
+# ^ punctuation.definition.from-file.diff
+#   ^^ punctuation.definition.from-file.file-alias.diff
+#     ^^^^^^^^^^^^^^^^^^^^^^^^^ meta.filename.diff gitsavvy.gotosymbol
+
++++ b/syntax/rebase.sublime-syntax
+# <- punctuation.definition.to-file.diff
+# ^ punctuation.definition.to-file.diff
+#   ^^ punctuation.definition.to-file.file-alias.diff
+#          ^ meta.filename.diff dont.need.gitsavvy.gotosymbol
+
+@@ -6,34 +6,39 @@ hidden: true
+# <- punctuation.definition.range.diff
+#  ^^^^^^^^^^^ meta.range.unified.line-numbers.diff
+#              ^^ punctuation.definition.range.diff
+#                 ^^^^^^^^^^^^ meta.range.content-begin.diff
+
+-    - match: ^(    ┃           )(.+)\n
+#  <- punctuation.definition.deleted.diff
+#         ^ markup.deleted.diff.content
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ markup.deleted.diff
+
++        - match: ^  (STATUS:).+
+#  <- punctuation.definition.inserted.diff
+#         ^ markup.inserted.diff.content
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ markup.inserted.diff
+
+<    - match: ^(    ┃           )(.+)\n
+#  <- punctuation.definition.deleted.diff
+#         ^ markup.deleted.diff.content
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ markup.deleted.diff
+
+>        - match: ^  (STATUS:).+
+#  <- punctuation.definition.inserted.diff
+#         ^ markup.inserted.diff.content
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ markup.inserted.diff
+
+In the midlle {+inserted+} of the word
+#             ^ punctuation.definition.inserted.diff
+#              ^ punctuation.definition.inserted.diff
+#               ^^^^^^^^ markup.inserted.git-savvy.add-block.content
+#                       ^ punctuation.definition.inserted.diff
+#                        ^ punctuation.definition.inserted.diff
+#             ^^^^^^^^^^^^ markup.inserted.git-savvy.add-block
+
+In the midlle [-deleted-] of the word
+#             ^ punctuation.definition.deleted.diff
+#              ^ punctuation.definition.deleted.diff
+#               ^^^^^^^ markup.deleted.git-savvy.delete-block.content
+#                      ^ punctuation.definition.deleted.diff
+#                       ^ punctuation.definition.deleted.diff
+#             ^^^^^^^^^^^ markup.deleted.git-savvy.delete-block

@@ -1,0 +1,20 @@
+# SYNTAX TEST "Packages/GitSavvy/syntax/show_commit.sublime-syntax"
+
+commit 174ef25e0714b5187b4713091be2ea9bfd9d3384
+#  ^ string.other.commit-info.header.key.git-savvy
+#          ^ meta.commit-info.header.value.git-savvy
+#           ^ meta.commit-info.header.sha.git-savvy
+# <- meta.commit-info.header.key-value
+Author: Simon <simon.toivo@telhaug.no>
+#  ^ string.other.commit-info.header.key.git-savvy
+#     ^ string.other.commit-info.header.key.punctuation.git-savvy
+#           ^ meta.commit-info.header.value.git-savvy
+# <- meta.commit-info.header.key-value
+Commit: Simon <simon.toivo@telhaug.no>
+#  ^ string.other.commit-info.header.key.git-savvy
+#     ^ string.other.commit-info.header.key.punctuation.git-savvy
+#           ^ meta.commit-info.header.value.git-savvy
+# <- meta.commit-info.header.key-value
+
+    Improve: semver tags sorting when failure
+# <- -meta.commit-info.header.key-value

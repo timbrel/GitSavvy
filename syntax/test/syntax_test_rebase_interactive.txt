@@ -1,0 +1,94 @@
+// SYNTAX TEST "Packages/GitSavvy/syntax/rebase_interactive.sublime-syntax"
+
+pick 3d380df improved diff syntax and added test and fixed a bug
+// <- meta.git-savvy.rebase-interactive.line
+// ^ constant.other.git-savvy.rebase.interactive.pick
+//     ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                ^ meta.git-savvy.rebase-interactive.commit-message
+
+reword f665e45 improved show_commit syntax and added test
+// <- meta.git-savvy.rebase-interactive.line
+// ^ constant.other.git-savvy.rebase.interactive.reword
+//     ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                ^ meta.git-savvy.rebase-interactive.commit-message
+
+squash b805640 show commit buffer should be read-only
+// <- meta.git-savvy.rebase-interactive.line
+// ^ constant.other.git-savvy.rebase.interactive.squash
+//     ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                ^ meta.git-savvy.rebase-interactive.commit-message
+
+fixup b6fd674 make commit should use the GitSavvy diff not built-in diff syntax
+// <- meta.git-savvy.rebase-interactive.line
+// ^ constant.other.git-savvy.rebase.interactive.fixup
+//     ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                ^ meta.git-savvy.rebase-interactive.commit-message
+
+exec 98d6cfc improved blamed syntax and test
+// <- meta.git-savvy.rebase-interactive.line
+// ^ constant.other.git-savvy.rebase.interactive.exec
+//     ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                ^ meta.git-savvy.rebase-interactive.commit-message
+
+drop 98d6cfc improved blamed syntax and test
+// <- meta.git-savvy.rebase-interactive.line
+// ^ constant.other.git-savvy.rebase.interactive.drop
+//     ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                ^ meta.git-savvy.rebase-interactive.commit-message
+
+pick    3d380df improved diff syntax and added test and fixed a bug
+// <- meta.git-savvy.rebase-interactive.line
+// ^ constant.other.git-savvy.rebase.interactive.pick
+//          ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                 ^ meta.git-savvy.rebase-interactive.commit-message
+
+p 3d380df improved diff syntax and added test and fixed a bug
+// <- meta.git-savvy.rebase-interactive.line
+// <- constant.other.git-savvy.rebase.interactive.pick
+//     ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                ^ meta.git-savvy.rebase-interactive.commit-message
+
+r f665e45 improved show_commit syntax and added test
+// <- meta.git-savvy.rebase-interactive.line
+// <- constant.other.git-savvy.rebase.interactive.reword
+//     ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                ^ meta.git-savvy.rebase-interactive.commit-message
+
+s b805640 show commit buffer should be read-only
+// <- meta.git-savvy.rebase-interactive.line
+// <- constant.other.git-savvy.rebase.interactive.squash
+//     ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                ^ meta.git-savvy.rebase-interactive.commit-message
+
+f b6fd674 make commit should use the GitSavvy diff not built-in diff syntax
+// <- meta.git-savvy.rebase-interactive.line
+// <- constant.other.git-savvy.rebase.interactive.fixup
+//     ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                ^ meta.git-savvy.rebase-interactive.commit-message
+
+x 98d6cfc improved blamed syntax and test
+// <- meta.git-savvy.rebase-interactive.line
+// <- constant.other.git-savvy.rebase.interactive.exec
+//     ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                ^ meta.git-savvy.rebase-interactive.commit-message
+
+d 98d6cfc improved blamed syntax and test
+// <- meta.git-savvy.rebase-interactive.line
+// <- constant.other.git-savvy.rebase.interactive.drop
+//     ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                ^ meta.git-savvy.rebase-interactive.commit-message
+
+p   3d380df improved diff syntax and added test and fixed a bug
+// <- meta.git-savvy.rebase-interactive.line
+// <- constant.other.git-savvy.rebase.interactive.pick
+//     ^ constant.numeric.commit-hash.git-savvy.rebase.interactive
+//                ^ meta.git-savvy.rebase-interactive.commit-message
+
+# Rebase 1a2627b..98d6cfc onto 1a2627b (5 command(s))
+// <- comment.block.git-savvy.commit-info.rebase-interactive
+// <- punctuation.definition.comment.rebase-interactive.git-savvy
+//  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.block.git-savvy.commit-info.rebase-interactive
+
+#
+// <- comment.block.git-savvy.commit-info.rebase-interactive
+// <- punctuation.definition.comment.rebase-interactive.git-savvy

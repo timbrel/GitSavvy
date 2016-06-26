@@ -1,0 +1,66 @@
+# SYNTAX TEST "Packages/GitSavvy/syntax/rebase.sublime-syntax"
+
+  REBASE:  status-syntax-improvements --> master (a3b397c)
+#  ^ comment.git-savvy.summary-header.title.rebase
+#                 ^ meta.git-savvy.rebase-summary
+  STATUS:  Ready.
+#  ^ comment.git-savvy.summary-header.title.status.rebase
+#            ^ meta.git-savvy.rebase-summary
+
+    ┬ (a3b397c)
+#   ^ comment.git-savvy.rebase-graph.base
+#     ^ punctuation.definition.git-savvy.rebase-graph.base
+#             ^ punctuation.definition.git-savvy.rebase-graph.base
+#        ^ support.type.git-savvy.rebase.commit_hash
+    │
+#   ^ comment.git-savvy.rebase-graph.separator
+    ●  442483b  Improved syntax denfinition for status dashboard
+#   ^ comment.git-savvy.rebase-graph.commit-node
+#       ^ support.type.git-savvy.rebase.commit_hash
+#                  ^ gitsavvy.gotosymbol
+  ▸ ●  7c317a7  Tags and rebase use the dashboards base syntax
+# ^ string.other.git-savvy.rebase.caret
+#   ^ comment.git-savvy.rebase-graph.commit-node
+#       ^ support.type.git-savvy.rebase.commit_hash
+#                  ^ gitsavvy.gotosymbol
+  ▸ ✔  e0e6c12  Improved tags syntax
+# ^ string.other.git-savvy.rebase.caret
+#   ^ entity.name.function.git-savvy.success
+#       ^ support.type.git-savvy.rebase.commit_hash
+#                  ^ gitsavvy.gotosymbol
+  ▸ ✘  53090ba  removed code which is moved to dashboard.sublime-syntax
+# ^ string.other.git-savvy.rebase.caret
+#   ^ string.other.git-savvy.conflict
+#       ^ support.type.git-savvy.rebase.commit_hash
+#                  ^ gitsavvy.gotosymbol
+    │           ! stuff.todo
+#   ^ comment.git-savvy.rebase-graph.separator
+#               ^ keyword.other.name.git-savvy.rebase-conflict
+#                  ^ keyword.other.name.git-savvy.rebase-conflict
+    ┴
+#   ^ comment.git-savvy.rebase-graph.end
+
+
+    ┳ (a3b397c)
+#   ^ comment.git-savvy.rebase-graph.base
+#     ^ punctuation.definition.git-savvy.rebase-graph.base
+#             ^ punctuation.definition.git-savvy.rebase-graph.base
+#        ^ support.type.git-savvy.rebase.commit_hash
+    ┃
+#   ^ comment.git-savvy.rebase-graph.separator
+    ·  442483b  Improved syntax denfinition for status dashboard
+#   ^ comment.git-savvy.rebase-graph.commit-node
+#       ^ support.type.git-savvy.rebase.commit_hash
+#                  ^ gitsavvy.gotosymbol
+  ▸ ·  7c317a7  Tags and rebase use the dashboards base syntax
+# ^ string.other.git-savvy.rebase.caret
+#   ^ comment.git-savvy.rebase-graph.commit-node
+#       ^ support.type.git-savvy.rebase.commit_hash
+#                  ^ gitsavvy.gotosymbol
+  ▸ ✕  53090ba  removed code which is moved to dashboard.sublime-syntax
+# ^ string.other.git-savvy.rebase.caret
+#   ^ string.other.git-savvy.conflict
+#       ^ support.type.git-savvy.rebase.commit_hash
+#                  ^ gitsavvy.gotosymbol
+    ┻
+#   ^ comment.git-savvy.rebase-graph.end

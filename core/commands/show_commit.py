@@ -28,3 +28,4 @@ class GsShowCommitInitializeView(TextCommand, GitCommand):
         commit_hash = self.view.settings().get("git_savvy.show_commit_view.commit")
         content = self.git("show", "--no-color", commit_hash)
         self.view.run_command("gs_replace_view_text", {"text": content, "nuke_cursors": True})
+        self.view.set_read_only(True)

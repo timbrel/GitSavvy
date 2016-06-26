@@ -9,16 +9,21 @@ contexts:
     - match: \@\w*
       comment: github username
       scope: constant.other.git-savvy.make-commit.github-username
+
     - match: '(\w+/\w+)?#[0-9]+'
       comment: issue
       scope: constant.other.git-savvy.make-commit.issue-ref
-    - match: ^#{1,2}.*\n$
+
+    - match: ^(#{1,2}).*\n$
       comment: commit header
       scope: comment.git-savvy.make-commit
+      captures:
+        1: punctuation.definition.comment.make-commit.header.git-savvy
+
     - match: ^(?=diff --git)
       comment: diff section
       push:
         - meta_scope: meta.git-savvy.commit-diff
         - match: ^$
           pop: true
-        - include: scope:source.diff
+        - include: scope:git-savvy.diff

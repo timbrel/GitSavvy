@@ -6,12 +6,21 @@ hidden: true
 scope: git-savvy.commit
 contexts:
   main:
-    - match: ^commit
+    - match: ^(commit)(.+)
       comment: commit header
-      scope: string.other.quoted-or-unquoted.git-savvy.commit-info
-    - match: ^((Author:)|(Date:)|(Merge:)|(AuthorDate:)|(Commit:)|(CommitDate:))
+      scope: meta.commit-info.header.key-value
+      captures:
+        1: string.other.commit-info.header.key.git-savvy
+        2: meta.commit-info.header.value.git-savvy meta.commit-info.header.sha.git-savvy
+
+    - match: ^(Author|Date|Merge|AuthorDate|Commit|CommitDate)(:)(.+)
       comment: author and date info
-      scope: string.other.quoted-or-unquoted.git-savvy.author-and-date
+      scope: meta.commit-info.header.key-value
+      captures:
+        1: string.other.commit-info.header.key.git-savvy
+        2: string.other.commit-info.header.key.punctuation.git-savvy
+        3: meta.commit-info.header.value.git-savvy
+
     - match: ^(?=diff)
       comment: diff section
       push:
