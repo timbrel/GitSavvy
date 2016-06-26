@@ -76,8 +76,9 @@ class BranchesMixin():
             description
             )
 
-    def merge(self, branch_name):
+    def merge(self, branch_names):
         """
-        Merge `branch_name` into active branch.
+        Merge `branch_names` into active branch.
         """
-        self.git("merge", branch_name)
+
+        self.git("merge", ' '.join(branch_names))
