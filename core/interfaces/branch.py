@@ -495,7 +495,7 @@ class GsBranchesMergeSelectedCommand(TextCommand, GitCommand):
 
     def get_selected_branches(self, sel):
         lines = util.view.get_lines_from_regions(self.view, [sel])
-        return self.get_selected_branch_name(sel, line) for line in lines
+        return list(self.get_selected_branch_name(sel, line) for line in lines)
 
     def get_selected_branch_name(self, selection, line):
         segments = line.strip("▸ ").split(" ")
