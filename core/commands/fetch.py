@@ -15,7 +15,10 @@ class GsFetchCommand(WindowCommand, GitCommand):
     do a `git fetch` asynchronously.
     """
 
-    def run(self):
+    def run(self, remote=None):
+        if remote:
+            return self.do_fetch(remote)
+
         self.remotes = list(self.get_remotes().keys())
 
         if not self.remotes:

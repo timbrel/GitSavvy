@@ -26,8 +26,10 @@ class GsRemoteAddCommand(TextCommand, GitCommand):
 
         self.view.window().show_input_panel("Remote name", owner, self.on_select_name, None, None)
 
-    def on_select_name(self, owner):
-        self.git("remote", "add", owner, self.url)
+    def on_select_name(self, remote_name):
+        self.git("remote", "add", remote_name, self.url)
+        if sublime.ok_cancel_dialog("Your remote was added successfully.  Would you like to fetch from this remote?"):
+            self.view.window().run_command("gs_fetch", { "remote": remote_name })
 
 
 class GsRemoteRemoveCommand(TextCommand, GitCommand):
