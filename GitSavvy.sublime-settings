@@ -259,5 +259,11 @@
         When set to `true`, all views will start in INSERT mode.
         Ignored if `vintageous_friendly` is `false`.
      */
-    "vintageous_enter_insert_mode": false
+    "vintageous_enter_insert_mode": false,
+
+    /*
+        When set to `true`, all views will hide their help menu when rendering.
+        You can still toggle the help menu by pressing `?`.
+     */
+    "hide_help_menu": false
 }

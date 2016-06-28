@@ -74,6 +74,7 @@ class Interface():
 
     def create_view(self, repo_path):
         window = sublime.active_window()
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         self.view = window.new_file()
 
         self.view.settings().set("git_savvy.repo_path", repo_path)
@@ -81,6 +82,7 @@ class Interface():
         self.view.settings().set("git_savvy.{}_view".format(self.interface_type), True)
         self.view.settings().set("git_savvy.tabbable", True)
         self.view.settings().set("git_savvy.interface", self.interface_type)
+        self.view.settings().set("git_savvy.help_hidden", savvy_settings.get("hide_help_menu"))
         self.view.settings().set("word_wrap", self.word_wrap)
         self.view.set_syntax_file(self.syntax_file)
         self.view.set_scratch(True)
@@ -286,6 +288,22 @@ class GsInterfaceRefreshCommand(TextCommand):
                 else:
                     interface = InterfaceSubclass(view=self.view)
                     interfaces[interface.view.id()] = interface
+
+
+class GsInterfaceToggleHelpCommand(TextCommand):
+
+    """
+    Toggle GitSavvy help.
+    """
+
+    def run(self, edit):
+        interface_type = self.view.settings().get("git_savvy.interface")
+        for InterfaceSubclass in subclasses:
+            if InterfaceSubclass.interface_type == interface_type:
+                current_help = bool(self.view.settings().get("git_savvy.help_hidden"))
+                self.view.settings().set("git_savvy.help_hidden", not current_help)
+                self.view.run_command("gs_interface_refresh")
+
 
 
 class EditView():

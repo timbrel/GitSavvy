@@ -42,6 +42,10 @@ class BranchInterface(ui.Interface, GitCommand):
 
       LOCAL:
     {branch_list}{remotes}
+    {< help}
+    """
+
+    template_help = """
       #############
       ## ACTIONS ##
       #############
@@ -61,6 +65,7 @@ class BranchInterface(ui.Interface, GitCommand):
       [tab]       transition to next dashboard
       [SHIFT-tab] transition to previous dashboard
       [r]         refresh
+      [?]         toggle this help menu
 
     -
     """
@@ -116,6 +121,14 @@ class BranchInterface(ui.Interface, GitCommand):
         return (self.render_remotes_on()
                 if self.show_remotes else
                 self.render_remotes_off())
+
+    @ui.partial("help")
+    def render_help(self):
+        help_hidden = self.view.settings().get("git_savvy.help_hidden")
+        if help_hidden:
+            return ""
+        else:
+            return self.template_help
 
     def render_remotes_off(self):
         return "\n\n  ** Press [e] to toggle display of remote branches. **\n"

@@ -67,3 +67,8 @@
 #  ^ constant.character.git-savvy-key-binding-key
 #   ^ punctuation.definition.git-savvy.key-bindings-key-stroke
 #               ^ comment.git-savvy.key-bindings-menu.key-binding-description
+  [?] toggle this help menu
+# ^ punctuation.definition.git-savvy.key-bindings-key-stroke
+#  ^ constant.character.git-savvy-key-binding-key
+#   ^ punctuation.definition.git-savvy.key-bindings-key-stroke
+#               ^ comment.git-savvy.key-bindings-menu.key-binding-description
