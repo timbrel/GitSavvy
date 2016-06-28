@@ -5,6 +5,7 @@ from ..git_command import GitCommand
 from ...common import util
 from ...common import ui
 
+COMMIT_NODE_CHAR_OPTIONS = "●*"
 
 class GsBranchesDiffCommitHistoryCommand(TextCommand, GitCommand):
 
@@ -94,7 +95,7 @@ class GsBranchesDiffCommitHistoryActionCommand(TextCommand, GitCommand):
 
         lines = util.view.get_lines_from_regions(self.view, self.selections)
         line = lines[0]
-        self.commit_hash = line.strip(" /_\|*").split(' ')[0]
+        self.commit_hash = line.strip(" /_\|" + COMMIT_NODE_CHAR_OPTIONS).split(' ')[0]
 
         if not len(self.selections) == 1:
             sublime.status_message("You can only do actions on one commit at a time.")
