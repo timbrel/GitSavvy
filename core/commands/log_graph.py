@@ -6,6 +6,7 @@ from ...common import util
 
 LOG_GRAPH_TITLE = "GRAPH"
 COMMIT_NODE_CHAR = "●"
+COMMIT_NODE_CHAR_OPTIONS = "●*"
 
 
 class GsLogGraphCommand(WindowCommand, GitCommand):
@@ -79,7 +80,7 @@ class GsLogGraphActionCommand(TextCommand, GitCommand):
             return
         line = lines[0]
 
-        commit_hash = line.strip(" /_\|"+COMMIT_NODE_CHAR)[:7]
+        commit_hash = line.strip(" /_\|" + COMMIT_NODE_CHAR_OPTIONS)[:7]
         if self.action == "checkout":
             self.checkout_ref(commit_hash)
             util.view.refresh_gitsavvy(self.view)
@@ -108,7 +109,7 @@ class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
             return
         line = lines[0]
 
-        commit_hash = line.strip(" /_\|*")[:7]
+        commit_hash = line.strip(" /_\|" + COMMIT_NODE_CHAR_OPTIONS)[:7]
         if len(commit_hash) <= 3:
             return
 
@@ -147,7 +148,7 @@ class GsLogGraphNextCommitCommand(TextCommand, GitCommand):
             return
         line = lines[0]
 
-        commit_hash = line.strip(" /_\|*")[:7]
+        commit_hash = line.strip(" /_\|" + COMMIT_NODE_CHAR_OPTIONS)[:7]
         if len(commit_hash) > 3:
             self.view.window().run_command("gs_log_graph_more_info")
             self.view.window().run_command("show_at_center")
