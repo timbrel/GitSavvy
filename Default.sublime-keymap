@@ -836,6 +836,15 @@
         ]
     },
     {
+        "keys": ["?"],
+        "command": "gs_interface_toggle_popup_help",
+        "args": { "view_name": "log_graph_view" },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["r"],
         "command": "gs_log_graph_refresh",
         "context": [
