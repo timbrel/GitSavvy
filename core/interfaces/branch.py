@@ -499,16 +499,20 @@ class GsBranchesMergeSelectedCommand(TextCommand, GitCommand):
 
     def run_async(self):
         self.interface = ui.get_interface(self.view.id())
-        branches = list(self.get_selected_branches(sel) for sel in self.view.sel())
         current_branch_name = self.get_current_branch_name()
 
-        branches = set(branch for branch in branches if branch and not branch == current_branch_name)
-        self.merge(branches)
+        branches = set()
+        for sel in self.view.sel():
+            for name in self.get_selected_branches(sel):
+                if name and not name == current_branch_name:
+                    branches.add(name)
+
+        self.merge(branches) if not len(branches) == 0 else None
         util.view.refresh_gitsavvy(self.view)
 
     def get_selected_branches(self, sel):
         lines = util.view.get_lines_from_regions(self.view, [sel])
-        return list(self.get_selected_branch_name(sel, line) for line in lines)
+        return (self.get_selected_branch_name(sel, line) for line in lines)
 
     def get_selected_branch_name(self, selection, line):
         segments = line.strip("▸ ").split(" ")
