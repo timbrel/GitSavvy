@@ -70,6 +70,7 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
         self.window.focus_view(diff_view)
 
         diff_view.run_command("gs_inline_diff_refresh")
+        diff_view.run_command("gs_handle_vintageous")
 
     def augment_color_scheme(self, target_view, file_ext):
         """
