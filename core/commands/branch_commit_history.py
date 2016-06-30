@@ -5,7 +5,9 @@ from ..git_command import GitCommand
 from ...common import util
 from ...common import ui
 
+COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
+
 
 class GsBranchesDiffCommitHistoryCommand(TextCommand, GitCommand):
 
@@ -70,10 +72,12 @@ class GsBranchesDiffCommitHistoryRefreshCommand(TextCommand, GitCommand):
         diff_contents = "Commits on {} and not on {}\n".format(branchA, branchB)
         args.append("{}..{}".format(branchB, branchA))
         diff_contents += self.git(*args)
+        diff_contents = diff_contents.replace("*", COMMIT_NODE_CHAR)
         diff_contents += "\n\nCommits on {} and not on {}\n".format(branchB, branchA)
         args.pop()
         args.append("{}..{}".format(branchA, branchB))
         diff_contents += self.git(*args)
+        diff_contents = diff_contents.replace("*", COMMIT_NODE_CHAR)
         return diff_contents
 
 
