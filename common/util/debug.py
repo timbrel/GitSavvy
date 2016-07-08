@@ -1,5 +1,8 @@
+import functools
 import json
 import pprint as _pprint
+
+import sublime
 
 
 _log = []
@@ -80,3 +83,36 @@ def pprint(*args, **kwargs):
     Pretty print since we can not use debugger
     """
     dump(*args, **kwargs)
+
+
+def get_trace_tags():
+    savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+    if savvy_settings.get("dev_mode"):
+        return savvy_settings.get("dev_trace", [])
+    else:
+        return []
+
+
+def trace(*args, tag="debug", fill=None, fill_width=60, **kwargs):
+    """
+    Lightweight logging facility. Provides simple print-like interface with
+    filtering by tags and pretty-printed captions for delimiting output
+    sections.
+
+    See the "dev_trace" setting for possible values of the "tag" keyword.
+    """
+    if tag not in get_trace_tags():
+        return
+
+    if fill is not None:
+        sep = str(kwargs.get('sep', ' '))
+        caption = sep.join(args)
+        args = "{0:{fill}<{width}}".format(caption and caption + sep,
+                                           fill=fill, width=fill_width),
+    print("GS [{}]".format(tag), *args, **kwargs)
+
+
+def trace_for_tag(tag):
+    return functools.partial(trace, tag=tag)
+
+trace.for_tag = trace_for_tag
