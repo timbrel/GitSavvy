@@ -7,20 +7,29 @@ from contextlib import contextmanager
 
 import sublime_plugin
 
+from .debug import StackMeter, trace
+
+
+dprint = trace.for_tag("reload")
+
 
 def reload_plugin():
     """Reload the GitSavvy plugin among with all its modules."""
     from GitSavvy import git_savvy
+    dprint("begin", fill='═')
 
     modules = {name: module for name, module in sys.modules.items()
                if name.startswith("GitSavvy.")}
     try:
         reload_modules(git_savvy, modules)
     except:
+        dprint("ERROR", fill='─')
         reload_modules(git_savvy, modules, perform_reload=False)
         raise
     finally:
         ensure_loaded(git_savvy, modules)
+
+    dprint("end", fill='━')
 
 
 def ensure_loaded(main, modules):
@@ -33,7 +42,7 @@ def ensure_loaded(main, modules):
     if missing_modules:
         for name, module in missing_modules:
             sys.modules[name] = modules
-            print("restored", name, "XXX RELOAD BUG!")
+            print("GS [reload] BUG!", "restored", name)
         sublime_plugin.reload_plugin(git_savvy.__name__)
 
 
@@ -73,20 +82,24 @@ def reload_modules(main, modules, perform_reload=True):
         if name in modules:
             del sys.modules[name]
 
+    stack_meter = StackMeter()
     @FilteringImportHook.when(condition=lambda name: name in modules)
     def module_reloader(name):
         module = modules[name]
         sys.modules[name] = module  # restore the module back
 
         if perform_reload:
-            print("reloading", name)
-            try:
-                return module.__loader__.load_module(name)
-            except:
-                if name in sys.modules:
-                    del sys.modules[name]  # to indicate an error
-                raise
+            with stack_meter as depth:
+                dprint("reloading", ('╿ '*depth) + '┡━─', name)
+                try:
+                    return module.__loader__.load_module(name)
+                except:
+                    if name in sys.modules:
+                        del sys.modules[name]  # to indicate an error
+                    raise
         else:
+            if name not in loaded_modules:
+                dprint("NO RELOAD", '╺━─', name)
             return module
 
     with intercepting_imports(module_reloader), \

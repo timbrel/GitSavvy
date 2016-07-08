@@ -32,7 +32,8 @@
         Only takes its effect when "dev_mode" is set to `true`.
      */
     "dev_trace": [
-        "debug"
+        "debug",
+        "reload"
     ],
 
     /*
