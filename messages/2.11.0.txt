@@ -1,0 +1,61 @@
+Hey everybody,
+
+There are a lot of changes and refinements in this release.  Remember to reach out to us on Gitter[0] or open an issue[1] if you run into any problems, and thanks for using GitSavvy!
+
+[0]: https://gitter.im/divmain/GitSavvy
+[1]: https://github.com/divmain/GitSavvy/issues
+
+
+### Changes since 2.10.0 ###
+
+  Feature:
+   - Cherry-pick from Branch Commit Comparison view.
+   - New commands to add and remove remotes.
+
+  Enhancement:
+   - Inline-diff and diff views are now re-used for the same file.
+   - GitSavvy color schemes no longer appear in Sublime's color scheme menu.
+   - Help menus can now be hidden in dashboards.
+   - After fetching, user is now prompted to fetch the remote.
+   - Branch view now support simultaneous merging from multiple branches.
+   - Lots of improvements to GitSavvy internal syntaxes and dashboard UIs.
+   - Tags in tag dashboard are now sorted with semver.
+   - Improve experience when using Sublime as editor for terminal-based interactive rebase.
+   - `git: blame` and `git: log` quick panels now remember previously selected option.
+   - Show keyboard shortcuts for graph view in a popup.
+   - Users can now augment the execution environment of custom Git commands.
+   - Add easy access to GitSavvy settings.
+   - Navigate with . and , in the Rebase dashboard, plus
+   - Navigate with . and , in the Tag dashboard.
+   - Dashboards also include Vintageous-friendly navigation key-bindings.
+   - Index syntax files asynchronously, to avoid blocking Sublime startup.
+   - Default to selecting the active remove in quick panels.
+   - Prompt for remote tracking branch when opening a GitHub pull request.
+
+  Fix:
+   - Rebase dashboard actions would be allowed with working directory in unclean state.
+   - Ignoring files would result in "# added by GitSavvy" added to `.gitignore` file.
+   - Log view commands were not functioning correctly.
+   - Status dashboard key-bindings did not work for files starting with `.`
+   - User was unable to view tag commit when remotes were not displayed in tags dashboard.
+   - Syntax highlighting failed in dashboard for SHA1 refs longer than 7 characters.
+   - GitSavvy would fail to load on some platforms due to `yaml` missing from standard library.
+
+  Internal:
+   - Revamped debug reload using import hooks.
+
+
+### Contributors ###
+
+  - David Nicolson
+  - Dale Bustad
+  - Petr Marek
+  - Eldar Abusalimov
+  - laggingreflex
+  - Simon
+  - Shadab Zafar
+  - Allen Bargi
+  - Sindri Guðmundsson
+  - Pavel Savchenko
+  - Randy Lai
+  - MJ
