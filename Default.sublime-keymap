@@ -507,7 +507,7 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags meta.git-savvy.tags.section meta.git-savvy.tags.tag" }
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags meta.git-savvy.section.tags.local meta.git-savvy.tags.tag" }
         ]
     },
     {
@@ -516,7 +516,7 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags meta.git-savvy.tags.section meta.git-savvy.tags.tag" }
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags meta.git-savvy.section.tags.local meta.git-savvy.tags.tag" }
         ]
     },
     {
@@ -533,7 +533,7 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags meta.git-savvy.tags.section meta.git-savvy.tags.tag" }
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags meta.git-savvy.section.tags.local meta.git-savvy.tags.tag" }
         ]
     },
     {
