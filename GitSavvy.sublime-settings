@@ -274,5 +274,11 @@
         When set to `true`, all views will hide their help menu when rendering.
         You can still toggle the help menu by pressing `?`.
      */
-    "hide_help_menu": false
+    "hide_help_menu": false,
+
+    /*
+        When set to `true`, GitSavvy will ask for credentials if any Git command
+        fails with a 'could not read Username for ...' error.
+     */
+    "prompt_credentials": false,
 }
