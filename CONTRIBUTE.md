@@ -31,7 +31,7 @@ Please follow the following commit message structure when submitting your pull r
     commit
     info
 
-For the value of **`TYPE`**, prefer using the common **`Feature`**, **`Enhancement`**, and **`Bug`**.
+For the value of **`TYPE`**, please use one of **`Feature`**, **`Enhancement`**, or **`Fix`**.
 
 This is done in order to help us automate tasks such as changelog generation.
 
