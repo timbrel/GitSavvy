@@ -131,3 +131,20 @@ class ActiveBranchMixin():
             ).strip()
 
         return stdout or "No commits yet."
+
+    def get_upstream_for_active_branch(self):
+        """
+        Return ref for remote tracking branch.
+        """
+        return self.git("rev-parse", "--abbrev-ref", "--symbolic-full-name",
+                        "@{u}", throw_on_stderr=False).strip()
+
+    def get_active_remote_branch(self):
+        """
+        Return named tuple of the upstream for active branch.
+        """
+        upstream = self.get_upstream_for_active_branch()
+        for branch in self.get_branches():
+            if branch.name_with_remote == upstream:
+                return branch
+        return None
