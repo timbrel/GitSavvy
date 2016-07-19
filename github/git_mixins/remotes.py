@@ -29,3 +29,20 @@ class GithubRemotesMixin():
         configured_remote_name = self.get_integrated_remote_name()
         remotes = self.get_remotes()
         return remotes[configured_remote_name]
+
+    def guess_github_remote(self):
+        upstream = self.get_upstream_for_active_branch()
+        integrated_remote = self.get_integrated_remote_name()
+        remotes = self.get_remotes()
+
+        if len(self.remotes) == 1:
+            return list(remotes.keys())[0]
+        elif upstream:
+            tracked_remote = upstream.split("/")[0] if upstream else None
+
+            if tracked_remote and tracked_remote == integrated_remote:
+                return tracked_remote
+            else:
+                return None
+        else:
+            return integrated_remote
