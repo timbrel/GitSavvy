@@ -73,3 +73,4 @@ class GsCustomCommand(WindowCommand, GitCommand):
 
         if output_to_panel:
             util.log.panel(stdout)
+        util.view.refresh_gitsavvy(self.window.active_view())
