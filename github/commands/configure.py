@@ -5,6 +5,7 @@ from ...core.git_command import GitCommand
 
 
 NO_REMOTES_MESSAGE = "You have not configured any remotes."
+NO_REMOTE_BRANCHES_MESSAGE = "Remote does not have any branches."
 
 
 class GsConfigureGithubRemoteCommand(WindowCommand, GitCommand):
@@ -41,4 +42,25 @@ class GsConfigureGithubRemoteCommand(WindowCommand, GitCommand):
         selected_remote = self.remotes[remote_index]
         self.git("config", "--local", "--unset-all", "GitSavvy.ghRemote", throw_on_stderr=False)
         self.git("config", "--local", "--add", "GitSavvy.ghRemote", selected_remote)
+
+        self.branches = self.list_remote_branches(selected_remote)
+        if not self.branches:
+            self.window.show_quick_panel([NO_REMOTE_BRANCHES_MESSAGE], None)
+        else:
+            self.window.show_quick_panel(
+                self.branches,
+                self.on_select_branch,
+                flags=sublime.MONOSPACE_FONT
+                )
+
+    def on_select_branch(self, branch_index):
+        """
+        After the user selects a branch, configure integrated remote branch.
+        """
+        if branch_index == -1:
+            return
+        branch = self.branches[branch_index].split("/", 1)[1]
+        self.git("config", "--local", "--unset-all", "GitSavvy.ghBranch", throw_on_stderr=False)
+        self.git("config", "--local", "--add", "GitSavvy.ghBranch", branch)
+
         sublime.status_message("Successfully configured GitHub integration.")

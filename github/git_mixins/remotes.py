@@ -1,5 +1,18 @@
 class GithubRemotesMixin():
 
+    def get_integrated_branch_name(self):
+        configured_branch_name = self.git(
+            "config",
+            "--local",
+            "--get",
+            "GitSavvy.ghBranch",
+            throw_on_stderr=False
+            ).strip()
+        if configured_branch_name:
+            return configured_branch_name
+        else:
+            return "master"
+
     def get_integrated_remote_name(self):
         return self.git(
             "config",
