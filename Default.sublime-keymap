@@ -528,6 +528,14 @@
         ]
     },
     {
+        "keys": ["s"],
+        "command": "gs_smart_tag",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["p"],
         "command": "gs_tag_push",
         "context": [
