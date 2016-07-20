@@ -72,5 +72,5 @@ class GsCustomCommand(WindowCommand, GitCommand):
         sublime.status_message(complete_msg)
 
         if output_to_panel:
-            util.log.panel(stdout)
+            util.log.panel(stdout.replace("\r", "\n"))
         util.view.refresh_gitsavvy(self.window.active_view())
