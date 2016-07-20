@@ -1,0 +1,113 @@
+  ___ _ _   ___                     
+ / __(_) |_/ __| __ ___ ____ ___  _ 
+| (_ | |  _\__ \/ _` \ V /\ V / || |
+ \___|_|\__|___/\__,_|\_/  \_/ \_, |
+                               |__/ 
+
+It looks like our changelog messages haven't gone out for the last couple
+of versions.  That being the case, here's a recap of the recent features
+and changes that have happened to GitSavvy.  As always, let us know if you
+run into any problems, either on Gitter[0] or by opening an issue[1].
+
+Thanks for using GitSavvy!
+
+[0]: https://gitter.im/divmain/GitSavvy
+[1]: https://github.com/divmain/GitSavvy/issues
+
+
+Changes since 2.9.1:
+
+  Feature:
+   - Log by author prompt with a list of committers
+   - Use `Goto Symbol` to navigate in all views
+   - Add `git add --edit` equivalent.
+   - Resolve conflict (stage merged file) on successful merge
+   - Allow prompt to specify custom command argument.
+   - Cherry-pick from Branch Commit Comparison view.
+   - New commands to add and remove remotes.
+
+  Enhancement:
+   - Squash in rebase dashboard now behaves like `git rebase -i`.
+   - Move cursor in rebase dashboard when moving commits up/down.
+   - Rebase dashboard actions only effect selected commit and those that follow.
+   - Drop commit from rebase dashboard.
+   - Inline-diff and diff views are now re-used for the same file.
+   - GitSavvy color schemes no longer appear in Sublime's color scheme menu.
+   - Help menus can now be hidden in dashboards.
+   - After fetching, user is now prompted to fetch the remote.
+   - Branch view now support simultaneous merging from multiple branches.
+   - Lots of improvements to GitSavvy internal syntaxes and dashboard UIs.
+   - Tags in tag dashboard are now sorted with semver.
+   - Improve experience when using Sublime as editor for terminal-based interactive rebase.
+   - `git: blame` and `git: log` quick panels now remember previously selected option.
+   - Show keyboard shortcuts for graph view in a popup.
+   - Users can now augment the execution environment of custom Git commands.
+   - Add easy access to GitSavvy settings.
+   - Navigate with . and , in the Rebase dashboard.
+   - Navigate with . and , in the Tag dashboard.
+   - Dashboards also include Vintageous-friendly navigation key-bindings.
+   - Index syntax files asynchronously, to avoid blocking Sublime startup.
+   - Default to selecting the active remove in quick panels.
+   - Prompt for remote tracking branch when opening a GitHub pull request.
+   - Add a smart-tag key-binding to the Tags dashboard.
+   - Don't prompt for a remote when there is only one.
+
+  Fix:
+   - Launching merge tool would fail for non-ASCII files.
+   - Could not squash into first commit after squash direction change.
+   - plugin_host would crash when navigating past end of graph view
+   - When amending, prepopulated commit message would include two extra spaces.
+   - When amending with show_commit_diff enabled, unstaged changes were displayed.
+   - Update language definition for non-trailing spaces
+   - Set tab size for dashboards to enable code folding for sections.
+   - Allow user to disable display of branch descriptions.
+   - Rebase dashboard actions would be allowed with working directory in unclean state.
+   - Ignoring files would result in "# added by GitSavvy" added to `.gitignore` file.
+   - Log view commands were not functioning correctly.
+   - Status dashboard key-bindings did not work for files starting with `.`
+   - User was unable to view tag commit when remotes were not displayed in tags dashboard.
+   - Syntax highlighting failed in dashboard for SHA1 refs longer than 7 characters.
+   - GitSavvy would fail to load on some platforms due to `yaml` missing from standard library.
+   - Clean up refresh and output in status-bar for custom Git commands.
+   - Caching of pre-rebase state was broken.
+   - Tag dashboard commands would fail due to command scope context mismatch.
+
+  Improve:
+   - Blame syntax
+   - Graph syntax
+   - Diff syntax
+   - Inline diff syntax
+   - Update blame syntax
+   - Make_commit syntax
+   - Diff syntax
+   - Show_commit syntax
+   - Graph syntax
+   - Tags syntax
+   - Rebase syntax
+   - Branch syntax
+   - Status syntax
+
+  Internal:
+   - Reorganize active-branch related code.
+   - Update contribution guidelines for commit subject structure.
+   - Revamped debug reload using import hooks.
+   - Add debug tracing and fancy output for GitSavvy debug reloads.
+
+  Contributors:
+   - David Devlin
+   - Felix
+   - Pavel Savchenko
+   - Dave Nicolson
+   - gwenzek
+   - Simon
+   - Randy Lai
+   - Dale Bustad
+   - David Nicolson
+   - Petr Marek
+   - Eldar Abusalimov
+   - laggingreflex
+   - Shadab Zafar
+   - Allen Bargi
+   - Sindri Guðmundsson
+   - MJ
+
