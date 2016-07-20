@@ -61,10 +61,11 @@ class TagsInterface(ui.Interface, GitCommand):
       #############                   ###########
 
       [c] create                      [r]         refresh dashboard
-      [d] delete                      [?]         toggle this help menu
-      [p] push to remote              [e]         toggle display of remote branches
-      [P] push all tags to remote     [tab]       transition to next dashboard
-      [l] view commit                 [SHIFT-tab] transition to previous dashboard
+      [s] create smart tag            [?]         toggle this help menu
+      [d] delete                      [e]         toggle display of remote branches
+      [p] push to remote              [tab]       transition to next dashboard
+      [P] push all tags to remote     [SHIFT-tab] transition to previous dashboard
+      [l] view commit
 
     -
     """
