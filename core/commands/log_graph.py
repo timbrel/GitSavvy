@@ -25,6 +25,7 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
         view.settings().set("git_savvy.tabbable", True)
         view.settings().set("word_wrap", False)
         view.settings().set("all_branches", all_branches)
+        view.settings().set("rulers", [0.40, 0.45, 0.50, 0.55, 0.6])
         view.set_name(LOG_GRAPH_TITLE)
         view.set_scratch(True)
         view.set_read_only(True)
