@@ -170,13 +170,22 @@ class GsCreatePullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemot
                     sublime.message_dialog(
                         "Your current branch is different from its remote counterpart. %s" % secondary)
                 else:
-                    base_remote = github.parse_remote(self.get_integrated_remote_url())
                     owner = github.parse_remote(self.get_remotes()[remote_branch.remote]).owner
-                    self.open_comparision_in_browser(base_remote.url, owner, remote_branch.name)
+                    self.open_comparision_in_browser(
+                        owner,
+                        remote_branch.name
+                    )
 
-    def open_comparision_in_browser(self, url, owner, branch):
-        open_in_browser("{}/compare/{}:{}?expand=1".format(
+    def open_comparision_in_browser(self, owner, branch):
+        base_remote = github.parse_remote(self.get_integrated_remote_url())
+        url = base_remote.url
+        base_owner = base_remote.owner
+        base_branch = self.get_integrated_branch_name()
+
+        open_in_browser("{}/compare/{}:{}...{}:{}?expand=1".format(
             url,
+            base_owner,
+            base_branch,
             owner,
             branch
         ))
