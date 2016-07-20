@@ -123,9 +123,10 @@ class RebaseInterface(ui.Interface, GitCommand):
         self.view.settings().set("git_savvy.in_rebase", self._in_rebase)
         cached_pre_rebase_state = self.view.settings().get("git_savvy.rebase_in_progress")
         if cached_pre_rebase_state:
-            branch_state, target_branch = cached_pre_rebase_state
+            (branch_name, ref, changed_files), target_branch = cached_pre_rebase_state
             self.complete_action(
-                branch_state,
+                branch_name,
+                ref,
                 True,
                 "rebased on top of {}".format(target_branch)
                 )
