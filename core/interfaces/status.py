@@ -470,11 +470,7 @@ class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
             valid_ranges=valid_ranges
         )
         file_paths = tuple(line[4:].strip() for line in lines if line)
-
-        if file_paths:
-            file_paths = list(file_paths)
-            for fpath in file_paths:
-                self.view.run_command("gs_open_file_on_remote", {"fpath": fpath})
+        self.view.run_command("gs_open_file_on_remote", {"fpath": list(file_paths)})
 
 
 class GsStatusStageAllFilesCommand(TextCommand, GitCommand):
