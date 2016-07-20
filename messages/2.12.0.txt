@@ -1,0 +1,20 @@
+Changes since 2.11.0:
+
+  Enhancement:
+   - Add a smart-tag key-binding to the Tags dashboard.
+   - Don't prompt for a remote when there is only one.
+
+  Fix:
+   - Clean up refresh and output in status-bar for custom Git commands.
+   - Caching of pre-rebase state was broken.
+   - Tag dashboard commands would fail due to command scope context mismatch.
+
+  Internal:
+   - Reorganize active-branch related code.
+   - Update contribution guidelines for commit subject structure.
+   - Add debug tracing and fancy output for GitSavvy debug reloads.
+
+  Contributors:
+   - Randy Lai
+   - Dale Bustad
+   - Eldar Abusalimov
