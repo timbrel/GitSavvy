@@ -199,6 +199,10 @@
         "command": "gs_log"
     },
     {
+        "caption": "git: log by branch",
+        "command": "gs_log_branch"
+    },
+    {
         "caption": "git: log current file",
         "command": "gs_log_current_file"
     },
@@ -265,6 +269,10 @@
     {
         "caption": "git: reset (reflog)",
         "command": "gs_reset_reflog"
+    },
+    {
+        "caption": "git: reset to branch",
+        "command": "gs_reset_branch"
     },
     {
         "caption": "git: cherry-pick",

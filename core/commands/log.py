@@ -9,13 +9,14 @@ from ...common import util
 class GsLogCommand(WindowCommand, GitCommand):
     cherry_branch = None
 
-    def run(self, filename=None, limit=6000, author=None, log_current_file=False, target_hash=None):
+    def run(self, filename=None, limit=6000, author=None, log_current_file=False, target_hash=None, branch=None):
         self._pagination = 0
         self._filename = filename
         self._limit = limit
         self._author = author
         self._log_current_file = log_current_file
         self._target_hash = target_hash
+        self._branch = branch
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
@@ -28,7 +29,9 @@ class GsLogCommand(WindowCommand, GitCommand):
             '--cherry' if self.cherry_branch else None,
             '..{}'.format(self.cherry_branch) if self.cherry_branch else None,
             "--" if self._filename else None,
-            self._filename
+            self._filename,
+            "--no-merges" if self._branch else None,
+            self._branch if self._branch else None
         ).strip("\x00")
 
         self._entries = []
@@ -152,3 +155,30 @@ class GsLogByAuthorCommand(WindowCommand, GitCommand):
 
         author_text = self._entries[index][3]
         self.window.run_command("gs_log", {"author": author_text})
+
+
+class GsLogBranchCommand(WindowCommand, GitCommand):
+
+    def run(self):
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        self.all_branches = [b.name_with_remote for b in self.get_branches()]
+
+        if hasattr(self, '_selected_branch') and self._selected_branch in self.all_branches:
+            pre_selected_index = self.all_branches.index(self._selected_branch)
+        else:
+            pre_selected_index = self.all_branches.index(self.get_current_branch_name())
+
+        self.window.show_quick_panel(
+            self.all_branches,
+            self.on_branch_selection,
+            flags=sublime.MONOSPACE_FONT,
+            selected_index=pre_selected_index
+        )
+
+    def on_branch_selection(self, index):
+        if index < 0:
+            return
+        self._selected_branch = self.all_branches[index]
+        self.window.run_command("gs_log", {"branch": self._selected_branch})
