@@ -1,4 +1,5 @@
 from collections import namedtuple
+from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
 FileStatus = namedtuple("FileStatus", ("path", "path_alt", "index_status", "working_status"))
 
@@ -90,3 +91,23 @@ class StatusMixin():
             for raw_entry in stdout.split(":")
             if raw_entry
         ]
+
+    def sort_status_entries(self, file_status_list):
+        """
+        Take entries from `git status` and sort them into groups.
+        """
+        staged, unstaged, untracked, conflicts = [], [], [], []
+
+        for f in file_status_list:
+            if (f.index_status, f.working_status) in MERGE_CONFLICT_PORCELAIN_STATUSES:
+                conflicts.append(f)
+                continue
+            if f.index_status == "?":
+                untracked.append(f)
+                continue
+            elif f.working_status in ("M", "D"):
+                unstaged.append(f)
+            if f.index_status != " ":
+                staged.append(f)
+
+        return staged, unstaged, untracked, conflicts
