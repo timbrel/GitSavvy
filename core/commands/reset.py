@@ -53,6 +53,30 @@ class GsResetCommand(GsLogCommand):
             do_reset()
 
 
+class GsResetBranch(GsResetCommand):
+
+    def run_async(self):
+        self.all_branches = [b.name_with_remote for b in self.get_branches()]
+
+        if hasattr(self, '_selected_branch') and self._selected_branch in self.all_branches:
+            pre_selected_index = self.all_branches.index(self._selected_branch)
+        else:
+            pre_selected_index = self.all_branches.index(self.get_current_branch_name())
+
+        self.window.show_quick_panel(
+            self.all_branches,
+            self.on_branch_selection,
+            flags=sublime.MONOSPACE_FONT,
+            selected_index=pre_selected_index
+        )
+
+    def on_branch_selection(self, index):
+        if index < 0:
+            return
+        self._selected_branch = self.all_branches[index]
+        self.window.run_command("gs_reset", {"branch": self._selected_branch})
+
+
 class GsResetReflogCommand(GsResetCommand):
 
     def run_async(self):
