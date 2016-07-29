@@ -1,13 +1,14 @@
 import sys
-
+import threading
 import sublime
+
 
 if sys.version_info[0] == 2:
     raise ImportWarning("GitSavvy does not support Sublime Text 2.")
 else:
     def plugin_loaded():
         from .common import util
-        sublime.set_timeout_async(util.file.determine_syntax_files)
+        threading.Thread(target=util.file.determine_syntax_files).start()
 
         # Ensure all interfaces are ready.
         sublime.set_timeout_async(
