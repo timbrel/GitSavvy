@@ -39,7 +39,9 @@ class GsResetCommand(GsLogCommand):
             )
 
     def on_reset_mode_selection(self, index):
-        if 0 <= index < len(GIT_RESET_MODES):
+        if index == -1:
+            sublime.set_timeout_async(self.run_async, 1)
+        elif 0 <= index < len(GIT_RESET_MODES):
             self.on_reset(GIT_RESET_MODES[index][0].strip())
 
     def on_reset(self, reset_mode):
