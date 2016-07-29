@@ -73,12 +73,14 @@ class GsLogCommand(WindowCommand, GitCommand):
         )
 
     def on_highlight_commit(self, index):
+        sublime.set_timeout_async(lambda: self.on_highlight_commit_async(index))
+
+    def on_highlight_commit_async(self, index):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         show_more = savvy_settings.get("log_show_more_commit_info")
         show_full = savvy_settings.get("show_full_commit_info")
         if not show_more:
             return
-
         commit_hash = "%s" % self._hashes[index]
         text = self.git("show", commit_hash, "--no-color", "--format=fuller", "--quiet" if not show_full else None)
         output_view = self.window.create_output_panel("show_commit_info")
