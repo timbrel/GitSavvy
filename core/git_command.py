@@ -7,12 +7,13 @@ Define a base command class that:
 """
 
 import os
+import time
 import subprocess
 import shutil
 
 import sublime
-
-from ..common import util
+from ..common import util, vendor
+from ..common.vendor import pexpect
 from .git_mixins.status import StatusMixin
 from .git_mixins.active_branch import ActiveBranchMixin
 from .git_mixins.branches import BranchesMixin
@@ -69,6 +70,7 @@ class GitCommand(StatusMixin,
     _quick_panel_blame_idx = 1
     _quick_panel_log_idx = 1
     _quick_panel_branch_diff_history_idx = 1
+    _stdout = ''
 
     def git(self, *args,
             stdin=None,
@@ -89,8 +91,12 @@ class GitCommand(StatusMixin,
         args = self._include_global_flags(args)
         command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
         command_str = " ".join(command)
+        git_path_setting = sublime.load_settings("GitSavvy.sublime-settings")
 
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        need_auth = ['push', 'pull', 'fetch']
+        catch_credential_errors =  savvy_settings.get("prompt_credentials", False)
+        catch_credential_errors = catch_credential_errors and args[0] in need_auth
 
         show_panel_overrides = savvy_settings.get("show_panel_for")
         show_panel = show_panel or args[0] in show_panel_overrides
@@ -150,18 +156,65 @@ class GitCommand(StatusMixin,
                     stderr.decode()
                 )
 
+        def on_result(return_code, stdout, stderr):
+            if decode and not isinstance(stdout, str):
+                stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
+
+            if return_code != 0 and throw_on_stderr:
+                raise_error("`{}` failed  ({}) with following output:\n{}\n{}".format(
+                    command_str, return_code, stdout, stderr
+                ))
+
+            if show_panel:
+                if savvy_settings.get("show_input_in_output"):
+                    util.log.panel("> {}\n{}\n{}".format(command_str, stdout, stderr))
+                else:
+                    util.log.panel("{}\n{}".format(stdout, stderr))
+
         if not p.returncode == 0 and throw_on_stderr:
-            raise_error("`{}` failed with following output:\n{}\n{}".format(
-                command_str, stdout, stderr
-            ))
+            # this piece of code detect git error meesages related to authentification.
+            # stdin must be None, because we will use stdin to pass username and password from Sublime to Git.
+            if catch_credential_errors and stdin is None and 'fatal: could not read Username for' in stderr:
+                command = [self.git_binary_path, '-C', working_dir or self.repo_path] + list(arg for arg in args if arg)
+                command_str = " ".join(command)
 
-        if show_panel:
-            if savvy_settings.get("show_input_in_output"):
-                util.log.panel("> {}\n{}\n{}".format(command_str, stdout, stderr))
-            else:
-                util.log.panel("{}\n{}".format(stdout, stderr))
+                self._stdout = None
+                is_window_command = hasattr(self, "window")
+                window = self.window if is_window_command else self.view.window()
+                window.show_input_panel('username:', '', lambda username: self.on_username(window, command_str, username, on_result), None, self.on_cancel)
 
+                # wait that the Git command has been executed in the show_input_panel thread.
+                if is_window_command:
+                    while self._stdout is None:
+                        time.sleep(1)
+                    stdout = self.decode_stdout(stdout, savvy_settings) if decode else self._stdout
+                    return stdout
+
+                # gwenzek: HACK: for TextCommand, it seems that the wait blocks the execution of `show_input_panel`.
+                # The best solution I found is to return directly, but the output message that may be important isn't returned.
+                # But it should work in most cases, since most commands that require the output doesn't require autenthification (log, status, ...)
+                # Anyway, the output will still be shown to users if they ask for it in "show_panel_for" setting.
+                else:
+                    print('returning without waiting for stdout')
+                    return None
+
+        on_result(p.returncode, stdout, stderr)
         return stdout
+
+    def on_username(self, window, command_str, username, on_result):
+        """ Asks for the password, before calling the given command. """
+        window.show_input_panel(username + "'s password:", '', lambda password: self.on_credentials(command_str, username, password, on_result), None, self.on_cancel)
+
+    def on_credentials(self, command_str, username, password, on_result):
+        """ Launch the given command, stores the ouput and return code in self. """
+        # pexpect runs the given command in a subprocess, parses the output and feeds the username and password when asked by Git.
+        # [pexpect](https://github.com/pexpect/pexpect)
+        stdout, return_code = pexpect.run(command_str, events={'Username for': username + '\n', 'Password for': password + '\n'}, withexitstatus=True)
+        on_result(return_code, stdout, b'')
+
+    def on_cancel(self):
+        self._stdout = b'Action cancelled by user.'
+        self._returncode = 0
 
     def decode_stdout(self, stdout, savvy_settings):
         fallback_encoding = savvy_settings.get("fallback_encoding")
