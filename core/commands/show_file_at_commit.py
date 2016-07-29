@@ -1,3 +1,4 @@
+import os
 import re
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
@@ -11,6 +12,7 @@ class GsShowFileAtCommitCommand(WindowCommand, GitCommand):
 
     def run(self, commit_hash, filepath):
         self.filepath = filepath
+        filepath = os.path.realpath(filepath)
         repo_path = self.repo_path
         currentview = self.window.active_view()
         lang = currentview.settings().get('syntax')
