@@ -16,6 +16,7 @@ class GsShowFileAtCommitCommand(WindowCommand, GitCommand):
         view = util.view.get_scratch_view(self, "show_file_at_commit")
         if not lang:
             lang = util.file.get_syntax_for_file(filepath)
+        filepath = os.path.realpath(filepath)
         view.set_syntax_file(lang)
         view.settings().set("git_savvy.show_file_at_commit_view.commit", commit_hash)
         view.settings().set("git_savvy.show_file_at_commit_view.filepath", filepath)
