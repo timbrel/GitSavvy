@@ -153,10 +153,23 @@
 
     /*
         When set to `true`, GitSavvy will automatically display more info about the
-        current commit in a quick panel.  When set to `false`, this function must
+        current commit in a output panel.
+     */
+    "log_show_more_commit_info": true,
+
+    /*
+        When set to `true`, GitSavvy will automatically display more info about the
+        current commit in a output panel.  When set to `false`, this function must
         be invoked manually.
      */
     "graph_show_more_commit_info": true,
+
+
+    /*
+        When set to `true,`, GitSavvy will display the full diff of the current
+        commit in the output panel.
+    */
+    "show_full_commit_info": false,
 
     /*
         Update the desired graph arguments for a customized experience.
