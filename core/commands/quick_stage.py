@@ -13,7 +13,7 @@ CLEAN_WORKING_DIR = "Nothing to commit, working directory clean."
 ADD_ALL_UNSTAGED_FILES = " ?  All unstaged files"
 ADD_ALL_FILES = " +  All files"
 STAGED = "--- {} files are staged for commit. ---"
-COMMIT = "    git: commit"
+COMMIT = "    git: quick commit"
 
 
 class GsQuickStageCommand(WindowCommand, GitCommand):
@@ -51,7 +51,7 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
                 return
 
             elif selection.menu_text == COMMIT:
-                self.window.run_command("gs_commit")
+                self.window.run_command("gs_quick_commit")
                 return
 
             elif selection.menu_text == ADD_ALL_UNSTAGED_FILES:
