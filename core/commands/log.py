@@ -56,15 +56,48 @@ class GsLogCommand(WindowCommand, GitCommand):
                 "Skip this set of commits and choose from the next-oldest batch."
             ])
 
+        try:
+            pre_selected_index = self._hashes.index(self._selected_hash) if hasattr(self, '_selected_hash') else 0
+        except ValueError:
+            pre_selected_index = 0
+
+        # _on_hash_selection has to be called by set_timeout_async
+        # otherwise, on_highlight_commit_async will be called after
+        # _on_hash_selection is executed.
         self.window.show_quick_panel(
             self._entries,
-            self.on_hash_selection,
-            flags=sublime.MONOSPACE_FONT
+            lambda index: sublime.set_timeout_async(lambda: self._on_hash_selection(index), 10),
+            flags=sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST,
+            selected_index=pre_selected_index,
+            on_highlight=self.on_highlight_commit
         )
+
+    def on_highlight_commit(self, index):
+        sublime.set_timeout_async(lambda: self.on_highlight_commit_async(index))
+
+    def on_highlight_commit_async(self, index):
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        show_more = savvy_settings.get("log_show_more_commit_info")
+        show_full = savvy_settings.get("show_full_commit_info")
+        if not show_more:
+            return
+        commit_hash = "%s" % self._hashes[index]
+        text = self.git("show", commit_hash, "--no-color", "--format=fuller", "--quiet" if not show_full else None)
+        output_view = self.window.create_output_panel("show_commit_info")
+        output_view.set_read_only(False)
+        output_view.run_command("gs_replace_view_text", {"text": text, "nuke_cursors": True})
+        output_view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
+        output_view.set_read_only(True)
+        self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
+
+    def _on_hash_selection(self, index):
+        self.window.run_command("hide_panel", {"panel": "output.show_commit_info"})
+        self.on_hash_selection(index)
 
     def on_hash_selection(self, index):
         options_array = [
                 "Show commit",
+                "Copy the full SHA",
                 "Compare commit against working directory",
                 "Compare commit against index"
         ]
@@ -76,7 +109,7 @@ class GsLogCommand(WindowCommand, GitCommand):
             return
         if index == self._limit:
             self._pagination += self._limit
-            sublime.set_timeout_async(lambda: self.run_async(), 1)
+            sublime.set_timeout_async(self.run_async, 1)
             return
 
         self._selected_hash = self._hashes[index]
@@ -90,21 +123,25 @@ class GsLogCommand(WindowCommand, GitCommand):
 
     def on_output_selection(self, index):
         if index == -1:
+            sublime.set_timeout_async(self.run_async, 1)
             return
 
         self.quick_panel_log_idx = index
         if index == 0:
             self.window.run_command("gs_show_commit", {"commit_hash": self._selected_hash})
 
-        if index in [1, 2]:
+        if index == 1:
+            sublime.set_clipboard(self._selected_hash)
+
+        if index in [2, 3]:
             self.window.run_command("gs_diff", {
-                "in_cached_mode": index == 2,
+                "in_cached_mode": index == 3,
                 "file_path": self._filename,
                 "current_file": bool(self._filename),
                 "base_commit": self._selected_hash
             })
 
-        if index == 3:
+        if index == 4:
             self.window.run_command(
                 "gs_show_file_at_commit",
                 {"commit_hash": self._selected_hash, "filepath": self._filename})

@@ -97,6 +97,7 @@ class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
     def run(self, edit):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         show_more = savvy_settings.get("graph_show_more_commit_info")
+        show_full = savvy_settings.get("show_full_commit_info")
         if not show_more:
             return
 
@@ -113,7 +114,7 @@ class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
         if len(commit_hash) <= 3:
             return
 
-        text = self.git("show", commit_hash, "--no-color", "--format=fuller", "--quiet")
+        text = self.git("show", commit_hash, "--no-color", "--format=fuller", "--quiet" if not show_full else None)
         output_view = self.view.window().create_output_panel("show_commit_info")
         output_view.set_read_only(False)
         output_view.insert(edit, 0, text)

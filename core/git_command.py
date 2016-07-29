@@ -66,9 +66,9 @@ class GitCommand(StatusMixin,
     """
 
     _last_remotes_used = {}
-    _quick_panel_blame_idx = 1
-    _quick_panel_log_idx = 1
-    _quick_panel_branch_diff_history_idx = 1
+    _quick_panel_blame_idx = 0
+    _quick_panel_log_idx = 0
+    _quick_panel_branch_diff_history_idx = 0
 
     def git(self, *args,
             stdin=None,
