@@ -30,7 +30,6 @@ class GsLogCommand(WindowCommand, GitCommand):
             '..{}'.format(self.cherry_branch) if self.cherry_branch else None,
             "--" if self._filename else None,
             self._filename,
-            "--no-merges" if self._branch else None,
             self._branch if self._branch else None
         ).strip("\x00")
 
