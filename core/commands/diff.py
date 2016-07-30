@@ -34,8 +34,8 @@ class GsDiffCommand(WindowCommand, GitCommand):
     def run(self, **kwargs):
         sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
 
-    def run_async(self, in_cached_mode=False, file_path=None,
-                  current_file=False, base_commit=None, target_commit=None, disable_stage=False):
+    def run_async(self, in_cached_mode=False, file_path=None, current_file=False, base_commit=None,
+                  target_commit=None, disable_stage=False, title=None):
         repo_path = self.repo_path
         if current_file:
             file_path = self.file_path or file_path
@@ -50,7 +50,8 @@ class GsDiffCommand(WindowCommand, GitCommand):
             diff_view = diff_views[view_key]
         else:
             diff_view = util.view.get_scratch_view(self, "diff", read_only=True)
-            title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(os.path.basename(repo_path))
+            if not title:
+                title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(os.path.basename(repo_path))
             diff_view.set_name(title)
             diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
             diff_view.settings().set("git_savvy.repo_path", repo_path)

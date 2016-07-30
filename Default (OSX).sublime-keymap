@@ -32,7 +32,7 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
-            { "key": "setting.git_savvy.diff_view.ready_only", "operator": "equal", "operand": false }
+            { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
         ]
     },
     {
@@ -43,7 +43,7 @@
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
             { "key": "setting.git_savvy.diff_view.in_cached_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.diff_view.ready_only", "operator": "equal", "operand": false }
+            { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
         ]
     },
 
