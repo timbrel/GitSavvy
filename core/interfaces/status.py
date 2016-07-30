@@ -7,7 +7,6 @@ from ..commands import *
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
-from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
 
 class GsShowStatusCommand(WindowCommand, GitCommand):
@@ -124,27 +123,6 @@ class StatusInterface(ui.Interface, GitCommand):
 
     def on_new_dashboard(self):
         self.view.run_command("gs_status_select_first_file")
-
-    @staticmethod
-    def sort_status_entries(file_status_list):
-        """
-        Take entries from `git status` and sort them into groups.
-        """
-        staged, unstaged, untracked, conflicts = [], [], [], []
-
-        for f in file_status_list:
-            if (f.index_status, f.working_status) in MERGE_CONFLICT_PORCELAIN_STATUSES:
-                conflicts.append(f)
-                continue
-            if f.index_status == "?":
-                untracked.append(f)
-                continue
-            elif f.working_status in ("M", "D"):
-                unstaged.append(f)
-            if f.index_status != " ":
-                staged.append(f)
-
-        return staged, unstaged, untracked, conflicts
 
     @ui.partial("branch_status")
     def render_branch_status(self):

@@ -95,15 +95,29 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
         staged_count = 0
         unstaged_count = 0
 
-        for entry in status_entries:
-            if entry.index_status != "?" and entry.index_status != " ":
-                staged_count += 1
-            if entry.working_status in ("M", "D", "?"):
-                unstaged_count += 1
-                filename = (entry.path if not entry.index_status == "R"
-                            else entry.path + " <- " + entry.path_alt)
-                menu_text = "[{0}] {1}".format(entry.working_status, filename)
-                menu_options.append(MenuOption(True, menu_text, filename, entry.index_status == "?"))
+        (staged_entries,
+         unstaged_entries,
+         untracked_entries,
+         conflict_entries) = self.sort_status_entries(self.get_status())
+
+        staged_count = len(staged_entries)
+        unstaged_count = len(unstaged_entries)
+        # untracked_count = len(untracked_entries)
+        # conflict_count = len(conflict_entries)
+
+        for entry in unstaged_entries:
+            filename = (entry.path if not entry.index_status == "R"
+                        else entry.path + " <- " + entry.path_alt)
+            menu_text = "[{0}] {1}".format(entry.working_status, filename)
+            menu_options.append(MenuOption(True, menu_text, filename, False))
+
+        for entry in untracked_entries:
+            menu_text = "[{0}] {1}".format(entry.working_status, entry.path)
+            menu_options.append(MenuOption(True, menu_text, entry.path, True))
+
+        for entry in conflict_entries:
+            menu_text = "[{0}] {1}".format(entry.working_status, entry.path)
+            menu_options.append(MenuOption(True, menu_text, entry.path, False))
 
         if unstaged_count > 0:
             menu_options.append(MenuOption(True, ADD_ALL_UNSTAGED_FILES, None, None))
