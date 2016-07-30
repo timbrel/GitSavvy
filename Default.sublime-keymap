@@ -459,6 +459,15 @@
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["?"],
+        "command": "gs_interface_toggle_popup_help",
+        "args": { "view_name": "diff_view" },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     //////////////////////
     // SHOW COMMIT VIEW //
