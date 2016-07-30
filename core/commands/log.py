@@ -96,9 +96,11 @@ class GsLogCommand(WindowCommand, GitCommand):
     def on_hash_selection(self, index):
         options_array = [
                 "Show commit",
+                "Checkout commit",
                 "Copy the full SHA",
-                "Compare commit against working directory",
-                "Compare commit against index"
+                "Diff commit",
+                "Diff commit (cached)",
+                "Compare commit against ..."
         ]
 
         if self._log_current_file:
@@ -126,24 +128,37 @@ class GsLogCommand(WindowCommand, GitCommand):
             return
 
         self.quick_panel_log_idx = index
+
         if index == 0:
             self.window.run_command("gs_show_commit", {"commit_hash": self._selected_hash})
 
         if index == 1:
+            self.checkout_ref(self._selected_hash)
+            util.view.refresh_gitsavvy(self.view)
+
+        if index == 2:
             sublime.set_clipboard(self._selected_hash)
 
-        if index in [2, 3]:
+        if index in [3, 4]:
+            in_cached_mode = index == 4
             self.window.run_command("gs_diff", {
-                "in_cached_mode": index == 3,
+                "in_cached_mode": in_cached_mode,
                 "file_path": self._filename,
                 "current_file": bool(self._filename),
                 "base_commit": self._selected_hash
             })
 
-        if index == 4:
+        if index == 5:
+            self.window.run_command("gs_compare_against", {
+                "target_commit": self._selected_hash,
+                "file_path": self._filename
+            })
+
+        if index == 6:
+            lang = self.window.active_view().settings().get('syntax')
             self.window.run_command(
                 "gs_show_file_at_commit",
-                {"commit_hash": self._selected_hash, "filepath": self._filename})
+                {"commit_hash": self._selected_hash, "filepath": self._filename, "lang": lang})
 
 
 class GsLogCurrentFileCommand(WindowCommand, GitCommand):
@@ -218,3 +233,98 @@ class GsLogBranchCommand(WindowCommand, GitCommand):
             return
         self._selected_branch = self.all_branches[index]
         self.window.run_command("gs_log", {"branch": self._selected_branch})
+
+
+class GsCompareAgainstCommand(WindowCommand, GitCommand):
+    def run(self, target_commit=None, file_path=None):
+        self._file_path = file_path
+        self._target_commit = target_commit
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        options_array = [
+            "Any Reference",
+            "Branch"
+        ]
+
+        self.window.show_quick_panel(
+            options_array,
+            self.on_select_against,
+            flags=sublime.MONOSPACE_FONT,
+            selected_index=self.quick_panel_compare_against_idx
+        )
+
+    def on_select_against(self, index):
+        if index < 0:
+            return
+
+        self.quick_panel_compare_against_idx = index
+
+        if index == 0:
+            self.window.run_command("gs_compare_against_reference", {
+                "target_commit": self._target_commit,
+                "file_path": self._file_path,
+                "from_panel": True
+            })
+
+        if index == 1:
+            self.window.run_command("gs_compare_against_branch", {
+                "target_commit": self._target_commit,
+                "file_path": self._file_path,
+                "from_panel": True
+            })
+
+
+class GsCompareAgainstReferenceCommand(WindowCommand, GitCommand):
+    def run(self, target_commit=None, file_path=None, from_panel=False):
+        self._file_path = file_path
+        self._target_commit = target_commit
+        self.from_panel = from_panel
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        self.window.show_input_panel("Ref:", "", self.show_diff, None, self.on_cancel)
+
+    def show_diff(self, ref):
+        self.window.run_command("gs_diff", {
+            "file_path": self._file_path,
+            "current_file": bool(self._file_path),
+            "base_commit": ref,
+            "target_commit": self._target_commit,
+            "ready_only": True
+        })
+
+    def on_cancel(self):
+        if self.from_panel:
+            self.window.run_command("gs_compare_against", {
+                "target_commit": self._target_commit,
+                "file_path": self._file_path
+            })
+
+
+class GsCompareAgainstBranchCommand(GsLogBranchCommand):
+    """
+    Compare a given commit against a selected branch or selected ref
+    """
+    def run(self, target_commit=None, file_path=None, from_panel=False):
+        self._file_path = file_path
+        self._target_commit = target_commit
+        self.from_panel = from_panel
+        sublime.set_timeout_async(self.run_async)
+
+    def on_branch_selection(self, index):
+        if index < 0:
+            if self.from_panel:
+                self.window.run_command("gs_compare_against", {
+                    "target_commit": self._target_commit,
+                    "file_path": self._file_path
+                })
+            return
+        self._selected_branch = self.all_branches[index]
+        self.window.run_command("gs_diff", {
+            "file_path": self._file_path,
+            "current_file": bool(self._file_path),
+            "base_commit": self._selected_branch,
+            "target_commit": self._target_commit,
+            "ready_only": True
+        })
