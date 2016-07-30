@@ -127,5 +127,6 @@ class GsCompareCommitShowDiffCommand(TextCommand, GitCommand):
         self.view.window().run_command("gs_diff", {
             "base_commit": base_commit,
             "target_commit": target_commit,
+            "ready_only": True,
             "title": "DIFF: {}..{}".format(base_commit, target_commit)
         })
