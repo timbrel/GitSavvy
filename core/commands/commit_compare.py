@@ -110,3 +110,22 @@ class GsCompareCommitRefreshCommand(TextCommand, GitCommand):
         diff_contents += self.git(*args)
         diff_contents = diff_contents.replace("*", COMMIT_NODE_CHAR)
         return diff_contents
+
+
+class GsCompareCommitShowDiffCommand(TextCommand, GitCommand):
+
+    """
+    Refresh view of all commits diff between branches.
+    """
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        base_commit = self.view.settings().get("git_savvy.compare_commit_view.base_commit")
+        target_commit = self.view.settings().get("git_savvy.compare_commit_view.target_commit")
+        self.view.window().run_command("gs_diff", {
+            "base_commit": base_commit,
+            "target_commit": target_commit,
+            "title": "DIFF: {}..{}".format(base_commit, target_commit)
+        })
