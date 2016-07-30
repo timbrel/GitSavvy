@@ -460,6 +460,19 @@
         ]
     },
 
+    //////////////////////
+    // SHOW COMMIT VIEW //
+    //////////////////////
+
+    {
+        "keys": ["o"],
+        "command": "gs_show_commit_open_file_at_hunk",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+
     ////////////////
     // BLAME VIEW //
     ////////////////
