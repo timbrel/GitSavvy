@@ -1,12 +1,13 @@
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
-
+import re
 from ..git_command import GitCommand
 from ...common import util
 
 LOG_GRAPH_TITLE = "GRAPH"
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
+COMMIT_LINE = re.compile("[%s][ /_\|\-.]*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
 
 
 class GsLogGraphCommand(WindowCommand, GitCommand):
@@ -80,7 +81,9 @@ class GsLogGraphActionCommand(TextCommand, GitCommand):
             return
         line = lines[0]
 
-        commit_hash = line.strip(" /_\|" + COMMIT_NODE_CHAR_OPTIONS)[:7]
+        m = COMMIT_LINE.search(line)
+        commit_hash = m.group(1) if m else ""
+
         if self.action == "checkout":
             self.checkout_ref(commit_hash)
             util.view.refresh_gitsavvy(self.view)
@@ -110,7 +113,9 @@ class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
             return
         line = lines[0]
 
-        commit_hash = line.strip(" /_\|" + COMMIT_NODE_CHAR_OPTIONS)[:7]
+        m = COMMIT_LINE.search(line)
+        commit_hash = m.group(1) if m else ""
+
         if len(commit_hash) <= 3:
             return
 
@@ -136,8 +141,6 @@ class GsLogGraphNextCommitCommand(TextCommand, GitCommand):
 
         current_row, _ = self.view.rowcol(selections[0].a)
         max_row, _ = self.view.rowcol(self.view.size())
-        # The last commit displayed will be followed by one empty line.
-        max_row -= 1
 
         # plugin_host will crash if we attempt to move the cursor past the view size
         if current_row >= max_row and forward:
@@ -149,7 +152,9 @@ class GsLogGraphNextCommitCommand(TextCommand, GitCommand):
             return
         line = lines[0]
 
-        commit_hash = line.strip(" /_\|" + COMMIT_NODE_CHAR_OPTIONS)[:7]
+        m = COMMIT_LINE.search(line)
+        commit_hash = m.group(1) if m else ""
+
         if len(commit_hash) > 3:
             self.view.window().run_command("gs_log_graph_more_info")
             self.view.window().run_command("show_at_center")
