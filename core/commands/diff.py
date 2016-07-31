@@ -24,14 +24,18 @@ diff_views = {}
 class GsDiffCommand(WindowCommand, GitCommand):
 
     """
-    Create a new view to display the project's diff.  If `in_cached_mode` is set,
-    display a diff of the Git index.
+    Create a new view to display the difference of `target_commit`
+    against `base_commit`. If `target_commit` is None, compare
+    working directory with `base_commit`.  If `in_cached_mode` is set,
+    display a diff of the Git index. Set `disable_stage` to True to
+    disable Ctrl-Enter in the diff view.
     """
 
     def run(self, **kwargs):
         sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
 
-    def run_async(self, in_cached_mode=False, file_path=None, current_file=False, base_commit=None):
+    def run_async(self, in_cached_mode=False, file_path=None,
+                  current_file=False, base_commit=None, target_commit=None, disable_stage=False):
         repo_path = self.repo_path
         if current_file:
             file_path = self.file_path or file_path
@@ -55,6 +59,8 @@ class GsDiffCommand(WindowCommand, GitCommand):
             diff_view.settings().set("git_savvy.diff_view.ignore_whitespace", False)
             diff_view.settings().set("git_savvy.diff_view.show_word_diff", False)
             diff_view.settings().set("git_savvy.diff_view.base_commit", base_commit)
+            diff_view.settings().set("git_savvy.diff_view.target_commit", target_commit)
+            diff_view.settings().set("git_savvy.diff_view.disable_stage", disable_stage)
             diff_views[view_key] = diff_view
 
         self.window.focus_view(diff_view)
@@ -75,16 +81,18 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
         show_word_diff = self.view.settings().get("git_savvy.diff_view.show_word_diff")
         base_commit = self.view.settings().get("git_savvy.diff_view.base_commit")
+        target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
 
         try:
             stdout = self.git(
                 "diff",
                 "--ignore-all-space" if ignore_whitespace else None,
                 "--word-diff" if show_word_diff else None,
-                "--no-color", base_commit,
+                "--no-color",
                 "--cached" if in_cached_mode else None,
-                "--",
-                self.file_path)
+                base_commit,
+                target_commit,
+                "--", self.file_path)
         except GitSavvyError as err:
             # When the output of the above Git command fails to correctly parse,
             # the expected notification will be displayed to the user.  However,
@@ -245,8 +253,20 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
             self.load_file_at_line(filename, lineno)
 
     def load_file_at_line(self, filename, lineno):
+        """
+        Show file at target commit if `git_savvy.diff_view.target_commit` is non-empty.
+        Otherwise, open the file directly.
+        """
+        target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
         full_path = os.path.join(self.repo_path, filename)
-        self.view.window().open_file(
-            "{file}:{row}:{col}".format(file=full_path, row=lineno, col=0),
-            sublime.ENCODED_POSITION
-            )
+        if target_commit:
+            self.view.window().run_command("gs_show_file_at_commit", {
+                "commit_hash": target_commit,
+                "filepath": full_path,
+                "lineno": lineno
+            })
+        else:
+            self.view.window().open_file(
+                "{file}:{row}:{col}".format(file=full_path, row=lineno, col=0),
+                sublime.ENCODED_POSITION
+                )
