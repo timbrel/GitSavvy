@@ -137,10 +137,12 @@ class GsCompareCommitShowDiffCommand(TextCommand, GitCommand):
     def run_async(self):
         base_commit = self.view.settings().get("git_savvy.compare_commit_view.base_commit")
         target_commit = self.view.settings().get("git_savvy.compare_commit_view.target_commit")
+        file_path = self.view.settings().get("git_savvy.compare_commit_view.file_path")
         self.view.window().run_command("gs_diff", {
             "base_commit": base_commit,
             "target_commit": target_commit,
-            "ready_only": True,
+            "file_path": file_path,
+            "disable_stage": True,
             "title": "DIFF: {}..{}".format(base_commit, target_commit)
         })
 
@@ -153,8 +155,8 @@ class GsCompareAgainstCommand(WindowCommand, GitCommand):
 
     def run_async(self):
         options_array = [
-            "Any Reference",
-            "Branch"
+            "Branch",
+            "Reference"
         ]
 
         self.window.show_quick_panel(
@@ -171,25 +173,22 @@ class GsCompareAgainstCommand(WindowCommand, GitCommand):
         self.quick_panel_compare_against_idx = index
 
         if index == 0:
-            self.window.run_command("gs_compare_against_reference", {
+            self.window.run_command("gs_compare_against_branch", {
                 "target_commit": self._target_commit,
-                "file_path": self._file_path,
-                "from_panel": True
+                "file_path": self._file_path
             })
 
         if index == 1:
-            self.window.run_command("gs_compare_against_branch", {
+            self.window.run_command("gs_compare_against_reference", {
                 "target_commit": self._target_commit,
-                "file_path": self._file_path,
-                "from_panel": True
+                "file_path": self._file_path
             })
 
 
 class GsCompareAgainstReferenceCommand(WindowCommand, GitCommand):
-    def run(self, target_commit=None, file_path=None, from_panel=False):
+    def run(self, target_commit=None, file_path=None):
         self._file_path = file_path
         self._target_commit = target_commit
-        self.from_panel = from_panel
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
@@ -203,34 +202,41 @@ class GsCompareAgainstReferenceCommand(WindowCommand, GitCommand):
         })
 
     def on_cancel(self):
-        if self.from_panel:
-            self.window.run_command("gs_compare_against", {
-                "target_commit": self._target_commit,
-                "file_path": self._file_path
-            })
+        self.window.run_command("gs_compare_against", {
+            "target_commit": self._target_commit,
+            "file_path": self._file_path
+        })
 
 
 class GsCompareAgainstBranchCommand(GsLogBranchCommand):
     """
     Compare a given commit against a selected branch or selected ref
     """
-    def run(self, target_commit=None, file_path=None, from_panel=False):
+    def run(self, target_commit=None, file_path=None):
         self._file_path = file_path
         self._target_commit = target_commit
-        self.from_panel = from_panel
         sublime.set_timeout_async(self.run_async)
 
     def on_branch_selection(self, index):
         if index < 0:
-            if self.from_panel:
-                self.window.run_command("gs_compare_against", {
-                    "target_commit": self._target_commit,
-                    "file_path": self._file_path
-                })
+            self.window.run_command("gs_compare_against", {
+                "target_commit": self._target_commit,
+                "file_path": self._file_path
+            })
             return
         self._selected_branch = self.all_branches[index]
         self.window.run_command("gs_compare_commit", {
             "file_path": self._file_path,
             "base_commit": self._selected_branch,
             "target_commit": self._target_commit
+        })
+
+
+class GsCompareCurrentFileAgainstCommand(WindowCommand, GitCommand):
+    def run(self, target_commit=None, file_path=None):
+        if not file_path:
+            file_path = self.file_path
+        self.window.run_command("gs_compare_against", {
+            "target_commit": target_commit,
+            "file_path": file_path
         })
