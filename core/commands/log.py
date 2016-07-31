@@ -151,7 +151,8 @@ class GsLogCommand(WindowCommand, GitCommand):
                 "in_cached_mode": in_cached_mode,
                 "file_path": self._filename,
                 "current_file": bool(self._filename),
-                "base_commit": self._selected_hash
+                "base_commit": self._selected_hash,
+                "disable_stage": True
             })
 
         if index == 6:
