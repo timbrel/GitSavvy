@@ -55,7 +55,7 @@
         "args": { "amend": true }
     },
     {
-        "caption": "git: graph current branch",
+        "caption": "git: graph",
         "command": "gs_log_graph"
     },
     {
