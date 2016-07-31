@@ -46,11 +46,11 @@ contexts:
   section:
     - match: ^$
       pop: true
-    - match: ^(    .+)$
+    - match: ^(    .+)\n$
       captures:
           0: meta.git-savvy.status.file
           1: gitsavvy.gotosymbol
-    - match: ^(  (-) (.+))$
+    - match: ^(  (-) (.+))\n$
       captures:
           0: meta.git-savvy.status.file
           1: gitsavvy.gotosymbol
