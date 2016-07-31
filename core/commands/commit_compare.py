@@ -1,6 +1,7 @@
 import sublime
 from sublime_plugin import TextCommand, WindowCommand
 import os
+import re
 
 from ..git_command import GitCommand
 from ...common import util
@@ -10,6 +11,7 @@ from .log import GsLogBranchCommand
 
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
+COMMIT_LINE = re.compile("[%s][ /_\|\-.]*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
 
 
 class GsCompareCommitCommand(TextCommand, GitCommand):
@@ -56,7 +58,9 @@ class GsCompareCommitActionCommand(TextCommand, GitCommand):
 
         lines = util.view.get_lines_from_regions(self.view, self.selections)
         line = lines[0]
-        self.commit_hash = line.strip(" /_\|" + COMMIT_NODE_CHAR_OPTIONS).split(' ')[0]
+
+        m = COMMIT_LINE.search(line)
+        self.commit_hash = m.group(1) if m else ""
 
         if not len(self.selections) == 1:
             sublime.status_message("You can only do actions on one commit at a time.")
