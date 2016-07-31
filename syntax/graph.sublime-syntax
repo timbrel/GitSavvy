@@ -9,7 +9,7 @@ contexts:
   main:
     - match: '([| \\/_.-]+)'
       comment: graph lines
-      scope: comment.git-savvy.graph.graph-line
+      scope: punctuation.other.git-savvy.graph.graph-line
 
     - match: '[*●]'
       scope: keyword.graph.commit.git-savvy
