@@ -31,7 +31,8 @@
         "command": "gs_diff_stage_or_reset_hunk",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
         ]
     },
     {
@@ -41,7 +42,8 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
-            { "key": "setting.git_savvy.diff_view.in_cached_mode", "operator": "equal", "operand": false }
+            { "key": "setting.git_savvy.diff_view.in_cached_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
         ]
     },
 

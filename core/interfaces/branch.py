@@ -593,17 +593,51 @@ class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
     def show_diff(self, branch_name, remote=None):
         comparison_branch_name = remote + "/" + branch_name if remote else branch_name
         active_branch_name = self.get_current_branch_name()
+        self.view.window().run_command("gs_diff", {
+            "base_commit": comparison_branch_name,
+            "target_commit": active_branch_name,
+            "disable_stage": True,
+            "title": "DIFF: {}..{}".format(comparison_branch_name, active_branch_name)
+        })
 
-        diff_contents = self.git("diff", "--no-color", "{}..{}".format(comparison_branch_name, active_branch_name))
 
-        repo_path = self.repo_path
-        view = self.view.window().new_file()
-        view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
-        view.settings().set("git_savvy.repo_path", repo_path)
-        view.settings().set("word_wrap", False)
-        view.set_name("BRANCH COMPARISON")
-        view.set_scratch(True)
-        view.run_command("gs_replace_view_text", {"text": diff_contents, "nuke_cursors": True})
+class GsBranchesDiffCommitHistoryCommand(TextCommand, GitCommand):
+
+    """
+    Show a view of all commits diff between branches.
+    """
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        self.interface = ui.get_interface(self.view.id())
+        selection, line = self.interface.get_selection_line()
+        if not line:
+            return
+
+        segments = line.strip("▸ ").split(" ")
+        branch_name = segments[1]
+
+        local_region = self.view.get_regions("git_savvy_interface.branch_list")[0]
+        if local_region.contains(selection):
+            self.show_commits(branch_name)
+            return
+
+        remotes = self.get_remotes()
+        for remote_name in remotes:
+            remote_region = self.view.get_regions("git_savvy_interface.branch_list_" + remote_name)
+            if remote_region and remote_region[0].contains(selection):
+                self.show_commits(branch_name, remote=remote_name)
+                return
+
+    def show_commits(self, branch_name, remote=None):
+        target_commit = self.get_current_branch_name()
+        base_commit = remote + "/" + branch_name if remote else branch_name
+        self.view.run_command("gs_compare_commit", {
+            "base_commit": base_commit,
+            "target_commit": target_commit
+        })
 
 
 class GsBranchesRefreshCommand(TextCommand, GitCommand):

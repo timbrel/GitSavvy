@@ -68,6 +68,7 @@ class GitCommand(StatusMixin,
     _last_remotes_used = {}
     _quick_panel_blame_idx = 0
     _quick_panel_log_idx = 0
+    _quick_panel_compare_against_idx = 0
     _quick_panel_branch_diff_history_idx = 0
 
     def git(self, *args,
@@ -337,12 +338,21 @@ class GitCommand(StatusMixin,
 
     @property
     def quick_panel_log_idx(self):
-        """ Index for quick panel blame options"""
+        """ Index for quick panel log options"""
         return self._quick_panel_log_idx
 
     @quick_panel_log_idx.setter
     def quick_panel_log_idx(self, value):
         self._quick_panel_log_idx = value
+
+    @property
+    def quick_panel_compare_against_idx(self):
+        """ Index for quick panel log options"""
+        return self._quick_panel_compare_against_idx
+
+    @quick_panel_compare_against_idx.setter
+    def quick_panel_compare_against_idx(self, value):
+        self._quick_panel_compare_against_idx = value
 
     @property
     def quick_panel_branch_diff_history_idx(self):

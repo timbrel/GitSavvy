@@ -96,9 +96,11 @@ class GsLogCommand(WindowCommand, GitCommand):
     def on_hash_selection(self, index):
         options_array = [
                 "Show commit",
+                "Checkout commit",
+                "Compare commit against ...",
                 "Copy the full SHA",
-                "Compare commit against working directory",
-                "Compare commit against index"
+                "Diff commit",
+                "Diff commit (cached)"
         ]
 
         if self._log_current_file:
@@ -126,24 +128,38 @@ class GsLogCommand(WindowCommand, GitCommand):
             return
 
         self.quick_panel_log_idx = index
+
         if index == 0:
             self.window.run_command("gs_show_commit", {"commit_hash": self._selected_hash})
 
         if index == 1:
-            sublime.set_clipboard(self._selected_hash)
+            self.checkout_ref(self._selected_hash)
+            util.view.refresh_gitsavvy(self.view)
 
-        if index in [2, 3]:
-            self.window.run_command("gs_diff", {
-                "in_cached_mode": index == 3,
-                "file_path": self._filename,
-                "current_file": bool(self._filename),
-                "base_commit": self._selected_hash
+        if index == 2:
+            self.window.run_command("gs_compare_against", {
+                "target_commit": self._selected_hash,
+                "file_path": self._filename
             })
 
-        if index == 4:
+        if index == 3:
+            sublime.set_clipboard(self._selected_hash)
+
+        if index in [4, 5]:
+            in_cached_mode = index == 5
+            self.window.run_command("gs_diff", {
+                "in_cached_mode": in_cached_mode,
+                "file_path": self._filename,
+                "current_file": bool(self._filename),
+                "base_commit": self._selected_hash,
+                "disable_stage": True
+            })
+
+        if index == 6:
+            lang = self.window.active_view().settings().get('syntax')
             self.window.run_command(
                 "gs_show_file_at_commit",
-                {"commit_hash": self._selected_hash, "filepath": self._filename})
+                {"commit_hash": self._selected_hash, "filepath": self._filename, "lang": lang})
 
 
 class GsLogCurrentFileCommand(WindowCommand, GitCommand):

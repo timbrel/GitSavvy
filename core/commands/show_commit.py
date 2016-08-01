@@ -1,6 +1,11 @@
+import os
+import bisect
+import re
+
 from sublime_plugin import WindowCommand, TextCommand
 
 from ..git_command import GitCommand
+from .diff import GsDiffOpenFileAtHunkCommand
 
 
 SHOW_COMMIT_TITLE = "COMMIT: {}"
@@ -29,3 +34,24 @@ class GsShowCommitInitializeView(TextCommand, GitCommand):
         content = self.git("show", "--no-color", commit_hash)
         self.view.run_command("gs_replace_view_text", {"text": content, "nuke_cursors": True})
         self.view.set_read_only(True)
+
+
+class GsShowCommitOpenFileAtHunkCommand(GsDiffOpenFileAtHunkCommand):
+
+    """
+    For each cursor in the view, identify the hunk in which the cursor lies,
+    and open the file at that hunk in a separate view.
+    """
+
+    def load_file_at_line(self, filename, lineno):
+        """
+        Show file at target commit if `git_savvy.diff_view.target_commit` is non-empty.
+        Otherwise, open the file directly.
+        """
+        commit_hash = self.view.settings().get("git_savvy.show_commit_view.commit")
+        full_path = os.path.join(self.repo_path, filename)
+        self.view.window().run_command("gs_show_file_at_commit", {
+            "commit_hash": commit_hash,
+            "filepath": full_path,
+            "lineno": lineno
+        })

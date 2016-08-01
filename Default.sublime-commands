@@ -187,6 +187,14 @@
         "args": { "in_cached_mode": true, "current_file": true }
     },
     {
+        "caption": "git: compare against ...",
+        "command": "gs_compare_against"
+    },
+    {
+        "caption": "git: compare current file against ...",
+        "command": "gs_compare_current_file_against"
+    },
+    {
         "caption": "git: blame current file",
         "command": "gs_blame"
     },
