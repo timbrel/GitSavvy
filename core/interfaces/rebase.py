@@ -350,7 +350,7 @@ class GsRebaseUndoCommand(TextCommand, GitCommand):
         if log is None or cursor is None or cursor == -1:
             return
 
-        branch_name, ref = self.interface.get_branch_state()
+        branch_name, ref, _ = self.interface.get_branch_state()
 
         current = log[cursor]
         if current["branch_name"] != branch_name:
@@ -388,7 +388,7 @@ class GsRebaseRedoCommand(TextCommand, GitCommand):
         if log is None or cursor is None or cursor == len(log) - 1:
             return
 
-        branch_name, ref = self.interface.get_branch_state()
+        branch_name, ref, _ = self.interface.get_branch_state()
 
         undone_action = log[cursor+1]
         if undone_action["branch_name"] != branch_name:
