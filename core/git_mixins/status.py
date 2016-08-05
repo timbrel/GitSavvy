@@ -21,8 +21,8 @@ class StatusMixin():
     def get_status(self):
         """
         Return a list of FileStatus objects.  These objects correspond
-        to all files that are 1) staged, 2) modified, 3) new, or 4)
-        deleted, as well as additional status information that can
+        to all files that are 1) staged, 2) modified, 3) new, 4) deleted,
+        5) renamed, or 6) copied as well as additional status information that can
         occur mid-merge.
         """
         stdout = self.git("status", "--porcelain", "-z")
@@ -36,7 +36,7 @@ class StatusMixin():
             index_status = entry[0]
             working_status = entry[1].strip() or None
             path = entry[3:]
-            path_alt = porcelain_entries.__next__() if index_status == "R" else None
+            path_alt = porcelain_entries.__next__() if index_status in ["R", "C"] else None
             entries.append(FileStatus(path, path_alt, index_status, working_status))
 
         return entries
