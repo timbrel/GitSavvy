@@ -991,7 +991,7 @@
     },
     {
         "keys": ["r"],
-        "command": "gs_ompare_commit_refresh",
+        "command": "gs_compare_commit_refresh",
         "context": [
             { "key": "setting.git_savvy.compare_commit_view", "operator": "equal", "operand": true }
         ]
