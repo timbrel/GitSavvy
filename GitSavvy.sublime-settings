@@ -178,7 +178,7 @@
         NOTE: Changes you make may break in-view functionality, so use with caution.
      */
     // "git_graph_args": ["log", "--oneline", "--graph", "--decorate"],
-    "git_graph_args": ["log", "--pretty=format:%h%d %s (%ar) <%an>", "--graph"],
+    "git_graph_args": ["log", "--pretty=format:%h%d %s (%ar) <%an>", "--graph", "--max-count=20000"],
 
     /*
         When set to `true`, GitSavvy will prompt for confirmation when closing
