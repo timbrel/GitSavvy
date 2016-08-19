@@ -243,13 +243,23 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
         for cursor_pt in cursor_pts:
             diff_start = diff_starts[bisect.bisect(diff_starts, cursor_pt) - 1]
             diff_start_line = self.view.substr(self.view.line(diff_start))
+
             hunk_start = hunk_starts[bisect.bisect(hunk_starts, cursor_pt) - 1]
-            hunk_line = self.view.substr(self.view.line(hunk_start))
+            hunk_line_str = self.view.substr(self.view.line(hunk_start))
+            hunk_line, _ = self.view.rowcol(hunk_start)
+            cursor_line, _ = self.view.rowcol(cursor_pt)
+            additional_lines = cursor_line - hunk_line - 1
 
             # Example: "diff --git a/src/js/main.spec.js b/src/js/main.spec.js" --> "src/js/main.spec.js"
-            filename = re.search(r" b/(.+?)$", diff_start_line).groups()[0]
+            use_prepix = re.search(r" b/(.+?)$", diff_start_line)
+            if use_prepix is None:
+                filename = diff_start_line.split(" ")[-1]
+            else:
+                filename = use_prepix.groups()[0]
+
             # Example: "@@ -9,6 +9,7 @@" --> 9
-            lineno = int(re.search(r"^@@ \-\d+(,-?\d+)? \+(\d+)", hunk_line).groups()[1])
+            lineno = int(re.search(r"^@@ \-\d+(,-?\d+)? \+(\d+)", hunk_line_str).groups()[1])
+            lineno = lineno + additional_lines
 
             self.load_file_at_line(filename, lineno)
 
