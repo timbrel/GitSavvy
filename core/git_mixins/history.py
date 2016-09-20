@@ -15,7 +15,8 @@ LogEntry = namedtuple("LogEntry", (
 class HistoryMixin():
 
     def log(self, author=None, branch=None, file_path=None, start_end=None,
-            limit=6000, skip=None, reverse=False, msg_regexp=None, diff_regexp=None):
+            cherry=None, limit=6000, skip=None, reverse=False,
+            msg_regexp=None, diff_regexp=None):
 
         log_output = self.git(
             "log",
@@ -25,6 +26,7 @@ class HistoryMixin():
             '--format=%h%n%H%n%s%n%an%n%ae%n%at%x00%B%x00%x00%n',
             "--author={}".format(author) if author else None,
             "--grep={}".format(msg_regexp) if msg_regexp else None,
+            "--cherry" if cherry else None,
             "--G" if diff_regexp else None,
             diff_regexp if diff_regexp else None,
             "--" if file_path else None,
