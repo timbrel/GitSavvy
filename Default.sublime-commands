@@ -59,9 +59,9 @@
         "command": "gs_log_graph"
     },
     {
-        "caption": "git: graph all branches",
+        "caption": "git: graph",
         "command": "gs_log_graph",
-        "args": { "all_branches": true }
+        "args": { "current_file": true }
     },
     {
         "caption": "github: open file on remote",
@@ -192,7 +192,8 @@
     },
     {
         "caption": "git: compare current file against ...",
-        "command": "gs_compare_current_file_against"
+        "command": "gs_compare_against",
+        "args": { "current_file": true }
     },
     {
         "caption": "git: blame current file",
@@ -207,16 +208,9 @@
         "command": "gs_log"
     },
     {
-        "caption": "git: log by branch",
-        "command": "gs_log_branch"
-    },
-    {
         "caption": "git: log current file",
-        "command": "gs_log_current_file"
-    },
-    {
-        "caption": "git: log by author",
-        "command": "gs_log_by_author"
+        "command": "gs_log",
+        "args": { "current_file": true }
     },
     {
         "caption": "git: merge",

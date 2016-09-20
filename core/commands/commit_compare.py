@@ -3,6 +3,7 @@ from sublime_plugin import TextCommand, WindowCommand
 import os
 import re
 
+from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ...common import util
 from ...common import ui
@@ -68,12 +69,12 @@ class GsCompareCommitActionCommand(TextCommand, GitCommand):
 
         self.view.window().show_quick_panel(
             self.actions,
-            self.on_select_action,
+            self.on_action_selection,
             selected_index=self.quick_panel_branch_diff_history_idx,
             flags=sublime.MONOSPACE_FONT
         )
 
-    def on_select_action(self, index):
+    def on_action_selection(self, index):
         if index == -1:
             return
         self.quick_panel_branch_diff_history_idx = index
@@ -151,44 +152,6 @@ class GsCompareCommitShowDiffCommand(TextCommand, GitCommand):
         })
 
 
-class GsCompareAgainstCommand(WindowCommand, GitCommand):
-    def run(self, target_commit=None, file_path=None):
-        self._file_path = file_path
-        self._target_commit = target_commit
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
-        options_array = [
-            "Branch",
-            "Reference"
-        ]
-
-        self.window.show_quick_panel(
-            options_array,
-            self.on_select_against,
-            flags=sublime.MONOSPACE_FONT,
-            selected_index=self.quick_panel_compare_against_idx
-        )
-
-    def on_select_against(self, index):
-        if index < 0:
-            return
-
-        self.quick_panel_compare_against_idx = index
-
-        if index == 0:
-            self.window.run_command("gs_compare_against_branch", {
-                "target_commit": self._target_commit,
-                "file_path": self._file_path
-            })
-
-        if index == 1:
-            self.window.run_command("gs_compare_against_reference", {
-                "target_commit": self._target_commit,
-                "file_path": self._file_path
-            })
-
-
 class GsCompareAgainstReferenceCommand(WindowCommand, GitCommand):
     def run(self, target_commit=None, file_path=None):
         self._file_path = file_path
@@ -236,11 +199,39 @@ class GsCompareAgainstBranchCommand(GsLogBranchCommand):
         })
 
 
-class GsCompareCurrentFileAgainstCommand(WindowCommand, GitCommand):
-    def run(self, target_commit=None, file_path=None):
-        if not file_path:
-            file_path = self.file_path
-        self.window.run_command("gs_compare_against", {
-            "target_commit": target_commit,
-            "file_path": file_path
-        })
+class GsCompareAgainstCommand(WindowCommand, GitCommand):
+    def run(self, target_commit=None, file_path=None, current_file=False):
+        self._file_path = self.file_path if current_file else file_path
+        self._target_commit = target_commit
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        options_array = [
+            "Branch",
+            "Reference"
+        ]
+
+        self.window.show_quick_panel(
+            options_array,
+            self.on_option_selection,
+            flags=sublime.MONOSPACE_FONT,
+            selected_index=self.quick_panel_compare_against_idx
+        )
+
+    def on_option_selection(self, index):
+        if index < 0:
+            return
+
+        self.quick_panel_compare_against_idx = index
+
+        if index == 0:
+            self.window.run_command("gs_compare_against_branch", {
+                "target_commit": self._target_commit,
+                "file_path": self._file_path
+            })
+
+        if index == 1:
+            self.window.run_command("gs_compare_against_reference", {
+                "target_commit": self._target_commit,
+                "file_path": self._file_path
+            })
