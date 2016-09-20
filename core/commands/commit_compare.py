@@ -7,7 +7,6 @@ from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ...common import util
 from ...common import ui
-from .log import GsLogBranchCommand
 
 
 COMMIT_NODE_CHAR = "●"
@@ -175,14 +174,26 @@ class GsCompareAgainstReferenceCommand(WindowCommand, GitCommand):
         })
 
 
-class GsCompareAgainstBranchCommand(GsLogBranchCommand):
-    """
-    Compare a given commit against a selected branch or selected ref
-    """
+class GsCompareAgainstBranchCommand(WindowCommand, GitCommand):
     def run(self, target_commit=None, file_path=None):
         self._file_path = file_path
         self._target_commit = target_commit
         sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        self.all_branches = [b.name_with_remote for b in self.get_branches()]
+
+        if hasattr(self, '_selected_branch') and self._selected_branch in self.all_branches:
+            pre_selected_index = self.all_branches.index(self._selected_branch)
+        else:
+            pre_selected_index = self.all_branches.index(self.get_current_branch_name())
+
+        self.window.show_quick_panel(
+            self.all_branches,
+            self.on_branch_selection,
+            flags=sublime.MONOSPACE_FONT,
+            selected_index=pre_selected_index
+        )
 
     def on_branch_selection(self, index):
         if index < 0:
