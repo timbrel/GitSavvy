@@ -21,10 +21,4 @@ contexts:
         2: string.other.commit-info.header.key.punctuation.git-savvy
         3: meta.commit-info.header.value.git-savvy
 
-    - match: ^(?=diff)
-      comment: diff section
-      push:
-        - meta_scope: meta.git-savvy.commit-diff
-        - match: ^$
-          pop: true
-        - include: scope:git-savvy.diff
+    - include: "scope:git-savvy.diff"

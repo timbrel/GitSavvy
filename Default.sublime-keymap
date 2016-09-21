@@ -517,6 +517,24 @@
         ]
     },
     {
+        "keys": ["s"],
+        "command": "gs_show_commit_toggle_setting",
+        "args": { "setting": "ignore_whitespace" },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["w"],
+        "command": "gs_show_commit_toggle_setting",
+        "args": { "setting": "show_word_diff" },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["?"],
         "command": "gs_interface_toggle_popup_help",
         "args": { "view_name": "show_commit_view" },
