@@ -51,11 +51,17 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        file_path = self.view.settings().get("git_savvy.compare_commit_view.file_path")
+        if file_path:
+            graph_content = "File: {}\n\n".format(file_path)
+        else:
+            graph_content = ""
+
         args = self.view.settings().get("git_savvy.git_graph_args")
-        branch_graph = self.git(*args)
-        if COMMIT_NODE_CHAR != "*":
-            branch_graph = branch_graph.replace("*", COMMIT_NODE_CHAR)
-        self.view.run_command("gs_replace_view_text", {"text": branch_graph, "nuke_cursors": True})
+        graph_content += self.git(*args)
+        graph_content = graph_content.replace("*", COMMIT_NODE_CHAR)
+
+        self.view.run_command("gs_replace_view_text", {"text": graph_content, "nuke_cursors": True})
         self.view.run_command("gs_log_graph_more_info")
 
         self.view.run_command("gs_handle_vintageous")
@@ -175,13 +181,17 @@ class GsLogGraphActionCommand(TextCommand, GitCommand):
         if self.view.settings().get("git_savvy.compare_commit_view"):
             self.actions.append("Cherry-pick commit")
 
+        self._file_path = self.view.settings().get("git_savvy.compare_commit_view.file_path")
+        if self._file_path:
+            self.actions.append("Show file at commit")
+
         self.selections = self.view.sel()
 
         lines = util.view.get_lines_from_regions(self.view, self.selections)
         line = lines[0]
 
         m = COMMIT_LINE.search(line)
-        self.commit_hash = m.group(1) if m else ""
+        self._commit_hash = m.group(1) if m else ""
 
         if not len(self.selections) == 1:
             sublime.status_message("You can only do actions on one commit at a time.")
@@ -199,18 +209,21 @@ class GsLogGraphActionCommand(TextCommand, GitCommand):
             return
         self.quick_panel_branch_diff_history_idx = index
 
-        # Show commit
-        if index == 0:
-            self.view.window().run_command("gs_show_commit", {"commit_hash": self.commit_hash})
+        action = self.actions[index]
+        if action == "Show commit":
+            self.view.window().run_command("gs_show_commit", {"commit_hash": self._commit_hash})
 
-        # Checkout commit
-        if index == 1:
-            self.checkout_ref(self.commit_hash)
+        elif action == "Checkout commit":
+            self.checkout_ref(self._commit_hash)
             util.view.refresh_gitsavvy(self.view)
 
-        # Cherry-pick  commit
-        if index == 2:
-            self.view.window().run_command("gs_cherry_pick", {"target_hash": self.commit_hash})
+        elif action == "Cherry-pick commit":
+            self.view.window().run_command("gs_cherry_pick", {"target_hash": self._commit_hash})
+
+        elif action == "Show file at commit":
+            self.view.window().run_command(
+                "gs_show_file_at_commit",
+                {"commit_hash": self._commit_hash, "filepath": self._file_path})
 
 
 class GsLogGraphNavigateCommand(GsNavigate):

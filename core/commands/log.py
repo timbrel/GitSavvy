@@ -170,7 +170,7 @@ class GsLogActionCommand(WindowCommand, GitCommand):
     def run(self, commit_hash, file_path=None):
         self._commit_hash = commit_hash
         self._file_path = file_path
-        actions = [
+        self.actions = [
                 "Show commit",
                 "Checkout commit",
                 "Compare commit against ...",
@@ -180,10 +180,10 @@ class GsLogActionCommand(WindowCommand, GitCommand):
         ]
 
         if self._file_path:
-            actions.append("Show file at commit")
+            self.actions.append("Show file at commit")
 
         self.window.show_quick_panel(
-            actions,
+            self.actions,
             self.on_action_selection,
             flags=sublime.MONOSPACE_FONT,
             selected_index=self.quick_panel_log_idx
@@ -195,24 +195,25 @@ class GsLogActionCommand(WindowCommand, GitCommand):
 
         self.quick_panel_log_idx = index
 
-        if index == 0:
+        action = self.actions[index]
+        if action == "Show commit":
             self.window.run_command("gs_show_commit", {"commit_hash": self._commit_hash})
 
-        if index == 1:
+        elif action == "Checkout commit":
             self.checkout_ref(self._commit_hash)
             util.view.refresh_gitsavvy(self.view)
 
-        if index == 2:
+        elif action == "Compare commit against ...":
             self.window.run_command("gs_compare_against", {
                 "target_commit": self._commit_hash,
                 "file_path": self._file_path
             })
 
-        if index == 3:
+        elif action == "Copy the full SHA":
             sublime.set_clipboard(self._commit_hash)
 
-        if index in [4, 5]:
-            in_cached_mode = index == 5
+        elif "Diff commit" in action:
+            in_cached_mode = "(cached)" in action
             self.window.run_command("gs_diff", {
                 "in_cached_mode": in_cached_mode,
                 "file_path": self._file_path,
@@ -221,7 +222,7 @@ class GsLogActionCommand(WindowCommand, GitCommand):
                 "disable_stage": True
             })
 
-        if index == 6:
+        elif action == "Show file at commit":
             lang = self.window.active_view().settings().get('syntax')
             self.window.run_command(
                 "gs_show_file_at_commit",
