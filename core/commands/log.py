@@ -58,9 +58,9 @@ class GsLogBase(WindowCommand, GitCommand):
             sublime.set_timeout_async(self.run_async, 1)
             return
         self._selected_commit = self._hashes[index]
-        self.do_commit_action(self._selected_commit)
+        self.do_action(self._selected_commit)
 
-    def do_commit_action(self, commit_hash):
+    def do_action(self, commit_hash):
         self.window.run_command("gs_log_action", {
             "commit_hash": commit_hash,
             "file_path": self._file_path

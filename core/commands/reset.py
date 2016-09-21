@@ -20,11 +20,11 @@ class GsResetCommand(GsLogBase):
 
     def run(self, commit_hash=None):
         if commit_hash:
-            self.do_commit_action(commit_hash)
+            self.do_action(commit_hash)
         else:
             super().run()
 
-    def do_commit_action(self, commit_hash):
+    def do_action(self, commit_hash):
         self._selected_hash = commit_hash
 
         use_reset_mode = sublime.load_settings("GitSavvy.sublime-settings").get("use_reset_mode")
@@ -77,7 +77,7 @@ class GsResetBranch(GsResetCommand):
         if index < 0:
             return
         self._selected_branch = self.all_branches[index]
-        self.do_commit_action(self._selected_branch)
+        self.do_action(self._selected_branch)
 
 
 class GsResetReflogCommand(GsResetCommand):
