@@ -176,19 +176,24 @@ class GsLogGraphActionCommand(TextCommand, GitCommand):
     def run(self, edit):
         self.actions = [
             "Show commit",
-            "Checkout commit"
+            "Checkout commit",
+            "Compare commit against ...",
+            "Copy the full SHA"
          ]
-        if self.view.settings().get("git_savvy.compare_commit_view"):
+        if self.view.settings().get("git_savvy.compare_commit_view.target_commit") == "HEAD":
             self.actions.append("Cherry-pick commit")
 
-        self._file_path = None
         if self.view.settings().get("git_savvy.log_graph_view"):
+            self.actions = self.actions + [
+                "Diff commit",
+                "Diff commit (cached)"
+            ]
             self._file_path = self.view.settings().get("git_savvy.log_graph_view.file_path")
-        if self.view.settings().get("git_savvy.compare_commit_view"):
+        else:
             self._file_path = self.view.settings().get("git_savvy.compare_commit_view.file_path")
-        print(self._file_path)
+
         if self._file_path:
-            self.actions.append("Show file at commit")
+            self.actions.insert(1, "Show file at commit")
 
         self.selections = self.view.sel()
 
@@ -222,13 +227,32 @@ class GsLogGraphActionCommand(TextCommand, GitCommand):
             self.checkout_ref(self._commit_hash)
             util.view.refresh_gitsavvy(self.view)
 
-        elif action == "Cherry-pick commit":
-            self.view.window().run_command("gs_cherry_pick", {"target_hash": self._commit_hash})
+        elif action == "Compare commit against ...":
+            self.view.window().run_command("gs_compare_against", {
+                "target_commit": self._commit_hash,
+                "file_path": self._file_path
+            })
+
+        elif action == "Copy the full SHA":
+            sublime.set_clipboard(self.git("rev-parse", self._commit_hash))
+
+        elif "Diff commit" in action:
+            in_cached_mode = "(cached)" in action
+            self.view.window().run_command("gs_diff", {
+                "in_cached_mode": in_cached_mode,
+                "file_path": self._file_path,
+                "current_file": bool(self._file_path),
+                "base_commit": self._commit_hash,
+                "disable_stage": True
+            })
 
         elif action == "Show file at commit":
             self.view.window().run_command(
                 "gs_show_file_at_commit",
                 {"commit_hash": self._commit_hash, "filepath": self._file_path})
+
+        elif action == "Cherry-pick commit":
+            self.git("cherry-pick", self._commit_hash)
 
 
 class GsLogGraphNavigateCommand(GsNavigate):

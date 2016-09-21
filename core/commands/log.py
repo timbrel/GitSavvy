@@ -180,7 +180,7 @@ class GsLogActionCommand(WindowCommand, GitCommand):
         ]
 
         if self._file_path:
-            self.actions.append("Show file at commit")
+            self.actions.insert(1, "Show file at commit")
 
         self.window.show_quick_panel(
             self.actions,
