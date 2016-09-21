@@ -863,8 +863,7 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
-        ],
-        "args": { "action": "view" }
+        ]
     },
     {
         "keys": ["m"],
@@ -893,19 +892,17 @@
     },
     {
         "keys": ["."],
-        "command": "gs_log_graph_next_commit",
-        "args": {"forward": true},
+        "command": "gs_log_graph_navigate",
+        "args": { "forward": true },
         "context": [
-            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": [","],
-        "command": "gs_log_graph_next_commit",
-        "args": {"forward": false},
+        "command": "gs_log_graph_navigate",
+        "args": { "forward": false },
         "context": [
-            { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
         ]
     },
@@ -961,16 +958,16 @@
     },
     {
         "keys": ["."],
-        "command": "gs_log_graph_next_commit",
-        "args": {"forward": true},
+        "command": "gs_log_graph_navigate",
+        "args": { "forward": true },
         "context": [
             { "key": "setting.git_savvy.compare_commit_view", "operator": "equal", "operand": true }
         ]
     },
     {
         "keys": [","],
-        "command": "gs_log_graph_next_commit",
-        "args": {"forward": false},
+        "command": "gs_log_graph_navigate",
+        "args": { "forward": false },
         "context": [
             { "key": "setting.git_savvy.compare_commit_view", "operator": "equal", "operand": true }
         ]

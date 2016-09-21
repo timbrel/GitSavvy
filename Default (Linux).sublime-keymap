@@ -112,16 +112,6 @@
     // GRAPH VIEW //
     ////////////////
 
-    {
-        "keys": ["ctrl+enter"],
-        "command": "gs_log_graph_action",
-        "context": [
-            { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
-        ],
-        "args": { "action": "checkout" }
-    },
-
     ///////////////
     // EDIT VIEW //
     ///////////////

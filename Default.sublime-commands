@@ -59,7 +59,7 @@
         "command": "gs_log_graph"
     },
     {
-        "caption": "git: graph",
+        "caption": "git: graph current file",
         "command": "gs_log_graph",
         "args": { "current_file": true }
     },

@@ -3,10 +3,8 @@ from sublime_plugin import TextCommand, WindowCommand
 import os
 import re
 
-from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ...common import util
-from ...common import ui
 
 
 COMMIT_NODE_CHAR = "●"
@@ -14,13 +12,13 @@ COMMIT_NODE_CHAR_OPTIONS = "●*"
 COMMIT_LINE = re.compile("[%s][ /_\|\-.]*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
 
 
-class GsCompareCommitCommand(TextCommand, GitCommand):
+class GsCompareCommitCommand(WindowCommand, GitCommand):
 
     """
     Show a view of all commits diff between branches.
     """
 
-    def run(self, edit, base_commit, target_commit=None, file_path=None, title=None):
+    def run(self, base_commit, target_commit=None, file_path=None, title=None):
         self.base_commit = base_commit
         self.target_commit = target_commit or "HEAD"
         self._file_path = file_path
@@ -29,7 +27,7 @@ class GsCompareCommitCommand(TextCommand, GitCommand):
 
     def run_async(self):
         view = util.view.get_scratch_view(self, "compare_commit", read_only=True)
-
+        view.settings().set("git_savvy.git_graph_args", self.get_graph_args())
         view.settings().set("git_savvy.compare_commit_view.base_commit", self.base_commit)
         view.settings().set("git_savvy.compare_commit_view.target_commit", self.target_commit)
         view.settings().set("git_savvy.repo_path", self.repo_path)
@@ -40,56 +38,14 @@ class GsCompareCommitCommand(TextCommand, GitCommand):
         view.sel().clear()
         view.run_command("gs_compare_commit_refresh")
 
-
-class GsCompareCommitActionCommand(TextCommand, GitCommand):
-
-    """
-    Checkout the commit at the selected line.
-    """
-
-    def run(self, edit):
-        self.actions = [
-            "Show commit",
-            "Checkout commit",
-            "Cherry-pick commit"
-         ]
-
-        self.selections = self.view.sel()
-
-        lines = util.view.get_lines_from_regions(self.view, self.selections)
-        line = lines[0]
-
-        m = COMMIT_LINE.search(line)
-        self.commit_hash = m.group(1) if m else ""
-
-        if not len(self.selections) == 1:
-            sublime.status_message("You can only do actions on one commit at a time.")
-            return
-
-        self.view.window().show_quick_panel(
-            self.actions,
-            self.on_action_selection,
-            selected_index=self.quick_panel_branch_diff_history_idx,
-            flags=sublime.MONOSPACE_FONT
-        )
-
-    def on_action_selection(self, index):
-        if index == -1:
-            return
-        self.quick_panel_branch_diff_history_idx = index
-
-        # Show commit
-        if index == 0:
-            self.view.window().run_command("gs_show_commit", {"commit_hash": self.commit_hash})
-
-        # Checkout commit
-        if index == 1:
-            self.checkout_ref(self.commit_hash)
-            util.view.refresh_gitsavvy(self.view)
-
-        # Cherry-pick  commit
-        if index == 2:
-            self.view.window().run_command("gs_cherry_pick", {"target_hash": self.commit_hash})
+    def get_graph_args(self):
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        args = savvy_settings.get("git_graph_args")
+        if self._file_path:
+            file_path = self._file_path
+            file_path = os.path.realpath(file_path)[len(self.repo_path)+1:]
+            args = args + ["--", file_path]
+        return args
 
 
 class GsCompareCommitRefreshCommand(TextCommand, GitCommand):
@@ -106,25 +62,18 @@ class GsCompareCommitRefreshCommand(TextCommand, GitCommand):
         base_commit = self.view.settings().get("git_savvy.compare_commit_view.base_commit")
         target_commit = self.view.settings().get("git_savvy.compare_commit_view.target_commit")
         file_path = self.view.settings().get("git_savvy.compare_commit_view.file_path")
-        repo_path = self.view.settings().get("git_savvy.repo_path")
-
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        args = savvy_settings.get("git_graph_args")
         if file_path:
-            file_path = os.path.realpath(file_path)[len(repo_path)+1:]
-            file_args = ["--", file_path]
             diff_contents = "File: {}\n\n".format(file_path)
         else:
-            file_args = []
             diff_contents = ""
-
         diff_contents += "Commits on {} and not on {}\n".format(target_commit, base_commit)
-        args.append("{}..{}".format(base_commit, target_commit))
-        diff_contents += self.git(*(args + file_args))
+        args = self.view.settings().get("git_savvy.git_graph_args")
+        args.insert(1, "{}..{}".format(base_commit, target_commit))
+        diff_contents += self.git(*args)
         diff_contents = diff_contents.replace("*", COMMIT_NODE_CHAR)
         diff_contents += "\n\nCommits on {} and not on {}\n".format(base_commit, target_commit)
-        args[-1] = "{}..{}".format(target_commit, base_commit)
-        diff_contents += self.git(*(args + file_args))
+        args[1] = "{}..{}".format(target_commit, base_commit)
+        diff_contents += self.git(*args)
         diff_contents = diff_contents.replace("*", COMMIT_NODE_CHAR)
         return diff_contents
 
