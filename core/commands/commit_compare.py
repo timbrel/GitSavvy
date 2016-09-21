@@ -66,13 +66,13 @@ class GsCompareCommitRefreshCommand(TextCommand, GitCommand):
             diff_contents = "File: {}\n\n".format(file_path)
         else:
             diff_contents = ""
-        diff_contents += "Commits on {} and not on {}\n".format(target_commit, base_commit)
+        diff_contents += "Commits on {} and not on {}\n".format(base_commit, target_commit)
         args = self.view.settings().get("git_savvy.git_graph_args")
-        args.insert(1, "{}..{}".format(base_commit, target_commit))
+        args.insert(1, "{}..{}".format(target_commit, base_commit))
         diff_contents += self.git(*args)
         diff_contents = diff_contents.replace("*", COMMIT_NODE_CHAR)
-        diff_contents += "\n\nCommits on {} and not on {}\n".format(base_commit, target_commit)
-        args[1] = "{}..{}".format(target_commit, base_commit)
+        diff_contents += "\n\nCommits on {} and not on {}\n".format(target_commit, base_commit)
+        args[1] = "{}..{}".format(base_commit, target_commit)
         diff_contents += self.git(*args)
         diff_contents = diff_contents.replace("*", COMMIT_NODE_CHAR)
         return diff_contents
