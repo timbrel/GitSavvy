@@ -27,7 +27,7 @@ class GsLogGraphBase(WindowCommand, GitCommand):
         view = util.view.get_scratch_view(self, "log_graph", read_only=True)
         view.settings().set("git_savvy.git_graph_args", self.get_graph_args())
         view.settings().set("git_savvy.repo_path", self.repo_path)
-        view.settings().set("git_savvy.compare_commit_view.file_path", self._file_path)
+        view.settings().set("git_savvy.log_graph_view.file_path", self._file_path)
         view.settings().set("word_wrap", False)
         view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
         view.set_name(self.title)
@@ -51,7 +51,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        file_path = self.view.settings().get("git_savvy.compare_commit_view.file_path")
+        file_path = self.view.settings().get("git_savvy.log_graph_view.file_path")
         if file_path:
             graph_content = "File: {}\n\n".format(file_path)
         else:
@@ -181,7 +181,12 @@ class GsLogGraphActionCommand(TextCommand, GitCommand):
         if self.view.settings().get("git_savvy.compare_commit_view"):
             self.actions.append("Cherry-pick commit")
 
-        self._file_path = self.view.settings().get("git_savvy.compare_commit_view.file_path")
+        self._file_path = None
+        if self.view.settings().get("git_savvy.log_graph_view"):
+            self._file_path = self.view.settings().get("git_savvy.log_graph_view.file_path")
+        if self.view.settings().get("git_savvy.compare_commit_view"):
+            self._file_path = self.view.settings().get("git_savvy.compare_commit_view.file_path")
+        print(self._file_path)
         if self._file_path:
             self.actions.append("Show file at commit")
 
