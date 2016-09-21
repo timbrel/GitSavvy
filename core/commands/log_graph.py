@@ -205,14 +205,14 @@ class GsLogGraphActionCommand(TextCommand, GitCommand):
         self.view.window().show_quick_panel(
             self.actions,
             self.on_action_selection,
-            selected_index=self.quick_panel_branch_diff_history_idx,
+            selected_index=self.quick_panel_log_graph_idx,
             flags=sublime.MONOSPACE_FONT
         )
 
     def on_action_selection(self, index):
         if index == -1:
             return
-        self.quick_panel_branch_diff_history_idx = index
+        self.quick_panel_log_graph_idx = index
 
         action = self.actions[index]
         if action == "Show commit":
