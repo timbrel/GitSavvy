@@ -108,14 +108,4 @@ class GsResetReflogCommand(GsResetCommand):
                 # to check truthiness of entry.strip() each time.
                 pass
 
-        if not len(commit_list) < self._limit:
-            commit_list.append([
-                ">>> NEXT {} COMMITS >>>".format(self._limit),
-                "Skip this set of reflog entries and choose from the next-oldest batch."
-            ])
-
-        self.window.show_quick_panel(
-            commit_list,
-            self.on_commit_selection,
-            flags=sublime.MONOSPACE_FONT
-        )
+        self.display_commits(commit_list)

@@ -15,23 +15,25 @@ class GsLogBase(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        commits = self.log(file_path=self._file_path, limit=self._limit, skip=self._skip)
-        self.handle_commits(commits)
+        logs = self.log(file_path=self._file_path, limit=self._limit, skip=self._skip)
+        self._hashes = [l.long_hash for l in logs]
+        self.display_commits(self.render_commits(logs))
 
-    def handle_commits(self, log):
+    def render_commits(self, logs):
         commit_list = []
-        for l in log:
+        for l in logs:
             commit_list.append([
                 l.short_hash + " " + l.summary,
                 l.author + ", " + util.dates.fuzzy(l.datetime)
             ])
+        return commit_list
+
+    def display_commits(self, commit_list):
         if len(commit_list) >= self._limit:
             commit_list.append([
                 ">>> NEXT {} COMMITS >>>".format(self._limit),
                 "Skip this set of commits and choose from the next-oldest batch."
             ])
-        self._hashes = [l.short_hash for l in log]
-
         self.window.show_quick_panel(
             commit_list,
             lambda index: sublime.set_timeout_async(lambda: self.on_commit_selection(index), 10),
