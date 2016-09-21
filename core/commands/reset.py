@@ -1,6 +1,6 @@
 import sublime
 
-from .log import GsLogCommand
+from .log import GsLogBase
 from ...common import util
 
 PADDING = "                                                "
@@ -16,21 +16,18 @@ GIT_RESET_MODES = [
 ]
 
 
-class GsResetCommand(GsLogCommand):
+class GsResetCommand(GsLogBase):
 
-    def on_hash_selection(self, index):
-        if index == -1:
-            return
+    def run(self, commit_hash=None):
+        if commit_hash:
+            self.do_commit_action(commit_hash)
+        else:
+            super().run()
 
-        if index == self._limit:
-            self._pagination += self._limit
-            sublime.set_timeout_async(lambda: self.run_async(), 1)
-            return
-
-        self._selected_hash = self._hashes[index]
+    def do_commit_action(self, commit_hash):
+        self._selected_hash = commit_hash
 
         use_reset_mode = sublime.load_settings("GitSavvy.sublime-settings").get("use_reset_mode")
-
         if use_reset_mode:
             self.on_reset(use_reset_mode)
         else:
@@ -47,7 +44,9 @@ class GsResetCommand(GsLogCommand):
     def on_reset(self, reset_mode):
         # Split the reset mode to support multiple args, e.g. "--mixed -N"
         args = reset_mode.split() + [self._selected_hash]
-        do_reset = lambda: self.git("reset", *args)
+
+        def do_reset():
+            self.git("reset", *args)
 
         if reset_mode == "--hard":
             util.actions.destructive("perform a hard reset")(do_reset)()
@@ -56,6 +55,8 @@ class GsResetCommand(GsLogCommand):
 
 
 class GsResetBranch(GsResetCommand):
+    def run(self):
+        sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
         self.all_branches = [b.name_with_remote for b in self.get_branches()]
@@ -76,27 +77,26 @@ class GsResetBranch(GsResetCommand):
         if index < 0:
             return
         self._selected_branch = self.all_branches[index]
-        self.window.run_command("gs_reset", {"branch": self._selected_branch})
+        self.do_commit_action(self._selected_branch)
 
 
 class GsResetReflogCommand(GsResetCommand):
-
     def run_async(self):
         log_output = self.git(
             "reflog",
             "-{}".format(self._limit) if self._limit else None,
-            "--skip={}".format(self._pagination) if self._pagination else None,
+            "--skip={}".format(self._skip) if self._skip else None,
             '--format=%h%n%H%n%s%n%gs%n%gd%n%an%n%at%x00'
         ).strip("\x00")
 
-        self._entries = []
+        commit_list = []
         self._hashes = []
         for entry in log_output.split("\x00"):
             try:
                 short_hash, long_hash, summary, reflog_name, reflog_selector, author, datetime = (
                     entry.strip("\n").split("\n"))
 
-                self._entries.append([
+                commit_list.append([
                     reflog_selector + " " + reflog_name,
                     short_hash + " " + summary,
                     author + ", " + util.dates.fuzzy(datetime)
@@ -108,14 +108,14 @@ class GsResetReflogCommand(GsResetCommand):
                 # to check truthiness of entry.strip() each time.
                 pass
 
-        if not len(self._entries) < self._limit:
-            self._entries.append([
+        if not len(commit_list) < self._limit:
+            commit_list.append([
                 ">>> NEXT {} COMMITS >>>".format(self._limit),
                 "Skip this set of reflog entries and choose from the next-oldest batch."
             ])
 
         self.window.show_quick_panel(
-            self._entries,
-            self.on_hash_selection,
+            commit_list,
+            self.on_commit_selection,
             flags=sublime.MONOSPACE_FONT
         )
