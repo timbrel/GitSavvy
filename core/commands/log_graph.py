@@ -3,6 +3,7 @@ from sublime_plugin import WindowCommand, TextCommand
 import re
 import os
 from ..git_command import GitCommand
+from .log import GsLogActionCommand
 from .navigate import GsNavigate
 from ...common import util
 
@@ -167,37 +168,39 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
             self.window.run_command("gs_log_graph_by_branch", {"file_path": self._file_path})
 
 
-class GsLogGraphActionCommand(TextCommand, GitCommand):
+class GsLogGraphActionCommand(GsLogActionCommand):
 
     """
     Checkout the commit at the selected line. It is also used by compare_commit_view.
     """
 
-    def run(self, edit):
+    def run(self):
         self.actions = [
-            "Show commit",
-            "Checkout commit",
-            "Compare commit against ...",
-            "Copy the full SHA"
-         ]
-        if self.view.settings().get("git_savvy.compare_commit_view.target_commit") == "HEAD":
-            self.actions.append("Cherry-pick commit")
+            ["show_commit", "Show commit"],
+            ["checkout_commit", "Checkout commit"],
+            ["compare_against", "Compare commit against ..."],
+            ["copy_sha", "Copy the full SHA"]
+        ]
 
-        if self.view.settings().get("git_savvy.log_graph_view"):
+        view = self.window.active_view()
+        if view.settings().get("git_savvy.compare_commit_view.target_commit") == "HEAD":
+            self.actions.append(["cherr_pick", "Cherry-pick commit"])
+
+        if view.settings().get("git_savvy.log_graph_view"):
             self.actions = self.actions + [
-                "Diff commit",
-                "Diff commit (cached)"
+                ["diff_commit", "Diff commit"],
+                ["diff_commit_cache", "Diff commit (cached)"]
             ]
-            self._file_path = self.view.settings().get("git_savvy.log_graph_view.file_path")
+            self._file_path = view.settings().get("git_savvy.log_graph_view.file_path")
         else:
-            self._file_path = self.view.settings().get("git_savvy.compare_commit_view.file_path")
+            self._file_path = view.settings().get("git_savvy.compare_commit_view.file_path")
 
         if self._file_path:
-            self.actions.insert(1, "Show file at commit")
+            self.actions.insert(1, ["show_file_at_commit", "Show file at commit"])
 
-        self.selections = self.view.sel()
+        self.selections = view.sel()
 
-        lines = util.view.get_lines_from_regions(self.view, self.selections)
+        lines = util.view.get_lines_from_regions(view, self.selections)
         line = lines[0]
 
         m = COMMIT_LINE.search(line)
@@ -207,51 +210,14 @@ class GsLogGraphActionCommand(TextCommand, GitCommand):
             sublime.status_message("You can only do actions on one commit at a time.")
             return
 
-        self.view.window().show_quick_panel(
-            self.actions,
+        self.window.show_quick_panel(
+            [a[1] for a in self.actions],
             self.on_action_selection,
             selected_index=self.quick_panel_log_graph_idx,
             flags=sublime.MONOSPACE_FONT
         )
 
-    def on_action_selection(self, index):
-        if index == -1:
-            return
-        self.quick_panel_log_graph_idx = index
-
-        action = self.actions[index]
-        if action == "Show commit":
-            self.view.window().run_command("gs_show_commit", {"commit_hash": self._commit_hash})
-
-        elif action == "Checkout commit":
-            self.checkout_ref(self._commit_hash)
-            util.view.refresh_gitsavvy(self.view)
-
-        elif action == "Compare commit against ...":
-            self.view.window().run_command("gs_compare_against", {
-                "target_commit": self._commit_hash,
-                "file_path": self._file_path
-            })
-
-        elif action == "Copy the full SHA":
-            sublime.set_clipboard(self.git("rev-parse", self._commit_hash))
-
-        elif "Diff commit" in action:
-            in_cached_mode = "(cached)" in action
-            self.view.window().run_command("gs_diff", {
-                "in_cached_mode": in_cached_mode,
-                "file_path": self._file_path,
-                "current_file": bool(self._file_path),
-                "base_commit": self._commit_hash,
-                "disable_stage": True
-            })
-
-        elif action == "Show file at commit":
-            self.view.window().run_command(
-                "gs_show_file_at_commit",
-                {"commit_hash": self._commit_hash, "filepath": self._file_path})
-
-        elif action == "Cherry-pick commit":
+    def cherry_pick(self):
             self.git("cherry-pick", self._commit_hash)
 
 

@@ -171,19 +171,19 @@ class GsLogActionCommand(WindowCommand, GitCommand):
         self._commit_hash = commit_hash
         self._file_path = file_path
         self.actions = [
-                "Show commit",
-                "Checkout commit",
-                "Compare commit against ...",
-                "Copy the full SHA",
-                "Diff commit",
-                "Diff commit (cached)"
+            ["show_commit", "Show commit"],
+            ["checkout_commit", "Checkout commit"],
+            ["compare_against", "Compare commit against ..."],
+            ["copy_sha", "Copy the full SHA"],
+            ["diff_commit", "Diff commit"],
+            ["diff_commit_cache", "Diff commit (cached)"]
         ]
 
         if self._file_path:
-            self.actions.insert(1, "Show file at commit")
+            self.actions.insert(1, ["show_file_at_commit", "Show file at commit"])
 
         self.window.show_quick_panel(
-            self.actions,
+            [a[1] for a in self.actions],
             self.on_action_selection,
             flags=sublime.MONOSPACE_FONT,
             selected_index=self.quick_panel_log_idx
@@ -195,35 +195,42 @@ class GsLogActionCommand(WindowCommand, GitCommand):
 
         self.quick_panel_log_idx = index
 
-        action = self.actions[index]
-        if action == "Show commit":
-            self.window.run_command("gs_show_commit", {"commit_hash": self._commit_hash})
+        action = self.actions[index][0]
+        eval("self.{}()".format(action))
 
-        elif action == "Checkout commit":
-            self.checkout_ref(self._commit_hash)
-            util.view.refresh_gitsavvy(self.view)
+    def show_commit(self):
+        self.window.run_command("gs_show_commit", {"commit_hash": self._commit_hash})
 
-        elif action == "Compare commit against ...":
-            self.window.run_command("gs_compare_against", {
-                "target_commit": self._commit_hash,
-                "file_path": self._file_path
-            })
+    def checkout_commit(self):
+        self.checkout_ref(self._commit_hash)
+        util.view.refresh_gitsavvy(self.view)
 
-        elif action == "Copy the full SHA":
-            sublime.set_clipboard(self._commit_hash)
+    def compare_against(self):
+        self.window.run_command("gs_compare_against", {
+            "target_commit": self._commit_hash,
+            "file_path": self._file_path
+        })
 
-        elif "Diff commit" in action:
-            in_cached_mode = "(cached)" in action
-            self.window.run_command("gs_diff", {
-                "in_cached_mode": in_cached_mode,
-                "file_path": self._file_path,
-                "current_file": bool(self._file_path),
-                "base_commit": self._commit_hash,
-                "disable_stage": True
-            })
+    def copy_sha(self):
+        sublime.set_clipboard(self.git("rev-parse", self._commit_hash))
 
-        elif action == "Show file at commit":
-            lang = self.window.active_view().settings().get('syntax')
-            self.window.run_command(
-                "gs_show_file_at_commit",
-                {"commit_hash": self._commit_hash, "filepath": self._file_path, "lang": lang})
+    def _diff_commit(self, cache=False):
+        self.window.run_command("gs_diff", {
+            "in_cached_mode": cache,
+            "file_path": self._file_path,
+            "current_file": bool(self._file_path),
+            "base_commit": self._commit_hash,
+            "disable_stage": True
+        })
+
+    def diff_commit(self):
+        self._diff_commit(cache=False)
+
+    def diff_commit_cache(self):
+        self._diff_commit(cache=True)
+
+    def show_file_at_commit(self):
+        lang = self.window.active_view().settings().get('syntax')
+        self.window.run_command(
+            "gs_show_file_at_commit",
+            {"commit_hash": self._commit_hash, "filepath": self._file_path, "lang": lang})
