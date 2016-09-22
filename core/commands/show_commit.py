@@ -1,6 +1,4 @@
 import os
-import bisect
-import re
 
 from sublime_plugin import WindowCommand, TextCommand
 
@@ -20,20 +18,43 @@ class GsShowCommitCommand(WindowCommand, GitCommand):
         view.settings().set("git_savvy.show_commit_view", True)
         view.settings().set("git_savvy.show_commit_view.commit", commit_hash)
         view.settings().set("git_savvy.repo_path", repo_path)
+        view.settings().set("git_savvy.show_commit_view.ignore_whitespace", False)
+        view.settings().set("git_savvy.show_commit_view.show_word_diff", False)
         view.settings().set("word_wrap", False)
         view.settings().set("line_numbers", False)
         view.set_name(SHOW_COMMIT_TITLE.format(commit_hash[:7]))
         view.set_scratch(True)
-        view.run_command("gs_show_commit_initialize_view")
+        view.run_command("gs_show_commit_refresh")
 
 
-class GsShowCommitInitializeView(TextCommand, GitCommand):
+class GsShowCommitRefreshCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         commit_hash = self.view.settings().get("git_savvy.show_commit_view.commit")
-        content = self.git("show", "--no-color", commit_hash)
+        ignore_whitespace = self.view.settings().get("git_savvy.show_commit_view.ignore_whitespace")
+        show_word_diff = self.view.settings().get("git_savvy.show_commit_view.show_word_diff")
+        content = self.git(
+            "show",
+            "--ignore-all-space" if ignore_whitespace else None,
+            "--word-diff" if show_word_diff else None,
+            "--no-color",
+            commit_hash)
         self.view.run_command("gs_replace_view_text", {"text": content, "nuke_cursors": True})
         self.view.set_read_only(True)
+
+
+class GsShowCommitToggleSetting(TextCommand):
+
+    """
+    Toggle view settings: `ignore_whitespace` or `show_word_diff`.
+    """
+
+    def run(self, edit, setting):
+        setting_str = "git_savvy.show_commit_view.{}".format(setting)
+        settings = self.view.settings()
+        settings.set(setting_str, not settings.get(setting_str))
+        print("{} is now {}".format(setting, settings.get(setting_str)))
+        self.view.run_command("gs_show_commit_refresh")
 
 
 class GsShowCommitOpenFileAtHunkCommand(GsDiffOpenFileAtHunkCommand):

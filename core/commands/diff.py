@@ -10,6 +10,7 @@ import bisect
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
+from .navigate import GsNavigate
 from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 
@@ -281,3 +282,18 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
                 "{file}:{row}:{col}".format(file=full_path, row=lineno, col=0),
                 sublime.ENCODED_POSITION
                 )
+
+
+class GsDiffNavigateCommand(GsNavigate):
+
+    """
+    Travel between hunks. It is also used by show_commit_view.
+    """
+
+    def run(self, edit, **kwargs):
+        super().run(edit, **kwargs)
+        self.view.run_command("show_at_center")
+
+    def get_available_regions(self):
+        return [self.view.line(region) for region in
+                self.view.find_by_selector("meta.diff.range.unified")]
