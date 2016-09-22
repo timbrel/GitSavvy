@@ -145,7 +145,7 @@ class GsCompareAgainstBranchCommand(WindowCommand, GitCommand):
         )
 
     def on_branch_selection(self, index):
-        if index < 0:
+        if index == -1:
             self.window.run_command("gs_compare_against", {
                 "target_commit": self._target_commit,
                 "file_path": self._file_path
@@ -179,7 +179,7 @@ class GsCompareAgainstCommand(WindowCommand, GitCommand):
         )
 
     def on_option_selection(self, index):
-        if index < 0:
+        if index == -1:
             return
 
         self.quick_panel_compare_against_idx = index

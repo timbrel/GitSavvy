@@ -74,7 +74,7 @@ class GsResetBranch(GsResetCommand):
         )
 
     def on_branch_selection(self, index):
-        if index < 0:
+        if index == -1:
             return
         self._selected_branch = self.all_branches[index]
         self.do_action(self._selected_branch)

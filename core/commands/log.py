@@ -130,7 +130,7 @@ class GsLogByBranchCommand(GsLogBase):
         )
 
     def on_branch_selection(self, index):
-        if index < 0:
+        if index == -1:
             return
         self._selected_branch = self.all_branches[index]
         super().run_async()
@@ -154,7 +154,7 @@ class GsLogCommand(WindowCommand, GitCommand):
         )
 
     def on_option_selection(self, index):
-        if index < 0:
+        if index == -1:
             return
 
         if index == 0:

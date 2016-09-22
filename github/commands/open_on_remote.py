@@ -51,7 +51,7 @@ class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemote
             )
 
     def on_select_remote(self, index):
-        if index < 0:
+        if index == -1:
             return
 
         remote = self.remote_keys[index]
@@ -118,7 +118,7 @@ class GsOpenGithubRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesM
             )
 
     def on_select_remote(self, index):
-        if index < 0:
+        if index == -1:
             return
         remote = self.remote_keys[index]
         self.last_remote_used = remote
