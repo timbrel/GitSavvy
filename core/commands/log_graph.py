@@ -220,6 +220,11 @@ class GsLogGraphActionCommand(GsLogActionCommand):
     def cherry_pick(self):
             self.git("cherry-pick", self._commit_hash)
 
+    def show_file_at_commit(self):
+        self.window.run_command(
+            "gs_show_file_at_commit",
+            {"commit_hash": self._commit_hash, "filepath": self._file_path})
+
 
 class GsLogGraphNavigateCommand(GsNavigate):
 
