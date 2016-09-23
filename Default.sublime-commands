@@ -168,6 +168,10 @@
         "command": "gs_init"
     },
     {
+        "caption": "git: clone",
+        "command": "gs_clone"
+    },
+    {
         "caption": "git: diff",
         "command": "gs_diff"
     },

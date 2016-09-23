@@ -56,3 +56,20 @@ class RemotesMixin():
             remote,
             branch if not local_branch else "{}:{}".format(local_branch, branch)
             )
+
+    def project_name_from_url(self, input_url):
+        # URLs can come in one of following formats format
+        # https://github.com/divmain/GitSavvy.git
+        #     git@github.com:divmain/GitSavvy.git
+        # Kind of funky, but does the job
+        _split_url = re.split('/|:', input_url)
+        _split_url = re.split('\.', _split_url[-1])
+        return _split_url[0] if len(_split_url) >= 1 else ''
+
+    def username_from_url(self, input_url):
+        # URLs can come in one of following formats format
+        # https://github.com/divmain/GitSavvy.git
+        #     git@github.com:divmain/GitSavvy.git
+        # Kind of funky, but does the job
+        _split_url = re.split('/|:', input_url)
+        return _split_url[-2] if len(_split_url) >= 2 else ''

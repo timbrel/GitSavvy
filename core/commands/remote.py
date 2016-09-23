@@ -17,19 +17,14 @@ class GsRemoteAddCommand(TextCommand, GitCommand):
 
     def on_select_remote(self, input_url):
         self.url = input_url
-        # URLs can come in one of following formats format
-        # https://github.com/divmain/GitSavvy.git
-        #     git@github.com:divmain/GitSavvy.git
-        # Kind of funky, but does the job
-        _split_url = re.split('/|:', input_url)
-        owner = _split_url[-2] if len(_split_url) >= 2 else ''
+        owner = self.username_from_url(input_url)
 
         self.view.window().show_input_panel("Remote name", owner, self.on_select_name, None, None)
 
     def on_select_name(self, remote_name):
         self.git("remote", "add", remote_name, self.url)
         if sublime.ok_cancel_dialog("Your remote was added successfully.  Would you like to fetch from this remote?"):
-            self.view.window().run_command("gs_fetch", { "remote": remote_name })
+            self.view.window().run_command("gs_fetch", {"remote": remote_name})
 
 
 class GsRemoteRemoveCommand(TextCommand, GitCommand):
