@@ -16,6 +16,9 @@ NAME_MESSAGE = "Enter your first and last name:"
 EMAIL_MESSAGE = "Enter your email address:"
 NO_CONFIG_MESSAGE = ("It looks like you haven't configured Git yet.  Would you "
                      "like to enter your name and email for Git to use?")
+RECLONE_CANT_BE_DONE = ("It looks like Git is already initialized here.  "
+                        "You can not re-clone")
+GIT_URL = "Enter git url:"
 
 
 views_with_offer_made = set()
@@ -75,6 +78,55 @@ class GsInit(WindowCommand, GitCommand):
         self.git("init", working_dir=path)
         sublime.status_message("{word_start}nitialized repo successfully.".format(
             word_start="Re-i" if re_init else "I"))
+        util.view.refresh_gitsavvy(self.window.active_view())
+
+
+class GsClone(WindowCommand, GitCommand):
+
+    """
+    If the active Sublime window has folders added to the project (or if Sublime was
+    opened from the terminal with something like `subl .`), initialize a new Git repo
+    at that location.  If that directory cannot be determined, use the open file's
+    directory.  If there is no open file, prompt the user for the directory to use.
+
+    If the selected directory has previosly been initialized with Git, prompt the user
+    to confirm a re-initialize before proceeding.
+    """
+
+    def run(self):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        self.window.show_input_panel(GIT_URL, '', self.on_enter_url, None, None)
+
+    def find_suggested_git_root(self):
+        open_folders = self.window.folders()
+        project = self.project_name_from_url(self.git_url)
+        if open_folders:
+            return "{}/{}".format(open_folders[0], project)
+        else:
+            file_path = self.window.active_view().file_name()
+            if file_path:
+                return "{}/{}".format(os.path.dirname(file_path), project)
+            else:
+                return ""
+
+    def on_enter_url(self, url):
+        self.git_url = url
+        self.suggested_git_root = self.find_suggested_git_root()
+        self.window.show_input_panel(REPO_PATH_PROMPT, self.suggested_git_root, self.on_enter_directory, None, None)
+
+    def on_enter_directory(self, path):
+        self.suggested_git_root = path
+        if self.suggested_git_root and os.path.exists(os.path.join(self.suggested_git_root, ".git")):
+            sublime.ok_cancel_dialog(RECLONE_CANT_BE_DONE)
+            return
+
+        self.do_clone()
+
+    def do_clone(self):
+        self.git("clone", self.git_url, path)
+        sublime.status_message("Cloned repo successfully.")
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
