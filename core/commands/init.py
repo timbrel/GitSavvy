@@ -125,7 +125,7 @@ class GsClone(WindowCommand, GitCommand):
         self.do_clone()
 
     def do_clone(self):
-        self.git("clone", self.git_url, path)
+        self.git("clone", self.git_url, self.suggested_git_root)
         sublime.status_message("Cloned repo successfully.")
         util.view.refresh_gitsavvy(self.window.active_view())
 
