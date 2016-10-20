@@ -1220,9 +1220,21 @@
         "command": "gs_rebase_skip",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": false },
+
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["K"],
+        "command": "gs_rebase_skip",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
+
     ///////////////////////////////////
     // REBASE DASHBOARD - NAVIGATION //
     ///////////////////////////////////

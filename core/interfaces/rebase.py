@@ -76,7 +76,7 @@ class RebaseInterface(ui.Interface, GitCommand):
       [q] squash commit with previous           [f] define base ref for dashboard
       [Q] squash all commits                    [r] rebase branch on top of...
       [e] edit commit message                   [c] continue rebase
-      [p] drop commit                           [k] skip commit during rebase
+      [p] drop commit                           [{skip_commit_key}] skip commit during rebase
       [d] move commit down (after next)         [A] abort rebase
       [u] move commit up (before previous)
       [w] show commit
@@ -184,10 +184,14 @@ class RebaseInterface(ui.Interface, GitCommand):
     @ui.partial("help")
     def render_help(self):
         help_hidden = self.view.settings().get("git_savvy.help_hidden")
+        vintageous_friendly = self.view.settings().get("git_savvy.vintageous_friendly", False)
         if help_hidden:
             return ""
         else:
-            return self.template_help.format(super_key=util.super_key, conflicts_bindings=self.render_conflicts_bindings())
+            return self.template_help.format(
+                super_key=util.super_key,
+                conflicts_bindings=self.render_conflicts_bindings(),
+                skip_commit_key='k' if not vintageous_friendly else 'K')
 
     def get_diverged_commits_info(self, start, end):
         self.entries = self.log(start_end=(start, end), reverse=True)
