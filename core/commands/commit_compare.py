@@ -1,6 +1,5 @@
 import sublime
 from sublime_plugin import TextCommand, WindowCommand
-import os
 import re
 
 from ..git_command import GitCommand
@@ -26,12 +25,14 @@ class GsCompareCommitCommand(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
+        # need to get repo_path before the new view is created.
+        repo_path = self.repo_path
         view = util.view.get_scratch_view(self, "compare_commit", read_only=True)
-        view.settings().set("git_savvy.git_graph_args", self.get_graph_args())
-        view.settings().set("git_savvy.compare_commit_view.base_commit", self.base_commit)
         view.settings().set("git_savvy.compare_commit_view.target_commit", self.target_commit)
-        view.settings().set("git_savvy.repo_path", self.repo_path)
-        view.settings().set("git_savvy.compare_commit_view.file_path", self._file_path)
+        view.settings().set("git_savvy.compare_commit_view.base_commit", self.base_commit)
+        view.settings().set("git_savvy.repo_path", repo_path)
+        view.settings().set("git_savvy.file_path", self._file_path)
+        view.settings().set("git_savvy.git_graph_args", self.get_graph_args())
         view.settings().set("word_wrap", False)
         view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
         view.set_name(self.title)
@@ -60,7 +61,7 @@ class GsCompareCommitRefreshCommand(TextCommand, GitCommand):
     def get_commit_branch_string(self):
         base_commit = self.view.settings().get("git_savvy.compare_commit_view.base_commit")
         target_commit = self.view.settings().get("git_savvy.compare_commit_view.target_commit")
-        file_path = self.view.settings().get("git_savvy.compare_commit_view.file_path")
+        file_path = self.file_path
         if file_path:
             diff_contents = "File: {}\n\n".format(file_path)
         else:
@@ -89,7 +90,7 @@ class GsCompareCommitShowDiffCommand(TextCommand, GitCommand):
     def run_async(self):
         base_commit = self.view.settings().get("git_savvy.compare_commit_view.base_commit")
         target_commit = self.view.settings().get("git_savvy.compare_commit_view.target_commit")
-        file_path = self.view.settings().get("git_savvy.compare_commit_view.file_path")
+        file_path = self.file_path
         self.view.window().run_command("gs_diff", {
             "base_commit": base_commit,
             "target_commit": target_commit,
