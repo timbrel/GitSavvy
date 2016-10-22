@@ -260,9 +260,9 @@ class GitCommand(StatusMixin,
             if not repo_path:
                 return invalid_repo()
 
-            view.settings().set("git_savvy.repo_path", repo_path)
+            view.settings().set("git_savvy.repo_path", os.path.realpath(repo_path))
 
-        return repo_path
+        return os.path.realpath(repo_path) if repo_path else repo_path
 
     @property
     def file_path(self):
@@ -279,16 +279,17 @@ class GitCommand(StatusMixin,
 
         if not fpath:
             fpath = view.file_name()
-            view.settings().set("git_savvy.file_path", fpath)
+            if fpath:
+                view.settings().set("git_savvy.file_path", os.path.realpath(fpath))
 
-        return fpath
+        return os.path.realpath(fpath) if fpath else fpath
 
     def get_rel_path(self, abs_path=None):
         """
         Return the file path relative to the repo root.
         """
         path = abs_path or self.file_path
-        return os.path.relpath(os.path.realpath(path), start=os.path.realpath(self.repo_path))
+        return os.path.relpath(os.path.realpath(path), start=self.repo_path)
 
     def _include_global_flags(self, args):
         """

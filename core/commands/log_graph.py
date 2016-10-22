@@ -39,8 +39,7 @@ class GsLogGraphBase(WindowCommand, GitCommand):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         args = savvy_settings.get("git_graph_args")
         if self._file_path:
-            file_path = self._file_path
-            file_path = os.path.realpath(file_path)[len(self.repo_path)+1:]
+            file_path = self.get_rel_path(self._file_path)
             args = args + ["--", file_path]
         return args
 
