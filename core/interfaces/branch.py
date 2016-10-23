@@ -80,6 +80,9 @@ class BranchInterface(ui.Interface, GitCommand):
     def pre_render(self):
         self._branches = tuple(self.get_branches())
 
+    def on_new_dashboard(self):
+        self.view.run_command("gs_branches_navigate_branch")
+
     @ui.partial("branch_status")
     def render_branch_status(self):
         return self.get_branch_status(delim="\n           ")
@@ -719,7 +722,7 @@ class GsBranchesEditBranchDescriptionCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesNavigateBranchesCommand(GsNavigate):
+class GsBranchesNavigateBranchCommand(GsNavigate):
 
     """
     Move cursor to the next (or previous) selectable branch in the dashboard.

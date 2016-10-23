@@ -35,6 +35,7 @@ class GsLogGraphBase(WindowCommand, GitCommand):
         view.set_name(self.title)
         view.sel().clear()
         view.run_command("gs_log_graph_refresh")
+        view.run_command("gs_log_graph_navigate")
 
     def get_graph_args(self):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
@@ -229,6 +230,7 @@ class GsLogGraphNavigateCommand(GsNavigate):
     """
     Travel between commits. It is also used by compare_commit_view.
     """
+    offset = 0
 
     def run(self, edit, **kwargs):
         super().run(edit, **kwargs)
@@ -236,8 +238,7 @@ class GsLogGraphNavigateCommand(GsNavigate):
         self.view.window().run_command("gs_log_graph_more_info")
 
     def get_available_regions(self):
-        return [self.view.line(region) for region in
-                self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")]
+        return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
 
 
 class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):

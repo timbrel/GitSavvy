@@ -9,6 +9,7 @@ class GsNavigate(TextCommand, GitCommand):
     """
     Move cursor to the next (or previous).
     """
+    offset = 4
 
     def run(self, edit, forward=True):
         sel = self.view.sel()
@@ -27,7 +28,7 @@ class GsNavigate(TextCommand, GitCommand):
 
         sel.clear()
         # Position the cursor at the beginning of the file name.
-        new_position += 4
+        new_position += self.offset
         sel.add(sublime.Region(new_position, new_position))
 
     def forward(self, current_position, file_regions):

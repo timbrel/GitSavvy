@@ -132,6 +132,9 @@ class RebaseInterface(ui.Interface, GitCommand):
                 )
             self.view.settings().set("git_savvy.rebase_in_progress", None)
 
+    def on_new_dashboard(self):
+        self.view.run_command("gs_rebase_navigate_commits")
+
     @ui.partial("active_branch")
     def render_active_branch(self):
         return (self.rebase_branch_name()
@@ -945,6 +948,8 @@ class GsRebaseNavigateCommitsCommand(GsNavigate):
     """
     Move cursor to the next (or previous) selectable commit in the dashboard.
     """
+
+    offset = 7
 
     def get_available_regions(self):
         return [
