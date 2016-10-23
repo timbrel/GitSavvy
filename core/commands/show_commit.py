@@ -12,6 +12,7 @@ SHOW_COMMIT_TITLE = "COMMIT: {}"
 class GsShowCommitCommand(WindowCommand, GitCommand):
 
     def run(self, commit_hash):
+        # need to get repo_path before the new view is created.
         repo_path = self.repo_path
         view = self.window.new_file()
         view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
