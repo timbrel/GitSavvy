@@ -13,7 +13,7 @@ class GsTabCycleCommand(TextCommand, GitCommand):
         "branch": "gs_show_branch",
         "rebase": "gs_show_rebase",
         "tags": "gs_show_tags",
-        "graph": "gs_log_graph"
+        "graph": "gs_log_graph_current_branch"
     }
 
     view_signatures = {
