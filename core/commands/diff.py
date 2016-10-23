@@ -111,6 +111,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
             raise err
 
         self.view.run_command("gs_replace_view_text", {"text": stdout})
+        self.view.run_command("gs_diff_navigate")
 
 
 class GsDiffToggleSetting(TextCommand):
@@ -289,6 +290,8 @@ class GsDiffNavigateCommand(GsNavigate):
     """
     Travel between hunks. It is also used by show_commit_view.
     """
+
+    offset = 0
 
     def run(self, edit, **kwargs):
         super().run(edit, **kwargs)

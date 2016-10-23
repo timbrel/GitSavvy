@@ -88,6 +88,9 @@ class TagsInterface(ui.Interface, GitCommand):
             for name, uri in self.remotes.items():
                 self.remotes[name] = {"uri": uri}
 
+    def on_new_dashboard(self):
+        self.view.run_command("gs_tags_navigate_tag")
+
     @ui.partial("branch_status")
     def render_branch_status(self):
         return self.get_branch_status(delim="\n           ")

@@ -26,6 +26,7 @@ class GsShowCommitCommand(WindowCommand, GitCommand):
         view.set_name(SHOW_COMMIT_TITLE.format(commit_hash[:7]))
         view.set_scratch(True)
         view.run_command("gs_show_commit_refresh")
+        view.run_command("gs_diff_navigate")
 
 
 class GsShowCommitRefreshCommand(TextCommand, GitCommand):
