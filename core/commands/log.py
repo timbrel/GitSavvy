@@ -212,7 +212,7 @@ class GsLogActionCommand(WindowCommand, GitCommand):
         })
 
     def copy_sha(self):
-        sublime.set_clipboard(self.git("rev-parse", self._commit_hash))
+        sublime.set_clipboard(self.git("rev-parse", self._commit_hash).strip())
 
     def _diff_commit(self, cache=False):
         self.window.run_command("gs_diff", {
