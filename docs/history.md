@@ -8,17 +8,40 @@ By default, the list is paginated at 6,000 commits for performance reasons.  To 
 
 On selection of a commit you can choose from the following options:
 - `Show commit`: Display the commit.
-- `Compare commit against working directory`: Display the diff between the commit and the working directory.
-- `Compare commit against index`: Display the diff between the commit and staged changes in the index.
+- `Checkout commit`: Checkout the commit.
+- `Compare Commit against ...`: Run the `git: compare against ...` command.
+- `Copy the full SHA`: Copy the full SHA hash of the commit to clipboard.
+- `Diff commit`: Display the diff between the commit and the working directory.
+- `Diff commit (cached)`: Display the diff between the commit and staged changes in the index.
 
 ## `git: log current file`
 
 Performs a similar function to `git: log`, but restricts your search to the history of the currently open file.  Has additional option upon selection of a commit:
 - `Show file at commit`: Display the file at the time of the commit.
 
-## `git: log by author`
 
-Performs a similar function to `git: log`, but restricts your search to a particular committer.  When run, you will be prompted for the name and/or email of the committer you're searching for - the field will be pre-populated with your own name and email.  The full name/email is not required for the search to succeed.
+## `git: graph`
+
+Opens a special view that displays an ASCII-graphic representation of the repo's commit and branch history.
+
+Use `.` to go to next commit and use `,` to go to previous commit.
+
+Pressing `m` while your cursor is over a particular line will toggle display of a quick panel containing more info about the selected commit.  If you've changed your is `graph_show_more_commit_info` settting to `false`, the quick panel will not display automatically.
+
+Pressing `Enter` while your cursor is over a particular line will show the options similar to that of `git: log`.
+
+## `git: graph current file`
+
+Same as `git: graph current branch` but only for current file.
+
+## `git: compare against ...`
+
+Perform `git diff` between a selected commit and the current commit.
+
+## `git: compare current file against ...`
+
+Perform `git diff` between a selected commit and the current commit but only restrict to the current file.
+
 
 ## `git: blame current file`
 
@@ -43,17 +66,3 @@ Ignore whitespace, and detect when lines have been moved or copied from any file
 
 #### Detect moved or copied lines across all commits
 Ignore whitespace, and detect when lines have been moved or copied from any file across the full commit history of the repository, attributing lines to the original commit rather than the commit that moved or copied them (`git blame -w -CCC`).
-
-## `git: graph current branch`
-
-Opens a special view that displays an ASCII-graphic representation of the repo's commit and branch history.
-
-Use `.` to go to next commit and use `,` to go to previous commit.
-
-Pressing `m` while your cursor is over a particular line will toggle display of a quick panel containing more info about the selected commit.  If you've changed your is `graph_show_more_commit_info` settting to `false`, the quick panel will not display automatically.
-
-Pressing `Enter` while your cursor is over a particular line will display the commit reflected on that line.  Pressing `SUPER-Enter` (`CTRL-Enter` in Windows) will check out the commit.  Note that a successful commit will not be visually reflected in the graph view.
-
-## `git: graph all branches`
-
-Same as `git: graph current branch`. The only difference is that we add '--all' flag to the command. This will show all commits and stashes on all branches.

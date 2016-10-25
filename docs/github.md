@@ -39,6 +39,11 @@ This command will open a new browser window, displaying the landing page for the
 This command will display all open pull requests for the integrated GitHub remote.  Once you have made a selection, you can either checkout the pull request as a detached HEAD, checkout the pull request as a local branch, create a branch but not check it out, view the diff of the pull request, or open the pull request in the browser.
 
 
+## `github: create pull request`
+
+This command will create a pull request in the browser on the integrated GitHub remote repo.
+
+
 ## `issues integration in commit view`
 
 When writing a commit message, you can easily reference GitHub issues.  Type `#` followed by pressing the `Tab` key.  A pop-up will be shown with a list of the open issues for the repo.  If you'd like to reference issues from a separate repository, you can do so by typing `owner/repo#` and pressing `Tab`.  For example, to reference a GitSavvy issue you might type `divmain/GitSavvy#`, press `Tab`, and a list of GitSavvy issues will be displayed in the pop-up.

@@ -19,3 +19,7 @@ Remote tags are retrieved asynchronously, and may not display immediately when t
 ## `git: quick tag`
 
 You will be prompted first for a tag name, followed by a tag message.  Once entered, a tag will created and associated with the commit at HEAD.
+
+## `git: smart tag`
+
+Similar to `git: quick tag`. A tag name will be automatically generated when the release type is selected.

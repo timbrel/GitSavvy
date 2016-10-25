@@ -16,6 +16,10 @@ When run, you will be asked to select a commit from a list of previous commits. 
 
 To always use a specific reset mode, set `use_reset_mode` to a valid git reset mode flag (e.g. `--soft`, `--hard`) in `Packages/User/GitSavvy.sublime-settings`.
 
+## `git: reset to branch`
+
+Like `git: reset`, but it changes the HEAD of the current branch to the HEAD of a selected branch.
+
 ## `git: reset (reflog)`
 
 Like `git: reset`, this command will change the HEAD of the current branch to a previous commit, but uses `git reflog` rather than `git log` as the source of available commits.

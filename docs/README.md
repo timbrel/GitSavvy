@@ -37,8 +37,11 @@ If you run into any issues not addressed here, please feel free to [open an issu
 
 - [git: commit](commit.md#git-commit)
 - [git: commit including unstaged files](commit.md#git-commit-including-unstaged-files)
+- [git: amend previous commit](commit.md#git-amend-previous-commit)
+- [git: fixup from stage](commit.md#git-fixup-from-stage)
 - [git: quick commit](commit.md#git-quick-commit)
 - [git: quick stage current file and commit](commit.md#git-quick-stage-current-file-and-commit)
+- [git: quick stage current file and fixup](commit.md#git-quick-stage-current-file-and-fixup)
 
 
 ### Branch management
@@ -55,6 +58,7 @@ If you run into any issues not addressed here, please feel free to [open an issu
 
 - [git: tags](tag_mgmt.md#git-tags)
 - [git: quick tag](tag_mgmt.md#git-quick-tag)
+- [git: smart tag](tag_mgmt.md#git-smart-tag)
 
 
 ### Modifying history
@@ -78,11 +82,14 @@ If you run into any issues not addressed here, please feel free to [open an issu
 
 - [git: log](history.md#git-log)
 - [git: log current file](history.md#git-log-current-file)
-- [git: log by author](history.md#git-log-by-author)
-- [git: blame current file](history.md#git-blame-current-file)
 - [git: graph](history.md#git-graph)
+- [git: graph current file](history.md#git-graph-current-file)
+- [git: compare against ...](history.md#git-compare-against-)
+- [git: compare current file against ...](history.md#git-compare-current-file-against-)
+- [git: blame current file](history.md#git-blame-current-file)
 - [git: reset](misc.md#git-reset)
 - [git: reset (reflog)](misc.md#git-reset-reflog)
+- [git: reset to branch](misc.md#git-reset-to-branch)
 - [git: cherry-pick](misc.md#git-cherry-pick)
 
 
@@ -115,6 +122,10 @@ If you run into any issues not addressed here, please feel free to [open an issu
 ## GitHub Integration
 
 - [github: open file on remote](github.md#github-open-file-on-remote)
+- [github: open repo](github.md#github-open-repo)
+- [github: open issues](github.md#github-open-issues)
+- [github: create pull request](github.md#create-pull-request)
+- [github: review pull request](github.md#review-pull-request)
 - [issues integration in commit view](github.md#issues-integration)
 - [contributors integration in commit view](github.md#contributors-integration)
 
