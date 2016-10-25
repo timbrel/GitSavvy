@@ -88,6 +88,15 @@
             { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["?"],
+        "command": "gs_interface_toggle_popup_help",
+        "args": { "view_name": "inline_diff_view" },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     /////////////////////////////////
     // STATUS VIEW - SELECTED FILE //
