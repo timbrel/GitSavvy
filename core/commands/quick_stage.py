@@ -14,6 +14,7 @@ ADD_ALL_UNSTAGED_FILES = " ?  All unstaged files"
 ADD_ALL_FILES = " +  All files"
 STAGED = "--- {} files are staged for commit. ---"
 COMMIT = "    git: quick commit"
+FIXUP = "    git: fixup from stage"
 
 
 class GsQuickStageCommand(WindowCommand, GitCommand):
@@ -52,6 +53,10 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
 
             elif selection.menu_text == COMMIT:
                 self.window.run_command("gs_quick_commit")
+                return
+
+            elif selection.menu_text == FIXUP:
+                self.window.run_command("gs_fixup_from_stage")
                 return
 
             elif selection.menu_text == ADD_ALL_UNSTAGED_FILES:
@@ -126,5 +131,6 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
         if staged_count > 0:
             menu_options.append(MenuOption(False, STAGED.format(staged_count), None, None))
             menu_options.append(MenuOption(True, COMMIT, None, None))
+            menu_options.append(MenuOption(True, FIXUP, None, None))
 
         return menu_options
