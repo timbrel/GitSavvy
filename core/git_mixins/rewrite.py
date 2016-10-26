@@ -1,5 +1,8 @@
 import os
 from types import SimpleNamespace
+import re
+
+fixup_command = re.compile("^fixup! (.*)")
 
 
 class ChangeTemplate(SimpleNamespace):
@@ -13,6 +16,47 @@ class ChangeTemplate(SimpleNamespace):
 class RewriteMixin():
 
     ChangeTemplate = ChangeTemplate
+
+    def get_commit_chain(self, start, end="HEAD", autosquash=False):
+        commit_chain = [
+            self.ChangeTemplate(orig_hash=entry.long_hash,
+                                do_commit=True,
+                                msg=entry.raw_body,
+                                datetime=entry.datetime,
+                                author="{} <{}>".format(entry.author, entry.email))
+            for entry in self.log(start_end=(start, end), reverse=True)
+            ]
+        if autosquash:
+            fixup_idx = len(commit_chain) - 1
+            while fixup_idx > 0:
+                msg = commit_chain[fixup_idx].msg
+                if msg.startswith("fixup! "):
+                    orig_msg = fixup_command.match(msg).group(1)
+                    orig_commit_indx = fixup_idx - 1
+                    while orig_commit_indx >= 0:
+                        if commit_chain[orig_commit_indx].msg.startswith(orig_msg):
+                            break
+                        orig_commit_indx = orig_commit_indx - 1
+                    if orig_commit_indx >= 0:
+                        commit_chain.insert(orig_commit_indx+1, commit_chain.pop(fixup_idx))
+                        commit_chain[orig_commit_indx].do_commit = False
+                        if fixup_idx - orig_commit_indx >= 2:
+                            # if the fixup commit moves, do not decrease fixup_idx
+                            continue
+                fixup_idx = fixup_idx - 1
+            orig_commit_indx = 0
+            while orig_commit_indx < len(commit_chain) - 1:
+                if not commit_chain[orig_commit_indx].do_commit:
+                    fixup_idx = orig_commit_indx + 1
+                    while fixup_idx <= len(commit_chain) - 1:
+                        if commit_chain[fixup_idx].do_commit:
+                            break
+                    commit_chain[fixup_idx].msg = commit_chain[orig_commit_indx].msg
+                    commit_chain[fixup_idx].datetime = commit_chain[orig_commit_indx].datetime
+                    commit_chain[fixup_idx].author = commit_chain[orig_commit_indx].author
+                    orig_commit_indx = fixup_idx
+                orig_commit_indx = orig_commit_indx + 1
+        return commit_chain
 
     def rewrite_active_branch(self, base_commit, commit_chain):
         branch_name = self.get_current_branch_name()

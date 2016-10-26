@@ -28,3 +28,4 @@ from .show_file_at_commit import *
 from .git_add import *
 from .navigate import *
 from .rebase_interactive import *
+from .fixup import *

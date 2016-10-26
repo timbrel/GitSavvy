@@ -18,6 +18,10 @@ This command is similar to the above `git: commit` command.  However, instead of
 
 The commit view will be pre-populated with the previous commit message.  Proceeding will update the commit message, and the commit's diff will be amended with any changes present in the index.
 
+## `git: fixup from stage`
+
+This command is used to fixup an earlier commit from already staged files. A list of commits of the current branch will be shown and upon selection, the fixup will be squashed into the select commit. If autosquash fails, it leaves a fixup commit `fixup! <original commit>` in the log.
+
 ## `git: quick commit`
 
 When invoking this palette command, Sublime will prompt you for a one-line commit message (you will not see the GitSavvy commit view).  Pressing `Enter` will invoke the commit action, and pressing `Escape` will abort.
@@ -29,3 +33,7 @@ This command is only available via the command palette.
 When invoking this palette command, Sublime will prompt you for a one-line commit message.  Before making the commit, the currently open file will be staged and included in the subsequent commit.
 
 Keep in mind that any other changes that have been staged will also be included in the commit.  This command is only available via the command palette.
+
+## `git: quick stage current file and fixup`
+
+Similar to `git: fixup from stage`. This command also stages the current file before fixing up the commit.
