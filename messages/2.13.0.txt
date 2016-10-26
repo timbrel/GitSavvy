@@ -1,0 +1,65 @@
+Hi everyone,
+
+I'm happy to announce that Pavel Savchenko (@asfaltboy) and Randy Lai (@randy3k) have joined the GitSavvy team as official collaborators.  That means they'll be helping to address issues, implement features, and push out new releases.  Thanks for joining the team, guys!
+
+Thanks also to Simon Toivo (@stoivo) for all his help over the last months as my first official collaborator - the project (and I) would have suffered without your help.
+
+There are lots of bug fixes and enhancements in this release.  As always, reach out to us on Gitter[0] or by opening an issue [1] if you encounter problems.
+
+[0] https://gitter.im/divmain/GitSavvy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+[1] https://github.com/divmain/GitSavvy/issues
+
+---
+
+Changes since 2.12.1:
+
+  Features:
+   - `git: clone` command.
+   - `git: fixup from stage` and `git: quick stage current file and fixup` commands.
+   - `git: compare against ...` and `git: compare current file against ...` commands.
+   - Display diff between commits while in commit view with `f` key.
+   - Soup-up `git: log` quick panel, allowing you to filter:
+       + by the current branch,
+       + by author,
+       + or by another branch.
+   - Soup-up `git: log` secondary quick panel, revealed once commit is selected.  You can now:
+       + show the commit,
+       + checkout the commit,
+       + compare the commit against a branch or reference,
+       + copy the full commit SHA,
+       + diff the commit against the working directory, or
+       + diff the commit against the cache.
+
+  Enhancement:
+   - Add keyboard navigation in diff and commit views.
+   - Contextual pop-up help in the commit, diff, inline-diff, and commit comparison views.
+   - Show commit in output panel when scrolling the `git: log` quick panel.
+   - Add navication through conflicting files in Rebase dashboard.
+   - Improve syntax highlighting for the graph view.
+   - 
+   - Allow user to select remote repo to act as base when utilizing various `github: ...` commands.
+   - `github: open file on remote` can now open multiple files at once.
+   - Add Vintageous-friendly navigation keys in various dashboards.
+
+  Fix:
+   - Files with a `typechange` status were not displayed correctly in the Status dashboard.
+   - Files with a `copied` status were not displayed correctly in the Status dashboard.
+   - Cursor locations were sometimes incorrect when dashboards initially load.
+   - Paths would not always resolve correctly when dealing with symlinked directories.
+   - Vim friendly mode broke "skip commit during rebase" shortcut.
+   - Files shown from the graph view would use the GitSavvy graph syntax.
+   - Syntax irregularities in GitSavvy graph syntax file.
+   - User was unable to stage/unstage files in Status dashboard when cursor was at the end of the row.
+   - Merge commits were incorrectly filtered from `git: log` listing.
+   - Quick stage did not handle merge conflicts well.
+   - Tag dashboard would not allow deleting of viewing of remote tags.
+
+  Other:
+   - Add lots of docs.
+
+  Contributors:
+   - Pavel Savchenko
+   - Randy Lai
+   - Simon
+   - Dale Bustad
+   - Scott Richardson
