@@ -1,3 +1,13 @@
+"""
+Unmerged conflicts in status, which are one of:
+    DD    unmerged, both deleted
+    AU    unmerged, added by us
+    UD    unmerged, deleted by them
+    UA    unmerged, added by them
+    DU    unmerged, deleted by us
+    AA    unmerged, both added
+    UU    unmerged, both modified
+ """
 MERGE_CONFLICT_PORCELAIN_STATUSES = (
     ("D", "D"),  # unmerged, both deleted
     ("A", "U"),  # unmerged, added by us

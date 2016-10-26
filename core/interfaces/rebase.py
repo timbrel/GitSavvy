@@ -7,6 +7,7 @@ from ..commands import *
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
+from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
 
 def filter_quick_panel(fn):
@@ -237,27 +238,12 @@ class RebaseInterface(ui.Interface, GitCommand):
 
     def _get_conflicts_in_rebase(self):
         """
-        Look for unmerged conflicts in status, which are one of:
-           DD    unmerged, both deleted
-           AU    unmerged, added by us
-           UD    unmerged, deleted by them
-           UA    unmerged, added by them
-           DU    unmerged, deleted by us
-           AA    unmerged, both added
-           UU    unmerged, both modified
+        Look for unmerged conflicts in status
         """
         return [
             entry
             for entry in self.get_status()
-            if (
-                (entry.index_status == "D" and entry.working_status == "D") or
-                (entry.index_status == "A" and entry.working_status == "U") or
-                (entry.index_status == "U" and entry.working_status == "D") or
-                (entry.index_status == "U" and entry.working_status == "A") or
-                (entry.index_status == "D" and entry.working_status == "U") or
-                (entry.index_status == "A" and entry.working_status == "A") or
-                (entry.index_status == "U" and entry.working_status == "U")
-            )
+            if (entry.index_status, entry.working_status) in MERGE_CONFLICT_PORCELAIN_STATUSES
         ]
 
     def _get_diverged_outside_rebase(self):
