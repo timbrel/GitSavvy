@@ -25,6 +25,7 @@ from .git_mixins.tags import TagsMixin
 from .git_mixins.history import HistoryMixin
 from .git_mixins.rewrite import RewriteMixin
 from .git_mixins.merge import MergeMixin
+from .exceptions import GitSavvyError
 
 
 git_path = None
@@ -41,10 +42,6 @@ FALLBACK_PARSE_ERROR_MSG = (
     "if you have checked binary data into your repository.  The current "
     "operation has been aborted."
 )
-
-
-class GitSavvyError(Exception):
-    pass
 
 
 class GitCommand(StatusMixin,
@@ -114,8 +111,6 @@ class GitCommand(StatusMixin,
             sublime.status_message(
                 "Failed to run `git {}`. See log for details.".format(command[1])
             )
-            util.log.panel(msg)
-            util.debug.log_error(msg)
             raise GitSavvyError(msg)
 
         try:

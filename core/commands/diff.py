@@ -11,7 +11,8 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from .navigate import GsNavigate
-from ..git_command import GitCommand, GitSavvyError
+from ..git_command import GitCommand
+from ..exceptions import GitSavvyError
 from ...common import util
 
 
