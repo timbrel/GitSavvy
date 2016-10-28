@@ -6,10 +6,11 @@ import os
 import sys
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand, EventListener
+from sublime_plugin import WindowCommand, TextCommand
 
-from ..git_command import GitCommand, GitSavvyError
 from ...common import util
+from ..git_command import GitCommand
+from ..exceptions import GitSavvyError
 
 
 TITLE = "GIT-ADD: {}"
