@@ -11,3 +11,7 @@ class GitSavvyError(Exception):
             if kwargs.get('show_status', False):
                 sublime.status_message(msg)
             util.debug.log_error(msg)
+
+
+class FailedGithubRequest(GitSavvyError):
+    pass

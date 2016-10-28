@@ -31,16 +31,20 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
     """
 
     def run(self, edit):
+        sublime.status_message("Getting pull requests...")
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
         base_remote = github.parse_remote(self.get_integrated_remote_url())
         self.pull_requests = github.get_pull_requests(base_remote)
-
-        self.view.window().show_quick_panel(
-            [create_palette_entry(pr) for pr in self.pull_requests],
-            self.on_select_pr
-            )
+        if not self.pull_requests:
+            sublime.status_message("No pull requests found.")
+        else:
+            sublime.status_message("Found %i pull requests" % len(self.pull_requests))
+            self.view.window().show_quick_panel(
+                [create_palette_entry(pr) for pr in self.pull_requests],
+                self.on_select_pr
+                )
 
     def on_select_pr(self, idx):
         if idx == -1:

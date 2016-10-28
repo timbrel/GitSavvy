@@ -10,12 +10,9 @@ from functools import partial
 import sublime
 
 from ..common import interwebs
+from ..core.exceptions import FailedGithubRequest
 
 GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo", "token"))
-
-
-class FailedGithubRequest(Exception):
-    pass
 
 
 def parse_remote(remote):
@@ -116,7 +113,7 @@ def query_github(api_url_template, github_repo):
 
     response = interwebs.get(fqdn, 443, path, https=True, auth=auth)
     if response.status < 200 or response.status > 299 or not response.is_json:
-        raise FailedGithubRequest(response.payload)
+        raise FailedGithubRequest('Error querying github: %s' % response.payload)
 
     return response.payload
 
