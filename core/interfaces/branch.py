@@ -637,7 +637,7 @@ class GsBranchesDiffCommitHistoryCommand(TextCommand, GitCommand):
     def show_commits(self, branch_name, remote=None):
         target_commit = self.get_current_branch_name()
         base_commit = remote + "/" + branch_name if remote else branch_name
-        self.view.run_command("gs_compare_commit", {
+        self.view.window().run_command("gs_compare_commit", {
             "base_commit": base_commit,
             "target_commit": target_commit
         })
