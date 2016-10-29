@@ -1387,6 +1387,15 @@
         ]
     },
     {
+        "keys": ["m"],
+        "command": "gs_rebase_toggle_preserve_mode",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.in_rebase", "operator": "equal", "operand": false }
+        ]
+    },
+    {
         "keys": ["c"],
         "command": "gs_rebase_continue",
         "context": [

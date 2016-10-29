@@ -27,7 +27,8 @@ class GsFixupFromStageCommand(GsLogCurrentBranchCommand):
         self.git("commit", "--fixup", commit)
         try:
             base_commit = self.git("rev-parse", "{}~1".format(commit)).strip()
-            commit_chain = self.get_commit_chain(base_commit, autosquash=True)
+            entries = self.log_rebase(base_commit, preserve=True)
+            commit_chain = self.perpare_rewrites(entries, autosquash=True)
             self.rewrite_active_branch(base_commit, commit_chain)
         except Exception as e:
             sublime.error_message("Error encountered. Cannot autosquash fixup.")

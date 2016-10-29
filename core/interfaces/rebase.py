@@ -8,6 +8,7 @@ from ..commands import GsNavigate
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin
+from ..exceptions import GitSavvyError
 
 
 def filter_quick_panel(fn):
@@ -55,7 +56,7 @@ class RebaseInterface(ui.Interface, GitCommand):
 
     template = """\
 
-      REBASE:  {active_branch} --> {base_ref} ({base_commit})
+      REBASE:  {active_branch} --> {base_ref} ({base_commit}){preserve_merges}
       STATUS:  {status}
 
         ┬ ({base_commit})
@@ -76,10 +77,10 @@ class RebaseInterface(ui.Interface, GitCommand):
 
       [q] squash commit with previous           [f] define base ref for dashboard
       [Q] squash all commits                    [r] rebase branch on top of...
-      [e] edit commit message                   [c] continue rebase
-      [p] drop commit                           [{skip_commit_key}] skip commit during rebase
-      [d] move commit down (after next)         [A] abort rebase
-      [u] move commit up (before previous)
+      [e] edit commit message                   [m] toggle preserve merge mode
+      [p] drop commit                           [c] continue rebase
+      [d] move commit down (after next)         [{skip_commit_key}] skip commit during rebase
+      [u] move commit up (before previous)      [A] abort rebase
       [w] show commit
 
       [?]         toggle this help menu
@@ -106,7 +107,6 @@ class RebaseInterface(ui.Interface, GitCommand):
 
     separator = "\n    │\n"
     commit = "  {caret} {status}  {commit_hash}  {commit_summary}{conflicts}"
-    conflict = "    │           conflict: {path}"
 
     _base_commit = None
     _active_conflicts = None
@@ -166,7 +166,7 @@ class RebaseInterface(ui.Interface, GitCommand):
         try:
             cursor_entry = log[cursor]
         except IndexError:
-            return "Ready."
+            return "Not yet rebased." if self.not_yet_rebased() else "Ready."
 
         if cursor == log_len - 1:
             return "Successfully {}. Undo available.".format(cursor_entry["description"])
@@ -185,6 +185,13 @@ class RebaseInterface(ui.Interface, GitCommand):
     def render_super_key(self):
         return util.super_key
 
+    @ui.partial("preserve_merges")
+    def render_preserve_merge(self):
+        if self.preserve_merges():
+            return " (Preserving merges)"
+        else:
+            return ""
+
     @ui.partial("help")
     def render_help(self):
         help_hidden = self.view.settings().get("git_savvy.help_hidden")
@@ -197,8 +204,16 @@ class RebaseInterface(ui.Interface, GitCommand):
                 conflicts_bindings=self.render_conflicts_bindings(),
                 skip_commit_key='k' if not vintageous_friendly else 'K')
 
+    def preserve_merges(self):
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        default = savvy_settings.get("rebase_preserve_merges")
+        return not self.in_rebase_apply() and \
+            (self.in_rebase_merge() or
+             self.view.settings().get("git_savvy.rebase.preserve_merges", default))
+
     def get_diverged_commits_info(self, start, end):
-        self.entries = self.log(start_end=(start, end), reverse=True)
+        preserve = self.preserve_merges()
+        self.entries = self.log_rebase(start, end, preserve)
         return (self._get_diverged_in_rebase()
                 if self._in_rebase else
                 self._get_diverged_outside_rebase())
@@ -206,21 +221,39 @@ class RebaseInterface(ui.Interface, GitCommand):
     def _get_diverged_in_rebase(self):
         self._active_conflicts = None
         conflict_commit = self.rebase_conflict_at()
-        rewritten = dict(self.rebase_rewritten())
+        rewritten = self.rebase_rewritten()
         commits_info = []
 
         for entry in self.entries:
+            conflicts = ""
             was_rewritten = entry.long_hash in rewritten
             new_hash = rewritten[entry.long_hash][:7] if was_rewritten else None
-            is_conflict = entry.long_hash == conflict_commit
-
-            if is_conflict:
-                self._active_conflicts = self._get_conflicts_in_rebase()
-                conflicts = (
-                    "" if not self._active_conflicts else
-                    "\n" + "\n".join("    │           ! {}".format(conflict.path)
-                                     for conflict in self._active_conflicts)
-                    )
+            is_merge = self.commit_is_merge(entry.long_hash)
+            if self.in_rebase_merge() and is_merge:
+                is_conflict = conflict_commit in self.commits_of_merge(entry.long_hash)
+                if is_conflict:
+                    conflict_logs = self.log_merge(entry.long_hash)
+                    for conflict_idx, c in enumerate(conflict_logs):
+                        conflicts = conflicts + "\n    │    {}  {}  {}".format(
+                            self.SUCCESS if c.long_hash in rewritten else
+                            self.CONFLICT if c.long_hash == conflict_commit else
+                            self.UNKNOWN,
+                            c.short_hash,
+                            c.summary)
+                        if c.long_hash == conflict_commit:
+                            self._active_conflicts = self._get_conflicts_in_rebase()
+                            if self._active_conflicts:
+                                conflicts = conflicts + "\n" + "\n".join(
+                                    "    │           ! {}".format(conflict.path)
+                                    for conflict in self._active_conflicts)
+            else:
+                is_conflict = entry.long_hash == conflict_commit
+                if is_conflict:
+                    self._active_conflicts = self._get_conflicts_in_rebase()
+                    if self._active_conflicts:
+                        conflicts = conflicts + "\n" + "\n".join(
+                            "    │           ! {}".format(conflict.path)
+                            for conflict in self._active_conflicts)
 
             commits_info.append({
                 "caret": self.CARET if is_conflict else " ",
@@ -291,6 +324,10 @@ class RebaseInterface(ui.Interface, GitCommand):
         base_ref = self.base_ref()
         self._base_commit = self.git("merge-base", "HEAD", base_ref).strip()
         return self._base_commit
+
+    def not_yet_rebased(self):
+        return self.git("merge-base", self.base_commit(), "HEAD").strip() != \
+                self.git("rev-parse", self.base_ref()).strip()
 
     def get_branch_ref(self, branch_name):
         stdout = self.git("show-ref", "refs/heads/" + branch_name)
@@ -412,8 +449,26 @@ class RewriteBase(TextCommand, GitCommand):
     Base class for all commit manipulation actions.
     """
 
+    # use to remap parents of merges
+    commit_parent_map = {}
+
     def run(self, edit):
         self.interface = ui.get_interface(self.view.id())
+
+        if self.interface.not_yet_rebased():
+            sublime.message_dialog(
+                "Unable to manipulate commits, rebase first."
+            )
+            return
+
+        _, _, changed_files = self.interface.get_branch_state()
+
+        if len(changed_files):
+            sublime.message_dialog(
+                "Unable to manipulate commits while repo is in unclean state."
+            )
+            return
+
         sublime.set_timeout_async(self.run_async, 0)
 
     def get_selected_short_hash(self):
@@ -441,12 +496,6 @@ class RewriteBase(TextCommand, GitCommand):
         branch_name, ref, changed_files = self.interface.get_branch_state()
         success = True
 
-        if len(changed_files):
-            sublime.message_dialog(
-                "Unable to perform rebase actions while repo is in unclean state."
-            )
-            return
-
         try:
             self.rewrite_active_branch(
                 base_commit=base_commit,
@@ -461,6 +510,10 @@ class RewriteBase(TextCommand, GitCommand):
             self.interface.complete_action(branch_name, ref, success, description)
 
         util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
+
+    def commit_parents(self, commit):
+        return [self.commit_parent_map[p] if p in self.commit_parent_map else p
+                for p in super().commit_parents(commit)]
 
 
 class GsRebaseSquashCommand(RewriteBase):
@@ -478,15 +531,13 @@ class GsRebaseSquashCommand(RewriteBase):
         squash_idx, to_squash, before_squash = self.get_idx_entry_and_prev(short_hash)
         _, _, two_entries_before_squash = self.get_idx_entry_and_prev(before_squash.short_hash)
 
+        if self.commit_is_merge(to_squash.long_hash) or \
+                self.commit_is_merge(before_squash.long_hash):
+            sublime.status_message("Unable to squash merges.")
+            return
+
         # Generate identical change templates with author/date metadata in tact.
-        commit_chain = [
-            self.ChangeTemplate(orig_hash=entry.long_hash,
-                                do_commit=True,
-                                msg=entry.raw_body,
-                                datetime=entry.datetime,
-                                author="{} <{}>".format(entry.author, entry.email))
-            for entry in self.interface.entries[squash_idx-1:]
-        ]
+        commit_chain = self.perpare_rewrites(self.interface.entries[squash_idx-1:])
 
         # The first commit (the one immediately previous to the selected commit) will
         # not be commited again.  However, the second commit (the selected) must include
@@ -496,6 +547,7 @@ class GsRebaseSquashCommand(RewriteBase):
         commit_chain[1].msg = commit_chain[0].msg + "\n\n" + commit_chain[1].msg
         commit_chain[1].datetime = commit_chain[0].datetime
         commit_chain[1].author = commit_chain[0].author
+        self.commit_parent_map = {commit_chain[1].orig_hash: commit_chain[0].orig_hash}
 
         self.make_changes(
             commit_chain,
@@ -513,20 +565,15 @@ class GsRebaseSquashAllCommand(RewriteBase):
         # in tact.  However, set do_commit to false for all but the last change,
         # in order for diffs to be rolled into that final commit.
         last_commit_idx = len(self.interface.entries) - 1
-        commit_chain = [
-            self.ChangeTemplate(orig_hash=entry.long_hash,
-                                do_commit=idx == last_commit_idx,
-                                msg=entry.raw_body,
-                                datetime=entry.datetime,
-                                author="{} <{}>".format(entry.author, entry.email))
-            for idx, entry in enumerate(self.interface.entries)
-        ]
+        commit_chain = self.perpare_rewrites(self.interface.entries)
 
         # Take the commit message from the commit-to-squash and append
         # it to the next commit's message.
         for idx, commit in enumerate(commit_chain):
+            if idx < last_commit_idx:
+                commit.do_commit = False
             if not commit.do_commit:
-                commit_chain[idx+1].msg += "\n\n" + commit.msg
+                commit_chain[idx+1].msg = commit.msg + "\n\n" + commit_chain[idx+1].msg
                 commit.msg = None
 
         self.make_changes(commit_chain, "squashed all commits")
@@ -556,14 +603,8 @@ class GsRebaseEditCommand(RewriteBase):
         # Generate identical change templates with author/date metadata
         # in tact.  For the edited entry, replace the message with
         # the content from the temporary edit view.
-        commit_chain = [
-            self.ChangeTemplate(orig_hash=entry.long_hash,
-                                do_commit=True,
-                                msg=commit_msg if entry == entry_to_edit else entry.raw_body,
-                                datetime=entry.datetime,
-                                author="{} <{}>".format(entry.author, entry.email))
-            for entry in self.interface.entries[edit_idx:]
-        ]
+        commit_chain = self.perpare_rewrites(self.interface.entries[edit_idx:])
+        commit_chain[0].msg = commit_msg
 
         self.make_changes(
             commit_chain,
@@ -581,14 +622,11 @@ class GsRebaseDropCommand(RewriteBase):
         drop_idx, to_drop, entry_before_drop = self.get_idx_entry_and_prev(short_hash)
 
         # Generate identical change templates with author/date metadata in tact.
-        commit_chain = [
-            self.ChangeTemplate(orig_hash=entry.long_hash,
-                                do_commit=True,
-                                msg=entry.raw_body,
-                                datetime=entry.datetime,
-                                author="{} <{}>".format(entry.author, entry.email))
-            for entry in self.interface.entries[drop_idx+1:]
-        ]
+        commit_chain = self.perpare_rewrites(self.interface.entries[drop_idx+1:])
+        self.commit_parent_map = {
+            to_drop.long_hash: entry_before_drop.long_hash
+            if entry_before_drop else self.interface.base_commit()
+        }
 
         self.make_changes(
             commit_chain,
@@ -614,26 +652,34 @@ class GsRebaseMoveUpCommand(RewriteBase):
         # the selected commit is the second visible commit, we'll fall back
         # to the default base commit hash.
         if self.interface.entries[1].short_hash == short_hash:
-            base_commit_hash = None
+            base_commit_hash = self.interface.base_commit()
         else:
             _, _, two_entries_before_move = self.get_idx_entry_and_prev(entry_before_move.short_hash)
             base_commit_hash = two_entries_before_move.long_hash
 
-        commit_chain = [
-            self.ChangeTemplate(orig_hash=entry.long_hash,
-                                do_commit=True,
-                                msg=entry.raw_body,
-                                datetime=entry.datetime,
-                                author="{} <{}>".format(entry.author, entry.email))
-            # Start at the commit prior to the selected commit.
-            for entry in self.interface.entries[move_idx-1:]
-        ]
+        commit_chain = self.perpare_rewrites(self.interface.entries[move_idx-1:])
+
+        if self.commit_is_merge(to_move.long_hash):
+            self.commit_parent_map = {
+                entry_before_move.long_hash: base_commit_hash
+            }
+        elif self.commit_is_merge(entry_before_move.long_hash):
+            self.commit_parent_map = {
+                base_commit_hash: to_move.long_hash
+            }
+        else:
+            self.commit_parent_map = {
+                commit_chain[1].orig_hash: commit_chain[0].orig_hash
+            }
 
         # Take the change to move and swap it with the one before.
         commit_chain[0], commit_chain[1] = commit_chain[1], commit_chain[0]
 
         try:
-            self.make_changes(commit_chain, "moved " + short_hash + " up", base_commit_hash)
+            self.make_changes(
+                commit_chain,
+                "moved " + short_hash + " up",
+                base_commit_hash)
             move_cursor(self.view, -2)
         except:
             sublime.message_dialog("Unable to move commit, most likely due to a conflict.")
@@ -650,28 +696,41 @@ class GsRebaseMoveDownCommand(RewriteBase):
             return
 
         move_idx, to_move, entry_before_move = self.get_idx_entry_and_prev(short_hash)
+        base_commit_hash = entry_before_move.long_hash \
+            if entry_before_move else self.interface.base_commit()
 
-        commit_chain = [
-            self.ChangeTemplate(orig_hash=entry.long_hash,
-                                move=entry.short_hash == short_hash,
-                                do_commit=True,
-                                msg=entry.raw_body,
-                                datetime=entry.datetime,
-                                author="{} <{}>".format(entry.author, entry.email))
-            for entry in self.interface.entries[move_idx:]
-        ]
+        commit_chain = self.perpare_rewrites(self.interface.entries[move_idx:])
 
+        if self.commit_is_merge(to_move.long_hash):
+            self.commit_parent_map = {
+                base_commit_hash: commit_chain[1].orig_hash
+            }
+        elif self.commit_is_merge(commit_chain[1].orig_hash):
+            self.commit_parent_map = {
+                to_move.long_hash: base_commit_hash
+            }
+        else:
+            self.commit_parent_map = {
+                commit_chain[1].orig_hash: commit_chain[0].orig_hash
+            }
         # Take the change to move and swap it with the one following.
         commit_chain[0], commit_chain[1] = commit_chain[1], commit_chain[0]
 
         try:
-            self.make_changes(commit_chain, "moved " + short_hash + " down", entry_before_move.long_hash)
+            self.make_changes(
+                commit_chain,
+                "moved " + short_hash + " down",
+                base_commit_hash)
             move_cursor(self.view, 2)
         except:
             sublime.message_dialog("Unable to move commit, most likely due to a conflict.")
 
 
 class GsRebaseShowCommitCommand(RewriteBase):
+
+    def run(self, edit):
+        self.interface = ui.get_interface(self.view.id())
+        sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
         short_hash = self.get_selected_short_hash()
@@ -858,7 +917,10 @@ class GsRebaseOnTopOfCommand(GsRebaseDefineBaseRefCommand):
         self.view.settings().set("git_savvy.rebase_in_progress", (branch_state, selection))
 
         self.view.settings().set("git_savvy.rebase.base_ref", selection)
-        self.git("rebase", selection)
+        self.git(
+            "rebase",
+            "-p" if interface.preserve_merges() else None,
+            selection)
         util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
@@ -881,6 +943,15 @@ class GsRebaseContinueCommand(TextCommand, GitCommand):
 
     def run_async(self):
         try:
+            if self.in_rebase_merge():
+                (staged_entries,
+                 unstaged_entries,
+                 untracked_entries,
+                 conflict_entries) = self.sort_status_entries(self.get_status())
+                if len(unstaged_entries) + len(untracked_entries) + len(conflict_entries) == 0 and \
+                        len(staged_entries) > 0:
+                    self.git("commit", "--no-edit")
+
             self.git("rebase", "--continue")
         finally:
             util.view.refresh_gitsavvy(self.view)
@@ -896,6 +967,16 @@ class GsRebaseSkipCommand(TextCommand, GitCommand):
             self.git("rebase", "--skip")
         finally:
             util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
+
+
+class GsRebaseTogglePreserveModeCommand(TextCommand, GitCommand):
+
+    def run(self, edit):
+        preserve = self.view.settings().get("git_savvy.rebase.preserve_merges", False)
+        self.view.settings().set("git_savvy.rebase.preserve_merges", not preserve)
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        savvy_settings.set("rebase_preserve_merges", not preserve)
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsRebaseNavigateCommitsCommand(GsNavigate):
