@@ -557,7 +557,7 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
             if remote_region and remote_region[0].contains(selection):
                 sublime.status_message("Fetching from `{}`...".format(remote_name))
                 self.fetch(remote=remote_name)
-                self.merge("{}/{}".format(remote_name, branch_name))
+                self.merge(list("{}/{}".format(remote_name, branch_name)))
                 sublime.status_message("Fetch and merge complete.")
                 util.view.refresh_gitsavvy(self.view)
                 return
