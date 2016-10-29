@@ -198,6 +198,12 @@
     */
     "merge_log": true,
 
+
+    /*
+        When set to `true`, rebase dashboard uses preserve-merges mode when opened.
+    */
+    "rebase_preserve_merges": false,
+
     /*
         When set to `true`, GitSavvy will prompt for confirmation before actually
         performing a `git push --force` operation.
