@@ -81,4 +81,4 @@ class BranchesMixin():
         Merge `branch_names` into active branch.
         """
 
-        self.git("merge", ' '.join(branch_names))
+        self.git("merge", *branch_names)
