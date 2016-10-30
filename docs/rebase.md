@@ -16,24 +16,26 @@ Rebasing is a guided process.  If merge conflicts occur in the middle of the reb
 
 Commits are shown in order of application, where the base commit (or inferred root of your branch) is displayed first, and the last commit made is displayed last.
 
+Manipulating commits is not allowed when the current branch is not connected to the base-ref. You need need to select another base-ref or rebase first.
+
 
 ## Actions
 
 ### Manipulating commits
 
-#### Squash commit with above (`s`)
+#### Squash commit with above (`q`)
 
 The selected commit will be squashed with the commit above it.  The two commit messages will be combined into the one above.
 
 **Note:** This command cannot be performed while a rebase is ongoing.
 
-#### Squash commit with a previous commit (`S`)
+#### Squash commit with a previous commit (`Q`)
 
-The selected commit will be squashed with the commit below it.  The two commit messages will be combined into the one below.
+A list of commits will be displayed, the commit under cursor will be squashed with the selected commit.  The two commit messages will be combined into one.
 
 **Note:** This command cannot be performed while a rebase is ongoing.
 
-#### Squash all commits (`Q`)
+#### Squash all commits (`S`)
 
 All commits listed in the view, from the base to HEAD, will be squashed into a single commit.  All commit messages will be combined into the single commit that results from this operation.
 
@@ -47,13 +49,25 @@ When this command is run, a new view will be displayed containing the commit mes
 
 #### Move commit down (`d`)
 
-This will move the commit from its current location in the commit chain to be positioned immediately after the next commit.  This command may fail if a merge conflict would arise from the operation.  If commit re-ordering is necessary in this case, it is best to drop into the terminal to complete the operation from there.
+This will move the commit from its current location in the commit chain to be positioned *immediately* after the next commit.
+
+**Note:** This command cannot be performed while a rebase is ongoing.
+
+#### Move commit down (`D`)
+
+A list of commits will be displayed, the commit under cursor will be moved from its current location in the commit chain to after the selected commit.
 
 **Note:** This command cannot be performed while a rebase is ongoing.
 
 #### Move commit up (`u`)
 
-This will move the commit from its current location to be positioned immediately before the previous commit.  This command may fail if a merge conflict would arise from the operation.  If commit re-ordering is necessary in this case, it is best to drop into the terminal to complete the operation from there.
+This will move the commit from its current location to be positioned *immediately* before the previous commit.  This command may fail if a merge conflict would arise from the operation.
+
+**Note:** This command cannot be performed while a rebase is ongoing.
+
+#### Move commit up (`U`)
+
+A list of commits will be displayed, the commit under cursor will be moved from its current location in the commit chain to before the selected commit.
 
 **Note:** This command cannot be performed while a rebase is ongoing.
 
@@ -88,6 +102,10 @@ In most cases, this will default to `master`.  However, if you would like to com
 When running this command, you will be prompted for the branch on top of which you'd like to rebase.  Once selected, a rebase operation will be initiated (`git rebase BASE_REF`).
 
 If any merge conflicts occur while rebasing, the state of the operation will be reflected in the dashboard, with successful rebased commits showing a check mark, and the commit with the current merge conflict showing an X as well as a list of files with conflicts.
+
+#### Toggle perserve merges mode (`m`)
+
+In default, merges will be lost when rebasing. If perserve merges mode is on, commits within a merge are displayed as a single item to avoid commits accidentally moving in or moving out of the merge. If any conflicts occur while rebasing a merge commit, the commits within the merge will be shown and the commit at conflict will be marked.
 
 #### Continue rebase (`c`)
 
