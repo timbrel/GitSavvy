@@ -382,20 +382,34 @@ class RebaseInterface(ui.Interface, GitCommand):
         util.debug.add_to_log('nearest_branch: filter out branches that do not'
                               ' share branch-out nodes')
         diff = difflib.Differ()
-        branch_commits = self.git("rev-list", "--first-parent", branch)
+        branch_commits = self.git("rev-list", "--first-parent", branch).splitlines()
         nearest = None
+        max_iterations = 100
         for relative in relatives:
-            relative_commits = self.git("rev-list", "--first-parent", relative)
-            common = next((l for l in diff.compare(branch_commits, relative_commits)
-                          if l.startswith(' ')), '').strip()
+            util.debug.add_to_log('nearest_branch: Getting common commits with %s' % relative)
+            relative_commits = self.git("rev-list", "--first-parent", relative).splitlines()
+            common = None
+            for i, l in enumerate(diff.compare(branch_commits, relative_commits)):
+                if i >= max_iterations:
+                    util.debug.add_to_log('nearest_branch: Max iterations exceeded!')
+                    break
+                if not l.startswith(' '):
+                    util.debug.add_to_log('nearest_branch: commit differs %s' % l)
+                    continue
+                common = l.strip()
+                util.debug.add_to_log('nearest_branch: found common commit %s' % common)
+                break
 
             if not common:
+                util.debug.add_to_log('nearest_branch: No common commit found with %s' % relative)
                 continue
 
             # found common "branch-out" node with relative, get branches
             branches = self.git("branch", "--contains", common,
                                 "--no-merged").splitlines()
             cleaned_branch_names = [b[2:].strip() for b in branches]
+            util.debug.add_to_log('nearest_branch: got valid branches %s' %
+                                  cleaned_branch_names)
             if relative in cleaned_branch_names:
                 nearest = relative
                 break
