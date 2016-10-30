@@ -21,7 +21,13 @@ Commits are shown in order of application, where the base commit (or inferred ro
 
 ### Manipulating commits
 
-#### Squash commit with next (`q`)
+#### Squash commit with above (`s`)
+
+The selected commit will be squashed with the commit above it.  The two commit messages will be combined into the one above.
+
+**Note:** This command cannot be performed while a rebase is ongoing.
+
+#### Squash commit with a previous commit (`S`)
 
 The selected commit will be squashed with the commit below it.  The two commit messages will be combined into the one below.
 
