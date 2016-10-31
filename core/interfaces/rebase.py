@@ -1012,40 +1012,14 @@ class GsRebaseNavigateCommitsCommand(GsNavigate):
     If a commit has conflicts, navigate to the next (or previous) file.
     """
 
-    offset_map = {
-        "meta.git-savvy.rebase-graph.entry": 7,
-        "meta.git-savvy.rebase-graph.conflict": 16,
-    }
-
-    def run(self, edit, forward=True):
-        sel = self.view.sel()
-        if not sel:
-            return
-
-        current_position = sel[0].a
-
-        available_regions = self.get_available_regions()
-
-        new_position = (self.forward(current_position, available_regions)
-                        if forward
-                        else self.backward(current_position, available_regions))
-
-        if new_position is None:
-            return
-
-        offset = 7  # default to commit offset, conflict is always after
-        next_context = self.view.scope_name(new_position)
-        for scope in next_context.split():
-            if scope in self.offset_map:
-                offset = self.offset_map[scope]
-
-        # Position the cursor at next/previous commit or conflict filename
-        sel.clear()
-        new_position += offset
-        sel.add(sublime.Region(new_position, new_position))
+    offset = 0
 
     def get_available_regions(self):
-        regions = [region for selector in self.offset_map.keys()
-                   for region in self.view.find_by_selector(selector)]
-        return sorted([
-            line for region in regions for line in self.view.lines(region)])
+        commit_selector = "meta.git-savvy.rebase-graph.entry support.type.git-savvy.rebase.commit_hash"
+        conflict_selector = "meta.git-savvy.rebase-graph.conflict keyword.other.name.git-savvy.rebase-conflict"
+
+        regions = self.view.find_by_selector(conflict_selector)
+        if len(regions) == 0:
+            regions = self.view.find_by_selector(commit_selector)
+
+        return regions
