@@ -124,8 +124,8 @@ If you run into any issues not addressed here, please feel free to [open an issu
 - [github: open file on remote](github.md#github-open-file-on-remote)
 - [github: open repo](github.md#github-open-repo)
 - [github: open issues](github.md#github-open-issues)
-- [github: create pull request](github.md#create-pull-request)
-- [github: review pull request](github.md#review-pull-request)
+- [github: create pull request](github.md#github-create-pull-request)
+- [github: review pull request](github.md#github-review-pull-request)
 - [issues integration in commit view](github.md#issues-integration)
 - [contributors integration in commit view](github.md#contributors-integration)
 
