@@ -73,6 +73,14 @@ class GsLogGraphCurrentBranch(GsLogGraphBase):
     pass
 
 
+class GsLogGraphAllBranches(GsLogGraphBase):
+
+    def get_graph_args(self):
+        args = super().get_graph_args()
+        args.append("--all")
+        return args
+
+
 class GsLogGraphByAuthorCommand(GsLogGraphBase):
 
     """
@@ -148,6 +156,7 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
         self._file_path = self.file_path if current_file else file_path
         options_array = [
             "For current branch",
+            "For all branches",
             "Filtered by author",
             "Filtered by branch",
         ]
@@ -164,8 +173,10 @@ class GsLogGraphCommand(WindowCommand, GitCommand):
         if index == 0:
             self.window.run_command("gs_log_graph_current_branch", {"file_path": self._file_path})
         elif index == 1:
-            self.window.run_command("gs_log_graph_by_author", {"file_path": self._file_path})
+            self.window.run_command("gs_log_graph_current_branch", {"file_path": self._file_path})
         elif index == 2:
+            self.window.run_command("gs_log_graph_by_author", {"file_path": self._file_path})
+        elif index == 3:
             self.window.run_command("gs_log_graph_by_branch", {"file_path": self._file_path})
 
 

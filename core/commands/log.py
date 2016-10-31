@@ -73,6 +73,12 @@ class GsLogCurrentBranchCommand(GsLogBase):
     pass
 
 
+class GsLogAllBranchesCommand(GsLogBase):
+
+    def log(self, **kwargs):
+        return super().log(all_branches=True, **kwargs)
+
+
 class GsLogByAuthorCommand(GsLogBase):
 
     """
@@ -144,6 +150,7 @@ class GsLogCommand(WindowCommand, GitCommand):
         self._file_path = self.file_path if current_file else file_path
         options_array = [
             "For current branch",
+            "For all branches",
             "Filtered by author",
             "Filtered by branch",
         ]
@@ -160,8 +167,10 @@ class GsLogCommand(WindowCommand, GitCommand):
         if index == 0:
             self.window.run_command("gs_log_current_branch", {"file_path": self._file_path})
         elif index == 1:
-            self.window.run_command("gs_log_by_author", {"file_path": self._file_path})
+            self.window.run_command("gs_log_all_branches", {"file_path": self._file_path})
         elif index == 2:
+            self.window.run_command("gs_log_by_author", {"file_path": self._file_path})
+        elif index == 3:
             self.window.run_command("gs_log_by_branch", {"file_path": self._file_path})
 
 
