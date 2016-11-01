@@ -4,63 +4,29 @@ from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ...common import util
+from ...common.quick_panel import show_log_panel
 
 
 class GsLogBase(WindowCommand, GitCommand):
+
     _limit = 6000
 
     def run(self, file_path=None):
-        self._skip = 0
         self._file_path = file_path
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        logs = self.log(file_path=self._file_path, limit=self._limit, skip=self._skip)
-        self._hashes = [l.long_hash for l in logs]
-        self.display_commits(self.render_commits(logs))
+        show_log_panel(self.log_generator(), self.do_action, self._limit)
 
-    def render_commits(self, logs):
-        commit_list = []
-        for l in logs:
-            commit_list.append([
-                l.short_hash + " " + l.summary,
-                l.author + ", " + util.dates.fuzzy(l.datetime)
-            ])
-        return commit_list
-
-    def display_commits(self, commit_list):
-        if len(commit_list) >= self._limit:
-            commit_list.append([
-                ">>> NEXT {} COMMITS >>>".format(self._limit),
-                "Skip this set of commits and choose from the next-oldest batch."
-            ])
-        self.window.show_quick_panel(
-            commit_list,
-            lambda index: sublime.set_timeout_async(lambda: self.on_commit_selection(index), 10),
-            flags=sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST,
-            on_highlight=self.on_commit_highlight
-        )
-
-    def on_commit_highlight(self, index):
-        sublime.set_timeout_async(lambda: self.on_commit_highlight_async(index))
-
-    def on_commit_highlight_async(self, index):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        show_more = savvy_settings.get("log_show_more_commit_info")
-        if not show_more:
-            return
-        self.window.run_command("gs_show_commit_info", {"commit_hash": self._hashes[index]})
-
-    def on_commit_selection(self, index):
-        self.window.run_command("hide_panel", {"panel": "output.show_commit_info"})
-        if index == -1:
-            return
-        if index == self._limit:
-            self._skip += self._limit
-            sublime.set_timeout_async(self.run_async, 1)
-            return
-        self._selected_commit = self._hashes[index]
-        self.do_action(self._selected_commit)
+    def log_generator(self):
+        skip = 0
+        while True:
+            logs = self.log(file_path=self._file_path, skip=skip, limit=self._limit)
+            if not logs:
+                break
+            for l in logs:
+                yield l
+            skip = skip + self._limit
 
     def do_action(self, commit_hash):
         self.window.run_command("gs_log_action", {
