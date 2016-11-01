@@ -88,43 +88,35 @@ class GsResetReflogCommand(GsResetBase):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        self._hashes = []
-        show_paginated_panel(self.log_generator(), self.on_done, self._limit)
+        show_paginated_panel(self.log_generator(), self.on_done, limit=self._limit)
 
     def log_generator(self):
-        self._skip = 0
+        skip = 0
         while True:
             log_output = self.git(
                 "reflog",
                 "-{}".format(self._limit),
-                "--skip={}".format(self._skip),
+                "--skip={}".format(skip),
                 '--format=%h%n%H%n%s%n%gs%n%gd%n%an%n%at%x00'
-            ).strip("\x00")
+            ).strip().strip("\x00")
 
-            entries = log_output.split("\x00")
+            entries = log_output.split("\x00\n")
             for entry in entries:
-                try:
-                    short_hash, long_hash, summary, reflog_name, reflog_selector, author, datetime \
-                        = (entry.strip("\n").split("\n"))
-                    self._hashes.append(long_hash)
-                    yield [
-                        reflog_selector + " " + reflog_name,
+                entry = entry.strip("\n")
+                if not entry:
+                    continue
+                short_hash, long_hash, summary, reflog_name, reflog_selector, author, datetime = \
+                    entry.split("\n")
+                yield ([reflog_selector + " " + reflog_name,
                         short_hash + " " + summary,
-                        author + ", " + util.dates.fuzzy(datetime)
-                    ]
+                        author + ", " + util.dates.fuzzy(datetime)],
+                       long_hash)
 
-                except ValueError:
-                    # Empty line - less expensive to catch the exception once than
-                    # to check truthiness of entry.strip() each time.
-                    pass
-
-            # if `entries` does not contin "\x00", stop the loop
             if len(entries) == 1:
                 break
 
-            self._skip = self._skip + self._limit
+            skip = skip + self._limit
 
-    def on_done(self, index):
-        if index == -1:
-            return
-        self.do_action(self._hashes[self._skip + index])
+    def on_done(self, commit):
+        if commit:
+            self.do_action(commit)
