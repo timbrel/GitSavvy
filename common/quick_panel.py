@@ -1,13 +1,34 @@
+import itertools
 import sublime
 from . import util
 
 
-def show_paginated_panel(items, on_done, limit=6000, **kargs):
+def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_highlight=None,
+                         limit=6000, next_message=None):
     """
-    Display items in quick panel with pagination, and execute on_done(index)
-    when item is selected. `items` can be either a list or a generator.
+    Display items in quick panel with pagination, and execute on_done
+    when item is selected.
+
+    items: can be either a list or a generator.
+    on_done: a callback will take one argument
+    limit: the number of items per page
+    next_message: a message of next page, default is ">>> NEXT PAGE >>>"
+
+    If the elements are tuples of the form `(value1, value2)`,
+    `value1` would be displayed via quick panel and `value2` will be passed to
+    `on_done` when the item is selected. Furthermore, if the quick panel is
+    cancelled, `None` will be passed to `on_done`.
+
     """
-    pp = PaginatedPanel(items, on_done, limit, **kargs)
+
+    pp = PaginatedPanel(
+            items,
+            on_done,
+            flags=flags,
+            selected_index=selected_index,
+            on_highlight=on_highlight,
+            limit=limit,
+            next_message=next_message)
     pp.show()
 
 
@@ -17,7 +38,7 @@ def show_log_panel(entries, on_done, limit=6000, selected_index=None):
     when item is selected. `entries` can be either a list or a generator of LogEnty.
 
     """
-    lp = LogPanel(entries, on_done, limit, selected_index)
+    lp = LogPanel(entries, on_done, limit=limit, selected_index=selected_index)
     lp.show()
 
 
@@ -26,92 +47,92 @@ class PaginatedPanel:
     """
     A version of QuickPanel which supports pagination.
     """
+    flags = None
+    next_message = ">>> NEXT PAGE >>>"
+    limit = 6000
+    selected_index = None
+    on_highlight = None
 
-    def __init__(self, items, on_done, limit=6000, flags=None,
-                 selected_index=None, on_highlight=None):
+    def __init__(self, items, on_done, **kwargs):
         self.skip = 0
-        self.limit = limit
-        self.items = (entry for entry in items)
+        self.item_generator = (item for item in items)
         self.on_done = on_done
-        self.flags = flags
-        self.selected_index = selected_index
-        self.on_highlight = on_highlight
+        for option in ['flags', 'selected_index', 'on_highlight',
+                       'limit', 'next_message', ]:
+            if option in kwargs:
+                setattr(self, option, kwargs[option])
 
-    def next_batch(self):
-        idx = 0
-        batch = []
-        try:
-            while idx < self.limit:
-                batch.append(next(self.items))
-                idx = idx + 1
-        except StopIteration:
-            pass
-        return batch
+    def load_next_batch(self):
+        self.display_list = []
+        self.ret_list = []
+        for item in itertools.islice(self.item_generator, self.limit):
+            self.extract_item(item)
 
-    def format_batch(self, batch):
-        return batch
+        if self.ret_list and len(self.ret_list) != len(self.display_list):
+            raise Exception("the lengths of display_list and ret_list are different.")
 
-    @property
-    def next_message(self):
-        return ">>> NEXT {} items >>>".format(self.limit)
+    def extract_item(self, item):
+        item = self.format_item(item)
+        if type(item) is tuple and len(item) == 2:
+            self.display_list.append(item[0])
+            self.ret_list.append(item[1])
+        else:
+            self.display_list.append(item)
+
+    def format_item(self, item):
+        return item
 
     def show(self):
+        self.load_next_batch()
 
-        batch = self.next_batch()
-        batch = self.format_batch(batch)
+        if len(self.display_list) == self.limit:
+            self.display_list.append(self.next_message)
 
-        if len(batch) == self.limit:
-            batch.append(self.next_message)
-
-        args = {}
+        kwargs = {}
         if self.flags:
-            args.update({"flags": self.flags})
-        if self.selected_index:
-            args.update({"selected_index": self.selected_index})
+            kwargs["flags"] = self.flags
+        if self.selected_index and self.skip <= self.selected_index < self.skip + self.limit:
+            kwargs["selected_index"] = self.selected_index - self.skip
         if self.on_highlight:
-            args.update({"on_highlight": self.on_highlight})
+            kwargs["on_highlight"] = self.on_highlight
 
         sublime.active_window().show_quick_panel(
-            batch,
+            self.display_list,
             self.on_selection,
-            **args
+            **kwargs
         )
 
     def on_selection(self, index):
         if index == self.limit:
             self.skip = self.skip + self.limit
             sublime.set_timeout(self.show, 10)
+        elif self.ret_list:
+            if index == -1:
+                self.on_done(None)
+            else:
+                self.on_done(self.ret_list[index])
         else:
             self.on_done(self.skip + index)
 
 
 class LogPanel(PaginatedPanel):
 
-    def __init__(self, items, on_done, limit=6000, selected_index=None):
-        self.limit = limit
-        self.items = (entry for entry in items)
-        self.on_done = on_done
-        self.limit = limit
-        self.flags = sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST
-        self.selected_index = selected_index
-        self.on_highlight = self.on_entry_highlight
+    flags = sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST
 
-    def format_batch(self, batch):
-        self._hashes = [entry.long_hash for entry in batch]
-        return [[
-                    entry.short_hash + " " + entry.summary,
-                    entry.author + ", " + util.dates.fuzzy(entry.datetime)
-                ] for entry in batch]
+    def format_item(self, entry):
+        return ([entry.short_hash + " " + entry.summary,
+                 entry.author + ", " + util.dates.fuzzy(entry.datetime)],
+                entry.long_hash)
 
     @property
     def next_message(self):
         return [">>> NEXT {} COMMITS >>>".format(self.limit),
                 "Skip this set of commits and choose from the next-oldest batch."]
 
-    def on_entry_highlight(self, index):
-        sublime.set_timeout_async(lambda: self.on_entry_highlight_async(index))
+    def on_highlight(self, index):
+        sublime.set_timeout_async(lambda: self.on_highlight_async(index))
 
-    def on_entry_highlight_async(self, index):
+    def on_highlight_async(self, index):
         if index == self.limit:
             return
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
@@ -119,7 +140,7 @@ class LogPanel(PaginatedPanel):
         if not show_more:
             return
         sublime.active_window().run_command(
-            "gs_show_commit_info", {"commit_hash": self._hashes[index]})
+            "gs_show_commit_info", {"commit_hash": self.ret_list[index]})
 
     def on_selection(self, index):
         sublime.set_timeout_async(lambda: self.on_selection_async(index), 10)
@@ -129,6 +150,7 @@ class LogPanel(PaginatedPanel):
         if index == -1:
             return
         if index == self.limit:
+            self.selected_index = 0
             sublime.set_timeout_async(self.show, 10)
             return
-        self.on_done(self._hashes[index])
+        self.on_done(self.ret_list[index])
