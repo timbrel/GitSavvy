@@ -50,3 +50,34 @@ class HistoryMixin():
             entries.append(LogEntry(short_hash, long_hash, summary, raw_body, author, email, datetime))
 
         return entries
+
+    def log1(self, commit_hash):
+        """
+        Return a single LogEntry of a commit.
+        """
+        return self.log(start_end=("{0}~1".format(commit_hash), commit_hash), limit=1)[0]
+
+    def log_merge(self, merge_hash):
+        """
+        Return all LogEntry of a merge.
+        """
+        ret = self.log(
+            start_end=("{0}~1".format(merge_hash), merge_hash), topo_order=True, reverse=True)
+        return ret[0:(len(ret)-1)]
+
+    def commits_of_merge(self, merge_hash):
+        """
+        Return commits of a merge.
+        """
+        return self.git(
+            "rev-list", "--topo-order", "{0}~1..{0}".format(merge_hash)).strip().split("\n")[1:]
+
+    def commit_parents(self, commit_hash):
+        """
+        Return parents of a commit.
+        """
+        return self.git("rev-list", "-1", "--parents", commit_hash).strip().split(" ")[1:]
+
+    def commit_is_merge(self, commit_hash):
+        sha = self.git("rev-list", "--merges", "-1", "{0}~1..{0}".format(commit_hash)).strip()
+        return sha is not ""
