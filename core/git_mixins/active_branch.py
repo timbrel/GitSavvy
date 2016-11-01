@@ -95,6 +95,10 @@ class ActiveBranchMixin():
         return status, secondary
 
     def get_branch_status_short(self):
+
+        if self.in_rebase():
+            return "(no branch, rebasing {})".format(self.rebase_branch_name())
+
         detached, initial, branch, remote, clean, ahead, behind, gone = \
             self._get_branch_status_components()
 
