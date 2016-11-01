@@ -69,7 +69,8 @@ def refresh_gitsavvy(view):
         view.run_command("gs_branches_diff_commit_history_refresh")
 
     view.run_command("gs_update_status_bar")
-    view.window().run_command("refresh_folder_list")
+    if view.window():
+        view.window().run_command("refresh_folder_list")
 
 
 def handle_closed_view(view):
