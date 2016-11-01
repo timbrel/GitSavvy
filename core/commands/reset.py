@@ -1,7 +1,10 @@
 import sublime
-
+from sublime_plugin import WindowCommand
+from ..git_command import GitCommand
 from .log import GsLogBase
 from ...common import util
+from ...common.quick_panel import show_paginated_panel
+
 
 PADDING = "                                                "
 GIT_RESET_MODES = [
@@ -16,13 +19,7 @@ GIT_RESET_MODES = [
 ]
 
 
-class GsResetCommand(GsLogBase):
-
-    def run(self, commit_hash=None):
-        if commit_hash:
-            self.do_action(commit_hash)
-        else:
-            super().run()
+class GsResetBase(WindowCommand, GitCommand):
 
     def do_action(self, commit_hash):
         self._selected_hash = commit_hash
@@ -54,9 +51,12 @@ class GsResetCommand(GsLogBase):
             do_reset()
 
 
-class GsResetBranch(GsResetCommand):
-    def run(self):
-        sublime.set_timeout_async(self.run_async)
+class GsResetCommand(GsResetBase, GsLogBase):
+
+    pass
+
+
+class GsResetBranch(GsResetBase, GsLogBase):
 
     def run_async(self):
         self.all_branches = [b.name_with_remote for b in self.get_branches()]
@@ -80,32 +80,51 @@ class GsResetBranch(GsResetCommand):
         self.do_action(self._selected_branch)
 
 
-class GsResetReflogCommand(GsResetCommand):
+class GsResetReflogCommand(GsResetBase):
+
+    _limit = 6000
+
+    def run(self):
+        sublime.set_timeout_async(self.run_async)
+
     def run_async(self):
-        log_output = self.git(
-            "reflog",
-            "-{}".format(self._limit) if self._limit else None,
-            "--skip={}".format(self._skip) if self._skip else None,
-            '--format=%h%n%H%n%s%n%gs%n%gd%n%an%n%at%x00'
-        ).strip("\x00")
-
-        commit_list = []
         self._hashes = []
-        for entry in log_output.split("\x00"):
-            try:
-                short_hash, long_hash, summary, reflog_name, reflog_selector, author, datetime = (
-                    entry.strip("\n").split("\n"))
+        show_paginated_panel(self.log_generator(), self.on_done, self._limit)
 
-                commit_list.append([
-                    reflog_selector + " " + reflog_name,
-                    short_hash + " " + summary,
-                    author + ", " + util.dates.fuzzy(datetime)
-                ])
-                self._hashes.append(long_hash)
+    def log_generator(self):
+        self._skip = 0
+        while True:
+            log_output = self.git(
+                "reflog",
+                "-{}".format(self._limit),
+                "--skip={}".format(self._skip),
+                '--format=%h%n%H%n%s%n%gs%n%gd%n%an%n%at%x00'
+            ).strip("\x00")
 
-            except ValueError:
-                # Empty line - less expensive to catch the exception once than
-                # to check truthiness of entry.strip() each time.
-                pass
+            entries = log_output.split("\x00")
+            for entry in entries:
+                try:
+                    short_hash, long_hash, summary, reflog_name, reflog_selector, author, datetime \
+                        = (entry.strip("\n").split("\n"))
+                    self._hashes.append(long_hash)
+                    yield [
+                        reflog_selector + " " + reflog_name,
+                        short_hash + " " + summary,
+                        author + ", " + util.dates.fuzzy(datetime)
+                    ]
 
-        self.display_commits(commit_list)
+                except ValueError:
+                    # Empty line - less expensive to catch the exception once than
+                    # to check truthiness of entry.strip() each time.
+                    pass
+
+            # if `entries` does not contin "\x00", stop the loop
+            if len(entries) == 1:
+                break
+
+            self._skip = self._skip + self._limit
+
+    def on_done(self, index):
+        if index == -1:
+            return
+        self.do_action(self._hashes[self._skip + index])
