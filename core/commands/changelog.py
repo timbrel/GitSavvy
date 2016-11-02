@@ -28,23 +28,39 @@ class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        self.window.show_input_panel(REF_PROMPT, "", self.on_done, None, None)
+        view = self.window.show_input_panel(
+            REF_PROMPT, self.get_lastest_local_tag(), self.on_done, None, None)
+        view.run_command("select_all")
 
     def on_done(self, ref):
-        stdout = self.git(
-            "log",
-            "--no-merges",
-            "--pretty=format:%an%x00%s",
-            "{}..HEAD".format(ref)
-            )
+        merge_entries = self.log(
+            start_end=(ref, "HEAD"),
+            first_parent=True,
+            merges=True
+        )
+
+        ancestor = {}
+        for merge in merge_entries:
+            merge_commits = self.commits_of_merge(merge.long_hash)
+            if len(merge_commits) > 1:
+                for entry in merge_commits:
+                    ancestor[entry] = merge.short_hash
+
+        entries = self.log(
+            start_end=(ref, "HEAD"),
+            no_merges=True,
+            topo_order=True,
+            reverse=True
+        )
 
         contributors = set()
         messages = []
-        for line in stdout.split("\n"):
-            if line:
-                contributor, message = line.strip().split("\x00")
-                contributors.add(contributor)
-                messages.append(message)
+        for entry in entries:
+            contributors.add(entry.author)
+            if entry.long_hash in ancestor:
+                messages.append("{} (Merge {})".format(entry.summary, ancestor[entry.long_hash]))
+            else:
+                messages.append(entry.summary)
 
         msg_groups = self.get_message_groups(messages)
         msg_groups["Contributors"] = contributors
