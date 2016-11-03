@@ -1,0 +1,43 @@
+env:
+    global:
+        - PACKAGE="GitSavvy"
+        - SUBLIME_TEXT_VERSION="3"
+        - UNITTESTING_TAG="master"
+
+matrix:
+    include:
+        - os: linux
+          language: python
+          python: 3.3
+        - os: osx
+          language: generic
+
+before_install:
+    - curl -OL https://raw.githubusercontent.com/randy3k/UnitTesting/master/sbin/travis.sh
+    - if [ "$TRAVIS_OS_NAME" == "linux"  ]; then
+            export DISPLAY=:99.0;
+            sh -e /etc/init.d/xvfb start;
+      fi
+    - git config --global user.email gitsavvy@gitsavvy.com
+    - git config --global user.name GitSavvy
+
+install:
+    - sh travis.sh bootstrap
+    - sh travis.sh install_package_control
+
+script:
+    - sh travis.sh run_tests --coverage
+
+after_success:
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+            brew update;
+            brew install python3;
+            pip3 install python-coveralls;
+      fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+            pip install python-coveralls;
+      fi
+    - coveralls
+
+notifications:
+    email: false
