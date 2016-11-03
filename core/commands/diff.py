@@ -69,6 +69,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
         self.window.focus_view(diff_view)
         diff_view.sel().clear()
         diff_view.run_command("gs_diff_refresh")
+        diff_view.run_command("gs_diff_navigate")
 
 
 class GsDiffRefreshCommand(TextCommand, GitCommand):
@@ -112,7 +113,6 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
             raise err
 
         self.view.run_command("gs_replace_view_text", {"text": stdout})
-        self.view.run_command("gs_diff_navigate")
 
 
 class GsDiffToggleSetting(TextCommand):
