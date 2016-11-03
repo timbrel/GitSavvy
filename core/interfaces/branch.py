@@ -502,18 +502,23 @@ class GsBranchesMergeSelectedCommand(TextCommand, GitCommand):
 
     def run_async(self):
         self.interface = ui.get_interface(self.view.id())
-        current_branch_name = self.get_current_branch_name()
 
+        branches = self.get_selected_branches()
+        branches_strings = self.create_branches_strs(branches)
+        self.merge(branches_strings)
+        util.view.refresh_gitsavvy(self.view)
+
+    def get_selected_branches(self):
+        current_branch_name = self.get_current_branch_name()
         branches = set()
         for sel in self.view.sel():
-            for name in self.get_selected_branches(sel):
+            for name in self.get_selected_branch(sel):
                 if name and not name == current_branch_name:
                     branches.add(name)
 
-        self.merge(branches) if not len(branches) == 0 else None
-        util.view.refresh_gitsavvy(self.view)
+        return branches
 
-    def get_selected_branches(self, sel):
+    def get_selected_branch(self, sel):
         lines = util.view.get_lines_from_regions(self.view, [sel])
         return (self.get_selected_branch_name(sel, line) for line in lines)
 
@@ -524,43 +529,45 @@ class GsBranchesMergeSelectedCommand(TextCommand, GitCommand):
         branch_name = segments[1]
         local_region = self.view.get_regions("git_savvy_interface.branch_list")[0]
         if local_region.contains(selection):
-            return branch_name
+            return (None, branch_name)
 
         remotes = self.get_remotes()
         for remote_name in remotes:
             remote_region = self.view.get_regions("git_savvy_interface.branch_list_" + remote_name)
             if remote_region and remote_region[0].contains(selection):
-                return "{}/{}".format(remote_name, branch_name)
+                return (remote_name, branch_name)
+
+    def create_branches_strs(self, branches):
+        branches_strings = set()
+        for branch in branches:
+            if branch[0] is None:
+                branches_strings.add(branch[1])
+            else:
+                branches_strings.add("{}/{}".format(branch[0], branch[1]))
+        return branches_strings
 
 
-class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
+class GsBranchesFetchAndMergeCommand(GsBranchesMergeSelectedCommand):
 
     """
     Fetch from remote and merge fetched branch into active branch.
     """
 
-    def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
     def run_async(self):
         self.interface = ui.get_interface(self.view.id())
-        selection, line = self.interface.get_selection_line()
-        if not line:
-            return
 
-        segments = line.strip("▸ ").split(" ")
-        branch_name = segments[1]
+        branches = self.get_selected_branches()
+        # is remote is not set it is a local branch and can't be fetched
+        remotes_to_fetch = set(filter(None, (b[0] for b in branches)))
+        for remote in remotes_to_fetch:
+            sublime.status_message("Fetching from `{}`...".format(remote))
+            self.fetch(remote=remote)
+            sublime.status_message("Fetch from {} complete.".format(remote))
 
-        remotes = self.get_remotes()
-        for remote_name in remotes:
-            remote_region = self.view.get_regions("git_savvy_interface.branch_list_" + remote_name)
-            if remote_region and remote_region[0].contains(selection):
-                sublime.status_message("Fetching from `{}`...".format(remote_name))
-                self.fetch(remote=remote_name)
-                self.merge("{}/{}".format(remote_name, branch_name))
-                sublime.status_message("Fetch and merge complete.")
-                util.view.refresh_gitsavvy(self.view)
-                return
+        branches_strings = self.create_branches_strs(branches)
+        self.merge(branches_strings)
+        sublime.status_message("Fetch and merge complete.")
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
