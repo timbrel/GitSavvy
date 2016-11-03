@@ -16,7 +16,7 @@ class HistoryMixin():
 
     def log(self, author=None, branch=None, file_path=None, start_end=None, cherry=None,
             limit=6000, skip=None, reverse=False, all_branches=False, msg_regexp=None,
-            diff_regexp=None, first_parent=False, no_merges=False, topo_order=False):
+            diff_regexp=None, first_parent=False, merges=False, no_merges=False, topo_order=False):
 
         log_output = self.git(
             "log",
@@ -31,6 +31,7 @@ class HistoryMixin():
             diff_regexp if diff_regexp else None,
             "--first-parent" if first_parent else None,
             "--no-merges" if no_merges else None,
+            "--merges" if merges else None,
             "--topo-order" if topo_order else None,
             "--all" if all_branches else None,
             "{}..{}".format(*start_end) if start_end else None,
