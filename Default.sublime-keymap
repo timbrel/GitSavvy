@@ -381,6 +381,26 @@
         ]
     },
     {
+        "keys": ["down"],
+        "command": "gs_status_navigate_file",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["up"],
+        "command": "gs_status_navigate_file",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["j"],
         "command": "gs_status_navigate_file",
         "args": { "forward": true },
@@ -477,7 +497,7 @@
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
         ]
     },
-        {
+    {
         "keys": ["j"],
         "command": "gs_diff_navigate",
         "args": { "forward": true },
@@ -728,6 +748,26 @@
         ]
     },
     {
+        "keys": ["down"],
+        "command": "gs_tags_navigate_tag",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["up"],
+        "command": "gs_tags_navigate_tag",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["j"],
         "command": "gs_tags_navigate_tag",
         "args": { "forward": true },
@@ -952,6 +992,26 @@
         ]
     },
     {
+        "keys": ["down"],
+        "command": "gs_branches_navigate_branch",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["up"],
+        "command": "gs_branches_navigate_branch",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["j"],
         "command": "gs_branches_navigate_branch",
         "args": { "forward": true },
@@ -1029,6 +1089,26 @@
         ]
     },
     {
+        "keys": ["down"],
+        "command": "gs_log_graph_navigate",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["up"],
+        "command": "gs_log_graph_navigate",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["j"],
         "command": "gs_log_graph_navigate",
         "args": {"forward": true},
@@ -1091,6 +1171,24 @@
         "command": "gs_log_graph_navigate",
         "args": { "forward": false },
         "context": [
+            { "key": "setting.git_savvy.compare_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["down"],
+        "command": "gs_log_graph_navigate",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.compare_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["up"],
+        "command": "gs_log_graph_navigate",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
             { "key": "setting.git_savvy.compare_commit_view", "operator": "equal", "operand": true }
         ]
     },
@@ -1343,6 +1441,26 @@
         "args": { "forward": false },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["down"],
+        "command": "gs_rebase_navigate_commits",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["up"],
+        "command": "gs_rebase_navigate_commits",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
         ]
     },

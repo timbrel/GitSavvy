@@ -272,6 +272,11 @@
     "enable_branch_descriptions": true,
 
     /*
+        When set to `true`, you can navigate the dashboards by using arrow keys.
+     */
+    "arrow_keys_navigation": false,
+
+    /*
         When set to `true`, GitSavvy will become Vintagoues friendly.
         You might need to restart Sublime in order to get this working.
      */
