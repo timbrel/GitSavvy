@@ -30,6 +30,7 @@ class GsNavigate(TextCommand, GitCommand):
         # Position the cursor at the beginning of the file name.
         new_position += self.offset
         sel.add(sublime.Region(new_position, new_position))
+        self.view.run_command("show_at_center")
 
     def forward(self, current_position, file_regions):
         for file_region in file_regions:

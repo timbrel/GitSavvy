@@ -245,7 +245,6 @@ class GsLogGraphNavigateCommand(GsNavigate):
 
     def run(self, edit, **kwargs):
         super().run(edit, **kwargs)
-        self.view.run_command("show_at_center")
         self.view.window().run_command("gs_log_graph_more_info")
 
     def get_available_regions(self):
