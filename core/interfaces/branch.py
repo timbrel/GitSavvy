@@ -513,7 +513,7 @@ class GsBranchesMergeSelectedCommand(TextCommand, GitCommand):
         branches = set()
         for sel in self.view.sel():
             for name in self.get_selected_branch(sel):
-                if name and not name == current_branch_name:
+                if name and not name[1] == current_branch_name:
                     branches.add(name)
 
         return branches
