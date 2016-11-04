@@ -1,6 +1,6 @@
 import sublime
 import threading
-from ..vendor import yaml
+import yaml
 
 
 if 'syntax_file_map' not in globals():
