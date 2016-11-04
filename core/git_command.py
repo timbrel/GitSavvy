@@ -29,7 +29,7 @@ from .exceptions import GitSavvyError
 
 
 git_path = None
-
+error_message_displayed = False
 
 UTF8_PARSE_ERROR_MSG = (
     "GitSavvy was unable to parse Git output as UTF-8. Would "
@@ -183,7 +183,7 @@ class GitCommand(StatusMixin,
         Return the path to the available `git` binary.
         """
 
-        global git_path
+        global git_path, error_message_displayed
         if not git_path:
             git_path_setting = sublime.load_settings("GitSavvy.sublime-settings").get("git_path")
             if isinstance(git_path_setting, dict):
@@ -200,7 +200,9 @@ class GitCommand(StatusMixin,
             msg = ("Your Git binary cannot be found.  If it is installed, add it "
                    "to your PATH environment variable, or add a `git_path` setting "
                    "in the `User/GitSavvy.sublime-settings` file.")
-            sublime.error_message(msg)
+            if not error_message_displayed:
+                sublime.error_message(msg)
+                error_message_displayed = True
             raise ValueError("Git binary not found.")
 
         return git_path
