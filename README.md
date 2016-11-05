@@ -120,4 +120,9 @@ cd $HOME/.config/sublime-text-3/Packages
 cd "$env:appdata\Sublime Text 3\Packages\"
 
 git clone git@github.com:divmain/GitSavvy.git
+
+# Package Control need to be installed https://packagecontrol.io/installation
+# install dependencies from command line
+subl --command 'satisfy_dependencies'
+# or open Command Palette and run 'Package Control: Satisfy Dependencies'
 ```
