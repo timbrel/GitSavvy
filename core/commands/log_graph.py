@@ -67,6 +67,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         self.view.run_command("gs_log_graph_more_info")
 
         self.view.run_command("gs_handle_vintageous")
+        self.view.run_command("gs_handle_arrow_keys")
 
 
 class GsLogGraphCurrentBranch(GsLogGraphBase):

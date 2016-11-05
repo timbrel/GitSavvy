@@ -69,3 +69,16 @@ class GsHandleVintageousCommand(TextCommand):
             self.view.settings().set("git_savvy.vintageous_friendly", True)
             if savvy_settings.get("vintageous_enter_insert_mode", False) is True:
                 self.view.run_command("_enter_insert_mode")
+
+
+class GsHandleArrowKeysCommand(TextCommand):
+
+    """
+    Set the arrow_keys_navigation view setting if needed.
+    It allows navigation by using arrow keys.
+    """
+
+    def run(self, edit):
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        if savvy_settings.get("arrow_keys_navigation", False) is True:
+            self.view.settings().set("git_savvy.arrow_keys_navigation", True)

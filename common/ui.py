@@ -234,6 +234,7 @@ class GsNewContentAndRegionsCommand(TextCommand):
 
         if self.view.settings().get("git_savvy.interface"):
             self.view.run_command("gs_handle_vintageous")
+            self.view.run_command("gs_handle_arrow_keys")
 
 
 class GsUpdateRegionCommand(TextCommand):
