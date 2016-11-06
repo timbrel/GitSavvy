@@ -185,9 +185,6 @@ class GsLogGraphActionCommand(GsLogActionCommand):
                 ["diff_commit_cache", "Diff commit (cached)"],
             ])
 
-        if self._file_path:
-            self.actions.insert(1, ["show_file_at_commit", "Show file at commit"])
-
     def run(self):
         view = self.window.active_view()
 
@@ -204,7 +201,7 @@ class GsLogGraphActionCommand(GsLogActionCommand):
             sublime.status_message("You can only do actions on one commit at a time.")
             return
 
-        super().run(self._commit_hash)
+        super().run(commit_hash=self._commit_hash, file_path=self._file_path)
 
     def cherry_pick(self):
         self.git("cherry-pick", self._commit_hash)
