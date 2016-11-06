@@ -3,11 +3,11 @@ import os
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from ..commands import *
-from ...common import ui
-from ..git_command import GitCommand
-from ...common import util
+from ...common import ui, util
+from ..commands import GsNavigate
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
+from ..git_command import GitCommand
+from ..ui_mixins.quick_panel import PanelActionMixin
 
 
 def filter_quick_panel(fn):
@@ -810,39 +810,35 @@ class GsRebaseLaunchMergeToolCommand(TextCommand, GitCommand):
         return False
 
 
-class GsRebaseDefineBaseRefCommand(TextCommand, GitCommand):
+class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand, GitCommand):
 
-    base_types = [
-        "Use branch as base.",
-        "Use ref as base."
+    default_actions = [
+        ["select_branch", "Use branch as base."],
+        ["select_ref", "Use ref as base."],
     ]
 
-    def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+    def _get_branches(self):
+        branches = [branch.name_with_remote
+                    for branch in self.get_branches()
+                    if not branch.active]
+        self.select_branch(branches)
 
-    def run_async(self):
-        self.view.window().show_quick_panel(
-            self.base_types,
-            filter_quick_panel(self.on_type_select)
-        )
-
-    def on_type_select(self, type_idx):
-        if type_idx == 0:
-            branches = [branch.name_with_remote
-                        for branch in self.get_branches()
-                        if not branch.active]
+    def select_branch(self, branches=None):
+        if branches is None:
+            sublime.set_timeout_async(self._get_branches, 0)
+        else:
             self.view.window().show_quick_panel(
                 branches,
                 filter_quick_panel(lambda idx: self.set_base_ref(branches[idx]))
             )
-        elif type_idx == 1:
-            self.view.window().show_input_panel(
-                "Enter ref to use for base:",
-                "",
-                lambda entry: self.set_base_ref(entry) if entry else None,
-                None,
-                None
-            )
+
+    def select_ref(self):
+        self.view.window().show_input_panel(
+            "Enter ref to use for base:",
+            "",
+            lambda entry: self.set_base_ref(entry) if entry else None,
+            None, None
+        )
 
     def set_base_ref(self, ref):
         self.view.settings().set("git_savvy.rebase.base_ref", ref)
