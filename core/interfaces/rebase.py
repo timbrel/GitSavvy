@@ -834,7 +834,7 @@ class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand, GitCommand):
 
     def select_ref(self):
         self.view.window().show_input_panel(
-            "Enter ref to use for base:",
+            "Enter commit or other ref to use for rebase:",
             "",
             lambda entry: self.set_base_ref(entry) if entry else None,
             None, None
@@ -845,39 +845,12 @@ class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsRebaseOnTopOfCommand(TextCommand, GitCommand):
+class GsRebaseOnTopOfCommand(GsRebaseDefineBaseRefCommand):
 
-    base_types = [
-        "Rebase on top of branch.",
-        "Rebase on top of ref."
+    default_actions = [
+        ["select_branch", "Rebase on top of branch."],
+        ["select_ref", "Rebase on top of ref."],
     ]
-
-    def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
-        self.view.window().show_quick_panel(
-            self.base_types,
-            filter_quick_panel(self.on_type_select)
-        )
-
-    def on_type_select(self, type_idx):
-        if type_idx == 0:
-            entries = [branch.name_with_remote
-                       for branch in self.get_branches()
-                       if not branch.active]
-            self.view.window().show_quick_panel(
-                entries,
-                filter_quick_panel(lambda idx: self.set_base_ref(entries[idx]))
-            )
-        elif type_idx == 1:
-            self.view.window().show_input_panel(
-                "Enter commit or other ref to use for rebase:",
-                "",
-                lambda entry: self.set_base_ref(entry) if entry else None,
-                None,
-                None
-            )
 
     def set_base_ref(self, selection):
         interface = ui.get_interface(self.view.id())
