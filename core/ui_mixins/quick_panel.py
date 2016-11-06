@@ -7,6 +7,16 @@ class PanelActionMixin(object):
     """
     Use this mixin to display quick panel, select from pre-defined actions and
     execute the matching class method.
+
+    The `default_actions` are copied into self.actions and should be a list of
+    list/tuple items of at least length of 2, e.g:
+
+    default_actions = [
+        ['some_method', 'Run some method'],
+        ['other_method', 'Run some other method'],
+        ['some_method', 'Run method with arg1 and arg2', ('arg1', 'arg2')],
+        ['some_method', 'Run method with kwargs1: foo', (), {'kwarg1': 'foo'}],
+    ]
     """
     selected_index = 0  # Every instantiated class get their own `selected_index`
     default_actions = None  # must be set by inheriting class
@@ -31,8 +41,20 @@ class PanelActionMixin(object):
             return
 
         self.selected_index = index  # set last selected choice as default
-        action = self.actions[index][0]
-        getattr(self, action)()
+        selected_action = self.actions[index]
+        func = self.get_callable(selected_action)
+        args, kwargs = self.get_arguments(selected_action)
+        func(*args, **kwargs)
+
+    def get_callable(self, selected_action):
+        return getattr(self, selected_action[0])
+
+    def get_arguments(self, selected_action):
+        if len(selected_action) == 3:
+            return selected_action[2], {}
+        elif len(selected_action) == 4:
+            return selected_action[2:4]
+        return (), {}
 
 
 def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_highlight=None,

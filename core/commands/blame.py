@@ -7,6 +7,7 @@ from sublime_plugin import WindowCommand, TextCommand
 
 from ..git_command import GitCommand
 from ...common import util
+from ..ui_mixins.quick_panel import PanelActionMixin
 
 
 BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))
@@ -15,36 +16,24 @@ NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
 BLAME_TITLE = "BLAME: {}"
 
 
-class GsBlameCommand(WindowCommand, GitCommand):
+class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
+    selected_index = 0
+    default_actions = [
+        ["blame", "Default", (False, )],
+        ["blame", "Ignore whitespace", (True, )],
+        ["blame", "Detect moved or copied lines within same file", (), {'option': "-M"}],
+        ["blame", "Detect moved or copied lines within same commit", (), {'option': "-C"}],
+        ["blame", "Detect moved or copied lines across all commits", (), {'option': "-CCC"}],
+    ]
 
     @util.view.single_cursor_coords
     def run(self, coords, file_path=None, repo_path=None):
         self._coords = coords
         self.__file_path = file_path or self.file_path
         self.__repo_path = repo_path or self.repo_path
-        sublime.set_timeout_async(self.run_async)
+        super().run()
 
-    def run_async(self):
-        self.window.show_quick_panel(
-            [
-                "Default",
-                "Ignore whitespace",
-                "Detect moved or copied lines within same file",
-                "Detect moved or copied lines within same commit",
-                "Detect moved or copied lines across all commits",
-            ],
-            self.on_option_selection,
-            selected_index=self.quick_panel_blame_idx
-        )
-
-    def on_option_selection(self, index):
-        if index == -1:
-            return
-
-        self.quick_panel_blame_idx = index
-        ignore_whitespace = "-w" if index > 0 else None
-        detect_move_or_copy = [None, None, "-M", "-C", "-CCC"][index]
-
+    def blame(self, ignore_whitespace=True, option=None):
         view = self.window.new_file()
         view.set_syntax_file("Packages/GitSavvy/syntax/blame.sublime-syntax")
         view.settings().set("git_savvy.blame_view", True)
@@ -57,8 +46,8 @@ class GsBlameCommand(WindowCommand, GitCommand):
         view.set_scratch(True)
         view.run_command("gs_blame_initialize_view", {
             "coords": self._coords,
-            "ignore_whitespace": ignore_whitespace,
-            "detect_move_or_copy": detect_move_or_copy
+            "ignore_whitespace": '-w' if ignore_whitespace else None,
+            "detect_move_or_copy": option
         })
 
 
