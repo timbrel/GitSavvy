@@ -2,7 +2,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand
 import re
 from ..git_command import GitCommand
-from .log import GsLogActionCommand
+from .log import GsLogActionCommand, GsLogCommand
 from .navigate import GsNavigate
 from ...common import util
 
@@ -152,33 +152,13 @@ class GsLogGraphByBranchCommand(GsLogGraphBase):
         return args
 
 
-class GsLogGraphCommand(WindowCommand, GitCommand):
-    def run(self, file_path=None, current_file=False):
-        self._file_path = self.file_path if current_file else file_path
-        options_array = [
-            "For current branch",
-            "For all branches",
-            "Filtered by author",
-            "Filtered by branch",
-        ]
-        self.window.show_quick_panel(
-            options_array,
-            self.on_option_selection,
-            flags=sublime.MONOSPACE_FONT
-        )
-
-    def on_option_selection(self, index):
-        if index == -1:
-            return
-
-        if index == 0:
-            self.window.run_command("gs_log_graph_current_branch", {"file_path": self._file_path})
-        elif index == 1:
-            self.window.run_command("gs_log_graph_current_branch", {"file_path": self._file_path})
-        elif index == 2:
-            self.window.run_command("gs_log_graph_by_author", {"file_path": self._file_path})
-        elif index == 3:
-            self.window.run_command("gs_log_graph_by_branch", {"file_path": self._file_path})
+class GsLogGraphCommand(GsLogCommand):
+    default_actions = [
+        ["gs_log_graph_current_branch", "For current branch"],
+        ["gs_log_graph_all_branches", "For all branches"],
+        ["gs_log_graph_by_author", "Filtered by author"],
+        ["gs_log_graph_by_branch", "Filtered by branch"],
+    ]
 
 
 class GsLogGraphActionCommand(GsLogActionCommand):
