@@ -29,9 +29,9 @@ class TagsMixin():
 
         return entries
 
-    def get_lastest_local_tag(self):
+    def get_last_local_tag(self):
         """
-        Return the latest tag of the current branch. get_tags() fails to return an ordered list.
+        Return the last tag of the current branch. get_tags() fails to return an ordered list.
         """
 
         tag = self.git("describe", "--tags", "--abbrev=0", throw_on_stderr=False).strip()

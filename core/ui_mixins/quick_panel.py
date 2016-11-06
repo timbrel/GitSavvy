@@ -25,8 +25,9 @@ class PanelActionMixin(object):
         self.other_method('arg1', 'arg2')
         self.other_method(kwarg1='foo')
     """
-    selected_index = 0  # Every instantiated class get their own `selected_index`
+    selected_index = 0      # Every instance gets it's own `selected_index`
     default_actions = None  # must be set by inheriting class
+    async_action = False    # if True, executes action with set_timeout_async
 
     def run(self, *args, **kwargs):
         self.update_actions()
@@ -36,7 +37,8 @@ class PanelActionMixin(object):
         self.actions = self.default_actions[:]  # copy default actions
 
     def show_panel(self, actions=None):
-        self.window.show_quick_panel(
+        window = self.window if hasattr(self, 'window') else self.view.window()
+        window.show_quick_panel(
             [a[1] for a in actions or self.actions],
             self.on_action_selection,
             flags=sublime.MONOSPACE_FONT,
@@ -51,7 +53,10 @@ class PanelActionMixin(object):
         selected_action = self.actions[index]
         func = self.get_callable(selected_action)
         args, kwargs = self.get_arguments(selected_action)
-        func(*args, **kwargs)
+        if self.async_action:
+            sublime.set_timeout_async(lambda: func(*args, **kwargs))
+        else:
+            func(*args, **kwargs)
 
     def get_callable(self, selected_action):
         return getattr(self, selected_action[0])
