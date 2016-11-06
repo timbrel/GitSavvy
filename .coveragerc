@@ -1,6 +1,0 @@
-[run]
-omit = 
-    */common/vendor/*
-    */tests/*
-    common/vendor/*
-    tests/*
