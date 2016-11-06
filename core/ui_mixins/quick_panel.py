@@ -5,18 +5,25 @@ from ...common import util
 
 class PanelActionMixin(object):
     """
-    Use this mixin to display quick panel, select from pre-defined actions and
-    execute the matching class method.
+    Use this mixin to initially display a quick panel, select from pre-defined
+    actions and execute the matching instance method.
 
     The `default_actions` are copied into self.actions and should be a list of
     list/tuple items of at least length of 2, e.g:
 
-    default_actions = [
-        ['some_method', 'Run some method'],
-        ['other_method', 'Run some other method'],
-        ['some_method', 'Run method with arg1 and arg2', ('arg1', 'arg2')],
-        ['some_method', 'Run method with kwargs1: foo', (), {'kwarg1': 'foo'}],
-    ]
+        default_actions = [
+            ['some_method', 'Run some method'],
+            ['other_method', 'Run some other method'],
+            ['some_method', 'Run method with arg1 and arg2', ('arg1', 'arg2')],
+            ['some_method', 'Run method with kwargs1: foo', (), {'kwarg1': 'foo'}],
+        ]
+
+    Will result in the following method calls accordingly:
+
+        self.some_method()
+        self.other_method()
+        self.other_method('arg1', 'arg2')
+        self.other_method(kwarg1='foo')
     """
     selected_index = 0  # Every instantiated class get their own `selected_index`
     default_actions = None  # must be set by inheriting class
@@ -55,6 +62,45 @@ class PanelActionMixin(object):
         elif len(selected_action) == 4:
             return selected_action[2:4]
         return (), {}
+
+
+class PanelCommandMixin(PanelActionMixin):
+    """
+    Same basic functionality as PanelActionMixin, except that it executes a given
+    sublime command rather than a given instance method. For example:
+
+        default_actions = [
+            ['foo', 'Run FooCommand'],
+            ['bar', 'Run BarCommand with arg1 and arg2', ('arg1', 'arg2')],
+            ['bar', 'Run BarCommand with kwargs1: foo', ({'kwarg1': 'foo'}, )],
+            ['bar', 'Run BarCommand with kwargs1: foo', (), {'kwarg1': 'foo'}],
+        ]
+
+    Will result in the following commands accordingly:
+
+        self.window.run_command("foo")
+        self.window.run_command("bar", 'arg1', 'arg2')
+        self.window.run_command("bar", {'kwarg1': 'foo'})
+        self.window.run_command("bar", kwarg1='foo')
+
+    """
+
+    def get_callable(self, selected_action):
+        if hasattr(self, 'window'):
+            return self.window.run_command
+        elif hasattr(self, 'view'):
+            return self.view.run_command
+        else:
+            return sublime.run_command
+
+    def get_arguments(self, selected_action):
+        """Prepares `run_command` arguments:
+          - (required) Command name is 1st argument
+          - (optional) args is 2nd (and next) arguments
+          - (optional) kwargs are simply keyword arguments
+        """
+        args, kwargs = super().get_arguments(selected_action)
+        return ((selected_action[0], ) + args), kwargs
 
 
 def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_highlight=None,

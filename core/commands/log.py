@@ -1,10 +1,12 @@
+from copy import deepcopy
 import re
-import sublime
+
 from sublime_plugin import WindowCommand
+import sublime
 
 from ...common import util
 from ..git_command import GitCommand
-from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel
+from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin, show_log_panel
 
 
 class GsLogBase(WindowCommand, GitCommand):
@@ -111,33 +113,24 @@ class GsLogByBranchCommand(GsLogBase):
         return super().log(branch=self._selected_branch, **kwargs)
 
 
-class GsLogCommand(WindowCommand, GitCommand):
+class GsLogCommand(PanelCommandMixin, WindowCommand, GitCommand):
+    default_actions = [
+        ["gs_log_current_branch", "For current branch"],
+        ["gs_log_all_branches", "For all branches"],
+        ["gs_log_by_author", "Filtered by author"],
+        ["gs_log_by_branch", "Filtered by branch"],
+    ]
+
     def run(self, file_path=None, current_file=False):
         self._file_path = self.file_path if current_file else file_path
-        options_array = [
-            "For current branch",
-            "For all branches",
-            "Filtered by author",
-            "Filtered by branch",
-        ]
-        self.window.show_quick_panel(
-            options_array,
-            self.on_option_selection,
-            flags=sublime.MONOSPACE_FONT
-        )
+        super().run()
 
-    def on_option_selection(self, index):
-        if index == -1:
-            return
-
-        if index == 0:
-            self.window.run_command("gs_log_current_branch", {"file_path": self._file_path})
-        elif index == 1:
-            self.window.run_command("gs_log_all_branches", {"file_path": self._file_path})
-        elif index == 2:
-            self.window.run_command("gs_log_by_author", {"file_path": self._file_path})
-        elif index == 3:
-            self.window.run_command("gs_log_by_branch", {"file_path": self._file_path})
+    def update_actions(self):
+        # deep copy list to avoid duplication via mutable lists
+        self.actions = deepcopy(self.default_actions)
+        for action in self.actions:
+            # append a tuple to pass an argument
+            action.append(({"file_path": self._file_path}, ))
 
 
 class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
