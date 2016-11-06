@@ -1,6 +1,38 @@
 import itertools
 import sublime
-from . import util
+from ...common import util
+
+
+class PanelActionMixin(object):
+    """
+    Use this mixin to display quick panel, select from pre-defined actions and
+    execute the matching class method.
+    """
+    selected_index = 0  # Every instantiated class get their own `selected_index`
+    default_actions = None  # must be set by inheriting class
+
+    def run(self, *args, **kwargs):
+        self.update_actions()
+        self.show_panel()
+
+    def update_actions(self):
+        self.actions = self.default_actions[:]  # copy default actions
+
+    def show_panel(self, actions=None):
+        self.window.show_quick_panel(
+            [a[1] for a in actions or self.actions],
+            self.on_action_selection,
+            flags=sublime.MONOSPACE_FONT,
+            selected_index=self.selected_index,
+        )
+
+    def on_action_selection(self, index):
+        if index == -1:
+            return
+
+        self.selected_index = index  # set last selected choice as default
+        action = self.actions[index][0]
+        getattr(self, action)()
 
 
 def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_highlight=None,

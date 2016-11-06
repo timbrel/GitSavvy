@@ -2,9 +2,9 @@ import re
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..git_command import GitCommand
 from ...common import util
-from ...common.quick_panel import show_log_panel
+from ..git_command import GitCommand
+from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel
 
 
 class GsLogBase(WindowCommand, GitCommand):
@@ -140,38 +140,25 @@ class GsLogCommand(WindowCommand, GitCommand):
             self.window.run_command("gs_log_by_branch", {"file_path": self._file_path})
 
 
-class GsLogActionCommand(WindowCommand, GitCommand):
+class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
+    default_actions = [
+        ["show_commit", "Show commit"],
+        ["checkout_commit", "Checkout commit"],
+        ["compare_against", "Compare commit against ..."],
+        ["copy_sha", "Copy the full SHA"],
+        ["diff_commit", "Diff commit"],
+        ["diff_commit_cache", "Diff commit (cached)"]
+    ]
 
     def run(self, commit_hash, file_path=None):
         self._commit_hash = commit_hash
         self._file_path = file_path
-        self.actions = [
-            ["show_commit", "Show commit"],
-            ["checkout_commit", "Checkout commit"],
-            ["compare_against", "Compare commit against ..."],
-            ["copy_sha", "Copy the full SHA"],
-            ["diff_commit", "Diff commit"],
-            ["diff_commit_cache", "Diff commit (cached)"]
-        ]
+        super().run()
 
+    def update_actions(self):
+        super().update_actions()
         if self._file_path:
             self.actions.insert(1, ["show_file_at_commit", "Show file at commit"])
-
-        self.window.show_quick_panel(
-            [a[1] for a in self.actions],
-            self.on_action_selection,
-            flags=sublime.MONOSPACE_FONT,
-            selected_index=self.quick_panel_log_idx
-        )
-
-    def on_action_selection(self, index):
-        if index == -1:
-            return
-
-        self.quick_panel_log_idx = index
-
-        action = self.actions[index][0]
-        eval("self.{}()".format(action))
 
     def show_commit(self):
         self.window.run_command("gs_show_commit", {"commit_hash": self._commit_hash})

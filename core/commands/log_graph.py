@@ -186,28 +186,30 @@ class GsLogGraphActionCommand(GsLogActionCommand):
     """
     Checkout the commit at the selected line. It is also used by compare_commit_view.
     """
+    default_actions = [
+        ["show_commit", "Show commit"],
+        ["checkout_commit", "Checkout commit"],
+        ["compare_against", "Compare commit against ..."],
+        ["copy_sha", "Copy the full SHA"]
+    ]
 
-    def run(self):
-        self.actions = [
-            ["show_commit", "Show commit"],
-            ["checkout_commit", "Checkout commit"],
-            ["compare_against", "Compare commit against ..."],
-            ["copy_sha", "Copy the full SHA"]
-        ]
-
+    def update_actions(self):
+        super().update_actions()
         view = self.window.active_view()
         if view.settings().get("git_savvy.compare_commit_view.target_commit") == "HEAD":
             self.actions.append(["cherry_pick", "Cherry-pick commit"])
 
         if view.settings().get("git_savvy.log_graph_view"):
-            self.actions = self.actions + [
+            self.actions.extend([
                 ["diff_commit", "Diff commit"],
-                ["diff_commit_cache", "Diff commit (cached)"]
-            ]
+                ["diff_commit_cache", "Diff commit (cached)"],
+            ])
 
-        self._file_path = self.file_path
         if self._file_path:
             self.actions.insert(1, ["show_file_at_commit", "Show file at commit"])
+
+    def run(self):
+        view = self.window.active_view()
 
         self.selections = view.sel()
 
@@ -216,17 +218,13 @@ class GsLogGraphActionCommand(GsLogActionCommand):
 
         m = COMMIT_LINE.search(line)
         self._commit_hash = m.group(1) if m else ""
+        self._file_path = self.file_path
 
         if not len(self.selections) == 1:
             sublime.status_message("You can only do actions on one commit at a time.")
             return
 
-        self.window.show_quick_panel(
-            [a[1] for a in self.actions],
-            self.on_action_selection,
-            selected_index=self.quick_panel_log_graph_idx,
-            flags=sublime.MONOSPACE_FONT
-        )
+        super().run(self._commit_hash)
 
     def cherry_pick(self):
         self.git("cherry-pick", self._commit_hash)
