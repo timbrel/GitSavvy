@@ -29,7 +29,7 @@ class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
 
     def run_async(self):
         view = self.window.show_input_panel(
-            REF_PROMPT, self.get_lastest_local_tag(), self.on_done, None, None)
+            REF_PROMPT, self.get_last_local_tag(), self.on_done, None, None)
         view.run_command("select_all")
 
     def on_done(self, ref):

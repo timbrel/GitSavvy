@@ -2,7 +2,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand
 import re
 from ..git_command import GitCommand
-from .log import GsLogActionCommand
+from .log import GsLogActionCommand, GsLogCommand
 from .navigate import GsNavigate
 from ...common import util
 
@@ -152,33 +152,13 @@ class GsLogGraphByBranchCommand(GsLogGraphBase):
         return args
 
 
-class GsLogGraphCommand(WindowCommand, GitCommand):
-    def run(self, file_path=None, current_file=False):
-        self._file_path = self.file_path if current_file else file_path
-        options_array = [
-            "For current branch",
-            "For all branches",
-            "Filtered by author",
-            "Filtered by branch",
-        ]
-        self.window.show_quick_panel(
-            options_array,
-            self.on_option_selection,
-            flags=sublime.MONOSPACE_FONT
-        )
-
-    def on_option_selection(self, index):
-        if index == -1:
-            return
-
-        if index == 0:
-            self.window.run_command("gs_log_graph_current_branch", {"file_path": self._file_path})
-        elif index == 1:
-            self.window.run_command("gs_log_graph_current_branch", {"file_path": self._file_path})
-        elif index == 2:
-            self.window.run_command("gs_log_graph_by_author", {"file_path": self._file_path})
-        elif index == 3:
-            self.window.run_command("gs_log_graph_by_branch", {"file_path": self._file_path})
+class GsLogGraphCommand(GsLogCommand):
+    default_actions = [
+        ["gs_log_graph_current_branch", "For current branch"],
+        ["gs_log_graph_all_branches", "For all branches"],
+        ["gs_log_graph_by_author", "Filtered by author"],
+        ["gs_log_graph_by_branch", "Filtered by branch"],
+    ]
 
 
 class GsLogGraphActionCommand(GsLogActionCommand):
@@ -186,28 +166,27 @@ class GsLogGraphActionCommand(GsLogActionCommand):
     """
     Checkout the commit at the selected line. It is also used by compare_commit_view.
     """
+    default_actions = [
+        ["show_commit", "Show commit"],
+        ["checkout_commit", "Checkout commit"],
+        ["compare_against", "Compare commit against ..."],
+        ["copy_sha", "Copy the full SHA"]
+    ]
 
-    def run(self):
-        self.actions = [
-            ["show_commit", "Show commit"],
-            ["checkout_commit", "Checkout commit"],
-            ["compare_against", "Compare commit against ..."],
-            ["copy_sha", "Copy the full SHA"]
-        ]
-
+    def update_actions(self):
+        super().update_actions()
         view = self.window.active_view()
         if view.settings().get("git_savvy.compare_commit_view.target_commit") == "HEAD":
             self.actions.append(["cherry_pick", "Cherry-pick commit"])
 
         if view.settings().get("git_savvy.log_graph_view"):
-            self.actions = self.actions + [
+            self.actions.extend([
                 ["diff_commit", "Diff commit"],
-                ["diff_commit_cache", "Diff commit (cached)"]
-            ]
+                ["diff_commit_cache", "Diff commit (cached)"],
+            ])
 
-        self._file_path = self.file_path
-        if self._file_path:
-            self.actions.insert(1, ["show_file_at_commit", "Show file at commit"])
+    def run(self):
+        view = self.window.active_view()
 
         self.selections = view.sel()
 
@@ -216,17 +195,13 @@ class GsLogGraphActionCommand(GsLogActionCommand):
 
         m = COMMIT_LINE.search(line)
         self._commit_hash = m.group(1) if m else ""
+        self._file_path = self.file_path
 
         if not len(self.selections) == 1:
             sublime.status_message("You can only do actions on one commit at a time.")
             return
 
-        self.window.show_quick_panel(
-            [a[1] for a in self.actions],
-            self.on_action_selection,
-            selected_index=self.quick_panel_log_graph_idx,
-            flags=sublime.MONOSPACE_FONT
-        )
+        super().run(commit_hash=self._commit_hash, file_path=self._file_path)
 
     def cherry_pick(self):
         self.git("cherry-pick", self._commit_hash)

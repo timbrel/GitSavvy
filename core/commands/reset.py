@@ -3,7 +3,7 @@ from sublime_plugin import WindowCommand
 from ..git_command import GitCommand
 from .log import GsLogBase
 from ...common import util
-from ...common.quick_panel import show_paginated_panel
+from ..ui_mixins.quick_panel import show_paginated_panel
 
 
 PADDING = "                                                "

@@ -2,8 +2,9 @@ import sublime
 from sublime_plugin import TextCommand, WindowCommand
 import re
 
-from ..git_command import GitCommand
 from ...common import util
+from ..git_command import GitCommand
+from ..ui_mixins.quick_panel import PanelActionMixin
 
 
 COMMIT_NODE_CHAR = "●"
@@ -160,39 +161,25 @@ class GsCompareAgainstBranchCommand(WindowCommand, GitCommand):
         })
 
 
-class GsCompareAgainstCommand(WindowCommand, GitCommand):
+class GsCompareAgainstCommand(PanelActionMixin, WindowCommand, GitCommand):
+    default_actions = [
+        ["compare_against_branch", "Branch"],
+        ["compare_against_reference", "Reference"],
+    ]
+
     def run(self, target_commit=None, file_path=None, current_file=False):
         self._file_path = self.file_path if current_file else file_path
         self._target_commit = target_commit
-        sublime.set_timeout_async(self.run_async)
+        super().run()
 
-    def run_async(self):
-        options_array = [
-            "Branch",
-            "Reference"
-        ]
+    def compare_against_branch(self):
+        self.window.run_command("gs_compare_against_branch", {
+            "target_commit": self._target_commit,
+            "file_path": self._file_path
+        })
 
-        self.window.show_quick_panel(
-            options_array,
-            self.on_option_selection,
-            flags=sublime.MONOSPACE_FONT,
-            selected_index=self.quick_panel_compare_against_idx
-        )
-
-    def on_option_selection(self, index):
-        if index == -1:
-            return
-
-        self.quick_panel_compare_against_idx = index
-
-        if index == 0:
-            self.window.run_command("gs_compare_against_branch", {
-                "target_commit": self._target_commit,
-                "file_path": self._file_path
-            })
-
-        if index == 1:
-            self.window.run_command("gs_compare_against_reference", {
-                "target_commit": self._target_commit,
-                "file_path": self._file_path
-            })
+    def compare_against_reference(self):
+        self.window.run_command("gs_compare_against_reference", {
+            "target_commit": self._target_commit,
+            "file_path": self._file_path
+        })

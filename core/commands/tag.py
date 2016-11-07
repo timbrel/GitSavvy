@@ -2,8 +2,9 @@ import re
 import sublime
 from sublime_plugin import TextCommand
 
-from ..git_command import GitCommand
 from ...common import util
+from ..git_command import GitCommand
+from ..ui_mixins.quick_panel import PanelActionMixin
 
 RELEASE_REGEXP = re.compile(r"^([0-9A-Za-z-]*[A-Za-z-])?([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9]+))?$")
 
@@ -106,12 +107,10 @@ class GsTagCreateCommand(TextCommand, GitCommand):
             return util.log.panel("\"{}\" is not a valid tag name.".format(tag_name))
 
         self.tag_name = stdout.strip()[10:]
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         self.window.show_input_panel(
             TAG_CREATE_MESSAGE_PROMPT,
-            sublime\
-                .load_settings("GitSavvy.sublime-settings")\
-                .get("default_tag_message")\
-                .format(tag_name=tag_name),
+            savvy_settings.get("default_tag_message").format(tag_name=tag_name),
             self.on_entered_message,
             None,
             None
@@ -129,36 +128,26 @@ class GsTagCreateCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsSmartTagCommand(TextCommand, GitCommand):
+class GsSmartTagCommand(PanelActionMixin, TextCommand, GitCommand):
     """
     Displays a panel of possible smart tag options, based on the choice,
     tag the current commit with the corresponding tagname.
     """
 
-    release_types = [
-        "patch",
-        "minor",
-        "major",
-        "prerelease",
-        "prepatch",
-        "preminor",
-        "premajor"
+    async_action = True
+    default_actions = [
+        ["smart_tag", "patch", ("patch", )],
+        ["smart_tag", "minor", ("minor", )],
+        ["smart_tag", "major", ("major", )],
+        ["smart_tag", "prerelease", ("prerelease", )],
+        ["smart_tag", "prepatch", ("prepatch", )],
+        ["smart_tag", "preminor", ("preminor", )],
+        ["smart_tag", "premajor", ("premajor", )],
     ]
 
-    def run(self, edit):
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
-        self.view.window().show_quick_panel(self.release_types, self.on_tag)
-
-    def on_tag(self, action):
-        if action < 0:
-            return
-
-        release_type = self.release_types[action]
-
+    def smart_tag(self, release_type):
         tag_name = None
-        last_tag_name = self.get_lastest_local_tag()
+        last_tag_name = self.get_last_local_tag()
         if last_tag_name:
             tag_name = smart_incremented_tag(last_tag_name, release_type)
 
