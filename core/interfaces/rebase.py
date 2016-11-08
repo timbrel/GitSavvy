@@ -170,7 +170,7 @@ class RebaseInterface(ui.Interface, GitCommand):
         try:
             cursor_entry = log[cursor]
         except IndexError:
-            return "Not yet rebased." if self.is_not_rebased() else "Ready."
+            return "Rebase first." if self.is_not_rebased() else "Ready."
 
         if cursor == log_len - 1:
             return "Successfully {}. Undo available.".format(cursor_entry["description"])
@@ -350,19 +350,21 @@ class RebaseInterface(ui.Interface, GitCommand):
     def complete_action(self, branch_name, ref_before, success, description):
         log = self.view.settings().get("git_savvy.rebase_log") or []
         cursor = self.view.settings().get("git_savvy.rebase_log_cursor") or (len(log) - 1)
-        log = log[:cursor+1]
+        # all commit maniplication actions are all or nothing, we don't have
+        # to worry about partially success for now.
+        if success:
+            log = log[:cursor+1]
 
-        log.append({
-            "description": description,
-            "branch_name": branch_name,
-            "ref_before": ref_before,
-            "ref_after": self.get_branch_ref(branch_name),
-            "success": success
-            })
+            log.append({
+                "description": description,
+                "branch_name": branch_name,
+                "ref_before": ref_before,
+                "ref_after": self.get_branch_ref(branch_name)
+                })
 
-        cursor = len(log) - 1
+            cursor = len(log) - 1
 
-        self.set_log(log, cursor)
+            self.set_log(log, cursor)
 
     def get_log(self):
         settings = self.view.settings()
