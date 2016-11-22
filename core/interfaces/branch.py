@@ -250,10 +250,13 @@ class GsBranchesCheckoutAsLocalCommand(TextCommand, GitCommand):
         segments = line.strip("▸ ").split(" ")
         branch_name = segments[1]
 
-        local_region = self.view.get_regions("git_savvy_interface.branch_list")[0]
-        if local_region.contains(selection):
-            # No-op if selection is a local branch.
-            return
+        selected_branches = self.view.get_regions("git_savvy_interface.branch_list")
+        if selected_branches:
+            # No-op if there are no branches
+            local_region = selected_branches[0]
+            if local_region.contains(selection):
+                # No-op if selection is a local branch.
+                return
 
         remotes = self.get_remotes()
         for remote_name in remotes:
