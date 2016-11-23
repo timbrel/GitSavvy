@@ -140,9 +140,10 @@ class GsPushToBranchCommand(WindowCommand, PushBase):
         # If the user pressed `esc` or otherwise cancelled.
         if branch_index == -1:
             return
-
+        current_local_branch = self.get_current_branch_name()
         selected_branch = self.branches_on_selected_remote[branch_index].split("/", 1)[1]
-        sublime.set_timeout_async(lambda: self.do_push(self.selected_remote, selected_branch))
+        sublime.set_timeout_async(
+            lambda: self.do_push(self.selected_remote, selected_branch, local_branch=current_local_branch))
 
 
 class GsPushToBranchNameCommand(WindowCommand, PushBase):
