@@ -277,7 +277,7 @@
         ]
     },
     {
-        "keys": ["P"],
+        "keys": ["p"],
         "command": "gs_push",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },

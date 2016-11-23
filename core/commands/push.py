@@ -42,7 +42,7 @@ class PushBase(GitCommand):
 class GsPushCommand(WindowCommand, PushBase):
 
     """
-    Perform a normal `git push`.
+    Push current branch.
     """
 
     def run(self, force=False):
@@ -53,8 +53,21 @@ class GsPushCommand(WindowCommand, PushBase):
                     "set_upstream": True,
                     "force": force
                     })
+        elif self.get_upstream_for_active_branch():
+            upstream = self.get_upstream_for_active_branch()
+            current_local_branch = self.get_current_branch_name()
+            remote, branch = upstream.split("/", 1)
+            sublime.set_timeout_async(
+                lambda: self.do_push(remote, branch, local_branch=current_local_branch, force=force))
         else:
-            sublime.set_timeout_async(lambda: self.do_push(None, None, force=force))
+            # if `prompt_for_tracking_branch` is false, ask for a remote and perform
+            # push current branch to a remote branch with the same name
+            current_local_branch = self.get_current_branch_name()
+            self.window.run_command("gs_push_to_branch_name", {
+                                "branch_name": current_local_branch,
+                                "set_upstream": False,
+                                "force": force
+                                })
 
 
 class GsPushToBranchCommand(WindowCommand, PushBase):
@@ -138,7 +151,8 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
     Prompt for remote and remote branch name, then push.
     """
 
-    def run(self, set_upstream=False, force=False):
+    def run(self, branch_name=None, set_upstream=False, force=False):
+        self.branch_name = branch_name
         self.set_upstream = set_upstream
         self.force = force
         sublime.set_timeout_async(self.run_async)
@@ -175,15 +189,18 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
 
         self.selected_remote = self.remotes[remote_index]
         self.last_remote_used = self.selected_remote
-        current_local_branch = self.get_current_branch_name()
 
-        self.window.show_input_panel(
-            PUSH_TO_BRANCH_NAME_PROMPT,
-            current_local_branch,
-            self.on_entered_branch_name,
-            None,
-            None
-            )
+        if self.branch_name:
+            self.on_entered_branch_name(self.branch_name)
+        else:
+            current_local_branch = self.get_current_branch_name()
+            self.window.show_input_panel(
+                PUSH_TO_BRANCH_NAME_PROMPT,
+                current_local_branch,
+                self.on_entered_branch_name,
+                None,
+                None
+                )
 
     def on_entered_branch_name(self, branch):
         """

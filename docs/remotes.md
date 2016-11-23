@@ -18,7 +18,7 @@ When running this command, you will be prompted first for the remote you want to
 
 ## `git: push`
 
-This command performs a simple `git push`.  In recent Git versions, this will result in a push to the tracking branch if it exists, else a remote branch with the same name as the local.
+This command will push current branch to the tracking branch. If the tracking branch is not set, you will be asked to configure it unless `prompt_for_tracking_branch` is set to `false`. In that case, you will be prompted for a remote, then the current branch will be pushed to a remote branch with the same name.
 
 ## `git: push to branch`
 

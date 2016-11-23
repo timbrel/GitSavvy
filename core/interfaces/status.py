@@ -68,7 +68,7 @@ class StatusInterface(ui.Interface, GitCommand):
       [c] commit                            [t][a] apply stash
       [C] commit, including unstaged        [t][p] pop stash
       [m] amend previous commit             [t][s] show stash
-      [P] push current branch               [t][c] create stash
+      [p] push current branch               [t][c] create stash
                                             [t][u] create stash including untracked files
       [i] ignore file                       [t][d] discard stash
       [I] ignore pattern
