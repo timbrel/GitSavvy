@@ -18,7 +18,7 @@ CONFIRM_FORCE_PUSH = ("You are about to `git push --force`. Would you  "
 class PushBase(GitCommand):
     set_upstream = False
 
-    def do_push(self, remote, branch, force=False, local_branch=None):
+    def do_push(self, remote, branch, force=False, remote_branch=None):
         """
         Perform `git push remote branch`.
         """
@@ -33,7 +33,7 @@ class PushBase(GitCommand):
             branch,
             set_upstream=self.set_upstream,
             force=force,
-            local_branch=local_branch
+            remote_branch=remote_branch
             )
         sublime.status_message(END_PUSH_MESSAGE)
         util.view.refresh_gitsavvy(self.window.active_view())
@@ -47,22 +47,22 @@ class GsPushCommand(WindowCommand, PushBase):
 
     def run(self, force=False):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        if savvy_settings.get("prompt_for_tracking_branch") and not self.get_upstream_for_active_branch():
+        current_local_branch = self.get_current_branch_name()
+        upstream = self.get_upstream_for_active_branch()
+        if upstream:
+            remote, remote_branch = upstream.split("/", 1)
+            sublime.set_timeout_async(
+                lambda: self.do_push(
+                    remote, current_local_branch, remote_branch=remote_branch, force=force))
+        elif savvy_settings.get("prompt_for_tracking_branch"):
             if sublime.ok_cancel_dialog(SET_UPSTREAM_PROMPT):
                 self.window.run_command("gs_push_to_branch_name", {
                     "set_upstream": True,
                     "force": force
                     })
-        elif self.get_upstream_for_active_branch():
-            upstream = self.get_upstream_for_active_branch()
-            current_local_branch = self.get_current_branch_name()
-            remote, branch = upstream.split("/", 1)
-            sublime.set_timeout_async(
-                lambda: self.do_push(remote, branch, local_branch=current_local_branch, force=force))
         else:
             # if `prompt_for_tracking_branch` is false, ask for a remote and perform
             # push current branch to a remote branch with the same name
-            current_local_branch = self.get_current_branch_name()
             self.window.run_command("gs_push_to_branch_name", {
                                 "branch_name": current_local_branch,
                                 "set_upstream": False,
@@ -143,7 +143,8 @@ class GsPushToBranchCommand(WindowCommand, PushBase):
         current_local_branch = self.get_current_branch_name()
         selected_branch = self.branches_on_selected_remote[branch_index].split("/", 1)[1]
         sublime.set_timeout_async(
-            lambda: self.do_push(self.selected_remote, selected_branch, local_branch=current_local_branch))
+            lambda: self.do_push(
+                self.selected_remote, current_local_branch, remote_branch=selected_branch))
 
 
 class GsPushToBranchNameCommand(WindowCommand, PushBase):
@@ -210,6 +211,6 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
         """
         sublime.set_timeout_async(lambda: self.do_push(
             self.selected_remote,
-            branch,
+            self.get_current_branch_name(),
             self.force,
-            local_branch=self.get_current_branch_name()))
+            remote_branch=branch))
