@@ -158,7 +158,7 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
 
     def checkout_commit(self):
         self.checkout_ref(self._commit_hash)
-        util.view.refresh_gitsavvy(self.view)
+        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
     def compare_against(self):
         self.window.run_command("gs_compare_against", {

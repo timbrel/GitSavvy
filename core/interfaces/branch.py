@@ -227,7 +227,7 @@ class GsBranchesCheckoutCommand(TextCommand, GitCommand):
             remote_region_list = interface.get_view_regions("branch_list_" + remote_name)
             if remote_region_list and remote_region_list[0].contains(selection):
                 self.checkout_ref("{}/{}".format(remote_name, branch_name))
-                util.view.refresh_gitsavvy(self.view)
+                util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
                 return
 
 
@@ -269,7 +269,7 @@ class GsBranchesCheckoutAsLocalCommand(TextCommand, GitCommand):
                     "--track",
                     "{}/{}".format(remote_name, branch_name)
                     )
-                util.view.refresh_gitsavvy(self.view)
+                util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
                 return
 
 

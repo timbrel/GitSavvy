@@ -42,7 +42,7 @@ class GsCheckoutBranchCommand(WindowCommand, GitCommand):
         branch_name = self.local_inactive_branches[branch_name_index]
         self.git("checkout", branch_name)
         sublime.status_message("Checked out `{}` branch.".format(branch_name))
-        util.view.refresh_gitsavvy(self.window.active_view())
+        util.view.refresh_gitsavvy(self.window.active_view(), refresh_gitsavvy=True)
 
 
 class GsCheckoutNewBranchCommand(WindowCommand, GitCommand):
@@ -97,7 +97,7 @@ class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
         local_name = remote_branch.split("/", 1)[1]
         self.git("checkout", "-b", local_name, "--track", remote_branch)
         sublime.status_message("Checked out `{}` as local branch `{}`.".format(remote_branch, local_name))
-        util.view.refresh_gitsavvy(self.window.active_view())
+        util.view.refresh_gitsavvy(self.window.active_view(), refresh_gitsavvy=True)
 
 
 class GsCheckoutCurrentFileCommand(WindowCommand, GitCommand):
