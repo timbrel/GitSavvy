@@ -29,6 +29,8 @@ class GsTabCycleCommand(TextCommand, GitCommand):
 
     def run_async(self, source, target, reverse):
         to_load = target or self.get_next(source, reverse)
+        if not to_load:
+            return
         view_signature = self.view_signatures[to_load]
 
         self.view.window().run_command("hide_panel", {"cancel": True})
@@ -43,6 +45,9 @@ class GsTabCycleCommand(TextCommand, GitCommand):
 
         if reverse is True:
             tab_order.reverse()
+
+        if source not in tab_order:
+            return None
 
         source_idx = tab_order.index(source)
         next_idx = 0 if source_idx == len(tab_order) - 1 else source_idx + 1
