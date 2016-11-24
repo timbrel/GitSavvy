@@ -54,7 +54,7 @@ class GsMergeCommand(WindowCommand, GitCommand):
                 branch.name_with_remote
                 )
         finally:
-            util.view.refresh_gitsavvy(self.window.active_view())
+            util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
 
 
 class GsAbortMergeCommand(WindowCommand, GitCommand):
@@ -68,7 +68,7 @@ class GsAbortMergeCommand(WindowCommand, GitCommand):
 
     def run_async(self):
         self.git("reset", "--merge")
-        util.view.refresh_gitsavvy(self.window.active_view())
+        util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
 
 
 class GsRestartMergeForFileCommand(WindowCommand, GitCommand):

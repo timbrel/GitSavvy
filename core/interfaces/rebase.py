@@ -362,7 +362,7 @@ class GsRebaseUndoCommand(TextCommand, GitCommand):
         finally:
             self.checkout_ref(branch_name)
             self.interface.set_log(log, cursor)
-            util.view.refresh_gitsavvy(self.view)
+            util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class GsRebaseRedoCommand(TextCommand, GitCommand):
@@ -400,7 +400,7 @@ class GsRebaseRedoCommand(TextCommand, GitCommand):
         finally:
             self.checkout_ref(branch_name)
             self.interface.set_log(log, cursor)
-            util.view.refresh_gitsavvy(self.view)
+            util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 ui.register_listeners(RebaseInterface)
@@ -460,7 +460,7 @@ class RewriteBase(TextCommand, GitCommand):
         finally:
             self.interface.complete_action(branch_name, ref, success, description)
 
-        util.view.refresh_gitsavvy(self.view)
+        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class GsRebaseSquashCommand(RewriteBase):
@@ -859,7 +859,7 @@ class GsRebaseOnTopOfCommand(GsRebaseDefineBaseRefCommand):
 
         self.view.settings().set("git_savvy.rebase.base_ref", selection)
         self.git("rebase", selection)
-        util.view.refresh_gitsavvy(self.view)
+        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class GsRebaseAbortCommand(TextCommand, GitCommand):
@@ -871,7 +871,7 @@ class GsRebaseAbortCommand(TextCommand, GitCommand):
         try:
             self.git("rebase", "--abort")
         finally:
-            util.view.refresh_gitsavvy(self.view)
+            util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class GsRebaseContinueCommand(TextCommand, GitCommand):
@@ -895,7 +895,7 @@ class GsRebaseSkipCommand(TextCommand, GitCommand):
         try:
             self.git("rebase", "--skip")
         finally:
-            util.view.refresh_gitsavvy(self.view)
+            util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class GsRebaseNavigateCommitsCommand(GsNavigate):
