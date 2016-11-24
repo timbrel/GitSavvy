@@ -40,6 +40,8 @@ class GsCompareCommitCommand(WindowCommand, GitCommand):
         view.sel().clear()
         view.run_command("gs_compare_commit_refresh")
         view.run_command("gs_log_graph_navigate")
+        view.run_command("gs_handle_vintageous")
+        view.run_command("gs_handle_arrow_keys")
 
     def get_graph_args(self):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
