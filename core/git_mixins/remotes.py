@@ -44,7 +44,7 @@ class RemotesMixin():
         """
         self.git("pull", remote, branch)
 
-    def push(self, remote=None, branch=None, force=False, local_branch=None, set_upstream=False):
+    def push(self, remote=None, branch=None, force=False, remote_branch=None, set_upstream=False):
         """
         Push to the specified remote and branch if provided, otherwise
         perform default `git push`.
@@ -54,7 +54,7 @@ class RemotesMixin():
             "--force" if force else None,
             "--set-upstream" if set_upstream else None,
             remote,
-            branch if not local_branch else "{}:{}".format(local_branch, branch)
+            branch if not remote_branch else "{}:{}".format(branch, remote_branch)
             )
 
     def project_name_from_url(self, input_url):
