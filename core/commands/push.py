@@ -46,19 +46,22 @@ class GsPushCommand(WindowCommand, PushBase):
     """
 
     def run(self, force=False):
+        self.force = force
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         current_local_branch = self.get_current_branch_name()
         upstream = self.get_upstream_for_active_branch()
         if upstream:
             remote, remote_branch = upstream.split("/", 1)
-            sublime.set_timeout_async(
-                lambda: self.do_push(
-                    remote, current_local_branch, remote_branch=remote_branch, force=force))
+            self.do_push(
+                remote, current_local_branch, remote_branch=remote_branch, force=self.force)
         elif savvy_settings.get("prompt_for_tracking_branch"):
             if sublime.ok_cancel_dialog(SET_UPSTREAM_PROMPT):
                 self.window.run_command("gs_push_to_branch_name", {
                     "set_upstream": True,
-                    "force": force
+                    "force": self.force
                     })
         else:
             # if `prompt_for_tracking_branch` is false, ask for a remote and perform
@@ -66,7 +69,7 @@ class GsPushCommand(WindowCommand, PushBase):
             self.window.run_command("gs_push_to_branch_name", {
                                 "branch_name": current_local_branch,
                                 "set_upstream": False,
-                                "force": force
+                                "force": self.force
                                 })
 
 
