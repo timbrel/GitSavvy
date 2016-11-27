@@ -225,6 +225,10 @@
         "args": { "current_file": true }
     },
     {
+        "caption": "git: show current file at commit",
+        "command": "gs_show_current_file"
+    },
+    {
         "caption": "git: merge",
         "command": "gs_merge"
     },
