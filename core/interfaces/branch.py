@@ -7,6 +7,7 @@ from sublime_plugin import WindowCommand, TextCommand
 from ...common import ui, util
 from ..commands import GsNavigate
 from ..commands.log import LogMixin
+from ..commands.log_graph import LogGraphMixin
 from ..git_command import GitCommand
 
 
@@ -58,7 +59,7 @@ class BranchInterface(ui.Interface, GitCommand):
       [o] checkout remote as local                  [h] fetch remote branches
 
       [f] diff against active                       [l] show branch log
-      [H] diff history against active
+      [H] diff history against active               [g] show branch log graph
       [E] edit branch description
 
       [e]         toggle display of remote branches
@@ -694,3 +695,30 @@ class GsBranchesLogCommand(LogMixin, TextCommand, GitCommand):
             self._branch = branch_name
         self._file_path = None
         super().run_async()
+
+
+class GsBranchesLogGraphCommand(LogGraphMixin, TextCommand, GitCommand):
+
+    """
+    Show log graph for the selected branch.
+    """
+
+    def run_async(self):
+        interface = ui.get_interface(self.view.id())
+        remote_name, branch_name = interface.get_selected_branch()
+        if not branch_name:
+            return
+
+        # prefix the (optional) remote name to branch
+        if remote_name:
+            self._branch = '{remote}/{branch}'.format(
+                remote=remote_name, branch=branch_name)
+        else:
+            self._branch = branch_name
+        self._file_path = None
+        super().run_async()
+
+    def get_graph_args(self):
+        args = super().get_graph_args()
+        args.append(self._branch)
+        return args

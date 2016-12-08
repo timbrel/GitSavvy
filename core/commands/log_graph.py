@@ -11,7 +11,7 @@ COMMIT_NODE_CHAR_OPTIONS = "●*"
 COMMIT_LINE = re.compile("[%s][ /_\|\-.]*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
 
 
-class GsLogGraphBase(WindowCommand, GitCommand):
+class LogGraphMixin(object):
 
     """
     Open a new window displaying an ASCII-graphic representation
@@ -70,11 +70,11 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         self.view.run_command("gs_handle_arrow_keys")
 
 
-class GsLogGraphCurrentBranch(GsLogGraphBase):
+class GsLogGraphCurrentBranch(LogGraphMixin, WindowCommand, GitCommand):
     pass
 
 
-class GsLogGraphAllBranches(GsLogGraphBase):
+class GsLogGraphAllBranches(LogGraphMixin, WindowCommand, GitCommand):
 
     def get_graph_args(self):
         args = super().get_graph_args()
@@ -82,7 +82,7 @@ class GsLogGraphAllBranches(GsLogGraphBase):
         return args
 
 
-class GsLogGraphByAuthorCommand(GsLogGraphBase):
+class GsLogGraphByAuthorCommand(LogGraphMixin, WindowCommand, GitCommand):
 
     """
     Open a quick panel containing all committers for the active
@@ -123,7 +123,7 @@ class GsLogGraphByAuthorCommand(GsLogGraphBase):
         return args
 
 
-class GsLogGraphByBranchCommand(GsLogGraphBase):
+class GsLogGraphByBranchCommand(LogGraphMixin, WindowCommand, GitCommand):
 
     def run_async(self):
         self.all_branches = [b.name_with_remote for b in self.get_branches()]
