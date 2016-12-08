@@ -1,7 +1,7 @@
 import sublime
 from sublime_plugin import WindowCommand
 from ..git_command import GitCommand
-from .log import GsLogBase
+from .log import LogMixin
 from ...common import util
 from ..ui_mixins.quick_panel import show_paginated_panel
 
@@ -51,12 +51,12 @@ class GsResetBase(WindowCommand, GitCommand):
             do_reset()
 
 
-class GsResetCommand(GsResetBase, GsLogBase):
+class GsResetCommand(GsResetBase, LogMixin, WindowCommand, GitCommand):
 
     pass
 
 
-class GsResetBranch(GsResetBase, GsLogBase):
+class GsResetBranch(GsResetBase, LogMixin, WindowCommand, GitCommand):
 
     def run_async(self):
         self.all_branches = [b.name_with_remote for b in self.get_branches()]
