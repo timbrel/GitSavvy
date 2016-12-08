@@ -9,12 +9,22 @@ from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin, show_log_panel
 
 
-class GsLogBase(WindowCommand, GitCommand):
+class LogMixin(object):
+    """
+    Display git log in a quick panel for given file and branch. Upon selection
+    of a commit, dislays an "action menu" via the ``GsLogActionCommand``.
+
+    Supports paginated fetching of log (defaults to 6000 entries per "page").
+
+    This mixin can be used with both ``WindowCommand`` and ``TextCommand``,
+    but the subclass must also inherit fro GitCommand (for the `git()` method)
+    """
 
     _limit = 6000
 
-    def run(self, file_path=None):
+    def run(self, *args, file_path=None, branch=None):
         self._file_path = file_path
+        self._branch = branch
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
@@ -23,7 +33,10 @@ class GsLogBase(WindowCommand, GitCommand):
     def log_generator(self):
         skip = 0
         while True:
-            logs = self.log(file_path=self._file_path, skip=skip, limit=self._limit)
+            logs = self.log(branch=self._branch,
+                            file_path=self._file_path,
+                            limit=self._limit,
+                            skip=skip)
             if not logs:
                 break
             for l in logs:
@@ -31,23 +44,27 @@ class GsLogBase(WindowCommand, GitCommand):
             skip = skip + self._limit
 
     def do_action(self, commit_hash):
-        self.window.run_command("gs_log_action", {
+        if hasattr(self, 'window'):
+            window = self.window
+        else:
+            window = self.view.window()
+        window.run_command("gs_log_action", {
             "commit_hash": commit_hash,
             "file_path": self._file_path
         })
 
 
-class GsLogCurrentBranchCommand(GsLogBase):
+class GsLogCurrentBranchCommand(LogMixin, WindowCommand, GitCommand):
     pass
 
 
-class GsLogAllBranchesCommand(GsLogBase):
+class GsLogAllBranchesCommand(LogMixin, WindowCommand, GitCommand):
 
     def log(self, **kwargs):
         return super().log(all_branches=True, **kwargs)
 
 
-class GsLogByAuthorCommand(GsLogBase):
+class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
 
     """
     Open a quick panel containing all committers for the active
@@ -86,7 +103,7 @@ class GsLogByAuthorCommand(GsLogBase):
         return super().log(author=self._selected_author, **kwargs)
 
 
-class GsLogByBranchCommand(GsLogBase):
+class GsLogByBranchCommand(LogMixin, WindowCommand, GitCommand):
 
     def run_async(self):
         self.all_branches = [b.name_with_remote for b in self.get_branches()]
@@ -106,11 +123,8 @@ class GsLogByBranchCommand(GsLogBase):
     def on_branch_selection(self, index):
         if index == -1:
             return
-        self._selected_branch = self.all_branches[index]
+        self._branch = self.all_branches[index]
         super().run_async()
-
-    def log(self, **kwargs):
-        return super().log(branch=self._selected_branch, **kwargs)
 
 
 class GsLogCommand(PanelCommandMixin, WindowCommand, GitCommand):

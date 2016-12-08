@@ -1,10 +1,10 @@
 import re
 import sublime
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ...common import util
-from .log import GsLogBase
+from .log import LogMixin
 
 SHOW_COMMIT_TITLE = "COMMIT: {}:{}"
 
@@ -56,7 +56,7 @@ class GsShowCurrentFileAtCommitCommand(GsShowFileAtCommitCommand):
             lang=lang)
 
 
-class GsShowCurrentFileCommand(GsLogBase):
+class GsShowCurrentFileCommand(LogMixin, WindowCommand, GitCommand):
     """
     Show a panel of commits of current file on current branch and
     then open the file at the selected commit.

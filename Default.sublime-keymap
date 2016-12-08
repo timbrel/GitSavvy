@@ -1031,6 +1031,14 @@
             { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["l"],
+        "command": "gs_branches_log",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
 
 
     ////////////////
