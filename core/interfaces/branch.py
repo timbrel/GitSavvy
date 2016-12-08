@@ -4,10 +4,10 @@ from itertools import groupby
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from ..commands import *
-from ...common import ui
+from ...common import ui, util
+from ..commands import GsNavigate
+from ..commands.log import LogMixin
 from ..git_command import GitCommand
-from ...common import util
 
 
 class GsShowBranchCommand(WindowCommand, GitCommand):
@@ -57,7 +57,7 @@ class BranchInterface(ui.Interface, GitCommand):
       [t] configure tracking                        [M] fetch and merge into active branch
       [o] checkout remote as local                  [h] fetch remote branches
 
-      [f] diff against active
+      [f] diff against active                       [l] show branch log
       [H] diff history against active
       [E] edit branch description
 
@@ -672,3 +672,25 @@ class GsBranchesNavigateBranchCommand(GsNavigate):
                 "meta.git-savvy.branches.branch"
             )
             for branch_region in self.view.lines(region)]
+
+
+class GsBranchesLogCommand(LogMixin, TextCommand, GitCommand):
+
+    """
+    Show log for the selected branch.
+    """
+
+    def run_async(self):
+        interface = ui.get_interface(self.view.id())
+        remote_name, branch_name = interface.get_selected_branch()
+        if not branch_name:
+            return
+
+        # prefix the (optional) remote name to branch
+        if remote_name:
+            self._branch = '{remote}/{branch}'.format(
+                remote=remote_name, branch=branch_name)
+        else:
+            self._branch = branch_name
+        self._file_path = None
+        super().run_async()
