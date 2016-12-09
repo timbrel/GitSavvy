@@ -8,7 +8,9 @@ from ...common import util
 class GsCherryPickCommand(GsLogByBranchCommand):
 
     def log(self, **kwargs):
-        return super().log(cherry=True, start_end=("", self._selected_branch), **kwargs)
+        kwargs["cherry"] = True
+        kwargs["start_end"] = ("", self._branch)
+        return super().log(**kwargs)
 
     def do_action(self, commit_hash):
         self.git("cherry-pick", commit_hash)
