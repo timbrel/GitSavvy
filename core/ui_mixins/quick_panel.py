@@ -201,11 +201,12 @@ class PaginatedPanel:
         if self.on_highlight:
             kwargs["on_highlight"] = self.on_highlight
 
-        sublime.active_window().show_quick_panel(
-            self.display_list,
-            self.on_selection,
-            **kwargs
-        )
+        if self.display_list:
+            sublime.active_window().show_quick_panel(
+                self.display_list,
+                self.on_selection,
+                **kwargs
+            )
 
     def on_selection(self, index):
         if index == self.limit:
