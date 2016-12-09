@@ -340,7 +340,7 @@ class GsBranchesRenameCommand(TextCommand, GitCommand):
             )
 
     def on_entered_name(self, new_name):
-        self.git("branch", "-m", self.old_name, new_name)
+        self.git("branch", "-m", self.branch_name, new_name)
         util.view.refresh_gitsavvy(self.view)
 
 
