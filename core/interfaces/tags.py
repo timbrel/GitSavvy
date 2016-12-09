@@ -306,8 +306,9 @@ class GsTagPushCommand(TextCommand, GitCommand):
         sublime.status_message(END_PUSH_MESSAGE)
 
         interface = ui.get_interface(self.view.id())
-        interface.remotes = None
-        util.view.refresh_gitsavvy(self.view)
+        if interface:
+            interface.remotes = None
+            util.view.refresh_gitsavvy(self.view)
 
 
 class GsTagViewLogCommand(TextCommand, GitCommand):
