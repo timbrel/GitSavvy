@@ -2,8 +2,8 @@ import sublime
 from sublime_plugin import WindowCommand
 from ..git_command import GitCommand
 from .log import LogMixin
+from .reflog import RefLogMixin
 from ...common import util
-from ..ui_mixins.quick_panel import show_paginated_panel
 
 
 PADDING = "                                                "
@@ -19,9 +19,12 @@ GIT_RESET_MODES = [
 ]
 
 
-class GsResetBase(WindowCommand, GitCommand):
+class ResetMixin(object):
 
     def do_action(self, commit_hash):
+        if not commit_hash:
+            return
+
         self._selected_hash = commit_hash
 
         use_reset_mode = sublime.load_settings("GitSavvy.sublime-settings").get("use_reset_mode")
@@ -51,12 +54,12 @@ class GsResetBase(WindowCommand, GitCommand):
             do_reset()
 
 
-class GsResetCommand(GsResetBase, LogMixin, WindowCommand, GitCommand):
+class GsResetCommand(ResetMixin, LogMixin, WindowCommand, GitCommand):
 
     pass
 
 
-class GsResetBranch(GsResetBase, LogMixin, WindowCommand, GitCommand):
+class GsResetBranch(ResetMixin, LogMixin, WindowCommand, GitCommand):
 
     def run_async(self):
         self.all_branches = [b.name_with_remote for b in self.get_branches()]
@@ -80,43 +83,6 @@ class GsResetBranch(GsResetBase, LogMixin, WindowCommand, GitCommand):
         self.do_action(self._selected_branch)
 
 
-class GsResetReflogCommand(GsResetBase):
+class GsResetReflogCommand(ResetMixin, RefLogMixin, WindowCommand, GitCommand):
 
-    _limit = 6000
-
-    def run(self):
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
-        show_paginated_panel(self.log_generator(), self.on_done, limit=self._limit)
-
-    def log_generator(self):
-        skip = 0
-        while True:
-            log_output = self.git(
-                "reflog",
-                "-{}".format(self._limit),
-                "--skip={}".format(skip),
-                '--format=%h%n%H%n%s%n%gs%n%gd%n%an%n%at%x00'
-            ).strip().strip("\x00")
-
-            entries = log_output.split("\x00\n")
-            for entry in entries:
-                entry = entry.strip("\n")
-                if not entry:
-                    continue
-                short_hash, long_hash, summary, reflog_name, reflog_selector, author, datetime = \
-                    entry.split("\n")
-                yield ([reflog_selector + " " + reflog_name,
-                        short_hash + " " + summary,
-                        author + ", " + util.dates.fuzzy(datetime)],
-                       long_hash)
-
-            if len(entries) == 1:
-                break
-
-            skip = skip + self._limit
-
-    def on_done(self, commit):
-        if commit:
-            self.do_action(commit)
+    pass

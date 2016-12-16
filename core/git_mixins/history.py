@@ -12,6 +12,17 @@ LogEntry = namedtuple("LogEntry", (
     ))
 
 
+RefLogEntry = namedtuple("RefLogEntry", (
+    "short_hash",
+    "long_hash",
+    "summary",
+    "reflog_name",
+    "reflog_selector",
+    "author",
+    "datetime"
+    ))
+
+
 class HistoryMixin():
 
     def log(self, author=None, branch=None, file_path=None, start_end=None, cherry=None,
@@ -49,6 +60,27 @@ class HistoryMixin():
 
             short_hash, long_hash, summary, author, email, datetime = entry.split("\n")
             entries.append(LogEntry(short_hash, long_hash, summary, raw_body, author, email, datetime))
+
+        return entries
+
+    def reflog(self, limit=6000, skip=None, all_branches=False):
+        log_output = self.git(
+            "reflog",
+            "-{}".format(self._limit),
+            "--skip={}".format(skip) if skip else None,
+            '--format=%h%n%H%n%s%n%gs%n%gd%n%an%n%at%x00%x00%n',
+            "--all" if all_branches else None,
+        ).strip("\x00")
+
+        entries = []
+        for entry in log_output.split("\x00\x00\n"):
+            entry = entry.strip()
+            if not entry:
+                continue
+            short_hash, long_hash, summary, reflog_name, reflog_selector, author, datetime = \
+                entry.split("\n")
+            entries.append(RefLogEntry(
+                short_hash, long_hash, summary, reflog_name, reflog_selector, author, datetime))
 
         return entries
 
