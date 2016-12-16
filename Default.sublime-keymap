@@ -1266,6 +1266,7 @@
     {
         "keys": ["q"],
         "command": "gs_rebase_squash",
+        "args": { "step": 1 },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
@@ -1275,6 +1276,16 @@
     },
     {
         "keys": ["Q"],
+        "command": "gs_rebase_squash",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "meta.git-savvy.rebase-graph.entry" },
+            { "key": "setting.git_savvy.in_rebase", "operator": "equal", "operand": false }
+        ]
+    },
+    {
+        "keys": ["S"],
         "command": "gs_rebase_squash_all",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
@@ -1305,6 +1316,17 @@
     {
         "keys": ["u"],
         "command": "gs_rebase_move_up",
+        "args": { "step": 1 },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "meta.git-savvy.rebase-graph.entry" },
+            { "key": "setting.git_savvy.in_rebase", "operator": "equal", "operand": false }
+        ]
+    },
+    {
+        "keys": ["U"],
+        "command": "gs_rebase_move_up",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
@@ -1314,6 +1336,17 @@
     },
     {
         "keys": ["d"],
+        "command": "gs_rebase_move_down",
+        "args": { "step": 1 },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "meta.git-savvy.rebase-graph.entry" },
+            { "key": "setting.git_savvy.in_rebase", "operator": "equal", "operand": false }
+        ]
+    },
+    {
+        "keys": ["D"],
         "command": "gs_rebase_move_down",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
@@ -1396,6 +1429,15 @@
     {
         "keys": ["r"],
         "command": "gs_rebase_on_top_of",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.in_rebase", "operator": "equal", "operand": false }
+        ]
+    },
+    {
+        "keys": ["m"],
+        "command": "gs_rebase_toggle_preserve_mode",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
