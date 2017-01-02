@@ -1,14 +1,10 @@
 [
-    // Open readme and settings
     {
-        "caption": "Preferences: GitSavvy Settings - Default",
-        "command": "open_file",
-        "args": {"file": "${packages}/GitSavvy/GitSavvy.sublime-settings"}
-    },
-    {
-        "caption": "Preferences: GitSavvy Settings - User",
-        "command": "open_file",
-        "args": {"file": "${packages}/User/GitSavvy.sublime-settings"}
+        "caption": "Preferences: GitSavvy Settings",
+        "command": "edit_settings",
+        "args": {
+          "base_file": "${packages}/GitSavvy/GitSavvy.sublime-settings",
+          "default": "// Settings in here override those in \"GitSavvy/GitSavvy.sublime-settings\",\n\n{\n\t$0\n}\n"}
     },
 
     {

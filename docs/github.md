@@ -10,7 +10,7 @@ When interacting with a public repository, no configuration is required.  Howeve
 1. [Create a new API token.](https://github.com/settings/tokens/new).  `repo` and `public_repo` should be checked.
 2. After submitting, copy the generated API key.
 3. In the Sublime Menu, open `Preferences > Package Settings > GitSavvy > Settings - User`.
-4. Add your key to the `api_tokens` object (you can find an example in `Preferences > Package Settings > GitSavvy > Settings - Default`).
+4. Add your key to the `api_tokens` object (you can find an example in `Preferences > Package Settings > GitSavvy > Settings`).
 
 
 ## Choosing a remote
