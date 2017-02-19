@@ -35,7 +35,7 @@ class StashMixin():
         """
         Create stash with provided description from working files.
         """
-        self.git("stash", "save", "-u" if include_untracked else None, description)
+        self.git("stash", "save", "-k", "-u" if include_untracked else None, description)
 
     def drop_stash(self, id):
         """
