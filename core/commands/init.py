@@ -105,7 +105,12 @@ class GsClone(WindowCommand, GitCommand):
         open_folders = self.window.folders()
         project = self.project_name_from_url(self.git_url)
         if open_folders:
-            return "{}/{}".format(open_folders[0], project)
+            if not os.path.exists(os.path.join(open_folders[0], ".git")):
+                return "{}/{}".format(open_folders[0], project)
+            else:
+                folder = os.path.realpath(os.path.join(open_folders[0], ".."))
+                return "{}/{}".format(folder, project)
+
         else:
             file_path = self.window.active_view().file_name()
             if file_path:
