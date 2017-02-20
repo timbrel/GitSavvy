@@ -125,7 +125,15 @@ class GsClone(WindowCommand, GitCommand):
         sublime.status_message("Start cloning {}".format(self.git_url))
         self.git("clone", self.git_url, self.suggested_git_root)
         sublime.status_message("Cloned repo successfully.")
+        self.open_folder()
         util.view.refresh_gitsavvy(self.window.active_view())
+
+    def open_folder(self):
+        # taken from
+        # https://github.com/rosshemsley/iOpener/blob/a35117a201290b63b53ba6372dbf8bbfc68f28b9/i_opener.py#L203-L205
+        sublime.run_command("new_window")
+        project_data = dict(folders=[dict(follow_symlinks=True, path=self.suggested_git_root)])
+        sublime.active_window().set_project_data(project_data)
 
 
 class GsSetupUserCommand(WindowCommand, GitCommand):
