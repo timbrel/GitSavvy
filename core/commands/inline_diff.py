@@ -225,8 +225,12 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         as a string.
         """
         file_path = os.path.join(self.repo_path, file_path)
-        with open(file_path, "rt", encoding="utf-8") as f:
-            return f.read()
+        try:
+            with open(file_path, "rt", encoding="utf-8") as f:
+                return f.read()
+        except UnicodeDecodeError as unicode_err:
+            with open(file_path, "rt", encoding="latin-1") as f:
+                return f.read()
 
     def get_object_from_string(self, string):
         """
