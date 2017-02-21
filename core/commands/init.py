@@ -89,21 +89,28 @@ class GsClone(WindowCommand, GitCommand):
     at that location.  If that directory cannot be determined, use the open file's
     directory.  If there is no open file, prompt the user for the directory to use.
 
-    If the selected directory has previosly been initialized with Git, prompt the user
+    If the selected directory has previously been initialized with Git, prompt the user
     to confirm a re-initialize before proceeding.
     """
 
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         self.window.show_input_panel(GIT_URL, '', self.on_enter_url, None, None)
+
+    def on_enter_url(self, url):
+        self.git_url = url
+        self.suggested_git_root = self.find_suggested_git_root()
+        self.window.show_input_panel(REPO_PATH_PROMPT, self.suggested_git_root, self.on_enter_directory, None, None)
 
     def find_suggested_git_root(self):
         open_folders = self.window.folders()
         project = self.project_name_from_url(self.git_url)
         if open_folders:
-            return "{}/{}".format(open_folders[0], project)
+            if not os.path.exists(os.path.join(open_folders[0], ".git")):
+                return "{}/{}".format(open_folders[0], project)
+            else:
+                folder = os.path.realpath(os.path.join(open_folders[0], ".."))
+                return "{}/{}".format(folder, project)
+
         else:
             file_path = self.window.active_view().file_name()
             if file_path:
@@ -111,23 +118,27 @@ class GsClone(WindowCommand, GitCommand):
             else:
                 return ""
 
-    def on_enter_url(self, url):
-        self.git_url = url
-        self.suggested_git_root = self.find_suggested_git_root()
-        self.window.show_input_panel(REPO_PATH_PROMPT, self.suggested_git_root, self.on_enter_directory, None, None)
-
     def on_enter_directory(self, path):
         self.suggested_git_root = path
         if self.suggested_git_root and os.path.exists(os.path.join(self.suggested_git_root, ".git")):
             sublime.ok_cancel_dialog(RECLONE_CANT_BE_DONE)
             return
 
-        self.do_clone()
+        sublime.set_timeout_async(self.do_clone, 0)
 
     def do_clone(self):
+        sublime.status_message("Start cloning {}".format(self.git_url))
         self.git("clone", self.git_url, self.suggested_git_root)
         sublime.status_message("Cloned repo successfully.")
+        self.open_folder()
         util.view.refresh_gitsavvy(self.window.active_view())
+
+    def open_folder(self):
+        # taken from
+        # https://github.com/rosshemsley/iOpener/blob/a35117a201290b63b53ba6372dbf8bbfc68f28b9/i_opener.py#L203-L205
+        sublime.run_command("new_window")
+        project_data = dict(folders=[dict(follow_symlinks=True, path=self.suggested_git_root)])
+        sublime.active_window().set_project_data(project_data)
 
 
 class GsSetupUserCommand(WindowCommand, GitCommand):
