@@ -1,0 +1,29 @@
+I want to give a big thank-you to Pavel, Randy, and Simon for all of their work on GitSavvy.  I've been busy on other projects, and they've been managing PRs and moving things forward significantly.
+
+Here are the changes since 2.13.0:
+
+  New feature:
+   - `git: show current file at commit`
+   - Proper `git: clone` support.
+
+  Enhancement:
+   - Improved keyboard navigation in dashboards.
+   - Improved git-log functionality.
+   - Enable preservation of merges while rebasing.
+   - New shortcuts in the Bransh dashboard.
+   - Add pagination to various palette commands.
+   - Better status information when rebasing.
+   - Include merge hash in changelog generation.
+   - `git: push` asynchronously.
+   - Status updates when pulling/pushing.
+
+  Bug fixes:
+   - Sidebar refresh tweaks.
+
+And several small tweaks, bug fixes, and internal refactors!
+
+  Contributors:
+   - Simon
+   - Petr Marek
+   - Randy Lai
+   - Pavel Savchenko
