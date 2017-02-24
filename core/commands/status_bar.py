@@ -1,3 +1,4 @@
+import time
 import sublime
 from sublime_plugin import TextCommand, EventListener
 
@@ -19,6 +20,10 @@ class GsStatusBarEventListener(EventListener):
         view.run_command("gs_update_status_bar")
 
 
+last_execution = 0
+update_status_bar_soon = False
+
+
 class GsUpdateStatusBarCommand(TextCommand, GitCommand):
 
     """
@@ -26,8 +31,25 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        global last_execution, update_status_bar_soon
         if sublime.load_settings("GitSavvy.sublime-settings").get("git_status_in_status_bar"):
-            sublime.set_timeout_async(self.run_async, 0)
+
+            millisec = int(round(time.time() * 100))
+            # If we updated to less then 100 ms we don't need to update now but
+            # should update in 100 ms in case of current file change.
+            #
+            # So if this get called 4 timer with 20 ms in between each call
+            # it will only update twice. Once at time 0 and one at time 100
+            # even if it got called at 0, 20, 40, 60 and 80.
+
+            if millisec - 100 > last_execution:
+                sublime.set_timeout_async(self.run_async, 0)
+            else:
+                if not update_status_bar_soon:
+                    update_status_bar_soon = True
+                    sublime.set_timeout_async(self.run_async, 100)
+
+            last_execution = int(round(time.time() * 100))
 
     def run_async(self):
         # Short-circuit update attempts for files not part of Git repo.
@@ -37,3 +59,6 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
 
         short_status = self.get_branch_status_short()
         self.view.set_status("gitsavvy-repo-status", short_status)
+
+        global update_status_bar_soon
+        update_status_bar_soon = False
