@@ -37,3 +37,29 @@ Keep in mind that any other changes that have been staged will also be included 
 ## `git: quick stage current file and fixup`
 
 Similar to `git: fixup from stage`. This command also stages the current file before fixing up the commit.
+
+# Signing your commits with GPG
+
+You can automatically sign your commits depending on your configuration.
+
+## Add GPG key to GitHub and git
+
+GitHub has instructions on [how to add your GPG key to GitHub](https://help.github.com/articles/adding-a-new-gpg-key-to-your-github-account/) and [configure git to use your key](https://help.github.com/articles/telling-git-about-your-gpg-key/).
+
+## Sign your commits automatically
+
+If you always want to sign your commits you can configure git globally or in your project:
+
+`git config (--global) commit.gpgsign true`
+
+Now when you commit with GitSavvy, your commit will be automatically signed due to the git configuration.
+
+## Unlock your GPG key
+
+Next you want to tell git to ask for your passphrase through the gui. You can do this by setting the `askpass` variable:
+
+`git config (--global) core.askpass git-gui--askpass`
+
+I added my GPG to my keychain so it is unlocked when I log in as a user.
+
+When you commit with GitSavvy it will attempt to sign your commit. If your key hasn't been unlocked yet with your passphrase you should now have a gui asking for it.
