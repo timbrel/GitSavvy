@@ -151,7 +151,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         else:
             indexed_object = self.get_indexed_file_object(file_path)
             indexed_object_contents = self.get_object_contents(indexed_object)
-            working_tree_file_contents = self.get_file_contents(file_path)
+            working_tree_file_contents = self.get_file_contents_binary(file_path)
             working_tree_file_object = self.get_object_from_string(working_tree_file_contents)
 
             # Display the changes introduced between index and working dir.
@@ -219,18 +219,25 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         """
         return self.git("show", "--no-color", object_hash)
 
+    def get_file_contents_binary(self, file_path):
+        """
+        Given an absolute file path, return the binary contents of that file
+        as a string.
+        """
+        file_path = os.path.join(self.repo_path, file_path)
+        with open(file_path, "rb") as f:
+            return f.read()
+
     def get_file_contents(self, file_path):
         """
         Given an absolute file path, return the text contents of that file
         as a string.
         """
-        file_path = os.path.join(self.repo_path, file_path)
+        binary = self.get_file_contents_binary(file_path)
         try:
-            with open(file_path, "rt", encoding="utf-8") as f:
-                return f.read()
+            return binary.decode('utf-8')
         except UnicodeDecodeError as unicode_err:
-            with open(file_path, "rt", encoding="latin-1") as f:
-                return f.read()
+            return binary.decode('latin-1')
 
     def get_object_from_string(self, string):
         """
@@ -238,7 +245,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         stored in the current repo, and return an object-hash that can be
         used to diff against.
         """
-        stdout = self.git("hash-object", "-w", "--stdin", stdin=string)
+        stdout = self.git("hash-object", "-w", "--stdin", stdin=string, encode=False)
         return stdout.split("\n")[0]
 
     def get_inline_diff_contents(self, original_contents, diff):
