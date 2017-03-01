@@ -226,7 +226,10 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         """
         file_path = os.path.join(self.repo_path, file_path)
         with open(file_path, "rb") as f:
-            return f.read()
+            binary = f.read()
+            binary = binary.replace(b"\r\n", b"\n")
+            binary = binary.replace(b"\r", b"")
+            return binary
 
     def get_file_contents(self, file_path):
         """
