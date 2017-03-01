@@ -11,10 +11,16 @@ Adding new commands is as simple as creating/modifying `User.sublime-commands` f
 Your custom command may be further customized by setting the following arguments:
 
 * `output_to_panel` - send the command output to a panel when complete
+* `output_to_buffer` - send the command output to a new buffer when complete
+* `syntax` - If the output is printed to a buffer you can select syntax
+      on example:
+      "syntax": "Packages/GitSavvy/syntax/show_commit.sublime-syntax",
+      Other syntaxes comming with GitSavvy can be found in (syntax)[https://github.com/divmain/GitSavvy/tree/master/syntax]
+
 * `args`            - arguments to pass to the `git` command
 
       GitSavvy also supports some basic interpolation when specifying your `args`. If one of these strings is provided as an element of your `args` array, the appropriate string will be substituted. The following strings are currently supported:
-      
+
        - `{FILE_PATH}` - the path to the currently opened file.
        - `{REPO_PATH}` - the path to the currently opened file's repo path.
        - `{PROMPT_ARG}` - prompt use to a custom argument
@@ -26,7 +32,7 @@ Your custom command may be further customized by setting the following arguments
 * `custom_environ`   - Can be used to set custom environment variables for this custom command, see example below
 
       **:boom: Warning**
-  
+
       Take *extra* care when enabling `run_in_thread`; while it can be useful for long running `git` commands, if handled incorrectly, running such a background thread can have undesirable effects.
 
 

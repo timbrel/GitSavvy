@@ -47,9 +47,11 @@ class GsCustomCommand(WindowCommand, GitCommand):
 
     def run_async(self,
                   output_to_panel=False,
+                  output_to_buffer=False,
                   args=None,
                   start_msg="Starting custom command...",
                   complete_msg="Completed custom command.",
+                  syntax=None,
                   run_in_thread=False,
                   custom_argument=None,
                   custom_environ=None):
@@ -73,4 +75,11 @@ class GsCustomCommand(WindowCommand, GitCommand):
 
         if output_to_panel:
             util.log.panel(stdout.replace("\r", "\n"))
+        if output_to_buffer:
+            view = self.window.new_file()
+            view.set_scratch(True)
+            view.run_command("gs_replace_view_text", {"text": stdout.replace("\r", "\n"), "nuke_cursors": True})
+            if syntax:
+                view.set_syntax_file(syntax)
+
         util.view.refresh_gitsavvy(self.window.active_view())
