@@ -54,3 +54,8 @@ If you're interested in tackling a bug, please say so and I can assign it to you
 # Documentation
 
 If you make changes, please remember to update the user documentation to reflect the new behavior.
+
+
+## Package Testing
+
+Check the implementation details of the [tests](docs/testing.md).
