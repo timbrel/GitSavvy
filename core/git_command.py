@@ -71,6 +71,7 @@ class GitCommand(StatusMixin,
             throw_on_stderr=True,
             decode=True,
             encode=True,
+            stdin_encoding="UTF-8",
             custom_environ=None):
         """
         Run the git command specified in `*args` and return the output
@@ -125,7 +126,7 @@ class GitCommand(StatusMixin,
                                  cwd=working_dir or self.repo_path,
                                  env=environ,
                                  startupinfo=startupinfo)
-            stdout, stderr = p.communicate((stdin.encode(encoding="UTF-8") if encode else stdin) if stdin else None)
+            stdout, stderr = p.communicate((stdin.encode(encoding=stdin_encoding) if encode else stdin) if stdin else None)
             if decode:
                 stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
 

@@ -67,6 +67,18 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
 
             inline_diff_views[view_key] = diff_view
 
+        file_binary = util.file.get_file_contents_binary(self.repo_path, self.file_path)
+        try:
+            file_binary.decode()
+        except UnicodeDecodeError as unicode_err:
+            try:
+                file_binary.decode("latin-1")
+                diff_view.settings().set("git_savvy.inline_diff.encoding", "latin-1")
+            except UnicodeDecodeError as unicode_err:
+                savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+                fallback_encoding = savvy_settings.get("fallback_encoding")
+                diff_view.settings().set("git_savvy.inline_diff.encoding", fallback_encoding)
+
         self.window.focus_view(diff_view)
 
         diff_view.run_command("gs_inline_diff_refresh")
@@ -151,7 +163,8 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         else:
             indexed_object = self.get_indexed_file_object(file_path)
             indexed_object_contents = self.get_object_contents(indexed_object)
-            working_tree_file_contents = self.get_file_contents_binary(file_path)
+
+            working_tree_file_contents = util.file.get_file_contents_binary(self.repo_path, file_path)
             working_tree_file_object = self.get_object_from_string(working_tree_file_contents)
 
             # Display the changes introduced between index and working dir.
@@ -218,29 +231,6 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         display the contents of that object.
         """
         return self.git("show", "--no-color", object_hash)
-
-    def get_file_contents_binary(self, file_path):
-        """
-        Given an absolute file path, return the binary contents of that file
-        as a string.
-        """
-        file_path = os.path.join(self.repo_path, file_path)
-        with open(file_path, "rb") as f:
-            binary = f.read()
-            binary = binary.replace(b"\r\n", b"\n")
-            binary = binary.replace(b"\r", b"")
-            return binary
-
-    def get_file_contents(self, file_path):
-        """
-        Given an absolute file path, return the text contents of that file
-        as a string.
-        """
-        binary = self.get_file_contents_binary(file_path)
-        try:
-            return binary.decode('utf-8')
-        except UnicodeDecodeError as unicode_err:
-            return binary.decode('latin-1')
 
     def get_object_from_string(self, string):
         """
@@ -456,18 +446,19 @@ class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
             ignore_ws,
             "-"
         ]
+        encoding = self.view.settings().get('git_savvy.inline_diff.encoding', 'UTF-8')
 
-        self.git(*args, stdin=full_diff)
-        self.save_to_history(args, full_diff)
+        self.git(*args, stdin=full_diff, stdin_encoding=encoding)
+        self.save_to_history(args, full_diff, encoding)
         self.view.run_command("gs_inline_diff_refresh")
 
-    def save_to_history(self, args, full_diff):
+    def save_to_history(self, args, full_diff, encoding):
         """
         After successful `git apply`, save the apply-data into history
         attached to the view, for later Undo.
         """
         history = self.view.settings().get("git_savvy.inline_diff.history") or []
-        history.append((args, full_diff))
+        history.append((args, full_diff, encoding))
         self.view.settings().set("git_savvy.inline_diff.history", history)
 
 
@@ -742,11 +733,11 @@ class GsInlineDiffUndo(TextCommand, GitCommand):
         if not history:
             return
 
-        last_args, last_stdin = history.pop()
+        last_args, last_stdin, encoding = history.pop()
         # Toggle the `--reverse` flag.
         last_args[2] = "--reverse" if not last_args[2] else None
 
-        self.git(*last_args, stdin=last_stdin)
+        self.git(*last_args, stdin=last_stdin, stdin_encoding=encoding)
         self.view.settings().set("git_savvy.inline_diff.history", history)
 
         self.view.run_command("gs_inline_diff_refresh")

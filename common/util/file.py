@@ -1,6 +1,7 @@
 import sublime
 import threading
 import yaml
+import os
 
 
 if 'syntax_file_map' not in globals():
@@ -44,3 +45,28 @@ def get_syntax_for_file(filename):
 def get_file_extension(filename):
     period_delimited_segments = filename.split(".")
     return "" if len(period_delimited_segments) < 2 else period_delimited_segments[-1]
+
+
+def get_file_contents_binary(repo_path, file_path):
+    """
+    Given an absolute file path, return the binary contents of that file
+    as a string.
+    """
+    file_path = os.path.join(repo_path, file_path)
+    with open(file_path, "rb") as f:
+        binary = f.read()
+        binary = binary.replace(b"\r\n", b"\n")
+        binary = binary.replace(b"\r", b"")
+        return binary
+
+
+def get_file_contents(repo_path, file_path):
+    """
+    Given an absolute file path, return the text contents of that file
+    as a string.
+    """
+    binary = get_file_contents_binary(repo_path, file_path)
+    try:
+        return binary.decode('utf-8')
+    except UnicodeDecodeError as unicode_err:
+        return binary.decode('latin-1')
