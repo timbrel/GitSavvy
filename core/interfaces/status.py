@@ -70,8 +70,8 @@ class StatusInterface(ui.Interface, GitCommand):
       [m] amend previous commit             [t][s] show stash
       [p] push current branch               [t][c] create stash
                                             [t][u] create stash including untracked files
-      [i] ignore file                       [t][d] discard stash
-      [I] ignore pattern
+      [i] ignore file                       [t][g] create stash of staged changes only
+      [I] ignore pattern                    [t][d] discard stash
 
       ###########
       ## OTHER ##
@@ -704,6 +704,38 @@ class GsStatusCreateStashWithUntrackedCommand(TextCommand, GitCommand):
     def on_done(self, description):
         self.create_stash(description, include_untracked=True)
         util.view.refresh_gitsavvy(self.view)
+
+
+class GsStatusCreateStashOfIndexedCommand(TextCommand, GitCommand):
+
+    """
+    Create a new stash from the user's staged changes.
+    """
+
+    def run(self, edit):
+        self.view.window().show_input_panel("Description:", "", self.on_done, None, None)
+
+    def on_done(self, description):
+        # Create a temporary stash of everything, including staged files.
+        self.git("stash", "--keep-index")
+        # Stash only the indexed files, since they're the only thing left in the working directory.
+        self.create_stash(description)
+        # Clean out the working directory.
+        self.git("reset", "--hard")
+        try:
+            # Pop the original stash, taking us back to the original working state.
+            self.apply_stash(1)
+            # Get the diff from the originally staged files, and remove them from the working dir.
+            stash_text = self.git("stash", "show", "--no-color", "-p")
+            self.git("apply", "-R", stdin=stash_text)
+            # Delete the temporary stash.
+            self.drop_stash(1)
+            # Remove all changes from the staging area.
+            self.git("reset")
+        except Exception as e:
+            # Restore the original working state.
+            self.pop_stash(1)
+            raise e
 
 
 class GsStatusDiscardStashCommand(TextCommand, GitCommand):
