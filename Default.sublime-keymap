@@ -324,6 +324,14 @@
         ]
     },
     {
+        "keys": ["t", "g"],
+        "command": "gs_status_create_stash_of_indexed",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["t", "d"],
         "command": "gs_status_discard_stash",
         "context": [
