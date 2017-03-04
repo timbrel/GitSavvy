@@ -9,10 +9,38 @@ from functools import partial
 
 import sublime
 
-from ..common import interwebs
+from ..common import interwebs, util
 from ..core.exceptions import FailedGithubRequest
 
 GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo", "token"))
+
+
+def remote_to_url(remote):
+    """
+    Parse out a Github HTTP URL from a remote URI:
+
+    r1 = remote_to_url("git://github.com/divmain/GitSavvy.git")
+    assert r1 == "https://github.com/divmain/GitSavvy.git"
+
+    r2 = remote_to_url("git@github.com:divmain/GitSavvy.git")
+    assert r2 == "https://github.com/divmain/GitSavvy.git"
+
+    r3 = remote_to_url("https://github.com/divmain/GitSavvy.git")
+    assert r3 == "https://github.com/divmain/GitSavvy.git"
+    """
+
+    if remote.endswith(".git"):
+        remote = remote[:-4]
+
+    if remote.startswith("git@"):
+        return remote.replace(":", "/").replace("git@", "https://")
+    elif remote.startswith("git://"):
+        return remote.replace("git://", "https://")
+    elif remote.startswith("http"):
+        return remote
+    else:
+        util.log_error('Cannot parse remote "%s" to url' % remote)
+        return None
 
 
 def parse_remote(remote):
@@ -21,19 +49,14 @@ def parse_remote(remote):
     an object with original url, FQDN, owner, repo, and the token to use for
     this particular FQDN (if available).
     """
-    if remote.endswith(".git"):
-        remote = remote[:-4]
-
-    if remote.startswith("git@"):
-        url = remote.replace(":", "/").replace("git@", "http://")
-    elif remote.startswith("http"):
-        url = remote
-    else:
+    url = remote_to_url(remote)
+    if not url:
         return None
 
     match = re.match(r"https?://([a-zA-Z-\.0-9]+)/([a-zA-Z-\._0-9]+)/([a-zA-Z-\._0-9]+)/?", url)
 
     if not match:
+        util.log_error('Invalid github url: %s' % url)
         return None
 
     fqdn, owner, repo = match.groups()
