@@ -1,6 +1,8 @@
 
 # added by GitSavvy
 __pycache__/
+*.pyc
+.cache
 
 # added by GitSavvy
 /GitSavvy.sublime-workspace
