@@ -635,6 +635,11 @@ class GsStatusPopStashCommand(TextCommand, GitCommand):
             sublime.status_message("You can only pop one stash at a time.")
             return
 
+        if len(ids) == 0:
+            # happens if command get called when none of the cursors
+            # is pointed on one stash
+            return
+
         self.pop_stash(ids[0])
         util.view.refresh_gitsavvy(self.view)
 
@@ -756,6 +761,11 @@ class GsStatusDiscardStashCommand(TextCommand, GitCommand):
 
         if len(ids) > 1:
             sublime.status_message("You can only drop one stash at a time.")
+            return
+
+        if len(ids) == 0:
+            # happens if command get called when none of the cursors
+            # is pointed on one stash
             return
 
         self.drop_stash(ids[0])
