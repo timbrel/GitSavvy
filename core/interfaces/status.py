@@ -768,7 +768,11 @@ class GsStatusDiscardStashCommand(TextCommand, GitCommand):
             # is pointed on one stash
             return
 
-        self.drop_stash(ids[0])
+        @util.actions.destructive(description="discard a stash")
+        def do_drop_stash(id):
+            self.drop_stash(id)
+
+        do_drop_stash(ids[0])
         util.view.refresh_gitsavvy(self.view)
 
 
