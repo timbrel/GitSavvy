@@ -295,7 +295,6 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-savvy.status meta.git-savvy.status.stashes meta.git-savvy.status.saved_stash", "match_all": true }
         ]
     },
     {
@@ -304,7 +303,6 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-savvy.status meta.git-savvy.status.stashes meta.git-savvy.status.saved_stash", "match_all": true }
         ]
     },
     {
@@ -337,7 +335,6 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-savvy.status meta.git-savvy.status.stashes meta.git-savvy.status.saved_stash", "match_all": true }
         ]
     },
     {
@@ -346,7 +343,6 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-savvy.status meta.git-savvy.status.stashes meta.git-savvy.status.saved_stash", "match_all": true }
         ]
     },
 
