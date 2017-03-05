@@ -33,8 +33,7 @@ class BranchesMixin():
         if not line:
             return None
 
-        pattern = r"(\* )?(remotes/)?([a-zA-Z0-9\-\_\/\.\-]+(?<!\.lock)(?<!\/)(?<!\.)) +([0-9a-f]{40}) (\[([a-zA-Z0-9\-\_\/\.]+)(: ([^\]]+))?\] )?(.*)"
-        r"((: ))?"
+        pattern = r"(\* )?(remotes/)?([a-zA-Z0-9\-\_\/\.\-\u263a-\U0001f645]+(?<!\.lock)(?<!\/)(?<!\.)) +([0-9a-f]{40}) (\[([a-zA-Z0-9\-\_\/\.]+)(: ([^\]]+))?\] )?(.*)"
 
         match = re.match(pattern, line)
         if not match:
