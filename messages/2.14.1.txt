@@ -1,0 +1,24 @@
+Changes since 2.14.0:
+
+  Add:
+   - Frequency limit on update status bar
+   - Docs for `Signing your commits with GPG`
+   - Support emoji in branch name
+   - Allow user to stash only changes that have been staged.
+
+  Enhancement:
+   - Add setting to custom command to open in new buffer
+   - Add setting to custom command to open with specific syntax
+
+  Fix:
+   - Encoding problems in inline diff
+   - Clone doesn't need to be executed from a git repo
+   - Trigger stash command outside of stash section
+   - Dropping a stash is destructive, and will prompt before executed
+   - support parsing "git://" remote URI to Github URL
+
+  Contributors:
+   - Simon
+   - Randy Lai
+   - Dale Bustad
+   - Pavel Savchenko
