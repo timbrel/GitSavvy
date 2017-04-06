@@ -67,7 +67,7 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
 
             inline_diff_views[view_key] = diff_view
 
-        file_binary = util.file.get_file_contents_binary(self.repo_path, self.file_path)
+        file_binary = util.file.get_file_contents_binary(settings["git_savvy.repo_path"], settings["git_savvy.file_path"])
         try:
             file_binary.decode()
         except UnicodeDecodeError as unicode_err:
