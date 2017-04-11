@@ -22,7 +22,9 @@ class BranchesMixin():
         """
         Return a list of all local and remote branches.
         """
-        stdout = self.git("branch", "-a", "-vv", "--no-abbrev", "--no-color")
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        sort_by_recent = savvy_settings.get("sort_by_recent_in_branch_dashboard")
+        stdout = self.git("branch", "-a", "-vv", "--no-abbrev", "--no-color", "--sort=-committerdate" if sort_by_recent else None)
         return (branch
                 for branch in (self._parse_branch_line(self, line) for line in stdout.split("\n"))
                 if branch)
