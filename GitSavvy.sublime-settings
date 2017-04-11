@@ -134,6 +134,14 @@
         //   to use columns globally, --no-columns should be added here.
         // "branch": ["--no-columns"]
     },
+        
+    /*
+    Prints branches sorted by recent commit (works with git 2.7.0+)
+    https://www.kernel.org/pub/software/scm/git/docs/git-branch.html
+    Change this to `true` to sort branches by recent.
+    Change this to `false` to sort branches by alphanumeric.
+     */
+    "sort_by_recent_in_branch_dashboard": false,
 
     /*
         Set this to `true` to display remotes in the branch dashboard by default.
