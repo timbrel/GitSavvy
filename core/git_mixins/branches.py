@@ -18,7 +18,7 @@ Branch = namedtuple("Branch", (
 
 class BranchesMixin():
 
-    def get_branches(self, sort_by_recent=None):
+    def get_branches(self, sort_by_recent=False):
         """
         Return a list of all local and remote branches.
         """
