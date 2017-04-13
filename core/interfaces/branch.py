@@ -79,7 +79,10 @@ class BranchInterface(ui.Interface, GitCommand):
         return "BRANCHES: {}".format(os.path.basename(self.repo_path))
 
     def pre_render(self):
-        self._branches = tuple(self.get_branches())
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        sort_by_recent = savvy_settings.get("sort_by_recent_in_branch_dashboard")
+        self._branches = tuple(self.get_branches(sort_by_recent))
+
 
     def on_new_dashboard(self):
         self.view.run_command("gs_branches_navigate_branch")
