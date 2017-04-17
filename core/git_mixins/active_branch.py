@@ -15,7 +15,7 @@ class ActiveBranchMixin():
         except StopIteration:
             return None
 
-    def _get_branch_status_components(self):
+    def _get_branch_status_components(self, skip_adding_to_log=False):
         """
         Return a tuple of:
 
@@ -28,7 +28,7 @@ class ActiveBranchMixin():
           6) # commits behind of remote
           7) boolean indicating whether the remote branch is gone
         """
-        stdout = self.git("status", "-b", "--porcelain").strip()
+        stdout = self.git("status", "-b", "--porcelain", skip_adding_to_log=skip_adding_to_log).strip()
 
         first_line, *addl_lines = stdout.split("\n", 2)
         # Any additional lines will mean files have changed or are untracked.
@@ -94,13 +94,13 @@ class ActiveBranchMixin():
             return delim.join((status, secondary)) if secondary else status
         return status, secondary
 
-    def get_branch_status_short(self):
+    def get_branch_status_short(self, skip_adding_to_log=False):
 
         if self.in_rebase():
             return "(no branch, rebasing {})".format(self.rebase_branch_name())
 
         detached, initial, branch, remote, clean, ahead, behind, gone = \
-            self._get_branch_status_components()
+            self._get_branch_status_components(skip_adding_to_log=skip_adding_to_log)
 
         dirty = "" if clean else "*"
 

@@ -57,7 +57,7 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
             self.view.erase_status("gitsavvy-repo-status")
             return
 
-        short_status = self.get_branch_status_short()
+        short_status = self.get_branch_status_short(skip_adding_to_log=True)
         self.view.set_status("gitsavvy-repo-status", short_status)
 
         global update_status_bar_soon
