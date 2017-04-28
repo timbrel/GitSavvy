@@ -8,7 +8,7 @@ import os
 from xml.etree import ElementTree
 
 import sublime
-
+from . import util
 
 STYLES_HEADER = """
 <?xml version="1.0" encoding="UTF-8"?>
@@ -70,16 +70,9 @@ class ThemeGenerator():
 
         full_path = os.path.join(sublime.packages_path(), path_in_packages)
 
-        try:
-            with open(full_path, "wb") as out_f:
-                out_f.write(STYLES_HEADER.encode("utf-8"))
-                out_f.write(ElementTree.tostring(self.plist, encoding="utf-8"))
-        except PermissionError as e:
-            sublime.ok_cancel_dialog("GitSavvy could not write file to path: \n{}".format(e))
-            raise e
-        except OSError as e:
-            sublime.ok_cancel_dialog("GitSavvy encountered a disk error: \n{}".format(e))
-            raise e
+        with util.file.safe_open(full_path, "wb") as out_f:
+            out_f.write(STYLES_HEADER.encode("utf-8"))
+            out_f.write(ElementTree.tostring(self.plist, encoding="utf-8"))
 
         return path_in_packages
 

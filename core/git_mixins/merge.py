@@ -48,11 +48,11 @@ class MergeMixin():
         merge_cmd_args = shlex.split(merge_cmd)
 
         try:
-            with open(base_path, "wb") as base:
+            with util.file.safe_open(base_path, "wb") as base:
                 base.write(base_content)
-            with open(ours_path, "wb") as ours:
+            with util.file.safe_open(ours_path, "wb") as ours:
                 ours.write(ours_content)
-            with open(theirs_path, "wb") as theirs:
+            with util.file.safe_open(theirs_path, "wb") as theirs:
                 theirs.write(theirs_content)
             copyfile(merge_path, backup_path)
 

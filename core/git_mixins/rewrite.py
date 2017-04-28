@@ -2,6 +2,7 @@ import os
 import shutil
 from types import SimpleNamespace
 from ..exceptions import GitSavvyError
+from ...common import util
 
 
 class RewriteTemplate(SimpleNamespace):
@@ -208,7 +209,7 @@ class RewriteMixin():
 
     def rebase_orig_head(self):
         path = os.path.join(self._rebase_dir, "orig-head")
-        with open(path, "r") as f:
+        with util.file.safe_open(path, "r") as f:
             return f.read().strip()
 
     def rebase_conflict_at(self):
@@ -216,17 +217,17 @@ class RewriteMixin():
             path = os.path.join(self._rebase_merge_dir, "current-commit")
         else:
             path = os.path.join(self._rebase_apply_dir, "original-commit")
-        with open(path, "r") as f:
+        with util.file.safe_open(path, "r") as f:
             return f.read().strip()
 
     def rebase_branch_name(self):
         path = os.path.join(self._rebase_dir, "head-name")
-        with open(path, "r") as f:
+        with util.file.safe_open(path, "r") as f:
             return f.read().strip().replace("refs/heads/", "")
 
     def rebase_onto_commit(self):
         path = os.path.join(self._rebase_dir, "onto")
-        with open(path, "r") as f:
+        with util.file.safe_open(path, "r") as f:
             return f.read().strip()
 
     def rebase_rewritten(self):
@@ -234,7 +235,7 @@ class RewriteMixin():
             path = os.path.join(self._rebase_merge_dir, "rewritten")
             entries = []
             for sha in os.listdir(path):
-                with open(os.path.join(path, sha), "r") as f:
+                with util.file.safe_open(os.path.join(path, sha), "r") as f:
                     newsha = f.read().strip()
                     if newsha:
                         entries.append([sha, newsha])
@@ -242,7 +243,7 @@ class RewriteMixin():
         elif self.in_rebase_apply():
             path = os.path.join(self._rebase_apply_dir, "rewritten")
             try:
-                with open(path, "r") as f:
+                with util.file.safe_open(path, "r") as f:
                     entries = f.read().strip().split("\n")
                     return [entry.split(" ") for entry in entries]
             except FileNotFoundError:
@@ -252,7 +253,7 @@ class RewriteMixin():
             entries = []
             if os.path.exists(path):
                 for sha in os.listdir(path):
-                    with open(os.path.join(path, sha), "r") as f:
+                    with util.file.safe_open(os.path.join(path, sha), "r") as f:
                         newsha = f.read().strip()
                         if newsha:
                             entries.append([sha, newsha])
@@ -264,5 +265,5 @@ class RewriteMixin():
         path = os.path.join(self._rebase_replay_dir, "rewritten")
         if not os.path.exists(path):
             os.makedirs(path)
-        with open(os.path.join(path, old_hash), "w") as f:
+        with util.file.safe_open(os.path.join(path, old_hash), "w") as f:
             f.write(new_hash)
