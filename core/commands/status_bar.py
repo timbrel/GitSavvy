@@ -3,6 +3,7 @@ import sublime
 from sublime_plugin import TextCommand, EventListener
 
 from ..git_command import GitCommand
+from ...common.util import debug
 
 
 class GsStatusBarEventListener(EventListener):
@@ -57,7 +58,8 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
             self.view.erase_status("gitsavvy-repo-status")
             return
 
-        short_status = self.get_branch_status_short(skip_adding_to_log=True)
+        with disable_logging():
+            short_status = self.get_branch_status_short()
         self.view.set_status("gitsavvy-repo-status", short_status)
 
         global update_status_bar_soon

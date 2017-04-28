@@ -72,8 +72,7 @@ class GitCommand(StatusMixin,
             decode=True,
             encode=True,
             stdin_encoding="UTF-8",
-            custom_environ=None,
-            skip_adding_to_log=False):
+            custom_environ=None):
         """
         Run the git command specified in `*args` and return the output
         of the git command as a string.
@@ -135,16 +134,15 @@ class GitCommand(StatusMixin,
             raise_error(e)
 
         finally:
-            if not skip_adding_to_log:
-                if decode:
-                    util.debug.log_git(args, stdin, stdout, stderr)
-                else:
-                    util.debug.log_git(
-                        args,
-                        stdin,
-                        self.decode_stdout(stdout, savvy_settings),
-                        stderr.decode()
-                    )
+            if decode:
+                util.debug.log_git(args, stdin, stdout, stderr)
+            else:
+                util.debug.log_git(
+                    args,
+                    stdin,
+                    self.decode_stdout(stdout, savvy_settings),
+                    stderr.decode()
+                )
 
         if not p.returncode == 0 and throw_on_stderr:
             raise_error("`{}` failed with following output:\n{}\n{}".format(
