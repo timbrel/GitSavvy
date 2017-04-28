@@ -275,9 +275,15 @@ class GsTagPushCommand(TextCommand, GitCommand):
 
         self.view.window().show_quick_panel(
             self.remotes,
-            self.push_all if push_all else self.push_selected,
+            lambda idx: self.push_async(idx, push_all=push_all),
             flags=sublime.MONOSPACE_FONT
             )
+
+    def push_async(self, remote_idx, push_all=False):
+        if push_all:
+            sublime.set_timeout_async(lambda: self.push_all(remote_idx), 0)
+        else:
+            sublime.set_timeout_async(lambda: self.push_selected(remote_idx), 0)
 
     def push_selected(self, remote_idx):
         # The user pressed `esc` or otherwise cancelled.
