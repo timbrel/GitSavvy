@@ -543,13 +543,13 @@ class GsRebaseSquashCommand(RewriteBase):
 
         # Cannot squash first commit.
         if self.interface.entries[0].short_hash == short_hash:
-            sublime.status_message("Unable to squash first commit.")
+            sublime.message_dialog("Unable to squash first commit.")
             return
 
         squash_idx, squash_entry, _ = self.get_idx_entry_and_prev(short_hash)
 
         if self.commit_is_merge(squash_entry.long_hash):
-            sublime.status_message("Unable to squash a merge.")
+            sublime.message_dialog("Unable to squash a merge.")
             return
 
         self.squash_idx = squash_idx
@@ -568,7 +568,7 @@ class GsRebaseSquashCommand(RewriteBase):
             self.get_idx_entry_and_prev(self.get_short_hash(target_commit))
 
         if self.commit_is_merge(target_entry.long_hash):
-            sublime.status_message("Unable to squash a merge.")
+            sublime.message_dialog("Unable to squash a merge.")
             return
 
         # Generate identical change templates with author/date metadata in tact.
@@ -594,6 +594,10 @@ class GsRebaseSquashCommand(RewriteBase):
 class GsRebaseSquashAllCommand(RewriteBase):
 
     def run_async(self):
+        for entry in self.interface.entries:
+            if self.commit_is_merge(entry.long_hash):
+                sublime.message_dialog("Unable to squash a merge.")
+                return
 
         # Generate identical change templates with author/date metadata
         # in tact.  However, set do_commit to false for all but the last change,
