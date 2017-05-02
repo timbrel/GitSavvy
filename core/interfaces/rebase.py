@@ -176,7 +176,7 @@ class RebaseInterface(ui.Interface, GitCommand):
         try:
             cursor_entry = log[cursor]
         except IndexError:
-            return "Rebase first." if self.is_not_rebased() else "Ready."
+            return "Not rebased." if self.is_not_rebased() else "Ready."
 
         if cursor == log_len - 1:
             return "Successfully {}. Undo available.".format(cursor_entry["description"])
@@ -336,8 +336,7 @@ class RebaseInterface(ui.Interface, GitCommand):
         return self._base_commit
 
     def is_not_rebased(self):
-        return self.git("merge-base", self.base_commit(), "HEAD").strip() != \
-                self.git("rev-parse", self.base_ref()).strip()
+        return self.base_commit() != self.git("rev-parse", self.base_ref()).strip()
 
     def contain_merges(self):
         count = self.git("rev-list", "--count", "{}..HEAD".format(self.base_commit())).strip()
@@ -468,11 +467,10 @@ class RewriteBase(TextCommand, GitCommand):
     def run(self, edit):
         self.interface = ui.get_interface(self.view.id())
 
-        if self.interface.is_not_rebased() or \
-                (not self.interface.preserve_merges() and self.interface.contain_merges()):
+        if not self.interface.preserve_merges() and self.interface.contain_merges():
 
             sublime.message_dialog(
-                "Unable to manipulate commits, rebase first."
+                "Unble to manipulate merge commits unless in preserve merges mode."
             )
             return
 
