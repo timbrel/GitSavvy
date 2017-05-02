@@ -470,7 +470,7 @@ class RewriteBase(TextCommand, GitCommand):
         if not self.interface.preserve_merges() and self.interface.contain_merges():
 
             sublime.message_dialog(
-                "Unble to manipulate merge commits unless in preserve merges mode."
+                "Unable to manipulate merge commits unless in preserve merges mode."
             )
             return
 
@@ -680,7 +680,7 @@ class GsRebaseMoveUpCommand(RewriteBase):
             return
 
         if self.interface.entries[0].short_hash == short_hash:
-            sublime.status_message("Unable to move first commit up.")
+            sublime.message_dialog("Unable to move first commit up.")
             return
 
         move_idx, move_entry, _ = self.get_idx_entry_and_prev(short_hash)
@@ -727,7 +727,7 @@ class GsRebaseMoveDownCommand(RewriteBase):
             return
 
         if self.interface.entries[-1].short_hash == short_hash:
-            sublime.status_message("Unable to move last commit down.")
+            sublime.message_dialog("Unable to move last commit down.")
             return
 
         move_idx, move_entry, _ = self.get_idx_entry_and_prev(short_hash)
