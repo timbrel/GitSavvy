@@ -114,3 +114,6 @@ class HistoryMixin():
     def commit_is_merge(self, commit_hash):
         sha = self.git("rev-list", "--merges", "-1", "{0}~1..{0}".format(commit_hash)).strip()
         return sha is not ""
+
+    def get_short_hash(self, commit_hash):
+        return self.git("rev-parse", "--short", commit_hash).strip()

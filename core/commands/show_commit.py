@@ -23,7 +23,7 @@ class GsShowCommitCommand(WindowCommand, GitCommand):
         view.settings().set("git_savvy.show_commit_view.show_word_diff", False)
         view.settings().set("word_wrap", False)
         view.settings().set("line_numbers", False)
-        view.set_name(SHOW_COMMIT_TITLE.format(commit_hash[:7]))
+        view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash)))
         view.set_scratch(True)
         view.run_command("gs_show_commit_refresh")
         view.run_command("gs_diff_navigate")

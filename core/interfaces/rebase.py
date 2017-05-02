@@ -1,4 +1,5 @@
 import os
+import re
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
@@ -10,6 +11,11 @@ from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin
 from ..exceptions import GitSavvyError
 from ..ui_mixins.quick_panel import show_log_panel
+
+
+COMMIT_NODE_CHAR = "●"
+COMMIT_NODE_CHAR_OPTIONS = "●*"
+COMMIT_LINE = re.compile("\s*[%s]\s*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
 
 
 def filter_quick_panel(fn):
@@ -152,7 +158,7 @@ class RebaseInterface(ui.Interface, GitCommand):
 
     @ui.partial("base_commit")
     def render_base_commit(self):
-        return self.base_commit()[:7]
+        return self.get_short_hash(self.base_commit())
 
     @ui.partial("status")
     def render_status(self):
@@ -231,7 +237,7 @@ class RebaseInterface(ui.Interface, GitCommand):
         for entry in self.entries:
             conflicts = ""
             was_rewritten = entry.long_hash in rewritten
-            new_hash = rewritten[entry.long_hash][:7] if was_rewritten else None
+            new_hash = rewritten[entry.long_hash] if was_rewritten else None
             is_merge = self.commit_is_merge(entry.long_hash)
             if self.in_rebase_merge() and is_merge:
                 is_conflict = conflict_commit in self.commits_of_merge(entry.long_hash)
@@ -264,7 +270,7 @@ class RebaseInterface(ui.Interface, GitCommand):
                 "status": (self.SUCCESS if was_rewritten else
                            self.CONFLICT if is_conflict else
                            self.UNKNOWN),
-                "commit_hash": new_hash if was_rewritten else entry.short_hash,
+                "commit_hash": self.get_short_hash(new_hash) if was_rewritten else entry.short_hash,
                 "commit_summary": ("(was {}) {}".format(entry.short_hash, entry.summary)
                                    if was_rewritten else
                                    entry.summary),
@@ -487,7 +493,9 @@ class RewriteBase(TextCommand, GitCommand):
 
         line = self.view.line(sels[0])
         line_str = self.view.substr(line)
-        return line_str[7:14]
+        m = COMMIT_LINE.match(line_str)
+        if m:
+            return m.group(1)
 
     def get_idx_entry_and_prev(self, short_hash):
         entry_before_selected = None
@@ -558,7 +566,8 @@ class GsRebaseSquashCommand(RewriteBase):
     def do_action(self, target_commit):
 
         squash_idx, squash_entry, _ = self.get_idx_entry_and_prev(self.squash_entry.short_hash)
-        target_idx, target_entry, before_target = self.get_idx_entry_and_prev(target_commit[:7])
+        target_idx, target_entry, before_target = \
+            self.get_idx_entry_and_prev(self.get_short_hash(target_commit))
 
         if self.commit_is_merge(target_entry.long_hash):
             sublime.status_message("Unable to squash a merge.")
@@ -689,7 +698,8 @@ class GsRebaseMoveUpCommand(RewriteBase):
     def do_action(self, target_commit):
 
         move_idx, move_entry, _ = self.get_idx_entry_and_prev(self.move_entry.short_hash)
-        target_idx, target_entry, before_target = self.get_idx_entry_and_prev(target_commit[:7])
+        target_idx, target_entry, before_target = \
+            self.get_idx_entry_and_prev(self.get_short_hash(target_commit))
         idx = move_idx - target_idx
 
         commit_chain = self.perpare_rewrites(self.interface.entries[target_idx:])
@@ -735,7 +745,8 @@ class GsRebaseMoveDownCommand(RewriteBase):
     def do_action(self, target_commit):
 
         move_idx, move_entry, before_move = self.get_idx_entry_and_prev(self.move_entry.short_hash)
-        target_idx, target_entry, _ = self.get_idx_entry_and_prev(target_commit[:7])
+        target_idx, target_entry, _ = \
+            self.get_idx_entry_and_prev(self.get_short_hash(target_commit))
         idx = target_idx - move_idx
 
         commit_chain = self.perpare_rewrites(self.interface.entries[move_idx:])

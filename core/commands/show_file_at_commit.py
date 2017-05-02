@@ -30,7 +30,7 @@ class GsShowFileAtCommitCommand(WindowCommand, GitCommand):
         view.settings().set("git_savvy.file_path", filepath)
         view.settings().set("git_savvy.show_file_at_commit_view.lineno", lineno)
         view.settings().set("git_savvy.repo_path", repo_path)
-        view.set_name(SHOW_COMMIT_TITLE.format(commit_hash[:7], self.get_rel_path(filepath)))
+        view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash), self.get_rel_path(filepath)))
         sublime.set_timeout_async(lambda: self.render_text(view), 0)
 
     def render_text(self, view):

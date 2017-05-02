@@ -109,7 +109,7 @@ class TagsInterface(ui.Interface, GitCommand):
             return NO_LOCAL_TAGS_MESSAGE
 
         return "\n".join(
-            "    {} {}".format(tag.sha[:7], tag.tag)
+            "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
             for tag in self.local_tags
             )
 
@@ -148,7 +148,7 @@ class TagsInterface(ui.Interface, GitCommand):
         if "tags" in remote:
             if remote["tags"]:
                 msg = "\n".join(
-                    "    {} {}".format(tag.sha[:7], tag.tag)
+                    "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
                     for tag in remote["tags"] if tag.tag[-3:] != "^{}"
                     )
             else:
