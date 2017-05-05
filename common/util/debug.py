@@ -3,7 +3,7 @@ import json
 import pprint as _pprint
 
 import sublime
-
+from contextlib import contextmanager
 
 _log = []
 enabled = False
@@ -19,6 +19,16 @@ def start_logging():
 def stop_logging():
     global enabled
     enabled = False
+
+
+@contextmanager
+def disable_logging():
+    global enabled
+    enabled = False
+    try:
+        yield
+    finally:
+        enabled = True
 
 
 def get_log():
