@@ -2,6 +2,7 @@ import sublime
 import threading
 import yaml
 import os
+from contextlib import contextmanager
 
 
 if 'syntax_file_map' not in globals():
@@ -53,7 +54,7 @@ def get_file_contents_binary(repo_path, file_path):
     as a string.
     """
     file_path = os.path.join(repo_path, file_path)
-    with open(file_path, "rb") as f:
+    with safe_open(file_path, "rb") as f:
         binary = f.read()
         binary = binary.replace(b"\r\n", b"\n")
         binary = binary.replace(b"\r", b"")
@@ -70,3 +71,16 @@ def get_file_contents(repo_path, file_path):
         return binary.decode('utf-8')
     except UnicodeDecodeError as unicode_err:
         return binary.decode('latin-1')
+
+
+@contextmanager
+def safe_open(filename, mode, *args, **kwargs):
+    try:
+        with open(filename, mode, *args, **kwargs) as file:
+            yield file
+    except PermissionError as e:
+        sublime.ok_cancel_dialog("GitSavvy could not access file: \n{}".format(e))
+        raise e
+    except OSError as e:
+        sublime.ok_cancel_dialog("GitSavvy encountered an OS error: \n{}".format(e))
+        raise e

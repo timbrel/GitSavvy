@@ -97,7 +97,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
             last_commit_message = self.git("log", "-1", "--pretty=%B").strip()
             initial_text = last_commit_message + help_text
         elif os.path.exists(merge_msg_path):
-            with open(merge_msg_path, "r") as f:
+            with util.file.safe_open(merge_msg_path, "r") as f:
                 initial_text = f.read() + help_text
         else:
             initial_text = help_text
@@ -105,7 +105,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         commit_help_extra_file = savvy_settings.get("commit_help_extra_file") or ".commit_help"
         commit_help_extra_path = os.path.join(self.repo_path, commit_help_extra_file)
         if os.path.exists(commit_help_extra_path):
-            with open(commit_help_extra_path, "r", encoding="utf-8") as f:
+            with util.file.safe_open(commit_help_extra_path, "r", encoding="utf-8") as f:
                 initial_text += f.read()
 
         if savvy_settings.get("show_commit_diff"):

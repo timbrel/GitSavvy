@@ -1,4 +1,5 @@
 import os
+from ...common import util
 
 
 linesep = None
@@ -20,5 +21,5 @@ class IgnoreMixin():
             else:
                 linesep = os.linesep
 
-        with open(os.path.join(self.repo_path, ".gitignore"), "at") as ignore_file:
+        with util.file.safe_open(os.path.join(self.repo_path, ".gitignore"), "at") as ignore_file:
             ignore_file.write(linesep + path_or_pattern + linesep)
