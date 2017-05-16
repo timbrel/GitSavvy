@@ -233,6 +233,8 @@ class RewriteMixin():
     def rebase_rewritten(self):
         if self.in_rebase_merge():
             path = os.path.join(self._rebase_merge_dir, "rewritten")
+            if not os.path.exists(path):
+                return dict()
             entries = []
             for sha in os.listdir(path):
                 with util.file.safe_open(os.path.join(path, sha), "r") as f:
@@ -242,24 +244,22 @@ class RewriteMixin():
             return dict(entries)
         elif self.in_rebase_apply():
             path = os.path.join(self._rebase_apply_dir, "rewritten")
-            try:
-                with util.file.safe_open(path, "r") as f:
-                    entries = f.read().strip().split("\n")
-                    return [entry.split(" ") for entry in entries]
-            except FileNotFoundError:
+            if not os.path.exists(path):
                 return dict()
+            with util.file.safe_open(path, "r") as f:
+                entries = f.read().strip().split("\n")
+                return [entry.split(" ") for entry in entries]
         else:
             path = os.path.join(self._rebase_replay_dir, "rewritten")
-            entries = []
-            if os.path.exists(path):
-                for sha in os.listdir(path):
-                    with util.file.safe_open(os.path.join(path, sha), "r") as f:
-                        newsha = f.read().strip()
-                        if newsha:
-                            entries.append([sha, newsha])
-                return dict(entries)
-            else:
+            if not os.path.exists(path):
                 return dict()
+            entries = []
+            for sha in os.listdir(path):
+                with util.file.safe_open(os.path.join(path, sha), "r") as f:
+                    newsha = f.read().strip()
+                    if newsha:
+                        entries.append([sha, newsha])
+            return dict(entries)
 
     def rewrite_meta_data(self, old_hash, new_hash):
         path = os.path.join(self._rebase_replay_dir, "rewritten")
