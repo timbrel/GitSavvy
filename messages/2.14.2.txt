@@ -1,0 +1,24 @@
+Changes since 2.14.1:
+
+  Fix:
+   - Show open inline diff if it already open form status dashboard
+   - Push tags command is not blocking
+   - added self.get_short_hash to honor core.abbrev settings (#642)
+
+  Other:
+   - Sort branches by recent commited (#632)
+   - Check that file exist before opening (#648)
+
+  Improvement:
+   - Remove some clutter from debug.log (#635)
+   - Warn the user when we have permission error (#636)
+   - it is not necessary to check if HEAD is rebased
+   - use message_dislog for show the messages
+   - do not allow squashing merges
+
+  Contributors:
+   - Simon
+   - Juan Pumarino
+   - Pavel Savchenko
+   - Vlad Tsepelev
+   - Randy Lai
