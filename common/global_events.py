@@ -19,6 +19,7 @@ class GsInterfaceFocusEventListener(EventListener):
 git_view_syntax = {
     'MERGE_MSG': 'Packages/GitSavvy/syntax/make_commit.sublime-syntax',
     'COMMIT_EDITMSG': 'Packages/GitSavvy/syntax/make_commit.sublime-syntax',
+    'PULLREQ_EDITMSG': 'Packages/GitSavvy/syntax/make_commit.sublime-syntax',
     'git-rebase-todo': 'Packages/GitSavvy/syntax/rebase_interactive.sublime-syntax',
 }
 
