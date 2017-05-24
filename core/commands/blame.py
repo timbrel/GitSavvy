@@ -27,10 +27,11 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
     ]
 
     @util.view.single_cursor_coords
-    def run(self, coords, file_path=None, repo_path=None):
+    def run(self, coords, file_path=None, repo_path=None, commit_hash=None):
         self.coords = coords
         self._file_path = file_path or self.file_path
         self.__repo_path = repo_path or self.repo_path
+        self._commit_hash = commit_hash
         super().run()
 
     def update_actions(self):

@@ -152,6 +152,7 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
         super().update_actions()
         if self._file_path:
             self.actions.insert(1, ["show_file_at_commit", "Show file at commit"])
+            self.actions.insert(2, ["blame_file_atcommit", "Blame file at commit"])
 
     def show_commit(self):
         self.window.run_command("gs_show_commit", {"commit_hash": self._commit_hash})
@@ -189,3 +190,8 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
         self.window.run_command(
             "gs_show_file_at_commit",
             {"commit_hash": self._commit_hash, "filepath": self._file_path, "lang": lang})
+
+    def blame_file_atcommit(self):
+        self.window.run_command(
+            "gs_blame",
+            {"commit_hash": self._commit_hash, "file_path": self._file_path})
