@@ -26,7 +26,7 @@ from .git_mixins.history import HistoryMixin
 from .git_mixins.rewrite import RewriteMixin
 from .git_mixins.merge import MergeMixin
 from .exceptions import GitSavvyError
-
+import time
 
 git_path = None
 error_message_displayed = False
@@ -119,6 +119,7 @@ class GitCommand(StatusMixin,
 
             environ = os.environ.copy()
             environ.update(custom_environ or {})
+            start = time.time()
             p = subprocess.Popen(command,
                                  stdin=subprocess.PIPE,
                                  stdout=subprocess.PIPE,
@@ -130,18 +131,21 @@ class GitCommand(StatusMixin,
             if decode:
                 stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
 
+            end = time.time()
+
         except Exception as e:
             raise_error(e)
 
         finally:
             if decode:
-                util.debug.log_git(args, stdin, stdout, stderr)
+                util.debug.log_git(args, stdin, stdout, stderr, end - start)
             else:
                 util.debug.log_git(
                     args,
                     stdin,
                     self.decode_stdout(stdout, savvy_settings),
-                    stderr.decode()
+                    stderr.decode(),
+                    end - start
                 )
 
         if not p.returncode == 0 and throw_on_stderr:
