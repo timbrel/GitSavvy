@@ -63,6 +63,20 @@ class HistoryMixin():
 
         return entries
 
+    def commit_generator(self, limit = 6000):
+        # Generator for show_log_panel
+        skip = 0
+        while True:
+            logs = self.log(branch=self._branch,
+                            file_path=self._file_path,
+                            limit=limit,
+                            skip=skip)
+            if not logs:
+                break
+            for l in logs:
+                yield l
+            skip = skip + limit
+
     def reflog(self, limit=6000, skip=None, all_branches=False):
         log_output = self.git(
             "reflog",
