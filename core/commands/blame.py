@@ -7,13 +7,13 @@ from sublime_plugin import WindowCommand, TextCommand
 
 from ..git_command import GitCommand
 from ...common import util
-from ..ui_mixins.quick_panel import PanelActionMixin
+from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel
 
 
 BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))
 
 NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
-BLAME_TITLE = "BLAME: {}"
+BLAME_TITLE = "BLAME: {}{}"
 
 
 class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
@@ -28,35 +28,58 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
 
     @util.view.single_cursor_coords
     def run(self, coords, file_path=None, repo_path=None):
-        self._coords = coords
-        self.__file_path = file_path or self.file_path
+        self.coords = coords
+        self._file_path = file_path or self.file_path
         self.__repo_path = repo_path or self.repo_path
         super().run()
+
+    def update_actions(self):
+        super().update_actions()
+        if self._commit_hash is None:
+            self.actions.insert(6,
+                ["pick_commit", "Pick a commit"])
 
     def blame(self, ignore_whitespace=True, option=None):
         view = self.window.new_file()
         view.set_syntax_file("Packages/GitSavvy/syntax/blame.sublime-syntax")
         view.settings().set("git_savvy.blame_view", True)
         view.settings().set("git_savvy.repo_path", self.__repo_path)
-        view.settings().set("git_savvy.file_path", self.__file_path)
+        view.settings().set("git_savvy.file_path", self._file_path)
+        view.settings().set("git_savvy.commit_hash", self._commit_hash)
         view.settings().set("word_wrap", False)
         view.settings().set("line_numbers", False)
         view.settings().set('indent_guide_options', [])
-        view.set_name(BLAME_TITLE.format(self.get_rel_path(self.__file_path)))
+        view.set_name(
+            BLAME_TITLE.format(
+                self.get_rel_path(self._file_path),
+                " at {}".format(self._commit_hash) if self._commit_hash else ""
+            )
+        )
         view.set_scratch(True)
         view.run_command("gs_blame_initialize_view", {
-            "coords": self._coords,
+            "coords": self.coords,
             "ignore_whitespace": '-w' if ignore_whitespace else None,
-            "detect_move_or_copy": option
+            "detect_move_or_copy": option,
+            "commit_hash": self._commit_hash
         })
+
+    def pick_commit(self):
+        self._branch = None
+        show_log_panel(self.commit_generator(), self.picked_commit)
+
+    def picked_commit(self, commit_hash):
+        self._commit_hash = commit_hash
+        super().run()
+
 
 
 class GsBlameInitializeViewCommand(TextCommand, GitCommand):
 
-    def run(self, edit, coords=None, ignore_whitespace=None, detect_move_or_copy=None):
+    def run(self, edit, coords=None, ignore_whitespace=None, detect_move_or_copy=None, commit_hash=None):
         content = self.get_content(
             ignore_whitespace=ignore_whitespace,
-            detect_move_or_copy=detect_move_or_copy
+            detect_move_or_copy=detect_move_or_copy,
+            commit_hash=commit_hash
         )
         self.view.sel().clear()
         self.view.set_read_only(False)
@@ -66,9 +89,9 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
         if coords is not None:
             self.scroll_to(coords)
 
-    def get_content(self, ignore_whitespace=None, detect_move_or_copy=None):
+    def get_content(self, ignore_whitespace=None, detect_move_or_copy=None, commit_hash=None):
         blame_porcelain = self.git(
-            "blame", "-p", ignore_whitespace, detect_move_or_copy, self.file_path
+            "blame", "-p", ignore_whitespace, detect_move_or_copy, commit_hash, self.file_path
         )
         blame_porcelain = unicodedata.normalize('NFC', blame_porcelain)
         blamed_lines, commits = self.parse_blame(blame_porcelain.splitlines())
