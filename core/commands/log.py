@@ -20,28 +20,14 @@ class LogMixin(object):
     but the subclass must also inherit fro GitCommand (for the `git()` method)
     """
 
-    _limit = 6000
-
     def run(self, *args, file_path=None, branch=None):
         self._file_path = file_path
         self._branch = branch
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        show_log_panel(self.log_generator(), self.do_action, self._limit)
+        show_log_panel(self.commit_generator(), self.do_action)
 
-    def log_generator(self):
-        skip = 0
-        while True:
-            logs = self.log(branch=self._branch,
-                            file_path=self._file_path,
-                            limit=self._limit,
-                            skip=skip)
-            if not logs:
-                break
-            for l in logs:
-                yield l
-            skip = skip + self._limit
 
     def do_action(self, commit_hash):
         if hasattr(self, 'window'):
@@ -166,6 +152,7 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
         super().update_actions()
         if self._file_path:
             self.actions.insert(1, ["show_file_at_commit", "Show file at commit"])
+            self.actions.insert(2, ["blame_file_atcommit", "Blame file at commit"])
 
     def show_commit(self):
         self.window.run_command("gs_show_commit", {"commit_hash": self._commit_hash})
@@ -203,3 +190,8 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
         self.window.run_command(
             "gs_show_file_at_commit",
             {"commit_hash": self._commit_hash, "filepath": self._file_path, "lang": lang})
+
+    def blame_file_atcommit(self):
+        self.window.run_command(
+            "gs_blame",
+            {"commit_hash": self._commit_hash, "file_path": self._file_path})
