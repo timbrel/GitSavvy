@@ -44,6 +44,7 @@ Please include the following information when filing a bug:
 
 - Sublime Text version number
 - Git version number
+- OS type and version
 - Console error output
 - A description of the problem.
 - Steps to reproduce, if possible.
