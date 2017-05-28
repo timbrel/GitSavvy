@@ -46,23 +46,17 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
         view.settings().set("git_savvy.blame_view", True)
         view.settings().set("git_savvy.repo_path", self.__repo_path)
         view.settings().set("git_savvy.file_path", self._file_path)
+        view.settings().set("git_savvy.lineno", self.coords[0] + 1)
         view.settings().set("git_savvy.commit_hash", self._commit_hash)
+        view.settings().set("git_savvy.ignore_whitespace", ignore_whitespace)
+        view.settings().set("git_savvy.detect_move_or_copy", option)
+
         view.settings().set("word_wrap", False)
         view.settings().set("line_numbers", False)
         view.settings().set('indent_guide_options', [])
-        view.set_name(
-            BLAME_TITLE.format(
-                self.get_rel_path(self._file_path),
-                " at {}".format(self._commit_hash) if self._commit_hash else ""
-            )
-        )
         view.set_scratch(True)
-        view.run_command("gs_blame_initialize_view", {
-            "coords": self.coords,
-            "ignore_whitespace": '-w' if ignore_whitespace else None,
-            "detect_move_or_copy": option,
-            "commit_hash": self._commit_hash
-        })
+
+        view.run_command("gs_blame_initialize_view")
 
     def pick_commit(self):
         self._branch = None
@@ -76,23 +70,35 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
 
 class GsBlameInitializeViewCommand(TextCommand, GitCommand):
 
-    def run(self, edit, coords=None, ignore_whitespace=None, detect_move_or_copy=None, commit_hash=None):
+    def run(self, edit):
+        settings = self.view.settings()
+        commit_hash = settings.get("git_savvy.commit_hash", None)
+        self.view.set_name(
+            BLAME_TITLE.format(
+                self.get_rel_path(self.file_path) if self.file_path else "unknown",
+                " at {}".format(commit_hash) if commit_hash else ""
+            )
+        )
         content = self.get_content(
-            ignore_whitespace=ignore_whitespace,
-            detect_move_or_copy=detect_move_or_copy,
+            ignore_whitespace=settings.get("git_savvy.ignore_whitespace", False),
+            detect_move_or_copy=settings.get("git_savvy.detect_move_or_copy", None),
             commit_hash=commit_hash
         )
-        self.view.sel().clear()
-        self.view.set_read_only(False)
-        self.view.replace(edit, sublime.Region(0, self.view.size()), content)
-        self.view.set_read_only(True)
 
-        if coords is not None:
-            self.scroll_to(coords)
+        self.view.run_command("gs_new_content_and_regions", {
+            "content": content,
+            "regions": {},
+            "nuke_cursors": False
+        })
 
-    def get_content(self, ignore_whitespace=None, detect_move_or_copy=None, commit_hash=None):
+        if settings.get("git_savvy.lineno", None) is not None:
+            self.scroll_to(settings.get("git_savvy.lineno"))
+            # Only scroll the first time
+            settings.erase("git_savvy.lineno")
+
+    def get_content(self, ignore_whitespace=False, detect_move_or_copy=None, commit_hash=None):
         blame_porcelain = self.git(
-            "blame", "-p", ignore_whitespace, detect_move_or_copy, commit_hash, self.file_path
+            "blame", "-p", '-w' if ignore_whitespace else None, detect_move_or_copy, commit_hash, self.file_path
         )
         blame_porcelain = unicodedata.normalize('NFC', blame_porcelain)
         blamed_lines, commits = self.parse_blame(blame_porcelain.splitlines())
@@ -216,8 +222,8 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
 
             yield output
 
-    def scroll_to(self, coords):
-        pattern = r".{{40}} \| {lineno: >4} ".format(lineno=coords[0] + 1)
+    def scroll_to(self, lineno):
+        pattern = r".{{40}} \| {lineno: >4} ".format(lineno=lineno)
         corresponding_region = self.view.find(pattern, 0)
         blame_view_pt = corresponding_region.b
 
