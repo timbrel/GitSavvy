@@ -35,7 +35,7 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
         global last_execution, update_status_bar_soon
         if sublime.load_settings("GitSavvy.sublime-settings").get("git_status_in_status_bar"):
 
-            millisec = int(round(time.time() * 100))
+            millisec = int(round(time.time() * 1000))
             # If we updated to less then 100 ms we don't need to update now but
             # should update in 100 ms in case of current file change.
             #
@@ -50,7 +50,7 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
                     update_status_bar_soon = True
                     sublime.set_timeout_async(self.run_async, 100)
 
-            last_execution = int(round(time.time() * 100))
+            last_execution = int(round(time.time() * 1000))
 
     def run_async(self):
         # Short-circuit update attempts for files not part of Git repo.
