@@ -215,10 +215,12 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
                 right = partition[i].contents if i < right_len else right_fallback
                 lineno = partition[i].final_lineno if i < right_len else right_fallback
 
-                output += "{left: <{left_pad}} |".format(left=left, left_pad=left_pad)
-                if len(right):
-                    output += " {lineno: >4} {right}".format(lineno=lineno, right=right)
-                output += "\n"
+                output += "{left: <{left_pad}} | {lineno: >4} {right}\n".format(
+                    left=left,
+                    left_pad=left_pad,
+                    lineno=lineno,
+                    right=right)
+                output = output.strip() + "\n"
 
             yield output
 
