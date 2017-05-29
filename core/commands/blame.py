@@ -237,6 +237,7 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
     selected_index = 0
     default_actions = [
         ["open_commit", "Open Commit"],
+        ["find_line_and_open", "Blame before selected commit"],
     ]
 
     @util.view.single_cursor_pt
@@ -263,3 +264,38 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
             return
 
         self.view.window().run_command("gs_show_commit", {"commit_hash": short_hash})
+
+    def commit_before(self, position, commit_hash):
+        # I would like it to be something like this, but I could make it work when
+        # i reached the end of the end second last commit
+        # previous_commit_hash =  self.git("show", "--format=%H", "--no-patch", "{}^-1".format(commit_hash)).strip()
+
+        log_commits = self.git("log", "--format=%H", "--follow", "--", self.file_path).strip()
+        log_commits = log_commits.split("\n")
+
+        commit_hash_len = len(commit_hash)
+
+        for idx, commit in enumerate(log_commits):
+            if commit.startswith(commit_hash) :
+                if position == "older":
+                    if idx < len(log_commits)-1:
+                        return log_commits[idx+1]
+                    else:
+                        # if we are at the end display this the earliest commit
+                        return commit
+                elif position == "newer":
+                    return log_commits[idx-1]
+
+    def newst_commit_for_file(self):
+        return self.git("log", "--format=%H", "--follow", "-n", "1", self.file_path).strip()
+
+    def find_line_and_open(self):
+        commit_hash = self.selected_commit_hash().strip()
+        if not commit_hash:
+            self.view.settings().set("git_savvy.commit_hash", self.newst_commit_for_file())
+        else:
+            a = self.commit_before("older", commit_hash)
+            self.view.settings().set("git_savvy.commit_hash", a)
+
+        self.view.run_command("gs_blame_initialize_view")
+
