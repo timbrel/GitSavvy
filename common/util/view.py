@@ -58,7 +58,7 @@ def get_is_view_of_type(view, typ):
 # GLOBAL #
 ##########
 
-def refresh_gitsavvy(view, refresh_sidebar=False):
+def refresh_gitsavvy(view, refresh_sidebar=False, refresh_status_bar=True):
     """
     Called after GitSavvy action was taken that may have effected the
     state of the Git repo.
@@ -68,7 +68,9 @@ def refresh_gitsavvy(view, refresh_sidebar=False):
     if view.settings().get("git_savvy.branch_commit_history_view") is not None:
         view.run_command("gs_branches_diff_commit_history_refresh")
 
-    view.run_command("gs_update_status_bar")
+    if refresh_status_bar:
+        view.run_command("gs_update_status_bar")
+
     if view.window() and refresh_sidebar:
         view.window().run_command("refresh_folder_list")
 
