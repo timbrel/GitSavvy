@@ -639,7 +639,14 @@
     // BLAME VIEW //
     ////////////////
 
-    // Per-platform key-mapping for: gs_blame_open_commit
+    {
+        "keys": ["enter"],
+        "command": "gs_blame_action",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     ///////////////
     // HELP VIEW //

@@ -233,11 +233,19 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(lambda: self.view.show_at_center(blame_view_pt), 0)
 
 
-class GsBlameOpenCommitCommand(TextCommand):
+class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
+    selected_index = 0
+    default_actions = [
+        ["open_commit", "Open Commit"],
+    ]
 
     @util.view.single_cursor_pt
     def run(self, cursor_pt, edit):
-        hunk_start = util.view.get_instance_before_pt(self.view, cursor_pt, r"^\-+ \| \-+")
+        self.cursor_pt = cursor_pt
+        super().run()
+
+    def selected_commit_hash(self):
+        hunk_start = util.view.get_instance_before_pt(self.view, self.cursor_pt, r"^\-+ \| \-+")
         if hunk_start is None:
             short_hash_row = 1
         else:
@@ -246,9 +254,12 @@ class GsBlameOpenCommitCommand(TextCommand):
 
         short_hash_pos = self.view.text_point(short_hash_row, 0)
         short_hash = self.view.substr(sublime.Region(short_hash_pos, short_hash_pos + 12))
+        return short_hash
 
+
+    def open_commit(self):
         # Uncommitted blocks.
-        if not short_hash.strip():
+        if not self.selected_commit_hash().strip():
             return
 
         self.view.window().run_command("gs_show_commit", {"commit_hash": short_hash})
