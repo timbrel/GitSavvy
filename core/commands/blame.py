@@ -240,6 +240,7 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
         ["find_line_and_open", "Blame before selected commit"],
         ["open", "Blame on one older commit", (), {'position': "older"}],
         ["open", "Blame on one newer commit", (), {'position': "newer"}],
+        ["show_file_at_commit", "Show file at commit"],
     ]
 
     @util.view.single_cursor_pt
@@ -311,3 +312,12 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
             settings.set("git_savvy.commit_hash", previous_commit_hash)
         self.view.run_command("gs_blame_initialize_view")
 
+    def show_file_at_commit(self):
+        self.view.window().run_command("gs_show_file_at_commit", {
+            "commit_hash": self.view.settings().get("git_savvy.commit_hash"),
+            "filepath": self.file_path,
+            # it is there in the view, with the scope of
+            # constant.numeric.line-number.blame.git-savvy
+            # Just need to see who to extract it?
+            # "lineno":
+        })
