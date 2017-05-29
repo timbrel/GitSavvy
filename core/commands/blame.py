@@ -98,7 +98,7 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
 
     def get_content(self, ignore_whitespace=False, detect_move_or_copy=None, commit_hash=None):
         blame_porcelain = self.git(
-            "blame", "-p", '-w' if ignore_whitespace else None, detect_move_or_copy, commit_hash, self.file_path
+            "blame", "-p", '-w' if ignore_whitespace else None, detect_move_or_copy, commit_hash, "--", self.file_path
         )
         blame_porcelain = unicodedata.normalize('NFC', blame_porcelain)
         blamed_lines, commits = self.parse_blame(blame_porcelain.splitlines())
@@ -238,6 +238,8 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
     default_actions = [
         ["open_commit", "Open Commit"],
         ["find_line_and_open", "Blame before selected commit"],
+        ["open", "Blame on one older commit", (), {'position': "older"}],
+        ["open", "Blame on one newer commit", (), {'position': "newer"}],
     ]
 
     @util.view.single_cursor_pt
@@ -297,5 +299,15 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
             a = self.commit_before("older", commit_hash)
             self.view.settings().set("git_savvy.commit_hash", a)
 
+        self.view.run_command("gs_blame_initialize_view")
+
+    def open(self, position):
+        settings = self.view.settings()
+        commit_hash = settings.get("git_savvy.commit_hash")
+        if not commit_hash:
+            self.view.settings().set("git_savvy.commit_hash", self.newst_commit_for_file())
+        else:
+            previous_commit_hash = self.commit_before(position, settings.get("git_savvy.commit_hash"))
+            settings.set("git_savvy.commit_hash", previous_commit_hash)
         self.view.run_command("gs_blame_initialize_view")
 
