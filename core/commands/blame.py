@@ -7,7 +7,7 @@ from sublime_plugin import WindowCommand, TextCommand
 
 from ..git_command import GitCommand
 from ...common import util
-from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel
+from ..ui_mixins.quick_panel import PanelActionMixin, PaginatedPanel, show_log_panel
 
 
 BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))
@@ -240,6 +240,7 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
         ["find_line_and_open", "Blame before selected commit"],
         ["open", "Blame on one older commit", (), {'position': "older"}],
         ["open", "Blame on one newer commit", (), {'position': "newer"}],
+        ["pick_new_commit", "Pick a new commit to blame"],
         ["show_file_at_commit", "Show file at commit"],
     ]
 
@@ -284,7 +285,7 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
                     if idx < len(log_commits)-1:
                         return log_commits[idx+1]
                     else:
-                        # if we are at the end display this the earliest commit
+                        # if we are at the end display this the oldest commit
                         return commit
                 elif position == "newer":
                     return log_commits[idx-1]
@@ -297,8 +298,7 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
         if not commit_hash:
             self.view.settings().set("git_savvy.commit_hash", self.newst_commit_for_file())
         else:
-            a = self.commit_before("older", commit_hash)
-            self.view.settings().set("git_savvy.commit_hash", a)
+            self.view.settings().set("git_savvy.commit_hash", self.commit_before("older", commit_hash))
 
         self.view.run_command("gs_blame_initialize_view")
 
@@ -307,7 +307,6 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
         commit_hash = settings.get("git_savvy.commit_hash")
         if not commit_hash:
             self.view.settings().set("git_savvy.commit_hash", self.newst_commit_for_file())
-        else:
             previous_commit_hash = self.commit_before(position, settings.get("git_savvy.commit_hash"))
             settings.set("git_savvy.commit_hash", previous_commit_hash)
         self.view.run_command("gs_blame_initialize_view")
@@ -321,3 +320,39 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
             # Just need to see who to extract it?
             # "lineno":
         })
+    def pick_new_commit(self):
+        self.view.run_command("gs_blame_pick_commit", {
+            "commit_hash": self.view.settings().get("git_savvy.commit_hash"),
+        })
+
+class GsBlamePickCommitCommand(TextCommand, GitCommand):
+
+    def run(self, *args, commit_hash=None):
+        self._file_path = self.file_path
+        self._branch = None
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        settings = self.view.settings()
+        lp = BlameCommitPanel(
+            self.commit_generator(),
+            self.do_action,
+            )
+        lp.show()
+
+    def do_action(self, commit_hash):
+        settings = self.view.settings()
+        settings.set("git_savvy.commit_hash", commit_hash)
+        self.view.run_command("gs_blame_initialize_view")
+
+
+class BlameCommitPanel(PaginatedPanel):
+
+    def format_item(self, entry):
+        return ([entry.short_hash + " " + entry.summary,
+                 entry.author + ", " + util.dates.fuzzy(entry.datetime)],
+                entry.long_hash)
+
+
+
+
