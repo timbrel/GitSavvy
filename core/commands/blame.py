@@ -360,5 +360,7 @@ class BlameCommitPanel(PaginatedPanel):
                 entry.long_hash)
 
 
+    def on_highlight(self, index):
+        sublime.set_timeout_async(lambda: self.on_selection(index))
 
 
