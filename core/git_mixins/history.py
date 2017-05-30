@@ -27,11 +27,12 @@ class HistoryMixin():
 
     def log(self, author=None, branch=None, file_path=None, start_end=None, cherry=None,
             limit=6000, skip=None, reverse=False, all_branches=False, msg_regexp=None,
-            diff_regexp=None, first_parent=False, merges=False, no_merges=False, topo_order=False):
+            diff_regexp=None, first_parent=False, merges=False, no_merges=False, topo_order=False,
+            follow=False):
 
         log_output = self.git(
             "log",
-            "-{}".format(limit) if limit else None,
+            "--max-count={}".format(limit) if limit else None,
             "--skip={}".format(skip) if skip else None,
             "--reverse" if reverse else None,
             '--format=%h%n%H%n%s%n%an%n%ae%n%at%x00%B%x00%x00%n',
@@ -44,6 +45,7 @@ class HistoryMixin():
             "--no-merges" if no_merges else None,
             "--merges" if merges else None,
             "--topo-order" if topo_order else None,
+            "--follow" if follow else None,
             "--all" if all_branches else None,
             "{}..{}".format(*start_end) if start_end else None,
             branch if branch else None,
@@ -63,12 +65,13 @@ class HistoryMixin():
 
         return entries
 
-    def commit_generator(self, limit = 6000):
+    def commit_generator(self, limit = 6000, follow=False):
         # Generator for show_log_panel
         skip = 0
         while True:
             logs = self.log(branch=self._branch,
                             file_path=self._file_path,
+                            follow=follow,
                             limit=limit,
                             skip=skip)
             if not logs:

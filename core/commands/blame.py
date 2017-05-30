@@ -351,7 +351,7 @@ class GsBlamePickCommitCommand(TextCommand, GitCommand):
         settings = self.view.settings()
         settings.set("git_savvy.commit_hash_old", settings.get("git_savvy.commit_hash"))
         lp = BlameCommitPanel(
-            self.commit_generator(),
+            self.commit_generator(follow=True),
             self.do_action,
             )
         lp.selected_commit(settings.get("git_savvy.commit_hash"))
