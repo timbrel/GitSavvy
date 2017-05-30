@@ -196,8 +196,15 @@ class PaginatedPanel:
         kwargs = {}
         if self.flags:
             kwargs["flags"] = self.flags
-        if self.selected_index and self.skip <= self.selected_index < self.skip + self.limit:
+
+        if callable(self.selected_index):
+            for idx, entry in enumerate(self.ret_list):
+                if self.selected_index(entry):
+                    kwargs["selected_index"] = idx
+                    break
+        elif self.selected_index and self.skip <= self.selected_index < self.skip + self.limit:
             kwargs["selected_index"] = self.selected_index - self.skip
+
         if self.on_highlight:
             kwargs["on_highlight"] = self.on_highlight
 

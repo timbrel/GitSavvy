@@ -339,6 +339,7 @@ class GsBlamePickCommitCommand(TextCommand, GitCommand):
             self.commit_generator(),
             self.do_action,
             )
+        lp.selected_commit(settings.get("git_savvy.commit_hash"))
         lp.show()
 
     def do_action(self, commit_hash):
@@ -353,12 +354,18 @@ class GsBlamePickCommitCommand(TextCommand, GitCommand):
 
 
 class BlameCommitPanel(PaginatedPanel):
+    commit_hash = None
 
     def format_item(self, entry):
         return ([entry.short_hash + " " + entry.summary,
                  entry.author + ", " + util.dates.fuzzy(entry.datetime)],
                 entry.long_hash)
 
+    def selected_commit(self, commit_hash):
+        self.commit_hash = commit_hash
+
+    def selected_index(self, entry):
+        return self.commit_hash == entry
 
     def on_highlight(self, index):
         sublime.set_timeout_async(lambda: self.on_selection(index))
