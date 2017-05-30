@@ -334,6 +334,7 @@ class GsBlamePickCommitCommand(TextCommand, GitCommand):
 
     def run_async(self):
         settings = self.view.settings()
+        settings.set("git_savvy.commit_hash_old", settings.get("git_savvy.commit_hash"))
         lp = BlameCommitPanel(
             self.commit_generator(),
             self.do_action,
@@ -342,7 +343,12 @@ class GsBlamePickCommitCommand(TextCommand, GitCommand):
 
     def do_action(self, commit_hash):
         settings = self.view.settings()
-        settings.set("git_savvy.commit_hash", commit_hash)
+        if commit_hash is None:
+            # Canceled panel
+            settings.set("git_savvy.commit_hash", settings.get("git_savvy.commit_hash_old"))
+            settings.erase("git_savvy.commit_hash_old")
+        else:
+            settings.set("git_savvy.commit_hash", commit_hash)
         self.view.run_command("gs_blame_initialize_view")
 
 
