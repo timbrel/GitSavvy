@@ -97,8 +97,23 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
             settings.erase("git_savvy.lineno")
 
     def get_content(self, ignore_whitespace=False, detect_move_or_copy=None, commit_hash=None):
+
+        if commit_hash:
+            # git blame does not follow file name changes like git log, therefor we
+            # need to look at the log first too see if the file has changed names since
+            # selected commit. I would not be surprised if this brakes in some special cases
+            # like rebased or multimerged commits
+            lines = self.git(
+                "log", "--oneline", "--follow", "--name-status", "--reverse",
+                "{}..HEAD".format(commit_hash),
+                "--", self.file_path
+            ).split("\n")
+            filename_at_commit = lines[1].split("\t")[1]
+        else:
+            filename_at_commit = self.file_path
+
         blame_porcelain = self.git(
-            "blame", "-p", '-w' if ignore_whitespace else None, detect_move_or_copy, commit_hash, "--", self.file_path
+            "blame", "-p", '-w' if ignore_whitespace else None, detect_move_or_copy, commit_hash, "--", filename_at_commit
         )
         blame_porcelain = unicodedata.normalize('NFC', blame_porcelain)
         blamed_lines, commits = self.parse_blame(blame_porcelain.splitlines())
