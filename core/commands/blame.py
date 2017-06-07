@@ -273,6 +273,17 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
         short_hash = self.view.substr(sublime.Region(short_hash_pos, short_hash_pos + 12))
         return short_hash.strip()
 
+    def find_lineno(self):
+        line_start = util.view.get_instance_before_pt(self.view, self.cursor_pt, r"^.+ \| +\d+")
+        if line_start is None:
+            return 1
+        else:
+            line = self.view.substr(self.view.line(line_start))
+            _ , lineno = line.split("|")
+            try:
+                return int(lineno.strip().split(" ")[0])
+            except Exception:
+                return 1
 
     def open_commit(self):
         # Uncommitted blocks.
@@ -334,10 +345,7 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
         self.view.window().run_command("gs_show_file_at_commit", {
             "commit_hash": commit_hash,
             "filepath": self.file_path,
-            # it is there in the view, with the scope of
-            # constant.numeric.line-number.blame.git-savvy
-            # Just need to see who to extract it?
-            # "lineno":
+            "lineno": self.find_lineno()
         })
 
     def pick_new_commit(self):

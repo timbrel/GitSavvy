@@ -136,13 +136,17 @@ class HistoryMixin():
         return self.git("rev-parse", "--short", commit_hash).strip()
 
     def filename_at_commit(self, filename, commit_hash):
+        commit_len = len(commit_hash)
         lines = self.git(
             "log", "--pretty=oneline", "--follow", "--name-status", "--", filename
         ).split("\n")
 
         for i in range(0, len(lines), 2):
-            if lines[i].split(" ")[0] == commit_hash:
-                return lines[i+1].split("\t")[1]
+            if lines[i].split(" ")[0][:commit_len] == commit_hash:
+                if lines[i+1][0] == 'R':
+                    return lines[i+1].split("\t")[2]
+                else:
+                    return lines[i+1].split("\t")[1]
 
         # If the commit hash is not for this file.
         return filename
