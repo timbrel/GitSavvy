@@ -56,6 +56,7 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
         view.settings().set("line_numbers", False)
         view.settings().set('indent_guide_options', [])
         view.set_scratch(True)
+        view.set_read_only(True)
 
         view.run_command("gs_blame_initialize_view")
 
