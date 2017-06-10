@@ -7,7 +7,7 @@ from sublime_plugin import WindowCommand, TextCommand
 
 from ..git_command import GitCommand
 from ...common import util
-from ..ui_mixins.quick_panel import PanelActionMixin, PaginatedPanel, show_log_panel
+from ..ui_mixins.quick_panel import PanelActionMixin, LogPanel, show_log_panel
 
 
 BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))
@@ -382,13 +382,9 @@ class GsBlamePickCommitCommand(TextCommand, GitCommand):
         self.view.run_command("gs_blame_initialize_view")
 
 
-class BlameCommitPanel(PaginatedPanel):
+class BlameCommitPanel(LogPanel):
     commit_hash = None
-
-    def format_item(self, entry):
-        return ([entry.short_hash + " " + entry.summary,
-                 entry.author + ", " + util.dates.fuzzy(entry.datetime)],
-                entry.long_hash)
+    flags = sublime.MONOSPACE_FONT
 
     def selected_commit(self, commit_hash):
         self.commit_hash = commit_hash
@@ -397,6 +393,7 @@ class BlameCommitPanel(PaginatedPanel):
         return self.commit_hash == entry
 
     def on_highlight(self, index):
-        sublime.set_timeout_async(lambda: self.on_selection(index), 0)
+        sublime.set_timeout_async(lambda: self.on_done(self.ret_list[index]), 0)
 
-
+    def on_selection(self, index):
+        sublime.set_timeout_async(lambda: self.on_done(self.ret_list[index]), 10)
