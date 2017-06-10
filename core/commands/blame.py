@@ -41,6 +41,7 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
                 ["pick_commit", "Pick a commit"])
 
     def blame(self, ignore_whitespace=True, option=None):
+        original_syntax = self.window.active_view().settings().get('syntax')
         view = self.window.new_file()
         view.set_syntax_file("Packages/GitSavvy/syntax/blame.sublime-syntax")
         view.settings().set("git_savvy.blame_view", True)
@@ -51,6 +52,7 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
             view.settings().set("git_savvy.commit_hash", self._commit_hash)
         view.settings().set("git_savvy.ignore_whitespace", ignore_whitespace)
         view.settings().set("git_savvy.detect_move_or_copy", option)
+        view.settings().set("git_savvy.original_syntax", original_syntax)
 
         view.settings().set("word_wrap", False)
         view.settings().set("line_numbers", False)
@@ -346,7 +348,8 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
         self.view.window().run_command("gs_show_file_at_commit", {
             "commit_hash": commit_hash,
             "filepath": self.file_path,
-            "lineno": self.find_lineno()
+            "lineno": self.find_lineno(),
+            "lang" : self.view.settings().get('git_savvy.original_syntax', None)
         })
 
     def pick_new_commit(self):
