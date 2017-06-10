@@ -65,15 +65,11 @@ class HistoryMixin():
 
         return entries
 
-    def commit_generator(self, limit = 6000, follow=False):
+    def log_generator(self, limit=6000, **kwargs):
         # Generator for show_log_panel
         skip = 0
         while True:
-            logs = self.log(branch=self._branch,
-                            file_path=self._file_path,
-                            follow=follow,
-                            limit=limit,
-                            skip=skip)
+            logs = self.log(limit=limit, skip=skip, **kwargs)
             if not logs:
                 break
             for l in logs:

@@ -21,7 +21,7 @@ GIT_RESET_MODES = [
 
 class ResetMixin(object):
 
-    def do_action(self, commit_hash):
+    def do_action(self, commit_hash, **kwargs):
         if not commit_hash:
             return
 

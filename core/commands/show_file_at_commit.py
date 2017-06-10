@@ -66,7 +66,7 @@ class GsShowCurrentFileCommand(LogMixin, WindowCommand, GitCommand):
     def run(self):
         super().run(file_path=self.file_path)
 
-    def do_action(self, commit_hash):
+    def do_action(self, commit_hash, **kwargs):
         self.window.run_command("gs_show_current_file_at_commit", {
             "commit_hash": commit_hash
         })

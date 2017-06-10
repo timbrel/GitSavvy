@@ -63,8 +63,7 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
         view.run_command("gs_blame_initialize_view")
 
     def pick_commit(self):
-        self._branch = None
-        show_log_panel(self.commit_generator(), self.picked_commit)
+        show_log_panel(self.log_generator(file_path=self._file_path), self.picked_commit)
 
     def picked_commit(self, commit_hash):
         self._commit_hash = commit_hash
@@ -360,15 +359,13 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
 class GsBlamePickCommitCommand(TextCommand, GitCommand):
 
     def run(self, *args, commit_hash=None):
-        self._file_path = self.file_path
-        self._branch = None
-        sublime.set_timeout_async(self.run_async)
+        sublime.set_timeout_async(lambda: self.run_async(self.file_path), 0)
 
-    def run_async(self):
+    def run_async(self, file_path):
         settings = self.view.settings()
         settings.set("git_savvy.commit_hash_old", settings.get("git_savvy.commit_hash"))
         lp = BlameCommitPanel(
-            self.commit_generator(follow=True),
+            self.log_generator(file_path=file_path, follow=True),
             self.do_action,
             )
         lp.selected_commit(settings.get("git_savvy.commit_hash"))
@@ -400,6 +397,6 @@ class BlameCommitPanel(PaginatedPanel):
         return self.commit_hash == entry
 
     def on_highlight(self, index):
-        sublime.set_timeout_async(lambda: self.on_selection(index))
+        sublime.set_timeout_async(lambda: self.on_selection(index), 0)
 
 
