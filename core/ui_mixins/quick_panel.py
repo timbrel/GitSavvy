@@ -31,13 +31,17 @@ class PanelActionMixin(object):
 
     def run(self, *args, **kwargs):
         self.update_actions()
-        self.show_panel()
+        self.show_panel(pre_selected_index=kwargs.get('pre_selected_index', None))
 
     def update_actions(self):
         self.actions = self.default_actions[:]  # copy default actions
 
-    def show_panel(self, actions=None):
+    def show_panel(self, actions=None, pre_selected_index=None):
         window = self.window if hasattr(self, 'window') else self.view.window()
+        if pre_selected_index:
+            self.on_action_selection(pre_selected_index)
+            return
+
         window.show_quick_panel(
             [a[1] for a in actions or self.actions],
             self.on_action_selection,

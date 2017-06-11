@@ -263,6 +263,11 @@ class GsBlameNavigateChunkCommand(GsNavigate):
 
 class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
     selected_index = 0
+    """
+    Be careful when changing the order since some commands depend on the
+    the index. Goto Default.sublime-keymap under section BLAME VIEW to see
+    more details on it which.
+    """
     default_actions = [
         ["open_commit", "Open Commit"],
         ["find_line_and_open", "Blame before selected commit"],
@@ -274,9 +279,9 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
     ]
 
     @util.view.single_cursor_pt
-    def run(self, cursor_pt, edit):
+    def run(self, cursor_pt, edit, pre_selected_index=None):
         self.cursor_pt = cursor_pt
-        super().run()
+        super().run(pre_selected_index=pre_selected_index)
 
     def selected_commit_hash(self):
         hunk_start = util.view.get_instance_before_pt(self.view, self.cursor_pt, r"^\-+ \| \-+")
@@ -329,7 +334,10 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
                         # if we are at the end display this the oldest commit
                         return commit
                 elif position == "newer":
-                    return log_commits[idx-1]
+                    if idx == 0:
+                        return None
+                    else:
+                        return log_commits[idx-1]
 
     def newst_commit_for_file(self):
         return self.git("log", "--format=%H", "--follow", "-n", "1", self.file_path).strip()
@@ -347,7 +355,11 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
         settings = self.view.settings()
         commit_hash = settings.get("git_savvy.commit_hash")
         if not commit_hash:
-            settings.set("git_savvy.commit_hash", self.newst_commit_for_file())
+            if position == "older":
+                settings.set("git_savvy.commit_hash", self.newst_commit_for_file())
+            elif position == "newer":
+                # cant be before first
+                pass
         else:
             previous_commit_hash = self.commit_before(position, settings.get("git_savvy.commit_hash"))
             settings.set("git_savvy.commit_hash", previous_commit_hash)

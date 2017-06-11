@@ -647,6 +647,45 @@
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
         ]
     },
+
+    {
+        "keys": [">"],
+        "command": "gs_blame_action",
+        "args": { "pre_selected_index": 3 },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["<"],
+        "command": "gs_blame_action",
+        "args": { "pre_selected_index": 2 },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+
+    {
+        "keys": ["alt+shift+."],
+        "command": "gs_blame_action",
+        "args": { "pre_selected_index": 3 },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["alt+shift+,"],
+        "command": "gs_blame_action",
+        "args": { "pre_selected_index": 1 },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+
     {
         "keys": ["."],
         "command": "gs_blame_navigate_chunk",
