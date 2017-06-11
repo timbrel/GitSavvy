@@ -5,6 +5,7 @@ import unicodedata
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
+from ..commands import GsNavigate
 from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.quick_panel import PanelActionMixin, LogPanel, show_log_panel
@@ -244,6 +245,20 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
 
         self.view.sel().add(sublime.Region(blame_view_pt, blame_view_pt))
         sublime.set_timeout_async(lambda: self.view.show_at_center(blame_view_pt), 0)
+
+class GsBlameNavigateChunkCommand(GsNavigate):
+
+    """
+    Move cursor to the next (or previous) different commit
+    """
+
+    def get_available_regions(self):
+        return [
+            branch_region
+            for region in self.view.find_by_selector(
+                "constant.numeric.commit-hash.git-savvy"
+            )
+            for branch_region in self.view.lines(region)]
 
 
 class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
