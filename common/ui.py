@@ -311,9 +311,7 @@ class GsInterfaceTogglePopupHelpCommand(TextCommand):
     Toggle GitSavvy popup help.
     """
 
-    def run(self, edit, view_name):
-        popup_max_width = 600
-        popup_max_height = 600
+    def run(self, edit, view_name, popup_max_width = 800, popup_max_height=600):
         css = sublime.load_resource("Packages/GitSavvy/popups/style.css")
         html = sublime.load_resource("Packages/GitSavvy/popups/" + view_name + ".html").format(css=css, super_key=util.super_key)
         self.view.show_popup(html, 0, -1, popup_max_width, popup_max_height)
