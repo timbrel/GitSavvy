@@ -306,5 +306,11 @@
         When set to `true`, all views will hide their help menu when rendering.
         You can still toggle the help menu by pressing `?`.
      */
-    "hide_help_menu": false
+    "hide_help_menu": false,
+
+    /*
+        When set to `true`, no views will receive the prompt asking to initialize
+        Git in the current view's directory when not found.
+     */
+    "disable_git_init_prompt": false
 }
