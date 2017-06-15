@@ -47,8 +47,6 @@ Perform `git diff` between a selected commit and the current commit but only res
 
 A GitHub-style blame view is displayed.  Each hunk of the file will be shown on the right, with the associated commit info shown to its left.  This includes the beginning of the commit message, commit hash, author, and age.
 
-Pressing `SUPER-Enter` (`CTRL-Enter` in Windows) while your cursor is inside a hunk will take you to that specific commit.
-
 ### Blame options
 When run, you will be prompted for how you want the blame view to search for changes:
 
@@ -66,3 +64,20 @@ Ignore whitespace, and detect when lines have been moved or copied from any file
 
 #### Detect moved or copied lines across all commits
 Ignore whitespace, and detect when lines have been moved or copied from any file across the full commit history of the repository, attributing lines to the original commit rather than the commit that moved or copied them (`git blame -w -CCC`).
+
+## Action in blame view
+
+When you have open the blame view you have a new set of commands
+
+Use `.` to go to next chunk and `,` to go to previous. The tab title is the file name and commit hash.
+Use `Enter` to select a action. If you hit `?` you will see a pop-up with all key bindings and actions.
+
+Actions
+    Open Commit -> Open the commit of the chunk in which the cursor is located
+    Blame before selected commit -> Find the chunk you are in and jump to the commit before that. Handy when you know exactly what you are looking for. It can be hard to keep track of where you were in the file since the line number probably changed.(Time travel)
+    Blame on one older commit -> Same as above but only jump one commit at a time. (Time travel)
+    Blame on one newer commit -> Same as above but jumps in the opposite direction. (Time travel)
+    Pick a new commit to blame -> Pick a commit to checkout (Time travel)
+    Show file at most recent commit -> Show the file with syntax highlighting at the most recent commit
+    Show file at this chunk's commit -> Same as above but takes the commit from the chunk in which the cursor is located
+
