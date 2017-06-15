@@ -12,7 +12,7 @@ class GsShowCommitInfoCommand(WindowCommand, GitCommand):
     def run_async(self):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         show_full = savvy_settings.get("show_full_commit_info")
-        text = self.git("show", self._commit_hash, "--no-color", "--format=fuller", "--quiet" if not show_full else None)
+        text = self.git("show", self._commit_hash, "--no-color", "--format=fuller", "--stat", "--patch" if show_full else None)
         output_view = self.window.create_output_panel("show_commit_info")
         output_view.set_read_only(False)
         output_view.run_command("gs_replace_view_text", {"text": text, "nuke_cursors": True})

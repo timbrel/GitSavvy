@@ -1,0 +1,64 @@
+# SYNTAX TEST "Packages/GitSavvy/syntax/show_commit.sublime-syntax"
+commit b79e485c7a3e589c7866555eca6fd9ec7388b5cb
+Author:     Simon <simon.toivo@telhaug.no>
+AuthorDate: Mon Jun 12 19:45:23 2017 +0200
+Commit:     Simon <simon.toivo@telhaug.no>
+CommitDate: Mon Jun 12 19:58:27 2017 +0200
+
+    Blame popup option 2
+---
+# <- git-savvy.commit meta.commit-header-and-stat-splitter
+ Default.sublime-keymap | 22 +-
+# ^ meta.filename.diff
+#                 ^ meta.filename.diff
+#                         ^ constant.numeric.lines-count.git-savvy
+#                          ^ constant.numeric.lines-count.git-savvy
+#                            ^ markup.inserted.git-savvy.add-block.content
+#                             ^ markup.deleted.git-savvy.delete-block.content
+# <- meta.commit-info.diffstat.line
+ common/ui.py           |  3 ---
+#                          ^ constant.numeric.lines-count.git-savvy
+#                            ^ markup.deleted.git-savvy.delete-block.content
+#                              ^ markup.deleted.git-savvy.delete-block.content
+# <- meta.commit-info.diffstat.line
+ popups/bl|me_view.html | 8 ++++
+#                           ^ markup.inserted.git-savvy.add-block.content
+#                              ^ markup.inserted.git-savvy.add-block.content
+# <- meta.commit-info.diffstat.line
+# ^ meta.filename.diff
+#         ^ meta.filename.diff
+#                     ^ meta.filename.diff
+ 33 files changed, 5 insertions(+), 8 deletions(-)
+#^ git-savvy.commit meta.commit-info.files.changes constant.numeric.lines-count.git-savvy
+# ^ git-savvy.commit meta.commit-info.files.changes constant.numeric.lines-count.git-savvy
+#         ^ meta.commit-info.files.changes
+#                  ^ markup.inserted.git-savvy.add-block.content constant.numeric.lines-count.git-savvy
+#                          ^ markup.inserted.git-savvy.add-block.content
+#                                ^ markup.inserted.git-savvy.add-block.content
+#                                   ^ markup.deleted.git-savvy.delete-block.content constant.numeric.lines-count.git-savvy
+#                                            ^ markup.deleted.git-savvy.delete-block.content
+
+ 2 files changed, 55 insertions(+)
+#^ git-savvy.commit meta.commit-info.files.changes constant.numeric.lines-count.git-savvy
+#        ^ meta.commit-info.files.changes
+#                 ^ markup.inserted.git-savvy.add-block.content constant.numeric.lines-count.git-savvy
+#                  ^ markup.inserted.git-savvy.add-block.content constant.numeric.lines-count.git-savvy
+#                         ^ markup.inserted.git-savvy.add-block.content
+#                               ^ markup.inserted.git-savvy.add-block.content
+
+ 1 files changed, 48 deletions(-)
+#^ git-savvy.commit meta.commit-info.files.changes constant.numeric.lines-count.git-savvy
+#        ^ meta.commit-info.files.changes
+#                 ^ markup.deleted.git-savvy.delete-block.content constant.numeric
+#                  ^ markup.deleted.git-savvy.delete-block.content constant.numeric
+#                          ^ markup.deleted.git-savvy.delete-block.content
+
+
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+#^ git-savvy.commit meta.commit-info.files.changes constant.numeric.lines-count.git-savvy
+#         ^ meta.commit-info.files.changes
+#                ^ markup.inserted.git-savvy.add-block.content constant.numeric.lines-count.git-savvy
+#                       ^ markup.inserted.git-savvy.add-block.content
+#                                ^ git-savvy.commit markup.deleted.git-savvy.delete-block.content constant.numeric.lines-count.git-savvy
+#                                     ^ markup.deleted.git-savvy.delete-block.content
+#                                            ^ markup.deleted.git-savvy.delete-block.content
