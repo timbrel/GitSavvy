@@ -1,5 +1,6 @@
 import os
 
+import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
 from ..git_command import GitCommand
@@ -15,12 +16,14 @@ class GsShowCommitCommand(WindowCommand, GitCommand):
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
         view = self.window.new_file()
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
         view.settings().set("git_savvy.show_commit_view", True)
         view.settings().set("git_savvy.show_commit_view.commit", commit_hash)
         view.settings().set("git_savvy.repo_path", repo_path)
         view.settings().set("git_savvy.show_commit_view.ignore_whitespace", False)
         view.settings().set("git_savvy.show_commit_view.show_word_diff", False)
+        view.settings().set("git_savvy.show_commit_view.show_diffstat", savvy_settings.get("show_diffstat", True))
         view.settings().set("word_wrap", False)
         view.settings().set("line_numbers", False)
         view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash)))
@@ -35,10 +38,14 @@ class GsShowCommitRefreshCommand(TextCommand, GitCommand):
         commit_hash = self.view.settings().get("git_savvy.show_commit_view.commit")
         ignore_whitespace = self.view.settings().get("git_savvy.show_commit_view.ignore_whitespace")
         show_word_diff = self.view.settings().get("git_savvy.show_commit_view.show_word_diff")
+        show_diffstat = self.view.settings().get("git_savvy.show_commit_view.show_diffstat")
         content = self.git(
             "show",
             "--ignore-all-space" if ignore_whitespace else None,
             "--word-diff" if show_word_diff else None,
+            "--stat" if show_diffstat else None,
+            "--patch",
+            "--format=fuller",
             "--no-color",
             commit_hash)
         self.view.run_command("gs_replace_view_text", {"text": content, "nuke_cursors": True})
