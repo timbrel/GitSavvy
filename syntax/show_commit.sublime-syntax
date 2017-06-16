@@ -21,4 +21,9 @@ contexts:
         2: string.other.commit-info.header.key.punctuation.git-savvy
         3: meta.commit-info.header.value.git-savvy
 
+    - match: ^---$
+      scope: meta.commit-header-and-stat-splitter
+      comment: Separator between commit message and diffstat
+
+    - include: "scope:git-savvy.commit-diffstat"
     - include: "scope:git-savvy.diff"

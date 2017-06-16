@@ -1,0 +1,34 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+name: GitSavvy Diffstat
+hidden: true
+scope: git-savvy.commit-diffstat
+contexts:
+  main:
+    - match: ^ (.+) \| +(\d+) (\+*)(-*)$\n?
+      comment: author and date info
+      scope: meta.commit-info.diffstat.line
+      captures:
+        1: meta.filename.diff
+        2: constant.numeric.lines-count.git-savvy
+        3: markup.inserted.git-savvy.add-block.content
+        4: markup.deleted.git-savvy.delete-block.content
+
+    - match: (\d+) files? changed
+      comment: Count files changed
+      scope: meta.commit-info.files.changes
+      captures:
+        1: constant.numeric.lines-count.git-savvy
+
+    - match: (\d+) insertions?\(\+\)
+      comment: Count of lines insertions
+      scope: markup.inserted.git-savvy.add-block.content
+      captures:
+        1: constant.numeric.lines-count.git-savvy
+
+    - match: (\d+) deletions?\(-\)
+      comment: Count of lines deletions
+      scope: markup.deleted.git-savvy.delete-block.content
+      captures:
+        1: constant.numeric.lines-count.git-savvy
