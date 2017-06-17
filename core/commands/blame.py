@@ -8,6 +8,7 @@ from sublime_plugin import WindowCommand, TextCommand
 from ..commands import GsNavigate
 from ..git_command import GitCommand
 from ...common import util
+from ...common.commands import GsHandleVintageousCommand
 from ..ui_mixins.quick_panel import PanelActionMixin, LogPanel, show_log_panel
 
 
@@ -62,6 +63,7 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
         view.set_read_only(True)
 
         view.run_command("gs_blame_initialize_view")
+        view.run_command("gs_handle_vintageous")
 
     def pick_commit(self):
         show_log_panel(self.log_generator(file_path=self._file_path), self.picked_commit)
@@ -69,7 +71,6 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
     def picked_commit(self, commit_hash):
         self._commit_hash = commit_hash
         super().run()
-
 
 
 class GsBlameInitializeViewCommand(TextCommand, GitCommand):
