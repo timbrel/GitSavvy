@@ -134,7 +134,7 @@
         //   to use columns globally, --no-columns should be added here.
         // "branch": ["--no-columns"]
     },
-        
+
     /*
     Prints branches sorted by recent commit (works with git 2.7.0+)
     https://www.kernel.org/pub/software/scm/git/docs/git-branch.html
@@ -164,6 +164,18 @@
         current commit in a output panel.
      */
     "log_show_more_commit_info": true,
+
+    /*
+        Diffstat look like
+        core/commands/blame.py     | 13 +++++--------
+        core/commands/log.py       |  9 +++------
+        core/git_mixins/history.py |  8 ++------
+        3 files changed, 10 insertions(+), 20 deletions(-)
+
+        Set to `false` if don't want to show this when view a commit.
+     */
+    "show_diffstat": true,
+
 
     /*
         When set to `true`, GitSavvy will automatically display more info about the
@@ -306,5 +318,11 @@
         When set to `true`, all views will hide their help menu when rendering.
         You can still toggle the help menu by pressing `?`.
      */
-    "hide_help_menu": false
+    "hide_help_menu": false,
+
+    /*
+        When set to `true`, no views will receive the prompt asking to initialize
+        Git in the current view's directory when not found.
+     */
+    "disable_git_init_prompt": false
 }
