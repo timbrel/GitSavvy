@@ -684,7 +684,7 @@ class GsBranchesLogCommand(LogMixin, TextCommand, GitCommand):
     Show log for the selected branch.
     """
 
-    def run_async(self):
+    def run_async(self, **kwargs):
         interface = ui.get_interface(self.view.id())
         remote_name, branch_name = interface.get_selected_branch()
         if not branch_name:
@@ -692,12 +692,11 @@ class GsBranchesLogCommand(LogMixin, TextCommand, GitCommand):
 
         # prefix the (optional) remote name to branch
         if remote_name:
-            self._branch = '{remote}/{branch}'.format(
+            branch = '{remote}/{branch}'.format(
                 remote=remote_name, branch=branch_name)
         else:
-            self._branch = branch_name
-        self._file_path = None
-        super().run_async()
+            branch = branch_name
+        super().run_async(branch=branch)
 
 
 class GsBranchesLogGraphCommand(LogGraphMixin, TextCommand, GitCommand):

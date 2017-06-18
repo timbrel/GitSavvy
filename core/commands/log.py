@@ -23,7 +23,7 @@ class LogMixin(object):
     def run(self, *args, file_path=None, branch=None):
         sublime.set_timeout_async(lambda: self.run_async(file_path, branch), 0)
 
-    def run_async(self, file_path, branch):
+    def run_async(self, file_path=None, branch=None):
         show_log_panel(
             self.log_generator(file_path=file_path, branch=branch),
             lambda commit: self.do_action(commit, file_path=file_path)
@@ -59,7 +59,7 @@ class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
     by the specified author.
     """
 
-    def run_async(self):
+    def run_async(self, **kwargs):
         email = self.git("config", "user.email").strip()
         self._entries = []
 
@@ -91,7 +91,7 @@ class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
 
 class GsLogByBranchCommand(LogMixin, WindowCommand, GitCommand):
 
-    def run_async(self):
+    def run_async(self, **kwargs):
         self.all_branches = [b.name_with_remote for b in self.get_branches()]
 
         if hasattr(self, '_selected_branch') and self._selected_branch in self.all_branches:
@@ -109,8 +109,7 @@ class GsLogByBranchCommand(LogMixin, WindowCommand, GitCommand):
     def on_branch_selection(self, index):
         if index == -1:
             return
-        self._branch = self.all_branches[index]
-        super().run_async()
+        super().run_async(branch=self.all_branches[index])
 
 
 class GsLogCommand(PanelCommandMixin, WindowCommand, GitCommand):

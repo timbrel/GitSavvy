@@ -61,7 +61,7 @@ class GsResetCommand(ResetMixin, LogMixin, WindowCommand, GitCommand):
 
 class GsResetBranch(ResetMixin, LogMixin, WindowCommand, GitCommand):
 
-    def run_async(self):
+    def run_async(self, **kwargs):
         self.all_branches = [b.name_with_remote for b in self.get_branches()]
 
         if hasattr(self, '_selected_branch') and self._selected_branch in self.all_branches:
