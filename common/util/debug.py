@@ -7,6 +7,7 @@ from contextlib import contextmanager
 
 _log = []
 enabled = False
+ENCODING_NOT_UTF8 = "{} was sent as binaries and we dont know the encoding, not utf-8"
 
 
 def start_logging():
@@ -41,15 +42,32 @@ def add_to_log(obj):
 
 
 def log_git(command, stdin, stdout, stderr, secounds):
-    add_to_log({
+    message = {
         "type": "git",
         "command": command,
         "stdin": stdin,
         "stdout": stdout,
         "stderr": stderr,
         "secounds": secounds
-        })
+        }
 
+    if stdin.__class__ == bytes:
+        message["stdin"] = try_to_decode(stdin, "stdin")
+
+    if stdout.__class__ == bytes:
+        message["stdout"] = try_to_decode(stdout, "stdout")
+
+    if stderr.__class__ == bytes:
+        message["stderr"] = try_to_decode(stderr, "stderr")
+
+    add_to_log(message)
+
+
+def try_to_decode(message, name):
+    try:
+        return message.decode(),
+    except UnicodeDecodeError:
+        return ENCODING_NOT_UTF8.format(name)
 
 def log_error(err):
     add_to_log({
