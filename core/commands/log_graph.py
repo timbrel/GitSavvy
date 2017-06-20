@@ -8,7 +8,7 @@ from ...common import util
 
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
-COMMIT_LINE = re.compile("[%s][ /_\|\-.]*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
+COMMIT_LINE = re.compile("^[%s][ /_\|\-.]*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
 
 
 class LogGraphMixin(object):
@@ -61,7 +61,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
         args = self.view.settings().get("git_savvy.git_graph_args")
         graph_content += self.git(*args)
-        graph_content = graph_content.replace("*", COMMIT_NODE_CHAR)
+        graph_content = re.sub('^\*', COMMIT_NODE_CHAR, graph_content, flags=re.MULTILINE)
 
         self.view.run_command("gs_replace_view_text", {"text": graph_content, "nuke_cursors": True})
         self.view.run_command("gs_log_graph_more_info")
