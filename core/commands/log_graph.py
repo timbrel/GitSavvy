@@ -8,7 +8,7 @@ from ...common import util
 
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
-COMMIT_LINE = re.compile("^[%s][ /_\|\-.]*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
+COMMIT_LINE = re.compile("^[\| ]*[%s][ /_\|\-.]*(?P<commit_hash>[a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
 
 
 class LogGraphMixin(object):
@@ -194,7 +194,7 @@ class GsLogGraphActionCommand(GsLogActionCommand):
         line = lines[0]
 
         m = COMMIT_LINE.search(line)
-        self._commit_hash = m.group(1) if m else ""
+        self._commit_hash = m.groupdict()['commit_hash'] if m else ""
         self._file_path = self.file_path
 
         if not len(self.selections) == 1:
@@ -249,7 +249,7 @@ class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
         line = lines[0]
 
         m = COMMIT_LINE.search(line)
-        commit_hash = m.group(1) if m else ""
+        commit_hash = m.groupdict()['commit_hash'] if m else ""
 
         if len(commit_hash) <= 3:
             return
