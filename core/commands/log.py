@@ -12,7 +12,7 @@ from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin, show_lo
 class LogMixin(object):
     """
     Display git log in a quick panel for given file and branch. Upon selection
-    of a commit, dislays an "action menu" via the ``GsLogActionCommand``.
+    of a commit, displays an "action menu" via the ``GsLogActionCommand``.
 
     Supports paginated fetching of log (defaults to 6000 entries per "page").
 
@@ -21,7 +21,7 @@ class LogMixin(object):
     """
 
     def run(self, *args, file_path=None, branch=None):
-        sublime.set_timeout_async(lambda: self.run_async(file_path, branch), 0)
+        sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, branch=branch), 0)
 
     def run_async(self, file_path=None, branch=None):
         show_log_panel(
