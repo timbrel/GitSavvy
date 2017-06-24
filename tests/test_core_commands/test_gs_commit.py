@@ -96,3 +96,32 @@ class TestAmend(CommonCommitMixin, GitRepoTestCase, git_command.GitCommand):
         commits = output.splitlines()
         self.assertEqual(len(commits), 2)
         self.assertIn(' Fix: Add foo', commits[0].decode())
+
+
+class TestAmendFirstCommit(CommonCommitMixin, GitRepoTestCase, git_command.GitCommand):
+    initialize = False
+
+    def test_amend_commit(self):
+        """ Test amending the first commit """
+        foo = os.path.join(self.repo_path, "foo")
+        with open(foo, "w") as f:
+            f.write("foo")
+
+        subprocess.check_call(["git", "add", "foo"], cwd=self._temp_dir)
+        subprocess.check_output(["git", "commit", "-m", "Add foo"], cwd=self._temp_dir)
+
+        with open(foo, "w") as f:
+            f.write("foo bar")
+
+        self.stage_file(foo)
+        self.window.run_command('gs_commit', {'amend': True})
+
+        yield from self.assert_commit_view_rendered(first_line='Add foo')
+        yield from self.finish_commit(message="Fix: ")
+
+        # assert commit was performed correctly
+        output = subprocess.check_output(["git", "log", "--oneline"],
+                                         cwd=self._temp_dir)
+        commits = output.splitlines()
+        self.assertEqual(len(commits), 2)
+        self.assertIn(' Fix: Add foo', commits[0].decode())
