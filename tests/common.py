@@ -19,6 +19,12 @@ class AssertionsMixin:
             [len(x) for x in self.sort_status_entries(self.get_status())],
             status)
 
+    def get_row(self, row):
+        return self.view.substr(self.view.line(self.view.text_point(row, 0)))
+
+    def get_rows(self, *rows):
+        return [self.get_row(row) for row in rows]
+
 
 class GitRepoTestCase(TempDirectoryTestCase, AssertionsMixin):
     """
@@ -42,8 +48,8 @@ class GitRepoTestCase(TempDirectoryTestCase, AssertionsMixin):
     @classmethod
     def add_readme(cls):
         readme = os.path.join(cls._temp_dir, "README.md")
-        f = open(readme, "w")
-        f.write("README")
-        f.close()
+        with open(readme, "w") as f:
+            f.write("README")
+
         subprocess.check_call(["git", "add", "README.md"], cwd=cls._temp_dir)
         subprocess.check_call(["git", "commit", "-m", "Add README.md"], cwd=cls._temp_dir)

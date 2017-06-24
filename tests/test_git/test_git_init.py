@@ -1,5 +1,6 @@
 import os
-from .common import GitRepoTestCase
+
+from GitSavvy.tests.common import GitRepoTestCase
 from GitSavvy.core import git_command
 
 
