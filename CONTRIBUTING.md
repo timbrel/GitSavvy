@@ -47,7 +47,8 @@ Please include the following information when filing a bug:
 - OS type and version
 - Console error output
 - A description of the problem.
-- Steps to reproduce, if possible.
+- Steps to reproduce, if possible
+- If the bug is caused by a failing command, [include a debug log](docs/debug.md#providing-a-debug-log).
 
 If you're interested in tackling a bug, please say so and I can assign it to you.
 
