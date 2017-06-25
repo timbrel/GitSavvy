@@ -10,17 +10,31 @@ This command will reload all GitSavvy-related Python modules and initiate a plug
 This command will only have an effect if `dev_mode` is set to `true` in `Packages/User/GitSavvy.sublime-settings`.
 
 
-## `GitSavvy: start logging`
+## `GitSavvy: enable logging`
 
 This will start tracking the inputs and outputs of all Git commands that are running under the hood.  Aggregating this data can be useful for those wanting to learn how GitSavvy works, as well as for debugging purposes.
 
 **Note:** If you've logged a sequence of Git commands before, running this again will overwrite what was previously recorded.
 
 
-## `GitSavvy: stop logging`
+## `GitSavvy: disable logging`
 
 This stops all recording Git command inputs and outputs, but does not destroy the record.
 
 ## `GitSavvy: view recorded log`
 
 Once you have started and stopped logging, this command will display the log in JSON format in a new scratch view.
+
+# Providing a Debug Log
+
+Ocasionally when creating a new issue in GitSavvy, you will be requested to provide a debug log. The above commands make it easy to do, by following these steps:
+
+   1. Open sublime, and get to the state just prior to running the failing command.
+   2. Open command palette, and run the command "GitSavvy: enable logging".
+   3. Perform the failing command.
+   4. Run the command "GitSavvy: disable logging"
+   5. Run the command "GitSavvy: view recorded log",
+      save the file locally and attach it to your issue.
+      
+      _Note: Take care to remove any sensitive information that may be recorded in GitSavvy._
+
