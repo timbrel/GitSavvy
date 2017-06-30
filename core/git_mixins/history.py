@@ -27,11 +27,12 @@ class HistoryMixin():
 
     def log(self, author=None, branch=None, file_path=None, start_end=None, cherry=None,
             limit=6000, skip=None, reverse=False, all_branches=False, msg_regexp=None,
-            diff_regexp=None, first_parent=False, merges=False, no_merges=False, topo_order=False):
+            diff_regexp=None, first_parent=False, merges=False, no_merges=False, topo_order=False,
+            follow=False):
 
         log_output = self.git(
             "log",
-            "-{}".format(limit) if limit else None,
+            "--max-count={}".format(limit) if limit else None,
             "--skip={}".format(skip) if skip else None,
             "--reverse" if reverse else None,
             '--format=%h%n%H%n%s%n%an%n%ae%n%at%x00%B%x00%x00%n',
@@ -44,6 +45,7 @@ class HistoryMixin():
             "--no-merges" if no_merges else None,
             "--merges" if merges else None,
             "--topo-order" if topo_order else None,
+            "--follow" if follow else None,
             "--all" if all_branches else None,
             "{}..{}".format(*start_end) if start_end else None,
             branch if branch else None,
@@ -63,14 +65,11 @@ class HistoryMixin():
 
         return entries
 
-    def commit_generator(self, limit = 6000):
+    def log_generator(self, limit=6000, **kwargs):
         # Generator for show_log_panel
         skip = 0
         while True:
-            logs = self.log(branch=self._branch,
-                            file_path=self._file_path,
-                            limit=limit,
-                            skip=skip)
+            logs = self.log(limit=limit, skip=skip, **kwargs)
             if not logs:
                 break
             for l in logs:
@@ -131,3 +130,19 @@ class HistoryMixin():
 
     def get_short_hash(self, commit_hash):
         return self.git("rev-parse", "--short", commit_hash).strip()
+
+    def filename_at_commit(self, filename, commit_hash):
+        commit_len = len(commit_hash)
+        lines = self.git(
+            "log", "--pretty=oneline", "--follow", "--name-status", "--", filename
+        ).split("\n")
+
+        for i in range(0, len(lines), 2):
+            if lines[i].split(" ")[0][:commit_len] == commit_hash:
+                if lines[i+1][0] == 'R':
+                    return lines[i+1].split("\t")[2]
+                else:
+                    return lines[i+1].split("\t")[1]
+
+        # If the commit hash is not for this file.
+        return filename

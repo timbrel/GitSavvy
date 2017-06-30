@@ -49,7 +49,7 @@ class GsFixupFromStageCommand(GsLogCurrentBranchCommand):
 
         return commit_chain
 
-    def do_action(self, commit):
+    def do_action(self, commit, **kwargs):
         commit = self.git("rev-parse", commit).strip()
         self.git("commit", "--fixup", commit)
         try:

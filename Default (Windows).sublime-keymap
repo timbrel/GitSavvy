@@ -61,19 +61,6 @@
         ]
     },
 
-    ////////////////
-    // BLAME VIEW //
-    ////////////////
-
-    {
-        "keys": ["ctrl+enter"],
-        "command": "gs_blame_open_commit",
-        "context": [
-            { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
-        ]
-    },
-
     ///////////////
     // HELP VIEW //
     ///////////////

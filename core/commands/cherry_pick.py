@@ -12,7 +12,7 @@ class GsCherryPickCommand(GsLogByBranchCommand):
         kwargs["start_end"] = ("", self._branch)
         return super().log(**kwargs)
 
-    def do_action(self, commit_hash):
+    def do_action(self, commit_hash, **kwargs):
         self.git("cherry-pick", commit_hash)
         sublime.status_message("Commit %s cherry-picked successfully." %
                                commit_hash)

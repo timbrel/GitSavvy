@@ -31,13 +31,17 @@ class PanelActionMixin(object):
 
     def run(self, *args, **kwargs):
         self.update_actions()
-        self.show_panel()
+        self.show_panel(pre_selected_index=kwargs.get('pre_selected_index', None))
 
     def update_actions(self):
         self.actions = self.default_actions[:]  # copy default actions
 
-    def show_panel(self, actions=None):
+    def show_panel(self, actions=None, pre_selected_index=None):
         window = self.window if hasattr(self, 'window') else self.view.window()
+        if pre_selected_index:
+            self.on_action_selection(pre_selected_index)
+            return
+
         window.show_quick_panel(
             [a[1] for a in actions or self.actions],
             self.on_action_selection,
@@ -196,8 +200,15 @@ class PaginatedPanel:
         kwargs = {}
         if self.flags:
             kwargs["flags"] = self.flags
-        if self.selected_index and self.skip <= self.selected_index < self.skip + self.limit:
+
+        if callable(self.selected_index):
+            for idx, entry in enumerate(self.ret_list):
+                if self.selected_index(entry):
+                    kwargs["selected_index"] = idx
+                    break
+        elif self.selected_index and self.skip <= self.selected_index < self.skip + self.limit:
             kwargs["selected_index"] = self.selected_index - self.skip
+
         if self.on_highlight:
             kwargs["on_highlight"] = self.on_highlight
 

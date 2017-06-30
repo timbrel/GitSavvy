@@ -12,7 +12,7 @@ from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin, show_lo
 class LogMixin(object):
     """
     Display git log in a quick panel for given file and branch. Upon selection
-    of a commit, dislays an "action menu" via the ``GsLogActionCommand``.
+    of a commit, displays an "action menu" via the ``GsLogActionCommand``.
 
     Supports paginated fetching of log (defaults to 6000 entries per "page").
 
@@ -21,22 +21,22 @@ class LogMixin(object):
     """
 
     def run(self, *args, file_path=None, branch=None):
-        self._file_path = file_path
-        self._branch = branch
-        sublime.set_timeout_async(self.run_async)
+        sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, branch=branch), 0)
 
-    def run_async(self):
-        show_log_panel(self.commit_generator(), self.do_action)
+    def run_async(self, file_path=None, branch=None):
+        show_log_panel(
+            self.log_generator(file_path=file_path, branch=branch),
+            lambda commit: self.do_action(commit, file_path=file_path)
+        )
 
-
-    def do_action(self, commit_hash):
+    def do_action(self, commit_hash, **kwargs):
         if hasattr(self, 'window'):
             window = self.window
         else:
             window = self.view.window()
         window.run_command("gs_log_action", {
             "commit_hash": commit_hash,
-            "file_path": self._file_path
+            "file_path": kwargs.get("file_path")
         })
 
 
@@ -59,7 +59,7 @@ class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
     by the specified author.
     """
 
-    def run_async(self):
+    def run_async(self, **kwargs):
         email = self.git("config", "user.email").strip()
         self._entries = []
 
@@ -91,7 +91,7 @@ class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
 
 class GsLogByBranchCommand(LogMixin, WindowCommand, GitCommand):
 
-    def run_async(self):
+    def run_async(self, **kwargs):
         self.all_branches = [b.name_with_remote for b in self.get_branches()]
 
         if hasattr(self, '_selected_branch') and self._selected_branch in self.all_branches:
@@ -109,8 +109,7 @@ class GsLogByBranchCommand(LogMixin, WindowCommand, GitCommand):
     def on_branch_selection(self, index):
         if index == -1:
             return
-        self._branch = self.all_branches[index]
-        super().run_async()
+        super().run_async(branch=self.all_branches[index])
 
 
 class GsLogCommand(PanelCommandMixin, WindowCommand, GitCommand):

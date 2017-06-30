@@ -38,6 +38,7 @@ class GsShowFileAtCommitCommand(WindowCommand, GitCommand):
         filepath = self.file_path
         filename = self.get_rel_path(filepath)
         filename = re.sub('\\\\', '/', filename)
+        filename = self.filename_at_commit(filename, commit_hash)
         content = self.git("show", commit_hash + ':' + filename)
         view.run_command("gs_replace_view_text", {"text": content, "nuke_cursors": True})
         lineno = view.settings().get("git_savvy.show_file_at_commit_view.lineno")
@@ -65,7 +66,7 @@ class GsShowCurrentFileCommand(LogMixin, WindowCommand, GitCommand):
     def run(self):
         super().run(file_path=self.file_path)
 
-    def do_action(self, commit_hash):
+    def do_action(self, commit_hash, **kwargs):
         self.window.run_command("gs_show_current_file_at_commit", {
             "commit_hash": commit_hash
         })
