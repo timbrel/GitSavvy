@@ -61,3 +61,7 @@ If you make changes, please remember to update the user documentation to reflect
 ## Package Testing
 
 Check the implementation details of the [tests](docs/testing.md).
+
+# Publishing
+
+All changes are published automatically whenever a pull request is merged.  As part of the PR process, you will be asked to provide the information necessary to make that happen.
