@@ -41,7 +41,7 @@ after_success:
 
 deploy:
     provider: script
-    script: bash $TRAVIS_BUILD_DIR/scripts/deploy.sh
+    script: ./scripts/deploy.sh
     on:
         branch: master
 
