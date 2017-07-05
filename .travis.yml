@@ -39,5 +39,11 @@ after_success:
       fi
     - coveralls
 
+deploy:
+  provider: script
+  script: scripts/deploy.sh
+  on:
+    branch: master
+
 notifications:
     email: false
