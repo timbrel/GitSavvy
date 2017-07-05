@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 if [ "$TRAVIS_OS_NAME" != "linux" ]; then
     echo "Deploy on $TRAVIS_OS_NAME is disabled; aborting publish."
-    exit 0;
+    exit 0
 fi
 
 PULL_REQUEST_NUMBER=$(git show HEAD --format=format:%s | sed -nE 's/Merge pull request #([0-9]+).*/\1/p')
@@ -28,6 +28,7 @@ else
             ((VERSION_ARRAY[2]++))
         else
             echo "Matching semantic version not found; aborting publish."
+            exit 1
         fi
 
         git config --global user.name "Dale Bustad (automated)"
