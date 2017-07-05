@@ -1,5 +1,5 @@
 if [ "$TRAVIS_OS_NAME" -ne "linux" ]; then
-    # We'll only want to deploy from 
+    echo "Deploy on $TRAVIS_OS_NAME is disabled; aborting publish."
     exit 0;
 fi
 
@@ -7,10 +7,12 @@ PULL_REQUEST_NUMBER=$(git show HEAD --format=format:%s | sed -nE 's/Merge pull r
 if [ -z "$PULL_REQUEST_NUMBER" ]; then
     echo "No pull request number found; aborting publish."
 else
+    echo "Detected pull request #$PULL_REQUEST_NUMBER."
     SEMVER_CHANGE=$(curl "https://maintainerd.divmain.com/api/semver?repoPath=divmain/GitSavvy&installationId=31333&prNumber=$PULL_REQUEST_NUMBER")
     if [ -z "$SEMVER_CHANGE" ]; then
         echo "No semver selection found; aborting publish."
     else
+        echo "Detected semantic version change of $SEMVER_CHANGE."
         MOST_RECENT_TAG=$(git describe --abbrev=0)
         VERSION_ARRAY=( ${MOST_RECENT_TAG//./ } )
 
@@ -36,5 +38,7 @@ else
 
         git remote add origin-deploy https://${GH_TOKEN}@github.com/divmain/GitSavvy.git > /dev/null 2>&1
         git push --quiet --tags origin-deploy master
+
+        echo "Done!"
     fi
 fi
