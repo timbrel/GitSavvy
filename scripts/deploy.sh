@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-if [ "$TRAVIS_OS_NAME" -ne "linux" ]; then
+if [ "$TRAVIS_OS_NAME" != "linux" ]; then
     echo "Deploy on $TRAVIS_OS_NAME is disabled; aborting publish."
     exit 0;
 fi
