@@ -9,7 +9,7 @@ class GsCherryPickCommand(GsLogByBranchCommand):
 
     def log(self, **kwargs):
         kwargs["cherry"] = True
-        kwargs["start_end"] = ("", self._branch)
+        kwargs["start_end"] = ("", kwargs["branch"])
         return super().log(**kwargs)
 
     def do_action(self, commit_hash, **kwargs):
