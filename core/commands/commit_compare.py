@@ -174,6 +174,11 @@ class GsCompareAgainstCommand(PanelActionMixin, WindowCommand, GitCommand):
         self._target_commit = target_commit
         super().run()
 
+    def update_actions(self):
+        super().update_actions()
+        if self._target_commit:
+            self.actions = [["compare_against_head", "HEAD"]] + self.actions
+
     def compare_against_branch(self):
         self.window.run_command("gs_compare_against_branch", {
             "target_commit": self._target_commit,
@@ -183,5 +188,12 @@ class GsCompareAgainstCommand(PanelActionMixin, WindowCommand, GitCommand):
     def compare_against_reference(self):
         self.window.run_command("gs_compare_against_reference", {
             "target_commit": self._target_commit,
+            "file_path": self._file_path
+        })
+
+    def compare_against_head(self):
+        self.window.run_command("gs_compare_commit", {
+            "target_commit": self._target_commit,
+            "base_commit": "HEAD",
             "file_path": self._file_path
         })
