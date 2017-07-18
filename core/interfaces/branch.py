@@ -436,28 +436,7 @@ class GsBranchesPushSelectedCommand(TextCommand, GitCommand):
         if not branch_name or remote_name:
             return
 
-        self.branch_name = branch_name
-
-        self.remotes = list(self.get_remotes().keys())
-
-        if not self.remotes:
-            self.view.window().show_quick_panel(["There are no remotes available."], None)
-        else:
-            self.view.window().show_quick_panel(
-                self.remotes,
-                self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT
-                )
-
-    def on_select_remote(self, remote_index):
-        # If the user pressed `esc` or otherwise cancelled.
-        if remote_index == -1:
-            return
-        selected_remote = self.remotes[remote_index]
-        sublime.status_message("Pushing `{}` to `{}`...".format(self.branch_name, selected_remote))
-        self.push(remote=selected_remote, branch=self.branch_name)
-        sublime.status_message("Push successful.")
-        util.view.refresh_gitsavvy(self.view)
+        self.view.window().run_command("gs_push", {"local_branch_name": branch_name})
 
 
 class GsBranchesPushAllCommand(TextCommand, GitCommand):
