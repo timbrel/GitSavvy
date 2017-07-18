@@ -81,3 +81,11 @@ class BranchesMixin():
         """
 
         self.git("merge", *branch_names)
+
+    def get_local_branch(self, branch_name):
+        """
+        Get a local Branch tuple from branch name.
+        """
+        for branch in self.get_branches():
+            if not branch.remote and branch.name == branch_name:
+                return branch

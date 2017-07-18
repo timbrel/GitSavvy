@@ -438,24 +438,32 @@ class GsBranchesPushSelectedCommand(TextCommand, GitCommand):
 
         self.branch_name = branch_name
 
-        self.remotes = list(self.get_remotes().keys())
+        tracking_branch = self.get_local_branch(branch_name).tracking
 
-        if not self.remotes:
-            self.view.window().show_quick_panel(["There are no remotes available."], None)
+        if tracking_branch:
+            remote, remote_branch = tracking_branch.split("/", 1)
+            self.push_to_remote(remote, branch_name, remote_branch)
         else:
-            self.view.window().show_quick_panel(
-                self.remotes,
-                self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT
-                )
+            self.remotes = list(self.get_remotes().keys())
+            if not self.remotes:
+                self.view.window().show_quick_panel(["There are no remotes available."], None)
+            else:
+                self.view.window().show_quick_panel(
+                    self.remotes,
+                    self.on_select_remote,
+                    flags=sublime.MONOSPACE_FONT
+                    )
 
     def on_select_remote(self, remote_index):
         # If the user pressed `esc` or otherwise cancelled.
         if remote_index == -1:
             return
         selected_remote = self.remotes[remote_index]
-        sublime.status_message("Pushing `{}` to `{}`...".format(self.branch_name, selected_remote))
-        self.push(remote=selected_remote, branch=self.branch_name)
+        self.push_to_remote(selected_remote, self.branch_name)
+
+    def push_to_remote(self, remote, branch, remote_branch=None):
+        sublime.status_message("Pushing `{}` to `{}`...".format(self.branch_name, remote))
+        self.push(remote=remote, branch=branch, remote_branch=remote_branch, set_upstream=True)
         sublime.status_message("Push successful.")
         util.view.refresh_gitsavvy(self.view)
 
