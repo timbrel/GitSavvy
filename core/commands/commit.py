@@ -108,7 +108,16 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
             with util.file.safe_open(commit_help_extra_path, "r", encoding="utf-8") as f:
                 initial_text += f.read()
 
-        if savvy_settings.get("show_commit_diff"):
+        show_commit_diff = savvy_settings.get("show_commit_diff")
+        if show_commit_diff == "stat":
+            initial_text += self.git(
+                "diff",
+                "--stat",
+                "--no-color",
+                "--cached",
+                "HEAD^" if option_amend else None
+            )
+        elif show_commit_diff == "full" or show_commit_diff is True:
             initial_text += self.git(
                 "diff",
                 "--no-color",

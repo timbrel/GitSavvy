@@ -46,10 +46,15 @@
     },
 
     /*
-        Change this to `true` to display a diff for the current commit
+        Change this to "full" to display a full diff for the current commit
         when writing a commit message.
+
+        Change this to "stat" to display a diff stat for the current commit
+        when writing a commit message.
+
+        Change this to `false` to disable.
      */
-    "show_commit_diff": false,
+    "show_commit_diff": "stat",
 
     /*
         Change this to `true` to scroll to the first hunk automatically when
