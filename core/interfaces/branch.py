@@ -53,10 +53,11 @@ class BranchInterface(ui.Interface, GitCommand):
 
       [c] checkout                                  [p] push selected to remote
       [b] create new branch (from HEAD)             [P] push all branches to remote
-      [d] delete                                    [D] delete (force)
+      [d] delete                                    [u] pull selected from remote
+      [D] delete (force)                            [h] fetch remote branches
       [R] rename (local)                            [m] merge selected into active branch
       [t] configure tracking                        [M] fetch and merge into active branch
-      [o] checkout remote as local                  [h] fetch remote branches
+      [o] checkout remote as local
 
       [f] diff against active                       [l] show branch log
       [H] diff history against active               [g] show branch log graph
@@ -418,6 +419,25 @@ class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
 
         self.git("branch", "-u", remote_ref, self.local_branch)
         util.view.refresh_gitsavvy(self.view)
+
+
+class GsBranchesPullSelectedCommand(TextCommand, GitCommand):
+
+    """
+    Pull selected branch from a remote branch.
+    """
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        interface = ui.get_interface(self.view.id())
+        remote_name, branch_name = interface.get_selected_branch()
+
+        if not branch_name or remote_name:
+            return
+
+        self.view.window().run_command("gs_pull", {"local_branch_name": branch_name})
 
 
 class GsBranchesPushSelectedCommand(TextCommand, GitCommand):
