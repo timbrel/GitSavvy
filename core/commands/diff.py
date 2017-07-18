@@ -70,6 +70,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
         diff_view.sel().clear()
         diff_view.run_command("gs_diff_refresh")
         diff_view.run_command("gs_diff_navigate")
+        diff_view.run_command("gs_handle_vintageous")
 
 
 class GsDiffRefreshCommand(TextCommand, GitCommand):
