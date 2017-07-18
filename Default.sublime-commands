@@ -212,6 +212,10 @@
         "command": "gs_reload_modules_debug"
     },
     {
+        "caption": "git: reflog",
+        "command": "gs_ref_log"
+    },
+    {
         "caption": "git: log",
         "command": "gs_log"
     },

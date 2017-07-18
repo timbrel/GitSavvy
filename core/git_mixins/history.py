@@ -1,4 +1,5 @@
 from collections import namedtuple
+from ...common import util
 
 
 LogEntry = namedtuple("LogEntry", (
@@ -96,6 +97,19 @@ class HistoryMixin():
                 short_hash, long_hash, summary, reflog_name, reflog_selector, author, datetime))
 
         return entries
+
+    def reflog_generator(self, limit=6000, skip=None):
+        skip = 0
+        while True:
+            logs = self.reflog(limit=limit, skip=skip)
+            if not logs:
+                break
+            for l in logs:
+                yield (["{} {}".format(l.reflog_selector, l.reflog_name),
+                        "{} {}".format(l.short_hash, l.summary),
+                        "{}, {}".format(l.author, util.dates.fuzzy(l.datetime))],
+                       l.long_hash)
+            skip = skip + limit
 
     def log1(self, commit_hash):
         """
