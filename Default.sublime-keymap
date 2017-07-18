@@ -771,7 +771,7 @@
     },
     {
         "keys": ["l"],
-        "command": "gs_tag_view_log",
+        "command": "gs_tags_view_log",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
@@ -780,7 +780,7 @@
     },
     {
         "keys": ["d"],
-        "command": "gs_tag_delete",
+        "command": "gs_tags_delete",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
@@ -805,7 +805,7 @@
     },
     {
         "keys": ["p"],
-        "command": "gs_tag_push",
+        "command": "gs_tags_push",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
@@ -814,7 +814,7 @@
     },
     {
         "keys": ["P"],
-        "command": "gs_tag_push",
+        "command": "gs_tags_push",
         "args": { "push_all": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
