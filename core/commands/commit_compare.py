@@ -88,20 +88,30 @@ class GsCompareCommitShowDiffCommand(TextCommand, GitCommand):
     Refresh view of all commits diff between branches.
     """
 
-    def run(self, edit):
+    def run(self, edit, reverse=False):
+        self._reverse = reverse
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
         base_commit = self.view.settings().get("git_savvy.compare_commit_view.base_commit")
         target_commit = self.view.settings().get("git_savvy.compare_commit_view.target_commit")
         file_path = self.file_path
-        self.view.window().run_command("gs_diff", {
-            "base_commit": base_commit,
-            "target_commit": target_commit,
-            "file_path": file_path,
-            "disable_stage": True,
-            "title": "DIFF: {}..{}".format(base_commit, target_commit)
-        })
+        if self._reverse:
+            self.view.window().run_command("gs_diff", {
+                "base_commit": target_commit,
+                "target_commit": base_commit,
+                "file_path": file_path,
+                "disable_stage": True,
+                "title": "DIFF: {}..{}".format(target_commit, base_commit)
+            })
+        else:
+            self.view.window().run_command("gs_diff", {
+                "base_commit": base_commit,
+                "target_commit": target_commit,
+                "file_path": file_path,
+                "disable_stage": True,
+                "title": "DIFF: {}..{}".format(base_commit, target_commit)
+            })
 
 
 class GsCompareAgainstReferenceCommand(WindowCommand, GitCommand):
