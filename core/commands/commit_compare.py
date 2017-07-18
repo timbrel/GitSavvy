@@ -70,13 +70,13 @@ class GsCompareCommitRefreshCommand(TextCommand, GitCommand):
             diff_contents = "File: {}\n\n".format(file_path)
         else:
             diff_contents = ""
-        diff_contents += "Commits on {} and not on {}\n".format(base_commit, target_commit)
+        diff_contents += "Commits on {} and not on {}\n".format(target_commit, base_commit)
         args = self.view.settings().get("git_savvy.git_graph_args")
-        args.insert(1, "{}..{}".format(target_commit, base_commit))
+        args.insert(1, "{}..{}".format(base_commit, target_commit))
         diff_contents += self.git(*args)
         diff_contents = diff_contents.replace("*", COMMIT_NODE_CHAR)
-        diff_contents += "\n\nCommits on {} and not on {}\n".format(target_commit, base_commit)
-        args[1] = "{}..{}".format(base_commit, target_commit)
+        diff_contents += "\n\nCommits on {} and not on {}\n".format(base_commit, target_commit)
+        args[1] = "{}..{}".format(target_commit, base_commit)
         diff_contents += self.git(*args)
         diff_contents = diff_contents.replace("*", COMMIT_NODE_CHAR)
         return diff_contents
@@ -115,9 +115,10 @@ class GsCompareCommitShowDiffCommand(TextCommand, GitCommand):
 
 
 class GsCompareAgainstReferenceCommand(WindowCommand, GitCommand):
-    def run(self, base_commit=None, file_path=None):
+    def run(self, base_commit=None, target_commit=None, file_path=None):
         self._file_path = file_path
         self._base_commit = base_commit
+        self._target_commit = target_commit
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
@@ -126,21 +127,23 @@ class GsCompareAgainstReferenceCommand(WindowCommand, GitCommand):
     def show_diff(self, ref):
         self.window.run_command("gs_compare_commit", {
             "file_path": self._file_path,
-            "target_commit": ref,
-            "base_commit": self._base_commit
+            "base_commit": self._base_commit if self._base_commit else ref,
+            "target_commit": self._target_commit if self._target_commit else ref
         })
 
     def on_cancel(self):
         self.window.run_command("gs_compare_against", {
             "base_commit": self._base_commit,
+            "target_commit": self._target_commit,
             "file_path": self._file_path
         })
 
 
 class GsCompareAgainstBranchCommand(WindowCommand, GitCommand):
-    def run(self, base_commit=None, file_path=None):
+    def run(self, base_commit=None, target_commit=None, file_path=None):
         self._file_path = file_path
         self._base_commit = base_commit
+        self._target_commit = target_commit
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
@@ -155,21 +158,22 @@ class GsCompareAgainstBranchCommand(WindowCommand, GitCommand):
             self.all_branches,
             self.on_branch_selection,
             flags=sublime.MONOSPACE_FONT,
-            selected_index=pre_selected_index
+            selected_index=pre_selected_index,
         )
 
     def on_branch_selection(self, index):
         if index == -1:
             self.window.run_command("gs_compare_against", {
                 "base_commit": self._base_commit,
+                "target_commit": self._target_commit,
                 "file_path": self._file_path
             })
             return
-        self._selected_branch = self.all_branches[index]
+        selected_branch = self.all_branches[index]
         self.window.run_command("gs_compare_commit", {
             "file_path": self._file_path,
-            "target_commit": self._selected_branch,
-            "base_commit": self._base_commit
+            "base_commit": self._base_commit if self._base_commit else selected_branch,
+            "target_commit": self._target_commit if self._target_commit else selected_branch
         })
 
 
@@ -179,31 +183,34 @@ class GsCompareAgainstCommand(PanelActionMixin, WindowCommand, GitCommand):
         ["compare_against_reference", "Reference"],
     ]
 
-    def run(self, base_commit=None, file_path=None, current_file=False):
+    def run(self, base_commit=None, target_commit=None, file_path=None, current_file=False):
         self._file_path = self.file_path if current_file else file_path
         self._base_commit = base_commit
+        self._target_commit = target_commit
         super().run()
 
     def update_actions(self):
         super().update_actions()
-        if self._base_commit:
+        if self._target_commit != "HEAD":
             self.actions = [["compare_against_head", "HEAD"]] + self.actions
 
     def compare_against_branch(self):
         self.window.run_command("gs_compare_against_branch", {
             "base_commit": self._base_commit,
+            "target_commit": self._target_commit,
             "file_path": self._file_path
         })
 
     def compare_against_reference(self):
         self.window.run_command("gs_compare_against_reference", {
             "base_commit": self._base_commit,
+            "target_commit": self._target_commit,
             "file_path": self._file_path
         })
 
     def compare_against_head(self):
         self.window.run_command("gs_compare_commit", {
             "base_commit": self._base_commit,
-            "target_commit": "HEAD",
+            "target_commit": self._target_commit,
             "file_path": self._file_path
         })

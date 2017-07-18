@@ -196,12 +196,13 @@
     },
     {
         "caption": "git: compare against ...",
-        "command": "gs_compare_against"
+        "command": "gs_compare_against",
+        "args": { "target_commit": "HEAD" }
     },
     {
         "caption": "git: compare current file against ...",
         "command": "gs_compare_against",
-        "args": { "current_file": true }
+        "args": { "target_commit": "HEAD", "current_file": true }
     },
     {
         "caption": "git: blame current file",
