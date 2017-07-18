@@ -30,6 +30,7 @@ class GsShowCommitCommand(WindowCommand, GitCommand):
         view.set_scratch(True)
         view.run_command("gs_show_commit_refresh")
         view.run_command("gs_diff_navigate")
+        view.run_command("gs_handle_vintageous")
 
 
 class GsShowCommitRefreshCommand(TextCommand, GitCommand):
