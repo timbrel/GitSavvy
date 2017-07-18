@@ -27,3 +27,6 @@ contexts:
         - match: ^$
           pop: true
         - include: scope:git-savvy.diff
+
+    - include: "scope:git-savvy.commit-diffstat"
+    
