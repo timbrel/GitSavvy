@@ -81,3 +81,7 @@ Actions
     Show file at most recent commit -> Show the file with syntax highlighting at the most recent commit
     Show file at this chunk's commit -> Same as above but takes the commit from the chunk in which the cursor is located
 
+## `git: reflog`
+
+Like `git: log`, this command will show a panel of commit entries, but uses `git reflog` rather than `git log` as the source of available commits.
+
