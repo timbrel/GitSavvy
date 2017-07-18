@@ -11,7 +11,8 @@ class GsPullCommand(WindowCommand, GitCommand):
     Through a series of panels, allow the user to pull from a remote branch.
     """
 
-    def run(self):
+    def run(self, local_branch_name=None):
+        self.local_branch_name = local_branch_name
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
@@ -52,11 +53,12 @@ class GsPullCommand(WindowCommand, GitCommand):
 
         self.branches_on_selected_remote = self.list_remote_branches(self.selected_remote)
 
-        current_local_branch = self.get_current_branch_name()
+        if not self.local_branch_name:
+            self.local_branch_name = self.get_current_branch_name()
 
         try:
             pre_selected_idx = self.branches_on_selected_remote.index(
-                self.selected_remote + "/" + current_local_branch)
+                self.selected_remote + "/" + self.local_branch_name)
         except ValueError:
             pre_selected_idx = 0
 
@@ -79,14 +81,16 @@ class GsPullCommand(WindowCommand, GitCommand):
         if branch_index == -1:
             return
 
-        selected_branch = self.branches_on_selected_remote[branch_index].split("/", 1)[1]
-        sublime.set_timeout_async(lambda: self.do_pull(self.selected_remote, selected_branch))
+        selected_remote_branch = self.branches_on_selected_remote[branch_index].split("/", 1)[1]
+        sublime.set_timeout_async(
+            lambda: self.do_pull(
+                self.selected_remote, self.local_branch_name, selected_remote_branch))
 
-    def do_pull(self, remote, branch):
+    def do_pull(self, remote, branch, remote_branch):
         """
         Perform `git pull remote branch`.
         """
         sublime.status_message("Starting pull...")
-        self.pull(remote, branch)
+        self.pull(remote=remote, branch=branch, remote_branch=remote_branch)
         sublime.status_message("Pull complete.")
         util.view.refresh_gitsavvy(self.window.active_view())

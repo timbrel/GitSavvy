@@ -37,12 +37,16 @@ class RemotesMixin():
         # Remove any duplicate branch names.
         return [branch for idx, branch in enumerate(branches) if branches.index(branch) == idx]
 
-    def pull(self, remote=None, branch=None):
+    def pull(self, remote=None, branch=None, remote_branch=None):
         """
         Pull from the specified remote and branch if provided, otherwise
         perform default `git pull`.
         """
-        self.git("pull", remote, branch)
+        self.git(
+            "pull",
+            remote,
+            branch if not remote_branch else "{}:{}".format(branch, remote_branch)
+            )
 
     def push(self, remote=None, branch=None, force=False, remote_branch=None, set_upstream=False):
         """
