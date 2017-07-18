@@ -162,7 +162,7 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
 
     def compare_against(self):
         self.window.run_command("gs_compare_against", {
-            "target_commit": self._commit_hash,
+            "base_commit": self._commit_hash,
             "file_path": self._file_path
         })
 
