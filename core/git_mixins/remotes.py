@@ -45,7 +45,7 @@ class RemotesMixin():
         self.git(
             "pull",
             remote,
-            branch if not remote_branch else "{}:{}".format(branch, remote_branch)
+            branch if not remote_branch else "{}:{}".format(remote_branch, branch)
             )
 
     def push(self, remote=None, branch=None, force=False, remote_branch=None, set_upstream=False):
