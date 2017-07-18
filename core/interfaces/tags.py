@@ -208,7 +208,7 @@ class GsTagsRefreshCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsTagDeleteCommand(TextCommand, GitCommand):
+class GsTagsDeleteCommand(TextCommand, GitCommand):
 
     """
     Delete selected tag(s).
@@ -257,7 +257,7 @@ class GsTagDeleteCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsTagPushCommand(TextCommand, GitCommand):
+class GsTagsPushCommand(TextCommand, GitCommand):
 
     """
     Displays a panel of all remotes defined for the repository, then push
@@ -317,7 +317,7 @@ class GsTagPushCommand(TextCommand, GitCommand):
             util.view.refresh_gitsavvy(self.view)
 
 
-class GsTagViewLogCommand(TextCommand, GitCommand):
+class GsTagsViewLogCommand(TextCommand, GitCommand):
 
     """
     Display the commit for the selected tag's hash.

@@ -140,7 +140,7 @@
     },
     {
         "caption": "git: push all tags",
-        "command": "gs_tag_push",
+        "command": "gs_tags_push",
         "args": { "push_all": true }
     },
     {
