@@ -465,6 +465,10 @@ class GsStatusStageAllFilesCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        interface = ui.get_interface(self.view.id())
+        if interface.conflict_entries:
+            return
+
         self.add_all_tracked_files()
         util.view.refresh_gitsavvy(self.view)
 
@@ -476,6 +480,10 @@ class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        interface = ui.get_interface(self.view.id())
+        if interface.conflict_entries:
+            return
+
         self.add_all_files()
         util.view.refresh_gitsavvy(self.view)
 
