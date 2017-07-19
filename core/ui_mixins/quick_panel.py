@@ -121,13 +121,16 @@ def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_hig
     items: can be either a list or a generator.
     on_done: a callback will take one argument
     limit: the number of items per page
+    selected_index: an integer or a callable returning boolean.
+                    If callable, takes either an integer or an entry.
+    on_highlight: a callable, takes either an integer or an entry.
+
     next_message: a message of next page, default is ">>> NEXT PAGE >>>"
 
     If the elements are tuples of the form `(value1, value2)`,
     `value1` would be displayed via quick panel and `value2` will be passed to
-    `on_done` when the item is selected. Furthermore, if the quick panel is
-    cancelled, `None` will be passed to `on_done`.
-
+    `on_done`, `selected_index` and `on_highlight`.
+    Furthermore, if the quick panel is cancelled, `None` will be passed to `on_done`.
     """
 
     pp = PaginatedPanel(
@@ -139,16 +142,7 @@ def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_hig
             limit=limit,
             next_message=next_message)
     pp.show()
-
-
-def show_log_panel(entries, on_done, limit=6000, selected_index=None):
-    """
-    Display log entries in quick panel with pagination, and execute on_done(commit)
-    when item is selected. `entries` can be either a list or a generator of LogEnty.
-
-    """
-    lp = LogPanel(entries, on_done, limit=limit, selected_index=selected_index)
-    lp.show()
+    return pp
 
 
 class PaginatedPanel:
@@ -156,7 +150,7 @@ class PaginatedPanel:
     """
     A version of QuickPanel which supports pagination.
     """
-    flags = None
+    flags = sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST
     next_message = ">>> NEXT PAGE >>>"
     limit = 6000
     selected_index = None
@@ -168,7 +162,9 @@ class PaginatedPanel:
         self.on_done = on_done
         for option in ['flags', 'selected_index', 'on_highlight',
                        'limit', 'next_message', ]:
-            if option in kwargs:
+            # need to check the nullness of the options to avoid the default
+            # method `on_hightight` of LogPanel to be overrided.
+            if option in kwargs and kwargs[option] is not None:
                 setattr(self, option, kwargs[option])
 
     def load_next_batch(self):
@@ -201,35 +197,71 @@ class PaginatedPanel:
         if self.flags:
             kwargs["flags"] = self.flags
 
-        if callable(self.selected_index):
-            for idx, entry in enumerate(self.ret_list):
-                if self.selected_index(entry):
-                    kwargs["selected_index"] = idx
-                    break
-        elif self.selected_index and self.skip <= self.selected_index < self.skip + self.limit:
-            kwargs["selected_index"] = self.selected_index - self.skip
+        selected_index = self.get_selected_index()
+
+        if selected_index:
+            kwargs["selected_index"] = selected_index
 
         if self.on_highlight:
-            kwargs["on_highlight"] = self.on_highlight
+            kwargs["on_highlight"] = self._on_highlight
 
         if self.display_list:
             sublime.active_window().show_quick_panel(
                 self.display_list,
-                self.on_selection,
+                self._on_selection,
                 **kwargs
             )
 
-    def on_selection(self, index):
+    def get_selected_index(self):
+        if callable(self.selected_index):
+            for idx, entry in enumerate(self.ret_list):
+                if self.selected_index(entry):
+                    return idx
+        elif self.selected_index and self.skip <= self.selected_index < self.skip + self.limit:
+            return self.selected_index - self.skip
+
+    def _on_highlight(self, index):
+        if index == self.limit or index == -1:
+            return
+        elif self.ret_list:
+            self.on_highlight(self.ret_list[index])
+        else:
+            self.on_highlight(self.skip + index)
+
+    def _on_selection(self, index):
         if index == self.limit:
             self.skip = self.skip + self.limit
             sublime.set_timeout(self.show, 10)
         elif self.ret_list:
             if index == -1:
-                self.on_done(None)
+                self.on_selection(None)
             else:
-                self.on_done(self.ret_list[index])
+                self.on_selection(self.ret_list[index])
         else:
-            self.on_done(self.skip + index)
+            if index == -1:
+                self.on_selection(-1)
+            else:
+                self.on_selection(self.skip + index)
+
+    def on_selection(self, value):
+        self.value = value
+        self.on_done(value)
+
+
+def show_log_panel(entries, on_done, limit=6000, selected_index=None, on_highlight=None):
+    """
+    Display log entries in quick panel with pagination, and execute on_done(commit)
+    when item is selected. `entries` can be either a list or a generator of LogEnty.
+
+    """
+    lp = LogPanel(
+        entries,
+        on_done,
+        limit=limit,
+        selected_index=selected_index,
+        on_highlight=on_highlight)
+    lp.show()
+    return lp
 
 
 class LogPanel(PaginatedPanel):
@@ -246,28 +278,23 @@ class LogPanel(PaginatedPanel):
         return [">>> NEXT {} COMMITS >>>".format(self.limit),
                 "Skip this set of commits and choose from the next-oldest batch."]
 
-    def on_highlight(self, index):
-        sublime.set_timeout_async(lambda: self.on_highlight_async(index))
+    def on_highlight(self, commit):
+        sublime.set_timeout_async(lambda: self.on_highlight_async(commit))
 
-    def on_highlight_async(self, index):
-        if index == self.limit:
+    def on_highlight_async(self, commit):
+        if not commit:
             return
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         show_more = savvy_settings.get("log_show_more_commit_info")
         if not show_more:
             return
         sublime.active_window().run_command(
-            "gs_show_commit_info", {"commit_hash": self.ret_list[index]})
+            "gs_show_commit_info", {"commit_hash": commit})
 
-    def on_selection(self, index):
-        sublime.set_timeout_async(lambda: self.on_selection_async(index), 10)
+    def on_selection(self, commit):
+        self.commit = commit
+        sublime.set_timeout_async(lambda: self.on_selection_async(commit), 10)
 
-    def on_selection_async(self, index):
+    def on_selection_async(self, commit):
         sublime.active_window().run_command("hide_panel", {"panel": "output.show_commit_info"})
-        if index == -1:
-            return
-        if index == self.limit:
-            self.selected_index = 0
-            sublime.set_timeout_async(self.show, 10)
-            return
-        self.on_done(self.ret_list[index])
+        self.on_done(commit)

@@ -20,14 +20,18 @@ class LogMixin(object):
     but the subclass must also inherit fro GitCommand (for the `git()` method)
     """
 
-    def run(self, *args, file_path=None, branch=None):
-        sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, branch=branch), 0)
+    def run(self, *args, file_path=None, **kwargs):
+        sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, **kwargs), 0)
 
-    def run_async(self, file_path=None, branch=None):
+    def run_async(self, file_path=None, **kwargs):
         show_log_panel(
-            self.log_generator(file_path=file_path, branch=branch),
-            lambda commit: self.do_action(commit, file_path=file_path)
+            self.log_generator(file_path=file_path, **kwargs),
+            lambda commit: self.on_done(commit, file_path=file_path, **kwargs)
         )
+
+    def on_done(self, commit, **kwargs):
+        if commit:
+            self.do_action(commit, **kwargs)
 
     def do_action(self, commit_hash, **kwargs):
         if hasattr(self, 'window'):

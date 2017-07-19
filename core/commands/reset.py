@@ -24,7 +24,6 @@ class ResetMixin(object):
     def do_action(self, commit_hash, **kwargs):
         if not commit_hash:
             return
-
         self._selected_hash = commit_hash
 
         use_reset_mode = sublime.load_settings("GitSavvy.sublime-settings").get("use_reset_mode")
@@ -32,12 +31,14 @@ class ResetMixin(object):
             self.on_reset(use_reset_mode)
         else:
             self.window.show_quick_panel(
-                GIT_RESET_MODES, self.on_reset_mode_selection, flags=sublime.MONOSPACE_FONT
+                GIT_RESET_MODES,
+                self.on_reset_mode_selection,
+                flags=sublime.MONOSPACE_FONT
             )
 
     def on_reset_mode_selection(self, index):
         if index == -1:
-            sublime.set_timeout_async(self.run_async, 1)
+            sublime.set_timeout_async(self.run_async, 100)
         elif 0 <= index < len(GIT_RESET_MODES):
             self.on_reset(GIT_RESET_MODES[index][0].strip())
 

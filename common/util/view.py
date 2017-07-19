@@ -71,7 +71,7 @@ def refresh_gitsavvy(view, refresh_sidebar=False, refresh_status_bar=True):
     if view.settings().get("git_savvy.branch_commit_history_view") is not None:
         view.run_command("gs_branches_diff_commit_history_refresh")
     if view.settings().get("git_savvy.blame_view") is not None:
-        view.run_command("gs_blame_initialize_view")
+        view.run_command("gs_blame_refresh")
 
     if refresh_status_bar:
         view.run_command("gs_update_status_bar")
