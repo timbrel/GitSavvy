@@ -63,7 +63,13 @@ class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemote
         if isinstance(fpath, str):
             fpath = [fpath]
         remote_url = self.remotes[remote]
-        commit_hash = self.get_commit_hash_for_head()
+
+        if self.view.settings().get("git_savvy.show_file_at_commit_view"):
+            # if it is a show_file_at_commit_view, get the hash from settings
+            commit_hash = self.view.settings().get("git_savvy.show_file_at_commit_view.commit")
+        else:
+            commit_hash = self.get_commit_hash_for_head()
+
         start_line = None
         end_line = None
 
