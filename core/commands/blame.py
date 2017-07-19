@@ -8,7 +8,6 @@ from sublime_plugin import WindowCommand, TextCommand
 from ..commands import GsNavigate
 from ..git_command import GitCommand
 from ...common import util
-from ...common.commands import GsHandleVintageousCommand
 from ..ui_mixins.quick_panel import PanelActionMixin, LogPanel, show_log_panel
 
 
@@ -39,8 +38,7 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
     def update_actions(self):
         super().update_actions()
         if self._commit_hash is None:
-            self.actions.insert(6,
-                ["pick_commit", "Pick a commit"])
+            self.actions.insert(6, ["pick_commit", "Pick a commit"])
 
     def blame(self, ignore_whitespace=True, option=None):
         original_syntax = self.window.active_view().settings().get('syntax')
@@ -113,7 +111,8 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
             filename_at_commit = self.file_path
 
         blame_porcelain = self.git(
-            "blame", "-p", '-w' if ignore_whitespace else None, detect_move_or_copy, commit_hash, "--", filename_at_commit
+            "blame", "-p", '-w' if ignore_whitespace else None, detect_move_or_copy,
+            commit_hash, "--", filename_at_commit
         )
         blame_porcelain = unicodedata.normalize('NFC', blame_porcelain)
         blamed_lines, commits = self.parse_blame(blame_porcelain.splitlines())
@@ -302,7 +301,7 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
             return 1
         else:
             line = self.view.substr(self.view.line(line_start))
-            _ , lineno = line.split("|")
+            _, lineno = line.split("|")
             try:
                 return int(lineno.strip().split(" ")[0])
             except Exception:
@@ -324,10 +323,8 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
         log_commits = self.git("log", "--format=%H", "--follow", "--", self.file_path).strip()
         log_commits = log_commits.split("\n")
 
-        commit_hash_len = len(commit_hash)
-
         for idx, commit in enumerate(log_commits):
-            if commit.startswith(commit_hash) :
+            if commit.startswith(commit_hash):
                 if position == "older":
                     if idx < len(log_commits)-1:
                         return log_commits[idx+1]
@@ -348,7 +345,8 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
         if not commit_hash:
             self.view.settings().set("git_savvy.commit_hash", self.newst_commit_for_file())
         else:
-            self.view.settings().set("git_savvy.commit_hash", self.commit_before("older", commit_hash))
+            self.view.settings().set(
+                "git_savvy.commit_hash", self.commit_before("older", commit_hash))
 
         self.view.run_command("gs_blame_initialize_view")
 
@@ -362,7 +360,8 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
                 # cant be before first
                 pass
         else:
-            previous_commit_hash = self.commit_before(position, settings.get("git_savvy.commit_hash"))
+            previous_commit_hash = self.commit_before(
+                                        position, settings.get("git_savvy.commit_hash"))
             settings.set("git_savvy.commit_hash", previous_commit_hash)
         self.view.run_command("gs_blame_initialize_view")
 
@@ -376,13 +375,14 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
             "commit_hash": commit_hash,
             "filepath": self.file_path,
             "lineno": self.find_lineno(),
-            "lang" : self.view.settings().get('git_savvy.original_syntax', None)
+            "lang": self.view.settings().get('git_savvy.original_syntax', None)
         })
 
     def pick_new_commit(self):
         self.view.run_command("gs_blame_pick_commit", {
             "commit_hash": self.view.settings().get("git_savvy.commit_hash"),
         })
+
 
 class GsBlamePickCommitCommand(TextCommand, GitCommand):
 
