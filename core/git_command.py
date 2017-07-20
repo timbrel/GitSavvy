@@ -212,6 +212,23 @@ class GitCommand(StatusMixin,
 
         return git_path
 
+    def find_working_dir(self):
+        view = self.window.active_view() if hasattr(self, "window") else self.view
+        window = view.window()
+        if not window:
+            return
+        open_folders = view.window().folders()
+        if open_folders:
+            working_dir = open_folders[0]
+        else:
+            file_path = view.file_name()
+            if file_path:
+                working_dir = os.path.dirname(file_path)
+            else:
+                working_dir = None
+
+        return working_dir
+
     @property
     def repo_path(self):
         return self._repo_path()
@@ -240,15 +257,9 @@ class GitCommand(StatusMixin,
         repo_path = view.settings().get("git_savvy.repo_path")
 
         if not repo_path or not os.path.exists(repo_path):
-            file_path = self.file_path
-            file_dir = os.path.dirname(file_path) if file_path else None
-            working_dir = file_path and os.path.isdir(file_dir) and file_dir
-
-            if not working_dir:
-                window_folders = sublime.active_window().folders()
-                if not window_folders or not os.path.isdir(window_folders[0]):
-                    return invalid_repo()
-                working_dir = window_folders[0]
+            working_dir = self.find_working_dir()
+            if not working_dir or not os.path.isdir(working_dir):
+                return invalid_repo()
 
             stdout = self.git(
                 "rev-parse",
@@ -262,7 +273,10 @@ class GitCommand(StatusMixin,
             if not repo_path:
                 return invalid_repo()
 
-            view.settings().set("git_savvy.repo_path", os.path.realpath(repo_path))
+            if view.file_name() and working_dir in view.file_name():
+                # only set repo_path for file in the working directory
+                # it allows a file living outside the repo to be edited in the current window
+                view.settings().set("git_savvy.repo_path", os.path.realpath(repo_path))
 
         return os.path.realpath(repo_path) if repo_path else repo_path
 

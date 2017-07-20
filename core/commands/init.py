@@ -61,22 +61,14 @@ class GsInit(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        open_folders = self.window.folders()
-        if open_folders:
-            suggested_git_root = open_folders[0]
-        else:
-            file_path = self.window.active_view().file_name()
-            if file_path:
-                suggested_git_root = os.path.dirname(file_path)
-            else:
-                suggested_git_root = ""
+        git_root = self.find_working_dir()
 
-        if suggested_git_root and os.path.exists(os.path.join(suggested_git_root, ".git")):
+        if git_root and os.path.exists(os.path.join(git_root, ".git")):
             if sublime.ok_cancel_dialog(CONFIRM_REINITIALIZE):
-                self.on_done(suggested_git_root, re_init=True)
+                self.on_done(git_root, re_init=True)
             return
 
-        self.window.show_input_panel(REPO_PATH_PROMPT, suggested_git_root, self.on_done, None, None)
+        self.window.show_input_panel(REPO_PATH_PROMPT, git_root, self.on_done, None, None)
 
     def on_done(self, path, re_init=False):
         self.git("init", working_dir=path)
@@ -106,21 +98,15 @@ class GsClone(WindowCommand, GitCommand):
         self.window.show_input_panel(REPO_PATH_PROMPT, self.suggested_git_root, self.on_enter_directory, None, None)
 
     def find_suggested_git_root(self):
-        open_folders = self.window.folders()
+        folder = self.find_working_dir()
         project = self.project_name_from_url(self.git_url)
-        if open_folders:
-            if not os.path.exists(os.path.join(open_folders[0], ".git")):
-                return "{}/{}".format(open_folders[0], project)
+        if folder:
+            if not os.path.exists(os.path.join(folder, project, ".git")):
+                return os.path.join(folder, project)
             else:
-                folder = os.path.realpath(os.path.join(open_folders[0], ".."))
-                return "{}/{}".format(folder, project)
-
-        else:
-            file_path = self.window.active_view().file_name()
-            if file_path:
-                return "{}/{}".format(os.path.dirname(file_path), project)
-            else:
-                return ""
+                parent = os.path.realpath(os.path.join(folder, ".."))
+                return os.path.join(parent, project)
+        return ""
 
     def on_enter_directory(self, path):
         self.suggested_git_root = path
