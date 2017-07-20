@@ -53,12 +53,11 @@ class BranchInterface(ui.Interface, GitCommand):
       #############
 
       [c] checkout                                  [p] push selected to remote
-      [b] create new branch (from HEAD)             [P] push all branches to remote
+      [b] create from selected branch               [P] push all branches to remote
       [d] delete                                    [h] fetch remote branches
       [D] delete (force)                            [m] merge selected into active branch
       [R] rename (local)                            [M] fetch and merge into active branch
       [t] configure tracking
-      [o] checkout remote as local
 
       [f] diff against active                       [l] show branch log
       [H] diff history against active               [g] show branch log graph
@@ -232,18 +231,16 @@ class GsBranchesCheckoutCommand(TextCommand, GitCommand):
             return
 
         if remote_name:
-            self.checkout_ref("{}/{}".format(remote_name, branch_name))
+            ref = "{}/{}".format(remote_name, branch_name)
         else:
-            self.checkout_ref(branch_name)
+            ref = branch_name
+        self.view.window().run_command("gs_checkout_branch", {"branch": ref})
 
-        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
-
-class GsBranchesCheckoutAsLocalCommand(TextCommand, GitCommand):
+class GsBranchesCreateNewCommand(TextCommand, GitCommand):
 
     """
-    Create a new local branch that shares HEAD with the selected remote branch,
-    then check it out.
+    Create a new branch from selected branch and checkout.
     """
 
     def run(self, edit):
@@ -252,27 +249,15 @@ class GsBranchesCheckoutAsLocalCommand(TextCommand, GitCommand):
     def run_async(self):
         interface = ui.get_interface(self.view.id())
         remote_name, branch_name = interface.get_selected_branch()
-        if not branch_name or not remote_name:
+        if not branch_name:
             return
 
-        self.git(
-            "checkout",
-            "-b",
-            branch_name,
-            "--track",
-            "{}/{}".format(remote_name, branch_name)
-            )
-        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
-
-
-class GsBranchesCreateNewCommand(TextCommand, GitCommand):
-
-    """
-    Create a new branch from HEAD and checkout.
-    """
-
-    def run(self, edit):
-        self.view.window().run_command("gs_checkout_new_branch")
+        if remote_name:
+            ref = "{}/{}".format(remote_name, branch_name)
+            self.view.window().run_command("gs_checkout_remote_branch", {"remote_branch": ref})
+        else:
+            ref = branch_name
+            self.view.window().run_command("gs_checkout_new_branch", {"base_branch": ref})
 
 
 class GsBranchesDeleteCommand(TextCommand, GitCommand):
