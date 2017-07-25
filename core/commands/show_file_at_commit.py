@@ -47,9 +47,12 @@ class GsShowFileAtCommitCommand(WindowCommand, GitCommand):
 
 class GsShowCurrentFileAtCommitCommand(GsShowFileAtCommitCommand):
 
-    def run(self, commit_hash, lineno=1, lang=None):
+    @util.view.single_cursor_coords
+    def run(self, coords, commit_hash, lineno=None, lang=None):
         if not lang:
             lang = self.window.active_view().settings().get('syntax')
+        if lineno is None:
+            lineno = self.find_matching_lineno(None, commit_hash, coords[0] + 1)
         super().run(
             commit_hash=commit_hash,
             filepath=self.file_path,
