@@ -131,12 +131,11 @@ class GitCommand(StatusMixin,
             if decode:
                 stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
 
-            end = time.time()
-
         except Exception as e:
             raise_error(e)
 
         finally:
+            end = time.time()
             if decode:
                 util.debug.log_git(args, stdin, stdout, stderr, end - start)
             else:
@@ -215,19 +214,57 @@ class GitCommand(StatusMixin,
     def find_working_dir(self):
         view = self.window.active_view() if hasattr(self, "window") else self.view
         window = view.window()
-        if not window:
-            return
-        open_folders = view.window().folders()
-        if open_folders:
-            working_dir = open_folders[0]
-        else:
-            file_path = view.file_name()
-            if file_path:
-                working_dir = os.path.dirname(file_path)
-            else:
-                working_dir = None
 
-        return working_dir
+        if not window:
+            return None
+
+        file_path = view.file_name()
+        if file_path:
+            file_dir = os.path.dirname(file_path)
+            if os.path.isdir(file_dir):
+                return os.path.dirname(file_path)
+
+        open_folders = view.window().folders()
+        if open_folders and os.path.isdir(open_folders[0]):
+            return open_folders[0]
+
+        return None
+
+    def find_repo_path(self, throw_on_stderr=False):
+        """
+        Similar to find_working_dir, except that it does not stop on the first
+        directory found, rather on the first git repository found.
+        """
+        view = self.window.active_view() if hasattr(self, "window") else self.view
+        file_name = view.file_name()
+        repo_path = None
+
+        # try the current file first
+        if file_name:
+            file_dir = os.path.dirname(file_name)
+            if os.path.isdir(file_dir):
+                repo_path = self.find_git_toplevel(file_dir, throw_on_stderr=False)
+
+        # fallback: use the first folder if the current file is not inside a git repo
+        if not repo_path:
+            window = sublime.active_window()
+            if window:
+                folders = window.folders()
+                if folders and os.path.isdir(folders[0]):
+                    # we don't set "git_savvy.repo_path" for a out-of-git-repo file
+                    repo_path = self.find_git_toplevel(
+                        folders[0], throw_on_stderr=throw_on_stderr)
+        return repo_path
+
+    def find_git_toplevel(self, folder, throw_on_stderr):
+        stdout = self.git(
+            "rev-parse",
+            "--show-toplevel",
+            working_dir=folder,
+            throw_on_stderr=throw_on_stderr
+            )
+        repo = stdout.strip()
+        return os.path.realpath(repo) if repo else None
 
     @property
     def repo_path(self):
@@ -245,37 +282,23 @@ class GitCommand(StatusMixin,
         Return the absolute path to the git repo that contains the file that this
         view interacts with.  Like `file_path`, this can be overridden by setting
         the view's `git_savvy.repo_path` setting.
-        """
-        def invalid_repo():
-            if throw_on_stderr:
-                raise ValueError("Unable to determine Git repo path.")
-            return None
 
+        Do not raise error when throw_on_stderr is `False`. It is needed
+        in GsUpdateStatusBarCommand, otherwise, spurious popup will be shown.
+        """
         # The below condition will be true if run from a WindowCommand and false
         # from a TextCommand.
         view = self.window.active_view() if hasattr(self, "window") else self.view
-        repo_path = view.settings().get("git_savvy.repo_path")
+        repo_path = view.settings().get("git_savvy.repo_path") if view else None
 
         if not repo_path or not os.path.exists(repo_path):
-            working_dir = self.find_working_dir()
-            if not working_dir or not os.path.isdir(working_dir):
-                return invalid_repo()
-
-            stdout = self.git(
-                "rev-parse",
-                "--show-toplevel",
-                working_dir=working_dir,
-                throw_on_stderr=throw_on_stderr
-                )
-
-            repo_path = stdout.strip()
-
+            repo_path = self.find_repo_path(throw_on_stderr=throw_on_stderr)
             if not repo_path:
-                return invalid_repo()
-
-            if view.file_name() and working_dir in view.file_name():
-                # only set repo_path for file in the working directory
-                # it allows a file living outside the repo to be edited in the current window
+                if throw_on_stderr:
+                    raise ValueError("Unable to determine Git repo path.")
+                else:
+                    return None
+            else:
                 view.settings().set("git_savvy.repo_path", os.path.realpath(repo_path))
 
         return os.path.realpath(repo_path) if repo_path else repo_path
