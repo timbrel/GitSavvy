@@ -220,10 +220,12 @@ class GitCommand(StatusMixin,
 
         file_path = view.file_name()
         if file_path:
-            return os.path.dirname(file_path)
+            file_dir = os.path.dirname(file_path)
+            if os.path.isdir(file_dir):
+                return os.path.dirname(file_path)
 
         open_folders = view.window().folders()
-        if open_folders:
+        if open_folders and os.path.isdir(open_folders[0]):
             return open_folders[0]
 
         return None
@@ -268,18 +270,19 @@ class GitCommand(StatusMixin,
 
             # try the current file first
             if file_name:
-                repo_path = self.find_git_toplevel(
-                    os.path.dirname(file_name), throw_on_stderr=False)
-                # only set `git_savvy.repo_path` for current file
-                if repo_path:
-                    view.settings().set("git_savvy.repo_path", os.path.realpath(repo_path))
+                file_dir = os.path.dirname(file_name)
+                if os.path.isdir(file_dir):
+                    repo_path = self.find_git_toplevel(file_dir, throw_on_stderr=False)
+                    # only set `git_savvy.repo_path` for current file
+                    if repo_path:
+                        view.settings().set("git_savvy.repo_path", os.path.realpath(repo_path))
 
             # fallback: use the first folder if the current file is not inside a git repo
             if not repo_path:
                 window = view.window()
                 if window:
                     folders = window.folders()
-                    if folders:
+                    if folders and os.path.isdir(folders[0]):
                         # we don't set "git_savvy.repo_path" for a out-of-git-repo file
                         repo_path = self.find_git_toplevel(
                             folders[0], throw_on_stderr=throw_on_stderr)
