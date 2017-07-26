@@ -247,7 +247,7 @@ class GitCommand(StatusMixin,
 
         # fallback: use the first folder if the current file is not inside a git repo
         if not repo_path:
-            window = view.window()
+            window = sublime.active_window()
             if window:
                 folders = window.folders()
                 if folders and os.path.isdir(folders[0]):
