@@ -1,5 +1,7 @@
 sudo: required
 
+dist: precise
+
 env:
     global:
         - PACKAGE="GitSavvy"
