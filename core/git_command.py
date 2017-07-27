@@ -236,12 +236,11 @@ class GitCommand(StatusMixin,
         directory found, rather on the first git repository found.
         """
         view = self.window.active_view() if hasattr(self, "window") else self.view
-        file_name = view.file_name()
         repo_path = None
 
         # try the current file first
-        if file_name:
-            file_dir = os.path.dirname(file_name)
+        if view and view.file_name():
+            file_dir = os.path.dirname(view.file_name())
             if os.path.isdir(file_dir):
                 repo_path = self.find_git_toplevel(file_dir, throw_on_stderr=False)
 
