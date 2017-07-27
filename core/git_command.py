@@ -236,6 +236,7 @@ class GitCommand(StatusMixin,
         directory found, rather on the first git repository found.
         """
         view = self.window.active_view() if hasattr(self, "window") else self.view
+        window = view.window() if view else None
         repo_path = None
 
         # try the current file first
@@ -246,7 +247,6 @@ class GitCommand(StatusMixin,
 
         # fallback: use the first folder if the current file is not inside a git repo
         if not repo_path:
-            window = sublime.active_window()
             if window:
                 folders = window.folders()
                 if folders and os.path.isdir(folders[0]):
@@ -293,11 +293,14 @@ class GitCommand(StatusMixin,
         if not repo_path or not os.path.exists(repo_path):
             repo_path = self.find_repo_path(throw_on_stderr=throw_on_stderr)
             if not repo_path:
-                if throw_on_stderr:
+                # don't throw error for detached view
+                view_is_detached = view and not view.window()
+                if not view_is_detached and throw_on_stderr:
                     raise ValueError("Unable to determine Git repo path.")
                 else:
                     return None
-            elif view:
+
+            if view:
                 file_name = view.file_name()
                 # only set "git_savvy.repo_path" when the current file is in repo_path
                 if file_name and os.path.realpath(file_name).startswith(repo_path + os.path.sep):
