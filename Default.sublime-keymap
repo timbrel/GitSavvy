@@ -967,14 +967,6 @@
         ]
     },
     {
-        "keys": ["u"],
-        "command": "gs_branches_pull_selected",
-        "context": [
-            { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
-        ]
-    },
-    {
         "keys": ["p"],
         "command": "gs_branches_push_selected",
         "context": [
