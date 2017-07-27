@@ -251,10 +251,10 @@ class GitCommand(StatusMixin,
             if window:
                 folders = window.folders()
                 if folders and os.path.isdir(folders[0]):
-                    # we don't set "git_savvy.repo_path" for a out-of-git-repo file
                     repo_path = self.find_git_toplevel(
                         folders[0], throw_on_stderr=throw_on_stderr)
-        return repo_path
+
+        return os.path.realpath(repo_path) if repo_path else None
 
     def find_git_toplevel(self, folder, throw_on_stderr):
         stdout = self.git(
@@ -298,8 +298,11 @@ class GitCommand(StatusMixin,
                     raise ValueError("Unable to determine Git repo path.")
                 else:
                     return None
-            else:
-                view.settings().set("git_savvy.repo_path", os.path.realpath(repo_path))
+            elif view:
+                file_name = view.file_name()
+                # only set "git_savvy.repo_path" when the current file is in repo_path
+                if file_name and os.path.realpath(file_name).startswith(repo_path + os.path.sep):
+                    view.settings().set("git_savvy.repo_path", repo_path)
 
         return os.path.realpath(repo_path) if repo_path else repo_path
 
