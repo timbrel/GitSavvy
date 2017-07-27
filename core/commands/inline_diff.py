@@ -61,7 +61,7 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
             file_ext = util.file.get_file_extension(os.path.basename(settings["git_savvy.file_path"]))
             self.augment_color_scheme(diff_view, file_ext)
 
-            diff_view.settings().set("git_savvy.inline_diff.cached", cached)
+            diff_view.settings().set("git_savvy.inline_diff_view.in_cached_mode", cached)
             for k, v in settings.items():
                 diff_view.settings().set(k, v)
 
@@ -142,7 +142,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         file_path = self.file_path
-        in_cached_mode = self.view.settings().get("git_savvy.inline_diff.cached")
+        in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         ignore_eol_arg = (
             "--ignore-space-at-eol"
@@ -397,7 +397,7 @@ class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
         sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
 
     def run_async(self, reset=False):
-        in_cached_mode = self.view.settings().get("git_savvy.inline_diff.cached")
+        in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         ignore_ws = (
             "--ignore-whitespace"
