@@ -53,10 +53,10 @@ class BranchInterface(ui.Interface, GitCommand):
 
       [c] checkout                                  [p] push selected to remote
       [b] create new branch (from HEAD)             [P] push all branches to remote
-      [d] delete                                    [u] pull selected from remote
-      [D] delete (force)                            [h] fetch remote branches
-      [R] rename (local)                            [m] merge selected into active branch
-      [t] configure tracking                        [M] fetch and merge into active branch
+      [d] delete                                    [h] fetch remote branches
+      [D] delete (force)                            [m] merge selected into active branch
+      [R] rename (local)                            [M] fetch and merge into active branch
+      [t] configure tracking
       [o] checkout remote as local
 
       [f] diff against active                       [l] show branch log
@@ -421,25 +421,6 @@ class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesPullSelectedCommand(TextCommand, GitCommand):
-
-    """
-    Pull selected branch from a remote branch.
-    """
-
-    def run(self, edit):
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
-        interface = ui.get_interface(self.view.id())
-        remote_name, branch_name = interface.get_selected_branch()
-
-        if not branch_name or remote_name:
-            return
-
-        self.view.window().run_command("gs_pull", {"local_branch_name": branch_name})
-
-
 class GsBranchesPushSelectedCommand(TextCommand, GitCommand):
 
     """
@@ -515,16 +496,24 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
     Fetch from remote and merge fetched branch into active branch.
     """
 
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
     def run_async(self):
         self.interface = ui.get_interface(self.view.id())
 
         branches = self.interface.get_selected_branches(ignore_current_branch=True)
-        # is remote is not set it is a local branch and can't be fetched
-        remotes_to_fetch = set(filter(None, (b[0] for b in branches)))
-        for remote in remotes_to_fetch:
-            sublime.status_message("Fetching from `{}`...".format(remote))
-            self.fetch(remote=remote)
-            sublime.status_message("Fetch from {} complete.".format(remote))
+
+        for branch in branches:
+            if branch[0] is None:
+                # update local branches which have tracking remote
+                local_branch = self.get_local_branch(branch[1])
+                if local_branch.tracking:
+                    remote, remote_branch = local_branch.tracking.split("/", 1)
+                    self.fetch(remote=remote, branch=branch[1], remote_branch=remote_branch)
+            else:
+                # fetch remote branches
+                self.fetch(remote=branch[0], branch=branch[1])
 
         branches_strings = self.interface.create_branches_strs(branches)
         self.merge(branches_strings)
