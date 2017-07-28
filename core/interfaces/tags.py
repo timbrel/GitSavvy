@@ -81,6 +81,7 @@ class TagsInterface(ui.Interface, GitCommand):
         if self.show_remotes is None:
             savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
             self.show_remotes = savvy_settings.get("show_remotes_in_tags_dashboard")
+            self.max_items = savvy_settings.get("max_items_in_tags_dashboard", None)
 
         self.local_tags = self.get_tags(reverse=True)
         if not self.remotes and self.show_remotes:
@@ -110,7 +111,7 @@ class TagsInterface(ui.Interface, GitCommand):
 
         return "\n".join(
             "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
-            for tag in self.local_tags
+            for tag in self.local_tags[0:self.max_items]
             )
 
     @ui.partial("remote_tags")
@@ -147,10 +148,11 @@ class TagsInterface(ui.Interface, GitCommand):
     def get_remote_tags_list(self, remote, remote_name):
         if "tags" in remote:
             if remote["tags"]:
-                msg = "\n".join(
-                    "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
-                    for tag in remote["tags"] if tag.tag[-3:] != "^{}"
-                    )
+                tags_list = [tag for tag in remote["tags"] if tag.tag[-3:] != "^{}"]
+                tags_list = tags_list[0:self.max_items]
+
+                msg = "\n".join("    {} {}".format(
+                    self.get_short_hash(tag.sha), tag.tag) for tag in tags_list)
             else:
                 msg = NO_REMOTE_TAGS_MESSAGE
 
