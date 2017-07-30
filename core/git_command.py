@@ -9,6 +9,7 @@ Define a base command class that:
 import os
 import subprocess
 import shutil
+from contextlib import contextmanager
 
 import sublime
 
@@ -97,19 +98,15 @@ class GitCommand(StatusMixin,
 
         stdout, stderr = None, None
 
-        def raise_error(msg):
-            if type(msg) == str and "fatal: Not a git repository" in msg:
+        try:
+            if not working_dir:
+                working_dir = self.repo_path
+        except Exception as e:
+            # offer initialization when "Not a git repository" is thrown from self.repo_path
+            if type(e) == ValueError and e.args and "Not a git repository" in e.args[0]:
                 sublime.set_timeout_async(
                     lambda: sublime.active_window().run_command("gs_offer_init"))
-
-            elif type(msg) == str and "*** Please tell me who you are." in msg:
-                sublime.set_timeout_async(
-                    lambda: sublime.active_window().run_command("gs_setup_user"))
-
-            sublime.status_message(
-                "Failed to run `git {}`. See log for details.".format(command[1])
-            )
-            raise GitSavvyError(msg)
+            raise GitSavvyError(e)
 
         try:
             startupinfo = None
@@ -124,7 +121,7 @@ class GitCommand(StatusMixin,
                                  stdin=subprocess.PIPE,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
-                                 cwd=working_dir or self.repo_path,
+                                 cwd=working_dir,
                                  env=environ,
                                  startupinfo=startupinfo)
             stdout, stderr = p.communicate((stdin.encode(encoding=stdin_encoding) if encode else stdin) if stdin else None)
@@ -132,7 +129,8 @@ class GitCommand(StatusMixin,
                 stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
 
         except Exception as e:
-            raise_error(e)
+            # this should never be reached
+            raise GitSavvyError("Please report this error to GitSavvy:\n\n{}".format(e))
 
         finally:
             end = time.time()
@@ -147,8 +145,16 @@ class GitCommand(StatusMixin,
                     end - start
                 )
 
-        if not p.returncode == 0 and throw_on_stderr:
-            raise_error("`{}` failed with following output:\n{}\n{}".format(
+        if throw_on_stderr and not p.returncode == 0:
+            sublime.status_message(
+                "Failed to run `git {}`. See log for details.".format(command[1])
+            )
+
+            if "*** Please tell me who you are." in stderr:
+                sublime.set_timeout_async(
+                    lambda: sublime.active_window().run_command("gs_setup_user"))
+
+            raise GitSavvyError("`{}` failed with following output:\n{}\n{}".format(
                 command_str, stdout, stderr
             ))
 
@@ -227,7 +233,7 @@ class GitCommand(StatusMixin,
 
         return None
 
-    def find_repo_path(self, throw_on_stderr=False):
+    def find_repo_path(self):
         """
         Similar to find_working_dir, except that it does not stop on the first
         directory found, rather on the first git repository found.
@@ -248,7 +254,7 @@ class GitCommand(StatusMixin,
                 folders = window.folders()
                 if folders and os.path.isdir(folders[0]):
                     repo_path = self.find_git_toplevel(
-                        folders[0], throw_on_stderr=throw_on_stderr)
+                        folders[0], throw_on_stderr=False)
 
         return os.path.realpath(repo_path) if repo_path else None
 
@@ -264,23 +270,10 @@ class GitCommand(StatusMixin,
 
     @property
     def repo_path(self):
-        return self._repo_path()
-
-    @property
-    def short_repo_path(self):
-        if "HOME" in os.environ:
-            return self.repo_path.replace(os.environ["HOME"], "~")
-        else:
-            return self.repo_path
-
-    def _repo_path(self, throw_on_stderr=True):
         """
         Return the absolute path to the git repo that contains the file that this
         view interacts with.  Like `file_path`, this can be overridden by setting
         the view's `git_savvy.repo_path` setting.
-
-        Do not raise error when throw_on_stderr is `False`. It is needed
-        in GsUpdateStatusBarCommand, otherwise, spurious popup will be shown.
         """
         # The below condition will be true if run from a WindowCommand and false
         # from a TextCommand.
@@ -288,14 +281,13 @@ class GitCommand(StatusMixin,
         repo_path = view.settings().get("git_savvy.repo_path") if view else None
 
         if not repo_path or not os.path.exists(repo_path):
-            repo_path = self.find_repo_path(throw_on_stderr=throw_on_stderr)
+            repo_path = self.find_repo_path()
             if not repo_path:
-                # don't throw error for detached view
-                view_is_detached = view and not view.window()
-                if not view_is_detached and throw_on_stderr:
-                    raise ValueError("Unable to determine Git repo path.")
+                window = view.window()
+                if window and window.folders():
+                    raise ValueError("Not a git repository.")
                 else:
-                    return None
+                    raise ValueError("Unable to determine Git repo path.")
 
             if view:
                 file_name = view.file_name()
@@ -304,6 +296,13 @@ class GitCommand(StatusMixin,
                     view.settings().set("git_savvy.repo_path", repo_path)
 
         return os.path.realpath(repo_path) if repo_path else repo_path
+
+    @property
+    def short_repo_path(self):
+        if "HOME" in os.environ:
+            return self.repo_path.replace(os.environ["HOME"], "~")
+        else:
+            return self.repo_path
 
     @property
     def file_path(self):
