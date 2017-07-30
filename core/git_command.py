@@ -213,20 +213,17 @@ class GitCommand(StatusMixin,
 
     def find_working_dir(self):
         view = self.window.active_view() if hasattr(self, "window") else self.view
-        window = view.window()
+        window = view.window() if view else None
 
-        if not window:
-            return None
-
-        file_path = view.file_name()
-        if file_path:
-            file_dir = os.path.dirname(file_path)
+        if view and view.file_name():
+            file_dir = os.path.dirname(view.file_name())
             if os.path.isdir(file_dir):
-                return os.path.dirname(file_path)
+                return file_dir
 
-        open_folders = view.window().folders()
-        if open_folders and os.path.isdir(open_folders[0]):
-            return open_folders[0]
+        if window:
+            folders = window.folders()
+            if folders and os.path.isdir(folders[0]):
+                return folders[0]
 
         return None
 
