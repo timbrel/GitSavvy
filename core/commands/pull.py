@@ -11,8 +11,9 @@ class GsPullCommand(WindowCommand, GitCommand):
     Through a series of panels, allow the user to pull from a remote branch.
     """
 
-    def run(self, local_branch_name=None):
+    def run(self, local_branch_name=None, rebase=False):
         self.local_branch_name = local_branch_name
+        self.rebase = rebase
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
@@ -91,6 +92,6 @@ class GsPullCommand(WindowCommand, GitCommand):
         Perform `git pull remote branch`.
         """
         sublime.status_message("Starting pull...")
-        self.pull(remote=remote, branch=branch, remote_branch=remote_branch)
+        self.pull(remote=remote, branch=branch, remote_branch=remote_branch, rebase=self.rebase)
         sublime.status_message("Pull complete.")
         util.view.refresh_gitsavvy(self.window.active_view())

@@ -130,6 +130,11 @@
         "command": "gs_pull"
     },
     {
+        "caption": "git: pull with rebase",
+        "command": "gs_pull",
+        "args": { "rebase": true }
+    },
+    {
         "caption": "git: push",
         "command": "gs_push"
     },

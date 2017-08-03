@@ -14,6 +14,10 @@ Assuming you've recently fetched, this command allows you to create a local bran
 
 When running this command, you will be prompted first for the remote you want to pull from, and then the branch.  If your local branch tracks a remote, that branch name will be pre-selected at the second prompt.
 
+## `git: pull with rebase`
+
+Like `git: pull`, but rebasing on the remote branch instead of merging.
+
 **For the following commands you need to configure a username and password in git, so GitSavvy can use it.**
 
 ## `git: push`
