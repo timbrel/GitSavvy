@@ -8,8 +8,7 @@ from sublime_plugin import WindowCommand, TextCommand
 from ..commands import GsNavigate
 from ..git_command import GitCommand
 from ...common import util
-from ...common.commands import GsHandleVintageousCommand
-from ..ui_mixins.quick_panel import PanelActionMixin, LogPanel, show_log_panel
+from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel
 
 
 BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))
@@ -39,8 +38,7 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
     def update_actions(self):
         super().update_actions()
         if self._commit_hash is None:
-            self.actions.insert(6,
-                ["pick_commit", "Pick a commit"])
+            self.actions.insert(6, ["pick_commit", "Pick a commit"])
 
     def blame(self, ignore_whitespace=True, option=None):
         original_syntax = self.window.active_view().settings().get('syntax')
@@ -62,7 +60,7 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
         view.set_scratch(True)
         view.set_read_only(True)
 
-        view.run_command("gs_blame_initialize_view")
+        view.run_command("gs_blame_refresh")
         view.run_command("gs_handle_vintageous")
 
     def pick_commit(self):
@@ -73,7 +71,7 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
         super().run()
 
 
-class GsBlameInitializeViewCommand(TextCommand, GitCommand):
+class GsBlameRefreshCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         settings = self.view.settings()
@@ -113,7 +111,8 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
             filename_at_commit = self.file_path
 
         blame_porcelain = self.git(
-            "blame", "-p", '-w' if ignore_whitespace else None, detect_move_or_copy, commit_hash, "--", filename_at_commit
+            "blame", "-p", '-w' if ignore_whitespace else None, detect_move_or_copy,
+            commit_hash, "--", filename_at_commit
         )
         blame_porcelain = unicodedata.normalize('NFC', blame_porcelain)
         blamed_lines, commits = self.parse_blame(blame_porcelain.splitlines())
@@ -247,11 +246,14 @@ class GsBlameInitializeViewCommand(TextCommand, GitCommand):
         self.view.sel().add(sublime.Region(blame_view_pt, blame_view_pt))
         sublime.set_timeout_async(lambda: self.view.show_at_center(blame_view_pt), 0)
 
+
 class GsBlameNavigateChunkCommand(GsNavigate):
 
     """
     Move cursor to the next (or previous) different commit
     """
+
+    offset = 0
 
     def get_available_regions(self):
         return [
@@ -302,7 +304,7 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
             return 1
         else:
             line = self.view.substr(self.view.line(line_start))
-            _ , lineno = line.split("|")
+            _, lineno = line.split("|")
             try:
                 return int(lineno.strip().split(" ")[0])
             except Exception:
@@ -324,10 +326,8 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
         log_commits = self.git("log", "--format=%H", "--follow", "--", self.file_path).strip()
         log_commits = log_commits.split("\n")
 
-        commit_hash_len = len(commit_hash)
-
         for idx, commit in enumerate(log_commits):
-            if commit.startswith(commit_hash) :
+            if commit.startswith(commit_hash):
                 if position == "older":
                     if idx < len(log_commits)-1:
                         return log_commits[idx+1]
@@ -348,9 +348,10 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
         if not commit_hash:
             self.view.settings().set("git_savvy.commit_hash", self.newst_commit_for_file())
         else:
-            self.view.settings().set("git_savvy.commit_hash", self.commit_before("older", commit_hash))
+            self.view.settings().set(
+                "git_savvy.commit_hash", self.commit_before("older", commit_hash))
 
-        self.view.run_command("gs_blame_initialize_view")
+        self.view.run_command("gs_blame_refresh")
 
     def open(self, position):
         settings = self.view.settings()
@@ -362,9 +363,10 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
                 # cant be before first
                 pass
         else:
-            previous_commit_hash = self.commit_before(position, settings.get("git_savvy.commit_hash"))
+            previous_commit_hash = self.commit_before(
+                                        position, settings.get("git_savvy.commit_hash"))
             settings.set("git_savvy.commit_hash", previous_commit_hash)
-        self.view.run_command("gs_blame_initialize_view")
+        self.view.run_command("gs_blame_refresh")
 
     def show_file_at_commit(self, from_line=False):
         if from_line:
@@ -376,7 +378,7 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
             "commit_hash": commit_hash,
             "filepath": self.file_path,
             "lineno": self.find_lineno(),
-            "lang" : self.view.settings().get('git_savvy.original_syntax', None)
+            "lang": self.view.settings().get('git_savvy.original_syntax', None)
         })
 
     def pick_new_commit(self):
@@ -384,44 +386,25 @@ class GsBlameActionCommand(PanelActionMixin, TextCommand, GitCommand):
             "commit_hash": self.view.settings().get("git_savvy.commit_hash"),
         })
 
+
 class GsBlamePickCommitCommand(TextCommand, GitCommand):
 
     def run(self, *args, commit_hash=None):
         sublime.set_timeout_async(lambda: self.run_async(self.file_path), 0)
 
     def run_async(self, file_path):
-        settings = self.view.settings()
-        settings.set("git_savvy.commit_hash_old", settings.get("git_savvy.commit_hash"))
-        lp = BlameCommitPanel(
+        self.commit_hash = self.view.settings().get("git_savvy.commit_hash")
+        show_log_panel(
             self.log_generator(file_path=file_path, follow=True),
             self.do_action,
+            selected_index=lambda entry: entry == self.commit_hash,
+            on_highlight=self.do_action
             )
-        lp.selected_commit(settings.get("git_savvy.commit_hash"))
-        lp.show()
 
     def do_action(self, commit_hash):
-        settings = self.view.settings()
+        # Canceled panel
         if commit_hash is None:
-            # Canceled panel
-            settings.set("git_savvy.commit_hash", settings.get("git_savvy.commit_hash_old"))
-            settings.erase("git_savvy.commit_hash_old")
-        else:
-            settings.set("git_savvy.commit_hash", commit_hash)
-        self.view.run_command("gs_blame_initialize_view")
+            commit_hash = self.commit_hash
 
-
-class BlameCommitPanel(LogPanel):
-    commit_hash = None
-    flags = sublime.MONOSPACE_FONT
-
-    def selected_commit(self, commit_hash):
-        self.commit_hash = commit_hash
-
-    def selected_index(self, entry):
-        return self.commit_hash == entry
-
-    def on_highlight(self, index):
-        sublime.set_timeout_async(lambda: self.on_done(self.ret_list[index]), 0)
-
-    def on_selection(self, index):
-        sublime.set_timeout_async(lambda: self.on_done(self.ret_list[index]), 10)
+        self.view.settings().set("git_savvy.commit_hash", commit_hash)
+        self.view.run_command("gs_blame_refresh")

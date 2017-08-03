@@ -15,7 +15,11 @@ class RefLogMixin(object):
 
     def run_async(self):
         show_paginated_panel(
-            self.reflog_generator(limit=self._limit), self.do_action, limit=self._limit)
+            self.reflog_generator(limit=self._limit), self.on_done, limit=self._limit)
+
+    def on_done(self, commit):
+        if commit:
+            self.do_action(commit)
 
     def do_action(self, commit_hash):
         if hasattr(self, 'window'):
