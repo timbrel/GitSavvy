@@ -338,8 +338,10 @@ class RebaseInterface(ui.Interface, GitCommand):
     def is_not_rebased(self):
         return self.base_commit() != self.git("rev-parse", self.base_ref()).strip()
 
-    def contain_merges(self):
-        count = self.git("rev-list", "--count", "{}..HEAD".format(self.base_commit())).strip()
+    def contain_merges(self, base_commit=None):
+        if not base_commit:
+            base_commit = self.base_commit()
+        count = self.git("rev-list", "--count", "{}..HEAD".format(base_commit)).strip()
         return int(count) > len(self.entries)
 
     def get_branch_ref(self, branch_name):
@@ -467,13 +469,6 @@ class RewriteBase(TextCommand, GitCommand):
     def run(self, edit):
         self.interface = ui.get_interface(self.view.id())
 
-        if not self.interface.preserve_merges() and self.interface.contain_merges():
-
-            sublime.message_dialog(
-                "Unable to manipulate merge commits unless in preserve merges mode."
-            )
-            return
-
         _, _, changed_files = self.interface.get_branch_state()
 
         if len(changed_files):
@@ -511,6 +506,16 @@ class RewriteBase(TextCommand, GitCommand):
 
     def make_changes(self, commit_chain, description, base_commit=None):
         base_commit = base_commit or self.interface.base_commit()
+
+        if not self.interface.preserve_merges() and self.interface.contain_merges(base_commit):
+
+            sublime.message_dialog(
+                "Unable to manipulate merge commits. Either "
+                "1) use preserve merges mode,"
+                "2) rebase first."
+            )
+            return
+
         branch_name, ref, changed_files = self.interface.get_branch_state()
         success = True
 
