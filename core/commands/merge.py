@@ -4,6 +4,7 @@ from sublime_plugin import WindowCommand
 from ..git_command import GitCommand
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 from ...common import util
+from ..ui_mixins.quick_panel import show_branch_panel
 
 
 class GsMergeCommand(WindowCommand, GitCommand):
@@ -17,41 +18,19 @@ class GsMergeCommand(WindowCommand, GitCommand):
         sublime.set_timeout_async(lambda: self.run_async(), 1)
 
     def run_async(self):
-        self._branches = tuple(branch for branch in self.get_branches() if not branch.active)
-        self._entries = tuple(self._generate_entry(branch) for branch in self._branches)
+        show_branch_panel(
+            self.on_branch_selection,
+            selected_branch=False)
 
-        self.window.show_quick_panel(
-            self._entries,
-            self.on_selection
-        )
-
-    @staticmethod
-    def _generate_entry(branch):
-        entry = branch.name_with_remote
-        addl_info = []
-
-        if branch.tracking:
-            addl_info.append("tracking remote " + branch.tracking)
-
-        if branch.tracking_status:
-            addl_info.append(branch.tracking_status)
-
-        if addl_info:
-            entry += " (" + " - ".join(addl_info) + ")"
-
-        return entry
-
-    def on_selection(self, index):
-        if index == -1:
+    def on_branch_selection(self, branch):
+        if not branch:
             return
-        branch = self._branches[index]
-
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         try:
             self.git(
                 "merge",
                 "--log" if savvy_settings.get("merge_log") else None,
-                branch.name_with_remote
+                branch
                 )
         finally:
             util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
