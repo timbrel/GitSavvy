@@ -1,6 +1,7 @@
 import itertools
 import sublime
 from ...common import util
+from ..git_command import GitCommand
 
 
 class PanelActionMixin(object):
@@ -110,6 +111,177 @@ class PanelCommandMixin(PanelActionMixin):
         """
         args, kwargs = super().get_arguments(selected_action)
         return ((selected_action[0], ) + args), kwargs
+
+
+def show_remote_panel(on_done, show_all=False, selected_remote=None):
+    """
+    Show a quick panel with remotes. The callback `on_done(remote)` will
+    be called when a remote is selected. If the panel is cancelled, `None`
+    will be passed to `on_done`.
+
+    on_done: a callable
+    show_all: whether the option "All remotes" should be shown. `True` will
+                be passed to `on_done` if the all remotes option is selected.
+    """
+    rp = RemotePanel(on_done, show_all, selected_remote)
+    rp.show()
+    return rp
+
+
+class RemotePanel(GitCommand):
+
+    def __init__(self, on_done, show_all=False, selected_remote=None):
+        self.window = sublime.active_window()
+        self.on_done = on_done
+        self.selected_remote = selected_remote
+        self.show_all = show_all
+
+    def show(self):
+        self.remotes = list(self.get_remotes().keys())
+
+        if not self.remotes:
+            self.window.show_quick_panel(["There are no remotes available."], None)
+            return
+
+        # should we proceed directly if len(self.remotes) == 1 !?
+        # GsRemoteRemoveCommand may not work well if we proceed directly
+
+        if self.show_all and len(self.remotes) > 1:
+            self.remotes.insert(0, "All remotes.")
+
+        if self.last_remote_used in self.remotes:
+            pre_selected_index = self.remotes.index(self.last_remote_used)
+        else:
+            pre_selected_index = 0
+
+        self.window.show_quick_panel(
+            self.remotes,
+            self.on_remote_selection,
+            flags=sublime.MONOSPACE_FONT,
+            selected_index=pre_selected_index
+        )
+
+    def on_remote_selection(self, index):
+        if index == -1:
+            self.on_done(None)
+        elif self.show_all and len(self.remotes) > 1 and index == 0:
+            self.on_done(True)
+        else:
+            self.remote = self.remotes[index]
+            self.last_remote_used = self.remote
+            self.on_done(self.remote)
+
+
+def show_branch_panel(
+        on_done,
+        local_branches_only=False,
+        remote_branches_only=False,
+        ignore_current_branch=False,
+        ask_remote_first=False,
+        local_branch=None,
+        selected_branch=None):
+    """
+    Show a quick panel with branches. The callback `on_done(branch)` will
+    be called when a branch is selected. If the panel is cancelled, `None`
+    will be passed to `on_done`.
+
+    on_done: a callable
+    ask_remote_first: whether remote should be asked before the branch panel
+            if `False`. the options will be in forms of `remote/branch`
+    selected_branch: if `ask_remote_first`, the selected branch will be
+            `{remote}/{selected_branch}`
+    """
+    bp = BranchPanel(
+        on_done,
+        local_branches_only,
+        remote_branches_only,
+        ignore_current_branch,
+        ask_remote_first,
+        selected_branch)
+    bp.show()
+    return bp
+
+
+class BranchPanel(GitCommand):
+
+    def __init__(
+            self, on_done, local_branches_only=False, remote_branches_only=False,
+            ignore_current_branch=False, ask_remote_first=False, selected_branch=None):
+        self.window = sublime.active_window()
+        self.on_done = on_done
+        self.local_branches_only = local_branches_only
+        self.remote_branches_only = True if ask_remote_first else remote_branches_only
+        self.ignore_current_branch = ignore_current_branch
+        self.ask_remote_first = ask_remote_first
+        self.selected_branch = selected_branch
+
+    def show(self):
+        if self.ask_remote_first:
+            show_remote_panel(
+                lambda remote: sublime.set_timeout_async(
+                    lambda: self.on_remote_selection(remote), 100))
+        else:
+            self.select_branch(remote=None)
+
+    def on_remote_selection(self, remote):
+        if not remote:
+            return
+
+        self.select_branch(remote)
+
+    def select_branch(self, remote=None):
+
+        if self.local_branches_only:
+            self.all_branches = [b.name_with_remote for b in self.get_branches() if not b.remote]
+        elif self.remote_branches_only:
+            self.all_branches = [b.name_with_remote for b in self.get_branches() if b.remote]
+        else:
+            self.all_branches = [b.name_with_remote for b in self.get_branches()]
+
+        if self.ignore_current_branch:
+            current_branch = self.get_current_branch_name()
+            self.all_branches = [b for b in self.all_branches if b != current_branch]
+
+        if remote:
+            self.all_branches = [b for b in self.all_branches if b.startswith(remote + "/")]
+
+        if not self.all_branches:
+            self.window.show_quick_panel(["There are no branches available."], None)
+            return
+
+        self.window.show_quick_panel(
+            self.all_branches,
+            self.on_branch_selection,
+            flags=sublime.MONOSPACE_FONT,
+            selected_index=self.get_pre_selected_branch_index(remote)
+        )
+
+    def get_pre_selected_branch_index(self, remote):
+        pre_selected_index = None
+        if self.selected_branch is None:
+            self.selected_branch = self.get_current_branch_name()
+
+        if self.ask_remote_first:
+            pre_selected_remote_branch = "{}/{}".format(remote, self.selected_branch)
+            if pre_selected_remote_branch in self.all_branches:
+                pre_selected_index = self.all_branches.index(pre_selected_remote_branch)
+
+        if pre_selected_index is None:
+            if self.selected_branch is not None and self.selected_branch in self.all_branches:
+                pre_selected_index = self.all_branches.index(self.selected_branch)
+
+        if pre_selected_index is None:
+            pre_selected_index = 0
+
+        return pre_selected_index
+
+    def on_branch_selection(self, index):
+        if index == -1:
+            self.branch = None
+        else:
+            self.branch = self.all_branches[index]
+
+        self.on_done(self.branch)
 
 
 def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_highlight=None,
