@@ -9,6 +9,7 @@ from ..commands import GsNavigate
 from ..commands.log import LogMixin
 from ..commands.log_graph import LogGraphMixin
 from ..git_command import GitCommand
+from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 
 
 class GsShowBranchCommand(WindowCommand, GitCommand):
@@ -83,7 +84,6 @@ class BranchInterface(ui.Interface, GitCommand):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         sort_by_recent = savvy_settings.get("sort_by_recent_in_branch_dashboard")
         self._branches = tuple(self.get_branches(sort_by_recent))
-
 
     def on_new_dashboard(self):
         self.view.run_command("gs_branches_navigate_branch")
@@ -358,11 +358,6 @@ class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        """
-        Display a panel of all remotes defined for the repo, then proceed to
-        `on_select_remote`.  If no remotes are defined, notify the user and
-        proceed no further.
-        """
         interface = ui.get_interface(self.view.id())
         remote_name, branch_name = interface.get_selected_branch()
         if not branch_name or remote_name:
@@ -370,54 +365,17 @@ class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
 
         self.local_branch = branch_name
 
-        self.remotes = list(self.get_remotes().keys())
+        show_branch_panel(
+            self.on_branch_selection,
+            ask_remote_first=True,
+            selected_branch=branch_name)
 
-        if not self.remotes:
-            self.view.window().show_quick_panel(["There are no remotes available."], None)
-        else:
-            self.view.window().show_quick_panel(
-                self.remotes,
-                self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT
-                )
-
-    def on_select_remote(self, remote_index):
-        """
-        After the user selects a remote, display a panel of branches that are
-        present on that remote, then proceed to `on_select_branch`.
-        """
+    def on_branch_selection(self, branch):
         # If the user pressed `esc` or otherwise cancelled.
-        if remote_index == -1:
+        if not branch:
             return
 
-        self.selected_remote = self.remotes[remote_index]
-        self.branches_on_selected_remote = self.list_remote_branches(self.selected_remote)
-
-        try:
-            pre_selected_index = self.branches_on_selected_remote.index(
-                self.selected_remote + "/" + self.local_branch)
-        except ValueError:
-            pre_selected_index = 0
-
-        self.view.window().show_quick_panel(
-            self.branches_on_selected_remote,
-            self.on_select_branch,
-            flags=sublime.MONOSPACE_FONT,
-            selected_index=pre_selected_index
-        )
-
-    def on_select_branch(self, branch_index):
-        """
-        Determine the actual branch name of the user's selection, and proceed
-        to `do_pull`.
-        """
-        # If the user pressed `esc` or otherwise cancelled.
-        if branch_index == -1:
-            return
-        selected_remote_branch = self.branches_on_selected_remote[branch_index].split("/", 1)[1]
-        remote_ref = self.selected_remote + "/" + selected_remote_branch
-
-        self.git("branch", "-u", remote_ref, self.local_branch)
+        self.git("branch", "-u", branch, self.local_branch)
         util.view.refresh_gitsavvy(self.view)
 
 
@@ -450,24 +408,14 @@ class GsBranchesPushAllCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        self.remotes = list(self.get_remotes().keys())
+        show_remote_panel(self.on_remote_selection)
 
-        if not self.remotes:
-            self.view.window().show_quick_panel(["There are no remotes available."], None)
-        else:
-            self.view.window().show_quick_panel(
-                self.remotes,
-                self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT
-                )
-
-    def on_select_remote(self, remote_index):
+    def on_remote_selection(self, remote):
         # If the user pressed `esc` or otherwise cancelled.
-        if remote_index == -1:
+        if not remote:
             return
-        selected_remote = self.remotes[remote_index]
-        sublime.status_message("Pushing all branches to `{}`...".format(selected_remote))
-        self.git("push", selected_remote, "--all")
+        sublime.status_message("Pushing all branches to `{}`...".format(remote))
+        self.git("push", remote, "--all")
         sublime.status_message("Push successful.")
         util.view.refresh_gitsavvy(self.view)
 
