@@ -3,9 +3,7 @@ from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ...common import util
-
-
-ALL_REMOTES = "All remotes."
+from ..ui_mixins.quick_panel import show_remote_panel
 
 
 class GsFetchCommand(WindowCommand, GitCommand):
@@ -19,39 +17,22 @@ class GsFetchCommand(WindowCommand, GitCommand):
         if remote:
             return self.do_fetch(remote)
 
-        self.remotes = list(self.get_remotes().keys())
+        show_remote_panel(self.on_remote_selection, show_option_all=True)
 
-        if not self.remotes:
-            self.window.show_quick_panel(["There are no remotes available."], None)
-        else:
-            if len(self.remotes) > 1:
-                self.remotes.append(ALL_REMOTES)
-
-            pre_selected_idx = (self.remotes.index(self.last_remote_used)
-                                if self.last_remote_used in self.remotes
-                                else 0)
-
-            self.window.show_quick_panel(
-                self.remotes,
-                self.on_selection,
-                flags=sublime.MONOSPACE_FONT,
-                selected_index=pre_selected_idx
-                )
-
-    def on_selection(self, remotes_index):
-        # User cancelled.
-        if remotes_index == -1:
+    def on_remote_selection(self, remote):
+        if not remote:
             return
-        remote = self.remotes[remotes_index]
-
-        if remote == ALL_REMOTES:
+        if remote is True:
             sublime.set_timeout_async(lambda: self.do_fetch())
         else:
-            self.last_remote_used = remote
             sublime.set_timeout_async(lambda: self.do_fetch(remote))
 
     def do_fetch(self, remote=None):
-        sublime.status_message("Starting fetch...")
+        if remote is None:
+            sublime.status_message("Starting fetch all remotes...")
+        else:
+            sublime.status_message("Starting fetch {}...".format(remote))
+
         self.fetch(remote)
         sublime.status_message("Fetch complete.")
         util.view.refresh_gitsavvy(self.window.active_view())

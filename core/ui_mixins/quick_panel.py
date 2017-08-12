@@ -113,28 +113,28 @@ class PanelCommandMixin(PanelActionMixin):
         return ((selected_action[0], ) + args), kwargs
 
 
-def show_remote_panel(on_done, show_all=False, selected_remote=None):
+def show_remote_panel(on_done, show_option_all=False, selected_remote=None):
     """
     Show a quick panel with remotes. The callback `on_done(remote)` will
     be called when a remote is selected. If the panel is cancelled, `None`
     will be passed to `on_done`.
 
     on_done: a callable
-    show_all: whether the option "All remotes" should be shown. `True` will
+    show_option_all: whether the option "All remotes" should be shown. `True` will
                 be passed to `on_done` if the all remotes option is selected.
     """
-    rp = RemotePanel(on_done, show_all, selected_remote)
+    rp = RemotePanel(on_done, show_option_all, selected_remote)
     rp.show()
     return rp
 
 
 class RemotePanel(GitCommand):
 
-    def __init__(self, on_done, show_all=False, selected_remote=None):
+    def __init__(self, on_done, show_option_all=False, selected_remote=None):
         self.window = sublime.active_window()
         self.on_done = on_done
         self.selected_remote = selected_remote
-        self.show_all = show_all
+        self.show_option_all = show_option_all
 
     def show(self):
         self.remotes = list(self.get_remotes().keys())
@@ -146,7 +146,7 @@ class RemotePanel(GitCommand):
         # should we proceed directly if len(self.remotes) == 1 !?
         # GsRemoteRemoveCommand may not work well if we proceed directly
 
-        if self.show_all and len(self.remotes) > 1:
+        if self.show_option_all and len(self.remotes) > 1:
             self.remotes.insert(0, "All remotes.")
 
         if self.last_remote_used in self.remotes:
@@ -164,7 +164,7 @@ class RemotePanel(GitCommand):
     def on_remote_selection(self, index):
         if index == -1:
             self.on_done(None)
-        elif self.show_all and len(self.remotes) > 1 and index == 0:
+        elif self.show_option_all and len(self.remotes) > 1 and index == 0:
             self.on_done(True)
         else:
             self.remote = self.remotes[index]
