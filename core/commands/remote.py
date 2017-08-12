@@ -1,9 +1,9 @@
-import re
 import sublime
 from sublime_plugin import TextCommand
 
 from ..git_command import GitCommand
 from ...common import util
+from ..ui_mixins.quick_panel import show_remote_panel
 
 
 class GsRemoteAddCommand(TextCommand, GitCommand):
@@ -13,15 +13,15 @@ class GsRemoteAddCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # Get remote name from user
-        self.view.window().show_input_panel("Remote URL", "", self.on_select_remote, None, None)
+        self.view.window().show_input_panel("Remote URL", "", self.on_enter_remote, None, None)
 
-    def on_select_remote(self, input_url):
+    def on_enter_remote(self, input_url):
         self.url = input_url
         owner = self.username_from_url(input_url)
 
-        self.view.window().show_input_panel("Remote name", owner, self.on_select_name, None, None)
+        self.view.window().show_input_panel("Remote name", owner, self.on_enter_name, None, None)
 
-    def on_select_name(self, remote_name):
+    def on_enter_name(self, remote_name):
         self.git("remote", "add", remote_name, self.url)
         if sublime.ok_cancel_dialog("Your remote was added successfully.  Would you like to fetch from this remote?"):
             self.view.window().run_command("gs_fetch", {"remote": remote_name})
@@ -33,25 +33,14 @@ class GsRemoteRemoveCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        self.remotes = list(self.get_remotes().keys())
+        show_remote_panel(self.on_remote_selection)
 
-        if not self.remotes:
-            self.view.window().show_quick_panel(["There are no remotes available."], None)
-        else:
-            self.view.window().show_quick_panel(
-                self.remotes,
-                self.on_selection,
-                flags=sublime.MONOSPACE_FONT,
-                selected_index=0
-                )
-
-    def on_selection(self, remotes_index):
-        if remotes_index == -1:
+    def on_remote_selection(self, remote):
+        if not remote:
             return
 
         @util.actions.destructive(description="remove a remote")
         def remove():
             self.git("remote", "remove", remote)
 
-        remote = self.remotes[remotes_index]
         remove()
