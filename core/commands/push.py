@@ -3,9 +3,9 @@ from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ...common import util
+from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 
 
-NO_REMOTES_MESSAGE = "You have not configured any remotes."
 START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
 PUSH_TO_BRANCH_NAME_PROMPT = "Enter remote branch name:"
@@ -88,68 +88,13 @@ class GsPushToBranchCommand(WindowCommand, PushBase):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        """
-        Display a panel of all remotes defined for the repo, then proceed to
-        `on_select_remote`.  If no remotes are defined, notify the user and
-        proceed no further.
-        """
-        self.remotes = list(self.get_remotes().keys())
+        show_branch_panel(self.on_branch_selection, ask_remote_first=True)
 
-        if not self.remotes:
-            self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
-        else:
-            pre_selected_idx = (self.remotes.index(self.last_remote_used)
-                                if self.last_remote_used in self.remotes
-                                else 0)
-
-            self.window.show_quick_panel(
-                self.remotes,
-                self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT,
-                selected_index=pre_selected_idx
-                )
-
-    def on_select_remote(self, remote_index):
-        """
-        After the user selects a remote, display a panel of branches that are
-        present on that remote, then proceed to `on_select_branch`.
-        """
-        # If the user pressed `esc` or otherwise cancelled.
-        if remote_index == -1:
-            return
-
-        self.selected_remote = self.remotes[remote_index]
-        self.last_remote_used = self.selected_remote
-        self.branches_on_selected_remote = self.list_remote_branches(self.selected_remote)
-
-        current_local_branch = self.get_current_branch_name()
-
-        try:
-            pre_selected_idx = self.branches_on_selected_remote.index(
-                self.selected_remote + "/" + current_local_branch)
-        except ValueError:
-            pre_selected_idx = 0
-
-        def deferred_panel():
-            self.window.show_quick_panel(
-                self.branches_on_selected_remote,
-                self.on_select_branch,
-                flags=sublime.MONOSPACE_FONT,
-                selected_index=pre_selected_idx
-            )
-
-        sublime.set_timeout(deferred_panel)
-
-    def on_select_branch(self, branch_index):
-        """
-        Determine the actual branch name of the user's selection, and proceed
-        to `do_push`.
-        """
-        # If the user pressed `esc` or otherwise cancelled.
-        if branch_index == -1:
+    def on_branch_selection(self, branch):
+        if not branch:
             return
         current_local_branch = self.get_current_branch_name()
-        selected_branch = self.branches_on_selected_remote[branch_index].split("/", 1)[1]
+        selected_branch = branch.split("/", 1)[1]
         sublime.set_timeout_async(
             lambda: self.do_push(
                 self.selected_remote, current_local_branch, remote_branch=selected_branch))
@@ -168,37 +113,17 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        """
-        Display a panel of all remotes defined for the repo, then proceed to
-        `on_select_remote`.  If no remotes are defined, notify the user and
-        proceed no further.
-        """
-        self.remotes = list(self.get_remotes().keys())
+        show_remote_panel(self.on_remote_selection)
 
-        if not self.remotes:
-            self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
-        else:
-            pre_selected_idx = (self.remotes.index(self.last_remote_used)
-                                if self.last_remote_used in self.remotes
-                                else 0)
-
-            self.window.show_quick_panel(
-                self.remotes,
-                self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT,
-                selected_index=pre_selected_idx
-                )
-
-    def on_select_remote(self, remote_index):
+    def on_remote_selection(self, remote):
         """
         After the user selects a remote, prompt the user for a branch name.
         """
         # If the user pressed `esc` or otherwise cancelled.
-        if remote_index == -1:
+        if not remote:
             return
 
-        self.selected_remote = self.remotes[remote_index]
-        self.last_remote_used = self.selected_remote
+        self.selected_remote = remote
 
         if self.branch_name:
             self.on_entered_branch_name(self.branch_name)
