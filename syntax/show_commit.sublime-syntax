@@ -25,5 +25,4 @@ contexts:
       scope: meta.commit-header-and-stat-splitter
       comment: Separator between commit message and diffstat
 
-    - include: "scope:git-savvy.commit-diffstat"
     - include: "scope:git-savvy.diff"

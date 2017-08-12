@@ -182,7 +182,7 @@
         core/git_mixins/history.py |  8 ++------
         3 files changed, 10 insertions(+), 20 deletions(-)
 
-        Set to `false` if don't want to show this when view a commit.
+        Set to `false` if don't want to show this when view a commit or diff.
      */
     "show_diffstat": true,
 

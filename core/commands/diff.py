@@ -47,6 +47,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
             "-" if base_commit is None else "--" + base_commit,
             file_path or repo_path
         )
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
 
         if view_key in diff_views and diff_views[view_key] in sublime.active_window().views():
             diff_view = diff_views[view_key]
@@ -63,6 +64,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
             diff_view.settings().set("git_savvy.diff_view.show_word_diff", False)
             diff_view.settings().set("git_savvy.diff_view.base_commit", base_commit)
             diff_view.settings().set("git_savvy.diff_view.target_commit", target_commit)
+            diff_view.settings().set("git_savvy.diff_view.show_diffstat", savvy_settings.get("show_diffstat", True))
             diff_view.settings().set("git_savvy.diff_view.disable_stage", disable_stage)
             diff_views[view_key] = diff_view
 
@@ -87,12 +89,15 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         show_word_diff = self.view.settings().get("git_savvy.diff_view.show_word_diff")
         base_commit = self.view.settings().get("git_savvy.diff_view.base_commit")
         target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
+        show_diffstat = self.view.settings().get("git_savvy.diff_view.show_diffstat")
 
         try:
             stdout = self.git(
                 "diff",
                 "--ignore-all-space" if ignore_whitespace else None,
                 "--word-diff" if show_word_diff else None,
+                "--stat" if show_diffstat else None,
+                "--patch",
                 "--no-color",
                 "--cached" if in_cached_mode else None,
                 base_commit,
