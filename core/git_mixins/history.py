@@ -148,7 +148,12 @@ class HistoryMixin():
     def filename_at_commit(self, filename, commit_hash):
         commit_len = len(commit_hash)
         lines = self.git(
-            "log", "--pretty=oneline", "--follow", "--name-status", "--", filename
+            "log",
+            "--pretty=oneline",
+            "--follow",
+            "--name-status",
+            "{}..{}".format(commit_hash, "HEAD"),
+            "--", filename
         ).split("\n")
 
         for i in range(0, len(lines), 2):
@@ -160,3 +165,101 @@ class HistoryMixin():
 
         # If the commit hash is not for this file.
         return filename
+
+    def get_file_content_at_commit(self, filename, commit_hash):
+        filename = self.get_rel_path(filename)
+        filename = filename.replace('\\\\', '/')
+        filename = self.filename_at_commit(filename, commit_hash)
+        return self.git("show", commit_hash + ':' + filename)
+
+    def find_matching_lineno(self, base_commit, target_commit, line, file_path=None):
+        """
+        Return the matching line of the target_commit given the line number of the base_commit.
+        """
+        if not file_path:
+            file_path = self.file_path
+
+        if base_commit:
+            base_object = self.get_commit_file_object(base_commit, file_path)
+        else:
+            base_file_contents = util.file.get_file_contents_binary(self.repo_path, file_path)
+            base_object = self.get_object_from_string(base_file_contents)
+
+        target_object = self.get_commit_file_object(target_commit, file_path)
+
+        stdout = self.git(
+            "diff", "--no-color", "-U0", base_object, target_object)
+        diff = util.parse_diff(stdout)
+
+        if not diff:
+            return line
+
+        for hunk in reversed(diff):
+            head_start = hunk.head_start if hunk.head_length else hunk.head_start + 1
+            saved_start = hunk.saved_start if hunk.saved_length else hunk.saved_start + 1
+            head_end = head_start + hunk.head_length
+            saved_end = saved_start + hunk.saved_length
+
+            if head_end <= line:
+                return saved_end + line - head_end
+            elif head_start <= line:
+                return saved_start
+
+        # fails to find matching
+        return line
+
+    def get_indexed_file_object(self, file_path):
+        """
+        Given an absolute path to a file contained in a git repo, return
+        git's internal object hash associated with the version of that file
+        in the index (if the file is staged) or in the HEAD (if it is not
+        staged).
+        """
+        stdout = self.git("ls-files", "-s", file_path)
+
+        # 100644 c9d70aa928a3670bc2b879b4a596f10d3e81ba7c 0   SomeFile.py
+        #        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        git_file_entry = stdout.split(" ")
+        return git_file_entry[1]
+
+    def get_head_file_object(self, file_path):
+        """
+        Given an absolute path to a file contained in a git repo, return
+        git's internal object hash associated with the version of that
+        file in the HEAD.
+        """
+        stdout = self.git("ls-tree", "HEAD", file_path)
+
+        # 100644 blob 7317069f30eafd4d7674612679322d59f9fb65a4    SomeFile.py
+        #             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        git_file_entry = stdout.split()  # split by spaces and tabs
+        return git_file_entry[2]
+
+    def get_commit_file_object(self, commit, file_path):
+        """
+        Given an absolute path to a file contained in a git repo, return
+        git's internal object hash associated with the version of that
+        file in the commit.
+        """
+        stdout = self.git("ls-tree", commit, file_path)
+
+        # 100644 blob 7317069f30eafd4d7674612679322d59f9fb65a4    SomeFile.py
+        #             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        git_file_entry = stdout.split()  # split by spaces and tabs
+        return git_file_entry[2]
+
+    def get_object_contents(self, object_hash):
+        """
+        Given the object hash to a versioned object in the current git repo,
+        display the contents of that object.
+        """
+        return self.git("show", "--no-color", object_hash)
+
+    def get_object_from_string(self, string):
+        """
+        Given a string, pipe the contents of that string to git and have it
+        stored in the current repo, and return an object-hash that can be
+        used to diff against.
+        """
+        stdout = self.git("hash-object", "-w", "--stdin", stdin=string, encode=False)
+        return stdout.split("\n")[0]
