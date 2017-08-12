@@ -6,7 +6,8 @@ import sublime
 
 from ...common import util
 from ..git_command import GitCommand
-from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin, show_log_panel
+from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin
+from ..ui_mixins.quick_panel import show_log_panel, show_branch_panel
 
 
 class LogMixin(object):
@@ -78,16 +79,16 @@ class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
 
         self.window.show_quick_panel(
             [entry[3] for entry in self._entries],
-            self.on_author_selection,
+            lambda index: self.on_author_selection(index, **kwargs),
             flags=sublime.MONOSPACE_FONT,
             selected_index=(list(line[2] for line in self._entries)).index(email)
         )
 
-    def on_author_selection(self, index):
+    def on_author_selection(self, index, **kwargs):
         if index == -1:
             return
         self._selected_author = self._entries[index][3]
-        super().run_async()
+        super().run_async(**kwargs)
 
     def log(self, **kwargs):
         return super().log(author=self._selected_author, **kwargs)
@@ -96,24 +97,11 @@ class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
 class GsLogByBranchCommand(LogMixin, WindowCommand, GitCommand):
 
     def run_async(self, **kwargs):
-        self.all_branches = [b.name_with_remote for b in self.get_branches()]
+        show_branch_panel(lambda branch: self.on_branch_selection(branch, **kwargs))
 
-        if hasattr(self, '_selected_branch') and self._selected_branch in self.all_branches:
-            pre_selected_index = self.all_branches.index(self._selected_branch)
-        else:
-            pre_selected_index = self.all_branches.index(self.get_current_branch_name())
-
-        self.window.show_quick_panel(
-            self.all_branches,
-            self.on_branch_selection,
-            flags=sublime.MONOSPACE_FONT,
-            selected_index=pre_selected_index
-        )
-
-    def on_branch_selection(self, index):
-        if index == -1:
-            return
-        super().run_async(branch=self.all_branches[index])
+    def on_branch_selection(self, branch, **kwargs):
+        if branch:
+            super().run_async(branch=branch, **kwargs)
 
 
 class GsLogCommand(PanelCommandMixin, WindowCommand, GitCommand):
