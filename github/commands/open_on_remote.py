@@ -7,6 +7,7 @@ from ..github import open_repo
 from ..github import open_issues
 
 from .. import git_mixins
+from ...core.ui_mixins.quick_panel import show_remote_panel
 
 
 class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
@@ -30,7 +31,6 @@ class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemote
         self.preselect = preselect
 
         self.remotes = self.get_remotes()
-        self.remote_keys = list(self.remotes.keys())
 
         if not remote:
             remote = self.guess_github_remote()
@@ -38,27 +38,12 @@ class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemote
         if remote:
             self.open_file_on_remote(remote)
         else:
-            try:
-                pre_selected_index = self.remote_keys.index(self.last_remote_used)
-            except ValueError:
-                pre_selected_index = 0
-
-            self.view.window().show_quick_panel(
-                self.remote_keys,
-                self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT,
-                selected_index=pre_selected_index
-            )
-
-    def on_select_remote(self, index):
-        if index == -1:
-            return
-
-        remote = self.remote_keys[index]
-        self.last_remote_used = remote
-        self.open_file_on_remote(remote)
+            show_remote_panel(self.open_file_on_remote)
 
     def open_file_on_remote(self, remote):
+        if not remote:
+            return
+
         fpath = self.fpath
         if isinstance(fpath, str):
             fpath = [fpath]
@@ -103,7 +88,6 @@ class GsOpenGithubRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesM
 
     def run_async(self, remote):
         self.remotes = self.get_remotes()
-        self.remote_keys = list(self.remotes.keys())
 
         if not remote:
             remote = self.guess_github_remote()
@@ -111,23 +95,11 @@ class GsOpenGithubRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesM
         if remote:
             open_repo(self.remotes[remote])
         else:
-            try:
-                pre_selected_index = self.remote_keys.index(self.last_remote_used)
-            except ValueError:
-                pre_selected_index = 0
+            show_remote_panel(self.on_remote_selection)
 
-            self.view.window().show_quick_panel(
-                self.remote_keys,
-                self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT,
-                selected_index=pre_selected_index
-            )
-
-    def on_select_remote(self, index):
-        if index == -1:
+    def on_remote_selection(self, remote):
+        if not remote:
             return
-        remote = self.remote_keys[index]
-        self.last_remote_used = remote
         open_repo(self.remotes[remote])
 
 
