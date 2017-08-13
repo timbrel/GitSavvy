@@ -32,6 +32,16 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        if self.view.settings().get('is_widget'):
+            return
+
+        window = self.view.window()
+        if not window or \
+            (self.view.file_name() and
+                self.view == window.transient_view_in_group(window.active_group())):
+            # it means it is an transient view of a regular file
+            return
+
         global last_execution, update_status_bar_soon
         if sublime.load_settings("GitSavvy.sublime-settings").get("git_status_in_status_bar"):
 
