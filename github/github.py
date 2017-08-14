@@ -140,8 +140,55 @@ def query_github(api_url_template, github_repo):
 
     return response.payload
 
-get_issues = partial(query_github, "/repos/{owner}/{repo}/issues")
-get_contributors = partial(query_github, "/repos/{owner}/{repo}/contributors")
-get_forks = partial(query_github, "/repos/{owner}/{repo}/forks")
+
 get_repo_data = partial(query_github, "/repos/{owner}/{repo}")
-get_pull_requests = partial(query_github, "/repos/{owner}/{repo}/pulls")
+
+
+def iteratively_query_github(api_url_template, github_repo):
+    """
+    Like `query_github` but return a generator by repeatedly
+    iterating until no link to next page.
+    """
+
+    is_enterprise, fqdn = get_api_fqdn(github_repo)
+    base_path = "/api/v3" if is_enterprise else ""
+    path = base_path + api_url_template.format(
+        owner=github_repo.owner,
+        repo=github_repo.repo
+    )
+
+    path = path + "?per_page=100"
+
+    auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
+
+    response = None
+
+    while True:
+        if response is not None:
+            # it means this is not the first iter
+            if "Link" not in response.headers:
+                break
+
+            # following next link
+            # https://developer.github.com/v3/#pagination
+            match = re.match(r'<([^>]+)>; rel="next"', response.headers["Link"])
+            if not match:
+                break
+
+            path = match.group(1)
+
+        response = interwebs.get(fqdn, 443, path, https=True, auth=auth)
+
+        if response.status < 200 or response.status > 299 or not response.is_json:
+            raise FailedGithubRequest('Error querying github: %s' % response.payload)
+
+        if response.payload:
+            for item in response.payload:
+                yield item
+        else:
+            break
+
+get_issues = partial(iteratively_query_github, "/repos/{owner}/{repo}/issues")
+get_contributors = partial(iteratively_query_github, "/repos/{owner}/{repo}/contributors")
+get_forks = partial(iteratively_query_github, "/repos/{owner}/{repo}/forks")
+get_pull_requests = partial(iteratively_query_github, "/repos/{owner}/{repo}/pulls")
