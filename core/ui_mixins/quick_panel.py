@@ -113,21 +113,27 @@ class PanelCommandMixin(PanelActionMixin):
 
 
 def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_highlight=None,
-                         limit=6000, format_item=None, next_message=None):
+                         limit=6000, format_item=None, next_message=None, status_message=None):
     """
     Display items in quick panel with pagination, and execute on_done
     when item is selected.
 
     items: can be either a list or a generator.
+
     on_done: a callback will take one argument
+
     limit: the number of items per page
+
     selected_index: an integer or a callable returning boolean.
                     If callable, takes either an integer or an entry.
+
     on_highlight: a callable, takes either an integer or an entry.
 
     format_item: a function to format each item
 
     next_message: a message of next page, default is ">>> NEXT PAGE >>>"
+
+    status_message: a message to display at statusbar while loading the entries.
 
     If the elements are tuples of the form `(value1, value2)`,
     `value1` would be displayed via quick panel and `value2` will be passed to
@@ -143,7 +149,8 @@ def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_hig
             on_highlight=on_highlight,
             limit=limit,
             format_item=format_item,
-            next_message=next_message)
+            next_message=next_message,
+            status_message=status_message)
     pp.show()
     return pp
 
@@ -155,6 +162,7 @@ class PaginatedPanel:
     """
     flags = sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST
     next_message = ">>> NEXT PAGE >>>"
+    status_message = None
     limit = 6000
     selected_index = None
     on_highlight = None
@@ -164,7 +172,7 @@ class PaginatedPanel:
         self.item_generator = (item for item in items)
         self.on_done = on_done
         for option in ['flags', 'selected_index', 'on_highlight',
-                       'limit', 'format_item', 'next_message', ]:
+                       'limit', 'format_item', 'next_message', 'status_message']:
             # need to check the nullness of the options to avoid overriding the default
             # methods, e.g. `format_item` and `on_hightight` of LogPanel
             if option in kwargs and kwargs[option] is not None:
@@ -175,7 +183,6 @@ class PaginatedPanel:
         self.ret_list = []
         for item in itertools.islice(self.item_generator, self.limit):
             self.extract_item(item)
-
         if self.ret_list and len(self.ret_list) != len(self.display_list):
             raise Exception("the lengths of display_list and ret_list are different.")
 
@@ -191,7 +198,13 @@ class PaginatedPanel:
         return item
 
     def show(self):
-        self.load_next_batch()
+        if self.status_message:
+            sublime.status_message(self.status_message)
+        try:
+            self.load_next_batch()
+        finally:
+            if self.status_message:
+                sublime.status_message("")
 
         if len(self.display_list) == self.limit:
             self.display_list.append(self.next_message)
