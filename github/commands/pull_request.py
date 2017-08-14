@@ -1,8 +1,9 @@
-import sublime, datetime
+import sublime
 from sublime_plugin import TextCommand
 from webbrowser import open as open_in_browser
 
 from ...core.git_command import GitCommand
+from ...core.ui_mixins.quick_panel import show_paginated_panel
 from .. import github
 from .. import git_mixins
 from ...common import interwebs
@@ -10,16 +11,6 @@ from ...common import util
 
 SET_UPSTREAM_PROMPT = ("You have not set an upstream for the active branch.  "
                        "Would you like to set one?")
-
-
-def create_palette_entry(pr):
-    return [
-        "{number}: {title}".format(number=pr["number"], title=pr["title"]),
-        "Created by {user}, {time_stamp}.".format(
-            user=pr["user"]["login"],
-            time_stamp=util.dates.fuzzy(pr["created_at"], date_format="%Y-%m-%dT%H:%M:%SZ")
-            )
-    ]
 
 
 class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
@@ -31,27 +22,40 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
     """
 
     def run(self, edit):
-        sublime.status_message("Getting pull requests...")
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
         base_remote = github.parse_remote(self.get_integrated_remote_url())
         self.pull_requests = github.get_pull_requests(base_remote)
-        if not self.pull_requests:
-            sublime.status_message("No pull requests found.")
-        else:
-            sublime.status_message("Found %i pull requests" % len(self.pull_requests))
-            self.view.window().show_quick_panel(
-                [create_palette_entry(pr) for pr in self.pull_requests],
-                self.on_select_pr
-                )
 
-    def on_select_pr(self, idx):
-        if idx == -1:
+        pp = show_paginated_panel(
+            self.pull_requests,
+            self.on_select_pr,
+            limit=100,
+            format_item=self.format_item,
+            status_message="Getting pull requests..."
+            )
+        if pp.is_empty():
+            sublime.status_message("No pull requests found.")
+
+    def format_item(self, issue):
+        return (
+            [
+                "{number}: {title}".format(number=issue["number"], title=issue["title"]),
+                "Pull request created by {user}, {time_stamp}.".format(
+                    user=issue["user"]["login"],
+                    time_stamp=util.dates.fuzzy(issue["created_at"],
+                                                date_format="%Y-%m-%dT%H:%M:%SZ")
+                    )
+            ],
+            issue
+        )
+
+    def on_select_pr(self, pr):
+        if not pr:
             return
 
-        self.pr = self.pull_requests[idx]
-
+        self.pr = pr
         self.view.window().show_quick_panel(
             ["Checkout as detached HEAD.",
              "Checkout as local branch.",
