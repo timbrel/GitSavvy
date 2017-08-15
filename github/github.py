@@ -12,6 +12,8 @@ import sublime
 from ..common import interwebs, util
 from ..core.exceptions import FailedGithubRequest
 
+GITHUB_PER_PAGE_MAX = 100
+
 GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo", "token"))
 
 
@@ -157,7 +159,7 @@ def iteratively_query_github(api_url_template, github_repo):
         repo=github_repo.repo
     )
 
-    path = path + "?per_page=100"
+    path = path + "?per_page={:d}".format(GITHUB_PER_PAGE_MAX)
 
     auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
 

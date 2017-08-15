@@ -39,6 +39,7 @@ class GsShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemote
         sublime.set_timeout_async(lambda: self.run_async(nondefault_repo))
 
     def run_async(self, nondefault_repo):
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         remote = github.parse_remote(self.get_integrated_remote_url())
 
         if nondefault_repo:
@@ -56,7 +57,7 @@ class GsShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemote
             issues,
             self.on_done,
             format_item=self.format_item,
-            limit=100,
+            limit=savvy_settings.get("github_per_page_max", 100),
             status_message="Getting issues..."
             )
         if pp.is_empty():
@@ -96,6 +97,7 @@ class GsShowGithubContributorsCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(lambda: self.run_async())
 
     def run_async(self):
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         default_remote_name, default_remote = self.get_remotes().popitem(last=False)
         remote = github.parse_remote(default_remote)
 
@@ -105,7 +107,7 @@ class GsShowGithubContributorsCommand(TextCommand, GitCommand):
             contributors,
             self.on_done,
             format_item=self.format_item,
-            limit=100,
+            limit=savvy_settings.get("github_per_page_max", 100),
             status_message="Getting contributors..."
             )
         if pp.is_empty():
