@@ -89,3 +89,16 @@ class BranchesMixin():
         for branch in self.get_branches():
             if not branch.remote and branch.name == branch_name:
                 return branch
+
+    def branches_containing_commit(self, commit_hash, local_only=True, remote_only=False):
+        """
+        Return a list of branches which contain a particular commit.
+        """
+        branches = self.git(
+            "branch",
+            "-a" if not local_only and not remote_only else None,
+            "-r" if remote_only else None,
+            "--contains",
+            commit_hash
+            ).strip().split("\n")
+        return [branch.strip() for branch in branches]

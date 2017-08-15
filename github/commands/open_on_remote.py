@@ -10,6 +10,10 @@ from .. import git_mixins
 from ...core.ui_mixins.quick_panel import show_remote_panel
 
 
+EARLIER_COMMIT_PROMPT = ("The remote chosen may not contain the commit. "
+                         "Open the file {} before?")
+
+
 class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
 
     """
@@ -55,6 +59,22 @@ class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemote
         else:
             commit_hash = self.get_commit_hash_for_head()
 
+        base_hash = commit_hash
+
+        # check if the remote contains the commit hash
+        if remote not in self.remotes_containing_commit(commit_hash):
+            upstream = self.get_upstream_for_active_branch()
+            if upstream:
+                merge_base = self.git("merge-base", commit_hash, upstream).strip()
+                if merge_base and remote in self.remotes_containing_commit(merge_base):
+                    count = self.git(
+                        "rev-list", "--count", "{}..{}".format(merge_base, commit_hash)).strip()
+                    if not sublime.ok_cancel_dialog(EARLIER_COMMIT_PROMPT.format(
+                            count + (" commit" if count == "1" else " commits"))):
+                        return
+
+                    commit_hash = merge_base
+
         start_line = None
         end_line = None
 
@@ -66,6 +86,13 @@ class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemote
                 # Git lines are 1-indexed; Sublime rows are 0-indexed.
                 start_line = self.view.rowcol(first_selection.begin())[0] + 1
                 end_line = self.view.rowcol(last_selection.end())[0] + 1
+
+                # forward line number if the opening commit is the merge base
+                if base_hash != commit_hash:
+                    start_line = self.find_matching_lineno(
+                        base_hash, commit_hash, line=start_line, file_path=fpath[0])
+                    end_line = self.find_matching_lineno(
+                        base_hash, commit_hash, line=end_line, file_path=fpath[0])
 
         for p in fpath:
             open_file_in_browser(
