@@ -8,8 +8,10 @@ import sublime
 from sublime_plugin import TextCommand
 
 from ...core.git_command import GitCommand
+from ...core.ui_mixins.quick_panel import show_paginated_panel
 from .. import github
 from .. import git_mixins
+from ...common import util
 
 
 class GsShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
@@ -29,7 +31,8 @@ class GsShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemote
         if not default_repo:
             first_cursor = self.view.sel()[0].begin()
             text_before_cursor = self.view.substr(sublime.Region(0, first_cursor))
-            nondefault_repo = re.search(r"([a-zA-Z\-_0-9\.]+)/([a-zA-Z\-_0-9\.]+)#$", text_before_cursor).groups()
+            nondefault_repo = re.search(
+                r"([a-zA-Z\-_0-9\.]+)/([a-zA-Z\-_0-9\.]+)#$", text_before_cursor).groups()
         else:
             nondefault_repo = None
 
@@ -49,18 +52,35 @@ class GsShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemote
             )
 
         issues = github.get_issues(remote)
+        pp = show_paginated_panel(
+            issues,
+            self.on_done,
+            format_item=self.format_item,
+            limit=100,
+            status_message="Getting issues..."
+            )
+        if pp.is_empty():
+            sublime.status_message("No issues found.")
 
-        if not issues:
+    def format_item(self, issue):
+        return (
+            [
+                "{number}: {title}".format(number=issue["number"], title=issue["title"]),
+                "{issue_type} created by {user}, {time_stamp}.".format(
+                    issue_type="Pull request" if "pull_request" in issue else "Issue",
+                    user=issue["user"]["login"],
+                    time_stamp=util.dates.fuzzy(issue["created_at"],
+                                                date_format="%Y-%m-%dT%H:%M:%SZ")
+                    )
+            ],
+            issue
+        )
+
+    def on_done(self, issue):
+        if not issue:
             return
 
-        self.menu_items = ["{} - {}".format(issue["number"], issue["title"]) for issue in issues]
-        self.view.show_popup_menu(self.menu_items, self.on_done)
-
-    def on_done(self, selection_id):
-        if selection_id != -1:
-            selection = self.menu_items[selection_id]
-            number = selection.split(" ")[0]
-            self.view.run_command("gs_insert_text_at_cursor", {"text": number})
+        self.view.run_command("gs_insert_text_at_cursor", {"text": str(issue["number"])})
 
 
 class GsShowGithubContributorsCommand(TextCommand, GitCommand):
