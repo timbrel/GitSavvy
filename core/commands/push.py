@@ -106,11 +106,14 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
     Prompt for remote and remote branch name, then push.
     """
 
-    def run(self, branch_name=None, set_upstream=False, force=False):
+    def run(self, branch_name=None, remote=None, set_upstream=False, force=False):
         self.branch_name = branch_name
         self.set_upstream = set_upstream
         self.force = force
-        sublime.set_timeout_async(self.run_async)
+        if remote:
+            sublime.set_timeout_async(self.on_remote_selection(remote))
+        else:
+            sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
         show_remote_panel(self.on_remote_selection)
