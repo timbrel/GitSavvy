@@ -168,6 +168,8 @@ class PaginatedPanel:
     on_highlight = None
 
     def __init__(self, items, on_done, **kwargs):
+        self._is_empty = True
+        self._is_done = False
         self.skip = 0
         self.item_generator = (item for item in items)
         self.on_done = on_done
@@ -206,8 +208,14 @@ class PaginatedPanel:
             if self.status_message:
                 sublime.status_message("")
 
+        if self.display_list and self._is_empty:
+            self._is_empty = False
+
         if len(self.display_list) == self.limit:
             self.display_list.append(self.next_message)
+        else:
+            # done
+            self._is_done = True
 
         kwargs = {}
         if self.flags:
@@ -262,6 +270,12 @@ class PaginatedPanel:
     def on_selection(self, value):
         self.value = value
         self.on_done(value)
+
+    def is_empty(self):
+        return self._is_empty
+
+    def is_done(self):
+        return self._is_done
 
 
 def show_log_panel(entries, on_done, limit=6000, selected_index=None, on_highlight=None):
