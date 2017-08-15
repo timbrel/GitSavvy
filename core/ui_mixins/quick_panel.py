@@ -255,7 +255,7 @@ class PaginatedPanel:
     def _on_selection(self, index):
         if index == self.limit:
             self.skip = self.skip + self.limit
-            sublime.set_timeout(self.show, 10)
+            sublime.set_timeout_async(self.show, 10)
         elif self.ret_list:
             if index == -1:
                 self.on_selection(None)
