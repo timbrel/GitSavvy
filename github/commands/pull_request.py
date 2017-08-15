@@ -131,8 +131,6 @@ class GsPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMi
 
     def view_diff_for_pr(self):
         response = interwebs.get_url(self.pr["diff_url"])
-        print("getting", self.pr["diff_url"])
-        print(repr(response.payload.decode("utf-8")))
 
         diff_view = util.view.get_scratch_view(self, "pr_diff", read_only=True)
         diff_view.set_name("PR #{}".format(self.pr["number"]))
