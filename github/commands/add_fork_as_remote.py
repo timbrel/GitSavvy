@@ -1,7 +1,9 @@
 import sublime
 from sublime_plugin import TextCommand
+from itertools import chain
 
 from ...core.git_command import GitCommand
+from ...core.ui_mixins.quick_panel import show_paginated_panel
 from .. import github
 from .. import git_mixins
 
@@ -17,38 +19,38 @@ class GsAddForkAsRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemotes
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         base_remote = github.parse_remote(self.get_integrated_remote_url())
-        forks = github.get_forks(base_remote)
         base_repo_data = github.get_repo_data(base_remote)
         parent = None
 
-        self.gh_remotes = []
-
+        forks = []
         if "parent" in base_repo_data:
-            parent = (base_repo_data["parent"]["full_name"],
-                      base_repo_data["parent"]["clone_url"],
-                      base_repo_data["parent"]["owner"]["login"])
-            self.gh_remotes.append(parent)
+            parent = base_repo_data["parent"]
+            forks.append(parent)
 
         if "source" in base_repo_data:
-            source = (base_repo_data["source"]["full_name"],
-                      base_repo_data["source"]["clone_url"],
-                      base_repo_data["source"]["owner"]["login"])
-            if not parent == source:
-                self.gh_remotes.append([source, "Source"])
+            source = base_repo_data["source"]
+            if not parent["clone_url"] == source["clone_url"]:
+                forks.append(source)
 
-        self.gh_remotes += [
-            (fork["full_name"],
-             fork["clone_url"],
-             fork["owner"]["login"])
-            for fork in forks
-        ]
+        forks = chain(forks, github.get_forks(base_remote))
 
-        self.view.window().show_quick_panel([remote[0] for remote in self.gh_remotes], self.on_select)
+        show_paginated_panel(
+            forks,
+            self.on_select,
+            limit=savvy_settings.get("github_per_page_max", 100),
+            format_item=self.format_item,
+            status_message="Getting forks...")
 
-    def on_select(self, idx):
-        if idx == -1:
+    def format_item(self, fork):
+        return (fork["full_name"], fork)
+
+    def on_select(self, fork):
+        if not fork:
             return
-        full_name, url, owner = self.gh_remotes[idx]
+
+        url = fork["clone_url"]
+        owner = fork["owner"]["login"]
         self.git("remote", "add", owner, url)
         sublime.status_message("Added remote '{}'.".format(owner))

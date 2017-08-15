@@ -113,19 +113,27 @@ class PanelCommandMixin(PanelActionMixin):
 
 
 def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_highlight=None,
-                         limit=6000, next_message=None):
+                         limit=6000, format_item=None, next_message=None, status_message=None):
     """
     Display items in quick panel with pagination, and execute on_done
     when item is selected.
 
     items: can be either a list or a generator.
+
     on_done: a callback will take one argument
+
     limit: the number of items per page
+
     selected_index: an integer or a callable returning boolean.
                     If callable, takes either an integer or an entry.
+
     on_highlight: a callable, takes either an integer or an entry.
 
+    format_item: a function to format each item
+
     next_message: a message of next page, default is ">>> NEXT PAGE >>>"
+
+    status_message: a message to display at statusbar while loading the entries.
 
     If the elements are tuples of the form `(value1, value2)`,
     `value1` would be displayed via quick panel and `value2` will be passed to
@@ -140,7 +148,9 @@ def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_hig
             selected_index=selected_index,
             on_highlight=on_highlight,
             limit=limit,
-            next_message=next_message)
+            format_item=format_item,
+            next_message=next_message,
+            status_message=status_message)
     pp.show()
     return pp
 
@@ -152,18 +162,21 @@ class PaginatedPanel:
     """
     flags = sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST
     next_message = ">>> NEXT PAGE >>>"
+    status_message = None
     limit = 6000
     selected_index = None
     on_highlight = None
 
     def __init__(self, items, on_done, **kwargs):
+        self._is_empty = True
+        self._is_done = False
         self.skip = 0
         self.item_generator = (item for item in items)
         self.on_done = on_done
         for option in ['flags', 'selected_index', 'on_highlight',
-                       'limit', 'next_message', ]:
-            # need to check the nullness of the options to avoid the default
-            # method `on_hightight` of LogPanel to be overrided.
+                       'limit', 'format_item', 'next_message', 'status_message']:
+            # need to check the nullness of the options to avoid overriding the default
+            # methods, e.g. `format_item` and `on_hightight` of LogPanel
             if option in kwargs and kwargs[option] is not None:
                 setattr(self, option, kwargs[option])
 
@@ -172,7 +185,6 @@ class PaginatedPanel:
         self.ret_list = []
         for item in itertools.islice(self.item_generator, self.limit):
             self.extract_item(item)
-
         if self.ret_list and len(self.ret_list) != len(self.display_list):
             raise Exception("the lengths of display_list and ret_list are different.")
 
@@ -188,10 +200,22 @@ class PaginatedPanel:
         return item
 
     def show(self):
-        self.load_next_batch()
+        if self.status_message:
+            sublime.status_message(self.status_message)
+        try:
+            self.load_next_batch()
+        finally:
+            if self.status_message:
+                sublime.status_message("")
+
+        if self.display_list and self._is_empty:
+            self._is_empty = False
 
         if len(self.display_list) == self.limit:
             self.display_list.append(self.next_message)
+        else:
+            # done
+            self._is_done = True
 
         kwargs = {}
         if self.flags:
@@ -231,7 +255,7 @@ class PaginatedPanel:
     def _on_selection(self, index):
         if index == self.limit:
             self.skip = self.skip + self.limit
-            sublime.set_timeout(self.show, 10)
+            sublime.set_timeout_async(self.show, 10)
         elif self.ret_list:
             if index == -1:
                 self.on_selection(None)
@@ -246,6 +270,12 @@ class PaginatedPanel:
     def on_selection(self, value):
         self.value = value
         self.on_done(value)
+
+    def is_empty(self):
+        return self._is_empty
+
+    def is_done(self):
+        return self._is_done
 
 
 def show_log_panel(entries, on_done, limit=6000, selected_index=None, on_highlight=None):
