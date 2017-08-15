@@ -81,13 +81,21 @@ class GsShowGithubContributorsCommand(TextCommand, GitCommand):
 
         contributors = github.get_contributors(remote)
 
-        if not contributors:
+        pp = show_paginated_panel(
+            contributors,
+            self.on_done,
+            format_item=self.format_item,
+            limit=100,
+            status_message="Getting contributors..."
+            )
+        if pp.is_empty():
+            sublime.status_message("No contributors found.")
+
+    def format_item(self, contributor):
+        return (contributor["login"], contributor)
+
+    def on_done(self, contributor):
+        if not contributor:
             return
 
-        self.menu_items = [contributor["login"] for contributor in contributors]
-        self.view.show_popup_menu(self.menu_items, self.on_done)
-
-    def on_done(self, selection_id):
-        if selection_id != -1:
-            selection = self.menu_items[selection_id]
-            self.view.run_command("gs_insert_text_at_cursor", {"text": selection})
+        self.view.run_command("gs_insert_text_at_cursor", {"text": contributor["login"]})
