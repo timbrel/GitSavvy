@@ -1,5 +1,5 @@
 import sublime
-from sublime_plugin import TextCommand
+from sublime_plugin import WindowCommand
 from webbrowser import open as open_in_browser
 
 from ...core.git_command import GitCommand
@@ -15,7 +15,7 @@ PUSH_PROMPT = ("You have not set an upstream for the active branch.  "
                "Would you like to push to a remote?")
 
 
-class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin):
 
     """
     Display open pull requests on the base repo.  When a pull request is selected,
@@ -23,7 +23,7 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
     a local branch, 3) view the PR's diff, or 4) open the PR in the browser.
     """
 
-    def run(self, edit):
+    def run(self):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
@@ -59,7 +59,7 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
             return
 
         self.pr = pr
-        self.view.window().show_quick_panel(
+        self.window.show_quick_panel(
             ["Checkout as detached HEAD.",
              "Checkout as local branch.",
              "Create local branch, but do not checkout.",
@@ -75,7 +75,7 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
         if idx == 0:
             self.fetch_and_checkout_pr()
         elif idx == 1:
-            self.view.window().show_input_panel(
+            self.window.show_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
                 "pull-request-{}".format(self.pr["number"]),
                 self.fetch_and_checkout_pr,
@@ -83,7 +83,7 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
                 None
                 )
         elif idx == 2:
-            self.view.window().show_input_panel(
+            self.window.show_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
                 "pull-request-{}".format(self.pr["number"]),
                 self.create_branch_for_pr,
@@ -138,7 +138,7 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
         diff_view.set_name("PR #{}".format(self.pr["number"]))
         diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
 
-        self.view.window().focus_view(diff_view)
+        self.window.focus_view(diff_view)
         diff_view.sel().clear()
         diff_view.run_command("gs_replace_view_text", {
             "text": response.payload.decode("utf-8")
@@ -148,18 +148,18 @@ class GsPullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixi
         open_in_browser(self.pr["html_url"])
 
 
-class GsCreatePullRequestCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsCreatePullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin):
     """
     Create pull request of the current commit on the current repo.
     """
 
-    def run(self, edit):
+    def run(self):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
         if not self.get_upstream_for_active_branch():
             if sublime.ok_cancel_dialog(PUSH_PROMPT):
-                self.view.window().run_command(
+                self.window.run_command(
                     "gs_push_and_create_pull_request",
                     {"set_upstream": True})
 
@@ -198,4 +198,4 @@ class GsPushAndCreatePullRequestCommand(GsPushToBranchNameCommand):
 
     def do_push(self, *args, **kwargs):
         super().do_push(*args, **kwargs)
-        self.window.active_view().run_command("gs_create_pull_request")
+        self.window.run_command("gs_create_pull_request")
