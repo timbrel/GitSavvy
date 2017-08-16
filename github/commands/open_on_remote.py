@@ -7,6 +7,12 @@ from ..github import open_repo
 from ..github import open_issues
 
 from .. import git_mixins
+from ...core.ui_mixins.quick_panel import show_remote_panel
+from ...core.commands.push import GsPushToBranchNameCommand
+
+
+PUSH_PROMPT = ("The remote chosen may not contain the latest commits.  "
+               "Would you like to push to remote?")
 
 
 class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
@@ -38,27 +44,12 @@ class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemote
         if remote:
             self.open_file_on_remote(remote)
         else:
-            try:
-                pre_selected_index = self.remote_keys.index(self.last_remote_used)
-            except ValueError:
-                pre_selected_index = 0
-
-            self.view.window().show_quick_panel(
-                self.remote_keys,
-                self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT,
-                selected_index=pre_selected_index
-            )
-
-    def on_select_remote(self, index):
-        if index == -1:
-            return
-
-        remote = self.remote_keys[index]
-        self.last_remote_used = remote
-        self.open_file_on_remote(remote)
+            show_remote_panel(self.open_file_on_remote)
 
     def open_file_on_remote(self, remote):
+        if not remote:
+            return
+
         fpath = self.fpath
         if isinstance(fpath, str):
             fpath = [fpath]
@@ -70,26 +61,48 @@ class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemote
         else:
             commit_hash = self.get_commit_hash_for_head()
 
-        start_line = None
-        end_line = None
+        valid_remotes = set([
+                branch.split("/")[0]
+                for branch in self.branches_contain_commit(commit_hash, remote_only=True)
+            ])
 
-        if self.preselect and len(fpath) == 1:
-            selections = self.view.sel()
-            if len(selections) >= 1:
-                first_selection = selections[0]
-                last_selection = selections[-1]
-                # Git lines are 1-indexed; Sublime rows are 0-indexed.
-                start_line = self.view.rowcol(first_selection.begin())[0] + 1
-                end_line = self.view.rowcol(last_selection.end())[0] + 1
+        # check if the remote contains the commit hash
+        if remote not in valid_remotes:
+            if sublime.ok_cancel_dialog(PUSH_PROMPT):
+                self.view.window().run_command(
+                    "gs_push_and_open_file_on_remote",
+                    {"remote": remote, "set_upstream": True}
+                )
+        else:
+            start_line = None
+            end_line = None
 
-        for p in fpath:
-            open_file_in_browser(
-                p,
-                remote_url,
-                commit_hash,
-                start_line=start_line,
-                end_line=end_line
-            )
+            if self.preselect and len(fpath) == 1:
+                selections = self.view.sel()
+                if len(selections) >= 1:
+                    first_selection = selections[0]
+                    last_selection = selections[-1]
+                    # Git lines are 1-indexed; Sublime rows are 0-indexed.
+                    start_line = self.view.rowcol(first_selection.begin())[0] + 1
+                    end_line = self.view.rowcol(last_selection.end())[0] + 1
+
+            for p in fpath:
+                open_file_in_browser(
+                    p,
+                    remote_url,
+                    commit_hash,
+                    start_line=start_line,
+                    end_line=end_line
+                )
+
+
+class GsPushAndOpenFileOnRemoteCommand(GsPushToBranchNameCommand):
+
+    def do_push(self, *args, **kwargs):
+        super().do_push(*args, **kwargs)
+        self.window.active_view().run_command(
+            "gs_open_file_on_remote",
+            {"remote": self.selected_remote})
 
 
 class GsOpenGithubRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
@@ -111,23 +124,11 @@ class GsOpenGithubRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesM
         if remote:
             open_repo(self.remotes[remote])
         else:
-            try:
-                pre_selected_index = self.remote_keys.index(self.last_remote_used)
-            except ValueError:
-                pre_selected_index = 0
+            show_remote_panel(self.on_remote_selection)
 
-            self.view.window().show_quick_panel(
-                self.remote_keys,
-                self.on_select_remote,
-                flags=sublime.MONOSPACE_FONT,
-                selected_index=pre_selected_index
-            )
-
-    def on_select_remote(self, index):
-        if index == -1:
+    def on_remote_selection(self, remote):
+        if not remote:
             return
-        remote = self.remote_keys[index]
-        self.last_remote_used = remote
         open_repo(self.remotes[remote])
 
 
