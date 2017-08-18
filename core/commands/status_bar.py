@@ -8,16 +8,18 @@ from ...common.util import debug
 
 class GsStatusBarEventListener(EventListener):
 
-    def on_new_async(self, view):
+    # these methods should be run synchronously to check if the
+    # view is transient.
+    def on_new(self, view):
         view.run_command("gs_update_status_bar")
 
-    def on_load_async(self, view):
+    def on_load(self, view):
         view.run_command("gs_update_status_bar")
 
-    def on_activated_async(self, view):
+    def on_activated(self, view):
         view.run_command("gs_update_status_bar")
 
-    def on_post_save_async(self, view):
+    def on_post_save(self, view):
         view.run_command("gs_update_status_bar")
 
 
@@ -32,6 +34,16 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        if self.view.settings().get('is_widget'):
+            return
+
+        window = self.view.window()
+        if not window or \
+            (self.view.file_name() and
+                self.view == window.transient_view_in_group(window.active_group())):
+            # it means it is an transient view of a regular file
+            return
+
         global last_execution, update_status_bar_soon
         if sublime.load_settings("GitSavvy.sublime-settings").get("git_status_in_status_bar"):
 
