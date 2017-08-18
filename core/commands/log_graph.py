@@ -5,6 +5,8 @@ from ..git_command import GitCommand
 from .log import GsLogActionCommand, GsLogCommand
 from .navigate import GsNavigate
 from ...common import util
+from ..ui_mixins.quick_panel import show_branch_panel
+
 
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
@@ -130,25 +132,12 @@ class GsLogGraphByAuthorCommand(LogGraphMixin, WindowCommand, GitCommand):
 class GsLogGraphByBranchCommand(LogGraphMixin, WindowCommand, GitCommand):
 
     def run_async(self):
-        self.all_branches = [b.name_with_remote for b in self.get_branches()]
+        show_branch_panel(self.on_branch_selection)
 
-        if hasattr(self, '_selected_branch') and self._selected_branch in self.all_branches:
-            pre_selected_index = self.all_branches.index(self._selected_branch)
-        else:
-            pre_selected_index = self.all_branches.index(self.get_current_branch_name())
-
-        self.window.show_quick_panel(
-            self.all_branches,
-            self.on_branch_selection,
-            flags=sublime.MONOSPACE_FONT,
-            selected_index=pre_selected_index
-        )
-
-    def on_branch_selection(self, index):
-        if index == -1:
-            return
-        self._selected_branch = self.all_branches[index]
-        super().run_async()
+    def on_branch_selection(self, branch):
+        if branch:
+            self._selected_branch = branch
+            super().run_async()
 
     def get_graph_args(self):
         args = super().get_graph_args()
