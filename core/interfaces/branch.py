@@ -85,7 +85,10 @@ class BranchInterface(ui.Interface, GitCommand):
         self._branches = tuple(self.get_branches(sort_by_recent))
 
     def on_new_dashboard(self):
-        self.view.run_command("gs_branches_navigate_branch")
+        self.view.run_command("gs_branches_set_cursor")
+
+    def reset_cursor(self):
+        self.view.run_command("gs_branches_set_cursor")
 
     @ui.partial("branch_status")
     def render_branch_status(self):
@@ -595,6 +598,21 @@ class GsBranchesNavigateBranchCommand(GsNavigate):
             branch_region
             for region in self.view.find_by_selector(
                 "meta.git-savvy.branches.branch"
+            )
+            for branch_region in self.view.lines(region)]
+
+
+class GsBranchesSetCursorCommand(GsNavigate):
+
+    """
+    Move cursor to the active branch.
+    """
+
+    def get_available_regions(self):
+        return [
+            branch_region
+            for region in self.view.find_by_selector(
+                "meta.git-savvy.branches.branch string.other.git-savvy.branches.active-branch.sha1"
             )
             for branch_region in self.view.lines(region)]
 

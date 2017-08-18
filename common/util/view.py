@@ -58,7 +58,8 @@ def get_is_view_of_type(view, typ):
 # GLOBAL #
 ##########
 
-def refresh_gitsavvy(view, refresh_sidebar=False, refresh_status_bar=True):
+def refresh_gitsavvy(view, refresh_sidebar=False, refresh_status_bar=True,
+                     interface_reset_cursor=False):
     """
     Called after GitSavvy action was taken that may have effected the
     state of the Git repo.
@@ -67,7 +68,7 @@ def refresh_gitsavvy(view, refresh_sidebar=False, refresh_status_bar=True):
         return
 
     if view.settings().get("git_savvy.interface") is not None:
-        view.run_command("gs_interface_refresh")
+        view.run_command("gs_interface_refresh", {"nuke_cursors": interface_reset_cursor})
 
     if refresh_status_bar:
         view.run_command("gs_update_status_bar")
