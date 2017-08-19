@@ -145,7 +145,9 @@ class BranchInterface(ui.Interface, GitCommand):
         output_tmpl = "\n"
         render_fns = []
 
-        for remote_name, branches in groupby(self._branches, lambda branch: branch.remote):
+        sorted_branches = sorted(
+            [b for b in self._branches if b.remote], key=lambda branch: branch.remote)
+        for remote_name, branches in groupby(sorted_branches, lambda branch: branch.remote):
             if not remote_name:
                 continue
 
