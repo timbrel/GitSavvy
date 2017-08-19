@@ -36,10 +36,12 @@ class GsNavigate(TextCommand, GitCommand):
         for file_region in file_regions:
             if file_region.a > current_position:
                 return file_region.a
-        return None
+        # If we are after the last match, pick the first one
+        return file_regions[0].a if len(file_regions) != 0 else None
 
     def backward(self, current_position, file_regions):
         for file_region in reversed(file_regions):
             if file_region.b < current_position:
                 return file_region.a
-        return None
+        # If we are after the last match, pick the last one
+        return file_regions[-1].a if len(file_regions) != 0 else None
