@@ -1,0 +1,72 @@
+Changes since 2.14.2:
+
+  Braking change:
+    - in branch dashboard, when checking out remote branch as local use `b` instead of `o`.
+
+  Feature:
+   - more informative commit view
+   - git: reflog
+   - git: pull with rebase
+
+   - show all forks (Merge 0aff3d7)
+   - show all pull requests (Merge 0aff3d7)
+   - show all contributors in commit_view (Merge 0aff3d7)
+   - show all github issues in commit_view (Merge 0aff3d7)
+
+    - Blame(many new features like, walking between version):
+       - Move blame action to on enter (Merge 03b112b)
+       - Blame option: Blame before selected commit (Merge 03b112b)
+       - Blame option: Blame on one [older|newer] commit (Merge 03b112b)
+       - Blame option: Show file at commit (Merge 03b112b)
+       - Blame option: Pick a new commit to blame (Merge 03b112b)
+       - Blame option: Find the name of the file if the file has changed names (Merge 03b112b)
+       - Blame option: Pick a new commit, will follow the file name changes (Merge 03b112b)
+       - Blame option: Show file at commit(Merge 03b112b)
+       - Blame option: Show file at commit, uses the syntax from the original file (Merge 03b112b)
+       - Blame view: `,` and `.` to navigate the view (Merge 03b112b)
+       - Blame option: Navigate between checked out commits (Merge 03b112b)
+       - Blame option: `?` to open help details (Merge 03b112b)
+       - Blame, Always show the original line number (Merge 03b112b)
+
+  Settings:
+   - New setting `show_diffstat` defaults to true (Merge a573d30)
+
+  Enhancement:
+   - Show diffstat when showing a commit (Merge a573d30)
+   - F key to show reverse diff in compare commit view (Merge f9df84a)
+   - add h/H key in diff view
+   - do not update status bar for transient view (Merge 3147cdd)
+   - offer push to remote rather than configuring remote (Merge 7632549)
+   - Navigation circulate after the and start over
+
+  Improve:
+   - In log, add seconds (#655)
+   - GsShowFileAtCommitCommand should handle if file name changed (Merge 03b112b)
+
+  Fix:
+   - Log all output even binaries (#663)
+   - graph, only replace the '*' before the commit sha (#677)
+   - missing gs_handle_vintageous in diff_view and show_commit_view (#707)
+   - find git root now handles multiple folders (Merge 5a90caf)
+   - always pull to the active branch (#736)
+
+  Other:
+   - Enhance GitCommandFromTerminal w/ PULLREQ_EDITMSG (#650))
+   - Adds a setting to disable git init prompts (#665)
+
+  Releases:
+    We have started with a new release cycle, we will make a new release when a pull request
+    is merged. So you will always was the latest and greatest. If you find something not
+    working like it should, please open a issue https://github.com/divmain/GitSavvy/issues
+
+    - Add auto-tagging and deployment script to GitSavvy. (Merge 11a4ecb)
+    - Add auto-deploy info to the CONTRIBUTING docs.
+
+  Contributors:
+   - Marco Trevisan
+   - Pavel Savchenko
+   - Dale Bustad
+   - Francisco Lourenço
+   - Simon
+   - Adrian L Lange
+   - Randy Lai
