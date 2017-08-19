@@ -104,6 +104,8 @@ class Interface():
             "regions": self.regions,
             "nuke_cursors": nuke_cursors
             })
+        if hasattr(self, "reset_cursor") and nuke_cursors:
+            self.reset_cursor()
 
     def _render_template(self):
         """
@@ -276,8 +278,9 @@ class GsInterfaceRefreshCommand(TextCommand):
     Re-render GitSavvy interface view.
     """
 
-    def run(self, edit):
+    def run(self, edit, nuke_cursors=False):
         sublime.set_timeout_async(self.run_async, 0)
+        self.nuke_cursors = nuke_cursors
 
     def run_async(self):
         interface_type = self.view.settings().get("git_savvy.interface")
@@ -285,7 +288,7 @@ class GsInterfaceRefreshCommand(TextCommand):
             if InterfaceSubclass.interface_type == interface_type:
                 existing_interface = interfaces.get(self.view.id(), None)
                 if existing_interface:
-                    existing_interface.render(nuke_cursors=False)
+                    existing_interface.render(nuke_cursors=self.nuke_cursors)
                 else:
                     interface = InterfaceSubclass(view=self.view)
                     interfaces[interface.view.id()] = interface

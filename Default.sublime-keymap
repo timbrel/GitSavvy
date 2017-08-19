@@ -938,14 +938,6 @@
         ]
     },
     {
-        "keys": ["o"],
-        "command": "gs_branches_checkout_as_local",
-        "context": [
-            { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
-        ]
-    },
-    {
         "keys": ["b"],
         "command": "gs_branches_create_new",
         "context": [
