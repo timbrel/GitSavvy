@@ -1,5 +1,8 @@
 # Contribute
 
+
+
+
 If you're interested in adding features, reporting/fixing bugs, or just discussing the future of GitSavvy, this is the place to start.  Please feel free to reach out if you have questions or comments by opening an [issue](https://github.com/divmain/GitSavvy/issues).
 
 
