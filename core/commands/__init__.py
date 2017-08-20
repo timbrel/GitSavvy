@@ -24,6 +24,7 @@ from .remote import *
 from .custom import *
 from .flow import *
 from .cherry_pick import *
+from .revert import *
 from .tag import *
 from .show_file_at_commit import *
 from .git_add import *
