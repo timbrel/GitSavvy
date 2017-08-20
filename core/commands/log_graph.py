@@ -162,6 +162,7 @@ class GsLogGraphActionCommand(GsLogActionCommand):
     default_actions = [
         ["show_commit", "Show commit"],
         ["checkout_commit", "Checkout commit"],
+        ["cherry_pick", "Cherry-pick commit"],
         ["compare_against", "Compare commit against ..."],
         ["copy_sha", "Copy the full SHA"]
     ]
@@ -169,11 +170,8 @@ class GsLogGraphActionCommand(GsLogActionCommand):
     def update_actions(self):
         super().update_actions()
         view = self.window.active_view()
-        if view.settings().get("git_savvy.compare_commit_view.target_commit") == "HEAD":
-            self.actions.append(["cherry_pick", "Cherry-pick commit"])
-
-        if view.settings().get("git_savvy.log_graph_view", False):
-            self.actions.append(["revert_commit", "Revert commit"])
+        if view.settings().get("git_savvy.log_graph_view"):
+            self.actions.insert(3, ["revert_commit", "Revert commit"])
 
         if view.settings().get("git_savvy.log_graph_view"):
             self.actions.extend([
@@ -201,9 +199,10 @@ class GsLogGraphActionCommand(GsLogActionCommand):
 
     def cherry_pick(self):
         self.git("cherry-pick", self._commit_hash)
+        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
     def revert_commit(self):
-        self.window.run_command("gs_revert_commit", { "commit_hash": self._commit_hash})
+        self.window.run_command("gs_revert_commit", {"commit_hash": self._commit_hash})
 
     def show_file_at_commit(self):
         self.window.run_command(

@@ -144,6 +144,7 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
     default_actions = [
         ["show_commit", "Show commit"],
         ["checkout_commit", "Checkout commit"],
+        ["cherry_pick", "Cherry-pick commit"],
         ["revert_commit", "Revert commit"],
         ["compare_against", "Compare commit against ..."],
         ["copy_sha", "Copy the full SHA"],
@@ -167,6 +168,10 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
 
     def checkout_commit(self):
         self.checkout_ref(self._commit_hash)
+        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
+
+    def cherry_pick(self):
+        self.git("cherry-pick", self._commit_hash)
         util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
     def revert_commit(self):
