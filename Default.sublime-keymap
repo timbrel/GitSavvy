@@ -297,7 +297,8 @@
 
     {
         "keys": ["t", "a"],
-        "command": "gs_status_apply_stash",
+        "command": "gs_status_stash",
+        "args": { "action": "apply" },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
@@ -305,7 +306,8 @@
     },
     {
         "keys": ["t", "p"],
-        "command": "gs_status_pop_stash",
+        "command": "gs_status_stash",
+        "args": { "action": "pop" },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
@@ -313,7 +315,7 @@
     },
     {
         "keys": ["t", "c"],
-        "command": "gs_status_create_stash",
+        "command": "gs_stash_save",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
@@ -321,7 +323,8 @@
     },
     {
         "keys": ["t", "u"],
-        "command": "gs_status_create_stash_with_untracked",
+        "command": "gs_stash_save",
+        "args": { "include_untracked": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
@@ -329,7 +332,8 @@
     },
     {
         "keys": ["t", "g"],
-        "command": "gs_status_create_stash_of_indexed",
+        "command": "gs_stash_save",
+        "args": { "stash_of_indexed": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
@@ -337,7 +341,8 @@
     },
     {
         "keys": ["t", "d"],
-        "command": "gs_status_discard_stash",
+        "command": "gs_status_stash",
+        "args": { "action": "drop" },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
@@ -345,7 +350,8 @@
     },
     {
         "keys": ["t", "s"],
-        "command": "gs_status_show_stash",
+        "command": "gs_status_stash",
+        "args": { "action": "show" },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },

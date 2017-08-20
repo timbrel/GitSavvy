@@ -367,33 +367,33 @@
         "command": "gs_git_flow_hotfix_publish"
     },
     {
-        "caption": "git: create stash",
-        "command": "gs_create_stash"
+        "caption": "git: stash save",
+        "command": "gs_stash_save"
     },
     {
-        "caption": "git: create stash including untracked files",
-        "command": "gs_create_stash",
+        "caption": "git: stash save including untracked files",
+        "command": "gs_stash_save",
         "args" : { "include_untracked": true }
     },
     {
-        "caption": "git: create stash of staged changes only",
-        "command": "gs_create_stash",
+        "caption": "git: stash save staged changes only",
+        "command": "gs_stash_save",
         "args" : { "stash_of_indexed": true }
     },
     {
-        "caption": "git: apply stash",
-        "command": "gs_apply_stash"
+        "caption": "git: stash apply",
+        "command": "gs_stash_apply"
     },
     {
-        "caption": "git: pop stash",
-        "command": "gs_pop_stash"
+        "caption": "git: stash pop",
+        "command": "gs_stash_pop"
     },
     {
-        "caption": "git: show stash",
-        "command": "gs_show_stash"
+        "caption": "git: stash show",
+        "command": "gs_stash_show"
     },
     {
-        "caption": "git: discard stash",
-        "command": "gs_discard_stash"
+        "caption": "git: stash drop",
+        "command": "gs_stash_drop"
     },
 ]
