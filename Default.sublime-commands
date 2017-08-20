@@ -231,6 +231,10 @@
         "args": { "current_file": true }
     },
     {
+        "caption": "git: revert",
+        "command": "gs_log_revert_commit"
+    },
+    {
         "caption": "git: show current file at commit",
         "command": "gs_show_current_file"
     },

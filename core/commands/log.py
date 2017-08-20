@@ -49,6 +49,22 @@ class GsLogCurrentBranchCommand(LogMixin, WindowCommand, GitCommand):
     pass
 
 
+class GsLogRevertCommitCommand(LogMixin, WindowCommand, GitCommand):
+    def do_action(self, commit_hash, **kwargs):
+        self.window.run_command("gs_revert_commit", {
+            "commit_hash": commit_hash
+        })
+
+
+class GsRevertCommitCommand(WindowCommand, GitCommand):
+    def run(self, commit_hash):
+        sublime.set_timeout_async(lambda: self.run_async(commit_hash=commit_hash), 0)
+
+    def run_async(self, commit_hash):
+        self.git("revert", commit_hash)
+        util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
+
+
 class GsLogAllBranchesCommand(LogMixin, WindowCommand, GitCommand):
 
     def log(self, **kwargs):
@@ -128,6 +144,7 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
     default_actions = [
         ["show_commit", "Show commit"],
         ["checkout_commit", "Checkout commit"],
+        ["revert_commit", "Revert commit"],
         ["compare_against", "Compare commit against ..."],
         ["copy_sha", "Copy the full SHA"],
         ["diff_commit", "Diff commit"],
@@ -151,6 +168,11 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
     def checkout_commit(self):
         self.checkout_ref(self._commit_hash)
         util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
+
+    def revert_commit(self):
+        self.window.run_command("gs_revert_commit", {
+            "commit_hash": self._commit_hash
+        })
 
     def compare_against(self):
         self.window.run_command("gs_compare_against", {

@@ -172,6 +172,9 @@ class GsLogGraphActionCommand(GsLogActionCommand):
         if view.settings().get("git_savvy.compare_commit_view.target_commit") == "HEAD":
             self.actions.append(["cherry_pick", "Cherry-pick commit"])
 
+        if view.settings().get("git_savvy.log_graph_view", False):
+            self.actions.append(["revert_commit", "Revert commit"])
+
         if view.settings().get("git_savvy.log_graph_view"):
             self.actions.extend([
                 ["diff_commit", "Diff commit"],
@@ -198,6 +201,9 @@ class GsLogGraphActionCommand(GsLogActionCommand):
 
     def cherry_pick(self):
         self.git("cherry-pick", self._commit_hash)
+
+    def revert_commit(self):
+        self.window.run_command("gs_revert_commit", { "commit_hash": self._commit_hash})
 
     def show_file_at_commit(self):
         self.window.run_command(
