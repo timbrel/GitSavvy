@@ -500,3 +500,17 @@ class LogPanel(PaginatedPanel):
     def on_selection_async(self, commit):
         sublime.active_window().run_command("hide_panel", {"panel": "output.show_commit_info"})
         self.on_done(commit)
+
+
+def show_stash_panel(git, on_done):
+    """
+    Display stash entries in quick panel with pagination, and execute on_done(stash)
+    when item is selected. `entries` can be either a list or a generator of LogEnty.
+    """
+
+    lp = PaginatedPanel(
+        git.get_stashes(),
+        on_done,
+        format_item=(lambda entry: entry.id + " " + entry.description))
+    lp.show()
+    return lp
