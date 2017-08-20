@@ -41,14 +41,14 @@ def add_to_log(obj):
         _log.append(obj)
 
 
-def log_git(command, stdin, stdout, stderr, secounds):
+def log_git(command, stdin, stdout, stderr, seconds):
     message = {
         "type": "git",
         "command": command,
         "stdin": stdin,
         "stdout": stdout,
         "stderr": stderr,
-        "secounds": secounds
+        "seconds": seconds
         }
 
     if stdin.__class__ == bytes:
