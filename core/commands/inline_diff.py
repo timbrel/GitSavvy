@@ -5,6 +5,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from ...common import util
+from .navigate import GsNavigate
 from ...common.theme_generator import ThemeGenerator
 from ..git_command import GitCommand
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
@@ -182,7 +183,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
 
         if cursors:
             if (row, col) == (0, 0) and savvy_settings.get("inline_diff_auto_scroll", False):
-                self.view.run_command("gs_inline_diff_goto_next_hunk")
+                self.view.run_command("gs_inline_diff_navigate_hunk")
             else:
                 self.view.sel().clear()
                 pt = self.view.text_point(row, 0)
@@ -616,64 +617,22 @@ class GsInlineDiffOpenFile(TextCommand):
             if hunk_ref.section_start < line_no:
                 return hunk_ref
 
-
-class GsInlineDiffGotoBase(TextCommand):
-
-    """
-    Base class for navigation commands in the inline-diff view.  Determine
-    the current line number, get a new target cursor position (implemented
-    in subclass), make that the only cursor active in the view, and center
-    it on the screen.
-    """
-
-    def run(self, edit):
-        selections = self.view.sel()
-        region = self.view.line(0) if len(selections) == 0 else selections[0]
-
-        # Git lines are 1-indexed; Sublime rows are 0-indexed.
-        current_line_number = self.view.rowcol(region.begin())[0] + 1
-
-        new_cursor_pt = self.get_target_cursor_pos(current_line_number)
-        if new_cursor_pt is not None:
-            self.view.sel().clear()
-            self.view.sel().add(new_cursor_pt)
-            self.view.show_at_center(self.view.line(new_cursor_pt))
-
-
-class GsInlineDiffGotoNextHunk(GsInlineDiffGotoBase):
+class GsInlineDiffNavigateHunkCommand(GsNavigate):
 
     """
-    Navigate to the next hunk that appears after the current cursor
+    Navigate to the next/previous hunk that appears after the current cursor
     position.
     """
+    offset = 0
 
-    def get_target_cursor_pos(self, current_line_number):
-        hunks = diff_view_hunks[self.view.id()]
-        if not hunks:
-            return
-        for hunk_ref in hunks:
-            if hunk_ref.section_start > current_line_number:
-                break
+    def get_available_regions(self):
+        print(diff_view_hunks[self.view.id()])
+        return [
+            sublime.Region(
+                self.view.text_point(hunk.section_start, 0),
+                self.view.text_point(hunk.section_end+1, 0))
+            for hunk in diff_view_hunks[self.view.id()]]
 
-        return self.view.text_point(hunk_ref.section_start, 0)
-
-
-class GsInlineDiffGotoPreviousHunk(GsInlineDiffGotoBase):
-
-    """
-    Navigate to the previous hunk that appears immediately before
-    the current cursor position.
-    """
-
-    def get_target_cursor_pos(self, current_line_number):
-        hunks = diff_view_hunks[self.view.id()]
-        previous_hunk_ref = None
-        for hunk_ref in hunks:
-            if hunk_ref.section_end < current_line_number:
-                previous_hunk_ref = hunk_ref
-
-        if previous_hunk_ref:
-            return self.view.text_point(previous_hunk_ref.section_start, 0)
 
 
 class GsInlineDiffUndo(TextCommand, GitCommand):

@@ -50,7 +50,8 @@
     },
     {
         "keys": ["."],
-        "command": "gs_inline_diff_goto_next_hunk",
+        "command": "gs_inline_diff_navigate_hunk",
+        "args": { "forward": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
@@ -58,7 +59,8 @@
     },
     {
         "keys": [","],
-        "command": "gs_inline_diff_goto_previous_hunk",
+        "command": "gs_inline_diff_navigate_hunk",
+        "args": { "forward": false },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
@@ -66,7 +68,8 @@
     },
     {
         "keys": ["j"],
-        "command": "gs_inline_diff_goto_next_hunk",
+        "command": "gs_inline_diff_navigate_hunk",
+        "args": { "forward": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
@@ -75,7 +78,8 @@
     },
     {
         "keys": ["k"],
-        "command": "gs_inline_diff_goto_previous_hunk",
+        "command": "gs_inline_diff_navigate_hunk",
+        "args": { "forward": false },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
