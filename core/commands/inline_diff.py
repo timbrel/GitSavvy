@@ -68,7 +68,8 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
 
             inline_diff_views[view_key] = diff_view
 
-        file_binary = util.file.get_file_contents_binary(settings["git_savvy.repo_path"], settings["git_savvy.file_path"])
+        file_binary = util.file.get_file_contents_binary(
+            settings["git_savvy.repo_path"], settings["git_savvy.file_path"])
         try:
             file_binary.decode()
         except UnicodeDecodeError as unicode_err:
@@ -100,25 +101,25 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
             "git_savvy.change.addition",
             background=colors["inline_diff"]["add_background"],
             foreground=colors["inline_diff"]["add_foreground"]
-            )
+        )
         themeGenerator.add_scoped_style(
             "GitSavvy Removed Line",
             "git_savvy.change.removal",
             background=colors["inline_diff"]["remove_background"],
             foreground=colors["inline_diff"]["remove_foreground"]
-            )
+        )
         themeGenerator.add_scoped_style(
             "GitSavvy Added Line Bold",
             "git_savvy.change.addition.bold",
             background=colors["inline_diff"]["add_background_bold"],
             foreground=colors["inline_diff"]["add_foreground_bold"]
-            )
+        )
         themeGenerator.add_scoped_style(
             "GitSavvy Removed Line Bold",
             "git_savvy.change.removal.bold",
             background=colors["inline_diff"]["remove_background_bold"],
             foreground=colors["inline_diff"]["remove_foreground_bold"]
-            )
+        )
         themeGenerator.apply_new_theme("active-diff-view." + file_ext, target_view)
 
 
@@ -582,9 +583,9 @@ class GsInlineDiffOpenFile(TextCommand):
                 file=file_name,
                 row=row,
                 col=col
-                ),
+            ),
             sublime.ENCODED_POSITION
-            )
+        )
 
     def get_editable_position(self, line_no, col_no):
         hunk_ref = self.get_closest_hunk_ref_before(line_no)
@@ -617,6 +618,7 @@ class GsInlineDiffOpenFile(TextCommand):
             if hunk_ref.section_start < line_no:
                 return hunk_ref
 
+
 class GsInlineDiffNavigateHunkCommand(GsNavigate):
 
     """
@@ -630,9 +632,8 @@ class GsInlineDiffNavigateHunkCommand(GsNavigate):
         return [
             sublime.Region(
                 self.view.text_point(hunk.section_start, 0),
-                self.view.text_point(hunk.section_end+1, 0))
+                self.view.text_point(hunk.section_end + 1, 0))
             for hunk in diff_view_hunks[self.view.id()]]
-
 
 
 class GsInlineDiffUndo(TextCommand, GitCommand):

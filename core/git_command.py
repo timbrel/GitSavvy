@@ -124,7 +124,8 @@ class GitCommand(StatusMixin,
                                  cwd=working_dir,
                                  env=environ,
                                  startupinfo=startupinfo)
-            stdout, stderr = p.communicate((stdin.encode(encoding=stdin_encoding) if encode else stdin) if stdin else None)
+            stdout, stderr = p.communicate(
+                (stdin.encode(encoding=stdin_encoding) if encode else stdin) if stdin else None)
             if decode:
                 stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
 

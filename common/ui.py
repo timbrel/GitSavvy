@@ -54,7 +54,7 @@ class Interface():
             attr.key: attr
             for attr in subclass_attrs
             if callable(attr) and hasattr(attr, "key")
-            }
+        }
 
         for attr in vars(self.__class__).keys():
             if attr.startswith("template"):
@@ -103,7 +103,7 @@ class Interface():
             "content": rendered,
             "regions": self.regions,
             "nuke_cursors": nuke_cursors
-            })
+        })
         if hasattr(self, "reset_cursor") and nuke_cursors:
             self.reset_cursor()
 
@@ -132,7 +132,7 @@ class Interface():
 
                 self.adjust(start, end - start, new_content_len)
                 if new_content_len:
-                    self.regions[key] = [start, start+new_content_len]
+                    self.regions[key] = [start, start + new_content_len]
 
                 match = pattern.search(rendered)
 
@@ -155,7 +155,7 @@ class Interface():
         keyed_content = OrderedDict(
             (key, render_fn())
             for key, render_fn in self.partials.items()
-            )
+        )
 
         for key in keyed_content:
             output = keyed_content[key]
@@ -172,7 +172,7 @@ class Interface():
         self.view.run_command("gs_update_region", {
             "key": "git_savvy_interface." + key,
             "content": content
-            })
+        })
 
     def clear_regions(self):
         for key in self.regions.keys():
@@ -196,7 +196,7 @@ class Interface():
             self.view,
             self.view.sel(),
             valid_ranges=self.get_view_regions(region)
-            )
+        )
 
     def on_new_dashboard(self):
         pass
@@ -308,15 +308,17 @@ class GsInterfaceToggleHelpCommand(TextCommand):
                 self.view.settings().set("git_savvy.help_hidden", not current_help)
                 self.view.run_command("gs_interface_refresh")
 
+
 class GsInterfaceTogglePopupHelpCommand(TextCommand):
 
     """
     Toggle GitSavvy popup help.
     """
 
-    def run(self, edit, view_name, popup_max_width = 800, popup_max_height=600):
+    def run(self, edit, view_name, popup_max_width=800, popup_max_height=600):
         css = sublime.load_resource("Packages/GitSavvy/popups/style.css")
-        html = sublime.load_resource("Packages/GitSavvy/popups/" + view_name + ".html").format(css=css, super_key=util.super_key)
+        html = sublime.load_resource("Packages/GitSavvy/popups/" + view_name + ".html")\
+            .format(css=css, super_key=util.super_key)
         self.view.show_popup(html, 0, -1, popup_max_width, popup_max_height)
 
 
@@ -352,7 +354,7 @@ class EditView():
             "content": content,
             "regions": regions,
             "nuke_cursors": True
-            })
+        })
 
 
 class GsEditViewCompleteCommand(TextCommand):
