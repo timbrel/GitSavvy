@@ -1,30 +1,32 @@
 {
-  "folders":
-  [
-    {
-      "path": ".",
-      "folder_exclude_patterns":[
-        ".git",
-        "__pycache__"
-      ],
-    }
-  ],
-  "SublimeLinter":{
-      "linters":{
-        "pep8": {
-          "ignore": "E401",
-          // E401 multiple imports on one line
-          "max-line-length": 120
+    "folders": [
+        {
+            "path": ".",
+            "folder_exclude_patterns": [
+                ".git",
+                "__pycache__"
+            ]
         }
-      }
-    },
-  "settings":
-  {
-    "rulers":
-    [
-      100
     ],
-    "tab_size": 4,
-    "translate_tabs_to_spaces": true
-  }
+    "SublimeLinter":{
+        "linters":{
+            "pep8": {
+                "ignore": "E401",
+                // E401 multiple imports on one line
+                "max-line-length": 120
+            }
+        }
+    },
+    "settings": {
+        "rulers": [100],
+        "tab_size": 4,
+        "translate_tabs_to_spaces": true
+    },
+    "build_systems":
+    [
+        {
+            "name": "Reload GitSavvy",
+            "target": "gs_reload_modules_debug"
+        }
+    ]
 }

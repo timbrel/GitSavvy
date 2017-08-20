@@ -42,8 +42,8 @@ class ActiveBranchMixin():
 
         valid_punctuation = "".join(c for c in string.punctuation if c not in "~^:?*[\\")
         branch_pattern = "[A-Za-z0-9" + re.escape(valid_punctuation) + "\u263a-\U0001f645]+?"
-        branch_sufix = "( \[((ahead (\d+))(, )?)?(behind (\d+))?(gone)?\])?)"
-        short_status_pattern = "## (" + branch_pattern + ")(\.\.\.(" + branch_pattern + ")" + branch_sufix + "?$"
+        branch_suffix = "( \[((ahead (\d+))(, )?)?(behind (\d+))?(gone)?\])?)"
+        short_status_pattern = "## (" + branch_pattern + ")(\.\.\.(" + branch_pattern + ")" + branch_suffix + "?$"
         status_match = re.match(short_status_pattern, first_line)
 
         if not status_match:
