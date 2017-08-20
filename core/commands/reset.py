@@ -9,7 +9,8 @@ from ..ui_mixins.quick_panel import show_branch_panel
 
 PADDING = "                                                "
 GIT_RESET_MODES = [
-    # See analysis at http://stackoverflow.com/questions/34149356/what-exactly-is-the-difference-between-all-the-git-reset-modes/34155307#34155307
+    # See analysis at
+    # http://stackoverflow.com/questions/34149356/what-exactly-is-the-difference-between-all-the-git-reset-modes/34155307#34155307
     ["--mixed" + PADDING, "unstage staged, keep unstaged, don't touch working (safe)"],
     ["--soft", "just move HEAD, stage differences (safe)"],
     ["--hard", "discard staged, discard unstaged, update working (unsafe)"],

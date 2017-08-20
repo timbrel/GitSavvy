@@ -69,11 +69,12 @@ def try_to_decode(message, name):
     except UnicodeDecodeError:
         return ENCODING_NOT_UTF8.format(name)
 
+
 def log_error(err):
     add_to_log({
         "type": "error",
         "error": repr(err)
-        })
+    })
 
 
 def log_on_exception(fn):
@@ -84,7 +85,7 @@ def log_on_exception(fn):
             add_to_log({
                 "type": "exception",
                 "exception": repr(e)
-                })
+            })
             raise e
 
 
@@ -92,9 +93,9 @@ def dump_var(name, value, width=79, end='\n', **kwargs):
     is_str = isinstance(value, str)
 
     prefix = "{}{}".format(name, ': ' if is_str else '=')
-    line_prefix = end + ' '*len(prefix)
+    line_prefix = end + ' ' * len(prefix)
     if not is_str:
-        value = _pprint.pformat(value, width=max(49, width-len(prefix)))
+        value = _pprint.pformat(value, width=max(49, width - len(prefix)))
 
     print(prefix + line_prefix.join(value.splitlines()), end=end, **kwargs)
 

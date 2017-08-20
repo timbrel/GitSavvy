@@ -13,7 +13,7 @@ Branch = namedtuple("Branch", (
     "tracking_status",
     "active",
     "description"
-    ))
+))
 
 
 class BranchesMixin():
@@ -22,7 +22,8 @@ class BranchesMixin():
         """
         Return a list of all local and remote branches.
         """
-        stdout = self.git("branch", "-a", "-vv", "--no-abbrev", "--no-color", "--sort=-committerdate" if sort_by_recent else None)
+        stdout = self.git(
+            "branch", "-a", "-vv", "--no-abbrev", "--no-color", "--sort=-committerdate" if sort_by_recent else None)
         return (branch
                 for branch in (self._parse_branch_line(self, line) for line in stdout.split("\n"))
                 if branch)
@@ -33,7 +34,8 @@ class BranchesMixin():
         if not line:
             return None
 
-        pattern = r"(\* )?(remotes/)?([a-zA-Z0-9\-\_\/\.\-\u263a-\U0001f645]+(?<!\.lock)(?<!\/)(?<!\.)) +([0-9a-f]{40}) (\[([a-zA-Z0-9\-\_\/\.]+)(: ([^\]]+))?\] )?(.*)"
+        branch = r"([a-zA-Z0-9\-\_\/\.\-\u263a-\U0001f645]+(?<!\.lock)(?<!\/)(?<!\.))"
+        pattern = r"(\* )?(remotes/)?" + branch + r" +([0-9a-f]{40}) (\[([a-zA-Z0-9\-\_\/\.]+)(: ([^\]]+))?\] )?(.*)"
 
         match = re.match(pattern, line)
         if not match:
@@ -61,7 +63,7 @@ class BranchesMixin():
             "config",
             "branch.{}.description".format(branch_name),
             throw_on_stderr=False
-            ).strip("\n")
+        ).strip("\n")
 
         return Branch(
             "/".join(branch_name.split("/")[1:]) if is_remote else branch_name,
@@ -73,7 +75,7 @@ class BranchesMixin():
             tracking_status,
             active,
             description
-            )
+        )
 
     def merge(self, branch_names):
         """

@@ -98,11 +98,11 @@ class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
         if not local_name:
             local_name = remote_branch.split("/", 1)[1]
         v = self.window.show_input_panel(
-                NEW_BRANCH_PROMPT,
-                local_name,
-                self.on_enter_local_name,
-                None,
-                None)
+            NEW_BRANCH_PROMPT,
+            local_name,
+            self.on_enter_local_name,
+            None,
+            None)
         v.run_command("select_all")
 
     def on_enter_local_name(self, branch_name):
@@ -120,7 +120,7 @@ class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
             self.window.active_view(),
             refresh_sidebar=True,
             interface_reset_cursor=True
-            )
+        )
 
 
 class GsCheckoutCurrentFileCommand(WindowCommand, GitCommand):

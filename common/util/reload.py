@@ -83,6 +83,7 @@ def reload_modules(main, modules, perform_reload=True):
             del sys.modules[name]
 
     stack_meter = StackMeter()
+
     @FilteringImportHook.when(condition=lambda name: name in modules)
     def module_reloader(name):
         module = modules[name]
@@ -90,7 +91,7 @@ def reload_modules(main, modules, perform_reload=True):
 
         if perform_reload:
             with stack_meter as depth:
-                dprint("reloading", ('╿ '*depth) + '┡━─', name)
+                dprint("reloading", ('╿ ' * depth) + '┡━─', name)
                 try:
                     return module.__loader__.load_module(name)
                 except:
@@ -103,7 +104,7 @@ def reload_modules(main, modules, perform_reload=True):
             return module
 
     with intercepting_imports(module_reloader), \
-         importing_fromlist_aggresively(modules):
+            importing_fromlist_aggresively(modules):
         # Now, import all the modules back, in order, starting with the main
         # module. This will reload all the modules directly or indirectly
         # referenced by the main one, i.e. usually most of our modules.
@@ -121,6 +122,7 @@ def reload_modules(main, modules, perform_reload=True):
 @contextmanager
 def importing_fromlist_aggresively(modules):
     orig___import__ = builtins.__import__
+
     @functools.wraps(orig___import__)
     def __import__(name, globals=None, locals=None, fromlist=(), level=0):
         # Given an import statement like this:
