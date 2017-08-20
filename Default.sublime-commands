@@ -232,7 +232,7 @@
     },
     {
         "caption": "git: revert",
-        "command": "gs_log_revert_commit"
+        "command": "gs_revert_commit"
     },
     {
         "caption": "git: show current file at commit",
