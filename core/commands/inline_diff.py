@@ -83,7 +83,6 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
         self.window.focus_view(diff_view)
 
         diff_view.run_command("gs_inline_diff_refresh")
-        diff_view.run_command("gs_inline_diff_navigate_hunk")
         diff_view.run_command("gs_handle_vintageous")
 
     def augment_color_scheme(self, target_view, file_ext):
@@ -184,7 +183,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
 
         if cursors:
             if (row, col) == (0, 0) and savvy_settings.get("inline_diff_auto_scroll", False):
-                self.view.run_command("gs_inline_diff_goto_next_hunk")
+                self.view.run_command("gs_inline_diff_navigate_hunk")
             else:
                 self.view.sel().clear()
                 pt = self.view.text_point(row, 0)
