@@ -101,6 +101,9 @@ class GitCommand(StatusMixin,
         try:
             if not working_dir:
                 working_dir = self.repo_path
+        except RuntimeError as e:
+            # do not show panel when the window does not exist
+            raise GitSavvyError(e, show_panel=False)
         except Exception as e:
             # offer initialization when "Not a git repository" is thrown from self.repo_path
             if type(e) == ValueError and e.args and "Not a git repository" in e.args[0]:
@@ -284,10 +287,13 @@ class GitCommand(StatusMixin,
             repo_path = self.find_repo_path()
             if not repo_path:
                 window = view.window()
-                if window and window.folders():
-                    raise ValueError("Not a git repository.")
+                if window:
+                    if window.folders():
+                        raise ValueError("Not a git repository.")
+                    else:
+                        raise ValueError("Unable to determine Git repo path.")
                 else:
-                    raise ValueError("Unable to determine Git repo path.")
+                    raise RuntimeError("Window does not exist.")
 
             if view:
                 file_name = view.file_name()
