@@ -7,8 +7,8 @@
     Color Schemes/GitSavvy.tmTheme
 #  ^ meta.git-savvy.status.file
 #    ^ gitsavvy.gotosymbol
-   .babelrc
-#  ^ meta.git-savvy.status.file
+    .babelrc
+#   ^ meta.git-savvy.status.file
   - Color Schemes/Knockdown.tmTheme
 #    ^ meta.git-savvy.status.file gitsavvy.gotosymbol meta.git-savvy.status.file.removed
 
