@@ -83,3 +83,12 @@ class RemotesMixin():
         # Kind of funky, but does the job
         _split_url = re.split('/|:', input_url)
         return _split_url[-2] if len(_split_url) >= 2 else ''
+
+    def remotes_containing_commit(self, commit_hash):
+        """
+        Return a list of remotes which contain a particular commit.
+        """
+        return list(set([
+            branch.split("/")[0]
+            for branch in self.branches_containing_commit(commit_hash, remote_only=True)
+        ]))
