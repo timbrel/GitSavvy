@@ -25,11 +25,11 @@
 #                               ^ string.other.issue
 #                                         ^ string.other.merge.remote
 |\
-# <- comment.git-savvy.graph.graph-line
-#^ comment.git-savvy.graph.graph-line
+# <- punctuation.other.git-savvy.graph.graph-line
+#^ punctuation.other.git-savvy.graph.graph-line
 | * 160f645 Support 40-48 character commit messages
 |/
-#^ comment.git-savvy.graph.graph-line
+#^ punctuation.other.git-savvy.graph.graph-line
 * 40cdf58 Feature: (not a branch name)
 #                ^ punctuation.separator.key-value
 #                    ^ - constant.other.git.branch
