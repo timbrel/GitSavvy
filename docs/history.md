@@ -9,6 +9,7 @@ By default, the list is paginated at 6,000 commits for performance reasons.  To 
 On selection of a commit you can choose from the following options:
 - `Show commit`: Display the commit.
 - `Checkout commit`: Checkout the commit.
+- `Revert commit`: Revert the commit.
 - `Compare Commit against ...`: Run the `git: compare against ...` command.
 - `Copy the full SHA`: Copy the full SHA hash of the commit to clipboard.
 - `Diff commit`: Display the diff between the commit and the working directory.
@@ -85,3 +86,6 @@ Actions
 
 Like `git: log`, this command will show a panel of commit entries, but uses `git reflog` rather than `git log` as the source of available commits.
 
+## `git: revert`, undo a commit
+ 
+Like `git: log`, this command will show a panel of commit entries, pick one to revert it. Revert is git's way of undoing. Revert will create a new commit.
