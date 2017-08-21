@@ -69,7 +69,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         graph_content = re.sub('(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
             r'\1'+COMMIT_NODE_CHAR, graph_content, flags=re.MULTILINE)
 
-        self.view.run_command("gs_replace_view_text", {"text": graph_content, "nuke_cursors": True})
+        self.view.run_command("gs_replace_view_text", {"text": graph_content})
         self.view.run_command("gs_log_graph_more_info")
 
         self.view.run_command("gs_handle_vintageous")
