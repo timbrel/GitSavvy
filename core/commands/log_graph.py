@@ -71,7 +71,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             r'\1' + COMMIT_NODE_CHAR, graph_content,
             flags=re.MULTILINE)
 
-        self.view.run_command("gs_replace_view_text", {"text": graph_content, "nuke_cursors": True})
+        self.view.run_command("gs_replace_view_text", {"text": graph_content})
         self.view.run_command("gs_log_graph_more_info")
 
         self.view.run_command("gs_handle_vintageous")
@@ -173,13 +173,19 @@ class GsLogGraphActionCommand(GsLogActionCommand):
         super().update_actions()
         view = self.window.active_view()
         if view.settings().get("git_savvy.log_graph_view"):
-            self.actions.insert(3, ["revert_commit", "Revert commit"])
+            if self._file_path:
+                # for `git: graph current file`, two more options would be inserted
+                # at index 1
+                self.actions.insert(5, ["revert_commit", "Revert commit"])
+            else:
+                self.actions.insert(3, ["revert_commit", "Revert commit"])
 
-        if view.settings().get("git_savvy.log_graph_view"):
             self.actions.extend([
                 ["diff_commit", "Diff commit"],
                 ["diff_commit_cache", "Diff commit (cached)"],
             ])
+        elif view.settings().get("git_savvy.compare_commit_view"):
+            pass
 
     def run(self):
         view = self.window.active_view()
@@ -198,18 +204,6 @@ class GsLogGraphActionCommand(GsLogActionCommand):
             return
 
         super().run(commit_hash=self._commit_hash, file_path=self._file_path)
-
-    def cherry_pick(self):
-        self.git("cherry-pick", self._commit_hash)
-        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
-
-    def revert_commit(self):
-        self.window.run_command("gs_revert_commit", {"commit_hash": self._commit_hash})
-
-    def show_file_at_commit(self):
-        self.window.run_command(
-            "gs_show_file_at_commit",
-            {"commit_hash": self._commit_hash, "filepath": self._file_path})
 
 
 class GsLogGraphNavigateCommand(GsNavigate):
