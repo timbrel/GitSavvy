@@ -74,13 +74,13 @@ Use `.` to go to next chunk and `,` to go to previous. The tab title is the file
 Use `Enter` to select a action. If you hit `?` you will see a pop-up with all key bindings and actions.
 
 Actions
-    Open Commit -> Open the commit of the chunk in which the cursor is located
-    Blame before selected commit -> Find the chunk you are in and jump to the commit before that. Handy when you know exactly what you are looking for. It can be hard to keep track of where you were in the file since the line number probably changed.(Time travel)
-    Blame on one older commit -> Same as above but only jump one commit at a time. (Time travel)
-    Blame on one newer commit -> Same as above but jumps in the opposite direction. (Time travel)
-    Pick a new commit to blame -> Pick a commit to checkout (Time travel)
-    Show file at most recent commit -> Show the file with syntax highlighting at the most recent commit
-    Show file at this chunk's commit -> Same as above but takes the commit from the chunk in which the cursor is located
+    - Open Commit -> Open the commit of the chunk in which the cursor is located
+    - Blame before selected commit -> Find the chunk you are in and jump to the commit before that. Handy when you know exactly what you are looking for. It can be hard to keep track of where you were in the file since the line number probably changed.(Time travel)
+    - Blame on one older commit -> Same as above but only jump one commit at a time. (Time travel)
+    - Blame on one newer commit -> Same as above but jumps in the opposite direction. (Time travel)
+    - Pick a new commit to blame -> Pick a commit to checkout (Time travel)
+    - Show file at most recent commit -> Show the file with syntax highlighting at the most recent commit
+    - Show file at this chunk's commit -> Same as above but takes the commit from the chunk in which the cursor is located
 
 ## `git: reflog`
 
