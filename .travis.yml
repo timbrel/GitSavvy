@@ -29,6 +29,7 @@ install:
 
 script:
     - sh travis.sh run_tests --coverage
+    - sh travis.sh run_syntax_tests
 
 after_success:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
