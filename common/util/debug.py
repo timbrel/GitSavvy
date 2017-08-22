@@ -41,25 +41,34 @@ def add_to_log(obj):
         _log.append(obj)
 
 
+def make_log_message(_type, **kwargs):
+    """
+    Create a log message dictionary to be stored in JSON formatted debug log
+    """
+    message = {"type": _type}
+    message.update(kwargs)
+
+    return message
+
+
 def log_git(command, stdin, stdout, stderr, seconds):
-    message = {
-        "type": "git",
-        "command": command,
-        "stdin": stdin,
-        "stdout": stdout,
-        "stderr": stderr,
-        "seconds": seconds
-        }
+    """ Add git command details to debug log """
+    message = make_log_message(
+        'git', command=command, stdin=stdin, stdout=stdout, stderr=stderr,
+        seconds=seconds
+        )
+    for field in ['stdin', 'stdout', 'stderr']:
+        if isinstance(field, bytes):  # decode standard I/O bytes
+            message[field] = try_to_decode(locals()[field], field)
+    add_to_log(message)
 
-    if stdin.__class__ == bytes:
-        message["stdin"] = try_to_decode(stdin, "stdin")
 
-    if stdout.__class__ == bytes:
-        message["stdout"] = try_to_decode(stdout, "stdout")
-
-    if stderr.__class__ == bytes:
-        message["stderr"] = try_to_decode(stderr, "stderr")
-
+def log_process(command, cwd, env, startupinfo):
+    """ Add Popen call details to debug log """
+    message = make_log_message(
+        'subprocess.Popen', command=command, cwd=cwd, env=env,
+        startupinfo=startupinfo
+        )
     add_to_log(message)
 
 

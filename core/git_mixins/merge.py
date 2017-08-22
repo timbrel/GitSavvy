@@ -35,11 +35,12 @@ class MergeMixin():
         base_content, ours_content, theirs_content = versioned_content
 
         temp_dir = tempfile.mkdtemp()
+        repo_path = self.repo_path
         base_path = os.path.join(temp_dir, "base")
         ours_path = os.path.join(temp_dir, "ours")
         theirs_path = os.path.join(temp_dir, "theirs")
         backup_path = os.path.join(temp_dir, "backup")
-        merge_path = os.path.join(self.repo_path, fpath)
+        merge_path = os.path.join(repo_path, fpath)
 
         merge_cmd = merge_cmd_tmpl.replace("$REMOTE", theirs_path)
         merge_cmd = merge_cmd.replace("$BASE", base_path)
@@ -61,9 +62,13 @@ class MergeMixin():
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
+            util.debug.log_process(
+                merge_cmd_args, repo_path, os.environ, startupinfo
+                )
+
             p = subprocess.Popen(
                 merge_cmd_args,
-                cwd=self.repo_path,
+                cwd=repo_path,
                 env=os.environ,
                 startupinfo=startupinfo
                 )
