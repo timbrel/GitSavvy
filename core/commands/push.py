@@ -94,10 +94,10 @@ class GsPushToBranchCommand(WindowCommand, PushBase):
         if not branch:
             return
         current_local_branch = self.get_current_branch_name()
-        selected_branch = branch.split("/", 1)[1]
+        selected_remote, selected_branch = branch.split("/", 1)
         sublime.set_timeout_async(
             lambda: self.do_push(
-                self.selected_remote, current_local_branch, remote_branch=selected_branch))
+                selected_remote, current_local_branch, remote_branch=selected_branch))
 
 
 class GsPushToBranchNameCommand(WindowCommand, PushBase):
