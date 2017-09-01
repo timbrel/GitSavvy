@@ -1689,7 +1689,7 @@
     /////////////////////////////////
 
     {
-        "keys": ["shift+control+p"],
+        "keys": ["shift+ctrl+p"],
         "command": "gs_rebase_interactive_terminal",
         "args": { "type": "pick" },
         "context": [
@@ -1698,7 +1698,7 @@
         ]
     },
     {
-        "keys": ["shift+control+r"],
+        "keys": ["shift+ctrl+r"],
         "command": "gs_rebase_interactive_terminal",
         "args": { "type": "reword" },
         "context": [
@@ -1707,7 +1707,7 @@
         ]
     },
     {
-        "keys": ["shift+control+e"],
+        "keys": ["shift+ctrl+e"],
         "command": "gs_rebase_interactive_terminal",
         "args": { "type": "edit" },
         "context": [
@@ -1716,7 +1716,7 @@
         ]
     },
     {
-        "keys": ["shift+control+s"],
+        "keys": ["shift+ctrl+s"],
         "command": "gs_rebase_interactive_terminal",
         "args": { "type": "squash" },
         "context": [
@@ -1725,7 +1725,7 @@
         ]
     },
     {
-        "keys": ["shift+control+f"],
+        "keys": ["shift+ctrl+f"],
         "command": "gs_rebase_interactive_terminal",
         "args": { "type": "fixup" },
         "context": [
@@ -1734,7 +1734,7 @@
         ]
     },
     {
-        "keys": ["shift+control+x"],
+        "keys": ["shift+ctrl+x"],
         "command": "gs_rebase_interactive_terminal",
         "args": { "type": "exec" },
         "context": [
@@ -1743,7 +1743,7 @@
         ]
     },
     {
-        "keys": ["shift+control+d"],
+        "keys": ["shift+ctrl+d"],
         "command": "gs_rebase_interactive_terminal",
         "args": { "type": "drop" },
         "context": [
