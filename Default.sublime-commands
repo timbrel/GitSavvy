@@ -93,6 +93,10 @@
         "command": "gs_add_fork_as_remote"
     },
     {
+        "caption": "github: create fork",
+        "command": "gs_create_fork"
+    },
+    {
         "caption": "github: create pull request",
         "command": "gs_create_pull_request"
     },

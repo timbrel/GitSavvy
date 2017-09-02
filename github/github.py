@@ -201,6 +201,8 @@ get_issues = partial(iteratively_query_github, "/repos/{owner}/{repo}/issues")
 get_contributors = partial(iteratively_query_github, "/repos/{owner}/{repo}/contributors")
 get_forks = partial(iteratively_query_github, "/repos/{owner}/{repo}/forks")
 get_pull_requests = partial(iteratively_query_github, "/repos/{owner}/{repo}/pulls")
+
+
 def post_to_github(api_url_template, github_repo):
     """
     Takes a URL template that takes `owner` and `repo` template variables
@@ -217,3 +219,4 @@ def post_to_github(api_url_template, github_repo):
     return response.payload
 
 
+create_fork = partial(post_to_github, "/repos/{owner}/{repo}/forks")
