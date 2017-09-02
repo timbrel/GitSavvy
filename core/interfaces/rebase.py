@@ -313,10 +313,10 @@ class RebaseInterface(ui.Interface, GitCommand):
 
             if not base_ref:
                 # use remote tracking branch as a sane default
-                remote_branch = self._get_branch_status_components()[3]
+                remote_branch = self.get_active_remote_branch().name_with_remote
                 base_ref = self.nearest_branch(self.get_current_branch_name(),
                                                default=remote_branch or "master")
-                util.debug.add_to_log('Found base ref %s' % base_ref)
+                util.debug.add_to_log('Found base ref {}'.format(base_ref))
 
             branches = list(self.get_branches())
 
@@ -358,22 +358,21 @@ class RebaseInterface(ui.Interface, GitCommand):
         except GitSavvyError:
             return default
 
-        util.debug.add_to_log('nearest_branch: found %s show-branch results' %
-                              len(branch_tree))
+        util.debug.add_to_log('nearest_branch: found {} show-branch results'.format(
+                              len(branch_tree)))
 
         relatives = []
         for rel in branch_tree:
             match = re.search(self.nearest_node_pattern, rel)
             # print(match.groups(), branch, default)
             if not match:
-                # util.debug.add_to_log('Could not parse relative string %s' % rel)
                 continue
             branch_name = match.groups()[0]
             if branch_name != branch and branch_name not in relatives:
                 relatives.append(branch_name)
 
-        util.debug.add_to_log('nearest_branch: found %s relatives: %s' %
-                              (len(relatives), relatives))
+        util.debug.add_to_log('nearest_branch: found {} relatives: {}'.format(
+                              len(relatives), relatives))
 
         if not relatives:
             util.debug.add_to_log('No relatives found. Possibly on a root branch!')
@@ -384,32 +383,29 @@ class RebaseInterface(ui.Interface, GitCommand):
         diff = difflib.Differ()
         branch_commits = self.git("rev-list", "--first-parent", branch).splitlines()
         nearest = None
-        max_iterations = 100
+        max_revisions = 100
         for relative in relatives:
-            util.debug.add_to_log('nearest_branch: Getting common commits with %s' % relative)
-            relative_commits = self.git("rev-list", "--first-parent", relative).splitlines()
+            util.debug.add_to_log('nearest_branch: Getting common commits with {}'.format(relative))
+            relative_commits = self.git("rev-list", "-{}".format(max_revisions),
+                                        "--first-parent", relative).splitlines()
             common = None
-            for i, l in enumerate(diff.compare(branch_commits, relative_commits)):
-                if i >= max_iterations:
-                    util.debug.add_to_log('nearest_branch: Max iterations exceeded!')
-                    break
-                if not l.startswith(' '):
-                    util.debug.add_to_log('nearest_branch: commit differs %s' % l)
+            for index, line in enumerate(diff.compare(branch_commits, relative_commits)):
+                if not line.startswith(' '):
+                    util.debug.add_to_log('nearest_branch: commit differs {}'.format(line))
                     continue
-                common = l.strip()
-                util.debug.add_to_log('nearest_branch: found common commit %s' % common)
+                common = line.strip()
+                util.debug.add_to_log('nearest_branch: found common commit {}'.format(common))
                 break
 
             if not common:
-                util.debug.add_to_log('nearest_branch: No common commit found with %s' % relative)
+                util.debug.add_to_log('nearest_branch: No common commit found with {}'.format(relative))
                 continue
 
             # found common "branch-out" node with relative, get branches
             branches = self.git("branch", "--contains", common,
                                 "--no-merged").splitlines()
             cleaned_branch_names = [b[2:].strip() for b in branches]
-            util.debug.add_to_log('nearest_branch: got valid branches %s' %
-                                  cleaned_branch_names)
+            util.debug.add_to_log('nearest_branch: got valid branches {}'.format(cleaned_branch_names))
             if relative in cleaned_branch_names:
                 nearest = relative
                 break
@@ -419,7 +415,7 @@ class RebaseInterface(ui.Interface, GitCommand):
                                   '/ detached branch!')
             return default
 
-        util.debug.add_to_log('nearest_branch: found best candidate %s' % nearest)
+        util.debug.add_to_log('nearest_branch: found best candidate {}'.format(nearest))
 
         # if same as branch, return default instead
         if branch == nearest:
