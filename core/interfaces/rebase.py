@@ -1,4 +1,3 @@
-import difflib
 import os
 import re
 
@@ -8,10 +7,10 @@ from sublime_plugin import WindowCommand, TextCommand
 from ...common import ui, util
 from ..commands import GsNavigate
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
-from ..git_command import GitCommand
-from ..ui_mixins.quick_panel import PanelActionMixin
 from ..exceptions import GitSavvyError
-from ..ui_mixins.quick_panel import show_log_panel
+from ..git_command import GitCommand
+from ..git_mixins.rebase import NearestBranchMixin
+from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel
 
 
 COMMIT_NODE_CHAR = "●"
@@ -47,7 +46,7 @@ class GsShowRebaseCommand(WindowCommand, GitCommand):
         RebaseInterface(repo_path=self.repo_path)
 
 
-class RebaseInterface(ui.Interface, GitCommand):
+class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
 
     """
     Status dashboard.
@@ -336,90 +335,6 @@ class RebaseInterface(ui.Interface, GitCommand):
             self.view.settings().set("git_savvy.rebase.base_ref", base_ref)
 
         return base_ref
-
-    def nearest_branch(self, branch, default="master"):
-        """
-        Find the nearest commit in current branch history that exists
-        on a different branch and return that branch name.
-
-        We filter these branches through a list of known ancestors which have
-        an initial branch point with current branch, and pick the first one
-        that matches both.
-
-        If no such branch is found, returns the given default ("master" if not
-        specified).
-
-        Solution snagged from:
-        http://stackoverflow.com/a/17843908/484127
-        http://stackoverflow.com/questions/1527234
-        """
-        try:
-            branch_tree = self.git("show-branch", "--no-color").splitlines()
-        except GitSavvyError:
-            return default
-
-        util.debug.add_to_log('nearest_branch: found {} show-branch results'.format(
-                              len(branch_tree)))
-
-        relatives = []
-        for rel in branch_tree:
-            match = re.search(NEAREST_NODE_PATTERN, rel)
-            if not match:
-                continue
-            branch_name = match.groups()[0]
-            if branch_name != branch and branch_name not in relatives:
-                relatives.append(branch_name)
-
-        util.debug.add_to_log('nearest_branch: found {} relatives: {}'.format(
-                              len(relatives), relatives))
-
-        if not relatives:
-            util.debug.add_to_log('No relatives found. Possibly on a root branch!')
-            return default
-
-        util.debug.add_to_log('nearest_branch: filter out branches that do not'
-                              ' share branch-out nodes')
-        diff = difflib.Differ()
-        branch_commits = self.git("rev-list", "--first-parent", branch).splitlines()
-        nearest = None
-        max_revisions = 100
-        for relative in relatives:
-            util.debug.add_to_log('nearest_branch: Getting common commits with {}'.format(relative))
-            relative_commits = self.git("rev-list", "-{}".format(max_revisions),
-                                        "--first-parent", relative).splitlines()
-            common = None
-            for index, line in enumerate(diff.compare(branch_commits, relative_commits)):
-                if not line.startswith(' '):
-                    util.debug.add_to_log('nearest_branch: commit differs {}'.format(line))
-                    continue
-                common = line.strip()
-                util.debug.add_to_log('nearest_branch: found common commit {}'.format(common))
-                break
-
-            if not common:
-                util.debug.add_to_log('nearest_branch: No common commit found with {}'.format(relative))
-                continue
-
-            # found common "branch-out" node with relative, get branches
-            branches = self.git("branch", "--contains", common,
-                                "--no-merged").splitlines()
-            cleaned_branch_names = [b[2:].strip() for b in branches]
-            util.debug.add_to_log('nearest_branch: got valid branches {}'.format(cleaned_branch_names))
-            if relative in cleaned_branch_names:
-                nearest = relative
-                break
-
-        if not nearest:
-            util.debug.add_to_log('No valid nearest found. Possibly on a root '
-                                  '/ detached branch!')
-            return default
-
-        util.debug.add_to_log('nearest_branch: found best candidate {}'.format(nearest))
-
-        # if same as branch, return default instead
-        if branch == nearest:
-            return default
-        return nearest
 
     def base_commit(self):
         if self._in_rebase:
