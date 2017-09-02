@@ -1,5 +1,6 @@
 import difflib
 import re
+import time
 
 from ..exceptions import GitSavvyError
 from ...common import util
@@ -77,6 +78,7 @@ class NearestBranchMixin(object):
         http://stackoverflow.com/a/17843908/484127
         http://stackoverflow.com/questions/1527234
         """
+        start = time.time()
         try:
             relatives = self.branch_relatives(branch)
         except GitSavvyError:
@@ -90,13 +92,19 @@ class NearestBranchMixin(object):
                               len(relatives), relatives))
 
         nearest = self._nearest_from_relatives(relatives, branch)
+
+        end = time.time()
+        util.debug.add_to_log('nearest_branch: Located nearest branch in {:.4f}'
+                              ' seconds'.format(end - start))
+
         if not nearest:
             util.debug.add_to_log('nearest_branch: No valid nearest found. '
                                   'Possibly on a root / detached branch!')
             return default
 
-        util.debug.add_to_log('nearest_branch: Found best candidate {}'.format(nearest))
         # if same as branch, return default instead
         if branch == nearest:
+            util.debug.add_to_log('nearest_branch: Best candidate is source branch; using default')
             return default
+        util.debug.add_to_log('nearest_branch: Found best candidate {}'.format(nearest))
         return nearest
