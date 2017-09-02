@@ -43,6 +43,14 @@ This command will display all open pull requests for the integrated GitHub remot
 
 This command will create a pull request in the browser on the integrated GitHub remote repo.
 
+## `github: create fork`
+
+This command will create a fork of the current GitHub remote repo in the configured user.
+
+## `github: add fork as remote`
+
+Add a new remote from a list of repos on GitHub forking from the active repo.
+
 
 ## `issues integration in commit view`
 
