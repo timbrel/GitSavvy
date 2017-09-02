@@ -121,19 +121,33 @@ def get_api_fqdn(github_repo):
     return True, github_repo.fqdn
 
 
+def github_api_url(api_url_template, repository, **kwargs):
+    """
+    Construct a github URL to query using the given url template string,
+    and a github.GitHubRepo instance, and optionally query parameters
+    of given star-kwargs.
+
+    Return a tuple of: FQDN, PATH
+    """
+    is_enterprise, fqdn = get_api_fqdn(repository)
+    base_path = "/api/v3" if is_enterprise else ""
+    request_path = api_url_template.format(
+        owner=repository.owner,
+        repo=repository.repo
+    )
+    return fqdn, "{base_path}{path}?{query_params}".format(
+        base_path=base_path,
+        path=request_path,
+        query_params=interwebs.urlencode(kwargs))
+
+
 def query_github(api_url_template, github_repo):
     """
     Takes a URL template that takes `owner` and `repo` template variables
     and as a GitHub repo object.  Do a GET for the provided URL and return
     the response payload, if successful.  If unsuccessfuly raise an error.
     """
-    is_enterprise, fqdn = get_api_fqdn(github_repo)
-    base_path = "/api/v3" if is_enterprise else ""
-    path = base_path + api_url_template.format(
-        owner=github_repo.owner,
-        repo=github_repo.repo
-    )
-
+    fqdn, path = github_api_url(api_url_template, github_repo)
     auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
 
     response = interwebs.get(fqdn, 443, path, https=True, auth=auth)
@@ -151,16 +165,8 @@ def iteratively_query_github(api_url_template, github_repo):
     Like `query_github` but return a generator by repeatedly
     iterating until no link to next page.
     """
-
-    is_enterprise, fqdn = get_api_fqdn(github_repo)
-    base_path = "/api/v3" if is_enterprise else ""
-    path = base_path + api_url_template.format(
-        owner=github_repo.owner,
-        repo=github_repo.repo
-    )
-
-    path = path + "?per_page={:d}".format(GITHUB_PER_PAGE_MAX)
-
+    fqdn, path = github_api_url(api_url_template, github_repo,
+                                per_page=GITHUB_PER_PAGE_MAX)
     auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
 
     response = None
@@ -189,6 +195,7 @@ def iteratively_query_github(api_url_template, github_repo):
                 yield item
         else:
             break
+
 
 get_issues = partial(iteratively_query_github, "/repos/{owner}/{repo}/issues")
 get_contributors = partial(iteratively_query_github, "/repos/{owner}/{repo}/contributors")
