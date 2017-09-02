@@ -1,0 +1,16 @@
+{
+	"always_show_minimap_viewport": false,
+	"auto_indent": false,
+	"detect_indentation": false,
+	"draw_indent_guides": false,
+	"draw_white_space": "None",
+	"font_options": [],
+	"gutter": false,
+	"line_numbers": false,
+	"margin": 20,
+	"match_brackets": false,
+	"match_tags": false,
+	"scroll_past_end": false,
+	"translate_tabs_to_spaces": false,
+	"word_wrap": false
+}
