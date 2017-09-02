@@ -20,7 +20,6 @@ class Interface():
     interface_type = ""
     read_only = True
     syntax_file = ""
-    word_wrap = False
 
     template = ""
 
@@ -83,7 +82,6 @@ class Interface():
         self.view.settings().set("git_savvy.tabbable", True)
         self.view.settings().set("git_savvy.interface", self.interface_type)
         self.view.settings().set("git_savvy.help_hidden", savvy_settings.get("hide_help_menu"))
-        self.view.settings().set("word_wrap", self.word_wrap)
         self.view.set_syntax_file(self.syntax_file)
         self.view.set_scratch(True)
         self.view.set_read_only(self.read_only)
@@ -332,7 +330,6 @@ class EditView():
         self.view.set_read_only(False)
         self.view.set_name("EDIT")
         self.view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
-        self.view.settings().set("word_wrap", False)
         self.view.settings().set("git_savvy.edit_view", True)
         self.view.settings().set("git_savvy.repo_path", repo_path)
 

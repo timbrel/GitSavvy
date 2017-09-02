@@ -34,7 +34,6 @@ class GsCompareCommitCommand(WindowCommand, GitCommand):
         view.settings().set("git_savvy.repo_path", repo_path)
         view.settings().set("git_savvy.file_path", self._file_path)
         view.settings().set("git_savvy.git_graph_args", self.get_graph_args())
-        view.settings().set("word_wrap", False)
         view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
         view.set_name(self.title)
         view.sel().clear()

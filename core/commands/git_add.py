@@ -30,7 +30,6 @@ class GsAddEditCommand(WindowCommand, GitCommand):
         git_add_view.set_name(TITLE.format(os.path.basename(self.repo_path)))
         git_add_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime_syntax")
         git_add_view.settings().set("git_savvy.repo_path", self.repo_path)
-        git_add_view.settings().set("translate_tabs_to_spaces", False)
 
         self.window.focus_view(git_add_view)
         git_add_view.sel().clear()
