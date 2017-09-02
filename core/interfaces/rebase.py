@@ -17,6 +17,7 @@ from ..ui_mixins.quick_panel import show_log_panel
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
 COMMIT_LINE = re.compile("\s*[%s]\s*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
+NEAREST_NODE_PATTERN = re.compile(r'.*\*.*\[(.*?)(?:(?:[\^\~]+[\d]*){1})\]')  # http://regexr.com/3gm03
 
 
 def filter_quick_panel(fn):
@@ -121,7 +122,6 @@ class RebaseInterface(ui.Interface, GitCommand):
 
     _base_commit = None
     _active_conflicts = None
-    nearest_node_pattern = r'.*\*.*\[(.*?)(?:(?:[\^\~]+[\d]*)*)\]'  # http://regexr.com/3ehtn
 
     def __init__(self, *args, **kwargs):
         self.conflicts_keybindings = \
@@ -363,8 +363,7 @@ class RebaseInterface(ui.Interface, GitCommand):
 
         relatives = []
         for rel in branch_tree:
-            match = re.search(self.nearest_node_pattern, rel)
-            # print(match.groups(), branch, default)
+            match = re.search(NEAREST_NODE_PATTERN, rel)
             if not match:
                 continue
             branch_name = match.groups()[0]
