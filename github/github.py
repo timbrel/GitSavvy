@@ -201,3 +201,19 @@ get_issues = partial(iteratively_query_github, "/repos/{owner}/{repo}/issues")
 get_contributors = partial(iteratively_query_github, "/repos/{owner}/{repo}/contributors")
 get_forks = partial(iteratively_query_github, "/repos/{owner}/{repo}/forks")
 get_pull_requests = partial(iteratively_query_github, "/repos/{owner}/{repo}/pulls")
+def post_to_github(api_url_template, github_repo):
+    """
+    Takes a URL template that takes `owner` and `repo` template variables
+    and as a GitHub repo object.  Do a POST for the provided URL and return
+    the response payload, if successful.  If unsuccessfuly raise an error.
+    """
+    fqdn, path = github_api_url(api_url_template, github_repo)
+    auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
+
+    response = interwebs.post(fqdn, 443, path, https=True, auth=auth)
+    if response.status < 200 or response.status > 299 or not response.is_json:
+        raise FailedGithubRequest('Error posting to github: %s' % response.payload)
+
+    return response.payload
+
+
