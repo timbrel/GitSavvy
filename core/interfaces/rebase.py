@@ -930,6 +930,10 @@ class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand, GitCommand):
         ["select_ref", "Use ref as base."],
     ]
 
+    def run(self, *args):
+        self.interface = ui.get_interface(self.view.id())
+        super().run(*args)
+
     def _get_branches(self):
         branches = [branch.name_with_remote
                     for branch in self.get_branches()
@@ -940,9 +944,11 @@ class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand, GitCommand):
         if branches is None:
             sublime.set_timeout_async(self._get_branches, 0)
         else:
+            base_ref = self.interface.base_ref()
             self.view.window().show_quick_panel(
                 branches,
-                filter_quick_panel(lambda idx: self.set_base_ref(branches[idx]))
+                filter_quick_panel(lambda idx: self.set_base_ref(branches[idx])),
+                selected_index=branches.index(base_ref) if base_ref in branches else None
             )
 
     def select_ref(self):
