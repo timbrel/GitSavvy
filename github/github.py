@@ -13,6 +13,14 @@ from ..common import interwebs, util
 from ..core.exceptions import FailedGithubRequest
 
 GITHUB_PER_PAGE_MAX = 100
+GITHUB_ERROR_TEMPLATE = "Error {action} Github: {payload}"
+AUTH_ERROR_TEMPLATE = """Error {action} Github, access was denied!
+
+Please ensure you have created a Github API token and added it to
+your settings, as described in the documentation:
+
+https://github.com/divmain/GitSavvy/blob/master/docs/github.md#setup
+"""
 
 GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo", "token"))
 
@@ -141,6 +149,17 @@ def github_api_url(api_url_template, repository, **kwargs):
         query_params=interwebs.urlencode(kwargs))
 
 
+def validate_response(response, method="GET"):
+    action = {"GET": 'querying', "POST": 'posting to'}[method]
+
+    if response.status in [401, 403]:
+        raise FailedGithubRequest(AUTH_ERROR_TEMPLATE.format(action=action))
+
+    if response.status < 200 or response.status > 299 or not response.is_json:
+        raise FailedGithubRequest(GITHUB_ERROR_TEMPLATE.format(
+            action=action, payload=response.payload))
+
+
 def query_github(api_url_template, github_repo):
     """
     Takes a URL template that takes `owner` and `repo` template variables
@@ -151,8 +170,7 @@ def query_github(api_url_template, github_repo):
     auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
 
     response = interwebs.get(fqdn, 443, path, https=True, auth=auth)
-    if response.status < 200 or response.status > 299 or not response.is_json:
-        raise FailedGithubRequest('Error querying github: %s' % response.payload)
+    validate_response(response)
 
     return response.payload
 
@@ -186,9 +204,7 @@ def iteratively_query_github(api_url_template, github_repo):
             path = match.group(1)
 
         response = interwebs.get(fqdn, 443, path, https=True, auth=auth)
-
-        if response.status < 200 or response.status > 299 or not response.is_json:
-            raise FailedGithubRequest('Error querying github: %s' % response.payload)
+        validate_response(response)
 
         if response.payload:
             for item in response.payload:
@@ -213,8 +229,7 @@ def post_to_github(api_url_template, github_repo):
     auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
 
     response = interwebs.post(fqdn, 443, path, https=True, auth=auth)
-    if response.status < 200 or response.status > 299 or not response.is_json:
-        raise FailedGithubRequest('Error posting to github: %s' % response.payload)
+    validate_response(response, method="POST")
 
     return response.payload
 
