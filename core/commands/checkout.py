@@ -51,7 +51,9 @@ class GsCheckoutNewBranchCommand(WindowCommand, GitCommand):
 
     def run_async(self, base_branch=None):
         self.base_branch = base_branch
-        self.window.show_input_panel(NEW_BRANCH_PROMPT, base_branch or "", self.on_done, None, None)
+        v = self.window.show_input_panel(
+            NEW_BRANCH_PROMPT, base_branch or "", self.on_done, None, None)
+        v.run_command("select_all")
 
     def on_done(self, branch_name):
         match = _is_valid_branch_name.match(branch_name)
