@@ -334,19 +334,21 @@ class PaginatedPanel:
     """
     flags = sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST
     next_message = ">>> NEXT PAGE >>>"
+    empty_list_message = None
     status_message = None
     limit = 6000
     selected_index = None
     on_highlight = None
 
     def __init__(self, items, on_done, **kwargs):
-        self._is_empty = True
+        self._is_empty = False
         self._is_done = False
         self.skip = 0
         self.item_generator = (item for item in items)
         self.on_done = on_done
         for option in ['flags', 'selected_index', 'on_highlight',
-                       'limit', 'format_item', 'next_message', 'status_message']:
+                       'limit', 'format_item', 'next_message', 'status_message',
+                       'empty_list_message']:
             # need to check the nullness of the options to avoid overriding the default
             # methods, e.g. `format_item` and `on_hightight` of LogPanel
             if option in kwargs and kwargs[option] is not None:
@@ -380,8 +382,10 @@ class PaginatedPanel:
             if self.status_message:
                 sublime.status_message("")
 
-        if self.display_list and self._is_empty:
-            self._is_empty = False
+        if len(self.display_list) == 0:
+            self._is_empty = True
+            if self.empty_list_message:
+                self.display_list.append(self.empty_list_message)
 
         if len(self.display_list) == self.limit:
             self.display_list.append(self.next_message)
@@ -417,6 +421,9 @@ class PaginatedPanel:
             return self.selected_index - self.skip
 
     def _on_highlight(self, index):
+        if self._is_empty:
+            return
+
         if index == self.limit or index == -1:
             return
         elif self.ret_list:
@@ -425,6 +432,9 @@ class PaginatedPanel:
             self.on_highlight(self.skip + index)
 
     def _on_selection(self, index):
+        if self._is_empty:
+            return
+
         if index == self.limit:
             self.skip = self.skip + self.limit
             sublime.set_timeout_async(self.show, 10)
@@ -514,6 +524,7 @@ def show_stash_panel(on_done, **kwargs):
 
 
 class StashPanel(PaginatedPanel, GitCommand):
+    empty_list_message = "No existing stashes"
 
     def __init__(self, on_done, **kwargs):
         self.window = sublime.active_window()
