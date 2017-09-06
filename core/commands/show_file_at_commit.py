@@ -23,13 +23,14 @@ class GsShowFileAtCommitCommand(WindowCommand, GitCommand):
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
         view = util.view.get_scratch_view(self, "show_file_at_commit")
+        settings = view.settings()
+        settings.set("git_savvy.show_file_at_commit_view.commit", commit_hash)
+        settings.set("git_savvy.file_path", filepath)
+        settings.set("git_savvy.show_file_at_commit_view.lineno", lineno)
+        settings.set("git_savvy.repo_path", repo_path)
         if not lang:
             lang = util.file.get_syntax_for_file(filepath)
         view.set_syntax_file(lang)
-        view.settings().set("git_savvy.show_file_at_commit_view.commit", commit_hash)
-        view.settings().set("git_savvy.file_path", filepath)
-        view.settings().set("git_savvy.show_file_at_commit_view.lineno", lineno)
-        view.settings().set("git_savvy.repo_path", repo_path)
         view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash), self.get_rel_path(filepath)))
         sublime.set_timeout_async(lambda: self.render_text(view), 0)
 
