@@ -54,9 +54,6 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
         view.settings().set("git_savvy.detect_move_or_copy", option)
         view.settings().set("git_savvy.original_syntax", original_syntax)
 
-        view.settings().set("word_wrap", False)
-        view.settings().set("line_numbers", False)
-        view.settings().set('indent_guide_options', [])
         view.set_scratch(True)
         view.set_read_only(True)
 

@@ -24,8 +24,6 @@ class GsShowCommitCommand(WindowCommand, GitCommand):
         view.settings().set("git_savvy.show_commit_view.ignore_whitespace", False)
         view.settings().set("git_savvy.show_commit_view.show_word_diff", False)
         view.settings().set("git_savvy.show_commit_view.show_diffstat", savvy_settings.get("show_diffstat", True))
-        view.settings().set("word_wrap", False)
-        view.settings().set("line_numbers", False)
         view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash)))
         view.set_scratch(True)
         view.run_command("gs_show_commit_refresh")
