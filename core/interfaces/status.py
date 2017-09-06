@@ -71,7 +71,7 @@ class StatusInterface(ui.Interface, GitCommand):
       [p] push current branch               [t][c] create stash
                                             [t][u] create stash including untracked files
       [i] ignore file                       [t][g] create stash of staged changes only
-      [I] ignore pattern                    [t][d] discard stash
+      [I] ignore pattern                    [t][d] drop stash
 
       ###########
       ## OTHER ##
@@ -593,13 +593,20 @@ class GsStatusIgnorePatternCommand(TextCommand, GitCommand):
             self.view.window().run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
 
 
-class GsStatusApplyStashCommand(TextCommand, GitCommand):
+class GsStatusStashCommand(TextCommand, GitCommand):
 
     """
-    Apply the selected stash.  The user can only apply one stash at a time.
+    Run action from status dashboard to stash commands. Need to have this command to
+    read the interface and call the stash commands
+
+    action          multipul staches
+    show            True
+    apply           False
+    pop             False
+    discard         False
     """
 
-    def run(self, edit):
+    def run(self, edit, action=None):
         interface = ui.get_interface(self.view.id())
         lines = util.view.get_lines_from_regions(
             self.view,
@@ -607,173 +614,26 @@ class GsStatusApplyStashCommand(TextCommand, GitCommand):
             valid_ranges=interface.get_view_regions("stashes")
         )
         ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
-
-        if len(ids) > 1:
-            sublime.status_message("You can only apply one stash at a time.")
-            return
-
-        self.apply_stash(ids[0])
-        util.view.refresh_gitsavvy(self.view)
-
-
-class GsStatusPopStashCommand(TextCommand, GitCommand):
-
-    """
-    Pop the selected stash.  The user can only pop one stash at a time.
-    """
-
-    def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=interface.get_view_regions("stashes")
-        )
-        ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
-
-        if len(ids) > 1:
-            sublime.status_message("You can only pop one stash at a time.")
-            return
 
         if len(ids) == 0:
             # happens if command get called when none of the cursors
             # is pointed on one stash
             return
 
-        self.pop_stash(ids[0])
-        util.view.refresh_gitsavvy(self.view)
-
-
-class GsStatusShowStashCommand(TextCommand, GitCommand):
-
-    """
-    For each selected stash, open a new window to display the diff
-    for that stash.
-    """
-
-    def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=interface.get_view_regions("stashes")
-        )
-        ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
-
-        for stash_id in ids:
-            stash_name = "stash@{{{}}}".format(stash_id)
-            stash_text = self.git("stash", "show", "--no-color", "-p", stash_name)
-            stash_view = self.get_stash_view(stash_name)
-            stash_view.set_read_only(False)
-            stash_view.replace(edit, sublime.Region(0, 0), stash_text)
-            stash_view.set_read_only(True)
-            stash_view.sel().add(sublime.Region(0, 0))
-
-    def get_stash_view(self, title):
-        window = self.window if hasattr(self, "window") else self.view.window()
-        repo_path = self.repo_path
-        stash_view = util.view.get_scratch_view(self, "stash_" + title, read_only=True)
-        stash_view.set_name(title)
-        stash_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
-        stash_view.settings().set("git_savvy.repo_path", repo_path)
-        window.focus_view(stash_view)
-        stash_view.sel().clear()
-
-        return stash_view
-
-
-class GsStatusCreateStashCommand(TextCommand, GitCommand):
-
-    """
-    Create a new stash from the user's unstaged changes.
-    """
-
-    def run(self, edit):
-        self.view.window().show_input_panel("Description:", "", self.on_done, None, None)
-
-    def on_done(self, description):
-        self.create_stash(description)
-        util.view.refresh_gitsavvy(self.view)
-
-
-class GsStatusCreateStashWithUntrackedCommand(TextCommand, GitCommand):
-
-    """
-    Create a new stash from the user's unstaged changes, including
-    new files.
-    """
-
-    def run(self, edit):
-        self.view.window().show_input_panel("Description:", "", self.on_done, None, None)
-
-    def on_done(self, description):
-        self.create_stash(description, include_untracked=True)
-        util.view.refresh_gitsavvy(self.view)
-
-
-class GsStatusCreateStashOfIndexedCommand(TextCommand, GitCommand):
-
-    """
-    Create a new stash from the user's staged changes.
-    """
-
-    def run(self, edit):
-        self.view.window().show_input_panel("Description:", "", self.on_done, None, None)
-
-    def on_done(self, description):
-        # Create a temporary stash of everything, including staged files.
-        self.git("stash", "--keep-index")
-        # Stash only the indexed files, since they're the only thing left in the working directory.
-        self.create_stash(description)
-        # Clean out the working directory.
-        self.git("reset", "--hard")
-        try:
-            # Pop the original stash, taking us back to the original working state.
-            self.apply_stash(1)
-            # Get the diff from the originally staged files, and remove them from the working dir.
-            stash_text = self.git("stash", "show", "--no-color", "-p")
-            self.git("apply", "-R", stdin=stash_text)
-            # Delete the temporary stash.
-            self.drop_stash(1)
-            # Remove all changes from the staging area.
-            self.git("reset")
-        except Exception as e:
-            # Restore the original working state.
-            self.pop_stash(1)
-            raise e
-
-
-class GsStatusDiscardStashCommand(TextCommand, GitCommand):
-
-    """
-    Drop the selected stash.  The user can only discard one stash
-    at a time.
-    """
-
-    def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=interface.get_view_regions("stashes")
-        )
-        ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
+        if action == "show":
+            self.view.window().run_command("gs_stash_show", {"stash_ids": ids})
+            return
 
         if len(ids) > 1:
-            sublime.status_message("You can only drop one stash at a time.")
+            sublime.status_message("You can only {} one stash at a time.".format(action))
             return
 
-        if len(ids) == 0:
-            # happens if command get called when none of the cursors
-            # is pointed on one stash
-            return
-
-        @util.actions.destructive(description="discard a stash")
-        def do_drop_stash(id):
-            self.drop_stash(id)
-
-        do_drop_stash(ids[0])
-        util.view.refresh_gitsavvy(self.view)
+        if action == "apply":
+            self.view.window().run_command("gs_stash_apply", {"stash_id": ids[0]})
+        elif action == "pop":
+            self.view.window().run_command("gs_stash_pop", {"stash_id": ids[0]})
+        elif action == "drop":
+            self.view.window().run_command("gs_stash_drop", {"stash_id": ids[0]})
 
 
 class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):
