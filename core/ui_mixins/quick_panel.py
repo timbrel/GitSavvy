@@ -284,8 +284,25 @@ class BranchPanel(GitCommand):
         self.on_done(self.branch)
 
 
-def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_highlight=None,
-                         limit=6000, format_item=None, next_message=None, status_message=None):
+def show_paginated_panel(items, on_done, **kwargs):
+
+    """
+    A version of QuickPanel which supports pagination.
+    """
+    _kwargs = {}
+    for option in ['flags', 'selected_index', 'on_highlight', 'limit', 'format_item',
+                   'next_page_message', 'empty_page_message', 'last_page_empty_message',
+                   'status_message']:
+        if option in kwargs:
+            _kwargs[option] = kwargs[option]
+
+    pp = PaginatedPanel(items, on_done, **_kwargs)
+    pp.show()
+    return pp
+
+
+class PaginatedPanel:
+
     """
     Display items in quick panel with pagination, and execute on_done
     when item is selected.
@@ -303,7 +320,12 @@ def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_hig
 
     format_item: a function to format each item
 
-    next_message: a message of next page, default is ">>> NEXT PAGE >>>"
+    next_page_message: a message of next page, default is ">>> NEXT PAGE >>>"
+
+    empty_page_message: a message to show when the first page is empty.
+
+    last_page_empty_message: a message to show when the last page is empty. It is
+                             less confusing to inform user than to show nothing.
 
     status_message: a message to display at statusbar while loading the entries.
 
@@ -313,46 +335,24 @@ def show_paginated_panel(items, on_done, flags=None, selected_index=None, on_hig
     Furthermore, if the quick panel is cancelled, `None` will be passed to `on_done`.
     """
 
-    pp = PaginatedPanel(
-            items,
-            on_done,
-            flags=flags,
-            selected_index=selected_index,
-            on_highlight=on_highlight,
-            limit=limit,
-            format_item=format_item,
-            next_message=next_message,
-            status_message=status_message)
-    pp.show()
-    return pp
-
-
-class PaginatedPanel:
-
-    """
-    A version of QuickPanel which supports pagination.
-    """
     flags = sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST
-    next_message = ">>> NEXT PAGE >>>"
-    empty_list_message = None
+    next_page_message = ">>> NEXT PAGE >>>"
+    empty_page_message = None
+    last_page_empty_message = ">>> LAST PAGE >>>"
     status_message = None
     limit = 6000
     selected_index = None
     on_highlight = None
 
     def __init__(self, items, on_done, **kwargs):
-        self._is_empty = False
+        self._is_empty = True
         self._is_done = False
+        self._empty_message_shown = False
         self.skip = 0
         self.item_generator = (item for item in items)
         self.on_done = on_done
-        for option in ['flags', 'selected_index', 'on_highlight',
-                       'limit', 'format_item', 'next_message', 'status_message',
-                       'empty_list_message']:
-            # need to check the nullness of the options to avoid overriding the default
-            # methods, e.g. `format_item` and `on_hightight` of LogPanel
-            if option in kwargs and kwargs[option] is not None:
-                setattr(self, option, kwargs[option])
+        for option in kwargs:
+            setattr(self, option, kwargs[option])
 
     def load_next_batch(self):
         self.display_list = []
@@ -382,15 +382,23 @@ class PaginatedPanel:
             if self.status_message:
                 sublime.status_message("")
 
-        if len(self.display_list) == 0:
-            self._is_empty = True
-            if self.empty_list_message:
-                self.display_list.append(self.empty_list_message)
-
         if len(self.display_list) == self.limit:
-            self.display_list.append(self.next_message)
+            self.display_list.append(self.next_page_message)
+            self._is_empty = False
+
+        elif len(self.display_list) == 0:
+            if self._is_empty:
+                # first page but empty
+                if self.empty_page_message:
+                    self.display_list.append(self.empty_page_message)
+            else:
+                # last page but empty
+                if self.last_page_empty_message:
+                    self.display_list.append(self.last_page_empty_message)
+            self._is_done = True
+            self._empty_message_shown = True
         else:
-            # done
+            self._is_empty = False
             self._is_done = True
 
         kwargs = {}
@@ -421,7 +429,7 @@ class PaginatedPanel:
             return self.selected_index - self.skip
 
     def _on_highlight(self, index):
-        if self._is_empty:
+        if self._empty_message_shown:
             return
 
         if index == self.limit or index == -1:
@@ -432,7 +440,7 @@ class PaginatedPanel:
             self.on_highlight(self.skip + index)
 
     def _on_selection(self, index):
-        if self._is_empty:
+        if self._empty_message_shown:
             return
 
         if index == self.limit:
@@ -460,25 +468,23 @@ class PaginatedPanel:
         return self._is_done
 
 
-def show_log_panel(entries, on_done, limit=6000, selected_index=None, on_highlight=None):
+def show_log_panel(entries, on_done, **kwargs):
     """
     Display log entries in quick panel with pagination, and execute on_done(commit)
     when item is selected. `entries` can be either a list or a generator of LogEnty.
 
     """
-    lp = LogPanel(
-        entries,
-        on_done,
-        limit=limit,
-        selected_index=selected_index,
-        on_highlight=on_highlight)
+    _kwargs = {}
+    for option in ['selected_index', 'on_highlight', 'limit']:
+        if option in kwargs:
+            _kwargs[option] = kwargs[option]
+
+    lp = LogPanel(entries, on_done, **_kwargs)
     lp.show()
     return lp
 
 
 class LogPanel(PaginatedPanel):
-
-    flags = sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST
 
     def format_item(self, entry):
         return ([entry.short_hash + " " + entry.summary,
@@ -486,7 +492,7 @@ class LogPanel(PaginatedPanel):
                 entry.long_hash)
 
     @property
-    def next_message(self):
+    def next_page_message(self):
         return [">>> NEXT {} COMMITS >>>".format(self.limit),
                 "Skip this set of commits and choose from the next-oldest batch."]
 
@@ -515,7 +521,7 @@ class LogPanel(PaginatedPanel):
 def show_stash_panel(on_done, **kwargs):
     """
     Display stash entries in quick panel with pagination, and execute on_done(stash)
-    when item is selected. `entries` can be either a list or a generator of LogEnty.
+    when item is selected.
     """
 
     sp = StashPanel(on_done, **kwargs)
@@ -524,7 +530,7 @@ def show_stash_panel(on_done, **kwargs):
 
 
 class StashPanel(PaginatedPanel, GitCommand):
-    empty_list_message = "No existing stashes"
+    empty_page_message = "There are no stashes available."
 
     def __init__(self, on_done, **kwargs):
         self.window = sublime.active_window()
