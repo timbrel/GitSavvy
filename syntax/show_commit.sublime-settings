@@ -11,5 +11,5 @@
 	"rulers": [],
 	"scroll_past_end": false,
 	"translate_tabs_to_spaces": false,
-	"word_wrap": false
+	"word_wrap": true
 }
