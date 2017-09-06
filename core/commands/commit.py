@@ -51,11 +51,12 @@ class GsCommitCommand(WindowCommand, GitCommand):
     def run_async(self, repo_path=None, include_unstaged=False, amend=False):
         repo_path = repo_path or self.repo_path
         view = self.window.new_file()
-        view.settings().set("git_savvy.get_long_text_view", True)
-        view.settings().set("git_savvy.commit_view", True)
-        view.settings().set("git_savvy.commit_view.include_unstaged", include_unstaged)
-        view.settings().set("git_savvy.commit_view.amend", amend)
-        view.settings().set("git_savvy.repo_path", repo_path)
+        settings = view.settings()
+        settings.set("git_savvy.get_long_text_view", True)
+        settings.set("git_savvy.commit_view", True)
+        settings.set("git_savvy.commit_view.include_unstaged", include_unstaged)
+        settings.set("git_savvy.commit_view.amend", amend)
+        settings.set("git_savvy.repo_path", repo_path)
 
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         if savvy_settings.get("use_syntax_for_commit_editmsg"):
@@ -67,7 +68,7 @@ class GsCommitCommand(WindowCommand, GitCommand):
         view.run_command("gs_handle_vintageous")
 
         commit_on_close = savvy_settings.get("commit_on_close")
-        view.settings().set("git_savvy.commit_on_close", commit_on_close)
+        settings.set("git_savvy.commit_on_close", commit_on_close)
 
         title = COMMIT_TITLE.format(os.path.basename(repo_path))
         view.set_name(title)

@@ -43,20 +43,19 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
     def blame(self, ignore_whitespace=True, option=None):
         original_syntax = self.window.active_view().settings().get('syntax')
         view = self.window.new_file()
-        view.set_syntax_file("Packages/GitSavvy/syntax/blame.sublime-syntax")
-        view.settings().set("git_savvy.blame_view", True)
-        view.settings().set("git_savvy.repo_path", self.__repo_path)
-        view.settings().set("git_savvy.file_path", self._file_path)
-        view.settings().set("git_savvy.lineno", self.coords[0] + 1)
+        settings = view.settings()
+        settings.set("git_savvy.blame_view", True)
+        settings.set("git_savvy.repo_path", self.__repo_path)
+        settings.set("git_savvy.file_path", self._file_path)
+        settings.set("git_savvy.lineno", self.coords[0] + 1)
         if self._commit_hash:
-            view.settings().set("git_savvy.commit_hash", self._commit_hash)
-        view.settings().set("git_savvy.ignore_whitespace", ignore_whitespace)
-        view.settings().set("git_savvy.detect_move_or_copy", option)
-        view.settings().set("git_savvy.original_syntax", original_syntax)
-
+            settings.set("git_savvy.commit_hash", self._commit_hash)
+        settings.set("git_savvy.ignore_whitespace", ignore_whitespace)
+        settings.set("git_savvy.detect_move_or_copy", option)
+        settings.set("git_savvy.original_syntax", original_syntax)
+        view.set_syntax_file("Packages/GitSavvy/syntax/blame.sublime-syntax")
         view.set_scratch(True)
         view.set_read_only(True)
-
         view.run_command("gs_blame_refresh")
         view.run_command("gs_handle_vintageous")
 
