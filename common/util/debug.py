@@ -58,7 +58,7 @@ def log_git(command, stdin, stdout, stderr, seconds):
         seconds=seconds
         )
     for field in ['stdin', 'stdout', 'stderr']:
-        if isinstance(field, bytes):  # decode standard I/O bytes
+        if isinstance(locals()[field], bytes):  # decode standard I/O bytes
             message[field] = try_to_decode(locals()[field], field)
     add_to_log(message)
 
