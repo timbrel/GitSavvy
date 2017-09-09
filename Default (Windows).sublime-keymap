@@ -128,5 +128,120 @@
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true },
         ]
+    },
+
+    /////////////////////
+    // SYNTAX SETTINGS //
+    /////////////////////
+
+    {
+        "keys": ["ctrl+,"],
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/GitSavvy/syntax/blame.sublime-settings",
+            "default": "// Override settings for blame syntax-specific.\n{\n\t$0\n}\n"
+        },
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.blame" }
+        ]
+    },
+    {
+        "keys": ["ctrl+,"],
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/GitSavvy/syntax/branch.sublime-settings",
+            "default": "// Override settings for branch syntax-specific.\n{\n\t$0\n}\n"
+        },
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.branch" }
+        ]
+    },
+    {
+        "keys": ["ctrl+,"],
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/GitSavvy/syntax/diff.sublime-settings",
+            "default": "// Override settings for diff syntax-specific.\n{\n\t$0\n}\n"
+        },
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.diff" }
+        ]
+    },
+    {
+        "keys": ["ctrl+,"],
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/GitSavvy/syntax/graph.sublime-settings",
+            "default": "// Override settings for graph syntax-specific.\n{\n\t$0\n}\n"
+        },
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.graph" }
+        ]
+    },
+    {
+        "keys": ["ctrl+,"],
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/GitSavvy/syntax/make-commit.sublime-settings",
+            "default": "// Override settings for make-commit syntax-specific.\n{\n\t$0\n}\n"
+        },
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.make-commit" }
+        ]
+    },
+    {
+        "keys": ["ctrl+,"],
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/GitSavvy/syntax/rebase.sublime-settings",
+            "default": "// Override settings for rebase syntax-specific.\n{\n\t$0\n}\n"
+        },
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.rebase" }
+        ]
+    },
+    {
+        "keys": ["ctrl+,"],
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/GitSavvy/syntax/rebase-interactive.sublime-settings",
+            "default": "// Override settings for rebase-interactive syntax-specific.\n{\n\t$0\n}\n"
+        },
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.rebase-interactive" }
+        ]
+    },
+    {
+        "keys": ["ctrl+,"],
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/GitSavvy/syntax/commit.sublime-settings",
+            "default": "// Override settings for commit syntax-specific.\n{\n\t$0\n}\n"
+        },
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.commit" }
+        ]
+    },
+    {
+        "keys": ["ctrl+,"],
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/GitSavvy/syntax/status.sublime-settings",
+            "default": "// Override settings for status syntax-specific.\n{\n\t$0\n}\n"
+        },
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.status" }
+        ]
+    },
+    {
+        "keys": ["ctrl+,"],
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/GitSavvy/syntax/tags.sublime-settings",
+            "default": "// Override settings for tags syntax-specific.\n{\n\t$0\n}\n"
+        },
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags" }
+        ]
     }
 ]
