@@ -1,4 +1,5 @@
 {
+	// same on all syntaxes
 	"auto_indent": false,
 	"detect_indentation": false,
 	"draw_indent_guides": false,
@@ -11,4 +12,5 @@
 	"rulers": [],
 	"translate_tabs_to_spaces": false,
 	"word_wrap": false
+	// syntax specific
 }
