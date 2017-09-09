@@ -159,3 +159,8 @@ For more information see [custom commands documentation](custom.md)
 - [flow: feature/release/hotfix publish](flow.md#flow-featurereleasehotfix-publish)
 - [flow: feature/release track](flow.md#flow-featurerelease-track)
 - [flow: feature pull](flow.md#flow-feature-pull)
+
+
+## Settings
+
+For all syntax specific view we have a settings file. These are nothing extra from syntax specific settings. From any view you can click `super+,` on Mac or `ctrl+,` on Windoew and Linux. [Preferences Editor](https://packagecontrol.io/packages/Preferences%20Editor) is really good package for editing you settings.
