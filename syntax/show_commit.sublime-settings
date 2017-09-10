@@ -7,11 +7,11 @@
 	"gutter": false,
 	"line_numbers": false,
 	"margin": 20,
-	"match_brackets": false,
-	"match_tags": false,
 	"rulers": [],
 	"translate_tabs_to_spaces": false,
 	"word_wrap": false,
 	// syntax specific
+	"match_brackets": false,
+	"match_tags": false,
 	"word_wrap": true
 }
