@@ -35,11 +35,7 @@ class GsShowFileAtCommitCommand(WindowCommand, GitCommand):
 
     def render_text(self, view):
         commit_hash = view.settings().get("git_savvy.show_file_at_commit_view.commit")
-        filepath = self.file_path
-        filename = self.get_rel_path(filepath)
-        filename = re.sub('\\\\', '/', filename)
-        filename = self.filename_at_commit(filename, commit_hash)
-        content = self.git("show", commit_hash + ':' + filename)
+        content = self.get_file_content_at_commit(self.file_path, commit_hash)
         view.run_command("gs_replace_view_text", {"text": content, "nuke_cursors": True})
         lineno = view.settings().get("git_savvy.show_file_at_commit_view.lineno")
         util.view.move_cursor(view, lineno, 0)

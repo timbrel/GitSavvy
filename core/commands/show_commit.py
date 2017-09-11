@@ -63,7 +63,7 @@ class GsShowCommitToggleSetting(TextCommand):
         setting_str = "git_savvy.show_commit_view.{}".format(setting)
         settings = self.view.settings()
         settings.set(setting_str, not settings.get(setting_str))
-        print("{} is now {}".format(setting, settings.get(setting_str)))
+        sublime.status_message("{} is now {}".format(setting, settings.get(setting_str)))
         self.view.run_command("gs_show_commit_refresh")
 
 

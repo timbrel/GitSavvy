@@ -19,6 +19,10 @@ class StashMixin():
             stashes.append(Stash(num, description))
         return stashes
 
+    def show_stash(self, id):
+        stash_name = "stash@{{{}}}".format(id)
+        return self.git("stash", "show", "--no-color", "-p", stash_name)
+
     def apply_stash(self, id):
         """
         Apply stash with provided id.

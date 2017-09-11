@@ -93,6 +93,10 @@
         "command": "gs_add_fork_as_remote"
     },
     {
+        "caption": "github: create fork",
+        "command": "gs_create_fork"
+    },
+    {
         "caption": "github: create pull request",
         "command": "gs_create_pull_request"
     },
@@ -211,7 +215,7 @@
     },
     {
         "caption": "git: blame current file",
-        "command": "gs_blame"
+        "command": "gs_blame_current_file"
     },
     {
         "caption": "GitSavvy: reload modules (debug)",
@@ -365,5 +369,35 @@
     {
         "caption": "flow: hotfix publish",
         "command": "gs_git_flow_hotfix_publish"
-    }
+    },
+    {
+        "caption": "git: stash save",
+        "command": "gs_stash_save"
+    },
+    {
+        "caption": "git: stash save including untracked files",
+        "command": "gs_stash_save",
+        "args" : { "include_untracked": true }
+    },
+    {
+        "caption": "git: stash save staged changes only",
+        "command": "gs_stash_save",
+        "args" : { "stash_of_indexed": true }
+    },
+    {
+        "caption": "git: stash apply",
+        "command": "gs_stash_apply"
+    },
+    {
+        "caption": "git: stash pop",
+        "command": "gs_stash_pop"
+    },
+    {
+        "caption": "git: stash show",
+        "command": "gs_stash_show"
+    },
+    {
+        "caption": "git: stash drop",
+        "command": "gs_stash_drop"
+    },
 ]

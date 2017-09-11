@@ -27,6 +27,10 @@
         {
             "name": "Reload GitSavvy",
             "target": "gs_reload_modules_debug"
+        },
+        {
+            "name": "Test GitSavvy",
+            "target": "unit_testing_current_package"
         }
     ]
 }
