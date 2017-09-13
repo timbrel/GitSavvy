@@ -948,7 +948,7 @@ class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand, GitCommand):
             self.view.window().show_quick_panel(
                 branches,
                 filter_quick_panel(lambda idx: self.set_base_ref(branches[idx])),
-                selected_index=branches.index(base_ref) if base_ref in branches else None
+                selected_index=branches.index(base_ref) if base_ref in branches else 0
             )
 
     def select_ref(self):
