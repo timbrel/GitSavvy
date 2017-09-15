@@ -1,27 +1,27 @@
 [
-  {
-    "id": "preferences",
-    "children": [
-      {
-        "caption": "Package Settings",
-        "mnemonic": "P",
-        "id": "package-settings",
+    {
+        "id": "preferences",
         "children": [
-          {
-            "caption": "GitSavvy",
-            "children": [
-              {
-                "caption": "Settings",
-                "command": "edit_settings",
-                "args": {
-                  "base_file": "${packages}/GitSavvy/GitSavvy.sublime-settings",
-                  "default": "// Settings in here override those in \"GitSavvy/GitSavvy.sublime-settings\",\n\n{\n\t$0\n}\n"
-                }
-              }
-            ]
-          }
+            {
+                "caption": "Package Settings",
+                "mnemonic": "P",
+                "id": "package-settings",
+                "children": [
+                    {
+                        "caption": "GitSavvy",
+                        "children": [
+                            {
+                                "caption": "Settings",
+                                "command": "edit_settings",
+                                "args": {
+                                    "base_file": "${packages}/GitSavvy/GitSavvy.sublime-settings",
+                                    "default": "// Settings in here override those in \"GitSavvy/GitSavvy.sublime-settings\",\n\n{\n\t$0\n}\n"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
         ]
-      }
-    ]
-  }
+    }
 ]
