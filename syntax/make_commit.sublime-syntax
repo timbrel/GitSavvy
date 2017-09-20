@@ -29,4 +29,3 @@ contexts:
         - include: scope:git-savvy.diff
 
     - include: "scope:git-savvy.commit-diffstat"
-    

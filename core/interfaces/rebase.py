@@ -7,15 +7,16 @@ from sublime_plugin import WindowCommand, TextCommand
 from ...common import ui, util
 from ..commands import GsNavigate
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
-from ..git_command import GitCommand
-from ..ui_mixins.quick_panel import PanelActionMixin
 from ..exceptions import GitSavvyError
-from ..ui_mixins.quick_panel import show_log_panel
+from ..git_command import GitCommand
+from ..git_mixins.rebase import NearestBranchMixin
+from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel
 
 
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
 COMMIT_LINE = re.compile("\s*[%s]\s*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
+NEAREST_NODE_PATTERN = re.compile(r'.*\*.*\[(.*?)(?:(?:[\^\~]+[\d]*){1})\]')  # http://regexr.com/3gm03
 
 
 def filter_quick_panel(fn):
@@ -45,7 +46,7 @@ class GsShowRebaseCommand(WindowCommand, GitCommand):
         RebaseInterface(repo_path=self.repo_path)
 
 
-class RebaseInterface(ui.Interface, GitCommand):
+class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
 
     """
     Status dashboard.
@@ -301,13 +302,21 @@ class RebaseInterface(ui.Interface, GitCommand):
     def render_conflicts_bindings(self):
         return self.conflicts_keybindings if self._in_rebase else ""
 
-    def base_ref(self):
+    def base_ref(self, reset_ref=False):
         base_ref = self.view.settings().get("git_savvy.rebase.base_ref")
 
-        if not base_ref:
+        if not base_ref or reset_ref:
             project_data = sublime.active_window().project_data() or {}
             project_settings = project_data.get('settings', {})
-            base_ref = project_settings.get("rebase_default_base_ref", "master")
+            base_ref = project_settings.get("rebase_default_base_ref")
+
+            if not base_ref:
+                # use remote tracking branch as a sane default
+                remote_branch = self.get_upstream_for_active_branch()
+                base_ref = self.nearest_branch(self.get_current_branch_name(),
+                                               default=remote_branch or "master")
+                util.debug.add_to_log('Found base ref {}'.format(base_ref))
+
             branches = list(self.get_branches())
 
             # Check that the base_ref we return is a valid branch
@@ -921,6 +930,10 @@ class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand, GitCommand):
         ["select_ref", "Use ref as base."],
     ]
 
+    def run(self, *args):
+        self.interface = ui.get_interface(self.view.id())
+        super().run(*args)
+
     def _get_branches(self):
         branches = [branch.name_with_remote
                     for branch in self.get_branches()
@@ -931,9 +944,11 @@ class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand, GitCommand):
         if branches is None:
             sublime.set_timeout_async(self._get_branches, 0)
         else:
+            base_ref = self.interface.base_ref()
             self.view.window().show_quick_panel(
                 branches,
-                filter_quick_panel(lambda idx: self.set_base_ref(branches[idx]))
+                filter_quick_panel(lambda idx: self.set_base_ref(branches[idx])),
+                selected_index=branches.index(base_ref) if base_ref in branches else 0
             )
 
     def select_ref(self):

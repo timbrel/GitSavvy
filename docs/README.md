@@ -44,6 +44,17 @@ If you run into any issues not addressed here, please feel free to [open an issu
 - [git: quick stage current file and fixup](commit.md#git-quick-stage-current-file-and-fixup)
 
 
+## Stashing
+
+- [git: stash save](commit.md#git_stash_save)
+- [git: stash save including untracked files](commit.md#git_stash_save_including_untracked_files)
+- [git: stash save staged changes only](commit.md#git_stash_save_staged_changes_only)
+- [git: stash show](commit.md#git_stash_show)
+- [git: stash apply](commit.md#git_stash_apply)
+- [git: stash pop](commit.md#git_stash_pop)
+- [git: stash drop](commit.md#git_stash_drop)
+
+
 ### Branch management
 
 - [git: checkout](branch_mgmt.md#git-checkout)
@@ -159,3 +170,8 @@ For more information see [custom commands documentation](custom.md)
 - [flow: feature/release/hotfix publish](flow.md#flow-featurereleasehotfix-publish)
 - [flow: feature/release track](flow.md#flow-featurerelease-track)
 - [flow: feature pull](flow.md#flow-feature-pull)
+
+
+## Settings
+
+For all syntax specific view we have a settings file. These are nothing extra from syntax specific settings. From any view you can click `super+,` on Mac or `ctrl+,` on Windoew and Linux. [Preferences Editor](https://packagecontrol.io/packages/Preferences%20Editor) is really good package for editing you settings.

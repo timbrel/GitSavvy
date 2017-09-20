@@ -4,7 +4,7 @@
 name: GitSavvy Graph
 file_extensions: []
 hidden: true
-scope: git-savvy
+scope: git-savvy.graph
 contexts:
   main:
     - match: '([| \\/_.-]+)'

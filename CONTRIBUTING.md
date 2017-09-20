@@ -19,7 +19,6 @@ Some other things to remember:
 - Include docstrings for all classes and functions, unless functionality is obvious at a glance.
 - Include descriptions for issues and PRs.
 
-I'm busy and travel sometimes for work - so if I don't respond immediately, please be patient.  I promise to reply!
 
 ## Commit message structure
 
@@ -50,8 +49,6 @@ Please include the following information when filing a bug:
 - Steps to reproduce, if possible
 - If the bug is caused by a failing command, [include a debug log](docs/debug.md#providing-a-debug-log).
 
-If you're interested in tackling a bug, please say so and I can assign it to you.
-
 
 # Documentation
 
@@ -64,4 +61,10 @@ Check the implementation details of the [tests](docs/testing.md).
 
 # Publishing
 
-All changes are published automatically whenever a pull request is merged.  As part of the PR process, you will be asked to provide the information necessary to make that happen.
+Hotfixes should be submitted to `master` branch and the changes are published
+automatically whenever a pull request is merged.  As part of the PR process,
+you will be asked to provide the information necessary to make that happen.
+
+Pull requests on new features should be submitted to `dev` branch and will be
+regularly merged into `master` after evaluations over an extended period of
+time.

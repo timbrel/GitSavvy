@@ -4,7 +4,7 @@ A simple HTTP interface for making GET, PUT and POST requests.
 
 import http.client
 import json
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlencode  # NOQA
 from base64 import b64encode
 from functools import partial
 from collections import namedtuple

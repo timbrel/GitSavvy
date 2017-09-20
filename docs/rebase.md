@@ -78,11 +78,17 @@ This will display the selected commit data and meta-data in a new window, includ
 
 ### Rebasing
 
+#### Initial base tip detection
+
+When opening the rebase dashboard, GitSavvy will attempt to automatically deteremine the base-ref to use. First it will lookup the root commit of the current branch, i.e. the HEAD when you typed `git checkout -b BRANCH_NAME`.
+
+Failing to find the nearest base ref branch, GitSavvy will use the tracked branch if configured, else fallback to `master`.
+
+The resulting branch is then used as the starting point for the displayed information.
+
 #### Define base ref for the dashboard (`f`)
 
-When initially opening the rebase dashboard, GitSavvy will attempt to determine the root commit of the branch, i.e. the HEAD when you typed `git checkout -b BRANCH_NAME`.  This commit is used as the starting point for the information that is displayed.
-
-In most cases, this will default to `master`.  However, if you would like to compare the current branch against something other than local `master`, using this command will allow you to make that selection. You can override the default per-project by adding a `rebase_default_base_ref` to your `.sublime-project` file:
+If you want to compare the current branch against something other than the initially detected branch, using this command will allow you to make that selection. You can override the default, per-project, by adding a `rebase_default_base_ref` to your `.sublime-project` file:
 
 ```json
 {
