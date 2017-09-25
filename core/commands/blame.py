@@ -322,11 +322,11 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand
     """
     default_actions = [
         ["show_commit", "Show Commit"],
-        ["blame_neighbor", "Blame a commit before selected commit", (),
+        ["blame_neighbor", "Blame a commit before this line's commit", (),
             {'position': "older", 'selected': True}],
-        ["blame_neighbor", "Blame older commit", (), {'position': "older"}],
-        ["blame_neighbor", "Blame newer commit", (), {'position': "newer"}],
-        ["pick_new_commit", "Pick a new commit to blame"],
+        ["blame_neighbor", "Blame previous commit", (), {'position': "older"}],
+        ["blame_neighbor", "Blame next commit", (), {'position': "newer"}],
+        ["pick_new_commit", "Pick another commit to blame"],
         ["show_file_at_commit", "Show file at current commit"],
         ["show_file_at_commit", "Show file at selected commit", (), {"from_line": True}],
     ]
