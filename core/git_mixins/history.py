@@ -208,6 +208,29 @@ class HistoryMixin():
         # fails to find matching
         return line
 
+    def neighbor_commit(self, commit_hash, position):
+        """
+        Get the commit before or after a specific commit
+        """
+        if position == "older":
+            return self.git(
+                "log",
+                "--format=%H",
+                "--follow",
+                "-n", "1",
+                "{}~1".format(commit_hash),
+                "--", self.file_path
+            ).strip()
+        elif position == "newer":
+            return self.git(
+                "log",
+                "--format=%H",
+                "--follow",
+                "--reverse",
+                "{}..{}".format(commit_hash, "HEAD"),
+                "--", self.file_path
+            ).strip().split("\n", 1)[0]
+
     def get_indexed_file_object(self, file_path):
         """
         Given an absolute path to a file contained in a git repo, return
