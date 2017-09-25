@@ -158,9 +158,12 @@ class GitCommand(StatusMixin,
                 sublime.set_timeout_async(
                     lambda: sublime.active_window().run_command("gs_setup_user"))
 
-            raise GitSavvyError("`{}` failed with following output:\n{}\n{}".format(
-                command_str, stdout, stderr
-            ))
+            if stdout or stderr:
+                raise GitSavvyError("`{}` failed with following output:\n{}\n{}".format(
+                    command_str, stdout, stderr
+                ))
+            else:
+                raise GitSavvyError("`{}` failed.".format(command_str))
 
         if show_panel:
             if savvy_settings.get("show_input_in_output"):

@@ -15,6 +15,7 @@ from .show_commit import *
 from .show_commit_info import *
 from .commit_compare import *
 from .log import *
+from .stash import *
 from .reflog import *
 from .merge import*
 from .changelog import *
