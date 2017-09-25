@@ -436,20 +436,16 @@ class GsBlameToggleSetting(BlameMixin, TextCommand):
     `detect_move_or_copy_within_commit` and `detect_move_or_copy_within_all_commits`.
     """
     @util.view.single_cursor_pt
-    def run(self, cursor_pt, edit, setting):
+    def run(self, cursor_pt, edit, setting, value=None):
         self.cursor_pt = cursor_pt
         setting_str = "git_savvy.blame_view.{}".format(setting)
         settings = self.view.settings()
         if setting == "detect_move_or_copy_within":
             detect_move_or_copy_within = settings.get(setting_str)
-            if detect_move_or_copy_within == "file":
-                detect_move_or_copy_within = "commit"
-            elif detect_move_or_copy_within == "commit":
-                detect_move_or_copy_within = "all_commits"
-            elif detect_move_or_copy_within == "all_commits":
+            if detect_move_or_copy_within == value:
                 detect_move_or_copy_within = None
-            elif detect_move_or_copy_within is None:
-                detect_move_or_copy_within = "file"
+            else:
+                detect_move_or_copy_within = value
 
             settings.set(setting_str, detect_move_or_copy_within)
         else:
