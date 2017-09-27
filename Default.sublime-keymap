@@ -757,6 +757,42 @@
         ]
     },
     {
+        "keys": ["w"],
+        "command": "gs_blame_toggle_setting",
+        "args": { "setting": "ignore_whitespace" },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["f"],
+        "command": "gs_blame_toggle_setting",
+        "args": { "setting": "detect_move_or_copy_within", "value": "file" },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["c"],
+        "command": "gs_blame_toggle_setting",
+        "args": { "setting": "detect_move_or_copy_within", "value": "commit" },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["a"],
+        "command": "gs_blame_toggle_setting",
+        "args": { "setting": "detect_move_or_copy_within", "value": "all_commits" },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["?"],
         "command": "gs_interface_toggle_popup_help",
         "args": { "view_name": "blame_view", "popup_max_width": 1200},

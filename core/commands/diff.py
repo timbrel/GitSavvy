@@ -132,7 +132,7 @@ class GsDiffToggleSetting(TextCommand):
         setting_str = "git_savvy.diff_view.{}".format(setting)
         settings = self.view.settings()
         settings.set(setting_str, not settings.get(setting_str))
-        print("{} is now {}".format(setting, settings.get(setting_str)))
+        sublime.status_message("{} is now {}".format(setting, settings.get(setting_str)))
         self.view.run_command("gs_diff_refresh")
 
 
