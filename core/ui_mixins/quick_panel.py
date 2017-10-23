@@ -113,7 +113,7 @@ class PanelCommandMixin(PanelActionMixin):
         return ((selected_action[0], ) + args), kwargs
 
 
-def show_remote_panel(on_done, show_option_all=False, selected_remote=None):
+def show_remote_panel(on_done, show_option_all=False, selected_remote=None, allow_direct=False):
     """
     Show a quick panel with remotes. The callback `on_done(remote)` will
     be called when a remote is selected. If the panel is cancelled, `None`
@@ -123,18 +123,19 @@ def show_remote_panel(on_done, show_option_all=False, selected_remote=None):
     show_option_all: whether the option "All remotes" should be shown. `True` will
                 be passed to `on_done` if the all remotes option is selected.
     """
-    rp = RemotePanel(on_done, show_option_all, selected_remote)
+    rp = RemotePanel(on_done, show_option_all, selected_remote, allow_direct)
     rp.show()
     return rp
 
 
 class RemotePanel(GitCommand):
 
-    def __init__(self, on_done, show_option_all=False, selected_remote=None):
+    def __init__(self, on_done, show_option_all=False, selected_remote=None, allow_direct=False):
         self.window = sublime.active_window()
         self.on_done = on_done
         self.selected_remote = selected_remote
         self.show_option_all = show_option_all
+        self.allow_direct = allow_direct
 
     def show(self):
         self.remotes = list(self.get_remotes().keys())
@@ -143,14 +144,18 @@ class RemotePanel(GitCommand):
             self.window.show_quick_panel(["There are no remotes available."], None)
             return
 
-        # should we proceed directly if len(self.remotes) == 1 !?
-        # GsRemoteRemoveCommand may not work well if we proceed directly
+        if self.allow_direct and len(self.remotes) == 1:
+            self.on_remote_selection(0)
+            return
 
         if self.show_option_all and len(self.remotes) > 1:
             self.remotes.insert(0, "All remotes.")
 
-        if self.last_remote_used in self.remotes:
-            pre_selected_index = self.remotes.index(self.last_remote_used)
+        # We don't use the GitCommand.last_remote_used property because we don't want default values
+        last_remote_used = self._last_remotes_used.get(self.repo_path)
+
+        if last_remote_used in self.remotes:
+            pre_selected_index = self.remotes.index(last_remote_used)
         else:
             pre_selected_index = 0
 
@@ -165,6 +170,7 @@ class RemotePanel(GitCommand):
         if index == -1:
             self.on_done(None)
         elif self.show_option_all and len(self.remotes) > 1 and index == 0:
+            self.last_remote_used = None
             self.on_done(True)
         else:
             self.remote = self.remotes[index]

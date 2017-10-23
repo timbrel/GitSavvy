@@ -17,7 +17,7 @@ class GsFetchCommand(WindowCommand, GitCommand):
         if remote:
             return self.do_fetch(remote)
 
-        show_remote_panel(self.on_remote_selection, show_option_all=True)
+        show_remote_panel(self.on_remote_selection, show_option_all=True, allow_direct=True)
 
     def on_remote_selection(self, remote):
         if not remote:

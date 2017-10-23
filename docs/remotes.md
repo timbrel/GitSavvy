@@ -4,7 +4,7 @@ GitSavvy provides a few mechanisms for interact with remotes.
 
 ## `git: fetch`
 
-This updates the local history of remote branches, and downloads all commit objects referenced in that history.  When running this command from the palette, you will prompted to indicate the remote from which you'd like to fetch.
+This updates the local history of remote branches, and downloads all commit objects referenced in that history. If the repository has multiple remotes you will prompted to indicate the remote from which you'd like to fetch, when running this command from the palette.
 
 ## `git: checkout remote branch as local`
 
