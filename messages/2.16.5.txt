@@ -1,0 +1,20 @@
+Changes since 2.16.4:
+
+  Fix:
+   - various small bug fixes
+
+  Enhancement:
+   - Add some default syntax specific settings
+   - Cache settings object for multi get/set operations
+   - Super+, open settings for each of the different syntaxes
+   - refactor blame command
+   - Improvements to fetch quick panel
+
+  Internal:
+   - Add unittest for JSON resources
+
+  Contributors:
+   - DeathAxe
+   - Randy Lai
+   - Simon
+   - David Devlin
