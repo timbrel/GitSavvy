@@ -27,7 +27,6 @@ RE_COMMENT = re.compile(
         )
       | (?P<code>
             "(?:\\.|[^"\\])*"               # double quotes
-          | '(?:\\.|[^'\\])*'               # single quotes
           | .[^/"']*                        # everything else
         )
     ''',
@@ -49,7 +48,6 @@ RE_TRAILING_COMMA = re.compile(
         )
       | (?P<code>
             "(?:\\.|[^"\\])*"            # double quoted string
-          | '(?:\\.|[^'\\])*'            # single quoted string
           | .[^,"']*                     # everything else
         )
     ''',
@@ -186,8 +184,7 @@ class CheckJsonFormat(object):
             count = 1
             for line in f:
                 indent_match = RE_LINE_INDENT[self.use_tabs].match(line)
-                end_comment = (comment_align is not None and
-                               RE_COMMENT_END.search(line))
+                end_comment = (comment_align is not None or indent_match.group(2)) and RE_COMMENT_END.search(line)
                 # Don't allow empty lines at file start.
                 if count == 1 and line.strip() == '':
                     self.log_failure(W_NL_START, count)
