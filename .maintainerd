@@ -16,7 +16,7 @@ pullRequest:
       default: false
       required: true
   semver:
-    enabled: true
+    enabled: false
     # Not yet implemented:
     autodetect: true
 commit:
