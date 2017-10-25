@@ -1,0 +1,23 @@
+Changes since 2.16.2:
+
+  Enhancement:
+   - don't show "following output" where stderr is empty
+   - select the branch name while creating a new branch
+
+  Internal:
+   - add UnitTesting build system
+   - maintainerd - don't enforce empty line
+   - add ISSUE_TEMPLATE.md and PULL_REQUEST_TEMPLATE.md
+
+  Fix:
+   - typo in some keymaps: control -> ctrl
+
+  Feature:
+   - `github: create fork` to create fork on github
+   - git stash in command panel
+   - better selection of base ref branch
+
+  Contributors:
+   - Randy Lai
+   - Simon
+   - Pavel Savchenko
