@@ -15,17 +15,16 @@ class GsShowCommitCommand(WindowCommand, GitCommand):
     def run(self, commit_hash):
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
-        view = self.window.new_file()
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        view = self.window.new_file()
+        settings = view.settings()
+        settings.set("git_savvy.show_commit_view", True)
+        settings.set("git_savvy.show_commit_view.commit", commit_hash)
+        settings.set("git_savvy.repo_path", repo_path)
+        settings.set("git_savvy.show_commit_view.ignore_whitespace", False)
+        settings.set("git_savvy.show_commit_view.show_word_diff", False)
+        settings.set("git_savvy.show_commit_view.show_diffstat", savvy_settings.get("show_diffstat", True))
         view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
-        view.settings().set("git_savvy.show_commit_view", True)
-        view.settings().set("git_savvy.show_commit_view.commit", commit_hash)
-        view.settings().set("git_savvy.repo_path", repo_path)
-        view.settings().set("git_savvy.show_commit_view.ignore_whitespace", False)
-        view.settings().set("git_savvy.show_commit_view.show_word_diff", False)
-        view.settings().set("git_savvy.show_commit_view.show_diffstat", savvy_settings.get("show_diffstat", True))
-        view.settings().set("word_wrap", False)
-        view.settings().set("line_numbers", False)
         view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash)))
         view.set_scratch(True)
         view.run_command("gs_show_commit_refresh")
@@ -36,10 +35,11 @@ class GsShowCommitCommand(WindowCommand, GitCommand):
 class GsShowCommitRefreshCommand(TextCommand, GitCommand):
 
     def run(self, edit):
-        commit_hash = self.view.settings().get("git_savvy.show_commit_view.commit")
-        ignore_whitespace = self.view.settings().get("git_savvy.show_commit_view.ignore_whitespace")
-        show_word_diff = self.view.settings().get("git_savvy.show_commit_view.show_word_diff")
-        show_diffstat = self.view.settings().get("git_savvy.show_commit_view.show_diffstat")
+        settings = self.view.settings()
+        commit_hash = settings.get("git_savvy.show_commit_view.commit")
+        ignore_whitespace = settings.get("git_savvy.show_commit_view.ignore_whitespace")
+        show_word_diff = settings.get("git_savvy.show_commit_view.show_word_diff")
+        show_diffstat = settings.get("git_savvy.show_commit_view.show_diffstat")
         content = self.git(
             "show",
             "--ignore-all-space" if ignore_whitespace else None,
@@ -63,7 +63,7 @@ class GsShowCommitToggleSetting(TextCommand):
         setting_str = "git_savvy.show_commit_view.{}".format(setting)
         settings = self.view.settings()
         settings.set(setting_str, not settings.get(setting_str))
-        print("{} is now {}".format(setting, settings.get(setting_str)))
+        sublime.status_message("{} is now {}".format(setting, settings.get(setting_str)))
         self.view.run_command("gs_show_commit_refresh")
 
 

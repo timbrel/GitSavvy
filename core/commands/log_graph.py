@@ -32,10 +32,10 @@ class LogGraphMixin(object):
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
         view = util.view.get_scratch_view(self, "log_graph", read_only=True)
-        view.settings().set("git_savvy.repo_path", repo_path)
-        view.settings().set("git_savvy.file_path", self._file_path)
-        view.settings().set("git_savvy.git_graph_args", self.get_graph_args())
-        view.settings().set("word_wrap", False)
+        settings = view.settings()
+        settings.set("git_savvy.repo_path", repo_path)
+        settings.set("git_savvy.file_path", self._file_path)
+        settings.set("git_savvy.git_graph_args", self.get_graph_args())
         view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
         view.set_name(self.title)
         view.sel().clear()

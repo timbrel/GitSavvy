@@ -58,13 +58,13 @@ Use default `git blame` behaviour.
 Ignore whitespace only changes when finding the last commit that changed the line (`git blame -w`).
 
 #### Detect moved or copied lines within same file
-Ignore whitespace, and detect when lines have been moved or copied within the file, attributing lines to the original commit rather than the commit that moved or copied them (`git blame -w -M`).
+Ignore whitespace, and detect when lines have been moved or copied within the file, attributing lines to the original commit rather than the commit that moved or copied them (`git blame -M`).
 
 #### Detect moved or copied lines within same commit
-Ignore whitespace, and detect when lines have been moved or copied from any file modified in the same commit, attributing lines to the original commit rather than the commit that moved or copied them (`git blame -w -C`).
+Ignore whitespace, and detect when lines have been moved or copied from any file modified in the same commit, attributing lines to the original commit rather than the commit that moved or copied them (`git blame -C`).
 
 #### Detect moved or copied lines across all commits
-Ignore whitespace, and detect when lines have been moved or copied from any file across the full commit history of the repository, attributing lines to the original commit rather than the commit that moved or copied them (`git blame -w -CCC`).
+Ignore whitespace, and detect when lines have been moved or copied from any file across the full commit history of the repository, attributing lines to the original commit rather than the commit that moved or copied them (`git blame -CCC`).
 
 ## Action in blame view
 
@@ -75,17 +75,17 @@ Use `Enter` to select a action. If you hit `?` you will see a pop-up with all ke
 
 Actions
 - `Open Commit`:  Open the commit of the chunk in which the cursor is located
-- `Blame before selected commit`:  Find the chunk you are in and jump to the commit before that. Handy when you know exactly what you are looking for. It can be hard to keep track of where you were in the file since the line number probably changed.(Time travel)
-- `Blame on one older commit`:  Same as above but only jump one commit at a time. (Time travel)
-- `Blame on one newer commit`:  Same as above but jumps in the opposite direction. (Time travel)
+- `Blame a commit before <comit>`:  Find the chunk you are in and jump to the commit before that. Handy when you know exactly what you are looking for. It can be hard to keep track of where you were in the file since the line number probably changed.
+- `Blame older commit`:  Same as above but only jump one commit at a time. 
+- `Blame newer commit`:  Same as above but jumps in the opposite direction.
 - `Pick a new commit to blame`:  Pick a commit to checkout (Time travel)
-- `Show file at most recent commit`:  Show the file with syntax highlighting at the most recent commit
-- `Show file at this chunk's commit`:  Same as above but takes the commit from the chunk in which the cursor is located
+- `Show file at current commit`:  Show the file with syntax highlighting at current blame commit
+- `Show file at <commit>`:  Same as above but takes the commit from the chunk in which the cursor is located
 
 ## `git: reflog`
 
 Like `git: log`, this command will show a panel of commit entries, but uses `git reflog` rather than `git log` as the source of available commits.
 
 ## `git: revert`, undo a commit
- 
+
 Like `git: log`, this command will show a panel of commit entries, pick one to revert it. Revert is git's way of undoing. Revert will create a new commit.

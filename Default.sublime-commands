@@ -3,8 +3,8 @@
         "caption": "Preferences: GitSavvy Settings",
         "command": "edit_settings",
         "args": {
-          "base_file": "${packages}/GitSavvy/GitSavvy.sublime-settings",
-          "default": "// Settings in here override those in \"GitSavvy/GitSavvy.sublime-settings\",\n\n{\n\t$0\n}\n"}
+            "base_file": "${packages}/GitSavvy/GitSavvy.sublime-settings",
+            "default": "// Settings in here override those in \"GitSavvy/GitSavvy.sublime-settings\",\n\n{\n\t$0\n}\n"}
     },
 
     {
@@ -38,7 +38,7 @@
     },
     {
         "caption": "git: quick stage current file and fixup",
-        "command": "gs_quick_stage_current_file_and_fixup",
+        "command": "gs_quick_stage_current_file_and_fixup"
     },
     {
         "caption": "git: status",
@@ -215,7 +215,7 @@
     },
     {
         "caption": "git: blame current file",
-        "command": "gs_blame"
+        "command": "gs_blame_current_file"
     },
     {
         "caption": "GitSavvy: reload modules (debug)",
@@ -399,5 +399,5 @@
     {
         "caption": "git: stash drop",
         "command": "gs_stash_drop"
-    },
+    }
 ]

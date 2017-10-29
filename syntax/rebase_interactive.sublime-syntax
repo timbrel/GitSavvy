@@ -3,7 +3,7 @@
 # http://www.sublimetext.com/docs/3/syntax.html
 name: GitSavvy Rebase Interactive
 hidden: true
-scope: git-savvy.rebase.interactive
+scope: git-savvy.rebase-interactive
 variables:
   pick: 'pick|p'
   reword: reword|r
