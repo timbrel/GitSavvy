@@ -31,3 +31,7 @@ This command applies a commit from a different branch to the current branch.
 Running the command first prompts for branch selection; then it displays a limited log with commits unique to the chosen branch. Upon selection, the commit is [cherry-picked][1] into the current branch.
 
 [1]: https://git-scm.com/docs/git-cherry-pick
+
+## `git: mv current file`
+
+Move or rename the current file.  The command will prompt for the new filename.
