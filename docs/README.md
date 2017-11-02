@@ -120,6 +120,11 @@ If you run into any issues not addressed here, please feel free to [open an issu
 - [GitSavvy: view recorded log](debug.md#gitsavvy-view-recorded-log)
 
 
+### Miscellaneous
+
+- [git: mv current file](misc.md#git-mv-current-file)
+
+
 ## Special Views
 
 - [Status view](status.md#overview)

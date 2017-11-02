@@ -399,5 +399,9 @@
     {
         "caption": "git: stash drop",
         "command": "gs_stash_drop"
+    },
+    {
+        "caption": "git: mv current file",
+        "command": "gs_mv_current_file"
     }
 ]
