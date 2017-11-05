@@ -166,7 +166,7 @@
     /*
         Limit the number of tags listed in the tags dashboard.
     */
-    // "max_items_in_tags_dashboard": 10
+    "max_items_in_tags_dashboard": -1,
 
     /*
         When set to `true`, GitSavvy will offer to set the upstream on `git: push`
