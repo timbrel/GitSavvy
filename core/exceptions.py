@@ -4,7 +4,7 @@ from ..common import util
 
 class GitSavvyError(Exception):
     def __init__(self, msg, *args, **kwargs):
-        super(GitSavvyError, self).__init__(msg, *args, **kwargs)
+        super(GitSavvyError, self).__init__(msg, *args)
         if msg:
             if kwargs.get('show_panel', True):
                 util.log.panel(msg)
