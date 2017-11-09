@@ -10,7 +10,7 @@ from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 from ..exceptions import GitSavvyError
 from ..git_command import GitCommand
 from ..git_mixins.rebase import NearestBranchMixin
-from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel
+from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel, show_branch_panel
 
 
 COMMIT_NODE_CHAR = "●"
@@ -926,30 +926,18 @@ class GsRebaseLaunchMergeToolCommand(TextCommand, GitCommand):
 class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand, GitCommand):
 
     default_actions = [
-        ["select_branch", "Use branch as base."],
-        ["select_ref", "Use ref as base."],
+        ["select_branch", "Select branch as base"],
+        ["select_commit", "Select commit as base"],
+        ["select_ref", "Enter ref as base"],
     ]
 
     def run(self, *args):
         self.interface = ui.get_interface(self.view.id())
         super().run(*args)
 
-    def _get_branches(self):
-        branches = [branch.name_with_remote
-                    for branch in self.get_branches()
-                    if not branch.active]
-        self.select_branch(branches)
-
     def select_branch(self, branches=None):
-        if branches is None:
-            sublime.set_timeout_async(self._get_branches, 0)
-        else:
-            base_ref = self.interface.base_ref()
-            self.view.window().show_quick_panel(
-                branches,
-                filter_quick_panel(lambda idx: self.set_base_ref(branches[idx])),
-                selected_index=branches.index(base_ref) if base_ref in branches else 0
-            )
+        base_ref = self.interface.base_ref()
+        show_branch_panel(self.set_base_ref, selected_branch=base_ref)
 
     def select_ref(self):
         self.view.window().show_input_panel(
@@ -959,17 +947,26 @@ class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand, GitCommand):
             None, None
         )
 
+    def select_commit(self):
+        show_log_panel(self.log_generator(), self.set_base_ref)
+
     def set_base_ref(self, ref):
-        self.view.settings().set("git_savvy.rebase.base_ref", ref)
-        util.view.refresh_gitsavvy(self.view)
+        if ref:
+            self.view.settings().set("git_savvy.rebase.base_ref", ref)
+            util.view.refresh_gitsavvy(self.view)
 
 
 class GsRebaseOnTopOfCommand(GsRebaseDefineBaseRefCommand):
 
     default_actions = [
-        ["select_branch", "Rebase on top of branch."],
-        ["select_ref", "Rebase on top of ref."],
+        ["rebase_to_base_ref", "Rebase to default base"],
+        ["select_branch", "Rebase to branch"],
+        ["select_commit", "Rebase to commit"],
+        ["select_ref", "Rebase to ref"],
     ]
+
+    def rebase_to_base_ref(self, selection):
+        self.set_base_ref(self.view.settings().get("git_savvy.rebase.base_ref"))
 
     def set_base_ref(self, selection):
         interface = ui.get_interface(self.view.id())
