@@ -107,7 +107,7 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
     _detect_move_or_copy_dict = {
         "file": "-M",
         "commit": "-C",
-        "all_commits": "-CC"
+        "all_commits": "-CCC"
     }
 
     def run(self, edit):
