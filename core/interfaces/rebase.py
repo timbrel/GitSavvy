@@ -965,10 +965,12 @@ class GsRebaseOnTopOfCommand(GsRebaseDefineBaseRefCommand):
         ["select_ref", "Rebase to ref"],
     ]
 
-    def rebase_to_base_ref(self, selection):
+    def rebase_to_base_ref(self):
         self.set_base_ref(self.view.settings().get("git_savvy.rebase.base_ref"))
 
     def set_base_ref(self, selection):
+        if not selection:
+            return
         interface = ui.get_interface(self.view.id())
         branch_state = interface.get_branch_state()
         self.view.settings().set("git_savvy.rebase_in_progress", (branch_state, selection))
