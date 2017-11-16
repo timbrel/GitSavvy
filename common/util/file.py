@@ -73,6 +73,14 @@ def get_file_contents(repo_path, file_path):
         return binary.decode('latin-1')
 
 
+def safe_read(path):
+    try:
+        with open(path, 'r') as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return False
+
+
 @contextmanager
 def safe_open(filename, mode, *args, **kwargs):
     try:

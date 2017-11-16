@@ -209,26 +209,22 @@ class RewriteMixin():
 
     def rebase_orig_head(self):
         path = os.path.join(self._rebase_dir, "orig-head")
-        with util.file.safe_open(path, "r") as f:
-            return f.read().strip()
+        return util.file.safe_read(path)
 
     def rebase_conflict_at(self):
         if self.in_rebase_merge():
             path = os.path.join(self._rebase_merge_dir, "current-commit")
         else:
             path = os.path.join(self._rebase_apply_dir, "original-commit")
-        with util.file.safe_open(path, "r") as f:
-            return f.read().strip()
+        return util.file.safe_read(path)
 
     def rebase_branch_name(self):
         path = os.path.join(self._rebase_dir, "head-name")
-        with util.file.safe_open(path, "r") as f:
-            return f.read().strip().replace("refs/heads/", "")
+        return util.file.safe_read(path).replace("refs/heads/", "")
 
     def rebase_onto_commit(self):
         path = os.path.join(self._rebase_dir, "onto")
-        with util.file.safe_open(path, "r") as f:
-            return f.read().strip()
+        return util.file.safe_read(path)
 
     def rebase_rewritten(self):
         if self.in_rebase_merge():
@@ -237,28 +233,26 @@ class RewriteMixin():
                 return dict()
             entries = []
             for sha in os.listdir(path):
-                with util.file.safe_open(os.path.join(path, sha), "r") as f:
-                    newsha = f.read().strip()
-                    if newsha:
-                        entries.append([sha, newsha])
+                newsha = util.file.safe_read(os.path.join(path, sha))
+                if newsha:
+                    entries.append([sha, newsha])
             return dict(entries)
         elif self.in_rebase_apply():
             path = os.path.join(self._rebase_apply_dir, "rewritten")
             if not os.path.exists(path):
                 return dict()
-            with util.file.safe_open(path, "r") as f:
-                entries = f.read().strip().split("\n")
-                return [entry.split(" ") for entry in entries]
+
+            entries = util.file.safe_read(path).split("\n")
+            return [entry.split(" ") for entry in entries]
         else:
             path = os.path.join(self._rebase_replay_dir, "rewritten")
             if not os.path.exists(path):
                 return dict()
             entries = []
             for sha in os.listdir(path):
-                with util.file.safe_open(os.path.join(path, sha), "r") as f:
-                    newsha = f.read().strip()
-                    if newsha:
-                        entries.append([sha, newsha])
+                newsha = util.file.safe_read(os.path.join(path, sha))
+                if newsha:
+                    entries.append([sha, newsha])
             return dict(entries)
 
     def rewrite_meta_data(self, old_hash, new_hash):
