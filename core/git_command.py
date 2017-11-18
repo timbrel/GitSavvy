@@ -55,21 +55,30 @@ GIT_REQUIRE_PATCH = 0
 
 
 class LoggingProcessWrapper(object):
+
+    """
+    Wraps a Popen object with support for logging stdin/stderr
+    """
     def __init__(self, process):
         self.process = process
         self.stdout = b''
         self.stderr = b''
 
     def read_stdout(self):
-        # TODO: check for except IOError as err:
-        for line in self.process.stdout:
-            self.stdout = self.stdout + line
-            util.log.panel_append(line.decode())
+        try:
+            for line in self.process.stdout:
+                self.stdout = self.stdout + line
+                util.log.panel_append(line.decode())
+        except IOError as err:
+            util.log.panel_append(err)
 
     def read_stderr(self):
-        for line in self.process.stderr:
-            self.stderr = self.stderr + line
-            util.log.panel_append(line.decode())
+        try:
+            for line in self.process.stderr:
+                self.stderr = self.stderr + line
+                util.log.panel_append(line.decode())
+        except IOError as err:
+            util.log.panel_append(err)
 
     def communicate(self, stdin):
         """
@@ -89,7 +98,6 @@ class LoggingProcessWrapper(object):
         stderr_thread.start()
 
         self.process.wait()
-        # TODO: manage threads here?
 
         return self.stdout, self.stderr
 
@@ -145,7 +153,7 @@ class GitCommand(StatusMixin,
         if args[0] in close_panel_for:
             sublime.active_window().run_command("hide_panel", {"cancel": True})
 
-        live_logging = savvy_settings.get("live_output_logging") or False
+        live_panel_output = savvy_settings.get("live_panel_output") or False
 
         stdout, stderr = None, None
 
@@ -182,7 +190,7 @@ class GitCommand(StatusMixin,
             if stdin is not None and encode:
                 stdin = stdin.encode(encoding=stdin_encoding)
 
-            if show_panel and live_logging:
+            if show_panel and live_panel_output:
                 if savvy_settings.get("show_input_in_output"):
                     util.log.panel(command_str + "\n\n")
                 wrapper = LoggingProcessWrapper(p)

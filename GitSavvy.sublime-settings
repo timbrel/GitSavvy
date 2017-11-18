@@ -104,6 +104,12 @@
     "close_panel_for": [],
 
     /*
+        Whether git and githook output is logged live
+        If false, results are shown after execution.
+    */
+    "live_panel_output": false,
+
+    /*
         Use the Sublime configured syntax for COMMIT_EDITMSG rather than
         the custom bundled syntax that comes with GitSavvy.
     */
