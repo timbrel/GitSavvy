@@ -10,6 +10,8 @@ import os
 import subprocess
 import shutil
 import re
+from contextlib import contextmanager
+import threading
 
 import sublime
 
@@ -50,6 +52,46 @@ GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d}
 GIT_REQUIRE_MAJOR = 1
 GIT_REQUIRE_MINOR = 9
 GIT_REQUIRE_PATCH = 0
+
+
+class LoggingProcessWrapper(object):
+    def __init__(self, process):
+        self.process = process
+        self.stdout = b''
+        self.stderr = b''
+
+    def read_stdout(self):
+        # TODO: check for except IOError as err:
+        for line in self.process.stdout:
+            self.stdout = self.stdout + line
+            util.log.panel_append(line.decode())
+
+    def read_stderr(self):
+        for line in self.process.stderr:
+            self.stderr = self.stderr + line
+            util.log.panel_append(line.decode())
+
+    def communicate(self, stdin):
+        """
+        Emulates Popen.communicate
+        Writes stdin (if provided)
+        Logs output from both stdout and stderr
+        Returns stdout, stderr
+        """
+        if stdin is not None:
+            self.process.stdin.write(stdin)
+            self.process.stdin.flush()
+            self.process.stdin.close()
+
+        stdout_thread = threading.Thread(target=self.read_stdout)
+        stdout_thread.start()
+        stderr_thread = threading.Thread(target=self.read_stderr)
+        stderr_thread.start()
+
+        self.process.wait()
+        # TODO: manage threads here?
+
+        return self.stdout, self.stderr
 
 
 class GitCommand(StatusMixin,
@@ -103,10 +145,7 @@ class GitCommand(StatusMixin,
         if args[0] in close_panel_for:
             sublime.active_window().run_command("hide_panel", {"cancel": True})
 
-        log_stderr_for = savvy_settings.get("log_stderr_for") or []
-        log_stderr = args[0] in log_stderr_for
-        log_stdout_for = savvy_settings.get("log_stdout_for") or []
-        log_stdout = args[0] in log_stdout_for
+        live_logging = savvy_settings.get("live_output_logging") or False
 
         stdout, stderr = None, None
 
@@ -140,22 +179,16 @@ class GitCommand(StatusMixin,
                                  env=environ,
                                  startupinfo=startupinfo)
 
-            if log_stderr or log_stdout:
-                util.log.panel(command_str + "\n\n")
-                if stdin:
-                    p.stdin.write(stdin.encode(encoding=stdin_encoding) if encode else stdin)
-                    p.stdin.flush()
-                    p.stdin.close()
-                    util.log.panel_append(stdin + "\n\n")
+            if stdin is not None and encode:
+                stdin = stdin.encode(encoding=stdin_encoding)
 
-                if log_stderr:
-                    stdout, stderr = self.log_and_wait(p, p.stderr)
-                else:  # log_stdout
-                    stdout, stderr = self.log_and_wait(p, p.stdout)
-
+            if show_panel and live_logging:
+                if savvy_settings.get("show_input_in_output"):
+                    util.log.panel(command_str + "\n\n")
+                wrapper = LoggingProcessWrapper(p)
+                stdout, stderr = wrapper.communicate(stdin)
             else:
-                stdout, stderr = p.communicate(
-                    (stdin.encode(encoding=stdin_encoding) if encode else stdin) if stdin else None)
+                stdout, stderr = p.communicate(stdin)
 
             if decode:
                 stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
@@ -217,25 +250,6 @@ class GitCommand(StatusMixin,
                         sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
                         raise fallback_err
                 raise unicode_err
-
-    def log_and_wait(self, process, pipe):
-        captured_output = b''
-
-        for line in pipe:
-            captured_output = captured_output + line
-            util.log.panel_append(line.decode())
-
-        process.wait()
-        stderr = process.stderr.read()
-        stdout = process.stdout.read()
-
-        if len(captured_output) > 0:
-            if pipe == process.stdout:
-                stdout = captured_output + stdout
-            else:
-                stderr = captured_output + stderr
-
-        return stdout, stderr
 
     @property
     def encoding(self):
