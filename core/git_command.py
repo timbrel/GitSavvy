@@ -187,12 +187,16 @@ class GitCommand(StatusMixin,
                                  env=environ,
                                  startupinfo=startupinfo)
 
+            original_stdin = stdin
             if stdin is not None and encode:
                 stdin = stdin.encode(encoding=stdin_encoding)
 
             if show_panel and live_panel_output:
+                util.log.panel("")
+                if savvy_settings.get("show_stdin_in_output") and stdin is not None:
+                    util.log.panel_append("STDIN\n{}\n".format(original_stdin))
                 if savvy_settings.get("show_input_in_output"):
-                    util.log.panel("> {}\n\n".format(command_str))
+                    util.log.panel_append("> {}\n\n".format(command_str))
                 wrapper = LoggingProcessWrapper(p)
                 stdout, stderr = wrapper.communicate(stdin)
             else:

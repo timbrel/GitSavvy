@@ -139,6 +139,11 @@
     "show_input_in_output": true,
 
     /*
+        Change this to `true` to print the stdin in the panel output.
+     */
+    "show_stdin_in_output": false,
+
+    /*
         Change this to `false` to suppress Git status in ST3 status bar.
      */
     "git_status_in_status_bar": true,
