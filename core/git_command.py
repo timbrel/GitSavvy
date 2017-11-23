@@ -192,11 +192,18 @@ class GitCommand(StatusMixin,
 
             if show_panel and live_panel_output:
                 if savvy_settings.get("show_input_in_output"):
-                    util.log.panel(command_str + "\n\n")
+                    util.log.panel("> {}\n\n".format(command_str))
                 wrapper = LoggingProcessWrapper(p)
                 stdout, stderr = wrapper.communicate(stdin)
             else:
                 stdout, stderr = p.communicate(stdin)
+                if show_panel:
+                    util.log.panel("")
+                    if savvy_settings.get("show_stdin_in_output") and stdin is not None:
+                        util.log.panel_append("STDIN\n{}\n".format(original_stdin))
+                    if savvy_settings.get("show_input_in_output"):
+                        util.log.panel_append("> {}\n".format(command_str))
+                    util.log.panel_append("{}\n{}".format(stdout, stderr))
 
             if decode:
                 stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
@@ -233,12 +240,6 @@ class GitCommand(StatusMixin,
                 ))
             else:
                 raise GitSavvyError("`{}` failed.".format(command_str))
-
-        if show_panel:
-            if savvy_settings.get("show_input_in_output"):
-                util.log.panel("> {}\n{}\n{}".format(command_str, stdout, stderr))
-            else:
-                util.log.panel("{}\n{}".format(stdout, stderr))
 
         return stdout
 
