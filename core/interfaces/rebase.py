@@ -17,6 +17,7 @@ COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
 COMMIT_LINE = re.compile("\s*[%s]\s*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
 NEAREST_NODE_PATTERN = re.compile(r'.*\*.*\[(.*?)(?:(?:[\^\~]+[\d]*){1})\]')  # http://regexr.com/3gm03
+NOT_A_COMMIT_SHA = 'not_a_commit_sha'
 
 
 def filter_quick_panel(fn):
@@ -149,9 +150,12 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
 
     @ui.partial("active_branch")
     def render_active_branch(self):
-        return (self.rebase_branch_name()
-                if self._in_rebase else
-                self.get_current_branch_name())
+        try:
+            return (self.rebase_branch_name()
+                    if self._in_rebase else
+                    self.get_current_branch_name())
+        except FileNotFoundError as e:
+            return ''
 
     @ui.partial("base_ref")
     def render_base_ref(self):
@@ -186,11 +190,14 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
 
     @ui.partial("diverged_commits")
     def render_diverged_commits(self):
-        commits_info = self.get_diverged_commits_info(
-            start=self.base_commit(),
-            end=self.rebase_orig_head() if self._in_rebase else "HEAD"
-            )
-        return self.separator.join(self.commit.format(**commit_info) for commit_info in commits_info)
+        try:
+            commits_info = self.get_diverged_commits_info(
+                start=self.base_commit(),
+                end=self.rebase_orig_head() if self._in_rebase else "HEAD"
+                )
+            return self.separator.join(self.commit.format(**commit_info) for commit_info in commits_info)
+        except FileNotFoundError as e:
+            return ""
 
     @ui.partial("super_key")
     def render_super_key(self):
@@ -231,7 +238,10 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
 
     def _get_diverged_in_rebase(self):
         self._active_conflicts = None
-        conflict_commit = self.rebase_conflict_at()
+        try:
+            conflict_commit = self.rebase_conflict_at()
+        except Exception as e:
+            conflict_commit = NOT_A_COMMIT_SHA
         rewritten = self.rebase_rewritten()
         commits_info = []
 
@@ -337,12 +347,15 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         return base_ref
 
     def base_commit(self):
-        if self._in_rebase:
-            return self.rebase_onto_commit()
+        try:
+            if self._in_rebase:
+                return self.rebase_onto_commit()
 
-        base_ref = self.base_ref()
-        self._base_commit = self.git("merge-base", "HEAD", base_ref).strip()
-        return self._base_commit
+            base_ref = self.base_ref()
+            self._base_commit = self.git("merge-base", "HEAD", base_ref).strip()
+            return self._base_commit
+        except FileNotFoundError as e:
+            return NOT_A_COMMIT_SHA
 
     def is_not_rebased(self):
         return self.base_commit() != self.git("rev-parse", self.base_ref()).strip()
