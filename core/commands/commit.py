@@ -93,6 +93,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
                      else COMMIT_HELP_TEXT)
         self.view.settings().set("git_savvy.commit_view.help_text", help_text)
 
+        include_unstaged = self.view.settings().get("git_savvy.commit_view.include_unstaged", False)
         option_amend = self.view.settings().get("git_savvy.commit_view.amend")
         if option_amend:
             last_commit_message = self.git("log", "-1", "--pretty=%B").strip()
@@ -110,22 +111,23 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
                 initial_text += f.read()
 
         show_commit_diff = savvy_settings.get("show_commit_diff")
-        if show_commit_diff == "stat":
-            initial_text += self.git(
-                "diff",
-                "--stat",
-                "--no-color",
-                "--cached",
-                "HEAD^" if option_amend else None
-            )
-        elif show_commit_diff == "full" or show_commit_diff is True:
-            initial_text += self.git(
-                "diff",
-                "--no-color",
-                "--cached",
-                "HEAD^" if option_amend else None
-            )
+        git_args = [
+            "diff",
+            "--no-color"
+        ]
 
+        if show_commit_diff == "stat":
+            git_args.append("--stat")
+
+        if not include_unstaged:
+            git_args.append("--cached")
+
+        if option_amend:
+            git_args.append("HEAD^")
+        elif include_unstaged:
+            git_args.append("HEAD")
+
+        initial_text += self.git(*git_args) if show_commit_diff != 'false' else ''
         self.view.run_command("gs_replace_view_text", {
             "text": initial_text,
             "nuke_cursors": True
