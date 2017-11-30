@@ -1,0 +1,22 @@
+Changes since 2.16.5:
+
+  New Feature:
+   - Add mv command.
+
+  Fix:
+   - various small fixes
+   - Use correct argument for blame all commits
+   - fix ignoring file functionality
+   - don't show "OS error" in rebase view
+   - Commit view respect the include_unstaged
+
+  Enhancement:
+   - set the default for max_items_in_tags_dashboard to -1
+   - select commit as base in rebase dashboard
+
+  Contributors:
+   - Randy Lai
+   - David Arnold
+   - Eric Huss
+   - David Devlin
+   - Simon
