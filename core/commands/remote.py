@@ -33,7 +33,7 @@ class GsRemoteRemoveCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        show_remote_panel(self.on_remote_selection)
+        show_remote_panel(self.on_remote_selection, show_url=True)
 
     def on_remote_selection(self, remote):
         if not remote:
