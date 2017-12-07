@@ -113,10 +113,12 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         show_commit_diff = savvy_settings.get("show_commit_diff")
         git_args = [
             "diff",
+            "--patch",
             "--no-color"
         ]
 
-        if show_commit_diff == "stat":
+        show_diffstat = savvy_settings.get("show_diffstat")
+        if show_diffstat:
             git_args.append("--stat")
 
         if not include_unstaged:
@@ -127,7 +129,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         elif include_unstaged:
             git_args.append("HEAD")
 
-        initial_text += self.git(*git_args) if show_commit_diff != 'false' else ''
+        initial_text += self.git(*git_args) if show_commit_diff else ''
         self.view.run_command("gs_replace_view_text", {
             "text": initial_text,
             "nuke_cursors": True
