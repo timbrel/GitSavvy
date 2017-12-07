@@ -34,6 +34,10 @@ When invoking this palette command, Sublime will prompt you for a one-line commi
 
 Keep in mind that any other changes that have been staged will also be included in the commit.  This command is only available via the command palette.
 
+## `git: quick stage current file and amend`
+
+Similar to `git: amend previous commit`. This command also stages the current file before amending the commit.
+
 ## `git: quick stage current file and fixup`
 
 Similar to `git: fixup from stage`. This command also stages the current file before fixing up the commit.
