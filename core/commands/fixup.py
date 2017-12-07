@@ -13,7 +13,7 @@ class GsFixupFromStageCommand(GsLogCurrentBranchCommand):
          untracked_entries,
          conflict_entries) = self.sort_status_entries(self.get_status())
 
-        if len(unstaged_entries) + len(untracked_entries) + len(conflict_entries) > 0:
+        if len(unstaged_entries) + len(conflict_entries) > 0:
             sublime.message_dialog(
                 "Unable to perform rebase actions while repo is in unclean state."
             )
@@ -59,8 +59,8 @@ class GsFixupFromStageCommand(GsLogCurrentBranchCommand):
 
             self.rewrite_active_branch(base_commit, commit_chain)
         except Exception as e:
-            self.git("reset", "--hard", commit)
-            sublime.error_message("Error encountered. Cannot autosquash fixup.")
+            self.git("reset", "--soft", "HEAD^")
+            sublime.message_dialog("Error encountered. Cannot autosquash fixup.")
             raise e
         finally:
             util.view.refresh_gitsavvy(self.window.active_view())
