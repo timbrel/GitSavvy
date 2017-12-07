@@ -110,6 +110,10 @@
         "command": "gs_remote_remove"
     },
     {
+        "caption": "git: remote rename",
+        "command": "gs_remote_rename"
+    },
+    {
         "caption": "git: checkout",
         "command": "gs_checkout_branch"
     },
