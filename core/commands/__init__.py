@@ -32,3 +32,4 @@ from .git_add import *
 from .navigate import *
 from .rebase_interactive import *
 from .fixup import *
+from .mv import *

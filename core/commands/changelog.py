@@ -59,6 +59,11 @@ class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
             contributors.add(entry.author)
             if entry.long_hash in ancestor:
                 messages.append("{} (Merge {})".format(entry.summary, ancestor[entry.long_hash]))
+            elif entry.raw_body.find('BREAKING:') >= 0:
+                pos_start = entry.raw_body.find('BREAKING:')
+                key_length = len('BREAKING:')
+                indented_sub_msg = ('\n\t\t' + ' ' * key_length + ' ').join(entry.raw_body[pos_start:].split('\n'))
+                messages.append("{}\n\t\t{})".format(entry.summary, indented_sub_msg))
             else:
                 messages.append(entry.summary)
 
