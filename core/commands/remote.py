@@ -11,9 +11,12 @@ class GsRemoteAddCommand(WindowCommand, GitCommand):
     Add remotes
     """
 
-    def run(self):
+    def run(self, url=None):
         # Get remote name from user
-        self.window.show_input_panel("Remote URL", "", self.on_enter_remote, None, None)
+        if url:
+            self.on_enter_remote(url)
+        else:
+            self.window.show_input_panel("Remote URL", "", self.on_enter_remote, None, None)
 
     def on_enter_remote(self, input_url):
         self.url = input_url
