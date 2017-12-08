@@ -113,7 +113,9 @@ class PanelCommandMixin(PanelActionMixin):
         return ((selected_action[0], ) + args), kwargs
 
 
-def show_remote_panel(on_done, show_option_all=False, selected_remote=None, allow_direct=False):
+def show_remote_panel(
+    on_done, show_option_all=False, selected_remote=None, allow_direct=False,
+    show_url=False):
     """
     Show a quick panel with remotes. The callback `on_done(remote)` will
     be called when a remote is selected. If the panel is cancelled, `None`
@@ -123,22 +125,25 @@ def show_remote_panel(on_done, show_option_all=False, selected_remote=None, allo
     show_option_all: whether the option "All remotes" should be shown. `True` will
                 be passed to `on_done` if the all remotes option is selected.
     """
-    rp = RemotePanel(on_done, show_option_all, selected_remote, allow_direct)
+    rp = RemotePanel(on_done, show_option_all, selected_remote, allow_direct, show_url)
     rp.show()
     return rp
 
 
 class RemotePanel(GitCommand):
 
-    def __init__(self, on_done, show_option_all=False, selected_remote=None, allow_direct=False):
+    def __init__(self, on_done, show_option_all=False, selected_remote=None,
+            allow_direct=False, show_url=False):
         self.window = sublime.active_window()
         self.on_done = on_done
         self.selected_remote = selected_remote
         self.show_option_all = show_option_all
         self.allow_direct = allow_direct
+        self.show_url = show_url
 
     def show(self):
-        self.remotes = list(self.get_remotes().keys())
+        _remotes = self.get_remotes()
+        self.remotes = list(_remotes.keys())
 
         if not self.remotes:
             self.window.show_quick_panel(["There are no remotes available."], None)
@@ -160,7 +165,7 @@ class RemotePanel(GitCommand):
             pre_selected_index = 0
 
         self.window.show_quick_panel(
-            self.remotes,
+            [[remote, _remotes[remote]] for remote in self.remotes] if self.show_url else self.remotes,
             self.on_remote_selection,
             flags=sublime.MONOSPACE_FONT,
             selected_index=pre_selected_index
