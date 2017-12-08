@@ -631,7 +631,6 @@ class GsInlineDiffNavigateHunkCommand(GsNavigate):
     offset = 0
 
     def get_available_regions(self):
-        print(diff_view_hunks[self.view.id()])
         return [
             sublime.Region(
                 self.view.text_point(hunk.section_start, 0),
