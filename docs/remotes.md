@@ -12,11 +12,16 @@ Assuming you've recently fetched, this command allows you to create a local bran
 
 ## `git: pull`
 
+This command will pull current branch from the tracking branch. If the tracking branch is not set, you will be prompted. If the git config `pull.rebase` is set true, the command will be execulated with `--rebase`.
+
+
+## `git: pull from branch`
+
 When running this command, you will be prompted first for the remote you want to pull from, and then the branch.  If your local branch tracks a remote, that branch name will be pre-selected at the second prompt.
 
-## `git: pull with rebase`
+## `git: pull from branch with rebase`
 
-Like `git: pull`, but rebasing on the remote branch instead of merging.
+Like `git: pull from branch`, but rebasing on the remote branch instead of merging.
 
 **For the following commands you need to configure a username and password in git, so GitSavvy can use it.**
 
