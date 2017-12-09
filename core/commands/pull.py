@@ -12,16 +12,14 @@ class GsPullCommand(WindowCommand, GitCommand):
     Through a series of panels, allow the user to pull from a remote branch.
     """
 
-    def run(self, local_branch_name=None, rebase=False):
-        self.local_branch_name = local_branch_name
+    def run(self, rebase=False):
         self.rebase = rebase
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
         show_branch_panel(
             self.on_branch_selection,
-            ask_remote_first=True,
-            selected_branch=self.local_branch_name)
+            ask_remote_first=True)
 
     def on_branch_selection(self, branch):
         if not branch:
