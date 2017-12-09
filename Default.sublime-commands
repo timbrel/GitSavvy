@@ -141,6 +141,11 @@
         "command": "gs_pull"
     },
     {
+        "caption": "git: pull with rebase",
+        "command": "gs_pull",
+        "args": { "rebase": true }
+    },
+    {
         "caption": "git: pull from branch",
         "command": "gs_pull_from_branch"
     },

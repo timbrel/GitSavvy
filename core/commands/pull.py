@@ -23,14 +23,17 @@ class GsPull(WindowCommand, GsPullBase):
     Pull from remote tracking branch if it is found. Otherwise, use GsPullFromBranchCommand.
     """
 
-    def run(self):
+    def run(self, rebase=False):
+        self.rebase = rebase
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        # honor the `pull.rebase` config implictly
-        rebase = self.git("config", "pull.rebase", throw_on_stderr=False) or False
-        if rebase and rebase.strip() == "true":
-            rebase = True
+        rebase = self.rebase
+        if not rebase:
+            # honor the `pull.rebase` config implictly
+            pull_rebase = self.git("config", "pull.rebase", throw_on_stderr=False)
+            if pull_rebase and pull_rebase.strip() == "true":
+                rebase = True
         upstream = self.get_upstream_for_active_branch()
         if upstream:
             remote, remote_branch = upstream.split("/", 1)
