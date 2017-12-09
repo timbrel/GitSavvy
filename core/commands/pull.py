@@ -6,7 +6,19 @@ from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
 
 
-class GsPull(WindowCommand, GitCommand):
+class GsPullBase(GitCommand):
+
+    def do_pull(self, remote, remote_branch, rebase):
+        """
+        Perform `git pull remote branch`.
+        """
+        sublime.status_message("Starting pull...")
+        self.pull(remote=remote, remote_branch=remote_branch, rebase=rebase)
+        sublime.status_message("Pull complete.")
+        util.view.refresh_gitsavvy(self.window.active_view())
+
+
+class GsPull(WindowCommand, GsPullBase):
     """
     Pull from remote tracking branch if it is found. Otherwise, use GsPullFromBranchCommand.
     """
@@ -22,12 +34,12 @@ class GsPull(WindowCommand, GitCommand):
         upstream = self.get_upstream_for_active_branch()
         if upstream:
             remote, remote_branch = upstream.split("/", 1)
-            self.pull(remote=remote, remote_branch=remote_branch, rebase=rebase)
+            self.do_pull(remote=remote, remote_branch=remote_branch, rebase=rebase)
         else:
             self.window.run_command("gs_pull_from_branch", {"rebase": rebase})
 
 
-class GsPullFromBranchCommand(WindowCommand, GitCommand):
+class GsPullFromBranchCommand(WindowCommand, GsPullBase):
 
     """
     Through a series of panels, allow the user to pull from a remote branch.
@@ -49,13 +61,4 @@ class GsPullFromBranchCommand(WindowCommand, GitCommand):
         selected_remote, selected_remote_branch = branch.split("/", 1)
 
         sublime.set_timeout_async(
-            lambda: self.do_pull(selected_remote, selected_remote_branch))
-
-    def do_pull(self, remote, remote_branch):
-        """
-        Perform `git pull remote branch`.
-        """
-        sublime.status_message("Starting pull...")
-        self.pull(remote=remote, remote_branch=remote_branch, rebase=self.rebase)
-        sublime.status_message("Pull complete.")
-        util.view.refresh_gitsavvy(self.window.active_view())
+            lambda: self.do_pull(selected_remote, selected_remote_branch, self.rebase))
