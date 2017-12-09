@@ -15,6 +15,10 @@ Assuming you've recently fetched, this command allows you to create a local bran
 This command will pull current branch from the tracking branch. If the tracking branch is not set, you will be prompted. If the git config `pull.rebase` is set true, the command will be execulated with `--rebase`.
 
 
+## `git: pull with rebase`
+
+Like `git: pull`, but rebasing on the remote branch explictly.
+
 ## `git: pull from branch`
 
 When running this command, you will be prompted first for the remote you want to pull from, and then the branch.  If your local branch tracks a remote, that branch name will be pre-selected at the second prompt.
