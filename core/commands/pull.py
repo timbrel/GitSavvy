@@ -6,7 +6,28 @@ from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
 
 
-class GsPullCommand(WindowCommand, GitCommand):
+class GsPull(WindowCommand, GitCommand):
+    """
+    Pull from remote tracking branch if it is found. Otherwise, use GsPullFromBranchCommand.
+    """
+
+    def run(self):
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        # honor the `pull.rebase` config implictly
+        rebase = self.git("config", "pull.rebase", throw_on_stderr=False) or False
+        if rebase and rebase.strip() == "true":
+            rebase = True
+        upstream = self.get_upstream_for_active_branch()
+        if upstream:
+            remote, remote_branch = upstream.split("/", 1)
+            self.pull(remote=remote, remote_branch=remote_branch, rebase=rebase)
+        else:
+            self.window.run_command("gs_pull_from_branch", {"rebase": rebase})
+
+
+class GsPullFromBranchCommand(WindowCommand, GitCommand):
 
     """
     Through a series of panels, allow the user to pull from a remote branch.
