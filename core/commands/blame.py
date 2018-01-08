@@ -451,7 +451,7 @@ class GsBlameToggleSetting(BlameMixin, TextCommand):
         else:
             settings.set(setting_str, not settings.get(setting_str))
 
-        sublime.status_message("{} is now {}".format(setting, settings.get(setting_str)))
+        self.view.window().status_message("{} is now {}".format(setting, settings.get(setting_str)))
         self.view.settings().set("git_savvy.lineno", self.find_lineno())
         self.view.run_command("gs_blame_refresh")
 

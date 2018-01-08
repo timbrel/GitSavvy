@@ -12,9 +12,9 @@ class GsPullBase(GitCommand):
         """
         Perform `git pull remote branch`.
         """
-        sublime.status_message("Starting pull...")
+        self.view.window().status_message("Starting pull...")
         self.pull(remote=remote, remote_branch=remote_branch, rebase=rebase)
-        sublime.status_message("Pull complete.")
+        self.view.window().status_message("Pull complete.")
         util.view.refresh_gitsavvy(self.window.active_view())
 
 

@@ -29,10 +29,10 @@ class GsFetchCommand(WindowCommand, GitCommand):
 
     def do_fetch(self, remote=None):
         if remote is None:
-            sublime.status_message("Starting fetch all remotes...")
+            self.window.status_message("Starting fetch all remotes...")
         else:
-            sublime.status_message("Starting fetch {}...".format(remote))
+            self.window.status_message("Starting fetch {}...".format(remote))
 
         self.fetch(remote)
-        sublime.status_message("Fetch complete.")
+        self.window.status_message("Fetch complete.")
         util.view.refresh_gitsavvy(self.window.active_view())

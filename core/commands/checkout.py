@@ -36,7 +36,7 @@ class GsCheckoutBranchCommand(WindowCommand, GitCommand):
             return
 
         self.git("checkout", branch)
-        sublime.status_message("Checked out `{}` branch.".format(branch))
+        self.window.status_message("Checked out `{}` branch.".format(branch))
         util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
 
 
@@ -66,7 +66,7 @@ class GsCheckoutNewBranchCommand(WindowCommand, GitCommand):
             "checkout", "-b",
             branch_name,
             self.base_branch if self.base_branch else None)
-        sublime.status_message("Created and checked out `{}` branch.".format(branch_name))
+        self.window.status_message("Created and checked out `{}` branch.".format(branch_name))
         util.view.refresh_gitsavvy(
             self.window.active_view(),
             refresh_sidebar=True,
@@ -116,7 +116,7 @@ class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
             return None
 
         self.git("checkout", "-b", branch_name, "--track", self.remote_branch)
-        sublime.status_message(
+        self.window.status_message(
             "Checked out `{}` as local branch `{}`.".format(self.remote_branch, branch_name))
         util.view.refresh_gitsavvy(
             self.window.active_view(),
@@ -134,4 +134,4 @@ class GsCheckoutCurrentFileCommand(WindowCommand, GitCommand):
     def run(self):
         if self.file_path:
             self.checkout_file(self.file_path)
-            sublime.status_message("Successfully checked out {} from head.".format(self.file_path))
+            self.window.status_message("Successfully checked out {} from head.".format(self.file_path))

@@ -23,7 +23,7 @@ class GsIgnoreCommand(WindowCommand, GitCommand):
             file_path_or_pattern = self.file_path
 
         self.add_ignore(os.path.join("/", file_path_or_pattern))
-        sublime.status_message("Ignored file `{}`.".format(file_path_or_pattern))
+        self.window.status_message("Ignored file `{}`.".format(file_path_or_pattern))
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
@@ -39,7 +39,7 @@ class GsIgnorePatternCommand(WindowCommand, GitCommand):
 
     def on_done(self, ignore_pattern):
         self.add_ignore(ignore_pattern)
-        sublime.status_message("Ignored pattern `{}`.".format(ignore_pattern))
+        self.window.status_message("Ignored pattern `{}`.".format(ignore_pattern))
         util.view.refresh_gitsavvy(self.window.active_view())
 
 

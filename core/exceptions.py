@@ -9,7 +9,7 @@ class GitSavvyError(Exception):
             if kwargs.get('show_panel', True):
                 util.log.panel(msg)
             if kwargs.get('show_status', False):
-                sublime.status_message(msg)
+                sublime.active_window().status_message(msg)
             util.debug.log_error(msg)
 
 

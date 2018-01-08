@@ -293,19 +293,19 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
             "-D" if self.force else "-d",
             branch_name
             )
-        sublime.status_message("Deleted local branch.")
+        self.view.window().status_message("Deleted local branch.")
         util.view.refresh_gitsavvy(self.view)
 
     @util.actions.destructive(description="delete a remote branch")
     def delete_remote_branch(self, remote, branch_name):
-        sublime.status_message("Deleting remote branch...")
+        self.view.window().status_message("Deleting remote branch...")
         self.git(
             "push",
             "--force" if self.force else None,
             remote,
             ":"+branch_name
             )
-        sublime.status_message("Deleted remote branch.")
+        self.view.window().status_message("Deleted remote branch.")
         util.view.refresh_gitsavvy(self.view)
 
 
@@ -404,9 +404,9 @@ class GsBranchesPushAllCommand(TextCommand, GitCommand):
         # If the user pressed `esc` or otherwise cancelled.
         if not remote:
             return
-        sublime.status_message("Pushing all branches to `{}`...".format(remote))
+        self.view.window().status_message("Pushing all branches to `{}`...".format(remote))
         self.git("push", remote, "--all")
-        sublime.status_message("Push successful.")
+        self.view.window().status_message("Push successful.")
         util.view.refresh_gitsavvy(self.view)
 
 
@@ -455,7 +455,7 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
 
         branches_strings = self.interface.create_branches_strs(branches)
         self.merge(branches_strings)
-        sublime.status_message("Fetch and merge complete.")
+        self.view.window().status_message("Fetch and merge complete.")
         util.view.refresh_gitsavvy(self.view)
 
 

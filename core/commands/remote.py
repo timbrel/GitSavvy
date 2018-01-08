@@ -67,4 +67,4 @@ class GsRemoteRenameCommand(WindowCommand, GitCommand):
 
     def on_enter_name(self, new_name):
         self.git("remote", "rename", self.remote, new_name)
-        sublime.status_message("remote {} was renamed as {}.".format(self.remote, new_name))
+        self.window.status_message("remote {} was renamed as {}.".format(self.remote, new_name))

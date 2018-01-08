@@ -27,7 +27,7 @@ class PushBase(GitCommand):
             if not sublime.ok_cancel_dialog(CONFIRM_FORCE_PUSH):
                 return
 
-        sublime.status_message(START_PUSH_MESSAGE)
+        self.window.status_message(START_PUSH_MESSAGE)
         self.push(
             remote,
             branch,
@@ -35,7 +35,7 @@ class PushBase(GitCommand):
             force=force,
             remote_branch=remote_branch
             )
-        sublime.status_message(END_PUSH_MESSAGE)
+        self.window.status_message(END_PUSH_MESSAGE)
         util.view.refresh_gitsavvy(self.window.active_view())
 
 

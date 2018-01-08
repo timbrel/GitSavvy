@@ -235,7 +235,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
         for tag in tags_to_delete:
             self.git("tag", "-d", tag)
 
-        sublime.status_message(TAG_DELETE_MESSAGE)
+        self.view.window().status_message(TAG_DELETE_MESSAGE)
         util.view.refresh_gitsavvy(self.view)
 
     def delete_remote(self, interface):
@@ -254,7 +254,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
                     *("refs/tags/" + tag for tag in tags_to_delete)
                     )
 
-        sublime.status_message(TAG_DELETE_MESSAGE)
+        self.view.window().status_message(TAG_DELETE_MESSAGE)
         interface.remotes = None
         util.view.refresh_gitsavvy(self.view)
 
@@ -297,9 +297,9 @@ class GsTagsPushCommand(TextCommand, GitCommand):
         lines = interface.get_selection_lines_in_region("local_tags")
         tags_to_push = tuple(line[12:].strip() for line in lines if line)
 
-        sublime.status_message(START_PUSH_MESSAGE)
+        self.view.window().status_message(START_PUSH_MESSAGE)
         self.git("push", remote, *("refs/tags/" + tag for tag in tags_to_push))
-        sublime.status_message(END_PUSH_MESSAGE)
+        self.view.window().status_message(END_PUSH_MESSAGE)
 
         interface.remotes = None
         util.view.refresh_gitsavvy(self.view)
@@ -309,9 +309,9 @@ class GsTagsPushCommand(TextCommand, GitCommand):
         if remote_idx == -1:
             return
         remote = self.remotes[remote_idx]
-        sublime.status_message(START_PUSH_MESSAGE)
+        self.view.window().status_message(START_PUSH_MESSAGE)
         self.git("push", remote, "--tags")
-        sublime.status_message(END_PUSH_MESSAGE)
+        self.view.window().status_message(END_PUSH_MESSAGE)
 
         interface = ui.get_interface(self.view.id())
         if interface:

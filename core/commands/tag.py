@@ -124,7 +124,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
             return
 
         self.git("tag", self.tag_name, "-F", "-", stdin=message)
-        sublime.status_message(TAG_CREATE_MESSAGE.format(self.tag_name))
+        self.view.window().status_message(TAG_CREATE_MESSAGE.format(self.tag_name))
         util.view.refresh_gitsavvy(self.view)
 
 
