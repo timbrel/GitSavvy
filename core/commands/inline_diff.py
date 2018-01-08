@@ -6,7 +6,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from ...common import util
 from .navigate import GsNavigate
-from ...common.theme_generator import ThemeGenerator
+from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 from ..git_command import GitCommand
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 from ...common.util import debug
@@ -95,7 +95,10 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
         colors = sublime.load_settings("GitSavvy.sublime-settings").get("colors")
 
         original_color_scheme = target_view.settings().get("color_scheme")
-        themeGenerator = ThemeGenerator(original_color_scheme)
+        if original_color_scheme.endswith(".tmTheme"):
+            themeGenerator = XMLThemeGenerator(original_color_scheme)
+        else:
+            themeGenerator = JSONThemeGenerator(original_color_scheme)
         themeGenerator.add_scoped_style(
             "GitSavvy Added Line",
             "git_savvy.change.addition",
@@ -628,7 +631,6 @@ class GsInlineDiffNavigateHunkCommand(GsNavigate):
     offset = 0
 
     def get_available_regions(self):
-        print(diff_view_hunks[self.view.id()])
         return [
             sublime.Region(
                 self.view.text_point(hunk.section_start, 0),

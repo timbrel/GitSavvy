@@ -55,8 +55,11 @@
     },
     {
         "caption": "git: amend previous commit",
-        "command": "gs_commit",
-        "args": { "amend": true }
+        "command": "gs_amend"
+    },
+    {
+        "caption": "git: quick stage current file and amend",
+        "command": "gs_quick_stage_current_file_and_amend"
     },
     {
         "caption": "git: graph",
@@ -110,6 +113,10 @@
         "command": "gs_remote_remove"
     },
     {
+        "caption": "git: remote rename",
+        "command": "gs_remote_rename"
+    },
+    {
         "caption": "git: checkout",
         "command": "gs_checkout_branch"
     },
@@ -136,6 +143,15 @@
     {
         "caption": "git: pull with rebase",
         "command": "gs_pull",
+        "args": { "rebase": true }
+    },
+    {
+        "caption": "git: pull from branch",
+        "command": "gs_pull_from_branch"
+    },
+    {
+        "caption": "git: pull from branch with rebase",
+        "command": "gs_pull_from_branch",
         "args": { "rebase": true }
     },
     {

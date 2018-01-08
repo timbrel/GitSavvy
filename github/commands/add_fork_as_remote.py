@@ -1,5 +1,5 @@
 import sublime
-from sublime_plugin import TextCommand
+from sublime_plugin import WindowCommand
 from itertools import chain
 
 from ...core.git_command import GitCommand
@@ -8,14 +8,14 @@ from .. import github
 from .. import git_mixins
 
 
-class GsAddForkAsRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsAddForkAsRemoteCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin):
 
     """
     Get list of repos on GitHub associated with the active repo.  Display, and when
     selected, add selection as git remote.
     """
 
-    def run(self, edit):
+    def run(self):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
@@ -38,19 +38,23 @@ class GsAddForkAsRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemotes
 
         show_paginated_panel(
             forks,
-            self.on_select,
+            self.on_select_fork,
             limit=savvy_settings.get("github_per_page_max", 100),
-            format_item=self.format_item,
+            format_item=lambda fork: (fork["full_name"], fork),
             status_message="Getting forks...")
 
-    def format_item(self, fork):
-        return (fork["full_name"], fork)
-
-    def on_select(self, fork):
+    def on_select_fork(self, fork):
         if not fork:
             return
+        self.fork = fork
+        self.window.show_quick_panel([fork["clone_url"], fork["ssh_url"]], self.on_select_url)
 
-        url = fork["clone_url"]
-        owner = fork["owner"]["login"]
-        self.git("remote", "add", owner, url)
-        sublime.status_message("Added remote '{}'.".format(owner))
+    def on_select_url(self, index):
+        if index < 0:
+            return
+        elif index == 0:
+            url = self.fork["clone_url"]
+        elif index == 1:
+            url = self.fork["ssh_url"]
+
+        self.window.run_command("gs_remote_add", {"url": url})

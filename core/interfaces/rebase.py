@@ -491,9 +491,12 @@ class RewriteBase(TextCommand, GitCommand):
     def run(self, edit):
         self.interface = ui.get_interface(self.view.id())
 
-        _, _, changed_files = self.interface.get_branch_state()
+        (staged_entries,
+         unstaged_entries,
+         untracked_entries,
+         conflict_entries) = self.sort_status_entries(self.get_status())
 
-        if len(changed_files):
+        if len(unstaged_entries) + len(conflict_entries) > 0:
             sublime.message_dialog(
                 "Unable to manipulate commits while repo is in unclean state."
             )
