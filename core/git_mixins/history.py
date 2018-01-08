@@ -75,6 +75,8 @@ class HistoryMixin():
                 break
             for l in logs:
                 yield l
+            if len(logs) < limit:
+                break
             skip = skip + limit
 
     def reflog(self, limit=6000, skip=None, all_branches=False):
