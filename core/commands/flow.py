@@ -166,7 +166,7 @@ class GsGitFlowInitCommand(FlowCommon):
 
     def on_versiontag_selected(self, tag):
         self.configure_gitflow('prefix.versiontag', tag)
-        sublime.status_message("git flow initialized")
+        self.window.status_message("git flow initialized")
 
 
 class CompleteMixin(object):
@@ -179,7 +179,7 @@ class CompleteMixin(object):
         self.show_status_update()
 
     def show_status_update(self):
-        sublime.status_message("%s %sed, checked out %s" %
+        self.window.status_message("%s %sed, checked out %s" %
                                (self.flow.capitalize(), self.command,
                                 self.get_current_branch_name()))
 
@@ -243,7 +243,7 @@ class GenericPublishMixin(CompleteMixin, GenericSelectTargetBranch):
     command = 'publish'
 
     def show_status_update(self):
-        sublime.status_message("%s %sed" % (self.flow.capitalize(),
+        self.window.status_message("%s %sed" % (self.flow.capitalize(),
                                             self.command))
 
 

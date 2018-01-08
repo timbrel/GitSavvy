@@ -386,12 +386,12 @@ class PaginatedPanel:
 
     def show(self):
         if self.status_message:
-            sublime.status_message(self.status_message)
+            sublime.active_window().status_message(self.status_message)
         try:
             self.load_next_batch()
         finally:
             if self.status_message:
-                sublime.status_message("")
+                sublime.active_window().status_message("")
 
         if len(self.display_list) == self.limit:
             self.display_list.append(self.next_page_message)

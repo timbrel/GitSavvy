@@ -61,7 +61,7 @@ class GsShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemote
             status_message="Getting issues..."
             )
         if pp.is_empty():
-            sublime.status_message("No issues found.")
+            self.view.window().status_message("No issues found.")
 
     def format_item(self, issue):
         return (
@@ -111,7 +111,7 @@ class GsShowGithubContributorsCommand(TextCommand, GitCommand):
             status_message="Getting contributors..."
             )
         if pp.is_empty():
-            sublime.status_message("No contributors found.")
+            self.view.window().status_message("No contributors found.")
 
     def format_item(self, contributor):
         return (contributor["login"], contributor)

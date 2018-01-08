@@ -357,7 +357,7 @@ class GsStatusStageFileCommand(TextCommand, GitCommand):
         if file_paths:
             for fpath in file_paths:
                 self.stage_file(fpath, force=False)
-            sublime.status_message("Staged files successfully.")
+            self.view.window().status_message("Staged files successfully.")
             util.view.refresh_gitsavvy(self.view)
 
 
@@ -382,7 +382,7 @@ class GsStatusUnstageFileCommand(TextCommand, GitCommand):
         if file_paths:
             for fpath in file_paths:
                 self.unstage_file(fpath)
-            sublime.status_message("Unstaged files successfully.")
+            self.view.window().status_message("Unstaged files successfully.")
             util.view.refresh_gitsavvy(self.view)
 
 
@@ -398,7 +398,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
         self.discard_untracked(interface)
         self.discard_unstaged(interface)
         util.view.refresh_gitsavvy(self.view)
-        sublime.status_message("Successfully discarded changes.")
+        self.view.window().status_message("Successfully discarded changes.")
 
     def discard_untracked(self, interface):
         valid_ranges = interface.get_view_regions("untracked_files")
@@ -564,7 +564,7 @@ class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
         if file_paths:
             for fpath in file_paths:
                 self.add_ignore(os.path.join("/", fpath))
-            sublime.status_message("Successfully ignored files.")
+            self.view.window().status_message("Successfully ignored files.")
             util.view.refresh_gitsavvy(self.view)
 
 
@@ -625,7 +625,7 @@ class GsStatusStashCommand(TextCommand, GitCommand):
             return
 
         if len(ids) > 1:
-            sublime.status_message("You can only {} one stash at a time.".format(action))
+            self.view.window().status_message("You can only {} one stash at a time.".format(action))
             return
 
         if action == "apply":

@@ -80,7 +80,7 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
                 self.git("add", "--update", "--", selection.filename)
                 scope_of_action = "`{}`".format(selection.filename)
 
-            sublime.status_message("Successfully added `{}`.".format(
+            self.window.status_message("Successfully added `{}`.".format(
                 scope_of_action))
             util.view.refresh_gitsavvy(self.window.active_view())
 

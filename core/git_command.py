@@ -150,7 +150,7 @@ class GitCommand(StatusMixin,
                 )
 
         if throw_on_stderr and not p.returncode == 0:
-            sublime.status_message(
+            sublime.active_window().status_message(
                 "Failed to run `git {}`. See log for details.".format(command[1])
             )
 

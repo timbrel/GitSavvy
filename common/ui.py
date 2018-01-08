@@ -183,7 +183,7 @@ class Interface():
     def get_selection_line(self):
         selections = self.view.sel()
         if not selections or len(selections) > 1:
-            sublime.status_message("Please make a selection.")
+            self.view.window().status_message("Please make a selection.")
             return None
 
         selection = selections[0]

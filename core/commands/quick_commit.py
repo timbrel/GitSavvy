@@ -26,7 +26,7 @@ class GsQuickCommitCommand(WindowCommand, GitCommand):
 
     def on_done(self, commit_message):
         self.git("commit", "-q", "-F", "-", stdin=commit_message)
-        sublime.status_message("Committed successfully.")
+        self.window.status_message("Committed successfully.")
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
@@ -50,5 +50,5 @@ class GsQuickStageCurrentFileCommitCommand(WindowCommand, GitCommand):
     def on_done(self, commit_message):
         self.git("add", "--", self.file_path)
         self.git("commit", "-q", "-F", "-", stdin=commit_message)
-        sublime.status_message("Committed successfully.")
+        self.window.status_message("Committed successfully.")
         util.view.refresh_gitsavvy(self.window.active_view())

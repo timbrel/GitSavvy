@@ -200,7 +200,7 @@ class GsLogGraphActionCommand(GsLogActionCommand):
         self._file_path = self.file_path
 
         if not len(self.selections) == 1:
-            sublime.status_message("You can only do actions on one commit at a time.")
+            self.window.status_message("You can only do actions on one commit at a time.")
             return
 
         super().run(commit_hash=self._commit_hash, file_path=self._file_path)

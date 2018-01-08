@@ -24,9 +24,9 @@ class GsCreateForkCommand(PanelCommandMixin, WindowCommand, GitCommand,
 
     def run_async(self):
         base_remote = github.parse_remote(self.get_integrated_remote_url())
-        sublime.status_message(START_CREATE_MESSAGE.format(repo=base_remote))
+        self.window.status_message(START_CREATE_MESSAGE.format(repo=base_remote))
         result = github.create_fork(base_remote)
-        sublime.status_message(END_CREATE_MESSAGE)
+        self.window.status_message(END_CREATE_MESSAGE)
         util.debug.add_to_log(("github: fork result:\n{}".format(result)))
         self.window.show_quick_panel(
             ["Fork created, do you want to add it as remote?",

@@ -39,7 +39,7 @@ class GsPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMi
             status_message="Getting pull requests..."
             )
         if pp.is_empty():
-            sublime.status_message("No pull requests found.")
+            self.window.status_message("No pull requests found.")
 
     def format_item(self, issue):
         return (
@@ -96,7 +96,7 @@ class GsPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMi
             self.open_pr_in_browser()
 
     def fetch_and_checkout_pr(self, branch_name=None):
-        sublime.status_message("Fetching PR commit...")
+        self.window.status_message("Fetching PR commit...")
         self.git(
             "fetch",
             self.pr["head"]["repo"]["clone_url"],
@@ -104,25 +104,25 @@ class GsPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMi
             )
 
         if branch_name:
-            sublime.status_message("Creating local branch for PR...")
+            self.window.status_message("Creating local branch for PR...")
             self.git(
                 "branch",
                 branch_name,
                 self.pr["head"]["sha"]
                 )
 
-        sublime.status_message("Checking out PR...")
+        self.window.status_message("Checking out PR...")
         self.checkout_ref(branch_name or self.pr["head"]["sha"])
 
     def create_branch_for_pr(self, branch_name):
-        sublime.status_message("Fetching PR commit...")
+        self.window.status_message("Fetching PR commit...")
         self.git(
             "fetch",
             self.pr["head"]["repo"]["clone_url"],
             self.pr["head"]["ref"]
             )
 
-        sublime.status_message("Creating local branch for PR...")
+        self.window.status_message("Creating local branch for PR...")
         self.git(
             "branch",
             branch_name,
