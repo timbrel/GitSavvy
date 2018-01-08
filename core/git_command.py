@@ -98,6 +98,8 @@ class LoggingProcessWrapper(object):
         stderr_thread.start()
 
         self.process.wait()
+        stdout_thread.join()
+        stderr_thread.join()
 
         return self.stdout, self.stderr
 
@@ -153,7 +155,7 @@ class GitCommand(StatusMixin,
         if args[0] in close_panel_for:
             sublime.active_window().run_command("hide_panel", {"cancel": True})
 
-        live_panel_output = savvy_settings.get("live_panel_output") or False
+        live_panel_output = savvy_settings.get("live_panel_output", False)
 
         stdout, stderr = None, None
 
