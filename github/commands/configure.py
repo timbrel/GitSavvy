@@ -6,7 +6,7 @@ from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_branch_panel
 
 
-class GsConfigureGithubRemoteCommand(WindowCommand, GithubRemotesMixin, GitCommand):
+class GsGithubConfigureRemoteCommand(WindowCommand, GithubRemotesMixin, GitCommand):
 
     def run(self):
         sublime.set_timeout_async(self.run_async)

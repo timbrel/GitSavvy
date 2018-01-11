@@ -72,36 +72,36 @@
     },
     {
         "caption": "github: open file on remote",
-        "command": "gs_open_file_on_remote",
+        "command": "gs_github_open_file_on_remote",
         "args": { "preselect": true }
     },
     {
         "caption": "github: open issues",
-        "command": "gs_open_github_issues"
+        "command": "gs_github_open_issues"
     },
     {
         "caption": "github: open repo",
-        "command": "gs_open_github_repo"
+        "command": "gs_github_open_repo"
     },
     {
         "caption": "github: review pull request",
-        "command": "gs_pull_request"
+        "command": "gs_github_pull_request"
     },
     {
         "caption": "github: set remote for integration",
-        "command": "gs_configure_github_remote"
+        "command": "gs_github_configure_remote"
     },
     {
         "caption": "github: add fork as remote",
-        "command": "gs_add_fork_as_remote"
+        "command": "gs_github_add_fork_as_remote"
     },
     {
         "caption": "github: create fork",
-        "command": "gs_create_fork"
+        "command": "gs_github_create_fork"
     },
     {
         "caption": "github: create pull request",
-        "command": "gs_create_pull_request"
+        "command": "gs_github_create_pull_request"
     },
     {
         "caption": "git: remote add",
