@@ -19,8 +19,8 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
 
     """
     Display open merge requests on the base repo.  When a merge request is selected,
-    allow the user to 1) checkout the PR as detached HEAD, 2) checkout the PR as
-    a local branch, 3) view the PR's diff, or 4) open the PR in the browser.
+    allow the user to 1) checkout the MR as detached HEAD, 2) checkout the MR as
+    a local branch, 3) view the MR's diff, or 4) open the MR in the browser.
     """
 
     def run(self):
@@ -62,8 +62,7 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
 
         self.mr = mr
         self.window.show_quick_panel(
-            ["Checkout as detached HEAD.",
-             "Checkout as local branch.",
+            ["Checkout as local branch.",
              "Create local branch, but do not checkout.",
              "View diff.",
              "Open in browser."],
@@ -74,9 +73,11 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
         if idx == -1:
             return
 
-        if idx == 0:
-            self.fetch_and_checkout_mr()
-        elif idx == 1:
+        # NOTE: not sure if it's possible to checkout detached without
+        #       access to the source repository/branch
+        # if idx == 0:
+        #     self.fetch_and_checkout_mr()
+        elif idx == 0:
             self.window.show_input_panel(
                 "Enter branch name for MR {}:".format(self.mr["iid"]),
                 "merge-request-{}".format(self.mr["iid"]),
@@ -84,7 +85,7 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
                 None,
                 None
                 )
-        elif idx == 2:
+        elif idx == 1:
             self.window.show_input_panel(
                 "Enter branch name for MR {}:".format(self.mr["iid"]),
                 "merge-request-{}".format(self.mr["iid"]),
@@ -92,51 +93,32 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
                 None,
                 None
                 )
-        elif idx == 3:
+        elif idx == 2:
             self.view_diff_for_mr()
-        elif idx == 4:
+        elif idx == 3:
             self.open_mr_in_browser()
 
-    def fetch_and_checkout_mr(self, branch_name=None):
-        sublime.status_message("Fetching MR commit...")
-        self.git(
-            "fetch",
-            self.remote_url,
-            self.mr["source_branch"]
-            )
-
-        if branch_name:
-            sublime.status_message("Creating local branch for PR...")
-            self.git(
-                "branch",
-                branch_name,
-                self.mr["sha"]
-                )
-
-        sublime.status_message("Checking out PR...")
-        self.checkout_ref(branch_name or self.mr["sha"])
+    def fetch_and_checkout_mr(self, branch_name):
+        self.create_branch_for_mr(branch_name)
+        sublime.status_message("Checking out MR...")
+        self.checkout_ref(branch_name)
 
     def create_branch_for_mr(self, branch_name):
-        sublime.status_message("Fetching PR commit...")
+        sublime.status_message("Fetching MR commit...")
+        merge_request_ref = 'merge-requests/{0}/head:{1}'.format(
+            self.mr['iid'], branch_name)
         self.git(
             "fetch",
             self.remote_url,
-            self.mr["source_branch"]
-            )
-
-        sublime.status_message("Creating local branch for PR...")
-        self.git(
-            "branch",
-            branch_name,
-            self.mr["sha"]
+            merge_request_ref
             )
 
     def view_diff_for_mr(self):
         mr_changes = gitlab.get_merge_request_changes(
             self.base_remote, mr_id=self.mr['iid'])
 
-        diff_view = util.view.get_scratch_view(self, "pr_diff", read_only=True)
-        diff_view.set_name("PR #{}".format(self.mr["iid"]))
+        diff_view = util.view.get_scratch_view(self, "mr_diff", read_only=True)
+        diff_view.set_name("MR #{}".format(self.mr["iid"]))
         diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
 
         self.window.focus_view(diff_view)
