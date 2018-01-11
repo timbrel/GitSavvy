@@ -4,7 +4,7 @@ A simple HTTP interface for making GET, PUT and POST requests.
 
 import http.client
 import json
-from urllib.parse import urlparse, urlencode  # NOQA
+from urllib.parse import urlparse, urlencode, quote  # NOQA
 from base64 import b64encode
 from functools import partial
 from collections import namedtuple
@@ -23,6 +23,7 @@ def request(verb, host, port, path, payload=None, https=False, headers=None, aut
     headers["User-Agent"] = "GitSavvy Sublime Plug-in"
 
     if auth:
+        # use basic authentication
         username_password = "{}:{}".format(*auth).encode("ascii")
         headers["Authorization"] = "Basic {}".format(b64encode(username_password).decode("ascii"))
 

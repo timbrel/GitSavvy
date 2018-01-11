@@ -42,7 +42,8 @@
         and the API key as the value.
      */
     "api_tokens": {
-        // "github.com": "ADD YOUR TOKEN HERE"
+        // "github.com": "ADD YOUR GITHUB TOKEN HERE"
+        // "gitlab.com": "ADD YOUR GITLAB TOKEN HERE"
     },
 
     /*

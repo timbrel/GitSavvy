@@ -104,6 +104,14 @@
         "command": "gs_github_create_pull_request"
     },
     {
+        "caption": "gitlab: set remote for integration",
+        "command": "gs_gitlab_configure_remote"
+    },
+    {
+        "caption": "gitlab: review merge request",
+        "command": "gs_gitlab_merge_request"
+    },
+    {
         "caption": "git: remote add",
         "command": "gs_remote_add"
 
