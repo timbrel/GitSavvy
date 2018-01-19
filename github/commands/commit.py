@@ -14,7 +14,7 @@ from .. import git_mixins
 from ...common import util
 
 
-class GsGithubShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubShowIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
 
     """
     Display a panel of GitHub issues to either:
@@ -84,7 +84,7 @@ class GsGithubShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.Github
         self.view.run_command("gs_insert_text_at_cursor", {"text": str(issue["number"])})
 
 
-class GsGithubShowGithubContributorsCommand(TextCommand, GitCommand):
+class GsGithubShowContributorsCommand(TextCommand, GitCommand):
 
     """
     Query github for a list of people that have contributed to the GitHub project
