@@ -104,6 +104,19 @@
         "command": "gs_github_create_pull_request"
     },
     {
+        "caption": "gitlab: open file on remote",
+        "command": "gs_gitlab_open_file_on_remote",
+        "args": { "preselect": true }
+    },
+    {
+        "caption": "gitlab: open issues",
+        "command": "gs_gitlab_open_issues"
+    },
+    {
+        "caption": "gitlab: open repo",
+        "command": "gs_gitlab_open_repo"
+    },
+    {
         "caption": "gitlab: set remote for integration",
         "command": "gs_gitlab_configure_remote"
     },

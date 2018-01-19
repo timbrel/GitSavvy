@@ -5,6 +5,7 @@ GitLab methods that are functionally separate from anything Sublime-related.
 import re
 from collections import namedtuple
 from functools import partial, lru_cache
+from webbrowser import open as open_in_browser
 
 import sublime
 
@@ -77,6 +78,46 @@ def parse_remote(remote):
     token = api_tokens and api_tokens.get(fqdn, None) or None
 
     return GitLabRepo(url, fqdn, owner, repo, token)
+
+
+def open_file_in_browser(rel_path, remote, commit_hash, start_line=None, end_line=None):
+    """
+    Open the URL corresponding to the provided `rel_path` on `remote`.
+    """
+    github_repo = parse_remote(remote)
+    if not github_repo:
+        return None
+
+    line_numbers = "#L{}-{}".format(start_line, end_line) if start_line is not None else ""
+
+    url = "{repo_url}/blob/{commit_hash}/{path}{lines}".format(
+        repo_url=github_repo.url,
+        commit_hash=commit_hash,
+        path=rel_path,
+        lines=line_numbers
+    )
+
+    open_in_browser(url)
+
+
+def open_repo(remote):
+    """
+    Open the GitHub repo in a new browser window, given the specified remote.
+    """
+    github_repo = parse_remote(remote)
+    if not github_repo:
+        return None
+    open_in_browser(github_repo.url)
+
+
+def open_issues(remote):
+    """
+    Open the GitHub issues in a new browser window, given the specified remote.
+    """
+    github_repo = parse_remote(remote)
+    if not github_repo:
+        return None
+    open_in_browser("{}/issues".format(github_repo.url))
 
 
 def get_api_fqdn(gitlab_repo):
