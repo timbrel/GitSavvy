@@ -181,8 +181,8 @@
         "keys": ["ctrl+,"],
         "command": "edit_settings",
         "args": {
-            "base_file": "${packages}/GitSavvy/syntax/make-commit.sublime-settings",
-            "default": "// Override settings for make-commit syntax-specific.\n{\n\t$0\n}\n"
+            "base_file": "${packages}/GitSavvy/syntax/make_commit.sublime-settings",
+            "default": "// Override settings for make_commit syntax-specific.\n{\n\t$0\n}\n"
         },
         "context": [
             { "key": "selector", "operator": "equal", "operand": "git-savvy.make-commit" }
@@ -203,8 +203,8 @@
         "keys": ["ctrl+,"],
         "command": "edit_settings",
         "args": {
-            "base_file": "${packages}/GitSavvy/syntax/rebase-interactive.sublime-settings",
-            "default": "// Override settings for rebase-interactive syntax-specific.\n{\n\t$0\n}\n"
+            "base_file": "${packages}/GitSavvy/syntax/rebase_interactive.sublime-settings",
+            "default": "// Override settings for rebase_interactive syntax-specific.\n{\n\t$0\n}\n"
         },
         "context": [
             { "key": "selector", "operator": "equal", "operand": "git-savvy.rebase-interactive" }
