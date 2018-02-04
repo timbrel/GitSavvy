@@ -110,6 +110,23 @@
     "use_syntax_for_commit_editmsg": false,
 
     /*
+        https://git-scm.com/book/en/v2/Distributed-Git-Contributing-to-a-Project#Commit-Guidelines
+        Add a distinct style guide for the commit messages:
+
+        First line should be max 50 characters
+        Second line should be empty
+        Any subsequent lines should be max 80 characters
+
+        It will use 'invalid.deprecated.line-too-long.git-commit' scope by default.
+        The warning is will be outlined instead of fully marked
+    */
+    "pedantic_commit": true,
+    "pedantic_commit_ruler": true,
+    "pedantic_commit_first_line_length": 50,
+    "pedantic_commit_message_line_length": 80,
+    "pedantic_commit_warning_length": 20,
+
+    /*
         Change this to `false` to suppress the input in the panel output.
      */
     "show_input_in_output": true,
