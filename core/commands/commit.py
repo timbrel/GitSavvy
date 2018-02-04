@@ -2,6 +2,7 @@ import os
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import EventListener
 
 from ..git_command import GitCommand
 from ...common import util
@@ -137,6 +138,54 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
             "text": initial_text,
             "nuke_cursors": True
             })
+
+
+class GsPedanticEnforceEventListener(EventListener):
+    """
+    Set regions to worn for Pedantic commits
+    """
+
+    def on_selection_modified(self, view):
+        if 'make_commit' not in view.settings().get('syntax'):
+            return
+
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        if not savvy_settings.get('pedantic_commit'):
+            return
+
+        first_line_limit = 50
+        body_line_limit = 80
+        warrning_size = 20
+
+        on_first_line = False
+        on_message_body = False
+        comment_start_region = view.find_all('^#')
+
+        for region in view.sel():
+            first_line = view.rowcol(region.begin())[0]
+            last_line = view.rowcol(region.end())[0]
+
+            if on_first_line or first_line == 0:
+                on_first_line = True
+
+            if comment_start_region:
+                first_comment_line = view.rowcol(comment_start_region[0].begin())[0]
+                if first_line in range(2, first_comment_line) or last_line in range(2, first_comment_line):
+                    on_message_body = True
+            else:
+                if first_line >= 2 or last_line >= 2:
+                    on_message_body = True
+
+        view_setting = view.settings()
+        rulers = view_setting.get("rulers")
+        new_rulers = []
+        if on_first_line:
+            new_rulers.append(first_line_limit)
+
+        if on_message_body:
+            new_rulers.append(body_line_limit)
+
+        view_setting.set("rulers", new_rulers)
 
 
 class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
