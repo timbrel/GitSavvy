@@ -463,7 +463,7 @@
 
     {
         "keys": ["tab"],
-        "command": "gs_show_github_issues",
+        "command": "gs_github_show_issues",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true },
@@ -472,7 +472,7 @@
     },
     {
         "keys": ["tab"],
-        "command": "gs_show_github_issues",
+        "command": "gs_github_show_issues",
         "args": { "default_repo": false },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
@@ -482,7 +482,7 @@
     },
     {
         "keys": ["tab"],
-        "command": "gs_show_github_contributors",
+        "command": "gs_github_show_contributors",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true },

@@ -15,3 +15,7 @@ class GitSavvyError(Exception):
 
 class FailedGithubRequest(GitSavvyError):
     pass
+
+
+class FailedGitLabRequest(GitSavvyError):
+    pass

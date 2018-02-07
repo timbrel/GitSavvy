@@ -1,12 +1,12 @@
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..git_mixins import GithubRemotesMixin
+from ..git_mixins import GitLabRemotesMixin
 from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_branch_panel
 
 
-class GsGithubConfigureRemoteCommand(WindowCommand, GithubRemotesMixin, GitCommand):
+class GsGitlabConfigureRemoteCommand(WindowCommand, GitLabRemotesMixin, GitCommand):
 
     def run(self):
         sublime.set_timeout_async(self.run_async)
@@ -26,10 +26,10 @@ class GsGithubConfigureRemoteCommand(WindowCommand, GithubRemotesMixin, GitComma
 
         remote, remote_branch = branch.split("/", 1)
 
-        self.git("config", "--local", "--unset-all", "GitSavvy.ghRemote", throw_on_stderr=False)
-        self.git("config", "--local", "--add", "GitSavvy.ghRemote", remote)
+        self.git("config", "--local", "--unset-all", "GitSavvy.glRemote", throw_on_stderr=False)
+        self.git("config", "--local", "--add", "GitSavvy.glRemote", remote)
 
-        self.git("config", "--local", "--unset-all", "GitSavvy.ghBranch", throw_on_stderr=False)
-        self.git("config", "--local", "--add", "GitSavvy.ghBranch", remote_branch)
+        self.git("config", "--local", "--unset-all", "GitSavvy.glBranch", throw_on_stderr=False)
+        self.git("config", "--local", "--add", "GitSavvy.glBranch", remote_branch)
 
-        self.window.status_message("Successfully configured GitHub integration.")
+        sublime.status_message("Successfully configured GitLab integration.")

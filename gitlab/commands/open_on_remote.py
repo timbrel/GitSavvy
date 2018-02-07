@@ -2,11 +2,9 @@ import sublime
 from sublime_plugin import TextCommand
 
 from ...core.git_command import GitCommand
-from ..github import open_file_in_browser  # , open_repo, open_issues
-from ..github import open_repo
-from ..github import open_issues
+from ..gitlab import open_file_in_browser, open_repo, open_issues
 
-from .. import git_mixins
+from ..git_mixins import GitLabRemotesMixin
 from ...core.ui_mixins.quick_panel import show_remote_panel
 
 
@@ -14,7 +12,7 @@ EARLIER_COMMIT_PROMPT = ("The remote chosen may not contain the commit. "
                          "Open the file {} before?")
 
 
-class GsGithubOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGitlabOpenFileOnRemoteCommand(TextCommand, GitCommand, GitLabRemotesMixin):
 
     """
     Open a new browser window to the web-version of the currently opened
@@ -23,7 +21,7 @@ class GsGithubOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.Github
     integrated remote, open browser directly, if not, display a list to remotes
     to choose from.
 
-    At present, this only supports github.com and GitHub enterprise.
+    At present, this only supports gitlab.com and hosted servers.
     """
 
     def run(self, edit, remote=None, preselect=False, fpath=None):
@@ -37,7 +35,7 @@ class GsGithubOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.Github
         self.remotes = self.get_remotes()
 
         if not remote:
-            remote = self.guess_github_remote()
+            remote = self.guess_gitlab_remote()
 
         if remote:
             self.open_file_on_remote(remote)
@@ -104,10 +102,10 @@ class GsGithubOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.Github
             )
 
 
-class GsGithubOpenRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGitlabOpenRepoCommand(TextCommand, GitCommand, GitLabRemotesMixin):
 
     """
-    Open a new browser window to the GitHub remote repository.
+    Open a new browser window to the GitLab remote repository.
     """
 
     def run(self, edit, remote=None):
@@ -117,7 +115,7 @@ class GsGithubOpenRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesM
         self.remotes = self.get_remotes()
 
         if not remote:
-            remote = self.guess_github_remote()
+            remote = self.guess_gitlab_remote()
 
         if remote:
             open_repo(self.remotes[remote])
@@ -130,10 +128,10 @@ class GsGithubOpenRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesM
         open_repo(self.remotes[remote])
 
 
-class GsGithubOpenIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGitlabOpenIssuesCommand(TextCommand, GitCommand, GitLabRemotesMixin):
 
     """
-    Open a new browser window to the GitHub remote repository's issues page.
+    Open a new browser window to the GitLab remote repository's issues page.
     """
 
     def run(self, edit):

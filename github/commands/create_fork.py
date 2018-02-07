@@ -10,11 +10,11 @@ START_CREATE_MESSAGE = "Creating fork of {repo} ..."
 END_CREATE_MESSAGE = "Fork created successfully."
 
 
-__all__ = ['GsCreateForkCommand']
+__all__ = ['GsGithubCreateForkCommand']
 
 
-class GsCreateForkCommand(PanelCommandMixin, WindowCommand, GitCommand,
-                          git_mixins.GithubRemotesMixin):
+class GsGithubCreateForkCommand(PanelCommandMixin, WindowCommand, GitCommand,
+                                git_mixins.GithubRemotesMixin):
     """
     Get list of repos on GitHub associated with the active repo.  Display, and when
     selected, add selection as git remote.

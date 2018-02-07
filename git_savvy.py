@@ -38,3 +38,4 @@ else:
     from .core.commands import *
     from .core.interfaces import *
     from .github.commands import *
+    from .gitlab.commands import *
