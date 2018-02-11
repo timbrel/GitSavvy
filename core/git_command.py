@@ -98,8 +98,14 @@ class LoggingProcessWrapper(object):
         stderr_thread.start()
 
         self.process.wait()
-        stdout_thread.join()
-        stderr_thread.join()
+
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        timeout = savvy_settings.get("live_panel_output_timeout", 10000)
+        # 10s timeout default
+        max_run_time = time.monotonic() - timeout
+
+        stdout_thread.join(self.process._remaining_time(max_run_time))
+        stderr_thread.join(self.process._remaining_time(max_run_time))
 
         return self.stdout, self.stderr
 

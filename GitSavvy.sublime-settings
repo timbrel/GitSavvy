@@ -110,6 +110,14 @@
     "live_panel_output": false,
 
     /*
+        Command will exit if on the timeout if the timeout reached.
+        You may want to increase this if you have a slow disk or a very
+        large repository. If you think there is something GitSavvy can do
+        to prevent this long running git command, open an issue.
+    */
+    "live_panel_output_timeout": 10000,
+
+    /*
         Use the Sublime configured syntax for COMMIT_EDITMSG rather than
         the custom bundled syntax that comes with GitSavvy.
     */
