@@ -2,6 +2,7 @@ import os
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import EventListener
 
 from ..git_command import GitCommand
 from ...common import util
@@ -137,6 +138,98 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
             "text": initial_text,
             "nuke_cursors": True
             })
+
+
+class GsPedanticEnforceEventListener(EventListener):
+    """
+    Set regions to worn for Pedantic commits
+    """
+
+    def on_selection_modified(self, view):
+        if 'make_commit' not in view.settings().get('syntax'):
+            return
+
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        if not savvy_settings.get('pedantic_commit'):
+            return
+
+        self.view = view
+        self.first_line_limit = savvy_settings.get('pedantic_commit_first_line_length')
+        self.body_line_limit = savvy_settings.get('pedantic_commit_message_line_length')
+        self.warning_length = savvy_settings.get('pedantic_commit_warning_length')
+
+        self.comment_start_region = self.view.find_all('^#')
+        self.first_comment_line = None
+        if self.comment_start_region:
+            self.first_comment_line = self.view.rowcol(self.comment_start_region[0].begin())[0]
+
+        if savvy_settings.get('pedantic_commit_ruler'):
+            self.view.settings().set("rulers", self.find_rulers())
+
+        waring, illegal = self.find_too_long_lines()
+        self.view.add_regions('make_commit_warning', waring, scope='invalid.deprecated.line-too-long.git-commit', flags=sublime.DRAW_NO_FILL)
+        self.view.add_regions('make_commit_illegal', illegal, scope='invalid.deprecated.line-too-long.git-commit')
+
+    def find_rulers(self):
+        on_first_line = False
+        on_message_body = False
+
+        for region in self.view.sel():
+            first_line = self.view.rowcol(region.begin())[0]
+            last_line = self.view.rowcol(region.end())[0]
+
+            if on_first_line or first_line == 0:
+                on_first_line = True
+
+            if self.first_comment_line:
+                if first_line in range(2, self.first_comment_line) or last_line in range(2, self.first_comment_line):
+                    on_message_body = True
+            else:
+                if first_line >= 2 or last_line >= 2:
+                    on_message_body = True
+
+        new_rulers = []
+        if on_first_line:
+            new_rulers.append(self.first_line_limit)
+
+        if on_message_body:
+            new_rulers.append(self.body_line_limit)
+
+        return new_rulers
+
+    def find_too_long_lines(self):
+        warning_lines = []
+        illegal_lines = []
+
+        first_line = self.view.lines(sublime.Region(0, 0))[0]
+        length = first_line.b - first_line.a
+        if length > self.first_line_limit:
+            warning_lines.append(sublime.Region(
+                first_line.a + self.first_line_limit,
+                min(first_line.a + self.first_line_limit + self.warning_length, first_line.b)))
+
+        if length > self.first_line_limit + self.warning_length:
+            illegal_lines.append(sublime.Region(first_line.a + self.first_line_limit + self.warning_length, first_line.b))
+
+        # Add second line to illegal
+        illegal_lines.append(sublime.Region(self.view.text_point(1, 0), self.view.text_point(2, 0) - 1))
+
+        if self.first_comment_line:
+            body_region = sublime.Region(self.view.text_point(2, 0), self.comment_start_region[0].begin())
+        else:
+            body_region = sublime.Region(self.view.text_point(2, 0), self.view.size())
+
+        for line in self.view.lines(body_region):
+            length = line.b - line.a
+            if length > self.body_line_limit:
+                warning_lines.append(sublime.Region(
+                    line.a + self.body_line_limit,
+                    min(line.a + self.body_line_limit + self.warning_length, line.b)))
+
+            if self.body_line_limit + self.warning_length < length:
+                illegal_lines.append(sublime.Region(line.a + self.body_line_limit + self.warning_length, line.b))
+
+        return [warning_lines, illegal_lines]
 
 
 class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
