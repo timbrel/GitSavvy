@@ -8,17 +8,8 @@
             ]
         }
     ],
-    "SublimeLinter":{
-        "linters":{
-            "pep8": {
-                "ignore": "E401",
-                // E401 multiple imports on one line
-                "max-line-length": 120
-            }
-        }
-    },
     "settings": {
-        "rulers": [100],
+        "rulers": [100, 120],
         "tab_size": 4,
         "translate_tabs_to_spaces": true
     },
