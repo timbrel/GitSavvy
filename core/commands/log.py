@@ -77,11 +77,16 @@ class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
             author_text = "{} <{}>".format(author_name, author_email)
             self._entries.append((commit_count, author_name, author_email, author_text))
 
+        try:
+            selected_index = (list(line[2] for line in self._entries)).index(email)
+        except ValueError:
+            selected_index = 0
+
         self.window.show_quick_panel(
             [entry[3] for entry in self._entries],
             lambda index: self.on_author_selection(index, **kwargs),
             flags=sublime.MONOSPACE_FONT,
-            selected_index=(list(line[2] for line in self._entries)).index(email)
+            selected_index=selected_index
         )
 
     def on_author_selection(self, index, **kwargs):
