@@ -22,7 +22,7 @@ class GsQuickCommitCommand(WindowCommand, GitCommand):
             lambda msg: sublime.set_timeout_async(lambda: self.on_done(msg), 0),
             None,
             None
-            )
+        )
 
     def on_done(self, commit_message):
         self.git("commit", "-q", "-F", "-", stdin=commit_message)
@@ -45,7 +45,7 @@ class GsQuickStageCurrentFileCommitCommand(WindowCommand, GitCommand):
             lambda msg: sublime.set_timeout_async(lambda: self.on_done(msg), 0),
             None,
             None
-            )
+        )
 
     def on_done(self, commit_message):
         self.git("add", "--", self.file_path)

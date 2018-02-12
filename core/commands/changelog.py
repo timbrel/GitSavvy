@@ -74,21 +74,21 @@ class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
             GROUP_TEMPLATE.format(
                 group=group_name,
                 messages="\n".join("   - " + message for message in messages)
-                )
-            for group_name, messages in msg_groups.items()
             )
+            for group_name, messages in msg_groups.items()
+        )
 
         changelog = CHANGELOG_TEMPLATE.format(
             ref=ref,
             changes="".join(group_strings)
-            )
+        )
 
         view = self.window.new_file()
         view.set_scratch(True)
         view.run_command("gs_replace_view_text", {
             "text": changelog,
             "nuke_cursors": True
-            })
+        })
 
     @staticmethod
     def get_message_groups(messages):

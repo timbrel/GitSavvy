@@ -9,7 +9,8 @@ from ..ui_mixins.quick_panel import show_branch_panel
 
 NEW_BRANCH_PROMPT = "Branch name:"
 NEW_BRANCH_INVALID = "`{}` is a invalid branch name.\nRead more on $(man git-check-ref-format)"
-_is_valid_branch_name = re.compile(r"^(?!\.|.*\.\..*|.*@.*|\/)[a-zA-Z0-9\-\_\/\.\u263a-\U0001f645]+(?<!\.lock)(?<!\/)(?<!\.)$")
+_is_valid_branch_name = re.compile(
+    r"^(?!\.|.*\.\..*|.*@.*|\/)[a-zA-Z0-9\-\_\/\.\u263a-\U0001f645]+(?<!\.lock)(?<!\/)(?<!\.)$")
 
 
 class GsCheckoutBranchCommand(WindowCommand, GitCommand):

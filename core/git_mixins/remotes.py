@@ -22,7 +22,7 @@ class RemotesMixin():
             "--prune" if prune else None,
             remote if remote else "--all",
             branch if not remote_branch else "{}:{}".format(remote_branch, branch)
-            )
+        )
 
     def list_remote_branches(self, remote=None):
         """
@@ -32,7 +32,7 @@ class RemotesMixin():
         branches = [branch.strip() for branch in stdout.split("\n") if branch]
 
         if remote:
-            branches = [branch for branch in branches if branch.startswith(remote+"/")]
+            branches = [branch for branch in branches if branch.startswith(remote + "/")]
 
         # Clean up "origin/HEAD -> origin/master" to "origin/master" if present.
         for idx, branch_name in enumerate(branches):
@@ -52,7 +52,7 @@ class RemotesMixin():
             "--rebase" if rebase else None,
             remote if remote else None,
             remote_branch if remote and remote_branch else None
-            )
+        )
 
     def push(self, remote=None, branch=None, force=False, remote_branch=None, set_upstream=False):
         """
@@ -65,7 +65,7 @@ class RemotesMixin():
             "--set-upstream" if set_upstream else None,
             remote,
             branch if not remote_branch else "{}:{}".format(branch, remote_branch)
-            )
+        )
 
     def project_name_from_url(self, input_url):
         # URLs can come in one of following formats format

@@ -116,11 +116,9 @@ class BranchInterface(ui.Interface, GitCommand):
                 tracking=(" ({branch}{status})".format(
                     branch=branch.tracking,
                     status=", " + branch.tracking_status if branch.tracking_status else ""
-                    )
-                    if branch.tracking else "")
-                )
-            for branch in branches
-            )
+                ) if branch.tracking else "")
+            ) for branch in branches
+        )
 
     @ui.partial("remotes")
     def render_remotes(self):
@@ -162,7 +160,7 @@ class BranchInterface(ui.Interface, GitCommand):
                 return self.template_remote.format(
                     remote_name=remote_name,
                     remote_branch_list=self.render_branch_list(branches=branches)
-                    )
+                )
 
             render_fns.append(render)
 
@@ -292,7 +290,7 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
             "branch",
             "-D" if self.force else "-d",
             branch_name
-            )
+        )
         self.view.window().status_message("Deleted local branch.")
         util.view.refresh_gitsavvy(self.view)
 
@@ -303,8 +301,8 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
             "push",
             "--force" if self.force else None,
             remote,
-            ":"+branch_name
-            )
+            ":" + branch_name
+        )
         self.view.window().status_message("Deleted remote branch.")
         util.view.refresh_gitsavvy(self.view)
 
@@ -331,7 +329,7 @@ class GsBranchesRenameCommand(TextCommand, GitCommand):
             self.on_entered_name,
             None,
             None
-            )
+        )
 
     def on_entered_name(self, new_name):
         self.git("branch", "-m", self.branch_name, new_name)
@@ -567,7 +565,7 @@ class GsBranchesEditBranchDescriptionCommand(TextCommand, GitCommand):
             "config",
             "branch.{}.description".format(self.branch_name),
             throw_on_stderr=False
-            ).strip(" \n")
+        ).strip(" \n")
 
         self.view.window().show_input_panel(
             "Enter new description (for {}):".format(self.branch_name),
@@ -575,7 +573,7 @@ class GsBranchesEditBranchDescriptionCommand(TextCommand, GitCommand):
             self.on_entered_description,
             None,
             None
-            )
+        )
 
     def on_entered_description(self, new_description):
         unset = None if new_description else "--unset"
@@ -585,7 +583,7 @@ class GsBranchesEditBranchDescriptionCommand(TextCommand, GitCommand):
             unset,
             "branch.{}.description".format(self.branch_name),
             new_description.strip("\n")
-            )
+        )
         util.view.refresh_gitsavvy(self.view)
 
 

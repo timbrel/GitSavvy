@@ -57,7 +57,7 @@ class GsAssumeUnchangedCommand(WindowCommand, GitCommand):
         self._unstaged_files = tuple(
             f.path for f in self.get_status()
             if f.working_status in UNSTAGED_WORKING_STATUSES
-            )
+        )
 
         self.window.show_quick_panel(
             self._unstaged_files,
@@ -89,7 +89,7 @@ class GsRestoreAssumedUnchangedCommand(WindowCommand, GitCommand):
         all_file_lines = (
             line.split(" ", 1)
             for line in self.git("ls-files", "-v").split("\n")
-            )
+        )
 
         self._ignored_files = tuple(f[1] for f in all_file_lines if f[0] == "h")
 

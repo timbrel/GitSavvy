@@ -137,7 +137,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         self.view.run_command("gs_replace_view_text", {
             "text": initial_text,
             "nuke_cursors": True
-            })
+        })
 
 
 class GsPedanticEnforceEventListener(EventListener):
@@ -167,8 +167,12 @@ class GsPedanticEnforceEventListener(EventListener):
             self.view.settings().set("rulers", self.find_rulers())
 
         waring, illegal = self.find_too_long_lines()
-        self.view.add_regions('make_commit_warning', waring, scope='invalid.deprecated.line-too-long.git-commit', flags=sublime.DRAW_NO_FILL)
-        self.view.add_regions('make_commit_illegal', illegal, scope='invalid.deprecated.line-too-long.git-commit')
+        self.view.add_regions(
+            'make_commit_warning', waring,
+            scope='invalid.deprecated.line-too-long.git-commit', flags=sublime.DRAW_NO_FILL)
+        self.view.add_regions(
+            'make_commit_illegal', illegal,
+            scope='invalid.deprecated.line-too-long.git-commit')
 
     def find_rulers(self):
         on_first_line = False
@@ -209,7 +213,8 @@ class GsPedanticEnforceEventListener(EventListener):
                 min(first_line.a + self.first_line_limit + self.warning_length, first_line.b)))
 
         if length > self.first_line_limit + self.warning_length:
-            illegal_lines.append(sublime.Region(first_line.a + self.first_line_limit + self.warning_length, first_line.b))
+            illegal_lines.append(
+                sublime.Region(first_line.a + self.first_line_limit + self.warning_length, first_line.b))
 
         # Add second line to illegal
         illegal_lines.append(sublime.Region(self.view.text_point(1, 0), self.view.text_point(2, 0) - 1))
@@ -261,7 +266,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
             "-F",
             "-",
             stdin=commit_message
-            )
+        )
 
         # ensure view is not already closed (i.e.: when "commit_on_close" enabled)
         is_commit_view = self.view.settings().get("git_savvy.commit_view")
@@ -294,7 +299,7 @@ class GsCommitViewSignCommand(TextCommand, GitCommand):
         self.view.run_command("gs_replace_view_text", {
             "text": help_text.join(view_text_list),
             "nuke_cursors": True
-            })
+        })
 
 
 class GsCommitViewCloseCommand(TextCommand, GitCommand):

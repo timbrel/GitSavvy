@@ -10,7 +10,7 @@ LogEntry = namedtuple("LogEntry", (
     "author",
     "email",
     "datetime"
-    ))
+))
 
 
 RefLogEntry = namedtuple("RefLogEntry", (
@@ -21,7 +21,7 @@ RefLogEntry = namedtuple("RefLogEntry", (
     "reflog_selector",
     "author",
     "datetime"
-    ))
+))
 
 
 class HistoryMixin():
@@ -123,7 +123,7 @@ class HistoryMixin():
         """
         ret = self.log(
             start_end=("{0}~1".format(merge_hash), merge_hash), topo_order=True, reverse=True)
-        return ret[0:(len(ret)-1)]
+        return ret[0:(len(ret) - 1)]
 
     def commits_of_merge(self, merge_hash):
         """
@@ -158,10 +158,10 @@ class HistoryMixin():
 
         for i in range(0, len(lines), 2):
             if lines[i].split(" ")[0][:commit_len] == commit_hash:
-                if lines[i+1][0] == 'R':
-                    return lines[i+1].split("\t")[2]
+                if lines[i + 1][0] == 'R':
+                    return lines[i + 1].split("\t")[2]
                 else:
-                    return lines[i+1].split("\t")[1]
+                    return lines[i + 1].split("\t")[1]
 
         # If the commit hash is not for this file.
         return filename

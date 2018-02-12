@@ -11,7 +11,7 @@ class StageUnstageMixin():
             "--all",
             "--",
             fpath
-            )
+        )
 
     def unstage_file(self, fpath):
         """

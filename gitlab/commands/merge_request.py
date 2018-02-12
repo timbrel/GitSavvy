@@ -38,7 +38,7 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
             limit=savvy_settings.get("gitlab_per_page_max", 100),
             format_item=self.format_item,
             status_message="Getting merge requests..."
-            )
+        )
         if pp.is_empty():
             sublime.status_message("No merge requests found.")
 
@@ -51,7 +51,7 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
                     user=mr["author"]["username"],
                     time_stamp=util.dates.fuzzy(mr["created_at"],
                                                 date_format="%Y-%m-%dT%H:%M:%S.%fZ")
-                    )
+                )
             ],
             mr
         )
@@ -67,7 +67,7 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
              "View diff.",
              "Open in browser."],
             self.on_select_action
-            )
+        )
 
     def on_select_action(self, idx):
         if idx == -1:
@@ -84,7 +84,7 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
                 self.fetch_and_checkout_mr,
                 None,
                 None
-                )
+            )
         elif idx == 1:
             self.window.show_input_panel(
                 "Enter branch name for MR {}:".format(self.mr["iid"]),
@@ -92,7 +92,7 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
                 self.create_branch_for_mr,
                 None,
                 None
-                )
+            )
         elif idx == 2:
             self.view_diff_for_mr()
         elif idx == 3:
@@ -111,7 +111,7 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
             "fetch",
             self.remote_url,
             merge_request_ref
-            )
+        )
 
     def view_diff_for_mr(self):
         mr_changes = gitlab.get_merge_request_changes(

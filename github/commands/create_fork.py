@@ -33,7 +33,7 @@ class GsGithubCreateForkCommand(PanelCommandMixin, WindowCommand, GitCommand,
              "Yes",
              "No"],
             self.on_select_action
-            )
+        )
 
     def on_select_action(self, idx):
         if idx != 1:

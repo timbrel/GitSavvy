@@ -37,7 +37,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
             limit=savvy_settings.get("github_per_page_max", 100),
             format_item=self.format_item,
             status_message="Getting pull requests..."
-            )
+        )
         if pp.is_empty():
             self.window.status_message("No pull requests found.")
 
@@ -49,7 +49,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
                     user=issue["user"]["login"],
                     time_stamp=util.dates.fuzzy(issue["created_at"],
                                                 date_format="%Y-%m-%dT%H:%M:%SZ")
-                    )
+                )
             ],
             issue
         )
@@ -66,7 +66,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
              "View diff.",
              "Open in browser."],
             self.on_select_action
-            )
+        )
 
     def on_select_action(self, idx):
         if idx == -1:
@@ -81,7 +81,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
                 self.fetch_and_checkout_pr,
                 None,
                 None
-                )
+            )
         elif idx == 2:
             self.window.show_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
@@ -89,7 +89,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
                 self.create_branch_for_pr,
                 None,
                 None
-                )
+            )
         elif idx == 3:
             self.view_diff_for_pr()
         elif idx == 4:
@@ -101,7 +101,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
             "fetch",
             self.pr["head"]["repo"]["clone_url"],
             self.pr["head"]["ref"]
-            )
+        )
 
         if branch_name:
             self.window.status_message("Creating local branch for PR...")
@@ -109,7 +109,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
                 "branch",
                 branch_name,
                 self.pr["head"]["sha"]
-                )
+            )
 
         self.window.status_message("Checking out PR...")
         self.checkout_ref(branch_name or self.pr["head"]["sha"])
@@ -120,14 +120,14 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
             "fetch",
             self.pr["head"]["repo"]["clone_url"],
             self.pr["head"]["ref"]
-            )
+        )
 
         self.window.status_message("Creating local branch for PR...")
         self.git(
             "branch",
             branch_name,
             self.pr["head"]["sha"]
-            )
+        )
 
     def view_diff_for_pr(self):
         response = interwebs.get_url(self.pr["diff_url"])
@@ -140,7 +140,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         diff_view.sel().clear()
         diff_view.run_command("gs_replace_view_text", {
             "text": response.payload.decode("utf-8")
-            })
+        })
 
     def open_pr_in_browser(self):
         open_in_browser(self.pr["html_url"])

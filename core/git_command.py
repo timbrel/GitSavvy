@@ -271,7 +271,7 @@ class GitCommand(StatusMixin,
             "--show-toplevel",
             working_dir=folder,
             throw_on_stderr=throw_on_stderr
-            )
+        )
         repo = stdout.strip()
         return os.path.realpath(repo) if repo else None
 
