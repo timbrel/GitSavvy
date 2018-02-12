@@ -150,7 +150,7 @@ class StatusInterface(ui.Interface, GitCommand):
         return self.template_staged.format("\n".join(
             "  {} {}".format("-" if f.index_status == "D" else " ", get_path(f))
             for f in self.staged_entries
-            ))
+        ))
 
     @ui.partial("unstaged_files")
     def render_unstaged_files(self):
@@ -159,7 +159,7 @@ class StatusInterface(ui.Interface, GitCommand):
         return self.template_unstaged.format("\n".join(
             "  {} {}".format("-" if f.working_status == "D" else " ", f.path)
             for f in self.unstaged_entries
-            ))
+        ))
 
     @ui.partial("untracked_files")
     def render_untracked_files(self):
@@ -613,7 +613,7 @@ class GsStatusStashCommand(TextCommand, GitCommand):
             self.view.sel(),
             valid_ranges=interface.get_view_regions("stashes")
         )
-        ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
+        ids = tuple(line[line.find("(") + 1:line.find(")")] for line in lines if line)
 
         if len(ids) == 0:
             # happens if command get called when none of the cursors

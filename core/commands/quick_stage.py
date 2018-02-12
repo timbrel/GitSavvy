@@ -90,7 +90,7 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
             menu_entries,
             on_selection,
             flags=sublime.MONOSPACE_FONT
-            )
+        )
 
     def get_menu_options(self):
         """

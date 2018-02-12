@@ -12,7 +12,7 @@ IndexedEntry = namedtuple("IndexEntry", (
     "dst_hash",
     "status",
     "status_score"
-    ))
+))
 IndexedEntry.__new__.__defaults__ = (None, ) * 8
 
 

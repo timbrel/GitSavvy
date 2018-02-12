@@ -61,4 +61,4 @@ class GsViewGitLog(WindowCommand):
         view.run_command("gs_replace_view_text", {
             "text": log,
             "nuke_cursors": True
-            })
+        })

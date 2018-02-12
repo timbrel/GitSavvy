@@ -278,15 +278,15 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
                     region_start = line.begin()
                 elif region_type != line_type:
                     region_end = line.begin()
-                    l = add_regions if region_type == "+" else remove_regions
-                    l.append(sublime.Region(region_start, region_end))
+                    list_ = add_regions if region_type == "+" else remove_regions
+                    list_.append(sublime.Region(region_start, region_end))
 
                     region_type = line_type
                     region_start = line.begin()
 
             region_end = line.end()
-            l = add_regions if region_type == "+" else remove_regions
-            l.append(sublime.Region(region_start, region_end))
+            list_ = add_regions if region_type == "+" else remove_regions
+            list_.append(sublime.Region(region_start, region_end))
 
             # If there are both additions and removals in the hunk, display additional
             # highlighting for the in-line changes (if similarity is above threshold).
@@ -343,7 +343,7 @@ class GsInlineDiffFocusEventListener(EventListener):
 
     def on_activated(self, view):
 
-        if view.settings().get("git_savvy.inline_diff_view") == True:
+        if view.settings().get("git_savvy.inline_diff_view") is True:
             view.run_command("gs_inline_diff_refresh")
 
 

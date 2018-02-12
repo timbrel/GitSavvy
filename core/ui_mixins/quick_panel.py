@@ -115,7 +115,7 @@ class PanelCommandMixin(PanelActionMixin):
 
 def show_remote_panel(
     on_done, show_option_all=False, selected_remote=None, allow_direct=False,
-    show_url=False):
+        show_url=False):
     """
     Show a quick panel with remotes. The callback `on_done(remote)` will
     be called when a remote is selected. If the panel is cancelled, `None`
@@ -132,7 +132,8 @@ def show_remote_panel(
 
 class RemotePanel(GitCommand):
 
-    def __init__(self, on_done, show_option_all=False, selected_remote=None,
+    def __init__(
+        self, on_done, show_option_all=False, selected_remote=None,
             allow_direct=False, show_url=False):
         self.window = sublime.active_window()
         self.on_done = on_done

@@ -179,9 +179,10 @@ class CompleteMixin(object):
         self.show_status_update()
 
     def show_status_update(self):
-        self.window.status_message("%s %sed, checked out %s" %
-                               (self.flow.capitalize(), self.command,
-                                self.get_current_branch_name()))
+        self.window.status_message(
+            "%s %sed, checked out %s" %
+            (self.flow.capitalize(), self.command,
+                self.get_current_branch_name()))
 
 
 class GenericStartMixin(CompleteMixin):
@@ -243,8 +244,10 @@ class GenericPublishMixin(CompleteMixin, GenericSelectTargetBranch):
     command = 'publish'
 
     def show_status_update(self):
-        self.window.status_message("%s %sed" % (self.flow.capitalize(),
-                                            self.command))
+        self.window.status_message(
+            "%s %sed" %
+            (self.flow.capitalize(),
+                self.command))
 
 
 class GenericTrackCommand(CompleteMixin, FlowCommon):

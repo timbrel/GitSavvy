@@ -56,7 +56,7 @@ def log_git(command, stdin, stdout, stderr, seconds):
     message = make_log_message(
         'git', command=command, stdin=stdin, stdout=stdout, stderr=stderr,
         seconds=seconds
-        )
+    )
     for field in ['stdin', 'stdout', 'stderr']:
         if isinstance(locals()[field], bytes):  # decode standard I/O bytes
             message[field] = try_to_decode(locals()[field], field)
@@ -68,7 +68,7 @@ def log_process(command, cwd, env, startupinfo):
     message = make_log_message(
         'subprocess.Popen', command=command, cwd=cwd, env=env,
         startupinfo=startupinfo
-        )
+    )
     add_to_log(message)
 
 
@@ -153,6 +153,7 @@ def trace(*args, tag="debug", fill=None, fill_width=60, **kwargs):
 
 def trace_for_tag(tag):
     return functools.partial(trace, tag=tag)
+
 
 trace.for_tag = trace_for_tag
 

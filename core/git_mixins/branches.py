@@ -102,5 +102,5 @@ class BranchesMixin():
             "-r" if remote_only else None,
             "--contains",
             commit_hash
-            ).strip().split("\n")
+        ).strip().split("\n")
         return [branch.strip() for branch in branches]

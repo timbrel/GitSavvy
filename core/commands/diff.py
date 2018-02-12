@@ -144,7 +144,7 @@ class GsDiffFocusEventListener(EventListener):
     """
 
     def on_activated(self, view):
-        if view.settings().get("git_savvy.diff_view") == True:
+        if view.settings().get("git_savvy.diff_view") is True:
             sublime.set_timeout_async(lambda: view.run_command("gs_diff_refresh"))
 
 
@@ -178,7 +178,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
             (set(self.hunk_starts) - hunk_starts_following_headers) |
             # The last hunk ends at the end of the file.
             set((self.view.size(), ))
-            ))
+        ))
 
         sublime.set_timeout_async(lambda: self.apply_diffs_for_pts(cursor_pts, reset), 0)
 
@@ -290,7 +290,7 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
             self.view.window().open_file(
                 "{file}:{row}:{col}".format(file=full_path, row=lineno, col=0),
                 sublime.ENCODED_POSITION
-                )
+            )
 
 
 class GsDiffNavigateCommand(GsNavigate):

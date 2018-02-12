@@ -112,7 +112,7 @@ class TagsInterface(ui.Interface, GitCommand):
         return "\n".join(
             "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
             for tag in self.local_tags[0:self.max_items]
-            )
+        )
 
     @ui.partial("remote_tags")
     def render_remote_tags(self):
@@ -171,7 +171,7 @@ class TagsInterface(ui.Interface, GitCommand):
         return self.template_remote.format(
             remote_name=remote_name,
             remote_tags_list=msg
-            )
+        )
 
     def render_remote_tags_off(self):
         return "\n\n  ** Press [e] to toggle display of remote branches. **\n"
@@ -252,7 +252,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
                     remote_name,
                     "--delete",
                     *("refs/tags/" + tag for tag in tags_to_delete)
-                    )
+                )
 
         self.view.window().status_message(TAG_DELETE_MESSAGE)
         interface.remotes = None
@@ -279,7 +279,7 @@ class GsTagsPushCommand(TextCommand, GitCommand):
             self.remotes,
             lambda idx: self.push_async(idx, push_all=push_all),
             flags=sublime.MONOSPACE_FONT
-            )
+        )
 
     def push_async(self, remote_idx, push_all=False):
         if push_all:

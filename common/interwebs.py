@@ -50,7 +50,7 @@ def request(verb, host, port, path, payload=None, https=False, headers=None, aut
             response_headers["Location"],
             headers=headers,
             auth=auth
-            )
+        )
 
     return Response(response_payload, response_headers, status, is_json)
 
@@ -69,7 +69,7 @@ def request_url(verb, url, payload=None, headers=None, auth=None):
         auth=([parsed.username, parsed.password]
               if parsed.username and parsed.password
               else None)
-        )
+    )
 
 
 get = partial(request, "GET")

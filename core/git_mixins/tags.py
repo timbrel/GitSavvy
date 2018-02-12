@@ -19,7 +19,7 @@ class TagsMixin():
             "--tags",
             remote if remote else None,
             throw_on_stderr=False
-            )
+        )
         porcelain_entries = stdout.split("\n")
         if reverse:
             porcelain_entries.reverse()

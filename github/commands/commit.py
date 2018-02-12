@@ -59,7 +59,7 @@ class GsGithubShowIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemote
             format_item=self.format_item,
             limit=savvy_settings.get("github_per_page_max", 100),
             status_message="Getting issues..."
-            )
+        )
         if pp.is_empty():
             self.view.window().status_message("No issues found.")
 
@@ -72,7 +72,7 @@ class GsGithubShowIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemote
                     user=issue["user"]["login"],
                     time_stamp=util.dates.fuzzy(issue["created_at"],
                                                 date_format="%Y-%m-%dT%H:%M:%SZ")
-                    )
+                )
             ],
             issue
         )
@@ -109,7 +109,7 @@ class GsGithubShowContributorsCommand(TextCommand, GitCommand):
             format_item=self.format_item,
             limit=savvy_settings.get("github_per_page_max", 100),
             status_message="Getting contributors..."
-            )
+        )
         if pp.is_empty():
             self.view.window().status_message("No contributors found.")
 

@@ -142,7 +142,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
                 ref,
                 True,
                 "rebased on top of {}".format(target_branch)
-                )
+            )
             self.view.settings().set("git_savvy.rebase_in_progress", None)
 
     def on_new_dashboard(self):
@@ -194,7 +194,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
             commits_info = self.get_diverged_commits_info(
                 start=self.base_commit(),
                 end=self.rebase_orig_head() if self._in_rebase else "HEAD"
-                )
+            )
             return self.separator.join(self.commit.format(**commit_info) for commit_info in commits_info)
         except FileNotFoundError as e:
             return ""
@@ -382,14 +382,14 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         # all commit maniplication actions are all or nothing, we don't have
         # to worry about partially success for now.
         if success:
-            log = log[:cursor+1]
+            log = log[:cursor + 1]
 
             log.append({
                 "description": description,
                 "branch_name": branch_name,
                 "ref_before": ref_before,
                 "ref_after": self.get_branch_ref(branch_name)
-                })
+            })
 
             cursor = len(log) - 1
 
@@ -459,7 +459,7 @@ class GsRebaseRedoCommand(TextCommand, GitCommand):
 
         branch_name, ref, _ = self.interface.get_branch_state()
 
-        undone_action = log[cursor+1]
+        undone_action = log[cursor + 1]
         if undone_action["branch_name"] != branch_name:
             sublime.error_message("Current branch does not match expected. Cannot redo.")
             return
@@ -548,7 +548,7 @@ class RewriteBase(TextCommand, GitCommand):
             self.rewrite_active_branch(
                 base_commit=base_commit,
                 commit_chain=commit_chain
-                )
+            )
 
         except Exception as e:
             success = False
@@ -586,7 +586,7 @@ class GsRebaseSquashCommand(RewriteBase):
         self.squash_entry = squash_entry
 
         if self.step:
-            self.do_action(self.interface.entries[squash_idx-1].long_hash)
+            self.do_action(self.interface.entries[squash_idx - 1].long_hash)
         else:
             reversed_logs = list(reversed(self.interface.entries[0:squash_idx]))
             show_log_panel(reversed_logs, self.do_action)
@@ -641,7 +641,7 @@ class GsRebaseSquashAllCommand(RewriteBase):
             commit.modified = True
             if idx < last_commit_idx:
                 commit.do_commit = False
-                commit_chain[idx+1].msg = commit.msg + "\n\n" + commit_chain[idx+1].msg
+                commit_chain[idx + 1].msg = commit.msg + "\n\n" + commit_chain[idx + 1].msg
                 commit.msg = None
             else:
                 commit.squashed = True
@@ -693,7 +693,7 @@ class GsRebaseDropCommand(RewriteBase):
         drop_idx, to_drop, entry_before_drop = self.get_idx_entry_and_prev(short_hash)
 
         # Generate identical change templates with author/date metadata in tact.
-        commit_chain = self.perpare_rewrites(self.interface.entries[drop_idx+1:])
+        commit_chain = self.perpare_rewrites(self.interface.entries[drop_idx + 1:])
 
         self.make_changes(
             commit_chain,
@@ -722,7 +722,7 @@ class GsRebaseMoveUpCommand(RewriteBase):
         self.move_entry = move_entry
 
         if self.step:
-            self.do_action(self.interface.entries[move_idx-1].long_hash)
+            self.do_action(self.interface.entries[move_idx - 1].long_hash)
         else:
             logs = list(reversed(self.interface.entries[:move_idx]))
             show_log_panel(logs, self.do_action)
@@ -769,9 +769,9 @@ class GsRebaseMoveDownCommand(RewriteBase):
         self.move_entry = move_entry
 
         if self.step:
-            self.do_action(self.interface.entries[move_idx+1].long_hash)
+            self.do_action(self.interface.entries[move_idx + 1].long_hash)
         else:
-            logs = self.interface.entries[move_idx+1:]
+            logs = self.interface.entries[move_idx + 1:]
             show_log_panel(logs, self.do_action)
 
     def do_action(self, target_commit):
