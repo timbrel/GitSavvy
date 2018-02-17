@@ -288,6 +288,10 @@
         "command": "gs_abort_merge"
     },
     {
+        "caption": "git: abort rebase",
+        "command": "gs_rebase_abort"
+    },
+    {
         "caption": "git: restart merge for file...",
         "command": "gs_restart_merge_for_file"
     },
