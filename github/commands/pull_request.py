@@ -168,14 +168,18 @@ class GsGithubCreatePullRequestCommand(WindowCommand, GitCommand, git_mixins.Git
             else:
                 status, secondary = self.get_branch_status()
                 if secondary:
-                    sublime.message_dialog(
-                        "Your current branch is different from its remote counterpart. %s" % secondary)
-                else:
-                    owner = github.parse_remote(self.get_remotes()[remote_branch.remote]).owner
-                    self.open_comparision_in_browser(
-                        owner,
-                        remote_branch.name
-                    )
+                    secondary = "\n".join(secondary)
+                    if "ahead" in secondary or "behind" in secondary:
+                        sublime.message_dialog(
+                            "Your current branch is different from its remote counterpart.\n" +
+                            secondary)
+                        return
+
+                owner = github.parse_remote(self.get_remotes()[remote_branch.remote]).owner
+                self.open_comparision_in_browser(
+                    owner,
+                    remote_branch.name
+                )
 
     def open_comparision_in_browser(self, owner, branch):
         base_remote = github.parse_remote(self.get_integrated_remote_url())

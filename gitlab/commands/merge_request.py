@@ -151,17 +151,21 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
 #             remote_branch = self.get_active_remote_branch()
 #             if not remote_branch:
 #                 sublime.message_dialog("Unable to determine remote.")
-#             else:
-#                 status, secondary = self.get_branch_status()
-#                 if secondary:
-#                     sublime.message_dialog(
-#                         "Your current branch is different from its remote counterpart. %s" % secondary)
-#                 else:
-#                     owner = github.parse_remote(self.get_remotes()[remote_branch.remote]).owner
-#                     self.open_comparision_in_browser(
-#                         owner,
-#                         remote_branch.name
-#                     )
+#            else:
+#                status, secondary = self.get_branch_status()
+#                if secondary:
+#                    secondary = "\n".join(secondary)
+#                    if "ahead" in secondary or "behind" in secondary:
+#                        sublime.message_dialog(
+#                            "Your current branch is different from its remote counterpart.\n" +
+#                            secondary)
+#                        return
+
+#                owner = github.parse_remote(self.get_remotes()[remote_branch.remote]).owner
+#                self.open_comparision_in_browser(
+#                    owner,
+#                    remote_branch.name
+#                )
 
 #     def open_comparision_in_browser(self, owner, branch):
 #         base_remote = github.parse_remote(self.get_integrated_remote_url())
