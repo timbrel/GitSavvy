@@ -95,6 +95,10 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
       [U] move commit before ...
       [w] show commit
 
+      ###########
+      ## OTHER ##
+      ###########
+
       [?]         toggle this help menu
       [tab]       transition to next dashboard
       [SHIFT-tab] transition to previous dashboard
