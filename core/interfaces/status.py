@@ -684,6 +684,7 @@ class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):
 
 
 class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
+    # TODO: refactor this alongside interfaces.rebase.GsRebaseUseCommitVersionCommand
 
     def run(self, edit):
         sublime.set_timeout_async(self.run_async, 0)

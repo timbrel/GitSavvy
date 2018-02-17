@@ -853,6 +853,7 @@ class GsRebaseStageFileCommand(TextCommand, GitCommand):
 
 
 class GsRebaseUseCommitVersionCommand(TextCommand, GitCommand):
+    # TODO: refactor this alongside interfaces.status.GsStatusUseCommitVersionCommand
 
     def run(self, edit):
         sublime.set_timeout_async(self.run_async, 0)
