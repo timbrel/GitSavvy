@@ -422,8 +422,10 @@ class GsBranchesMergeSelectedCommand(TextCommand, GitCommand):
 
         branches = self.interface.get_selected_branches(ignore_current_branch=True)
         branches_strings = self.interface.create_branches_strs(branches)
-        self.merge(branches_strings)
-        util.view.refresh_gitsavvy(self.view)
+        try:
+            self.merge(branches_strings)
+        finally:
+            util.view.refresh_gitsavvy(self.view)
 
 
 class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
@@ -452,9 +454,11 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
                 self.fetch(remote=branch[0], branch=branch[1])
 
         branches_strings = self.interface.create_branches_strs(branches)
-        self.merge(branches_strings)
-        self.view.window().status_message("Fetch and merge complete.")
-        util.view.refresh_gitsavvy(self.view)
+        try:
+            self.merge(branches_strings)
+            self.view.window().status_message("Fetch and merge complete.")
+        finally:
+            util.view.refresh_gitsavvy(self.view)
 
 
 class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
