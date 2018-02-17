@@ -1,3 +1,4 @@
+import os
 from collections import namedtuple
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
@@ -111,3 +112,12 @@ class StatusMixin():
                 staged.append(f)
 
         return staged, unstaged, untracked, conflicts
+
+    def in_merge(self):
+        return os.path.exists(os.path.join(self.repo_path, ".git", "MERGE_HEAD"))
+
+    def merge_head(self):
+        path = os.path.join(self.repo_path, ".git", "MERGE_HEAD")
+        with open(path, "r") as f:
+            commit_hash = f.read().strip()
+        return self.get_short_hash(commit_hash)
