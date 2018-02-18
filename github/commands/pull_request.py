@@ -158,7 +158,7 @@ class GsGithubCreatePullRequestCommand(WindowCommand, GitCommand, git_mixins.Git
         if not self.get_upstream_for_active_branch():
             if sublime.ok_cancel_dialog(PUSH_PROMPT):
                 self.window.run_command(
-                    "gs_push_and_create_pull_request",
+                    "gs_github_push_and_create_pull_request",
                     {"set_upstream": True})
 
         else:
@@ -200,4 +200,4 @@ class GsGithubPushAndCreatePullRequestCommand(GsPushToBranchNameCommand):
 
     def do_push(self, *args, **kwargs):
         super().do_push(*args, **kwargs)
-        self.window.run_command("gs_create_pull_request")
+        self.window.run_command("gs_github_create_pull_request")
