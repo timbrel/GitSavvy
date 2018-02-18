@@ -245,7 +245,12 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, message=None):
-        sublime.set_timeout_async(lambda: self.run_async(commit_message=message), 0)
+        self.commit_on_close = self.view.settings().get("git_savvy.commit_on_close")
+        if self.commit_on_close:
+            # make sure the view would not be closed by commiting synchronously
+            self.run_async(commit_message=message)
+        else:
+            sublime.set_timeout_async(lambda: self.run_async(commit_message=message), 0)
 
     def run_async(self, commit_message=None):
         if commit_message is None:
@@ -268,15 +273,14 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
             stdin=commit_message
         )
 
-        # ensure view is not already closed (i.e.: when "commit_on_close" enabled)
         is_commit_view = self.view.settings().get("git_savvy.commit_view")
-        if is_commit_view and self.view.window():
+        if is_commit_view and not self.commit_on_close:
             self.view.window().focus_view(self.view)
             self.view.set_scratch(True)  # ignore dirty on actual commit
             self.view.window().run_command("close_file")
-        else:
-            sublime.set_timeout_async(
-                lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
+
+        sublime.set_timeout_async(
+            lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
 
 
 class GsCommitViewSignCommand(TextCommand, GitCommand):
@@ -310,8 +314,7 @@ class GsCommitViewCloseCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        if savvy_settings.get("commit_on_close"):
+        if self.view.settings().get("git_savvy.commit_on_close"):
             view_text = self.view.substr(sublime.Region(0, self.view.size()))
             help_text = self.view.settings().get("git_savvy.commit_view.help_text")
             message_txt = (view_text.split(help_text)[0]
