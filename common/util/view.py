@@ -73,7 +73,7 @@ def refresh_gitsavvy(view, refresh_sidebar=False, refresh_status_bar=True,
     if view.settings().get("git_savvy.log_graph_view", False):
         view.run_command("gs_log_graph_refresh")
 
-    if refresh_status_bar:
+    if view.window() and refresh_status_bar:
         view.run_command("gs_update_status_bar")
 
     if view.window() and refresh_sidebar:
