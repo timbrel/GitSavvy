@@ -45,6 +45,9 @@ class LogGraphMixin(object):
     def get_graph_args(self):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         args = savvy_settings.get("git_graph_args")
+        follow = savvy_settings.get("log_follow_rename")
+        if follow:
+            args = args + ["--follow"]
         if self._file_path:
             file_path = self.get_rel_path(self._file_path)
             args = args + ["--", file_path]

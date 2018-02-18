@@ -25,8 +25,10 @@ class LogMixin(object):
         sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, **kwargs), 0)
 
     def run_async(self, file_path=None, **kwargs):
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        follow = savvy_settings.get("log_follow_rename")
         show_log_panel(
-            self.log_generator(file_path=file_path, **kwargs),
+            self.log_generator(file_path=file_path, follow=follow, **kwargs),
             lambda commit: self.on_done(commit, file_path=file_path, **kwargs)
         )
 
