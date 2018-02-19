@@ -9,7 +9,7 @@ Define a base command class that:
 import os
 import subprocess
 import shutil
-from contextlib import contextmanager
+import re
 
 import sublime
 
@@ -43,6 +43,13 @@ FALLBACK_PARSE_ERROR_MSG = (
     "if you have checked binary data into your repository.  The current "
     "operation has been aborted."
 )
+
+GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d} or above."
+
+# git minimum requirement
+GIT_REQUIRE_MAJOR = 1
+GIT_REQUIRE_MINOR = 9
+GIT_REQUIRE_PATCH = 0
 
 
 class GitCommand(StatusMixin,
@@ -212,6 +219,31 @@ class GitCommand(StatusMixin,
 
             if not git_path:
                 git_path = shutil.which("git")
+
+            try:
+                stdout = subprocess.check_output([git_path, "--version"]).decode("utf-8")
+            except Exception:
+                stdout = ""
+                git_path = None
+
+            match = re.match(r"git version ([0-9]+)\.([0-9]+)\.([0-9]+)", stdout)
+            if match:
+                major = int(match.group(1))
+                minor = int(match.group(2))
+                patch = int(match.group(3))
+                if major < GIT_REQUIRE_MAJOR or \
+                        (major == GIT_REQUIRE_MAJOR and minor < GIT_REQUIRE_MINOR) or \
+                        (major == GIT_REQUIRE_MAJOR and minor == GIT_REQUIRE_MINOR and
+                            patch < GIT_REQUIRE_PATCH):
+                    msg = GIT_TOO_OLD_MSG.format(
+                        GIT_REQUIRE_MAJOR,
+                        GIT_REQUIRE_MINOR,
+                        GIT_REQUIRE_PATCH)
+                    git_path = None
+                    if not error_message_displayed:
+                        sublime.error_message(msg)
+                        error_message_displayed = True
+                    raise ValueError("Git binary too old.")
 
         if not git_path:
             msg = ("Your Git binary cannot be found.  If it is installed, add it "
