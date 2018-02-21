@@ -1,5 +1,6 @@
 from collections import namedtuple
 from ...common import util
+import sublime
 
 
 LogEntry = namedtuple("LogEntry", (
@@ -232,6 +233,14 @@ class HistoryMixin():
                 "{}..{}".format(commit_hash, "HEAD"),
                 "--", self.file_path
             ).strip().split("\n", 1)[0]
+
+    def newest_commit_for_file(self, file_path, follow=False):
+        """
+        Get the newest commit for a given file.
+        """
+        return self.git(
+            "log", "--format=%H",
+            "--follow" if follow else None, "-n", "1", file_path).strip()
 
     def get_indexed_file_object(self, file_path):
         """

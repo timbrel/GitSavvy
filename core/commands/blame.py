@@ -357,13 +357,6 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand
 
         self.view.window().run_command("gs_show_commit", {"commit_hash": commit_hash})
 
-    def newst_commit_for_file(self):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        follow = savvy_settings.get("blame_follow_rename")
-        return self.git(
-            "log", "--format=%H",
-            "--follow" if follow else None, "-n", "1", self.file_path).strip()
-
     def blame_neighbor(self, position, selected=False):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         follow = savvy_settings.get("blame_follow_rename")
