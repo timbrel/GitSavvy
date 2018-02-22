@@ -58,6 +58,30 @@ def get_is_view_of_type(view, typ):
 # GLOBAL #
 ##########
 
+def refresh_gitsavvy_interfaces(window,
+                                refresh_sidebar=False,
+                                refresh_status_bar=True,
+                                interface_reset_cursor=False):
+    """
+    Looks for GitSavvy interface views in the current window and refresh them.
+
+    Note that it only refresh visible views.
+    Other views will be refreshed when activated.
+    """
+    if window is None:
+        return
+
+    if refresh_sidebar:
+        window.run_command("refresh_folder_list")
+    if refresh_status_bar:
+        window.active_view().run_command("gs_update_status_bar")
+
+    for group in range(window.num_groups()):
+        view = window.active_view_in_group(group)
+        if view.settings().get("git_savvy.interface") is not None:
+            view.run_command("gs_interface_refresh", {"nuke_cursors": interface_reset_cursor})
+
+
 def refresh_gitsavvy(view, refresh_sidebar=False, refresh_status_bar=True,
                      interface_reset_cursor=False):
     """
