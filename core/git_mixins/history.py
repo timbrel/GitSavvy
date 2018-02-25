@@ -1,5 +1,6 @@
 from collections import namedtuple
 from ...common import util
+import sublime
 
 
 LogEntry = namedtuple("LogEntry", (
@@ -147,12 +148,12 @@ class HistoryMixin():
     def get_short_hash(self, commit_hash):
         return self.git("rev-parse", "--short", commit_hash).strip()
 
-    def filename_at_commit(self, filename, commit_hash):
+    def filename_at_commit(self, filename, commit_hash, follow=False):
         commit_len = len(commit_hash)
         lines = self.git(
             "log",
             "--pretty=oneline",
-            "--follow",
+            "--follow" if follow else None,
             "--name-status",
             "{}..{}".format(commit_hash, "HEAD"),
             "--", filename
@@ -210,7 +211,7 @@ class HistoryMixin():
         # fails to find matching
         return line
 
-    def neighbor_commit(self, commit_hash, position):
+    def neighbor_commit(self, commit_hash, position, follow=False):
         """
         Get the commit before or after a specific commit
         """
@@ -218,7 +219,7 @@ class HistoryMixin():
             return self.git(
                 "log",
                 "--format=%H",
-                "--follow",
+                "--follow" if follow else None,
                 "-n", "1",
                 "{}~1".format(commit_hash),
                 "--", self.file_path
@@ -227,11 +228,19 @@ class HistoryMixin():
             return self.git(
                 "log",
                 "--format=%H",
-                "--follow",
+                "--follow" if follow else None,
                 "--reverse",
                 "{}..{}".format(commit_hash, "HEAD"),
                 "--", self.file_path
             ).strip().split("\n", 1)[0]
+
+    def newest_commit_for_file(self, file_path, follow=False):
+        """
+        Get the newest commit for a given file.
+        """
+        return self.git(
+            "log", "--format=%H",
+            "--follow" if follow else None, "-n", "1", file_path).strip()
 
     def get_indexed_file_object(self, file_path):
         """

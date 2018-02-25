@@ -234,6 +234,16 @@
     "git_graph_args": ["log", "--pretty=format:%h%d %s (%ar) <%an>", "--graph"],
 
     /*
+        When set to `true`, GitSavvy will follow file renames when running git log/graph
+    */
+    "log_follow_rename": false,
+
+    /*
+        When set to `true`, GitSavvy will follow file renames in blame view
+    */
+    "blame_follow_rename": false,
+
+    /*
         When set to `true`, GitSavvy will prompt for confirmation when closing
         the commit message view.
     */
