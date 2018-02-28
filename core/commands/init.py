@@ -72,7 +72,7 @@ class GsInit(WindowCommand, GitCommand):
 
     def on_done(self, path, re_init=False):
         self.git("init", working_dir=path)
-        sublime.status_message("{word_start}nitialized repo successfully.".format(
+        self.window.status_message("{word_start}nitialized repo successfully.".format(
             word_start="Re-i" if re_init else "I"))
         util.view.refresh_gitsavvy(self.window.active_view())
 
@@ -117,9 +117,9 @@ class GsClone(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.do_clone, 0)
 
     def do_clone(self):
-        sublime.status_message("Start cloning {}".format(self.git_url))
+        self.window.status_message("Start cloning {}".format(self.git_url))
         self.git("clone", self.git_url, self.suggested_git_root, working_dir='.')
-        sublime.status_message("Cloned repo successfully.")
+        self.window.status_message("Cloned repo successfully.")
         self.open_folder()
         util.view.refresh_gitsavvy(self.window.active_view())
 

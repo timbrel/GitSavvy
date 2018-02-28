@@ -180,6 +180,32 @@
             { "key": "selector", "operator": "equal", "operand": "git-savvy.status meta.git-savvy.status.section meta.git-savvy.status.file" }
         ]
     },
+    {
+        "keys": ["y"],
+        "command": "gs_status_use_commit_version",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.status meta.git-savvy.status.section.merge-conflicts meta.git-savvy.status.file" }
+        ]
+    },
+    {
+        "keys": ["b"],
+        "command": "gs_status_use_base_version",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.status meta.git-savvy.status.section.merge-conflicts meta.git-savvy.status.file" }
+        ]
+    },
+    {
+        "keys": ["B"],
+        "command": "gs_abort_merge",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
 
 
     /////////////////////////////
@@ -463,7 +489,7 @@
 
     {
         "keys": ["tab"],
-        "command": "gs_show_github_issues",
+        "command": "gs_github_show_issues",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true },
@@ -472,7 +498,7 @@
     },
     {
         "keys": ["tab"],
-        "command": "gs_show_github_issues",
+        "command": "gs_github_show_issues",
         "args": { "default_repo": false },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
@@ -482,7 +508,7 @@
     },
     {
         "keys": ["tab"],
-        "command": "gs_show_github_contributors",
+        "command": "gs_github_show_contributors",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true },

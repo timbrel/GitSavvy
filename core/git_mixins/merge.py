@@ -64,14 +64,14 @@ class MergeMixin():
 
             util.debug.log_process(
                 merge_cmd_args, repo_path, os.environ, startupinfo
-                )
+            )
 
             p = subprocess.Popen(
                 merge_cmd_args,
                 cwd=repo_path,
                 env=os.environ,
                 startupinfo=startupinfo
-                )
+            )
             ret_code = p.wait()
 
             tool = self.get_configured_tool()

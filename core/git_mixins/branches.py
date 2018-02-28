@@ -1,4 +1,3 @@
-import re
 from collections import namedtuple
 import sublime
 
@@ -23,7 +22,11 @@ class BranchesMixin():
         Return a list of all local and remote branches.
         """
         stdout = self.git(
-            "branch", "-a", "-vv", "--no-abbrev", "--no-color", "--sort=-committerdate" if sort_by_recent else None)
+            "for-each-ref",
+            "--format=%(HEAD)%00%(refname)%00%(upstream)%00%(upstream:track)%00%(objectname)%00%(contents:subject)",
+            "--sort=-committerdate" if sort_by_recent else None,
+            "refs/heads",
+            "refs/remotes")
         return (branch
                 for branch in (self._parse_branch_line(self, line) for line in stdout.split("\n"))
                 if branch)
@@ -33,27 +36,17 @@ class BranchesMixin():
         line = line.strip()
         if not line:
             return None
+        head, ref, tracking_branch, tracking_status, commit_hash, commit_msg = line.split("\x00")
 
-        branch = r"([a-zA-Z0-9\-\_\/\.\-\u263a-\U0001f645]+(?<!\.lock)(?<!\/)(?<!\.))"
-        pattern = r"(\* )?(remotes/)?" + branch + r" +([0-9a-f]{40}) (\[([a-zA-Z0-9\-\_\/\.]+)(: ([^\]]+))?\] )?(.*)"
+        active = head == "*"
+        is_remote = ref.startswith("refs/remotes/")
 
-        match = re.match(pattern, line)
-        if not match:
-            return None
-
-        (is_active,
-         is_remote,
-         branch_name,
-         commit_hash,
-         _,
-         tracking_branch,
-         _,
-         tracking_status,
-         commit_msg
-         ) = match.groups()
-
-        active = bool(is_active)
-        remote = branch_name.split("/")[0] if is_remote else None
+        branch_name = ref[13:] if is_remote else ref[11:]
+        remote = ref[13:].split("/", 1)[0] if is_remote else None
+        tracking_branch = tracking_branch[13:]
+        if tracking_status:
+            # remove brackets
+            tracking_status = tracking_status[1:len(tracking_status) - 1]
 
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         enable_branch_descriptions = savvy_settings.get("enable_branch_descriptions")
@@ -102,5 +95,5 @@ class BranchesMixin():
             "-r" if remote_only else None,
             "--contains",
             commit_hash
-            ).strip().split("\n")
+        ).strip().split("\n")
         return [branch.strip() for branch in branches]

@@ -5,7 +5,7 @@ import time
 from ..exceptions import GitSavvyError
 from ...common import util
 
-NEAREST_NODE_PATTERN = re.compile(r'.*\*.*\[(.*?)(?:(?:[\^\~]+[\d]*){1})\]')  # http://regexr.com/3gm03
+NEAREST_NODE_PATTERN = re.compile(r'.*\*.*\[(.*?)(?:[\^\~]+[\d]*)+\]')  # https://regexr.com/3kuv3
 
 
 class NearestBranchMixin(object):
@@ -21,7 +21,7 @@ class NearestBranchMixin(object):
             match = re.search(NEAREST_NODE_PATTERN, rel)
             if not match:
                 continue
-            branch_name = match.groups()[0]
+            branch_name = match.group(1)
             if branch_name != branch and branch_name not in relatives:
                 relatives.append(branch_name)
         return relatives
@@ -32,8 +32,9 @@ class NearestBranchMixin(object):
         """
         util.debug.add_to_log('nearest_branch: filtering branches that share branch-out nodes')
         diff = difflib.Differ()
-        branch_commits = self.git("rev-list", "--first-parent", branch).splitlines()
         max_revisions = 100
+        branch_commits = self.git(
+            "rev-list", "-{}".format(max_revisions), "--first-parent", branch).splitlines()
         for relative in relatives:
             util.debug.add_to_log('nearest_branch: Getting common commits with {}'.format(relative))
             relative_commits = self.git("rev-list", "-{}".format(max_revisions),

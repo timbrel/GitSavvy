@@ -23,7 +23,7 @@ class GsIgnoreCommand(WindowCommand, GitCommand):
             file_path_or_pattern = self.file_path
 
         self.add_ignore(os.path.join("/", file_path_or_pattern))
-        sublime.status_message("Ignored file `{}`.".format(file_path_or_pattern))
+        self.window.status_message("Ignored file `{}`.".format(file_path_or_pattern))
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
@@ -39,7 +39,7 @@ class GsIgnorePatternCommand(WindowCommand, GitCommand):
 
     def on_done(self, ignore_pattern):
         self.add_ignore(ignore_pattern)
-        sublime.status_message("Ignored pattern `{}`.".format(ignore_pattern))
+        self.window.status_message("Ignored pattern `{}`.".format(ignore_pattern))
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
@@ -57,7 +57,7 @@ class GsAssumeUnchangedCommand(WindowCommand, GitCommand):
         self._unstaged_files = tuple(
             f.path for f in self.get_status()
             if f.working_status in UNSTAGED_WORKING_STATUSES
-            )
+        )
 
         self.window.show_quick_panel(
             self._unstaged_files,
@@ -89,7 +89,7 @@ class GsRestoreAssumedUnchangedCommand(WindowCommand, GitCommand):
         all_file_lines = (
             line.split(" ", 1)
             for line in self.git("ls-files", "-v").split("\n")
-            )
+        )
 
         self._ignored_files = tuple(f[1] for f in all_file_lines if f[0] == "h")
 

@@ -1,11 +1,11 @@
-class GithubRemotesMixin():
+class GitLabRemotesMixin():
 
     def get_integrated_branch_name(self):
         configured_branch_name = self.git(
             "config",
             "--local",
             "--get",
-            "GitSavvy.ghBranch",
+            "GitSavvy.glBranch",
             throw_on_stderr=False
         ).strip()
         if configured_branch_name:
@@ -18,13 +18,13 @@ class GithubRemotesMixin():
             "config",
             "--local",
             "--get",
-            "GitSavvy.ghRemote",
+            "GitSavvy.glRemote",
             throw_on_stderr=False
         ).strip()
         remotes = self.get_remotes()
 
         if len(remotes) == 0:
-            raise ValueError("GitHub integration will not function when no remotes defined.")
+            raise ValueError("GitLab integration will not function when no remotes defined.")
 
         if configured_remote_name and configured_remote_name in remotes:
             return configured_remote_name
@@ -36,14 +36,14 @@ class GithubRemotesMixin():
             # fall back to the current active remote
             return self.get_upstream_for_active_branch().split("/")[0]
         else:
-            raise ValueError("Cannot determine GitHub integrated remote.")
+            raise ValueError("Cannot determine GitLab integrated remote.")
 
     def get_integrated_remote_url(self):
         configured_remote_name = self.get_integrated_remote_name()
         remotes = self.get_remotes()
         return remotes[configured_remote_name]
 
-    def guess_github_remote(self):
+    def guess_gitlab_remote(self):
         upstream = self.get_upstream_for_active_branch()
         integrated_remote = self.get_integrated_remote_name()
         remotes = self.get_remotes()

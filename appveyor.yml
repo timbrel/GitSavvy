@@ -9,9 +9,12 @@ install:
     - ps: appveyor DownloadFile "https://raw.githubusercontent.com/randy3k/UnitTesting/master/sbin/appveyor.ps1"
     - ps: .\appveyor.ps1 "bootstrap" -verbose
     - ps: .\appveyor.ps1 "install_package_control" -verbose
+    - ps: pip install --upgrade pip
+    - ps: pip install pycodestyle
 
 build: off
 
 test_script:
     - ps: .\appveyor.ps1 "run_tests" -verbose
     - ps: .\appveyor.ps1 "run_syntax_tests" -verbose
+    - ps: pycodestyle --statistics --count

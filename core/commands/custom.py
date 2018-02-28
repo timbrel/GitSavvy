@@ -64,14 +64,14 @@ class GsCustomCommand(WindowCommand, GitCommand):
             elif arg == "{PROMPT_ARG}":
                 args[idx] = custom_argument
 
-        sublime.status_message(start_msg)
+        self.window.status_message(start_msg)
         if run_in_thread:
             stdout = ''
             cmd_thread = CustomCommandThread(self.git, *args, custom_environ=custom_environ)
             cmd_thread.start()
         else:
             stdout = self.git(*args, custom_environ=custom_environ)
-        sublime.status_message(complete_msg)
+        self.window.status_message(complete_msg)
 
         if output_to_panel:
             util.log.panel(stdout.replace("\r", "\n"))

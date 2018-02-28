@@ -38,7 +38,7 @@ class GsFixupFromStageCommand(GsLogCurrentBranchCommand):
                 orig_commit_indx = orig_commit_indx - 1
 
             if orig_commit_indx >= 0:
-                commit_chain.insert(orig_commit_indx+1, commit_chain.pop(fixup_idx))
+                commit_chain.insert(orig_commit_indx + 1, commit_chain.pop(fixup_idx))
                 original_commit = commit_chain[orig_commit_indx]
                 next_commit = commit_chain[orig_commit_indx + 1]
                 original_commit.do_commit = False
