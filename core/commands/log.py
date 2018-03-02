@@ -26,7 +26,7 @@ class LogMixin(object):
 
     def run_async(self, file_path=None, **kwargs):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        follow = savvy_settings.get("log_follow_rename")
+        follow = savvy_settings.get("log_follow_rename") if file_path else False
         show_log_panel(
             self.log_generator(file_path=file_path, follow=follow, **kwargs),
             lambda commit: self.on_done(commit, file_path=file_path, **kwargs)
