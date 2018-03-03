@@ -29,7 +29,7 @@ class BranchesMixin():
             "refs/remotes")
         return (branch
                 for branch in (self._parse_branch_line(self, line) for line in stdout.split("\n"))
-                if branch)
+                if branch and branch.name != "HEAD")
 
     @staticmethod
     def _parse_branch_line(self, line):
