@@ -6,6 +6,7 @@ import re
 from collections import namedtuple
 from webbrowser import open as open_in_browser
 from functools import partial
+import urllib
 
 import sublime
 
@@ -95,7 +96,7 @@ def open_file_in_browser(rel_path, remote, commit_hash, start_line=None, end_lin
         lines=line_numbers
     )
 
-    open_in_browser(url)
+    open_in_browser(urllib.urlencode(url))
 
 
 def open_repo(remote):
