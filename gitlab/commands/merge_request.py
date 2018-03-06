@@ -1,6 +1,7 @@
 import sublime
 from sublime_plugin import WindowCommand
 from webbrowser import open as open_in_browser
+# import urllib
 
 from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_paginated_panel
@@ -173,13 +174,13 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
 #         base_owner = base_remote.owner
 #         base_branch = self.get_integrated_branch_name()
 
-#         open_in_browser("{}/compare/{}:{}...{}:{}?expand=1".format(
+#         open_in_browser(urllib.urlencode("{}/compare/{}:{}...{}:{}?expand=1".format(
 #             url,
 #             base_owner,
 #             base_branch,
 #             owner,
 #             branch
-#         ))
+#         )))
 
 
 # class GsPushAndCreateMergeRequestCommand(GsPushToBranchNameCommand):
