@@ -1,4 +1,3 @@
-import re
 import sublime
 from sublime_plugin import WindowCommand
 
@@ -9,8 +8,6 @@ from ..ui_mixins.quick_panel import show_branch_panel
 
 NEW_BRANCH_PROMPT = "Branch name:"
 NEW_BRANCH_INVALID = "`{}` is a invalid branch name.\nRead more on $(man git-check-ref-format)"
-_is_valid_branch_name = re.compile(
-    r"^(?!\.|.*\.\..*|.*@.*|\/)[a-zA-Z0-9\-\_\/\.#\u263a-\U0001f645]+(?<!\.lock)(?<!\/)(?<!\.)$")
 
 
 class GsCheckoutBranchCommand(WindowCommand, GitCommand):
@@ -50,17 +47,17 @@ class GsCheckoutNewBranchCommand(WindowCommand, GitCommand):
     def run(self, base_branch=None):
         sublime.set_timeout_async(lambda: self.run_async(base_branch))
 
-    def run_async(self, base_branch=None):
+    def run_async(self, base_branch=None, new_branch=None):
         self.base_branch = base_branch
         v = self.window.show_input_panel(
-            NEW_BRANCH_PROMPT, base_branch or "", self.on_done, None, None)
+            NEW_BRANCH_PROMPT, new_branch or base_branch or "", self.on_done, None, None)
         v.run_command("select_all")
 
     def on_done(self, branch_name):
-        match = _is_valid_branch_name.match(branch_name)
-        if not match:
+        if not self.validate_branch_name(branch_name):
             sublime.error_message(NEW_BRANCH_INVALID.format(branch_name))
-            sublime.set_timeout_async(self.run_async(branch_name))
+            sublime.set_timeout_async(
+                lambda: self.run_async(base_branch=self.base_branch, new_branch=branch_name), 100)
             return None
 
         self.git(
@@ -109,11 +106,10 @@ class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
         v.run_command("select_all")
 
     def on_enter_local_name(self, branch_name):
-
-        match = _is_valid_branch_name.match(branch_name)
-        if not match:
+        if not self.validate_branch_name(branch_name):
             sublime.error_message(NEW_BRANCH_INVALID.format(branch_name))
-            sublime.set_timeout_async(self.on_branch_selection(self.remote_branch, branch_name))
+            sublime.set_timeout_async(
+                lambda: self.on_branch_selection(self.remote_branch, branch_name), 100)
             return None
 
         self.git("checkout", "-b", branch_name, "--track", self.remote_branch)
