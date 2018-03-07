@@ -170,18 +170,17 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
 
 #     def open_comparision_in_browser(self, owner, branch):
 #         base_remote = github.parse_remote(self.get_integrated_remote_url())
-#         url = base_remote.url
+#         remote_url = base_remote.url
 #         base_owner = base_remote.owner
 #         base_branch = self.get_integrated_branch_name()
-
-#         open_in_browser(urllib.urlencode("{}/compare/{}:{}...{}:{}?expand=1".format(
-#             url,
+#         url = "{}/compare/{}:{}...{}:{}?expand=1".format(
+#             remote_url,
 #             base_owner,
-#             base_branch,
+#             urllib.parse.quote_plus(base_branch),
 #             owner,
-#             branch
-#         )))
-
+#             urllib.parse.quote_plus(branch)
+#         )
+#         open_in_browser(url)
 
 # class GsPushAndCreateMergeRequestCommand(GsPushToBranchNameCommand):
 
