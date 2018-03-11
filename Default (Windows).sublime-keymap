@@ -49,15 +49,15 @@
     },
 
     //////////////////
-    // GIT-ADD VIEW //
+    // STAGE_DIFF VIEW //
     //////////////////
 
     {
         "keys": ["ctrl+enter"],
-        "command": "gs_add_edit_commit",
+        "command": "gs_stage_diff_apply",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.git_add_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_savvy.git_stage_diff_view", "operator": "equal", "operand": true }
         ]
     },
 

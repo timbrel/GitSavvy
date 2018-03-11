@@ -13,10 +13,10 @@ from ..git_command import GitCommand
 from ..exceptions import GitSavvyError
 
 
-TITLE = "GIT-ADD: {}"
+TITLE = "STAGE-DIFF: {}"
 
 
-class GsAddEditCommand(WindowCommand, GitCommand):
+class GsStageDiffCommand(WindowCommand, GitCommand):
 
     """
     Create a new view to display the project's unstaged changes.
@@ -26,21 +26,17 @@ class GsAddEditCommand(WindowCommand, GitCommand):
         sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
 
     def run_async(self):
-        git_add_view = util.view.get_scratch_view(self, "git_add", read_only=False)
-        git_add_view.set_name(TITLE.format(os.path.basename(self.repo_path)))
-        git_add_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime_syntax")
-        git_add_view.settings().set("git_savvy.repo_path", self.repo_path)
+        stage_diff_view = util.view.get_scratch_view(self, "git_stage_diff", read_only=False)
+        stage_diff_view.set_name(TITLE.format(os.path.basename(self.repo_path)))
+        stage_diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime_syntax")
+        stage_diff_view.settings().set("git_savvy.repo_path", self.repo_path)
 
-        self.window.focus_view(git_add_view)
-        git_add_view.sel().clear()
-        git_add_view.run_command("gs_add_edit_refresh")
-
-        super_key = "SUPER" if sys.platform == "darwin" else "CTRL"
-        message = "Press {}-Enter to apply the diff.  Close the window to cancel.".format(super_key)
-        sublime.message_dialog(message)
+        self.window.focus_view(stage_diff_view)
+        stage_diff_view.sel().clear()
+        stage_diff_view.run_command("gs_stage_diff_refresh")
 
 
-class GsAddEditRefreshCommand(TextCommand, GitCommand):
+class GsStageDiffRefreshCommand(TextCommand, GitCommand):
 
     """
     Refresh the view with the latest unstaged changes.
@@ -67,10 +63,14 @@ class GsAddEditRefreshCommand(TextCommand, GitCommand):
                 return
             raise err
 
-        self.view.run_command("gs_replace_view_text", {"text": stdout})
+        super_key = "SUPER" if sys.platform == "darwin" else "CTRL"
+        message = "Press {}-Enter to apply the diff.  Close the window to cancel.".format(super_key)
+        content = message + "\n\n" + stdout
+
+        self.view.run_command("gs_replace_view_text", {"text": content})
 
 
-class GsAddEditCommitCommand(TextCommand, GitCommand):
+class GsStageDiffApplyCommand(TextCommand, GitCommand):
 
     """
     Apply the commit as it is presented in the view to the index. Then close the view.

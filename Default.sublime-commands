@@ -21,8 +21,8 @@
         "command": "gs_quick_stage"
     },
     {
-        "caption": "git: add (edit)",
-        "command": "gs_add_edit"
+        "caption": "git: edit and stage diff",
+        "command": "gs_stage_diff"
     },
     {
         "caption": "git: quick commit",
