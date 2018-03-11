@@ -10,6 +10,8 @@ import os
 import subprocess
 import shutil
 import re
+from contextlib import contextmanager
+import threading
 
 import sublime
 
@@ -50,6 +52,62 @@ GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d}
 GIT_REQUIRE_MAJOR = 1
 GIT_REQUIRE_MINOR = 9
 GIT_REQUIRE_PATCH = 0
+
+
+class LoggingProcessWrapper(object):
+
+    """
+    Wraps a Popen object with support for logging stdin/stderr
+    """
+    def __init__(self, process):
+        self.process = process
+        self.stdout = b''
+        self.stderr = b''
+
+    def read_stdout(self):
+        try:
+            for line in self.process.stdout:
+                self.stdout = self.stdout + line
+                util.log.panel_append(line.decode())
+        except IOError as err:
+            util.log.panel_append(err)
+
+    def read_stderr(self):
+        try:
+            for line in self.process.stderr:
+                self.stderr = self.stderr + line
+                util.log.panel_append(line.decode())
+        except IOError as err:
+            util.log.panel_append(err)
+
+    def communicate(self, stdin):
+        """
+        Emulates Popen.communicate
+        Writes stdin (if provided)
+        Logs output from both stdout and stderr
+        Returns stdout, stderr
+        """
+        if stdin is not None:
+            self.process.stdin.write(stdin)
+            self.process.stdin.flush()
+            self.process.stdin.close()
+
+        stdout_thread = threading.Thread(target=self.read_stdout)
+        stdout_thread.start()
+        stderr_thread = threading.Thread(target=self.read_stderr)
+        stderr_thread.start()
+
+        self.process.wait()
+
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        timeout = savvy_settings.get("live_panel_output_timeout", 10000)
+        # 10s timeout default
+        max_run_time = time.monotonic() - timeout
+
+        stdout_thread.join(self.process._remaining_time(max_run_time))
+        stderr_thread.join(self.process._remaining_time(max_run_time))
+
+        return self.stdout, self.stderr
 
 
 class GitCommand(StatusMixin,
@@ -103,6 +161,8 @@ class GitCommand(StatusMixin,
         if args[0] in close_panel_for:
             sublime.active_window().run_command("hide_panel", {"cancel": True})
 
+        live_panel_output = savvy_settings.get("live_panel_output", False)
+
         stdout, stderr = None, None
 
         try:
@@ -134,8 +194,29 @@ class GitCommand(StatusMixin,
                                  cwd=working_dir,
                                  env=environ,
                                  startupinfo=startupinfo)
-            stdout, stderr = p.communicate(
-                (stdin.encode(encoding=stdin_encoding) if encode else stdin) if stdin else None)
+
+            original_stdin = stdin
+            if stdin is not None and encode:
+                stdin = stdin.encode(encoding=stdin_encoding)
+
+            if show_panel and live_panel_output:
+                util.log.panel("")
+                if savvy_settings.get("show_stdin_in_output") and stdin is not None:
+                    util.log.panel_append("STDIN\n{}\n".format(original_stdin))
+                if savvy_settings.get("show_input_in_output"):
+                    util.log.panel_append("> {}\n\n".format(command_str))
+                wrapper = LoggingProcessWrapper(p)
+                stdout, stderr = wrapper.communicate(stdin)
+            else:
+                stdout, stderr = p.communicate(stdin)
+                if show_panel:
+                    util.log.panel("")
+                    if savvy_settings.get("show_stdin_in_output") and stdin is not None:
+                        util.log.panel_append("STDIN\n{}\n".format(original_stdin))
+                    if savvy_settings.get("show_input_in_output"):
+                        util.log.panel_append("> {}\n".format(command_str))
+                    util.log.panel_append("{}\n{}".format(stdout, stderr))
+
             if decode:
                 stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
 
@@ -171,12 +252,6 @@ class GitCommand(StatusMixin,
                 ))
             else:
                 raise GitSavvyError("`{}` failed.".format(command_str))
-
-        if show_panel:
-            if savvy_settings.get("show_input_in_output"):
-                util.log.panel("> {}\n{}\n{}".format(command_str, stdout, stderr))
-            else:
-                util.log.panel("{}\n{}".format(stdout, stderr))
 
         return stdout
 
