@@ -41,11 +41,16 @@ You also have the option of staging all unstaged files (excluding untracked file
 
 ## `git: diff`
 
-This command will open a special diff view.  Output from `git diff` will be displayed.  If you position your cursor over a hunk and press `SUPER-Enter` (`CTRL-Enter` in Windows), that hunk will be staged.
+This command will open a special diff view.  Output from `git diff` will be displayed.  If you position your cursor over a hunk and press `SUPER-Enter` (`CTRL-Enter` in Windows/Linux), that hunk will be staged.
 
 Use `o` to open the file at the beginning of the hunk.  Pressing `s` will toggle whether the diff ignores whitespice changes.  Pressing `w` will toggle whether the `--word-diff` mode is used.  And remember that you can not stage anything if either of these modes are enabled.
 
 
 ## `git: diff cached`
 
-This command functions similarly to the above.  However, it displays the output of `git diff --cached` and, when you press `SUPER-Enter` (`CTRL-Enter` in Windows) over a hunk, that hunk will be _removed_ from the index.
+This command functions similarly to the above.  However, it displays the output of `git diff --cached` and, when you press `SUPER-Enter` (`CTRL-Enter` in Windows/Linux) over a hunk, that hunk will be _removed_ from the index.
+
+
+## `git: edit and stage diff`
+
+This command displays an editable view of `git diff`, when you press `SUPER-Enter` (`CTRL-Enter` in Windows/Linux). The whole diff content will be applied to the index.
