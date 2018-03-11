@@ -35,9 +35,11 @@ class GsAddEditCommand(WindowCommand, GitCommand):
         git_add_view.sel().clear()
         git_add_view.run_command("gs_add_edit_refresh")
 
-        super_key = "SUPER" if sys.platform == "darwin" else "CTRL"
-        message = "Press {}-Enter to apply the diff.  Close the window to cancel.".format(super_key)
-        sublime.message_dialog(message)
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        if not savvy_settings.get("disable_git_add_edit_message", False):
+            super_key = "SUPER" if sys.platform == "darwin" else "CTRL"
+            message = "Press {}-Enter to apply the diff.  Close the window to cancel.".format(super_key)
+            sublime.message_dialog(message)
 
 
 class GsAddEditRefreshCommand(TextCommand, GitCommand):

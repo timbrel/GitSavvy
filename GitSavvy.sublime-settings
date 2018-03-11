@@ -386,5 +386,11 @@
         When set to `true`, no views will receive the prompt asking to initialize
         Git in the current view's directory when not found.
      */
-    "disable_git_init_prompt": false
+    "disable_git_init_prompt": false,
+
+    /*
+        When set to `true`, no pop up window will be shown when running
+        `git: add (edit)`.
+     */
+    "disable_git_add_edit_message": false
 }
