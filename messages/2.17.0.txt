@@ -1,0 +1,46 @@
+Changes since 2.16.6:
+
+  Requirement:
+   - bump git requirement, git v1.19.0 or above is required
+
+  Feature:
+   - quick stage and amend
+   - git remote rename
+   - implement GitLab merge request review
+   - Pedantic commit messages
+   - add helpers to handle merge conflicts in status dashboard
+   - Live output: Show STDIN when present in live log
+
+  Enhancement:
+  -  refreash UI when merge failed
+  -  add `abort rebase` command
+   - Add a refresh_gitsavvy_interfaces PoC for bug #835
+   - show diff stat when `show_commit_diff` is "full".
+   - manipulate commits with untracked files
+   - reset to original commit after failure
+   - use ssh url instead of url when adding fork
+   - support .sublime-color-scheme in inline diff view
+   - git pull from remote tracking branch directly
+   - use GsPullBase mixin
+   - add pull with rebase
+   - do commit synchronously when commit_on_close is true
+   - make following file renames optional
+   - rename `git: add (edit)` command
+
+  Fix:
+   - only show diff patch when `show_commit_diff` is "full"
+   - use unicode to write .gitignore
+   - hash tag sign is a valid char for branch name
+
+  Internal:
+   - Use window.status_message instead of sublime.status_message
+
+  Docs:
+   - Add doc for setting PATH environment
+
+  Contributors:
+   - Guillaume Wenzek
+   - Simon
+   - Pavel Savchenko
+   - Tom van Ommeren
+   - Randy Lai
