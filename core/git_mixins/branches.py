@@ -97,3 +97,7 @@ class BranchesMixin():
             commit_hash
         ).strip().split("\n")
         return [branch.strip() for branch in branches]
+
+    def validate_branch_name(self, branch):
+        ref = "refs/heads/{}".format(branch)
+        return self.git("check-ref-format", "--branch", ref, throw_on_stderr=False).strip()
