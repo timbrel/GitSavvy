@@ -31,6 +31,7 @@ Changes since 2.16.6:
    - only show diff patch when `show_commit_diff` is "full"
    - use unicode to write .gitignore
    - hash tag sign is a valid char for branch name
+   - load user specfic theme first
 
   Internal:
    - Use window.status_message instead of sublime.status_message
