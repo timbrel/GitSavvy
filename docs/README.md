@@ -179,4 +179,34 @@ For more information see [custom commands documentation](custom.md)
 
 ## Settings
 
-For all syntax specific view we have a settings file. These are nothing extra from syntax specific settings. From any view you can click `super+,` on Mac or `ctrl+,` on Windoew and Linux. [Preferences Editor](https://packagecontrol.io/packages/Preferences%20Editor) is really good package for editing you settings.
+### Settings for Views
+
+For all syntax specific view we have a settings file. These are nothing extra from syntax specific settings. From any view you can click `super+,` on Mac or `ctrl+,` on Windows and Linux.
+
+### Editing Settings
+
+To open the GitSavvy settings, simply run the `Preferences: GitSavvy Settings` command from the command palette. The default settings are documented with helpful inline comments.
+
+[Preferences Editor](https://packagecontrol.io/packages/Preferences%20Editor) is really good package for editing you settings.
+
+### Key Bindings
+
+GitSavvy's default keyboard shortcuts are defined in the package's `.sublime-keymap` files:
+
+- [Default.sublime-keymap](https://github.com/divmain/GitSavvy/blob/master/Default.sublime-keymap)
+- [Default (Windows).sublime-keymap](https://github.com/divmain/GitSavvy/blob/master/Default%20(Windows).sublime-keymap)
+- [Default (OSX).sublime-keymap](https://github.com/divmain/GitSavvy/blob/master/Default%20(OSX).sublime-keymap)
+- [Default (Linux).sublime-keymap](https://github.com/divmain/GitSavvy/blob/master/Default%20(Linux).sublime-keymap)
+
+The key bindings can be edited (and new ones added) via [user defined `.sublime-keymap` files](http://docs.sublimetext.info/en/latest/reference/key_bindings.html). These can be accessed easily by running the "Preferences: Key Bindings" command in the command palette.
+
+Here is an example of defining <kbd>ctrl</kbd>+<kbd>s</kbd> to run the `git: status` dashboard on a MacOS system:
+
+_**${ST3_PACKAGE_DIR}/User/Default (OSX).sublime-keymap**_
+```json
+[
+    { "keys": ["ctrl+s"], "command": "gs_show_status" }
+]
+```
+
+The full list of GitSavvy's commands can be seen in [Default.sublime-commands](https://github.com/divmain/GitSavvy/blob/master/Default.sublime-commands).
