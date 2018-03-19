@@ -243,6 +243,9 @@ class GitCommand(StatusMixin,
                     end - start
                 )
 
+            if show_panel and savvy_settings.get("show_time_elapsed_in_output", True):
+                util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
+
         if throw_on_stderr and not p.returncode == 0:
             sublime.active_window().status_message(
                 "Failed to run `git {}`. See log for details.".format(command[1])

@@ -152,6 +152,11 @@
     "show_stdin_in_output": false,
 
     /*
+        Change this to `false` to suppress the elapsed time in the panel output.
+     */
+    "show_time_elapsed_in_output": true,
+
+    /*
         Change this to `false` to suppress Git status in ST3 status bar.
      */
     "git_status_in_status_bar": true,
