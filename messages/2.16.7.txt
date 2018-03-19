@@ -1,0 +1,22 @@
+Changes since 2.16.6:
+
+  Feature:
+   - quick stage and amend
+   - git remote rename
+
+  Enhancement:
+   - show diff stat when `show_commit_diff` is "full".
+   - show url when removing remote
+   - manipulate commits with untracked files
+   - reset to original commit after failure
+   - fixup should be safe for untracked files
+   - use ssh url instead of url when adding fork
+   - support .sublime-color-scheme in inline diff view
+   - git pull from remote tracking branch directly
+   - refactor pull and pull with rebase
+
+  Fix:
+   - only show diff patch when `show_commit_diff` is "full"
+
+  Contributors:
+   - Randy Lai
