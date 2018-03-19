@@ -1,3 +1,4 @@
+import sublime
 from sublime_plugin import EventListener
 
 from . import util
@@ -39,3 +40,14 @@ class GitCommandFromTerminal(EventListener):
             name = view.file_name().split("/")[-1]
             if name in git_view_syntax.keys():
                 view.run_command("save")
+
+
+class KeyboardSettingsListener(EventListener):
+    def on_post_window_command(self, window, command, args):
+        if command == "edit_settings":
+            base = args.get("base_file", "")
+            if base.endswith("sublime-keymap") and "/GitSavvy/Default" in base:
+                w = sublime.active_window()
+                w.focus_group(0)
+                w.run_command("open_file", {"file": "${packages}/GitSavvy/Default.sublime-keymap"})
+                w.focus_group(1)
