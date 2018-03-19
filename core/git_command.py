@@ -10,7 +10,6 @@ import os
 import subprocess
 import shutil
 import re
-from contextlib import contextmanager
 import threading
 
 import sublime
@@ -195,30 +194,37 @@ class GitCommand(StatusMixin,
                                  env=environ,
                                  startupinfo=startupinfo)
 
-            original_stdin = stdin
+            def initialize_panel():
+                # clear panel
+                util.log.panel("")
+                if savvy_settings.get("show_stdin_in_output") and stdin is not None:
+                    util.log.panel_append("STDIN\n{}\n".format(stdin))
+                if savvy_settings.get("show_input_in_output"):
+                    util.log.panel_append("> {}\n".format(command_str))
+
+            if show_panel and live_panel_output:
+                wrapper = LoggingProcessWrapper(p)
+                initialize_panel()
+
             if stdin is not None and encode:
                 stdin = stdin.encode(encoding=stdin_encoding)
 
             if show_panel and live_panel_output:
-                util.log.panel("")
-                if savvy_settings.get("show_stdin_in_output") and stdin is not None:
-                    util.log.panel_append("STDIN\n{}\n".format(original_stdin))
-                if savvy_settings.get("show_input_in_output"):
-                    util.log.panel_append("> {}\n\n".format(command_str))
-                wrapper = LoggingProcessWrapper(p)
                 stdout, stderr = wrapper.communicate(stdin)
             else:
                 stdout, stderr = p.communicate(stdin)
-                if show_panel:
-                    util.log.panel("")
-                    if savvy_settings.get("show_stdin_in_output") and stdin is not None:
-                        util.log.panel_append("STDIN\n{}\n".format(original_stdin))
-                    if savvy_settings.get("show_input_in_output"):
-                        util.log.panel_append("> {}\n".format(command_str))
-                    util.log.panel_append("{}\n{}".format(stdout, stderr))
 
             if decode:
                 stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
+
+            if show_panel and not live_panel_output:
+                initialize_panel()
+                if stdout:
+                    util.log.panel_append(stdout)
+                if stderr:
+                    if stdout:
+                        util.log.panel_append("\n")
+                    util.log.panel_append(stderr)
 
         except Exception as e:
             # this should never be reached
@@ -236,6 +242,9 @@ class GitCommand(StatusMixin,
                     stderr.decode(),
                     end - start
                 )
+
+            if show_panel and savvy_settings.get("show_time_elapsed_in_output", True):
+                util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
 
         if throw_on_stderr and not p.returncode == 0:
             sublime.active_window().status_message(
