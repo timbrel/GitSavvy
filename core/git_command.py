@@ -65,7 +65,7 @@ class LoggingProcessWrapper(object):
 
     def read_stdout(self):
         try:
-            for line in self.process.stdout:
+            for line in iter(self.process.stdout.readline, b""):
                 self.stdout = self.stdout + line
                 util.log.panel_append(line.decode())
         except IOError as err:
@@ -73,7 +73,7 @@ class LoggingProcessWrapper(object):
 
     def read_stderr(self):
         try:
-            for line in self.process.stderr:
+            for line in iter(self.process.stderr.readline, b""):
                 self.stderr = self.stderr + line
                 util.log.panel_append(line.decode())
         except IOError as err:
@@ -100,11 +100,9 @@ class LoggingProcessWrapper(object):
 
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         timeout = savvy_settings.get("live_panel_output_timeout", 10000)
-        # 10s timeout default
-        max_run_time = time.monotonic() - timeout
 
-        stdout_thread.join(self.process._remaining_time(max_run_time))
-        stderr_thread.join(self.process._remaining_time(max_run_time))
+        stdout_thread.join(timeout / 1000)
+        stderr_thread.join(timeout / 1000)
 
         return self.stdout, self.stderr
 
