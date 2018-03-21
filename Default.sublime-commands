@@ -8,7 +8,7 @@
     },
     {
         "caption": "Preferences: GitSavvy Key Bindings",
-        "command": "edit_settings",
+        "command": "gs_edit_settings",
         "args": {
             "base_file": "${packages}/GitSavvy/Default (${platform}).sublime-keymap"
         }

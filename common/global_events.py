@@ -1,5 +1,5 @@
 import sublime
-from sublime_plugin import EventListener
+from sublime_plugin import EventListener, WindowCommand
 
 from . import util
 
@@ -51,3 +51,13 @@ class KeyboardSettingsListener(EventListener):
                 w.focus_group(0)
                 w.run_command("open_file", {"file": "${packages}/GitSavvy/Default.sublime-keymap"})
                 w.focus_group(1)
+
+
+class GsEditSettingsCommand(WindowCommand):
+    """
+    For some reasons, the command palette doesn't trigger `on_post_window_command` for
+    dev version of Sublime Text. The command palette would call `gs_edit_settings` and
+    subsequently trigger `on_post_window_command`.
+    """
+    def run(self, **kwargs):
+        self.window.run_command("edit_settings", kwargs)
