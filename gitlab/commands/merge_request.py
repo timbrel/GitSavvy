@@ -81,7 +81,7 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
         elif idx == 0:
             self.window.show_input_panel(
                 "Enter branch name for MR {}:".format(self.mr["iid"]),
-                "merge-request-{}".format(self.mr["iid"]),
+                "{}/{}".format(self.mr["author"]["username"], self.mr["source_branch"]),
                 self.fetch_and_checkout_mr,
                 None,
                 None
@@ -89,7 +89,7 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
         elif idx == 1:
             self.window.show_input_panel(
                 "Enter branch name for MR {}:".format(self.mr["iid"]),
-                "merge-request-{}".format(self.mr["iid"]),
+                "{}/{}".format(self.mr["author"]["username"], self.mr["source_branch"]),
                 self.create_branch_for_mr,
                 None,
                 None
