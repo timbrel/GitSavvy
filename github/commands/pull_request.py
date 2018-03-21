@@ -78,7 +78,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         elif idx == 1:
             self.window.show_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
-                "pull-request-{}".format(self.pr["number"]),
+                "{}/{}".format(self.pr["user"]["login"], self.pr["head"]["ref"]),
                 self.fetch_and_checkout_pr,
                 None,
                 None
@@ -86,7 +86,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         elif idx == 2:
             self.window.show_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
-                "pull-request-{}".format(self.pr["number"]),
+                "{}/{}".format(self.pr["user"]["login"], self.pr["head"]["ref"]),
                 self.create_branch_for_pr,
                 None,
                 None
