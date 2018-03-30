@@ -79,9 +79,8 @@ class TagsInterface(ui.Interface, GitCommand):
 
     def pre_render(self):
         if self.show_remotes is None:
-            savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-            self.show_remotes = savvy_settings.get("show_remotes_in_tags_dashboard")
-            self.max_items = savvy_settings.get("max_items_in_tags_dashboard", None)
+            self.show_remotes = self.savvy_settings.get("show_remotes_in_tags_dashboard")
+            self.max_items = self.savvy_settings.get("max_items_in_tags_dashboard", None)
 
         self.local_tags = self.get_tags(reverse=True)
         if not self.remotes and self.show_remotes:

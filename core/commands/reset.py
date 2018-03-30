@@ -28,7 +28,7 @@ class ResetMixin(object):
             return
         self._selected_hash = commit_hash
 
-        use_reset_mode = sublime.load_settings("GitSavvy.sublime-settings").get("use_reset_mode")
+        use_reset_mode = self.savvy_settings.get("use_reset_mode")
         if use_reset_mode:
             self.on_reset(use_reset_mode)
         else:

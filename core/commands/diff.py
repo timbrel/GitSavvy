@@ -47,7 +47,6 @@ class GsDiffCommand(WindowCommand, GitCommand):
             "-" if base_commit is None else "--" + base_commit,
             file_path or repo_path
         )
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
 
         if view_key in diff_views and diff_views[view_key] in sublime.active_window().views():
             diff_view = diff_views[view_key]
@@ -63,7 +62,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
             settings.set("git_savvy.diff_view.show_word_diff", False)
             settings.set("git_savvy.diff_view.base_commit", base_commit)
             settings.set("git_savvy.diff_view.target_commit", target_commit)
-            settings.set("git_savvy.diff_view.show_diffstat", savvy_settings.get("show_diffstat", True))
+            settings.set("git_savvy.diff_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
             settings.set("git_savvy.diff_view.disable_stage", disable_stage)
             diff_view.set_name(title)
             diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")

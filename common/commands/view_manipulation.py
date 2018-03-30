@@ -1,5 +1,6 @@
 import sublime
 from sublime_plugin import TextCommand
+from ...core.settings import GitSavvySettings
 
 
 class GsInsertTextAtCursorCommand(TextCommand):
@@ -64,7 +65,7 @@ class GsHandleVintageousCommand(TextCommand):
     """
 
     def run(self, edit):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        savvy_settings = GitSavvySettings()
         if savvy_settings.get("vintageous_friendly", False) is True:
             self.view.settings().set("git_savvy.vintageous_friendly", True)
             if savvy_settings.get("vintageous_enter_insert_mode", False) is True:
@@ -79,6 +80,6 @@ class GsHandleArrowKeysCommand(TextCommand):
     """
 
     def run(self, edit):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        savvy_settings = GitSavvySettings()
         if savvy_settings.get("arrow_keys_navigation", False) is True:
             self.view.settings().set("git_savvy.arrow_keys_navigation", True)

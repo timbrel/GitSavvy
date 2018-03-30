@@ -25,11 +25,10 @@ class GsMergeCommand(WindowCommand, GitCommand):
     def on_branch_selection(self, branch):
         if not branch:
             return
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         try:
             self.git(
                 "merge",
-                "--log" if savvy_settings.get("merge_log") else None,
+                "--log" if self.savvy_settings.get("merge_log") else None,
                 branch
             )
         finally:

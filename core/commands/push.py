@@ -22,8 +22,7 @@ class PushBase(GitCommand):
         """
         Perform `git push remote branch`.
         """
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        if force and savvy_settings.get("confirm_force_push"):
+        if force and self.savvy_settings.get("confirm_force_push"):
             if not sublime.ok_cancel_dialog(CONFIRM_FORCE_PUSH):
                 return
 
@@ -51,7 +50,6 @@ class GsPushCommand(WindowCommand, PushBase):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         if self.local_branch_name:
             upstream = self.get_local_branch(self.local_branch_name).tracking
         else:
@@ -62,7 +60,7 @@ class GsPushCommand(WindowCommand, PushBase):
             remote, remote_branch = upstream.split("/", 1)
             self.do_push(
                 remote, self.local_branch_name, remote_branch=remote_branch, force=self.force)
-        elif savvy_settings.get("prompt_for_tracking_branch"):
+        elif self.savvy_settings.get("prompt_for_tracking_branch"):
             if sublime.ok_cancel_dialog(SET_UPSTREAM_PROMPT):
                 self.window.run_command("gs_push_to_branch_name", {
                     "set_upstream": True,

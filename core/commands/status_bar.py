@@ -45,7 +45,7 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
             return
 
         global last_execution, update_status_bar_soon
-        if sublime.load_settings("GitSavvy.sublime-settings").get("git_status_in_status_bar"):
+        if self.savvy_settings.get("git_status_in_status_bar"):
 
             millisec = int(round(time.time() * 1000))
             # If we updated to less then 100 ms we don't need to update now but

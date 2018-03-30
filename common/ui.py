@@ -6,6 +6,7 @@ import sublime
 from sublime_plugin import TextCommand
 
 from . import util
+from ..core.settings import GitSavvySettings
 
 
 interfaces = {}
@@ -73,7 +74,6 @@ class Interface():
 
     def create_view(self, repo_path):
         window = sublime.active_window()
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         self.view = window.new_file()
 
         self.view.settings().set("git_savvy.repo_path", repo_path)
@@ -81,7 +81,7 @@ class Interface():
         self.view.settings().set("git_savvy.{}_view".format(self.interface_type), True)
         self.view.settings().set("git_savvy.tabbable", True)
         self.view.settings().set("git_savvy.interface", self.interface_type)
-        self.view.settings().set("git_savvy.help_hidden", savvy_settings.get("hide_help_menu"))
+        self.view.settings().set("git_savvy.help_hidden", GitSavvySettings().get("hide_help_menu"))
         self.view.set_syntax_file(self.syntax_file)
         self.view.set_scratch(True)
         self.view.set_read_only(self.read_only)

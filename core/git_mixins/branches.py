@@ -48,8 +48,7 @@ class BranchesMixin():
             # remove brackets
             tracking_status = tracking_status[1:len(tracking_status) - 1]
 
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        enable_branch_descriptions = savvy_settings.get("enable_branch_descriptions")
+        enable_branch_descriptions = self.savvy_settings.get("enable_branch_descriptions")
 
         hide_description = is_remote or not enable_branch_descriptions
         description = "" if hide_description else self.git(

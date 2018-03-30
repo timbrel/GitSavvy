@@ -2,8 +2,9 @@ import functools
 import json
 import pprint as _pprint
 
-import sublime
 from contextlib import contextmanager
+
+from ...core.settings import GitSavvySettings
 
 _log = []
 enabled = False
@@ -125,7 +126,7 @@ def pprint(*args, **kwargs):
 
 
 def get_trace_tags():
-    savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+    savvy_settings = GitSavvySettings()
     if savvy_settings.get("dev_mode"):
         return savvy_settings.get("dev_trace", [])
     else:

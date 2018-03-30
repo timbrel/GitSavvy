@@ -1,6 +1,7 @@
 import bisect
 
 import sublime
+from ...core.settings import GitSavvySettings
 
 
 ##############
@@ -171,5 +172,5 @@ def get_instance_after_pt(view, pt, pattern):
 def disable_other_plugins(view):
     # Disable key-bindings for Vitageous
     # https://github.com/guillermooo/Vintageous/wiki/Disabling
-    if sublime.load_settings("GitSavvy.sublime-settings").get("vintageous_friendly", False) is False:
+    if GitSavvySettings().get("vintageous_friendly", False) is False:
         view.settings().set("__vi_external_disable", False)

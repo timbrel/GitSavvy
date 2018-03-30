@@ -6,12 +6,11 @@ import re
 from collections import namedtuple
 from functools import partial, lru_cache
 from webbrowser import open as open_in_browser
-import urllib
-
-import sublime
 
 from ..common import interwebs, util
 from ..core.exceptions import FailedGitLabRequest
+from ..core.settings import GitSavvySettings
+
 
 GITLAB_PER_PAGE_MAX = 100
 GITLAB_ERROR_TEMPLATE = "Error {action} GitLab: {payload}"
@@ -74,8 +73,7 @@ def parse_remote(remote):
 
     fqdn, owner, repo = match.groups()
 
-    savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-    api_tokens = savvy_settings.get("api_tokens")
+    api_tokens = GitSavvySettings().get("api_tokens")
     token = api_tokens and api_tokens.get(fqdn, None) or None
 
     return GitLabRepo(url, fqdn, owner, repo, token)

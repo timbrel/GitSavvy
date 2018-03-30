@@ -107,10 +107,9 @@ class GsTagCreateCommand(TextCommand, GitCommand):
             return util.log.panel("\"{}\" is not a valid tag name.".format(tag_name))
 
         self.tag_name = stdout.strip()[10:]
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         self.window.show_input_panel(
             TAG_CREATE_MESSAGE_PROMPT,
-            savvy_settings.get("default_tag_message").format(tag_name=tag_name),
+            self.savvy_settings.get("default_tag_message").format(tag_name=tag_name),
             self.on_entered_message,
             None,
             None

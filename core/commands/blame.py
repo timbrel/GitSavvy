@@ -97,8 +97,7 @@ class GsBlameCurrentFileCommand(LogMixin, TextCommand, GitCommand):
             100)
 
     def log(self, **kwargs):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        follow = savvy_settings.get("blame_follow_rename")
+        follow = self.savvy_settings.get("blame_follow_rename")
         kwargs["follow"] = follow
         return super().log(**kwargs)
 
@@ -169,14 +168,12 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
                         (0, cursor_layout[1] - yoffset), animate=False), 100)
 
     def get_content(self, ignore_whitespace=False, detect_options=None, commit_hash=None):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-
         if commit_hash:
             # git blame does not follow file name changes like git log, therefor we
             # need to look at the log first too see if the file has changed names since
             # selected commit. I would not be surprised if this brakes in some special cases
             # like rebased or multimerged commits
-            follow = savvy_settings.get("blame_follow_rename")
+            follow = self.savvy_settings.get("blame_follow_rename")
             filename_at_commit = self.filename_at_commit(self.file_path, commit_hash, follow=follow)
         else:
             filename_at_commit = self.file_path
@@ -358,8 +355,7 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand
         self.view.window().run_command("gs_show_commit", {"commit_hash": commit_hash})
 
     def blame_neighbor(self, position, selected=False):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        follow = savvy_settings.get("blame_follow_rename")
+        follow = self.savvy_settings.get("blame_follow_rename")
 
         if position == "newer" and selected:
             raise Exception("blame a commit after selected commit is confusing")

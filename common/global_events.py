@@ -61,3 +61,28 @@ class GsEditSettingsCommand(WindowCommand):
     """
     def run(self, **kwargs):
         self.window.run_command("edit_settings", kwargs)
+
+
+class GsEditProjectSettingsCommand(WindowCommand):
+    """
+    For some reasons, the command palette doesn't trigger `on_post_window_command` for
+    dev version of Sublime Text. The command palette would call `gs_edit_settings` and
+    subsequently trigger `on_post_window_command`.
+    """
+    def run(self):
+        project_file_name = self.window.project_file_name()
+        project_data = self.window.project_data()
+        if not project_file_name or project_data is None:
+            sublime.error_message("no project data found.")
+
+        if project_data and "settings" not in project_data:
+            project_data["settings"] = {"GitSavvy": {}}
+        if "GitSavvy" not in project_data["settings"]:
+            project_data["settings"]["GitSavvy"] = {}
+
+        self.window.set_project_data(project_data)
+
+        self.window.run_command("edit_settings", {
+            "user_file": project_file_name,
+            "base_file": "${packages}/GitSavvy/GitSavvy.sublime-settings"
+        })
