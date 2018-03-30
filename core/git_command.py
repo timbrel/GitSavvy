@@ -9,7 +9,8 @@ Define a base command class that:
 import os
 import subprocess
 import shutil
-from contextlib import contextmanager
+import re
+import threading
 
 import sublime
 
@@ -43,6 +44,67 @@ FALLBACK_PARSE_ERROR_MSG = (
     "if you have checked binary data into your repository.  The current "
     "operation has been aborted."
 )
+
+GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d} or above."
+
+# git minimum requirement
+GIT_REQUIRE_MAJOR = 1
+GIT_REQUIRE_MINOR = 9
+GIT_REQUIRE_PATCH = 0
+
+
+class LoggingProcessWrapper(object):
+
+    """
+    Wraps a Popen object with support for logging stdin/stderr
+    """
+    def __init__(self, process):
+        self.process = process
+        self.stdout = b''
+        self.stderr = b''
+
+    def read_stdout(self):
+        try:
+            for line in iter(self.process.stdout.readline, b""):
+                self.stdout = self.stdout + line
+                util.log.panel_append(line.decode())
+        except IOError as err:
+            util.log.panel_append(err)
+
+    def read_stderr(self):
+        try:
+            for line in iter(self.process.stderr.readline, b""):
+                self.stderr = self.stderr + line
+                util.log.panel_append(line.decode())
+        except IOError as err:
+            util.log.panel_append(err)
+
+    def communicate(self, stdin):
+        """
+        Emulates Popen.communicate
+        Writes stdin (if provided)
+        Logs output from both stdout and stderr
+        Returns stdout, stderr
+        """
+        if stdin is not None:
+            self.process.stdin.write(stdin)
+            self.process.stdin.flush()
+            self.process.stdin.close()
+
+        stdout_thread = threading.Thread(target=self.read_stdout)
+        stdout_thread.start()
+        stderr_thread = threading.Thread(target=self.read_stderr)
+        stderr_thread.start()
+
+        self.process.wait()
+
+        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+        timeout = savvy_settings.get("live_panel_output_timeout", 10000)
+
+        stdout_thread.join(timeout / 1000)
+        stderr_thread.join(timeout / 1000)
+
+        return self.stdout, self.stderr
 
 
 class GitCommand(StatusMixin,
@@ -96,6 +158,8 @@ class GitCommand(StatusMixin,
         if args[0] in close_panel_for:
             sublime.active_window().run_command("hide_panel", {"cancel": True})
 
+        live_panel_output = savvy_settings.get("live_panel_output", False)
+
         stdout, stderr = None, None
 
         try:
@@ -127,10 +191,38 @@ class GitCommand(StatusMixin,
                                  cwd=working_dir,
                                  env=environ,
                                  startupinfo=startupinfo)
-            stdout, stderr = p.communicate(
-                (stdin.encode(encoding=stdin_encoding) if encode else stdin) if stdin else None)
+
+            def initialize_panel():
+                # clear panel
+                util.log.panel("")
+                if savvy_settings.get("show_stdin_in_output") and stdin is not None:
+                    util.log.panel_append("STDIN\n{}\n".format(stdin))
+                if savvy_settings.get("show_input_in_output"):
+                    util.log.panel_append("> {}\n".format(command_str))
+
+            if show_panel and live_panel_output:
+                wrapper = LoggingProcessWrapper(p)
+                initialize_panel()
+
+            if stdin is not None and encode:
+                stdin = stdin.encode(encoding=stdin_encoding)
+
+            if show_panel and live_panel_output:
+                stdout, stderr = wrapper.communicate(stdin)
+            else:
+                stdout, stderr = p.communicate(stdin)
+
             if decode:
                 stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
+
+            if show_panel and not live_panel_output:
+                initialize_panel()
+                if stdout:
+                    util.log.panel_append(stdout)
+                if stderr:
+                    if stdout:
+                        util.log.panel_append("\n")
+                    util.log.panel_append(stderr)
 
         except Exception as e:
             # this should never be reached
@@ -149,8 +241,11 @@ class GitCommand(StatusMixin,
                     end - start
                 )
 
+            if show_panel and savvy_settings.get("show_time_elapsed_in_output", True):
+                util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
+
         if throw_on_stderr and not p.returncode == 0:
-            sublime.status_message(
+            sublime.active_window().status_message(
                 "Failed to run `git {}`. See log for details.".format(command[1])
             )
 
@@ -164,12 +259,6 @@ class GitCommand(StatusMixin,
                 ))
             else:
                 raise GitSavvyError("`{}` failed.".format(command_str))
-
-        if show_panel:
-            if savvy_settings.get("show_input_in_output"):
-                util.log.panel("> {}\n{}\n{}".format(command_str, stdout, stderr))
-            else:
-                util.log.panel("{}\n{}".format(stdout, stderr))
 
         return stdout
 
@@ -212,6 +301,31 @@ class GitCommand(StatusMixin,
 
             if not git_path:
                 git_path = shutil.which("git")
+
+            try:
+                stdout = subprocess.check_output([git_path, "--version"]).decode("utf-8")
+            except Exception:
+                stdout = ""
+                git_path = None
+
+            match = re.match(r"git version ([0-9]+)\.([0-9]+)\.([0-9]+)", stdout)
+            if match:
+                major = int(match.group(1))
+                minor = int(match.group(2))
+                patch = int(match.group(3))
+                if major < GIT_REQUIRE_MAJOR or \
+                        (major == GIT_REQUIRE_MAJOR and minor < GIT_REQUIRE_MINOR) or \
+                        (major == GIT_REQUIRE_MAJOR and minor == GIT_REQUIRE_MINOR and
+                            patch < GIT_REQUIRE_PATCH):
+                    msg = GIT_TOO_OLD_MSG.format(
+                        GIT_REQUIRE_MAJOR,
+                        GIT_REQUIRE_MINOR,
+                        GIT_REQUIRE_PATCH)
+                    git_path = None
+                    if not error_message_displayed:
+                        sublime.error_message(msg)
+                        error_message_displayed = True
+                    raise ValueError("Git binary too old.")
 
         if not git_path:
             msg = ("Your Git binary cannot be found.  If it is installed, add it "
@@ -271,7 +385,7 @@ class GitCommand(StatusMixin,
             "--show-toplevel",
             working_dir=folder,
             throw_on_stderr=throw_on_stderr
-            )
+        )
         repo = stdout.strip()
         return os.path.realpath(repo) if repo else None
 

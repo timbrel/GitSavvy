@@ -1,6 +1,7 @@
 import sublime
 from sublime_plugin import WindowCommand
 from webbrowser import open as open_in_browser
+import urllib
 
 from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_paginated_panel
@@ -15,7 +16,7 @@ PUSH_PROMPT = ("You have not set an upstream for the active branch.  "
                "Would you like to push to a remote?")
 
 
-class GsPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin):
 
     """
     Display open pull requests on the base repo.  When a pull request is selected,
@@ -37,9 +38,9 @@ class GsPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMi
             limit=savvy_settings.get("github_per_page_max", 100),
             format_item=self.format_item,
             status_message="Getting pull requests..."
-            )
+        )
         if pp.is_empty():
-            sublime.status_message("No pull requests found.")
+            self.window.status_message("No pull requests found.")
 
     def format_item(self, issue):
         return (
@@ -49,7 +50,7 @@ class GsPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMi
                     user=issue["user"]["login"],
                     time_stamp=util.dates.fuzzy(issue["created_at"],
                                                 date_format="%Y-%m-%dT%H:%M:%SZ")
-                    )
+                )
             ],
             issue
         )
@@ -66,7 +67,7 @@ class GsPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMi
              "View diff.",
              "Open in browser."],
             self.on_select_action
-            )
+        )
 
     def on_select_action(self, idx):
         if idx == -1:
@@ -81,7 +82,7 @@ class GsPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMi
                 self.fetch_and_checkout_pr,
                 None,
                 None
-                )
+            )
         elif idx == 2:
             self.window.show_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
@@ -89,45 +90,45 @@ class GsPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMi
                 self.create_branch_for_pr,
                 None,
                 None
-                )
+            )
         elif idx == 3:
             self.view_diff_for_pr()
         elif idx == 4:
             self.open_pr_in_browser()
 
     def fetch_and_checkout_pr(self, branch_name=None):
-        sublime.status_message("Fetching PR commit...")
+        self.window.status_message("Fetching PR commit...")
         self.git(
             "fetch",
             self.pr["head"]["repo"]["clone_url"],
             self.pr["head"]["ref"]
-            )
+        )
 
         if branch_name:
-            sublime.status_message("Creating local branch for PR...")
+            self.window.status_message("Creating local branch for PR...")
             self.git(
                 "branch",
                 branch_name,
                 self.pr["head"]["sha"]
-                )
+            )
 
-        sublime.status_message("Checking out PR...")
+        self.window.status_message("Checking out PR...")
         self.checkout_ref(branch_name or self.pr["head"]["sha"])
 
     def create_branch_for_pr(self, branch_name):
-        sublime.status_message("Fetching PR commit...")
+        self.window.status_message("Fetching PR commit...")
         self.git(
             "fetch",
             self.pr["head"]["repo"]["clone_url"],
             self.pr["head"]["ref"]
-            )
+        )
 
-        sublime.status_message("Creating local branch for PR...")
+        self.window.status_message("Creating local branch for PR...")
         self.git(
             "branch",
             branch_name,
             self.pr["head"]["sha"]
-            )
+        )
 
     def view_diff_for_pr(self):
         response = interwebs.get_url(self.pr["diff_url"])
@@ -140,13 +141,13 @@ class GsPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMi
         diff_view.sel().clear()
         diff_view.run_command("gs_replace_view_text", {
             "text": response.payload.decode("utf-8")
-            })
+        })
 
     def open_pr_in_browser(self):
         open_in_browser(self.pr["html_url"])
 
 
-class GsCreatePullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubCreatePullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin):
     """
     Create pull request of the current commit on the current repo.
     """
@@ -158,7 +159,7 @@ class GsCreatePullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         if not self.get_upstream_for_active_branch():
             if sublime.ok_cancel_dialog(PUSH_PROMPT):
                 self.window.run_command(
-                    "gs_push_and_create_pull_request",
+                    "gs_github_push_and_create_pull_request",
                     {"set_upstream": True})
 
         else:
@@ -168,32 +169,36 @@ class GsCreatePullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
             else:
                 status, secondary = self.get_branch_status()
                 if secondary:
-                    sublime.message_dialog(
-                        "Your current branch is different from its remote counterpart. %s" % secondary)
-                else:
-                    owner = github.parse_remote(self.get_remotes()[remote_branch.remote]).owner
-                    self.open_comparision_in_browser(
-                        owner,
-                        remote_branch.name
-                    )
+                    secondary = "\n".join(secondary)
+                    if "ahead" in secondary or "behind" in secondary:
+                        sublime.message_dialog(
+                            "Your current branch is different from its remote counterpart.\n" +
+                            secondary)
+                        return
+
+                owner = github.parse_remote(self.get_remotes()[remote_branch.remote]).owner
+                self.open_comparision_in_browser(
+                    owner,
+                    remote_branch.name
+                )
 
     def open_comparision_in_browser(self, owner, branch):
         base_remote = github.parse_remote(self.get_integrated_remote_url())
-        url = base_remote.url
+        remote_url = base_remote.url
         base_owner = base_remote.owner
         base_branch = self.get_integrated_branch_name()
-
-        open_in_browser("{}/compare/{}:{}...{}:{}?expand=1".format(
-            url,
+        url = "{}/compare/{}:{}...{}:{}?expand=1".format(
+            remote_url,
             base_owner,
-            base_branch,
+            urllib.parse.quote_plus(base_branch),
             owner,
-            branch
-        ))
+            urllib.parse.quote_plus(branch)
+        )
+        open_in_browser(url)
 
 
-class GsPushAndCreatePullRequestCommand(GsPushToBranchNameCommand):
+class GsGithubPushAndCreatePullRequestCommand(GsPushToBranchNameCommand):
 
     def do_push(self, *args, **kwargs):
         super().do_push(*args, **kwargs)
-        self.window.run_command("gs_create_pull_request")
+        self.window.run_command("gs_github_create_pull_request")

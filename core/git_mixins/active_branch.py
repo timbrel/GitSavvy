@@ -70,7 +70,7 @@ class ActiveBranchMixin():
         detached, initial, branch, remote, clean, ahead, behind, gone = \
             self._get_branch_status_components()
 
-        secondary = ""
+        secondary = []
 
         if detached:
             status = "HEAD is in a detached state."
@@ -83,22 +83,30 @@ class ActiveBranchMixin():
             status = "On branch `{}`{}.".format(branch, tracking if remote else "")
 
             if ahead and behind:
-                secondary = "You're ahead by {} and behind by {}.".format(ahead, behind)
+                secondary.append("You're ahead by {} and behind by {}.".format(ahead, behind))
             elif ahead:
-                secondary = "You're ahead by {}.".format(ahead)
+                secondary.append("You're ahead by {}.".format(ahead))
             elif behind:
-                secondary = "You're behind by {}.".format(behind)
+                secondary.append("You're behind by {}.".format(behind))
             elif gone:
-                secondary = "The remote branch is gone."
+                secondary.append("The remote branch is gone.")
+
+        if self.in_merge():
+            secondary.append("Merging {}.".format(self.merge_head()))
+
+        if self.in_rebase():
+            secondary.append("Rebasing {}.".format(self.rebase_branch_name()))
 
         if delim:
-            return delim.join((status, secondary)) if secondary else status
+            return delim.join([status] + secondary) if secondary else status
         return status, secondary
 
     def get_branch_status_short(self):
 
         if self.in_rebase():
             return "(no branch, rebasing {})".format(self.rebase_branch_name())
+
+        merge_head = self.merge_head() if self.in_merge() else ""
 
         detached, initial, branch, remote, clean, ahead, behind, gone = \
             self._get_branch_status_components()
@@ -115,7 +123,7 @@ class ActiveBranchMixin():
         if behind:
             output += "-" + behind
 
-        return output
+        return output if not merge_head else output + " (merging {})".format(merge_head)
 
     def get_commit_hash_for_head(self):
         """

@@ -15,9 +15,11 @@ class GsMvCurrentFileCommand(WindowCommand, GitCommand):
     def run(self):
         if self.file_path:
             parent, base_name = os.path.split(self.file_path)
-            on_done = functools.partial(self.on_done,
+            on_done = functools.partial(
+                self.on_done,
                 self.file_path, parent, base_name)
-            v = self.window.show_input_panel("New Name:", base_name,
+            v = self.window.show_input_panel(
+                "New Name:", base_name,
                 on_done, None, None)
             name, ext = os.path.splitext(base_name)
             v.sel().clear()

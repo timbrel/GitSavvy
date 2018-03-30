@@ -31,7 +31,7 @@ def _determine_syntax_files():
                     syntax_file_map[extension] = []
                 extension_list = syntax_file_map[extension]
                 extension_list.append(syntax_file)
-        except:
+        except Exception:
             continue
 
 

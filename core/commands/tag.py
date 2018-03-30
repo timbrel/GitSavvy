@@ -47,23 +47,23 @@ def smart_incremented_tag(tag, release_type):
         if release_type == "premajor" \
                 or (not prerelease and release_type == "major") \
                 or (prerelease and release_type == "major" and (minor != "0" or patch != "0")):
-            major = str(int(major)+1)
+            major = str(int(major) + 1)
             minor = patch = "0"
             prerelease = None
         elif release_type == "preminor" \
                 or (not prerelease and release_type == "minor") \
                 or (prerelease and release_type == "minor" and patch != "0"):
-            minor = str(int(minor)+1)
+            minor = str(int(minor) + 1)
             patch = "0"
             prerelease = None
         elif release_type == "prepatch" \
                 or (not prerelease and release_type == "prerelease") \
                 or (not prerelease and release_type == "patch"):
-            patch = str(int(patch)+1)
+            patch = str(int(patch) + 1)
             prerelease = None
 
         if "pre" in release_type[0:3]:
-            prerelease = str(int(prerelease)+1) if prerelease else "0"
+            prerelease = str(int(prerelease) + 1) if prerelease else "0"
             return prefix + major + "." + minor + "." + patch + "-" + prerelease
         else:
             return prefix + major + "." + minor + "." + patch
@@ -101,7 +101,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
             "--normalize",
             "refs/tags/" + tag_name,
             throw_on_stderr=False
-            )
+        )
 
         if not stdout:
             return util.log.panel("\"{}\" is not a valid tag name.".format(tag_name))
@@ -114,7 +114,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
             self.on_entered_message,
             None,
             None
-            )
+        )
 
     def on_entered_message(self, message):
         """
@@ -124,7 +124,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
             return
 
         self.git("tag", self.tag_name, "-F", "-", stdin=message)
-        sublime.status_message(TAG_CREATE_MESSAGE.format(self.tag_name))
+        self.view.window().status_message(TAG_CREATE_MESSAGE.format(self.tag_name))
         util.view.refresh_gitsavvy(self.view)
 
 

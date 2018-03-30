@@ -112,7 +112,7 @@ class TagsInterface(ui.Interface, GitCommand):
         return "\n".join(
             "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
             for tag in self.local_tags[0:self.max_items]
-            )
+        )
 
     @ui.partial("remote_tags")
     def render_remote_tags(self):
@@ -171,7 +171,7 @@ class TagsInterface(ui.Interface, GitCommand):
         return self.template_remote.format(
             remote_name=remote_name,
             remote_tags_list=msg
-            )
+        )
 
     def render_remote_tags_off(self):
         return "\n\n  ** Press [e] to toggle display of remote branches. **\n"
@@ -235,7 +235,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
         for tag in tags_to_delete:
             self.git("tag", "-d", tag)
 
-        sublime.status_message(TAG_DELETE_MESSAGE)
+        self.view.window().status_message(TAG_DELETE_MESSAGE)
         util.view.refresh_gitsavvy(self.view)
 
     def delete_remote(self, interface):
@@ -252,9 +252,9 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
                     remote_name,
                     "--delete",
                     *("refs/tags/" + tag for tag in tags_to_delete)
-                    )
+                )
 
-        sublime.status_message(TAG_DELETE_MESSAGE)
+        self.view.window().status_message(TAG_DELETE_MESSAGE)
         interface.remotes = None
         util.view.refresh_gitsavvy(self.view)
 
@@ -279,7 +279,7 @@ class GsTagsPushCommand(TextCommand, GitCommand):
             self.remotes,
             lambda idx: self.push_async(idx, push_all=push_all),
             flags=sublime.MONOSPACE_FONT
-            )
+        )
 
     def push_async(self, remote_idx, push_all=False):
         if push_all:
@@ -297,9 +297,9 @@ class GsTagsPushCommand(TextCommand, GitCommand):
         lines = interface.get_selection_lines_in_region("local_tags")
         tags_to_push = tuple(line[12:].strip() for line in lines if line)
 
-        sublime.status_message(START_PUSH_MESSAGE)
+        self.view.window().status_message(START_PUSH_MESSAGE)
         self.git("push", remote, *("refs/tags/" + tag for tag in tags_to_push))
-        sublime.status_message(END_PUSH_MESSAGE)
+        self.view.window().status_message(END_PUSH_MESSAGE)
 
         interface.remotes = None
         util.view.refresh_gitsavvy(self.view)
@@ -309,9 +309,9 @@ class GsTagsPushCommand(TextCommand, GitCommand):
         if remote_idx == -1:
             return
         remote = self.remotes[remote_idx]
-        sublime.status_message(START_PUSH_MESSAGE)
+        self.view.window().status_message(START_PUSH_MESSAGE)
         self.git("push", remote, "--tags")
-        sublime.status_message(END_PUSH_MESSAGE)
+        self.view.window().status_message(END_PUSH_MESSAGE)
 
         interface = ui.get_interface(self.view.id())
         if interface:

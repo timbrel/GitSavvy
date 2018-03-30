@@ -6,7 +6,7 @@ from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_branch_panel
 
 
-class GsConfigureGithubRemoteCommand(WindowCommand, GithubRemotesMixin, GitCommand):
+class GsGithubConfigureRemoteCommand(WindowCommand, GithubRemotesMixin, GitCommand):
 
     def run(self):
         sublime.set_timeout_async(self.run_async)
@@ -32,4 +32,4 @@ class GsConfigureGithubRemoteCommand(WindowCommand, GithubRemotesMixin, GitComma
         self.git("config", "--local", "--unset-all", "GitSavvy.ghBranch", throw_on_stderr=False)
         self.git("config", "--local", "--add", "GitSavvy.ghBranch", remote_branch)
 
-        sublime.status_message("Successfully configured GitHub integration.")
+        self.window.status_message("Successfully configured GitHub integration.")

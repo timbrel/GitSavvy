@@ -1,4 +1,5 @@
-from sublime_plugin import EventListener
+import sublime
+from sublime_plugin import EventListener, WindowCommand
 
 from . import util
 
@@ -39,3 +40,24 @@ class GitCommandFromTerminal(EventListener):
             name = view.file_name().split("/")[-1]
             if name in git_view_syntax.keys():
                 view.run_command("save")
+
+
+class KeyboardSettingsListener(EventListener):
+    def on_post_window_command(self, window, command, args):
+        if command == "edit_settings":
+            base = args.get("base_file", "")
+            if base.endswith("sublime-keymap") and "/GitSavvy/Default" in base:
+                w = sublime.active_window()
+                w.focus_group(0)
+                w.run_command("open_file", {"file": "${packages}/GitSavvy/Default.sublime-keymap"})
+                w.focus_group(1)
+
+
+class GsEditSettingsCommand(WindowCommand):
+    """
+    For some reasons, the command palette doesn't trigger `on_post_window_command` for
+    dev version of Sublime Text. The command palette would call `gs_edit_settings` and
+    subsequently trigger `on_post_window_command`.
+    """
+    def run(self, **kwargs):
+        self.window.run_command("edit_settings", kwargs)

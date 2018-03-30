@@ -45,6 +45,9 @@ class LogGraphMixin(object):
     def get_graph_args(self):
         savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         args = savvy_settings.get("git_graph_args")
+        follow = savvy_settings.get("log_follow_rename")
+        if self._file_path and follow:
+            args = args + ["--follow"]
         if self._file_path:
             file_path = self.get_rel_path(self._file_path)
             args = args + ["--", file_path]
@@ -200,7 +203,7 @@ class GsLogGraphActionCommand(GsLogActionCommand):
         self._file_path = self.file_path
 
         if not len(self.selections) == 1:
-            sublime.status_message("You can only do actions on one commit at a time.")
+            self.window.status_message("You can only do actions on one commit at a time.")
             return
 
         super().run(commit_hash=self._commit_hash, file_path=self._file_path)

@@ -14,5 +14,5 @@ class GsAmendCommand(WindowCommand, GitCommand):
 class GsQuickStageCurrentFileAndAmendCommand(GsAmendCommand, GitCommand):
     def run(self):
         self.git("add", "--", self.file_path)
-        sublime.status_message("staged {}".format(self.get_rel_path(self.file_path)))
+        self.window.status_message("staged {}".format(self.get_rel_path(self.file_path)))
         super().run()

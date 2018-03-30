@@ -14,7 +14,7 @@ from .. import git_mixins
 from ...common import util
 
 
-class GsShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubShowIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
 
     """
     Display a panel of GitHub issues to either:
@@ -59,9 +59,9 @@ class GsShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemote
             format_item=self.format_item,
             limit=savvy_settings.get("github_per_page_max", 100),
             status_message="Getting issues..."
-            )
+        )
         if pp.is_empty():
-            sublime.status_message("No issues found.")
+            self.view.window().status_message("No issues found.")
 
     def format_item(self, issue):
         return (
@@ -72,7 +72,7 @@ class GsShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemote
                     user=issue["user"]["login"],
                     time_stamp=util.dates.fuzzy(issue["created_at"],
                                                 date_format="%Y-%m-%dT%H:%M:%SZ")
-                    )
+                )
             ],
             issue
         )
@@ -84,7 +84,7 @@ class GsShowGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemote
         self.view.run_command("gs_insert_text_at_cursor", {"text": str(issue["number"])})
 
 
-class GsShowGithubContributorsCommand(TextCommand, GitCommand):
+class GsGithubShowContributorsCommand(TextCommand, GitCommand):
 
     """
     Query github for a list of people that have contributed to the GitHub project
@@ -109,9 +109,9 @@ class GsShowGithubContributorsCommand(TextCommand, GitCommand):
             format_item=self.format_item,
             limit=savvy_settings.get("github_per_page_max", 100),
             status_message="Getting contributors..."
-            )
+        )
         if pp.is_empty():
-            sublime.status_message("No contributors found.")
+            self.view.window().status_message("No contributors found.")
 
     def format_item(self, contributor):
         return (contributor["login"], contributor)

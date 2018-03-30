@@ -1,5 +1,6 @@
 from collections import namedtuple
 from ...common import util
+import sublime
 
 
 LogEntry = namedtuple("LogEntry", (
@@ -10,7 +11,7 @@ LogEntry = namedtuple("LogEntry", (
     "author",
     "email",
     "datetime"
-    ))
+))
 
 
 RefLogEntry = namedtuple("RefLogEntry", (
@@ -21,7 +22,7 @@ RefLogEntry = namedtuple("RefLogEntry", (
     "reflog_selector",
     "author",
     "datetime"
-    ))
+))
 
 
 class HistoryMixin():
@@ -75,6 +76,8 @@ class HistoryMixin():
                 break
             for l in logs:
                 yield l
+            if len(logs) < limit:
+                break
             skip = skip + limit
 
     def reflog(self, limit=6000, skip=None, all_branches=False):
@@ -123,7 +126,7 @@ class HistoryMixin():
         """
         ret = self.log(
             start_end=("{0}~1".format(merge_hash), merge_hash), topo_order=True, reverse=True)
-        return ret[0:(len(ret)-1)]
+        return ret[0:(len(ret) - 1)]
 
     def commits_of_merge(self, merge_hash):
         """
@@ -145,12 +148,12 @@ class HistoryMixin():
     def get_short_hash(self, commit_hash):
         return self.git("rev-parse", "--short", commit_hash).strip()
 
-    def filename_at_commit(self, filename, commit_hash):
+    def filename_at_commit(self, filename, commit_hash, follow=False):
         commit_len = len(commit_hash)
         lines = self.git(
             "log",
             "--pretty=oneline",
-            "--follow",
+            "--follow" if follow else None,
             "--name-status",
             "{}..{}".format(commit_hash, "HEAD"),
             "--", filename
@@ -158,10 +161,10 @@ class HistoryMixin():
 
         for i in range(0, len(lines), 2):
             if lines[i].split(" ")[0][:commit_len] == commit_hash:
-                if lines[i+1][0] == 'R':
-                    return lines[i+1].split("\t")[2]
+                if lines[i + 1][0] == 'R':
+                    return lines[i + 1].split("\t")[2]
                 else:
-                    return lines[i+1].split("\t")[1]
+                    return lines[i + 1].split("\t")[1]
 
         # If the commit hash is not for this file.
         return filename
@@ -208,7 +211,7 @@ class HistoryMixin():
         # fails to find matching
         return line
 
-    def neighbor_commit(self, commit_hash, position):
+    def neighbor_commit(self, commit_hash, position, follow=False):
         """
         Get the commit before or after a specific commit
         """
@@ -216,7 +219,7 @@ class HistoryMixin():
             return self.git(
                 "log",
                 "--format=%H",
-                "--follow",
+                "--follow" if follow else None,
                 "-n", "1",
                 "{}~1".format(commit_hash),
                 "--", self.file_path
@@ -225,11 +228,19 @@ class HistoryMixin():
             return self.git(
                 "log",
                 "--format=%H",
-                "--follow",
+                "--follow" if follow else None,
                 "--reverse",
                 "{}..{}".format(commit_hash, "HEAD"),
                 "--", self.file_path
             ).strip().split("\n", 1)[0]
+
+    def newest_commit_for_file(self, file_path, follow=False):
+        """
+        Get the newest commit for a given file.
+        """
+        return self.git(
+            "log", "--format=%H",
+            "--follow" if follow else None, "-n", "1", file_path).strip()
 
     def get_indexed_file_object(self, file_path):
         """

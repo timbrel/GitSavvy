@@ -56,7 +56,7 @@ class StatusInterface(ui.Interface, GitCommand):
       [u] unstage file                      [U] unstage all staged files
       [d] discard changes to file           [D] discard all unstaged changes
       [h] open file on remote
-      [M] launch external merge tool for conflict
+      [M] launch external merge tool
 
       [l] diff file inline                  [f] diff all files
       [e] diff file                         [F] diff all cached files
@@ -73,6 +73,8 @@ class StatusInterface(ui.Interface, GitCommand):
       [i] ignore file                       [t][g] create stash of staged changes only
       [I] ignore pattern                    [t][d] drop stash
 
+      [B] abort merge
+
       ###########
       ## OTHER ##
       ###########
@@ -83,8 +85,17 @@ class StatusInterface(ui.Interface, GitCommand):
       [SHIFT-tab] transition to previous dashboard
       [.]         move cursor to next file
       [,]         move cursor to previous file
-
+    {conflicts_bindings}
     -
+    """
+
+    conflicts_keybindings = """
+    ###############
+    ## CONFLICTS ##
+    ###############
+
+    [y] use version from your commit
+    [b] use version from the base
     """
 
     template_staged = """
@@ -111,6 +122,11 @@ class StatusInterface(ui.Interface, GitCommand):
       STASHES:
     {}
     """
+
+    def __init__(self, *args, **kwargs):
+        self.conflicts_keybindings = \
+            "\n".join(line[2:] for line in self.conflicts_keybindings.split("\n"))
+        super().__init__(*args, **kwargs)
 
     def title(self):
         return "STATUS: {}".format(os.path.basename(self.repo_path))
@@ -150,7 +166,7 @@ class StatusInterface(ui.Interface, GitCommand):
         return self.template_staged.format("\n".join(
             "  {} {}".format("-" if f.index_status == "D" else " ", get_path(f))
             for f in self.staged_entries
-            ))
+        ))
 
     @ui.partial("unstaged_files")
     def render_unstaged_files(self):
@@ -159,7 +175,7 @@ class StatusInterface(ui.Interface, GitCommand):
         return self.template_unstaged.format("\n".join(
             "  {} {}".format("-" if f.working_status == "D" else " ", f.path)
             for f in self.unstaged_entries
-            ))
+        ))
 
     @ui.partial("untracked_files")
     def render_untracked_files(self):
@@ -174,6 +190,10 @@ class StatusInterface(ui.Interface, GitCommand):
             return ""
         return self.template_merge_conflicts.format(
             "\n".join("    " + f.path for f in self.conflict_entries))
+
+    @ui.partial("conflicts_bindings")
+    def render_conflicts_bindings(self):
+        return self.conflicts_keybindings if self.conflict_entries else ""
 
     @ui.partial("no_status_message")
     def render_no_status_message(self):
@@ -199,7 +219,8 @@ class StatusInterface(ui.Interface, GitCommand):
         if help_hidden:
             return ""
         else:
-            return self.template_help
+            return self.template_help.format(
+                conflicts_bindings=self.render_conflicts_bindings())
 
 
 ui.register_listeners(StatusInterface)
@@ -357,7 +378,7 @@ class GsStatusStageFileCommand(TextCommand, GitCommand):
         if file_paths:
             for fpath in file_paths:
                 self.stage_file(fpath, force=False)
-            sublime.status_message("Staged files successfully.")
+            self.view.window().status_message("Staged files successfully.")
             util.view.refresh_gitsavvy(self.view)
 
 
@@ -382,7 +403,7 @@ class GsStatusUnstageFileCommand(TextCommand, GitCommand):
         if file_paths:
             for fpath in file_paths:
                 self.unstage_file(fpath)
-            sublime.status_message("Unstaged files successfully.")
+            self.view.window().status_message("Unstaged files successfully.")
             util.view.refresh_gitsavvy(self.view)
 
 
@@ -398,7 +419,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
         self.discard_untracked(interface)
         self.discard_unstaged(interface)
         util.view.refresh_gitsavvy(self.view)
-        sublime.status_message("Successfully discarded changes.")
+        self.view.window().status_message("Successfully discarded changes.")
 
     def discard_untracked(self, interface):
         valid_ranges = interface.get_view_regions("untracked_files")
@@ -564,7 +585,7 @@ class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
         if file_paths:
             for fpath in file_paths:
                 self.add_ignore(os.path.join("/", fpath))
-            sublime.status_message("Successfully ignored files.")
+            self.view.window().status_message("Successfully ignored files.")
             util.view.refresh_gitsavvy(self.view)
 
 
@@ -613,7 +634,7 @@ class GsStatusStashCommand(TextCommand, GitCommand):
             self.view.sel(),
             valid_ranges=interface.get_view_regions("stashes")
         )
-        ids = tuple(line[line.find("(")+1:line.find(")")] for line in lines if line)
+        ids = tuple(line[line.find("(") + 1:line.find(")")] for line in lines if line)
 
         if len(ids) == 0:
             # happens if command get called when none of the cursors
@@ -625,7 +646,7 @@ class GsStatusStashCommand(TextCommand, GitCommand):
             return
 
         if len(ids) > 1:
-            sublime.status_message("You can only {} one stash at a time.".format(action))
+            self.view.window().status_message("You can only {} one stash at a time.".format(action))
             return
 
         if action == "apply":
@@ -660,6 +681,65 @@ class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):
             return
 
         sublime.set_timeout_async(lambda: self.launch_tool_for_file(file_paths[0]), 0)
+
+
+class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
+    # TODO: refactor this alongside interfaces.rebase.GsRebaseUseCommitVersionCommand
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        interface = ui.get_interface(self.view.id())
+        conflicts = interface.conflict_entries
+
+        sels = self.view.sel()
+        line_regions = [self.view.line(sel) for sel in sels]
+        paths = (line[4:]
+                 for reg in line_regions
+                 for line in self.view.substr(reg).split("\n") if line)
+        for path in paths:
+            if self.is_commit_version_deleted(path, conflicts):
+                self.git("rm", "--", path)
+            else:
+                self.git("checkout", "--theirs", "--", path)
+                self.stage_file(path)
+        util.view.refresh_gitsavvy(self.view)
+
+    def is_commit_version_deleted(self, path, conflicts):
+        for conflict in conflicts:
+            if conflict.path == path:
+                return conflict.working_status == "D"
+        return False
+
+
+class GsStatusUseBaseVersionCommand(TextCommand, GitCommand):
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
+        interface = ui.get_interface(self.view.id())
+        conflicts = interface.conflict_entries
+
+        sels = self.view.sel()
+        line_regions = [self.view.line(sel) for sel in sels]
+        paths = (line[4:]
+                 for reg in line_regions
+                 for line in self.view.substr(reg).split("\n") if line)
+        for path in paths:
+            if self.is_base_version_deleted(path, conflicts):
+                self.git("rm", "--", path)
+            else:
+                self.git("checkout", "--ours", "--", path)
+                self.stage_file(path)
+        util.view.refresh_gitsavvy(self.view)
+
+    def is_base_version_deleted(self, path, conflicts):
+        for conflict in conflicts:
+            if conflict.path == path:
+                return conflict.index_status == "D"
+        return False
 
 
 class GsStatusNavigateFileCommand(GsNavigate):

@@ -14,7 +14,7 @@ EARLIER_COMMIT_PROMPT = ("The remote chosen may not contain the commit. "
                          "Open the file {} before?")
 
 
-class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
 
     """
     Open a new browser window to the web-version of the currently opened
@@ -104,7 +104,7 @@ class GsOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemote
             )
 
 
-class GsOpenGithubRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubOpenRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
 
     """
     Open a new browser window to the GitHub remote repository.
@@ -130,7 +130,7 @@ class GsOpenGithubRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesM
         open_repo(self.remotes[remote])
 
 
-class GsOpenGithubIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubOpenIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
 
     """
     Open a new browser window to the GitHub remote repository's issues page.

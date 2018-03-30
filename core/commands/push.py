@@ -27,15 +27,15 @@ class PushBase(GitCommand):
             if not sublime.ok_cancel_dialog(CONFIRM_FORCE_PUSH):
                 return
 
-        sublime.status_message(START_PUSH_MESSAGE)
+        self.window.status_message(START_PUSH_MESSAGE)
         self.push(
             remote,
             branch,
             set_upstream=self.set_upstream,
             force=force,
             remote_branch=remote_branch
-            )
-        sublime.status_message(END_PUSH_MESSAGE)
+        )
+        self.window.status_message(END_PUSH_MESSAGE)
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
@@ -67,15 +67,15 @@ class GsPushCommand(WindowCommand, PushBase):
                 self.window.run_command("gs_push_to_branch_name", {
                     "set_upstream": True,
                     "force": self.force
-                    })
+                })
         else:
             # if `prompt_for_tracking_branch` is false, ask for a remote and perform
             # push current branch to a remote branch with the same name
             self.window.run_command("gs_push_to_branch_name", {
-                                "branch_name": self.local_branch_name,
-                                "set_upstream": False,
-                                "force": self.force
-                                })
+                "branch_name": self.local_branch_name,
+                "set_upstream": False,
+                "force": self.force
+            })
 
 
 class GsPushToBranchCommand(WindowCommand, PushBase):
@@ -135,7 +135,7 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
                 self.on_entered_branch_name,
                 None,
                 None
-                )
+            )
 
     def on_entered_branch_name(self, branch):
         """

@@ -31,7 +31,7 @@ class GsMergeCommand(WindowCommand, GitCommand):
                 "merge",
                 "--log" if savvy_settings.get("merge_log") else None,
                 branch
-                )
+            )
         finally:
             util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
 
@@ -63,7 +63,7 @@ class GsRestartMergeForFileCommand(WindowCommand, GitCommand):
         self._conflicts = tuple(
             f.path for f in self.get_status()
             if (f.index_status, f.working_status) in MERGE_CONFLICT_PORCELAIN_STATUSES
-            )
+        )
 
         self.window.show_quick_panel(
             self._conflicts,

@@ -22,7 +22,7 @@ def reload_plugin():
                if name.startswith("GitSavvy.")}
     try:
         reload_modules(git_savvy, modules)
-    except:
+    except Exception:
         dprint("ERROR", fill='─')
         reload_modules(git_savvy, modules, perform_reload=False)
         raise
@@ -94,7 +94,7 @@ def reload_modules(main, modules, perform_reload=True):
                 dprint("reloading", ('╿ ' * depth) + '┡━─', name)
                 try:
                     return module.__loader__.load_module(name)
-                except:
+                except Exception:
                     if name in sys.modules:
                         del sys.modules[name]  # to indicate an error
                     raise

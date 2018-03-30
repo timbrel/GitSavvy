@@ -6,6 +6,7 @@ import re
 from collections import namedtuple
 from webbrowser import open as open_in_browser
 from functools import partial
+import urllib
 
 import sublime
 

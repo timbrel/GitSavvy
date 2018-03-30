@@ -8,7 +8,7 @@ Change = namedtuple("Change", (
     "old_end",
     "new_start",
     "new_end"
-    ))
+))
 REPLACE = "replace"
 DELETE = "delete"
 INSERT = "insert"

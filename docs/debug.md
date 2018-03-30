@@ -38,3 +38,22 @@ Ocasionally when creating a new issue in GitSavvy, you will be requested to prov
       
       _Note: Take care to remove any sensitive information that may be recorded in GitSavvy._
 
+# Other tools / PATH issues / Different behavior from terminal and inside Sublime
+
+Please check the tool is in your PATH inside sublime.
+First find the path to where the tool binaries are, open a system terminal/shell and paste:
+
+    which <tool_name>;
+
+Check if that path is the `$PATH` inside sublime. To do that open the sublime console and paste in:
+
+    from os import environ; environ['PATH']
+
+If the tool path is missing from your sublime environment's `PATH` variable, you need to look into correcting the env variables available to sublime on launch. The unofficial docs mention how to set it globally for windows and mac in [the "Troubleshooting Build Systems" page][2]. Alternatively, you may want to look at the packages ["Environment Settings"][3] and ["Fix Mac Path"][4].
+
+If, however, the path is in your sublime environment, please open an issue and include these values in an issue.
+
+[1]: https://github.com/divmain/GitSavvy/issues/684#issuecomment-323579850
+[2]: http://docs.sublimetext.info/en/latest/reference/build_systems/troubleshooting.html
+[3]: https://packagecontrol.io/packages/Environment%20Settings
+[4]: https://packagecontrol.io/packages/Fix%20Mac%20Path

@@ -42,7 +42,8 @@
         and the API key as the value.
      */
     "api_tokens": {
-        // "github.com": "ADD YOUR TOKEN HERE"
+        // "github.com": "ADD YOUR GITHUB TOKEN HERE"
+        // "gitlab.com": "ADD YOUR GITLAB TOKEN HERE"
     },
 
     /*
@@ -103,6 +104,20 @@
     "close_panel_for": [],
 
     /*
+        Whether git and githook output is logged live
+        If false, results are shown after execution.
+    */
+    "live_panel_output": false,
+
+    /*
+        Command will exit if on the timeout if the timeout reached.
+        You may want to increase this if you have a slow disk or a very
+        large repository. If you think there is something GitSavvy can do
+        to prevent this long running git command, open an issue.
+    */
+    "live_panel_output_timeout": 10000,
+
+    /*
         Use the Sublime configured syntax for COMMIT_EDITMSG rather than
         the custom bundled syntax that comes with GitSavvy.
     */
@@ -110,9 +125,36 @@
     "use_syntax_for_commit_editmsg": false,
 
     /*
+        https://git-scm.com/book/en/v2/Distributed-Git-Contributing-to-a-Project#Commit-Guidelines
+        Add a distinct style guide for the commit messages:
+
+        First line should be max 50 characters
+        Second line should be empty
+        Any subsequent lines should be max 80 characters
+
+        It will use 'invalid.deprecated.line-too-long.git-commit' scope by default.
+        The warning is will be outlined instead of fully marked
+    */
+    "pedantic_commit": true,
+    "pedantic_commit_ruler": true,
+    "pedantic_commit_first_line_length": 50,
+    "pedantic_commit_message_line_length": 80,
+    "pedantic_commit_warning_length": 20,
+
+    /*
         Change this to `false` to suppress the input in the panel output.
      */
     "show_input_in_output": true,
+
+    /*
+        Change this to `true` to print the stdin in the panel output.
+     */
+    "show_stdin_in_output": false,
+
+    /*
+        Change this to `false` to suppress the elapsed time in the panel output.
+     */
+    "show_time_elapsed_in_output": true,
 
     /*
         Change this to `false` to suppress Git status in ST3 status bar.
@@ -214,6 +256,16 @@
      */
     // "git_graph_args": ["log", "--oneline", "--graph", "--decorate"],
     "git_graph_args": ["log", "--pretty=format:%h%d %s (%ar) <%an>", "--graph"],
+
+    /*
+        When set to `true`, GitSavvy will follow file renames when running git log/graph
+    */
+    "log_follow_rename": false,
+
+    /*
+        When set to `true`, GitSavvy will follow file renames in blame view
+    */
+    "blame_follow_rename": false,
 
     /*
         When set to `true`, GitSavvy will prompt for confirmation when closing
