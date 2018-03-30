@@ -52,6 +52,11 @@
     "github_per_page_max" : 100,
 
     /*
+    maximum number of items per page when requesting from gitlab
+    */
+    "gitlab_per_page_max" : 100,
+
+    /*
         Change this to "full" to display a full diff for the current commit
         when writing a commit message.
 
