@@ -51,8 +51,9 @@ class ThemeGenerator():
             if not paths:
                 raise IOError("{} cannot be found".format(original_color_scheme))
             for path in paths:
-                if path.statswith("Packages/User/"):
-                    self.color_scheme_string = sublime.load_resource(original_color_scheme)
+                if path.startswith("Packages/User/"):
+                    # load user specfic theme first
+                    self.color_scheme_string = sublime.load_resource(path)
                     break
             self.color_scheme_string = sublime.load_resource(paths[0])
 
