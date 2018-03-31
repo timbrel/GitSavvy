@@ -4,7 +4,12 @@
         "command": "edit_settings",
         "args": {
             "base_file": "${packages}/GitSavvy/GitSavvy.sublime-settings",
-            "default": "// Settings in here override those in \"GitSavvy/GitSavvy.sublime-settings\",\n\n{\n\t$0\n}\n"}
+            "default": "// Settings in here override those in \"GitSavvy/GitSavvy.sublime-settings\",\n\n{\n\t$0\n}\n"
+        }
+    },
+    {
+        "caption": "Preferences: GitSavvy Project Settings",
+        "command": "gs_edit_project_settings"
     },
     {
         "caption": "Preferences: GitSavvy Key Bindings",
