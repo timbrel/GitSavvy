@@ -20,6 +20,15 @@ START_PUSH_MESSAGE = "Pushing tag..."
 END_PUSH_MESSAGE = "Push complete."
 
 
+def tag_from_lines(lines):
+    tags = []
+    for line in lines:
+        m = line.strip().split(" ", 1)
+        if len(m) == 2:
+            tags.append(m[1].strip())
+    return tags
+
+
 class GsShowTagsCommand(WindowCommand, GitCommand):
 
     """
@@ -227,7 +236,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
 
     def delete_local(self, interface):
         lines = interface.get_selection_lines_in_region("local_tags")
-        tags_to_delete = tuple(line[12:].strip() for line in lines if line)
+        tags_to_delete = tag_from_lines(lines)
 
         if not tags_to_delete:
             return
@@ -244,7 +253,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
 
         for remote_name, remote in interface.remotes.items():
             lines = interface.get_selection_lines_in_region("remote_tags_list_" + remote_name)
-            tags_to_delete = tuple(line[12:].strip() for line in lines if line[:4] == "    ")
+            tags_to_delete = tag_from_lines(lines)
 
             if tags_to_delete:
                 self.git(
@@ -295,7 +304,7 @@ class GsTagsPushCommand(TextCommand, GitCommand):
 
         interface = ui.get_interface(self.view.id())
         lines = interface.get_selection_lines_in_region("local_tags")
-        tags_to_push = tuple(line[12:].strip() for line in lines if line)
+        tags_to_push = tag_from_lines(lines)
 
         self.view.window().status_message(START_PUSH_MESSAGE)
         self.git("push", remote, *("refs/tags/" + tag for tag in tags_to_push))
