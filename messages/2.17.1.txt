@@ -1,0 +1,13 @@
+Changes since 2.17.0:
+
+  Enhancement:
+   - use a more meanful branch name when reviewing PRs
+
+  Fix:
+   - fix show file bug on Windows
+   - fix tag dashboard bug if hash length != 8
+   - Pass startupinfo to `subprocess.check_output` on Windows
+
+  Contributors:
+   - herr kaste
+   - Randy Lai
