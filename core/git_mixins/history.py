@@ -171,7 +171,7 @@ class HistoryMixin():
 
     def get_file_content_at_commit(self, filename, commit_hash):
         filename = self.get_rel_path(filename)
-        filename = filename.replace('\\\\', '/')
+        filename = filename.replace('\\', '/')
         filename = self.filename_at_commit(filename, commit_hash)
         return self.git("show", commit_hash + ':' + filename)
 

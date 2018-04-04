@@ -303,7 +303,13 @@ class GitCommand(StatusMixin,
                 git_path = shutil.which("git")
 
             try:
-                stdout = subprocess.check_output([git_path, "--version"]).decode("utf-8")
+                startupinfo = None
+                if os.name == "nt":
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+                stdout = subprocess.check_output(
+                    [git_path, "--version"], startupinfo=startupinfo).decode("utf-8")
             except Exception:
                 stdout = ""
                 git_path = None
