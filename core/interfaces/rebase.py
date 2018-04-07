@@ -596,6 +596,8 @@ class GsRebaseSquashCommand(RewriteBase):
             show_log_panel(reversed_logs, self.do_action)
 
     def do_action(self, target_commit):
+        if not target_commit:
+            return
 
         squash_idx, squash_entry, _ = self.get_idx_entry_and_prev(self.squash_entry.short_hash)
         target_idx, target_entry, before_target = \
@@ -732,6 +734,8 @@ class GsRebaseMoveUpCommand(RewriteBase):
             show_log_panel(logs, self.do_action)
 
     def do_action(self, target_commit):
+        if not target_commit:
+            return
 
         move_idx, move_entry, _ = self.get_idx_entry_and_prev(self.move_entry.short_hash)
         target_idx, target_entry, before_target = \
@@ -779,6 +783,8 @@ class GsRebaseMoveDownCommand(RewriteBase):
             show_log_panel(logs, self.do_action)
 
     def do_action(self, target_commit):
+        if not target_commit:
+            return
 
         move_idx, move_entry, before_move = self.get_idx_entry_and_prev(self.move_entry.short_hash)
         target_idx, target_entry, _ = \
