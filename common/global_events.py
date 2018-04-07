@@ -77,10 +77,8 @@ class GsEditProjectSettingsCommand(WindowCommand):
 
         if project_data is None:
             project_data = {}
-        if "settings" not in project_data:
-            project_data["settings"] = {"GitSavvy": {}}
-        if "GitSavvy" not in project_data["settings"]:
-            project_data["settings"]["GitSavvy"] = {}
+        if "GitSavvy" not in project_data:
+            project_data["GitSavvy"] = {}
 
         self.window.set_project_data(project_data)
 

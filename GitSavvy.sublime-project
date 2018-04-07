@@ -1,4 +1,7 @@
 {
+	"GitSavvy":
+	{
+	},
 	"build_systems":
 	[
 		{
@@ -23,9 +26,6 @@
 	],
 	"settings":
 	{
-		"GitSavvy":
-		{
-		},
 		"rulers":
 		[
 			100,
