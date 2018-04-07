@@ -153,6 +153,7 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
         if self._file_path:
             self.actions.insert(1, ["show_file_at_commit", "Show file at commit"])
             self.actions.insert(2, ["blame_file_atcommit", "Blame file at commit"])
+            self.actions.insert(3, ["checkout_file_at_commit", "Checkout file at commit"])
 
     def show_commit(self):
         self.window.run_command("gs_show_commit", {"commit_hash": self._commit_hash})
@@ -204,3 +205,7 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
         self.window.run_command(
             "gs_blame",
             {"commit_hash": self._commit_hash, "file_path": self._file_path})
+
+    def checkout_file_at_commit(self):
+        self.checkout_ref(self._commit_hash, fpath=self._file_path)
+        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
