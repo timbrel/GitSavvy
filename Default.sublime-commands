@@ -157,10 +157,6 @@
         "command": "gs_checkout_remote_branch"
     },
     {
-        "caption": "git: checkout current file",
-        "command": "gs_checkout_current_file"
-    },
-    {
         "caption": "git: checkout current file at commit",
         "command": "gs_checkout_current_file_at_commit"
     },
