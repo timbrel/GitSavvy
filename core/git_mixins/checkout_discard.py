@@ -23,8 +23,11 @@ class CheckoutDiscardMixin():
         """
         self.git("checkout", "--", fpath)
 
-    def checkout_ref(self, ref):
+    def checkout_ref(self, ref, fpath=None):
         """
         Given a ref (local branch, remote branch, tag, etc), check it out.
         """
-        self.git("checkout", ref)
+        if fpath:
+            self.git("checkout", ref, "--", fpath)
+        else:
+            self.git("checkout", ref)
