@@ -2,6 +2,7 @@ import itertools
 import sublime
 from ...common import util
 from ..git_command import GitCommand
+from ..settings import GitSavvySettings
 
 
 class PanelActionMixin(object):
@@ -514,8 +515,7 @@ class LogPanel(PaginatedPanel):
     def on_highlight_async(self, commit):
         if not commit:
             return
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        show_more = savvy_settings.get("log_show_more_commit_info")
+        show_more = GitSavvySettings().get("log_show_more_commit_info")
         if not show_more:
             return
         sublime.active_window().run_command(

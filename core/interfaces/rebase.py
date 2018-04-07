@@ -227,8 +227,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
                 skip_commit_key='k' if not vintageous_friendly else 'K')
 
     def preserve_merges(self):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        default = savvy_settings.get("rebase_preserve_merges")
+        default = self.savvy_settings.get("rebase_preserve_merges")
         return not self.in_rebase_apply() and \
             (self.in_rebase_merge() or
              self.view.settings().get("git_savvy.rebase.preserve_merges", default))
@@ -1060,8 +1059,7 @@ class GsRebaseTogglePreserveModeCommand(TextCommand, GitCommand):
     def run(self, edit):
         preserve = self.view.settings().get("git_savvy.rebase.preserve_merges", False)
         self.view.settings().set("git_savvy.rebase.preserve_merges", not preserve)
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        savvy_settings.set("rebase_preserve_merges", not preserve)
+        self.savvy_settings.set("rebase_preserve_merges", not preserve)
         util.view.refresh_gitsavvy(self.view)
 
 

@@ -185,7 +185,17 @@ For all syntax specific view we have a settings file. These are nothing extra fr
 
 ### Editing Settings
 
-To open the GitSavvy settings, simply run the `Preferences: GitSavvy Settings` command from the command palette. The default settings are documented with helpful inline comments.
+To open the GitSavvy settings, simply run the `Preferences: GitSavvy Settings` command from the command palette. The default settings are documented with helpful inline comments. GitSavvy also supports project specific settings, run the 
+`Preference: GitSavvy Project Settings` command and add the key `"GitSavvy"` as follows
+
+```
+{
+    "GitSavvy":
+    {
+        // GitSavvy settings go here
+    }
+}
+```
 
 [Preferences Editor](https://packagecontrol.io/packages/Preferences%20Editor) is really good package for editing you settings.
 

@@ -19,7 +19,6 @@ class GsGithubAddForkAsRemoteCommand(WindowCommand, GitCommand, git_mixins.Githu
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         base_remote = github.parse_remote(self.get_integrated_remote_url())
         base_repo_data = github.get_repo_data(base_remote)
         parent = None
@@ -39,7 +38,7 @@ class GsGithubAddForkAsRemoteCommand(WindowCommand, GitCommand, git_mixins.Githu
         show_paginated_panel(
             forks,
             self.on_select_fork,
-            limit=savvy_settings.get("github_per_page_max", 100),
+            limit=self.savvy_settings.get("github_per_page_max", 100),
             format_item=lambda fork: (fork["full_name"], fork),
             status_message="Getting forks...")
 

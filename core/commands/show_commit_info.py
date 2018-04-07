@@ -10,9 +10,8 @@ class GsShowCommitInfoCommand(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        show_full = savvy_settings.get("show_full_commit_info")
-        show_diffstat = savvy_settings.get("show_diffstat")
+        show_full = self.savvy_settings.get("show_full_commit_info")
+        show_diffstat = self.savvy_settings.get("show_diffstat")
         text = self.git(
             "show",
             "--no-color",

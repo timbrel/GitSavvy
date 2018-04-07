@@ -43,9 +43,8 @@ class LogGraphMixin(object):
         view.run_command("gs_log_graph_navigate")
 
     def get_graph_args(self):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        args = savvy_settings.get("git_graph_args")
-        follow = savvy_settings.get("log_follow_rename")
+        args = self.savvy_settings.get("git_graph_args")
+        follow = self.savvy_settings.get("log_follow_rename")
         if self._file_path and follow:
             args = args + ["--follow"]
         if self._file_path:
@@ -231,8 +230,7 @@ class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        show_more = savvy_settings.get("graph_show_more_commit_info")
+        show_more = self.savvy_settings.get("graph_show_more_commit_info")
         if not show_more:
             return
 
@@ -261,9 +259,8 @@ class GsLogGraphToggleMoreInfoCommand(TextCommand, WindowCommand, GitCommand):
     """
 
     def run(self, edit):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        show_more = not savvy_settings.get("graph_show_more_commit_info")
-        savvy_settings.set("graph_show_more_commit_info", show_more)
+        show_more = not self.savvy_settings.get("graph_show_more_commit_info")
+        self.savvy_settings.set("graph_show_more_commit_info", show_more)
         if not show_more:
             self.view.window().run_command("hide_panel")
 
