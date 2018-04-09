@@ -3,7 +3,7 @@ from collections import namedtuple, defaultdict
 import unicodedata
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import TextCommand
 
 from ..commands import GsNavigate
 from ..git_command import GitCommand
@@ -24,9 +24,10 @@ class BlameMixin:
     Some helper functions
     """
 
-    def find_lineno(self):
+    @util.view.single_cursor_pt
+    def find_lineno(self, cursor_pt):
         pattern = r"^.+ \| +\d+"
-        line_start = util.view.get_instance_before_pt(self.view, self.cursor_pt, pattern)
+        line_start = util.view.get_instance_before_pt(self.view, cursor_pt, pattern)
         if line_start is None:
             return 1
         else:
@@ -37,8 +38,9 @@ class BlameMixin:
             except Exception:
                 return 1
 
-    def find_selected_commit_hash(self):
-        hunk_start = util.view.get_instance_before_pt(self.view, self.cursor_pt, r"^\-+ \| \-+")
+    @util.view.single_cursor_pt
+    def find_selected_commit_hash(self, cursor_pt):
+        hunk_start = util.view.get_instance_before_pt(self.view, cursor_pt, r"^\-+ \| \-+")
         if hunk_start is None:
             short_hash_row = 1
         else:
@@ -50,18 +52,17 @@ class BlameMixin:
         return short_hash.strip()
 
 
-class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
-    @util.view.single_cursor_coords
-    def run(self, coords, file_path=None, repo_path=None, commit_hash=None):
-        self.coords = coords
+class GsBlameCommand(BlameMixin, TextCommand, GitCommand):
+    def run(self, edit, file_path=None, repo_path=None, commit_hash=None):
         self._file_path = file_path or self.file_path
         self.__repo_path = repo_path or self.repo_path
         self._commit_hash = commit_hash if commit_hash else self.get_commit_hash_for_head()
         sublime.set_timeout_async(self.blame)
 
-    def blame(self):
-        original_view = self.window.active_view()
-        view = self.window.new_file()
+    @util.view.single_cursor_coords
+    def blame(self, coords):
+        original_view = self.view
+        view = self.view.window().new_file()
 
         settings = view.settings()
         settings.set("git_savvy.blame_view", True)
@@ -72,8 +73,7 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
             lineno = self.find_matching_lineno(
                 original_view.settings().get("git_savvy.commit_hash"),
                 self._commit_hash,
-                original_view.settings().get("git_savvy.lineno"))
-            original_view.settings().erase("git_savvy.lineno")
+                self.find_lineno())
 
             for key in [
                 "git_savvy.blame_view.ignore_whitespace",
@@ -83,7 +83,7 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
                 settings.set(key, original_view.settings().get(key))
 
         else:
-            lineno = self.find_matching_lineno(None, self._commit_hash, self.coords[0] + 1)
+            lineno = self.find_matching_lineno(None, self._commit_hash, coords[0] + 1)
             settings.set("git_savvy.blame_view.ignore_whitespace", False)
             settings.set("git_savvy.blame_view.detect_move_or_copy_within", None)
             settings.set("git_savvy.original_syntax", original_view.settings().get('syntax'))
@@ -364,11 +364,6 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand
         ["show_file_at_commit", "Show file at selected commit", (), {"from_line": True}],
     ]
 
-    @util.view.single_cursor_pt
-    def run(self, cursor_pt, edit, pre_selected_index=None):
-        self.cursor_pt = cursor_pt
-        super().run(pre_selected_index=pre_selected_index)
-
     def update_actions(self):
         # a deepcopy
         self.actions = [act.copy() for act in self.default_actions]
@@ -433,7 +428,6 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand
         })
 
     def pick_new_commit(self):
-        self.view.settings().set("git_savvy.lineno", self.find_lineno())
         self.view.run_command("gs_blame_current_file", {
             "file_path": self.file_path
         })
@@ -445,9 +439,7 @@ class GsBlameToggleSetting(BlameMixin, TextCommand):
     Toggle view settings: `ignore_whitespace`, `detect_move_or_copy_within_file`,
     `detect_move_or_copy_within_commit` and `detect_move_or_copy_within_all_commits`.
     """
-    @util.view.single_cursor_pt
-    def run(self, cursor_pt, edit, setting, value=None):
-        self.cursor_pt = cursor_pt
+    def run(self, edit, setting, value=None):
         setting_str = "git_savvy.blame_view.{}".format(setting)
         settings = self.view.settings()
         if setting == "detect_move_or_copy_within":
