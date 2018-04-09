@@ -292,6 +292,11 @@
 
 
     /*
+        The default base for the rebase dashboard.
+    */
+    "rebase_default_base_ref": "",
+
+    /*
         When set to `true`, rebase dashboard uses preserve-merges mode when opened.
     */
     "rebase_preserve_merges": false,

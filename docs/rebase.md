@@ -88,16 +88,11 @@ The resulting branch is then used as the starting point for the displayed inform
 
 #### Define base ref for the dashboard (`f`)
 
-If you want to compare the current branch against something other than the initially detected branch, using this command will allow you to make that selection. You can override the default, per-project, by adding a `rebase_default_base_ref` to your `.sublime-project` file:
+If you want to compare the current branch against something other than the initially detected branch, using this command will allow you to make that selection. You can override the default, per-project, by running `Preference: GitSavvy Project Settings`:
 
 ```json
 {
-    "folders": [
-        {
-           "path": "XYZ"
-        }
-    ],
-    "settings": {
+    "GitSavvy": {
         "rebase_default_base_ref": "develop"
     }
 }
