@@ -319,9 +319,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         base_ref = self.view.settings().get("git_savvy.rebase.base_ref")
 
         if not base_ref or reset_ref:
-            project_data = sublime.active_window().project_data() or {}
-            project_settings = project_data.get('settings', {})
-            base_ref = project_settings.get("rebase_default_base_ref")
+            base_ref = self.savvy_settings.get("rebase_default_base_ref")
 
             if not base_ref:
                 # use remote tracking branch as a sane default
