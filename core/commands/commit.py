@@ -217,7 +217,8 @@ class GsPedanticEnforceEventListener(EventListener):
                 sublime.Region(first_line.a + self.first_line_limit + self.warning_length, first_line.b))
 
         # Add second line to illegal
-        illegal_lines.append(sublime.Region(self.view.text_point(1, 0), self.view.text_point(2, 0) - 1))
+        if self.first_comment_line > 1:
+            illegal_lines.append(sublime.Region(self.view.text_point(1, 0), self.view.text_point(2, 0) - 1))
 
         if self.first_comment_line:
             body_region = sublime.Region(self.view.text_point(2, 0), self.comment_start_region[0].begin())
