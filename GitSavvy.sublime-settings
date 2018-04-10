@@ -273,6 +273,13 @@
     "blame_follow_rename": false,
 
     /*
+        Set it to "file", "commit" or "all_commits" to specify the default detection
+        method for the blame view.
+    */
+
+    "blame_detect_move_or_copy_within": "file",
+
+    /*
         When set to `true`, GitSavvy will prompt for confirmation when closing
         the commit message view.
     */

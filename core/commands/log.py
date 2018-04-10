@@ -21,6 +21,9 @@ class LogMixin(object):
     but the subclass must also inherit fro GitCommand (for the `git()` method)
     """
 
+    show_commit_info = True
+    selected_index = 0
+
     def run(self, *args, file_path=None, **kwargs):
         sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, **kwargs), 0)
 
@@ -28,8 +31,14 @@ class LogMixin(object):
         follow = self.savvy_settings.get("log_follow_rename") if file_path else False
         show_log_panel(
             self.log_generator(file_path=file_path, follow=follow, **kwargs),
-            lambda commit: self.on_done(commit, file_path=file_path, **kwargs)
+            lambda commit: self.on_done(commit, file_path=file_path, **kwargs),
+            selected_index=self.selected_index,
+            on_highlight=self.on_highlight,
+            show_commit_info=self.show_commit_info
         )
+
+    def on_highlight(self, commit):
+        pass
 
     def on_done(self, commit, **kwargs):
         if commit:
