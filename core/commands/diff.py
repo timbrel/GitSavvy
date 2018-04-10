@@ -166,9 +166,9 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
         cursor_pts = tuple(cursor.a for cursor in self.view.sel() if cursor.a == cursor.b)
 
         self.diff_starts = tuple(region.a for region in self.view.find_all("^diff"))
-        self.diff_header_ends = tuple(region.b for region in self.view.find_all("^\+\+\+.+\n(?=@@)"))
+        self.diff_header_ends = tuple(region.b for region in self.view.find_all(r"^\+\+\+.+\n(?=@@)"))
         self.hunk_starts = tuple(region.a for region in self.view.find_all("^@@"))
-        hunk_starts_following_headers = {region.b for region in self.view.find_all("^\+\+\+.+\n(?=@@)")}
+        hunk_starts_following_headers = {region.b for region in self.view.find_all(r"^\+\+\+.+\n(?=@@)")}
         self.hunk_ends = sorted(list(
             # Hunks end when the next diff starts.
             set(self.diff_starts[1:]) |

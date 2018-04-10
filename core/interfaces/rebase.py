@@ -15,7 +15,7 @@ from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel, show_branc
 
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
-COMMIT_LINE = re.compile("\s*[%s]\s*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
+COMMIT_LINE = re.compile(r"\s*[%s]\s*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
 NEAREST_NODE_PATTERN = re.compile(r'.*\*.*\[(.*?)(?:(?:[\^\~]+[\d]*){1})\]')  # http://regexr.com/3gm03
 NOT_A_COMMIT_SHA = 'not_a_commit_sha'
 
