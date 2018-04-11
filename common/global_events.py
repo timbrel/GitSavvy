@@ -2,6 +2,7 @@ import sublime
 from sublime_plugin import EventListener, WindowCommand
 
 from . import util
+from ..core.settings import SettingsMixin
 
 
 class GsInterfaceFocusEventListener(EventListener):
@@ -26,12 +27,16 @@ git_view_syntax = {
 }
 
 
-class GitCommandFromTerminal(EventListener):
+class GitCommandFromTerminal(EventListener, SettingsMixin):
     def on_load(self, view):
         if view.file_name():
             name = view.file_name().split("/")[-1]
             if name in git_view_syntax.keys():
-                view.set_syntax_file(git_view_syntax[name])
+                syntax_file = git_view_syntax[name]
+                if "COMMIT_EDITMSG" == name and self.savvy_settings.get("use_syntax_for_commit_editmsg"):
+                    syntax_file = util.file.get_syntax_for_file("COMMIT_EDITMSG")
+
+                view.set_syntax_file(syntax_file)
                 view.settings().set("git_savvy.{}_view".format(name), True)
                 view.set_scratch(True)
 
