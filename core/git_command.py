@@ -317,10 +317,9 @@ class GitCommand(StatusMixin,
                 major = int(match.group(1))
                 minor = int(match.group(2))
                 patch = int(match.group(3))
-                if major < GIT_REQUIRE_MAJOR or \
-                        (major == GIT_REQUIRE_MAJOR and minor < GIT_REQUIRE_MINOR) or \
-                        (major == GIT_REQUIRE_MAJOR and minor == GIT_REQUIRE_MINOR and
-                            patch < GIT_REQUIRE_PATCH):
+                if major < GIT_REQUIRE_MAJOR \
+                        or (major == GIT_REQUIRE_MAJOR and minor < GIT_REQUIRE_MINOR) \
+                        or (major == GIT_REQUIRE_MAJOR and minor == GIT_REQUIRE_MINOR and patch < GIT_REQUIRE_PATCH):
                     msg = GIT_TOO_OLD_MSG.format(
                         GIT_REQUIRE_MAJOR,
                         GIT_REQUIRE_MINOR,

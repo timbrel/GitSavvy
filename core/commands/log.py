@@ -80,7 +80,7 @@ class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
 
         commiter_str = self.git("shortlog", "-sne", "HEAD")
         for line in commiter_str.split('\n'):
-            m = re.search('\s*(\d*)\s*(.*)\s<(.*)>', line)
+            m = re.search(r'\s*(\d*)\s*(.*)\s<(.*)>', line)
             if m is None:
                 continue
             commit_count, author_name, author_email = m.groups()

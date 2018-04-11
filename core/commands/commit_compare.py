@@ -9,7 +9,7 @@ from ..ui_mixins.quick_panel import PanelActionMixin, show_branch_panel
 
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
-COMMIT_LINE = re.compile("[%s][ /_\|\-.]*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
+COMMIT_LINE = re.compile(r"[%s][ /_\|\-.]*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
 
 
 class GsCompareCommitCommand(WindowCommand, GitCommand):

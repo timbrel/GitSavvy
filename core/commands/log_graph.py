@@ -10,7 +10,7 @@ from ..ui_mixins.quick_panel import show_branch_panel
 
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
-GRAPH_CHAR_OPTIONS = " /_\|\-."
+GRAPH_CHAR_OPTIONS = r" /_\|\-."
 COMMIT_LINE = re.compile(
     "^[{graph_chars}]*[{node_chars}][{graph_chars}]* (?P<commit_hash>[a-f0-9]{{5,40}})".format(
         graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS))
@@ -69,7 +69,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         args = self.view.settings().get("git_savvy.git_graph_args")
         graph_content += self.git(*args)
         graph_content = re.sub(
-            '(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
+            r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
             r'\1' + COMMIT_NODE_CHAR, graph_content,
             flags=re.MULTILINE)
 
@@ -107,7 +107,7 @@ class GsLogGraphByAuthorCommand(LogGraphMixin, WindowCommand, GitCommand):
 
         commiter_str = self.git("shortlog", "-sne", "HEAD")
         for line in commiter_str.split('\n'):
-            m = re.search('\s*(\d*)\s*(.*)\s<(.*)>', line)
+            m = re.search(r'\s*(\d*)\s*(.*)\s<(.*)>', line)
             if m is None:
                 continue
             commit_count, author_name, author_email = m.groups()
