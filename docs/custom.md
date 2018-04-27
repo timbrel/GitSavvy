@@ -10,6 +10,7 @@ Adding new commands is as simple as creating/modifying `User.sublime-commands` f
 
 Your custom command may be further customized by setting the following arguments:
 
+* `run_in_thread`   - when true, your command will be run in a separate child thread, independent of the async UI thread. This flag must be **set to true if the command runs a long-lived process**, or otherwise GitSavvy will hang while waiting for the process to terminate.
 * `output_to_panel` - send the command output to a panel when complete
 * `output_to_buffer` - send the command output to a new buffer when complete
 * `syntax` - If the output is printed to a buffer you can select syntax
@@ -28,7 +29,6 @@ Your custom command may be further customized by setting the following arguments
 * `start_msg`       - a message to display in status bar when the command starts
 * `complete_msg`    - a message to display in status bar when the command completes
 * `prompt_msg`      - when using "{PROMPT_ARG}" argument in command, this determines the prompt message
-* `run_in_thread`   - when true, your command will be run in a separate child thread, independent of the async UI thread
 * `custom_environ`   - Can be used to set custom environment variables for this custom command, see example below
 
       **:boom: Warning**
