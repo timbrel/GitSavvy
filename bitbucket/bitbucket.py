@@ -30,14 +30,14 @@ def remote_to_url(remote):
     """
     Parse out a Bitbucket HTTP URL from a remote URI:
 
-    r1 = remote_to_url("git://bitbucket.org/pasha_savchenko/GitSavvy.git")
-    assert r1 == "https://bitbucket.org/asfaltboy/GitSavvy"
+    >>> remote_to_url("git://bitbucket.org/pasha_savchenko/GitSavvy.git")
+    'https://bitbucket.org/pasha_savchenko/GitSavvy'
 
-    r2 = remote_to_url("git@bitbucket.org:pasha_savchenko/gitsavvy.git")
-    assert r2 == "https://bitbucket.org/asfaltboy/GitSavvy"
+    >>> remote_to_url("git@bitbucket.org:pasha_savchenko/gitsavvy.git")
+    'https://bitbucket.org/pasha_savchenko/gitsavvy'
 
-    r3 = remote_to_url("https://pasha_savchenko@bitbucket.org/pasha_savchenko/GitSavvy.git")
-    assert r3 == "https://pasha_savchenko@bitbucket.org/pasha_savchenko/GitSavvy"
+    >>> remote_to_url("https://pasha_savchenko@bitbucket.org/pasha_savchenko/GitSavvy.git")
+    'https://pasha_savchenko@bitbucket.org/pasha_savchenko/GitSavvy'
     """
 
     if remote.endswith(".git"):

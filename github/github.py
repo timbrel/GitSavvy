@@ -29,14 +29,14 @@ def remote_to_url(remote):
     """
     Parse out a Github HTTP URL from a remote URI:
 
-    r1 = remote_to_url("git://github.com/timbrel/GitSavvy.git")
-    assert r1 == "https://github.com/timbrel/GitSavvy.git"
+    >>> r1 = remote_to_url("git://github.com/timbrel/GitSavvy.git")
+    >>> assert r1 == "https://github.com/timbrel/GitSavvy"
 
-    r2 = remote_to_url("git@github.com:divmain/GitSavvy.git")
-    assert r2 == "https://github.com/timbrel/GitSavvy.git"
+    >>> r2 = remote_to_url("git@github.com:timbrel/GitSavvy.git")
+    >>> assert r2 == "https://github.com/timbrel/GitSavvy"
 
-    r3 = remote_to_url("https://github.com/timbrel/GitSavvy.git")
-    assert r3 == "https://github.com/timbrel/GitSavvy.git"
+    >>> r3 = remote_to_url("https://github.com/timbrel/GitSavvy.git")
+    >>> assert r3 == "https://github.com/timbrel/GitSavvy"
     """
 
     if remote.endswith(".git"):

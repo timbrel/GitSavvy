@@ -30,14 +30,12 @@ def remote_to_url(remote):
     """
     Parse out a GitLab HTTP URL from a remote URI:
 
-    r1 = remote_to_url("git://gitlab.com/asfaltboy/GitSavvy.git")
-    assert r1 == "https://gitlab.com/asfaltboy/GitSavvy.git"
-
-    r2 = remote_to_url("git@gitlab.com:asfaltboy/GitSavvy.git")
-    assert r2 == "https://gitlab.com/asfaltboy/GitSavvy.git"
-
-    r3 = remote_to_url("https://gitlab.com/asfaltboy/GitSavvy.git")
-    assert r3 == "https://gitlab.com/asfaltboy/GitSavvy.git"
+    >>> remote_to_url("git://gitlab.com/asfaltboy/GitSavvy.git")
+    'https://gitlab.com/asfaltboy/GitSavvy'
+    >>> remote_to_url("git@gitlab.com:asfaltboy/GitSavvy.git")
+    'https://gitlab.com/asfaltboy/GitSavvy'
+    >>> remote_to_url("https://gitlab.com/asfaltboy/GitSavvy.git")
+    'https://gitlab.com/asfaltboy/GitSavvy'
     """
 
     if remote.endswith(".git"):
@@ -83,14 +81,14 @@ def open_file_in_browser(rel_path, remote, commit_hash, start_line=None, end_lin
     """
     Open the URL corresponding to the provided `rel_path` on `remote`.
     """
-    github_repo = parse_remote(remote)
-    if not github_repo:
+    gitlab_repo = parse_remote(remote)
+    if not gitlab_repo:
         return None
 
     line_numbers = "#L{}-{}".format(start_line, end_line) if start_line is not None else ""
 
     url = "{repo_url}/blob/{commit_hash}/{path}{lines}".format(
-        repo_url=github_repo.url,
+        repo_url=gitlab_repo.url,
         commit_hash=commit_hash,
         path=rel_path,
         lines=line_numbers
@@ -101,22 +99,22 @@ def open_file_in_browser(rel_path, remote, commit_hash, start_line=None, end_lin
 
 def open_repo(remote):
     """
-    Open the GitHub repo in a new browser window, given the specified remote.
+    Open the GitLab repo in a new browser window, given the specified remote.
     """
-    github_repo = parse_remote(remote)
-    if not github_repo:
+    gitlab_repo = parse_remote(remote)
+    if not gitlab_repo:
         return None
-    open_in_browser(github_repo.url)
+    open_in_browser(gitlab_repo.url)
 
 
 def open_issues(remote):
     """
-    Open the GitHub issues in a new browser window, given the specified remote.
+    Open the GitLab issues in a new browser window, given the specified remote.
     """
-    github_repo = parse_remote(remote)
-    if not github_repo:
+    gitlab_repo = parse_remote(remote)
+    if not gitlab_repo:
         return None
-    open_in_browser("{}/issues".format(github_repo.url))
+    open_in_browser("{}/issues".format(gitlab_repo.url))
 
 
 def get_api_fqdn(gitlab_repo):
