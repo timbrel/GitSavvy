@@ -23,3 +23,7 @@ class FailedGithubRequest(GitSavvyError):
 
 class FailedGitLabRequest(GitSavvyError):
     pass
+
+
+class FailedBitbucketRequest(GitSavvyError):
+    pass

@@ -148,6 +148,19 @@
         "command": "gs_gitlab_merge_request"
     },
     {
+        "caption": "bitbucket: open file on remote",
+        "command": "gs_bitbucket_open_file_on_remote",
+        "args": { "preselect": true }
+    },
+    {
+        "caption": "bitbucket: open issues",
+        "command": "gs_bitbucket_open_issues"
+    },
+    {
+        "caption": "bitbucket: open repo",
+        "command": "gs_bitbucket_open_repo"
+    },
+    {
         "caption": "git: remote add",
         "command": "gs_remote_add"
 
