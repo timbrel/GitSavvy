@@ -31,13 +31,17 @@ class Interface():
         Search for intended interface in active window - if found, bring it
         to focus and return it instead of creating a new interface.
         """
-        window = sublime.active_window()
-        for view in window.views():
-            vset = view.settings()
-            if vset.get("git_savvy.interface") == cls.interface_type and \
-               vset.get("git_savvy.repo_path") == repo_path:
-                window.focus_view(view)
-                return interfaces[view.id()]
+        if repo_path is not None:
+            window = sublime.active_window()
+            for view in window.views():
+                vset = view.settings()
+                if vset.get("git_savvy.interface") == cls.interface_type and \
+                   vset.get("git_savvy.repo_path") == repo_path:
+                    window.focus_view(view)
+                    try:
+                        return interfaces[view.id()]
+                    except KeyError:
+                        return cls(view=view)  # surprise! we recurse
 
         return super().__new__(cls)
 
