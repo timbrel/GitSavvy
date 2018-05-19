@@ -196,7 +196,7 @@ def iteratively_query_github(api_url_template, github_repo):
 
             # following next link
             # https://developer.github.com/v3/#pagination
-            match = re.match(r'<([^>]+)>; rel="next"', response.headers["Link"])
+            match = re.match(r'.*<([^>]+)>; rel="next"', response.headers["Link"])
             if not match:
                 break
 
