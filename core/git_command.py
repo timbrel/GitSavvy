@@ -11,6 +11,7 @@ import subprocess
 import shutil
 import re
 import threading
+import traceback
 
 import sublime
 
@@ -224,7 +225,7 @@ class GitCommand(StatusMixin,
 
         except Exception as e:
             # this should never be reached
-            raise GitSavvyError("Please report this error to GitSavvy:\n\n{}".format(e))
+            raise GitSavvyError("Please report this error to GitSavvy:\n\n{}\n\n{}".format(e, traceback.format_exc()))
 
         finally:
             end = time.time()
