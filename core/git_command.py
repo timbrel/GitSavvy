@@ -307,7 +307,10 @@ class GitCommand(StatusMixin,
                     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
                 stdout = subprocess.check_output(
-                    [git_path, "--version"], startupinfo=startupinfo).decode("utf-8")
+                    [git_path, "--version"],
+                    stderr=subprocess.PIPE,
+                    startupinfo=startupinfo).decode("utf-8")
+
             except Exception:
                 stdout = ""
                 git_path = None
