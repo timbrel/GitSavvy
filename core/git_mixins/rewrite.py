@@ -1,5 +1,6 @@
 import os
 import shutil
+import re
 from types import SimpleNamespace
 from ..exceptions import GitSavvyError
 from ...common import util
@@ -180,19 +181,28 @@ class RewriteMixin():
                 shutil.rmtree(self._rebase_replay_dir)
 
     @property
+    def git_dir_path(self):
+        git_path = os.path.join(self.repo_path, ".git")
+        if os.path.isfile(git_path):
+            gitPathFound = re.search('gitdir:\\s(.*)\n$',open(git_path,'r').read())
+            if gitPathFound:
+                git_path = gitPathFound.groups()[0]
+        return git_path
+
+    @property
     def _rebase_replay_dir(self):
         """
         A directory to store meta data for `rewrite_active_branch`
         """
-        return os.path.join(self.repo_path, ".git", "rebase-replay")
+        return os.path.join(self.git_dir_path, "rebase-replay")
 
     @property
     def _rebase_apply_dir(self):
-        return os.path.join(self.repo_path, ".git", "rebase-apply")
+        return os.path.join(self.git_dir_path, "rebase-apply")
 
     @property
     def _rebase_merge_dir(self):
-        return os.path.join(self.repo_path, ".git", "rebase-merge")
+        return os.path.join(self.git_dir_path, "rebase-merge")
 
     @property
     def _rebase_dir(self):
