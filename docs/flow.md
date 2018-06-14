@@ -1,6 +1,6 @@
 # git-flow
 
-Vincent Driessen's [git-flow](https://github.com/nvie/gitflow) extension is fully supported, allowing you to run flow commands with sublime commands. To enable `git-flow` integration you must set `show_git_flow_commands` to `true` in `Packages/User/GitSavvy.sublime-settings`.
+Vincent Driessen's [git-flow](https://github.com/nvie/gitflow) extension is fully supported, allowing you to run flow commands with sublime commands. To enable `git-flow` integration you must set `show_git_flow_commands` to `true` in `GitSavvy` settings.
 
 Most commands attempt to mirror `git-flow` 's interface with the added ability to select a target from local branches/remotes.
 

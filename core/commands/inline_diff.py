@@ -77,8 +77,7 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
                 file_binary.decode("latin-1")
                 diff_view.settings().set("git_savvy.inline_diff.encoding", "latin-1")
             except UnicodeDecodeError as unicode_err:
-                savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-                fallback_encoding = savvy_settings.get("fallback_encoding")
+                fallback_encoding = self.savvy_settings.get("fallback_encoding")
                 diff_view.settings().set("git_savvy.inline_diff.encoding", fallback_encoding)
 
         self.window.focus_view(diff_view)
@@ -92,7 +91,7 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
         additional inline-diff-related style rules added.  Save this color scheme
         to disk and set it as the target view's active color scheme.
         """
-        colors = sublime.load_settings("GitSavvy.sublime-settings").get("colors")
+        colors = self.savvy_settings.get("colors")
 
         original_color_scheme = target_view.settings().get("color_scheme")
         if original_color_scheme.endswith(".tmTheme"):
@@ -148,10 +147,9 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
     def run(self, edit):
         file_path = self.file_path
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         ignore_eol_arg = (
             "--ignore-space-at-eol"
-            if savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
+            if self.savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
             else None
         )
 
@@ -186,7 +184,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         self.view.replace(edit, sublime.Region(0, self.view.size()), inline_diff_contents)
 
         if cursors:
-            if (row, col) == (0, 0) and savvy_settings.get("inline_diff_auto_scroll", False):
+            if (row, col) == (0, 0) and self.savvy_settings.get("inline_diff_auto_scroll", False):
                 self.view.run_command("gs_inline_diff_navigate_hunk")
             else:
                 self.view.sel().clear()
@@ -360,10 +358,9 @@ class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
 
     def run_async(self, reset=False):
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         ignore_ws = (
             "--ignore-whitespace"
-            if savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
+            if self.savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
             else None
         )
         selections = self.view.sel()

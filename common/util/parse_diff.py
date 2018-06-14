@@ -9,7 +9,7 @@ import re
 Hunk = namedtuple("Hunk", ("raw_lines", "changes", "head_start", "head_length", "saved_start", "saved_length"))
 Change = namedtuple("Change", ("raw", "type", "head_pos", "saved_pos", "text"))
 
-re_metadata = re.compile("^@@ -(\d+)(,(\d+))? \+(\d+)(,(\d+))? @@")
+re_metadata = re.compile(r"^@@ -(\d+)(,(\d+))? \+(\d+)(,(\d+))? @@")
 
 
 def parse_diff(diff_str):

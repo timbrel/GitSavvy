@@ -40,8 +40,7 @@ class GsTabCycleCommand(TextCommand, GitCommand):
             sublime.set_timeout_async(self.view.close)
 
     def get_next(self, source, reverse=False):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        tab_order = savvy_settings.get("tab_order")
+        tab_order = self.savvy_settings.get("tab_order")
 
         if reverse is True:
             tab_order.reverse()

@@ -15,7 +15,7 @@ from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel, show_branc
 
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
-COMMIT_LINE = re.compile("\s*[%s]\s*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
+COMMIT_LINE = re.compile(r"\s*[%s]\s*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
 NEAREST_NODE_PATTERN = re.compile(r'.*\*.*\[(.*?)(?:(?:[\^\~]+[\d]*){1})\]')  # http://regexr.com/3gm03
 NOT_A_COMMIT_SHA = 'not_a_commit_sha'
 
@@ -227,8 +227,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
                 skip_commit_key='k' if not vintageous_friendly else 'K')
 
     def preserve_merges(self):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        default = savvy_settings.get("rebase_preserve_merges")
+        default = self.savvy_settings.get("rebase_preserve_merges")
         return not self.in_rebase_apply() and \
             (self.in_rebase_merge() or
              self.view.settings().get("git_savvy.rebase.preserve_merges", default))
@@ -320,9 +319,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         base_ref = self.view.settings().get("git_savvy.rebase.base_ref")
 
         if not base_ref or reset_ref:
-            project_data = sublime.active_window().project_data() or {}
-            project_settings = project_data.get('settings', {})
-            base_ref = project_settings.get("rebase_default_base_ref")
+            base_ref = self.savvy_settings.get("rebase_default_base_ref")
 
             if not base_ref:
                 # use remote tracking branch as a sane default
@@ -596,6 +593,8 @@ class GsRebaseSquashCommand(RewriteBase):
             show_log_panel(reversed_logs, self.do_action)
 
     def do_action(self, target_commit):
+        if not target_commit:
+            return
 
         squash_idx, squash_entry, _ = self.get_idx_entry_and_prev(self.squash_entry.short_hash)
         target_idx, target_entry, before_target = \
@@ -732,6 +731,8 @@ class GsRebaseMoveUpCommand(RewriteBase):
             show_log_panel(logs, self.do_action)
 
     def do_action(self, target_commit):
+        if not target_commit:
+            return
 
         move_idx, move_entry, _ = self.get_idx_entry_and_prev(self.move_entry.short_hash)
         target_idx, target_entry, before_target = \
@@ -779,6 +780,8 @@ class GsRebaseMoveDownCommand(RewriteBase):
             show_log_panel(logs, self.do_action)
 
     def do_action(self, target_commit):
+        if not target_commit:
+            return
 
         move_idx, move_entry, before_move = self.get_idx_entry_and_prev(self.move_entry.short_hash)
         target_idx, target_entry, _ = \
@@ -1054,8 +1057,7 @@ class GsRebaseTogglePreserveModeCommand(TextCommand, GitCommand):
     def run(self, edit):
         preserve = self.view.settings().get("git_savvy.rebase.preserve_merges", False)
         self.view.settings().set("git_savvy.rebase.preserve_merges", not preserve)
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        savvy_settings.set("rebase_preserve_merges", not preserve)
+        self.savvy_settings.set("rebase_preserve_merges", not preserve)
         util.view.refresh_gitsavvy(self.view)
 
 

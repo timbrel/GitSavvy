@@ -2,6 +2,7 @@ import sublime
 from sublime_plugin import EventListener, WindowCommand
 
 from . import util
+from ..core.settings import SettingsMixin
 
 
 class GsInterfaceFocusEventListener(EventListener):
@@ -26,12 +27,16 @@ git_view_syntax = {
 }
 
 
-class GitCommandFromTerminal(EventListener):
+class GitCommandFromTerminal(EventListener, SettingsMixin):
     def on_load(self, view):
         if view.file_name():
             name = view.file_name().split("/")[-1]
             if name in git_view_syntax.keys():
-                view.set_syntax_file(git_view_syntax[name])
+                syntax_file = git_view_syntax[name]
+                if "COMMIT_EDITMSG" == name and self.savvy_settings.get("use_syntax_for_commit_editmsg"):
+                    syntax_file = util.file.get_syntax_for_file("COMMIT_EDITMSG")
+
+                view.set_syntax_file(syntax_file)
                 view.settings().set("git_savvy.{}_view".format(name), True)
                 view.set_scratch(True)
 
@@ -61,3 +66,28 @@ class GsEditSettingsCommand(WindowCommand):
     """
     def run(self, **kwargs):
         self.window.run_command("edit_settings", kwargs)
+
+
+class GsEditProjectSettingsCommand(WindowCommand):
+    """
+    For some reasons, the command palette doesn't trigger `on_post_window_command` for
+    dev version of Sublime Text. The command palette would call `gs_edit_settings` and
+    subsequently trigger `on_post_window_command`.
+    """
+    def run(self):
+        project_file_name = self.window.project_file_name()
+        project_data = self.window.project_data()
+        if not project_file_name or project_data is None:
+            sublime.error_message("No project data found.")
+
+        if project_data is None:
+            project_data = {}
+        if "GitSavvy" not in project_data:
+            project_data["GitSavvy"] = {}
+
+        self.window.set_project_data(project_data)
+
+        sublime.set_timeout(lambda: self.window.run_command("edit_settings", {
+            "user_file": project_file_name,
+            "base_file": "${packages}/GitSavvy/GitSavvy.sublime-settings"
+        }), 100)

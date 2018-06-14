@@ -6,6 +6,7 @@ from sublime_plugin import EventListener
 
 from ..git_command import GitCommand
 from ...common import util
+from ...core.settings import SettingsMixin
 
 
 COMMIT_HELP_TEXT_EXTRA = """##
@@ -59,8 +60,7 @@ class GsCommitCommand(WindowCommand, GitCommand):
         settings.set("git_savvy.commit_view.amend", amend)
         settings.set("git_savvy.repo_path", repo_path)
 
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        if savvy_settings.get("use_syntax_for_commit_editmsg"):
+        if self.savvy_settings.get("use_syntax_for_commit_editmsg"):
             syntax_file = util.file.get_syntax_for_file("COMMIT_EDITMSG")
             view.set_syntax_file(syntax_file)
         else:
@@ -68,12 +68,12 @@ class GsCommitCommand(WindowCommand, GitCommand):
 
         view.run_command("gs_handle_vintageous")
 
-        commit_on_close = savvy_settings.get("commit_on_close")
+        commit_on_close = self.savvy_settings.get("commit_on_close")
         settings.set("git_savvy.commit_on_close", commit_on_close)
 
         title = COMMIT_TITLE.format(os.path.basename(repo_path))
         view.set_name(title)
-        if commit_on_close or not savvy_settings.get("prompt_on_abort_commit"):
+        if commit_on_close or not self.savvy_settings.get("prompt_on_abort_commit"):
             view.set_scratch(True)
         view.run_command("gs_commit_initialize_view")
 
@@ -87,10 +87,9 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         merge_msg_path = os.path.join(self.repo_path, ".git", "MERGE_MSG")
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
 
         help_text = (COMMIT_HELP_TEXT_ALT
-                     if savvy_settings.get("commit_on_close")
+                     if self.savvy_settings.get("commit_on_close")
                      else COMMIT_HELP_TEXT)
         self.view.settings().set("git_savvy.commit_view.help_text", help_text)
 
@@ -105,7 +104,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         else:
             initial_text = help_text
 
-        commit_help_extra_file = savvy_settings.get("commit_help_extra_file") or ".commit_help"
+        commit_help_extra_file = self.savvy_settings.get("commit_help_extra_file") or ".commit_help"
         commit_help_extra_path = os.path.join(self.repo_path, commit_help_extra_file)
         if os.path.exists(commit_help_extra_path):
             with util.file.safe_open(commit_help_extra_path, "r", encoding="utf-8") as f:
@@ -116,12 +115,12 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
             "--no-color"
         ]
 
-        show_commit_diff = savvy_settings.get("show_commit_diff")
+        show_commit_diff = self.savvy_settings.get("show_commit_diff")
         # for backward compatibility, check also if show_commit_diff is True
         if show_commit_diff is True or show_commit_diff == "full":
             git_args.append("--patch")
 
-        show_diffstat = savvy_settings.get("show_diffstat")
+        show_diffstat = self.savvy_settings.get("show_diffstat")
         if show_commit_diff == "stat" or (show_commit_diff == "full" and show_diffstat):
             git_args.append("--stat")
 
@@ -140,7 +139,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         })
 
 
-class GsPedanticEnforceEventListener(EventListener):
+class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
     """
     Set regions to worn for Pedantic commits
     """
@@ -149,21 +148,20 @@ class GsPedanticEnforceEventListener(EventListener):
         if 'make_commit' not in view.settings().get('syntax'):
             return
 
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        if not savvy_settings.get('pedantic_commit'):
+        if not self.savvy_settings.get('pedantic_commit'):
             return
 
         self.view = view
-        self.first_line_limit = savvy_settings.get('pedantic_commit_first_line_length')
-        self.body_line_limit = savvy_settings.get('pedantic_commit_message_line_length')
-        self.warning_length = savvy_settings.get('pedantic_commit_warning_length')
+        self.first_line_limit = self.savvy_settings.get('pedantic_commit_first_line_length')
+        self.body_line_limit = self.savvy_settings.get('pedantic_commit_message_line_length')
+        self.warning_length = self.savvy_settings.get('pedantic_commit_warning_length')
 
         self.comment_start_region = self.view.find_all('^#')
         self.first_comment_line = None
         if self.comment_start_region:
             self.first_comment_line = self.view.rowcol(self.comment_start_region[0].begin())[0]
 
-        if savvy_settings.get('pedantic_commit_ruler'):
+        if self.savvy_settings.get('pedantic_commit_ruler'):
             self.view.settings().set("rulers", self.find_rulers())
 
         waring, illegal = self.find_too_long_lines()
@@ -217,7 +215,7 @@ class GsPedanticEnforceEventListener(EventListener):
                 sublime.Region(first_line.a + self.first_line_limit + self.warning_length, first_line.b))
 
         # Add second line to illegal
-        if self.first_comment_line > 1:
+        if self.first_comment_line is None or self.first_comment_line > 1:
             illegal_lines.append(sublime.Region(self.view.text_point(1, 0), self.view.text_point(2, 0) - 1))
 
         if self.first_comment_line:
@@ -261,8 +259,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
 
         include_unstaged = self.view.settings().get("git_savvy.commit_view.include_unstaged")
 
-        show_panel_overrides = \
-            sublime.load_settings("GitSavvy.sublime-settings").get("show_panel_for")
+        show_panel_overrides = self.savvy_settings.get("show_panel_for")
 
         self.git(
             "commit",

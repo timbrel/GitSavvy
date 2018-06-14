@@ -21,16 +21,24 @@ class LogMixin(object):
     but the subclass must also inherit fro GitCommand (for the `git()` method)
     """
 
+    show_commit_info = True
+    selected_index = 0
+
     def run(self, *args, file_path=None, **kwargs):
         sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, **kwargs), 0)
 
     def run_async(self, file_path=None, **kwargs):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        follow = savvy_settings.get("log_follow_rename") if file_path else False
+        follow = self.savvy_settings.get("log_follow_rename") if file_path else False
         show_log_panel(
             self.log_generator(file_path=file_path, follow=follow, **kwargs),
-            lambda commit: self.on_done(commit, file_path=file_path, **kwargs)
+            lambda commit: self.on_done(commit, file_path=file_path, **kwargs),
+            selected_index=self.selected_index,
+            on_highlight=self.on_highlight,
+            show_commit_info=self.show_commit_info
         )
+
+    def on_highlight(self, commit):
+        pass
 
     def on_done(self, commit, **kwargs):
         if commit:
@@ -72,7 +80,7 @@ class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
 
         commiter_str = self.git("shortlog", "-sne", "HEAD")
         for line in commiter_str.split('\n'):
-            m = re.search('\s*(\d*)\s*(.*)\s<(.*)>', line)
+            m = re.search(r'\s*(\d*)\s*(.*)\s<(.*)>', line)
             if m is None:
                 continue
             commit_count, author_name, author_email = m.groups()
@@ -153,6 +161,7 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
         if self._file_path:
             self.actions.insert(1, ["show_file_at_commit", "Show file at commit"])
             self.actions.insert(2, ["blame_file_atcommit", "Blame file at commit"])
+            self.actions.insert(3, ["checkout_file_at_commit", "Checkout file at commit"])
 
     def show_commit(self):
         self.window.run_command("gs_show_commit", {"commit_hash": self._commit_hash})
@@ -204,3 +213,7 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
         self.window.run_command(
             "gs_blame",
             {"commit_hash": self._commit_hash, "file_path": self._file_path})
+
+    def checkout_file_at_commit(self):
+        self.checkout_ref(self._commit_hash, fpath=self._file_path)
+        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)

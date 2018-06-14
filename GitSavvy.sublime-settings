@@ -52,6 +52,11 @@
     "github_per_page_max" : 100,
 
     /*
+    maximum number of items per page when requesting from gitlab
+    */
+    "gitlab_per_page_max" : 100,
+
+    /*
         Change this to "full" to display a full diff for the current commit
         when writing a commit message.
 
@@ -268,6 +273,13 @@
     "blame_follow_rename": false,
 
     /*
+        Set it to "file", "commit" or "all_commits" to specify the default detection
+        method for the blame view.
+    */
+
+    "blame_detect_move_or_copy_within": "file",
+
+    /*
         When set to `true`, GitSavvy will prompt for confirmation when closing
         the commit message view.
     */
@@ -285,6 +297,11 @@
     */
     "merge_log": true,
 
+
+    /*
+        The default base for the rebase dashboard.
+    */
+    "rebase_default_base_ref": "",
 
     /*
         When set to `true`, rebase dashboard uses preserve-merges mode when opened.

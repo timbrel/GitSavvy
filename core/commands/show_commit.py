@@ -15,7 +15,6 @@ class GsShowCommitCommand(WindowCommand, GitCommand):
     def run(self, commit_hash):
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         view = self.window.new_file()
         settings = view.settings()
         settings.set("git_savvy.show_commit_view", True)
@@ -23,7 +22,7 @@ class GsShowCommitCommand(WindowCommand, GitCommand):
         settings.set("git_savvy.repo_path", repo_path)
         settings.set("git_savvy.show_commit_view.ignore_whitespace", False)
         settings.set("git_savvy.show_commit_view.show_word_diff", False)
-        settings.set("git_savvy.show_commit_view.show_diffstat", savvy_settings.get("show_diffstat", True))
+        settings.set("git_savvy.show_commit_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
         view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
         view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash)))
         view.set_scratch(True)

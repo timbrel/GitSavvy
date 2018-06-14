@@ -6,6 +6,7 @@ import sublime
 from sublime_plugin import TextCommand
 
 from . import util
+from ..core.settings import GitSavvySettings
 
 
 interfaces = {}
@@ -30,13 +31,17 @@ class Interface():
         Search for intended interface in active window - if found, bring it
         to focus and return it instead of creating a new interface.
         """
-        window = sublime.active_window()
-        for view in window.views():
-            vset = view.settings()
-            if vset.get("git_savvy.interface") == cls.interface_type and \
-               vset.get("git_savvy.repo_path") == repo_path:
-                window.focus_view(view)
-                return interfaces[view.id()]
+        if repo_path is not None:
+            window = sublime.active_window()
+            for view in window.views():
+                vset = view.settings()
+                if vset.get("git_savvy.interface") == cls.interface_type and \
+                   vset.get("git_savvy.repo_path") == repo_path:
+                    window.focus_view(view)
+                    try:
+                        return interfaces[view.id()]
+                    except KeyError:
+                        return cls(view=view)  # surprise! we recurse
 
         return super().__new__(cls)
 
@@ -73,7 +78,6 @@ class Interface():
 
     def create_view(self, repo_path):
         window = sublime.active_window()
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         self.view = window.new_file()
 
         self.view.settings().set("git_savvy.repo_path", repo_path)
@@ -81,7 +85,7 @@ class Interface():
         self.view.settings().set("git_savvy.{}_view".format(self.interface_type), True)
         self.view.settings().set("git_savvy.tabbable", True)
         self.view.settings().set("git_savvy.interface", self.interface_type)
-        self.view.settings().set("git_savvy.help_hidden", savvy_settings.get("hide_help_menu"))
+        self.view.settings().set("git_savvy.help_hidden", GitSavvySettings().get("hide_help_menu"))
         self.view.set_syntax_file(self.syntax_file)
         self.view.set_scratch(True)
         self.view.set_read_only(self.read_only)

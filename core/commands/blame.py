@@ -3,13 +3,13 @@ from collections import namedtuple, defaultdict
 import unicodedata
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import TextCommand
 
 from ..commands import GsNavigate
 from ..git_command import GitCommand
 from ...common import util
 from .log import LogMixin
-from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel
+from ..ui_mixins.quick_panel import PanelActionMixin
 
 
 BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))
@@ -24,9 +24,10 @@ class BlameMixin:
     Some helper functions
     """
 
-    def find_lineno(self):
+    @util.view.single_cursor_pt
+    def find_lineno(self, cursor_pt):
         pattern = r"^.+ \| +\d+"
-        line_start = util.view.get_instance_before_pt(self.view, self.cursor_pt, pattern)
+        line_start = util.view.get_instance_before_pt(self.view, cursor_pt, pattern)
         if line_start is None:
             return 1
         else:
@@ -37,8 +38,9 @@ class BlameMixin:
             except Exception:
                 return 1
 
-    def find_selected_commit_hash(self):
-        hunk_start = util.view.get_instance_before_pt(self.view, self.cursor_pt, r"^\-+ \| \-+")
+    @util.view.single_cursor_pt
+    def find_selected_commit_hash(self, cursor_pt):
+        hunk_start = util.view.get_instance_before_pt(self.view, cursor_pt, r"^\-+ \| \-+")
         if hunk_start is None:
             short_hash_row = 1
         else:
@@ -50,30 +52,44 @@ class BlameMixin:
         return short_hash.strip()
 
 
-class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
-    @util.view.single_cursor_coords
-    def run(self, coords, file_path=None, repo_path=None, commit_hash=None):
-        self.coords = coords
+class GsBlameCommand(BlameMixin, TextCommand, GitCommand):
+    def run(self, edit, file_path=None, repo_path=None, commit_hash=None):
         self._file_path = file_path or self.file_path
         self.__repo_path = repo_path or self.repo_path
         self._commit_hash = commit_hash if commit_hash else self.get_commit_hash_for_head()
         sublime.set_timeout_async(self.blame)
 
-    def blame(self):
-        original_syntax = self.window.active_view().settings().get('syntax')
-        view = self.window.new_file()
+    @util.view.single_cursor_coords
+    def blame(self, coords):
+        original_view = self.view
+        view = self.view.window().new_file()
 
         settings = view.settings()
         settings.set("git_savvy.blame_view", True)
         settings.set("git_savvy.repo_path", self.__repo_path)
         settings.set("git_savvy.file_path", self._file_path)
 
-        lineno = self.find_matching_lineno(None, self._commit_hash, self.coords[0] + 1)
+        if original_view.settings().get("git_savvy.blame_view"):
+            lineno = self.find_matching_lineno(
+                original_view.settings().get("git_savvy.commit_hash"),
+                self._commit_hash,
+                self.find_lineno())
+
+            for key in [
+                "git_savvy.blame_view.ignore_whitespace",
+                "git_savvy.blame_view.detect_move_or_copy_within",
+                "git_savvy.original_syntax"
+            ]:
+                settings.set(key, original_view.settings().get(key))
+
+        else:
+            lineno = self.find_matching_lineno(None, self._commit_hash, coords[0] + 1)
+            settings.set("git_savvy.blame_view.ignore_whitespace", False)
+            settings.set("git_savvy.blame_view.detect_move_or_copy_within", None)
+            settings.set("git_savvy.original_syntax", original_view.settings().get('syntax'))
+
         settings.set("git_savvy.lineno", lineno)
         settings.set("git_savvy.commit_hash", self._commit_hash)
-        settings.set("git_savvy.blame_view.ignore_whitespace", False)
-        settings.set("git_savvy.blame_view.detect_move_or_copy_within", None)
-        settings.set("git_savvy.original_syntax", original_syntax)
 
         view.set_syntax_file("Packages/GitSavvy/syntax/blame.sublime-syntax")
         view.set_scratch(True)
@@ -85,20 +101,34 @@ class GsBlameCommand(PanelActionMixin, WindowCommand, GitCommand):
 
 class GsBlameCurrentFileCommand(LogMixin, TextCommand, GitCommand):
 
+    _commit_hash = None
+    _file_path = None
+
     def run(self, edit, **kwargs):
+        # reset memorized commit hash when blaming a different file
+        if self._file_path != self.file_path:
+            self._commit_hash = None
+
+        if self.view.settings().get("git_savvy.blame_view"):
+            if not self._commit_hash:
+                self._commit_hash = self.view.settings().get("git_savvy.commit_hash")
+
         self._file_path = self.file_path
-        sublime.set_timeout_async(
-            lambda: self.run_async(file_path=self._file_path, **kwargs), 0)
+        kwargs["file_path"] = self._file_path
+        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
 
     def do_action(self, commit_hash, **kwargs):
+        self._commit_hash = commit_hash
         sublime.set_timeout(
             lambda: self.view.window().run_command(
                 "gs_blame", {"commit_hash": commit_hash, "file_path": self._file_path}),
             100)
 
+    def selected_index(self, commit_hash):
+        return self._commit_hash == commit_hash
+
     def log(self, **kwargs):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        follow = savvy_settings.get("blame_follow_rename")
+        follow = self.savvy_settings.get("blame_follow_rename")
         kwargs["follow"] = follow
         return super().log(**kwargs)
 
@@ -125,13 +155,13 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
             )
         )
 
-        within_what = \
-            settings.get("git_savvy.blame_view.detect_move_or_copy_within", None)
-        detect_options = self._detect_move_or_copy_dict[within_what] if within_what else None
+        within_what = settings.get("git_savvy.blame_view.detect_move_or_copy_within")
+        if not within_what:
+            within_what = self.savvy_settings.get("blame_detect_move_or_copy_within")
 
         content = self.get_content(
             ignore_whitespace=settings.get("git_savvy.ignore_whitespace", False),
-            detect_options=detect_options,
+            detect_options=self._detect_move_or_copy_dict[within_what],
             commit_hash=commit_hash
         )
 
@@ -169,14 +199,12 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
                         (0, cursor_layout[1] - yoffset), animate=False), 100)
 
     def get_content(self, ignore_whitespace=False, detect_options=None, commit_hash=None):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-
         if commit_hash:
             # git blame does not follow file name changes like git log, therefor we
             # need to look at the log first too see if the file has changed names since
             # selected commit. I would not be surprised if this brakes in some special cases
             # like rebased or multimerged commits
-            follow = savvy_settings.get("blame_follow_rename")
+            follow = self.savvy_settings.get("blame_follow_rename")
             filename_at_commit = self.filename_at_commit(self.file_path, commit_hash, follow=follow)
         else:
             filename_at_commit = self.file_path
@@ -336,11 +364,6 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand
         ["show_file_at_commit", "Show file at selected commit", (), {"from_line": True}],
     ]
 
-    @util.view.single_cursor_pt
-    def run(self, cursor_pt, edit, pre_selected_index=None):
-        self.cursor_pt = cursor_pt
-        super().run(pre_selected_index=pre_selected_index)
-
     def update_actions(self):
         # a deepcopy
         self.actions = [act.copy() for act in self.default_actions]
@@ -358,8 +381,7 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand
         self.view.window().run_command("gs_show_commit", {"commit_hash": commit_hash})
 
     def blame_neighbor(self, position, selected=False):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        follow = savvy_settings.get("blame_follow_rename")
+        follow = self.savvy_settings.get("blame_follow_rename")
 
         if position == "newer" and selected:
             raise Exception("blame a commit after selected commit is confusing")
@@ -406,32 +428,9 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand
         })
 
     def pick_new_commit(self):
-        self.view.run_command("gs_blame_pick_commit", {
-            "commit_hash": self.view.settings().get("git_savvy.commit_hash"),
+        self.view.run_command("gs_blame_current_file", {
+            "file_path": self.file_path
         })
-
-
-class GsBlamePickCommitCommand(TextCommand, GitCommand):
-
-    def run(self, edit, commit_hash=None):
-        sublime.set_timeout_async(lambda: self.run_async(self.file_path), 0)
-
-    def run_async(self, file_path):
-        self.commit_hash = self.view.settings().get("git_savvy.commit_hash")
-        show_log_panel(
-            self.log_generator(file_path=file_path, follow=True),
-            self.on_done,
-            selected_index=lambda entry: entry == self.commit_hash,
-            on_highlight=self.on_done
-        )
-
-    def on_done(self, commit_hash):
-        # Canceled panel
-        if commit_hash is None:
-            commit_hash = self.commit_hash
-
-        self.view.settings().set("git_savvy.commit_hash", commit_hash)
-        self.view.run_command("gs_blame_refresh")
 
 
 class GsBlameToggleSetting(BlameMixin, TextCommand):
@@ -440,9 +439,7 @@ class GsBlameToggleSetting(BlameMixin, TextCommand):
     Toggle view settings: `ignore_whitespace`, `detect_move_or_copy_within_file`,
     `detect_move_or_copy_within_commit` and `detect_move_or_copy_within_all_commits`.
     """
-    @util.view.single_cursor_pt
-    def run(self, cursor_pt, edit, setting, value=None):
-        self.cursor_pt = cursor_pt
+    def run(self, edit, setting, value=None):
         setting_str = "git_savvy.blame_view.{}".format(setting)
         settings = self.view.settings()
         if setting == "detect_move_or_copy_within":

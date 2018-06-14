@@ -28,14 +28,13 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         base_remote = github.parse_remote(self.get_integrated_remote_url())
         self.pull_requests = github.get_pull_requests(base_remote)
 
         pp = show_paginated_panel(
             self.pull_requests,
             self.on_select_pr,
-            limit=savvy_settings.get("github_per_page_max", 100),
+            limit=self.savvy_settings.get("github_per_page_max", 100),
             format_item=self.format_item,
             status_message="Getting pull requests..."
         )

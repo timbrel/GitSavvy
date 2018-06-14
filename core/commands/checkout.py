@@ -2,6 +2,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
+from .log import LogMixin
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
 
@@ -119,13 +120,24 @@ class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
                                               interface_reset_cursor=True)
 
 
-class GsCheckoutCurrentFileCommand(WindowCommand, GitCommand):
+class GsCheckoutCurrentFileAtCommitCommand(LogMixin, WindowCommand, GitCommand):
 
     """
-    Reset the current active file to HEAD.
+    Reset the current active file to a given commit.
     """
 
     def run(self):
         if self.file_path:
-            self.checkout_file(self.file_path)
-            self.window.status_message("Successfully checked out {} from head.".format(self.file_path))
+            super().run(file_path=self.file_path)
+
+    @util.actions.destructive(description="discard uncommitted changes to file")
+    def do_action(self, commit_hash, **kwargs):
+        if commit_hash:
+            self.checkout_ref(commit_hash, self.file_path)
+            self.window.status_message(
+                "Successfully checked out {} from {}.".format(
+                    self.file_path,
+                    self.get_short_hash(commit_hash)
+                )
+            )
+            util.view.refresh_gitsavvy_interfaces(self.window, interface_reset_cursor=True)

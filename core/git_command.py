@@ -11,6 +11,7 @@ import subprocess
 import shutil
 import re
 import threading
+import traceback
 
 import sublime
 
@@ -28,6 +29,7 @@ from .git_mixins.history import HistoryMixin
 from .git_mixins.rewrite import RewriteMixin
 from .git_mixins.merge import MergeMixin
 from .exceptions import GitSavvyError
+from .settings import SettingsMixin
 import time
 
 git_path = None
@@ -58,7 +60,8 @@ class LoggingProcessWrapper(object):
     """
     Wraps a Popen object with support for logging stdin/stderr
     """
-    def __init__(self, process):
+    def __init__(self, process, timeout):
+        self.timeout = timeout
         self.process = process
         self.stdout = b''
         self.stderr = b''
@@ -98,11 +101,8 @@ class LoggingProcessWrapper(object):
 
         self.process.wait()
 
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        timeout = savvy_settings.get("live_panel_output_timeout", 10000)
-
-        stdout_thread.join(timeout / 1000)
-        stderr_thread.join(timeout / 1000)
+        stdout_thread.join(self.timeout / 1000)
+        stderr_thread.join(self.timeout / 1000)
 
         return self.stdout, self.stderr
 
@@ -118,7 +118,8 @@ class GitCommand(StatusMixin,
                  TagsMixin,
                  HistoryMixin,
                  RewriteMixin,
-                 MergeMixin
+                 MergeMixin,
+                 SettingsMixin
                  ):
 
     """
@@ -149,16 +150,14 @@ class GitCommand(StatusMixin,
         command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
         command_str = " ".join(command)
 
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-
-        show_panel_overrides = savvy_settings.get("show_panel_for")
+        show_panel_overrides = self.savvy_settings.get("show_panel_for")
         show_panel = show_panel or args[0] in show_panel_overrides
 
-        close_panel_for = savvy_settings.get("close_panel_for") or []
+        close_panel_for = self.savvy_settings.get("close_panel_for") or []
         if args[0] in close_panel_for:
             sublime.active_window().run_command("hide_panel", {"cancel": True})
 
-        live_panel_output = savvy_settings.get("live_panel_output", False)
+        live_panel_output = self.savvy_settings.get("live_panel_output", False)
 
         stdout, stderr = None, None
 
@@ -195,13 +194,13 @@ class GitCommand(StatusMixin,
             def initialize_panel():
                 # clear panel
                 util.log.panel("")
-                if savvy_settings.get("show_stdin_in_output") and stdin is not None:
+                if self.savvy_settings.get("show_stdin_in_output") and stdin is not None:
                     util.log.panel_append("STDIN\n{}\n".format(stdin))
-                if savvy_settings.get("show_input_in_output"):
+                if self.savvy_settings.get("show_input_in_output"):
                     util.log.panel_append("> {}\n".format(command_str))
 
             if show_panel and live_panel_output:
-                wrapper = LoggingProcessWrapper(p)
+                wrapper = LoggingProcessWrapper(p, self.savvy_settings.get("live_panel_output_timeout", 10000))
                 initialize_panel()
 
             if stdin is not None and encode:
@@ -213,7 +212,7 @@ class GitCommand(StatusMixin,
                 stdout, stderr = p.communicate(stdin)
 
             if decode:
-                stdout, stderr = self.decode_stdout(stdout, savvy_settings), stderr.decode()
+                stdout, stderr = self.decode_stdout(stdout), stderr.decode()
 
             if show_panel and not live_panel_output:
                 initialize_panel()
@@ -226,7 +225,7 @@ class GitCommand(StatusMixin,
 
         except Exception as e:
             # this should never be reached
-            raise GitSavvyError("Please report this error to GitSavvy:\n\n{}".format(e))
+            raise GitSavvyError("Please report this error to GitSavvy:\n\n{}\n\n{}".format(e, traceback.format_exc()))
 
         finally:
             end = time.time()
@@ -236,12 +235,12 @@ class GitCommand(StatusMixin,
                 util.debug.log_git(
                     args,
                     stdin,
-                    self.decode_stdout(stdout, savvy_settings),
+                    self.decode_stdout(stdout),
                     stderr.decode(),
                     end - start
                 )
 
-            if show_panel and savvy_settings.get("show_time_elapsed_in_output", True):
+            if show_panel and self.savvy_settings.get("show_time_elapsed_in_output", True):
                 util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
 
         if throw_on_stderr and not p.returncode == 0:
@@ -262,9 +261,9 @@ class GitCommand(StatusMixin,
 
         return stdout
 
-    def decode_stdout(self, stdout, savvy_settings):
-        fallback_encoding = savvy_settings.get("fallback_encoding")
-        silent_fallback = savvy_settings.get("silent_fallback")
+    def decode_stdout(self, stdout):
+        fallback_encoding = self.savvy_settings.get("fallback_encoding")
+        silent_fallback = self.savvy_settings.get("silent_fallback")
         try:
             return stdout.decode()
         except UnicodeDecodeError as unicode_err:
@@ -291,7 +290,7 @@ class GitCommand(StatusMixin,
 
         global git_path, error_message_displayed
         if not git_path:
-            git_path_setting = sublime.load_settings("GitSavvy.sublime-settings").get("git_path")
+            git_path_setting = self.savvy_settings.get("git_path")
             if isinstance(git_path_setting, dict):
                 git_path = git_path_setting.get(sublime.platform())
                 if not git_path:
@@ -309,7 +308,10 @@ class GitCommand(StatusMixin,
                     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
                 stdout = subprocess.check_output(
-                    [git_path, "--version"], startupinfo=startupinfo).decode("utf-8")
+                    [git_path, "--version"],
+                    stderr=subprocess.PIPE,
+                    startupinfo=startupinfo).decode("utf-8")
+
             except Exception:
                 stdout = ""
                 git_path = None
@@ -319,10 +321,9 @@ class GitCommand(StatusMixin,
                 major = int(match.group(1))
                 minor = int(match.group(2))
                 patch = int(match.group(3))
-                if major < GIT_REQUIRE_MAJOR or \
-                        (major == GIT_REQUIRE_MAJOR and minor < GIT_REQUIRE_MINOR) or \
-                        (major == GIT_REQUIRE_MAJOR and minor == GIT_REQUIRE_MINOR and
-                            patch < GIT_REQUIRE_PATCH):
+                if major < GIT_REQUIRE_MAJOR \
+                        or (major == GIT_REQUIRE_MAJOR and minor < GIT_REQUIRE_MINOR) \
+                        or (major == GIT_REQUIRE_MAJOR and minor == GIT_REQUIRE_MINOR and patch < GIT_REQUIRE_PATCH):
                     msg = GIT_TOO_OLD_MSG.format(
                         GIT_REQUIRE_MAJOR,
                         GIT_REQUIRE_MINOR,
@@ -336,7 +337,7 @@ class GitCommand(StatusMixin,
         if not git_path:
             msg = ("Your Git binary cannot be found.  If it is installed, add it "
                    "to your PATH environment variable, or add a `git_path` setting "
-                   "in the `User/GitSavvy.sublime-settings` file.")
+                   "in the GitSavvy settings.")
             if not error_message_displayed:
                 sublime.error_message(msg)
                 error_message_displayed = True
@@ -468,8 +469,7 @@ class GitCommand(StatusMixin,
         """
         git_cmd, *addl_args = args
 
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        global_flags = savvy_settings.get("global_flags")
+        global_flags = self.savvy_settings.get("global_flags")
 
         if global_flags and git_cmd in global_flags:
             args = [git_cmd] + global_flags[git_cmd] + addl_args

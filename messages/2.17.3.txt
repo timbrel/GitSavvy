@@ -1,0 +1,30 @@
+Changes since 2.17.2:
+
+  Enhancement:
+   - support prefix in prerelease when using smart tag
+   - support project-wise settings
+   - make `rebase_default_base_ref` more consistant with project-wise settings
+   - allow to use "git: blame current file" at blame view
+   - Opening commit from commadline respect setting
+
+  Feature:
+   - git: checkout current file at commit
+
+  Fix:
+   - Pedantic commit checks allows comment on 2. line
+   - On startup in-memory `instances` cache can be empty
+   - fix set status on cherry-pick done
+
+  Other:
+   - Emphasize in docs when to use run_in_thread
+   - Fix subprocess command crashing with OSError
+   - Include A traceback when an exception happens and we don't handle it
+
+
+  Contributors:
+   - herr kaste
+   - Simon
+   - Randy Lai
+   - Pavel Savchenko
+   - joan
+   - Maarten Nieber

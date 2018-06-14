@@ -24,7 +24,7 @@ GIT_URL = "Enter git url:"
 views_with_offer_made = set()
 
 
-class GsOfferInit(WindowCommand):
+class GsOfferInit(WindowCommand, GitCommand):
 
     """
     If a git command fails indicating no git repo was found, this
@@ -34,8 +34,7 @@ class GsOfferInit(WindowCommand):
     """
 
     def run(self):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        if savvy_settings.get("disable_git_init_prompt"):
+        if self.savvy_settings.get("disable_git_init_prompt"):
             return
 
         active_view_id = self.window.active_view().id()

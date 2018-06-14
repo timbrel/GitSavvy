@@ -90,7 +90,7 @@ A scratch view will be opened, showing the commit diff between the selected bran
 
 By default, remote branches are not displayed in the branch dashboard.  In many cases, there are many remote branches that would overwhelm the interface.  To view, press `e`.  To hide, press `e` again.
 
-If you would like the default behavior to be inverted, set `show_remotes_in_branch_dashboard` in `GitSavvy.sublime-settings`.
+If you would like the default behavior to be inverted, set `show_remotes_in_branch_dashboard` in `GitSavvy` settings.
 
 #### Edit branch description (`E`)
 

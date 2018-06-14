@@ -14,7 +14,7 @@ This command will change the HEAD of the current branch to a previous commit.
 
 When run, you will be asked to select a commit from a list of previous commits. Once you select a commit, you will prompted for a reset mode. Once you select a reset mode the HEAD of the current branch will be changed to the selected commit, and your index and working directory will be updated depending on the reset mode you selected. For more information about reset modes, see the [git reset documentation](https://git-scm.com/docs/git-reset).
 
-To always use a specific reset mode, set `use_reset_mode` to a valid git reset mode flag (e.g. `--soft`, `--hard`) in `Packages/User/GitSavvy.sublime-settings`.
+To always use a specific reset mode, set `use_reset_mode` to a valid git reset mode flag (e.g. `--soft`, `--hard`) in `GitSavvy` settings.
 
 ## `git: reset to branch`
 

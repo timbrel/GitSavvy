@@ -28,7 +28,6 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         self.remote_url = self.get_integrated_remote_url()
         self.base_remote = gitlab.parse_remote(self.remote_url)
         self.merge_requests = gitlab.get_merge_requests(self.base_remote)
@@ -36,7 +35,7 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
         pp = show_paginated_panel(
             self.merge_requests,
             self.on_select_mr,
-            limit=savvy_settings.get("gitlab_per_page_max", 100),
+            limit=self.savvy_settings.get("gitlab_per_page_max", 100),
             format_item=self.format_item,
             status_message="Getting merge requests..."
         )

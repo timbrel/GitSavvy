@@ -6,7 +6,7 @@ from ...common import util
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin
 
-RELEASE_REGEXP = re.compile(r"^([0-9A-Za-z-]*[A-Za-z-])?([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9]+))?$")
+RELEASE_REGEXP = re.compile(r"^([0-9A-Za-z-]*[A-Za-z-])?([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-\.]*?)?([0-9]+))?$")
 
 TAG_CREATE_PROMPT = "Enter tag:"
 TAG_CREATE_MESSAGE = "Tag \"{}\" created."
@@ -17,32 +17,13 @@ TAG_PARSE_FAIL_MESSAGE = "The last tag cannot be parsed."
 def smart_incremented_tag(tag, release_type):
     """
     Automatic increment of a given tag depending on the type of release.
-
-    >>> smart_incremented_tag('v1.3.2', "prerelease") == 'v1.3.3-0'
-    >>> smart_incremented_tag('v1.3.2', "prepatch") == 'v1.3.3-0'
-    >>> smart_incremented_tag('v1.3.2', "preminor") == 'v1.4.0-0'
-    >>> smart_incremented_tag('v1.3.2', "premajor") == 'v2.0.0-0'
-    >>> smart_incremented_tag('v1.3.2', "patch") == 'v1.3.3'
-    >>> smart_incremented_tag('v1.3.2', "minor") == 'v1.4.0'
-    >>> smart_incremented_tag('v1.3.2', "major") == 'v2.0.0'
-    >>> smart_incremented_tag('v1.3.2-1', "prerelease") == 'v1.3.2-2'
-    >>> smart_incremented_tag('v1.3.2-1', "prepatch") == 'v1.3.3-0'
-    >>> smart_incremented_tag('v1.3.2-1', "preminor") == 'v1.4.0-0'
-    >>> smart_incremented_tag('v1.3.2-1', "premajor") == 'v2.0.0-0'
-    >>> smart_incremented_tag('v1.3.2-1', "patch") == 'v1.3.2'
-    >>> smart_incremented_tag('v1.3.2-1', "minor") == 'v1.4.0'
-    >>> smart_incremented_tag('v1.3.2-1', "major") == 'v2.0.0'
-    >>> smart_incremented_tag('v1.3.0-1', "patch") == 'v1.3.0'
-    >>> smart_incremented_tag('v1.3.0-1', "minor") == 'v1.3.0'
-    >>> smart_incremented_tag('v1.3.0-1', "major") == 'v2.0.0'
-    >>> smart_incremented_tag('v1.0.0-1', "major") == 'v1.0.0'
-
     """
 
     m = RELEASE_REGEXP.match(tag)
     if m:
-        prefix, major, minor, patch, prerelease = m.groups()
+        prefix, major, minor, patch, prefix2, prerelease = m.groups()
         prefix = "" if not prefix else prefix
+        prefix2 = "" if not prefix2 else prefix2
 
         if release_type == "premajor" \
                 or (not prerelease and release_type == "major") \
@@ -64,7 +45,7 @@ def smart_incremented_tag(tag, release_type):
 
         if "pre" in release_type[0:3]:
             prerelease = str(int(prerelease) + 1) if prerelease else "0"
-            return prefix + major + "." + minor + "." + patch + "-" + prerelease
+            return prefix + major + "." + minor + "." + patch + "-" + prefix2 + prerelease
         else:
             return prefix + major + "." + minor + "." + patch
 
@@ -107,10 +88,9 @@ class GsTagCreateCommand(TextCommand, GitCommand):
             return util.log.panel("\"{}\" is not a valid tag name.".format(tag_name))
 
         self.tag_name = stdout.strip()[10:]
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
         self.window.show_input_panel(
             TAG_CREATE_MESSAGE_PROMPT,
-            savvy_settings.get("default_tag_message").format(tag_name=tag_name),
+            self.savvy_settings.get("default_tag_message").format(tag_name=tag_name),
             self.on_entered_message,
             None,
             None

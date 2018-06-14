@@ -80,8 +80,7 @@ class BranchInterface(ui.Interface, GitCommand):
         return "BRANCHES: {}".format(os.path.basename(self.repo_path))
 
     def pre_render(self):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        sort_by_recent = savvy_settings.get("sort_by_recent_in_branch_dashboard")
+        sort_by_recent = self.savvy_settings.get("sort_by_recent_in_branch_dashboard")
         self._branches = tuple(self.get_branches(sort_by_recent))
 
     def on_new_dashboard(self):
@@ -123,8 +122,7 @@ class BranchInterface(ui.Interface, GitCommand):
     @ui.partial("remotes")
     def render_remotes(self):
         if self.show_remotes is None:
-            savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-            self.show_remotes = savvy_settings.get("show_remotes_in_branch_dashboard")
+            self.show_remotes = self.savvy_settings.get("show_remotes_in_branch_dashboard")
 
         return (self.render_remotes_on()
                 if self.show_remotes else

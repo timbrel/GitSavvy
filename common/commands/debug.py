@@ -2,13 +2,10 @@
 Sublime commands related to development and debugging.
 """
 
-import sys
-import urllib
-
-import sublime
 from sublime_plugin import WindowCommand
 
 from ..util import debug, reload
+from ...core.settings import GitSavvySettings
 
 REPORT_URL_TEMPLATE = "https://github.com/divmain/GitSavvy/issues/new?{q}"
 
@@ -23,8 +20,7 @@ class GsReloadModulesDebug(WindowCommand):
         reload.reload_plugin()
 
     def is_visible(self):
-        savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-        return savvy_settings.get("dev_mode")
+        return GitSavvySettings().get("dev_mode")
 
 
 class GsStartLoggingCommand(WindowCommand):
