@@ -126,9 +126,18 @@ class GsCheckoutCurrentFileAtCommitCommand(LogMixin, WindowCommand, GitCommand):
     Reset the current active file to a given commit.
     """
 
+    show_commit_info = False
+
     def run(self):
         if self.file_path:
             super().run(file_path=self.file_path)
+
+    def on_highlight(self, commit):
+        if commit:
+            self.window.run_command('gs_show_file_diff', {
+                'commit_hash': commit,
+                'file_path': self.file_path
+            })
 
     @util.actions.destructive(description="discard uncommitted changes to file")
     def do_action(self, commit_hash, **kwargs):
@@ -141,3 +150,27 @@ class GsCheckoutCurrentFileAtCommitCommand(LogMixin, WindowCommand, GitCommand):
                 )
             )
             util.view.refresh_gitsavvy_interfaces(self.window, interface_reset_cursor=True)
+
+
+class GsShowFileDiffCommand(WindowCommand, GitCommand):
+    def run(self, commit_hash, file_path):
+        self._commit_hash = commit_hash
+        self._file_path = file_path
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        text = self.git(
+            "diff",
+            "--no-color",
+            "-R",
+            self._commit_hash,
+            '--',
+            self._file_path
+        )
+
+        output_view = self.window.create_output_panel("show_file_diff")
+        output_view.set_read_only(False)
+        output_view.run_command("gs_replace_view_text", {"text": text, "nuke_cursors": True})
+        output_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
+        output_view.set_read_only(True)
+        self.window.run_command("show_panel", {"panel": "output.show_file_diff"})
