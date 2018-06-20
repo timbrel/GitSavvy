@@ -488,9 +488,14 @@ def show_log_panel(entries, on_done, **kwargs):
 
     """
     _kwargs = {}
-    for option in ['selected_index', 'on_highlight', 'limit']:
+    for option in ['selected_index', 'limit']:
         if option in kwargs:
             _kwargs[option] = kwargs[option]
+
+    if 'on_highlight' in kwargs:
+        _kwargs['on_highlight'] = kwargs['on_highlight']
+        if not callable(kwargs['on_highlight']):
+            _kwargs['on_highlight'] = lambda commit: None
 
     lp = LogPanel(entries, on_done, **_kwargs)
     lp.show()
