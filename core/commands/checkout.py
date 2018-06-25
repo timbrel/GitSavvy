@@ -136,7 +136,7 @@ class GsCheckoutCurrentFileAtCommitCommand(LogMixin, WindowCommand, GitCommand):
         if commit:
             self.window.run_command('gs_show_file_diff', {
                 'commit_hash': commit,
-                'fpath': self.file_path
+                'file_path': self.file_path
             })
 
     @util.actions.destructive(description="discard uncommitted changes to file")
@@ -153,9 +153,9 @@ class GsCheckoutCurrentFileAtCommitCommand(LogMixin, WindowCommand, GitCommand):
 
 
 class GsShowFileDiffCommand(WindowCommand, GitCommand):
-    def run(self, commit_hash, fpath):
+    def run(self, commit_hash, file_path):
         self._commit_hash = commit_hash
-        self._fpath = fpath
+        self._file_path = file_path
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
@@ -165,7 +165,7 @@ class GsShowFileDiffCommand(WindowCommand, GitCommand):
             "-R",
             self._commit_hash,
             '--',
-            self._fpath
+            self._file_path
         )
 
         output_view = self.window.create_output_panel("show_file_diff")
