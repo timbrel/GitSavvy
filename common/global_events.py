@@ -82,8 +82,10 @@ class GsEditProjectSettingsCommand(WindowCommand):
 
         if project_data is None:
             project_data = {}
-        if "GitSavvy" not in project_data:
-            project_data["GitSavvy"] = {}
+        if "settings" not in project_data:
+            project_data["settings"] = {}
+        if "GitSavvy" not in project_data["settings"]:
+            project_data["settings"]["GitSavvy"] = {}
             self.window.set_project_data(project_data)
 
         sublime.set_timeout(lambda: self.window.run_command("edit_settings", {
