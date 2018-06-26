@@ -488,14 +488,9 @@ def show_log_panel(entries, on_done, **kwargs):
 
     """
     _kwargs = {}
-    for option in ['selected_index', 'limit']:
+    for option in ['selected_index', 'limit', 'on_highlight']:
         if option in kwargs:
             _kwargs[option] = kwargs[option]
-
-    if 'on_highlight' in kwargs:
-        _kwargs['on_highlight'] = kwargs['on_highlight']
-        if not callable(kwargs['on_highlight']):
-            _kwargs['on_highlight'] = lambda commit: None
 
     lp = LogPanel(entries, on_done, **_kwargs)
     lp.show()
@@ -514,16 +509,11 @@ class LogPanel(PaginatedPanel):
         return [">>> NEXT {} COMMITS >>>".format(self.limit),
                 "Skip this set of commits and choose from the next-oldest batch."]
 
-    def on_highlight(self, commit):
-        sublime.active_window().run_command(
-            "gs_show_commit_info", {"commit_hash": commit})
-
     def on_selection(self, commit):
         self.commit = commit
         sublime.set_timeout_async(lambda: self.on_selection_async(commit), 10)
 
     def on_selection_async(self, commit):
-        sublime.active_window().run_command("hide_panel", {"panel": "output.show_commit_info"})
         self.on_done(commit)
 
 
