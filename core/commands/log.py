@@ -31,7 +31,8 @@ class LogMixin(object):
         show_log_panel(
             self.log_generator(file_path=file_path, follow=follow, **kwargs),
             lambda commit: self.on_done(commit, file_path=file_path, **kwargs),
-            selected_index=self.selected_index
+            selected_index=self.selected_index,
+            on_highlight=self.on_highlight if hasattr(self, 'on_highlight') else False
         )
 
     def on_done(self, commit, **kwargs):
