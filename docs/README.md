@@ -190,9 +190,11 @@ To open the GitSavvy settings, simply run the `Preferences: GitSavvy Settings` c
 
 ```
 {
-    "GitSavvy":
-    {
-        // GitSavvy settings go here
+    "settings": {
+        "GitSavvy":
+        {
+            // GitSavvy settings go here
+        }
     }
 }
 ```
