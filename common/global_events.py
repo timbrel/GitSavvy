@@ -98,6 +98,7 @@ class GsEditProjectSettingsCommand(WindowCommand):
         project_data = self.window.project_data()
         if not project_file_name or project_data is None:
             sublime.error_message("No project data found.")
+            return
 
         sublime.set_timeout(lambda: self.window.run_command("edit_settings", {
             "user_file": project_file_name,
