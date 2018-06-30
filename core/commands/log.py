@@ -31,12 +31,26 @@ class LogMixin(object):
         show_log_panel(
             self.log_generator(file_path=file_path, follow=follow, **kwargs),
             lambda commit: self.on_done(commit, file_path=file_path, **kwargs),
-            selected_index=self.selected_index
+            selected_index=self.selected_index,
+            on_highlight=self.on_highlight
         )
 
     def on_done(self, commit, **kwargs):
+        sublime.active_window().run_command("hide_panel", {"panel": "output.show_commit_info"})
         if commit:
             self.do_action(commit, **kwargs)
+
+    def on_highlight(self, commit):
+        if not commit:
+            return
+        if not self.savvy_settings.get("log_show_more_commit_info", True):
+            return
+        if hasattr(self, 'window'):
+            window = self.window
+        else:
+            window = self.view.window()
+        window.run_command(
+            "gs_show_commit_info", {"commit_hash": commit})
 
     def do_action(self, commit_hash, **kwargs):
         if hasattr(self, 'window'):
