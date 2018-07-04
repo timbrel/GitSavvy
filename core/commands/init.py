@@ -108,7 +108,7 @@ class GsClone(WindowCommand, GitCommand):
         return ""
 
     def on_enter_directory(self, path):
-        self.suggested_git_root = path
+        self.suggested_git_root = os.path.expanduser(path)  # handle ~/%HOME%
         if self.suggested_git_root and os.path.exists(os.path.join(self.suggested_git_root, ".git")):
             sublime.ok_cancel_dialog(RECLONE_CANT_BE_DONE)
             return
