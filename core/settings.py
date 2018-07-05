@@ -7,14 +7,15 @@ class GitSavvySettings:
         self.global_settings = sublime.load_settings("GitSavvy.sublime-settings")
 
     def get(self, key, default=None):
-        view = sublime.active_window()
+        window = sublime.active_window()
+        view = window.active_view()
         project_savvy_settings = view.settings().get("GitSavvy", {})
 
         if key in project_savvy_settings:
             return project_savvy_settings[key]
 
         # fall back to old style project setting
-        project_data = view.project_data()
+        project_data = window.project_data()
         if project_data and "GitSavvy" in project_data:
             project_savvy_settings = project_data["GitSavvy"]
             if key in project_savvy_settings:
