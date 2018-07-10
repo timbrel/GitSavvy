@@ -5,6 +5,7 @@ from webbrowser import open as open_in_browser
 
 from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_paginated_panel
+from ...core.ui_mixins.input_panel import show_single_line_input_panel
 from .. import gitlab
 from .. import git_mixins
 # from ...common import interwebs
@@ -78,20 +79,16 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
         # if idx == 0:
         #     self.fetch_and_checkout_mr()
         elif idx == 0:
-            self.window.show_input_panel(
+            show_single_line_input_panel(
                 "Enter branch name for MR {}:".format(self.mr["iid"]),
                 "{}/{}".format(self.mr["author"]["username"], self.mr["source_branch"]),
-                self.fetch_and_checkout_mr,
-                None,
-                None
+                self.fetch_and_checkout_mr
             )
         elif idx == 1:
-            self.window.show_input_panel(
+            show_single_line_input_panel(
                 "Enter branch name for MR {}:".format(self.mr["iid"]),
                 "{}/{}".format(self.mr["author"]["username"], self.mr["source_branch"]),
-                self.create_branch_for_mr,
-                None,
-                None
+                self.create_branch_for_mr
             )
         elif idx == 2:
             self.view_diff_for_mr()

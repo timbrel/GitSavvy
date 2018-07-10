@@ -5,6 +5,7 @@ from sublime_plugin import TextCommand
 from ...common import util
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin
+from ..ui_mixins.input_panel import show_single_line_input_panel
 
 RELEASE_REGEXP = re.compile(r"^([0-9A-Za-z-]*[A-Za-z-])?([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-\.]*?)?([0-9]+))?$")
 
@@ -67,7 +68,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
         """
         Prompt the user for a tag name.
         """
-        self.window.show_input_panel(TAG_CREATE_PROMPT, self.tag_name, self.on_entered_name, None, None)
+        show_single_line_input_panel(TAG_CREATE_PROMPT, self.tag_name, self.on_entered_name)
 
     def on_entered_name(self, tag_name):
         """
@@ -88,12 +89,10 @@ class GsTagCreateCommand(TextCommand, GitCommand):
             return util.log.panel("\"{}\" is not a valid tag name.".format(tag_name))
 
         self.tag_name = stdout.strip()[10:]
-        self.window.show_input_panel(
+        show_single_line_input_panel(
             TAG_CREATE_MESSAGE_PROMPT,
             self.savvy_settings.get("default_tag_message").format(tag_name=tag_name),
-            self.on_entered_message,
-            None,
-            None
+            self.on_entered_message
         )
 
     def on_entered_message(self, message):

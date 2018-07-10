@@ -5,6 +5,7 @@ import re
 from ...common import util
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin, show_branch_panel
+from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
 COMMIT_NODE_CHAR = "●"
@@ -121,7 +122,7 @@ class GsCompareAgainstReferenceCommand(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        self.window.show_input_panel("Ref:", "", self.show_diff, None, self.on_cancel)
+        show_single_line_input_panel("Ref:", "", self.show_diff, None, self.on_cancel)
 
     def show_diff(self, ref):
         self.window.run_command("gs_compare_commit", {

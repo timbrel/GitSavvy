@@ -4,6 +4,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
+from ..ui_mixins.input_panel import show_single_line_input_panel
 
 REF_PROMPT = "Ref or commit hash:"
 
@@ -28,7 +29,7 @@ class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        view = self.window.show_input_panel(
+        view = show_single_line_input_panel(
             REF_PROMPT, self.get_last_local_tag(), self.on_done, None, None)
         view.run_command("select_all")
 
