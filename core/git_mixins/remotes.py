@@ -54,7 +54,14 @@ class RemotesMixin():
             remote_branch if remote and remote_branch else None
         )
 
-    def push(self, remote=None, branch=None, force=False, remote_branch=None, set_upstream=False):
+    def push(
+            self,
+            remote=None,
+            branch=None,
+            force=False,
+            force_with_lease=False,
+            remote_branch=None,
+            set_upstream=False):
         """
         Push to the specified remote and branch if provided, otherwise
         perform default `git push`.
@@ -62,6 +69,7 @@ class RemotesMixin():
         return self.git(
             "push",
             "--force" if force else None,
+            "--force-with-lease" if force_with_lease else None,
             "--set-upstream" if set_upstream else None,
             remote,
             branch if not remote_branch else "{}:{}".format(branch, remote_branch)

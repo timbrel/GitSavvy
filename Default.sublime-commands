@@ -197,6 +197,11 @@
         "args": { "force": true }
     },
     {
+        "caption": "git: push (force-with-lease)",
+        "command": "gs_push",
+        "args": { "force_with_lease": true }
+    },
+    {
         "caption": "git: push all tags",
         "command": "gs_tags_push",
         "args": { "push_all": true }
