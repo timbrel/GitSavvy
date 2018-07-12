@@ -2,6 +2,7 @@ from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import show_stash_panel
+from ..ui_mixins.input_panel import show_single_line_input_panel
 from ...common import util
 
 
@@ -88,7 +89,7 @@ class GsStashSaveCommand(WindowCommand, GitCommand):
     def run(self, include_untracked=False, stash_of_indexed=False):
         self.include_untracked = include_untracked
         self.stash_of_indexed = stash_of_indexed
-        self.window.show_input_panel("Description:", "", self.on_done, None, None)
+        show_single_line_input_panel("Description:", "", self.on_done)
 
     def on_done(self, description):
         if not self.stash_of_indexed:

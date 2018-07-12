@@ -47,6 +47,20 @@ class GitCommandFromTerminal(EventListener, SettingsMixin):
                 view.run_command("save")
 
 
+PROJECT_MSG = """
+<body>
+<p>Add the key <code>"GitSavvy"</code> as follows</p>
+{<br>
+&nbsp;&nbsp;"settings": {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"GitSavvy": {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// GitSavvy settings go here<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+}
+</body>
+"""
+
+
 class KeyboardSettingsListener(EventListener):
     def on_post_window_command(self, window, command, args):
         if command == "edit_settings":
@@ -56,6 +70,11 @@ class KeyboardSettingsListener(EventListener):
                 w.focus_group(0)
                 w.run_command("open_file", {"file": "${packages}/GitSavvy/Default.sublime-keymap"})
                 w.focus_group(1)
+            elif base.endswith("GitSavvy.sublime-settings"):
+                w = sublime.active_window()
+                view = w.active_view()
+                sublime.set_timeout(
+                    lambda: view.show_popup(PROJECT_MSG), 1000)
 
 
 class GsEditSettingsCommand(WindowCommand):
@@ -79,13 +98,7 @@ class GsEditProjectSettingsCommand(WindowCommand):
         project_data = self.window.project_data()
         if not project_file_name or project_data is None:
             sublime.error_message("No project data found.")
-
-        if project_data is None:
-            project_data = {}
-        if "GitSavvy" not in project_data:
-            project_data["GitSavvy"] = {}
-
-        self.window.set_project_data(project_data)
+            return
 
         sublime.set_timeout(lambda: self.window.run_command("edit_settings", {
             "user_file": project_file_name,
