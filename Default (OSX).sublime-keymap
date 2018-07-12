@@ -242,5 +242,15 @@
         "context": [
             { "key": "selector", "operator": "equal", "operand": "git-savvy.tags" }
         ]
+    },
+
+    /////////////////////////////
+    // SINGLE LINE INPUT PANEL //
+    ////////////////////////////
+
+    {
+        "keys": ["super+enter"],
+        "command": "noop",
+        "context": [{ "key": "setting.git_savvy.single_line_input_panel" }]
     }
 ]

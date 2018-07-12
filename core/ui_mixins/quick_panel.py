@@ -2,7 +2,6 @@ import itertools
 import sublime
 from ...common import util
 from ..git_command import GitCommand
-from ..settings import GitSavvySettings
 
 
 class PanelActionMixin(object):

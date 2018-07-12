@@ -11,6 +11,7 @@ from ..exceptions import GitSavvyError
 from ..git_command import GitCommand
 from ..git_mixins.rebase import NearestBranchMixin
 from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel, show_branch_panel
+from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
 COMMIT_NODE_CHAR = "●"
@@ -964,11 +965,10 @@ class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand, GitCommand):
         show_branch_panel(self.set_base_ref, selected_branch=base_ref)
 
     def select_ref(self):
-        self.view.window().show_input_panel(
+        show_single_line_input_panel(
             "Enter commit or other ref to use for rebase:",
             "",
-            lambda entry: self.set_base_ref(entry) if entry else None,
-            None, None
+            lambda entry: self.set_base_ref(entry) if entry else None
         )
 
     def select_commit(self):

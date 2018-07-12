@@ -3,6 +3,7 @@ from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ...common import util
+from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
 COMMIT_MSG_PROMPT = "Commit message:"
@@ -16,12 +17,10 @@ class GsQuickCommitCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
-        self.window.show_input_panel(
+        show_single_line_input_panel(
             COMMIT_MSG_PROMPT,
             "",
-            lambda msg: sublime.set_timeout_async(lambda: self.on_done(msg), 0),
-            None,
-            None
+            lambda msg: sublime.set_timeout_async(lambda: self.on_done(msg), 0)
         )
 
     def on_done(self, commit_message):
@@ -39,12 +38,10 @@ class GsQuickStageCurrentFileCommitCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
-        self.window.show_input_panel(
+        show_single_line_input_panel(
             COMMIT_MSG_PROMPT,
             "",
-            lambda msg: sublime.set_timeout_async(lambda: self.on_done(msg), 0),
-            None,
-            None
+            lambda msg: sublime.set_timeout_async(lambda: self.on_done(msg), 0)
         )
 
     def on_done(self, commit_message):

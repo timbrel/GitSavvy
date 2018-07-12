@@ -4,6 +4,7 @@ from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ...common import util
+from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
 class CustomCommandThread(threading.Thread):
@@ -33,14 +34,12 @@ class GsCustomCommand(WindowCommand, GitCommand):
         # prompt for custom command argument
         if '{PROMPT_ARG}' in kwargs.get('args'):
             prompt_msg = kwargs.pop("prompt_msg", "Command argument: ")
-            return self.window.show_input_panel(
+            return show_single_line_input_panel(
                 prompt_msg,
                 "",
                 lambda arg: sublime.set_timeout_async(
                     lambda: self.run_async(custom_argument=arg, **kwargs), 0
-                ),
-                None,
-                None
+                )
             )
 
         sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)

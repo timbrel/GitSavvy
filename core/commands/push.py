@@ -4,6 +4,7 @@ from sublime_plugin import WindowCommand
 from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
+from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
 START_PUSH_MESSAGE = "Starting push..."
@@ -140,12 +141,10 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
             self.on_entered_branch_name(self.branch_name)
         else:
             current_local_branch = self.get_current_branch_name()
-            self.window.show_input_panel(
+            show_single_line_input_panel(
                 PUSH_TO_BRANCH_NAME_PROMPT,
                 current_local_branch,
-                self.on_entered_branch_name,
-                None,
-                None
+                self.on_entered_branch_name
             )
 
     def on_entered_branch_name(self, branch):

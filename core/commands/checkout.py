@@ -5,6 +5,7 @@ from ..git_command import GitCommand
 from .log import LogMixin
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
+from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
 NEW_BRANCH_PROMPT = "Branch name:"
@@ -50,9 +51,8 @@ class GsCheckoutNewBranchCommand(WindowCommand, GitCommand):
 
     def run_async(self, base_branch=None, new_branch=None):
         self.base_branch = base_branch
-        v = self.window.show_input_panel(
-            NEW_BRANCH_PROMPT, new_branch or base_branch or "", self.on_done, None, None)
-        v.run_command("select_all")
+        show_single_line_input_panel(
+            NEW_BRANCH_PROMPT, new_branch or base_branch or "", self.on_done)
 
     def on_done(self, branch_name):
         if not self.validate_branch_name(branch_name):
@@ -97,13 +97,10 @@ class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
         self.remote_branch = remote_branch
         if not local_name:
             local_name = remote_branch.split("/", 1)[1]
-        v = self.window.show_input_panel(
+        show_single_line_input_panel(
             NEW_BRANCH_PROMPT,
             local_name,
-            self.on_enter_local_name,
-            None,
-            None)
-        v.run_command("select_all")
+            self.on_enter_local_name)
 
     def on_enter_local_name(self, branch_name):
         if not self.validate_branch_name(branch_name):

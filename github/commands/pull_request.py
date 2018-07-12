@@ -5,6 +5,7 @@ import urllib
 
 from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_paginated_panel
+from ...core.ui_mixins.input_panel import show_single_line_input_panel
 from .. import github
 from .. import git_mixins
 from ...common import interwebs
@@ -75,20 +76,16 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         if idx == 0:
             self.fetch_and_checkout_pr()
         elif idx == 1:
-            self.window.show_input_panel(
+            show_single_line_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
                 "{}/{}".format(self.pr["user"]["login"], self.pr["head"]["ref"]),
-                self.fetch_and_checkout_pr,
-                None,
-                None
+                self.fetch_and_checkout_pr
             )
         elif idx == 2:
-            self.window.show_input_panel(
+            show_single_line_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
                 "{}/{}".format(self.pr["user"]["login"], self.pr["head"]["ref"]),
-                self.create_branch_for_pr,
-                None,
-                None
+                self.create_branch_for_pr
             )
         elif idx == 3:
             self.view_diff_for_pr()
