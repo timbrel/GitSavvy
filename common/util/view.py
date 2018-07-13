@@ -110,8 +110,6 @@ def handle_closed_view(view):
         view.run_command("gs_interface_close")
     if view.settings().get("git_savvy.edit_view"):
         view.run_command("gs_edit_view_close")
-    if view.settings().get("git_savvy.commit_view"):
-        view.run_command("gs_commit_view_close")
 
 
 ############################

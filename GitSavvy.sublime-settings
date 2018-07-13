@@ -281,9 +281,9 @@
 
     /*
         When set to `true`, GitSavvy will prompt for confirmation when closing
-        the commit message view.
+        the commit message view. Ignored when "commit_on_close" is true.
     */
-    "prompt_on_abort_commit": false,
+    "prompt_on_abort_commit": true,
 
     /*
         When set to `true`, GitSavvy will display git-flow integration commands.
@@ -315,9 +315,9 @@
     "confirm_force_push": true,
 
     /*
-        When set to `true`, closing the commit message window will result in a commit
-        action being taken, except in cases where the message is empty.  The same is
-        also true for amending commits.
+        When set to `true`, closing the commit message window via keyboard will result
+        in a commit action being taken, except in cases where the message is empty.
+        The same is also true for amending commits.
      */
     "commit_on_close": false,
 
