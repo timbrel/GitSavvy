@@ -38,6 +38,8 @@ Signed-off-by: {name} <{email}>
 
 COMMIT_TITLE = "COMMIT: {}"
 
+CONFIRM_ABORT = "Confirm to abort commit?"
+
 
 class GsCommitCommand(WindowCommand, GitCommand):
 
@@ -71,10 +73,12 @@ class GsCommitCommand(WindowCommand, GitCommand):
         commit_on_close = self.savvy_settings.get("commit_on_close")
         settings.set("git_savvy.commit_on_close", commit_on_close)
 
+        prompt_on_abort_commit = self.savvy_settings.get("prompt_on_abort_commit")
+        settings.set("git_savvy.prompt_on_abort_commit", prompt_on_abort_commit)
+
         title = COMMIT_TITLE.format(os.path.basename(repo_path))
         view.set_name(title)
-        if commit_on_close or not self.savvy_settings.get("prompt_on_abort_commit"):
-            view.set_scratch(True)
+        view.set_scratch(True)  # ignore dirty on actual commit
         view.run_command("gs_commit_initialize_view")
 
 
@@ -244,12 +248,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, message=None):
-        self.commit_on_close = self.view.settings().get("git_savvy.commit_on_close")
-        if self.commit_on_close:
-            # make sure the view would not be closed by commiting synchronously
-            self.run_async(commit_message=message)
-        else:
-            sublime.set_timeout_async(lambda: self.run_async(commit_message=message), 0)
+        sublime.set_timeout_async(lambda: self.run_async(commit_message=message), 0)
 
     def run_async(self, commit_message=None):
         if commit_message is None:
@@ -271,11 +270,8 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
             stdin=commit_message
         )
 
-        is_commit_view = self.view.settings().get("git_savvy.commit_view")
-        if is_commit_view and not self.commit_on_close:
-            self.view.window().focus_view(self.view)
-            self.view.set_scratch(True)  # ignore dirty on actual commit
-            self.view.window().run_command("close_file")
+        if self.view.settings().get("git_savvy.commit_view"):
+            self.view.close()
 
         sublime.set_timeout_async(
             lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
@@ -312,13 +308,25 @@ class GsCommitViewCloseCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        if self.view.settings().get("git_savvy.commit_on_close"):
-            view_text = self.view.substr(sublime.Region(0, self.view.size()))
-            help_text = self.view.settings().get("git_savvy.commit_view.help_text")
-            message_txt = (view_text.split(help_text)[0]
-                           if help_text in view_text
-                           else "")
-            message_txt = message_txt.strip()
+        view_text = self.view.substr(sublime.Region(0, self.view.size()))
+        help_text = self.view.settings().get("git_savvy.commit_view.help_text")
+        message_txt = (view_text.split(help_text)[0]
+                       if help_text in view_text
+                       else "")
+        message_txt = message_txt.strip()
 
+        if self.view.settings().get("git_savvy.commit_on_close"):
             if message_txt:
+                # the view will be closed by gs_commit_view_do_commit
                 self.view.run_command("gs_commit_view_do_commit", {"message": message_txt})
+            else:
+                self.view.close()
+
+        elif self.view.settings().get("git_savvy.prompt_on_abort_commit"):
+            if message_txt:
+                ok = sublime.ok_cancel_dialog(CONFIRM_ABORT)
+            else:
+                ok = True
+
+            if ok:
+                self.view.close()

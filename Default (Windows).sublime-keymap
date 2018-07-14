@@ -21,7 +21,14 @@
             { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true }
         ]
     },
-
+    {
+        "keys": ["ctrl+w"],
+        "command": "gs_commit_view_close",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     ///////////////
     // DIFF VIEW //
