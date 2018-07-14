@@ -32,7 +32,7 @@ class LogMixin(object):
             self.log_generator(file_path=file_path, follow=follow, **kwargs),
             lambda commit: self.on_done(commit, file_path=file_path, **kwargs),
             selected_index=self.selected_index,
-            on_highlight=self.on_highlight
+            on_highlight=lambda commit: self.on_highlight(commit, file_path=file_path)
         )
 
     def on_done(self, commit, **kwargs):
@@ -40,7 +40,7 @@ class LogMixin(object):
         if commit:
             self.do_action(commit, **kwargs)
 
-    def on_highlight(self, commit):
+    def on_highlight(self, commit, file_path=None):
         if not commit:
             return
         if not self.savvy_settings.get("log_show_more_commit_info", True):
@@ -50,7 +50,7 @@ class LogMixin(object):
         else:
             window = self.view.window()
         window.run_command(
-            "gs_show_commit_info", {"commit_hash": commit})
+            "gs_show_commit_info", {"commit_hash": commit, "file_path": file_path})
 
     def do_action(self, commit_hash, **kwargs):
         if hasattr(self, 'window'):
