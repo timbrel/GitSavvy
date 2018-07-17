@@ -5,8 +5,9 @@ from ..git_command import GitCommand
 
 
 class GsShowCommitInfoCommand(WindowCommand, GitCommand):
-    def run(self, commit_hash):
+    def run(self, commit_hash, file_path=None):
         self._commit_hash = commit_hash
+        self._file_path = file_path
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
@@ -18,7 +19,9 @@ class GsShowCommitInfoCommand(WindowCommand, GitCommand):
             "--format=fuller",
             "--stat" if show_diffstat else None,
             "--patch" if show_full else None,
-            self._commit_hash
+            self._commit_hash,
+            "--" if self._file_path else None,
+            self._file_path if self._file_path else None
         )
         output_view = self.window.create_output_panel("show_commit_info")
         output_view.set_read_only(False)
