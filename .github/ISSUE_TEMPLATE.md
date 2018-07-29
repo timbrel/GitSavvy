@@ -8,4 +8,4 @@ Please include the following information when filing a bug:
 - Console error output
 - A description of the problem.
 - Steps to reproduce, if possible
-- If the bug is caused by a failing command, [include a debug log](docs/debug.md#providing-a-debug-log).
+- If the bug is caused by a failing command, [include a debug log](https://github.com/divmain/GitSavvy/blob/master/docs/debug.md#providing-a-debug-log).
