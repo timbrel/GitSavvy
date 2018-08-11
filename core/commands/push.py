@@ -74,6 +74,7 @@ class GsPushCommand(WindowCommand, PushBase):
         elif self.savvy_settings.get("prompt_for_tracking_branch"):
             if sublime.ok_cancel_dialog(SET_UPSTREAM_PROMPT):
                 self.window.run_command("gs_push_to_branch_name", {
+                    "local_branch_name": self.local_branch_name,
                     "set_upstream": True,
                     "force": self.force,
                     "force_with_lease": self.force_with_lease
@@ -82,6 +83,7 @@ class GsPushCommand(WindowCommand, PushBase):
             # if `prompt_for_tracking_branch` is false, ask for a remote and perform
             # push current branch to a remote branch with the same name
             self.window.run_command("gs_push_to_branch_name", {
+                "local_branch_name": self.local_branch_name,
                 "branch_name": self.local_branch_name,
                 "set_upstream": False,
                 "force": self.force,
@@ -117,7 +119,18 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
     Prompt for remote and remote branch name, then push.
     """
 
-    def run(self, branch_name=None, set_upstream=False, force=False, force_with_lease=False):
+    def run(
+            self,
+            local_branch_name=None,
+            branch_name=None,
+            set_upstream=False,
+            force=False,
+            force_with_lease=False):
+        if local_branch_name:
+            self.local_branch_name = local_branch_name
+        else:
+            self.local_branch_name = self.get_current_branch_name()
+
         self.branch_name = branch_name
         self.set_upstream = set_upstream
         self.force = force
@@ -140,10 +153,9 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
         if self.branch_name:
             self.on_entered_branch_name(self.branch_name)
         else:
-            current_local_branch = self.get_current_branch_name()
             show_single_line_input_panel(
                 PUSH_TO_BRANCH_NAME_PROMPT,
-                current_local_branch,
+                self.local_branch_name,
                 self.on_entered_branch_name
             )
 
@@ -154,7 +166,7 @@ class GsPushToBranchNameCommand(WindowCommand, PushBase):
         """
         sublime.set_timeout_async(lambda: self.do_push(
             self.selected_remote,
-            self.get_current_branch_name(),
+            self.local_branch_name,
             force=self.force,
             force_with_lease=self.force_with_lease,
             remote_branch=branch))
