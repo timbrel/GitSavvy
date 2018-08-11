@@ -260,6 +260,8 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
 
         show_panel_overrides = self.savvy_settings.get("show_panel_for")
 
+        self.view.window().status_message("Commiting...")
+
         self.git(
             "commit",
             "-q" if "commit" not in show_panel_overrides else None,
@@ -269,6 +271,8 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
             "-",
             stdin=commit_message
         )
+
+        self.view.window().status_message("Committed successfully.")
 
         if self.view.settings().get("git_savvy.commit_view"):
             self.view.close()
