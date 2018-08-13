@@ -131,7 +131,7 @@ class GitCommand(StatusMixin,
     def git(self, *args,
             stdin=None,
             working_dir=None,
-            show_panel=False,
+            show_panel=None,
             show_panel_on_stderr=True,
             show_status_message_on_stderr=True,
             throw_on_stderr=True,
@@ -153,7 +153,8 @@ class GitCommand(StatusMixin,
         command_str = " ".join(command)
 
         show_panel_overrides = self.savvy_settings.get("show_panel_for")
-        show_panel = show_panel or args[0] in show_panel_overrides
+        if show_panel is None:
+            show_panel = args[0] in show_panel_overrides
 
         close_panel_for = self.savvy_settings.get("close_panel_for") or []
         if args[0] in close_panel_for:

@@ -109,6 +109,7 @@ class GsCommitCommand(WindowCommand, GitCommand):
                 "-q" if "commit" not in show_panel_overrides else None,
                 "-a" if include_unstaged else None,
                 "--amend" if amend else None,
+                show_panel=False,
                 show_panel_on_stderr=False,
                 show_status_message_on_stderr=False,
                 custom_environ={"GIT_EDITOR": "false"}
