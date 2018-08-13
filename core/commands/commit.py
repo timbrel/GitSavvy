@@ -56,6 +56,10 @@ class GsCommitCommand(WindowCommand, GitCommand):
     def run_async(self, repo_path=None, include_unstaged=False, amend=False):
 
         repo_path = repo_path or self.repo_path
+
+        # check "nothing to commit"
+        self.dry_run_commit(repo_path, include_unstaged, amend)
+
         # run `pre-commit` and `prepare-commit-msg` hooks
         hooks_path = os.path.join(repo_path, ".git", "hooks")
         pre_commit = os.path.join(hooks_path, "pre-commit")
@@ -114,6 +118,16 @@ class GsCommitCommand(WindowCommand, GitCommand):
                 pass
             else:
                 raise GitSavvyError(e.args[0])
+
+    def dry_run_commit(self, repo_path, include_unstaged, amend):
+        show_panel_overrides = self.savvy_settings.get("show_panel_for")
+        self.git(
+            "commit",
+            "-q" if "commit" not in show_panel_overrides else None,
+            "-a" if include_unstaged else None,
+            "--amend" if amend else None,
+            "--dry-run"
+        )
 
 
 class GsCommitInitializeViewCommand(TextCommand, GitCommand):
