@@ -49,7 +49,7 @@ def remote_to_url(remote):
     elif remote.startswith("http"):
         return remote
     else:
-        util.log_error('Cannot parse remote "%s" to url' % remote)
+        util.debug.log_error('Cannot parse remote "%s" to url' % remote)
         return None
 
 
@@ -66,7 +66,7 @@ def parse_remote(remote):
     match = re.match(r"https?://([a-zA-Z-\.0-9]+)/([a-zA-Z-\._0-9]+)/([a-zA-Z-\._0-9]+)/?", url)
 
     if not match:
-        util.log_error('Invalid github url: %s' % url)
+        util.debug.log_error('Invalid github url: %s' % url)
         return None
 
     fqdn, owner, repo = match.groups()
