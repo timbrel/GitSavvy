@@ -68,7 +68,7 @@ def parse_remote(remote):
     match = re.match(r"https?://([a-zA-Z-\.0-9]+)/([a-zA-Z-\._0-9]+)/([a-zA-Z-\._0-9]+)/?", url)
 
     if not match:
-        util.log_error('Invalid gitlab url: %s' % url)
+        util.debug.log_error('Invalid gitlab url: %s' % url)
         return None
 
     fqdn, owner, repo = match.groups()
