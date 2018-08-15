@@ -34,8 +34,6 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        if self.view.settings().get('is_widget'):
-            return
 
         window = self.view.window()
         if not window or \
