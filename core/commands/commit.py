@@ -95,7 +95,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         help_text = (COMMIT_HELP_TEXT_ALT
                      if self.savvy_settings.get("commit_on_close")
                      else COMMIT_HELP_TEXT)
-        self.view.settings().set("git_savvy.commit_view.help_text", help_text)
+        self.view.settings().set("git_savvy.commit_view.help_text", help_text.strip())
 
         include_unstaged = self.view.settings().get("git_savvy.commit_view.include_unstaged", False)
         option_amend = self.view.settings().get("git_savvy.commit_view.amend")
@@ -304,7 +304,7 @@ class GsCommitViewSignCommand(TextCommand, GitCommand):
         config_email = self.git("config", "user.email").strip()
 
         sign_text = COMMIT_SIGN_TEXT.format(name=config_name, email=config_email)
-        view_text_list[0] += sign_text
+        view_text_list[0] = view_text_list[0].rstrip() + sign_text + "\n"
 
         self.view.run_command("gs_replace_view_text", {
             "text": help_text.join(view_text_list),
@@ -322,20 +322,18 @@ class GsCommitViewCloseCommand(TextCommand, GitCommand):
     def run(self, edit):
         view_text = self.view.substr(sublime.Region(0, self.view.size()))
         help_text = self.view.settings().get("git_savvy.commit_view.help_text")
-        message_txt = (view_text.split(help_text)[0]
-                       if help_text in view_text
-                       else "")
+        message_txt = view_text.split(help_text)[0]
         message_txt = message_txt.strip()
 
         if self.view.settings().get("git_savvy.commit_on_close"):
-            if message_txt:
+            if message_txt and not message_txt.startswith("#"):
                 # the view will be closed by gs_commit_view_do_commit
                 self.view.run_command("gs_commit_view_do_commit", {"message": message_txt})
             else:
                 self.view.close()
 
         elif self.view.settings().get("git_savvy.prompt_on_abort_commit"):
-            if message_txt:
+            if message_txt and not message_txt.startswith("#"):
                 ok = sublime.ok_cancel_dialog(CONFIRM_ABORT)
             else:
                 ok = True
