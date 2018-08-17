@@ -132,6 +132,8 @@ class GitCommand(StatusMixin,
             stdin=None,
             working_dir=None,
             show_panel=False,
+            show_panel_on_stderr=True,
+            show_status_message_on_stderr=True,
             throw_on_stderr=True,
             decode=True,
             encode=True,
@@ -172,7 +174,7 @@ class GitCommand(StatusMixin,
             if type(e) == ValueError and e.args and "Not a git repository" in e.args[0]:
                 sublime.set_timeout_async(
                     lambda: sublime.active_window().run_command("gs_offer_init"))
-            raise GitSavvyError(e)
+            raise GitSavvyError(e, show_panel=show_panel_on_stderr)
 
         try:
             startupinfo = None
@@ -225,7 +227,9 @@ class GitCommand(StatusMixin,
 
         except Exception as e:
             # this should never be reached
-            raise GitSavvyError("Please report this error to GitSavvy:\n\n{}\n\n{}".format(e, traceback.format_exc()))
+            raise GitSavvyError(
+                "Please report this error to GitSavvy:\n\n{}\n\n{}".format(e, traceback.format_exc()),
+                show_panel=show_panel_on_stderr)
 
         finally:
             end = time.time()
@@ -244,9 +248,10 @@ class GitCommand(StatusMixin,
                 util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
 
         if throw_on_stderr and not p.returncode == 0:
-            sublime.active_window().status_message(
-                "Failed to run `git {}`. See log for details.".format(command[1])
-            )
+            if show_status_message_on_stderr:
+                sublime.active_window().status_message(
+                    "Failed to run `git {}`. See log for details.".format(command[1])
+                )
 
             if "*** Please tell me who you are." in stderr:
                 sublime.set_timeout_async(
@@ -255,9 +260,10 @@ class GitCommand(StatusMixin,
             if stdout or stderr:
                 raise GitSavvyError("`{}` failed with following output:\n{}\n{}".format(
                     command_str, stdout, stderr
-                ))
+                ), show_panel=show_panel_on_stderr)
             else:
-                raise GitSavvyError("`{}` failed.".format(command_str))
+                raise GitSavvyError(
+                    "`{}` failed.".format(command_str), show_panel=show_panel_on_stderr)
 
         return stdout
 
