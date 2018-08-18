@@ -122,7 +122,7 @@ cd $HOME/.config/sublime-text-3/Packages
 # on Windows (PowerShell)
 cd "$env:appdata\Sublime Text 3\Packages\"
 
-git clone git@github.com:divmain/GitSavvy.git
+git clone git@github.com/divmain/GitSavvy.git
 
 # Package Control need to be installed https://packagecontrol.io/installation
 # install dependencies from command line
