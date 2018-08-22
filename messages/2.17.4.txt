@@ -1,0 +1,27 @@
+Changes since 2.17.3:
+
+  Feature:
+   - git push --force-with-lease
+
+  Internal:
+   - Refactor away show_commit_info from LogPanel (Merge 4dd2091)
+   - LogPanel, disable highlight if on_highlight is't callable (Merge 4dd2091)
+
+  Enhancement:
+   - Move the project GitSavvy key into "settings"
+   - Show reverse diff from commit to workspace for checking out files
+   - expand home dir when cloning a project
+   - refactor show_input_panel and disable modifier+enter keys in single line input panel
+   - expand home dir when cloning a project
+
+  Fix:
+   - expose on_highlight to LogMixin
+   - do not continue when the window is not a project
+   - use fallback encoding to decode stderr
+   - push selected non-tracking branch
+
+  Contributors:
+   - Pavel Savchenko
+   - herr kaste
+   - Simon
+   - Randy Lai
