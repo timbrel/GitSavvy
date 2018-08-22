@@ -5,6 +5,7 @@ from ..git_command import GitCommand
 from .log import LogMixin
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
+from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
 NEW_BRANCH_PROMPT = "Branch name:"
@@ -50,9 +51,8 @@ class GsCheckoutNewBranchCommand(WindowCommand, GitCommand):
 
     def run_async(self, base_branch=None, new_branch=None):
         self.base_branch = base_branch
-        v = self.window.show_input_panel(
-            NEW_BRANCH_PROMPT, new_branch or base_branch or "", self.on_done, None, None)
-        v.run_command("select_all")
+        show_single_line_input_panel(
+            NEW_BRANCH_PROMPT, new_branch or base_branch or "", self.on_done)
 
     def on_done(self, branch_name):
         if not self.validate_branch_name(branch_name):
@@ -97,13 +97,10 @@ class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
         self.remote_branch = remote_branch
         if not local_name:
             local_name = remote_branch.split("/", 1)[1]
-        v = self.window.show_input_panel(
+        show_single_line_input_panel(
             NEW_BRANCH_PROMPT,
             local_name,
-            self.on_enter_local_name,
-            None,
-            None)
-        v.run_command("select_all")
+            self.on_enter_local_name)
 
     def on_enter_local_name(self, branch_name):
         if not self.validate_branch_name(branch_name):
@@ -130,6 +127,15 @@ class GsCheckoutCurrentFileAtCommitCommand(LogMixin, WindowCommand, GitCommand):
         if self.file_path:
             super().run(file_path=self.file_path)
 
+    def on_highlight(self, commit):
+        if not self.savvy_settings.get("log_show_more_commit_info", True):
+            return
+        if commit:
+            self.window.run_command('gs_show_file_diff', {
+                'commit_hash': commit,
+                'file_path': self.file_path
+            })
+
     @util.actions.destructive(description="discard uncommitted changes to file")
     def do_action(self, commit_hash, **kwargs):
         if commit_hash:
@@ -141,3 +147,27 @@ class GsCheckoutCurrentFileAtCommitCommand(LogMixin, WindowCommand, GitCommand):
                 )
             )
             util.view.refresh_gitsavvy_interfaces(self.window, interface_reset_cursor=True)
+
+
+class GsShowFileDiffCommand(WindowCommand, GitCommand):
+    def run(self, commit_hash, file_path):
+        self._commit_hash = commit_hash
+        self._file_path = file_path
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        text = self.git(
+            "diff",
+            "--no-color",
+            "-R",
+            self._commit_hash,
+            '--',
+            self._file_path
+        )
+
+        output_view = self.window.create_output_panel("show_file_diff")
+        output_view.set_read_only(False)
+        output_view.run_command("gs_replace_view_text", {"text": text, "nuke_cursors": True})
+        output_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
+        output_view.set_read_only(True)
+        self.window.run_command("show_panel", {"panel": "output.show_file_diff"})

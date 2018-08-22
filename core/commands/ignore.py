@@ -5,6 +5,7 @@ from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ...common import util
+from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
 IGNORE_PATTERN_PROMPT = "Enter pattern to ignore:"
@@ -35,7 +36,7 @@ class GsIgnorePatternCommand(WindowCommand, GitCommand):
     """
 
     def run(self, pre_filled=None):
-        self.window.show_input_panel(IGNORE_PATTERN_PROMPT, pre_filled or "", self.on_done, None, None)
+        show_single_line_input_panel(IGNORE_PATTERN_PROMPT, pre_filled or "", self.on_done)
 
     def on_done(self, ignore_pattern):
         self.add_ignore(ignore_pattern)

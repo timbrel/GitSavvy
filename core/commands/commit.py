@@ -38,6 +38,8 @@ Signed-off-by: {name} <{email}>
 
 COMMIT_TITLE = "COMMIT: {}"
 
+CONFIRM_ABORT = "Confirm to abort commit?"
+
 
 class GsCommitCommand(WindowCommand, GitCommand):
 
@@ -71,10 +73,12 @@ class GsCommitCommand(WindowCommand, GitCommand):
         commit_on_close = self.savvy_settings.get("commit_on_close")
         settings.set("git_savvy.commit_on_close", commit_on_close)
 
+        prompt_on_abort_commit = self.savvy_settings.get("prompt_on_abort_commit")
+        settings.set("git_savvy.prompt_on_abort_commit", prompt_on_abort_commit)
+
         title = COMMIT_TITLE.format(os.path.basename(repo_path))
         view.set_name(title)
-        if commit_on_close or not self.savvy_settings.get("prompt_on_abort_commit"):
-            view.set_scratch(True)
+        view.set_scratch(True)  # ignore dirty on actual commit
         view.run_command("gs_commit_initialize_view")
 
 
@@ -91,7 +95,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         help_text = (COMMIT_HELP_TEXT_ALT
                      if self.savvy_settings.get("commit_on_close")
                      else COMMIT_HELP_TEXT)
-        self.view.settings().set("git_savvy.commit_view.help_text", help_text)
+        self.view.settings().set("git_savvy.commit_view.help_text", help_text.strip())
 
         include_unstaged = self.view.settings().get("git_savvy.commit_view.include_unstaged", False)
         option_amend = self.view.settings().get("git_savvy.commit_view.amend")
@@ -244,38 +248,42 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, message=None):
-        self.commit_on_close = self.view.settings().get("git_savvy.commit_on_close")
-        if self.commit_on_close:
-            # make sure the view would not be closed by commiting synchronously
-            self.run_async(commit_message=message)
-        else:
-            sublime.set_timeout_async(lambda: self.run_async(commit_message=message), 0)
+        sublime.set_timeout_async(lambda: self.run_async(commit_message=message), 0)
 
     def run_async(self, commit_message=None):
+        view_settings = self.view.settings()
+        if view_settings.get("git_savvy.commit_view.is_commiting", False):
+            return
+
         if commit_message is None:
             view_text = self.view.substr(sublime.Region(0, self.view.size()))
-            help_text = self.view.settings().get("git_savvy.commit_view.help_text")
+            help_text = view_settings.get("git_savvy.commit_view.help_text")
             commit_message = view_text.split(help_text)[0]
 
-        include_unstaged = self.view.settings().get("git_savvy.commit_view.include_unstaged")
+        include_unstaged = view_settings.get("git_savvy.commit_view.include_unstaged")
 
         show_panel_overrides = self.savvy_settings.get("show_panel_for")
 
-        self.git(
-            "commit",
-            "-q" if "commit" not in show_panel_overrides else None,
-            "-a" if include_unstaged else None,
-            "--amend" if self.view.settings().get("git_savvy.commit_view.amend") else None,
-            "-F",
-            "-",
-            stdin=commit_message
-        )
+        view_settings.set("git_savvy.commit_view.is_commiting", True)
+        sublime.active_window().status_message("Commiting...")
 
-        is_commit_view = self.view.settings().get("git_savvy.commit_view")
-        if is_commit_view and not self.commit_on_close:
-            self.view.window().focus_view(self.view)
-            self.view.set_scratch(True)  # ignore dirty on actual commit
-            self.view.window().run_command("close_file")
+        try:
+            self.git(
+                "commit",
+                "-q" if "commit" not in show_panel_overrides else None,
+                "-a" if include_unstaged else None,
+                "--amend" if view_settings.get("git_savvy.commit_view.amend") else None,
+                "-F",
+                "-",
+                stdin=commit_message
+            )
+        finally:
+            view_settings.set("git_savvy.commit_view.is_commiting", False)
+
+        sublime.active_window().status_message("Committed successfully.")
+
+        if view_settings.get("git_savvy.commit_view"):
+            self.view.close()
 
         sublime.set_timeout_async(
             lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
@@ -296,7 +304,7 @@ class GsCommitViewSignCommand(TextCommand, GitCommand):
         config_email = self.git("config", "user.email").strip()
 
         sign_text = COMMIT_SIGN_TEXT.format(name=config_name, email=config_email)
-        view_text_list[0] += sign_text
+        view_text_list[0] = view_text_list[0].rstrip() + sign_text + "\n"
 
         self.view.run_command("gs_replace_view_text", {
             "text": help_text.join(view_text_list),
@@ -312,13 +320,23 @@ class GsCommitViewCloseCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        if self.view.settings().get("git_savvy.commit_on_close"):
-            view_text = self.view.substr(sublime.Region(0, self.view.size()))
-            help_text = self.view.settings().get("git_savvy.commit_view.help_text")
-            message_txt = (view_text.split(help_text)[0]
-                           if help_text in view_text
-                           else "")
-            message_txt = message_txt.strip()
+        view_text = self.view.substr(sublime.Region(0, self.view.size()))
+        help_text = self.view.settings().get("git_savvy.commit_view.help_text")
+        message_txt = view_text.split(help_text)[0]
+        message_txt = message_txt.strip()
 
-            if message_txt:
+        if self.view.settings().get("git_savvy.commit_on_close"):
+            if message_txt and not message_txt.startswith("#"):
+                # the view will be closed by gs_commit_view_do_commit
                 self.view.run_command("gs_commit_view_do_commit", {"message": message_txt})
+            else:
+                self.view.close()
+
+        elif self.view.settings().get("git_savvy.prompt_on_abort_commit"):
+            if message_txt and not message_txt.startswith("#"):
+                ok = sublime.ok_cancel_dialog(CONFIRM_ABORT)
+            else:
+                ok = True
+
+            if ok:
+                self.view.close()

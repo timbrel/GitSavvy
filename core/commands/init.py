@@ -5,6 +5,7 @@ from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ...common import util
+from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
 NO_REPO_MESSAGE = ("It looks like you haven't initialized Git in this directory.  "
@@ -67,7 +68,7 @@ class GsInit(WindowCommand, GitCommand):
                 self.on_done(git_root, re_init=True)
             return
 
-        self.window.show_input_panel(REPO_PATH_PROMPT, git_root, self.on_done, None, None)
+        show_single_line_input_panel(REPO_PATH_PROMPT, git_root, self.on_done, None, None)
 
     def on_done(self, path, re_init=False):
         self.git("init", working_dir=path)
@@ -89,12 +90,12 @@ class GsClone(WindowCommand, GitCommand):
     """
 
     def run(self):
-        self.window.show_input_panel(GIT_URL, '', self.on_enter_url, None, None)
+        show_single_line_input_panel(GIT_URL, '', self.on_enter_url, None, None)
 
     def on_enter_url(self, url):
         self.git_url = url
         self.suggested_git_root = self.find_suggested_git_root()
-        self.window.show_input_panel(REPO_PATH_PROMPT, self.suggested_git_root, self.on_enter_directory, None, None)
+        show_single_line_input_panel(REPO_PATH_PROMPT, self.suggested_git_root, self.on_enter_directory, None, None)
 
     def find_suggested_git_root(self):
         folder = self.find_working_dir()
@@ -108,7 +109,7 @@ class GsClone(WindowCommand, GitCommand):
         return ""
 
     def on_enter_directory(self, path):
-        self.suggested_git_root = path
+        self.suggested_git_root = os.path.expanduser(path)  # handle ~/%HOME%
         if self.suggested_git_root and os.path.exists(os.path.join(self.suggested_git_root, ".git")):
             sublime.ok_cancel_dialog(RECLONE_CANT_BE_DONE)
             return
@@ -144,14 +145,14 @@ class GsSetupUserCommand(WindowCommand, GitCommand):
             self.get_name()
 
     def get_name(self):
-        self.window.show_input_panel(NAME_MESSAGE, "", self.on_done_name, None, None)
+        show_single_line_input_panel(NAME_MESSAGE, "", self.on_done_name, None, None)
 
     def on_done_name(self, name):
         self.git("config", "--global", "user.name", "\"{}\"".format(name))
         self.get_email()
 
     def get_email(self):
-        self.window.show_input_panel(EMAIL_MESSAGE, "", self.on_done_email, None, None)
+        show_single_line_input_panel(EMAIL_MESSAGE, "", self.on_done_email, None, None)
 
     def on_done_email(self, email):
         self.git("config", "--global", "user.email", "\"{}\"".format(email))

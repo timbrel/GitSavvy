@@ -21,6 +21,14 @@
             { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["super+w"],
+        "command": "gs_commit_view_close",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     ///////////////
     // DIFF VIEW //
@@ -242,5 +250,15 @@
         "context": [
             { "key": "selector", "operator": "equal", "operand": "git-savvy.tags" }
         ]
+    },
+
+    /////////////////////////////
+    // SINGLE LINE INPUT PANEL //
+    ////////////////////////////
+
+    {
+        "keys": ["super+enter"],
+        "command": "noop",
+        "context": [{ "key": "setting.git_savvy.single_line_input_panel" }]
     }
 ]

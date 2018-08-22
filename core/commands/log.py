@@ -21,7 +21,6 @@ class LogMixin(object):
     but the subclass must also inherit fro GitCommand (for the `git()` method)
     """
 
-    show_commit_info = True
     selected_index = 0
 
     def run(self, *args, file_path=None, **kwargs):
@@ -33,16 +32,25 @@ class LogMixin(object):
             self.log_generator(file_path=file_path, follow=follow, **kwargs),
             lambda commit: self.on_done(commit, file_path=file_path, **kwargs),
             selected_index=self.selected_index,
-            on_highlight=self.on_highlight,
-            show_commit_info=self.show_commit_info
+            on_highlight=lambda commit: self.on_highlight(commit, file_path=file_path)
         )
 
-    def on_highlight(self, commit):
-        pass
-
     def on_done(self, commit, **kwargs):
+        sublime.active_window().run_command("hide_panel", {"panel": "output.show_commit_info"})
         if commit:
             self.do_action(commit, **kwargs)
+
+    def on_highlight(self, commit, file_path=None):
+        if not commit:
+            return
+        if not self.savvy_settings.get("log_show_more_commit_info", True):
+            return
+        if hasattr(self, 'window'):
+            window = self.window
+        else:
+            window = self.view.window()
+        window.run_command(
+            "gs_show_commit_info", {"commit_hash": commit, "file_path": file_path})
 
     def do_action(self, commit_hash, **kwargs):
         if hasattr(self, 'window'):

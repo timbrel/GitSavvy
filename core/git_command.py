@@ -212,7 +212,7 @@ class GitCommand(StatusMixin,
                 stdout, stderr = p.communicate(stdin)
 
             if decode:
-                stdout, stderr = self.decode_stdout(stdout), stderr.decode()
+                stdout, stderr = self.decode_stdout(stdout), self.decode_stdout(stderr)
 
             if show_panel and not live_panel_output:
                 initialize_panel()
@@ -236,7 +236,7 @@ class GitCommand(StatusMixin,
                     args,
                     stdin,
                     self.decode_stdout(stdout),
-                    stderr.decode(),
+                    self.decode_stdout(stderr),
                     end - start
                 )
 
@@ -266,7 +266,7 @@ class GitCommand(StatusMixin,
         silent_fallback = self.savvy_settings.get("silent_fallback")
         try:
             return stdout.decode()
-        except UnicodeDecodeError as unicode_err:
+        except UnicodeDecodeError:
             try:
                 return stdout.decode("latin-1")
             except UnicodeDecodeError as unicode_err:

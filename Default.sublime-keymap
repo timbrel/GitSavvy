@@ -1818,5 +1818,20 @@
             { "key": "setting.git_savvy.git-rebase-todo_view", "operator": "equal", "operand": true },
             { "key": "selector", "operator": "equal", "operand": "git-savvy.rebase.interactive meta.git-savvy.rebase-interactive.line" }
         ]
+    },
+
+    /////////////////////////////
+    // SINGLE LINE INPUT PANEL //
+    ////////////////////////////
+
+    {
+        "keys": ["shift+enter"],
+        "command": "noop",
+        "context": [{ "key": "setting.git_savvy.single_line_input_panel" }]
+    },
+    {
+        "keys": ["ctrl+enter"],
+        "command": "noop",
+        "context": [{ "key": "setting.git_savvy.single_line_input_panel" }]
     }
 ]

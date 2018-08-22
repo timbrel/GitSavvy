@@ -4,6 +4,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
+from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
 class GsMvCurrentFileCommand(WindowCommand, GitCommand):
@@ -18,7 +19,7 @@ class GsMvCurrentFileCommand(WindowCommand, GitCommand):
             on_done = functools.partial(
                 self.on_done,
                 self.file_path, parent, base_name)
-            v = self.window.show_input_panel(
+            v = show_single_line_input_panel(
                 "New Name:", base_name,
                 on_done, None, None)
             name, ext = os.path.splitext(base_name)
