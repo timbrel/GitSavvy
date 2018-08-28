@@ -24,7 +24,7 @@ class GsQuickCommitCommand(WindowCommand, GitCommand):
         )
 
     def on_done(self, commit_message):
-        self.view.window().status_message("Commiting...")
+        self.window.status_message("Commiting...")
         self.git("commit", "-q", "-F", "-", stdin=commit_message)
         self.window.status_message("Committed successfully.")
         util.view.refresh_gitsavvy(self.window.active_view())
