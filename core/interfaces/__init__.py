@@ -12,7 +12,7 @@ class GsTabCycleCommand(TextCommand, GitCommand):
         "status": "gs_show_status",
         "branch": "gs_show_branch",
         "rebase": "gs_show_rebase",
-        "tags": "gs_show_tags",
+        "tag": "gs_show_tags",
         "graph": "gs_log_graph_current_branch"
     }
 
@@ -20,7 +20,7 @@ class GsTabCycleCommand(TextCommand, GitCommand):
         "status": "git_savvy.status_view",
         "branch": "git_savvy.branch_view",
         "rebase": "git_savvy.rebase_view",
-        "tags": "git_savvy.tags_view",
+        "tag": "git_savvy.tags_view",
         "graph": "git_savvy.log_graph_view"
     }
 
@@ -31,6 +31,7 @@ class GsTabCycleCommand(TextCommand, GitCommand):
         to_load = target or self.get_next(source, reverse)
         if not to_load:
             return
+        to_load = "tag" if to_load == "tags" else to_load
         view_signature = self.view_signatures[to_load]
 
         self.view.window().run_command("hide_panel", {"cancel": True})
