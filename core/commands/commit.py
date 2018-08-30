@@ -155,7 +155,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
 
         if has_prepare_commit_msg_hook and os.path.exists(commit_editmsg_path):
             with util.file.safe_open(commit_editmsg_path, "r") as f:
-                initial_text = f.read() + help_text
+                initial_text = "\n" + f.read().rstrip() + help_text
         elif option_amend:
             last_commit_message = self.git("log", "-1", "--pretty=%B").strip()
             initial_text = last_commit_message + help_text
