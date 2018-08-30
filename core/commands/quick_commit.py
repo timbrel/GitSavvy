@@ -46,7 +46,7 @@ class GsQuickStageCurrentFileCommitCommand(WindowCommand, GitCommand):
         )
 
     def on_done(self, commit_message):
-        self.view.window().status_message("Commiting...")
+        self.window.status_message("Commiting...")
         self.git("add", "--", self.file_path)
         self.git("commit", "-q", "-F", "-", stdin=commit_message)
         self.window.status_message("Committed successfully.")
