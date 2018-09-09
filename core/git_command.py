@@ -171,10 +171,6 @@ class GitCommand(StatusMixin,
             # do not show panel when the window does not exist
             raise GitSavvyError(e, show_panel=False)
         except Exception as e:
-            # offer initialization when "Not a git repository" is thrown from self.repo_path
-            if type(e) == ValueError and e.args and "Not a git repository" in e.args[0]:
-                sublime.set_timeout_async(
-                    lambda: sublime.active_window().run_command("gs_offer_init"))
             raise GitSavvyError(e, show_panel=show_panel_on_stderr)
 
         try:
@@ -403,13 +399,7 @@ class GitCommand(StatusMixin,
         repo = stdout.strip()
         return os.path.realpath(repo) if repo else None
 
-    @property
-    def repo_path(self):
-        """
-        Return the absolute path to the git repo that contains the file that this
-        view interacts with.  Like `file_path`, this can be overridden by setting
-        the view's `git_savvy.repo_path` setting.
-        """
+    def get_repo_path(self, offer_init=True):
         # The below condition will be true if run from a WindowCommand and false
         # from a TextCommand.
         view = self.window.active_view() if hasattr(self, "window") else self.view
@@ -421,6 +411,10 @@ class GitCommand(StatusMixin,
                 window = view.window()
                 if window:
                     if window.folders():
+                        # offer initialization
+                        if offer_init:
+                            sublime.set_timeout_async(
+                                lambda: sublime.active_window().run_command("gs_offer_init"))
                         raise ValueError("Not a git repository.")
                     else:
                         raise ValueError("Unable to determine Git repo path.")
@@ -434,6 +428,15 @@ class GitCommand(StatusMixin,
                     view.settings().set("git_savvy.repo_path", repo_path)
 
         return os.path.realpath(repo_path) if repo_path else repo_path
+
+    @property
+    def repo_path(self):
+        """
+        Return the absolute path to the git repo that contains the file that this
+        view interacts with.  Like `file_path`, this can be overridden by setting
+        the view's `git_savvy.repo_path` setting.
+        """
+        return self.get_repo_path()
 
     @property
     def short_repo_path(self):
