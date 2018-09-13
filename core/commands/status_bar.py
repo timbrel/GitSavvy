@@ -67,7 +67,7 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
         with debug.disable_logging():
             # ignore all other possible errors
             try:
-                self.repo_path  # check for ValueError
+                self.get_repo_path(offer_init=False)  # check for ValueError
                 short_status = self.get_branch_status_short()
                 self.view.set_status("gitsavvy-repo-status", short_status)
             except Exception as e:
