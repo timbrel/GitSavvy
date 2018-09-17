@@ -16,17 +16,60 @@ first_line_match: |-
       )
 contexts:
   main:
-    - match: ^diff.+$
-      scope: punctuation.definition.command.diff
+    # diff --git a/path/file.ext b/path/file.ext
+    - match: ^(diff)\s+(--git)\s+(a/.+?)\s+(b/.+?)$\n?
+      scope: meta.diff.header.git-output.command
+      captures:
+        1: keyword.other.command.diff
+        3: string.unquoted.from-file.diff
+        4: string.unquoted.to-file.diff
 
-    - match: ^index.+$
-      scope: punctuation.definition.index.diff
+    # index 00000000..1861c677
+    # index 1861c677..00000000
+    # index 3de5387c..a8dab191 100644
+    - match: ^(index)\s+(.+)(\.\.)(.+?)(?:\s+(\d+))?$\n?
+      scope: meta.diff.header.git-output.index
+      captures:
+        1: keyword.other.index.diff
+        2: constant.numeric.hex.from-commit.diff
+        3: punctuation.separator.sequence.diff
+        4: constant.numeric.hex.to-commit.diff
+        5: constant.numeric.integer.file-mode.diff
 
-    - match: ^new file mode.+$
-      scope: punctuation.definition.new-file-mode.diff
+    # similarity index 57%
+    - match: ^(similarity index)\s+(.+)$\n?
+      scope: meta.diff.header.git-output.similarity-index
+      captures:
+        1: keyword.other.similarity-index.diff
+        2: constant.numeric.integer.similarity-index.diff
 
-    - match: ^deleted file mode.+$
-      scope: punctuation.definition.deleted-file-mode.diff
+    # rename from path/file.ext
+    - match: ^(rename from)\s+(.+)$\n?
+      scope: meta.diff.header.git-output.rename-from
+      captures:
+        1: keyword.other.rename-from.diff
+        2: string.unquoted.from-file.diff
+
+    # rename to path/file.ext
+    - match: ^(rename to)\s+(.+)$\n?
+      scope: meta.diff.header.git-output.rename-to
+      captures:
+        1: keyword.other.rename-to.diff
+        2: string.unquoted.to-file.diff
+
+    # new file mode 100644
+    - match: ^(new file mode)\s+(\d+)$\n?
+      scope: meta.diff.header.git-output.new-file-mode
+      captures:
+        1: keyword.other.new-file-mode.diff
+        2: constant.numeric.integer.file-mode.diff
+
+    # deleted file mode 100644
+    - match: ^(deleted file mode)\s+(\d+)$\n?
+      scope: meta.diff.header.git-output.deleted-file-mode
+      captures:
+        1: keyword.other.deleted-file-mode.diff
+        2: constant.numeric.integer.file-mode.diff
 
     - match: ^(-{3}) (a/)?(.+)$\n?
       comment: |

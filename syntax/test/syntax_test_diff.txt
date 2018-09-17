@@ -1,11 +1,37 @@
 # SYNTAX TEST "Packages/GitSavvy/syntax/diff.sublime-syntax"
 
 diff --git a/core/git_mixins/tags.py b/core/git_mixins/tags.py
-# ^ punctuation.definition.command.diff
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.diff.header.git-output.command
+#^^^ keyword.other.command.diff
+#          ^^^^^^^^^^^^^^^^^^^^^^^^^ string.unquoted.from-file.diff
+#                                    ^^^^^^^^^^^^^^^^^^^^^^^^^ string.unquoted.to-file.diff
 index a59222e..d6d3a74 100644
-# ^ punctuation.definition.index.diff
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.diff.header.git-output.index
+#^^^^ keyword.other.index.diff
+#     ^^^^^^^ constant.numeric.hex.from-commit.diff
+#            ^^ punctuation.separator.sequence.diff
+#              ^^^^^^^ constant.numeric.hex.to-commit.diff
+#                      ^^^^^^ constant.numeric.integer.file-mode.diff
+deleted file mode 100644
+#^^^^^^^^^^^^^^^^^^^^^^^^ meta.diff.header.git-output.deleted-file-mode
+#^^^^^^^^^^^^^^^^ keyword.other.deleted-file-mode.diff
+#                 ^^^^^^ constant.numeric.integer.file-mode.diff
 new file mode 100644
-# ^ punctuation.definition.new-file-mode.diff
+#^^^^^^^^^^^^^^^^^^^^ meta.diff.header.git-output.new-file-mode
+#^^^^^^^^^^^^ keyword.other.new-file-mode.diff
+#             ^^^^^^ constant.numeric.integer.file-mode.diff
+rename from a/core/git_mixins/tags.py
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.diff.header.git-output.rename-from
+#^^^^^^^^^^ keyword.other.rename-from.diff
+#           ^^^^^^^^^^^^^^^^^^^^^^^^^ string.unquoted.from-file.diff
+rename to b/core/git_mixins/tags.py
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.diff.header.git-output.rename-to
+#^^^^^^^^ keyword.other.rename-to.diff
+#         ^^^^^^^^^^^^^^^^^^^^^^^^^ string.unquoted.to-file.diff
+similarity index 59%
+#^^^^^^^^^^^^^^^^^^^^ meta.diff.header.git-output.similarity-index
+#^^^^^^^^^^^^^^^ keyword.other.similarity-index.diff
+#                ^^^ constant.numeric.integer.similarity-index.diff
 
 --- /dev/null
 # <- punctuation.definition.from-file.diff
