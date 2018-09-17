@@ -121,7 +121,7 @@ class GsClone(WindowCommand, GitCommand):
         self.window.status_message("Start cloning {}".format(self.git_url))
         self.git(
             "clone",
-            "--recursive" if self.recursive else "",
+            "--recursive" if self.recursive else None,
             self.git_url,
             self.suggested_git_root,
             working_dir='.')
