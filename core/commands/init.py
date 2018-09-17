@@ -89,7 +89,8 @@ class GsClone(WindowCommand, GitCommand):
     to confirm a re-initialize before proceeding.
     """
 
-    def run(self):
+    def run(self, recursive=False):
+        self.recursive = recursive
         show_single_line_input_panel(GIT_URL, '', self.on_enter_url, None, None)
 
     def on_enter_url(self, url):
@@ -118,7 +119,12 @@ class GsClone(WindowCommand, GitCommand):
 
     def do_clone(self):
         self.window.status_message("Start cloning {}".format(self.git_url))
-        self.git("clone", self.git_url, self.suggested_git_root, working_dir='.')
+        self.git(
+            "clone",
+            "--recursive" if self.recursive else None,
+            self.git_url,
+            self.suggested_git_root,
+            working_dir='.')
         self.window.status_message("Cloned repo successfully.")
         self.open_folder()
         util.view.refresh_gitsavvy(self.window.active_view())

@@ -239,6 +239,11 @@
         "command": "gs_clone"
     },
     {
+        "caption": "git: clone recursively",
+        "command": "gs_clone",
+        "args": { "recursive": true }
+    },
+    {
         "caption": "git: diff",
         "command": "gs_diff"
     },
