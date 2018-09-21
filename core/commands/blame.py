@@ -250,6 +250,9 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
         return spacer.join(partitions_with_commits_iter)
 
     def parse_blame(self, blame_porcelain):
+        if blame_porcelain[-1] == '':
+            blame_porcelain = blame_porcelain[:-1]
+
         lines_iter = iter(blame_porcelain)
 
         blamed_lines = []
