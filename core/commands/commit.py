@@ -2,7 +2,7 @@ import os
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
-from sublime_plugin import EventListener
+from sublime_plugin import EventListener, ViewEventListener
 
 from ..git_command import GitCommand
 from ...common import util
@@ -345,6 +345,8 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
         sublime.active_window().status_message("Committed successfully.")
 
         if view_settings.get("git_savvy.commit_view"):
+            # skip close event handler and close the view
+            view_settings.set("git_savvy.commit_view", False)
             self.view.close()
 
         sublime.set_timeout_async(
@@ -382,6 +384,11 @@ class GsCommitViewCloseCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        util.debug.trace(
+            'Running gs_commit_view_close command in view',
+            self.view,
+            self.view.name(),
+        )
         view_text = self.view.substr(sublime.Region(0, self.view.size()))
         help_text = self.view.settings().get("git_savvy.commit_view.help_text")
         message_txt = view_text.split(help_text)[0]
@@ -389,10 +396,9 @@ class GsCommitViewCloseCommand(TextCommand, GitCommand):
 
         if self.view.settings().get("git_savvy.commit_on_close"):
             if message_txt and not message_txt.startswith("#"):
-                # the view will be closed by gs_commit_view_do_commit
-                self.view.run_command("gs_commit_view_do_commit", {"message": message_txt})
-            else:
-                self.view.close()
+                view = self.clone_view()
+                # the new view will be closed by gs_commit_view_do_commit
+                view.run_command("gs_commit_view_do_commit", {"message": message_txt})
 
         elif self.view.settings().get("git_savvy.prompt_on_abort_commit"):
             if message_txt and not message_txt.startswith("#"):
@@ -400,5 +406,24 @@ class GsCommitViewCloseCommand(TextCommand, GitCommand):
             else:
                 ok = True
 
-            if ok:
-                self.view.close()
+            if not ok:
+                self.clone_view()
+
+    def clone_view(self):
+        window = self.view.window()
+        window.run_command("clone_file")
+        return window.active_view()
+
+
+class CloseCommitEventListener(ViewEventListener):
+    @classmethod
+    def is_applicable(cls, settings):
+        return settings.get("git_savvy.commit_view", False)
+
+    def on_pre_close(self):
+        util.debug.trace(
+            'about to close ',
+            self.view,
+            self.view.name(),
+        )
+        self.view.run_command("gs_commit_view_close")
