@@ -52,18 +52,18 @@ GitHub has instructions on [how to add your GPG key to GitHub](https://help.gith
 
 ## Sign your commits automatically
 
-If you always want to sign your commits you can configure git globally or in your project:
+If you always want to sign your commits with a GPG key you can configure git globally, locally in your git repo or using the `global_pre_flags` setting.:
 
 `git config (--global) commit.gpgsign true`
 
-Now when you commit with GitSavvy, your commit will be automatically signed due to the git configuration.
+When you commit with GitSavvy it will attempt to sign your commit. If your key hasn't been unlocked yet with your passphrase you will be asked for it (see more on credentials below).
 
-## Unlock your GPG key
+For more information, see [official git docs on the subject](https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work).
 
-Next you want to tell git to ask for your passphrase through the gui. You can do this by setting the `askpass` variable:
+## Providing credentials to git
 
-`git config (--global) core.askpass git-gui--askpass`
+GitSavvy does not support prompting a user for credentials (there is no way, known to us, to forward the password securely to git). In order to tell git to ask for your passphrase through the OS gui, you can set the `askPass` variable in your config, e.g:
 
-I added my GPG to my keychain so it is unlocked when I log in as a user.
+`git config (--global) core.askPass git-gui--askpass`
 
-When you commit with GitSavvy it will attempt to sign your commit. If your key hasn't been unlocked yet with your passphrase you should now have a gui asking for it.
+For more information, see [official git docs on the subject](https://git-scm.com/docs/gitcredentials).
