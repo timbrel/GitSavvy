@@ -214,7 +214,7 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
             commit_hash, "--", filename_at_commit
         )
         blame_porcelain = unicodedata.normalize('NFC', blame_porcelain)
-        blamed_lines, commits = self.parse_blame(blame_porcelain.splitlines())
+        blamed_lines, commits = self.parse_blame(blame_porcelain.split('\n'))
 
         commit_infos = {
             commit_hash: self.short_commit_info(commit)
@@ -250,6 +250,9 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
         return spacer.join(partitions_with_commits_iter)
 
     def parse_blame(self, blame_porcelain):
+        if blame_porcelain[-1] == '':
+            blame_porcelain = blame_porcelain[:-1]
+
         lines_iter = iter(blame_porcelain)
 
         blamed_lines = []
