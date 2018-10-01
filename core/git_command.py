@@ -480,9 +480,15 @@ class GitCommand(StatusMixin,
         git_cmd, *addl_args = args
 
         global_flags = self.savvy_settings.get("global_flags")
+        global_pre_flags = self.savvy_settings.get("global_pre_flags")
 
         if global_flags and git_cmd in global_flags:
             args = [git_cmd] + global_flags[git_cmd] + addl_args
+        else:
+            args = [git_cmd] + list(addl_args)
+
+        if global_pre_flags and git_cmd in global_pre_flags:
+            args = global_pre_flags[git_cmd] + args
 
         return args
 
