@@ -2,27 +2,27 @@
 
   UNSTAGED:
 #  ^ keyword.other.git-savvy.section-header.unstaged
-    syntax/status.sublime-syntax
-#     ^ meta.git-savvy.status.section.unstaged
-    Color Schemes/GitSavvy.tmTheme
-#  ^ meta.git-savvy.status.file
-#    ^ gitsavvy.gotosymbol
-    .babelrc
-#   ^ meta.git-savvy.status.file
-  - Color Schemes/Knockdown.tmTheme
-#    ^ meta.git-savvy.status.file gitsavvy.gotosymbol meta.git-savvy.status.file.removed
+        syntax/status.sublime-syntax
+#        ^ meta.git-savvy.status.section.unstaged
+        Color Schemes/GitSavvy.tmTheme
+#     ^ meta.git-savvy.status.file
+#       ^ gitsavvy.gotosymbol
+        .babelrc
+#      ^ meta.git-savvy.status.file
+      - Color Schemes/Knockdown.tmTheme
+#       ^ meta.git-savvy.status.file gitsavvy.gotosymbol meta.git-savvy.status.file.removed
 
   STAGED:
-#  ^ keyword.other.git-savvy.section-header.staged
-    syntax/status.sublime-syntax
-#     ^ meta.git-savvy.status.section.staged
+#     ^ keyword.other.git-savvy.section-header.staged
+        syntax/status.sublime-syntax
+#        ^ meta.git-savvy.status.section.staged
 
   UNTRACKED:
-#  ^ keyword.other.git-savvy.section-header.untracked
-    syntax/status.sublime-syntax
-#     ^ meta.git-savvy.status.section.untracked
+#     ^ keyword.other.git-savvy.section-header.untracked
+        syntax/status.sublime-syntax
+#        ^ meta.git-savvy.status.section.untracked
 
   MERGE CONFLICTS:
-#  ^ keyword.other.git-savvy.section-header.merge-conflicts
-    syntax/status.sublime-syntax
-#     ^ meta.git-savvy.status.section.merge-conflicts
+#     ^ keyword.other.git-savvy.section-header.merge-conflicts
+        syntax/status.sublime-syntax
+#        ^ meta.git-savvy.status.section.merge-conflicts

@@ -1,5 +1,6 @@
 import os
-
+import calendar
+import time
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
@@ -140,6 +141,33 @@ class StatusInterface(ui.Interface, GitCommand):
     def on_new_dashboard(self):
         self.view.run_command("gs_status_navigate_file")
 
+    def format_modification_time(self,ts):
+
+        if self.savvy_settings.get("show_file_change_age") == None:
+            return "   "
+        if ts == 0:
+            return "   "
+        delta= calendar.timegm(time.gmtime())-ts
+        if delta < 60:
+            return "{0:2.0f}s".format(delta)
+        delta/= 60
+        if delta < 60:
+            return "{0:2.0f}m".format(delta)
+        delta/= 60
+        if delta < 60:
+            return "{0:2.0f}h".format(delta)
+        delta/= 24
+        if delta < 8:
+            return "{0:2.0f}d".format(delta)
+        delta/= 7
+        if delta < 4:
+            return "{0:2.0f}w".format(delta)
+        delta/= 4
+        if delta < 12:
+            return "{0:2.0f}M".format(delta)
+        delta/= 12
+        return "{0:2.0f}Y".format(delta)
+
     @ui.partial("branch_status")
     def render_branch_status(self):
         return self.get_branch_status(delim="\n           ")
@@ -164,7 +192,7 @@ class StatusInterface(ui.Interface, GitCommand):
             return file_status.path
 
         return self.template_staged.format("\n".join(
-            "  {} {}".format("-" if f.index_status == "D" else " ", get_path(f))
+            "  {} {} {}".format(self.format_modification_time(f.modified), "-" if f.index_status == "D" else " ", get_path(f))
             for f in self.staged_entries
         ))
 
@@ -173,7 +201,7 @@ class StatusInterface(ui.Interface, GitCommand):
         if not self.unstaged_entries:
             return ""
         return self.template_unstaged.format("\n".join(
-            "  {} {}".format("-" if f.working_status == "D" else " ", f.path)
+            "  {} {} {}".format(self.format_modification_time(f.modified), "-" if f.working_status == "D" else " ", f.path)
             for f in self.unstaged_entries
         ))
 
@@ -181,8 +209,10 @@ class StatusInterface(ui.Interface, GitCommand):
     def render_untracked_files(self):
         if not self.untracked_entries:
             return ""
-        return self.template_untracked.format(
-            "\n".join("    " + f.path for f in self.untracked_entries))
+        return self.template_untracked.format("\n".join(
+            "  {}   {}".format(self.format_modification_time(f.modified), f.path)
+            for f in self.untracked_entries
+        ))
 
     @ui.partial("merge_conflicts")
     def render_merge_conflicts(self):
@@ -235,7 +265,7 @@ class GsStatusOpenFileCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         lines = util.view.get_lines_from_regions(self.view, self.view.sel())
-        file_paths = (line.strip() for line in lines if line[:4] == "    ")
+        file_paths = (line[7:].strip() for line in lines if line[5:8] == "   ")
         abs_paths = (os.path.join(self.repo_path, file_path) for file_path in file_paths)
         for path in abs_paths:
             self.view.window().open_file(path)
@@ -259,9 +289,9 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
             valid_ranges=non_cached_sections
         )
         non_cached_files = (
-            os.path.join(self.repo_path, line.strip())
+            os.path.join(self.repo_path, line[7:].strip())
             for line in non_cached_lines
-            if line[:4] == "    ")
+            if line[5:8] == "   ")
 
         cached_sections = interface.get_view_regions("staged_files")
         cached_lines = util.view.get_lines_from_regions(
@@ -270,9 +300,9 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
             valid_ranges=cached_sections
         )
         cached_files = (
-            os.path.join(self.repo_path, line.strip())
+            os.path.join(self.repo_path, line[7:].strip())
             for line in cached_lines
-            if line[:4] == "    ")
+            if line[5:8] == "   ")
 
         sublime.set_timeout_async(
             lambda: self.load_inline_diff_windows(non_cached_files, cached_files), 0)
@@ -319,9 +349,9 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
             valid_ranges=non_cached_sections
         )
         non_cached_files = (
-            os.path.join(self.repo_path, line.strip())
+            os.path.join(self.repo_path, line[7:].strip())
             for line in non_cached_lines
-            if line[:4] == "    "
+            if line[5:8] == "   "
         )
 
         cached_sections = interface.get_view_regions("staged_files")
@@ -331,9 +361,9 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
             valid_ranges=cached_sections
         )
         cached_files = (
-            os.path.join(self.repo_path, line.strip())
+            os.path.join(self.repo_path, line[7:].strip())
             for line in cached_lines
-            if line[:4] == "    "
+            if line[5:8] == "   "
         )
 
         sublime.set_timeout_async(
@@ -373,7 +403,7 @@ class GsStatusStageFileCommand(TextCommand, GitCommand):
             valid_ranges=valid_ranges
         )
         # Remove the leading spaces and hyphen-character for deleted files.
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        file_paths = tuple(line[7:].strip() for line in lines if line)
 
         if file_paths:
             for fpath in file_paths:
@@ -398,7 +428,7 @@ class GsStatusUnstageFileCommand(TextCommand, GitCommand):
             valid_ranges=valid_ranges
         )
         # Remove the leading spaces and hyphen-character for deleted files.
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        file_paths = tuple(line[7:].strip() for line in lines if line)
 
         if file_paths:
             for fpath in file_paths:
@@ -428,7 +458,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        file_paths = tuple(line[7:].strip() for line in lines if line)
 
         @util.actions.destructive(description="discard one or more untracked files")
         def do_discard():
@@ -446,7 +476,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        file_paths = tuple(line[7:].strip() for line in lines if line)
 
         @util.actions.destructive(description="discard one or more unstaged files")
         def do_discard():
@@ -475,7 +505,7 @@ class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        file_paths = tuple(line[7:].strip() for line in lines if line)
         self.view.run_command("gs_open_file_on_remote", {"fpath": list(file_paths)})
 
 
@@ -580,7 +610,7 @@ class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        file_paths = tuple(line[7:].strip() for line in lines if line)
 
         if file_paths:
             for fpath in file_paths:
@@ -608,7 +638,7 @@ class GsStatusIgnorePatternCommand(TextCommand, GitCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        file_paths = tuple(line[7:].strip() for line in lines if line)
 
         if file_paths:
             self.view.window().run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
@@ -674,7 +704,7 @@ class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):
             self.view.sel(),
             valid_ranges=valid_ranges
         )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        file_paths = tuple(line[7:].strip() for line in lines if line)
 
         if len(file_paths) > 1:
             sublime.error_message("You can only launch merge tool for a single file at a time.")
@@ -695,7 +725,7 @@ class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
 
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
-        paths = (line[4:]
+        paths = (line[5:]
                  for reg in line_regions
                  for line in self.view.substr(reg).split("\n") if line)
         for path in paths:
@@ -724,7 +754,7 @@ class GsStatusUseBaseVersionCommand(TextCommand, GitCommand):
 
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
-        paths = (line[4:]
+        paths = (line[5:]
                  for reg in line_regions
                  for line in self.view.substr(reg).split("\n") if line)
         for path in paths:

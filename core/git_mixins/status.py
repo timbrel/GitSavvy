@@ -2,7 +2,7 @@ import os
 from collections import namedtuple
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
-FileStatus = namedtuple("FileStatus", ("path", "path_alt", "index_status", "working_status"))
+FileStatus = namedtuple("FileStatus", ("path", "path_alt", "index_status", "working_status", "modified"))
 
 IndexedEntry = namedtuple("IndexEntry", (
     "src_path",
@@ -38,7 +38,11 @@ class StatusMixin():
             working_status = entry[1].strip() or None
             path = entry[3:]
             path_alt = porcelain_entries.__next__() if index_status in ["R", "C"] else None
-            entries.append(FileStatus(path, path_alt, index_status, working_status))
+            abs_path = os.path.join(self.repo_path, path)
+            modified = 0
+            if os.path.exists(abs_path):
+                modified = os.path.getmtime(abs_path)
+            entries.append(FileStatus(path, path_alt, index_status, working_status, modified))
 
         return entries
 
