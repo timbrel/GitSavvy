@@ -6,7 +6,6 @@ to a view.
 
 import os
 from xml.etree import ElementTree
-import json
 from collections import OrderedDict
 
 import sublime
@@ -130,7 +129,7 @@ class JSONThemeGenerator(ThemeGenerator):
 
     def __init__(self, original_color_scheme):
         super().__init__(original_color_scheme)
-        self.dict = json.loads(self.color_scheme_string, object_pairs_hook=OrderedDict)
+        self.dict = OrderedDict(sublime.decode_value(self.color_scheme_string))
 
     def add_scoped_style(self, name, scope, **kwargs):
         new_rule = OrderedDict([("name", name), ("scope", scope)])
@@ -142,4 +141,4 @@ class JSONThemeGenerator(ThemeGenerator):
         full_path = os.path.join(sublime.packages_path(), self.get_theme_path(name))
 
         with util.file.safe_open(full_path, "wb", buffering=0) as out_f:
-            out_f.write(json.dumps(self.dict, indent=4).encode("utf-8"))
+            out_f.write(sublime.encode_value(self.dict, pretty=True).encode("utf-8"))
