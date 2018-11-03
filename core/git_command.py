@@ -71,16 +71,20 @@ class LoggingProcessWrapper(object):
             for line in iter(self.process.stdout.readline, b""):
                 self.stdout = self.stdout + line
                 util.log.panel_append(line.decode())
+                util.log.panel_append(line.decode(), run_async=False)
         except IOError as err:
             util.log.panel_append(err)
+            util.log.panel_append(err, run_async=False)
 
     def read_stderr(self):
         try:
             for line in iter(self.process.stderr.readline, b""):
                 self.stderr = self.stderr + line
                 util.log.panel_append(line.decode())
+                util.log.panel_append(line.decode(), run_async=False)
         except IOError as err:
             util.log.panel_append(err)
+            util.log.panel_append(err, run_async=False)
 
     def communicate(self, stdin):
         """
@@ -192,11 +196,11 @@ class GitCommand(StatusMixin,
 
             def initialize_panel():
                 # clear panel
-                util.log.panel("")
+                util.log.panel("", run_async=False)
                 if self.savvy_settings.get("show_stdin_in_output") and stdin is not None:
-                    util.log.panel_append("STDIN\n{}\n".format(stdin))
+                    util.log.panel_append("STDIN\n{}\n".format(stdin), run_async=False)
                 if self.savvy_settings.get("show_input_in_output"):
-                    util.log.panel_append("> {}\n".format(command_str))
+                    util.log.panel_append("> {}\n".format(command_str), run_async=False)
 
             if show_panel and live_panel_output:
                 wrapper = LoggingProcessWrapper(p, self.savvy_settings.get("live_panel_output_timeout", 10000))
