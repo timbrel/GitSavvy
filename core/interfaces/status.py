@@ -174,6 +174,20 @@ class StatusInterface(ui.Interface, GitCommand):
             "nuke_cursors": nuke_cursors
         })
 
+    def refresh_and_render_file_statuses(self):
+        (staged_entries,
+         unstaged_entries,
+         untracked_entries,
+         conflict_entries) = self.sort_status_entries(self.get_status())
+
+        self.state.update({
+            'staged_entries': staged_entries,
+            'unstaged_entries': unstaged_entries,
+            'untracked_entries': untracked_entries,
+            'conflict_entries': conflict_entries,
+        })
+        self.just_render(nuke_cursors=False)
+
     def on_new_dashboard(self):
         self.view.run_command("gs_status_navigate_file")
 
@@ -421,8 +435,9 @@ class GsStatusStageFileCommand(TextCommand, GitCommand):
         if file_paths:
             for fpath in file_paths:
                 self.stage_file(fpath, force=False)
+
             self.view.window().status_message("Staged files successfully.")
-            util.view.refresh_gitsavvy(self.view)
+            interface.refresh_and_render_file_statuses()
 
 
 class GsStatusUnstageFileCommand(TextCommand, GitCommand):
@@ -447,7 +462,7 @@ class GsStatusUnstageFileCommand(TextCommand, GitCommand):
             for fpath in file_paths:
                 self.unstage_file(fpath)
             self.view.window().status_message("Unstaged files successfully.")
-            util.view.refresh_gitsavvy(self.view)
+            interface.refresh_and_render_file_statuses()
 
 
 class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
@@ -530,7 +545,8 @@ class GsStatusStageAllFilesCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         self.add_all_tracked_files()
-        util.view.refresh_gitsavvy(self.view)
+        interface = ui.get_interface(self.view.id())
+        interface.refresh_repo_status_and_render()
 
 
 class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, GitCommand):
@@ -541,7 +557,8 @@ class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         self.add_all_files()
-        util.view.refresh_gitsavvy(self.view)
+        interface = ui.get_interface(self.view.id())
+        interface.refresh_repo_status_and_render()
 
 
 class GsStatusUnstageAllFilesCommand(TextCommand, GitCommand):
@@ -552,7 +569,8 @@ class GsStatusUnstageAllFilesCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         self.unstage_all_files()
-        util.view.refresh_gitsavvy(self.view)
+        interface = ui.get_interface(self.view.id())
+        interface.refresh_repo_status_and_render()
 
 
 class GsStatusDiscardAllChangesCommand(TextCommand, GitCommand):
