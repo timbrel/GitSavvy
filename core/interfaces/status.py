@@ -158,6 +158,21 @@ class StatusInterface(ui.Interface, GitCommand):
             'stashes': self.get_stashes()
         })
 
+    def render(self, nuke_cursors=False):
+        self.pre_render()
+        self.just_render(nuke_cursors)
+
+        if hasattr(self, "reset_cursor") and nuke_cursors:
+            self.reset_cursor()
+
+    def just_render(self, nuke_cursors):
+        self.clear_regions()
+        rendered = self._render_template()
+        self.view.run_command("gs_new_content_and_regions", {
+            "content": rendered,
+            "regions": self.regions,
+            "nuke_cursors": nuke_cursors
+        })
 
     def on_new_dashboard(self):
         self.view.run_command("gs_status_navigate_file")
