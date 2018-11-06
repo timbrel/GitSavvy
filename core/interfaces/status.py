@@ -127,10 +127,10 @@ class StatusInterface(ui.Interface, GitCommand):
         self.conflicts_keybindings = \
             "\n".join(line[2:] for line in self.conflicts_keybindings.split("\n"))
         self.state = {
-            'staged_entries': [],
-            'unstaged_entries': [],
-            'untracked_entries': [],
-            'conflict_entries': [],
+            'staged_files': [],
+            'unstaged_files': [],
+            'untracked_files': [],
+            'merge_conflicts': [],
             'branch_status': '',
             'git_root': '',
             'head': '',
@@ -142,16 +142,16 @@ class StatusInterface(ui.Interface, GitCommand):
         return "STATUS: {}".format(os.path.basename(self.repo_path))
 
     def pre_render(self):
-        (staged_entries,
-         unstaged_entries,
-         untracked_entries,
-         conflict_entries) = self.sort_status_entries(self.get_status())
+        (staged_files,
+         unstaged_files,
+         untracked_files,
+         merge_conflicts) = self.sort_status_entries(self.get_status())
 
         self.state.update({
-            'staged_entries': staged_entries,
-            'unstaged_entries': unstaged_entries,
-            'untracked_entries': untracked_entries,
-            'conflict_entries': conflict_entries,
+            'staged_files': staged_files,
+            'unstaged_files': unstaged_files,
+            'untracked_files': untracked_files,
+            'merge_conflicts': merge_conflicts,
             'branch_status': self.get_branch_status(delim="\n           "),
             'git_root': self.short_repo_path,
             'head': self.get_latest_commit_msg_for_head(),
@@ -175,16 +175,16 @@ class StatusInterface(ui.Interface, GitCommand):
         })
 
     def refresh_and_render_file_statuses(self):
-        (staged_entries,
-         unstaged_entries,
-         untracked_entries,
-         conflict_entries) = self.sort_status_entries(self.get_status())
+        (staged_files,
+         unstaged_files,
+         untracked_files,
+         merge_conflicts) = self.sort_status_entries(self.get_status())
 
         self.state.update({
-            'staged_entries': staged_entries,
-            'unstaged_entries': unstaged_entries,
-            'untracked_entries': untracked_entries,
-            'conflict_entries': conflict_entries,
+            'staged_files': staged_files,
+            'unstaged_files': unstaged_files,
+            'untracked_files': untracked_files,
+            'merge_conflicts': merge_conflicts,
         })
         self.just_render(nuke_cursors=False)
 
@@ -205,8 +205,8 @@ class StatusInterface(ui.Interface, GitCommand):
 
     @ui.partial("staged_files")
     def render_staged_files(self):
-        staged_entries = self.state['staged_entries']
-        if not staged_entries:
+        staged_files = self.state['staged_files']
+        if not staged_files:
             return ""
 
         def get_path(file_status):
@@ -217,48 +217,48 @@ class StatusInterface(ui.Interface, GitCommand):
 
         return self.template_staged.format("\n".join(
             "  {} {}".format("-" if f.index_status == "D" else " ", get_path(f))
-            for f in staged_entries
+            for f in staged_files
         ))
 
     @ui.partial("unstaged_files")
     def render_unstaged_files(self):
-        unstaged_entries = self.state['unstaged_entries']
-        if not unstaged_entries:
+        unstaged_files = self.state['unstaged_files']
+        if not unstaged_files:
             return ""
 
         return self.template_unstaged.format("\n".join(
             "  {} {}".format("-" if f.working_status == "D" else " ", f.path)
-            for f in unstaged_entries
+            for f in unstaged_files
         ))
 
     @ui.partial("untracked_files")
     def render_untracked_files(self):
-        untracked_entries = self.state['untracked_entries']
-        if not untracked_entries:
+        untracked_files = self.state['untracked_files']
+        if not untracked_files:
             return ""
 
         return self.template_untracked.format(
-            "\n".join("    " + f.path for f in untracked_entries))
+            "\n".join("    " + f.path for f in untracked_files))
 
     @ui.partial("merge_conflicts")
     def render_merge_conflicts(self):
-        conflict_entries = self.state['conflict_entries']
-        if not conflict_entries:
+        merge_conflicts = self.state['merge_conflicts']
+        if not merge_conflicts:
             return ""
         return self.template_merge_conflicts.format(
-            "\n".join("    " + f.path for f in conflict_entries))
+            "\n".join("    " + f.path for f in merge_conflicts))
 
     @ui.partial("conflicts_bindings")
     def render_conflicts_bindings(self):
-        return self.conflicts_keybindings if self.state['conflict_entries'] else ""
+        return self.conflicts_keybindings if self.state['merge_conflicts'] else ""
 
     @ui.partial("no_status_message")
     def render_no_status_message(self):
         return ("\n    Your working directory is clean.\n"
-                if not (self.state['staged_entries'] or
-                        self.state['unstaged_entries'] or
-                        self.state['untracked_entries'] or
-                        self.state['conflict_entries'])
+                if not (self.state['staged_files'] or
+                        self.state['unstaged_files'] or
+                        self.state['untracked_files'] or
+                        self.state['merge_conflicts'])
                 else "")
 
     @ui.partial("stashes")
@@ -752,7 +752,7 @@ class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
 
     def run_async(self):
         interface = ui.get_interface(self.view.id())
-        conflicts = interface.state['conflict_entries']
+        conflicts = interface.state['merge_conflicts']
 
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
@@ -781,7 +781,7 @@ class GsStatusUseBaseVersionCommand(TextCommand, GitCommand):
 
     def run_async(self):
         interface = ui.get_interface(self.view.id())
-        conflicts = interface.state['conflict_entries']
+        conflicts = interface.state['merge_conflicts']
 
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
