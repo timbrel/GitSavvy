@@ -126,35 +126,58 @@ class StatusInterface(ui.Interface, GitCommand):
     def __init__(self, *args, **kwargs):
         self.conflicts_keybindings = \
             "\n".join(line[2:] for line in self.conflicts_keybindings.split("\n"))
+        self.state = {
+            'staged_entries': [],
+            'unstaged_entries': [],
+            'untracked_entries': [],
+            'conflict_entries': [],
+            'branch_status': '',
+            'git_root': '',
+            'head': '',
+            'stashes': []
+        }
         super().__init__(*args, **kwargs)
 
     def title(self):
         return "STATUS: {}".format(os.path.basename(self.repo_path))
 
     def pre_render(self):
-        (self.staged_entries,
-         self.unstaged_entries,
-         self.untracked_entries,
-         self.conflict_entries) = self.sort_status_entries(self.get_status())
+        (staged_entries,
+         unstaged_entries,
+         untracked_entries,
+         conflict_entries) = self.sort_status_entries(self.get_status())
+
+        self.state.update({
+            'staged_entries': staged_entries,
+            'unstaged_entries': unstaged_entries,
+            'untracked_entries': untracked_entries,
+            'conflict_entries': conflict_entries,
+            'branch_status': self.get_branch_status(delim="\n           "),
+            'git_root': self.short_repo_path,
+            'head': self.get_latest_commit_msg_for_head(),
+            'stashes': self.get_stashes()
+        })
+
 
     def on_new_dashboard(self):
         self.view.run_command("gs_status_navigate_file")
 
     @ui.partial("branch_status")
     def render_branch_status(self):
-        return self.get_branch_status(delim="\n           ")
+        return self.state['branch_status']
 
     @ui.partial("git_root")
     def render_git_root(self):
-        return self.short_repo_path
+        return self.state['git_root']
 
     @ui.partial("head")
     def render_head(self):
-        return self.get_latest_commit_msg_for_head()
+        return self.state['head']
 
     @ui.partial("staged_files")
     def render_staged_files(self):
-        if not self.staged_entries:
+        staged_entries = self.state['staged_entries']
+        if not staged_entries:
             return ""
 
         def get_path(file_status):
@@ -165,48 +188,53 @@ class StatusInterface(ui.Interface, GitCommand):
 
         return self.template_staged.format("\n".join(
             "  {} {}".format("-" if f.index_status == "D" else " ", get_path(f))
-            for f in self.staged_entries
+            for f in staged_entries
         ))
 
     @ui.partial("unstaged_files")
     def render_unstaged_files(self):
-        if not self.unstaged_entries:
+        unstaged_entries = self.state['unstaged_entries']
+        if not unstaged_entries:
             return ""
+
         return self.template_unstaged.format("\n".join(
             "  {} {}".format("-" if f.working_status == "D" else " ", f.path)
-            for f in self.unstaged_entries
+            for f in unstaged_entries
         ))
 
     @ui.partial("untracked_files")
     def render_untracked_files(self):
-        if not self.untracked_entries:
+        untracked_entries = self.state['untracked_entries']
+        if not untracked_entries:
             return ""
+
         return self.template_untracked.format(
-            "\n".join("    " + f.path for f in self.untracked_entries))
+            "\n".join("    " + f.path for f in untracked_entries))
 
     @ui.partial("merge_conflicts")
     def render_merge_conflicts(self):
-        if not self.conflict_entries:
+        conflict_entries = self.state['conflict_entries']
+        if not conflict_entries:
             return ""
         return self.template_merge_conflicts.format(
-            "\n".join("    " + f.path for f in self.conflict_entries))
+            "\n".join("    " + f.path for f in conflict_entries))
 
     @ui.partial("conflicts_bindings")
     def render_conflicts_bindings(self):
-        return self.conflicts_keybindings if self.conflict_entries else ""
+        return self.conflicts_keybindings if self.state['conflict_entries'] else ""
 
     @ui.partial("no_status_message")
     def render_no_status_message(self):
         return ("\n    Your working directory is clean.\n"
-                if not (self.staged_entries or
-                        self.unstaged_entries or
-                        self.untracked_entries or
-                        self.conflict_entries)
+                if not (self.state['staged_entries'] or
+                        self.state['unstaged_entries'] or
+                        self.state['untracked_entries'] or
+                        self.state['conflict_entries'])
                 else "")
 
     @ui.partial("stashes")
     def render_stashes(self):
-        stash_list = self.get_stashes()
+        stash_list = self.state['stashes']
         if not stash_list:
             return ""
 
@@ -691,7 +719,7 @@ class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
 
     def run_async(self):
         interface = ui.get_interface(self.view.id())
-        conflicts = interface.conflict_entries
+        conflicts = interface.state['conflict_entries']
 
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
@@ -720,7 +748,7 @@ class GsStatusUseBaseVersionCommand(TextCommand, GitCommand):
 
     def run_async(self):
         interface = ui.get_interface(self.view.id())
-        conflicts = interface.conflict_entries
+        conflicts = interface.state['conflict_entries']
 
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
