@@ -142,16 +142,8 @@ class StatusInterface(ui.Interface, GitCommand):
         return "STATUS: {}".format(os.path.basename(self.repo_path))
 
     def pre_render(self):
-        (staged_files,
-         unstaged_files,
-         untracked_files,
-         merge_conflicts) = self.sort_status_entries(self.get_status())
-
+        self.refresh_file_statuses()
         self.state.update({
-            'staged_files': staged_files,
-            'unstaged_files': unstaged_files,
-            'untracked_files': untracked_files,
-            'merge_conflicts': merge_conflicts,
             'branch_status': self.get_branch_status(delim="\n           "),
             'git_root': self.short_repo_path,
             'head': self.get_latest_commit_msg_for_head(),
@@ -174,7 +166,7 @@ class StatusInterface(ui.Interface, GitCommand):
             "nuke_cursors": nuke_cursors
         })
 
-    def refresh_and_render_file_statuses(self):
+    def refresh_file_statuses(self):
         (staged_files,
          unstaged_files,
          untracked_files,
@@ -186,6 +178,9 @@ class StatusInterface(ui.Interface, GitCommand):
             'untracked_files': untracked_files,
             'merge_conflicts': merge_conflicts,
         })
+
+    def refresh_and_render_file_statuses(self):
+        self.refresh_file_statuses()
         self.just_render(nuke_cursors=False)
 
     def on_new_dashboard(self):
