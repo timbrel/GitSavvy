@@ -1,3 +1,4 @@
+from functools import partial
 import os
 
 import sublime
@@ -145,13 +146,27 @@ class StatusInterface(ui.Interface, GitCommand):
         return "STATUS: {}".format(os.path.basename(self.repo_path))
 
     def pre_render(self):
-        self.refresh_file_statuses()
+        for fn in (
+            self.refresh_file_statuses,
+            lambda: self.state.update({
+                'branch_status': self.get_branch_status(delim="\n           "),
+            }),
+            lambda: self.state.update({
+                'head': self.get_latest_commit_msg_for_head(),
+            }),
+            lambda: self.state.update({
+                'stashes': self.get_stashes()
+            }),
+        ):
+            sublime.set_timeout_async(partial(self.call_then_render, fn))
+
         self.state.update({
-            'branch_status': self.get_branch_status(delim="\n           "),
             'git_root': self.short_repo_path,
-            'head': self.get_latest_commit_msg_for_head(),
-            'stashes': self.get_stashes()
         })
+
+    def call_then_render(self, fn):
+        fn()
+        self.just_render(nuke_cursors=False)
 
     def render(self, nuke_cursors=False):
         self.pre_render()
