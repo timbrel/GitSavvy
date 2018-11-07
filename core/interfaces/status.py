@@ -124,6 +124,9 @@ class StatusInterface(ui.Interface, GitCommand):
     """
 
     def __init__(self, *args, **kwargs):
+        if self._initialized:
+            return
+
         self.conflicts_keybindings = \
             "\n".join(line[2:] for line in self.conflicts_keybindings.split("\n"))
         self.state = {
