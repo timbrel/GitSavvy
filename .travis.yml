@@ -8,10 +8,12 @@ env:
 
 matrix:
     include:
-        - os: linux
+        - name: Linux
+          os: linux
           language: python
           python: 3.3
-        - os: osx
+        - name: OSX
+          os: osx
           language: generic
 
 before_install:
