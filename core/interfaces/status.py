@@ -1,4 +1,4 @@
-from functools import partial
+from functools import partial, wraps
 import os
 
 import sublime
@@ -8,6 +8,22 @@ from ..commands import *
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
+
+
+def distinct_until_state_changed(just_render_fn):
+    """Custom `lru_cache`-look-alike to minimize redraws."""
+    previous_state = {}
+
+    @wraps(just_render_fn)
+    def wrapper(self, *args, **kwargs):
+        nonlocal previous_state
+
+        current_state = self.state
+        if current_state != previous_state:
+            just_render_fn(self, *args, **kwargs)
+            previous_state = current_state.copy()
+
+    return wrapper
 
 
 class GsShowStatusCommand(WindowCommand, GitCommand):
@@ -175,6 +191,7 @@ class StatusInterface(ui.Interface, GitCommand):
         if hasattr(self, "reset_cursor") and nuke_cursors:
             self.reset_cursor()
 
+    @distinct_until_state_changed
     def just_render(self, nuke_cursors):
         self.clear_regions()
         rendered = self._render_template()
