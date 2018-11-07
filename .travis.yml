@@ -8,10 +8,12 @@ env:
 
 matrix:
     include:
-        - os: linux
+        - name: Linux
+          os: linux
           language: python
           python: 3.3
-        - os: osx
+        - name: OSX
+          os: osx
           language: generic
 
 before_install:
@@ -26,10 +28,6 @@ before_install:
 install:
     - sh travis.sh bootstrap
     - sh travis.sh install_package_control
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-            brew update;
-            brew install python || brew upgrade python;
-      fi
     - pip3 install python-coveralls pycodestyle;
 
 script:
