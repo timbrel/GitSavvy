@@ -35,7 +35,7 @@ contexts:
           comment: ahead or behind
           scope: keyword.other.git-savvy.summary-header.ahead-behind
 
-        - match: ^  (HEAD:)\s+([0-9a-f]{7,40}) .+
+        - match: ^  (HEAD:)(?:\s+([0-9a-f]{7,40}) .+)?
           comment: head summary
           scope: comment.git-savvy.summary-header.head-summary
           captures:
