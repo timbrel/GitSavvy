@@ -15,7 +15,7 @@ class ActiveBranchMixin():
         except StopIteration:
             return None
 
-    def _get_branch_status_components(self):
+    def _get_branch_status_components(self, lines):
         """
         Return a tuple of:
 
@@ -28,9 +28,8 @@ class ActiveBranchMixin():
           6) # commits behind of remote
           7) boolean indicating whether the remote branch is gone
         """
-        stdout = self.git("status", "-b", "--porcelain").strip()
 
-        first_line, *addl_lines = stdout.split("\n", 2)
+        first_line, *addl_lines = lines
         # Any additional lines will mean files have changed or are untracked.
         clean = len(addl_lines) == 0
 
@@ -67,8 +66,12 @@ class ActiveBranchMixin():
         If a delimeter is provided, join tuple components with it, and return
         that value.
         """
-        detached, initial, branch, remote, clean, ahead, behind, gone = \
-            self._get_branch_status_components()
+        lines = self._get_status()
+        branch_status = self._get_branch_status_components(lines)
+        return self._format_branch_status(branch_status, delim)
+
+    def _format_branch_status(self, branch_status, delim=None):
+        detached, initial, branch, remote, clean, ahead, behind, gone = branch_status
 
         secondary = []
 
@@ -102,14 +105,15 @@ class ActiveBranchMixin():
         return status, secondary
 
     def get_branch_status_short(self):
-
         if self.in_rebase():
             return "(no branch, rebasing {})".format(self.rebase_branch_name())
 
-        merge_head = self.merge_head() if self.in_merge() else ""
+        lines = self._get_status()
+        branch_status = self._get_branch_status_components(lines)
+        return self._format_branch_status_short(branch_status)
 
-        detached, initial, branch, remote, clean, ahead, behind, gone = \
-            self._get_branch_status_components()
+    def _format_branch_status_short(self, branch_status):
+        detached, initial, branch, remote, clean, ahead, behind, gone = branch_status
 
         dirty = "" if clean else "*"
 
@@ -123,6 +127,7 @@ class ActiveBranchMixin():
         if behind:
             output += "-" + behind
 
+        merge_head = self.merge_head() if self.in_merge() else ""
         return output if not merge_head else output + " (merging {})".format(merge_head)
 
     def get_commit_hash_for_head(self):

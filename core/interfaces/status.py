@@ -163,10 +163,7 @@ class StatusInterface(ui.Interface, GitCommand):
 
     def pre_render(self):
         for fn in (
-            self.refresh_file_statuses,
-            lambda: self.state.update({
-                'branch_status': self.get_branch_status(delim="\n           "),
-            }),
+            self.refresh_repo_status,
             lambda: self.state.update({
                 'head': self.get_latest_commit_msg_for_head(),
             }),
@@ -201,21 +198,27 @@ class StatusInterface(ui.Interface, GitCommand):
             "nuke_cursors": nuke_cursors
         })
 
-    def refresh_file_statuses(self):
+    def refresh_repo_status(self, delim=None):
+        lines = self._get_status()
+        files_statuses = self._parse_status_for_file_statuses(lines)
+        branch_status = self._get_branch_status_components(lines)
+
         (staged_files,
          unstaged_files,
          untracked_files,
-         merge_conflicts) = self.sort_status_entries(self.get_status())
+         merge_conflicts) = self.sort_status_entries(files_statuses)
+        branch_status = self._format_branch_status(branch_status, delim="\n           ")
 
         self.state.update({
             'staged_files': staged_files,
             'unstaged_files': unstaged_files,
             'untracked_files': untracked_files,
             'merge_conflicts': merge_conflicts,
+            'branch_status': branch_status
         })
 
-    def refresh_and_render_file_statuses(self):
-        self.refresh_file_statuses()
+    def refresh_repo_status_and_render(self):
+        self.refresh_repo_status()
         self.just_render(nuke_cursors=False)
 
     def on_new_dashboard(self):
@@ -467,7 +470,7 @@ class GsStatusStageFileCommand(TextCommand, GitCommand):
                 self.stage_file(fpath, force=False)
 
             self.view.window().status_message("Staged files successfully.")
-            interface.refresh_and_render_file_statuses()
+            interface.refresh_repo_status_and_render()
 
 
 class GsStatusUnstageFileCommand(TextCommand, GitCommand):
@@ -492,7 +495,7 @@ class GsStatusUnstageFileCommand(TextCommand, GitCommand):
             for fpath in file_paths:
                 self.unstage_file(fpath)
             self.view.window().status_message("Unstaged files successfully.")
-            interface.refresh_and_render_file_statuses()
+            interface.refresh_repo_status_and_render()
 
 
 class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
