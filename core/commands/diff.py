@@ -70,8 +70,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
 
         self.window.focus_view(diff_view)
         diff_view.sel().clear()
-        diff_view.run_command("gs_diff_refresh")
-        diff_view.run_command("gs_diff_navigate")
+        diff_view.run_command("gs_diff_refresh", {'navigate_to_next_hunk': True})
         diff_view.run_command("gs_handle_vintageous")
 
 
