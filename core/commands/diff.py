@@ -167,16 +167,15 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
         # Filter out any cursors that are larger than a single point.
         cursor_pts = tuple(cursor.a for cursor in self.view.sel() if cursor.a == cursor.b)
 
-        self.diff_starts = tuple(region.a for region in self.view.find_all("^diff"))
-        self.diff_header_ends = tuple(region.b for region in self.view.find_all(r"^\+\+\+.+\n(?=@@)"))
+        self.header_starts = tuple(region.a for region in self.view.find_all("^diff"))
+        self.header_ends = tuple(region.b for region in self.view.find_all(r"^\+\+\+.+\n(?=@@)"))
         self.hunk_starts = tuple(region.a for region in self.view.find_all("^@@"))
-        hunk_starts_following_headers = {region.b for region in self.view.find_all(r"^\+\+\+.+\n(?=@@)")}
         self.hunk_ends = sorted(list(
             # Hunks end when the next diff starts.
-            set(self.diff_starts[1:]) |
+            set(self.header_starts[1:]) |
             # Hunks end when the next hunk starts, except for hunks
             # immediately following diff headers.
-            (set(self.hunk_starts) - hunk_starts_following_headers) |
+            (set(self.hunk_starts) - set(self.header_ends)) |
             # The last hunk ends at the end of the file.
             set((self.view.size(), ))
         ))
@@ -237,7 +236,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
 
         header_start, header_end = max(
             (header_start, header_end)
-            for header_start, header_end in zip(self.diff_starts, self.diff_header_ends)
+            for header_start, header_end in zip(self.header_starts, self.header_ends)
             if (header_start, header_end) < (hunk_start, hunk_end)
         )
 
