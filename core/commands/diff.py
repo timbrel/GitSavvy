@@ -187,6 +187,8 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
         # Apply the diffs in reverse order - otherwise, line number will be off.
         for pt in reversed(cursor_pts):
             hunk_diff = self.get_hunk_diff(pt)
+            if not hunk_diff:
+                return
 
             # The three argument combinations below result from the following
             # three scenarios:
