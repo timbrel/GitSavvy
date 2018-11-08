@@ -81,7 +81,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
     Refresh the diff view with the latest repo state.
     """
 
-    def run(self, edit, cursors=None):
+    def run(self, edit, cursors=None, navigate_to_next_hunk=False):
         if self.view.settings().get("git_savvy.disable_diff"):
             return
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
@@ -119,6 +119,8 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
             raise err
 
         self.view.run_command("gs_replace_view_text", {"text": stdout})
+        if navigate_to_next_hunk:
+            self.view.run_command("gs_diff_navigate")
 
 
 class GsDiffToggleSetting(TextCommand):
@@ -214,7 +216,9 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
                 stdin=hunk_diff
             )
 
-        sublime.set_timeout_async(lambda: self.view.run_command("gs_diff_refresh"))
+        sublime.set_timeout_async(
+            lambda: self.view.run_command("gs_diff_refresh", {'navigate_to_next_hunk': True})
+        )
 
     def get_hunk_diff(self, pt):
         """
