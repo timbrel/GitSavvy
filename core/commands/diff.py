@@ -152,7 +152,7 @@ class GsDiffFocusEventListener(EventListener):
 class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
 
     """
-    Depending on whether the user is in cached mode an what action
+    Depending on whether the user is in cached mode and what action
     the user took, either 1) stage, 2) unstage, or 3) reset the
     hunk under the user's cursor(s).
     """
