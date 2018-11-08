@@ -221,18 +221,24 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
         Given a cursor position, find and return the diff header and the
         diff for the selected hunk/file.
         """
-        header_start = self.diff_starts[bisect.bisect(self.diff_starts, pt) - 1]
-        header_end = self.diff_header_ends[bisect.bisect(self.diff_header_ends, pt) - 1]
 
-        if not header_end or header_end < header_start:
-            # The cursor is not within a hunk.
-            return
+        for hunk_start, hunk_end in zip(self.hunk_starts, self.hunk_ends):
+            if hunk_start <= pt < hunk_end:
+                break
+        else:
+            window = self.view.window()
+            if window:
+                window.status_message('Not within a hunk')
+            return  # Error!
 
-        diff_start = self.hunk_starts[bisect.bisect(self.hunk_starts, pt) - 1]
-        diff_end = self.hunk_ends[bisect.bisect(self.hunk_ends, pt)]
+        header_start, header_end = max(
+            (header_start, header_end)
+            for header_start, header_end in zip(self.diff_starts, self.diff_header_ends)
+            if (header_start, header_end) < (hunk_start, hunk_end)
+        )
 
         header = self.view.substr(sublime.Region(header_start, header_end))
-        diff = self.view.substr(sublime.Region(diff_start, diff_end))
+        diff = self.view.substr(sublime.Region(hunk_start, hunk_end))
 
         return header + diff
 
