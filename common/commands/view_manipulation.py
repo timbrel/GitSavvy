@@ -69,6 +69,7 @@ class GsHandleVintageousCommand(TextCommand):
         if savvy_settings.get("vintageous_friendly", False) is True:
             self.view.settings().set("git_savvy.vintageous_friendly", True)
             if savvy_settings.get("vintageous_enter_insert_mode", False) is True:
+                self.view.settings().set("vintageous_reset_mode_when_switching_tabs", False)
                 self.view.run_command("_enter_insert_mode")
 
 
