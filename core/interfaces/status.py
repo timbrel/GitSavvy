@@ -162,24 +162,34 @@ class StatusInterface(ui.Interface, GitCommand):
         return "STATUS: {}".format(os.path.basename(self.repo_path))
 
     def pre_render(self):
-        for fn in (
-            self.refresh_repo_status,
-            lambda: self.state.update({
-                'head': self.get_latest_commit_msg_for_head(),
-            }),
-            lambda: self.state.update({
-                'stashes': self.get_stashes()
-            }),
+        for thunk in (
+            self.fetch_repo_status,
+            lambda: {'head': self.get_latest_commit_msg_for_head()},
+            lambda: {'stashes': self.get_stashes()},
         ):
-            sublime.set_timeout_async(partial(self.call_then_render, fn))
+            sublime.set_timeout_async(
+                partial(self.update_state, thunk, then=self.just_render)
+            )
 
-        self.state.update({
+        self.update_state({
             'git_root': self.short_repo_path,
         })
 
-    def call_then_render(self, fn):
-        fn()
-        self.just_render()
+    def update_state(self, data, then=None):
+        """Update internal view state and maybe invoke a callback.
+
+        `data` can be a mapping or a callable ("thunk") which returns
+        a mapping.
+
+        Note: We invoke the "sink" without any arguments. TBC.
+        """
+        if callable(data):
+            data = data()
+
+        self.state.update(data)
+
+        if callable(then):
+            then()
 
     def render(self, nuke_cursors=False):
         self.pre_render()
@@ -198,7 +208,7 @@ class StatusInterface(ui.Interface, GitCommand):
             "nuke_cursors": nuke_cursors
         })
 
-    def refresh_repo_status(self, delim=None):
+    def fetch_repo_status(self, delim=None):
         lines = self._get_status()
         files_statuses = self._parse_status_for_file_statuses(lines)
         branch_status = self._get_branch_status_components(lines)
@@ -209,17 +219,16 @@ class StatusInterface(ui.Interface, GitCommand):
          merge_conflicts) = self.sort_status_entries(files_statuses)
         branch_status = self._format_branch_status(branch_status, delim="\n           ")
 
-        self.state.update({
+        return {
             'staged_files': staged_files,
             'unstaged_files': unstaged_files,
             'untracked_files': untracked_files,
             'merge_conflicts': merge_conflicts,
             'branch_status': branch_status
-        })
+        }
 
     def refresh_repo_status_and_render(self):
-        self.refresh_repo_status()
-        self.just_render()
+        self.update_state(self.fetch_repo_status, self.just_render)
 
     def on_new_dashboard(self):
         self.view.run_command("gs_status_navigate_file")
