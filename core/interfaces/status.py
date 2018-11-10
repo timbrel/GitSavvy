@@ -179,7 +179,7 @@ class StatusInterface(ui.Interface, GitCommand):
 
     def call_then_render(self, fn):
         fn()
-        self.just_render(nuke_cursors=False)
+        self.just_render()
 
     def render(self, nuke_cursors=False):
         self.pre_render()
@@ -189,7 +189,7 @@ class StatusInterface(ui.Interface, GitCommand):
             self.reset_cursor()
 
     @distinct_until_state_changed
-    def just_render(self, nuke_cursors):
+    def just_render(self, nuke_cursors=False):
         self.clear_regions()
         rendered = self._render_template()
         self.view.run_command("gs_new_content_and_regions", {
@@ -219,7 +219,7 @@ class StatusInterface(ui.Interface, GitCommand):
 
     def refresh_repo_status_and_render(self):
         self.refresh_repo_status()
-        self.just_render(nuke_cursors=False)
+        self.just_render()
 
     def on_new_dashboard(self):
         self.view.run_command("gs_status_navigate_file")
