@@ -161,7 +161,14 @@ class StatusInterface(ui.Interface, GitCommand):
     def title(self):
         return "STATUS: {}".format(os.path.basename(self.repo_path))
 
-    def pre_render(self):
+    def refresh_view_state(self):
+        """Update all view state.
+
+        Note: For every possible long running process, we enqueue a task
+        in a worker thread. We re-render as soon as we receive meaningful
+        data which implies that the view is only _eventual_ consistent
+        with the real world.
+        """
         for thunk in (
             self.fetch_repo_status,
             lambda: {'head': self.get_latest_commit_msg_for_head()},
@@ -171,6 +178,7 @@ class StatusInterface(ui.Interface, GitCommand):
                 partial(self.update_state, thunk, then=self.just_render)
             )
 
+        # These are cheap to compute, so we just do it!
         self.update_state({
             'git_root': self.short_repo_path,
         })
@@ -192,7 +200,8 @@ class StatusInterface(ui.Interface, GitCommand):
             then()
 
     def render(self, nuke_cursors=False):
-        self.pre_render()
+        """Refresh view state and render."""
+        self.refresh_view_state()
         self.just_render(nuke_cursors)
 
         if hasattr(self, "reset_cursor") and nuke_cursors:
@@ -228,6 +237,12 @@ class StatusInterface(ui.Interface, GitCommand):
         }
 
     def refresh_repo_status_and_render(self):
+        """Refresh `git status` state and render.
+
+        Most actions in the status dashboard only affect the `git status`.
+        So instead of calling `render` it is a good optimization to just
+        ask this method if appropriate.
+        """
         self.update_state(self.fetch_repo_status, self.just_render)
 
     def on_new_dashboard(self):
