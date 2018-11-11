@@ -70,8 +70,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
 
         self.window.focus_view(diff_view)
         diff_view.sel().clear()
-        diff_view.run_command("gs_diff_refresh")
-        diff_view.run_command("gs_diff_navigate")
+        diff_view.run_command("gs_diff_refresh", {'navigate_to_next_hunk': True})
         diff_view.run_command("gs_handle_vintageous")
 
 
@@ -81,7 +80,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
     Refresh the diff view with the latest repo state.
     """
 
-    def run(self, edit, cursors=None):
+    def run(self, edit, cursors=None, navigate_to_next_hunk=False):
         if self.view.settings().get("git_savvy.disable_diff"):
             return
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
@@ -119,6 +118,8 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
             raise err
 
         self.view.run_command("gs_replace_view_text", {"text": stdout})
+        if navigate_to_next_hunk:
+            self.view.run_command("gs_diff_navigate")
 
 
 class GsDiffToggleSetting(TextCommand):
@@ -150,7 +151,7 @@ class GsDiffFocusEventListener(EventListener):
 class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
 
     """
-    Depending on whether the user is in cached mode an what action
+    Depending on whether the user is in cached mode and what action
     the user took, either 1) stage, 2) unstage, or 3) reset the
     hunk under the user's cursor(s).
     """
@@ -165,16 +166,15 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
         # Filter out any cursors that are larger than a single point.
         cursor_pts = tuple(cursor.a for cursor in self.view.sel() if cursor.a == cursor.b)
 
-        self.diff_starts = tuple(region.a for region in self.view.find_all("^diff"))
-        self.diff_header_ends = tuple(region.b for region in self.view.find_all(r"^\+\+\+.+\n(?=@@)"))
+        self.header_starts = tuple(region.a for region in self.view.find_all("^diff"))
+        self.header_ends = tuple(region.b for region in self.view.find_all(r"^\+\+\+.+\n(?=@@)"))
         self.hunk_starts = tuple(region.a for region in self.view.find_all("^@@"))
-        hunk_starts_following_headers = {region.b for region in self.view.find_all(r"^\+\+\+.+\n(?=@@)")}
         self.hunk_ends = sorted(list(
             # Hunks end when the next diff starts.
-            set(self.diff_starts[1:]) |
+            set(self.header_starts[1:]) |
             # Hunks end when the next hunk starts, except for hunks
             # immediately following diff headers.
-            (set(self.hunk_starts) - hunk_starts_following_headers) |
+            (set(self.hunk_starts) - set(self.header_ends)) |
             # The last hunk ends at the end of the file.
             set((self.view.size(), ))
         ))
@@ -187,6 +187,8 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
         # Apply the diffs in reverse order - otherwise, line number will be off.
         for pt in reversed(cursor_pts):
             hunk_diff = self.get_hunk_diff(pt)
+            if not hunk_diff:
+                return
 
             # The three argument combinations below result from the following
             # three scenarios:
@@ -212,25 +214,33 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
                 stdin=hunk_diff
             )
 
-        sublime.set_timeout_async(lambda: self.view.run_command("gs_diff_refresh"))
+        sublime.set_timeout_async(
+            lambda: self.view.run_command("gs_diff_refresh", {'navigate_to_next_hunk': True})
+        )
 
     def get_hunk_diff(self, pt):
         """
         Given a cursor position, find and return the diff header and the
         diff for the selected hunk/file.
         """
-        header_start = self.diff_starts[bisect.bisect(self.diff_starts, pt) - 1]
-        header_end = self.diff_header_ends[bisect.bisect(self.diff_header_ends, pt) - 1]
 
-        if not header_end or header_end < header_start:
-            # The cursor is not within a hunk.
-            return
+        for hunk_start, hunk_end in zip(self.hunk_starts, self.hunk_ends):
+            if hunk_start <= pt < hunk_end:
+                break
+        else:
+            window = self.view.window()
+            if window:
+                window.status_message('Not within a hunk')
+            return  # Error!
 
-        diff_start = self.hunk_starts[bisect.bisect(self.hunk_starts, pt) - 1]
-        diff_end = self.hunk_ends[bisect.bisect(self.hunk_ends, pt)]
+        header_start, header_end = max(
+            (header_start, header_end)
+            for header_start, header_end in zip(self.header_starts, self.header_ends)
+            if (header_start, header_end) < (hunk_start, hunk_end)
+        )
 
         header = self.view.substr(sublime.Region(header_start, header_end))
-        diff = self.view.substr(sublime.Region(diff_start, diff_end))
+        diff = self.view.substr(sublime.Region(hunk_start, hunk_end))
 
         return header + diff
 
