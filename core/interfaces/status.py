@@ -153,6 +153,7 @@ class StatusInterface(ui.Interface, GitCommand):
             'merge_conflicts': [],
             'branch_status': '',
             'git_root': '',
+            'show_help': True,
             'head': '',
             'stashes': []
         }
@@ -181,6 +182,7 @@ class StatusInterface(ui.Interface, GitCommand):
         # These are cheap to compute, so we just do it!
         self.update_state({
             'git_root': self.short_repo_path,
+            'show_help': not self.view.settings().get("git_savvy.help_hidden")
         })
 
     def update_state(self, data, then=None):
@@ -329,12 +331,11 @@ class StatusInterface(ui.Interface, GitCommand):
 
     @ui.partial("help")
     def render_help(self):
-        help_hidden = self.view.settings().get("git_savvy.help_hidden")
-        if help_hidden:
+        show_help = self.state['show_help']
+        if not show_help:
             return ""
-        else:
-            return self.template_help.format(
-                conflicts_bindings=self.render_conflicts_bindings())
+
+        return self.template_help.format(conflicts_bindings=self.render_conflicts_bindings())
 
 
 ui.register_listeners(StatusInterface)
