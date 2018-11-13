@@ -1,5 +1,6 @@
 from functools import partial, wraps
 import os
+import threading
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
@@ -146,6 +147,7 @@ class StatusInterface(ui.Interface, GitCommand):
 
         self.conflicts_keybindings = \
             "\n".join(line[2:] for line in self.conflicts_keybindings.split("\n"))
+        self._lock = threading.Lock()
         self.state = {
             'staged_files': [],
             'unstaged_files': [],
@@ -196,7 +198,8 @@ class StatusInterface(ui.Interface, GitCommand):
         if callable(data):
             data = data()
 
-        self.state.update(data)
+        with self._lock:
+            self.state.update(data)
 
         if callable(then):
             then()
@@ -211,8 +214,13 @@ class StatusInterface(ui.Interface, GitCommand):
 
     @distinct_until_state_changed
     def just_render(self, nuke_cursors=False):
-        self.clear_regions()
-        rendered = self._render_template()
+        # TODO: Rewrite to "pureness" so that we don't need a lock here
+        # Note: It is forbidden to `update_state` during render, e.g. in
+        # any partials.
+        with self._lock:
+            self.clear_regions()
+            rendered = self._render_template()
+
         self.view.run_command("gs_new_content_and_regions", {
             "content": rendered,
             "regions": self.regions,
