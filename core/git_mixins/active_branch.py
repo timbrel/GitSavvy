@@ -83,7 +83,7 @@ class ActiveBranchMixin():
             status = "HEAD is in a detached state."
 
         elif initial:
-            status = "Initial commit on `{}`.".format(branch)
+            status = "On branch `{}`.".format(branch)
 
         else:
             tracking = " tracking `{}`".format(remote)

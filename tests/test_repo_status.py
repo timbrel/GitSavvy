@@ -185,20 +185,20 @@ TestLongBranchStatusTestcases = [
 ),
 (
     "## No commits yet on master",
-    "Initial commit on `master`."
+    "On branch `master`."
 ),
 (
     "## No commits yet on master\n?? foo",
-    "Initial commit on `master`."
+    "On branch `master`."
 ),
 # Previous versions of git instead emitted this before the initial commit
 (
     "## Initial commit on zoom",
-    "Initial commit on `zoom`."
+    "On branch `zoom`."
 ),
 (
     "## Initial commit on master\n?? foo",
-    "Initial commit on `master`."
+    "On branch `master`."
 ),
 ]
 
