@@ -8,28 +8,6 @@ from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core.git_command import GitCommand
 
-class TestPrivateGitStatusFunction(DeferrableTestCase):
-    def tearDown(self):
-        unstub()
-
-    def test_ensure_it_calls_git_status(self):
-        git = GitCommand()
-        with expect(git).git("status", "--porcelain", "-z", "-b").thenReturn(''):
-            git._get_status()
-
-    @p.expand([
-        ("FOO",            ["FOO"]),
-        ("FOO\x00",        ["FOO"]),
-        ("FOO\x00BAR",     ["FOO", "BAR"]),
-        ("FOO\x00BAR\x00", ["FOO", "BAR"]),
-    ])
-    def test_splits_output_into_lines(self, git_status, expected):
-        git = GitCommand()
-        when(git).git("status", ...).thenReturn(git_status)
-
-        actual = git._get_status()
-        self.assertEqual(actual, expected)
-
 
 TestShortBranchStatusTestcases = [
 (
