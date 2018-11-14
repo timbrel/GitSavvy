@@ -10,7 +10,7 @@ from ...common import util
 
 TAG_DELETE_MESSAGE = "Tag(s) deleted."
 
-NO_REMOTES_MESSAGE = "\n\n  You have not configured any remotes.\n"
+NO_REMOTES_MESSAGE = "You have not configured any remotes."
 
 NO_LOCAL_TAGS_MESSAGE = "    Your repository has no tags."
 NO_REMOTE_TAGS_MESSAGE = "    Unable to retrieve tags for this remote."
