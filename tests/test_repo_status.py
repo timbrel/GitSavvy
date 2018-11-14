@@ -8,8 +8,8 @@ from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core.git_command import GitCommand
 
-
 TestShortBranchStatusTestcases = [
+# noqa: E122
 (
     "## optimize-status-interface",
     "optimize-status-interface"
@@ -103,6 +103,7 @@ class TestShortBranchStatus(DeferrableTestCase):
 
 
 TestLongBranchStatusTestcases = [
+# noqa: E122
 (
     "## optimize-status-interface",
     "On branch `optimize-status-interface`."
