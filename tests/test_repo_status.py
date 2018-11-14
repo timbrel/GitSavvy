@@ -73,7 +73,7 @@ TestShortBranchStatusTestcases = [
 # Previous versions of git instead emitted this before the initial commit
 (
     "## Initial commit on zoom",
-    "master"
+    "zoom"
 ),
 (
     "## Initial commit on master\n?? foo",
