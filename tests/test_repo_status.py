@@ -84,9 +84,35 @@ TestShortBranchStatusTestcases = [
 (
     "## improve-diff-view...fork/improve-diff-view [gone]\x00?? foo",
     "improve-diff-view*"
-)
-
+),
+(
+    "## HEAD (no branch)",
+    "DETACHED"
+),
+(
+    "## HEAD (no branch)\x00?? foo",
+    "DETACHED*"
+),
+(
+    "## No commits yet on master",
+    "master"
+),
+(
+    "## No commits yet on master\x00?? foo",
+    "master*"
+),
+# Previous versions of git instead emitted this before the initial commit
+(
+    "## Initial commit on zoom",
+    "master"
+),
+(
+    "## Initial commit on master\x00?? foo",
+    "master*"
+),
 ]
+
+
 class TestShortBranchStatus(DeferrableTestCase):
     def tearDown(self):
         unstub()
@@ -102,6 +128,9 @@ class TestShortBranchStatus(DeferrableTestCase):
         actual = git.get_branch_status_short()
         self.assertEqual(actual, expected)
 
+    # TODO: Add tests for `in_rebase` True
+    # TODO: Add tests for `in_merge` True
+    # TODO: Add tests for
 
 
 TestLongBranchStatusTestcases = [
