@@ -60,6 +60,9 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
         file_path = self.file_path
         if file_path:
             graph_content = "File: {}\n\n".format(file_path)
