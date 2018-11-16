@@ -1,6 +1,9 @@
+from functools import partial
+import re
+
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
-import re
+
 from ..git_command import GitCommand
 from .log import GsLogActionCommand, GsLogCommand
 from .navigate import GsNavigate
@@ -44,8 +47,7 @@ class LogGraphMixin(object):
         settings.set("git_savvy.git_graph_args", self.get_graph_args())
         view.set_name(self.title)
 
-        view.run_command("gs_log_graph_refresh")
-        view.run_command("gs_log_graph_navigate")
+        view.run_command("gs_log_graph_refresh", {"navigate_after_draw": True})
 
     def get_graph_args(self):
         args = self.savvy_settings.get("git_graph_args")
@@ -64,10 +66,10 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
     Refresh the current graph view with the latest commits.
     """
 
-    def run(self, edit):
-        sublime.set_timeout_async(self.run_async)
+    def run(self, edit, navigate_after_draw=False):
+        sublime.set_timeout_async(partial(self.run_async, navigate_after_draw))
 
-    def run_async(self):
+    def run_async(self, navigate_after_draw=False):
         file_path = self.file_path
         if file_path:
             graph_content = "File: {}\n\n".format(file_path)
@@ -82,6 +84,9 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             flags=re.MULTILINE)
 
         self.view.run_command("gs_replace_view_text", {"text": graph_content})
+        if navigate_after_draw:
+            self.view.run_command("gs_log_graph_navigate")
+
         self.view.run_command("gs_log_graph_more_info")
 
 
