@@ -168,55 +168,6 @@ class GsLogGraphCommand(GsLogCommand):
     ]
 
 
-class GsLogGraphActionCommand(GsLogActionCommand):
-
-    """
-    Checkout the commit at the selected line. It is also used by compare_commit_view.
-    """
-    default_actions = [
-        ["show_commit", "Show commit"],
-        ["checkout_commit", "Checkout commit"],
-        ["cherry_pick", "Cherry-pick commit"],
-        ["compare_against", "Compare commit against ..."],
-        ["copy_sha", "Copy the full SHA"]
-    ]
-
-    def update_actions(self):
-        super().update_actions()  # GsLogActionCommand will mutate actions if `_file_path` is set!
-        view = self.window.active_view()
-        if view.settings().get("git_savvy.log_graph_view"):
-            if self._file_path:
-                # for `git: graph current file`
-                self.actions.insert(5, ["revert_commit", "Revert commit"])
-            else:
-                self.actions.insert(3, ["revert_commit", "Revert commit"])
-
-            self.actions.extend([
-                ["diff_commit", "Diff commit"],
-                ["diff_commit_cache", "Diff commit (cached)"],
-            ])
-        elif view.settings().get("git_savvy.compare_commit_view"):
-            pass
-
-    def run(self):
-        view = self.window.active_view()
-
-        self.selections = view.sel()
-
-        lines = util.view.get_lines_from_regions(view, self.selections)
-        line = lines[0]
-
-        m = COMMIT_LINE.search(line)
-        self._commit_hash = m.groupdict()['commit_hash'] if m else ""
-        self._file_path = self.file_path
-
-        if not len(self.selections) == 1:
-            self.window.status_message("You can only do actions on one commit at a time.")
-            return
-
-        super().run(commit_hash=self._commit_hash, file_path=self._file_path)
-
-
 class GsLogGraphNavigateCommand(GsNavigate):
 
     """
@@ -287,3 +238,53 @@ class GsLogGraphToggleMoreInfoCommand(TextCommand, WindowCommand, GitCommand):
         show_panel = not self.savvy_settings.get("graph_show_more_commit_info")
         self.savvy_settings.set("graph_show_more_commit_info", show_panel)
         draw_info_panel(self.view, show_panel)
+
+
+class GsLogGraphActionCommand(GsLogActionCommand):
+
+    """
+    Define menu shown if you `<enter>` on a specific commit.
+    Also used by `compare_commit_view`.
+    """
+    default_actions = [
+        ["show_commit", "Show commit"],
+        ["checkout_commit", "Checkout commit"],
+        ["cherry_pick", "Cherry-pick commit"],
+        ["compare_against", "Compare commit against ..."],
+        ["copy_sha", "Copy the full SHA"]
+    ]
+
+    def update_actions(self):
+        super().update_actions()  # GsLogActionCommand will mutate actions if `_file_path` is set!
+        view = self.window.active_view()
+        if view.settings().get("git_savvy.log_graph_view"):
+            if self._file_path:
+                # for `git: graph current file`
+                self.actions.insert(5, ["revert_commit", "Revert commit"])
+            else:
+                self.actions.insert(3, ["revert_commit", "Revert commit"])
+
+            self.actions.extend([
+                ["diff_commit", "Diff commit"],
+                ["diff_commit_cache", "Diff commit (cached)"],
+            ])
+        elif view.settings().get("git_savvy.compare_commit_view"):
+            pass
+
+    def run(self):
+        view = self.window.active_view()
+
+        self.selections = view.sel()
+
+        lines = util.view.get_lines_from_regions(view, self.selections)
+        line = lines[0]
+
+        m = COMMIT_LINE.search(line)
+        self._commit_hash = m.groupdict()['commit_hash'] if m else ""
+        self._file_path = self.file_path
+
+        if not len(self.selections) == 1:
+            self.window.status_message("You can only do actions on one commit at a time.")
+            return
+
+        super().run(commit_hash=self._commit_hash, file_path=self._file_path)
