@@ -1,8 +1,8 @@
-from functools import partial
+from functools import lru_cache, partial
 import re
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from ..git_command import GitCommand
 from .log import GsLogActionCommand, GsLogCommand
@@ -87,7 +87,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         if navigate_after_draw:
             self.view.run_command("gs_log_graph_navigate")
 
-        self.view.run_command("gs_log_graph_more_info")
+        draw_info_panel(self.view, self.savvy_settings.get("graph_show_more_commit_info"))
 
 
 class GsLogGraphCurrentBranch(LogGraphMixin, WindowCommand, GitCommand):
@@ -225,53 +225,65 @@ class GsLogGraphNavigateCommand(GsNavigate):
     """
     offset = 0
 
-    def run(self, edit, **kwargs):
-        super().run(edit, **kwargs)
-        self.view.window().run_command("gs_log_graph_more_info")
-
     def get_available_regions(self):
         return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
 
 
-class GsLogGraphMoreInfoCommand(TextCommand, GitCommand):
-
-    """
-    Show all info about a commit in a quick panel. It is also used by compare_commit_view.
-    """
-
-    def run(self, edit):
-        show_more = self.savvy_settings.get("graph_show_more_commit_info")
-        if not show_more:
+class GsLogGraphCursorListener(EventListener, GitCommand):
+    # `on_selection_modified` triggers twice per mouse click
+    # multiplied with the number of views into the same buffer.
+    # Well, ... sublime. Anyhow we're also not interested
+    # in vertical movement.
+    # We throttle in `draw_info_panel` below by line_text
+    # bc a log line is pretty unique if it contains the commit's sha.
+    def on_selection_modified_async(self, view):
+        if not (
+            view.settings().get("git_savvy.log_graph_view")
+            or view.settings().get("git_savvy.compare_commit_view")
+        ):
             return
 
-        selections = self.view.sel()
-        if len(selections) != 1:
-            return
+        draw_info_panel(view, self.savvy_settings.get("graph_show_more_commit_info"))
 
-        lines = util.view.get_lines_from_regions(self.view, selections)
-        if not lines:
-            return
-        line = lines[0]
 
-        m = COMMIT_LINE.search(line)
+def draw_info_panel(view, show_panel):
+    """Extract line under the first cursor and draw info panel."""
+    try:
+        cursor = next(s.a for s in view.sel() if s.empty())
+    except StopIteration:
+        return
+
+    line_span = view.line(cursor)
+    line_text = view.substr(line_span)
+
+    # Defer to a second fn to reduce side-effects
+    draw_info_panel_for_line(view.window().id(), line_text, show_panel)
+
+
+@lru_cache(maxsize=1)
+# ^- used to throttle the side-effect!
+# Read: distinct until      (wid, line_text, show_panel) changes
+def draw_info_panel_for_line(wid, line_text, show_panel):
+    window = sublime.Window(wid)
+
+    if show_panel:
+        m = COMMIT_LINE.search(line_text)
         commit_hash = m.groupdict()['commit_hash'] if m else ""
-
         if len(commit_hash) <= 3:
             return
 
-        self.view.window().run_command("gs_show_commit_info", {"commit_hash": commit_hash})
+        window.run_command("gs_show_commit_info", {"commit_hash": commit_hash})
+    else:
+        window.run_command("hide_panel")
 
 
 class GsLogGraphToggleMoreInfoCommand(TextCommand, WindowCommand, GitCommand):
 
     """
-    Toggle `graph_show_more_commit_info` setting. It is also used by compare_commit_view.
+    Toggle global `graph_show_more_commit_info` setting. Also used by compare_commit_view.
     """
 
     def run(self, edit):
-        show_more = not self.savvy_settings.get("graph_show_more_commit_info")
-        self.savvy_settings.set("graph_show_more_commit_info", show_more)
-        if not show_more:
-            self.view.window().run_command("hide_panel")
-
-        self.view.run_command("gs_log_graph_more_info")
+        show_panel = not self.savvy_settings.get("graph_show_more_commit_info")
+        self.savvy_settings.set("graph_show_more_commit_info", show_panel)
+        draw_info_panel(self.view, show_panel)
