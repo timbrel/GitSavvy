@@ -44,20 +44,13 @@ class LogGraphMixin(object):
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)
         settings.set("git_savvy.file_path", self._file_path)
-        settings.set("git_savvy.git_graph_args", self.get_graph_args())
+        self.prepare_target_view(view)
         view.set_name(self.title)
 
         view.run_command("gs_log_graph_refresh", {"navigate_after_draw": True})
 
-    def get_graph_args(self):
-        args = self.savvy_settings.get("git_graph_args")
-        follow = self.savvy_settings.get("log_follow_rename")
-        if self._file_path and follow:
-            args = args + ["--follow"]
-        if self._file_path:
-            file_path = self.get_rel_path(self._file_path)
-            args = args + ["--", file_path]
-        return args
+    def prepare_target_view(self, view):
+        pass
 
 
 class GsLogGraphRefreshCommand(TextCommand, GitCommand):
@@ -76,18 +69,37 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         else:
             graph_content = ""
 
-        args = self.view.settings().get("git_savvy.git_graph_args")
+        args = self.build_git_command()
         graph_content += self.git(*args)
         graph_content = re.sub(
             r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
             r'\1' + COMMIT_NODE_CHAR, graph_content,
             flags=re.MULTILINE)
 
-        self.view.run_command("gs_replace_view_text", {"text": graph_content})
+        self.view.run_command("gs_replace_view_text", {"text": graph_content, "restore_cursors": True})
         if navigate_after_draw:
             self.view.run_command("gs_log_graph_navigate")
 
         draw_info_panel(self.view, self.savvy_settings.get("graph_show_more_commit_info"))
+
+    def build_git_command(self):
+        args = self.savvy_settings.get("git_graph_args")
+        follow = self.savvy_settings.get("log_follow_rename")
+        if self.file_path and follow:
+            args.insert(1, "--follow")
+
+        if self.view.settings().get("git_savvy.log_graph_view.all_branches"):
+            args.insert(1, "--all")
+
+        author = self.view.settings().get("git_savvy.log_graph_view.filter_by_author")
+        if author:
+            args.insert(1, "--author={}".format(author))
+
+        branch = self.view.settings().get("git_savvy.log_graph_view.filter_by_branch")
+        if branch:
+            args.append(branch)
+
+        return args
 
 
 class GsLogGraphCommand(GsLogCommand):
@@ -112,10 +124,8 @@ class GsLogGraphCurrentBranch(LogGraphMixin, WindowCommand, GitCommand):
 
 class GsLogGraphAllBranches(LogGraphMixin, WindowCommand, GitCommand):
 
-    def get_graph_args(self):
-        args = super().get_graph_args()
-        args.append("--all")
-        return args
+    def prepare_target_view(self, view):
+        view.settings().set("git_savvy.log_graph_view.all_branches", True)
 
 
 class GsLogGraphByAuthorCommand(LogGraphMixin, WindowCommand, GitCommand):
@@ -153,10 +163,8 @@ class GsLogGraphByAuthorCommand(LogGraphMixin, WindowCommand, GitCommand):
         self._selected_author = self._entries[index][3]
         super().run_async()
 
-    def get_graph_args(self):
-        args = super().get_graph_args()
-        args.insert(1, "--author={}".format(self._selected_author))
-        return args
+    def prepare_target_view(self, view):
+        view.settings().set("git_savvy.log_graph_view.filter_by_author", self._selected_author)
 
 
 class GsLogGraphByBranchCommand(LogGraphMixin, WindowCommand, GitCommand):
@@ -169,10 +177,8 @@ class GsLogGraphByBranchCommand(LogGraphMixin, WindowCommand, GitCommand):
             self._selected_branch = branch
             super().run_async()
 
-    def get_graph_args(self):
-        args = super().get_graph_args()
-        args.append(self._selected_branch)
-        return args
+    def prepare_target_view(self, view):
+        view.settings().set("git_savvy.log_graph_view.filter_by_branch", self._selected_branch)
 
 
 class GsLogGraphNavigateCommand(GsNavigate):
