@@ -39,7 +39,6 @@ class LogGraphMixin(object):
         view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
         view.run_command("gs_handle_vintageous")
         view.run_command("gs_handle_arrow_keys")
-        view.sel().clear()
 
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)
