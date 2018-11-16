@@ -182,12 +182,11 @@ class GsLogGraphActionCommand(GsLogActionCommand):
     ]
 
     def update_actions(self):
-        super().update_actions()
+        super().update_actions()  # GsLogActionCommand will mutate actions if `_file_path` is set!
         view = self.window.active_view()
         if view.settings().get("git_savvy.log_graph_view"):
             if self._file_path:
-                # for `git: graph current file`, two more options would be inserted
-                # at index 1
+                # for `git: graph current file`
                 self.actions.insert(5, ["revert_commit", "Revert commit"])
             else:
                 self.actions.insert(3, ["revert_commit", "Revert commit"])
