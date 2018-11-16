@@ -90,6 +90,22 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         draw_info_panel(self.view, self.savvy_settings.get("graph_show_more_commit_info"))
 
 
+class GsLogGraphCommand(GsLogCommand):
+    """
+    Defines the main menu if you invoke `git: graph` or `git: graph current file`.
+
+    Accepts `current_file: bool` or `file_path: str` as (keyword) arguments, and
+    ensures that each of the defined actions/commands in `default_actions` are finally
+    called with `file_path` set.
+    """
+    default_actions = [
+        ["gs_log_graph_current_branch", "For current branch"],
+        ["gs_log_graph_all_branches", "For all branches"],
+        ["gs_log_graph_by_author", "Filtered by author"],
+        ["gs_log_graph_by_branch", "Filtered by branch"],
+    ]
+
+
 class GsLogGraphCurrentBranch(LogGraphMixin, WindowCommand, GitCommand):
     pass
 
@@ -157,15 +173,6 @@ class GsLogGraphByBranchCommand(LogGraphMixin, WindowCommand, GitCommand):
         args = super().get_graph_args()
         args.append(self._selected_branch)
         return args
-
-
-class GsLogGraphCommand(GsLogCommand):
-    default_actions = [
-        ["gs_log_graph_current_branch", "For current branch"],
-        ["gs_log_graph_all_branches", "For all branches"],
-        ["gs_log_graph_by_author", "Filtered by author"],
-        ["gs_log_graph_by_branch", "Filtered by branch"],
-    ]
 
 
 class GsLogGraphNavigateCommand(GsNavigate):
