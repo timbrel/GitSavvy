@@ -31,14 +31,19 @@ class LogGraphMixin(object):
     def run_async(self):
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
+
         view = util.view.get_scratch_view(self, "log_graph", read_only=True)
+        view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
+        view.run_command("gs_handle_vintageous")
+        view.run_command("gs_handle_arrow_keys")
+        view.sel().clear()
+
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)
         settings.set("git_savvy.file_path", self._file_path)
         settings.set("git_savvy.git_graph_args", self.get_graph_args())
-        view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
         view.set_name(self.title)
-        view.sel().clear()
+
         view.run_command("gs_log_graph_refresh")
         view.run_command("gs_log_graph_navigate")
 
@@ -78,9 +83,6 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
         self.view.run_command("gs_replace_view_text", {"text": graph_content})
         self.view.run_command("gs_log_graph_more_info")
-
-        self.view.run_command("gs_handle_vintageous")
-        self.view.run_command("gs_handle_arrow_keys")
 
 
 class GsLogGraphCurrentBranch(LogGraphMixin, WindowCommand, GitCommand):
