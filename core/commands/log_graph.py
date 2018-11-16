@@ -2,7 +2,7 @@ from functools import lru_cache, partial
 import re
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand, EventListener
+from sublime_plugin import WindowCommand, TextCommand, ViewEventListener
 
 from ..git_command import GitCommand
 from .log import GsLogActionCommand, GsLogCommand
@@ -229,21 +229,22 @@ class GsLogGraphNavigateCommand(GsNavigate):
         return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
 
 
-class GsLogGraphCursorListener(EventListener, GitCommand):
+class GsLogGraphCursorListener(ViewEventListener, GitCommand):
+    @classmethod
+    def is_applicable(self, settings):
+        return (
+            settings.get("git_savvy.log_graph_view")
+            or settings.get("git_savvy.compare_commit_view")
+        )
+
     # `on_selection_modified` triggers twice per mouse click
     # multiplied with the number of views into the same buffer.
     # Well, ... sublime. Anyhow we're also not interested
     # in vertical movement.
     # We throttle in `draw_info_panel` below by line_text
     # bc a log line is pretty unique if it contains the commit's sha.
-    def on_selection_modified_async(self, view):
-        if not (
-            view.settings().get("git_savvy.log_graph_view")
-            or view.settings().get("git_savvy.compare_commit_view")
-        ):
-            return
-
-        draw_info_panel(view, self.savvy_settings.get("graph_show_more_commit_info"))
+    def on_selection_modified_async(self):
+        draw_info_panel(self.view, self.savvy_settings.get("graph_show_more_commit_info"))
 
 
 def draw_info_panel(view, show_panel):
