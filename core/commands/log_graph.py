@@ -237,7 +237,8 @@ def draw_info_panel_for_line(wid, line_text, show_panel):
 
         window.run_command("gs_show_commit_info", {"commit_hash": commit_hash})
     else:
-        window.run_command("hide_panel")
+        if window.active_panel() == "output.show_commit_info":
+            window.run_command("hide_panel")
 
 
 class GsLogGraphToggleMoreInfoCommand(TextCommand, WindowCommand, GitCommand):
