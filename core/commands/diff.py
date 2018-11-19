@@ -183,10 +183,20 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 class GsDiffToggleSetting(TextCommand):
 
     """
-    Toggle view settings: `ignore_whitespace` or `show_word_diff`.
+    Toggle view settings: `ignore_whitespace` , `show_word_diff` or
+    `in_cached_mode`.
     """
 
     def run(self, edit, setting):
+        if (
+            setting == 'in_cached_mode'
+            and self.view.settings().get("git_savvy.diff_view.base_commit")
+            and self.view.settings().get("git_savvy.diff_view.target_commit")
+        ):
+            # There is no cached mode if you diff between two commits, so
+            # we need to abort here
+            return
+
         setting_str = "git_savvy.diff_view.{}".format(setting)
         settings = self.view.settings()
         settings.set(setting_str, not settings.get(setting_str))
