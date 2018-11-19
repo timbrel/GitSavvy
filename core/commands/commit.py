@@ -402,3 +402,5 @@ class GsCommitViewCloseCommand(TextCommand, GitCommand):
 
             if ok:
                 self.view.close()
+        else:
+            self.view.close()
