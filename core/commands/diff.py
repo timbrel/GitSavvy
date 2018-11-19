@@ -99,7 +99,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
             if not title:
                 title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(os.path.basename(repo_path))
             diff_view.set_name(title)
-            diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
+            diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff_view.sublime-syntax")
             diff_views[view_key] = diff_view
 
         self.window.focus_view(diff_view)
