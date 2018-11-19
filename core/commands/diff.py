@@ -123,6 +123,29 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         base_commit = self.view.settings().get("git_savvy.diff_view.base_commit")
         target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
         show_diffstat = self.view.settings().get("git_savvy.diff_view.show_diffstat")
+        disable_stage = self.view.settings().get("git_savvy.diff_view.disable_stage")
+
+        prelude = "\n"
+        if self.file_path:
+            rel_file_path = os.path.relpath(self.file_path, self.repo_path)
+            prelude += "  FILE: {}\n".format(rel_file_path)
+
+        if disable_stage:
+            if in_cached_mode:
+                prelude += "  INDEX..{}\n".format(base_commit or target_commit)
+            else:
+                if base_commit and target_commit:
+                    prelude += "  {}..{}\n".format(target_commit, base_commit)
+                else:
+                    prelude += "  WORKING DIR..{}\n".format(base_commit or target_commit)
+        else:
+            if in_cached_mode:
+                prelude += "  STAGED CHANGES (Will commit)\n"
+            else:
+                prelude += "  UNSTAGED CHANGES\n"
+
+        if ignore_whitespace:
+            prelude += "  IGNORING WHITESPACE\n"
 
         try:
             stdout = self.git(
@@ -151,7 +174,8 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
                 return
             raise err
 
-        self.view.run_command("gs_replace_view_text", {"text": stdout})
+        text = prelude + '\n--\n' + stdout
+        self.view.run_command("gs_replace_view_text", {"text": text})
         if navigate_to_next_hunk:
             self.view.run_command("gs_diff_navigate")
 
