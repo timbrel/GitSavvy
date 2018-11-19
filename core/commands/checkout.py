@@ -127,13 +127,13 @@ class GsCheckoutCurrentFileAtCommitCommand(LogMixin, WindowCommand, GitCommand):
         if self.file_path:
             super().run(file_path=self.file_path)
 
-    def on_highlight(self, commit):
+    def on_highlight(self, commit, file_path=None):
         if not self.savvy_settings.get("log_show_more_commit_info", True):
             return
         if commit:
             self.window.run_command('gs_show_file_diff', {
                 'commit_hash': commit,
-                'file_path': self.file_path
+                'file_path': file_path
             })
 
     @util.actions.destructive(description="discard uncommitted changes to file")
