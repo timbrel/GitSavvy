@@ -15,6 +15,9 @@
 #  ^ comment
 #            ^ constant.other
 #  ^ comment.git-savvy.summary-header.title.head
+  HEAD:
+#  ^ comment
+# ^^^^^ comment.git-savvy.summary-header.title.head
 
   ** Press [e] to toggle display of remote branches. **
 # <- - meta.git-savvy.status
