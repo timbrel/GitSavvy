@@ -15,11 +15,11 @@ TestShortBranchStatusTestcases = [
     "optimize-status-interface"
 ),
 (
-    "## optimize-status-interface\n",
+    "## optimize-status-interface\x00",
     "optimize-status-interface"
 ),
 (
-    "## optimize-status-interface\n?? foo.txt",
+    "## optimize-status-interface\x00?? foo.txt",
     "optimize-status-interface*"
 ),
 (
@@ -27,7 +27,7 @@ TestShortBranchStatusTestcases = [
     "optimize-status-interface+1"
 ),
 (
-    "## optimize-status-interface...fork/branch-name [ahead 1]\n?? foo.txt",
+    "## optimize-status-interface...fork/branch-name [ahead 1]\x00?? foo.txt",
     "optimize-status-interface*+1"
 ),
 (
@@ -35,7 +35,7 @@ TestShortBranchStatusTestcases = [
     "dev-7"
 ),
 (
-    "## dev...origin/dev [behind 7]\n?? foo.txt",
+    "## dev...origin/dev [behind 7]\x00?? foo.txt",
     "dev*-7"
 ),
 (
@@ -43,7 +43,7 @@ TestShortBranchStatusTestcases = [
     "optimize-status-interface+1-2"
 ),
 (
-    "## optimize-status-interface...fork/branch-name [ahead 1, behind 2]\nM foo",
+    "## optimize-status-interface...fork/branch-name [ahead 1, behind 2]\x00M foo",
     "optimize-status-interface*+1-2"
 ),
 (
@@ -51,7 +51,7 @@ TestShortBranchStatusTestcases = [
     "improve-diff-view"
 ),
 (
-    "## improve-diff-view...fork/improve-diff-view [gone]\n?? foo",
+    "## improve-diff-view...fork/improve-diff-view [gone]\x00?? foo",
     "improve-diff-view*"
 ),
 (
@@ -59,7 +59,7 @@ TestShortBranchStatusTestcases = [
     "DETACHED"
 ),
 (
-    "## HEAD (no branch)\n?? foo",
+    "## HEAD (no branch)\x00?? foo",
     "DETACHED*"
 ),
 (
@@ -67,7 +67,7 @@ TestShortBranchStatusTestcases = [
     "master"
 ),
 (
-    "## No commits yet on master\n?? foo",
+    "## No commits yet on master\x00?? foo",
     "master*"
 ),
 # Previous versions of git instead emitted this before the initial commit
@@ -76,7 +76,7 @@ TestShortBranchStatusTestcases = [
     "zoom"
 ),
 (
-    "## Initial commit on master\n?? foo",
+    "## Initial commit on master\x00?? foo",
     "master*"
 ),
 ]
@@ -109,11 +109,11 @@ TestLongBranchStatusTestcases = [
     "On branch `optimize-status-interface`."
 ),
 (
-    "## optimize-status-interface\n",
+    "## optimize-status-interface\x00",
     "On branch `optimize-status-interface`."
 ),
 (
-    "## optimize-status-interface\n?? foo.txt",
+    "## optimize-status-interface\x00?? foo.txt",
     "On branch `optimize-status-interface`."
 ),
 (
@@ -128,7 +128,7 @@ TestLongBranchStatusTestcases = [
     """.rstrip())
 ),
 (
-    "## optimize-status-interface...fork/branch-name [ahead 1]\n?? foo.txt",
+    "## optimize-status-interface...fork/branch-name [ahead 1]\x00?? foo.txt",
     dedent("""\
     On branch `optimize-status-interface` tracking `fork/branch-name`.
     You're ahead by 1.
@@ -142,7 +142,7 @@ TestLongBranchStatusTestcases = [
     """.rstrip())
 ),
 (
-    "## dev...origin/dev [behind 7]\n?? foo.txt",
+    "## dev...origin/dev [behind 7]\x00?? foo.txt",
     dedent("""\
     On branch `dev` tracking `origin/dev`.
     You're behind by 7.
@@ -156,7 +156,7 @@ TestLongBranchStatusTestcases = [
     """.rstrip())
 ),
 (
-    "## optimize-status-interface...fork/branch-name [ahead 1, behind 2]\nM foo",
+    "## optimize-status-interface...fork/branch-name [ahead 1, behind 2]\x00M foo",
     dedent("""\
     On branch `optimize-status-interface` tracking `fork/branch-name`.
     You're ahead by 1 and behind by 2.
@@ -170,7 +170,7 @@ TestLongBranchStatusTestcases = [
     """.rstrip())
 ),
 (
-    "## improve-diff-view...fork/improve-diff-view [gone]\n?? foo",
+    "## improve-diff-view...fork/improve-diff-view [gone]\x00?? foo",
     dedent("""\
     On branch `improve-diff-view` tracking `fork/improve-diff-view`.
     The remote branch is gone.
@@ -181,7 +181,7 @@ TestLongBranchStatusTestcases = [
     "HEAD is in a detached state."
 ),
 (
-    "## HEAD (no branch)\n?? foo",
+    "## HEAD (no branch)\x00?? foo",
     "HEAD is in a detached state."
 ),
 (
@@ -189,7 +189,7 @@ TestLongBranchStatusTestcases = [
     "On branch `master`."
 ),
 (
-    "## No commits yet on master\n?? foo",
+    "## No commits yet on master\x00?? foo",
     "On branch `master`."
 ),
 # Previous versions of git instead emitted this before the initial commit
@@ -198,7 +198,7 @@ TestLongBranchStatusTestcases = [
     "On branch `zoom`."
 ),
 (
-    "## Initial commit on master\n?? foo",
+    "## Initial commit on master\x00?? foo",
     "On branch `master`."
 ),
 ]
