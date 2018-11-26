@@ -2,7 +2,7 @@ from functools import lru_cache, partial
 import re
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand, ViewEventListener
+from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from ..git_command import GitCommand
 from .log import GsLogActionCommand, GsLogCommand
@@ -191,9 +191,9 @@ class GsLogGraphNavigateCommand(GsNavigate):
         return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
 
 
-class GsLogGraphCursorListener(ViewEventListener, GitCommand):
-    @classmethod
-    def is_applicable(self, settings):
+class GsLogGraphCursorListener(EventListener, GitCommand):
+    def is_applicable(self, view):
+        settings = view.settings()
         return (
             settings.get("git_savvy.log_graph_view")
             or settings.get("git_savvy.compare_commit_view")
@@ -205,8 +205,30 @@ class GsLogGraphCursorListener(ViewEventListener, GitCommand):
     # in vertical movement.
     # We throttle in `draw_info_panel` below by line_text
     # bc a log line is pretty unique if it contains the commit's sha.
-    def on_selection_modified_async(self):
-        draw_info_panel(self.view, self.savvy_settings.get("graph_show_more_commit_info"))
+    def on_selection_modified_async(self, view):
+        if not self.is_applicable(view):
+            return
+
+        draw_info_panel(view, self.savvy_settings.get("graph_show_more_commit_info"))
+
+    def on_post_window_command(self, window, command_name, args):
+        # If the user hides the panel via `<ESC>` or mouse click,
+        if command_name == 'hide_panel':
+            self.savvy_settings.set("graph_show_more_commit_info", False)
+
+        # If the user opens a different panel, don't fight with it.
+        # Note: 'show_panel' can also be used to actually *hide* a panel if you pass
+        # the 'toggle' arg.
+        elif command_name == 'show_panel':
+            # Note: After 'show_panel' `on_selection_modified` runs *if* you used a
+            # keyboard shortcut for it. If you open a panel via mouse it doesn't.
+            show_panel = args.get('panel') == "output.show_commit_info"
+            self.savvy_settings.set("graph_show_more_commit_info", show_panel)
+            # If the user opened our panel via mouse click we MUST draw bc it can be
+            # out of sync. For now
+            view = window.active_view()
+            if self.is_applicable(view):
+                draw_info_panel(view, show_panel)
 
 
 def draw_info_panel(view, show_panel):
