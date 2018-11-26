@@ -263,7 +263,7 @@ class StatusInterface(ui.Interface, GitCommand):
         # But do not match our stashes or anything from our help
         #    (1) log git start/stop
         #           [t] create stash
-        file_regex = r"^(?:    .+ -> |  [ -] (?!\(\d+\) ))(\S.*)$"
+        file_regex = r"^(?:    .+ -> |  [ -] (?!\(\d+\) ))(?!Your working directory is clean\.)(\S.*)$"
         #                  ^ leading 4 spaces
         #                      ^ a filename
         #                         ^ marker indicating a rename/move
