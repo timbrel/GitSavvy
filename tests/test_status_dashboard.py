@@ -43,6 +43,7 @@ class TestStatusDashboard(DeferrableTestCase):
     def test_extract_clickable_filepaths_from_view(self):
         REPO_PATH = '/not/here'
         FILE_STATUS = dedent("""\
+            ## the-branch
              M modified_file
             ?? new_file
             A  staged_file
@@ -63,15 +64,16 @@ class TestStatusDashboard(DeferrableTestCase):
         when(os.path).exists(REPO_PATH).thenReturn(True)
         # Mocking `in_merge` is a bit surprising. TBC.
         when(StatusInterface).in_merge().thenReturn(False)
-        when(StatusInterface).git('status', '--porcelain', '-z').thenReturn(FILE_STATUS)
-        when(StatusInterface).git('status', '-b', '--porcelain').thenReturn('## the-branch')
+        when(StatusInterface).git('status', ...).thenReturn(FILE_STATUS)
         when(StatusInterface).git('log', ...).thenReturn('d9b34774 The last commit message')
         when(StatusInterface).git('stash', 'list').thenReturn(STASH_LIST)
 
         try:
             interface = StatusInterface(repo_path=REPO_PATH)
-
             view = interface.view
+            # The interface updates async.
+            yield lambda: view.find('fix-1048', 0, sublime.LITERAL)
+
             results = view.find_all_results()
             actual = [cleanup_fpath(fpath) for fpath, _, _ in results]
             expected = [
