@@ -269,7 +269,7 @@ class GitCommand(StatusMixin,
                 raise GitSavvyError(
                     "`{}` failed.".format(command_str), show_panel=show_panel_on_stderr)
 
-        if stdout:
+        if stdout and decode:
             stdout = ANSI_ESCAPE.sub('', stdout)
 
         return stdout
