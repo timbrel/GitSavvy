@@ -25,6 +25,8 @@ else:
 
 
 THIS_DIRNAME = os.path.dirname(os.path.realpath(__file__))
+COMMIT_1 = 'This is commit fec0aca'
+COMMIT_2 = 'This is commit f461ea1'
 
 
 def fixture(name):
@@ -113,12 +115,9 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         REPO_PATH = '/not/there'
         LOG = fixture('log_graph_1.txt')
 
-        COMMIT_INFO_1 = 'This is commit fec0aca'
-        COMMIT_INFO_2 = 'This is commit f461ea1'
-
         self.enable_commit_info({
-            'fec0aca': COMMIT_INFO_1,
-            'f461ea1': COMMIT_INFO_2
+            'fec0aca': COMMIT_1,
+            'f461ea1': COMMIT_2
         })
 
         log_view = yield from self.create_graph_view_async(
@@ -139,7 +138,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         log_view = yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
 
-        actual = panel.find('fec0aca', 0, sublime.LITERAL)
+        actual = panel.find(COMMIT_1, 0, sublime.LITERAL)
         self.assertTrue(actual)
 
     def test_info_panel_shows_second_commit_after_navigate(self):
@@ -147,11 +146,11 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         panel = self.window.find_output_panel('show_commit_info')
 
         log_view.run_command('gs_log_graph_navigate')
-        yield from self.await_string_in_view(panel, 'f461ea1')
+        yield from self.await_string_in_view(panel, COMMIT_2)
 
         # `yield condition` will continue after a timeout so we need
         # to actually assert here
-        actual = panel.find('f461ea1', 0, sublime.LITERAL)
+        actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
         self.assertTrue(actual)
 
     def test_info_panel_shows_second_commit_after_cursor_moves(self):
@@ -161,9 +160,9 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         log_view.sel().clear()
         log_view.sel().add(log_view.text_point(1, 14))
         GsLogGraphCursorListener().on_selection_modified_async(log_view)
-        yield from self.await_string_in_view(panel, 'f461ea1')
+        yield from self.await_string_in_view(panel, COMMIT_2)
 
-        actual = panel.find('f461ea1', 0, sublime.LITERAL)
+        actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
         self.assertTrue(actual)
 
     def test_if_the_user_issues_our_toggle_command_close_the_panel_and_keep_it(self):
@@ -226,9 +225,9 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         # show panel
         self.window.run_command('gs_log_graph_toggle_more_info')
 
-        yield from self.await_string_in_view(panel, 'f461ea1')
+        yield from self.await_string_in_view(panel, COMMIT_2)
 
-        actual = panel.find('f461ea1', 0, sublime.LITERAL)
+        actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
         self.assertTrue(actual)
 
     def test_show_correct_info_if_user_moves_around_and_then_opens_panel(self):
@@ -245,9 +244,9 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         # show panel e.g. via mouse
         self.window.run_command('show_panel', {'panel': 'output.show_commit_info'})
 
-        yield from self.await_string_in_view(panel, 'f461ea1')
+        yield from self.await_string_in_view(panel, COMMIT_2)
 
-        actual = panel.find('f461ea1', 0, sublime.LITERAL)
+        actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
         self.assertTrue(actual)
 
     def _test_afocus_info_panel(self):
