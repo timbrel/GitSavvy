@@ -138,6 +138,10 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         log_view = yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
 
+        yield from self.await_string_in_view(panel, COMMIT_1)
+
+        # `yield condition` will continue after a timeout so we need
+        # to actually assert here
         actual = panel.find(COMMIT_1, 0, sublime.LITERAL)
         self.assertTrue(actual)
 
@@ -148,8 +152,6 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         log_view.run_command('gs_log_graph_navigate')
         yield from self.await_string_in_view(panel, COMMIT_2)
 
-        # `yield condition` will continue after a timeout so we need
-        # to actually assert here
         actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
         self.assertTrue(actual)
 
