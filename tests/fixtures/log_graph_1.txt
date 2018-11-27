@@ -1,0 +1,16 @@
+* fec0aca (HEAD -> improve-graph-view) Respect any other way a user can hide or show a panel
+* f461ea1 Cache `git show ...` command as it's immutable
+* 1c6ff56 Fix: Only hide our own panel.
+* 3543eee Ensure to restore the cursors after drawing
+* c658951 Build actual git command on refresh
+* 5c6f063 Move `GsLogGraphCommand` and add comment
+* 5c15c8e Move `GsLogActionCommand` to bottom and fix comment
+* 00e7e61 Make a comment a bit clearer
+* 667cc20 Make the listener a `ViewEventListener`
+* 4bd960c Update info panel `on_selection_modified`
+* c08cd48 Navigate *after* first draw
+* 4496f75 Handle one-time side-effects after view creation
+* d0d4321 Make GsLogGraphRefreshCommand an async command
+*   57b00b1 (origin/dev, dev) Merge pull request #1033 from kaste/optimize-status-interface
+|\
+| * 0c2dd28 Guard updating state using a lock
