@@ -71,6 +71,12 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
             except Exception:
                 pass
 
+    def await_string_in_view(self, view, needle):
+        yield lambda: view.find(needle, 0, sublime.LITERAL)
+
+    def await_active_panel_to_be(self, name):
+        yield lambda: self.window.active_panel() == 'output.show_commit_info'
+
     def create_new_view(self, window=None):
         view = (window or sublime.active_window()).new_file()
         self.add_cleanup(self.close_view, view)
@@ -99,7 +105,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         cmd.run()
         yield lambda: self.window.active_view().settings().get('git_savvy.log_graph_view') is True
         log_view = self.window.active_view()
-        yield lambda: log_view.find(wait_for, 0, sublime.LITERAL)
+        yield from self.await_string_in_view(log_view, wait_for)
 
         return log_view
 
@@ -119,7 +125,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
             REPO_PATH, LOG,
             wait_for='0c2dd28 Guard updating state using a lock'
         )
-        yield lambda: self.window.active_panel() == 'output.show_commit_info'
+        yield from self.await_active_panel_to_be('output.show_commit_info')
         return log_view
 
     def test_open_info_panel_after_create(self):
@@ -141,7 +147,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         panel = self.window.find_output_panel('show_commit_info')
 
         log_view.run_command('gs_log_graph_navigate')
-        yield lambda: panel.find('f461ea1', 0, sublime.LITERAL)
+        yield from self.await_string_in_view(panel, 'f461ea1')
 
         # `yield condition` will continue after a timeout so we need
         # to actually assert here
@@ -155,7 +161,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         log_view.sel().clear()
         log_view.sel().add(log_view.text_point(1, 14))
         GsLogGraphCursorListener().on_selection_modified_async(log_view)
-        yield lambda: panel.find('f461ea1', 0, sublime.LITERAL)
+        yield from self.await_string_in_view(panel, 'f461ea1')
 
         actual = panel.find('f461ea1', 0, sublime.LITERAL)
         self.assertTrue(actual)
@@ -220,7 +226,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         # show panel
         self.window.run_command('gs_log_graph_toggle_more_info')
 
-        yield lambda: panel.find('f461ea1', 0, sublime.LITERAL)
+        yield from self.await_string_in_view(panel, 'f461ea1')
 
         actual = panel.find('f461ea1', 0, sublime.LITERAL)
         self.assertTrue(actual)
@@ -239,7 +245,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         # show panel e.g. via mouse
         self.window.run_command('show_panel', {'panel': 'output.show_commit_info'})
 
-        yield lambda: panel.find('f461ea1', 0, sublime.LITERAL)
+        yield from self.await_string_in_view(panel, 'f461ea1')
 
         actual = panel.find('f461ea1', 0, sublime.LITERAL)
         self.assertTrue(actual)
