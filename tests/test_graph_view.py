@@ -257,5 +257,3 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         log_view.run_command('gs_log_graph_navigate')
         log_view.run_command('gs_log_graph_navigate')
         yield 2000
-
-
