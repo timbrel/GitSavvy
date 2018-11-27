@@ -115,12 +115,12 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
             'f461ea1': COMMIT_INFO_2
         })
 
-        return (
-            yield from self.create_graph_view_async(
-                REPO_PATH, LOG,
-                wait_for='0c2dd28 Guard updating state using a lock'
-            )
+        log_view = yield from self.create_graph_view_async(
+            REPO_PATH, LOG,
+            wait_for='0c2dd28 Guard updating state using a lock'
         )
+        yield lambda: self.window.active_panel() == 'output.show_commit_info'
+        return log_view
 
     def test_open_info_panel_after_create(self):
         log_view = yield from self.setup_graph_view_async()
