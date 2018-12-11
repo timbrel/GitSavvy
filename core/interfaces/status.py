@@ -11,6 +11,31 @@ from ..git_command import GitCommand
 from ...common import util
 
 
+# Expected
+#  - common/commands/view_manipulation.py
+#    common/ui.py
+#    core/commands/commit_compare.py -> core/commands/commit_compare_foo.py
+# But do not match our stashes or anything from our help
+#    (1) log git start/stop
+#           [t] create stash
+EXTRACT_FILENAME_RE = (
+    r"^(?:    .+ -> |  [ -] (?!\(\d+\) ))"
+    #     ^ leading 4 spaces
+    #         ^ a filename
+    #            ^ marker indicating a rename/move
+    #               ^ OR
+    #                ^ leading 4 spaces or two spaces and our deleted marker
+    #                       ^^^^^^^^^^^ but be aware to *not* match stashes
+    r"(?!Your working directory is clean\.)"
+    #   ^ be aware to *not* match this message which otherwise fulfills our
+    #     filename matcher
+    r"(\S.*)$"
+    # ^^^^^^ the actual filename matcher
+    # Note: A filename cannot start with a space (which is luckily true anyway)
+    # otherwise our naive `.*` could consume only whitespace.
+)
+
+
 def distinct_until_state_changed(just_render_fn):
     """Custom `lru_cache`-look-alike to minimize redraws."""
     previous_state = {}
@@ -254,6 +279,10 @@ class StatusInterface(ui.Interface, GitCommand):
         ask this method if appropriate.
         """
         self.update_state(self.fetch_repo_status, self.just_render)
+
+    def after_view_creation(self, view):
+        view.settings().set("result_file_regex", EXTRACT_FILENAME_RE)
+        view.settings().set("result_base_dir", self.repo_path)
 
     def on_new_dashboard(self):
         self.view.run_command("gs_status_navigate_file")
