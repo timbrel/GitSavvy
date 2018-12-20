@@ -7,6 +7,16 @@ hidden: true
 scope: git-savvy.graph
 contexts:
   main:
+    - match: (?=.*\(HEAD )
+      push:
+        - meta_scope: meta.graph.graph-line.head.git-savvy
+        - include: content
+        - match: $
+          pop: true
+
+    - include: content
+
+  content:
     - match: '([| \\/_.-]+)'
       comment: graph lines
       scope: punctuation.other.git-savvy.graph.graph-line
@@ -17,15 +27,6 @@ contexts:
     - match: \s*([0-9a-f]{6,40})\b
       comment: SHA
       scope: constant.numeric.graph.commit-hash.git-savvy
-
-    - match: (?=\s*\(HEAD)
-      push:
-        - meta_scope: meta.graph.graph-line.head.git-savvy
-        - include: branch-name
-        - match: (?=\S)
-          push: message
-        - match: $
-          pop: true
 
     - include: branch-name
 
