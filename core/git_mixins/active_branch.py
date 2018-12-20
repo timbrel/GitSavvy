@@ -36,8 +36,12 @@ class ActiveBranchMixin():
         if first_line.startswith("## HEAD (no branch)"):
             return True, False, None, None, clean, None, None, False
 
-        if first_line.startswith("## Initial commit on "):
-            return False, True, first_line[21:], clean, None, None, None, False
+        if (
+            first_line.startswith("## No commits yet on ")
+            # older git used these
+            or first_line.startswith("## Initial commit on ")
+        ):
+            return False, True, first_line[21:], None, clean, None, None, False
 
         valid_punctuation = "".join(c for c in string.punctuation if c not in "~^:?*[\\")
         branch_pattern = "[A-Za-z0-9" + re.escape(valid_punctuation) + "\u263a-\U0001f645]+?"
@@ -79,7 +83,7 @@ class ActiveBranchMixin():
             status = "HEAD is in a detached state."
 
         elif initial:
-            status = "Initial commit on `{}`.".format(branch)
+            status = "On branch `{}`.".format(branch)
 
         else:
             tracking = " tracking `{}`".format(remote)
