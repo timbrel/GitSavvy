@@ -6,7 +6,8 @@
 #                     ^ constant.other.git.branch
 #               ^ punctuation.separator.key-value.branch
 #         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.graph.branch.git-savvy
-#                                                                    ^  meta.graph.message.git-savvy
+#                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  meta.graph.message.git-savvy
+#         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.graph.graph-line.head.git-savvy
 * f483ab7 update blame syntax format
 * 6929182 update make_commit syntax format
 * ede734e update diff syntax format

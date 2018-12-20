@@ -18,6 +18,21 @@ contexts:
       comment: SHA
       scope: constant.numeric.graph.commit-hash.git-savvy
 
+    - match: (?=\s*\(HEAD)
+      push:
+        - meta_scope: meta.graph.graph-line.head.git-savvy
+        - include: branch-name
+        - match: (?=\S)
+          push: message
+        - match: $
+          pop: true
+
+    - include: branch-name
+
+    - match: (?=\S)
+      push: message
+
+  branch-name:
     - match: \s*\(
       comment: branch-name
       scope: punctuation.expression.begin.git-savvy
@@ -38,9 +53,6 @@ contexts:
           scope: punctuation.separator.key-value.branch.git-savvy
         - match: ([^ ,)]+)
           scope: constant.other.git.branch.git-savvy
-    - match: (?=\S)
-      push: message
-
 
   message:
     - meta_scope: meta.graph.message.git-savvy
