@@ -52,8 +52,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
             diff_view = diff_views[view_key]
         else:
             diff_view = util.view.get_scratch_view(self, "diff", read_only=True)
-            if not title:
-                title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(os.path.basename(repo_path))
+
             settings = diff_view.settings()
             settings.set("git_savvy.repo_path", repo_path)
             settings.set("git_savvy.file_path", file_path)
@@ -64,6 +63,41 @@ class GsDiffCommand(WindowCommand, GitCommand):
             settings.set("git_savvy.diff_view.target_commit", target_commit)
             settings.set("git_savvy.diff_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
             settings.set("git_savvy.diff_view.disable_stage", disable_stage)
+
+            # Clickable lines:
+            # (A)  common/commands/view_manipulation.py  |   1 +
+            # (B) --- a/common/commands/view_manipulation.py
+            # (C) +++ b/common/commands/view_manipulation.py
+            # (D) diff --git a/common/commands/view_manipulation.py b/common/commands/view_manipulation.py
+            #
+            # Now the actual problem is that Sublime only accepts a subset of modern reg expressions,
+            # B, C, and D are relatively straight forward because they match a whole line, and
+            # basically all other lines in a diff start with one of `[+- ]`.
+            FILE_RE = (
+                r"^(?:\s(?=.*\s+\|\s+\d+\s)|--- a\/|\+{3} b\/|diff .+b\/)"
+                #     ^^^^^^^^^^^^^^^^^^^^^ (A)
+                #     ^ one space, and then somewhere later on the line the pattern `  |  23 `
+                #                           ^^^^^^^ (B)
+                #                                   ^^^^^^^^ (C)
+                #                                            ^^^^^^^^^^^ (D)
+                r"(\S[^|]*?)"
+                #                    ^ ! lazy to not match the trailing spaces, see below
+
+                r"(?:\s+\||$)"
+                #          ^ (B), (C), (D)
+                #    ^^^^^ (A) We must match the spaces here bc Sublime will not rstrip() the
+                #    filename for us.
+            )
+
+            settings.set("result_file_regex", FILE_RE)
+            # Clickable line:
+            # @@ -69,6 +69,7 @@ class GsHandleVintageousCommand(TextCommand):
+            #           ^^ we want the second (current) line offset of the diff
+            settings.set("result_line_regex", r"^@@ [^+]*\+(\d+),")
+            settings.set("result_base_dir", repo_path)
+
+            if not title:
+                title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(os.path.basename(repo_path))
             diff_view.set_name(title)
             diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
             diff_views[view_key] = diff_view
