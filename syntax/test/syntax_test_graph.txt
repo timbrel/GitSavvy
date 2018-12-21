@@ -9,8 +9,11 @@
 #                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  meta.graph.message.git-savvy
 # <- meta.graph.graph-line.head.git-savvy
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.graph.graph-line.head.git-savvy
-* f483ab7 update blame syntax format
-* 6929182 update make_commit syntax format
+* f483ab7 (HEAD) update blame syntax format
+# <- meta.graph.graph-line.head.git-savvy
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.graph.graph-line.head.git-savvy
+* 6929182 update (HEAD) make_commit syntax format
+#         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ git-savvy.graph meta.graph.message.git-savvy
 * ede734e update diff syntax format
 # <- keyword.graph.commit
 #  ^ constant.numeric.graph.commit-hash
