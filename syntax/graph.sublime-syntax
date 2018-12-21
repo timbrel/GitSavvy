@@ -54,6 +54,8 @@ contexts:
           scope: punctuation.separator.other.git-savvy
         - match: '->'
           scope: punctuation.separator.key-value.branch.git-savvy
+        - match: HEAD
+          scope: constant.other.git.head.git-savvy
         - match: ([^ ,)]+)
           scope: constant.other.git.branch.git-savvy
 
