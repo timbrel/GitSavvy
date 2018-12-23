@@ -37,23 +37,12 @@ def fixture(name):
 class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
     @classmethod
     def setUpClass(cls):
-        # make sure we have a window to work with
-        original_window_id = sublime.active_window().id()
-        sublime.run_command("new_window")
-
-        yield lambda: sublime.active_window().id() != original_window_id
-
-        cls.window = sublime.active_window()
-
         s = sublime.load_settings("Preferences.sublime-settings")
         s.set("close_windows_when_empty", False)
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.window.run_command('close_window')
-
     def setUp(self):
-        self.create_new_view()
+        self.window = window = self.create_new_window()
+        self.create_new_view(window)
 
     def tearDown(self):
         self.do_cleanup()
@@ -79,6 +68,12 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
     def await_active_panel_to_be(self, name):
         yield lambda: self.window.active_panel() == 'output.show_commit_info'
 
+    def create_new_window(self):
+        sublime.run_command("new_window")
+        window = sublime.active_window()
+        self.addCleanup(lambda: window.run_command('close_window'))
+        return window
+
     def create_new_view(self, window=None):
         view = (window or sublime.active_window()).new_file()
         self.add_cleanup(self.close_view, view)
@@ -95,8 +90,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         settings.set(key, value)
         self.add_cleanup(settings.set, key, original_value)
 
-    def enable_commit_info(self, info):
-        self.set_global_setting('graph_show_more_commit_info', True)
+    def register_commit_info(self, info):
         for sha1, info in info.items():
             when(GsShowCommitInfoCommand).show_commit(sha1, ...).thenReturn(info)
 
@@ -111,11 +105,12 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
         return log_view
 
-    def setup_graph_view_async(self):
+    def setup_graph_view_async(self, show_commit_info_setting=True):
         REPO_PATH = '/not/there'
         LOG = fixture('log_graph_1.txt')
 
-        self.enable_commit_info({
+        self.set_global_setting('graph_show_more_commit_info', show_commit_info_setting)
+        self.register_commit_info({
             'fec0aca': COMMIT_1,
             'f461ea1': COMMIT_2
         })
@@ -124,8 +119,27 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
             REPO_PATH, LOG,
             wait_for='0c2dd28 Guard updating state using a lock'
         )
-        yield from self.await_active_panel_to_be('output.show_commit_info')
+        if show_commit_info_setting:
+            yield from self.await_active_panel_to_be('output.show_commit_info')
+
         return log_view
+
+    def test_hidden_info_panel_after_create(self):
+        log_view = yield from self.setup_graph_view_async(show_commit_info_setting=False)
+
+        actual = self.window.active_panel()
+        expected = None
+        self.assertEqual(actual, expected)
+
+    def test_if_the_user_issues_our_toggle_command_open_the_panel(self):
+        log_view = yield from self.setup_graph_view_async(show_commit_info_setting=False)
+
+        self.window.run_command('gs_log_graph_toggle_more_info')
+        yield from self.await_active_panel_to_be('output.show_commit_info')
+
+        actual = self.window.active_panel()
+        expected = 'output.show_commit_info'
+        self.assertEqual(actual, expected)
 
     def test_open_info_panel_after_create(self):
         log_view = yield from self.setup_graph_view_async()
