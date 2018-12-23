@@ -197,11 +197,24 @@ class GsDiffToggleSetting(TextCommand):
             # we need to abort here
             return
 
-        setting_str = "git_savvy.diff_view.{}".format(setting)
         settings = self.view.settings()
+        last_cursors = []
+
+        if setting == 'in_cached_mode':
+            last_cursors = settings.get('git_savvy.diff_view.last_cursors') or []
+            cursors = [(s.a, s.b) for s in self.view.sel()]
+            settings.set('git_savvy.diff_view.last_cursors', cursors)
+
+        setting_str = "git_savvy.diff_view.{}".format(setting)
         settings.set(setting_str, not settings.get(setting_str))
         self.view.window().status_message("{} is now {}".format(setting, settings.get(setting_str)))
+
         self.view.run_command("gs_diff_refresh")
+        if last_cursors:
+            sel = self.view.sel()
+            sel.clear()
+            for (a, b) in last_cursors:
+                sel.add(sublime.Region(a, b))
 
 
 class GsDiffFocusEventListener(EventListener):
