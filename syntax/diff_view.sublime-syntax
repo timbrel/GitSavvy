@@ -4,16 +4,6 @@
 name: GitSavvy Diff View
 hidden: true
 scope: git-savvy.diff_view
-first_line_match: |-
-  (?x)^
-      (===\ modified\ file
-      |==== \s* // .+ \s - \s .+ \s+ ====
-      |Index:[ ]
-      |---\ [^%]
-      |\*\*\*.*\d{4}\s*$
-      |\d+(,\d+)* (a|d|c) \d+(,\d+)* $
-      |diff\ --git[ ]
-      )
 contexts:
   main:
     - match: .
