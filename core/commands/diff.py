@@ -175,7 +175,10 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
             raise err
 
         text = prelude + '\n--\n' + stdout
-        self.view.run_command("gs_replace_view_text", {"text": text})
+
+        self.view.run_command(
+            "gs_replace_view_text", {"text": text, "restore_cursors": True}
+        )
         if navigate_to_next_hunk:
             self.view.run_command("gs_diff_navigate")
 
