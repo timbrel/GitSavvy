@@ -99,7 +99,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
             if not title:
                 title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(os.path.basename(repo_path))
             diff_view.set_name(title)
-            diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
+            diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff_view.sublime-syntax")
             diff_views[view_key] = diff_view
 
         self.window.focus_view(diff_view)
@@ -123,6 +123,29 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         base_commit = self.view.settings().get("git_savvy.diff_view.base_commit")
         target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
         show_diffstat = self.view.settings().get("git_savvy.diff_view.show_diffstat")
+        disable_stage = self.view.settings().get("git_savvy.diff_view.disable_stage")
+
+        prelude = "\n"
+        if self.file_path:
+            rel_file_path = os.path.relpath(self.file_path, self.repo_path)
+            prelude += "  FILE: {}\n".format(rel_file_path)
+
+        if disable_stage:
+            if in_cached_mode:
+                prelude += "  INDEX..{}\n".format(base_commit or target_commit)
+            else:
+                if base_commit and target_commit:
+                    prelude += "  {}..{}\n".format(target_commit, base_commit)
+                else:
+                    prelude += "  WORKING DIR..{}\n".format(base_commit or target_commit)
+        else:
+            if in_cached_mode:
+                prelude += "  STAGED CHANGES (Will commit)\n"
+            else:
+                prelude += "  UNSTAGED CHANGES\n"
+
+        if ignore_whitespace:
+            prelude += "  IGNORING WHITESPACE\n"
 
         try:
             stdout = self.git(
@@ -151,7 +174,11 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
                 return
             raise err
 
-        self.view.run_command("gs_replace_view_text", {"text": stdout})
+        text = prelude + '\n--\n' + stdout
+
+        self.view.run_command(
+            "gs_replace_view_text", {"text": text, "restore_cursors": True}
+        )
         if navigate_to_next_hunk:
             self.view.run_command("gs_diff_navigate")
 
@@ -159,15 +186,39 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 class GsDiffToggleSetting(TextCommand):
 
     """
-    Toggle view settings: `ignore_whitespace` or `show_word_diff`.
+    Toggle view settings: `ignore_whitespace` , `show_word_diff` or
+    `in_cached_mode`.
     """
 
     def run(self, edit, setting):
-        setting_str = "git_savvy.diff_view.{}".format(setting)
+        if (
+            setting == 'in_cached_mode'
+            and self.view.settings().get("git_savvy.diff_view.base_commit")
+            and self.view.settings().get("git_savvy.diff_view.target_commit")
+        ):
+            # There is no cached mode if you diff between two commits, so
+            # we need to abort here
+            return
+
         settings = self.view.settings()
+        last_cursors = []
+
+        if setting == 'in_cached_mode':
+            last_cursors = settings.get('git_savvy.diff_view.last_cursors') or []
+            cursors = [(s.a, s.b) for s in self.view.sel()]
+            settings.set('git_savvy.diff_view.last_cursors', cursors)
+
+        setting_str = "git_savvy.diff_view.{}".format(setting)
         settings.set(setting_str, not settings.get(setting_str))
         self.view.window().status_message("{} is now {}".format(setting, settings.get(setting_str)))
+
         self.view.run_command("gs_diff_refresh")
+        if last_cursors:
+            sel = self.view.sel()
+            sel.clear()
+            for (a, b) in last_cursors:
+                sel.add(sublime.Region(a, b))
+            self.view.show(sel)
 
 
 class GsDiffFocusEventListener(EventListener):

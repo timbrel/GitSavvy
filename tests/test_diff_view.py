@@ -73,11 +73,19 @@ class TestDiffView(DeferrableTestCase):
         cmd.run_async()
 
         diff_view = self.window.active_view()
-        self.assertEqual(diff_view.substr(sublime.Region(0, diff_view.size())), DIFF)
+        BUFFER_CONTENT = diff_view.substr(sublime.Region(0, diff_view.size()))
+        self.assertEqual(
+            BUFFER_CONTENT,
+            '''
+  UNSTAGED CHANGES
+
+--
+''' + DIFF
+        )
 
         regex = diff_view.settings().get('result_file_regex')
 
-        matches = re.findall(regex, DIFF, re.M)
+        matches = re.findall(regex, BUFFER_CONTENT, re.M)
         expected = [
             'core/commands/custom.py',
             'core/commands/diff.py',
@@ -90,9 +98,10 @@ class TestDiffView(DeferrableTestCase):
         ]
         self.assertEqual(matches, expected)
 
-        matches = re.finditer(regex, DIFF, re.M)
+        PRELUDE_HEIGHT = 4
+        matches = re.finditer(regex, BUFFER_CONTENT, re.M)
         actual = [
-            (m.group(0), diff_view.rowcol(m.span(1)[0])[0] + 1)
+            (m.group(0), diff_view.rowcol(m.span(1)[0])[0] + 1 - PRELUDE_HEIGHT)
             # Oh boy, a oneliner.          ^^^^^^^^^^^^ start offset
             #                      ^^^^^^ convert to (row, col)
             #                                          ^^^^^^^ only take row
