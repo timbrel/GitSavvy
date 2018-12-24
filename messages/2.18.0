@@ -1,0 +1,121 @@
+Changes since 2.17.6:
+
+  Fix:
+   - update status bar when the view is a widget
+   - incorrect log_error call
+   - help_text will be stripped
+   - typo in remote address # On branch typo # Changes to be committed: #   modified:   README.md #
+   - GsQuickCommitCommand is a WindowCommand
+   - always use get_local_branch to get remote tracking
+   - check the nullness of project_savvy_settings (#1013)
+   - Allow closing the commit view if `prompt_on_abort_commit=false` (#1059)
+   - 'checkout file at commit' shows commit panel
+   - don't "reset insert mode" on tab out (Merge 57b00b1)
+   - Status bar always reported repo as 'dirty' (Merge 57b00b1)
+   - Only hide our own panel. (Merge 84a5100)
+
+  Enhancement:
+   - rename tags to tag
+   - honor prepare_commit_msg and pre_commit hooks (Merge 182a65a)
+   - check "nothing to commit" (Merge 182a65a)
+   - allow `show_panel` to override the global setting (Merge 182a65a)
+   - better formating the initial text
+   - offer initialization for repo_path (#1005)
+   - Add more complex git output scopes to diff syntax
+   - cleanup commit message
+
+  Other:
+   - Clone git submodules (#1003)
+   - Fix theme generator for sublime-color-schemes (Merge ab0ee2e)
+   - Fix sublime-color-scheme not applied to inline diff view (Merge ab0ee2e)
+   - Name the travis jobs (Merge 2fb96e3)
+   - Do not `brew update` it's already fresh enough (Merge 2fb96e3)
+   - Return early if there is no hunk (Merge 43d57d4)
+   - Fix hunk_diff generation (Merge 43d57d4)
+   - After hunking navigate to the next hunk (Merge 43d57d4)
+   - Rename variables for consistency (Merge 43d57d4)
+   - Fix typo in comment (Merge 43d57d4)
+   - Use `navigate_to_next_hunk` arg in GsDiffCommand (Merge 43d57d4)
+   - sanitize ansi sequence
+   - Put all view state in a dict (Merge 57b00b1)
+   - Inline `render` and extract `just_render`-method (Merge 57b00b1)
+   - Just refresh file statuses after staging/unstaging (Merge 57b00b1)
+   - Match state var names and template var names (Merge 57b00b1)
+   - Extract `refresh_file_statuses` to keep it DRY (Merge 57b00b1)
+   - Ensure to not initialize `state` again if already initialized (Merge 57b00b1)
+   - Lazy update and render status interface (Merge 57b00b1)
+   - Make actual HEAD commit message optional in the syntax (Merge 57b00b1)
+   - Only draw if state actually changed (Merge 57b00b1)
+   - Get the essential repo status info in one call (Merge 57b00b1)
+   - Syntax test for 1eafd79816094822db297ad842b1105bc3a9b497 (Merge 57b00b1)
+   - Make just_render's nuke_cursors default to False (Merge 57b00b1)
+   - Write a typical `update_state` fn (Merge 57b00b1)
+   - Rename `pre_render` -> `refresh_view_state` (Merge 57b00b1)
+   - Restore toggle help functionality (Merge 57b00b1)
+   - Guard updating state using a lock (Merge 57b00b1)
+   - Add mockito and parameterized (Merge 9b2ed17)
+   - Exclude vendor libs from linting (Merge 9b2ed17)
+   - Do not export tests to end-users (Merge 9b2ed17)
+   - Support clicking on filenames in the status view (Merge 9b2ed17)
+   - Add basic test for the status dashboard (Merge 9b2ed17)
+   - Update tests to reflect async'ness of status dashboard (Merge 9b2ed17)
+   - 'Your working directory is clean.' is not a filename (Merge 9b2ed17)
+   - Put the monster regex on top as a constant (Merge 9b2ed17)
+   - Show toggle remotes help message only if there are any remotes (#1047)
+   - Include flake8 config for convenience
+   - Repo status tests (#1045)
+   - Make filenames in the diff view clickable (#1064)
+   - Tag the line containing HEAD for styling purpopses (#1051)
+   - Make GsLogGraphRefreshCommand an async command (Merge 84a5100)
+   - Handle one-time side-effects after view creation (Merge 84a5100)
+   - Navigate *after* first draw (Merge 84a5100)
+   - Update info panel `on_selection_modified` (Merge 84a5100)
+   - Make the listener a `ViewEventListener` (Merge 84a5100)
+   - Make a comment a bit clearer (Merge 84a5100)
+   - Move `GsLogActionCommand` to bottom and fix comment (Merge 84a5100)
+   - Move `GsLogGraphCommand` and add comment (Merge 84a5100)
+   - Build actual git command on refresh (Merge 84a5100)
+   - Ensure to restore the cursors after drawing (Merge 84a5100)
+   - Cache `git show ...` command as it's immutable (Merge 84a5100)
+   - Respect any other way a user can hide or show a panel (Merge 84a5100)
+   - Add tests around graph view and commit info interaction (Merge 84a5100)
+   - Fix lint error (Merge 84a5100)
+   - Await active_panel to become our commit panel (Merge 84a5100)
+   - Introduce `await_*` functions for readability (Merge 84a5100)
+   - Use constants for readability (Merge 84a5100)
+   - Await COMMIT_1 initially (Merge 84a5100)
+   - Add test cases for log graph view not showing the panel initially (#1068)
+   - Toggle cached-mode for diff view via key binding (Merge 838920e)
+   - Show a header in the diff view (Merge 838920e)
+   - Define a diff_view syntax to style the header (Merge 838920e)
+   - Do not toggle `in_cached_mode` if diffing two commits (Merge 838920e)
+   - No 'first_line_match' for internal diff-view syntax (Merge 838920e)
+   - Restore cursors when switching bewteen stage and unstaged (Merge 838920e)
+   - Add commit key binding in diff-view (Merge 838920e)
+   - Update basic help tooltip (Merge 838920e)
+   - Try 'restore_cursors' when refreshing the diff view (Merge 838920e)
+   - Make test aware of the new diff-view prelude (Merge 838920e)
+   - Show selection when restoring cursors (Merge 838920e)
+   - Also add 'C' to commit including unstaged (Merge 838920e)
+   - Refresh graph view after checkout
+   - Mark the whole line containing 'HEAD' as headline (Merge a6d8ffe)
+   - Fix HEAD matching for detached heads (Merge a6d8ffe)
+   - Mark the literal 'HEAD' not as branch (Merge a6d8ffe)
+
+  Feature:
+   - Add GPG support via a wrapper script (#1018)
+
+  Bugfix:
+   - avoid splitlines in blame (#1015)
+
+  fix:
+   - use synchronous panel calls (#1031)
+   - only substitute ANSI escape chars on string
+
+  Contributors:
+   - Randy Lai
+   - Simon
+   - DeathAxe
+   - herr kaste
+   - luv
+   - Pavel Savchenko
