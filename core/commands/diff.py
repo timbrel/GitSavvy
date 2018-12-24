@@ -218,6 +218,7 @@ class GsDiffToggleSetting(TextCommand):
             sel.clear()
             for (a, b) in last_cursors:
                 sel.add(sublime.Region(a, b))
+            self.view.show(sel)
 
 
 class GsDiffFocusEventListener(EventListener):
