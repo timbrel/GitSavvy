@@ -658,7 +658,5 @@ class GsBranchesLogGraphCommand(LogGraphMixin, TextCommand, GitCommand):
         self._file_path = None
         super().run_async()
 
-    def get_graph_args(self):
-        args = super().get_graph_args()
-        args.append(self._branch)
-        return args
+    def prepare_target_view(self, view):
+        view.settings().set("git_savvy.log_graph_view.filter_by_branch", self._branch)
