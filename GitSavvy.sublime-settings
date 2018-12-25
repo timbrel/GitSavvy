@@ -330,12 +330,6 @@
     "confirm_force_push": true,
 
     /*
-        This setting controls how commit messages are cleaned up in the commit view:
-        `git commit --cleanup=<mode>`. It is ignored if `git config commit.cleanup` is set.
-    */
-    "commit_cleanup_default_mode": "strip",
-
-    /*
         When set to `true`, closing the commit message window via keyboard will result
         in a commit action being taken, except in cases where the message is empty.
         The same is also true for amending commits.
