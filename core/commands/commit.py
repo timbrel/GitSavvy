@@ -56,10 +56,6 @@ class GsCommitCommand(WindowCommand, GitCommand):
     def run_async(self, repo_path=None, include_unstaged=False, amend=False):
 
         repo_path = repo_path or self.repo_path
-
-        # check "nothing to commit"
-        self.dry_run_commit(repo_path, include_unstaged, amend)
-
         # run `pre-commit` and `prepare-commit-msg` hooks
         hooks_path = os.path.join(repo_path, ".git", "hooks")
         pre_commit = os.path.join(hooks_path, "pre-commit")
@@ -120,16 +116,6 @@ class GsCommitCommand(WindowCommand, GitCommand):
             else:
                 raise GitSavvyError(e.args[0])
 
-    def dry_run_commit(self, repo_path, include_unstaged, amend):
-        show_panel_overrides = self.savvy_settings.get("show_panel_for")
-        self.git(
-            "commit",
-            "-q" if "commit" not in show_panel_overrides else None,
-            "-a" if include_unstaged else None,
-            "--amend" if amend else None,
-            "--dry-run"
-        )
-
 
 class GsCommitInitializeViewCommand(TextCommand, GitCommand):
 
@@ -155,7 +141,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
 
         if has_prepare_commit_msg_hook and os.path.exists(commit_editmsg_path):
             with util.file.safe_open(commit_editmsg_path, "r") as f:
-                initial_text = f.read().rstrip() + help_text
+                initial_text = "\n" + f.read().rstrip() + help_text
         elif option_amend:
             last_commit_message = self.git("log", "-1", "--pretty=%B").strip()
             initial_text = last_commit_message + help_text
@@ -317,10 +303,6 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
             help_text = view_settings.get("git_savvy.commit_view.help_text")
             commit_message = view_text.split(help_text)[0]
 
-        cleanup_mode = self.git("config", "commit.cleanup", throw_on_stderr=False).strip()
-        if not cleanup_mode:
-            cleanup_mode = self.savvy_settings.get("commit_cleanup_default_mode", "strip")
-
         include_unstaged = view_settings.get("git_savvy.commit_view.include_unstaged")
 
         show_panel_overrides = self.savvy_settings.get("show_panel_for")
@@ -334,7 +316,6 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
                 "-q" if "commit" not in show_panel_overrides else None,
                 "-a" if include_unstaged else None,
                 "--amend" if view_settings.get("git_savvy.commit_view.amend") else None,
-                "--cleanup={}".format(cleanup_mode),
                 "-F",
                 "-",
                 stdin=commit_message
