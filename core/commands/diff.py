@@ -291,13 +291,20 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
             # NOTE: When in cached mode, no action will be taken when the user
             #       presses SUPER-BACKSPACE.
 
-            self.git(
+            args = (
                 "apply",
                 "-R" if (reset or in_cached_mode) else None,
                 "--cached" if (in_cached_mode or not reset) else None,
                 "-",
+            )
+            self.git(
+                *args,
                 stdin=hunk_diff
             )
+
+        history = self.view.settings().get("git_savvy.diff_view.history") or []
+        history.append((args, hunk_diff))
+        self.view.settings().set("git_savvy.diff_view.history", history)
 
         sublime.set_timeout_async(lambda: self.view.run_command("gs_diff_refresh"))
 
@@ -400,3 +407,30 @@ class GsDiffNavigateCommand(GsNavigate):
     def get_available_regions(self):
         return [self.view.line(region) for region in
                 self.view.find_by_selector("meta.diff.range.unified")]
+
+
+class GsDiffUndo(TextCommand, GitCommand):
+
+    """
+    Undo the last action taken in the diff view, if possible.
+    """
+
+    def run(self, edit):
+        sublime.set_timeout_async(self.run_async)
+
+    def run_async(self):
+        history = self.view.settings().get("git_savvy.diff_view.history") or []
+        if not history:
+            window = self.view.window()
+            if window:
+                window.status_message("Undo stack is empty")
+            return
+
+        args, stdin = history.pop()
+        # Toggle the `--reverse` flag.
+        args[1] = "-R" if not args[1] else None
+
+        self.git(*args, stdin=stdin)
+        self.view.settings().set("git_savvy.diff_view.history", history)
+
+        self.view.run_command("gs_diff_refresh")
