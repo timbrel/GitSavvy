@@ -303,7 +303,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
             )
 
         history = self.view.settings().get("git_savvy.diff_view.history") or []
-        history.append((args, hunk_diff))
+        history.append((args, hunk_diff, cursor_pts[0]))
         self.view.settings().set("git_savvy.diff_view.history", history)
 
         sublime.set_timeout_async(lambda: self.view.run_command("gs_diff_refresh"))
@@ -426,7 +426,7 @@ class GsDiffUndo(TextCommand, GitCommand):
                 window.status_message("Undo stack is empty")
             return
 
-        args, stdin = history.pop()
+        args, stdin, cursor = history.pop()
         # Toggle the `--reverse` flag.
         args[1] = "-R" if not args[1] else None
 
@@ -434,3 +434,6 @@ class GsDiffUndo(TextCommand, GitCommand):
         self.view.settings().set("git_savvy.diff_view.history", history)
 
         self.view.run_command("gs_diff_refresh")
+        self.view.sel().clear()
+        self.view.sel().add(cursor)
+        self.view.show(cursor)
