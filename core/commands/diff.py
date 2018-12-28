@@ -299,9 +299,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
                 stdin=hunk_diff
             )
 
-        sublime.set_timeout_async(
-            lambda: self.view.run_command("gs_diff_refresh", {'navigate_to_next_hunk': True})
-        )
+        sublime.set_timeout_async(lambda: self.view.run_command("gs_diff_refresh"))
 
     def get_hunk_diff(self, pt):
         """
