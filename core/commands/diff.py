@@ -213,12 +213,29 @@ class GsDiffToggleSetting(TextCommand):
         self.view.window().status_message("{} is now {}".format(setting, settings.get(setting_str)))
 
         self.view.run_command("gs_diff_refresh")
-        if last_cursors:
-            sel = self.view.sel()
-            sel.clear()
-            for (a, b) in last_cursors:
-                sel.add(sublime.Region(a, b))
-            self.view.show(sel)
+        if setting == 'in_cached_mode':
+            if self.view.settings().get("git_savvy.diff_view.just_hunked"):
+                self.view.settings().set("git_savvy.diff_view.just_hunked", False)
+                history = self.view.settings().get("git_savvy.diff_view.history")
+                _, stdin, _ = history[-1]
+                match = re.search(r'\n(@@ .+)\n', stdin)
+                if match is not None:
+                    expected_content = match.group(1)
+                    region = self.view.find(expected_content, 0, sublime.LITERAL)
+                    if region is not None:
+                        self.view.sel().clear()
+                        self.view.sel().add(region.a)
+                        self.view.show(region.a)
+                        return
+
+            if last_cursors:
+                sel = self.view.sel()
+                sel.clear()
+                for (a, b) in last_cursors:
+                    sel.add(sublime.Region(a, b))
+                self.view.show(sel)
+            else:
+                self.view.run_command("gs_diff_navigate")
 
 
 class GsDiffFocusEventListener(EventListener):
@@ -305,6 +322,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
         history = self.view.settings().get("git_savvy.diff_view.history") or []
         history.append((args, hunk_diff, cursor_pts[0]))
         self.view.settings().set("git_savvy.diff_view.history", history)
+        self.view.settings().set("git_savvy.diff_view.just_hunked", True)
 
         sublime.set_timeout_async(lambda: self.view.run_command("gs_diff_refresh"))
 
