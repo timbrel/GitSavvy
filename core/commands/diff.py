@@ -186,14 +186,32 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 class GsDiffToggleSetting(TextCommand):
 
     """
-    Toggle view settings: `ignore_whitespace` , `show_word_diff` or
-    `in_cached_mode`.
+    Toggle view settings: `ignore_whitespace` , or `show_word_diff`.
     """
 
     def run(self, edit, setting):
+        settings = self.view.settings()
+
+        setting_str = "git_savvy.diff_view.{}".format(setting)
+        current_mode = settings.get(setting_str)
+        next_mode = not current_mode
+        settings.set(setting_str, next_mode)
+        self.view.window().status_message("{} is now {}".format(setting, next_mode))
+
+        self.view.run_command("gs_diff_refresh")
+
+
+class GsDiffToggleCachedMode(TextCommand):
+
+    """
+    Toggle `in_cached_mode`.
+    """
+
+    def run(self, edit):
+        setting = 'in_cached_mode'
+
         if (
-            setting == 'in_cached_mode'
-            and self.view.settings().get("git_savvy.diff_view.base_commit")
+            self.view.settings().get("git_savvy.diff_view.base_commit")
             and self.view.settings().get("git_savvy.diff_view.target_commit")
         ):
             # There is no cached mode if you diff between two commits, so
@@ -201,41 +219,43 @@ class GsDiffToggleSetting(TextCommand):
             return
 
         settings = self.view.settings()
-        last_cursors = []
 
-        if setting == 'in_cached_mode':
-            last_cursors = settings.get('git_savvy.diff_view.last_cursors') or []
-            cursors = [(s.a, s.b) for s in self.view.sel()]
-            settings.set('git_savvy.diff_view.last_cursors', cursors)
+        last_cursors = settings.get('git_savvy.diff_view.last_cursors') or []
+        cursors = [(s.a, s.b) for s in self.view.sel()]
+        settings.set('git_savvy.diff_view.last_cursors', cursors)
 
         setting_str = "git_savvy.diff_view.{}".format(setting)
-        settings.set(setting_str, not settings.get(setting_str))
-        self.view.window().status_message("{} is now {}".format(setting, settings.get(setting_str)))
+        current_mode = settings.get(setting_str)
+        next_mode = not current_mode
+        settings.set(setting_str, next_mode)
+        self.view.window().status_message(
+            "Showing {} changes".format("staged" if next_mode else "unstaged")
+        )
 
         self.view.run_command("gs_diff_refresh")
-        if setting == 'in_cached_mode':
-            if self.view.settings().get("git_savvy.diff_view.just_hunked"):
-                self.view.settings().set("git_savvy.diff_view.just_hunked", False)
-                history = self.view.settings().get("git_savvy.diff_view.history")
-                _, stdin, _ = history[-1]
-                match = re.search(r'\n(@@ .+)\n', stdin)
-                if match is not None:
-                    expected_content = match.group(1)
-                    region = self.view.find(expected_content, 0, sublime.LITERAL)
-                    if region is not None:
-                        self.view.sel().clear()
-                        self.view.sel().add(region.a)
-                        self.view.show(region.a)
-                        return
 
-            if last_cursors:
-                sel = self.view.sel()
-                sel.clear()
-                for (a, b) in last_cursors:
-                    sel.add(sublime.Region(a, b))
-                self.view.show(sel)
-            else:
-                self.view.run_command("gs_diff_navigate")
+        if self.view.settings().get("git_savvy.diff_view.just_hunked"):
+            self.view.settings().set("git_savvy.diff_view.just_hunked", False)
+            history = self.view.settings().get("git_savvy.diff_view.history")
+            _, stdin, _ = history[-1]
+            match = re.search(r'\n(@@ .+)\n', stdin)
+            if match is not None:
+                expected_content = match.group(1)
+                region = self.view.find(expected_content, 0, sublime.LITERAL)
+                if region:
+                    self.view.sel().clear()
+                    self.view.sel().add(region.a)
+                    self.view.show(region.a)
+                    return
+
+        if last_cursors:
+            sel = self.view.sel()
+            sel.clear()
+            for (a, b) in last_cursors:
+                sel.add(sublime.Region(a, b))
+            self.view.show(sel)
+        else:
+            self.view.run_command("gs_diff_navigate")
 
 
 class GsDiffFocusEventListener(EventListener):
