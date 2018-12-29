@@ -235,11 +235,10 @@ class GsDiffToggleCachedMode(TextCommand):
 
         self.view.run_command("gs_diff_refresh")
 
-        if self.view.settings().get("git_savvy.diff_view.just_hunked"):
-            self.view.settings().set("git_savvy.diff_view.just_hunked", False)
-            history = self.view.settings().get("git_savvy.diff_view.history")
-            _, stdin, _ = history[-1]
-            match = re.search(r'\n(@@ .+)\n', stdin)
+        just_hunked = self.view.settings().get("git_savvy.diff_view.just_hunked")
+        if just_hunked:
+            self.view.settings().set("git_savvy.diff_view.just_hunked", "")
+            match = re.search(r'\n(@@ .+)\n', just_hunked)
             if match is not None:
                 expected_content = match.group(1)
                 region = self.view.find(expected_content, 0, sublime.LITERAL)
@@ -343,7 +342,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
             history = self.view.settings().get("git_savvy.diff_view.history") or []
             history.append((args, hunk_diff, pt))
             self.view.settings().set("git_savvy.diff_view.history", history)
-            self.view.settings().set("git_savvy.diff_view.just_hunked", True)
+            self.view.settings().set("git_savvy.diff_view.just_hunked", hunk_diff)
 
         sublime.set_timeout_async(lambda: self.view.run_command("gs_diff_refresh"))
 
@@ -469,6 +468,7 @@ class GsDiffUndo(TextCommand, GitCommand):
 
         self.git(*args, stdin=stdin)
         self.view.settings().set("git_savvy.diff_view.history", history)
+        self.view.settings().set("git_savvy.diff_view.just_hunked", stdin)
 
         self.view.run_command("gs_diff_refresh")
         self.view.sel().clear()
