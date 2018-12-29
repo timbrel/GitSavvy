@@ -3,6 +3,7 @@ Implements a special view to visualize and stage pieces of a project's
 current diff.
 """
 
+from contextlib import contextmanager
 import os
 import re
 import bisect
@@ -255,9 +256,24 @@ class GsDiffToggleCachedMode(TextCommand):
             sel.clear()
             for (a, b) in last_cursors:
                 sel.add(sublime.Region(a, b))
-            self.view.show(sel)
+
+            # The 'flipping' between the two states should be as fast as possible and
+            # without visual clutter.
+            with no_animations():
+                self.view.show(sel)
         else:
             self.view.run_command("gs_diff_navigate")
+
+
+@contextmanager
+def no_animations():
+    pref = sublime.load_settings("Preferences.sublime-settings")
+    current = pref.get("animation_enabled")
+    pref.set("animation_enabled", False)
+    try:
+        yield
+    finally:
+        pref.set("animation_enabled", current)
 
 
 class GsDiffFocusEventListener(EventListener):
