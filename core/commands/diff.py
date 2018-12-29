@@ -319,10 +319,10 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
                 stdin=hunk_diff
             )
 
-        history = self.view.settings().get("git_savvy.diff_view.history") or []
-        history.append((args, hunk_diff, cursor_pts[0]))
-        self.view.settings().set("git_savvy.diff_view.history", history)
-        self.view.settings().set("git_savvy.diff_view.just_hunked", True)
+            history = self.view.settings().get("git_savvy.diff_view.history") or []
+            history.append((args, hunk_diff, pt))
+            self.view.settings().set("git_savvy.diff_view.history", history)
+            self.view.settings().set("git_savvy.diff_view.just_hunked", True)
 
         sublime.set_timeout_async(lambda: self.view.run_command("gs_diff_refresh"))
 
