@@ -63,6 +63,8 @@ class GsDiffCommand(WindowCommand, GitCommand):
             settings.set("git_savvy.diff_view.target_commit", target_commit)
             settings.set("git_savvy.diff_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
             settings.set("git_savvy.diff_view.disable_stage", disable_stage)
+            settings.set("git_savvy.diff_view.history", [])
+            settings.set("git_savvy.diff_view.just_hunked", "")
 
             # Clickable lines:
             # (A)  common/commands/view_manipulation.py  |   1 +
@@ -339,7 +341,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
                 stdin=hunk_diff
             )
 
-            history = self.view.settings().get("git_savvy.diff_view.history") or []
+            history = self.view.settings().get("git_savvy.diff_view.history")
             history.append((args, hunk_diff, pt, in_cached_mode))
             self.view.settings().set("git_savvy.diff_view.history", history)
             self.view.settings().set("git_savvy.diff_view.just_hunked", hunk_diff)
@@ -455,7 +457,7 @@ class GsDiffUndo(TextCommand, GitCommand):
 
     # NOTE: MUST NOT be async, otherwise `view.show` will not update the view 100%!
     def run(self, edit):
-        history = self.view.settings().get("git_savvy.diff_view.history") or []
+        history = self.view.settings().get("git_savvy.diff_view.history")
         if not history:
             window = self.view.window()
             if window:
