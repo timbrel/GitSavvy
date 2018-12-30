@@ -340,7 +340,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
             )
 
             history = self.view.settings().get("git_savvy.diff_view.history") or []
-            history.append((args, hunk_diff, pt))
+            history.append((args, hunk_diff, pt, in_cached_mode))
             self.view.settings().set("git_savvy.diff_view.history", history)
             self.view.settings().set("git_savvy.diff_view.just_hunked", hunk_diff)
 
@@ -462,7 +462,7 @@ class GsDiffUndo(TextCommand, GitCommand):
                 window.status_message("Undo stack is empty")
             return
 
-        args, stdin, cursor = history.pop()
+        args, stdin, cursor, in_cached_mode = history.pop()
         # Toggle the `--reverse` flag.
         args[1] = "-R" if not args[1] else None
 
@@ -471,6 +471,9 @@ class GsDiffUndo(TextCommand, GitCommand):
         self.view.settings().set("git_savvy.diff_view.just_hunked", stdin)
 
         self.view.run_command("gs_diff_refresh")
-        self.view.sel().clear()
-        self.view.sel().add(cursor)
-        self.view.show(cursor)
+
+        # The cursor is only applicable if we're still in the same cache/stage mode
+        if self.view.settings().get("git_savvy.diff_view.in_cached_mode") == in_cached_mode:
+            self.view.sel().clear()
+            self.view.sel().add(cursor)
+            self.view.show(cursor)
