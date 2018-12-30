@@ -207,6 +207,7 @@ class GsDiffToggleCachedMode(TextCommand):
     Toggle `in_cached_mode`.
     """
 
+    # NOTE: MUST NOT be async, otherwise `view.show` will not update the view 100%!
     def run(self, edit):
         setting = 'in_cached_mode'
 
@@ -453,10 +454,8 @@ class GsDiffUndo(TextCommand, GitCommand):
     Undo the last action taken in the diff view, if possible.
     """
 
+    # NOTE: MUST NOT be async, otherwise `view.show` will not update the view 100%!
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
         history = self.view.settings().get("git_savvy.diff_view.history") or []
         if not history:
             window = self.view.window()
