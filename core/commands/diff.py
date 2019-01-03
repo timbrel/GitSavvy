@@ -246,23 +246,31 @@ class GsDiffToggleCachedMode(TextCommand):
                 expected_content = match.group(1)
                 region = self.view.find(expected_content, 0, sublime.LITERAL)
                 if region:
-                    self.view.sel().clear()
-                    self.view.sel().add(region.a)
-                    self.view.show(region.a)
+                    set_and_show_cursor(self.view, region.a)
                     return
 
         if last_cursors:
-            sel = self.view.sel()
-            sel.clear()
-            for (a, b) in last_cursors:
-                sel.add(sublime.Region(a, b))
-
             # The 'flipping' between the two states should be as fast as possible and
             # without visual clutter.
             with no_animations():
-                self.view.show(sel)
+                set_and_show_cursor(self.view, [sublime.Region(a, b) for a, b in last_cursors])
+
         else:
             self.view.run_command("gs_diff_navigate")
+
+
+def set_and_show_cursor(view, cursors):
+    sel = view.sel()
+    sel.clear()
+    try:
+        it = iter(cursors)
+    except TypeError:
+        sel.add(cursors)
+    else:
+        for c in it:
+            sel.add(c)
+
+    view.show(sel)
 
 
 @contextmanager
@@ -492,6 +500,4 @@ class GsDiffUndo(TextCommand, GitCommand):
 
         # The cursor is only applicable if we're still in the same cache/stage mode
         if self.view.settings().get("git_savvy.diff_view.in_cached_mode") == in_cached_mode:
-            self.view.sel().clear()
-            self.view.sel().add(cursor)
-            self.view.show(cursor)
+            set_and_show_cursor(self.view, cursor)
