@@ -240,13 +240,10 @@ class GsDiffToggleCachedMode(TextCommand):
         just_hunked = self.view.settings().get("git_savvy.diff_view.just_hunked")
         if just_hunked:
             self.view.settings().set("git_savvy.diff_view.just_hunked", "")
-            match = re.search(r'\n(@@ .+)\n', just_hunked)
-            if match is not None:
-                expected_content = match.group(1)
-                region = self.view.find(expected_content, 0, sublime.LITERAL)
-                if region:
-                    set_and_show_cursor(self.view, region.a)
-                    return
+            region = find_hunk_in_view(self.view, just_hunked)
+            if region:
+                set_and_show_cursor(self.view, region.a)
+                return
 
         if last_cursors:
             # The 'flipping' between the two states should be as fast as possible and
@@ -256,6 +253,15 @@ class GsDiffToggleCachedMode(TextCommand):
 
         else:
             self.view.run_command("gs_diff_navigate")
+
+
+def find_hunk_in_view(view, hunk):
+    match = re.search(r'\n(@@ .+)\n', hunk)
+    if match is not None:
+        expected_content = match.group(1)
+        region = view.find(expected_content, 0, sublime.LITERAL)
+        if region:
+            return region
 
 
 def pickle_sel(sel):
