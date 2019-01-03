@@ -225,8 +225,7 @@ class GsDiffToggleCachedMode(TextCommand):
         settings = self.view.settings()
 
         last_cursors = settings.get('git_savvy.diff_view.last_cursors') or []
-        cursors = [(s.a, s.b) for s in self.view.sel()]
-        settings.set('git_savvy.diff_view.last_cursors', cursors)
+        settings.set('git_savvy.diff_view.last_cursors', pickle_sel(self.view.sel()))
 
         setting_str = "git_savvy.diff_view.{}".format(setting)
         current_mode = settings.get(setting_str)
@@ -253,10 +252,18 @@ class GsDiffToggleCachedMode(TextCommand):
             # The 'flipping' between the two states should be as fast as possible and
             # without visual clutter.
             with no_animations():
-                set_and_show_cursor(self.view, [sublime.Region(a, b) for a, b in last_cursors])
+                set_and_show_cursor(self.view, unpickle_sel(last_cursors))
 
         else:
             self.view.run_command("gs_diff_navigate")
+
+
+def pickle_sel(sel):
+    return [(s.a, s.b) for s in sel]
+
+
+def unpickle_sel(pickled_sel):
+    return [sublime.Region(a, b) for a, b in pickled_sel]
 
 
 def set_and_show_cursor(view, cursors):
