@@ -4,6 +4,7 @@ current diff.
 """
 
 from contextlib import contextmanager
+from itertools import dropwhile, takewhile
 import os
 import re
 import bisect
@@ -256,12 +257,50 @@ class GsDiffToggleCachedMode(TextCommand):
 
 
 def find_hunk_in_view(view, hunk):
-    match = re.search(r'\n(@@ .+)\n', hunk)
-    if match is not None:
-        expected_content = match.group(1)
-        region = view.find(expected_content, 0, sublime.LITERAL)
+    hunk_content = extract_first_hunk(hunk)
+    if hunk_content:
+        return (
+            view.find(hunk_content[0], 0, sublime.LITERAL)
+            or search_for_hunk_content_in_view(view, hunk_content[1:])
+        )
+
+
+def extract_first_hunk(hunk):
+    hunk_lines = hunk.split('\n')
+    not_hunk_start = lambda l: not l.startswith('@@ ')  # noqa: E731
+
+    try:
+        start, *rest = dropwhile(not_hunk_start, hunk_lines)
+    except (StopIteration, ValueError):
+        return None
+
+    return [start] + list(takewhile(not_hunk_start, rest))
+
+
+def search_for_hunk_content_in_view(view, lines):
+    for hunk_content in shrink_list_sym(lines):
+        region = view.find('\n'.join(hunk_content), 0, sublime.LITERAL)
         if region:
+            return first_hunk_start_before_pt(view, region.a)
+
+
+def first_hunk_start_before_pt(view, pt):
+    for region in line_regions_before_pt(view, pt):
+        if view.substr(region).startswith('@@ '):
             return region
+
+
+def shrink_list_sym(list):
+    while list:
+        yield list
+        list = list[1:-1]
+
+
+def line_regions_before_pt(view, pt):
+    row, _ = view.rowcol(pt)
+    for row in reversed(range(row)):
+        pt = view.text_point(row, 0)
+        yield view.line(pt)
 
 
 def pickle_sel(sel):
