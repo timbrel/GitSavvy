@@ -209,6 +209,96 @@ diff --git a/barz b/fooz
         self.assertEqual(actual, expected)
 
 
+class TestDiffViewHunking(DeferrableTestCase):
+    @classmethod
+    def setUpClass(cls):
+        sublime.run_command("new_window")
+        cls.window = sublime.active_window()
+        s = sublime.load_settings("Preferences.sublime-settings")
+        s.set("close_windows_when_empty", False)
+
+    @classmethod
+    def tearDownClass(self):
+        self.window.run_command('close_window')
+
+    def tearDown(self):
+        unstub()
+
+    HUNK1 = """\
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
+ two
+"""
+    HUNK2 = """\
+diff --git a/foxx b/boxx
+--- a/foox
++++ b/boox
+@@ -16,1 +16,1 @@ Hello
+ one
+ two
+"""
+
+    @p.expand([
+        (58, HUNK1),
+        (68, HUNK1),
+        (79, HUNK1),
+        (84, HUNK1),
+        (88, HUNK1),
+        (136, HUNK2),
+        (146, HUNK2),
+        (156, HUNK2),
+        (166, HUNK2),
+        (169, HUNK2),
+        (170, HUNK2),  # at EOF should work
+    ])
+    def test_hunking_one_hunk(self, CURSOR, HUNK, IN_CACHED_MODE=False):
+        # Docstring here to get verbose parameterized printing
+        """"""
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
+ two
+diff --git a/foxx b/boxx
+--- a/foox
++++ b/boox
+@@ -16,1 +16,1 @@ Hello
+ one
+ two
+"""
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        view.settings().set('git_savvy.diff_view.in_cached_mode', IN_CACHED_MODE)
+        view.settings().set('git_savvy.diff_view.history', [])
+        cmd = module.GsDiffStageOrResetHunkCommand(view)
+        when(cmd).git(...)
+        when(cmd.view).run_command("gs_diff_refresh")
+
+        view.sel().clear()
+        view.sel().add(CURSOR)
+
+        cmd.run({'unused_edit'})
+        yield 'AWAIT_WORKER'
+        yield 'AWAIT_WORKER'
+
+        history = view.settings().get('git_savvy.diff_view.history')
+        self.assertEqual(len(history), 1)
+
+        actual = history.pop()
+        expected = [['apply', None, '--cached', '-'], HUNK, CURSOR, IN_CACHED_MODE]
+        self.assertEqual(actual, expected)
+
+
 class TestDiffView(DeferrableTestCase):
     @classmethod
     def setUpClass(cls):

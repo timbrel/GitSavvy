@@ -376,7 +376,8 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
             # immediately following diff headers.
             (set(self.hunk_starts) - set(self.header_ends)) |
             # The last hunk ends at the end of the file.
-            set((self.view.size(), ))
+            # It should include the last line (`+ 1`).
+            set((self.view.size() + 1, ))
         ))
 
         sublime.set_timeout_async(lambda: self.apply_diffs_for_pts(cursor_pts, reset), 0)
