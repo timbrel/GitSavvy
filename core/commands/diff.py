@@ -270,7 +270,7 @@ def find_hunk_in_view(view, hunk):
 
 def extract_first_hunk(hunk):
     hunk_lines = hunk.split('\n')
-    not_hunk_start = lambda l: not l.startswith('@@ ')  # noqa: E731
+    not_hunk_start = lambda l: not l.startswith('@@ ')
 
     try:
         start, *rest = dropwhile(not_hunk_start, hunk_lines)
