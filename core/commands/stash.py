@@ -137,4 +137,6 @@ class GsStashDropCommand(WindowCommand, GitCommand):
         @util.actions.destructive(description="drop a stash")
         def do_drop_stash(stash_id):
             self.drop_stash(stash_id)
+            util.view.refresh_gitsavvy(self.window.active_view())
+
         do_drop_stash(stash_id)
