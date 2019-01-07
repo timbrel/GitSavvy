@@ -20,29 +20,26 @@ class ActiveBranchMixin():
         Return a tuple of:
 
           0) boolean indicating whether repo is in detached state
-          1) boolean indicating whether this is initial commit
-          2) active branch name
-          3) remote branch name
-          4) boolean indicating whether branch is clean
-          5) # commits ahead of remote
-          6) # commits behind of remote
-          7) boolean indicating whether the remote branch is gone
+          1) active branch name
+          2) remote branch name
+          3) boolean indicating whether branch is clean
+          4) # commits ahead of remote
+          5) # commits behind of remote
+          6) boolean indicating whether the remote branch is gone
         """
 
         first_line, *addl_lines = lines
         # Any additional lines will mean files have changed or are untracked.
         clean = len(addl_lines) == 0
-        initial = False
 
         if first_line.startswith("## HEAD (no branch)"):
-            return True, initial, None, None, clean, None, None, False
+            return True, None, None, clean, None, None, False
 
         if (
             first_line.startswith("## No commits yet on ")
             # older git used these
             or first_line.startswith("## Initial commit on ")
         ):
-            initial = True
             first_line = first_line[:3] + first_line[21:]
 
         valid_punctuation = "".join(c for c in string.punctuation if c not in "~^:?*[\\")
@@ -52,11 +49,11 @@ class ActiveBranchMixin():
         status_match = re.match(short_status_pattern, first_line)
 
         if not status_match:
-            return False, False, None if clean else addl_lines[0], None, clean, None, None, False
+            return False, None if clean else addl_lines[0], None, clean, None, None, False
 
         branch, _, remote, _, _, _, ahead, _, _, behind, gone = status_match.groups()
 
-        return False, initial, branch, remote, clean, ahead, behind, bool(gone)
+        return False, branch, remote, clean, ahead, behind, bool(gone)
 
     def get_branch_status(self, delim=None):
         """
@@ -77,7 +74,7 @@ class ActiveBranchMixin():
         return self._format_branch_status(branch_status, delim)
 
     def _format_branch_status(self, branch_status, delim=None):
-        detached, initial, branch, remote, clean, ahead, behind, gone = branch_status
+        detached, branch, remote, clean, ahead, behind, gone = branch_status
 
         secondary = []
 
@@ -116,7 +113,7 @@ class ActiveBranchMixin():
         return self._format_branch_status_short(branch_status)
 
     def _format_branch_status_short(self, branch_status):
-        detached, initial, branch, remote, clean, ahead, behind, gone = branch_status
+        detached, branch, remote, clean, ahead, behind, gone = branch_status
 
         dirty = "" if clean else "*"
 
