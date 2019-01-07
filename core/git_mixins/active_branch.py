@@ -32,16 +32,18 @@ class ActiveBranchMixin():
         first_line, *addl_lines = lines
         # Any additional lines will mean files have changed or are untracked.
         clean = len(addl_lines) == 0
+        initial = False
 
         if first_line.startswith("## HEAD (no branch)"):
-            return True, False, None, None, clean, None, None, False
+            return True, initial, None, None, clean, None, None, False
 
         if (
             first_line.startswith("## No commits yet on ")
             # older git used these
             or first_line.startswith("## Initial commit on ")
         ):
-            return False, True, first_line[21:], None, clean, None, None, False
+            initial = True
+            first_line = first_line[:3] + first_line[21:]
 
         valid_punctuation = "".join(c for c in string.punctuation if c not in "~^:?*[\\")
         branch_pattern = "[A-Za-z0-9" + re.escape(valid_punctuation) + "\u263a-\U0001f645]+?"
@@ -54,7 +56,7 @@ class ActiveBranchMixin():
 
         branch, _, remote, _, _, _, ahead, _, _, behind, gone = status_match.groups()
 
-        return False, False, branch, remote, clean, ahead, behind, bool(gone)
+        return False, initial, branch, remote, clean, ahead, behind, bool(gone)
 
     def get_branch_status(self, delim=None):
         """
@@ -81,9 +83,6 @@ class ActiveBranchMixin():
 
         if detached:
             status = "HEAD is in a detached state."
-
-        elif initial:
-            status = "On branch `{}`.".format(branch)
 
         else:
             tracking = " tracking `{}`".format(remote)
