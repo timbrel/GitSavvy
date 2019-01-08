@@ -198,7 +198,6 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
         self.window.run_command("gs_diff", {
             "in_cached_mode": cache,
             "file_path": self._file_path,
-            "current_file": bool(self._file_path),
             "base_commit": self._commit_hash,
             "disable_stage": True
         })
