@@ -571,8 +571,8 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
         interface = ui.get_interface(self.view.id())
         self.discard_untracked(interface)
         self.discard_unstaged(interface)
-        util.view.refresh_gitsavvy(self.view)
         self.view.window().status_message("Successfully discarded changes.")
+        interface.refresh_repo_status_and_render()
 
     def discard_untracked(self, interface):
         valid_ranges = interface.get_view_regions("untracked_files")
@@ -678,7 +678,8 @@ class GsStatusDiscardAllChangesCommand(TextCommand, GitCommand):
                                           "and delete all untracked files")
     def run(self, edit):
         self.discard_all_unstaged()
-        util.view.refresh_gitsavvy(self.view)
+        interface = ui.get_interface(self.view.id())
+        interface.refresh_repo_status_and_render()
 
 
 class GsStatusCommitCommand(TextCommand, GitCommand):
