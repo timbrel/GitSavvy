@@ -743,7 +743,7 @@ class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
             for fpath in file_paths:
                 self.add_ignore(os.path.join("/", fpath))
             self.view.window().status_message("Successfully ignored files.")
-            util.view.refresh_gitsavvy(self.view)
+            interface.refresh_repo_status_and_render()
 
 
 class GsStatusIgnorePatternCommand(TextCommand, GitCommand):
