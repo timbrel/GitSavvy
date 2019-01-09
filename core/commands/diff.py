@@ -5,7 +5,7 @@ current diff.
 
 from contextlib import contextmanager
 from functools import partial
-from itertools import dropwhile, takewhile
+from itertools import chain, dropwhile, takewhile
 import os
 import re
 import bisect
@@ -20,7 +20,7 @@ from ...common import util
 
 
 if False:
-    from typing import Callable, Iterator, List, Optional, Tuple, TypeVar
+    from typing import Callable, Iterable, Iterator, List, Optional, Tuple, TypeVar
     from mypy_extensions import TypedDict
 
     T = TypeVar('T')
@@ -357,6 +357,16 @@ def unpickle_sel(pickled_sel):
     return [sublime.Region(a, b) for a, b in pickled_sel]
 
 
+def unique(items):
+    # type: (Iterable[T]) -> List[T]
+    """Remove duplicate entries but remain sorted/ordered."""
+    rv = []  # type: List[T]
+    for item in items:
+        if item not in rv:
+            rv.append(item)
+    return rv
+
+
 def set_and_show_cursor(view, cursors):
     sel = view.sel()
     sel.clear()
@@ -500,93 +510,59 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
 
         # Filter out any cursors that are larger than a single point.
         cursor_pts = tuple(cursor.a for cursor in self.view.sel() if cursor.a == cursor.b)
+        diff = parse_diff_in_view(self.view)
 
-        self.header_starts = tuple(region.a for region in self.view.find_all("^diff"))
-        self.header_ends = tuple(region.b for region in self.view.find_all(r"^\+\+\+.+\n(?=@@)"))
-        self.hunk_starts = tuple(region.a for region in self.view.find_all("^@@"))
-        self.hunk_ends = sorted(list(
-            # Hunks end when the next diff starts.
-            set(self.header_starts[1:]) |
-            # Hunks end when the next hunk starts, except for hunks
-            # immediately following diff headers.
-            (set(self.hunk_starts) - set(self.header_ends)) |
-            # The last hunk ends at the end of the file.
-            # It should include the last line (`+ 1`).
-            set((self.view.size() + 1, ))
-        ))
+        extract = partial(extract_content, self.view)
+        flatten = chain.from_iterable
 
-        self.apply_diffs_for_pts(cursor_pts, reset)
+        patches = unique(flatten(filter_(head_and_hunk_for_pt(diff, pt) for pt in cursor_pts)))
+        patch = ''.join(map(extract, patches))
 
-    def apply_diffs_for_pts(self, cursor_pts, reset):
-        in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
-        context_lines = self.view.settings().get('git_savvy.diff_view.context_lines')
-
-        # Apply the diffs in reverse order - otherwise, line number will be off.
-        for pt in reversed(cursor_pts):
-            hunk_diff = self.get_hunk_diff(pt)
-            if not hunk_diff:
-                return
-
-            # The three argument combinations below result from the following
-            # three scenarios:
-            #
-            # 1) The user is in non-cached mode and wants to stage a hunk, so
-            #    do NOT apply the patch in reverse, but do apply it only against
-            #    the cached/indexed file (not the working tree).
-            # 2) The user is in non-cached mode and wants to undo a line/hunk, so
-            #    DO apply the patch in reverse, and do apply it both against the
-            #    index and the working tree.
-            # 3) The user is in cached mode and wants to undo a line hunk, so DO
-            #    apply the patch in reverse, but only apply it against the cached/
-            #    indexed file.
-            #
-            # NOTE: When in cached mode, no action will be taken when the user
-            #       presses SUPER-BACKSPACE.
-
-            args = (
-                "apply",
-                "-R" if (reset or in_cached_mode) else None,
-                "--cached" if (in_cached_mode or not reset) else None,
-                "--unidiff-zero" if context_lines == 0 else None,
-                "-",
-            )
-            self.git(
-                *args,
-                stdin=hunk_diff
-            )
-
-            history = self.view.settings().get("git_savvy.diff_view.history")
-            history.append((args, hunk_diff, pt, in_cached_mode))
-            self.view.settings().set("git_savvy.diff_view.history", history)
-            self.view.settings().set("git_savvy.diff_view.just_hunked", hunk_diff)
-
-        self.view.run_command("gs_diff_refresh")
-
-    def get_hunk_diff(self, pt):
-        """
-        Given a cursor position, find and return the diff header and the
-        diff for the selected hunk/file.
-        """
-
-        for hunk_start, hunk_end in zip(self.hunk_starts, self.hunk_ends):
-            if hunk_start <= pt < hunk_end:
-                break
+        if patch:
+            self.apply_patch(patch, cursor_pts, reset)
         else:
             window = self.view.window()
             if window:
                 window.status_message('Not within a hunk')
-            return  # Error!
 
-        header_start, header_end = max(
-            (header_start, header_end)
-            for header_start, header_end in zip(self.header_starts, self.header_ends)
-            if (header_start, header_end) < (hunk_start, hunk_end)
+    def apply_patch(self, patch, pts, reset):
+        in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
+        context_lines = self.view.settings().get('git_savvy.diff_view.context_lines')
+
+        # The three argument combinations below result from the following
+        # three scenarios:
+        #
+        # 1) The user is in non-cached mode and wants to stage a hunk, so
+        #    do NOT apply the patch in reverse, but do apply it only against
+        #    the cached/indexed file (not the working tree).
+        # 2) The user is in non-cached mode and wants to undo a line/hunk, so
+        #    DO apply the patch in reverse, and do apply it both against the
+        #    index and the working tree.
+        # 3) The user is in cached mode and wants to undo a line hunk, so DO
+        #    apply the patch in reverse, but only apply it against the cached/
+        #    indexed file.
+        #
+        # NOTE: When in cached mode, no action will be taken when the user
+        #       presses SUPER-BACKSPACE.
+
+        args = (
+            "apply",
+            "-R" if (reset or in_cached_mode) else None,
+            "--cached" if (in_cached_mode or not reset) else None,
+            "--unidiff-zero" if context_lines == 0 else None,
+            "-",
+        )
+        self.git(
+            *args,
+            stdin=patch
         )
 
-        header = self.view.substr(sublime.Region(header_start, header_end))
-        diff = self.view.substr(sublime.Region(hunk_start, hunk_end))
+        history = self.view.settings().get("git_savvy.diff_view.history")
+        history.append((args, patch, pts, in_cached_mode))
+        self.view.settings().set("git_savvy.diff_view.history", history)
+        self.view.settings().set("git_savvy.diff_view.just_hunked", patch)
 
-        return header + diff
+        self.view.run_command("gs_diff_refresh")
 
 
 class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
@@ -674,7 +650,7 @@ class GsDiffUndo(TextCommand, GitCommand):
                 window.status_message("Undo stack is empty")
             return
 
-        args, stdin, cursor, in_cached_mode = history.pop()
+        args, stdin, cursors, in_cached_mode = history.pop()
         # Toggle the `--reverse` flag.
         args[1] = "-R" if not args[1] else None
 
@@ -686,4 +662,4 @@ class GsDiffUndo(TextCommand, GitCommand):
 
         # The cursor is only applicable if we're still in the same cache/stage mode
         if self.view.settings().get("git_savvy.diff_view.in_cached_mode") == in_cached_mode:
-            set_and_show_cursor(self.view, cursor)
+            set_and_show_cursor(self.view, cursors)
