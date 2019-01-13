@@ -23,6 +23,13 @@
     "git_path": "",
 
     /*
+        Set custom environment variables for git command execution.
+    */
+    "env": {
+        "GIT_OPTIONAL_LOCKS": "0"
+    },
+
+    /*
         Change this to `true` when doing dev work on GitSavvy.
      */
     "dev_mode": false,

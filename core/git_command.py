@@ -187,6 +187,9 @@ class GitCommand(StatusMixin,
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
             environ = os.environ.copy()
+            savvy_env = self.savvy_settings.get("env")
+            if savvy_env:
+                environ.update(savvy_env)
             environ.update(custom_environ or {})
             start = time.time()
             p = subprocess.Popen(command,
