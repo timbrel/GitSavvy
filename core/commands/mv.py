@@ -3,6 +3,7 @@ import os
 import sublime
 from sublime_plugin import WindowCommand
 
+from ...common import util
 from ..git_command import GitCommand
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
@@ -35,4 +36,4 @@ class GsMvCurrentFileCommand(WindowCommand, GitCommand):
         v = self.window.find_open_file(file_path)
         if v:
             v.retarget(new_path)
-            v.settings().set("git_savvy.file_path", os.path.realpath(new_path))
+            v.settings().set("git_savvy.file_path", util.path.realpath(new_path))

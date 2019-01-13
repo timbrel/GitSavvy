@@ -105,7 +105,7 @@ class GsClone(WindowCommand, GitCommand):
             if not os.path.exists(os.path.join(folder, project, ".git")):
                 return os.path.join(folder, project)
             else:
-                parent = os.path.realpath(os.path.join(folder, ".."))
+                parent = util.path.realpath(os.path.join(folder, ".."))
                 return os.path.join(parent, project)
         return ""
 

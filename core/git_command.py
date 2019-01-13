@@ -397,17 +397,21 @@ class GitCommand(StatusMixin,
                     repo_path = self.find_git_toplevel(
                         folders[0], throw_on_stderr=False)
 
-        return os.path.realpath(repo_path) if repo_path else None
+        return util.path.realpath(repo_path) if repo_path else None
 
     def find_git_toplevel(self, folder, throw_on_stderr):
-        stdout = self.git(
-            "rev-parse",
-            "--show-toplevel",
-            working_dir=folder,
-            throw_on_stderr=throw_on_stderr
-        )
-        repo = stdout.strip()
-        return os.path.realpath(repo) if repo else None
+        try:
+            repo_path = util.path.realpath(folder)
+            if not util.path.is_work_tree(repo_path):
+                repo_path, _ = util.path.split_work_tree(repo_path)
+            if repo_path:
+                return repo_path
+            if throw_on_stderr:
+                raise ValueError("Unable to determine Git repo path.")
+        except:
+            if throw_on_stderr:
+                raise
+        return None
 
     def get_repo_path(self, offer_init=True):
         # The below condition will be true if run from a WindowCommand and false
@@ -434,10 +438,10 @@ class GitCommand(StatusMixin,
             if view:
                 file_name = view.file_name()
                 # only set "git_savvy.repo_path" when the current file is in repo_path
-                if file_name and os.path.realpath(file_name).startswith(repo_path + os.path.sep):
+                if file_name and util.path.realpath(file_name).startswith(repo_path + os.path.sep):
                     view.settings().set("git_savvy.repo_path", repo_path)
 
-        return os.path.realpath(repo_path) if repo_path else repo_path
+        return util.path.realpath(repo_path) if repo_path else repo_path
 
     @property
     def repo_path(self):
@@ -471,16 +475,16 @@ class GitCommand(StatusMixin,
         if not fpath:
             fpath = view.file_name()
             if fpath:
-                view.settings().set("git_savvy.file_path", os.path.realpath(fpath))
+                view.settings().set("git_savvy.file_path", util.path.realpath(fpath))
 
-        return os.path.realpath(fpath) if fpath else fpath
+        return util.path.realpath(fpath) if fpath else fpath
 
     def get_rel_path(self, abs_path=None):
         """
         Return the file path relative to the repo root.
         """
         path = abs_path or self.file_path
-        return os.path.relpath(os.path.realpath(path), start=self.repo_path)
+        return os.path.relpath(util.path.realpath(path), start=self.repo_path)
 
     def _include_global_flags(self, args):
         """
