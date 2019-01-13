@@ -408,7 +408,7 @@ class GitCommand(StatusMixin,
                 return repo_path
             if throw_on_stderr:
                 raise ValueError("Unable to determine Git repo path.")
-        except:
+        except Exception:
             if throw_on_stderr:
                 raise
         return None
