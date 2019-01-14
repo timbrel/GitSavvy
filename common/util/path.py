@@ -18,25 +18,25 @@ try:
 
             Also note that _getfinalpathname in Python 3.3 throws
             `NotImplementedError` on Windows versions prior to Windows Vista,
-            hence we fallback to `os.path.abspath()` on these platforms.
+            hence we fallback to `os.path.realpath()` on these platforms.
 
         Arguments:
             path (string): The path to resolve.
 
         Returns:
             string: The resolved absolute path if exists or path as provided
-                otherwise.
+                otherwise. If `path` is '' or None the current directory is
+                returned.
         """
-        try:
-            if path:
+        if path:
+            try:
                 real_path = _getfinalpathname(path)
                 if real_path[5] == ':':
                     # Remove \\?\ from beginning of resolved path
                     return real_path[4:]
-                return os.path.abspath(path)
-        except FileNotFoundError:
-            pass
-        return path
+            except FileNotFoundError:
+                return path
+        return os.path.realpath(path)
 
 except (AttributeError, ImportError, AssertionError):
     def realpath(path):
@@ -48,7 +48,7 @@ except (AttributeError, ImportError, AssertionError):
         Returns:
             string: The resolved absolute path.
         """
-        return os.path.realpath(path) if path else None
+        return os.path.realpath(path)
 
 
 def is_work_tree(path):
