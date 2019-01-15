@@ -26,7 +26,6 @@
         Set custom environment variables for git command execution.
     */
     "env": {
-        "GIT_OPTIONAL_LOCKS": "0"
     },
 
     /*
