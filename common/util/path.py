@@ -35,7 +35,7 @@ try:
                     # Remove \\?\ from beginning of resolved path
                     return real_path[4:]
             except FileNotFoundError:
-                return path
+                pass
         return os.path.realpath(path)
 
 except (AttributeError, ImportError, AssertionError):
