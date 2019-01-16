@@ -27,6 +27,31 @@ last_execution = 0
 update_status_bar_soon = False
 
 
+def view_is_transient(view):
+    """Return whether a view can be considered 'transient'.
+
+    Transient views are 'detached' views, widgets (aka quick or input panels), and preview
+    views.
+    """
+
+    # 'Detached' (already closed) views don't have a window.
+    window = view.window()
+    if not window:
+        return True
+
+    # Widgets are normal views but the typical getter don't list them.
+    group, index = window.get_view_index(view)
+    if index == -1:
+        return True
+
+    # Transient views are the views used to preview files when using goto anything.
+    # (This does not catch previewing by clicking the sidebar.)
+    if window.transient_view_in_group(group) == view:
+        return True
+
+    return False
+
+
 class GsUpdateStatusBarCommand(TextCommand, GitCommand):
 
     """
@@ -34,12 +59,7 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-
-        window = self.view.window()
-        if not window or \
-            (self.view.file_name() and
-                self.view == window.transient_view_in_group(window.active_group())):
-            # it means it is an transient view of a regular file
+        if view_is_transient(self.view):
             return
 
         global last_execution, update_status_bar_soon
