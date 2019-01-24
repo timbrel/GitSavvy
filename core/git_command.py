@@ -73,20 +73,16 @@ class LoggingProcessWrapper(object):
         try:
             for line in iter(self.process.stdout.readline, b""):
                 self.stdout = self.stdout + line
-                util.log.panel_append(line.decode())
                 util.log.panel_append(line.decode(), run_async=False)
         except IOError as err:
-            util.log.panel_append(err)
             util.log.panel_append(err, run_async=False)
 
     def read_stderr(self):
         try:
             for line in iter(self.process.stderr.readline, b""):
                 self.stderr = self.stderr + line
-                util.log.panel_append(line.decode())
                 util.log.panel_append(line.decode(), run_async=False)
         except IOError as err:
-            util.log.panel_append(err)
             util.log.panel_append(err, run_async=False)
 
     def communicate(self, stdin):

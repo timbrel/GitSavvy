@@ -2,6 +2,7 @@ environment:
     PACKAGE: "GitSavvy"
     SUBLIME_TEXT_VERSION : "3"
     UNITTESTING_TAG : "master"
+    PYTHON: "C:\\Python36-x64"
 
 install:
     - ps: git config --global user.email gitsavvy@gitsavvy.com
@@ -9,6 +10,7 @@ install:
     - ps: appveyor DownloadFile "https://raw.githubusercontent.com/SublimeText/UnitTesting/master/sbin/appveyor.ps1"
     - ps: .\appveyor.ps1 "bootstrap" -verbose
     - ps: .\appveyor.ps1 "install_package_control" -verbose
+    - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
     - ps: python -m pip install --upgrade pip
     - ps: pip install pycodestyle
 
