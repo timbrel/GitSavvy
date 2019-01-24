@@ -2,7 +2,7 @@ environment:
     PACKAGE: "GitSavvy"
     SUBLIME_TEXT_VERSION : "3"
     UNITTESTING_TAG : "master"
-    PYTHON: "C:\\Python33-x64"
+    PYTHON: "C:\\Python36-x64"
 
 install:
     - ps: git config --global user.email gitsavvy@gitsavvy.com
