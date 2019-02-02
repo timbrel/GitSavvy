@@ -241,7 +241,11 @@ class GsDiffToggleCachedMode(TextCommand):
         self.view.run_command("gs_diff_refresh")
 
         just_hunked = self.view.settings().get("git_savvy.diff_view.just_hunked")
-        if just_hunked:
+        # Check for `last_cursors` as well bc it is only falsy on the *first*
+        # switch. T.i. if the user hunked and then switches to see what will be
+        # actually comitted, the view starts at the top. Later, the view will
+        # show the last added hunk.
+        if just_hunked and last_cursors:
             self.view.settings().set("git_savvy.diff_view.just_hunked", "")
             region = find_hunk_in_view(self.view, just_hunked)
             if region:
