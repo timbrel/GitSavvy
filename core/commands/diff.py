@@ -108,7 +108,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
 
         self.window.focus_view(diff_view)
         diff_view.sel().clear()
-        diff_view.run_command("gs_diff_refresh", {'navigate_to_next_hunk': True})
+        diff_view.run_command("gs_diff_refresh")
         diff_view.run_command("gs_handle_vintageous")
 
 
@@ -118,7 +118,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
     Refresh the diff view with the latest repo state.
     """
 
-    def run(self, edit, cursors=None, navigate_to_next_hunk=False):
+    def run(self, edit):
         if self.view.settings().get("git_savvy.disable_diff"):
             return
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
@@ -152,7 +152,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
             prelude += "  IGNORING WHITESPACE\n"
 
         try:
-            stdout = self.git(
+            diff = self.git(
                 "diff",
                 "--ignore-all-space" if ignore_whitespace else None,
                 "--word-diff" if show_word_diff else None,
@@ -178,12 +178,14 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
                 return
             raise err
 
-        text = prelude + '\n--\n' + stdout
+        old_diff = self.view.settings().get("git_savvy.diff_view.raw_diff")
+        self.view.settings().set("git_savvy.diff_view.raw_diff", diff)
+        text = prelude + '\n--\n' + diff
 
         self.view.run_command(
             "gs_replace_view_text", {"text": text, "restore_cursors": True}
         )
-        if navigate_to_next_hunk:
+        if not old_diff:
             self.view.run_command("gs_diff_navigate")
 
 
@@ -251,9 +253,6 @@ class GsDiffToggleCachedMode(TextCommand):
             # without visual clutter.
             with no_animations():
                 set_and_show_cursor(self.view, unpickle_sel(last_cursors))
-
-        else:
-            self.view.run_command("gs_diff_navigate")
 
 
 def find_hunk_in_view(view, hunk):
