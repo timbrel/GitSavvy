@@ -338,7 +338,7 @@
         "command": "gs_view_git_log"
     },
     {
-        "caption": "git: tag",
+        "caption": "git: tags",
         "command": "gs_show_tags"
     },
     {
