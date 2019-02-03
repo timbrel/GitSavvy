@@ -133,7 +133,6 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         help_text = (COMMIT_HELP_TEXT_ALT
                      if self.savvy_settings.get("commit_on_close")
                      else COMMIT_HELP_TEXT)
-        include_unstaged = view_settings.get("git_savvy.commit_view.include_unstaged", False)
         option_amend = view_settings.get("git_savvy.commit_view.amend")
         has_prepare_commit_msg_hook = view_settings.get("git_savvy.commit_view.has_prepare_commit_msg_hook")
 
@@ -157,12 +156,41 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
             with util.file.safe_open(commit_help_extra_path, "r", encoding="utf-8") as f:
                 initial_text += f.read()
 
-        git_args = [
-            "diff",
-            "--no-color"
-        ]
+        initial_text = self.append_commit_diff(initial_text, view_settings)
 
+        self.view.run_command("gs_replace_view_text", {
+            "text": initial_text,
+            "nuke_cursors": True
+        })
+
+    def append_commit_diff(self, initial_text, view_settings):
+        """ Append commit diff content to initial text """
         show_commit_diff = self.savvy_settings.get("show_commit_diff")
+        if not show_commit_diff:
+            return ''
+
+        option_amend = view_settings.get("git_savvy.commit_view.amend")
+        include_unstaged = view_settings.get("git_savvy.commit_view.include_unstaged", False)
+
+        if option_amend:
+            last_two_commits = self.git("log", "-2", "--pretty=format:%h", "-z").split("\x00")
+            amend_first_commit = len(last_two_commits) == 1
+        else:
+            amend_first_commit = False
+
+        # use log instead of diff on first commit, since diff won't show anything
+        if amend_first_commit:
+            git_args = [
+                "log",
+                "--no-color",
+                "--oneline",
+            ]
+        else:
+            git_args = [
+                "diff",
+                "--no-color",
+            ]
+
         # for backward compatibility, check also if show_commit_diff is True
         if show_commit_diff is True or show_commit_diff == "full":
             git_args.append("--patch")
@@ -171,19 +199,19 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         if show_commit_diff == "stat" or (show_commit_diff == "full" and show_diffstat):
             git_args.append("--stat")
 
-        if not include_unstaged:
+        if not (amend_first_commit or include_unstaged):
             git_args.append("--cached")
 
-        if option_amend:
+        if option_amend and not amend_first_commit:
             git_args.append("HEAD^")
         elif include_unstaged:
             git_args.append("HEAD")
 
-        initial_text += self.git(*git_args) if show_commit_diff else ''
-        self.view.run_command("gs_replace_view_text", {
-            "text": initial_text,
-            "nuke_cursors": True
-        })
+        if amend_first_commit:
+            initial_text += os.linesep.join(self.git(*git_args).splitlines()[1:])
+        else:
+            initial_text += self.git(*git_args)
+        return initial_text
 
 
 class GsPedanticEnforceEventListener(EventListener, SettingsMixin):

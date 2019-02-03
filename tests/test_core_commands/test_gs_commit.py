@@ -123,5 +123,5 @@ class TestAmendFirstCommit(CommonCommitMixin, GitRepoTestCase, git_command.GitCo
         output = subprocess.check_output(["git", "log", "--oneline"],
                                          cwd=self._temp_dir)
         commits = output.splitlines()
-        self.assertEqual(len(commits), 2)
-        self.assertIn(' Fix: Add foo', commits[0].decode())
+        self.assertEqual(len(commits), 1)
+        self.assertIn('Fix: Add foo', commits[0].decode())
