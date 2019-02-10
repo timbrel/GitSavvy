@@ -107,7 +107,6 @@ class GsDiffCommand(WindowCommand, GitCommand):
             diff_views[view_key] = diff_view
 
         self.window.focus_view(diff_view)
-        diff_view.sel().clear()
         diff_view.run_command("gs_diff_refresh")
         diff_view.run_command("gs_handle_vintageous")
 
