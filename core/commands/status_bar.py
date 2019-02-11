@@ -41,12 +41,14 @@ def view_is_transient(view):
 
     # Widgets are normal views but the typical getter don't list them.
     group, index = window.get_view_index(view)
-    if index == -1:
+    if group == - 1 and index == -1:
         return True
 
     # Transient views are the views used to preview files when using goto anything.
     # (This does not catch previewing by clicking the sidebar.)
-    if window.transient_view_in_group(group) == view:
+    # view.file_name is used to check if it is a transient view of a regular file
+    # see issue #1099
+    if window.transient_view_in_group(group) == view and view.file_name():
         return True
 
     return False
