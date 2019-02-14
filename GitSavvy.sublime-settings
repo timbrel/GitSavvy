@@ -23,6 +23,12 @@
     "git_path": "",
 
     /*
+        Set custom environment variables for git command execution.
+    */
+    "env": {
+    },
+
+    /*
         Change this to `true` when doing dev work on GitSavvy.
      */
     "dev_mode": false,

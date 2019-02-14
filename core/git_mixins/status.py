@@ -20,7 +20,8 @@ IndexedEntry.__new__.__defaults__ = (None, ) * 8
 class StatusMixin():
 
     def _get_status(self):
-        return self.git("status", "--porcelain", "-z", "-b").rstrip("\x00").split("\x00")
+        return self.git("status", "--porcelain", "-z", "-b",
+                        custom_environ={"GIT_OPTIONAL_LOCKS": "0"}).rstrip("\x00").split("\x00")
 
     def _parse_status_for_file_statuses(self, lines):
         porcelain_entries = lines[1:].__iter__()
