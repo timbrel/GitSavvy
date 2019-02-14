@@ -137,7 +137,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
                 prelude += "  INDEX..{}\n".format(base_commit or target_commit)
             else:
                 if base_commit and target_commit:
-                    prelude += "  {}..{}\n".format(target_commit, base_commit)
+                    prelude += "  {}..{}\n".format(base_commit, target_commit)
                 else:
                     prelude += "  WORKING DIR..{}\n".format(base_commit or target_commit)
         else:
