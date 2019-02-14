@@ -521,10 +521,6 @@ class GsDiffNavigateCommand(GsNavigate):
 
     offset = 0
 
-    def run(self, edit, **kwargs):
-        super().run(edit, **kwargs)
-        self.view.run_command("show_at_center")
-
     def get_available_regions(self):
         return [self.view.line(region) for region in
                 self.view.find_by_selector("meta.diff.range.unified")]
