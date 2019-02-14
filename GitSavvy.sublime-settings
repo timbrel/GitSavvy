@@ -376,7 +376,7 @@
             status
             branch
             rebase
-            tag
+            tags
             graph
 
      */
@@ -384,7 +384,7 @@
         "status",
         "branch",
         "rebase",
-        "tag",
+        "tags",
         "graph"
     ],
 
