@@ -54,6 +54,15 @@
             { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
         ]
     },
+    {
+        "keys": ["ctrl+z"],
+        "command": "gs_diff_undo",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
+        ]
+    },
 
     //////////////////
     // STAGE_DIFF VIEW //
