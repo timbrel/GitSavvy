@@ -42,7 +42,6 @@ class TestDiffView(DeferrableTestCase):
 
     def test_extract_clickable_lines(self):
         REPO_PATH = '/not/there'
-        FILE_PATH = '/not/there/README.md'
         DIFF = fixture('diff_1.txt')
 
         when(GsDiffRefreshCommand).git('diff', ...).thenReturn(DIFF)
@@ -64,7 +63,6 @@ class TestDiffView(DeferrableTestCase):
 
     def test_result_file_regex(self):
         REPO_PATH = '/not/there'
-        FILE_PATH = '/not/there/README.md'
         DIFF = fixture('diff_1.txt')
 
         when(GsDiffRefreshCommand).git('diff', ...).thenReturn(DIFF)

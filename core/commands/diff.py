@@ -93,7 +93,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
             # Clickable line:
             # @@ -69,6 +69,7 @@ class GsHandleVintageousCommand(TextCommand):
             #           ^^ we want the second (current) line offset of the diff
-            settings.set("result_line_regex", r"^@@ [^+]*\+(\d+),")
+            settings.set("result_line_regex", r"^@@ [^+]*\+(\d+)")
             settings.set("result_base_dir", repo_path)
 
             if not title:
