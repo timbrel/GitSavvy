@@ -178,6 +178,17 @@
         "keys": ["ctrl+,"],
         "command": "edit_settings",
         "args": {
+            "base_file": "${packages}/GitSavvy/syntax/diff_view.sublime-settings",
+            "default": "// Override settings for diff syntax-specific.\n{\n\t$0\n}\n"
+        },
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.diff_view" }
+        ]
+    },
+    {
+        "keys": ["ctrl+,"],
+        "command": "edit_settings",
+        "args": {
             "base_file": "${packages}/GitSavvy/syntax/graph.sublime-settings",
             "default": "// Override settings for graph syntax-specific.\n{\n\t$0\n}\n"
         },
