@@ -3,6 +3,8 @@ Implements a special view to visualize and stage pieces of a project's
 current diff.
 """
 
+from contextlib import contextmanager
+from itertools import dropwhile, takewhile
 import os
 import re
 import bisect
@@ -63,6 +65,8 @@ class GsDiffCommand(WindowCommand, GitCommand):
             settings.set("git_savvy.diff_view.target_commit", target_commit)
             settings.set("git_savvy.diff_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
             settings.set("git_savvy.diff_view.disable_stage", disable_stage)
+            settings.set("git_savvy.diff_view.history", [])
+            settings.set("git_savvy.diff_view.just_hunked", "")
 
             # Clickable lines:
             # (A)  common/commands/view_manipulation.py  |   1 +
@@ -93,7 +97,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
             # Clickable line:
             # @@ -69,6 +69,7 @@ class GsHandleVintageousCommand(TextCommand):
             #           ^^ we want the second (current) line offset of the diff
-            settings.set("result_line_regex", r"^@@ [^+]*\+(\d+),")
+            settings.set("result_line_regex", r"^@@ [^+]*\+(\d+)")
             settings.set("result_base_dir", repo_path)
 
             if not title:
@@ -105,8 +109,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
             diff_views[view_key] = diff_view
 
         self.window.focus_view(diff_view)
-        diff_view.sel().clear()
-        diff_view.run_command("gs_diff_refresh", {'navigate_to_next_hunk': True})
+        diff_view.run_command("gs_diff_refresh")
         diff_view.run_command("gs_handle_vintageous")
 
 
@@ -116,7 +119,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
     Refresh the diff view with the latest repo state.
     """
 
-    def run(self, edit, cursors=None, navigate_to_next_hunk=False):
+    def run(self, edit):
         if self.view.settings().get("git_savvy.disable_diff"):
             return
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
@@ -137,7 +140,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
                 prelude += "  INDEX..{}\n".format(base_commit or target_commit)
             else:
                 if base_commit and target_commit:
-                    prelude += "  {}..{}\n".format(target_commit, base_commit)
+                    prelude += "  {}..{}\n".format(base_commit, target_commit)
                 else:
                     prelude += "  WORKING DIR..{}\n".format(base_commit or target_commit)
         else:
@@ -150,7 +153,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
             prelude += "  IGNORING WHITESPACE\n"
 
         try:
-            stdout = self.git(
+            diff = self.git(
                 "diff",
                 "--ignore-all-space" if ignore_whitespace else None,
                 "--word-diff" if show_word_diff else None,
@@ -176,26 +179,47 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
                 return
             raise err
 
-        text = prelude + '\n--\n' + stdout
+        old_diff = self.view.settings().get("git_savvy.diff_view.raw_diff")
+        self.view.settings().set("git_savvy.diff_view.raw_diff", diff)
+        text = prelude + '\n--\n' + diff
 
         self.view.run_command(
             "gs_replace_view_text", {"text": text, "restore_cursors": True}
         )
-        if navigate_to_next_hunk:
+        if not old_diff:
             self.view.run_command("gs_diff_navigate")
 
 
 class GsDiffToggleSetting(TextCommand):
 
     """
-    Toggle view settings: `ignore_whitespace` , `show_word_diff` or
-    `in_cached_mode`.
+    Toggle view settings: `ignore_whitespace` , or `show_word_diff`.
     """
 
     def run(self, edit, setting):
+        settings = self.view.settings()
+
+        setting_str = "git_savvy.diff_view.{}".format(setting)
+        current_mode = settings.get(setting_str)
+        next_mode = not current_mode
+        settings.set(setting_str, next_mode)
+        self.view.window().status_message("{} is now {}".format(setting, next_mode))
+
+        self.view.run_command("gs_diff_refresh")
+
+
+class GsDiffToggleCachedMode(TextCommand):
+
+    """
+    Toggle `in_cached_mode`.
+    """
+
+    # NOTE: MUST NOT be async, otherwise `view.show` will not update the view 100%!
+    def run(self, edit):
+        setting = 'in_cached_mode'
+
         if (
-            setting == 'in_cached_mode'
-            and self.view.settings().get("git_savvy.diff_view.base_commit")
+            self.view.settings().get("git_savvy.diff_view.base_commit")
             and self.view.settings().get("git_savvy.diff_view.target_commit")
         ):
             # There is no cached mode if you diff between two commits, so
@@ -203,24 +227,117 @@ class GsDiffToggleSetting(TextCommand):
             return
 
         settings = self.view.settings()
-        last_cursors = []
 
-        if setting == 'in_cached_mode':
-            last_cursors = settings.get('git_savvy.diff_view.last_cursors') or []
-            cursors = [(s.a, s.b) for s in self.view.sel()]
-            settings.set('git_savvy.diff_view.last_cursors', cursors)
+        last_cursors = settings.get('git_savvy.diff_view.last_cursors') or []
+        settings.set('git_savvy.diff_view.last_cursors', pickle_sel(self.view.sel()))
 
         setting_str = "git_savvy.diff_view.{}".format(setting)
-        settings.set(setting_str, not settings.get(setting_str))
-        self.view.window().status_message("{} is now {}".format(setting, settings.get(setting_str)))
+        current_mode = settings.get(setting_str)
+        next_mode = not current_mode
+        settings.set(setting_str, next_mode)
+        self.view.window().status_message(
+            "Showing {} changes".format("staged" if next_mode else "unstaged")
+        )
 
         self.view.run_command("gs_diff_refresh")
+
+        just_hunked = self.view.settings().get("git_savvy.diff_view.just_hunked")
+        # Check for `last_cursors` as well bc it is only falsy on the *first*
+        # switch. T.i. if the user hunked and then switches to see what will be
+        # actually comitted, the view starts at the top. Later, the view will
+        # show the last added hunk.
+        if just_hunked and last_cursors:
+            self.view.settings().set("git_savvy.diff_view.just_hunked", "")
+            region = find_hunk_in_view(self.view, just_hunked)
+            if region:
+                set_and_show_cursor(self.view, region.a)
+                return
+
         if last_cursors:
-            sel = self.view.sel()
-            sel.clear()
-            for (a, b) in last_cursors:
-                sel.add(sublime.Region(a, b))
-            self.view.show(sel)
+            # The 'flipping' between the two states should be as fast as possible and
+            # without visual clutter.
+            with no_animations():
+                set_and_show_cursor(self.view, unpickle_sel(last_cursors))
+
+
+def find_hunk_in_view(view, hunk):
+    hunk_content = extract_first_hunk(hunk)
+    if hunk_content:
+        return (
+            view.find(hunk_content[0], 0, sublime.LITERAL)
+            or search_for_hunk_content_in_view(view, hunk_content[1:])
+        )
+
+
+def extract_first_hunk(hunk):
+    hunk_lines = hunk.split('\n')
+    not_hunk_start = lambda l: not l.startswith('@@ ')
+
+    try:
+        start, *rest = dropwhile(not_hunk_start, hunk_lines)
+    except (StopIteration, ValueError):
+        return None
+
+    return [start] + list(takewhile(not_hunk_start, rest))
+
+
+def search_for_hunk_content_in_view(view, lines):
+    for hunk_content in shrink_list_sym(lines):
+        region = view.find('\n'.join(hunk_content), 0, sublime.LITERAL)
+        if region:
+            return first_hunk_start_before_pt(view, region.a)
+
+
+def first_hunk_start_before_pt(view, pt):
+    for region in line_regions_before_pt(view, pt):
+        if view.substr(region).startswith('@@ '):
+            return region
+
+
+def shrink_list_sym(list):
+    while list:
+        yield list
+        list = list[1:-1]
+
+
+def line_regions_before_pt(view, pt):
+    row, _ = view.rowcol(pt)
+    for row in reversed(range(row)):
+        pt = view.text_point(row, 0)
+        yield view.line(pt)
+
+
+def pickle_sel(sel):
+    return [(s.a, s.b) for s in sel]
+
+
+def unpickle_sel(pickled_sel):
+    return [sublime.Region(a, b) for a, b in pickled_sel]
+
+
+def set_and_show_cursor(view, cursors):
+    sel = view.sel()
+    sel.clear()
+    try:
+        it = iter(cursors)
+    except TypeError:
+        sel.add(cursors)
+    else:
+        for c in it:
+            sel.add(c)
+
+    view.show(sel)
+
+
+@contextmanager
+def no_animations():
+    pref = sublime.load_settings("Preferences.sublime-settings")
+    current = pref.get("animation_enabled")
+    pref.set("animation_enabled", False)
+    try:
+        yield
+    finally:
+        pref.set("animation_enabled", current)
 
 
 class GsDiffFocusEventListener(EventListener):
@@ -263,7 +380,8 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
             # immediately following diff headers.
             (set(self.hunk_starts) - set(self.header_ends)) |
             # The last hunk ends at the end of the file.
-            set((self.view.size(), ))
+            # It should include the last line (`+ 1`).
+            set((self.view.size() + 1, ))
         ))
 
         sublime.set_timeout_async(lambda: self.apply_diffs_for_pts(cursor_pts, reset), 0)
@@ -293,17 +411,23 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
             # NOTE: When in cached mode, no action will be taken when the user
             #       presses SUPER-BACKSPACE.
 
-            self.git(
+            args = (
                 "apply",
                 "-R" if (reset or in_cached_mode) else None,
                 "--cached" if (in_cached_mode or not reset) else None,
                 "-",
+            )
+            self.git(
+                *args,
                 stdin=hunk_diff
             )
 
-        sublime.set_timeout_async(
-            lambda: self.view.run_command("gs_diff_refresh", {'navigate_to_next_hunk': True})
-        )
+            history = self.view.settings().get("git_savvy.diff_view.history")
+            history.append((args, hunk_diff, pt, in_cached_mode))
+            self.view.settings().set("git_savvy.diff_view.history", history)
+            self.view.settings().set("git_savvy.diff_view.just_hunked", hunk_diff)
+
+        sublime.set_timeout_async(lambda: self.view.run_command("gs_diff_refresh"))
 
     def get_hunk_diff(self, pt):
         """
@@ -397,10 +521,36 @@ class GsDiffNavigateCommand(GsNavigate):
 
     offset = 0
 
-    def run(self, edit, **kwargs):
-        super().run(edit, **kwargs)
-        self.view.run_command("show_at_center")
-
     def get_available_regions(self):
         return [self.view.line(region) for region in
                 self.view.find_by_selector("meta.diff.range.unified")]
+
+
+class GsDiffUndo(TextCommand, GitCommand):
+
+    """
+    Undo the last action taken in the diff view, if possible.
+    """
+
+    # NOTE: MUST NOT be async, otherwise `view.show` will not update the view 100%!
+    def run(self, edit):
+        history = self.view.settings().get("git_savvy.diff_view.history")
+        if not history:
+            window = self.view.window()
+            if window:
+                window.status_message("Undo stack is empty")
+            return
+
+        args, stdin, cursor, in_cached_mode = history.pop()
+        # Toggle the `--reverse` flag.
+        args[1] = "-R" if not args[1] else None
+
+        self.git(*args, stdin=stdin)
+        self.view.settings().set("git_savvy.diff_view.history", history)
+        self.view.settings().set("git_savvy.diff_view.just_hunked", stdin)
+
+        self.view.run_command("gs_diff_refresh")
+
+        # The cursor is only applicable if we're still in the same cache/stage mode
+        if self.view.settings().get("git_savvy.diff_view.in_cached_mode") == in_cached_mode:
+            set_and_show_cursor(self.view, cursor)

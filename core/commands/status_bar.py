@@ -30,8 +30,8 @@ update_status_bar_soon = False
 def view_is_transient(view):
     """Return whether a view can be considered 'transient'.
 
-    Transient views are 'detached' views, widgets (aka quick or input panels), and preview
-    views.
+    For our purpose, transient views are 'detached' views or widgets
+    (aka quick or input panels).
     """
 
     # 'Detached' (already closed) views don't have a window.
@@ -39,14 +39,9 @@ def view_is_transient(view):
     if not window:
         return True
 
-    # Widgets are normal views but the typical getter don't list them.
+    # Widgets are normal views but the typical getters don't list them.
     group, index = window.get_view_index(view)
-    if index == -1:
-        return True
-
-    # Transient views are the views used to preview files when using goto anything.
-    # (This does not catch previewing by clicking the sidebar.)
-    if window.transient_view_in_group(group) == view:
+    if group == -1:
         return True
 
     return False

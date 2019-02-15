@@ -54,6 +54,15 @@
             { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
         ]
     },
+    {
+        "keys": ["super+z"],
+        "command": "gs_diff_undo",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
+        ]
+    },
 
     //////////////////
     // STAGE_DIFF VIEW //
@@ -172,6 +181,17 @@
         },
         "context": [
             { "key": "selector", "operator": "equal", "operand": "git-savvy.diff" }
+        ]
+    },
+    {
+        "keys": ["super+,"],
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/GitSavvy/syntax/diff_view.sublime-settings",
+            "default": "// Override settings for diff syntax-specific.\n{\n\t$0\n}\n"
+        },
+        "context": [
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.diff_view" }
         ]
     },
     {

@@ -6,7 +6,7 @@ diff --git a/core/commands/custom.py b/core/commands/custom.py
 index 1facb191..8b079d4d 100644
 --- a/core/commands/custom.py
 +++ b/core/commands/custom.py
-@@ -16,7 +16,7 @@ class CustomCommandThread(threading.Thread):
+@@ -16 +16 @@ class CustomCommandThread(threading.Thread):
          self.daemon = True
  
      def run(self):

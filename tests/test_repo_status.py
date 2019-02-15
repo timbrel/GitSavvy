@@ -70,6 +70,14 @@ TestShortBranchStatusTestcases = [
     "## No commits yet on master\x00?? foo",
     "master*"
 ),
+(
+    "## No commits yet on master...origin/master [gone]",
+    "master"
+),
+(
+    "## No commits yet on master...origin/master [gone]\x00?? .travis.yml",
+    "master*"
+),
 # Previous versions of git instead emitted this before the initial commit
 (
     "## Initial commit on zoom",
@@ -191,6 +199,20 @@ TestLongBranchStatusTestcases = [
 (
     "## No commits yet on master\x00?? foo",
     "On branch `master`."
+),
+(
+    "## No commits yet on master...origin/master [gone]",
+    dedent("""\
+    On branch `master` tracking `origin/master`.
+    The remote branch is gone.
+    """.rstrip())
+),
+(
+    "## No commits yet on master...origin/master [gone]\x00?? .travis.yml",
+    dedent("""\
+    On branch `master` tracking `origin/master`.
+    The remote branch is gone.
+    """.rstrip())
 ),
 # Previous versions of git instead emitted this before the initial commit
 (

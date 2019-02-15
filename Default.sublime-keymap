@@ -607,8 +607,7 @@
     },
     {
         "keys": ["tab"],
-        "command": "gs_diff_toggle_setting",
-        "args": { "setting": "in_cached_mode" },
+        "command": "gs_diff_toggle_cached_mode",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
