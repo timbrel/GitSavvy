@@ -3,7 +3,7 @@ import re
 
 import sublime
 
-from unittesting import DeferrableTestCase
+from unittesting import DeferrableTestCase, AWAIT_WORKER
 from GitSavvy.tests.mockito import when, unstub
 from GitSavvy.tests.parameterized import parameterized as p
 
@@ -313,12 +313,10 @@ class TestDiffView(DeferrableTestCase):
 
     def setUp(self):
         self.view = self.window.new_file()
+        self.view.set_scratch(True)
+        self.addCleanup(self.view.close)
 
     def tearDown(self):
-        if self.view:
-            self.view.set_scratch(True)
-            self.view.close()
-
         unstub()
 
     def test_extract_clickable_lines(self):
@@ -329,8 +327,12 @@ class TestDiffView(DeferrableTestCase):
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
         cmd.run_async()
+        yield AWAIT_WORKER  # await activated_async
+        yield AWAIT_WORKER  # await refresh async
 
         diff_view = self.window.active_view()
+        self.addCleanup(diff_view.close)
+
         actual = diff_view.find_all_results()
         # `find_all_results` only returns full filename-with-line matches.
         # These match clicking on `@@ -52,8 +XX,7` lines
@@ -350,8 +352,12 @@ class TestDiffView(DeferrableTestCase):
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
         cmd.run_async()
+        yield AWAIT_WORKER  # await activated_async
+        yield AWAIT_WORKER  # await refresh async
 
         diff_view = self.window.active_view()
+        self.addCleanup(diff_view.close)
+
         BUFFER_CONTENT = diff_view.substr(sublime.Region(0, diff_view.size()))
         self.assertEqual(
             BUFFER_CONTENT,

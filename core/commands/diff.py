@@ -52,6 +52,8 @@ class GsDiffCommand(WindowCommand, GitCommand):
 
         if view_key in diff_views and diff_views[view_key] in sublime.active_window().views():
             diff_view = diff_views[view_key]
+            self.window.focus_view(diff_view)
+
         else:
             diff_view = util.view.get_scratch_view(self, "diff", read_only=True)
 
@@ -108,18 +110,19 @@ class GsDiffCommand(WindowCommand, GitCommand):
             diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff_view.sublime-syntax")
             diff_views[view_key] = diff_view
 
-        self.window.focus_view(diff_view)
-        diff_view.run_command("gs_diff_refresh")
-        diff_view.run_command("gs_handle_vintageous")
+            diff_view.run_command("gs_handle_vintageous")
 
 
 class GsDiffRefreshCommand(TextCommand, GitCommand):
+    """Refresh the diff view with the latest repo state."""
 
-    """
-    Refresh the diff view with the latest repo state.
-    """
+    def run(self, edit, sync=True):
+        if sync:
+            self._run()
+        else:
+            sublime.set_timeout_async(self._run)
 
-    def run(self, edit):
+    def _run(self):
         if self.view.settings().get("git_savvy.disable_diff"):
             return
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
@@ -347,9 +350,9 @@ class GsDiffFocusEventListener(EventListener):
     when the view regains focus.
     """
 
-    def on_activated(self, view):
+    def on_activated_async(self, view):
         if view.settings().get("git_savvy.diff_view") is True:
-            sublime.set_timeout_async(lambda: view.run_command("gs_diff_refresh"))
+            view.run_command("gs_diff_refresh", {"sync": False})
 
 
 class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
