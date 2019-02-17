@@ -586,8 +586,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
 
         @util.actions.destructive(description="discard one or more untracked files")
         def do_discard():
-            for fpath in file_paths:
-                self.discard_untracked_file(fpath)
+            self.discard_untracked_file(*file_paths)
             return file_paths
 
         if file_paths:
@@ -605,8 +604,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
 
         @util.actions.destructive(description="discard one or more unstaged files")
         def do_discard():
-            for fpath in file_paths:
-                self.checkout_file(fpath)
+            self.checkout_file(*file_paths)
             return file_paths
 
         if file_paths:
