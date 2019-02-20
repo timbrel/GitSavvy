@@ -35,7 +35,6 @@ class GsTabCycleCommand(TextCommand, GitCommand):
 
         window = self.view.window()
         if window:
-            window.run_command("hide_panel", {"cancel": True})
             window.run_command(self.commands[to_load])
             if not self.view.settings().get(view_signature):
                 sublime.set_timeout_async(self.view.close)
