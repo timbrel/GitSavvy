@@ -57,11 +57,10 @@ class GsPushCommand(WindowCommand, PushBase):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        if self.local_branch_name:
-            upstream = self.get_local_branch(self.local_branch_name).tracking
-        else:
+        if not self.local_branch_name:
             self.local_branch_name = self.get_current_branch_name()
-            upstream = self.get_upstream_for_active_branch()
+
+        upstream = self.get_local_branch(self.local_branch_name).tracking
 
         if upstream:
             remote, remote_branch = upstream.split("/", 1)

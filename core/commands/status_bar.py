@@ -27,6 +27,26 @@ last_execution = 0
 update_status_bar_soon = False
 
 
+def view_is_transient(view):
+    """Return whether a view can be considered 'transient'.
+
+    For our purpose, transient views are 'detached' views or widgets
+    (aka quick or input panels).
+    """
+
+    # 'Detached' (already closed) views don't have a window.
+    window = view.window()
+    if not window:
+        return True
+
+    # Widgets are normal views but the typical getters don't list them.
+    group, index = window.get_view_index(view)
+    if group == -1:
+        return True
+
+    return False
+
+
 class GsUpdateStatusBarCommand(TextCommand, GitCommand):
 
     """
@@ -34,14 +54,7 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        if self.view.settings().get('is_widget'):
-            return
-
-        window = self.view.window()
-        if not window or \
-            (self.view.file_name() and
-                self.view == window.transient_view_in_group(window.active_group())):
-            # it means it is an transient view of a regular file
+        if view_is_transient(self.view):
             return
 
         global last_execution, update_status_bar_soon
@@ -69,7 +82,7 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
         with debug.disable_logging():
             # ignore all other possible errors
             try:
-                self.repo_path  # check for ValueError
+                self.get_repo_path(offer_init=False)  # check for ValueError
                 short_status = self.get_branch_status_short()
                 self.view.set_status("gitsavvy-repo-status", short_status)
             except Exception as e:

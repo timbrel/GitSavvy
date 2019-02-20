@@ -81,7 +81,6 @@ class Interface():
         self.view = window.new_file()
 
         self.view.settings().set("git_savvy.repo_path", repo_path)
-        self.view.set_name(self.title())
         self.view.settings().set("git_savvy.{}_view".format(self.interface_type), True)
         self.view.settings().set("git_savvy.tabbable", True)
         self.view.settings().set("git_savvy.interface", self.interface_type)
@@ -90,11 +89,24 @@ class Interface():
         self.view.set_scratch(True)
         self.view.set_read_only(self.read_only)
         util.view.disable_other_plugins(self.view)
+        self.after_view_creation(self.view)
+
+        # Set title as late as possible, otherwise e.g. `result_file_regex` will not apply
+        # after the initial activate. (It applies after the second activation of the view,
+        # shall we say a sublime nuance.)
+        self.view.set_name(self.title())
 
         self.render()
         window.focus_view(self.view)
 
         return self.view
+
+    def after_view_creation(self, view):
+        """
+        Hook template method called after the view has been created.
+        Can be used to further manipulate the view and store state on it.
+        """
+        pass
 
     def render(self, nuke_cursors=False):
         self.clear_regions()
@@ -201,6 +213,9 @@ class Interface():
         )
 
     def on_new_dashboard(self):
+        """
+        Hook template method called after the first render.
+        """
         pass
 
 

@@ -5,8 +5,20 @@ name: GitSavvy Graph
 file_extensions: []
 hidden: true
 scope: git-savvy.graph
+variables:
+  sha: '[0-9a-f]{6,40}'
 contexts:
   main:
+    - match: (?=^.*{{sha}} +\(HEAD( ->|\)))
+      push:
+        - meta_scope: meta.graph.graph-line.head.git-savvy
+        - include: content
+        - match: $
+          pop: true
+
+    - include: content
+
+  content:
     - match: '([| \\/_.-]+)'
       comment: graph lines
       scope: punctuation.other.git-savvy.graph.graph-line
@@ -14,10 +26,16 @@ contexts:
     - match: '[*●]'
       scope: keyword.graph.commit.git-savvy
 
-    - match: \s*([0-9a-f]{6,40})\b
+    - match: \s*({{sha}})\b
       comment: SHA
       scope: constant.numeric.graph.commit-hash.git-savvy
 
+    - include: branch-name
+
+    - match: (?=\S)
+      push: message
+
+  branch-name:
     - match: \s*\(
       comment: branch-name
       scope: punctuation.expression.begin.git-savvy
@@ -36,11 +54,10 @@ contexts:
           scope: punctuation.separator.other.git-savvy
         - match: '->'
           scope: punctuation.separator.key-value.branch.git-savvy
+        - match: HEAD
+          scope: constant.other.git.head.git-savvy
         - match: ([^ ,)]+)
           scope: constant.other.git.branch.git-savvy
-    - match: (?=\S)
-      push: message
-
 
   message:
     - meta_scope: meta.graph.message.git-savvy

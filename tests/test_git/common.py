@@ -8,6 +8,12 @@ def tidy_path(path):
     return os.path.realpath(os.path.normcase(path))
 
 
+startupinfo = None
+if os.name == "nt":
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+
 class AssertionsMixin:
 
     def assert_git_status(self, status):
@@ -35,7 +41,9 @@ class GitRepoTestCase(TempDirectoryTestCase, AssertionsMixin):
         yield from super(GitRepoTestCase, cls).setUpClass()
         assert tidy_path(cls._temp_dir) == tidy_path(sublime.active_window().folders()[0])
         assert tidy_path(cls._temp_dir) == tidy_path(cls.window.folders()[0])
-        subprocess.check_call(["git", "init"], cwd=cls._temp_dir)
+        subprocess.check_call(
+            ["git", "init"], cwd=cls._temp_dir, startupinfo=startupinfo
+        )
         if cls.initialize:
             cls.add_readme()
 
@@ -45,5 +53,9 @@ class GitRepoTestCase(TempDirectoryTestCase, AssertionsMixin):
         f = open(readme, "w")
         f.write("README")
         f.close()
-        subprocess.check_call(["git", "add", "README.md"], cwd=cls._temp_dir)
-        subprocess.check_call(["git", "commit", "-m", "Add README.md"], cwd=cls._temp_dir)
+        subprocess.check_call(
+            ["git", "add", "README.md"], cwd=cls._temp_dir, startupinfo=startupinfo
+        )
+        subprocess.check_call(
+            ["git", "commit", "-m", "Add README.md"], cwd=cls._temp_dir, startupinfo=startupinfo
+        )

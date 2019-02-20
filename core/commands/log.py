@@ -176,11 +176,9 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
 
     def checkout_commit(self):
         self.checkout_ref(self._commit_hash)
-        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
     def cherry_pick(self):
         self.git("cherry-pick", self._commit_hash)
-        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
     def revert_commit(self):
         self.window.run_command("gs_revert_commit", {
@@ -224,4 +222,3 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
 
     def checkout_file_at_commit(self):
         self.checkout_ref(self._commit_hash, fpath=self._file_path)
-        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)

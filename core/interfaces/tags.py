@@ -92,10 +92,11 @@ class TagsInterface(ui.Interface, GitCommand):
             self.max_items = self.savvy_settings.get("max_items_in_tags_dashboard", None)
 
         self.local_tags = self.get_tags(reverse=True)
-        if not self.remotes and self.show_remotes:
-            self.remotes = self.get_remotes()
-            for name, uri in self.remotes.items():
-                self.remotes[name] = {"uri": uri}
+        if self.remotes is None:
+            self.remotes = {
+                name: {"uri": uri}
+                for name, uri in self.get_remotes().items()
+            }
 
     def on_new_dashboard(self):
         self.view.run_command("gs_tags_navigate_tag")
@@ -124,11 +125,11 @@ class TagsInterface(ui.Interface, GitCommand):
 
     @ui.partial("remote_tags")
     def render_remote_tags(self):
+        if not self.remotes:
+            return "\n"
+
         if not self.show_remotes:
             return self.render_remote_tags_off()
-
-        if self.remotes == []:
-            return NO_REMOTES_MESSAGE
 
         output_tmpl = "\n"
         render_fns = []

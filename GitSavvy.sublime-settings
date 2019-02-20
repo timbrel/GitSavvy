@@ -23,6 +23,12 @@
     "git_path": "",
 
     /*
+        Set custom environment variables for git command execution.
+    */
+    "env": {
+    },
+
+    /*
         Change this to `true` when doing dev work on GitSavvy.
      */
     "dev_mode": false,
@@ -184,12 +190,27 @@
 
     /*
         For each command specified, always include the command line flags
-        indicated in the global_flags hash.
+        indicated in the global_flags option AFTER the command.
      */
     "global_flags": {
         // --no-columns is not supported in Git versions <1.7.11.  If Git is configured
         //   to use columns globally, --no-columns should be added here.
         // "branch": ["--no-columns"]
+        //
+        // or, configure a GPG key to sign commits with a given key
+        // "commit": ["-S", "--gpg-sign=<key-id>"]
+    },
+
+    /*
+        For each command specified, always include the command line flags
+        indicated in the global_flags option BEFORE the command.
+     */
+    "global_pre_flags": {
+        // for example, override settings via the "-c" option, e.g
+        // the following configures a gpg.program no-tty wrapper script
+        // "commit": ["-c", "gpg.program=./scripts/stgpg.sh"]
+        // and configure every commit to be signed with your key
+        // "commit": ["-c", "commit.gpgsign=true"]
     },
 
     /*

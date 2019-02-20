@@ -2,13 +2,19 @@
 * 2b17192 (HEAD -> develop, origin/master, origin/HEAD, master) replace all references to .tmLanguage to .sublime-syntax
 # <-  keyword.graph.commit
 #  ^ constant.numeric.graph.commit-hash
-#           ^ constant.other.git.branch
+#          ^^^^ constant.other.git.head
 #                     ^ constant.other.git.branch
 #               ^ punctuation.separator.key-value.branch
 #         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.graph.branch.git-savvy
-#                                                                    ^  meta.graph.message.git-savvy
-* f483ab7 update blame syntax format
-* 6929182 update make_commit syntax format
+#                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  meta.graph.message.git-savvy
+# <- meta.graph.graph-line.head.git-savvy
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.graph.graph-line.head.git-savvy
+* f483ab7 (HEAD) update blame syntax format
+# <- meta.graph.graph-line.head.git-savvy
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.graph.graph-line.head.git-savvy
+#          ^^^^ constant.other.git.head
+* 6929182 update (HEAD) make_commit syntax format
+#         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ git-savvy.graph meta.graph.message.git-savvy
 * ede734e update diff syntax format
 # <- keyword.graph.commit
 #  ^ constant.numeric.graph.commit-hash

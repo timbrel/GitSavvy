@@ -55,6 +55,9 @@ GIT_REQUIRE_MINOR = 9
 GIT_REQUIRE_PATCH = 0
 
 
+ANSI_ESCAPE = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+
+
 class LoggingProcessWrapper(object):
 
     """
@@ -70,17 +73,17 @@ class LoggingProcessWrapper(object):
         try:
             for line in iter(self.process.stdout.readline, b""):
                 self.stdout = self.stdout + line
-                util.log.panel_append(line.decode())
+                util.log.panel_append(line.decode(), run_async=False)
         except IOError as err:
-            util.log.panel_append(err)
+            util.log.panel_append(err, run_async=False)
 
     def read_stderr(self):
         try:
             for line in iter(self.process.stderr.readline, b""):
                 self.stderr = self.stderr + line
-                util.log.panel_append(line.decode())
+                util.log.panel_append(line.decode(), run_async=False)
         except IOError as err:
-            util.log.panel_append(err)
+            util.log.panel_append(err, run_async=False)
 
     def communicate(self, stdin):
         """
@@ -131,7 +134,9 @@ class GitCommand(StatusMixin,
     def git(self, *args,
             stdin=None,
             working_dir=None,
-            show_panel=False,
+            show_panel=None,
+            show_panel_on_stderr=True,
+            show_status_message_on_stderr=True,
             throw_on_stderr=True,
             decode=True,
             encode=True,
@@ -151,7 +156,8 @@ class GitCommand(StatusMixin,
         command_str = " ".join(command)
 
         show_panel_overrides = self.savvy_settings.get("show_panel_for")
-        show_panel = show_panel or args[0] in show_panel_overrides
+        if show_panel is None:
+            show_panel = args[0] in show_panel_overrides
 
         close_panel_for = self.savvy_settings.get("close_panel_for") or []
         if args[0] in close_panel_for:
@@ -168,11 +174,7 @@ class GitCommand(StatusMixin,
             # do not show panel when the window does not exist
             raise GitSavvyError(e, show_panel=False)
         except Exception as e:
-            # offer initialization when "Not a git repository" is thrown from self.repo_path
-            if type(e) == ValueError and e.args and "Not a git repository" in e.args[0]:
-                sublime.set_timeout_async(
-                    lambda: sublime.active_window().run_command("gs_offer_init"))
-            raise GitSavvyError(e)
+            raise GitSavvyError(e, show_panel=show_panel_on_stderr)
 
         try:
             startupinfo = None
@@ -181,6 +183,9 @@ class GitCommand(StatusMixin,
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
             environ = os.environ.copy()
+            savvy_env = self.savvy_settings.get("env")
+            if savvy_env:
+                environ.update(savvy_env)
             environ.update(custom_environ or {})
             start = time.time()
             p = subprocess.Popen(command,
@@ -193,11 +198,11 @@ class GitCommand(StatusMixin,
 
             def initialize_panel():
                 # clear panel
-                util.log.panel("")
+                util.log.panel("", run_async=False)
                 if self.savvy_settings.get("show_stdin_in_output") and stdin is not None:
-                    util.log.panel_append("STDIN\n{}\n".format(stdin))
+                    util.log.panel_append("STDIN\n{}\n".format(stdin), run_async=False)
                 if self.savvy_settings.get("show_input_in_output"):
-                    util.log.panel_append("> {}\n".format(command_str))
+                    util.log.panel_append("> {}\n".format(command_str), run_async=False)
 
             if show_panel and live_panel_output:
                 wrapper = LoggingProcessWrapper(p, self.savvy_settings.get("live_panel_output_timeout", 10000))
@@ -225,7 +230,9 @@ class GitCommand(StatusMixin,
 
         except Exception as e:
             # this should never be reached
-            raise GitSavvyError("Please report this error to GitSavvy:\n\n{}\n\n{}".format(e, traceback.format_exc()))
+            raise GitSavvyError(
+                "Please report this error to GitSavvy:\n\n{}\n\n{}".format(e, traceback.format_exc()),
+                show_panel=show_panel_on_stderr)
 
         finally:
             end = time.time()
@@ -244,9 +251,10 @@ class GitCommand(StatusMixin,
                 util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
 
         if throw_on_stderr and not p.returncode == 0:
-            sublime.active_window().status_message(
-                "Failed to run `git {}`. See log for details.".format(command[1])
-            )
+            if show_status_message_on_stderr:
+                sublime.active_window().status_message(
+                    "Failed to run `git {}`. See log for details.".format(command[1])
+                )
 
             if "*** Please tell me who you are." in stderr:
                 sublime.set_timeout_async(
@@ -255,9 +263,13 @@ class GitCommand(StatusMixin,
             if stdout or stderr:
                 raise GitSavvyError("`{}` failed with following output:\n{}\n{}".format(
                     command_str, stdout, stderr
-                ))
+                ), show_panel=show_panel_on_stderr)
             else:
-                raise GitSavvyError("`{}` failed.".format(command_str))
+                raise GitSavvyError(
+                    "`{}` failed.".format(command_str), show_panel=show_panel_on_stderr)
+
+        if stdout and decode:
+            stdout = ANSI_ESCAPE.sub('', stdout)
 
         return stdout
 
@@ -396,13 +408,7 @@ class GitCommand(StatusMixin,
         repo = stdout.strip()
         return os.path.realpath(repo) if repo else None
 
-    @property
-    def repo_path(self):
-        """
-        Return the absolute path to the git repo that contains the file that this
-        view interacts with.  Like `file_path`, this can be overridden by setting
-        the view's `git_savvy.repo_path` setting.
-        """
+    def get_repo_path(self, offer_init=True):
         # The below condition will be true if run from a WindowCommand and false
         # from a TextCommand.
         view = self.window.active_view() if hasattr(self, "window") else self.view
@@ -414,6 +420,10 @@ class GitCommand(StatusMixin,
                 window = view.window()
                 if window:
                     if window.folders():
+                        # offer initialization
+                        if offer_init:
+                            sublime.set_timeout_async(
+                                lambda: sublime.active_window().run_command("gs_offer_init"))
                         raise ValueError("Not a git repository.")
                     else:
                         raise ValueError("Unable to determine Git repo path.")
@@ -427,6 +437,15 @@ class GitCommand(StatusMixin,
                     view.settings().set("git_savvy.repo_path", repo_path)
 
         return os.path.realpath(repo_path) if repo_path else repo_path
+
+    @property
+    def repo_path(self):
+        """
+        Return the absolute path to the git repo that contains the file that this
+        view interacts with.  Like `file_path`, this can be overridden by setting
+        the view's `git_savvy.repo_path` setting.
+        """
+        return self.get_repo_path()
 
     @property
     def short_repo_path(self):
@@ -470,9 +489,15 @@ class GitCommand(StatusMixin,
         git_cmd, *addl_args = args
 
         global_flags = self.savvy_settings.get("global_flags")
+        global_pre_flags = self.savvy_settings.get("global_pre_flags")
 
         if global_flags and git_cmd in global_flags:
             args = [git_cmd] + global_flags[git_cmd] + addl_args
+        else:
+            args = [git_cmd] + list(addl_args)
+
+        if global_pre_flags and git_cmd in global_pre_flags:
+            args = global_pre_flags[git_cmd] + args
 
         return args
 

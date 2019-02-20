@@ -30,8 +30,13 @@ class GsReplaceViewTextCommand(TextCommand):
     a single cursor at the start of the file.
     """
 
-    def run(self, edit, text, nuke_cursors=False):
+    def run(self, edit, text, nuke_cursors=False, restore_cursors=False):
         cursors_num = len(self.view.sel())
+
+        if restore_cursors:
+            save_cursors = [self.view.rowcol(s.a) for s in self.view.sel()]
+            self.view.sel().clear()
+
         is_read_only = self.view.is_read_only()
         self.view.set_read_only(False)
         self.view.replace(edit, sublime.Region(0, self.view.size()), text)
@@ -42,6 +47,12 @@ class GsReplaceViewTextCommand(TextCommand):
             selections.clear()
             pt = sublime.Region(0, 0)
             selections.add(pt)
+
+        elif restore_cursors:
+            self.view.sel().clear()
+            for (row, col) in save_cursors:
+                cursor = self.view.text_point(row, col)
+                self.view.sel().add(cursor)
 
 
 class GsReplaceRegionCommand(TextCommand):
@@ -69,6 +80,7 @@ class GsHandleVintageousCommand(TextCommand):
         if savvy_settings.get("vintageous_friendly", False) is True:
             self.view.settings().set("git_savvy.vintageous_friendly", True)
             if savvy_settings.get("vintageous_enter_insert_mode", False) is True:
+                self.view.settings().set("vintageous_reset_mode_when_switching_tabs", False)
                 self.view.run_command("_enter_insert_mode")
 
 

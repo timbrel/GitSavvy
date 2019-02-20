@@ -82,6 +82,9 @@ def refresh_gitsavvy_interfaces(window,
         if view.settings().get("git_savvy.interface") is not None:
             view.run_command("gs_interface_refresh", {"nuke_cursors": interface_reset_cursor})
 
+        if view.settings().get("git_savvy.log_graph_view", False):
+            view.run_command("gs_log_graph_refresh")
+
 
 def refresh_gitsavvy(view, refresh_sidebar=False, refresh_status_bar=True,
                      interface_reset_cursor=False):

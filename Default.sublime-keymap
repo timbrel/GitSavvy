@@ -542,6 +542,24 @@
         ]
     },
     {
+        "keys": ["c"],
+        "command": "gs_status_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
+        ]
+    },
+    {
+        "keys": ["C"],
+        "command": "gs_status_commit_unstaged",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
+        ]
+    },
+    {
         "keys": ["."],
         "command": "gs_diff_navigate",
         "args": { "forward": true },
@@ -582,6 +600,14 @@
     {
         "keys": ["o"],
         "command": "gs_diff_open_file_at_hunk",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["tab"],
+        "command": "gs_diff_toggle_cached_mode",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }

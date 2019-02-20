@@ -6,7 +6,6 @@ to a view.
 
 import os
 from xml.etree import ElementTree
-import json
 from collections import OrderedDict
 
 import sublime
@@ -57,6 +56,9 @@ class ThemeGenerator():
                     break
             self.color_scheme_string = sublime.load_resource(paths[0])
 
+    def get_theme_name(self, name):
+        return "GitSavvy.{}.{}".format(name, self.hidden_theme_extension)
+
     def get_theme_path(self, name):
         """
         Save the transformed theme to disk and return the path to that theme,
@@ -65,8 +67,7 @@ class ThemeGenerator():
         if not os.path.exists(os.path.join(sublime.packages_path(), "User", "GitSavvy")):
             os.makedirs(os.path.join(sublime.packages_path(), "User", "GitSavvy"))
 
-        return os.path.join(
-            "User", "GitSavvy", "GitSavvy.{}.{}".format(name, self.hidden_theme_extension))
+        return os.path.join("User", "GitSavvy", self.get_theme_name(name))
 
     def add_scoped_style(self, name, scope, **kwargs):
         """
@@ -86,14 +87,7 @@ class ThemeGenerator():
         """
         Apply the transformed theme to the specified target view.
         """
-
-        self.write_new_theme(name)
-
-        path_in_packages = self.get_theme_path(name)
-
-        # Sublime expects `/`-delimited paths, even in Windows.
-        theme_path = os.path.join("Packages", path_in_packages).replace("\\", "/")
-        target_view.settings().set("color_scheme", theme_path)
+        pass
 
 
 class XMLThemeGenerator(ThemeGenerator):
@@ -120,6 +114,15 @@ class XMLThemeGenerator(ThemeGenerator):
             out_f.write(STYLES_HEADER.encode("utf-8"))
             out_f.write(ElementTree.tostring(self.plist, encoding="utf-8"))
 
+    def apply_new_theme(self, name, target_view):
+        self.write_new_theme(name)
+
+        path_in_packages = self.get_theme_path(name)
+
+        # Sublime expects `/`-delimited paths, even in Windows.
+        theme_path = os.path.join("Packages", path_in_packages).replace("\\", "/")
+        target_view.settings().set("color_scheme", theme_path)
+
 
 class JSONThemeGenerator(ThemeGenerator):
     """
@@ -130,7 +133,7 @@ class JSONThemeGenerator(ThemeGenerator):
 
     def __init__(self, original_color_scheme):
         super().__init__(original_color_scheme)
-        self.dict = json.loads(self.color_scheme_string, object_pairs_hook=OrderedDict)
+        self.dict = OrderedDict(sublime.decode_value(self.color_scheme_string))
 
     def add_scoped_style(self, name, scope, **kwargs):
         new_rule = OrderedDict([("name", name), ("scope", scope)])
@@ -142,4 +145,8 @@ class JSONThemeGenerator(ThemeGenerator):
         full_path = os.path.join(sublime.packages_path(), self.get_theme_path(name))
 
         with util.file.safe_open(full_path, "wb", buffering=0) as out_f:
-            out_f.write(json.dumps(self.dict, indent=4).encode("utf-8"))
+            out_f.write(sublime.encode_value(self.dict, pretty=True).encode("utf-8"))
+
+    def apply_new_theme(self, name, target_view):
+        self.write_new_theme(name)
+        target_view.settings().set("color_scheme", self.get_theme_name(name))

@@ -1,0 +1,39 @@
+Changes since 2.17.6:
+
+  Fix:
+   - update status bar when the view is a widget
+   - make sure project settings are loaded properly
+   - fix a bug related to prompt_on_abort_commit
+   - 'checkout file at commit' shows commit panel
+   - sanitize ansi sequence
+   - Fix theme generator for sublime-color-schemes 
+   - avoid splitlines in blame
+
+  Enhancement:
+   - Optimize status interface
+   - Optimize log graph interface
+   - improve diff view
+   - rename `git: tags` to `git: tag`
+   - honor prepare_commit_msg and pre_commit hooks
+   - offer initialization for repo_path
+   - Add more complex git output scopes to diff syntax
+  - Add support for "env" settings and GIT_OPTIONAL_LOCKS
+
+  Other:
+   - Show toggle remotes help message only if there are any remotes (#1047)
+   - Include flake8 config for convenience
+   - Tag the line containing HEAD for styling purpopses (#1051)
+   - Add test cases for log graph view not showing the panel initially (#1068)
+   - Refresh graph view after checkout
+
+  Feature:
+   - Add GPG support via a wrapper
+
+
+  Contributors:
+   - Randy Lai
+   - Simon
+   - DeathAxe
+   - herr kaste
+   - luv
+   - Pavel Savchenko
