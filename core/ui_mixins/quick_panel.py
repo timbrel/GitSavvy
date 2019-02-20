@@ -253,6 +253,8 @@ class BranchPanel(GitCommand):
         if self.ignore_current_branch:
             current_branch = self.get_current_branch_name()
             self.all_branches = [b for b in self.all_branches if b != current_branch]
+        elif self.selected_branch is None:
+            self.selected_branch = self.get_current_branch_name()
 
         if remote:
             self.all_branches = [b for b in self.all_branches if b.startswith(remote + "/")]
@@ -261,31 +263,31 @@ class BranchPanel(GitCommand):
             self.window.show_quick_panel(["There are no branches available."], None)
             return
 
+        if self.selected_branch:
+            selected_index = self.get_pre_selected_branch_index(self.selected_branch, remote)
+        else:
+            selected_index = 0
+
         self.window.show_quick_panel(
             self.all_branches,
             self.on_branch_selection,
             flags=sublime.MONOSPACE_FONT,
-            selected_index=self.get_pre_selected_branch_index(remote)
+            selected_index=selected_index
         )
 
-    def get_pre_selected_branch_index(self, remote):
-        pre_selected_index = None
-        if self.selected_branch is None:
-            self.selected_branch = self.get_current_branch_name()
+    def get_pre_selected_branch_index(self, selected_branch, remote):
+        if remote:
+            branch_candidates = ["{}/{}".format(remote, selected_branch), selected_branch]
+        else:
+            branch_candidates = [selected_branch]
 
-        if self.ask_remote_first:
-            pre_selected_remote_branch = "{}/{}".format(remote, self.selected_branch)
-            if pre_selected_remote_branch in self.all_branches:
-                pre_selected_index = self.all_branches.index(pre_selected_remote_branch)
-
-        if pre_selected_index is None:
-            if self.selected_branch is not None and self.selected_branch in self.all_branches:
-                pre_selected_index = self.all_branches.index(self.selected_branch)
-
-        if pre_selected_index is None:
-            pre_selected_index = 0
-
-        return pre_selected_index
+        for candidate in branch_candidates:
+            try:
+                return self.all_branches.index(candidate)
+            except ValueError:
+                pass
+        else:
+            return 0
 
     def on_branch_selection(self, index):
         if index == -1:
