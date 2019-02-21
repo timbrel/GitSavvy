@@ -4,12 +4,14 @@ from textwrap import dedent
 import sublime
 
 from unittesting import DeferrableTestCase
+from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.mockito import unstub, when
 
 from GitSavvy.core.commands.log_graph import (
     GsLogGraphCurrentBranch,
     GsLogGraphRefreshCommand,
-    GsLogGraphCursorListener
+    GsLogGraphCursorListener,
+    extract_commit_hash
 )
 from GitSavvy.core.commands.show_commit_info import GsShowCommitInfoCommand
 from GitSavvy.core.settings import GitSavvySettings
@@ -32,6 +34,71 @@ COMMIT_2 = 'This is commit f461ea1'
 def fixture(name):
     with open(os.path.join(THIS_DIRNAME, 'fixtures', name)) as f:
         return f.read()
+
+
+EXTRACT_COMMIT_HASH_FIXTURE = r"""
+* 1948764 (HEAD -> master) f
+| *-.   3fe5938 (master_merge) Merge branches 'one' and 'two' into master_merge
+| |\ \
+|/ / /
+| | * 0a8f459 (two) ccc
+| | * 2084353 c
+| | * 006bcdd c
+* | | f8ceeb0 d
+| |/
+|/|
+| | *   9b42732 (refs/stash) On one: a
+| | |\
+| |/ /
+| | * c12cffd index on one: c3bba58 bb
+| |/
+| * c3bba58 (one) bb
+| * 18fd299 aa
+|/
+* fe67af3 b
+* 5e42cd1 a
+● | |   3c2e064 (tag: 2.17.4) Merge pull request #983 from divmain/release/2.17.4          (6 months ago) <Randy Lai>
+|\ \ \
+| ● \ \   b0d95ed Merge pull request #988 from divmain/help_text               (6 months ago) <Simon>
+| |\ \ \
+| | ● | | f950461 Fix: help_text will be stripped                              (6 months ago) <Randy Lai>
+| | | ● 6df205d (fork/diff-view-refreshes, diff-view-refreshes) Expect failures on Linux Travis
+""".strip().split('\n')
+HASHES = r"""
+1948764
+3fe5938
+
+
+0a8f459
+2084353
+006bcdd
+f8ceeb0
+
+
+9b42732
+
+
+c12cffd
+
+c3bba58
+18fd299
+
+fe67af3
+5e42cd1
+3c2e064
+
+b0d95ed
+
+f950461
+6df205d
+""".strip().split('\n')
+
+
+class TestDiffViewCommitHashExtraction(DeferrableTestCase):
+    @p.expand(list(zip(EXTRACT_COMMIT_HASH_FIXTURE, HASHES)))
+    def test_extract_commit_hash_from_line(self, line, expected):
+        actual = extract_commit_hash(line)
+        self.assertEqual(actual, expected)
 
 
 class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):

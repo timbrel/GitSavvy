@@ -13,7 +13,7 @@ from ..ui_mixins.quick_panel import show_branch_panel
 
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
-GRAPH_CHAR_OPTIONS = r" /_\|\-."
+GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
 COMMIT_LINE = re.compile(
     "^[{graph_chars}]*[{node_chars}][{graph_chars}]* (?P<commit_hash>[a-f0-9]{{5,40}})".format(
         graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS))
@@ -252,15 +252,16 @@ def draw_info_panel_for_line(wid, line_text, show_panel):
     window = sublime.Window(wid)
 
     if show_panel:
-        m = COMMIT_LINE.search(line_text)
-        commit_hash = m.groupdict()['commit_hash'] if m else ""
-        if len(commit_hash) <= 3:
-            return
-
+        commit_hash = extract_commit_hash(line_text)
         window.run_command("gs_show_commit_info", {"commit_hash": commit_hash})
     else:
         if window.active_panel() == "output.show_commit_info":
             window.run_command("hide_panel")
+
+
+def extract_commit_hash(line):
+    match = COMMIT_LINE.search(line)
+    return match.groupdict()['commit_hash'] if match else ""
 
 
 class GsLogGraphToggleMoreInfoCommand(TextCommand, WindowCommand, GitCommand):
@@ -314,8 +315,7 @@ class GsLogGraphActionCommand(GsLogActionCommand):
         lines = util.view.get_lines_from_regions(view, self.selections)
         line = lines[0]
 
-        m = COMMIT_LINE.search(line)
-        self._commit_hash = m.groupdict()['commit_hash'] if m else ""
+        self._commit_hash = extract_commit_hash(line)
         self._file_path = self.file_path
 
         if not len(self.selections) == 1:
