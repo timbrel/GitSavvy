@@ -360,6 +360,10 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
     hunk under the user's cursor(s).
     """
 
+    # NOTE: The whole command (including the view refresh) must be blocking otherwise
+    # the view and the repo state get out of sync and e.g. hitting 'h' very fast will
+    # result in errors.
+
     def run(self, edit, reset=False):
         ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
         show_word_diff = self.view.settings().get("git_savvy.diff_view.show_word_diff")
@@ -384,7 +388,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
             set((self.view.size() + 1, ))
         ))
 
-        sublime.set_timeout_async(lambda: self.apply_diffs_for_pts(cursor_pts, reset), 0)
+        self.apply_diffs_for_pts(cursor_pts, reset)
 
     def apply_diffs_for_pts(self, cursor_pts, reset):
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
@@ -427,7 +431,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
             self.view.settings().set("git_savvy.diff_view.history", history)
             self.view.settings().set("git_savvy.diff_view.just_hunked", hunk_diff)
 
-        sublime.set_timeout_async(lambda: self.view.run_command("gs_diff_refresh"))
+        self.view.run_command("gs_diff_refresh")
 
     def get_hunk_diff(self, pt):
         """
