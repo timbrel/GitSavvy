@@ -193,11 +193,36 @@ class GsLogGraphNavigateCommand(GsNavigate):
 
 class GsLogGraphCursorListener(EventListener, GitCommand):
     def is_applicable(self, view):
+        # type: (sublime.View) -> bool
         settings = view.settings()
-        return (
+        return bool(
             settings.get("git_savvy.log_graph_view")
             or settings.get("git_savvy.compare_commit_view")
         )
+
+    def on_activated(self, view):
+        window = view.window()
+        if not window:
+            return
+
+        panel_view = window.find_output_panel('show_commit_info')
+        if not panel_view:
+            return
+
+        # Do nothing, if the user focuses the panel
+        if panel_view.id() == view.id():
+            return
+
+        # Auto-hide panel if the user switches to a different buffer
+        if not self.is_applicable(view) and window.active_panel() == 'output.show_commit_info':
+            window.run_command('hide_panel')
+        # Auto-show panel if the user switches back
+        elif (
+            self.is_applicable(view)
+            and window.active_panel() != 'output.show_commit_info'
+            and self.savvy_settings.get("graph_show_more_commit_info")
+        ):
+            window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
     # `on_selection_modified` triggers twice per mouse click
     # multiplied with the number of views into the same buffer.
@@ -212,21 +237,26 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
         draw_info_panel(view, self.savvy_settings.get("graph_show_more_commit_info"))
 
     def on_post_window_command(self, window, command_name, args):
-        # If the user hides the panel via `<ESC>` or mouse click,
-        if command_name == 'hide_panel':
+        # type: (sublime.Window, str, dict) -> None
+        view = window.active_view()
+        if not view:
+            return
+
+        # If the user hides the panel via `<ESC>` or mouse click, remember the intent *if*
+        # the `active_view` is a 'log_graph'
+        if command_name == 'hide_panel' and self.is_applicable(view):
             self.savvy_settings.set("graph_show_more_commit_info", False)
+            draw_info_panel(view, False)
 
         # If the user opens a different panel, don't fight with it.
-        # Note: 'show_panel' can also be used to actually *hide* a panel if you pass
-        # the 'toggle' arg.
         elif command_name == 'show_panel':
-            # Note: After 'show_panel' `on_selection_modified` runs *if* you used a
-            # keyboard shortcut for it. If you open a panel via mouse it doesn't.
+            # Note: 'show_panel' can also be used to actually *hide* a panel if you pass
+            # the 'toggle' arg.
             show_panel = args.get('panel') == "output.show_commit_info"
             self.savvy_settings.set("graph_show_more_commit_info", show_panel)
-            # If the user opened our panel via mouse click we MUST draw bc it can be
-            # out of sync. For now
-            view = window.active_view()
+            # Note: After 'show_panel' `on_selection_modified` runs *if* you used a
+            # keyboard shortcut for it. If you open a panel via mouse it doesn't.
+            # Since we cannot differentiate here, we do for now:
             if self.is_applicable(view):
                 draw_info_panel(view, show_panel)
 
