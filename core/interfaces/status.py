@@ -495,14 +495,12 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
         for fpath in non_cached_files:
             self.view.window().run_command("gs_diff", {
                 "file_path": fpath,
-                "current_file": True
             })
 
         for fpath in cached_files:
             self.view.window().run_command("gs_diff", {
                 "file_path": fpath,
                 "in_cached_mode": True,
-                "current_file": True
             })
 
 
