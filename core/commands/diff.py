@@ -8,7 +8,6 @@ from functools import partial
 from itertools import chain, dropwhile, takewhile
 import os
 import re
-import bisect
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -20,7 +19,7 @@ from ...common import util
 
 
 if False:
-    from typing import Callable, Iterable, Iterator, List, Optional, Tuple, TypeVar
+    from typing import Callable, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar
     from mypy_extensions import TypedDict
 
     T = TypeVar('T')
@@ -563,6 +562,10 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
         self.view.run_command("gs_diff_refresh")
 
 
+HUNKS_LINES_RE = re.compile(r'@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? ')
+HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+)$')
+
+
 class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
 
     """
@@ -571,53 +574,166 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        # type: (sublime.Edit) -> None
         # Filter out any cursors that are larger than a single point.
         cursor_pts = tuple(cursor.a for cursor in self.view.sel() if cursor.a == cursor.b)
 
-        diff_starts = tuple(region.a for region in self.view.find_all("^diff"))
-        hunk_starts = tuple(region.a for region in self.view.find_all("^@@"))
+        def first_per_file(items):
+            # type: (Iterator[Tuple[str, int, int]]) -> Iterator[Tuple[str, int, int]]
+            seen = set()  # type: Set[str]
+            for item in items:
+                filename, _, _ = item
+                if filename not in seen:
+                    seen.add(filename)
+                    yield item
 
-        for cursor_pt in cursor_pts:
-            diff_start = diff_starts[bisect.bisect(diff_starts, cursor_pt) - 1]
-            diff_start_line = self.view.substr(self.view.line(diff_start))
+        diff = parse_diff_in_view(self.view)
+        jump_positions = filter_(self.jump_position_to_file(diff, pt) for pt in cursor_pts)
+        for jp in first_per_file(jump_positions):
+            self.load_file_at_line(*jp)
 
-            hunk_start = hunk_starts[bisect.bisect(hunk_starts, cursor_pt) - 1]
-            hunk_line_str = self.view.substr(self.view.line(hunk_start))
-            hunk_line, _ = self.view.rowcol(hunk_start)
-            cursor_line, _ = self.view.rowcol(cursor_pt)
-            additional_lines = cursor_line - hunk_line - 1
-
-            # Example: "diff --git a/src/js/main.spec.js b/src/js/main.spec.js" --> "src/js/main.spec.js"
-            use_prepix = re.search(r" b/(.+?)$", diff_start_line)
-            if use_prepix is None:
-                filename = diff_start_line.split(" ")[-1]
-            else:
-                filename = use_prepix.groups()[0]
-
-            # Example: "@@ -9,6 +9,7 @@" --> 9
-            lineno = int(re.search(r"^@@ \-\d+(,-?\d+)? \+(\d+)", hunk_line_str).groups()[1])
-            lineno = lineno + additional_lines
-
-            self.load_file_at_line(filename, lineno)
-
-    def load_file_at_line(self, filename, lineno):
+    def load_file_at_line(self, filename, row, col):
+        # type: (str, int, int) -> None
         """
         Show file at target commit if `git_savvy.diff_view.target_commit` is non-empty.
         Otherwise, open the file directly.
         """
         target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
         full_path = os.path.join(self.repo_path, filename)
+        window = self.view.window()
+        if not window:
+            return
+
         if target_commit:
-            self.view.window().run_command("gs_show_file_at_commit", {
+            window.run_command("gs_show_file_at_commit", {
                 "commit_hash": target_commit,
                 "filepath": full_path,
-                "lineno": lineno
+                "lineno": row,
             })
         else:
-            self.view.window().open_file(
-                "{file}:{row}:{col}".format(file=full_path, row=lineno, col=0),
+            window.open_file(
+                "{file}:{row}:{col}".format(file=full_path, row=row, col=col),
                 sublime.ENCODED_POSITION
             )
+
+    def jump_position_to_file(self, diff, pt):
+        # type: (ParsedDiff, int) -> Optional[Tuple[str, int, int]]
+        head_and_hunk_offsets = head_and_hunk_for_pt(diff, pt)
+        if not head_and_hunk_offsets:
+            return None
+
+        header_region, hunk_region = head_and_hunk_offsets
+        header = self.view.substr(sublime.Region(*header_region))
+        hunk = self.view.substr(sublime.Region(*hunk_region))
+        hunk_start, _ = hunk_region
+
+        rowcol = real_rowcol_in_hunk(hunk, relative_rowcol_in_hunk(self.view, hunk_start, pt))
+        if not rowcol:
+            return None
+
+        row, col = rowcol
+
+        filename = extract_filename_from_header(header)
+        if not filename:
+            return None
+
+        return filename, row, col
+
+
+def relative_rowcol_in_hunk(view, hunk_start, pt):
+    # type: (sublime.View, int, int) -> Tuple[int, int]
+    """Return rowcol of given pt relative to hunk start"""
+    head_row, _ = view.rowcol(hunk_start)
+    pt_row, col = view.rowcol(pt)
+    # If `col=0` the user is on the meta char (e.g. '+- ') which is not
+    # present in the source. We pin `col` to 1 because the target API
+    # `open_file` expects 1-based row, col offsets.
+    return pt_row - head_row, max(col, 1)
+
+
+def real_rowcol_in_hunk(hunk, relative_rowcol):
+    # type: (str, Tuple[int, int]) -> Optional[Tuple[int, int]]
+    """Translate relative to absolute row, col pair"""
+    hunk_lines = split_hunk(hunk)
+    if not hunk_lines:
+        return None
+
+    row_in_hunk, col = relative_rowcol
+
+    # If the user is on the header line ('@@ ..') pretend to be on the
+    # first changed line instead.
+    if row_in_hunk == 0:
+        row_in_hunk = next(
+            index
+            for index, (first_char, _, _) in enumerate(hunk_lines, 1)
+            if first_char in ('+', '-')
+        )
+
+    first_char, line, b = hunk_lines[row_in_hunk - 1]
+
+    # Happy path since the user is on a present line
+    if first_char != '-':
+        return b, col
+
+    # The user is on a deleted line ('-') we cannot jump to. If possible,
+    # select the next guaranteed to be available line
+    for next_first_char, next_line, next_b in hunk_lines[row_in_hunk:]:
+        if next_first_char == '+':
+            return next_b, min(col, len(next_line) + 1)
+        elif next_first_char == ' ':
+            # If we only have a contextual line, choose this or the
+            # previous line, pretty arbitrary, depending on the
+            # indentation.
+            next_lines_indentation = line_indentation(next_line)
+            if next_lines_indentation == line_indentation(line):
+                return next_b, next_lines_indentation + 1
+            else:
+                return max(1, b - 1), 1
+    else:
+        return b, 1
+
+
+def split_hunk(hunk):
+    # type: (str) -> Optional[List[Tuple[str, str, int]]]
+    """Split a hunk into (first char, line content, row) tuples
+
+    Note that rows point to available rows on the b-side.
+    """
+
+    head, *tail = hunk.rstrip().split('\n')
+    match = HUNKS_LINES_RE.search(head)
+    if not match:
+        return None
+
+    b = int(match.group(2))
+    return list(_recount_lines(tail, b))
+
+
+def _recount_lines(lines, b):
+    # type: (List[str], int) -> Iterator[Tuple[str, str, int]]
+
+    # Be aware that we only consider the b-line numbers, and that we
+    # always yield a b value, even for deleted lines.
+    for line in lines:
+        first_char, tail = line[0], line[1:]
+        yield (first_char, tail, b)
+
+        if first_char != '-':
+            b += 1
+
+
+def line_indentation(line):
+    # type: (str) -> int
+    return len(line) - len(line.lstrip())
+
+
+def extract_filename_from_header(header):
+    # type: (str) -> Optional[str]
+    match = HEADER_TO_FILE_RE.search(header)
+    if not match:
+        return None
+
+    return match.group(1)
 
 
 class GsDiffNavigateCommand(GsNavigate):
