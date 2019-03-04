@@ -310,8 +310,6 @@ diff --git a/foxx b/boxx
         view.sel().add(CURSOR)
 
         cmd.run({'unused_edit'})
-        yield 'AWAIT_WORKER'
-        yield 'AWAIT_WORKER'
 
         history = view.settings().get('git_savvy.diff_view.history')
         self.assertEqual(len(history), 1)
