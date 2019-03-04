@@ -432,6 +432,46 @@ class TestDiffView(DeferrableTestCase):
     def tearDown(self):
         unstub()
 
+    @p.expand([
+        ('in_cached_mode', False),
+        ('ignore_whitespace', False),
+        ('show_word_diff', False),
+        ('base_commit', None),
+        ('target_commit', None),
+        ('show_diffstat', True),
+        ('context_lines', 3),
+        ('disable_stage', False),
+        ('history', []),
+        ('just_hunked', ''),
+    ])
+    def test_default_view_state(self, KEY, DEFAULT_VALUE):
+        REPO_PATH = '/not/there'
+        when(GsDiffRefreshCommand).git('diff', ...).thenReturn('')
+        cmd = GsDiffCommand(self.window)
+        when(cmd).get_repo_path().thenReturn(REPO_PATH)
+
+        cmd.run_async()
+
+        diff_view = self.window.active_view()
+        self.addCleanup(diff_view.close)
+
+        actual = diff_view.settings().get('git_savvy.diff_view.{}'.format(KEY))
+        self.assertEqual(actual, DEFAULT_VALUE)
+
+    def test_sets_repo_path(self):
+        REPO_PATH = '/not/there'
+        when(GsDiffRefreshCommand).git('diff', ...).thenReturn('')
+        cmd = GsDiffCommand(self.window)
+        when(cmd).get_repo_path().thenReturn(REPO_PATH)
+
+        cmd.run_async()
+
+        diff_view = self.window.active_view()
+        self.addCleanup(diff_view.close)
+
+        actual = diff_view.settings().get('git_savvy.repo_path')
+        self.assertEqual(actual, REPO_PATH)
+
     @expectedFailureOnLinuxTravis
     def test_extract_clickable_lines(self):
         REPO_PATH = '/not/there'
