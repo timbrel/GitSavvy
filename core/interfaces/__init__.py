@@ -33,11 +33,12 @@ class GsTabCycleCommand(TextCommand, GitCommand):
             return
         view_signature = self.view_signatures[to_load]
 
-        self.view.window().run_command("hide_panel", {"cancel": True})
-
-        self.view.window().run_command(self.commands[to_load])
-        if not self.view.settings().get(view_signature):
-            sublime.set_timeout_async(self.view.close)
+        window = self.view.window()
+        if window:
+            window.run_command("hide_panel", {"cancel": True})
+            window.run_command(self.commands[to_load])
+            if not self.view.settings().get(view_signature):
+                sublime.set_timeout_async(self.view.close)
 
     def get_next(self, source, reverse=False):
         tab_order = self.savvy_settings.get("tab_order")
