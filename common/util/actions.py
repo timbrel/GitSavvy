@@ -16,7 +16,7 @@ def destructive(description):
                 if not sublime.ok_cancel_dialog(message):
                     return
 
-            fn(*args, **kwargs)
+            return fn(*args, **kwargs)
 
         return wrapped_fn
 

@@ -8,20 +8,20 @@ class CheckoutDiscardMixin():
         self.git("clean", "-df")
         self.git("checkout", "--", ".")
 
-    def discard_untracked_file(self, fpath):
+    def discard_untracked_file(self, *fpaths):
         """
-        Given an absolute path or path relative to the repo's root, remove
-        the file or directory from the working tree.
+        Given a list of absolute paths or paths relative to the repo's root,
+        remove the file or directory from the working tree.
         """
-        self.git("clean", "-df", "--", fpath)
+        self.git("clean", "-df", "--", *fpaths)
 
-    def checkout_file(self, fpath):
+    def checkout_file(self, *fpaths):
         """
-        Given an absolute path or path relative to the repo's root, discard
-        any changes made to the file and revert it in the working directory
-        to the state it is in HEAD.
+        Given a list of absolute paths or paths relative to the repo's root,
+        discard any changes made to the file and revert it in the working
+        directory to the state it is in HEAD.
         """
-        self.git("checkout", "--", fpath)
+        self.git("checkout", "--", *fpaths)
 
     def checkout_ref(self, ref, fpath=None):
         """
