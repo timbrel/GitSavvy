@@ -1,5 +1,8 @@
+from functools import wraps
 import os
+import sys
 from textwrap import dedent
+from unittest.case import _ExpectedFailure, _UnexpectedSuccess
 
 import sublime
 
@@ -15,6 +18,28 @@ from GitSavvy.core.commands.log_graph import (
 )
 from GitSavvy.core.commands.show_commit_info import GsShowCommitInfoCommand
 from GitSavvy.core.settings import GitSavvySettings
+
+
+def isiterable(obj):
+    return hasattr(obj, '__iter__')
+
+
+def expectedFailure(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            deferred = func(*args, **kwargs)
+            if isiterable(deferred):
+                yield from deferred
+        except Exception:
+            raise _ExpectedFailure(sys.exc_info())
+        raise _UnexpectedSuccess
+    return wrapper
+
+
+RUNNING_ON_LINUX_TRAVIS = os.environ.get('TRAVIS_OS_NAME') == 'linux'
+expectedFailureOnLinuxTravis = expectedFailure if RUNNING_ON_LINUX_TRAVIS else lambda f: f
+
 
 if os.name == 'nt':
     # On Windows, `find_all_results` returns pseudo linux paths
@@ -332,16 +357,30 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
         self.assertTrue(actual)
 
-    def _test_afocus_info_panel(self):
+    @expectedFailureOnLinuxTravis
+    def test_auto_close_panel_if_user_moves_away(self):
+        view = self.create_new_view(self.window)
         log_view = yield from self.setup_graph_view_async()
 
-        yield 2500
+        self.window.focus_view(view)
 
-    def _test(self):
+        self.assertTrue(self.window.active_panel() is None)
+
+    @expectedFailureOnLinuxTravis
+    def test_auto_show_panel_if_log_view_gains_focus_again(self):
+        view = self.create_new_view(self.window)
+        log_view = yield from self.setup_graph_view_async()
+
+        self.window.focus_view(view)
+        self.window.focus_view(log_view)
+
+        self.assertEqual(self.window.active_panel(), 'output.show_commit_info')
+
+    @expectedFailureOnLinuxTravis
+    def test_do_not_hide_panel_if_it_gains_focus(self):
+        log_view = yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
 
         self.window.focus_view(panel)
 
-        log_view.run_command('gs_log_graph_navigate')
-        log_view.run_command('gs_log_graph_navigate')
-        yield 2000
+        self.assertEqual(self.window.active_panel(), 'output.show_commit_info')
