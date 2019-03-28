@@ -1,9 +1,12 @@
+from functools import wraps
 import os
 import re
+import sys
+from unittest.case import _ExpectedFailure, _UnexpectedSuccess
 
 import sublime
 
-from unittesting import DeferrableTestCase
+from unittesting import DeferrableTestCase, AWAIT_WORKER
 from GitSavvy.tests.mockito import when, unstub
 from GitSavvy.tests.parameterized import parameterized as p
 
@@ -11,7 +14,26 @@ import GitSavvy.core.commands.diff as module
 from GitSavvy.core.commands.diff import GsDiffCommand, GsDiffRefreshCommand
 
 
+def isiterable(obj):
+    return hasattr(obj, '__iter__')
+
+
+def expectedFailure(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            deferred = func(*args, **kwargs)
+            if isiterable(deferred):
+                yield from deferred
+        except Exception:
+            raise _ExpectedFailure(sys.exc_info())
+        raise _UnexpectedSuccess
+    return wrapper
+
+
 THIS_DIRNAME = os.path.dirname(os.path.realpath(__file__))
+RUNNING_ON_LINUX_TRAVIS = os.environ.get('TRAVIS_OS_NAME') == 'linux'
+expectedFailureOnLinuxTravis = expectedFailure if RUNNING_ON_LINUX_TRAVIS else lambda f: f
 
 
 def fixture(name):
@@ -313,14 +335,13 @@ class TestDiffView(DeferrableTestCase):
 
     def setUp(self):
         self.view = self.window.new_file()
+        self.view.set_scratch(True)
+        self.addCleanup(self.view.close)
 
     def tearDown(self):
-        if self.view:
-            self.view.set_scratch(True)
-            self.view.close()
-
         unstub()
 
+    @expectedFailureOnLinuxTravis
     def test_extract_clickable_lines(self):
         REPO_PATH = '/not/there'
         DIFF = fixture('diff_1.txt')
@@ -329,8 +350,12 @@ class TestDiffView(DeferrableTestCase):
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
         cmd.run_async()
+        yield AWAIT_WORKER  # await activated_async
+        yield AWAIT_WORKER  # await refresh async
 
         diff_view = self.window.active_view()
+        self.addCleanup(diff_view.close)
+
         actual = diff_view.find_all_results()
         # `find_all_results` only returns full filename-with-line matches.
         # These match clicking on `@@ -52,8 +XX,7` lines
@@ -342,6 +367,7 @@ class TestDiffView(DeferrableTestCase):
 
         self.assertEqual(actual, expected)
 
+    @expectedFailureOnLinuxTravis
     def test_result_file_regex(self):
         REPO_PATH = '/not/there'
         DIFF = fixture('diff_1.txt')
@@ -350,8 +376,12 @@ class TestDiffView(DeferrableTestCase):
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
         cmd.run_async()
+        yield AWAIT_WORKER  # await activated_async
+        yield AWAIT_WORKER  # await refresh async
 
         diff_view = self.window.active_view()
+        self.addCleanup(diff_view.close)
+
         BUFFER_CONTENT = diff_view.substr(sublime.Region(0, diff_view.size()))
         self.assertEqual(
             BUFFER_CONTENT,
