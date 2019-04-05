@@ -7,7 +7,7 @@ from unittest.case import _ExpectedFailure, _UnexpectedSuccess
 import sublime
 
 from unittesting import DeferrableTestCase, AWAIT_WORKER
-from GitSavvy.tests.mockito import when, unstub
+from GitSavvy.tests.mockito import when, unstub, verify
 from GitSavvy.tests.parameterized import parameterized as p
 
 import GitSavvy.core.commands.diff as module
@@ -153,7 +153,7 @@ class TestDiffViewInternalFunctions(DeferrableTestCase):
         (35, (20, 24)),
 
     ])
-    def test_first_hunk_start_before_pt(self, IN, expected):
+    def test_find_hunk_start_before_pt(self, IN, expected):
         VIEW_CONTENT = """\
 0123
 @@ 1
@@ -169,7 +169,7 @@ class TestDiffViewInternalFunctions(DeferrableTestCase):
         view.run_command('append', {'characters': VIEW_CONTENT})
         view.set_scratch(True)
 
-        actual = module.first_hunk_start_before_pt(view, IN)
+        actual = module.find_hunk_start_before_pt(view, IN)
         actual = (actual.a, actual.b) if actual else actual
         self.assertEqual(actual, expected)
 
@@ -310,15 +310,104 @@ diff --git a/foxx b/boxx
         view.sel().add(CURSOR)
 
         cmd.run({'unused_edit'})
-        yield 'AWAIT_WORKER'
-        yield 'AWAIT_WORKER'
 
         history = view.settings().get('git_savvy.diff_view.history')
         self.assertEqual(len(history), 1)
 
         actual = history.pop()
-        expected = [['apply', None, '--cached', '-'], HUNK, CURSOR, IN_CACHED_MODE]
+        expected = [['apply', None, '--cached', None, '-'], HUNK, CURSOR, IN_CACHED_MODE]
         self.assertEqual(actual, expected)
+
+    def test_sets_unidiff_zero_if_no_contextual_lines(self):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
+ two
+"""
+        CURSOR = 58
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        # view.settings().set('git_savvy.diff_view.in_cached_mode', IN_CACHED_MODE)
+        view.settings().set('git_savvy.diff_view.history', [])
+        view.settings().set('git_savvy.diff_view.context_lines', 0)
+
+        cmd = module.GsDiffStageOrResetHunkCommand(view)
+        when(cmd).git(...)
+        when(cmd.view).run_command("gs_diff_refresh")
+
+        view.sel().clear()
+        view.sel().add(CURSOR)
+
+        cmd.run({'unused_edit'})
+
+        history = view.settings().get('git_savvy.diff_view.history')
+        self.assertEqual(len(history), 1)
+
+        actual = history.pop()[0]
+        expected = ['apply', None, '--cached', '--unidiff-zero', '-']
+        self.assertEqual(actual, expected)
+
+
+class TestZooming(DeferrableTestCase):
+    @classmethod
+    def setUpClass(cls):
+        sublime.run_command("new_window")
+        cls.window = sublime.active_window()
+        s = sublime.load_settings("Preferences.sublime-settings")
+        s.set("close_windows_when_empty", False)
+
+    @classmethod
+    def tearDownClass(self):
+        self.window.run_command('close_window')
+
+    @p.expand([
+        (0, '--unified=0'),
+        (1, '--unified=1'),
+        (3, '--unified=3'),
+        (5, '--unified=5'),
+        (None, None)
+    ])
+    def test_adds_unified_flag_to_change_contextual_lines(self, CONTEXT_LINES, FLAG):
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.set_scratch(True)
+
+        view.settings().set('git_savvy.diff_view.context_lines', CONTEXT_LINES)
+        cmd = module.GsDiffRefreshCommand(view)
+        when(cmd).git(...).thenReturn('NEW CONTENT')
+
+        cmd.run({'unused_edit'})
+        verify(cmd).git('diff', None, None, FLAG, ...)
+
+    @p.expand([
+        (0, 2, 2),
+        (3, 2, 5),
+        (3, -2, 1),
+        (2, -2, 0),
+        (1, -2, 0),
+        (0, -2, 0),
+    ])
+    def test_updates_view_state_when_zooming(self, BEFORE, AMOUNT, EXPECTED):
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.set_scratch(True)
+
+        view.settings().set('git_savvy.diff_view.context_lines', BEFORE)
+        cmd = module.GsDiffZoom(view)
+        when(cmd.view).run_command("gs_diff_refresh")
+
+        cmd.run({'unused_edit'}, AMOUNT)
+
+        actual = view.settings().get('git_savvy.diff_view.context_lines')
+        self.assertEqual(actual, EXPECTED)
 
 
 class TestDiffView(DeferrableTestCase):
@@ -340,6 +429,46 @@ class TestDiffView(DeferrableTestCase):
 
     def tearDown(self):
         unstub()
+
+    @p.expand([
+        ('in_cached_mode', False),
+        ('ignore_whitespace', False),
+        ('show_word_diff', False),
+        ('base_commit', None),
+        ('target_commit', None),
+        ('show_diffstat', True),
+        ('context_lines', 3),
+        ('disable_stage', False),
+        ('history', []),
+        ('just_hunked', ''),
+    ])
+    def test_default_view_state(self, KEY, DEFAULT_VALUE):
+        REPO_PATH = '/not/there'
+        when(GsDiffRefreshCommand).git('diff', ...).thenReturn('')
+        cmd = GsDiffCommand(self.window)
+        when(cmd).get_repo_path().thenReturn(REPO_PATH)
+
+        cmd.run_async()
+
+        diff_view = self.window.active_view()
+        self.addCleanup(diff_view.close)
+
+        actual = diff_view.settings().get('git_savvy.diff_view.{}'.format(KEY))
+        self.assertEqual(actual, DEFAULT_VALUE)
+
+    def test_sets_repo_path(self):
+        REPO_PATH = '/not/there'
+        when(GsDiffRefreshCommand).git('diff', ...).thenReturn('')
+        cmd = GsDiffCommand(self.window)
+        when(cmd).get_repo_path().thenReturn(REPO_PATH)
+
+        cmd.run_async()
+
+        diff_view = self.window.active_view()
+        self.addCleanup(diff_view.close)
+
+        actual = diff_view.settings().get('git_savvy.repo_path')
+        self.assertEqual(actual, REPO_PATH)
 
     @expectedFailureOnLinuxTravis
     def test_extract_clickable_lines(self):

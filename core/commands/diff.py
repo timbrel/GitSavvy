@@ -4,6 +4,7 @@ current diff.
 """
 
 from contextlib import contextmanager
+from functools import partial
 from itertools import dropwhile, takewhile
 import os
 import re
@@ -16,6 +17,17 @@ from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ..exceptions import GitSavvyError
 from ...common import util
+
+
+if False:
+    from typing import Callable, Iterator, List, Optional, Tuple, TypeVar
+    from mypy_extensions import TypedDict
+
+    T = TypeVar('T')
+    ParsedDiff = TypedDict('ParsedDiff', {
+        'headers': List[Tuple[int, int]],
+        'hunks': List[Tuple[int, int]]
+    })
 
 
 DIFF_TITLE = "DIFF: {}"
@@ -63,6 +75,7 @@ class GsDiffCommand(WindowCommand, GitCommand):
             settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
             settings.set("git_savvy.diff_view.ignore_whitespace", False)
             settings.set("git_savvy.diff_view.show_word_diff", False)
+            settings.set("git_savvy.diff_view.context_lines", 3)
             settings.set("git_savvy.diff_view.base_commit", base_commit)
             settings.set("git_savvy.diff_view.target_commit", target_commit)
             settings.set("git_savvy.diff_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
@@ -132,6 +145,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
         show_diffstat = self.view.settings().get("git_savvy.diff_view.show_diffstat")
         disable_stage = self.view.settings().get("git_savvy.diff_view.disable_stage")
+        context_lines = self.view.settings().get('git_savvy.diff_view.context_lines')
 
         prelude = "\n"
         if self.file_path:
@@ -160,6 +174,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
                 "diff",
                 "--ignore-all-space" if ignore_whitespace else None,
                 "--word-diff" if show_word_diff else None,
+                "--unified={}".format(context_lines) if context_lines is not None else None,
                 "--stat" if show_diffstat else None,
                 "--patch",
                 "--no-color",
@@ -263,18 +278,26 @@ class GsDiffToggleCachedMode(TextCommand):
                 set_and_show_cursor(self.view, unpickle_sel(last_cursors))
 
 
-def find_hunk_in_view(view, hunk):
-    hunk_content = extract_first_hunk(hunk)
+def find_hunk_in_view(view, patch):
+    # type: (sublime.View, str) -> Optional[sublime.Region]
+    """Given a patch, search for its first hunk in the view
+
+    Returns the region of the first line of the hunk (the one starting
+    with '@@ ...'), if any.
+    """
+    hunk_content = extract_first_hunk(patch)
     if hunk_content:
         return (
             view.find(hunk_content[0], 0, sublime.LITERAL)
-            or search_for_hunk_content_in_view(view, hunk_content[1:])
+            or fuzzy_search_hunk_content_in_view(view, hunk_content[1:])
         )
+    return None
 
 
-def extract_first_hunk(hunk):
-    hunk_lines = hunk.split('\n')
-    not_hunk_start = lambda l: not l.startswith('@@ ')
+def extract_first_hunk(patch):
+    # type: (str) -> Optional[List[str]]
+    hunk_lines = patch.split('\n')
+    not_hunk_start = lambda line: not line.startswith('@@ ')
 
     try:
         start, *rest = dropwhile(not_hunk_start, hunk_lines)
@@ -284,26 +307,42 @@ def extract_first_hunk(hunk):
     return [start] + list(takewhile(not_hunk_start, rest))
 
 
-def search_for_hunk_content_in_view(view, lines):
+def fuzzy_search_hunk_content_in_view(view, lines):
+    # type: (sublime.View, List[str]) -> Optional[sublime.Region]
+    """Fuzzy search the hunk content in the view
+
+    Note that hunk content does not include the starting line, the one
+    starting with '@@ ...', anymore.
+
+    The fuzzy strategy here is to search for the hunk or parts of it
+    by reducing the contextual lines symmetrically.
+
+    Returns the region of the starting line of the found hunk, if any.
+    """
     for hunk_content in shrink_list_sym(lines):
         region = view.find('\n'.join(hunk_content), 0, sublime.LITERAL)
         if region:
-            return first_hunk_start_before_pt(view, region.a)
-
-
-def first_hunk_start_before_pt(view, pt):
-    for region in line_regions_before_pt(view, pt):
-        if view.substr(region).startswith('@@ '):
-            return region
+            return find_hunk_start_before_pt(view, region.a)
+    return None
 
 
 def shrink_list_sym(list):
+    # type: (List[T]) -> Iterator[List[T]]
     while list:
         yield list
         list = list[1:-1]
 
 
+def find_hunk_start_before_pt(view, pt):
+    # type: (sublime.View, int) -> Optional[sublime.Region]
+    for region in line_regions_before_pt(view, pt):
+        if view.substr(region).startswith('@@ '):
+            return region
+    return None
+
+
 def line_regions_before_pt(view, pt):
+    # type: (sublime.View, int) -> Iterator[sublime.Region]
     row, _ = view.rowcol(pt)
     for row in reversed(range(row)):
         pt = view.text_point(row, 0)
@@ -341,6 +380,91 @@ def no_animations():
         yield
     finally:
         pref.set("animation_enabled", current)
+
+
+def parse_diff_in_view(view):
+    # type: (sublime.View) -> ParsedDiff
+    header_starts = tuple(region.a for region in view.find_all("^diff"))
+    header_ends = tuple(region.b for region in view.find_all(r"^\+\+\+.+\n(?=@@)"))
+    hunk_starts = tuple(region.a for region in view.find_all("^@@"))
+    hunk_ends = tuple(sorted(list(
+        # Hunks end when the next diff starts.
+        set(header_starts[1:]) |
+        # Hunks end when the next hunk starts, except for hunks
+        # immediately following diff headers.
+        (set(hunk_starts) - set(header_ends)) |
+        # The last hunk ends at the end of the file.
+        # It should include the last line (`+ 1`).
+        set((view.size() + 1, ))
+    )))
+
+    return {
+        'headers': list(zip(header_starts, header_ends)),
+        'hunks': list(zip(hunk_starts, hunk_ends))
+    }
+
+
+def head_and_hunk_for_pt(diff, pt):
+    # type: (ParsedDiff, int) -> Optional[Tuple[Tuple[int, int], Tuple[int, int]]]
+    """Return header and hunk offsets for given point if any"""
+    for hunk_start, hunk_end in diff['hunks']:
+        if hunk_start <= pt < hunk_end:
+            break
+    else:
+        return None
+
+    header_start, header_end = max(
+        (header_start, header_end)
+        for header_start, header_end in diff['headers']
+        if (header_start, header_end) < (hunk_start, hunk_end)
+    )
+
+    header = header_start, header_end
+    hunk = hunk_start, hunk_end
+
+    return header, hunk
+
+
+def extract_content(view, region):
+    # type: (sublime.View, Tuple[int, int]) -> str
+    return view.substr(sublime.Region(*region))
+
+
+filter_ = partial(filter, None)  # type: Callable[[Iterator[Optional[T]]], Iterator[T]]
+
+
+class GsDiffZoom(TextCommand):
+    """
+    Update the number of context lines the diff shows by given `amount`
+    and refresh the view.
+    """
+    def run(self, edit, amount):
+        # type: (sublime.Edit, int) -> None
+        settings = self.view.settings()
+        current = settings.get('git_savvy.diff_view.context_lines')
+        next = max(current + amount, 0)
+        settings.set('git_savvy.diff_view.context_lines', next)
+
+        # Getting a meaningful cursor after 'zooming' is the tricky part
+        # here. We first extract all hunks under the cursors *verbatim*.
+        diff = parse_diff_in_view(self.view)
+        extract = partial(extract_content, self.view)
+        cur_hunks = [
+            extract(header) + extract(hunk)
+            for header, hunk in filter_(head_and_hunk_for_pt(diff, s.a) for s in self.view.sel())
+        ]
+
+        self.view.run_command("gs_diff_refresh")
+
+        # Now, we fuzzy search the new view content for the old hunks.
+        cursors = {
+            region.a
+            for region in (
+                filter_(find_hunk_in_view(self.view, hunk) for hunk in cur_hunks)
+            )
+        }
+        if cursors:
+            set_and_show_cursor(self.view, cursors)
 
 
 class GsDiffFocusEventListener(EventListener):
@@ -395,6 +519,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
 
     def apply_diffs_for_pts(self, cursor_pts, reset):
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
+        context_lines = self.view.settings().get('git_savvy.diff_view.context_lines')
 
         # Apply the diffs in reverse order - otherwise, line number will be off.
         for pt in reversed(cursor_pts):
@@ -422,6 +547,7 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
                 "apply",
                 "-R" if (reset or in_cached_mode) else None,
                 "--cached" if (in_cached_mode or not reset) else None,
+                "--unidiff-zero" if context_lines == 0 else None,
                 "-",
             )
             self.git(
