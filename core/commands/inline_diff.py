@@ -145,6 +145,9 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        sublime.set_timeout_async(self.run_async, 0)
+
+    def run_async(self):
         file_path = self.file_path
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
         ignore_eol_arg = (
@@ -181,7 +184,10 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
             row, col = self.view.rowcol(cursors[0].begin())
 
         self.view.set_read_only(False)
-        self.view.replace(edit, sublime.Region(0, self.view.size()), inline_diff_contents)
+        self.view.run_command("gs_replace_view_text", {
+            "text": inline_diff_contents,
+            "restore_cursors": True,
+        })
 
         if cursors:
             if (row, col) == (0, 0) and self.savvy_settings.get("inline_diff_auto_scroll", False):
