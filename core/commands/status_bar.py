@@ -34,6 +34,7 @@ if False:
 
 current_token = {}  # type: Dict[sublime.ViewId, str]
 _lock = threading.Lock()
+active_view = None  # type: Optional[sublime.View]
 
 
 def maybe_update_status_bar(view):
@@ -93,8 +94,23 @@ def render(view, status):
 
 class GsStatusBarEventListener(EventListener):
     on_new_async = staticmethod(maybe_update_status_bar)
-    on_activated_async = staticmethod(maybe_update_status_bar)
-    on_post_save_async = staticmethod(maybe_update_status_bar)
+
+    # Sublime calls `on_post_save_async` events only on the primary view.
+    # We thus track the state of the `active_view` manually so that we can
+    # refresh the status bar of cloned views.
+
+    def on_activated_async(self, view):
+        global active_view
+        active_view = view
+
+        maybe_update_status_bar(view)
+
+    def on_post_save_async(self, view):
+        global active_view
+        if active_view and active_view.buffer_id() == view.buffer_id():
+            maybe_update_status_bar(active_view)
+        else:
+            maybe_update_status_bar(view)
 
 
 class GsUpdateStatusBarCommand(TextCommand, GitCommand):
