@@ -1,33 +1,14 @@
-import time
+from functools import partial
+import threading
+import uuid
+
 import sublime
 from sublime_plugin import TextCommand, EventListener
 
 from ..git_command import GitCommand
-from ...common.util import debug
 
 
-class GsStatusBarEventListener(EventListener):
-
-    # these methods should be run synchronously to check if the
-    # view is transient.
-    def on_new(self, view):
-        view.run_command("gs_update_status_bar")
-
-    def on_load(self, view):
-        view.run_command("gs_update_status_bar")
-
-    def on_activated(self, view):
-        view.run_command("gs_update_status_bar")
-
-    def on_post_save(self, view):
-        view.run_command("gs_update_status_bar")
-
-
-last_execution = 0
-update_status_bar_soon = False
-
-
-def view_is_transient(view):
+def view_is_transient(view: sublime.View) -> bool:
     """Return whether a view can be considered 'transient'.
 
     For our purpose, transient views are 'detached' views or widgets
@@ -47,46 +28,76 @@ def view_is_transient(view):
     return False
 
 
+if False:
+    from typing import Callable, Dict, Optional
+
+
+current_token = {}  # type: Dict[sublime.ViewId, str]
+_lock = threading.Lock()
+
+
+def maybe_update_status_bar(view):
+    # type: (sublime.View) -> None
+    if view_is_transient(view):
+        return
+
+    vid = view.id()
+    with _lock:
+        current_token[vid] = token = uuid.uuid4().hex
+    sink = partial(update_status_bar, view)
+    sublime.set_timeout_async(partial(executor, sink, vid, token))
+
+
+def update_status_bar(view):
+    # type: (sublime.View) -> None
+    invalidate_token(view)
+    git = make_git(view)
+    render(view, fetch_status(git))
+
+
+def executor(sink, vid, token):
+    # type: (Callable[[], None], sublime.ViewId, str) -> None
+    if current_token.get(vid) == token:
+        sink()
+
+
+def invalidate_token(view):
+    # type: (sublime.View) -> None
+    with _lock:
+        current_token.pop(view.id(), None)
+
+
+def make_git(view):
+    # type: (sublime.View) -> GitCommand
+    git = GitCommand()
+    setattr(git, 'view', view)
+    return git
+
+
+def fetch_status(git):
+    # type: (GitCommand) -> Optional[str]
+    try:
+        git.get_repo_path(offer_init=False)  # Yeah, LOL, it's a *getter*
+        return git.get_branch_status_short()
+    except Exception:
+        return None
+
+
+def render(view, status):
+    # type: (sublime.View, Optional[str]) -> None
+    if status:
+        view.set_status("gitsavvy-repo-status", status)
+    else:
+        view.erase_status("gitsavvy-repo-status")
+
+
+class GsStatusBarEventListener(EventListener):
+    on_new_async = staticmethod(maybe_update_status_bar)
+    on_activated_async = staticmethod(maybe_update_status_bar)
+    on_post_save_async = staticmethod(maybe_update_status_bar)
+
+
 class GsUpdateStatusBarCommand(TextCommand, GitCommand):
-
-    """
-    Update the short Git status in the Sublime status bar.
-    """
-
+    """Record intent to update the status bar."""
     def run(self, edit):
-        if view_is_transient(self.view):
-            return
-
-        global last_execution, update_status_bar_soon
-        if self.savvy_settings.get("git_status_in_status_bar"):
-
-            millisec = int(round(time.time() * 1000))
-            # If we updated to less then 100 ms we don't need to update now but
-            # should update in 100 ms in case of current file change.
-            #
-            # So if this get called 4 timer with 20 ms in between each call
-            # it will only update twice. Once at time 0 and one at time 100
-            # even if it got called at 0, 20, 40, 60 and 80.
-
-            if millisec - 100 > last_execution:
-                sublime.set_timeout_async(self.run_async, 0)
-            else:
-                if not update_status_bar_soon:
-                    update_status_bar_soon = True
-                    sublime.set_timeout_async(self.run_async, 100)
-
-            last_execution = int(round(time.time() * 1000))
-
-    def run_async(self):
-        # disable logging and git raise error
-        with debug.disable_logging():
-            # ignore all other possible errors
-            try:
-                self.get_repo_path(offer_init=False)  # check for ValueError
-                short_status = self.get_branch_status_short()
-                self.view.set_status("gitsavvy-repo-status", short_status)
-            except Exception:
-                self.view.erase_status("gitsavvy-repo-status")
-
-        global update_status_bar_soon
-        update_status_bar_soon = False
+        sublime.set_timeout_async(partial(maybe_update_status_bar, self.view))
