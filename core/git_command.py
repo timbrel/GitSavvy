@@ -445,7 +445,14 @@ class GitCommand(StatusMixin,
         view interacts with.  Like `file_path`, this can be overridden by setting
         the view's `git_savvy.repo_path` setting.
         """
-        return self.get_repo_path()
+        try:
+            return self._repo_path
+        except AttributeError:
+            return self.get_repo_path()
+
+    @repo_path.setter
+    def repo_path(self, value):
+        self._repo_path = value
 
     @property
     def short_repo_path(self):
