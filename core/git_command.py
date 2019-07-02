@@ -145,9 +145,9 @@ def map_path_to_repo_path(path):
 
 def call_git_toplevel(folder):
     # type: (str) -> Optional[str]
-    repo_path = GitCommand().git(
-        'rev-parse', '--show-toplevel', working_dir=folder, throw_on_stderr=False).strip()
-    return os.path.realpath(repo_path) if repo_path else None
+    return GitCommand().git(
+        'rev-parse', '--show-toplevel', working_dir=folder, throw_on_stderr=False
+    ).strip() or None
 
 
 def search_paths(view):

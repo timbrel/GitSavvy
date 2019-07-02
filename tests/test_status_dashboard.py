@@ -9,16 +9,6 @@ from GitSavvy.tests.mockito import unstub, when, spy2
 from GitSavvy.core.interfaces.status import StatusInterface
 
 
-if os.name == 'nt':
-    # On Windows, `find_all_results` returns pseudo linux paths
-    # E.g. `/C/not/here/README.md`
-    def cleanup_fpath(fpath):
-        return fpath[2:]
-else:
-    def cleanup_fpath(fpath):
-        return fpath
-
-
 class TestStatusDashboard(DeferrableTestCase):
     @classmethod
     def setUpClass(cls):
@@ -111,7 +101,7 @@ class TestStatusDashboard(DeferrableTestCase):
         yield lambda: view.find('fix-1048', 0, sublime.LITERAL)
 
         results = view.find_all_results()
-        actual = [cleanup_fpath(fpath) for fpath, _, _ in results]
+        actual = [fpath for fpath, _, _ in results]
         expected = [
             '/not/here/modified_file',
             '/not/here/staged_and_unstaged_changes',
