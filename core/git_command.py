@@ -110,6 +110,59 @@ class LoggingProcessWrapper(object):
         return self.stdout, self.stderr
 
 
+if False:
+    from typing import Dict, Iterator, Optional
+
+
+def repo_path_for_view(view):
+    # type: (sublime.View) -> Optional[str]
+    repo_path = view.settings().get("git_savvy.repo_path")
+    if repo_path and os.path.exists(repo_path):
+        return repo_path
+
+    for path in search_paths(view):
+        repo_path = map_path_to_repo_path(path)
+        if repo_path:
+            return repo_path
+
+    return None
+
+
+repo_paths = {}  # type: Dict[str, str]
+
+
+def map_path_to_repo_path(path):
+    # type: (str) -> Optional[str]
+    try:
+        return repo_paths[path]
+    except KeyError:
+        repo_path = call_git_toplevel(path)
+        if repo_path:
+            repo_path = os.path.normpath(repo_path)
+            repo_paths[path] = repo_path
+        return repo_path
+
+
+def call_git_toplevel(folder):
+    # type: (str) -> Optional[str]
+    repo_path = GitCommand().git(
+        'rev-parse', '--show-toplevel', working_dir=folder, throw_on_stderr=False).strip()
+    return os.path.realpath(repo_path) if repo_path else None
+
+
+def search_paths(view):
+    # type: (sublime.View) -> Iterator[str]
+    fname = view.file_name()
+    if fname:
+        yield os.path.dirname(fname)
+
+    window = view.window()
+    if window:
+        folders = window.folders()
+        if folders:
+            yield folders[0]
+
+
 class GitCommand(StatusMixin,
                  ActiveBranchMixin,
                  BranchesMixin,
@@ -373,70 +426,28 @@ class GitCommand(StatusMixin,
 
         return None
 
-    def find_repo_path(self):
-        """
-        Similar to find_working_dir, except that it does not stop on the first
-        directory found, rather on the first git repository found.
-        """
-        view = self.window.active_view() if hasattr(self, "window") else self.view
-        window = view.window() if view else None
-        repo_path = None
-
-        # try the current file first
-        if view and view.file_name():
-            file_dir = os.path.dirname(view.file_name())
-            if os.path.isdir(file_dir):
-                repo_path = self.find_git_toplevel(file_dir, throw_on_stderr=False)
-
-        # fallback: use the first folder if the current file is not inside a git repo
-        if not repo_path:
-            if window:
-                folders = window.folders()
-                if folders and os.path.isdir(folders[0]):
-                    repo_path = self.find_git_toplevel(
-                        folders[0], throw_on_stderr=False)
-
-        return os.path.realpath(repo_path) if repo_path else None
-
-    def find_git_toplevel(self, folder, throw_on_stderr):
-        stdout = self.git(
-            "rev-parse",
-            "--show-toplevel",
-            working_dir=folder,
-            throw_on_stderr=throw_on_stderr
-        )
-        repo = stdout.strip()
-        return os.path.realpath(repo) if repo else None
-
     def get_repo_path(self, offer_init=True):
+        # type: (bool) -> str
         # The below condition will be true if run from a WindowCommand and false
         # from a TextCommand.
-        view = self.window.active_view() if hasattr(self, "window") else self.view
-        repo_path = view.settings().get("git_savvy.repo_path") if view else None
+        view = self.window.active_view() if hasattr(self, "window") else self.view  # type: ignore
+        if view is None:
+            raise RuntimeError("No active view exists.")
 
-        if not repo_path or not os.path.exists(repo_path):
-            repo_path = self.find_repo_path()
-            if not repo_path:
-                window = view.window()
-                if window:
-                    if window.folders():
-                        # offer initialization
-                        if offer_init:
-                            sublime.set_timeout_async(
-                                lambda: sublime.active_window().run_command("gs_offer_init"))
-                        raise ValueError("Not a git repository.")
-                    else:
-                        raise ValueError("Unable to determine Git repo path.")
+        repo_path = repo_path_for_view(view)
+        if not repo_path:
+            window = view.window()
+            if window:
+                if window.folders():
+                    if offer_init:
+                        sublime.set_timeout_async(lambda: window.run_command("gs_offer_init"))
+                    raise ValueError("Not a git repository.")
                 else:
-                    raise RuntimeError("Window does not exist.")
+                    raise ValueError("Unable to determine Git repo path.")
+            else:
+                raise RuntimeError("Window does not exist.")
 
-            if view:
-                file_name = view.file_name()
-                # only set "git_savvy.repo_path" when the current file is in repo_path
-                if file_name and os.path.realpath(file_name).startswith(repo_path + os.path.sep):
-                    view.settings().set("git_savvy.repo_path", repo_path)
-
-        return os.path.realpath(repo_path) if repo_path else repo_path
+        return repo_path
 
     @property
     def repo_path(self):
