@@ -415,8 +415,8 @@ class GitCommand(StatusMixin,
         view = self.window.active_view() if hasattr(self, "window") else self.view  # type: ignore
         return next(search_paths(view), None) if view else None
 
-    def get_repo_path(self, offer_init=False):
-        # type: (bool) -> str
+    def get_repo_path(self):
+        # type: () -> str
         # The below condition will be true if run from a WindowCommand and false
         # from a TextCommand.
         view = self.window.active_view() if hasattr(self, "window") else self.view  # type: ignore
@@ -428,8 +428,7 @@ class GitCommand(StatusMixin,
             window = view.window()
             if window:
                 if window.folders():
-                    if offer_init:
-                        sublime.set_timeout_async(lambda: window.run_command("gs_offer_init"))
+                    sublime.set_timeout_async(lambda: window.run_command("gs_offer_init"))
                     raise ValueError("Not a git repository.")
                 else:
                     raise ValueError("Unable to determine Git repo path.")
@@ -448,7 +447,7 @@ class GitCommand(StatusMixin,
         try:
             return self._repo_path
         except AttributeError:
-            return self.get_repo_path(offer_init=True)
+            return self.get_repo_path()
 
     @repo_path.setter
     def repo_path(self, value):
