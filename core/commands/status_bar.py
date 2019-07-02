@@ -6,6 +6,7 @@ import sublime
 from sublime_plugin import TextCommand, EventListener
 
 from ..git_command import GitCommand, repo_path_for_view
+from ..settings import GitSavvySettings
 
 
 def view_is_transient(view: sublime.View) -> bool:
@@ -39,6 +40,10 @@ active_view = None  # type: Optional[sublime.View]
 
 def maybe_update_status_bar(view):
     # type: (sublime.View) -> None
+    """Record intent to update the status bar."""
+    if not GitSavvySettings().get("git_status_in_status_bar"):
+        return
+
     if view_is_transient(view):
         return
 
@@ -117,6 +122,5 @@ class GsStatusBarEventListener(EventListener):
 
 
 class gs_update_status_bar(TextCommand):
-    """Record intent to update the status bar."""
     def run(self, edit):
         sublime.set_timeout_async(partial(maybe_update_status_bar, self.view))
