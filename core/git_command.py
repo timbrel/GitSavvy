@@ -411,20 +411,9 @@ class GitCommand(StatusMixin,
         return git_path
 
     def find_working_dir(self):
-        view = self.window.active_view() if hasattr(self, "window") else self.view
-        window = view.window() if view else None
-
-        if view and view.file_name():
-            file_dir = os.path.dirname(view.file_name())
-            if os.path.isdir(file_dir):
-                return file_dir
-
-        if window:
-            folders = window.folders()
-            if folders and os.path.isdir(folders[0]):
-                return folders[0]
-
-        return None
+        # type: () -> Optional[str]
+        view = self.window.active_view() if hasattr(self, "window") else self.view  # type: ignore
+        return next(search_paths(view), None) if view else None
 
     def get_repo_path(self, offer_init=True):
         # type: (bool) -> str
