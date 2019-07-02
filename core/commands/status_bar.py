@@ -5,7 +5,7 @@ import uuid
 import sublime
 from sublime_plugin import TextCommand, EventListener
 
-from ..git_command import GitCommand
+from ..git_command import GitCommand, repo_path_for_view
 
 
 def view_is_transient(view: sublime.View) -> bool:
@@ -52,7 +52,11 @@ def maybe_update_status_bar(view):
 def update_status_bar(view):
     # type: (sublime.View) -> None
     invalidate_token(view)
-    git = make_git(view)
+    repo_path = repo_path_for_view(view)
+    if not repo_path:
+        return
+
+    git = make_git(repo_path)
     render(view, fetch_status(git))
 
 
@@ -68,17 +72,16 @@ def invalidate_token(view):
         current_token.pop(view.id(), None)
 
 
-def make_git(view):
-    # type: (sublime.View) -> GitCommand
+def make_git(repo_path):
+    # type: (str) -> GitCommand
     git = GitCommand()
-    setattr(git, 'view', view)
+    git.repo_path = repo_path
     return git
 
 
 def fetch_status(git):
     # type: (GitCommand) -> Optional[str]
     try:
-        git.repo_path = git.get_repo_path()
         return git.get_branch_status_short()
     except Exception:
         return None
