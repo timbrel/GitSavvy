@@ -116,7 +116,7 @@ class GsStatusBarEventListener(EventListener):
             maybe_update_status_bar(view)
 
 
-class gs_update_status_bar(TextCommand, GitCommand):
+class gs_update_status_bar(TextCommand):
     """Record intent to update the status bar."""
     def run(self, edit):
         sublime.set_timeout_async(partial(maybe_update_status_bar, self.view))
