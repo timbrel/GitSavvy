@@ -78,7 +78,7 @@ def make_git(view):
 def fetch_status(git):
     # type: (GitCommand) -> Optional[str]
     try:
-        git.repo_path = git.get_repo_path(offer_init=False)
+        git.repo_path = git.get_repo_path()
         return git.get_branch_status_short()
     except Exception:
         return None

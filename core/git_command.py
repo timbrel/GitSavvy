@@ -415,7 +415,7 @@ class GitCommand(StatusMixin,
         view = self.window.active_view() if hasattr(self, "window") else self.view  # type: ignore
         return next(search_paths(view), None) if view else None
 
-    def get_repo_path(self, offer_init=True):
+    def get_repo_path(self, offer_init=False):
         # type: (bool) -> str
         # The below condition will be true if run from a WindowCommand and false
         # from a TextCommand.
@@ -448,7 +448,7 @@ class GitCommand(StatusMixin,
         try:
             return self._repo_path
         except AttributeError:
-            return self.get_repo_path()
+            return self.get_repo_path(offer_init=True)
 
     @repo_path.setter
     def repo_path(self, value):
