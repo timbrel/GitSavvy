@@ -215,9 +215,9 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         if match_position is None:
             cur_pos = capture_cur_position(self.view)
 
-        self.view.set_read_only(False)
         self.view.run_command("gs_replace_view_text", {
-            "text": inline_diff_contents
+            "text": inline_diff_contents,
+            "restore_cursors": True
         })
 
         if match_position is None:
@@ -232,7 +232,6 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
             place_cursor_and_show(self.view, new_row, col)
 
         self.highlight_regions(replaced_lines)
-        self.view.set_read_only(True)
 
         sublime.set_timeout_async(lambda: self.verify_not_conflict(), 0)
 
