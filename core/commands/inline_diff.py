@@ -115,7 +115,10 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
 
         self.window.focus_view(diff_view)
 
-        diff_view.run_command("gs_inline_diff_refresh", {"match_position": cur_pos})
+        diff_view.run_command("gs_inline_diff_refresh", {
+            "match_position": cur_pos,
+            "sync": False
+        })
         diff_view.run_command("gs_handle_vintageous")
 
     def augment_color_scheme(self, target_view, file_ext):
@@ -177,10 +180,14 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
     are not supported in `cached` mode.
     """
 
-    def run(self, edit, match_position=None):
-        sublime.set_timeout_async(lambda: self.run_async(match_position=match_position), 0)
+    def run(self, edit, sync=True, match_position=None):
+        if sync:
+            self._run(match_position=match_position)
+        else:
+            sublime.set_timeout_async(lambda: self._run(match_position=match_position))
 
-    def run_async(self, match_position=None):
+    def _run(self, match_position=None):
+
         file_path = self.file_path
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
         ignore_eol_arg = (
@@ -374,9 +381,8 @@ class GsInlineDiffFocusEventListener(EventListener):
     """
 
     def on_activated(self, view):
-
         if view.settings().get("git_savvy.inline_diff_view") is True:
-            view.run_command("gs_inline_diff_refresh")
+            view.run_command("gs_inline_diff_refresh", {"sync": False})
 
 
 class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
