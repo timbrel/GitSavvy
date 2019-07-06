@@ -1,6 +1,5 @@
 import os
 
-import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
 from ..git_command import GitCommand

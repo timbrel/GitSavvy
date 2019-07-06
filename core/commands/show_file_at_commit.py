@@ -1,4 +1,3 @@
-import re
 import sublime
 from sublime_plugin import WindowCommand
 

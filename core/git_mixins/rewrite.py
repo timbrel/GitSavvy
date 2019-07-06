@@ -1,8 +1,6 @@
 import os
 import shutil
 from types import SimpleNamespace
-from ..exceptions import GitSavvyError
-from ...common import util
 
 
 class RewriteTemplate(SimpleNamespace):

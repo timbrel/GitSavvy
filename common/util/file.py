@@ -69,7 +69,7 @@ def get_file_contents(repo_path, file_path):
     binary = get_file_contents_binary(repo_path, file_path)
     try:
         return binary.decode('utf-8')
-    except UnicodeDecodeError as unicode_err:
+    except UnicodeDecodeError:
         return binary.decode('latin-1')
 
 

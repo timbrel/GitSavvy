@@ -1,5 +1,4 @@
 import sublime
-from sublime_plugin import TextCommand
 
 from .log import GsLogByBranchCommand
 from ...common import util

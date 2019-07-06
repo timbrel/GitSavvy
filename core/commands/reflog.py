@@ -2,7 +2,6 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
-from .log import LogMixin
 from ..ui_mixins.quick_panel import show_paginated_panel
 
 

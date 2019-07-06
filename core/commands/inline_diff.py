@@ -9,7 +9,6 @@ from .navigate import GsNavigate
 from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 from ..git_command import GitCommand
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
-from ...common.util import debug
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
 
@@ -105,11 +104,11 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
             settings["git_savvy.repo_path"], settings["git_savvy.file_path"])
         try:
             file_binary.decode()
-        except UnicodeDecodeError as unicode_err:
+        except UnicodeDecodeError:
             try:
                 file_binary.decode("latin-1")
                 diff_view.settings().set("git_savvy.inline_diff.encoding", "latin-1")
-            except UnicodeDecodeError as unicode_err:
+            except UnicodeDecodeError:
                 fallback_encoding = self.savvy_settings.get("fallback_encoding")
                 diff_view.settings().set("git_savvy.inline_diff.encoding", fallback_encoding)
 
@@ -509,7 +508,7 @@ class GsInlineDiffStageOrResetLineCommand(GsInlineDiffStageOrResetBase):
 
         if reset:
             xhead_start = head_start - index_in_hunk + (0 if line_type == "+" else add_length_earlier_in_diff)
-            xnew_start = head_start - cur_hunk_begin_on_minus + index_in_hunk + add_length_earlier_in_diff - 1
+            # xnew_start = head_start - cur_hunk_begin_on_minus + index_in_hunk + add_length_earlier_in_diff - 1
 
             return (
                 "@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"

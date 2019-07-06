@@ -269,7 +269,7 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
                 # Iterate through header keys and values.
                 try:
                     k, v = re.match(r"([^ ]+) (.+)", next_line).groups()
-                except AttributeError as e:
+                except AttributeError:
                     # Sometimes git-blame includes keys without values;
                     # since we don't care about these, simply discard.
                     print("Skipping blame line: " + repr(next_line))

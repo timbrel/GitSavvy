@@ -1,5 +1,4 @@
 from collections import namedtuple
-import sublime
 
 
 Branch = namedtuple("Branch", (

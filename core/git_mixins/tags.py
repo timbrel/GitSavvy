@@ -53,7 +53,7 @@ class TagsMixin():
         if len(semver_entries):
             try:
                 semver_entries = sorted(semver_entries, key=lambda entry: LooseVersion(entry.tag), reverse=True)
-            except Exception as e:
+            except Exception:
                 # the error might me caused of having tags like 1.2.3.1, 1.2.3.beta
                 # exception is cant convert str to int, it is comparing 'beta' to 1
                 # if that fails then only take the numbers and sort them

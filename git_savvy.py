@@ -25,7 +25,7 @@ else:
             imp.reload(encodings)
             imp.reload(codecs)
             codecs.getencoder(fallback_encoding)
-        except (ImportError, LookupError) as e:
+        except (ImportError, LookupError):
             sublime.error_message(
                 "You have enabled `load_additional_codecs` mode, but the "
                 "`fallback_encoding` codec cannot load.  This probably means "

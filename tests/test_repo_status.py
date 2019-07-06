@@ -1,9 +1,7 @@
 from textwrap import dedent
 
-import sublime
-
 from unittesting import DeferrableTestCase
-from GitSavvy.tests.mockito import expect, unstub, when
+from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core.git_command import GitCommand
