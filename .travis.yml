@@ -30,12 +30,11 @@ before_install:
 install:
     - sh travis.sh bootstrap
     - sh travis.sh install_package_control
-    - pip3 install python-coveralls pycodestyle flake8;
+    - pip3 install python-coveralls flake8;
 
 script:
     - sh travis.sh run_tests --coverage
     - sh travis.sh run_syntax_tests
-    - pycodestyle --statistics --count
     - flake8 .
 
 after_success:
