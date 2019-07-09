@@ -16,6 +16,16 @@ subclasses = []
 EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press {super_key}+Enter.  To cancel, close the view.\n"
 
 
+def focus_view(view):
+    window = view.window()
+    if not window:
+        return
+
+    group, _ = window.get_view_index(view)
+    window.focus_group(group)
+    window.focus_view(view)
+
+
 class Interface():
 
     interface_type = ""
@@ -35,9 +45,11 @@ class Interface():
             window = sublime.active_window()
             for view in window.views():
                 vset = view.settings()
-                if vset.get("git_savvy.interface") == cls.interface_type and \
-                   vset.get("git_savvy.repo_path") == repo_path:
-                    window.focus_view(view)
+                if (
+                    vset.get("git_savvy.interface") == cls.interface_type
+                    and vset.get("git_savvy.repo_path") == repo_path
+                ):
+                    focus_view(view)
                     try:
                         return interfaces[view.id()]
                     except KeyError:
@@ -97,7 +109,7 @@ class Interface():
         self.view.set_name(self.title())
 
         self.render()
-        window.focus_view(self.view)
+        focus_view(self.view)
 
         return self.view
 
