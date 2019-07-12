@@ -205,6 +205,9 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
         if not window:
             return
 
+        if view not in window.views():
+            return
+
         panel_view = window.find_output_panel('show_commit_info')
         if not panel_view:
             return
