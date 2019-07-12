@@ -341,15 +341,18 @@ class GsLogGraphActionCommand(GsLogActionCommand):
         view = self.window.active_view()
 
         self.selections = view.sel()
+        if not len(self.selections) == 1:
+            self.window.status_message("You can only do actions on one commit at a time.")
+            return
 
         lines = util.view.get_lines_from_regions(view, self.selections)
         line = lines[0]
 
-        self._commit_hash = extract_commit_hash(line)
-        self._file_path = self.file_path
-
-        if not len(self.selections) == 1:
-            self.window.status_message("You can only do actions on one commit at a time.")
+        commit_hash = extract_commit_hash(line)
+        if not commit_hash:
             return
+
+        self._commit_hash = commit_hash
+        self._file_path = self.file_path
 
         super().run(commit_hash=self._commit_hash, file_path=self._file_path)
