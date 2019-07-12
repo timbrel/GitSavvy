@@ -1,3 +1,4 @@
+from functools import partial
 import itertools
 import sublime
 from ...common import util
@@ -498,12 +499,48 @@ def show_log_panel(entries, on_done, **kwargs):
     return lp
 
 
+def short_ref(ref):
+    def simplify(r):
+        if r.startswith('HEAD -> '):
+            return '{}*'.format(r[8:])
+
+        if r.startswith('tag: '):
+            return r[5:]
+
+        return r
+
+    def remote_diverged_from_local(refs, r):
+        try:
+            a, b = r.split('/', 1)
+        except ValueError:
+            return True
+        else:
+            return False if b in refs else True
+
+    if not ref:
+        return ''
+
+    refs = ref.split(', ')
+    refs = [simplify(r) for r in refs]
+    refs = [r for r in refs if remote_diverged_from_local(refs, r)]
+    refs = ["|{}|".format(r) for r in refs]
+
+    return ' '.join(refs)
+
+
+filter_ = partial(filter, None)
+
+
 class LogPanel(PaginatedPanel):
 
     def format_item(self, entry):
-        return ([entry.short_hash + " " + entry.summary,
-                 entry.author + ", " + util.dates.fuzzy(entry.datetime)],
-                entry.long_hash)
+        return (
+            [
+                "  ".join(filter_((entry.short_hash, short_ref(entry.ref), entry.summary))),
+                ", ".join(filter_((entry.author, util.dates.fuzzy(entry.datetime)))),
+            ],
+            entry.long_hash
+        )
 
     @property
     def next_page_message(self):

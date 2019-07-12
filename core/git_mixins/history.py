@@ -6,6 +6,7 @@ import sublime
 LogEntry = namedtuple("LogEntry", (
     "short_hash",
     "long_hash",
+    "ref",
     "summary",
     "raw_body",
     "author",
@@ -37,7 +38,7 @@ class HistoryMixin():
             "--max-count={}".format(limit) if limit else None,
             "--skip={}".format(skip) if skip else None,
             "--reverse" if reverse else None,
-            '--format=%h%n%H%n%s%n%an%n%ae%n%at%x00%B%x00%x00%n',
+            '--format=%h%n%H%n%D%n%s%n%an%n%ae%n%at%x00%B%x00%x00%n',
             "--author={}".format(author) if author else None,
             "--grep={}".format(msg_regexp) if msg_regexp else None,
             "--cherry" if cherry else None,
@@ -62,8 +63,8 @@ class HistoryMixin():
                 continue
             entry, raw_body = entry.split("\x00")
 
-            short_hash, long_hash, summary, author, email, datetime = entry.split("\n")
-            entries.append(LogEntry(short_hash, long_hash, summary, raw_body, author, email, datetime))
+            short_hash, long_hash, ref, summary, author, email, datetime = entry.split("\n")
+            entries.append(LogEntry(short_hash, long_hash, ref, summary, raw_body, author, email, datetime))
 
         return entries
 
