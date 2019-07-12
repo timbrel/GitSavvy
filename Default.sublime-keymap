@@ -1397,7 +1397,7 @@
 
     {
         "keys": ["enter"],
-        "command": "gs_log_graph_action",
+        "command": "gs_compare_commit_action",
         "context": [
             { "key": "setting.git_savvy.compare_commit_view", "operator": "equal", "operand": true }
         ]
