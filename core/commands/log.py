@@ -118,12 +118,17 @@ class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
 
 
 class GsLogByBranchCommand(LogMixin, WindowCommand, GitCommand):
+    _selected_branch = None
 
     def run_async(self, **kwargs):
-        show_branch_panel(lambda branch: self.on_branch_selection(branch, **kwargs))
+        show_branch_panel(
+            lambda branch: self.on_branch_selection(branch, **kwargs),
+            selected_branch=self._selected_branch
+        )
 
     def on_branch_selection(self, branch, **kwargs):
         if branch:
+            self._selected_branch = branch
             super().run_async(branch=branch, **kwargs)
 
 
