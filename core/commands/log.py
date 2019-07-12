@@ -128,6 +128,7 @@ class GsLogByBranchCommand(LogMixin, WindowCommand, GitCommand):
 
 
 class GsLogCommand(PanelCommandMixin, WindowCommand, GitCommand):
+    selected_index = 0
     default_actions = [
         ["gs_log_current_branch", "For current branch"],
         ["gs_log_all_branches", "For all branches"],

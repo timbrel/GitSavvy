@@ -109,6 +109,7 @@ class GsLogGraphCommand(GsLogCommand):
     ensures that each of the defined actions/commands in `default_actions` are finally
     called with `file_path` set.
     """
+    selected_index = 0
     default_actions = [
         ["gs_log_graph_current_branch", "For current branch"],
         ["gs_log_graph_all_branches", "For all branches"],
