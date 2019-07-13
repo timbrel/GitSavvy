@@ -7,7 +7,7 @@ from unittest.case import _ExpectedFailure, _UnexpectedSuccess
 import sublime
 
 from unittesting import DeferrableTestCase, AWAIT_WORKER
-from GitSavvy.tests.mockito import when, unstub, verify
+from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 import GitSavvy.core.commands.diff as module
@@ -315,7 +315,93 @@ diff --git a/foxx b/boxx
         self.assertEqual(len(history), 1)
 
         actual = history.pop()
-        expected = [['apply', None, '--cached', None, '-'], HUNK, CURSOR, IN_CACHED_MODE]
+        expected = [['apply', None, '--cached', None, '-'], HUNK, [CURSOR], IN_CACHED_MODE]
+        self.assertEqual(actual, expected)
+
+    HUNK3 = """\
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
+ two
+@@ -20,1 +20,1 @@ Ho
+ three
+ four
+"""
+
+    HUNK4 = """\
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -20,1 +20,1 @@ Ho
+ three
+ four
+diff --git a/foxx b/boxx
+--- a/foox
++++ b/boox
+@@ -16,1 +16,1 @@ Hello
+ one
+ two
+"""
+
+    @p.expand([
+        # De-duplicate cursors in the same hunk
+        ([58, 79], HUNK1),
+        ([58, 79, 84], HUNK1),
+        # Combine hunks
+        ([58, 89], HUNK3),
+        ([89, 170], HUNK4),
+
+        # Ignore cursors not in a hunk
+        ([2, 11, 58, 79], HUNK1),
+        ([58, 89, 123], HUNK3),
+        ([11, 89, 123, 170], HUNK4),
+    ])
+    def test_hunking_two_hunks(self, CURSORS, PATCH, IN_CACHED_MODE=False):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
+ two
+@@ -20,1 +20,1 @@ Ho
+ three
+ four
+diff --git a/foxx b/boxx
+--- a/foox
++++ b/boox
+@@ -16,1 +16,1 @@ Hello
+ one
+ two
+"""
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        view.settings().set('git_savvy.diff_view.in_cached_mode', IN_CACHED_MODE)
+        view.settings().set('git_savvy.diff_view.history', [])
+        cmd = module.GsDiffStageOrResetHunkCommand(view)
+        when(cmd).git(...)
+        when(cmd.view).run_command("gs_diff_refresh")
+        # when(module.GsDiffStageOrResetHunkCommand).git(...)
+        # when(module).refresh(view)
+
+        view.sel().clear()
+        for c in CURSORS:
+            view.sel().add(c)
+
+        cmd.run({'unused_edit'})
+
+        history = view.settings().get('git_savvy.diff_view.history')
+        self.assertEqual(len(history), 1)
+
+        actual = history.pop()
+        expected = [['apply', None, '--cached', None, '-'], PATCH, CURSORS, IN_CACHED_MODE]
         self.assertEqual(actual, expected)
 
     def test_sets_unidiff_zero_if_no_contextual_lines(self):
@@ -354,6 +440,44 @@ diff --git a/fooz b/barz
         actual = history.pop()[0]
         expected = ['apply', None, '--cached', '--unidiff-zero', '-']
         self.assertEqual(actual, expected)
+
+    def test_status_message_if_not_in_hunk(self):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
+ two
+@@ -20,1 +20,1 @@ Ho
+ three
+ four
+diff --git a/foxx b/boxx
+--- a/foox
++++ b/boox
+@@ -16,1 +16,1 @@ Hello
+ one
+ two
+"""
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        window = mock()
+        when(view).window().thenReturn(window)
+        when(window).status_message(...)
+
+        view.sel().clear()
+        view.sel().add(0)
+
+        # Manually instantiate the cmd so we can inject our known view
+        cmd = module.GsDiffStageOrResetHunkCommand(view)
+        cmd.run('_unused_edit')
+
+        verify(window, times=1).status_message('Not within a hunk')
 
 
 class TestZooming(DeferrableTestCase):
