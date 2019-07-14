@@ -26,7 +26,7 @@ def _determine_syntax_files():
         try:
             # Use `sublime.load_resource`, in case Package is `*.sublime-package`.
             resource = sublime.load_resource(syntax_file)
-            for extension in yaml.load(resource)["file_extensions"]:
+            for extension in yaml.safe_load(resource)["file_extensions"]:
                 if extension not in syntax_file_map:
                     syntax_file_map[extension] = []
                 extension_list = syntax_file_map[extension]
