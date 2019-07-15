@@ -114,6 +114,21 @@ if False:
     from typing import Dict, Iterator, Optional
 
 
+def repo_path_for_view_if_cached(view):
+    # type: (sublime.View) -> Optional[str]
+    repo_path = view.settings().get("git_savvy.repo_path")
+    if repo_path and os.path.exists(repo_path):
+        return repo_path
+
+    for path in search_paths(view):
+        try:
+            return repo_paths[path]
+        except KeyError:
+            ...
+
+    return None
+
+
 def repo_path_for_view(view):
     # type: (sublime.View) -> Optional[str]
     repo_path = view.settings().get("git_savvy.repo_path")
