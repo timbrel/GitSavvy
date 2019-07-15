@@ -121,9 +121,11 @@ class StatusMixin():
         return staged, unstaged, untracked, conflicts
 
     def in_merge(self):
+        # type: () -> bool
         return os.path.exists(os.path.join(self.repo_path, ".git", "MERGE_HEAD"))
 
     def merge_head(self):
+        # type: () -> str
         path = os.path.join(self.repo_path, ".git", "MERGE_HEAD")
         with open(path, "r") as f:
             commit_hash = f.read().strip()

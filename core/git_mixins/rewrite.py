@@ -197,12 +197,15 @@ class RewriteMixin():
         return self._rebase_merge_dir if self.in_rebase_merge() else self._rebase_apply_dir
 
     def in_rebase_merge(self):
+        # type: () -> bool
         return os.path.isdir(self._rebase_merge_dir)
 
     def in_rebase_apply(self):
+        # type: () -> bool
         return os.path.isdir(self._rebase_apply_dir)
 
     def in_rebase(self):
+        # type: () -> bool
         return self.in_rebase_apply() or self.in_rebase_merge()
 
     def rebase_orig_head(self):
@@ -219,6 +222,7 @@ class RewriteMixin():
             return f.read().strip()
 
     def rebase_branch_name(self):
+        # type: () -> str
         path = os.path.join(self._rebase_dir, "head-name")
         with open(path, "r") as f:
             return f.read().strip().replace("refs/heads/", "")
