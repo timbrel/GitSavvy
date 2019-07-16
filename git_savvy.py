@@ -37,5 +37,6 @@ else:
     from .common.global_events import *
     from .core.commands import *
     from .core.interfaces import *
+    from .core.repo_status import *
     from .github.commands import *
     from .gitlab.commands import *

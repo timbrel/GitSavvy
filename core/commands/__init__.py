@@ -19,7 +19,6 @@ from .stash import *
 from .reflog import *
 from .merge import*
 from .changelog import *
-from .status_bar import *
 from .reset import *
 from .remote import *
 from .custom import *

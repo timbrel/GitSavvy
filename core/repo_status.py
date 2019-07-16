@@ -9,9 +9,9 @@ import uuid
 import sublime
 from sublime_plugin import TextCommand, EventListener
 
-from ..git_command import GitCommand, repo_path_for_view_if_cached, repo_path_for_view
-from ..git_mixins.status import FileStatus, MERGE_CONFLICT_PORCELAIN_STATUSES
-from ..settings import GitSavvySettings
+from .git_command import GitCommand, repo_path_for_view_if_cached, repo_path_for_view
+from .git_mixins.status import FileStatus, MERGE_CONFLICT_PORCELAIN_STATUSES
+from .settings import GitSavvySettings
 
 
 if False:
