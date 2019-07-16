@@ -38,5 +38,6 @@ else:
     from .core.commands import *
     from .core.interfaces import *
     from .core.repo_status import *
+    from .core.status_bar_view import *
     from .github.commands import *
     from .gitlab.commands import *

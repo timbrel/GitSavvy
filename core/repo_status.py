@@ -1,4 +1,3 @@
-from collections import defaultdict
 from functools import partial
 import re
 import string
@@ -9,42 +8,17 @@ import uuid
 import sublime
 from sublime_plugin import TextCommand, EventListener
 
-from .git_command import GitCommand, repo_path_for_view_if_cached, repo_path_for_view
+from .git_command import GitCommand, repo_path_for_view
 from .git_mixins.status import FileStatus, MERGE_CONFLICT_PORCELAIN_STATUSES
-from .settings import GitSavvySettings
+from . import state
 
 
 if False:
-    from typing import Callable, DefaultDict, Dict, Iterable, List, Optional, TypeVar
-    from mypy_extensions import TypedDict
+    from typing import Callable, Dict, Iterable, List, Optional, TypeVar
+    from .state import RepoPath, RepoStatus
 
     T = TypeVar('T')
-    Setter = Callable[[T], None]
     Thunk = Callable[[], None]
-
-    RepoPath = str
-    ShortStatus = Optional[str]
-
-    RepoStatus = TypedDict('RepoStatus', {
-        'detached': bool,
-        'branch': Optional[str],
-        'remote': Optional[str],
-        'clean': bool,
-        'ahead': Optional[int],
-        'behind': Optional[int],
-        'gone': bool,
-        'rebasing': bool,
-        'rebase_branch_name': Optional[str],
-        'merging': bool,
-        'merge_head': Optional[str],
-        'file_statuses': List[FileStatus],
-        'staged': List[FileStatus],
-        'unstaged': List[FileStatus],
-        'untracked': List[FileStatus],
-        'conflicts': List[FileStatus],
-        'short_status': str,
-    }, total=False)
-    StatusUpdater = Setter[RepoStatus]
 
 
 _lock = threading.Lock()
@@ -52,17 +26,43 @@ filter_ = partial(filter, None)  # type: (Callable[[Iterable[Optional[T]]], Iter
 
 active_view = None  # type: Optional[sublime.View]
 current_token = {}  # type: Dict[RepoPath, str]
-State = defaultdict(lambda: {})  # type: DefaultDict[RepoPath, RepoStatus]
 
 
-def maybe_update_status_bar(view):
+class GsRegularStatusUpdaterEventListener(EventListener):
+    def on_new_async(self, view):
+        maybe_update_status_for_view(view)
+
+    # Sublime calls `on_post_save_async` events only on the primary view.
+    # We thus track the state of the `active_view` manually so that we can
+    # refresh the status bar of cloned views.
+
+    def on_activated_async(self, view):
+        global active_view
+        active_view = view
+
+        maybe_update_status_for_view(view)
+
+    def on_post_save_async(self, view):
+        global active_view
+        if active_view and active_view.buffer_id() == view.buffer_id():
+            maybe_update_status_for_view(active_view)
+        else:
+            maybe_update_status_for_view(view)
+
+
+class gs_update_status_bar(TextCommand):
+    def run(self, edit):
+        sublime.set_timeout_async(partial(maybe_update_status_for_view, self.view))
+
+
+def maybe_update_status_for_view(view):
     """Record intent to update the status bar."""
     if view_is_transient(view):
         return
 
     repo_path = repo_path_for_view(view)
     if repo_path:
-        maybe_update_status_async(repo_path, partial(render_status, repo_path))
+        maybe_update_status_async(repo_path)
 
 
 def view_is_transient(view: sublime.View) -> bool:
@@ -85,25 +85,23 @@ def view_is_transient(view: sublime.View) -> bool:
     return False
 
 
-def maybe_update_status_async(repo_path, then):
-    # type: (RepoPath, StatusUpdater) -> None
+def maybe_update_status_async(repo_path):
+    # type: (RepoPath) -> None
     with _lock:
         current_token[repo_path] = token = uuid.uuid4().hex
-    sink = partial(update_status, repo_path, then=then)
+    sink = partial(update_status, repo_path)
     sublime.set_timeout_async(
         partial(executor, lambda: current_token[repo_path] == token, sink)
     )
 
 
-def update_status(repo_path, then=None):
-    # type: (RepoPath, Optional[StatusUpdater]) -> None
+def update_status(repo_path):
+    # type: (RepoPath) -> None
     invalidate_token(repo_path)
 
     git = make_git(repo_path)
     status = fetch_status(git)
-    State[repo_path].update(status)
-    if then:
-        then(status)
+    state.update_state(repo_path, status)
 
 
 def executor(pred, sink):
@@ -244,63 +242,3 @@ def group_status_entries(file_status_list):
         'untracked': untracked,
         'conflicts': conflicts
     }
-
-
-def render_status(repo_path, status):
-    # type: (RepoPath, RepoStatus) -> None
-    for v in active_views():
-        if repo_path_for_view(v) == repo_path:
-            render(v, status)
-
-
-def active_views():
-    # type: () -> Iterable[sublime.View]
-    return filter_(w.active_view() for w in sublime.windows())
-
-
-def render(view, status):
-    # type: (sublime.View, RepoStatus) -> None
-    if not GitSavvySettings().get("git_status_in_status_bar"):
-        return
-
-    short_status = status.get('short_status')
-    if short_status:
-        view.set_status("gitsavvy-repo-status", short_status)
-    else:
-        view.erase_status("gitsavvy-repo-status")
-
-
-class GsStatusBarEventListener(EventListener):
-    on_new_async = staticmethod(maybe_update_status_bar)
-
-    # Sublime calls `on_post_save_async` events only on the primary view.
-    # We thus track the state of the `active_view` manually so that we can
-    # refresh the status bar of cloned views.
-
-    # Note: We listen for 'on_activated' bc we must draw on the main
-    # thread for the happy path to avoid visual yank on the status bar.
-    # We also only draw if the repo path is cached bc we must avoid
-    # doing expensive work on the main thread.
-    def on_activated(self, view):
-        global active_view
-        active_view = view
-
-        repo_path = repo_path_for_view_if_cached(view)
-        if repo_path:
-            status = State[repo_path]
-            render(view, status)
-
-        # Defer to the worker for the hard, expensive work!
-        sublime.set_timeout_async(partial(maybe_update_status_bar, view))
-
-    def on_post_save_async(self, view):
-        global active_view
-        if active_view and active_view.buffer_id() == view.buffer_id():
-            maybe_update_status_bar(active_view)
-        else:
-            maybe_update_status_bar(view)
-
-
-class gs_update_status_bar(TextCommand):
-    def run(self, edit):
-        sublime.set_timeout_async(partial(maybe_update_status_bar, self.view))
