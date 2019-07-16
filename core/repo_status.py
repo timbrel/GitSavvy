@@ -18,7 +18,7 @@ if False:
     from .state import RepoPath, RepoStatus
 
     T = TypeVar('T')
-    Thunk = Callable[[], None]
+    Thunk = Callable[[], T]
 
 
 _lock = threading.Lock()
@@ -89,10 +89,17 @@ def maybe_update_status_async(repo_path):
     # type: (RepoPath) -> None
     with _lock:
         current_token[repo_path] = token = uuid.uuid4().hex
-    sink = partial(update_status, repo_path)
+    prop = lambda: current_token.get(repo_path) == token  # type: Thunk[bool]
+    sink = partial(update_status, repo_path)  # type: Thunk
     sublime.set_timeout_async(
-        partial(executor, lambda: current_token[repo_path] == token, sink)
+        partial(maybe_execute, prop, sink)
     )
+
+
+def maybe_execute(prop, sink):
+    # type: (Thunk[bool], Thunk) -> None
+    if prop():
+        sink()
 
 
 def update_status(repo_path):
@@ -102,12 +109,6 @@ def update_status(repo_path):
     git = make_git(repo_path)
     status = fetch_status(git)
     state.update_state(repo_path, status)
-
-
-def executor(pred, sink):
-    # type: (Thunk, Thunk) -> None
-    if pred():
-        sink()
 
 
 def invalidate_token(repo_path):
