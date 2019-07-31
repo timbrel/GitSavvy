@@ -627,12 +627,13 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
         if not head_and_hunk_offsets:
             return None
 
+        view = self.view
         header_region, hunk_region = head_and_hunk_offsets
-        header = self.view.substr(sublime.Region(*header_region))
-        hunk = self.view.substr(sublime.Region(*hunk_region))
+        header = extract_content(view, header_region)
+        hunk = extract_content(view, hunk_region)
         hunk_start, _ = hunk_region
 
-        rowcol = real_rowcol_in_hunk(hunk, relative_rowcol_in_hunk(self.view, hunk_start, pt))
+        rowcol = real_rowcol_in_hunk(hunk, relative_rowcol_in_hunk(view, hunk_start, pt))
         if not rowcol:
             return None
 
