@@ -274,7 +274,8 @@ class TestDiffViewJumpingToFile(DeferrableTestCase):
         (319, ('boox', 30, 1)),  # but do not jump if indentation does not match
 
         # cursor on the hunk info line selects first diff line
-        (58, ('barz', 17, 1)),
+        (58, ('barz', 16, 1)),
+        (59, ('barz', 16, 1)),
         (89, ('barz', 20, 1)),
     ])
     def test_a(self, CURSOR, EXPECTED):

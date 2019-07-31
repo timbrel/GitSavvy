@@ -661,12 +661,15 @@ def real_rowcol_in_hunk(hunk, relative_rowcol):
     row_in_hunk, col = relative_rowcol
 
     # If the user is on the header line ('@@ ..') pretend to be on the
-    # first changed line instead.
+    # first visible line with some content instead.
     if row_in_hunk == 0:
         row_in_hunk = next(
-            index
-            for index, (first_char, _, _) in enumerate(hunk_lines, 1)
-            if first_char in ('+', '-')
+            (
+                index
+                for index, (first_char, line, _) in enumerate(hunk_lines, 1)
+                if first_char in ('+', ' ') and line.strip()
+            ),
+            1
         )
         col = 1
 
