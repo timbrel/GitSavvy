@@ -567,10 +567,6 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
         self.view.run_command("gs_diff_refresh")
 
 
-HUNKS_LINES_RE = re.compile(r'@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? ')
-HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+)$')
-
-
 class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
 
     """
@@ -703,6 +699,9 @@ def real_rowcol_in_hunk(hunk, relative_rowcol):
         return line.b, 1
 
 
+HUNKS_LINES_RE = re.compile(r'@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? ')
+
+
 def split_hunk(hunk):
     # type: (str) -> Optional[List[HunkLine]]
     """Split a hunk into (first char, line content, row) tuples
@@ -735,6 +734,9 @@ def _recount_lines(lines, b):
 def line_indentation(line):
     # type: (str) -> int
     return len(line) - len(line.lstrip())
+
+
+HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+)$')
 
 
 def extract_filename_from_header(header):
