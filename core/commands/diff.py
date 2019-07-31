@@ -3,6 +3,7 @@ Implements a special view to visualize and stage pieces of a project's
 current diff.
 """
 
+from collections import namedtuple
 from contextlib import contextmanager
 from functools import partial
 from itertools import chain, dropwhile, takewhile
@@ -19,7 +20,7 @@ from ...common import util
 
 
 if False:
-    from typing import Callable, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar
+    from typing import Callable, Iterable, Iterator, List, NamedTuple, Optional, Set, Tuple, TypeVar
     from mypy_extensions import TypedDict
 
     T = TypeVar('T')
@@ -28,11 +29,15 @@ if False:
         'hunks': List[Tuple[int, int]]
     })
 
+    Point = int
+    RowCol = Tuple[int, int]
+    HunkLine_ = NamedTuple('HunkLine_', [('mode', str), ('text', str), ('b', int)])
+
 
 DIFF_TITLE = "DIFF: {}"
 DIFF_CACHED_TITLE = "DIFF (cached): {}"
 
-
+HunkLine = namedtuple('HunkLine', 'mode text b')  # type: HunkLine_
 diff_views = {}
 
 
@@ -641,7 +646,7 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
 
 
 def relative_rowcol_in_hunk(view, hunk_start, pt):
-    # type: (sublime.View, int, int) -> Tuple[int, int]
+    # type: (sublime.View, Point, Point) -> RowCol
     """Return rowcol of given pt relative to hunk start"""
     head_row, _ = view.rowcol(hunk_start)
     pt_row, col = view.rowcol(pt)
@@ -652,7 +657,7 @@ def relative_rowcol_in_hunk(view, hunk_start, pt):
 
 
 def real_rowcol_in_hunk(hunk, relative_rowcol):
-    # type: (str, Tuple[int, int]) -> Optional[Tuple[int, int]]
+    # type: (str, RowCol) -> Optional[RowCol]
     """Translate relative to absolute row, col pair"""
     hunk_lines = split_hunk(hunk)
     if not hunk_lines:
@@ -666,39 +671,39 @@ def real_rowcol_in_hunk(hunk, relative_rowcol):
         row_in_hunk = next(
             (
                 index
-                for index, (first_char, line, _) in enumerate(hunk_lines, 1)
-                if first_char in ('+', ' ') and line.strip()
+                for index, line in enumerate(hunk_lines, 1)
+                if line.mode in ('+', ' ') and line.text.strip()
             ),
             1
         )
         col = 1
 
-    first_char, line, b = hunk_lines[row_in_hunk - 1]
+    line = hunk_lines[row_in_hunk - 1]
 
     # Happy path since the user is on a present line
-    if first_char != '-':
-        return b, col
+    if line.mode != '-':
+        return line.b, col
 
     # The user is on a deleted line ('-') we cannot jump to. If possible,
     # select the next guaranteed to be available line
-    for next_first_char, next_line, next_b in hunk_lines[row_in_hunk:]:
-        if next_first_char == '+':
-            return next_b, min(col, len(next_line) + 1)
-        elif next_first_char == ' ':
+    for next_line in hunk_lines[row_in_hunk:]:
+        if next_line.mode == '+':
+            return next_line.b, min(col, len(next_line.text) + 1)
+        elif next_line.mode == ' ':
             # If we only have a contextual line, choose this or the
             # previous line, pretty arbitrary, depending on the
             # indentation.
-            next_lines_indentation = line_indentation(next_line)
-            if next_lines_indentation == line_indentation(line):
-                return next_b, next_lines_indentation + 1
+            next_lines_indentation = line_indentation(next_line.text)
+            if next_lines_indentation == line_indentation(line.text):
+                return next_line.b, next_lines_indentation + 1
             else:
-                return max(1, b - 1), 1
+                return max(1, line.b - 1), 1
     else:
-        return b, 1
+        return line.b, 1
 
 
 def split_hunk(hunk):
-    # type: (str) -> Optional[List[Tuple[str, str, int]]]
+    # type: (str) -> Optional[List[HunkLine]]
     """Split a hunk into (first char, line content, row) tuples
 
     Note that rows point to available rows on the b-side.
@@ -714,13 +719,13 @@ def split_hunk(hunk):
 
 
 def _recount_lines(lines, b):
-    # type: (List[str], int) -> Iterator[Tuple[str, str, int]]
+    # type: (List[str], int) -> Iterator[HunkLine]
 
     # Be aware that we only consider the b-line numbers, and that we
     # always yield a b value, even for deleted lines.
     for line in lines:
         first_char, tail = line[0], line[1:]
-        yield (first_char, tail, b)
+        yield HunkLine(first_char, tail, b)
 
         if first_char != '-':
             b += 1
