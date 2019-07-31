@@ -668,6 +668,7 @@ def real_rowcol_in_hunk(hunk, relative_rowcol):
             for index, (first_char, _, _) in enumerate(hunk_lines, 1)
             if first_char in ('+', '-')
         )
+        col = 1
 
     first_char, line, b = hunk_lines[row_in_hunk - 1]
 
