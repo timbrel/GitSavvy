@@ -208,6 +208,7 @@ class StatusInterface(ui.Interface, GitCommand):
             )
 
         # These are cheap to compute, so we just do it!
+        self.update_state(state.current_state(self.repo_path))
         self.update_state({
             'git_root': self.short_repo_path,
             'show_help': not self.view.settings().get("git_savvy.help_hidden")

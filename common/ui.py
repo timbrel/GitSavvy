@@ -84,7 +84,7 @@ class Interface():
             self.render(nuke_cursors=False)
         else:
             self.create_view(repo_path)
-            sublime.set_timeout_async(self.on_new_dashboard, 0)
+            self.on_new_dashboard()
 
         if hasattr(self, "tab_size"):
             self.view.settings().set("tab_size", self.tab_size)
