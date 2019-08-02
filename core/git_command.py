@@ -299,8 +299,11 @@ class GitCommand(StatusMixin,
         except Exception as e:
             # this should never be reached
             raise GitSavvyError(
-                "Please report this error to GitSavvy:\n\n{}\n\n{}".format(e, traceback.format_exc()),
-                show_panel=show_panel_on_stderr)
+                "Please report this error to GitSavvy:\n{} ({})\n\n{}\n\n{}".format(
+                    command_str, working_dir, e, traceback.format_exc()
+                ),
+                show_panel=show_panel_on_stderr
+            )
 
         finally:
             end = time.time()
