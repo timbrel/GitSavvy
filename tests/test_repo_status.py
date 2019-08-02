@@ -4,6 +4,7 @@ from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p
 
+from GitSavvy.core import repo_status
 from GitSavvy.core.git_command import GitCommand
 
 TestShortBranchStatusTestcases = [
@@ -95,12 +96,12 @@ class TestShortBranchStatus(DeferrableTestCase):
     @p.expand(TestShortBranchStatusTestcases)
     def test_format_branch_status_for_statusbar(self, status_lines, expected):
         git = GitCommand()
+        when(git).git("status", ...).thenReturn(status_lines)
         when(git).in_rebase().thenReturn(False)
         when(git).in_merge().thenReturn(False)
 
-        when(git).git("status", ...).thenReturn(status_lines)
-
-        actual = git.get_branch_status_short()
+        status = repo_status.fetch_status(git)
+        actual = status['short_status']
         self.assertEqual(actual, expected)
 
     # TODO: Add tests for `in_rebase` True
@@ -231,12 +232,12 @@ class TestLongBranchStatus(DeferrableTestCase):
     @p.expand(TestLongBranchStatusTestcases)
     def test_format_branch_status_for_status_dashboard(self, status_lines, expected):
         git = GitCommand()
+        when(git).git("status", ...).thenReturn(status_lines)
         when(git).in_rebase().thenReturn(False)
         when(git).in_merge().thenReturn(False)
 
-        when(git).git("status", ...).thenReturn(status_lines)
-
-        actual = git.get_branch_status(delim="\n")
+        status = repo_status.fetch_status(git)
+        actual = status['branch_status'].replace('\n           ', '\n')
         self.assertEqual(actual, expected)
 
     # TODO: Add tests for `in_rebase` True
