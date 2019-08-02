@@ -145,6 +145,7 @@ def fetch_status(git):
     info.update(group_status_entries(file_statuses))
 
     info['short_status'] = format_short_status(info)
+    info['branch_status'] = format_long_status(info)
 
     return info
 
@@ -169,6 +170,36 @@ def format_short_status(info):
 
     merge_head = info['merge_head'] if info['merging'] else ""
     return output if not merge_head else output + " (merging {})".format(merge_head)
+
+
+def format_long_status(info):
+    # type: (RepoStatus) -> str
+    delim = "\n           "
+    secondary = []
+
+    if info['detached']:
+        status = "HEAD is in a detached state."
+
+    else:
+        tracking = " tracking `{}`".format(info['remote'])
+        status = "On branch `{}`{}.".format(info['branch'], tracking if info['remote'] else "")
+
+        if info['ahead'] and info['behind']:
+            secondary.append("You're ahead by {} and behind by {}.".format(info['ahead'], info['behind']))
+        elif info['ahead']:
+            secondary.append("You're ahead by {}.".format(info['ahead']))
+        elif info['behind']:
+            secondary.append("You're behind by {}.".format(info['behind']))
+        elif info['gone']:
+            secondary.append("The remote branch is gone.")
+
+    if info['merging']:
+        secondary.append("Merging {}.".format(info['merge_head']))
+
+    if info['rebasing']:
+        secondary.append("Rebasing {}.".format(info['rebase_branch_name']))
+
+    return delim.join([status] + secondary) if secondary else status
 
 
 def parse_first_line(first_line):
@@ -238,8 +269,8 @@ def group_status_entries(file_status_list):
             staged.append(f)
 
     return {
-        'staged': staged,
-        'unstaged': unstaged,
-        'untracked': untracked,
-        'conflicts': conflicts
+        'staged_files': staged,
+        'unstaged_files': unstaged,
+        'untracked_files': untracked,
+        'merge_conflicts': conflicts
     }

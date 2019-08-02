@@ -9,6 +9,9 @@ from . import util
 from ..core.settings import GitSavvySettings
 
 
+if False:
+    from typing import Optional
+
 interfaces = {}
 edit_views = {}
 subclasses = []
@@ -87,6 +90,7 @@ class Interface():
             self.view.settings().set("tab_size", self.tab_size)
 
         interfaces[self.view.id()] = self
+        self.on_create()
 
     def create_view(self, repo_path):
         window = sublime.active_window()
@@ -230,6 +234,18 @@ class Interface():
         """
         pass
 
+    def on_create(self):
+        """
+        Hook template method called after creating the interface
+        """
+        pass
+
+    def on_close(self):
+        """
+        Hook template method called just before closing the view.
+        """
+        pass
+
 
 def partial(key):
     def decorator(fn):
@@ -283,6 +299,7 @@ def register_listeners(InterfaceClass):
 
 
 def get_interface(view_id):
+    # type: (sublime.ViewId) -> Optional[Interface]
     return interfaces.get(view_id, None)
 
 
@@ -293,12 +310,11 @@ class GsInterfaceCloseCommand(TextCommand):
     """
 
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         view_id = self.view.id()
-        if view_id in interfaces:
-            del interfaces[view_id]
+        interface = get_interface(view_id)
+        if interface:
+            interface.on_close()
+            sublime.set_timeout_async(lambda: interfaces.pop(view_id))
 
 
 class GsInterfaceRefreshCommand(TextCommand):

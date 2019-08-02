@@ -15,7 +15,7 @@ class GsInterfaceFocusEventListener(EventListener):
         # status bar is handled by GsStatusBarEventListener
         util.view.refresh_gitsavvy(view, refresh_status_bar=False)
 
-    def on_close(self, view):
+    def on_pre_close(self, view):
         util.view.handle_closed_view(view)
 
 

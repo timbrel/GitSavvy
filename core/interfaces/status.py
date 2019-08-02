@@ -9,6 +9,8 @@ from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
+from .. import repo_status
+from .. import state
 
 
 # Expected
@@ -198,7 +200,6 @@ class StatusInterface(ui.Interface, GitCommand):
         with the real world.
         """
         for thunk in (
-            self.fetch_repo_status,
             lambda: {'head': self.get_latest_commit_msg_for_head()},
             lambda: {'stashes': self.get_stashes()},
         ):
@@ -252,24 +253,12 @@ class StatusInterface(ui.Interface, GitCommand):
             "nuke_cursors": nuke_cursors
         })
 
-    def fetch_repo_status(self, delim=None):
-        lines = self._get_status()
-        files_statuses = self._parse_status_for_file_statuses(lines)
-        branch_status = self._get_branch_status_components(lines)
+    def on_state_changed(self, repo_path, state):
+        # type: (state.RepoPath, state.RepoStatus) -> None
+        if repo_path != self.repo_path:
+            return
 
-        (staged_files,
-         unstaged_files,
-         untracked_files,
-         merge_conflicts) = self.sort_status_entries(files_statuses)
-        branch_status = self._format_branch_status(branch_status, delim="\n           ")
-
-        return {
-            'staged_files': staged_files,
-            'unstaged_files': unstaged_files,
-            'untracked_files': untracked_files,
-            'merge_conflicts': merge_conflicts,
-            'branch_status': branch_status
-        }
+        self.update_state(state, self.just_render)
 
     def refresh_repo_status_and_render(self):
         """Refresh `git status` state and render.
@@ -278,7 +267,7 @@ class StatusInterface(ui.Interface, GitCommand):
         So instead of calling `render` it is a good optimization to just
         ask this method if appropriate.
         """
-        self.update_state(self.fetch_repo_status, self.just_render)
+        repo_status.update_status(self.repo_path)
 
     def after_view_creation(self, view):
         view.settings().set("result_file_regex", EXTRACT_FILENAME_RE)
@@ -286,6 +275,18 @@ class StatusInterface(ui.Interface, GitCommand):
 
     def on_new_dashboard(self):
         self.view.run_command("gs_status_navigate_file")
+
+    def __unique_state_key(self):
+        # type: () -> str
+        return 'status_dashboard_{}'.format(self.view.id())
+
+    def on_create(self):
+        # type: () -> None
+        state.subscribe(self.__unique_state_key(), self.on_state_changed)
+
+    def on_close(self):
+        # type: () -> None
+        state.unsubscribe(self.__unique_state_key())
 
     @ui.partial("branch_status")
     def render_branch_status(self):
