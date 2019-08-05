@@ -104,24 +104,6 @@ class ActiveBranchMixin():
             return delim.join([status] + secondary) if secondary else status
         return status, secondary
 
-    def _format_branch_status_short(self, branch_status):
-        detached, branch, remote, clean, ahead, behind, gone = branch_status
-
-        dirty = "" if clean else "*"
-
-        if detached:
-            return "DETACHED" + dirty
-
-        output = branch + dirty
-
-        if ahead:
-            output += "+" + ahead
-        if behind:
-            output += "-" + behind
-
-        merge_head = self.merge_head() if self.in_merge() else ""
-        return output if not merge_head else output + " (merging {})".format(merge_head)
-
     def get_commit_hash_for_head(self):
         """
         Get the SHA1 commit hash for the commit at HEAD.
