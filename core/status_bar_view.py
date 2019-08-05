@@ -52,4 +52,4 @@ def render(view, status):
         view.erase_status("gitsavvy-repo-status")
 
 
-subscribe('status_bar_updater', render_status)
+subscribe(render_status)

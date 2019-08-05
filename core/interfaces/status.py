@@ -13,6 +13,11 @@ from .. import repo_status
 from .. import state
 
 
+MYPY = False
+if MYPY:
+    from typing import Optional
+
+
 # Expected
 #  - common/commands/view_manipulation.py
 #    common/ui.py
@@ -186,6 +191,7 @@ class StatusInterface(ui.Interface, GitCommand):
             'head': '',
             'stashes': []
         }
+        self._unsubscribe_from_state = None  # type: Optional[state.Unsubscriber]
         super().__init__(*args, **kwargs)
 
     def title(self):
@@ -277,17 +283,16 @@ class StatusInterface(ui.Interface, GitCommand):
     def on_new_dashboard(self):
         self.view.run_command("gs_status_navigate_file")
 
-    def __unique_state_key(self):
-        # type: () -> str
-        return 'status_dashboard_{}'.format(self.view.id())
-
     def on_create(self):
         # type: () -> None
-        state.subscribe(self.__unique_state_key(), self.on_state_changed)
+        assert self._unsubscribe_from_state is None
+        self._unsubscribe_from_state = state.subscribe(self.on_state_changed)
 
     def on_close(self):
         # type: () -> None
-        state.unsubscribe(self.__unique_state_key())
+        if self._unsubscribe_from_state:
+            self._unsubscribe_from_state()
+            self._unsubscribe_from_state = None
 
     @ui.partial("branch_status")
     def render_branch_status(self):

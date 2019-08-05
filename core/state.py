@@ -1,6 +1,7 @@
 from collections import defaultdict
-from functools import wraps
+from functools import partial, wraps
 import threading
+import uuid
 
 if False:
     from typing import Callable, DefaultDict, Dict, List, Optional, TypeVar
@@ -35,11 +36,17 @@ if False:
         total=False,
     )
     Subscriber = Callable[[RepoPath, RepoStatus], None]
+    Unsubscriber = Callable[[], None]
     SubscriberKey = str
 
 
 State = defaultdict(lambda: {})  # type: DefaultDict[RepoPath, RepoStatus]
 subscribers = {}  # type: Dict[SubscriberKey, Subscriber]
+
+
+def make_uuid():
+    # type: () -> str
+    return uuid.uuid4().hex
 
 
 def sync(lock):
@@ -73,13 +80,15 @@ def notify_all(repo_path, state):
 
 
 @atomic
-def subscribe(key, fn):
-    # type: (SubscriberKey, Subscriber) -> None
+def subscribe(fn):
+    # type: (Subscriber) -> Unsubscriber
+    key = make_uuid()
     subscribers[key] = fn
+    return partial(_unsubscribe, key)
 
 
 @atomic
-def unsubscribe(key):
+def _unsubscribe(key):
     # type: (SubscriberKey) -> None
     subscribers.pop(key)
 
