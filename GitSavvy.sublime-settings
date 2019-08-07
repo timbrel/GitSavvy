@@ -92,6 +92,12 @@
             "remove_background": "#A83732",
             "remove_foreground_bold": "#F9F9F4",
             "remove_background_bold": "#702820"
+        },
+        "log_graph": {
+            "commit_dot_foreground": "#9911",
+            "commit_dot_background": "#991",
+            "path_foreground": "#991",
+            "path_background": "#99991109"
         }
     },
 
