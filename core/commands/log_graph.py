@@ -17,7 +17,7 @@ from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
 MYPY = False
 if MYPY:
-    from typing import Iterator
+    from typing import Iterator, Tuple
 
 
 COMMIT_NODE_CHAR = "●"
@@ -264,17 +264,19 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
     # `on_selection_modified` triggers twice per mouse click
-    # multiplied with the number of views into the same buffer.
-    # Well, ... sublime. Anyhow we're also not interested
-    # in vertical movement.
-    # We throttle in `draw_info_panel` below by line_text
-    # bc a log line is pretty unique if it contains the commit's sha.
+    # multiplied with the number of views into the same buffer,
+    # hence it is *important* to throttle these events.
+    # We do this seperately per side-effect. See the fn
+    # implementations.
     def on_selection_modified_async(self, view):
         if not self.is_applicable(view):
             return
 
         draw_info_panel(view, self.savvy_settings.get("graph_show_more_commit_info"))
-        colorize_dot(view)
+        # `colorize_dots` queries the view heavily. We want that to
+        # happen on the main thread (t.i. blocking) bc it is way, way
+        # faster.
+        sublime.set_timeout(lambda: colorize_dots(view))
 
     def on_post_window_command(self, window, command_name, args):
         # type: (sublime.Window, str, dict) -> None
@@ -301,12 +303,10 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
                 draw_info_panel(view, show_panel)
 
 
-def colorize_dot(view):
+def colorize_dots(view):
     # type: (sublime.View) -> None
-    dots = list(_find_dots(view))
-    view.add_regions('gs_log_graph_dot', [d.region() for d in dots], scope=DOT_SCOPE)
-    paths = [c.region() for d in dots for c in colorizer.follow_path(d)]
-    view.add_regions('gs_log_graph_follow_path', paths, scope=PATH_SCOPE)
+    dots = tuple(_find_dots(view))
+    _colorize_dots(view.id(), dots, view.change_count())
 
 
 def _find_dots(view):
@@ -317,6 +317,16 @@ def _find_dots(view):
         idx = line_content.find(COMMIT_NODE_CHAR)
         if idx > -1:
             yield colorizer.GraphChar(view, line_region.begin() + idx)
+
+
+@lru_cache(maxsize=1)
+# ^- throttle side-effects
+def _colorize_dots(vid, dots, _change_count):
+    # type: (sublime.ViewId, Tuple[colorizer.GraphChar], int) -> None
+    view = sublime.View(vid)
+    view.add_regions('gs_log_graph_dot', [d.region() for d in dots], scope=DOT_SCOPE)
+    paths = [c.region() for d in dots for c in colorizer.follow_path(d)]
+    view.add_regions('gs_log_graph_follow_path', paths, scope=PATH_SCOPE)
 
 
 def draw_info_panel(view, show_panel):
