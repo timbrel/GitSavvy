@@ -98,6 +98,10 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         if branch:
             args.append(branch)
 
+        if self.file_path:
+            file_path = self.get_rel_path(self.file_path)
+            args = args + ["--", file_path]
+
         return args
 
 
