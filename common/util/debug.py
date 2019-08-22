@@ -1,13 +1,19 @@
+from contextlib import contextmanager
 import functools
 import json
 import pprint as _pprint
-
-from contextlib import contextmanager
+import threading
 
 from ...core.settings import GitSavvySettings
 
+
+# Preserve state of `enabled` during hot-reloads
+try:
+    enabled
+except NameError:
+    enabled = False
+
 _log = []
-enabled = False
 ENCODING_NOT_UTF8 = "{} was sent as binaries and we dont know the encoding, not utf-8"
 
 
@@ -54,6 +60,14 @@ def make_log_message(_type, **kwargs):
 
 def log_git(command, stdin, stdout, stderr, seconds):
     """ Add git command details to debug log """
+    global enabled
+    if enabled:
+        print(' ({thread}) [{runtime:3.0f}ms] $ {cmd}'.format(
+            thread=threading.current_thread().name[0],
+            cmd=' '.join(['git'] + list(filter(None, command))),
+            runtime=seconds * 1000,
+        ))
+
     message = make_log_message(
         'git', command=command, stdin=stdin, stdout=stdout, stderr=stderr,
         seconds=seconds
