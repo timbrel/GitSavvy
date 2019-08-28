@@ -171,10 +171,9 @@ class GsLogGraphByAuthorCommand(LogGraphMixin, WindowCommand, GitCommand):
 
 
 class GsLogGraphByBranchCommand(LogGraphMixin, WindowCommand, GitCommand):
-    _selected_branch = None
 
     def run_async(self):
-        show_branch_panel(self.on_branch_selection, selected_branch=self._selected_branch)
+        show_branch_panel(self.on_branch_selection)
 
     def on_branch_selection(self, branch):
         if branch:
