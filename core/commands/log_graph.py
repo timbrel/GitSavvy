@@ -314,7 +314,7 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
 def colorize_dots(view):
     # type: (sublime.View) -> None
     dots = tuple(_find_dots(view))
-    _colorize_dots(view.id(), dots, view.change_count())
+    _colorize_dots(view.id(), dots)
 
 
 def _find_dots(view):
@@ -329,8 +329,8 @@ def _find_dots(view):
 
 @lru_cache(maxsize=1)
 # ^- throttle side-effects
-def _colorize_dots(vid, dots, _change_count):
-    # type: (sublime.ViewId, Tuple[colorizer.Char], int) -> None
+def _colorize_dots(vid, dots):
+    # type: (sublime.ViewId, Tuple[colorizer.Char]) -> None
     view = sublime.View(vid)
     view.add_regions('gs_log_graph_dot', [d.region() for d in dots], scope=DOT_SCOPE)
     paths = [c.region() for d in dots for c in colorizer.follow_path(d)]

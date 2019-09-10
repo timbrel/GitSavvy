@@ -47,7 +47,7 @@ class Char:
 
     def __hash__(self):
         # type: () -> int
-        return hash((self.view.id(), self.pt))
+        return hash((self.view.id(), self.view.change_count(), self.pt))
 
     def __eq__(self, rhs):
         # type: (object) -> bool
