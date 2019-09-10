@@ -67,6 +67,9 @@ class Char:
         # type: () -> str
         return self.char()
 
+    def __repr__(self):
+        return "Char({})".format(self.pt)
+
     def __hash__(self):
         # type: () -> int
         return hash((self.view.id(), self.view.change_count(), self.pt))
