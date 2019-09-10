@@ -10,7 +10,7 @@ if MYPY:
     RowCol = Tuple[int, int]
     View = sublime.View
     Region = sublime.Region
-    NextFn = Callable[['GraphChar'], Iterator['GraphChar']]
+    NextFn = Callable[['Char'], Iterator['Char']]
 
 COMMIT_NODE_CHAR = '●'
 
@@ -29,14 +29,14 @@ def handles(ch):
     return decorator
 
 
-class GraphChar:
+class Char:
     def __init__(self, view, pt):
         # type: (View, Point) -> None
         self.view = view
         self.pt = pt
 
     def go(self, rel_rowcol):
-        # type: (RowCol) -> GraphChar
+        # type: (RowCol) -> Char
         row, col = self.view.rowcol(self.pt)
         drow, dcol = rel_rowcol
         next_row, next_col = row + drow, col + dcol
@@ -44,7 +44,7 @@ class GraphChar:
         if self.view.rowcol(next_pt) != (next_row, next_col):
             return NullChar
 
-        return GraphChar(self.view, next_pt)
+        return Char(self.view, next_pt)
 
     def region(self):
         # type: () -> Region
@@ -72,31 +72,31 @@ class GraphChar:
 
     @property
     def e(self):
-        # type: () -> GraphChar
+        # type: () -> Char
         return self.go((0, 1))
 
     @property
     def se(self):
-        # type: () -> GraphChar
+        # type: () -> Char
         return self.go((1, 1))
 
     @property
     def s(self):
-        # type: () -> GraphChar
+        # type: () -> Char
         return self.go((1, 0))
 
     @property
     def sw(self):
-        # type: () -> GraphChar
+        # type: () -> Char
         return self.go((1, -1))
 
     @property
     def w(self):
-        # type: () -> GraphChar
+        # type: () -> Char
         return self.go((0, -1))
 
 
-class NullChar_(GraphChar):
+class NullChar_(Char):
     def __init__(self):
         # type: () -> None
         ...
@@ -118,13 +118,13 @@ NullChar = NullChar_()
 
 
 def contains(next_char, test):
-    # type: (GraphChar, str) -> Iterator[GraphChar]
+    # type: (Char, str) -> Iterator[Char]
     if str(next_char) in test:
         yield next_char
 
 
 def follow_path(dot):
-    # type: (GraphChar) -> Iterator[GraphChar]
+    # type: (Char) -> Iterator[Char]
     for c in follow_char(dot):
         # print('{} -> {}'.format(dot, c))
         yield c
@@ -133,14 +133,14 @@ def follow_path(dot):
 
 
 def follow_char(char):
-    # type: (GraphChar) -> Iterator[GraphChar]
+    # type: (Char) -> Iterator[Char]
     fn = registered_handlers.get(char.char(), follow_none)
     yield from fn(char)
 
 
 @handles(COMMIT_NODE_CHAR)
 def follow_dot(char):
-    # type: (GraphChar) -> Iterator[GraphChar]
+    # type: (Char) -> Iterator[Char]
     yield from contains(char.e, '-')
     yield from contains(char.s, '|' + COMMIT_NODE_CHAR)
     yield from contains(char.sw, '/')
@@ -219,5 +219,4 @@ def follow_point(char):
 
 @handles(' ')
 def follow_none(char):
-    # type: (GraphChar) -> Iterator[GraphChar]
     return iter([])

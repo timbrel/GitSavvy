@@ -318,19 +318,19 @@ def colorize_dots(view):
 
 
 def _find_dots(view):
-    # type: (sublime.View) -> Iterator[colorizer.GraphChar]
+    # type: (sublime.View) -> Iterator[colorizer.Char]
     for s in view.sel():
         line_region = view.line(s.begin())
         line_content = view.substr(line_region)
         idx = line_content.find(COMMIT_NODE_CHAR)
         if idx > -1:
-            yield colorizer.GraphChar(view, line_region.begin() + idx)
+            yield colorizer.Char(view, line_region.begin() + idx)
 
 
 @lru_cache(maxsize=1)
 # ^- throttle side-effects
 def _colorize_dots(vid, dots, _change_count):
-    # type: (sublime.ViewId, Tuple[colorizer.GraphChar], int) -> None
+    # type: (sublime.ViewId, Tuple[colorizer.Char], int) -> None
     view = sublime.View(vid)
     view.add_regions('gs_log_graph_dot', [d.region() for d in dots], scope=DOT_SCOPE)
     paths = [c.region() for d in dots for c in colorizer.follow_path(d)]
