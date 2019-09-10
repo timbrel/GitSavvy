@@ -106,8 +106,9 @@ registered_handlers = {}  # type: Dict[str, NextFn]
 
 
 def handles(ch):
-    # type: (str) -> Callable[[T], T]
+    # type: (str) -> Callable[[NextFn], NextFn]
     def decorator(fn):
+        # type: (NextFn) -> NextFn
         if ch in registered_handlers:
             raise RuntimeError('{} already has a handler registered'.format(ch))
         registered_handlers[ch] = fn
@@ -148,6 +149,7 @@ def follow_dot(char):
 
 @handles('|')
 def follow_vertical_bar(char):
+    # type: (Char) -> Iterator[Char]
     yield from contains(char.s, '|' + COMMIT_NODE_CHAR)
     if char.e != '/' and char.e != '_':
         yield from contains(char.sw, '/')
@@ -156,12 +158,14 @@ def follow_vertical_bar(char):
 
 @handles('\\')
 def follow_backslash(char):
+    # type: (Char) -> Iterator[Char]
     yield from contains(char.s, '/')
     yield from contains(char.se, '\\|' + COMMIT_NODE_CHAR)
 
 
 @handles('/')
 def follow_forwardslash(char):
+    # type: (Char) -> Iterator[Char]
     yield from contains(char.w, '_')
 
     # Crossing lines
@@ -182,6 +186,7 @@ def follow_forwardslash(char):
 
 @handles('_')
 def follow_underscore(char):
+    # type: (Char) -> Iterator[Char]
     yield from contains(char.w, '_')
     if char.w == '|':
         # Crossing lines
@@ -204,6 +209,7 @@ def follow_underscore(char):
 
 @handles('-')
 def follow_horizontal_bar(char):
+    # type: (Char) -> Iterator[Char]
     # Multi merge octopoi
     # *---.
     # | \  \
@@ -213,9 +219,11 @@ def follow_horizontal_bar(char):
 
 @handles('.')
 def follow_point(char):
+    # type: (Char) -> Iterator[Char]
     yield from contains(char.se, '\\')
 
 
 @handles(' ')
 def follow_none(char):
+    # type: (Char) -> Iterator[Char]
     return iter([])
