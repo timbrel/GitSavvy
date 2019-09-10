@@ -17,6 +17,28 @@ COMMIT_NODE_CHAR = '●'
 
 
 class Char:
+    """Represents the char on the right of a cursor.
+
+    Given a `view` and a `pt` (cursor offset) `Char` represents the
+    character at the right. This is also known as a block cursor.
+    You can extract the 'block' via `self.region()`, and read the
+    actual char using `self.char()`.
+
+    From a char you can peek around in all directions: south, east etc.
+    but we use short abbreviations `s`, `e` ...
+    Note that this is not the same as moving left or right. The
+    intuition of moving left is e.g. that if you're at the beginning of
+    a line (bol), you end up on the eol of the previous line etc.
+    In contrast, looking `w`(est) returns a `NullChar`.
+
+    We use `NullChar` for plain `None` for easy traversal. E.g.
+
+        self.w.w.sw
+
+    should just work without throwing.
+
+
+    """
     def __init__(self, view, pt):
         # type: (View, Point) -> None
         self.view = view
@@ -104,6 +126,18 @@ class NullChar_(Char):
 NullChar = NullChar_()
 registered_handlers = {}  # type: Dict[str, NextFn]
 
+
+# Notes:
+# - We want `follow_char` to be a polymorphic fn. For that we register
+# a handler for each valid graph char using `handles`.
+#
+# - The following implementation for traversing a drawn graph uses
+# `Iterables` (and e.g. `yield from`) to avoid `None` checks everywhere
+# or extensive list concats.
+#
+# - Following a drawing of a graph doesn't follow an algorithm. The
+# code is straight forward, and you basically have to look at some
+# graphs (turn block cursor on in Sublime!) and peek around.
 
 def handles(ch):
     # type: (str) -> Callable[[NextFn], NextFn]
