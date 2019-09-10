@@ -12,21 +12,8 @@ if MYPY:
     Region = sublime.Region
     NextFn = Callable[['Char'], Iterator['Char']]
 
+
 COMMIT_NODE_CHAR = '●'
-
-
-registered_handlers = {}  # type: Dict[str, NextFn]
-
-
-def handles(ch):
-    # type: (str) -> Callable[[T], T]
-    def decorator(fn):
-        if ch in registered_handlers:
-            raise RuntimeError('{} already has a handler registered'.format(ch))
-        registered_handlers[ch] = fn
-        return fn
-
-    return decorator
 
 
 class Char:
@@ -115,12 +102,18 @@ class NullChar_(Char):
 
 
 NullChar = NullChar_()
+registered_handlers = {}  # type: Dict[str, NextFn]
 
 
-def contains(next_char, test):
-    # type: (Char, str) -> Iterator[Char]
-    if str(next_char) in test:
-        yield next_char
+def handles(ch):
+    # type: (str) -> Callable[[T], T]
+    def decorator(fn):
+        if ch in registered_handlers:
+            raise RuntimeError('{} already has a handler registered'.format(ch))
+        registered_handlers[ch] = fn
+        return fn
+
+    return decorator
 
 
 def follow_path(dot):
@@ -136,6 +129,12 @@ def follow_char(char):
     # type: (Char) -> Iterator[Char]
     fn = registered_handlers.get(char.char(), follow_none)
     yield from fn(char)
+
+
+def contains(next_char, test):
+    # type: (Char, str) -> Iterator[Char]
+    if str(next_char) in test:
+        yield next_char
 
 
 @handles(COMMIT_NODE_CHAR)
