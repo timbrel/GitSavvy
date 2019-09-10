@@ -17,7 +17,7 @@ from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
 MYPY = False
 if MYPY:
-    from typing import Iterator, Tuple
+    from typing import Iterator, Set, Tuple
 
 
 COMMIT_NODE_CHAR = "●"
@@ -313,8 +313,13 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
 
 def colorize_dots(view):
     # type: (sublime.View) -> None
-    dots = tuple(_find_dots(view))
+    dots = tuple(find_dots(view))
     _colorize_dots(view.id(), dots)
+
+
+def find_dots(view):
+    # type: (sublime.View) -> Set[colorizer.Char]
+    return set(_find_dots(view))
 
 
 def _find_dots(view):
