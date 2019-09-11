@@ -359,7 +359,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
     @expectedFailureOnLinuxTravis
     def test_auto_close_panel_if_user_moves_away(self):
         view = self.create_new_view(self.window)
-        log_view = yield from self.setup_graph_view_async()
+        yield from self.setup_graph_view_async()
 
         self.window.focus_view(view)
 
@@ -377,7 +377,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
     @expectedFailureOnLinuxTravis
     def test_do_not_hide_panel_if_it_gains_focus(self):
-        log_view = yield from self.setup_graph_view_async()
+        yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
 
         self.window.focus_view(panel)
