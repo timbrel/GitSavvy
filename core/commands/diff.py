@@ -229,27 +229,25 @@ class GsDiffToggleSetting(TextCommand):
 class GsDiffToggleCachedMode(TextCommand):
 
     """
-    Toggle `in_cached_mode`.
+    Toggle `in_cached_mode` or flip `base` with `target`.
     """
 
     # NOTE: MUST NOT be async, otherwise `view.show` will not update the view 100%!
     def run(self, edit):
-        setting = 'in_cached_mode'
-
-        if (
-            self.view.settings().get("git_savvy.diff_view.base_commit")
-            and self.view.settings().get("git_savvy.diff_view.target_commit")
-        ):
-            # There is no cached mode if you diff between two commits, so
-            # we need to abort here
-            return
-
         settings = self.view.settings()
+
+        base_commit = settings.get("git_savvy.diff_view.base_commit")
+        target_commit = settings.get("git_savvy.diff_view.target_commit")
+        if base_commit and target_commit:
+            settings.set("git_savvy.diff_view.base_commit", target_commit)
+            settings.set("git_savvy.diff_view.target_commit", base_commit)
+            self.view.run_command("gs_diff_refresh")
+            return
 
         last_cursors = settings.get('git_savvy.diff_view.last_cursors') or []
         settings.set('git_savvy.diff_view.last_cursors', pickle_sel(self.view.sel()))
 
-        setting_str = "git_savvy.diff_view.{}".format(setting)
+        setting_str = "git_savvy.diff_view.{}".format('in_cached_mode')
         current_mode = settings.get(setting_str)
         next_mode = not current_mode
         settings.set(setting_str, next_mode)
