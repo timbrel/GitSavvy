@@ -11,25 +11,27 @@ from ..exceptions import GitSavvyError
 
 
 COMMIT_HELP_TEXT_EXTRA = """##
-## You may also reference or close a GitHub issue with this commit.  To do so,
-## type `#` followed by the `tab` key.  You will be shown a list of issues
-## related to the current repo.  You may also type `owner/repo#` plus the `tab`
-## key to reference an issue in a different GitHub repo.
+## You may also reference or close a GitHub issue with this commit.
+## To do so, type `#` followed by the `tab` key.  You will be shown a
+## list of issues related to the current repo.  You may also type
+## `owner/repo#` plus the `tab` key to reference an issue in a
+## different GitHub repo.
 
 """
 
 COMMIT_HELP_TEXT_ALT = """
 
-## To make a commit, type your commit message and close the window. To cancel
-## the commit, delete the commit message and close the window. To sign off on
-## the commit, press {key}-S.
+## To make a commit, type your commit message and close the window.
+## To cancel the commit, delete the commit message and close the window.
+## To sign off on the commit, press {key}-S.
 """.format(key=util.super_key) + COMMIT_HELP_TEXT_EXTRA
 
 
 COMMIT_HELP_TEXT = """
 
-## To make a commit, type your commit message and press {key}-ENTER. To cancel
-## the commit, close the window. To sign off on the commit, press {key}-S.
+## To make a commit, type your commit message and press {key}-ENTER.
+## To cancel the commit, close the window. To sign off on the commit,
+## press {key}-S.
 """.format(key=util.super_key) + COMMIT_HELP_TEXT_EXTRA
 
 COMMIT_SIGN_TEXT = """

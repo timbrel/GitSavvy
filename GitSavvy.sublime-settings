@@ -149,7 +149,7 @@
     "pedantic_commit": true,
     "pedantic_commit_ruler": true,
     "pedantic_commit_first_line_length": 50,
-    "pedantic_commit_message_line_length": 80,
+    "pedantic_commit_message_line_length": 72,
     "pedantic_commit_warning_length": 20,
 
     /*
