@@ -32,11 +32,12 @@ def stop_logging():
 @contextmanager
 def disable_logging():
     global enabled
+    previous_state = enabled
     enabled = False
     try:
         yield
     finally:
-        enabled = True
+        enabled = previous_state
 
 
 def get_log():
