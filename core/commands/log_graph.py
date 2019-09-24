@@ -314,37 +314,7 @@ class GsLogGraphToggleMoreInfoCommand(TextCommand, WindowCommand, GitCommand):
         draw_info_panel(self.view, show_panel)
 
 
-class GsLogGraphActionCommand(GsLogActionCommand):
-
-    """
-    Define menu shown if you `<enter>` on a specific commit.
-    Also used by `compare_commit_view`.
-    """
-    default_actions = [
-        ["show_commit", "Show commit"],
-        ["checkout_commit", "Checkout commit"],
-        ["cherry_pick", "Cherry-pick commit"],
-        ["compare_against", "Compare commit against ..."],
-        ["copy_sha", "Copy the full SHA"]
-    ]
-
-    def update_actions(self):
-        super().update_actions()  # GsLogActionCommand will mutate actions if `_file_path` is set!
-        view = self.window.active_view()
-        if view.settings().get("git_savvy.log_graph_view"):
-            if self._file_path:
-                # for `git: graph current file`
-                self.actions.insert(5, ["revert_commit", "Revert commit"])
-            else:
-                self.actions.insert(3, ["revert_commit", "Revert commit"])
-
-            self.actions.extend([
-                ["diff_commit", "Diff commit"],
-                ["diff_commit_cache", "Diff commit (cached)"],
-            ])
-        elif view.settings().get("git_savvy.compare_commit_view"):
-            pass
-
+class GraphActionMixin(GsLogActionCommand):
     def run(self):
         view = self.window.active_view()
 
@@ -364,3 +334,17 @@ class GsLogGraphActionCommand(GsLogActionCommand):
         self._file_path = self.file_path
 
         super().run(commit_hash=self._commit_hash, file_path=self._file_path)
+
+
+class GsCompareCommitActionCommand(GraphActionMixin):
+    default_actions = [
+        ["show_commit", "Show commit"],
+        ["checkout_commit", "Checkout commit"],
+        ["cherry_pick", "Cherry-pick commit"],
+        ["compare_against", "Compare commit against ..."],
+        ["copy_sha", "Copy the full SHA"]
+    ]
+
+
+class GsLogGraphActionCommand(GraphActionMixin):
+    ...
