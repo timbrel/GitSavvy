@@ -115,7 +115,10 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
 
         self.window.focus_view(diff_view)
 
-        diff_view.run_command("gs_inline_diff_refresh", {"match_position": cur_pos})
+        diff_view.run_command("gs_inline_diff_refresh", {
+            "match_position": cur_pos,
+            "sync": False
+        })
         diff_view.run_command("gs_handle_vintageous")
 
     def augment_color_scheme(self, target_view, file_ext):
@@ -177,7 +180,14 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
     are not supported in `cached` mode.
     """
 
-    def run(self, edit, match_position=None):
+    def run(self, edit, sync=True, match_position=None):
+        if sync:
+            self._run(match_position=match_position)
+        else:
+            sublime.set_timeout_async(lambda: self._run(match_position=match_position))
+
+    def _run(self, match_position=None):
+
         file_path = self.file_path
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
         ignore_eol_arg = (
@@ -212,8 +222,10 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         if match_position is None:
             cur_pos = capture_cur_position(self.view)
 
-        self.view.set_read_only(False)
-        self.view.replace(edit, sublime.Region(0, self.view.size()), inline_diff_contents)
+        self.view.run_command("gs_replace_view_text", {
+            "text": inline_diff_contents,
+            "restore_cursors": True
+        })
 
         if match_position is None:
             if cur_pos == (0, 0) and self.savvy_settings.get("inline_diff_auto_scroll", False):
@@ -227,7 +239,6 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
             place_cursor_and_show(self.view, new_row, col)
 
         self.highlight_regions(replaced_lines)
-        self.view.set_read_only(True)
 
         sublime.set_timeout_async(lambda: self.verify_not_conflict(), 0)
 
@@ -370,9 +381,8 @@ class GsInlineDiffFocusEventListener(EventListener):
     """
 
     def on_activated(self, view):
-
         if view.settings().get("git_savvy.inline_diff_view") is True:
-            view.run_command("gs_inline_diff_refresh")
+            view.run_command("gs_inline_diff_refresh", {"sync": False})
 
 
 class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):

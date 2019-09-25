@@ -32,21 +32,22 @@ class GsReplaceViewTextCommand(TextCommand):
 
     def run(self, edit, text, nuke_cursors=False, restore_cursors=False):
         cursors_num = len(self.view.sel())
-
         if restore_cursors:
             save_cursors = [self.view.rowcol(s.a) for s in self.view.sel()]
-            self.view.sel().clear()
+
+        # Always clear the selection before replacing the view. Otherwise you
+        # will have a flash where all the text is selected.
+        self.view.sel().clear()
 
         is_read_only = self.view.is_read_only()
         self.view.set_read_only(False)
         self.view.replace(edit, sublime.Region(0, self.view.size()), text)
         self.view.set_read_only(is_read_only)
 
-        if not cursors_num or nuke_cursors:
-            selections = self.view.sel()
-            selections.clear()
+        if cursors_num == 0 or nuke_cursors:
+            self.view.sel().clear()
             pt = sublime.Region(0, 0)
-            selections.add(pt)
+            self.view.sel().add(pt)
 
         elif restore_cursors:
             self.view.sel().clear()
