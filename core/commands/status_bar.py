@@ -85,7 +85,7 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
                 self.get_repo_path(offer_init=False)  # check for ValueError
                 short_status = self.get_branch_status_short()
                 self.view.set_status("gitsavvy-repo-status", short_status)
-            except Exception as e:
+            except Exception:
                 self.view.erase_status("gitsavvy-repo-status")
 
         global update_status_bar_soon

@@ -4,7 +4,6 @@ import re
 from sublime_plugin import WindowCommand
 import sublime
 
-from ...common import util
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin
 from ..ui_mixins.quick_panel import show_log_panel, show_branch_panel

@@ -1,7 +1,6 @@
 from functools import wraps
 import os
 import sys
-from textwrap import dedent
 from unittest.case import _ExpectedFailure, _UnexpectedSuccess
 
 import sublime
@@ -217,14 +216,14 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         return log_view
 
     def test_hidden_info_panel_after_create(self):
-        log_view = yield from self.setup_graph_view_async(show_commit_info_setting=False)
+        yield from self.setup_graph_view_async(show_commit_info_setting=False)
 
         actual = self.window.active_panel()
         expected = None
         self.assertEqual(actual, expected)
 
     def test_if_the_user_issues_our_toggle_command_open_the_panel(self):
-        log_view = yield from self.setup_graph_view_async(show_commit_info_setting=False)
+        yield from self.setup_graph_view_async(show_commit_info_setting=False)
 
         self.window.run_command('gs_log_graph_toggle_more_info')
         yield from self.await_active_panel_to_be('output.show_commit_info')
@@ -234,14 +233,14 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         self.assertEqual(actual, expected)
 
     def test_open_info_panel_after_create(self):
-        log_view = yield from self.setup_graph_view_async()
+        yield from self.setup_graph_view_async()
 
         actual = self.window.active_panel()
         expected = 'output.show_commit_info'
         self.assertEqual(actual, expected)
 
     def test_info_panel_shows_first_commit_initially(self):
-        log_view = yield from self.setup_graph_view_async()
+        yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
 
         yield from self.await_string_in_view(panel, COMMIT_1)
@@ -360,7 +359,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
     @expectedFailureOnLinuxTravis
     def test_auto_close_panel_if_user_moves_away(self):
         view = self.create_new_view(self.window)
-        log_view = yield from self.setup_graph_view_async()
+        yield from self.setup_graph_view_async()
 
         self.window.focus_view(view)
 
@@ -378,7 +377,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
     @expectedFailureOnLinuxTravis
     def test_do_not_hide_panel_if_it_gains_focus(self):
-        log_view = yield from self.setup_graph_view_async()
+        yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
 
         self.window.focus_view(panel)

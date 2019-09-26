@@ -1,6 +1,5 @@
 from collections import namedtuple
 from ...common import util
-import sublime
 
 
 LogEntry = namedtuple("LogEntry", (
@@ -144,7 +143,7 @@ class HistoryMixin():
 
     def commit_is_merge(self, commit_hash):
         sha = self.git("rev-list", "--merges", "-1", "{0}~1..{0}".format(commit_hash)).strip()
-        return sha is not ""
+        return sha != ""
 
     def get_short_hash(self, commit_hash):
         return self.git("rev-parse", "--short", commit_hash).strip()

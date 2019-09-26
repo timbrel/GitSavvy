@@ -1,10 +1,7 @@
 import sublime
 from sublime_plugin import TextCommand
 
-from .status import *
-from .branch import *
-from .rebase import *
-from .tags import *
+from ..git_command import GitCommand
 
 
 class GsTabCycleCommand(TextCommand, GitCommand):

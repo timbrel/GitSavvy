@@ -13,7 +13,7 @@ matrix:
         - name: Linux
           os: linux
           language: python
-          python: 3.3
+          python: 3.6
         - name: OSX
           os: osx
           language: generic
@@ -30,12 +30,11 @@ before_install:
 install:
     - sh travis.sh bootstrap
     - sh travis.sh install_package_control
-    - pip3 install python-coveralls pycodestyle;
+    - pip3 install python-coveralls flake8
 
 script:
     - sh travis.sh run_tests --coverage
     - sh travis.sh run_syntax_tests
-    - pycodestyle --statistics --count
 
 after_success:
     - coveralls
