@@ -16,6 +16,7 @@ from ...common import util
 __all__ = (
     "gs_inline_diff",
     "gs_inline_diff_refresh",
+    "gs_inline_diff_toggle_cached_mode",
     "gs_inline_diff_stage_or_reset_line",
     "gs_inline_diff_stage_or_reset_hunk",
     "gs_inline_diff_open_file",
@@ -41,7 +42,7 @@ HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hu
 
 
 INLINE_DIFF_TITLE = "DIFF: "
-INLINE_DIFF_CACHED_TITLE = "DIFF (cached): "
+INLINE_DIFF_CACHED_TITLE = "DIFF (staged): "
 
 DIFF_HEADER = """diff --git a/{path} b/{path}
 --- a/{path}
@@ -256,16 +257,19 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             original_content = self.git("show", ":{}".format(rel_file_path))
         inline_diff_contents, replaced_lines = self.get_inline_diff_contents(original_content, diff)
 
+        title = INLINE_DIFF_CACHED_TITLE if in_cached_mode else INLINE_DIFF_TITLE
+        title += os.path.basename(file_path)
         if runs_on_ui_thread:
-            self.draw(self.view, match_position, inline_diff_contents, replaced_lines)
+            self.draw(self.view, title, match_position, inline_diff_contents, replaced_lines)
         else:
-            enqueue_on_ui(self.draw, self.view, match_position, inline_diff_contents, replaced_lines)
+            enqueue_on_ui(self.draw, self.view, title, match_position, inline_diff_contents, replaced_lines)
 
-    def draw(self, view, match_position, inline_diff_contents, replaced_lines):
+    def draw(self, view, title, match_position, inline_diff_contents, replaced_lines):
         if match_position is None:
             cur_pos = capture_cur_position(view)
 
         replace_view_content(view, inline_diff_contents)
+        self.view.set_name(title)
 
         if match_position is None:
             if cur_pos == (0, 0, 0) and self.savvy_settings.get("inline_diff_auto_scroll", True):
@@ -402,6 +406,36 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             remove_bold_regions,
             scope="diff.deleted.char.git-savvy.inline-diff"
         )
+
+
+class gs_inline_diff_toggle_cached_mode(TextCommand, GitCommand):
+
+    """
+    Toggle `in_cached_mode`.
+    """
+
+    def run(self, edit):
+        settings = self.view.settings()
+        in_cached_mode = settings.get("git_savvy.inline_diff_view.in_cached_mode")
+        next_mode = not in_cached_mode
+        settings.set("git_savvy.inline_diff_view.in_cached_mode", next_mode)
+
+        cur_pos = capture_cur_position(self.view)
+        if cur_pos:
+            row, col, offset = cur_pos
+            line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
+            file_path = self.file_path
+            if in_cached_mode:
+                diff = self.git("diff", "-U0", "--", file_path)
+                new_row = self.adjust_line_according_to_diff(diff, line_no) - 1
+            else:
+                new_row = self.find_matching_lineno(None, None, line_no, file_path) - 1
+            cur_pos = (new_row, col, offset)
+
+        self.view.run_command("gs_inline_diff_refresh", {
+            "match_position": cur_pos,
+            "sync": True,
+        })
 
 
 class GsInlineDiffFocusEventListener(EventListener):
