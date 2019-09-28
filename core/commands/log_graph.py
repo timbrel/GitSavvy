@@ -1,14 +1,23 @@
 from functools import lru_cache, partial
 import re
+import threading
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
-from ..git_command import GitCommand
+from . import log_graph_colorizer as colorizer
 from .log import GsLogActionCommand, GsLogCommand
 from .navigate import GsNavigate
-from ...common import util
+from ..git_command import GitCommand
+from ..settings import GitSavvySettings
 from ..ui_mixins.quick_panel import show_branch_panel
+from ...common import util
+from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
+
+
+MYPY = False
+if MYPY:
+    from typing import Iterator, Set, Tuple
 
 
 COMMIT_NODE_CHAR = "●"
@@ -17,6 +26,8 @@ GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
 COMMIT_LINE = re.compile(
     "^[{graph_chars}]*[{node_chars}][{graph_chars}]* (?P<commit_hash>[a-f0-9]{{5,40}})".format(
         graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS))
+DOT_SCOPE = 'git_savvy.graph.dot'
+PATH_SCOPE = 'git_savvy.graph.path_char'
 
 
 class LogGraphMixin(object):
@@ -39,6 +50,7 @@ class LogGraphMixin(object):
         view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
         view.run_command("gs_handle_vintageous")
         view.run_command("gs_handle_arrow_keys")
+        threading.Thread(target=partial(augment_color_scheme, view)).run()
 
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)
@@ -50,6 +62,33 @@ class LogGraphMixin(object):
 
     def prepare_target_view(self, view):
         pass
+
+
+def augment_color_scheme(view):
+    # type: (sublime.View) -> None
+    settings = GitSavvySettings()
+    colors = settings.get('colors').get('log_graph')
+    if not colors:
+        return
+
+    color_scheme = view.settings().get('color_scheme')
+    if color_scheme.endswith(".tmTheme"):
+        themeGenerator = XMLThemeGenerator(color_scheme)
+    else:
+        themeGenerator = JSONThemeGenerator(color_scheme)
+    themeGenerator.add_scoped_style(
+        "GitSavvy Highlighted Commit Dot",
+        DOT_SCOPE,
+        background=colors['commit_dot_background'],
+        foreground=colors['commit_dot_foreground'],
+    )
+    themeGenerator.add_scoped_style(
+        "GitSavvy Highlighted Path Char",
+        PATH_SCOPE,
+        background=colors['path_background'],
+        foreground=colors['path_foreground'],
+    )
+    themeGenerator.apply_new_theme("log_graph_view", view)
 
 
 class GsLogGraphRefreshCommand(TextCommand, GitCommand):
@@ -233,16 +272,19 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
     # `on_selection_modified` triggers twice per mouse click
-    # multiplied with the number of views into the same buffer.
-    # Well, ... sublime. Anyhow we're also not interested
-    # in vertical movement.
-    # We throttle in `draw_info_panel` below by line_text
-    # bc a log line is pretty unique if it contains the commit's sha.
+    # multiplied with the number of views into the same buffer,
+    # hence it is *important* to throttle these events.
+    # We do this seperately per side-effect. See the fn
+    # implementations.
     def on_selection_modified_async(self, view):
         if not self.is_applicable(view):
             return
 
         draw_info_panel(view, self.savvy_settings.get("graph_show_more_commit_info"))
+        # `colorize_dots` queries the view heavily. We want that to
+        # happen on the main thread (t.i. blocking) bc it is way, way
+        # faster.
+        sublime.set_timeout(lambda: colorize_dots(view))
 
     def on_post_window_command(self, window, command_name, args):
         # type: (sublime.Window, str, dict) -> None
@@ -267,6 +309,37 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             # Since we cannot differentiate here, we do for now:
             if self.is_applicable(view):
                 draw_info_panel(view, show_panel)
+
+
+def colorize_dots(view):
+    # type: (sublime.View) -> None
+    dots = tuple(find_dots(view))
+    _colorize_dots(view.id(), dots)
+
+
+def find_dots(view):
+    # type: (sublime.View) -> Set[colorizer.Char]
+    return set(_find_dots(view))
+
+
+def _find_dots(view):
+    # type: (sublime.View) -> Iterator[colorizer.Char]
+    for s in view.sel():
+        line_region = view.line(s.begin())
+        line_content = view.substr(line_region)
+        idx = line_content.find(COMMIT_NODE_CHAR)
+        if idx > -1:
+            yield colorizer.Char(view, line_region.begin() + idx)
+
+
+@lru_cache(maxsize=1)
+# ^- throttle side-effects
+def _colorize_dots(vid, dots):
+    # type: (sublime.ViewId, Tuple[colorizer.Char]) -> None
+    view = sublime.View(vid)
+    view.add_regions('gs_log_graph_dot', [d.region() for d in dots], scope=DOT_SCOPE)
+    paths = [c.region() for d in dots for c in colorizer.follow_path(d)]
+    view.add_regions('gs_log_graph_follow_path', paths, scope=PATH_SCOPE)
 
 
 def draw_info_panel(view, show_panel):

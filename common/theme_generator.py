@@ -121,7 +121,7 @@ class XMLThemeGenerator(ThemeGenerator):
 
         # Sublime expects `/`-delimited paths, even in Windows.
         theme_path = os.path.join("Packages", path_in_packages).replace("\\", "/")
-        target_view.settings().set("color_scheme", theme_path)
+        try_apply_theme(target_view, theme_path)
 
 
 class JSONThemeGenerator(ThemeGenerator):
@@ -149,4 +149,24 @@ class JSONThemeGenerator(ThemeGenerator):
 
     def apply_new_theme(self, name, target_view):
         self.write_new_theme(name)
-        target_view.settings().set("color_scheme", self.get_theme_name(name))
+        theme_path = self.get_theme_name(name)
+        try_apply_theme(target_view, theme_path)
+
+
+def try_apply_theme(view, theme_path, tries=0):
+    """ Safly apply new theme as color_scheme. """
+    try:
+        sublime.load_resource(theme_path)
+    except Exception:
+        if tries >= 8:
+            print(
+                'GitSavvy: The theme {} is not ready to load. Maybe restart to get colored '
+                'highlights.'.format(theme_path)
+            )
+            return
+
+        delay = (pow(2, tries) - 1) * 10
+        sublime.set_timeout_async(lambda: try_apply_theme(view, theme_path, tries + 1), delay)
+        return
+
+    view.settings().set("color_scheme", theme_path)
