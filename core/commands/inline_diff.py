@@ -188,6 +188,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
     def _run(self, match_position=None):
 
         file_path = self.file_path
+        rel_file_path = self.get_rel_path(file_path).replace('\\', '/')
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
         ignore_eol_arg = (
             "--ignore-space-at-eol"
@@ -196,25 +197,17 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         )
 
         if in_cached_mode:
-            indexed_object = self.get_indexed_file_object(file_path)
-            head_file_object = self.get_head_file_object(file_path)
-            head_file_contents = self.get_object_contents(head_file_object)
-
             # Display the changes introduced between HEAD and index.
-            stdout = self.git("diff", "--no-color", "-U0", ignore_eol_arg, head_file_object, indexed_object)
+            stdout = self.git("diff", "--no-color", "-U0", ignore_eol_arg, "--cached", "--", file_path)
             diff = util.parse_diff(stdout)
+            head_file_contents = self.git("show", "HEAD:{}".format(rel_file_path))
             inline_diff_contents, replaced_lines = \
                 self.get_inline_diff_contents(head_file_contents, diff)
         else:
-            indexed_object = self.get_indexed_file_object(file_path)
-            indexed_object_contents = self.get_object_contents(indexed_object)
-
-            working_tree_file_contents = util.file.get_file_contents_binary(self.repo_path, file_path)
-            working_tree_file_object = self.get_object_from_string(working_tree_file_contents)
-
             # Display the changes introduced between index and working dir.
-            stdout = self.git("diff", "--no-color", "-U0", ignore_eol_arg, indexed_object, working_tree_file_object)
+            stdout = self.git("diff", "--no-color", "-U0", ignore_eol_arg, "--", file_path)
             diff = util.parse_diff(stdout)
+            indexed_object_contents = self.git("show", ":{}".format(rel_file_path))
             inline_diff_contents, replaced_lines = \
                 self.get_inline_diff_contents(indexed_object_contents, diff)
 
