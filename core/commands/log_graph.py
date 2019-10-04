@@ -338,7 +338,12 @@ def _colorize_dots(vid, dots):
     # type: (sublime.ViewId, Tuple[colorizer.Char]) -> None
     view = sublime.View(vid)
     view.add_regions('gs_log_graph_dot', [d.region() for d in dots], scope=DOT_SCOPE)
-    paths = [c.region() for d in dots for c in colorizer.follow_path(d)]
+    paths = [
+        c.region()
+        for path in map(colorizer.follow_path, dots)
+        if len(path) > 1
+        for c in path
+    ]
     view.add_regions('gs_log_graph_follow_path', paths, scope=PATH_SCOPE)
 
 
