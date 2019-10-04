@@ -231,6 +231,104 @@ diff --git a/barz b/fooz
         self.assertEqual(actual, expected)
 
 
+class TestDiffViewJumpingToFile(DeferrableTestCase):
+    @classmethod
+    def setUpClass(cls):
+        sublime.run_command("new_window")
+        cls.window = sublime.active_window()
+        s = sublime.load_settings("Preferences.sublime-settings")
+        s.set("close_windows_when_empty", False)
+
+    @classmethod
+    def tearDownClass(self):
+        self.window.run_command('close_window')
+
+    def tearDown(self):
+        unstub()
+
+    @p.expand([
+        (79, ('barz', 16, 1)),
+        (80, ('barz', 16, 1)),
+        (81, ('barz', 16, 2)),
+
+        (85, ('barz', 17, 1)),
+        (86, ('barz', 17, 2)),
+
+        # on a '-' try to select next '+' line
+        (111, ('barz', 20, 1)),  # jump to 'four'
+
+        (209, ('boox', 17, 1)),  # jump to 'thr'
+        (210, ('boox', 17, 2)),
+        (211, ('boox', 17, 3)),
+        (212, ('boox', 17, 4)),
+        (213, ('boox', 17, 1)),
+        (214, ('boox', 17, 1)),
+
+        (223, ('boox', 19, 1)),  # all jump to 'sev'
+        (228, ('boox', 19, 1)),
+        (233, ('boox', 19, 1)),
+
+        (272, ('boox', 25, 5)),
+        (280, ('boox', 25, 5)),
+
+        (319, ('boox', 30, 1)),  # but do not jump if indentation does not match
+
+        # cursor on the hunk info line selects first diff line
+        (58, ('barz', 16, 1)),
+        (59, ('barz', 16, 1)),
+        (89, ('barz', 20, 1)),
+    ])
+    def test_a(self, CURSOR, EXPECTED):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
++two
+@@ -20,1 +20,1 @@ Ho
+-three
+ context
++four
+diff --git a/foxx b/boxx
+--- a/foox
++++ b/boox
+@@ -16,1 +16,1 @@ Hello
+ one
+-two
++thr
+ fou
+-fiv
+-six
++sev
+ eig
+@@ -24 +24 @@ Hello
+     one
+-    two
+     thr
+@@ -30 +30 @@ Hello
+     one
+-    two
+ thr
+"""
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        cmd = module.GsDiffOpenFileAtHunkCommand(view)
+        when(cmd).load_file_at_line(...)
+
+        view.sel().clear()
+        view.sel().add(CURSOR)
+
+        cmd.run({'unused_edit'})
+
+        verify(cmd).load_file_at_line(*EXPECTED)
+
+
 class TestDiffViewHunking(DeferrableTestCase):
     @classmethod
     def setUpClass(cls):
