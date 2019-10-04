@@ -2,7 +2,7 @@ import sublime
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Dict, Final, Iterator, Tuple, TypeVar
+    from typing import Callable, Dict, Final, Iterator, List, Tuple, TypeVar
 
     T = TypeVar('T')
 
@@ -156,12 +156,17 @@ def handles(ch):
 
 
 def follow_path(dot):
+    # type: (Char) -> List[Char]
+    return list(_follow_path(dot))
+
+
+def _follow_path(dot):
     # type: (Char) -> Iterator[Char]
     for c in follow_char(dot):
         # print('{} -> {}'.format(dot, c))
         yield c
         if c != COMMIT_NODE_CHAR:
-            yield from follow_path(c)
+            yield from _follow_path(c)
 
 
 def follow_char(char):
