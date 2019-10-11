@@ -1,0 +1,36 @@
+Changes since 2.18.0:
+
+  Features:
+    Colorize the git graph
+    Show references to commit in log panel
+    Diff support increasing and reducing context lines, open a diff, click `+` or `-`, or `?` to get help
+    Use tab to flip base and target in a diff view
+    Improve the jumping from diff to file accuracy
+    Diffing the same file twice only open one view
+
+  Improvements
+    Add `git: [graph|log] current branch` to command panel
+    Remember last checked out branch so it can suggest that branch next time to checkout
+    Speedup inline diff refreshing
+    Don't block inline diff on huge files
+    Always focus the interface when you open it
+    When navigating ensure scroll is all the way left
+    Don't propose to merge with self
+    Fix checkout multiple files
+    Stop leaking log
+    Opening inline diff takes an argument to open inline diff on the same location, for more info look at #1137
+
+  Internal
+    Use flake8
+    Simplify log commands
+    When logging is enabled, log to console too
+    Use safe_load to parse yaml
+    Update reloader
+    MyPy setup
+
+  Contributors:
+   - herr kaste
+   - Simon
+   - Pavel Savchenko
+   - Luis Puerto
+   - DeathAxe
