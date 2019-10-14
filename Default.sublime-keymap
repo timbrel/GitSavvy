@@ -1878,5 +1878,38 @@
         "keys": ["ctrl+enter"],
         "command": "noop",
         "context": [{ "key": "setting.git_savvy.single_line_input_panel" }]
-    }
+    },
+
+    /////////////////
+    // STASH VIEW //
+    ////////////////
+
+    {
+        "keys": ["enter"],
+        "command": "gs_stash",
+        "context": [
+            { "key": "setting.git_savvy.stash_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["a"],
+        "command": "gs_stash_apply",
+        "context": [
+            { "key": "setting.git_savvy.stash_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["p"],
+        "command": "gs_stash_pop",
+        "context": [
+            { "key": "setting.git_savvy.stash_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["D"],
+        "command": "gs_stash_drop",
+        "context": [
+            { "key": "setting.git_savvy.stash_view", "operator": "equal", "operand": true }
+        ]
+    },
 ]
