@@ -78,6 +78,10 @@
         "command": "gs_log_graph"
     },
     {
+        "caption": "git: graph current branch",
+        "command": "gs_log_graph_current_branch"
+    },
+    {
         "caption": "git: graph current file",
         "command": "gs_log_graph",
         "args": { "current_file": true }
@@ -287,6 +291,10 @@
     {
         "caption": "git: log",
         "command": "gs_log"
+    },
+    {
+        "caption": "git: log current branch",
+        "command": "gs_log_current_branch"
     },
     {
         "caption": "git: log current file",

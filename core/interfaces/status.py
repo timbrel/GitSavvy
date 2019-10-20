@@ -5,7 +5,7 @@ import threading
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from ..commands import *
+from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
@@ -495,14 +495,12 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
         for fpath in non_cached_files:
             self.view.window().run_command("gs_diff", {
                 "file_path": fpath,
-                "current_file": True
             })
 
         for fpath in cached_files:
             self.view.window().run_command("gs_diff", {
                 "file_path": fpath,
                 "in_cached_mode": True,
-                "current_file": True
             })
 
 
@@ -569,10 +567,11 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         interface = ui.get_interface(self.view.id())
-        self.discard_untracked(interface)
-        self.discard_unstaged(interface)
-        self.view.window().status_message("Successfully discarded changes.")
-        interface.refresh_repo_status_and_render()
+        untracked_files = self.discard_untracked(interface)
+        unstaged_files = self.discard_unstaged(interface)
+        if untracked_files or unstaged_files:
+            self.view.window().status_message("Successfully discarded changes.")
+            interface.refresh_repo_status_and_render()
 
     def discard_untracked(self, interface):
         valid_ranges = interface.get_view_regions("untracked_files")
@@ -585,11 +584,11 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
 
         @util.actions.destructive(description="discard one or more untracked files")
         def do_discard():
-            for fpath in file_paths:
-                self.discard_untracked_file(fpath)
+            self.discard_untracked_file(*file_paths)
+            return file_paths
 
         if file_paths:
-            do_discard()
+            return do_discard()
 
     def discard_unstaged(self, interface):
         valid_ranges = (interface.get_view_regions("unstaged_files") +
@@ -603,11 +602,11 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
 
         @util.actions.destructive(description="discard one or more unstaged files")
         def do_discard():
-            for fpath in file_paths:
-                self.checkout_file(fpath)
+            self.checkout_file(*file_paths)
+            return file_paths
 
         if file_paths:
-            do_discard()
+            return do_discard()
 
 
 class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):

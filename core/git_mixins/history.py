@@ -1,11 +1,11 @@
 from collections import namedtuple
 from ...common import util
-import sublime
 
 
 LogEntry = namedtuple("LogEntry", (
     "short_hash",
     "long_hash",
+    "ref",
     "summary",
     "raw_body",
     "author",
@@ -37,7 +37,7 @@ class HistoryMixin():
             "--max-count={}".format(limit) if limit else None,
             "--skip={}".format(skip) if skip else None,
             "--reverse" if reverse else None,
-            '--format=%h%n%H%n%s%n%an%n%ae%n%at%x00%B%x00%x00%n',
+            '--format=%h%n%H%n%D%n%s%n%an%n%ae%n%at%x00%B%x00%x00%n',
             "--author={}".format(author) if author else None,
             "--grep={}".format(msg_regexp) if msg_regexp else None,
             "--cherry" if cherry else None,
@@ -62,8 +62,8 @@ class HistoryMixin():
                 continue
             entry, raw_body = entry.split("\x00")
 
-            short_hash, long_hash, summary, author, email, datetime = entry.split("\n")
-            entries.append(LogEntry(short_hash, long_hash, summary, raw_body, author, email, datetime))
+            short_hash, long_hash, ref, summary, author, email, datetime = entry.split("\n")
+            entries.append(LogEntry(short_hash, long_hash, ref, summary, raw_body, author, email, datetime))
 
         return entries
 
@@ -143,7 +143,7 @@ class HistoryMixin():
 
     def commit_is_merge(self, commit_hash):
         sha = self.git("rev-list", "--merges", "-1", "{0}~1..{0}".format(commit_hash)).strip()
-        return sha is not ""
+        return sha != ""
 
     def get_short_hash(self, commit_hash):
         return self.git("rev-parse", "--short", commit_hash).strip()

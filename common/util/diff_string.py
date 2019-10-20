@@ -28,6 +28,13 @@ def get_indices(chunks):
 
 
 def get_changes(old, new):
+    # if one of the inputs, either old or new is more then 10 000  characters
+    # we skip trying to find the words which changed. If a hunk is more than
+    # 10 000 characters it is most likely a generated change.
+    # We skip since this calculation take a lot of time then it gets bigger.
+    if max(len(old), len(new)) > 10000:
+        return []
+
     old_chunks = tuple(filter(lambda x: x, boundary.split(old)))
     new_chunks = tuple(filter(lambda x: x, boundary.split(new)))
     old_indices = get_indices(old_chunks)

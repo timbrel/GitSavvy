@@ -159,7 +159,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
             return (self.rebase_branch_name()
                     if self._in_rebase else
                     self.get_current_branch_name())
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             return ''
 
     @ui.partial("base_ref")
@@ -201,7 +201,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
                 end=self.rebase_orig_head() if self._in_rebase else "HEAD"
             )
             return self.separator.join(self.commit.format(**commit_info) for commit_info in commits_info)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             return ""
 
     @ui.partial("super_key")
@@ -244,7 +244,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         self._active_conflicts = None
         try:
             conflict_commit = self.rebase_conflict_at()
-        except Exception as e:
+        except Exception:
             conflict_commit = NOT_A_COMMIT_SHA
         rewritten = self.rebase_rewritten()
         commits_info = []
@@ -356,7 +356,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
             base_ref = self.base_ref()
             self._base_commit = self.git("merge-base", "HEAD", base_ref).strip()
             return self._base_commit
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             return NOT_A_COMMIT_SHA
 
     def is_not_rebased(self):

@@ -1,18 +1,44 @@
+from functools import wraps
 import os
-from textwrap import dedent
+import sys
+from unittest.case import _ExpectedFailure, _UnexpectedSuccess
 
 import sublime
 
 from unittesting import DeferrableTestCase
+from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.mockito import unstub, when
 
 from GitSavvy.core.commands.log_graph import (
     GsLogGraphCurrentBranch,
     GsLogGraphRefreshCommand,
-    GsLogGraphCursorListener
+    GsLogGraphCursorListener,
+    extract_commit_hash
 )
 from GitSavvy.core.commands.show_commit_info import GsShowCommitInfoCommand
 from GitSavvy.core.settings import GitSavvySettings
+
+
+def isiterable(obj):
+    return hasattr(obj, '__iter__')
+
+
+def expectedFailure(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            deferred = func(*args, **kwargs)
+            if isiterable(deferred):
+                yield from deferred
+        except Exception:
+            raise _ExpectedFailure(sys.exc_info())
+        raise _UnexpectedSuccess
+    return wrapper
+
+
+RUNNING_ON_LINUX_TRAVIS = os.environ.get('TRAVIS_OS_NAME') == 'linux'
+expectedFailureOnLinuxTravis = expectedFailure if RUNNING_ON_LINUX_TRAVIS else lambda f: f
+
 
 if os.name == 'nt':
     # On Windows, `find_all_results` returns pseudo linux paths
@@ -32,6 +58,71 @@ COMMIT_2 = 'This is commit f461ea1'
 def fixture(name):
     with open(os.path.join(THIS_DIRNAME, 'fixtures', name)) as f:
         return f.read()
+
+
+EXTRACT_COMMIT_HASH_FIXTURE = r"""
+* 1948764 (HEAD -> master) f
+| *-.   3fe5938 (master_merge) Merge branches 'one' and 'two' into master_merge
+| |\ \
+|/ / /
+| | * 0a8f459 (two) ccc
+| | * 2084353 c
+| | * 006bcdd c
+* | | f8ceeb0 d
+| |/
+|/|
+| | *   9b42732 (refs/stash) On one: a
+| | |\
+| |/ /
+| | * c12cffd index on one: c3bba58 bb
+| |/
+| * c3bba58 (one) bb
+| * 18fd299 aa
+|/
+* fe67af3 b
+* 5e42cd1 a
+● | |   3c2e064 (tag: 2.17.4) Merge pull request #983 from divmain/release/2.17.4          (6 months ago) <Randy Lai>
+|\ \ \
+| ● \ \   b0d95ed Merge pull request #988 from divmain/help_text               (6 months ago) <Simon>
+| |\ \ \
+| | ● | | f950461 Fix: help_text will be stripped                              (6 months ago) <Randy Lai>
+| | | ● 6df205d (fork/diff-view-refreshes, diff-view-refreshes) Expect failures on Linux Travis
+""".strip().split('\n')
+HASHES = r"""
+1948764
+3fe5938
+
+
+0a8f459
+2084353
+006bcdd
+f8ceeb0
+
+
+9b42732
+
+
+c12cffd
+
+c3bba58
+18fd299
+
+fe67af3
+5e42cd1
+3c2e064
+
+b0d95ed
+
+f950461
+6df205d
+""".strip().split('\n')
+
+
+class TestDiffViewCommitHashExtraction(DeferrableTestCase):
+    @p.expand(list(zip(EXTRACT_COMMIT_HASH_FIXTURE, HASHES)))
+    def test_extract_commit_hash_from_line(self, line, expected):
+        actual = extract_commit_hash(line)
+        self.assertEqual(actual, expected)
 
 
 class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
@@ -125,14 +216,14 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         return log_view
 
     def test_hidden_info_panel_after_create(self):
-        log_view = yield from self.setup_graph_view_async(show_commit_info_setting=False)
+        yield from self.setup_graph_view_async(show_commit_info_setting=False)
 
         actual = self.window.active_panel()
         expected = None
         self.assertEqual(actual, expected)
 
     def test_if_the_user_issues_our_toggle_command_open_the_panel(self):
-        log_view = yield from self.setup_graph_view_async(show_commit_info_setting=False)
+        yield from self.setup_graph_view_async(show_commit_info_setting=False)
 
         self.window.run_command('gs_log_graph_toggle_more_info')
         yield from self.await_active_panel_to_be('output.show_commit_info')
@@ -142,14 +233,14 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         self.assertEqual(actual, expected)
 
     def test_open_info_panel_after_create(self):
-        log_view = yield from self.setup_graph_view_async()
+        yield from self.setup_graph_view_async()
 
         actual = self.window.active_panel()
         expected = 'output.show_commit_info'
         self.assertEqual(actual, expected)
 
     def test_info_panel_shows_first_commit_initially(self):
-        log_view = yield from self.setup_graph_view_async()
+        yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
 
         yield from self.await_string_in_view(panel, COMMIT_1)
@@ -265,16 +356,30 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
         self.assertTrue(actual)
 
-    def _test_afocus_info_panel(self):
+    @expectedFailureOnLinuxTravis
+    def test_auto_close_panel_if_user_moves_away(self):
+        view = self.create_new_view(self.window)
+        yield from self.setup_graph_view_async()
+
+        self.window.focus_view(view)
+
+        self.assertTrue(self.window.active_panel() is None)
+
+    @expectedFailureOnLinuxTravis
+    def test_auto_show_panel_if_log_view_gains_focus_again(self):
+        view = self.create_new_view(self.window)
         log_view = yield from self.setup_graph_view_async()
 
-        yield 2500
+        self.window.focus_view(view)
+        self.window.focus_view(log_view)
 
-    def _test(self):
+        self.assertEqual(self.window.active_panel(), 'output.show_commit_info')
+
+    @expectedFailureOnLinuxTravis
+    def test_do_not_hide_panel_if_it_gains_focus(self):
+        yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
 
         self.window.focus_view(panel)
 
-        log_view.run_command('gs_log_graph_navigate')
-        log_view.run_command('gs_log_graph_navigate')
-        yield 2000
+        self.assertEqual(self.window.active_panel(), 'output.show_commit_info')

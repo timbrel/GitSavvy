@@ -1,6 +1,5 @@
 import os
 
-import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
 from ..git_command import GitCommand
@@ -73,15 +72,20 @@ class GsShowCommitOpenFileAtHunkCommand(GsDiffOpenFileAtHunkCommand):
     and open the file at that hunk in a separate view.
     """
 
-    def load_file_at_line(self, filename, lineno):
+    def load_file_at_line(self, filename, row, col):
+        # type: (str, int, int) -> None
         """
         Show file at target commit if `git_savvy.diff_view.target_commit` is non-empty.
         Otherwise, open the file directly.
         """
         commit_hash = self.view.settings().get("git_savvy.show_commit_view.commit")
         full_path = os.path.join(self.repo_path, filename)
-        self.view.window().run_command("gs_show_file_at_commit", {
+        window = self.view.window()
+        if not window:
+            return
+
+        window.run_command("gs_show_file_at_commit", {
             "commit_hash": commit_hash,
             "filepath": full_path,
-            "lineno": lineno
+            "lineno": row
         })

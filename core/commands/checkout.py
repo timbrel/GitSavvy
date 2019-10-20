@@ -1,3 +1,5 @@
+from collections import deque
+
 import sublime
 from sublime_plugin import WindowCommand
 
@@ -19,23 +21,31 @@ class GsCheckoutBranchCommand(WindowCommand, GitCommand):
     user selected.
     """
 
+    _last_branches = deque([None], 2)
+
     def run(self, branch=None):
         sublime.set_timeout_async(lambda: self.run_async(branch), 0)
 
     def run_async(self, branch):
+        if len(self._last_branches) == 1:
+            self._last_branches.append(self.get_current_branch_name())
+
         if branch:
             self.on_branch_selection(branch)
         else:
             show_branch_panel(
                 self.on_branch_selection,
                 local_branches_only=True,
-                ignore_current_branch=True)
+                ignore_current_branch=True,
+                selected_branch=self._last_branches[0]
+            )
 
     def on_branch_selection(self, branch):
         if not branch:
             return
 
         self.git("checkout", branch)
+        self._last_branches.append(branch)
         self.window.status_message("Checked out `{}` branch.".format(branch))
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 

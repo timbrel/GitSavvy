@@ -9,7 +9,6 @@ from .navigate import GsNavigate
 from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 from ..git_command import GitCommand
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
-from ...common.util import debug
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
 
@@ -26,6 +25,41 @@ inline_diff_views = {}
 diff_view_hunks = {}
 
 
+def capture_cur_position(view):
+    try:
+        sel = view.sel()[0]
+    except Exception:
+        return None
+
+    return view.rowcol(sel.begin())
+
+
+def place_cursor_and_show(view, row, col):
+    view.sel().clear()
+    pt = view.text_point(row, col)
+    view.sel().add(sublime.Region(pt, pt))
+    view.show_at_center(pt)
+    # The following shouldn't strictly be necessary, but Sublime sometimes jumps
+    # to the right when show_at_center for a column-zero-point occurs.
+    _, vp_y = view.viewport_position()
+    view.set_viewport_position((0, vp_y), False)
+
+
+def translate_row_to_inline_diff(diff_view, row):
+    hunks = diff_view_hunks[diff_view.id()]
+    deleted_lines_before_row = 0
+
+    for hunk_ref in hunks:
+        if hunk_ref.section_start > row + deleted_lines_before_row:
+            break
+
+        for type in hunk_ref.line_types:
+            if type == "-":
+                deleted_lines_before_row += 1
+
+    return row + deleted_lines_before_row
+
+
 class GsInlineDiffCommand(WindowCommand, GitCommand):
 
     """
@@ -34,12 +68,10 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
     hunks or individual lines, and to navigate between hunks.
     """
 
-    def run(self, **kwargs):
-        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
-
-    def run_async(self, settings=None, cached=False):
+    def run(self, settings=None, cached=False, match_current_position=False):
+        file_view = self.window.active_view()
+        cur_pos = capture_cur_position(file_view) if match_current_position else None
         if settings is None:
-            file_view = self.window.active_view()
             syntax_file = file_view.settings().get("syntax")
             settings = {
                 "git_savvy.file_path": self.file_path,
@@ -72,17 +104,20 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
             settings["git_savvy.repo_path"], settings["git_savvy.file_path"])
         try:
             file_binary.decode()
-        except UnicodeDecodeError as unicode_err:
+        except UnicodeDecodeError:
             try:
                 file_binary.decode("latin-1")
                 diff_view.settings().set("git_savvy.inline_diff.encoding", "latin-1")
-            except UnicodeDecodeError as unicode_err:
+            except UnicodeDecodeError:
                 fallback_encoding = self.savvy_settings.get("fallback_encoding")
                 diff_view.settings().set("git_savvy.inline_diff.encoding", fallback_encoding)
 
         self.window.focus_view(diff_view)
 
-        diff_view.run_command("gs_inline_diff_refresh")
+        diff_view.run_command("gs_inline_diff_refresh", {
+            "match_position": cur_pos,
+            "sync": False
+        })
         diff_view.run_command("gs_handle_vintageous")
 
     def augment_color_scheme(self, target_view, file_ext):
@@ -144,8 +179,16 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
     are not supported in `cached` mode.
     """
 
-    def run(self, edit):
+    def run(self, edit, sync=True, match_position=None):
+        if sync:
+            self._run(match_position=match_position)
+        else:
+            sublime.set_timeout_async(lambda: self._run(match_position=match_position))
+
+    def _run(self, match_position=None):
+
         file_path = self.file_path
+        rel_file_path = self.get_rel_path(file_path).replace('\\', '/')
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
         ignore_eol_arg = (
             "--ignore-space-at-eol"
@@ -154,50 +197,40 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         )
 
         if in_cached_mode:
-            indexed_object = self.get_indexed_file_object(file_path)
-            head_file_object = self.get_head_file_object(file_path)
-            head_file_contents = self.get_object_contents(head_file_object)
-
             # Display the changes introduced between HEAD and index.
-            stdout = self.git("diff", "--no-color", "-U0", ignore_eol_arg, head_file_object, indexed_object)
+            stdout = self.git("diff", "--no-color", "-U0", ignore_eol_arg, "--cached", "--", file_path)
             diff = util.parse_diff(stdout)
+            head_file_contents = self.git("show", "HEAD:{}".format(rel_file_path))
             inline_diff_contents, replaced_lines = \
                 self.get_inline_diff_contents(head_file_contents, diff)
         else:
-            indexed_object = self.get_indexed_file_object(file_path)
-            indexed_object_contents = self.get_object_contents(indexed_object)
-
-            working_tree_file_contents = util.file.get_file_contents_binary(self.repo_path, file_path)
-            working_tree_file_object = self.get_object_from_string(working_tree_file_contents)
-
             # Display the changes introduced between index and working dir.
-            stdout = self.git("diff", "--no-color", "-U0", ignore_eol_arg, indexed_object, working_tree_file_object)
+            stdout = self.git("diff", "--no-color", "-U0", ignore_eol_arg, "--", file_path)
             diff = util.parse_diff(stdout)
+            indexed_object_contents = self.git("show", ":{}".format(rel_file_path))
             inline_diff_contents, replaced_lines = \
                 self.get_inline_diff_contents(indexed_object_contents, diff)
 
-        cursors = self.view.sel()
-        if cursors:
-            row, col = self.view.rowcol(cursors[0].begin())
+        if match_position is None:
+            cur_pos = capture_cur_position(self.view)
 
-        self.view.set_read_only(False)
-        self.view.replace(edit, sublime.Region(0, self.view.size()), inline_diff_contents)
+        self.view.run_command("gs_replace_view_text", {
+            "text": inline_diff_contents,
+            "restore_cursors": True
+        })
 
-        if cursors:
-            if (row, col) == (0, 0) and self.savvy_settings.get("inline_diff_auto_scroll", False):
+        if match_position is None:
+            if cur_pos == (0, 0) and self.savvy_settings.get("inline_diff_auto_scroll", False):
                 self.view.run_command("gs_inline_diff_navigate_hunk")
-            else:
-                self.view.sel().clear()
-                pt = self.view.text_point(row, 0)
-                self.view.sel().add(sublime.Region(pt, pt))
-                self.view.show_at_center(pt)
-                # The following shouldn't strictly be necessary, but Sublime sometimes jumps
-                # to the right when show_at_center for a column-zero-point occurs.
-                _, vp_y = self.view.viewport_position()
-                self.view.set_viewport_position((0, vp_y), False)
+            elif cur_pos:
+                row, _ = cur_pos
+                place_cursor_and_show(self.view, row, 0)
+        else:
+            row, col = match_position
+            new_row = translate_row_to_inline_diff(self.view, row)
+            place_cursor_and_show(self.view, new_row, col)
 
         self.highlight_regions(replaced_lines)
-        self.view.set_read_only(True)
 
         sublime.set_timeout_async(lambda: self.verify_not_conflict(), 0)
 
@@ -340,9 +373,8 @@ class GsInlineDiffFocusEventListener(EventListener):
     """
 
     def on_activated(self, view):
-
         if view.settings().get("git_savvy.inline_diff_view") is True:
-            view.run_command("gs_inline_diff_refresh")
+            view.run_command("gs_inline_diff_refresh", {"sync": False})
 
 
 class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
@@ -479,7 +511,7 @@ class GsInlineDiffStageOrResetLineCommand(GsInlineDiffStageOrResetBase):
 
         if reset:
             xhead_start = head_start - index_in_hunk + (0 if line_type == "+" else add_length_earlier_in_diff)
-            xnew_start = head_start - cur_hunk_begin_on_minus + index_in_hunk + add_length_earlier_in_diff - 1
+            # xnew_start = head_start - cur_hunk_begin_on_minus + index_in_hunk + add_length_earlier_in_diff - 1
 
             return (
                 "@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"

@@ -4,7 +4,6 @@ import re
 from sublime_plugin import WindowCommand
 import sublime
 
-from ...common import util
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin
 from ..ui_mixins.quick_panel import show_log_panel, show_branch_panel
@@ -118,12 +117,17 @@ class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
 
 
 class GsLogByBranchCommand(LogMixin, WindowCommand, GitCommand):
+    _selected_branch = None
 
     def run_async(self, **kwargs):
-        show_branch_panel(lambda branch: self.on_branch_selection(branch, **kwargs))
+        show_branch_panel(
+            lambda branch: self.on_branch_selection(branch, **kwargs),
+            selected_branch=self._selected_branch
+        )
 
     def on_branch_selection(self, branch, **kwargs):
         if branch:
+            self._selected_branch = branch
             super().run_async(branch=branch, **kwargs)
 
 
@@ -198,7 +202,6 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
         self.window.run_command("gs_diff", {
             "in_cached_mode": cache,
             "file_path": self._file_path,
-            "current_file": bool(self._file_path),
             "base_commit": self._commit_hash,
             "disable_stage": True
         })

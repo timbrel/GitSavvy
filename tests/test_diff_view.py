@@ -1,17 +1,39 @@
+from functools import wraps
 import os
 import re
+import sys
+from unittest.case import _ExpectedFailure, _UnexpectedSuccess
 
 import sublime
 
-from unittesting import DeferrableTestCase
-from GitSavvy.tests.mockito import when, unstub
+from unittesting import DeferrableTestCase, AWAIT_WORKER
+from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 import GitSavvy.core.commands.diff as module
 from GitSavvy.core.commands.diff import GsDiffCommand, GsDiffRefreshCommand
 
 
+def isiterable(obj):
+    return hasattr(obj, '__iter__')
+
+
+def expectedFailure(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            deferred = func(*args, **kwargs)
+            if isiterable(deferred):
+                yield from deferred
+        except Exception:
+            raise _ExpectedFailure(sys.exc_info())
+        raise _UnexpectedSuccess
+    return wrapper
+
+
 THIS_DIRNAME = os.path.dirname(os.path.realpath(__file__))
+RUNNING_ON_LINUX_TRAVIS = os.environ.get('TRAVIS_OS_NAME') == 'linux'
+expectedFailureOnLinuxTravis = expectedFailure if RUNNING_ON_LINUX_TRAVIS else lambda f: f
 
 
 def fixture(name):
@@ -131,7 +153,7 @@ class TestDiffViewInternalFunctions(DeferrableTestCase):
         (35, (20, 24)),
 
     ])
-    def test_first_hunk_start_before_pt(self, IN, expected):
+    def test_find_hunk_start_before_pt(self, IN, expected):
         VIEW_CONTENT = """\
 0123
 @@ 1
@@ -147,7 +169,7 @@ class TestDiffViewInternalFunctions(DeferrableTestCase):
         view.run_command('append', {'characters': VIEW_CONTENT})
         view.set_scratch(True)
 
-        actual = module.first_hunk_start_before_pt(view, IN)
+        actual = module.find_hunk_start_before_pt(view, IN)
         actual = (actual.a, actual.b) if actual else actual
         self.assertEqual(actual, expected)
 
@@ -207,6 +229,104 @@ diff --git a/barz b/fooz
         actual = module.find_hunk_in_view(view, IN)
         actual = (actual.a, actual.b) if actual else actual
         self.assertEqual(actual, expected)
+
+
+class TestDiffViewJumpingToFile(DeferrableTestCase):
+    @classmethod
+    def setUpClass(cls):
+        sublime.run_command("new_window")
+        cls.window = sublime.active_window()
+        s = sublime.load_settings("Preferences.sublime-settings")
+        s.set("close_windows_when_empty", False)
+
+    @classmethod
+    def tearDownClass(self):
+        self.window.run_command('close_window')
+
+    def tearDown(self):
+        unstub()
+
+    @p.expand([
+        (79, ('barz', 16, 1)),
+        (80, ('barz', 16, 1)),
+        (81, ('barz', 16, 2)),
+
+        (85, ('barz', 17, 1)),
+        (86, ('barz', 17, 2)),
+
+        # on a '-' try to select next '+' line
+        (111, ('barz', 20, 1)),  # jump to 'four'
+
+        (209, ('boox', 17, 1)),  # jump to 'thr'
+        (210, ('boox', 17, 2)),
+        (211, ('boox', 17, 3)),
+        (212, ('boox', 17, 4)),
+        (213, ('boox', 17, 1)),
+        (214, ('boox', 17, 1)),
+
+        (223, ('boox', 19, 1)),  # all jump to 'sev'
+        (228, ('boox', 19, 1)),
+        (233, ('boox', 19, 1)),
+
+        (272, ('boox', 25, 5)),
+        (280, ('boox', 25, 5)),
+
+        (319, ('boox', 30, 1)),  # but do not jump if indentation does not match
+
+        # cursor on the hunk info line selects first diff line
+        (58, ('barz', 16, 1)),
+        (59, ('barz', 16, 1)),
+        (89, ('barz', 20, 1)),
+    ])
+    def test_a(self, CURSOR, EXPECTED):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
++two
+@@ -20,1 +20,1 @@ Ho
+-three
+ context
++four
+diff --git a/foxx b/boxx
+--- a/foox
++++ b/boox
+@@ -16,1 +16,1 @@ Hello
+ one
+-two
++thr
+ fou
+-fiv
+-six
++sev
+ eig
+@@ -24 +24 @@ Hello
+     one
+-    two
+     thr
+@@ -30 +30 @@ Hello
+     one
+-    two
+ thr
+"""
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        cmd = module.GsDiffOpenFileAtHunkCommand(view)
+        when(cmd).load_file_at_line(...)
+
+        view.sel().clear()
+        view.sel().add(CURSOR)
+
+        cmd.run({'unused_edit'})
+
+        verify(cmd).load_file_at_line(*EXPECTED)
 
 
 class TestDiffViewHunking(DeferrableTestCase):
@@ -288,15 +408,228 @@ diff --git a/foxx b/boxx
         view.sel().add(CURSOR)
 
         cmd.run({'unused_edit'})
-        yield 'AWAIT_WORKER'
-        yield 'AWAIT_WORKER'
 
         history = view.settings().get('git_savvy.diff_view.history')
         self.assertEqual(len(history), 1)
 
         actual = history.pop()
-        expected = [['apply', None, '--cached', '-'], HUNK, CURSOR, IN_CACHED_MODE]
+        expected = [['apply', None, '--cached', None, '-'], HUNK, [CURSOR], IN_CACHED_MODE]
         self.assertEqual(actual, expected)
+
+    HUNK3 = """\
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
+ two
+@@ -20,1 +20,1 @@ Ho
+ three
+ four
+"""
+
+    HUNK4 = """\
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -20,1 +20,1 @@ Ho
+ three
+ four
+diff --git a/foxx b/boxx
+--- a/foox
++++ b/boox
+@@ -16,1 +16,1 @@ Hello
+ one
+ two
+"""
+
+    @p.expand([
+        # De-duplicate cursors in the same hunk
+        ([58, 79], HUNK1),
+        ([58, 79, 84], HUNK1),
+        # Combine hunks
+        ([58, 89], HUNK3),
+        ([89, 170], HUNK4),
+
+        # Ignore cursors not in a hunk
+        ([2, 11, 58, 79], HUNK1),
+        ([58, 89, 123], HUNK3),
+        ([11, 89, 123, 170], HUNK4),
+    ])
+    def test_hunking_two_hunks(self, CURSORS, PATCH, IN_CACHED_MODE=False):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
+ two
+@@ -20,1 +20,1 @@ Ho
+ three
+ four
+diff --git a/foxx b/boxx
+--- a/foox
++++ b/boox
+@@ -16,1 +16,1 @@ Hello
+ one
+ two
+"""
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        view.settings().set('git_savvy.diff_view.in_cached_mode', IN_CACHED_MODE)
+        view.settings().set('git_savvy.diff_view.history', [])
+        cmd = module.GsDiffStageOrResetHunkCommand(view)
+        when(cmd).git(...)
+        when(cmd.view).run_command("gs_diff_refresh")
+        # when(module.GsDiffStageOrResetHunkCommand).git(...)
+        # when(module).refresh(view)
+
+        view.sel().clear()
+        for c in CURSORS:
+            view.sel().add(c)
+
+        cmd.run({'unused_edit'})
+
+        history = view.settings().get('git_savvy.diff_view.history')
+        self.assertEqual(len(history), 1)
+
+        actual = history.pop()
+        expected = [['apply', None, '--cached', None, '-'], PATCH, CURSORS, IN_CACHED_MODE]
+        self.assertEqual(actual, expected)
+
+    def test_sets_unidiff_zero_if_no_contextual_lines(self):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
+ two
+"""
+        CURSOR = 58
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        # view.settings().set('git_savvy.diff_view.in_cached_mode', IN_CACHED_MODE)
+        view.settings().set('git_savvy.diff_view.history', [])
+        view.settings().set('git_savvy.diff_view.context_lines', 0)
+
+        cmd = module.GsDiffStageOrResetHunkCommand(view)
+        when(cmd).git(...)
+        when(cmd.view).run_command("gs_diff_refresh")
+
+        view.sel().clear()
+        view.sel().add(CURSOR)
+
+        cmd.run({'unused_edit'})
+
+        history = view.settings().get('git_savvy.diff_view.history')
+        self.assertEqual(len(history), 1)
+
+        actual = history.pop()[0]
+        expected = ['apply', None, '--cached', '--unidiff-zero', '-']
+        self.assertEqual(actual, expected)
+
+    def test_status_message_if_not_in_hunk(self):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
+ two
+@@ -20,1 +20,1 @@ Ho
+ three
+ four
+diff --git a/foxx b/boxx
+--- a/foox
++++ b/boox
+@@ -16,1 +16,1 @@ Hello
+ one
+ two
+"""
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        window = mock()
+        when(view).window().thenReturn(window)
+        when(window).status_message(...)
+
+        view.sel().clear()
+        view.sel().add(0)
+
+        # Manually instantiate the cmd so we can inject our known view
+        cmd = module.GsDiffStageOrResetHunkCommand(view)
+        cmd.run('_unused_edit')
+
+        verify(window, times=1).status_message('Not within a hunk')
+
+
+class TestZooming(DeferrableTestCase):
+    @classmethod
+    def setUpClass(cls):
+        sublime.run_command("new_window")
+        cls.window = sublime.active_window()
+        s = sublime.load_settings("Preferences.sublime-settings")
+        s.set("close_windows_when_empty", False)
+
+    @classmethod
+    def tearDownClass(self):
+        self.window.run_command('close_window')
+
+    @p.expand([
+        (0, '--unified=0'),
+        (1, '--unified=1'),
+        (3, '--unified=3'),
+        (5, '--unified=5'),
+        (None, None)
+    ])
+    def test_adds_unified_flag_to_change_contextual_lines(self, CONTEXT_LINES, FLAG):
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.set_scratch(True)
+
+        view.settings().set('git_savvy.diff_view.context_lines', CONTEXT_LINES)
+        cmd = module.GsDiffRefreshCommand(view)
+        when(cmd).git(...).thenReturn('NEW CONTENT')
+
+        cmd.run({'unused_edit'})
+        verify(cmd).git('diff', None, None, FLAG, ...)
+
+    @p.expand([
+        (0, 2, 2),
+        (3, 2, 5),
+        (3, -2, 1),
+        (2, -2, 0),
+        (1, -2, 0),
+        (0, -2, 0),
+    ])
+    def test_updates_view_state_when_zooming(self, BEFORE, AMOUNT, EXPECTED):
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.set_scratch(True)
+
+        view.settings().set('git_savvy.diff_view.context_lines', BEFORE)
+        cmd = module.GsDiffZoom(view)
+        when(cmd.view).run_command("gs_diff_refresh")
+
+        cmd.run({'unused_edit'}, AMOUNT)
+
+        actual = view.settings().get('git_savvy.diff_view.context_lines')
+        self.assertEqual(actual, EXPECTED)
 
 
 class TestDiffView(DeferrableTestCase):
@@ -313,14 +646,53 @@ class TestDiffView(DeferrableTestCase):
 
     def setUp(self):
         self.view = self.window.new_file()
+        self.view.set_scratch(True)
+        self.addCleanup(self.view.close)
 
     def tearDown(self):
-        if self.view:
-            self.view.set_scratch(True)
-            self.view.close()
-
         unstub()
 
+    @p.expand([
+        ('in_cached_mode', False),
+        ('ignore_whitespace', False),
+        ('show_word_diff', False),
+        ('base_commit', None),
+        ('target_commit', None),
+        ('show_diffstat', True),
+        ('context_lines', 3),
+        ('disable_stage', False),
+        ('history', []),
+        ('just_hunked', ''),
+    ])
+    def test_default_view_state(self, KEY, DEFAULT_VALUE):
+        REPO_PATH = '/not/there'
+        when(GsDiffRefreshCommand).git('diff', ...).thenReturn('')
+        cmd = GsDiffCommand(self.window)
+        when(cmd).get_repo_path().thenReturn(REPO_PATH)
+
+        cmd.run_async()
+
+        diff_view = self.window.active_view()
+        self.addCleanup(diff_view.close)
+
+        actual = diff_view.settings().get('git_savvy.diff_view.{}'.format(KEY))
+        self.assertEqual(actual, DEFAULT_VALUE)
+
+    def test_sets_repo_path(self):
+        REPO_PATH = '/not/there'
+        when(GsDiffRefreshCommand).git('diff', ...).thenReturn('')
+        cmd = GsDiffCommand(self.window)
+        when(cmd).get_repo_path().thenReturn(REPO_PATH)
+
+        cmd.run_async()
+
+        diff_view = self.window.active_view()
+        self.addCleanup(diff_view.close)
+
+        actual = diff_view.settings().get('git_savvy.repo_path')
+        self.assertEqual(actual, REPO_PATH)
+
+    @expectedFailureOnLinuxTravis
     def test_extract_clickable_lines(self):
         REPO_PATH = '/not/there'
         DIFF = fixture('diff_1.txt')
@@ -329,8 +701,12 @@ class TestDiffView(DeferrableTestCase):
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
         cmd.run_async()
+        yield AWAIT_WORKER  # await activated_async
+        yield AWAIT_WORKER  # await refresh async
 
         diff_view = self.window.active_view()
+        self.addCleanup(diff_view.close)
+
         actual = diff_view.find_all_results()
         # `find_all_results` only returns full filename-with-line matches.
         # These match clicking on `@@ -52,8 +XX,7` lines
@@ -342,6 +718,7 @@ class TestDiffView(DeferrableTestCase):
 
         self.assertEqual(actual, expected)
 
+    @expectedFailureOnLinuxTravis
     def test_result_file_regex(self):
         REPO_PATH = '/not/there'
         DIFF = fixture('diff_1.txt')
@@ -350,8 +727,12 @@ class TestDiffView(DeferrableTestCase):
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
         cmd.run_async()
+        yield AWAIT_WORKER  # await activated_async
+        yield AWAIT_WORKER  # await refresh async
 
         diff_view = self.window.active_view()
+        self.addCleanup(diff_view.close)
+
         BUFFER_CONTENT = diff_view.substr(sublime.Region(0, diff_view.size()))
         self.assertEqual(
             BUFFER_CONTENT,

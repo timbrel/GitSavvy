@@ -26,7 +26,7 @@ def _determine_syntax_files():
         try:
             # Use `sublime.load_resource`, in case Package is `*.sublime-package`.
             resource = sublime.load_resource(syntax_file)
-            for extension in yaml.load(resource)["file_extensions"]:
+            for extension in yaml.safe_load(resource)["file_extensions"]:
                 if extension not in syntax_file_map:
                     syntax_file_map[extension] = []
                 extension_list = syntax_file_map[extension]
@@ -69,7 +69,7 @@ def get_file_contents(repo_path, file_path):
     binary = get_file_contents_binary(repo_path, file_path)
     try:
         return binary.decode('utf-8')
-    except UnicodeDecodeError as unicode_err:
+    except UnicodeDecodeError:
         return binary.decode('latin-1')
 
 

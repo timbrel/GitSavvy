@@ -1,7 +1,4 @@
-import os
-
-import sublime
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 

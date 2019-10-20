@@ -3,7 +3,7 @@ import os
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from ..commands import *
+from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
