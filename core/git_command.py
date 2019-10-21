@@ -32,6 +32,10 @@ from .exceptions import GitSavvyError
 from .settings import SettingsMixin
 import time
 
+
+
+
+
 git_path = None
 error_message_displayed = False
 
