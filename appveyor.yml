@@ -11,12 +11,9 @@ install:
     - ps: .\appveyor.ps1 "bootstrap" -verbose
     - ps: .\appveyor.ps1 "install_package_control" -verbose
     - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
-    - ps: python -m pip install --upgrade pip
-    - ps: pip install flake8
 
 build: off
 
 test_script:
     - ps: .\appveyor.ps1 "run_tests" -verbose
     - ps: .\appveyor.ps1 "run_syntax_tests" -verbose
-    - ps: flake8 .
