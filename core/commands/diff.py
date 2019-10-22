@@ -9,6 +9,7 @@ from functools import partial
 from itertools import chain, dropwhile, takewhile
 import os
 import re
+import threading
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -16,7 +17,9 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ..exceptions import GitSavvyError
+from ..settings import GitSavvySettings
 from ...common import util
+from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
 
 if False:
@@ -128,6 +131,59 @@ class GsDiffCommand(WindowCommand, GitCommand):
             diff_views[view_key] = diff_view
 
             diff_view.run_command("gs_handle_vintageous")
+            threading.Thread(target=partial(augment_color_scheme, diff_view)).run()
+
+
+def augment_color_scheme(view):
+    # type: (sublime.View) -> None
+    settings = GitSavvySettings()
+    colors = settings.get('colors').get('inline_diff')
+    if not colors:
+        return
+
+    color_scheme = view.settings().get('color_scheme')
+    if color_scheme.endswith(".tmTheme"):
+        themeGenerator = XMLThemeGenerator(color_scheme)
+    else:
+        themeGenerator = JSONThemeGenerator(color_scheme)
+    themeGenerator.add_scoped_style(
+        "GitSavvy Added Line",
+        "git_savvy.change.addition",
+        background=colors["add_background"],
+        foreground=colors["add_foreground"]
+    )
+    themeGenerator.add_scoped_style(
+        "GitSavvy Removed Line",
+        "git_savvy.change.removal",
+        background=colors["remove_background"],
+        foreground=colors["remove_foreground"]
+    )
+    themeGenerator.add_scoped_style(
+        "GitSavvy Added Line Bold",
+        "git_savvy.change.addition.bold",
+        background=colors["add_background_bold"],
+        foreground=colors["add_foreground_bold"]
+    )
+    themeGenerator.add_scoped_style(
+        "GitSavvy Removed Line Bold",
+        "git_savvy.change.removal.bold",
+        background=colors["remove_background_bold"],
+        foreground=colors["remove_foreground_bold"]
+    )
+    themeGenerator.apply_new_theme("diff_view", view)
+
+
+WORD_DIFF_PATTERNS = [
+    None,
+    # "Default",
+    # "[^ ]+",
+    # r"[a-zA-Z_\-\x80-\xff]+|[\xc0-\xff][\x80-\xbf]+",
+    r"[a-zA-Z_\-\x80-\xff]+|[^[:space:]]|[\xc0-\xff][\x80-\xbf]+",
+    # r"[a-zA-Z_\-]+|.",
+    ".",
+    # "[a-zA-Z]+|[^ ]",
+]
+WORD_DIFF_MARKERS_RE = re.compile(r"{\+(.*?)\+}|\[-(.*?)-\]")
 
 
 class GsDiffRefreshCommand(TextCommand, GitCommand):
@@ -151,6 +207,8 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         disable_stage = self.view.settings().get("git_savvy.diff_view.disable_stage")
         context_lines = self.view.settings().get('git_savvy.diff_view.context_lines')
 
+        word_diff_regex = WORD_DIFF_PATTERNS[show_word_diff]
+
         prelude = "\n"
         if self.file_path:
             rel_file_path = os.path.relpath(self.file_path, self.repo_path)
@@ -170,6 +228,8 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
             else:
                 prelude += "  UNSTAGED CHANGES\n"
 
+        if show_word_diff:
+            prelude += "  WORD REGEX: {}\n".format(word_diff_regex)
         if ignore_whitespace:
             prelude += "  IGNORING WHITESPACE\n"
 
@@ -177,7 +237,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
             diff = self.git(
                 "diff",
                 "--ignore-all-space" if ignore_whitespace else None,
-                "--word-diff" if show_word_diff else None,
+                "--word-diff-regex={}".format(word_diff_regex) if word_diff_regex else None,
                 "--unified={}".format(context_lines) if context_lines is not None else None,
                 "--stat" if show_diffstat else None,
                 "--patch",
@@ -205,9 +265,26 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         self.view.settings().set("git_savvy.diff_view.raw_diff", diff)
         text = prelude + '\n--\n' + diff
 
+        added_regions = []
+        removed_regions = []
+
+        if word_diff_regex:
+            def extractor(match):
+                a, b = match.span()
+                regions = added_regions if match.group()[1] == '+' else removed_regions
+                offset = len(added_regions) + len(removed_regions)
+                regions.append(sublime.Region(a - offset * 4, b - (offset + 1) * 4))
+                return match.group()[2:-2]
+
+            text = WORD_DIFF_MARKERS_RE.sub(extractor, text)
+
         self.view.run_command(
             "gs_replace_view_text", {"text": text, "restore_cursors": True}
         )
+
+        self.view.add_regions("git-savvy-added-bold", added_regions, scope="git_savvy.change.addition.bold")
+        self.view.add_regions("git-savvy-removed-bold", removed_regions, scope="git_savvy.change.removal.bold")
+
         if not old_diff:
             self.view.run_command("gs_diff_navigate")
 
@@ -223,7 +300,10 @@ class GsDiffToggleSetting(TextCommand):
 
         setting_str = "git_savvy.diff_view.{}".format(setting)
         current_mode = settings.get(setting_str)
-        next_mode = not current_mode
+        if setting == 'show_word_diff':
+            next_mode = (current_mode + 1) % len(WORD_DIFF_PATTERNS)
+        else:
+            next_mode = not current_mode
         settings.set(setting_str, next_mode)
         self.view.window().status_message("{} is now {}".format(setting, next_mode))
 
