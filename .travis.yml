@@ -12,6 +12,7 @@ matrix:
     include:
         - name: Linux
           os: linux
+          dist: trusty
           language: python
           python: 3.6
         - name: OSX
