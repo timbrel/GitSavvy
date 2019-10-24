@@ -1,3 +1,5 @@
+import re
+
 from sublime_plugin import TextCommand, WindowCommand
 
 from ..git_command import GitCommand
@@ -65,6 +67,13 @@ class GsStashPopCommand(SelectStashIdMixin, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
+DROP_UNDO_MESSAGE = """\
+GitSavvy: Dropped stash ({}), in case you want to undo, run:
+  $ git branch tmp {}
+"""
+EXTRACT_COMMIT = re.compile(r"\((.*)\)$")
+
+
 class GsStashDropCommand(SelectStashIdMixin, GitCommand):
 
     """
@@ -74,7 +83,11 @@ class GsStashDropCommand(SelectStashIdMixin, GitCommand):
     @util.actions.destructive(description="drop a stash")
     def do(self, stash_id):
         # type: (StashId) -> None
-        self.drop_stash(stash_id)
+        rv = self.drop_stash(stash_id)
+        match = EXTRACT_COMMIT.search(rv.strip())
+        if match:
+            commit = match.group(1)
+            print(DROP_UNDO_MESSAGE.format(stash_id, commit))
         util.view.flash(self.view, "Successfully dropped stash ({}).".format(stash_id))
         util.view.refresh_gitsavvy(self.view)
 

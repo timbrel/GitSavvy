@@ -45,4 +45,4 @@ class StashMixin():
         """
         Drop stash with provided id.
         """
-        self.git("stash", "drop", "stash@{{{}}}".format(id))
+        return self.git("stash", "drop", "stash@{{{}}}".format(id))
