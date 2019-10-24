@@ -175,13 +175,8 @@ def augment_color_scheme(view):
 
 WORD_DIFF_PATTERNS = [
     None,
-    # "Default",
-    # "[^ ]+",
-    # r"[a-zA-Z_\-\x80-\xff]+|[\xc0-\xff][\x80-\xbf]+",
     r"[a-zA-Z_\-\x80-\xff]+|[^[:space:]]|[\xc0-\xff][\x80-\xbf]+",
-    # r"[a-zA-Z_\-]+|.",
     ".",
-    # "[a-zA-Z]+|[^ ]",
 ]
 WORD_DIFF_MARKERS_RE = re.compile(r"{\+(.*?)\+}|\[-(.*?)-\]")
 
