@@ -1,4 +1,4 @@
-from sublime_plugin import WindowCommand
+from sublime_plugin import TextCommand, WindowCommand
 
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelCommandMixin
@@ -10,22 +10,22 @@ from ...common import util
 MYPY = False
 if MYPY:
     from typing import Optional, Union
+    import sublime
+
     StashId = Union[int, str]
 
 
-class SelectStashIdMixin(WindowCommand):
-    def run(self, stash_id=None):
-        # type: (Optional[StashId]) -> None
+class SelectStashIdMixin(TextCommand):
+    def run(self, edit, stash_id=None):
+        # type: (sublime.Edit, Optional[StashId]) -> None
         if stash_id is not None:
             self.do(stash_id)
             return
 
-        view = self.window.active_view()
-        if view:
-            stash_id = view.settings().get("git_savvy.stash_view.stash_id", None)
-            if stash_id is not None:
-                self.do(stash_id)
-                return
+        stash_id = self.view.settings().get("git_savvy.stash_view.stash_id", None)
+        if stash_id is not None:
+            self.do(stash_id)
+            return
 
         show_stash_panel(self.on_done)
 
@@ -48,7 +48,7 @@ class GsStashApplyCommand(SelectStashIdMixin, GitCommand):
     def do(self, stash_id):
         # type: (StashId) -> None
         self.apply_stash(stash_id)
-        util.view.refresh_gitsavvy(self.window.active_view())
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsStashPopCommand(SelectStashIdMixin, GitCommand):
@@ -60,7 +60,7 @@ class GsStashPopCommand(SelectStashIdMixin, GitCommand):
     def do(self, stash_id):
         # type: (StashId) -> None
         self.pop_stash(stash_id)
-        util.view.refresh_gitsavvy(self.window.active_view())
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsStashDropCommand(SelectStashIdMixin, GitCommand):
@@ -73,7 +73,7 @@ class GsStashDropCommand(SelectStashIdMixin, GitCommand):
     def do(self, stash_id):
         # type: (StashId) -> None
         self.drop_stash(stash_id)
-        util.view.refresh_gitsavvy(self.window.active_view())
+        util.view.refresh_gitsavvy(self.view)
 
 
 class GsStashCommand(PanelCommandMixin, WindowCommand, GitCommand):
