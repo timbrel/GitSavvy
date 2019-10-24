@@ -64,7 +64,11 @@ class GsStashPopCommand(SelectStashIdMixin, GitCommand):
         # type: (StashId) -> None
         self.pop_stash(stash_id)
         util.view.flash(self.view, "Successfully popped stash ({}).".format(stash_id))
-        util.view.refresh_gitsavvy(self.view)
+
+        if self.view.settings().get("git_savvy.stash_view.stash_id", None) == stash_id:
+            self.view.close()
+        else:
+            util.view.refresh_gitsavvy(self.view)
 
 
 DROP_UNDO_MESSAGE = """\
@@ -89,7 +93,11 @@ class GsStashDropCommand(SelectStashIdMixin, GitCommand):
             commit = match.group(1)
             print(DROP_UNDO_MESSAGE.format(stash_id, commit))
         util.view.flash(self.view, "Successfully dropped stash ({}).".format(stash_id))
-        util.view.refresh_gitsavvy(self.view)
+
+        if self.view.settings().get("git_savvy.stash_view.stash_id", None) == stash_id:
+            self.view.close()
+        else:
+            util.view.refresh_gitsavvy(self.view)
 
 
 class GsStashCommand(PanelCommandMixin, WindowCommand, GitCommand):
