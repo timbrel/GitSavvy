@@ -295,7 +295,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 class GsDiffToggleSetting(TextCommand):
 
     """
-    Toggle view settings: `ignore_whitespace` , or `show_word_diff`.
+    Toggle view settings: `ignore_whitespace`.
     """
 
     def run(self, edit, setting):
@@ -303,12 +303,26 @@ class GsDiffToggleSetting(TextCommand):
 
         setting_str = "git_savvy.diff_view.{}".format(setting)
         current_mode = settings.get(setting_str)
-        if setting == 'show_word_diff':
-            next_mode = (current_mode + 1) % len(WORD_DIFF_PATTERNS)
-        else:
-            next_mode = not current_mode
+        next_mode = not current_mode
         settings.set(setting_str, next_mode)
         self.view.window().status_message("{} is now {}".format(setting, next_mode))
+
+        self.view.run_command("gs_diff_refresh")
+
+
+class GsDiffCycleWordDiff(TextCommand):
+
+    """
+    Cycle through different word diff patterns.
+    """
+
+    def run(self, edit):
+        settings = self.view.settings()
+
+        setting_str = "git_savvy.diff_view.{}".format('show_word_diff')
+        current_mode = settings.get(setting_str)
+        next_mode = (current_mode + 1) % len(WORD_DIFF_PATTERNS)
+        settings.set(setting_str, next_mode)
 
         self.view.run_command("gs_diff_refresh")
 
