@@ -260,16 +260,24 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         self.view.settings().set("git_savvy.diff_view.raw_diff", diff)
         text = prelude + '\n--\n' + diff
 
-        added_regions = []
-        removed_regions = []
+        added_regions = []  # type: List[sublime.Region]
+        removed_regions = []  # type: List[sublime.Region]
 
         if word_diff_regex:
             def extractor(match):
-                a, b = match.span()
+                # We generally transform `{+text+}` (and likewise `[-text-]`) into just
+                # `text`.
+                text = match.group()[2:-2]
+                # The `start/end` offsets are based on the original input, so we need
+                # to adjust them for the regions we want to draw.
+                total_matches_so_far = len(added_regions) + len(removed_regions)
+                start, _end = match.span()
+                # On each match the original diff is shortened by 4 chars.
+                offset = start - (total_matches_so_far * 4)
+
                 regions = added_regions if match.group()[1] == '+' else removed_regions
-                offset = len(added_regions) + len(removed_regions)
-                regions.append(sublime.Region(a - offset * 4, b - (offset + 1) * 4))
-                return match.group()[2:-2]
+                regions.append(sublime.Region(offset, offset + len(text)))
+                return text
 
             text = WORD_DIFF_MARKERS_RE.sub(extractor, text)
 
