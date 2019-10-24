@@ -48,6 +48,7 @@ class GsStashApplyCommand(SelectStashIdMixin, GitCommand):
     def do(self, stash_id):
         # type: (StashId) -> None
         self.apply_stash(stash_id)
+        util.view.flash(self.view, "Successfully applied stash ({}).".format(stash_id))
         util.view.refresh_gitsavvy(self.view)
 
 
@@ -60,6 +61,7 @@ class GsStashPopCommand(SelectStashIdMixin, GitCommand):
     def do(self, stash_id):
         # type: (StashId) -> None
         self.pop_stash(stash_id)
+        util.view.flash(self.view, "Successfully popped stash ({}).".format(stash_id))
         util.view.refresh_gitsavvy(self.view)
 
 
@@ -73,6 +75,7 @@ class GsStashDropCommand(SelectStashIdMixin, GitCommand):
     def do(self, stash_id):
         # type: (StashId) -> None
         self.drop_stash(stash_id)
+        util.view.flash(self.view, "Successfully dropped stash ({}).".format(stash_id))
         util.view.refresh_gitsavvy(self.view)
 
 

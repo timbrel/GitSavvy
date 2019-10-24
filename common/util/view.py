@@ -175,3 +175,11 @@ def disable_other_plugins(view):
     # https://github.com/guillermooo/Vintageous/wiki/Disabling
     if GitSavvySettings().get("vintageous_friendly", False) is False:
         view.settings().set("__vi_external_disable", False)
+
+
+def flash(view, message):
+    # type: (sublime.View, str) -> None
+    """ Flash status message on view's window. """
+    window = view.window()
+    if window:
+        window.status_message(message)
