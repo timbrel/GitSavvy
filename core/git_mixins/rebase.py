@@ -1,6 +1,4 @@
-import difflib
 import re
-import time
 
 from ..exceptions import GitSavvyError
 from ...common import util
