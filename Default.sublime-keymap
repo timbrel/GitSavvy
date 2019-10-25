@@ -624,8 +624,7 @@
     },
     {
         "keys": ["w"],
-        "command": "gs_diff_toggle_setting",
-        "args": { "setting": "show_word_diff" },
+        "command": "gs_diff_cycle_word_diff",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
