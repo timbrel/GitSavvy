@@ -6,7 +6,7 @@ All documentation is in markdown.  Beyond what you might expect, if you see a li
 
 To return to the previous page, press **SUPER-Backspace** (**CTRL-Backspace** on Windows).
 
-If you run into any issues not addressed here, please feel free to [open an issue](https://github.com/divmain/GitSavvy/issues) and ask for help!
+If you run into any issues not addressed here, please feel free to [open an issue](https://github.com/timbrel/GitSavvy/issues) and ask for help!
 
 
 ## Highlighted Features
@@ -205,10 +205,10 @@ To open the GitSavvy settings, simply run the `Preferences: GitSavvy Settings` c
 
 GitSavvy's default keyboard shortcuts are defined in the package's `.sublime-keymap` files:
 
-- [Default.sublime-keymap](https://github.com/divmain/GitSavvy/blob/master/Default.sublime-keymap)
-- [Default (Windows).sublime-keymap](https://github.com/divmain/GitSavvy/blob/master/Default%20(Windows).sublime-keymap)
-- [Default (OSX).sublime-keymap](https://github.com/divmain/GitSavvy/blob/master/Default%20(OSX).sublime-keymap)
-- [Default (Linux).sublime-keymap](https://github.com/divmain/GitSavvy/blob/master/Default%20(Linux).sublime-keymap)
+- [Default.sublime-keymap](https://github.com/timbrel/GitSavvy/blob/master/Default.sublime-keymap)
+- [Default (Windows).sublime-keymap](https://github.com/timbrel/GitSavvy/blob/master/Default%20(Windows).sublime-keymap)
+- [Default (OSX).sublime-keymap](https://github.com/timbrel/GitSavvy/blob/master/Default%20(OSX).sublime-keymap)
+- [Default (Linux).sublime-keymap](https://github.com/timbrel/GitSavvy/blob/master/Default%20(Linux).sublime-keymap)
 
 The key bindings can be edited (and new ones added) via [user defined `.sublime-keymap` files](http://docs.sublimetext.info/en/latest/reference/key_bindings.html). These can be accessed easily by running the "Preferences: Key Bindings" command in the command palette.
 
@@ -221,4 +221,4 @@ _**${ST3_PACKAGE_DIR}/User/Default (OSX).sublime-keymap**_
 ]
 ```
 
-The full list of GitSavvy's commands can be seen in [Default.sublime-commands](https://github.com/divmain/GitSavvy/blob/master/Default.sublime-commands).
+The full list of GitSavvy's commands can be seen in [Default.sublime-commands](https://github.com/timbrel/GitSavvy/blob/master/Default.sublime-commands).

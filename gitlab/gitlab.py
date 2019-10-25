@@ -19,7 +19,7 @@ AUTH_ERROR_TEMPLATE = """Error {action} GitLab, access was denied!
 Please ensure you have created a GitLab API token and added it to
 your settings, as described in the documentation:
 
-https://github.com/divmain/GitSavvy/blob/master/docs/gitlab.md#setup
+https://github.com/timbrel/GitSavvy/blob/master/docs/gitlab.md#setup
 """
 
 GitLabRepo = namedtuple("GitLabRepo", ("url", "fqdn", "owner", "repo", "token"))

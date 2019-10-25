@@ -6,7 +6,7 @@ locally, you should install UnitTesting via Package Control.
 
 ## Run the test specs locally
 
-First you need to [clone](https://github.com/divmain/GitSavvy#less-simple) GitSavvy repo from source.
+First you need to [clone](https://github.com/timbrel/GitSavvy#less-simple) GitSavvy repo from source.
 Open the directory `GitSavvy` and simply run the command `UnitTesting: Test Current Project`
 
 ## Some details about DeferrableTestCase

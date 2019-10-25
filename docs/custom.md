@@ -16,7 +16,7 @@ Your custom command may be further customized by setting the following arguments
 * `syntax` - If the output is printed to a buffer you can select syntax
       on example:
       "syntax": "Packages/GitSavvy/syntax/show_commit.sublime-syntax",
-      Other syntaxes comming with GitSavvy can be found in (syntax)[https://github.com/divmain/GitSavvy/tree/master/syntax]
+      Other syntaxes comming with GitSavvy can be found in (syntax)[https://github.com/timbrel/GitSavvy/tree/master/syntax]
 
 * `args`            - arguments to pass to the `git` command
 

@@ -38,7 +38,7 @@ else
         git reset --hard
         git tag -a "${VERSION_ARRAY[0]}.${VERSION_ARRAY[1]}.${VERSION_ARRAY[2]}" -m "v${VERSION_ARRAY[0]}.${VERSION_ARRAY[1]}.${VERSION_ARRAY[2]}"
 
-        git remote add origin-deploy https://${GH_TOKEN}@github.com/divmain/GitSavvy.git > /dev/null 2>&1
+        git remote add origin-deploy https://${GH_TOKEN}@github.com/timbrel/GitSavvy.git > /dev/null 2>&1
         git push --quiet --tags origin-deploy master
 
         echo "Done!"

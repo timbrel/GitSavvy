@@ -19,7 +19,7 @@ AUTH_ERROR_TEMPLATE = """Error {action} Github, access was denied!
 Please ensure you have created a Github API token and added it to
 your settings, as described in the documentation:
 
-https://github.com/divmain/GitSavvy/blob/master/docs/github.md#setup
+https://github.com/timbrel/GitSavvy/blob/master/docs/github.md#setup
 """
 
 GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo", "token"))
@@ -29,14 +29,14 @@ def remote_to_url(remote):
     """
     Parse out a Github HTTP URL from a remote URI:
 
-    r1 = remote_to_url("git://github.com/divmain/GitSavvy.git")
-    assert r1 == "https://github.com/divmain/GitSavvy.git"
+    r1 = remote_to_url("git://github.com/timbrel/GitSavvy.git")
+    assert r1 == "https://github.com/timbrel/GitSavvy.git"
 
     r2 = remote_to_url("git@github.com:divmain/GitSavvy.git")
-    assert r2 == "https://github.com/divmain/GitSavvy.git"
+    assert r2 == "https://github.com/timbrel/GitSavvy.git"
 
-    r3 = remote_to_url("https://github.com/divmain/GitSavvy.git")
-    assert r3 == "https://github.com/divmain/GitSavvy.git"
+    r3 = remote_to_url("https://github.com/timbrel/GitSavvy.git")
+    assert r3 == "https://github.com/timbrel/GitSavvy.git"
     """
 
     if remote.endswith(".git"):
