@@ -35,24 +35,26 @@ contexts:
     - match: ^  STASHES:$
       comment: Stashes section
       captures:
-        0: keyword.other.git-savvy.stashes-header
+        0: keyword.other.git-savvy.section-header.stashes
       push:
-        - meta_scope: meta.git-savvy.status.stashes
+        - meta_scope: meta.git-savvy.status.section.stashes
         - match: ^$
           pop: true
-        - match: ^    (.+)\n$
-          scope: meta.git-savvy.status.saved_stash
+        - match: ^    (\((\d+)\) (.+))\n$
+          captures:
+            1: meta.git-savvy.status.stash
+            2: meta.git-savvy.status.stash.number
+            3: meta.git-savvy.status.stash.name
 
   section:
     - match: ^$
       pop: true
-    - match: ^(    .+)\n$
+    - match: ^    (.+)\n$
       captures:
           0: meta.git-savvy.status.file
-          1: gitsavvy.gotosymbol
-    - match: ^(  (-) (.+))\n$
+          1: gitsavvy.gotosymbol meta.git-savvy.status.file.filename
+    - match: ^  (-) (.+)\n$
       captures:
           0: meta.git-savvy.status.file
-          1: gitsavvy.gotosymbol
-          2: meta.git-savvy.status.file.removed.punctuation
-          3: meta.git-savvy.status.file.removed
+          1: meta.git-savvy.status.file.removed.punctuation
+          2: gitsavvy.gotosymbol meta.git-savvy.status.file.filename

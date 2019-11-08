@@ -252,6 +252,16 @@ class StatusInterface(ui.Interface, GitCommand):
             "nuke_cursors": nuke_cursors
         })
 
+        on_special_symbol = any(
+            self.view.match_selector(
+                s.begin(),
+                'meta.git-savvy.status.file, meta.git-savvy.status.stash'
+            )
+            for s in self.view.sel()
+        )
+        if not on_special_symbol:
+            self.view.run_command("gs_status_navigate_goto")
+
     def fetch_repo_status(self, delim=None):
         lines = self._get_status()
         files_statuses = self._parse_status_for_file_statuses(lines)
@@ -283,9 +293,6 @@ class StatusInterface(ui.Interface, GitCommand):
     def after_view_creation(self, view):
         view.settings().set("result_file_regex", EXTRACT_FILENAME_RE)
         view.settings().set("result_base_dir", self.repo_path)
-
-    def on_new_dashboard(self):
-        self.view.run_command("gs_status_navigate_file")
 
     @ui.partial("branch_status")
     def render_branch_status(self):
@@ -901,16 +908,25 @@ class GsStatusUseBaseVersionCommand(TextCommand, GitCommand):
 class GsStatusNavigateFileCommand(GsNavigate):
 
     """
-    Move cursor to the next (or previous) selectable file in the dashboard.
+    Move cursor to the next (or previous) selectable item in the dashboard.
     """
+    offset = 0
 
     def get_available_regions(self):
-        file_regions = [file_region
-                        for region in self.view.find_by_selector("meta.git-savvy.status.file")
-                        for file_region in self.view.lines(region)]
+        return self.view.find_by_selector(
+            "gitsavvy.gotosymbol, meta.git-savvy.status.stash"
+        )
 
-        stash_regions = [stash_region
-                         for region in self.view.find_by_selector("meta.git-savvy.status.saved_stash")
-                         for stash_region in self.view.lines(region)]
 
-        return file_regions + stash_regions
+class GsStatusNavigateGotoCommand(GsNavigate):
+
+    """
+    Move cursor to the next (or previous) selectable file in the dashboard.
+    """
+    offset = 0
+
+    def get_available_regions(self):
+        return (
+            self.view.find_by_selector("gitsavvy.gotosymbol")
+            + self.view.find_all("Your working directory is clean", sublime.LITERAL)
+        )
