@@ -104,7 +104,7 @@
     /*
         Change this to `true` when you would like inline diff to
         ignore EOL whitespace changes.
-        See details in https://github.com/divmain/GitSavvy/issues/177
+        See details in https://github.com/timbrel/GitSavvy/issues/177
      */
     "inline_diff_ignore_eol_whitespaces": false,
 
