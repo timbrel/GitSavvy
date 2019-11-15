@@ -30,18 +30,16 @@ update_status_bar_soon = False
 def view_is_transient(view):
     """Return whether a view can be considered 'transient'.
 
-    For our purpose, transient views are 'detached' views or widgets
-    (aka quick or input panels).
+    We especially want to exclude widgets and preview views.
     """
 
-    # 'Detached' (already closed) views don't have a window.
+    # 'Detached' (already closed) views and previews don't have
+    # a window.
     window = view.window()
     if not window:
         return True
 
-    # Widgets are normal views but the typical getters don't list them.
-    group, index = window.get_view_index(view)
-    if group == -1:
+    if view.settings().get('is_widget'):
         return True
 
     return False
