@@ -10,9 +10,6 @@ class GsStatusBarEventListener(EventListener):
     def on_new_async(self, view):
         view.run_command("gs_update_status_bar")
 
-    def on_load_async(self, view):
-        view.run_command("gs_update_status_bar")
-
     def on_activated_async(self, view):
         view.run_command("gs_update_status_bar")
 
