@@ -255,7 +255,7 @@ class StatusInterface(ui.Interface, GitCommand):
         on_special_symbol = any(
             self.view.match_selector(
                 s.begin(),
-                'meta.git-savvy.status.file, meta.git-savvy.status.stash'
+                'meta.git-savvy.section.body.row'
             )
             for s in self.view.sel()
         )
@@ -914,7 +914,7 @@ class GsStatusNavigateFileCommand(GsNavigate):
 
     def get_available_regions(self):
         return self.view.find_by_selector(
-            "gitsavvy.gotosymbol, meta.git-savvy.status.stash"
+            "meta.git-savvy.entity - meta.git-savvy.entity.filename.renamed.to"
         )
 
 
