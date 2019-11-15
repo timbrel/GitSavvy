@@ -7,16 +7,13 @@ from ...common.util import debug
 
 
 class GsStatusBarEventListener(EventListener):
-
-    # these methods should be run synchronously to check if the
-    # view is transient.
-    def on_new(self, view):
+    def on_new_async(self, view):
         view.run_command("gs_update_status_bar")
 
-    def on_load(self, view):
+    def on_load_async(self, view):
         view.run_command("gs_update_status_bar")
 
-    def on_activated(self, view):
+    def on_activated_async(self, view):
         view.run_command("gs_update_status_bar")
 
     def on_post_save(self, view):
