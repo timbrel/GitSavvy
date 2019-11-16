@@ -9,17 +9,22 @@ class GitSavvySettings:
     def get(self, key, default=None):
         window = sublime.active_window()
         view = window.active_view()
-        project_savvy_settings = view.settings().get("GitSavvy", {}) or {}
 
-        if key in project_savvy_settings:
-            return project_savvy_settings[key]
-
-        # fall back to old style project setting
-        project_data = window.project_data()
-        if project_data and "GitSavvy" in project_data:
-            project_savvy_settings = project_data["GitSavvy"]
+        if view:
+            project_savvy_settings = view.settings().get("GitSavvy", {}) or {}
             if key in project_savvy_settings:
-                return project_savvy_settings.get(key)
+                return project_savvy_settings[key]
+
+        project_data = window.project_data() or {}
+        # get the settings directly from project_data
+        project_savvy_settings = project_data.get("settings", {}).get("GitSavvy", {})
+        if key in project_savvy_settings:
+            return project_savvy_settings.get(key)
+
+        # fallback location of settings
+        project_savvy_settings = project_data.get("GitSavvy", {})
+        if key in project_savvy_settings:
+            return project_savvy_settings.get(key)
 
         return self.global_settings.get(key, default)
 
