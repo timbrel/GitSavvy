@@ -1,4 +1,5 @@
 from functools import partial, wraps
+from itertools import chain
 import os
 import threading
 
@@ -9,6 +10,13 @@ from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
+
+flatten = chain.from_iterable
+
+
+MYPY = False
+if MYPY:
+    from typing import Iterable, Iterator, List, Tuple
 
 
 # Expected
@@ -385,6 +393,48 @@ class StatusInterface(ui.Interface, GitCommand):
 ui.register_listeners(StatusInterface)
 
 
+def get_subjects(view, *sections):
+    # type: (sublime.View, str) -> Iterable[sublime.Region]
+    return flatten(
+        view.find_by_selector(
+            'meta.git-savvy.status.section.{} meta.git-savvy.status.subject'.format(section)
+        )
+        for section in sections
+    )
+
+
+def region_as_tuple(region):
+    # type: (sublime.Region) -> Tuple[int, int]
+    return region.begin(), region.end()
+
+
+def region_from_tuple(tuple_):
+    # type: (Tuple[int, int]) -> sublime.Region
+    return sublime.Region(*tuple_)
+
+
+def unique_regions(regions):
+    # type: (Iterable[sublime.Region]) -> Iterator[sublime.Region]
+    # Regions are not hashable so we unpack them to tuples,
+    # then use set, finally pack them again
+    return map(region_from_tuple, set(map(region_as_tuple, regions)))
+
+
+def unique_selected_lines(view):
+    # type: (sublime.View) -> List[sublime.Region]
+    return list(unique_regions(flatten(view.lines(s) for s in view.sel())))
+
+
+def get_selected_subjects(view, *sections):
+    # type: (sublime.View, str) -> List[str]
+    selected_lines = unique_selected_lines(view)
+    return [
+        view.substr(subject)
+        for subject in get_subjects(view, *sections)
+        if any(line.contains(subject) for line in selected_lines)
+    ]
+
+
 class GsStatusOpenFileCommand(TextCommand, GitCommand):
 
     """
@@ -408,35 +458,27 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
+        # type: (sublime.Edit) -> None
+        window = self.view.window()
+        if not window:
+            return
 
-        non_cached_sections = (interface.get_view_regions("unstaged_files") +
-                               interface.get_view_regions("merge_conflicts"))
-        non_cached_lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=non_cached_sections
-        )
-        non_cached_files = (
-            os.path.join(self.repo_path, line.strip())
-            for line in non_cached_lines
-            if line[:4] == "    ")
-
-        cached_sections = interface.get_view_regions("staged_files")
-        cached_lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=cached_sections
-        )
-        cached_files = (
-            os.path.join(self.repo_path, line.strip())
-            for line in cached_lines
-            if line[:4] == "    ")
+        make_abs_path = partial(os.path.join, self.repo_path)
+        non_cached_files = [
+            make_abs_path(filename)
+            for filename in get_selected_subjects(self.view, 'unstaged', 'merge-conflicts')
+        ]
+        cached_files = [
+            make_abs_path(filename)
+            for filename in get_selected_subjects(self.view, 'staged')
+        ]
 
         sublime.set_timeout_async(
-            lambda: self.load_inline_diff_windows(non_cached_files, cached_files), 0)
+            lambda: self.load_inline_diff_views(window, non_cached_files, cached_files)
+        )
 
-    def load_inline_diff_windows(self, non_cached_files, cached_files):
+    def load_inline_diff_views(self, window, non_cached_files, cached_files):
+        # type: (sublime.Window, List[str], List[str]) -> None
         for fpath in non_cached_files:
             syntax = util.file.get_syntax_for_file(fpath)
             settings = {
@@ -444,7 +486,7 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
                 "git_savvy.repo_path": self.repo_path,
                 "syntax": syntax
             }
-            self.view.window().run_command("gs_inline_diff", {"settings": settings})
+            window.run_command("gs_inline_diff", {"settings": settings})
 
         for fpath in cached_files:
             syntax = util.file.get_syntax_for_file(fpath)
@@ -453,7 +495,7 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
                 "git_savvy.repo_path": self.repo_path,
                 "syntax": syntax
             }
-            self.view.window().run_command("gs_inline_diff", {
+            window.run_command("gs_inline_diff", {
                 "settings": settings,
                 "cached": True
             })

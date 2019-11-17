@@ -9,7 +9,12 @@ from . import util
 from ..core.settings import GitSavvySettings
 
 
-interfaces = {}
+MYPY = False
+if MYPY:
+    from typing import Dict, Optional
+
+
+interfaces = {}  # type: Dict[sublime.ViewId, Interface]
 edit_views = {}
 subclasses = []
 
@@ -27,7 +32,6 @@ def focus_view(view):
 
 
 class Interface():
-
     interface_type = ""
     read_only = True
     syntax_file = ""
@@ -283,6 +287,7 @@ def register_listeners(InterfaceClass):
 
 
 def get_interface(view_id):
+    # type: (sublime.ViewId) -> Optional[Interface]
     return interfaces.get(view_id, None)
 
 
