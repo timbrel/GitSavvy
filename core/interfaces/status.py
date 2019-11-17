@@ -16,7 +16,7 @@ flatten = chain.from_iterable
 
 MYPY = False
 if MYPY:
-    from typing import Iterable, Iterator, List, Tuple
+    from typing import Iterable, Iterator, List, Optional, Tuple
 
 
 # Expected
@@ -447,6 +447,14 @@ def get_selected_files(view, base_path, *sections):
     ]
 
 
+def get_interface(view):
+    # type: (sublime.View) -> Optional[StatusInterface]
+    interface = ui.get_interface(view.id())
+    if not isinstance(interface, StatusInterface):
+        return None
+    return interface
+
+
 class GsStatusOpenFileCommand(TextCommand, GitCommand):
 
     """
@@ -553,11 +561,8 @@ class GsStatusStageFileCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        window = self.view.window()
-        if not window:
-            return
-        interface = ui.get_interface(self.view.id())
-        if not interface:
+        window, interface = self.view.window(), get_interface(self.view)
+        if not (window and interface):
             return
 
         file_paths = get_selected_subjects(self.view, 'unstaged', 'untracked', 'merge-conflicts')
@@ -577,11 +582,9 @@ class GsStatusUnstageFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        window = self.view.window()
-        if not window:
-            return
-        interface = ui.get_interface(self.view.id())
-        if not interface:
+        # type: (sublime.Edit) -> None
+        window, interface = self.view.window(), get_interface(self.view)
+        if not (window and interface):
             return
 
         file_paths = get_selected_subjects(self.view, 'staged')
