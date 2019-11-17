@@ -552,24 +552,20 @@ class GsStatusStageFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        # type: (sublime.Edit) -> None
+        window = self.view.window()
+        if not window:
+            return
         interface = ui.get_interface(self.view.id())
-        valid_ranges = (interface.get_view_regions("unstaged_files") +
-                        interface.get_view_regions("untracked_files") +
-                        interface.get_view_regions("merge_conflicts"))
+        if not interface:
+            return
 
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        # Remove the leading spaces and hyphen-character for deleted files.
-        file_paths = tuple(line[4:].strip() for line in lines if line)
-
+        file_paths = get_selected_subjects(self.view, 'unstaged', 'untracked', 'merge-conflicts')
         if file_paths:
             for fpath in file_paths:
                 self.stage_file(fpath, force=False)
 
-            self.view.window().status_message("Staged files successfully.")
+            window.status_message("Staged files successfully.")
             interface.refresh_repo_status_and_render()
 
 
@@ -581,20 +577,19 @@ class GsStatusUnstageFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        window = self.view.window()
+        if not window:
+            return
         interface = ui.get_interface(self.view.id())
-        valid_ranges = interface.get_view_regions("staged_files")
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        # Remove the leading spaces and hyphen-character for deleted files.
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        if not interface:
+            return
 
+        file_paths = get_selected_subjects(self.view, 'staged')
         if file_paths:
             for fpath in file_paths:
                 self.unstage_file(fpath)
-            self.view.window().status_message("Unstaged files successfully.")
+
+            window.status_message("Unstaged files successfully.")
             interface.refresh_repo_status_and_render()
 
 
