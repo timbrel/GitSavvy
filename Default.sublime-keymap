@@ -113,8 +113,7 @@
         "command": "gs_status_open_file",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
-            { "key": "selector", "operator": "equal", "operand": "git-savvy.status meta.git-savvy.section.body.row.file" }
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
         ]
     },
     {

@@ -443,11 +443,21 @@ class GsStatusOpenFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        lines = util.view.get_lines_from_regions(self.view, self.view.sel())
-        file_paths = (line.strip() for line in lines if line[:4] == "    ")
-        abs_paths = (os.path.join(self.repo_path, file_path) for file_path in file_paths)
-        for path in abs_paths:
-            self.view.window().open_file(path)
+        # type: (sublime.Edit) -> None
+        window = self.view.window()
+        if not window:
+            return
+
+        make_abs_path = partial(os.path.join, self.repo_path)
+        files = [
+            make_abs_path(filename)
+            for filename in get_selected_subjects(
+                self.view, 'staged', 'unstaged', 'untracked', 'merge_conflicts'
+            )
+        ]
+
+        for fpath in files:
+            window.open_file(fpath)
 
 
 class GsStatusDiffInlineCommand(TextCommand, GitCommand):
