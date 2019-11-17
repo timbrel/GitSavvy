@@ -604,21 +604,19 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        untracked_files = self.discard_untracked(interface)
-        unstaged_files = self.discard_unstaged(interface)
+        # type: (sublime.Edit) -> None
+        window, interface = self.view.window(), get_interface(self.view)
+        if not (window and interface):
+            return
+        untracked_files = self.discard_untracked()
+        unstaged_files = self.discard_unstaged()
         if untracked_files or unstaged_files:
-            self.view.window().status_message("Successfully discarded changes.")
+            window.status_message("Successfully discarded changes.")
             interface.refresh_repo_status_and_render()
 
-    def discard_untracked(self, interface):
-        valid_ranges = interface.get_view_regions("untracked_files")
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+    def discard_untracked(self):
+        # type: () -> Optional[List[str]]
+        file_paths = get_selected_subjects(self.view, 'untracked')
 
         @util.actions.destructive(description="discard one or more untracked files")
         def do_discard():
@@ -627,16 +625,11 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
 
         if file_paths:
             return do_discard()
+        return None
 
-    def discard_unstaged(self, interface):
-        valid_ranges = (interface.get_view_regions("unstaged_files") +
-                        interface.get_view_regions("merge_conflicts"))
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+    def discard_unstaged(self):
+        # type: () -> Optional[List[str]]
+        file_paths = get_selected_subjects(self.view, 'unstaged', 'merge-conflicts')
 
         @util.actions.destructive(description="discard one or more unstaged files")
         def do_discard():
@@ -645,6 +638,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
 
         if file_paths:
             return do_discard()
+        return None
 
 
 class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
