@@ -435,6 +435,18 @@ def get_selected_subjects(view, *sections):
     ]
 
 
+def get_selected_files(view, base_path, *sections):
+    # type: (sublime.View, str, str) -> List[str]
+    if not sections:
+        sections = ('staged', 'unstaged', 'untracked', 'merge-conflicts')
+
+    make_abs_path = partial(os.path.join, base_path)
+    return [
+        make_abs_path(filename)
+        for filename in get_selected_subjects(view, *sections)
+    ]
+
+
 class GsStatusOpenFileCommand(TextCommand, GitCommand):
 
     """
@@ -448,15 +460,7 @@ class GsStatusOpenFileCommand(TextCommand, GitCommand):
         if not window:
             return
 
-        make_abs_path = partial(os.path.join, self.repo_path)
-        files = [
-            make_abs_path(filename)
-            for filename in get_selected_subjects(
-                self.view, 'staged', 'unstaged', 'untracked', 'merge_conflicts'
-            )
-        ]
-
-        for fpath in files:
+        for fpath in get_selected_files(self.view, self.repo_path):
             window.open_file(fpath)
 
 
@@ -473,15 +477,9 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
         if not window:
             return
 
-        make_abs_path = partial(os.path.join, self.repo_path)
-        non_cached_files = [
-            make_abs_path(filename)
-            for filename in get_selected_subjects(self.view, 'unstaged', 'merge-conflicts')
-        ]
-        cached_files = [
-            make_abs_path(filename)
-            for filename in get_selected_subjects(self.view, 'staged')
-        ]
+        repo_path = self.repo_path
+        non_cached_files = get_selected_files(self.view, repo_path, 'unstaged', 'merge-conflicts')
+        cached_files = get_selected_files(self.view, repo_path, 'staged')
 
         sublime.set_timeout_async(
             lambda: self.load_inline_diff_views(window, non_cached_files, cached_files)
