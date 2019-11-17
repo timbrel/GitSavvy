@@ -517,45 +517,28 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
+        # type: (sublime.Edit) -> None
+        window = self.view.window()
+        if not window:
+            return
 
-        non_cached_sections = (interface.get_view_regions("unstaged_files") +
-                               interface.get_view_regions("untracked_files") +
-                               interface.get_view_regions("merge_conflicts"))
-        non_cached_lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=non_cached_sections
+        repo_path = self.repo_path
+        non_cached_files = get_selected_files(
+            self.view, repo_path, 'unstaged', 'untracked', 'merge-conflicts'
         )
-        non_cached_files = (
-            os.path.join(self.repo_path, line.strip())
-            for line in non_cached_lines
-            if line[:4] == "    "
-        )
-
-        cached_sections = interface.get_view_regions("staged_files")
-        cached_lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=cached_sections
-        )
-        cached_files = (
-            os.path.join(self.repo_path, line.strip())
-            for line in cached_lines
-            if line[:4] == "    "
-        )
+        cached_files = get_selected_files(self.view, repo_path, 'staged')
 
         sublime.set_timeout_async(
-            lambda: self.load_diff_windows(non_cached_files, cached_files), 0)
+            lambda: self.load_diff_windows(window, non_cached_files, cached_files)
+        )
 
-    def load_diff_windows(self, non_cached_files, cached_files):
+    def load_diff_windows(self, window, non_cached_files, cached_files):
+        # type: (sublime.Window, List[str], List[str]) -> None
         for fpath in non_cached_files:
-            self.view.window().run_command("gs_diff", {
-                "file_path": fpath,
-            })
+            window.run_command("gs_diff", {"file_path": fpath})
 
         for fpath in cached_files:
-            self.view.window().run_command("gs_diff", {
+            window.run_command("gs_diff", {
                 "file_path": fpath,
                 "in_cached_mode": True,
             })
