@@ -6,6 +6,7 @@ import threading
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
+from ..git_mixins.status import FileStatus
 from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
@@ -814,18 +815,10 @@ class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        valid_ranges = (interface.get_view_regions("unstaged_files") +
-                        interface.get_view_regions("untracked_files") +
-                        interface.get_view_regions("merge_conflicts") +
-                        interface.get_view_regions("staged_files"))
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
+        # type: (sublime.Edit) -> None
+        file_paths = get_selected_subjects(
+            self.view, 'staged', 'unstaged', 'untracked', 'merge-conflicts'
         )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
-
         if len(file_paths) > 1:
             sublime.error_message("You can only launch merge tool for a single file at a time.")
             return
@@ -837,26 +830,28 @@ class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
     # TODO: refactor this alongside interfaces.rebase.GsRebaseUseCommitVersionCommand
 
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+        # type: (sublime.Edit) -> None
+        sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        interface = ui.get_interface(self.view.id())
-        conflicts = interface.state['merge_conflicts']
+        # type: () -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
 
-        sels = self.view.sel()
-        line_regions = [self.view.line(sel) for sel in sels]
-        paths = (line[4:]
-                 for reg in line_regions
-                 for line in self.view.substr(reg).split("\n") if line)
-        for path in paths:
-            if self.is_commit_version_deleted(path, conflicts):
-                self.git("rm", "--", path)
+        conflicts = interface.state['merge_conflicts']
+        file_paths = get_selected_subjects(self.view, 'merge-conflicts')
+
+        for fpath in file_paths:
+            if self.is_commit_version_deleted(fpath, conflicts):
+                self.git("rm", "--", fpath)
             else:
-                self.git("checkout", "--theirs", "--", path)
-                self.stage_file(path)
+                self.git("checkout", "--theirs", "--", fpath)
+                self.stage_file(fpath)
         util.view.refresh_gitsavvy(self.view)
 
     def is_commit_version_deleted(self, path, conflicts):
+        # type: (str, List[FileStatus]) -> bool
         for conflict in conflicts:
             if conflict.path == path:
                 return conflict.working_status == "D"
@@ -866,26 +861,28 @@ class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
 class GsStatusUseBaseVersionCommand(TextCommand, GitCommand):
 
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+        # type: (sublime.Edit) -> None
+        sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        interface = ui.get_interface(self.view.id())
-        conflicts = interface.state['merge_conflicts']
+        # type: () -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
 
-        sels = self.view.sel()
-        line_regions = [self.view.line(sel) for sel in sels]
-        paths = (line[4:]
-                 for reg in line_regions
-                 for line in self.view.substr(reg).split("\n") if line)
-        for path in paths:
-            if self.is_base_version_deleted(path, conflicts):
-                self.git("rm", "--", path)
+        conflicts = interface.state['merge_conflicts']
+        file_paths = get_selected_subjects(self.view, 'merge-conflicts')
+
+        for fpath in file_paths:
+            if self.is_base_version_deleted(fpath, conflicts):
+                self.git("rm", "--", fpath)
             else:
-                self.git("checkout", "--ours", "--", path)
-                self.stage_file(path)
+                self.git("checkout", "--ours", "--", fpath)
+                self.stage_file(fpath)
         util.view.refresh_gitsavvy(self.view)
 
     def is_base_version_deleted(self, path, conflicts):
+        # type: (str, List[FileStatus]) -> bool
         for conflict in conflicts:
             if conflict.path == path:
                 return conflict.index_status == "D"
