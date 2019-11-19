@@ -848,7 +848,8 @@ class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
             else:
                 self.git("checkout", "--theirs", "--", fpath)
                 self.stage_file(fpath)
-        util.view.refresh_gitsavvy(self.view)
+
+        interface.refresh_repo_status_and_render()
 
     def is_commit_version_deleted(self, path, conflicts):
         # type: (str, List[FileStatus]) -> bool
@@ -879,7 +880,8 @@ class GsStatusUseBaseVersionCommand(TextCommand, GitCommand):
             else:
                 self.git("checkout", "--ours", "--", fpath)
                 self.stage_file(fpath)
-        util.view.refresh_gitsavvy(self.view)
+
+        interface.refresh_repo_status_and_render()
 
     def is_base_version_deleted(self, path, conflicts):
         # type: (str, List[FileStatus]) -> bool
