@@ -732,22 +732,18 @@ class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        valid_ranges = (interface.get_view_regions("unstaged_files") +
-                        interface.get_view_regions("untracked_files") +
-                        interface.get_view_regions("merge_conflicts") +
-                        interface.get_view_regions("staged_files"))
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        # type: (sublime.Edit) -> None
+        window, interface = self.view.window(), get_interface(self.view)
+        if not (window and interface):
+            return
 
+        file_paths = get_selected_subjects(
+            self.view, 'staged', 'unstaged', 'untracked', 'merge-conflicts'
+        )
         if file_paths:
             for fpath in file_paths:
                 self.add_ignore(os.path.join("/", fpath))
-            self.view.window().status_message("Successfully ignored files.")
+            window.status_message("Successfully ignored files.")
             interface.refresh_repo_status_and_render()
 
 
@@ -760,20 +756,16 @@ class GsStatusIgnorePatternCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        valid_ranges = (interface.get_view_regions("unstaged_files") +
-                        interface.get_view_regions("untracked_files") +
-                        interface.get_view_regions("merge_conflicts") +
-                        interface.get_view_regions("staged_files"))
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        # type: (sublime.Edit) -> None
+        window, interface = self.view.window(), get_interface(self.view)
+        if not (window and interface):
+            return
 
+        file_paths = get_selected_subjects(
+            self.view, 'staged', 'unstaged', 'untracked', 'merge-conflicts'
+        )
         if file_paths:
-            self.view.window().run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
+            window.run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
 
 
 class GsStatusStashCommand(TextCommand, GitCommand):
