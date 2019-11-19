@@ -831,10 +831,6 @@ class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
-        # type: () -> None
         interface = get_interface(self.view)
         if not interface:
             return
@@ -863,10 +859,6 @@ class GsStatusUseBaseVersionCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
-        # type: () -> None
         interface = get_interface(self.view)
         if not interface:
             return
