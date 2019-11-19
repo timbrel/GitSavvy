@@ -649,18 +649,13 @@ class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        valid_ranges = (interface.get_view_regions("unstaged_files") +
-                        interface.get_view_regions("merge_conflicts") +
-                        interface.get_view_regions("staged_files"))
-
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
-        self.view.run_command("gs_open_file_on_remote", {"fpath": list(file_paths)})
+        # type: (sublime.Edit) -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
+        file_paths = get_selected_subjects(self.view, 'staged', 'unstaged', 'merge-conflicts')
+        if file_paths:
+            self.view.run_command("gs_github_open_file_on_remote", {"fpath": file_paths})
 
 
 class GsStatusStageAllFilesCommand(TextCommand, GitCommand):
