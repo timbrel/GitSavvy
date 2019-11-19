@@ -731,7 +731,11 @@ class GsStatusCommitCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        self.view.window().run_command("gs_commit", {"repo_path": self.repo_path})
+        # type: (sublime.Edit) -> None
+        window = self.view.window()
+        if not window:
+            return
+        window.run_command("gs_commit", {"repo_path": self.repo_path})
 
 
 class GsStatusCommitUnstagedCommand(TextCommand, GitCommand):
@@ -742,10 +746,14 @@ class GsStatusCommitUnstagedCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        self.view.window().run_command(
-            "gs_commit",
-            {"repo_path": self.repo_path, "include_unstaged": True}
-        )
+        # type: (sublime.Edit) -> None
+        window = self.view.window()
+        if not window:
+            return
+        window.run_command("gs_commit", {
+            "repo_path": self.repo_path,
+            "include_unstaged": True
+        })
 
 
 class GsStatusAmendCommand(TextCommand, GitCommand):
@@ -755,10 +763,14 @@ class GsStatusAmendCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        self.view.window().run_command(
-            "gs_commit",
-            {"repo_path": self.repo_path, "amend": True}
-        )
+        # type: (sublime.Edit) -> None
+        window = self.view.window()
+        if not window:
+            return
+        window.run_command("gs_commit", {
+            "repo_path": self.repo_path,
+            "amend": True
+        })
 
 
 class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
