@@ -665,8 +665,12 @@ class GsStatusStageAllFilesCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        # type: (sublime.Edit) -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
+
         self.add_all_tracked_files()
-        interface = ui.get_interface(self.view.id())
         interface.refresh_repo_status_and_render()
 
 
@@ -677,8 +681,12 @@ class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        # type: (sublime.Edit) -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
+
         self.add_all_files()
-        interface = ui.get_interface(self.view.id())
         interface.refresh_repo_status_and_render()
 
 
@@ -689,8 +697,12 @@ class GsStatusUnstageAllFilesCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        # type: (sublime.Edit) -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
+
         self.unstage_all_files()
-        interface = ui.get_interface(self.view.id())
         interface.refresh_repo_status_and_render()
 
 
@@ -703,8 +715,12 @@ class GsStatusDiscardAllChangesCommand(TextCommand, GitCommand):
     @util.actions.destructive(description="discard all unstaged changes, "
                                           "and delete all untracked files")
     def run(self, edit):
+        # type: (sublime.Edit) -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
+
         self.discard_all_unstaged()
-        interface = ui.get_interface(self.view.id())
         interface.refresh_repo_status_and_render()
 
 
