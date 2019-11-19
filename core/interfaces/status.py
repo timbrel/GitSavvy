@@ -473,6 +473,23 @@ class GsStatusOpenFileCommand(TextCommand, GitCommand):
             window.open_file(fpath)
 
 
+class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
+
+    """
+    For every file that is selected or under a cursor, open a new browser
+    window to that file on GitHub.
+    """
+
+    def run(self, edit):
+        # type: (sublime.Edit) -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
+        file_paths = get_selected_subjects(self.view, 'staged', 'unstaged', 'merge-conflicts')
+        if file_paths:
+            self.view.run_command("gs_github_open_file_on_remote", {"fpath": file_paths})
+
+
 class GsStatusDiffInlineCommand(TextCommand, GitCommand):
 
     """
@@ -640,23 +657,6 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
         if file_paths:
             return do_discard()
         return None
-
-
-class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
-
-    """
-    For every file that is selected or under a cursor, open a new browser
-    window to that file on GitHub.
-    """
-
-    def run(self, edit):
-        # type: (sublime.Edit) -> None
-        interface = get_interface(self.view)
-        if not interface:
-            return
-        file_paths = get_selected_subjects(self.view, 'staged', 'unstaged', 'merge-conflicts')
-        if file_paths:
-            self.view.run_command("gs_github_open_file_on_remote", {"fpath": file_paths})
 
 
 class GsStatusStageAllFilesCommand(TextCommand, GitCommand):
