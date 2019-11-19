@@ -774,7 +774,7 @@ class GsStatusStashCommand(TextCommand, GitCommand):
     Run action from status dashboard to stash commands. Need to have this command to
     read the interface and call the stash commands
 
-    action          multipul staches
+    action          multiple stashes
     show            True
     apply           False
     pop             False
@@ -782,33 +782,29 @@ class GsStatusStashCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, action=None):
-        interface = ui.get_interface(self.view.id())
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=interface.get_view_regions("stashes")
-        )
-        ids = tuple(line[line.find("(") + 1:line.find(")")] for line in lines if line)
+        # type: (sublime.Edit, str) -> None
+        window = self.view.window()
+        if not window:
+            return
 
-        if len(ids) == 0:
-            # happens if command get called when none of the cursors
-            # is pointed on one stash
+        ids = get_selected_subjects(self.view, 'stashes')
+        if not ids:
             return
 
         if action == "show":
-            self.view.window().run_command("gs_stash_show", {"stash_ids": ids})
+            window.run_command("gs_stash_show", {"stash_ids": ids})
             return
 
         if len(ids) > 1:
-            self.view.window().status_message("You can only {} one stash at a time.".format(action))
+            window.status_message("You can only {} one stash at a time.".format(action))
             return
 
         if action == "apply":
-            self.view.window().run_command("gs_stash_apply", {"stash_id": ids[0]})
+            window.run_command("gs_stash_apply", {"stash_id": ids[0]})
         elif action == "pop":
-            self.view.window().run_command("gs_stash_pop", {"stash_id": ids[0]})
+            window.run_command("gs_stash_pop", {"stash_id": ids[0]})
         elif action == "drop":
-            self.view.window().run_command("gs_stash_drop", {"stash_id": ids[0]})
+            window.run_command("gs_stash_drop", {"stash_id": ids[0]})
 
 
 class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):
