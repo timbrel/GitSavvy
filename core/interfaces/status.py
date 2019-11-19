@@ -585,9 +585,7 @@ class GsStatusStageFileCommand(TextCommand, GitCommand):
 
         file_paths = get_selected_subjects(self.view, 'unstaged', 'untracked', 'merge-conflicts')
         if file_paths:
-            for fpath in file_paths:
-                self.stage_file(fpath, force=False)
-
+            self.stage_file(*file_paths, force=False)
             window.status_message("Staged files successfully.")
             interface.refresh_repo_status_and_render()
 
@@ -607,9 +605,7 @@ class GsStatusUnstageFileCommand(TextCommand, GitCommand):
 
         file_paths = get_selected_subjects(self.view, 'staged')
         if file_paths:
-            for fpath in file_paths:
-                self.unstage_file(fpath)
-
+            self.unstage_file(*file_paths)
             window.status_message("Unstaged files successfully.")
             interface.refresh_repo_status_and_render()
 
