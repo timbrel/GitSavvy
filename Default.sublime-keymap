@@ -260,7 +260,7 @@
 
     {
         "keys": ["c"],
-        "command": "gs_status_commit",
+        "command": "gs_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
@@ -268,7 +268,8 @@
     },
     {
         "keys": ["C"],
-        "command": "gs_status_commit_unstaged",
+        "command": "gs_commit",
+        "args": {"include_unstaged": true},
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
@@ -276,7 +277,8 @@
     },
     {
         "keys": ["m"],
-        "command": "gs_status_amend",
+        "command": "gs_commit",
+        "args": {"amend": true},
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
@@ -533,7 +535,7 @@
     },
     {
         "keys": ["c"],
-        "command": "gs_status_commit",
+        "command": "gs_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
@@ -542,7 +544,8 @@
     },
     {
         "keys": ["C"],
-        "command": "gs_status_commit_unstaged",
+        "command": "gs_commit",
+        "args": {"include_unstaged": true},
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },

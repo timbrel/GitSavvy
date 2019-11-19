@@ -724,55 +724,6 @@ class GsStatusDiscardAllChangesCommand(TextCommand, GitCommand):
         interface.refresh_repo_status_and_render()
 
 
-class GsStatusCommitCommand(TextCommand, GitCommand):
-
-    """
-    Open a commit window.
-    """
-
-    def run(self, edit):
-        # type: (sublime.Edit) -> None
-        window = self.view.window()
-        if not window:
-            return
-        window.run_command("gs_commit", {"repo_path": self.repo_path})
-
-
-class GsStatusCommitUnstagedCommand(TextCommand, GitCommand):
-
-    """
-    Open a commit window.  When the commit message is provided, stage all unstaged
-    changes and then do the commit.
-    """
-
-    def run(self, edit):
-        # type: (sublime.Edit) -> None
-        window = self.view.window()
-        if not window:
-            return
-        window.run_command("gs_commit", {
-            "repo_path": self.repo_path,
-            "include_unstaged": True
-        })
-
-
-class GsStatusAmendCommand(TextCommand, GitCommand):
-
-    """
-    Open a commit window to amend the previous commit.
-    """
-
-    def run(self, edit):
-        # type: (sublime.Edit) -> None
-        window = self.view.window()
-        if not window:
-            return
-        window.run_command("gs_commit", {
-            "repo_path": self.repo_path,
-            "amend": True
-        })
-
-
 class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
 
     """
