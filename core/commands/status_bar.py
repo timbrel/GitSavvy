@@ -7,16 +7,10 @@ from ...common.util import debug
 
 
 class GsStatusBarEventListener(EventListener):
-
-    # these methods should be run synchronously to check if the
-    # view is transient.
-    def on_new(self, view):
+    def on_new_async(self, view):
         view.run_command("gs_update_status_bar")
 
-    def on_load(self, view):
-        view.run_command("gs_update_status_bar")
-
-    def on_activated(self, view):
+    def on_activated_async(self, view):
         view.run_command("gs_update_status_bar")
 
     def on_post_save(self, view):
@@ -30,18 +24,16 @@ update_status_bar_soon = False
 def view_is_transient(view):
     """Return whether a view can be considered 'transient'.
 
-    For our purpose, transient views are 'detached' views or widgets
-    (aka quick or input panels).
+    We especially want to exclude widgets and preview views.
     """
 
-    # 'Detached' (already closed) views don't have a window.
+    # 'Detached' (already closed) views and previews don't have
+    # a window.
     window = view.window()
     if not window:
         return True
 
-    # Widgets are normal views but the typical getters don't list them.
-    group, index = window.get_view_index(view)
-    if group == -1:
+    if view.settings().get('is_widget'):
         return True
 
     return False
