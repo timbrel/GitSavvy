@@ -130,6 +130,8 @@ def reload_package(pkg_name, dummy=True, verbose=True, then=None):
     if then:
         then()
 
+    sublime.active_window().status_message('GitSavvy has 🙌 reloaded.')
+
 
 def resolve_dependencies(root_name):
     """Given the name of a dependency, return all dependencies and packages
