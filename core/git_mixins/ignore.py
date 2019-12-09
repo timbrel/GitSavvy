@@ -23,5 +23,5 @@ class IgnoreMixin():
                 linesep = os.linesep
 
         gitignore = os.path.join(self.repo_path, ".gitignore")
-        with util.file.safe_open(gitignore, "at", encoding="utf-8") as ignore_file:
-            ignore_file.write(linesep + path_or_pattern + linesep)
+        with util.file.safe_open(gitignore, "at", encoding="utf-8", newline=linesep) as ignore_file:
+            ignore_file.write("\n" + path_or_pattern + "\n")
