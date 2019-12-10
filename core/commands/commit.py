@@ -194,7 +194,7 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
     """
 
     def on_selection_modified(self, view):
-        if 'make_commit' not in view.settings().get('syntax'):
+        if 'make_commit' not in view.settings().get('syntax', ''):
             return
 
         if not self.savvy_settings.get('pedantic_commit'):
