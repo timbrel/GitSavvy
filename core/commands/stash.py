@@ -92,7 +92,11 @@ class GsStashDropCommand(SelectStashIdMixin, GitCommand):
         if match:
             commit = match.group(1)
             print(DROP_UNDO_MESSAGE.format(stash_id, commit))
-        util.view.flash(self.view, "Successfully dropped stash ({}).".format(stash_id))
+        util.view.flash(
+            self.view,
+            "Successfully dropped stash ({}). "
+            "Open Sublime console for undo instructions.".format(stash_id)
+        )
 
         if self.view.settings().get("git_savvy.stash_view.stash_id", None) == stash_id:
             self.view.close()
