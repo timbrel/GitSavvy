@@ -482,9 +482,6 @@ class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        interface = get_interface(self.view)
-        if not interface:
-            return
         file_paths = get_selected_subjects(self.view, 'staged', 'unstaged', 'merge-conflicts')
         if file_paths:
             self.view.run_command("gs_github_open_file_on_remote", {"fpath": file_paths})
