@@ -1,0 +1,24 @@
+GitSavvy 2.20.0
+===============
+
+- GitSavvy moved to https://github.com/timbrel/GitSavvy
+
+- Improve parsing and colorization of diffs in "word-diff" mode. Use
+  `<w>` to enter that mode as usual.
+
+- Improve the stash view. 
+  Enter the stash view e.g. from the status dashboard via `<t><s>`. While
+  looking at the stash try `<?>` for help, or just `<enter>` to see the 
+  available, typical actions.
+
+- Renovate the standard status view to fix a lot of small edge cases. Esp.
+  improve the cursor jumping while staging/unstaging etc.
+
+- Fix newline handling on Windows when .gitignoring files. (@joreiff)
+
+We now ship code to reload the plugin after updates automatically and silently. 
+This will be in full effect for the very next update you see.
+
+
+For more info:
+  https://github.com/timbrel/GitSavvy/compare/2.19.1...2.20.0
