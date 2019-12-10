@@ -1,6 +1,7 @@
 class StageUnstageMixin():
 
-    def stage_file(self, fpath, force=True):
+    def stage_file(self, *fpath, force=True):
+        # type: (str, bool) -> None
         """
         Given an absolute path or path relative to the repo's root, stage
         the file.
@@ -10,15 +11,16 @@ class StageUnstageMixin():
             "-f" if force else None,
             "--all",
             "--",
-            fpath
+            *fpath
         )
 
-    def unstage_file(self, fpath):
+    def unstage_file(self, *fpath):
+        # type: (str) -> None
         """
         Given an absolute path or path relative to the repo's root, unstage
         the file.
         """
-        self.git("reset", "HEAD", fpath)
+        self.git("reset", "HEAD", "--", *fpath)
 
     def add_all_tracked_files(self):
         """
