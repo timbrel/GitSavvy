@@ -23,8 +23,10 @@ except ImportError:
         return False
 
 
-def reload_plugin():
-    threading.Thread(target=functools.partial(reload_package, 'GitSavvy')).start()
+def reload_plugin(verbose=True, then=None):
+    threading.Thread(
+        target=functools.partial(reload_package, 'GitSavvy', verbose=verbose, then=then)
+    ).start()
 
 
 def dprint(*args, fill=None, fill_width=60, **kwargs):
@@ -77,7 +79,7 @@ def package_plugins(pkg_name):
     ]
 
 
-def reload_package(pkg_name, dummy=True, verbose=True):
+def reload_package(pkg_name, dummy=True, verbose=True, then=None):
     if pkg_name not in sys.modules:
         dprint("error:", pkg_name, "is not loaded.")
         return
@@ -124,6 +126,11 @@ def reload_package(pkg_name, dummy=True, verbose=True):
 
     if verbose:
         dprint("end", fill='-')
+
+    if then:
+        then()
+
+    sublime.active_window().status_message('GitSavvy has 🙌 reloaded.')
 
 
 def resolve_dependencies(root_name):

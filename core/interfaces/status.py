@@ -1,14 +1,23 @@
 from functools import partial, wraps
+from itertools import chain
 import os
 import threading
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
+from ..git_mixins.status import FileStatus
 from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
+
+flatten = chain.from_iterable
+
+
+MYPY = False
+if MYPY:
+    from typing import Iterable, Iterator, List, Optional, Tuple
 
 
 # Expected
@@ -252,6 +261,16 @@ class StatusInterface(ui.Interface, GitCommand):
             "nuke_cursors": nuke_cursors
         })
 
+        on_special_symbol = any(
+            self.view.match_selector(
+                s.begin(),
+                'meta.git-savvy.section.body.row'
+            )
+            for s in self.view.sel()
+        )
+        if not on_special_symbol:
+            self.view.run_command("gs_status_navigate_goto")
+
     def fetch_repo_status(self, delim=None):
         lines = self._get_status()
         files_statuses = self._parse_status_for_file_statuses(lines)
@@ -283,9 +302,6 @@ class StatusInterface(ui.Interface, GitCommand):
     def after_view_creation(self, view):
         view.settings().set("result_file_regex", EXTRACT_FILENAME_RE)
         view.settings().set("result_base_dir", self.repo_path)
-
-    def on_new_dashboard(self):
-        self.view.run_command("gs_status_navigate_file")
 
     @ui.partial("branch_status")
     def render_branch_status(self):
@@ -378,6 +394,68 @@ class StatusInterface(ui.Interface, GitCommand):
 ui.register_listeners(StatusInterface)
 
 
+def get_subjects(view, *sections):
+    # type: (sublime.View, str) -> Iterable[sublime.Region]
+    return flatten(
+        view.find_by_selector(
+            'meta.git-savvy.status.section.{} meta.git-savvy.status.subject'.format(section)
+        )
+        for section in sections
+    )
+
+
+def region_as_tuple(region):
+    # type: (sublime.Region) -> Tuple[int, int]
+    return region.begin(), region.end()
+
+
+def region_from_tuple(tuple_):
+    # type: (Tuple[int, int]) -> sublime.Region
+    return sublime.Region(*tuple_)
+
+
+def unique_regions(regions):
+    # type: (Iterable[sublime.Region]) -> Iterator[sublime.Region]
+    # Regions are not hashable so we unpack them to tuples,
+    # then use set, finally pack them again
+    return map(region_from_tuple, set(map(region_as_tuple, regions)))
+
+
+def unique_selected_lines(view):
+    # type: (sublime.View) -> List[sublime.Region]
+    return list(unique_regions(flatten(view.lines(s) for s in view.sel())))
+
+
+def get_selected_subjects(view, *sections):
+    # type: (sublime.View, str) -> List[str]
+    selected_lines = unique_selected_lines(view)
+    return [
+        view.substr(subject)
+        for subject in get_subjects(view, *sections)
+        if any(line.contains(subject) for line in selected_lines)
+    ]
+
+
+def get_selected_files(view, base_path, *sections):
+    # type: (sublime.View, str, str) -> List[str]
+    if not sections:
+        sections = ('staged', 'unstaged', 'untracked', 'merge-conflicts')
+
+    make_abs_path = partial(os.path.join, base_path)
+    return [
+        make_abs_path(filename)
+        for filename in get_selected_subjects(view, *sections)
+    ]
+
+
+def get_interface(view):
+    # type: (sublime.View) -> Optional[StatusInterface]
+    interface = ui.get_interface(view.id())
+    if not isinstance(interface, StatusInterface):
+        return None
+    return interface
+
+
 class GsStatusOpenFileCommand(TextCommand, GitCommand):
 
     """
@@ -386,11 +464,27 @@ class GsStatusOpenFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        lines = util.view.get_lines_from_regions(self.view, self.view.sel())
-        file_paths = (line.strip() for line in lines if line[:4] == "    ")
-        abs_paths = (os.path.join(self.repo_path, file_path) for file_path in file_paths)
-        for path in abs_paths:
-            self.view.window().open_file(path)
+        # type: (sublime.Edit) -> None
+        window = self.view.window()
+        if not window:
+            return
+
+        for fpath in get_selected_files(self.view, self.repo_path):
+            window.open_file(fpath)
+
+
+class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
+
+    """
+    For every file that is selected or under a cursor, open a new browser
+    window to that file on GitHub.
+    """
+
+    def run(self, edit):
+        # type: (sublime.Edit) -> None
+        file_paths = get_selected_subjects(self.view, 'staged', 'unstaged', 'merge-conflicts')
+        if file_paths:
+            self.view.run_command("gs_github_open_file_on_remote", {"fpath": file_paths})
 
 
 class GsStatusDiffInlineCommand(TextCommand, GitCommand):
@@ -401,35 +495,21 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
+        # type: (sublime.Edit) -> None
+        window = self.view.window()
+        if not window:
+            return
 
-        non_cached_sections = (interface.get_view_regions("unstaged_files") +
-                               interface.get_view_regions("merge_conflicts"))
-        non_cached_lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=non_cached_sections
-        )
-        non_cached_files = (
-            os.path.join(self.repo_path, line.strip())
-            for line in non_cached_lines
-            if line[:4] == "    ")
-
-        cached_sections = interface.get_view_regions("staged_files")
-        cached_lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=cached_sections
-        )
-        cached_files = (
-            os.path.join(self.repo_path, line.strip())
-            for line in cached_lines
-            if line[:4] == "    ")
+        repo_path = self.repo_path
+        non_cached_files = get_selected_files(self.view, repo_path, 'unstaged', 'merge-conflicts')
+        cached_files = get_selected_files(self.view, repo_path, 'staged')
 
         sublime.set_timeout_async(
-            lambda: self.load_inline_diff_windows(non_cached_files, cached_files), 0)
+            lambda: self.load_inline_diff_views(window, non_cached_files, cached_files)
+        )
 
-    def load_inline_diff_windows(self, non_cached_files, cached_files):
+    def load_inline_diff_views(self, window, non_cached_files, cached_files):
+        # type: (sublime.Window, List[str], List[str]) -> None
         for fpath in non_cached_files:
             syntax = util.file.get_syntax_for_file(fpath)
             settings = {
@@ -437,7 +517,7 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
                 "git_savvy.repo_path": self.repo_path,
                 "syntax": syntax
             }
-            self.view.window().run_command("gs_inline_diff", {"settings": settings})
+            window.run_command("gs_inline_diff", {"settings": settings})
 
         for fpath in cached_files:
             syntax = util.file.get_syntax_for_file(fpath)
@@ -446,7 +526,7 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
                 "git_savvy.repo_path": self.repo_path,
                 "syntax": syntax
             }
-            self.view.window().run_command("gs_inline_diff", {
+            window.run_command("gs_inline_diff", {
                 "settings": settings,
                 "cached": True
             })
@@ -460,45 +540,28 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
+        # type: (sublime.Edit) -> None
+        window = self.view.window()
+        if not window:
+            return
 
-        non_cached_sections = (interface.get_view_regions("unstaged_files") +
-                               interface.get_view_regions("untracked_files") +
-                               interface.get_view_regions("merge_conflicts"))
-        non_cached_lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=non_cached_sections
+        repo_path = self.repo_path
+        non_cached_files = get_selected_files(
+            self.view, repo_path, 'unstaged', 'untracked', 'merge-conflicts'
         )
-        non_cached_files = (
-            os.path.join(self.repo_path, line.strip())
-            for line in non_cached_lines
-            if line[:4] == "    "
-        )
-
-        cached_sections = interface.get_view_regions("staged_files")
-        cached_lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=cached_sections
-        )
-        cached_files = (
-            os.path.join(self.repo_path, line.strip())
-            for line in cached_lines
-            if line[:4] == "    "
-        )
+        cached_files = get_selected_files(self.view, repo_path, 'staged')
 
         sublime.set_timeout_async(
-            lambda: self.load_diff_windows(non_cached_files, cached_files), 0)
+            lambda: self.load_diff_windows(window, non_cached_files, cached_files)
+        )
 
-    def load_diff_windows(self, non_cached_files, cached_files):
+    def load_diff_windows(self, window, non_cached_files, cached_files):
+        # type: (sublime.Window, List[str], List[str]) -> None
         for fpath in non_cached_files:
-            self.view.window().run_command("gs_diff", {
-                "file_path": fpath,
-            })
+            window.run_command("gs_diff", {"file_path": fpath})
 
         for fpath in cached_files:
-            self.view.window().run_command("gs_diff", {
+            window.run_command("gs_diff", {
                 "file_path": fpath,
                 "in_cached_mode": True,
             })
@@ -512,24 +575,15 @@ class GsStatusStageFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        valid_ranges = (interface.get_view_regions("unstaged_files") +
-                        interface.get_view_regions("untracked_files") +
-                        interface.get_view_regions("merge_conflicts"))
+        # type: (sublime.Edit) -> None
+        window, interface = self.view.window(), get_interface(self.view)
+        if not (window and interface):
+            return
 
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        # Remove the leading spaces and hyphen-character for deleted files.
-        file_paths = tuple(line[4:].strip() for line in lines if line)
-
+        file_paths = get_selected_subjects(self.view, 'unstaged', 'untracked', 'merge-conflicts')
         if file_paths:
-            for fpath in file_paths:
-                self.stage_file(fpath, force=False)
-
-            self.view.window().status_message("Staged files successfully.")
+            self.stage_file(*file_paths, force=False)
+            window.status_message("Staged files successfully.")
             interface.refresh_repo_status_and_render()
 
 
@@ -541,20 +595,15 @@ class GsStatusUnstageFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        valid_ranges = interface.get_view_regions("staged_files")
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        # Remove the leading spaces and hyphen-character for deleted files.
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        # type: (sublime.Edit) -> None
+        window, interface = self.view.window(), get_interface(self.view)
+        if not (window and interface):
+            return
 
+        file_paths = get_selected_subjects(self.view, 'staged')
         if file_paths:
-            for fpath in file_paths:
-                self.unstage_file(fpath)
-            self.view.window().status_message("Unstaged files successfully.")
+            self.unstage_file(*file_paths)
+            window.status_message("Unstaged files successfully.")
             interface.refresh_repo_status_and_render()
 
 
@@ -566,21 +615,19 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        untracked_files = self.discard_untracked(interface)
-        unstaged_files = self.discard_unstaged(interface)
+        # type: (sublime.Edit) -> None
+        window, interface = self.view.window(), get_interface(self.view)
+        if not (window and interface):
+            return
+        untracked_files = self.discard_untracked()
+        unstaged_files = self.discard_unstaged()
         if untracked_files or unstaged_files:
-            self.view.window().status_message("Successfully discarded changes.")
+            window.status_message("Successfully discarded changes.")
             interface.refresh_repo_status_and_render()
 
-    def discard_untracked(self, interface):
-        valid_ranges = interface.get_view_regions("untracked_files")
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+    def discard_untracked(self):
+        # type: () -> Optional[List[str]]
+        file_paths = get_selected_subjects(self.view, 'untracked')
 
         @util.actions.destructive(description="discard one or more untracked files")
         def do_discard():
@@ -589,16 +636,11 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
 
         if file_paths:
             return do_discard()
+        return None
 
-    def discard_unstaged(self, interface):
-        valid_ranges = (interface.get_view_regions("unstaged_files") +
-                        interface.get_view_regions("merge_conflicts"))
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+    def discard_unstaged(self):
+        # type: () -> Optional[List[str]]
+        file_paths = get_selected_subjects(self.view, 'unstaged', 'merge-conflicts')
 
         @util.actions.destructive(description="discard one or more unstaged files")
         def do_discard():
@@ -607,28 +649,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
 
         if file_paths:
             return do_discard()
-
-
-class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
-
-    """
-    For every file that is selected or under a cursor, open a new browser
-    window to that file on GitHub.
-    """
-
-    def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        valid_ranges = (interface.get_view_regions("unstaged_files") +
-                        interface.get_view_regions("merge_conflicts") +
-                        interface.get_view_regions("staged_files"))
-
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
-        self.view.run_command("gs_open_file_on_remote", {"fpath": list(file_paths)})
+        return None
 
 
 class GsStatusStageAllFilesCommand(TextCommand, GitCommand):
@@ -638,8 +659,12 @@ class GsStatusStageAllFilesCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        # type: (sublime.Edit) -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
+
         self.add_all_tracked_files()
-        interface = ui.get_interface(self.view.id())
         interface.refresh_repo_status_and_render()
 
 
@@ -650,8 +675,12 @@ class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        # type: (sublime.Edit) -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
+
         self.add_all_files()
-        interface = ui.get_interface(self.view.id())
         interface.refresh_repo_status_and_render()
 
 
@@ -662,8 +691,12 @@ class GsStatusUnstageAllFilesCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
+        # type: (sublime.Edit) -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
+
         self.unstage_all_files()
-        interface = ui.get_interface(self.view.id())
         interface.refresh_repo_status_and_render()
 
 
@@ -676,46 +709,13 @@ class GsStatusDiscardAllChangesCommand(TextCommand, GitCommand):
     @util.actions.destructive(description="discard all unstaged changes, "
                                           "and delete all untracked files")
     def run(self, edit):
+        # type: (sublime.Edit) -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
+
         self.discard_all_unstaged()
-        interface = ui.get_interface(self.view.id())
         interface.refresh_repo_status_and_render()
-
-
-class GsStatusCommitCommand(TextCommand, GitCommand):
-
-    """
-    Open a commit window.
-    """
-
-    def run(self, edit):
-        self.view.window().run_command("gs_commit", {"repo_path": self.repo_path})
-
-
-class GsStatusCommitUnstagedCommand(TextCommand, GitCommand):
-
-    """
-    Open a commit window.  When the commit message is provided, stage all unstaged
-    changes and then do the commit.
-    """
-
-    def run(self, edit):
-        self.view.window().run_command(
-            "gs_commit",
-            {"repo_path": self.repo_path, "include_unstaged": True}
-        )
-
-
-class GsStatusAmendCommand(TextCommand, GitCommand):
-
-    """
-    Open a commit window to amend the previous commit.
-    """
-
-    def run(self, edit):
-        self.view.window().run_command(
-            "gs_commit",
-            {"repo_path": self.repo_path, "amend": True}
-        )
 
 
 class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
@@ -726,22 +726,18 @@ class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        valid_ranges = (interface.get_view_regions("unstaged_files") +
-                        interface.get_view_regions("untracked_files") +
-                        interface.get_view_regions("merge_conflicts") +
-                        interface.get_view_regions("staged_files"))
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        # type: (sublime.Edit) -> None
+        window, interface = self.view.window(), get_interface(self.view)
+        if not (window and interface):
+            return
 
+        file_paths = get_selected_subjects(
+            self.view, 'staged', 'unstaged', 'untracked', 'merge-conflicts'
+        )
         if file_paths:
             for fpath in file_paths:
                 self.add_ignore(os.path.join("/", fpath))
-            self.view.window().status_message("Successfully ignored files.")
+            window.status_message("Successfully ignored files.")
             interface.refresh_repo_status_and_render()
 
 
@@ -754,20 +750,16 @@ class GsStatusIgnorePatternCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        valid_ranges = (interface.get_view_regions("unstaged_files") +
-                        interface.get_view_regions("untracked_files") +
-                        interface.get_view_regions("merge_conflicts") +
-                        interface.get_view_regions("staged_files"))
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
-        )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
+        # type: (sublime.Edit) -> None
+        window, interface = self.view.window(), get_interface(self.view)
+        if not (window and interface):
+            return
 
+        file_paths = get_selected_subjects(
+            self.view, 'staged', 'unstaged', 'untracked', 'merge-conflicts'
+        )
         if file_paths:
-            self.view.window().run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
+            window.run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
 
 
 class GsStatusStashCommand(TextCommand, GitCommand):
@@ -776,7 +768,7 @@ class GsStatusStashCommand(TextCommand, GitCommand):
     Run action from status dashboard to stash commands. Need to have this command to
     read the interface and call the stash commands
 
-    action          multipul staches
+    action          multiple stashes
     show            True
     apply           False
     pop             False
@@ -784,33 +776,29 @@ class GsStatusStashCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, action=None):
-        interface = ui.get_interface(self.view.id())
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=interface.get_view_regions("stashes")
-        )
-        ids = tuple(line[line.find("(") + 1:line.find(")")] for line in lines if line)
+        # type: (sublime.Edit, str) -> None
+        window = self.view.window()
+        if not window:
+            return
 
-        if len(ids) == 0:
-            # happens if command get called when none of the cursors
-            # is pointed on one stash
+        ids = get_selected_subjects(self.view, 'stashes')
+        if not ids:
             return
 
         if action == "show":
-            self.view.window().run_command("gs_stash_show", {"stash_ids": ids})
+            window.run_command("gs_stash_show", {"stash_ids": ids})
             return
 
         if len(ids) > 1:
-            self.view.window().status_message("You can only {} one stash at a time.".format(action))
+            window.status_message("You can only {} one stash at a time.".format(action))
             return
 
         if action == "apply":
-            self.view.window().run_command("gs_stash_apply", {"stash_id": ids[0]})
+            window.run_command("gs_stash_apply", {"stash_id": ids[0]})
         elif action == "pop":
-            self.view.window().run_command("gs_stash_pop", {"stash_id": ids[0]})
+            window.run_command("gs_stash_pop", {"stash_id": ids[0]})
         elif action == "drop":
-            self.view.window().run_command("gs_stash_drop", {"stash_id": ids[0]})
+            window.run_command("gs_stash_drop", {"stash_id": ids[0]})
 
 
 class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):
@@ -820,18 +808,10 @@ class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        valid_ranges = (interface.get_view_regions("unstaged_files") +
-                        interface.get_view_regions("untracked_files") +
-                        interface.get_view_regions("merge_conflicts") +
-                        interface.get_view_regions("staged_files"))
-        lines = util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=valid_ranges
+        # type: (sublime.Edit) -> None
+        file_paths = get_selected_subjects(
+            self.view, 'staged', 'unstaged', 'untracked', 'merge-conflicts'
         )
-        file_paths = tuple(line[4:].strip() for line in lines if line)
-
         if len(file_paths) > 1:
             sublime.error_message("You can only launch merge tool for a single file at a time.")
             return
@@ -843,26 +823,25 @@ class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
     # TODO: refactor this alongside interfaces.rebase.GsRebaseUseCommitVersionCommand
 
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+        # type: (sublime.Edit) -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
 
-    def run_async(self):
-        interface = ui.get_interface(self.view.id())
         conflicts = interface.state['merge_conflicts']
+        file_paths = get_selected_subjects(self.view, 'merge-conflicts')
 
-        sels = self.view.sel()
-        line_regions = [self.view.line(sel) for sel in sels]
-        paths = (line[4:]
-                 for reg in line_regions
-                 for line in self.view.substr(reg).split("\n") if line)
-        for path in paths:
-            if self.is_commit_version_deleted(path, conflicts):
-                self.git("rm", "--", path)
+        for fpath in file_paths:
+            if self.is_commit_version_deleted(fpath, conflicts):
+                self.git("rm", "--", fpath)
             else:
-                self.git("checkout", "--theirs", "--", path)
-                self.stage_file(path)
-        util.view.refresh_gitsavvy(self.view)
+                self.git("checkout", "--theirs", "--", fpath)
+                self.stage_file(fpath)
+
+        interface.refresh_repo_status_and_render()
 
     def is_commit_version_deleted(self, path, conflicts):
+        # type: (str, List[FileStatus]) -> bool
         for conflict in conflicts:
             if conflict.path == path:
                 return conflict.working_status == "D"
@@ -872,26 +851,25 @@ class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
 class GsStatusUseBaseVersionCommand(TextCommand, GitCommand):
 
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+        # type: (sublime.Edit) -> None
+        interface = get_interface(self.view)
+        if not interface:
+            return
 
-    def run_async(self):
-        interface = ui.get_interface(self.view.id())
         conflicts = interface.state['merge_conflicts']
+        file_paths = get_selected_subjects(self.view, 'merge-conflicts')
 
-        sels = self.view.sel()
-        line_regions = [self.view.line(sel) for sel in sels]
-        paths = (line[4:]
-                 for reg in line_regions
-                 for line in self.view.substr(reg).split("\n") if line)
-        for path in paths:
-            if self.is_base_version_deleted(path, conflicts):
-                self.git("rm", "--", path)
+        for fpath in file_paths:
+            if self.is_base_version_deleted(fpath, conflicts):
+                self.git("rm", "--", fpath)
             else:
-                self.git("checkout", "--ours", "--", path)
-                self.stage_file(path)
-        util.view.refresh_gitsavvy(self.view)
+                self.git("checkout", "--ours", "--", fpath)
+                self.stage_file(fpath)
+
+        interface.refresh_repo_status_and_render()
 
     def is_base_version_deleted(self, path, conflicts):
+        # type: (str, List[FileStatus]) -> bool
         for conflict in conflicts:
             if conflict.path == path:
                 return conflict.index_status == "D"
@@ -901,16 +879,25 @@ class GsStatusUseBaseVersionCommand(TextCommand, GitCommand):
 class GsStatusNavigateFileCommand(GsNavigate):
 
     """
-    Move cursor to the next (or previous) selectable file in the dashboard.
+    Move cursor to the next (or previous) selectable item in the dashboard.
     """
+    offset = 0
 
     def get_available_regions(self):
-        file_regions = [file_region
-                        for region in self.view.find_by_selector("meta.git-savvy.status.file")
-                        for file_region in self.view.lines(region)]
+        return self.view.find_by_selector(
+            "meta.git-savvy.entity - meta.git-savvy.entity.filename.renamed.to"
+        )
 
-        stash_regions = [stash_region
-                         for region in self.view.find_by_selector("meta.git-savvy.status.saved_stash")
-                         for stash_region in self.view.lines(region)]
 
-        return file_regions + stash_regions
+class GsStatusNavigateGotoCommand(GsNavigate):
+
+    """
+    Move cursor to the next (or previous) selectable file in the dashboard.
+    """
+    offset = 0
+
+    def get_available_regions(self):
+        return (
+            self.view.find_by_selector("gitsavvy.gotosymbol")
+            + self.view.find_all("Your working directory is clean", sublime.LITERAL)
+        )

@@ -9,6 +9,7 @@ from functools import partial
 from itertools import chain, dropwhile, takewhile
 import os
 import re
+import threading
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -16,7 +17,9 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ..exceptions import GitSavvyError
+from ..settings import GitSavvySettings
 from ...common import util
+from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
 
 if False:
@@ -128,6 +131,54 @@ class GsDiffCommand(WindowCommand, GitCommand):
             diff_views[view_key] = diff_view
 
             diff_view.run_command("gs_handle_vintageous")
+            threading.Thread(target=partial(augment_color_scheme, diff_view)).run()
+
+
+def augment_color_scheme(view):
+    # type: (sublime.View) -> None
+    settings = GitSavvySettings()
+    colors = settings.get('colors').get('inline_diff')
+    if not colors:
+        return
+
+    color_scheme = view.settings().get('color_scheme')
+    if color_scheme.endswith(".tmTheme"):
+        themeGenerator = XMLThemeGenerator(color_scheme)
+    else:
+        themeGenerator = JSONThemeGenerator(color_scheme)
+    themeGenerator.add_scoped_style(
+        "GitSavvy Added Line",
+        "git_savvy.change.addition",
+        background=colors["add_background"],
+        foreground=colors["add_foreground"]
+    )
+    themeGenerator.add_scoped_style(
+        "GitSavvy Removed Line",
+        "git_savvy.change.removal",
+        background=colors["remove_background"],
+        foreground=colors["remove_foreground"]
+    )
+    themeGenerator.add_scoped_style(
+        "GitSavvy Added Line Bold",
+        "git_savvy.change.addition.bold",
+        background=colors["add_background_bold"],
+        foreground=colors["add_foreground_bold"]
+    )
+    themeGenerator.add_scoped_style(
+        "GitSavvy Removed Line Bold",
+        "git_savvy.change.removal.bold",
+        background=colors["remove_background_bold"],
+        foreground=colors["remove_foreground_bold"]
+    )
+    themeGenerator.apply_new_theme("diff_view", view)
+
+
+WORD_DIFF_PATTERNS = [
+    None,
+    r"[a-zA-Z_\-\x80-\xff]+|[^[:space:]]|[\xc0-\xff][\x80-\xbf]+",
+    ".",
+]
+WORD_DIFF_MARKERS_RE = re.compile(r"{\+(.*?)\+}|\[-(.*?)-\]")
 
 
 class GsDiffRefreshCommand(TextCommand, GitCommand):
@@ -151,6 +202,8 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         disable_stage = self.view.settings().get("git_savvy.diff_view.disable_stage")
         context_lines = self.view.settings().get('git_savvy.diff_view.context_lines')
 
+        word_diff_regex = WORD_DIFF_PATTERNS[show_word_diff]
+
         prelude = "\n"
         if self.file_path:
             rel_file_path = os.path.relpath(self.file_path, self.repo_path)
@@ -170,6 +223,8 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
             else:
                 prelude += "  UNSTAGED CHANGES\n"
 
+        if show_word_diff:
+            prelude += "  WORD REGEX: {}\n".format(word_diff_regex)
         if ignore_whitespace:
             prelude += "  IGNORING WHITESPACE\n"
 
@@ -177,7 +232,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
             diff = self.git(
                 "diff",
                 "--ignore-all-space" if ignore_whitespace else None,
-                "--word-diff" if show_word_diff else None,
+                "--word-diff-regex={}".format(word_diff_regex) if word_diff_regex else None,
                 "--unified={}".format(context_lines) if context_lines is not None else None,
                 "--stat" if show_diffstat else None,
                 "--patch",
@@ -205,9 +260,34 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         self.view.settings().set("git_savvy.diff_view.raw_diff", diff)
         text = prelude + '\n--\n' + diff
 
+        added_regions = []  # type: List[sublime.Region]
+        removed_regions = []  # type: List[sublime.Region]
+
+        if word_diff_regex:
+            def extractor(match):
+                # We generally transform `{+text+}` (and likewise `[-text-]`) into just
+                # `text`.
+                text = match.group()[2:-2]
+                # The `start/end` offsets are based on the original input, so we need
+                # to adjust them for the regions we want to draw.
+                total_matches_so_far = len(added_regions) + len(removed_regions)
+                start, _end = match.span()
+                # On each match the original diff is shortened by 4 chars.
+                offset = start - (total_matches_so_far * 4)
+
+                regions = added_regions if match.group()[1] == '+' else removed_regions
+                regions.append(sublime.Region(offset, offset + len(text)))
+                return text
+
+            text = WORD_DIFF_MARKERS_RE.sub(extractor, text)
+
         self.view.run_command(
             "gs_replace_view_text", {"text": text, "restore_cursors": True}
         )
+
+        self.view.add_regions("git-savvy-added-bold", added_regions, scope="git_savvy.change.addition.bold")
+        self.view.add_regions("git-savvy-removed-bold", removed_regions, scope="git_savvy.change.removal.bold")
+
         if not old_diff:
             self.view.run_command("gs_diff_navigate")
 
@@ -215,7 +295,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 class GsDiffToggleSetting(TextCommand):
 
     """
-    Toggle view settings: `ignore_whitespace` , or `show_word_diff`.
+    Toggle view settings: `ignore_whitespace`.
     """
 
     def run(self, edit, setting):
@@ -226,6 +306,23 @@ class GsDiffToggleSetting(TextCommand):
         next_mode = not current_mode
         settings.set(setting_str, next_mode)
         self.view.window().status_message("{} is now {}".format(setting, next_mode))
+
+        self.view.run_command("gs_diff_refresh")
+
+
+class GsDiffCycleWordDiff(TextCommand):
+
+    """
+    Cycle through different word diff patterns.
+    """
+
+    def run(self, edit):
+        settings = self.view.settings()
+
+        setting_str = "git_savvy.diff_view.{}".format('show_word_diff')
+        current_mode = settings.get(setting_str)
+        next_mode = (current_mode + 1) % len(WORD_DIFF_PATTERNS)
+        settings.set(setting_str, next_mode)
 
         self.view.run_command("gs_diff_refresh")
 
@@ -588,8 +685,14 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
                     seen.add(filename)
                     yield item
 
+        word_diff_mode = bool(self.view.settings().get('git_savvy.diff_view.show_word_diff'))
         diff = parse_diff_in_view(self.view)
-        jump_positions = filter_(self.jump_position_to_file(diff, pt) for pt in cursor_pts)
+        algo = (
+            self.jump_position_to_file_for_word_diff_mode
+            if word_diff_mode
+            else self.jump_position_to_file
+        )
+        jump_positions = filter_(algo(diff, pt) for pt in cursor_pts)
         for jp in first_per_file(jump_positions):
             self.load_file_at_line(*jp)
 
@@ -639,6 +742,71 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
         if not filename:
             return None
 
+        return filename, row, col
+
+    def jump_position_to_file_for_word_diff_mode(self, diff, pt):
+        # type: (ParsedDiff, int) -> Optional[Tuple[str, int, int]]
+        head_and_hunk_offsets = head_and_hunk_for_pt(diff, pt)
+        if not head_and_hunk_offsets:
+            return None
+
+        view = self.view
+        header_region, hunk_region = head_and_hunk_offsets
+        header = extract_content(view, header_region)
+        hunk = extract_content(view, hunk_region)
+        hunk_start, _ = hunk_region
+
+        # The hunk contains itself a header line e.g. "@@ -686,8 +686,14 @@ ...",
+        # so the actual content of the hunk starts at the line after that.
+        content_start = view.full_line(hunk_start).end()
+
+        # Select all "deletion" regions in the hunk up to the cursor (pt)
+        removed_regions_before_pt = [
+            # In case the cursor is *in* a region, shorten it up to
+            # the cursor.
+            sublime.Region(region.begin(), min(region.end(), pt))
+            for region in view.get_regions('git-savvy-removed-bold')
+            if content_start <= region.begin() < pt
+        ]
+
+        # Select all completely removed lines, but exclude lines
+        # if the cursor is exactly at the end-of-line char.
+        removed_lines_before_pt = sum(
+            region == view.line(region.begin()) and region.end() != pt
+            for region in removed_regions_before_pt
+        )
+        line_start = view.line(pt).begin()
+        removed_chars_before_pt = sum(
+            region.size()
+            for region in removed_regions_before_pt
+            if line_start <= region.begin() < pt
+        )
+
+        # Compute the *relative* row in that hunk
+        head_row, _ = view.rowcol(content_start)
+        pt_row, col = view.rowcol(pt)
+        rel_row = pt_row - head_row
+        # If the cursor is in the hunk header, assume instead it is
+        # at `(0, 0)` position in the hunk content.
+        if rel_row < 0:
+            rel_row, col = 0, 0
+
+        # Extract the starting line at "b" encoded in the hunk header t.i. for
+        # "@@ -685,8 +686,14 @@ ..." extract the "686".
+        head, *tail = hunk.rstrip().split('\n')
+        match = HUNKS_LINES_RE.search(head)
+        if not match:
+            return None
+
+        b = int(match.group(2))
+        row = b + rel_row
+
+        filename = extract_filename_from_header(header)
+        if not filename:
+            return None
+
+        row = row - removed_lines_before_pt
+        col = col + 1 - removed_chars_before_pt
         return filename, row, col
 
 

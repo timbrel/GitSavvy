@@ -10,4 +10,4 @@ If you need help along the way, there's usually someone around in our Gitter cha
 https://gitter.im/divmain/GitSavvy
 
 Finally, if at any time you encounter a bug, or if you wish that GitSavvy included some missing functionality, please open an issue:
-https://github.com/divmain/GitSavvy/issues
+https://github.com/timbrel/GitSavvy/issues

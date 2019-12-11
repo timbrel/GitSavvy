@@ -1,28 +1,65 @@
 # SYNTAX TEST "Packages/GitSavvy/syntax/status.sublime-syntax"
 
   UNSTAGED:
-#  ^ keyword.other.git-savvy.section-header.unstaged
+#<- meta.git-savvy.status.section.unstaged meta.git-savvy.section.header
+#^^^^^^^^^^ meta.git-savvy.status.section.unstaged meta.git-savvy.section.header
+# ^^^^^^^^^ keyword.other.git-savvy.section.header.unstaged
     syntax/status.sublime-syntax
-#     ^ meta.git-savvy.status.section.unstaged
+# <- meta.git-savvy.status.section.unstaged meta.git-savvy.section.body.row.file
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.status.section.unstaged meta.git-savvy.section.body.row.file
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ gitsavvy.gotosymbol meta.git-savvy.entity.filename
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.status.subject
     Color Schemes/GitSavvy.tmTheme
-#  ^ meta.git-savvy.status.file
-#    ^ gitsavvy.gotosymbol
-    .babelrc
-#   ^ meta.git-savvy.status.file
+#   ^ meta.git-savvy.entity.filename
+#   ^ gitsavvy.gotosymbol
   - Color Schemes/Knockdown.tmTheme
-#    ^ meta.git-savvy.status.file gitsavvy.gotosymbol meta.git-savvy.status.file.removed
+# ^ meta.git-savvy.status.punctuation.removed
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.section.body.row.file
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ gitsavvy.gotosymbol meta.git-savvy.entity.filename.removed
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.status.subject
 
   STAGED:
-#  ^ keyword.other.git-savvy.section-header.staged
+#<- meta.git-savvy.status.section.staged meta.git-savvy.section.header
+#^^^^^^^^^ meta.git-savvy.status.section.staged meta.git-savvy.section.header
+# ^^^^^^^ keyword.other.git-savvy.section.header.staged
     syntax/status.sublime-syntax
-#     ^ meta.git-savvy.status.section.staged
+# <- meta.git-savvy.status.section.staged meta.git-savvy.section.body.row.file
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.status.section.staged meta.git-savvy.section.body.row.file
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ gitsavvy.gotosymbol meta.git-savvy.entity.filename
+    syntax/status.sublime-syntax -> new_name
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ gitsavvy.gotosymbol meta.git-savvy.entity.filename.renamed.from
+#                                ^^ meta.git-savvy.status.punctuation.renamed
+#                                   ^^^^^^^^ meta.git-savvy.entity.filename.renamed.to
+#                                   ^^^^^^^^ meta.git-savvy.status.subject
 
   UNTRACKED:
-#  ^ keyword.other.git-savvy.section-header.untracked
+#<- meta.git-savvy.status.section.untracked meta.git-savvy.section.header
+#^^^^^^^^^^^^ meta.git-savvy.status.section.untracked meta.git-savvy.section.header
+# ^^^^^^^^^^ keyword.other.git-savvy.section.header.untracked
     syntax/status.sublime-syntax
-#     ^ meta.git-savvy.status.section.untracked
+# <- meta.git-savvy.status.section.untracked meta.git-savvy.section.body.row.file
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.status.section.untracked meta.git-savvy.section.body.row.file
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ gitsavvy.gotosymbol meta.git-savvy.entity.filename
 
   MERGE CONFLICTS:
-#  ^ keyword.other.git-savvy.section-header.merge-conflicts
+#<- meta.git-savvy.status.section.merge-conflicts meta.git-savvy.section.header
+#^^^^^^^^^^^^^^^^^^ meta.git-savvy.status.section.merge-conflicts meta.git-savvy.section.header
+# ^^^^^^^^^^^^^^^^ keyword.other.git-savvy.section.header.merge-conflicts
     syntax/status.sublime-syntax
-#     ^ meta.git-savvy.status.section.merge-conflicts
+# <- meta.git-savvy.status.section.merge-conflicts meta.git-savvy.section.body.row.file
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.status.section.merge-conflicts meta.git-savvy.section.body.row.file
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ gitsavvy.gotosymbol meta.git-savvy.entity.filename
+
+  STASHES:
+#<- meta.git-savvy.status.section.stashes meta.git-savvy.section.header
+#^^^^^^^^^^ meta.git-savvy.status.section.stashes meta.git-savvy.section.header
+# ^^^^^^^^ keyword.other.git-savvy.section.header.stashes
+    (0) update-show-commit-syntax
+# <- meta.git-savvy.status.section.stashes meta.git-savvy.section.body.row.stash
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.status.section.stashes meta.git-savvy.section.body.row.stash
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.entity.stash
+#    ^ meta.git-savvy.entity.stash.number
+#       ^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.entity.stash.name
+    (100) hypothetical-safe-get-view-setting
+#    ^^^ meta.git-savvy.entity.stash.number
+#    ^^^ meta.git-savvy.status.subject

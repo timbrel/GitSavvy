@@ -7,7 +7,7 @@ from sublime_plugin import WindowCommand
 from ..util import debug, reload
 from ...core.settings import GitSavvySettings
 
-REPORT_URL_TEMPLATE = "https://github.com/divmain/GitSavvy/issues/new?{q}"
+REPORT_URL_TEMPLATE = "https://github.com/timbrel/GitSavvy/issues/new?{q}"
 
 
 class GsReloadModulesDebug(WindowCommand):

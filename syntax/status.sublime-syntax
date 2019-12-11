@@ -8,51 +8,76 @@ contexts:
   main:
     - include: "Packages/GitSavvy/syntax/dashboard.sublime-syntax"
 
-    - match: ^  STAGED:$
-      scope: keyword.other.git-savvy.section-header.staged
+    - match: ^  (STAGED:)$\n
+      captures:
+        0: meta.git-savvy.section.header
+        1: keyword.other.git-savvy.section.header.staged
       push:
         - meta_scope: meta.git-savvy.status.section.staged
+        - meta_content_scope: meta.git-savvy.section.body
         - include: section
 
-    - match: ^  UNSTAGED:$
-      scope: keyword.other.git-savvy.section-header.unstaged
+    - match: ^  (UNSTAGED:)$\n
+      captures:
+        0: meta.git-savvy.section.header
+        1: keyword.other.git-savvy.section.header.unstaged
       push:
         - meta_scope: meta.git-savvy.status.section.unstaged
+        - meta_content_scope: meta.git-savvy.section.body
         - include: section
 
-    - match: ^  UNTRACKED:$
-      scope: keyword.other.git-savvy.section-header.untracked
+    - match: ^  (UNTRACKED:)$\n
+      captures:
+        0: meta.git-savvy.section.header
+        1: keyword.other.git-savvy.section.header.untracked
       push:
         - meta_scope: meta.git-savvy.status.section.untracked
+        - meta_content_scope: meta.git-savvy.section.body
         - include: section
 
-    - match: ^  MERGE CONFLICTS:$
-      scope: keyword.other.git-savvy.section-header.merge-conflicts
+    - match: ^  (MERGE CONFLICTS:)$\n
+      captures:
+        0: meta.git-savvy.section.header
+        1: keyword.other.git-savvy.section.header.merge-conflicts
       push:
         - meta_scope: meta.git-savvy.status.section.merge-conflicts
+        - meta_content_scope: meta.git-savvy.section.body
         - include: section
 
-    - match: ^  STASHES:$
-      comment: Stashes section
+    - match: ^  (STASHES:)$\n
       captures:
-        0: keyword.other.git-savvy.stashes-header
+        0: meta.git-savvy.section.header
+        1: keyword.other.git-savvy.section.header.stashes
       push:
-        - meta_scope: meta.git-savvy.status.stashes
-        - match: ^$
-          pop: true
-        - match: ^    (.+)\n$
-          scope: meta.git-savvy.status.saved_stash
+        - meta_scope: meta.git-savvy.status.section.stashes
+        - meta_content_scope: meta.git-savvy.section.body
+        - include: stash-section
+
+  stash-section:
+    - match: ^$
+      pop: true
+    - match: ^    (\((\d+)\) (.+))\n$
+      captures:
+        0: meta.git-savvy.section.body.row.stash
+        1: meta.git-savvy.entity.stash
+        2: meta.git-savvy.entity.stash.number meta.git-savvy.status.subject
+        3: meta.git-savvy.entity.stash.name
 
   section:
     - match: ^$
       pop: true
-    - match: ^(    .+)\n$
+    - match: ^    (.+)\s(->)\s(.+)\n$
       captures:
-          0: meta.git-savvy.status.file
-          1: gitsavvy.gotosymbol
-    - match: ^(  (-) (.+))\n$
+          0: meta.git-savvy.section.body.row.file
+          1: gitsavvy.gotosymbol meta.git-savvy.entity.filename.renamed.from
+          2: meta.git-savvy.status.punctuation.renamed
+          3: meta.git-savvy.entity.filename.renamed.to meta.git-savvy.status.subject
+    - match: ^    (.+)\n$
       captures:
-          0: meta.git-savvy.status.file
-          1: gitsavvy.gotosymbol
-          2: meta.git-savvy.status.file.removed.punctuation
-          3: meta.git-savvy.status.file.removed
+          0: meta.git-savvy.section.body.row.file
+          1: gitsavvy.gotosymbol meta.git-savvy.entity.filename meta.git-savvy.status.subject
+    - match: ^  (-) (.+)\n$
+      captures:
+          0: meta.git-savvy.section.body.row.file
+          1: meta.git-savvy.status.punctuation.removed
+          2: gitsavvy.gotosymbol meta.git-savvy.entity.filename.removed meta.git-savvy.status.subject

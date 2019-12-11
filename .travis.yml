@@ -31,7 +31,7 @@ before_install:
 install:
     - sh travis.sh bootstrap
     - sh travis.sh install_package_control
-    - pip3 install python-coveralls flake8
+    - pip3 install python-coveralls
 
 script:
     - sh travis.sh run_tests --coverage

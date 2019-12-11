@@ -53,7 +53,7 @@ If the tool path is missing from your sublime environment's `PATH` variable, you
 
 If, however, the path is in your sublime environment, please open an issue and include these values in an issue.
 
-[1]: https://github.com/divmain/GitSavvy/issues/684#issuecomment-323579850
+[1]: https://github.com/timbrel/GitSavvy/issues/684#issuecomment-323579850
 [2]: http://docs.sublimetext.info/en/latest/reference/build_systems/troubleshooting.html
 [3]: https://packagecontrol.io/packages/Environment%20Settings
 [4]: https://packagecontrol.io/packages/Fix%20Mac%20Path

@@ -1,6 +1,4 @@
-import difflib
 import re
-import time
 
 from ..exceptions import GitSavvyError
 from ...common import util
@@ -26,43 +24,6 @@ class NearestBranchMixin(object):
                 relatives.append(branch_name)
         return relatives
 
-    def _nearest_from_relatives(self, relatives, branch):
-        """
-        Find the nearest branch from the "branch-out nodes" of all relatives.
-        """
-        util.debug.add_to_log('nearest_branch: filtering branches that share branch-out nodes')
-        diff = difflib.Differ()
-        max_revisions = 100
-        branch_commits = self.git(
-            "rev-list", "-{}".format(max_revisions), "--first-parent", branch).splitlines()
-        for relative in relatives:
-            util.debug.add_to_log('nearest_branch: Getting common commits with {}'.format(relative))
-            relative_commits = self.git("rev-list", "-{}".format(max_revisions),
-                                        "--first-parent", relative).splitlines()
-
-            # Enumerate over branch vs relative commit hashes and look for a common one
-            common = None
-            for line in diff.compare(branch_commits, relative_commits):
-                if not line.startswith(' '):
-                    util.debug.add_to_log('nearest_branch: commit differs {}'.format(line))
-                    continue
-                common = line.strip()
-                util.debug.add_to_log('nearest_branch: found common commit {}'.format(common))
-                break
-
-            if not common:
-                util.debug.add_to_log('nearest_branch: No common commit found with {}'.format(relative))
-                continue
-
-            # Found common "branch-out node", get reachable branches for commit
-            branches = self.git("branch", "--contains", common, "--merged").splitlines()
-            cleaned_branch_names = [b[2:].strip() for b in branches]
-            util.debug.add_to_log('nearest_branch: got valid branches {}'.format(cleaned_branch_names))
-            if relative in cleaned_branch_names:
-                return relative
-
-        return None
-
     def nearest_branch(self, branch, default="master"):
         """
         Find the nearest commit in current branch history that exists
@@ -79,7 +40,6 @@ class NearestBranchMixin(object):
         http://stackoverflow.com/a/17843908/484127
         http://stackoverflow.com/questions/1527234
         """
-        start = time.time()
         try:
             relatives = self.branch_relatives(branch)
         except GitSavvyError:
@@ -89,23 +49,8 @@ class NearestBranchMixin(object):
             util.debug.add_to_log('nearest_branch: No relatives found. '
                                   'Possibly on a root branch!')
             return default
+
         util.debug.add_to_log('nearest_branch: found {} relatives: {}'.format(
                               len(relatives), relatives))
 
-        nearest = self._nearest_from_relatives(relatives, branch)
-
-        end = time.time()
-        util.debug.add_to_log('nearest_branch: Located nearest branch in {:.4f}'
-                              ' seconds'.format(end - start))
-
-        if not nearest:
-            util.debug.add_to_log('nearest_branch: No valid nearest found. '
-                                  'Possibly on a root / detached branch!')
-            return default
-
-        # if same as branch, return default instead
-        if branch == nearest:
-            util.debug.add_to_log('nearest_branch: Best candidate is source branch; using default')
-            return default
-        util.debug.add_to_log('nearest_branch: Found best candidate {}'.format(nearest))
-        return nearest
+        return relatives[0]
