@@ -6,7 +6,7 @@ current diff.
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import partial
-from itertools import chain, dropwhile, takewhile
+from itertools import chain
 import os
 import re
 import threading
@@ -20,27 +20,22 @@ from ..exceptions import GitSavvyError
 from ..settings import GitSavvySettings
 from ...common import util
 from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
+filter_ = partial(filter, None)  # type: Callable[[Iterator[Optional[T]]], Iterator[T]]
+flatten = chain.from_iterable
 
 
-if False:
+MYPY = False
+if MYPY:
     from typing import Callable, Iterable, Iterator, List, NamedTuple, Optional, Set, Tuple, TypeVar
-    from mypy_extensions import TypedDict
 
     T = TypeVar('T')
-    ParsedDiff = TypedDict('ParsedDiff', {
-        'headers': List[Tuple[int, int]],
-        'hunks': List[Tuple[int, int]]
-    })
-
     Point = int
     RowCol = Tuple[int, int]
-    HunkLine_ = NamedTuple('HunkLine_', [('mode', str), ('text', str), ('b', int)])
 
 
 DIFF_TITLE = "DIFF: {}"
 DIFF_CACHED_TITLE = "DIFF (cached): {}"
 
-HunkLine = namedtuple('HunkLine', 'mode text b')  # type: HunkLine_
 diff_views = {}
 
 
@@ -377,171 +372,6 @@ class GsDiffToggleCachedMode(TextCommand):
                 set_and_show_cursor(self.view, unpickle_sel(last_cursors))
 
 
-def find_hunk_in_view(view, patch):
-    # type: (sublime.View, str) -> Optional[sublime.Region]
-    """Given a patch, search for its first hunk in the view
-
-    Returns the region of the first line of the hunk (the one starting
-    with '@@ ...'), if any.
-    """
-    hunk_content = extract_first_hunk(patch)
-    if hunk_content:
-        return (
-            view.find(hunk_content[0], 0, sublime.LITERAL)
-            or fuzzy_search_hunk_content_in_view(view, hunk_content[1:])
-        )
-    return None
-
-
-def extract_first_hunk(patch):
-    # type: (str) -> Optional[List[str]]
-    hunk_lines = patch.split('\n')
-    not_hunk_start = lambda line: not line.startswith('@@ ')
-
-    try:
-        start, *rest = dropwhile(not_hunk_start, hunk_lines)
-    except (StopIteration, ValueError):
-        return None
-
-    return [start] + list(takewhile(not_hunk_start, rest))
-
-
-def fuzzy_search_hunk_content_in_view(view, lines):
-    # type: (sublime.View, List[str]) -> Optional[sublime.Region]
-    """Fuzzy search the hunk content in the view
-
-    Note that hunk content does not include the starting line, the one
-    starting with '@@ ...', anymore.
-
-    The fuzzy strategy here is to search for the hunk or parts of it
-    by reducing the contextual lines symmetrically.
-
-    Returns the region of the starting line of the found hunk, if any.
-    """
-    for hunk_content in shrink_list_sym(lines):
-        region = view.find('\n'.join(hunk_content), 0, sublime.LITERAL)
-        if region:
-            return find_hunk_start_before_pt(view, region.a)
-    return None
-
-
-def shrink_list_sym(list):
-    # type: (List[T]) -> Iterator[List[T]]
-    while list:
-        yield list
-        list = list[1:-1]
-
-
-def find_hunk_start_before_pt(view, pt):
-    # type: (sublime.View, int) -> Optional[sublime.Region]
-    for region in line_regions_before_pt(view, pt):
-        if view.substr(region).startswith('@@ '):
-            return region
-    return None
-
-
-def line_regions_before_pt(view, pt):
-    # type: (sublime.View, int) -> Iterator[sublime.Region]
-    row, _ = view.rowcol(pt)
-    for row in reversed(range(row)):
-        pt = view.text_point(row, 0)
-        yield view.line(pt)
-
-
-def pickle_sel(sel):
-    return [(s.a, s.b) for s in sel]
-
-
-def unpickle_sel(pickled_sel):
-    return [sublime.Region(a, b) for a, b in pickled_sel]
-
-
-def unique(items):
-    # type: (Iterable[T]) -> List[T]
-    """Remove duplicate entries but remain sorted/ordered."""
-    rv = []  # type: List[T]
-    for item in items:
-        if item not in rv:
-            rv.append(item)
-    return rv
-
-
-def set_and_show_cursor(view, cursors):
-    sel = view.sel()
-    sel.clear()
-    try:
-        it = iter(cursors)
-    except TypeError:
-        sel.add(cursors)
-    else:
-        for c in it:
-            sel.add(c)
-
-    view.show(sel)
-
-
-@contextmanager
-def no_animations():
-    pref = sublime.load_settings("Preferences.sublime-settings")
-    current = pref.get("animation_enabled")
-    pref.set("animation_enabled", False)
-    try:
-        yield
-    finally:
-        pref.set("animation_enabled", current)
-
-
-def parse_diff_in_view(view):
-    # type: (sublime.View) -> ParsedDiff
-    header_starts = tuple(region.a for region in view.find_all("^diff"))
-    header_ends = tuple(region.b for region in view.find_all(r"^\+\+\+.+\n(?=@@)"))
-    hunk_starts = tuple(region.a for region in view.find_all("^@@"))
-    hunk_ends = tuple(sorted(list(
-        # Hunks end when the next diff starts.
-        set(header_starts[1:]) |
-        # Hunks end when the next hunk starts, except for hunks
-        # immediately following diff headers.
-        (set(hunk_starts) - set(header_ends)) |
-        # The last hunk ends at the end of the file.
-        # It should include the last line (`+ 1`).
-        set((view.size() + 1, ))
-    )))
-
-    return {
-        'headers': list(zip(header_starts, header_ends)),
-        'hunks': list(zip(hunk_starts, hunk_ends))
-    }
-
-
-def head_and_hunk_for_pt(diff, pt):
-    # type: (ParsedDiff, int) -> Optional[Tuple[Tuple[int, int], Tuple[int, int]]]
-    """Return header and hunk offsets for given point if any"""
-    for hunk_start, hunk_end in diff['hunks']:
-        if hunk_start <= pt < hunk_end:
-            break
-    else:
-        return None
-
-    header_start, header_end = max(
-        (header_start, header_end)
-        for header_start, header_end in diff['headers']
-        if (header_start, header_end) < (hunk_start, hunk_end)
-    )
-
-    header = header_start, header_end
-    hunk = hunk_start, hunk_end
-
-    return header, hunk
-
-
-def extract_content(view, region):
-    # type: (sublime.View, Tuple[int, int]) -> str
-    return view.substr(sublime.Region(*region))
-
-
-filter_ = partial(filter, None)  # type: Callable[[Iterator[Optional[T]]], Iterator[T]]
-
-
 class GsDiffZoom(TextCommand):
     """
     Update the number of context lines the diff shows by given `amount`
@@ -556,11 +386,10 @@ class GsDiffZoom(TextCommand):
 
         # Getting a meaningful cursor after 'zooming' is the tricky part
         # here. We first extract all hunks under the cursors *verbatim*.
-        diff = parse_diff_in_view(self.view)
-        extract = partial(extract_content, self.view)
+        diff = SplittedDiff.from_view(self.view)
         cur_hunks = [
-            extract(header) + extract(hunk)
-            for header, hunk in filter_(head_and_hunk_for_pt(diff, s.a) for s in self.view.sel())
+            header.text + hunk.text
+            for header, hunk in filter_(diff.head_and_hunk_for_pt(s.a) for s in self.view.sel())
         ]
 
         self.view.run_command("gs_diff_refresh")
@@ -609,13 +438,10 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
 
         # Filter out any cursors that are larger than a single point.
         cursor_pts = tuple(cursor.a for cursor in self.view.sel() if cursor.a == cursor.b)
-        diff = parse_diff_in_view(self.view)
+        diff = SplittedDiff.from_view(self.view)
 
-        extract = partial(extract_content, self.view)
-        flatten = chain.from_iterable
-
-        patches = unique(flatten(filter_(head_and_hunk_for_pt(diff, pt) for pt in cursor_pts)))
-        patch = ''.join(map(extract, patches))
+        patches = unique(flatten(filter_(diff.head_and_hunk_for_pt(pt) for pt in cursor_pts)))
+        patch = ''.join(part.text for part in patches)
 
         if patch:
             self.apply_patch(patch, cursor_pts, reset)
@@ -686,7 +512,7 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
                     yield item
 
         word_diff_mode = bool(self.view.settings().get('git_savvy.diff_view.show_word_diff'))
-        diff = parse_diff_in_view(self.view)
+        diff = SplittedDiff.from_view(self.view)
         algo = (
             self.jump_position_to_file_for_word_diff_mode
             if word_diff_mode
@@ -721,44 +547,35 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
             )
 
     def jump_position_to_file(self, diff, pt):
-        # type: (ParsedDiff, int) -> Optional[Tuple[str, int, int]]
-        head_and_hunk_offsets = head_and_hunk_for_pt(diff, pt)
-        if not head_and_hunk_offsets:
+        # type: (SplittedDiff, int) -> Optional[Tuple[str, int, int]]
+        head_and_hunk = diff.head_and_hunk_for_pt(pt)
+        if not head_and_hunk:
             return None
 
         view = self.view
-        header_region, hunk_region = head_and_hunk_offsets
-        header = extract_content(view, header_region)
-        hunk = extract_content(view, hunk_region)
-        hunk_start, _ = hunk_region
+        header, hunk = head_and_hunk
 
-        rowcol = real_rowcol_in_hunk(hunk, relative_rowcol_in_hunk(view, hunk_start, pt))
+        rowcol = real_rowcol_in_hunk(hunk, relative_rowcol_in_hunk(view, hunk, pt))
         if not rowcol:
             return None
 
         row, col = rowcol
 
-        filename = extract_filename_from_header(header)
+        filename = header.b_filename()
         if not filename:
             return None
 
         return filename, row, col
 
     def jump_position_to_file_for_word_diff_mode(self, diff, pt):
-        # type: (ParsedDiff, int) -> Optional[Tuple[str, int, int]]
-        head_and_hunk_offsets = head_and_hunk_for_pt(diff, pt)
-        if not head_and_hunk_offsets:
+        # type: (SplittedDiff, int) -> Optional[Tuple[str, int, int]]
+        head_and_hunk = diff.head_and_hunk_for_pt(pt)
+        if not head_and_hunk:
             return None
 
         view = self.view
-        header_region, hunk_region = head_and_hunk_offsets
-        header = extract_content(view, header_region)
-        hunk = extract_content(view, hunk_region)
-        hunk_start, _ = hunk_region
-
-        # The hunk contains itself a header line e.g. "@@ -686,8 +686,14 @@ ...",
-        # so the actual content of the hunk starts at the line after that.
-        content_start = view.full_line(hunk_start).end()
+        header, hunk = head_and_hunk
+        content_start = hunk.content().a
 
         # Select all "deletion" regions in the hunk up to the cursor (pt)
         removed_regions_before_pt = [
@@ -769,7 +586,7 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
             if content_start <= region.begin() < pt
         ]
 
-        # Select all completely removed lines, but exclude lines
+        # Count all completely removed lines, but exclude lines
         # if the cursor is exactly at the end-of-line char.
         removed_lines_before_pt = sum(
             region == view.line(region.begin()) and region.end() != pt
@@ -793,15 +610,12 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
 
         # Extract the starting line at "b" encoded in the hunk header t.i. for
         # "@@ -685,8 +686,14 @@ ..." extract the "686".
-        head, *tail = hunk.rstrip().split('\n')
-        match = HUNKS_LINES_RE.search(head)
-        if not match:
+        b = hunk.header().b_line_start()
+        if b is None:
             return None
-
-        b = int(match.group(2))
         row = b + rel_row
 
-        filename = extract_filename_from_header(header)
+        filename = header.b_filename()
         if not filename:
             return None
 
@@ -810,10 +624,10 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
         return filename, row, col
 
 
-def relative_rowcol_in_hunk(view, hunk_start, pt):
-    # type: (sublime.View, Point, Point) -> RowCol
+def relative_rowcol_in_hunk(view, hunk, pt):
+    # type: (sublime.View, Hunk, Point) -> RowCol
     """Return rowcol of given pt relative to hunk start"""
-    head_row, _ = view.rowcol(hunk_start)
+    head_row, _ = view.rowcol(hunk.a)
     pt_row, col = view.rowcol(pt)
     # If `col=0` the user is on the meta char (e.g. '+- ') which is not
     # present in the source. We pin `col` to 1 because the target API
@@ -822,9 +636,9 @@ def relative_rowcol_in_hunk(view, hunk_start, pt):
 
 
 def real_rowcol_in_hunk(hunk, relative_rowcol):
-    # type: (str, RowCol) -> Optional[RowCol]
+    # type: (Hunk, RowCol) -> Optional[RowCol]
     """Translate relative to absolute row, col pair"""
-    hunk_lines = split_hunk(hunk)
+    hunk_lines = counted_lines(hunk)
     if not hunk_lines:
         return None
 
@@ -867,23 +681,16 @@ def real_rowcol_in_hunk(hunk, relative_rowcol):
         return line.b, 1
 
 
-HUNKS_LINES_RE = re.compile(r'@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? ')
-
-
-def split_hunk(hunk):
-    # type: (str) -> Optional[List[HunkLine]]
+def counted_lines(hunk):
+    # type: (Hunk) -> Optional[List[HunkLine]]
     """Split a hunk into (first char, line content, row) tuples
 
     Note that rows point to available rows on the b-side.
     """
-
-    head, *tail = hunk.rstrip().split('\n')
-    match = HUNKS_LINES_RE.search(head)
-    if not match:
+    b = hunk.header().b_line_start()
+    if b is None:
         return None
-
-    b = int(match.group(2))
-    return list(_recount_lines(tail, b))
+    return list(_recount_lines(hunk.content().splitlines(), b))
 
 
 def _recount_lines(lines, b):
@@ -902,18 +709,6 @@ def _recount_lines(lines, b):
 def line_indentation(line):
     # type: (str) -> int
     return len(line) - len(line.lstrip())
-
-
-HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+)$')
-
-
-def extract_filename_from_header(header):
-    # type: (str) -> Optional[str]
-    match = HEADER_TO_FILE_RE.search(header)
-    if not match:
-        return None
-
-    return match.group(1)
 
 
 class GsDiffNavigateCommand(GsNavigate):
@@ -957,3 +752,203 @@ class GsDiffUndo(TextCommand, GitCommand):
         # The cursor is only applicable if we're still in the same cache/stage mode
         if self.view.settings().get("git_savvy.diff_view.in_cached_mode") == in_cached_mode:
             set_and_show_cursor(self.view, cursors)
+
+
+# ---  TYPES  --- #
+
+
+if MYPY:
+    SplittedDiffB = NamedTuple(
+        'SplittedDiff', [('headers', Tuple['Header', ...]), ('hunks', Tuple['Hunk', ...])]
+    )
+    TextRange = NamedTuple('TextRange', [('text', str), ('a', int), ('b', int)])
+    HunkLine = NamedTuple('HunkLine', [('mode', str), ('text', str), ('b', int)])
+else:
+    SplittedDiffB = namedtuple('SplittedDiff', 'headers hunks')
+    TextRange = namedtuple('TextRange', 'text a b')
+    HunkLine = namedtuple('HunkLine', 'mode text b')
+
+
+class SplittedDiff(SplittedDiffB):
+    @classmethod
+    def from_string(cls, text):
+        # type: (str) -> SplittedDiff
+        header_starts = tuple(match.start() for match in re.finditer("^diff", text, re.M))
+        header_ends = tuple(match.end() for match in re.finditer(r"^\+{3}.+\n(?=@@)", text, re.M))
+        hunk_starts = tuple(match.start() for match in re.finditer("^@@", text, re.M))
+        hunk_ends = tuple(sorted(
+            # Hunks end when the next diff starts.
+            set(header_starts[1:]) |
+            # Hunks end when the next hunk starts, except for hunks
+            # immediately following diff headers.
+            (set(hunk_starts) - set(header_ends)) |
+            # The last hunk ends at the end of the file.
+            # It should include the last line (`+ 1`).
+            set((len(text) + 1, ))
+        ))
+        return cls(
+            tuple(Header(text[a:b], a, b) for a, b in zip(header_starts, header_ends)),
+            tuple(Hunk(text[a:b], a, b) for a, b in zip(hunk_starts, hunk_ends)),
+        )
+
+    @classmethod
+    def from_view(cls, view):
+        # type: (sublime.View) -> SplittedDiff
+        return cls.from_string(view.substr(sublime.Region(0, view.size())))
+
+    def head_and_hunk_for_pt(self, pt):
+        # type: (int) -> Optional[Tuple[Header, Hunk]]
+        for hunk in self.hunks:
+            if hunk.a <= pt < hunk.b:
+                break
+        else:
+            return None
+
+        return self.head_for_hunk(hunk), hunk
+
+    def head_for_hunk(self, hunk):
+        # type: (Hunk) -> Header
+        return max(
+            (header for header in self.headers if header.a < hunk.a),
+            key=lambda h: h.a
+        )
+
+
+HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+)$')
+HUNKS_LINES_RE = re.compile(r'@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? ')
+
+
+class Header(TextRange):
+    def b_filename(self):
+        # type: () -> Optional[str]
+        match = HEADER_TO_FILE_RE.search(self.text)
+        if not match:
+            return None
+
+        return match.group(1)
+
+
+class Hunk(TextRange):
+    def header(self):
+        # type: () -> HunkHeader
+        content_start = self.text.index('\n') + 1
+        return HunkHeader(self.text[:content_start], self.a, self.a + content_start)
+
+    def content(self):
+        # type: () -> HunkContent
+        content_start = self.text.index('\n') + 1
+        return HunkContent(self.text[content_start:], self.a + content_start, self.b)
+
+
+class HunkContent(TextRange):
+    def splitlines(self):
+        # type: () -> List[str]
+        return self.text.splitlines()
+
+
+class HunkHeader(TextRange):
+    def b_line_start(self):
+        # type: () -> Optional[int]
+        """Extract the starting line at "b" encoded in the hunk header
+
+        T.i. for "@@ -685,8 +686,14 @@ ..." extract the "686".
+        """
+        match = HUNKS_LINES_RE.search(self.text)
+        if not match:
+            return None
+
+        return int(match.group(2))
+
+
+def find_hunk_in_view(view, patch):
+    # type: (sublime.View, str) -> Optional[sublime.Region]
+    """Given a patch, search for its first hunk in the view
+
+    Returns the region of the first line of the hunk (the one starting
+    with '@@ ...'), if any.
+    """
+    diff = SplittedDiff.from_string(patch)
+    try:
+        hunk = diff.hunks[0]
+    except IndexError:
+        return None
+
+    return (
+        view.find(hunk.header().text, 0, sublime.LITERAL)
+        or fuzzy_search_hunk_content_in_view(view, hunk.content().splitlines())
+    )
+
+
+def fuzzy_search_hunk_content_in_view(view, lines):
+    # type: (sublime.View, List[str]) -> Optional[sublime.Region]
+    """Fuzzy search the hunk content in the view
+
+    Note that hunk content does not include the starting line, the one
+    starting with '@@ ...', anymore.
+
+    The fuzzy strategy here is to search for the hunk or parts of it
+    by reducing the contextual lines symmetrically.
+
+    Returns the region of the starting line of the found hunk, if any.
+    """
+    for hunk_content in shrink_list_sym(lines):
+        region = view.find('\n'.join(hunk_content), 0, sublime.LITERAL)
+        if region:
+            diff = SplittedDiff.from_view(view)
+            head_and_hunk = diff.head_and_hunk_for_pt(region.a)
+            if head_and_hunk:
+                _, hunk = head_and_hunk
+                hunk_header = hunk.header()
+                return sublime.Region(hunk_header.a, hunk_header.b)
+            break
+    return None
+
+
+def shrink_list_sym(list):
+    # type: (List[T]) -> Iterator[List[T]]
+    while list:
+        yield list
+        list = list[1:-1]
+
+
+def pickle_sel(sel):
+    return [(s.a, s.b) for s in sel]
+
+
+def unpickle_sel(pickled_sel):
+    return [sublime.Region(a, b) for a, b in pickled_sel]
+
+
+def unique(items):
+    # type: (Iterable[T]) -> List[T]
+    """Remove duplicate entries but remain sorted/ordered."""
+    rv = []  # type: List[T]
+    for item in items:
+        if item not in rv:
+            rv.append(item)
+    return rv
+
+
+def set_and_show_cursor(view, cursors):
+    sel = view.sel()
+    sel.clear()
+    try:
+        it = iter(cursors)
+    except TypeError:
+        sel.add(cursors)
+    else:
+        for c in it:
+            sel.add(c)
+
+    view.show(sel)
+
+
+@contextmanager
+def no_animations():
+    pref = sublime.load_settings("Preferences.sublime-settings")
+    current = pref.get("animation_enabled")
+    pref.set("animation_enabled", False)
+    try:
+        yield
+    finally:
+        pref.set("animation_enabled", current)
