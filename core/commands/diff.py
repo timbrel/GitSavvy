@@ -77,11 +77,8 @@ class GsDiffCommand(WindowCommand, GitCommand):
     disable Ctrl-Enter in the diff view.
     """
 
-    def run(self, **kwargs):
-        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
-
-    def run_async(self, in_cached_mode=False, file_path=None, current_file=False, base_commit=None,
-                  target_commit=None, disable_stage=False, title=None):
+    def run(self, in_cached_mode=False, file_path=None, current_file=False, base_commit=None,
+            target_commit=None, disable_stage=False, title=None):
         repo_path = self.repo_path
         if current_file:
             file_path = self.file_path or file_path

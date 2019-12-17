@@ -564,7 +564,7 @@ class TestDiffView(DeferrableTestCase):
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
 
-        cmd.run_async()
+        cmd.run()
 
         diff_view = self.window.active_view()
         self.addCleanup(diff_view.close)
@@ -578,7 +578,7 @@ class TestDiffView(DeferrableTestCase):
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
 
-        cmd.run_async()
+        cmd.run()
 
         diff_view = self.window.active_view()
         self.addCleanup(diff_view.close)
@@ -594,7 +594,7 @@ class TestDiffView(DeferrableTestCase):
         when(GsDiffRefreshCommand).git('diff', ...).thenReturn(DIFF)
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
-        cmd.run_async()
+        cmd.run()
         yield AWAIT_WORKER  # await activated_async
         yield AWAIT_WORKER  # await refresh async
 
@@ -620,7 +620,7 @@ class TestDiffView(DeferrableTestCase):
         when(GsDiffRefreshCommand).git('diff', ...).thenReturn(DIFF)
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
-        cmd.run_async()
+        cmd.run()
         yield AWAIT_WORKER  # await activated_async
         yield AWAIT_WORKER  # await refresh async
 
