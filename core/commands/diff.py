@@ -36,6 +36,32 @@ if MYPY:
 DIFF_TITLE = "DIFF: {}"
 DIFF_CACHED_TITLE = "DIFF (cached): {}"
 
+# Clickable lines:
+# (A)  common/commands/view_manipulation.py  |   1 +
+# (B) --- a/common/commands/view_manipulation.py
+# (C) +++ b/common/commands/view_manipulation.py
+# (D) diff --git a/common/commands/view_manipulation.py b/common/commands/view_manipulation.py
+FILE_RE = (
+    r"^(?:\s(?=.*\s+\|\s+\d+\s)|--- a\/|\+{3} b\/|diff .+b\/)"
+    #     ^^^^^^^^^^^^^^^^^^^^^ (A)
+    #     ^ one space, and then somewhere later on the line the pattern `  |  23 `
+    #                           ^^^^^^^ (B)
+    #                                   ^^^^^^^^ (C)
+    #                                            ^^^^^^^^^^^ (D)
+    r"(\S[^|]*?)"
+    #         ^ ! lazy to not match the trailing spaces, see below
+
+    r"(?:\s+\||$)"
+    #          ^ (B), (C), (D)
+    #    ^^^^^ (A) We must match the spaces here bc Sublime will not rstrip() the
+    #    filename for us.
+)
+
+# Clickable line:
+# @@ -69,6 +69,7 @@ class GsHandleVintageousCommand(TextCommand):
+#           ^^ we want the second (current) line offset of the diff
+LINE_RE = r"^@@ [^+]*\+(\d+)"
+
 diff_views = {}
 
 
@@ -85,36 +111,8 @@ class GsDiffCommand(WindowCommand, GitCommand):
             settings.set("git_savvy.diff_view.history", [])
             settings.set("git_savvy.diff_view.just_hunked", "")
 
-            # Clickable lines:
-            # (A)  common/commands/view_manipulation.py  |   1 +
-            # (B) --- a/common/commands/view_manipulation.py
-            # (C) +++ b/common/commands/view_manipulation.py
-            # (D) diff --git a/common/commands/view_manipulation.py b/common/commands/view_manipulation.py
-            #
-            # Now the actual problem is that Sublime only accepts a subset of modern reg expressions,
-            # B, C, and D are relatively straight forward because they match a whole line, and
-            # basically all other lines in a diff start with one of `[+- ]`.
-            FILE_RE = (
-                r"^(?:\s(?=.*\s+\|\s+\d+\s)|--- a\/|\+{3} b\/|diff .+b\/)"
-                #     ^^^^^^^^^^^^^^^^^^^^^ (A)
-                #     ^ one space, and then somewhere later on the line the pattern `  |  23 `
-                #                           ^^^^^^^ (B)
-                #                                   ^^^^^^^^ (C)
-                #                                            ^^^^^^^^^^^ (D)
-                r"(\S[^|]*?)"
-                #                    ^ ! lazy to not match the trailing spaces, see below
-
-                r"(?:\s+\||$)"
-                #          ^ (B), (C), (D)
-                #    ^^^^^ (A) We must match the spaces here bc Sublime will not rstrip() the
-                #    filename for us.
-            )
-
             settings.set("result_file_regex", FILE_RE)
-            # Clickable line:
-            # @@ -69,6 +69,7 @@ class GsHandleVintageousCommand(TextCommand):
-            #           ^^ we want the second (current) line offset of the diff
-            settings.set("result_line_regex", r"^@@ [^+]*\+(\d+)")
+            settings.set("result_line_regex", LINE_RE)
             settings.set("result_base_dir", repo_path)
 
             if not title:
