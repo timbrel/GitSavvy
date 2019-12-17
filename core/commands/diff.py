@@ -26,7 +26,9 @@ flatten = chain.from_iterable
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Iterable, Iterator, List, NamedTuple, Optional, Set, Tuple, TypeVar
+    from typing import (
+        Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set, Tuple, TypeVar
+    )
 
     T = TypeVar('T')
     Point = int
@@ -62,7 +64,7 @@ FILE_RE = (
 #           ^^ we want the second (current) line offset of the diff
 LINE_RE = r"^@@ [^+]*\+(\d+)"
 
-diff_views = {}
+diff_views = {}  # type: Dict[str, sublime.View]
 
 
 class GsDiffCommand(WindowCommand, GitCommand):
