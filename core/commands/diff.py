@@ -5,10 +5,12 @@ current diff.
 
 from collections import namedtuple
 from contextlib import contextmanager
-from functools import partial
-from itertools import chain
+from functools import lru_cache, partial
+from itertools import accumulate as accumulate_, chain, groupby, tee
+import difflib
 import os
 import re
+import time
 import threading
 
 import sublime
@@ -27,7 +29,8 @@ flatten = chain.from_iterable
 MYPY = False
 if MYPY:
     from typing import (
-        Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set, Tuple, TypeVar
+        Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set, Sequence, Tuple,
+        Type, TypeVar
     )
 
     T = TypeVar('T')
@@ -272,6 +275,10 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
                 return text
 
             text = WORD_DIFF_MARKERS_RE.sub(extractor, text)
+        else:
+            # import profile
+            # profile.runctx('compute_intra_line_diffs(text)', globals(), locals(), sort='cumtime')
+            removed_regions, added_regions = compute_intra_line_diffs(text)
 
         self.view.run_command(
             "gs_replace_view_text", {"text": text, "restore_cursors": True}
@@ -282,6 +289,207 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 
         if not old_diff:
             self.view.run_command("gs_diff_navigate")
+
+
+@contextmanager
+def print_runtime(message):
+    start_time = time.perf_counter()
+    yield
+    end_time = time.perf_counter()
+    duration = round((end_time - start_time) * 1000)
+    thread_name = threading.current_thread().name[0]
+    print('{} took {}ms [{}]'.format(message, duration, thread_name))
+
+
+@print_runtime('compute_intra_line_diffs')
+def compute_intra_line_diffs(text):
+    # type: (str) -> Tuple[List[Region], List[Region]]
+    diff = SplittedDiff.from_string(text)
+    from_regions = []
+    to_regions = []
+    for hunk in diff.hunks:
+        # group modification lines together
+        groups = [
+            list(lines)
+            for is_context, lines in groupby(
+                hunk.content().lines(),
+                key=lambda line: line.is_context()
+            )
+            # skip groups of context lines
+            if not is_context
+        ]
+        # Keep only groups which have both + and - modes, but since these
+        # groups are always sorted in git, from a to b, such a group starts
+        # with a "-" and ends with a "+".
+        groups = [
+            group
+            for group in groups
+            if group[0].mode == '-' and group[-1].mode == '+'
+        ]
+
+        for group in groups:
+            from_lines, to_lines = [
+                list(lines)
+                for mode, lines in groupby(group, key=lambda line: line.mode)
+            ]
+
+            algo = (
+                intra_diff_line_by_line
+                if len(from_lines) == len(to_lines)
+                else intra_diff_general_algorithm
+            )
+            new_from_regions, new_to_regions = algo(from_lines, to_lines)
+            from_regions.extend(new_from_regions)
+            to_regions.extend(new_to_regions)
+
+    return from_regions, to_regions
+
+
+@lru_cache(maxsize=512)
+def match_sequences(a, b, is_junk=difflib.IS_CHARACTER_JUNK):
+    # type: (Sequence, Sequence, Callable[[str], bool]) -> difflib.SequenceMatcher
+    matches = difflib.SequenceMatcher(is_junk, a=a, b=b)
+    matches.ratio()  # for the side-effect of doing the computational work and caching it
+    return matches
+
+
+def intra_diff_general_algorithm(from_lines, to_lines):
+    # type: (List[HunkLine], List[HunkLine]) -> Tuple[List[Region], List[Region]]
+    # Generally, if the two line chunks have different size, try to fit
+    # the smaller one into the bigger, or try to find how and where the
+    # smaller could be placed in the bigger one.
+    #
+    # E.g. you have 3 "+" lines, but 5 "-" lines. For now take the *first*
+    # "+" line, and match it against "-" lines. The highest match ratio wins,
+    # and we take it as the starting point for the intra-diff line-by-line
+    # algorithm.
+    if len(from_lines) < len(to_lines):
+        base_line = from_lines[0].content
+        matcher = partial(match_sequences, base_line)
+        # We want that the smaller list fits completely into the bigger,
+        # so we can't compare against *all* lines but have to stop
+        # somewhere earlier.
+        #
+        # E.g. a = [1, 2, 3, 4, 5]; b = [1, 2].  Then, the candidates are
+        #          [1, 2, 3, 4] otherwise b won't fit anymore
+        #                   [1, 2]
+        match_candidates = to_lines[:len(to_lines) - len(from_lines) + 1]
+        to_lines = to_lines[find_best_slice(matcher, match_candidates)]
+    else:
+        base_line = to_lines[0].content
+        matcher = partial(match_sequences, b=base_line)
+        match_candidates = from_lines[:len(from_lines) - len(to_lines) + 1]
+        from_lines = from_lines[find_best_slice(matcher, match_candidates)]
+
+    if to_lines and from_lines:
+        return intra_diff_line_by_line(from_lines, to_lines)
+    else:
+        return [], []
+
+
+def find_best_slice(matcher, lines):
+    # type: (Callable[[str], difflib.SequenceMatcher], List[HunkLine]) -> slice
+    scores = []
+    for n, line in enumerate(lines):
+        matches = matcher(line.content)
+        ratio = matches.ratio()
+        if ratio >= 0.85:
+            break
+        scores.append((ratio, n))
+    else:
+        ratio, n = max(scores)
+        if ratio < 0.75:
+            return slice(0)
+
+    return slice(n, None)
+
+
+boundary = re.compile(r'(\W)')
+
+
+def intra_diff_line_by_line(from_lines, to_lines):
+    # type: (List[HunkLine], List[HunkLine]) -> Tuple[List[Region], List[Region]]
+    from_regions = []
+    to_regions = []
+
+    for from_line, to_line in zip(from_lines, to_lines):
+        # Compare without the leading mode char using ".content", but
+        # also dedent both lines because leading common spaces will produce
+        # higher ratios and produce slightly more ugly diffs.
+        indentation = min(
+            line_indentation(from_line.content),
+            line_indentation(to_line.content)
+        )
+        a_input, b_input = from_line.content[indentation:], to_line.content[indentation:]
+        matches = match_sequences(a_input, b_input)
+        if matches.ratio() < 0.5:
+            # We just continue, so it is possible that for a given chunk
+            # *some* lines have markers, others not.
+            # A different implementation could be: if *any* line within a hunk
+            # is really low, like here 0.5, drop the hunk altogether.
+            continue
+
+        # Use tokenize strategy when there are "nearby"/fragmented splits
+        # because it produces more calm output.
+        if is_fragmented_match(matches):
+            a_input = tuple(filter(None, boundary.split(a_input)))  # type: ignore
+            b_input = tuple(filter(None, boundary.split(b_input)))  # type: ignore
+            matches = match_sequences(a_input, b_input)
+
+        a_offset = from_line.a + 1 + indentation
+        b_offset = to_line.a + 1 + indentation
+        from_offsets = tuple(accumulate(map(len, a_input), initial=a_offset))
+        to_offsets = tuple(accumulate(map(len, b_input), initial=b_offset))
+        for op, a_start, a_end, b_start, b_end in matches.get_opcodes():
+            if op == 'equal':
+                continue
+
+            if a_start != a_end:
+                from_regions.append(Region(from_offsets[a_start], from_offsets[a_end]))
+
+            if b_start != b_end:
+                to_regions.append(Region(to_offsets[b_start], to_offsets[b_end]))
+
+    return from_regions, to_regions
+
+
+def is_fragmented_match(matches):
+    # type: (difflib.SequenceMatcher) -> bool
+    a_input, b_input = matches.a, matches.b  # type: ignore  # stub bug?
+    return any(
+        (
+            a_end - a_start == 1
+            and not a_input[a_start:a_end] == '\n'
+        )
+        or (
+            b_end - b_start == 1
+            and not b_input[b_start:b_end] == '\n'
+        )
+        for op, a_start, a_end, b_start, b_end in matches.get_opcodes()
+        if op == 'equal'
+    )
+
+
+class Region(sublime.Region):
+    def __iter__(self):
+        # type: () -> Iterator[int]
+        return iter((self.a, self.b))
+
+    def __add__(self, other):
+        # type: (int) -> Region
+        return self.transpose(other)
+
+    def __sub__(self, other):
+        # type: (int) -> Region
+        return self.transpose(-other)
+
+    def transpose(self, n):
+        # type: (int) -> Region
+        return Region(self.a + n, self.b + n)
+
+    def as_slice(self):
+        # type: () -> slice
+        return slice(self.a, self.b)
 
 
 class GsDiffToggleSetting(TextCommand):
@@ -679,7 +887,7 @@ def real_rowcol_in_hunk(hunk, relative_rowcol):
 
 
 def counted_lines(hunk):
-    # type: (Hunk) -> Optional[List[HunkLine]]
+    # type: (Hunk) -> Optional[List[HunkLineWithB]]
     """Split a hunk into (first char, line content, row) tuples
 
     Note that rows point to available rows on the b-side.
@@ -687,17 +895,17 @@ def counted_lines(hunk):
     b = hunk.header().b_line_start()
     if b is None:
         return None
-    return list(_recount_lines(hunk.content().splitlines(), b))
+    return list(_recount_lines(hunk.content().text.splitlines(), b))
 
 
 def _recount_lines(lines, b):
-    # type: (List[str], int) -> Iterator[HunkLine]
+    # type: (List[str], int) -> Iterator[HunkLineWithB]
 
     # Be aware that we only consider the b-line numbers, and that we
     # always yield a b value, even for deleted lines.
     for line in lines:
         first_char, tail = line[0], line[1:]
-        yield HunkLine(first_char, tail, b)
+        yield HunkLineWithB(first_char, tail, b)
 
         if first_char != '-':
             b += 1
@@ -755,18 +963,19 @@ class GsDiffUndo(TextCommand, GitCommand):
 
 
 if MYPY:
-    SplittedDiffB = NamedTuple(
+    SplittedDiffBase = NamedTuple(
         'SplittedDiff', [('headers', Tuple['Header', ...]), ('hunks', Tuple['Hunk', ...])]
     )
-    TextRange = NamedTuple('TextRange', [('text', str), ('a', int), ('b', int)])
-    HunkLine = NamedTuple('HunkLine', [('mode', str), ('text', str), ('b', int)])
+    TextRangeBase = NamedTuple('TextRange', [('text', str), ('a', int), ('b', int)])
+    HunkLineWithB = NamedTuple('HunkLineWithB', [('mode', str), ('text', str), ('b', int)])
+    TTextRange = TypeVar('TTextRange', bound='TextRange')
 else:
-    SplittedDiffB = namedtuple('SplittedDiff', 'headers hunks')
-    TextRange = namedtuple('TextRange', 'text a b')
-    HunkLine = namedtuple('HunkLine', 'mode text b')
+    SplittedDiffBase = namedtuple('SplittedDiff', 'headers hunks')
+    TextRangeBase = namedtuple('TextRange', 'text a b')
+    HunkLineWithB = namedtuple('HunkLineWithB', 'mode text b')
 
 
-class SplittedDiff(SplittedDiffB):
+class SplittedDiff(SplittedDiffBase):
     @classmethod
     def from_string(cls, text):
         # type: (str) -> SplittedDiff
@@ -815,6 +1024,39 @@ HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+)$')
 HUNKS_LINES_RE = re.compile(r'@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? ')
 
 
+class TextRange(TextRangeBase):
+    def __new__(cls, text, a=0, b=None):
+        # type: (Type[TTextRange], str, int, int) -> TTextRange
+        if b is None:
+            b = len(text)
+        return super().__new__(cls, text, a, b)
+
+    _line_factory = None  # type: Type[TextRange]
+
+    @property
+    def region(self):
+        # type: () -> Region
+        return Region(self.a, self.b)
+
+    def lines(self):
+        # type: () -> List[TextRange]
+        _factory = self._line_factory or TextRange
+        lines = self.text.splitlines(keepends=True)
+        return [
+            _factory(line, *a_b)
+            for line, a_b in zip(lines, pairwise(accumulate(map(len, lines), initial=self.a)))
+        ]
+
+    def substr(self, region):
+        # type: (Region) -> TextRange
+        text = self.text[region.as_slice()]
+        return TextRange(text, *(region + self.a))
+
+    def split_region_by_newlines(self, region):
+        # type: (Region) -> List[Region]
+        return [line.region for line in self.substr(region).lines()]
+
+
 class Header(TextRange):
     def b_filename(self):
         # type: () -> Optional[str]
@@ -837,12 +1079,6 @@ class Hunk(TextRange):
         return HunkContent(self.text[content_start:], self.a + content_start, self.b)
 
 
-class HunkContent(TextRange):
-    def splitlines(self):
-        # type: () -> List[str]
-        return self.text.splitlines()
-
-
 class HunkHeader(TextRange):
     def b_line_start(self):
         # type: () -> Optional[int]
@@ -855,6 +1091,30 @@ class HunkHeader(TextRange):
             return None
 
         return int(match.group(2))
+
+
+class HunkLine(TextRange):
+    @property
+    def mode(self):
+        # type: () -> str
+        return self.text[0]
+
+    @property
+    def content(self):
+        # type: () -> str
+        return self.text[1:]
+
+    def is_context(self):
+        return self.mode.strip() == ''
+
+
+class HunkContent(TextRange):
+    _line_factory = HunkLine
+
+    if MYPY:
+        def lines(self):  # type: ignore
+            # type: () -> List[HunkLine]
+            return super().lines()  # type: ignore
 
 
 def find_hunk_in_view(view, patch):
@@ -872,7 +1132,7 @@ def find_hunk_in_view(view, patch):
 
     return (
         view.find(hunk.header().text, 0, sublime.LITERAL)
-        or fuzzy_search_hunk_content_in_view(view, hunk.content().splitlines())
+        or fuzzy_search_hunk_content_in_view(view, hunk.content().text.splitlines())
     )
 
 
@@ -906,6 +1166,22 @@ def shrink_list_sym(list):
     while list:
         yield list
         list = list[1:-1]
+
+
+def accumulate(iterable, initial):
+    # type: (Iterable[int], int) -> Iterable[int]
+    if initial is None:
+        return accumulate_(iterable)
+    else:
+        return accumulate_(chain([initial], iterable))
+
+
+def pairwise(iterable):
+    # type: (Iterable[T]) -> Iterable[Tuple[T, T]]
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 
 def pickle_sel(sel):
