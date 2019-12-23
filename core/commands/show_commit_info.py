@@ -3,6 +3,7 @@ from functools import lru_cache
 import sublime
 from sublime_plugin import WindowCommand
 
+from . import diff
 from ..git_command import GitCommand
 
 
@@ -58,8 +59,13 @@ class GsShowCommitInfoCommand(WindowCommand, GitCommand):
             show_full = self.savvy_settings.get("show_full_commit_info")
             show_diffstat = self.savvy_settings.get("show_diffstat")
             text = self.show_commit(self._commit_hash, self._file_path, show_diffstat, show_full)
+            removed_regions, added_regions = diff.compute_intra_line_diffs(text)
+
             output_view.run_command("gs_replace_view_text", {"text": text, "nuke_cursors": True})
             output_view.settings().set("git_savvy.show_commit_info.commit", self._commit_hash)
+
+            output_view.add_regions("git-savvy-added-bold", added_regions, scope="diff.inserted.char")
+            output_view.add_regions("git-savvy-removed-bold", removed_regions, scope="diff.deleted.char")
 
             prev_position = storage.get(self._commit_hash, (0, 0))
             output_view.set_viewport_position(prev_position, False)
