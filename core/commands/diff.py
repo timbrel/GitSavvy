@@ -312,7 +312,11 @@ def compute_intra_line_diffs(text):
         groups = [
             list(lines)
             for is_context, lines in groupby(
-                hunk.content().lines(),
+                (
+                    line
+                    for line in hunk.content().lines()
+                    if not line.is_no_newline_marker()
+                ),
                 key=lambda line: line.is_context()
             )
             # skip groups of context lines
@@ -1106,6 +1110,9 @@ class HunkLine(TextRange):
 
     def is_context(self):
         return self.mode.strip() == ''
+
+    def is_no_newline_marker(self):
+        return self.text.strip() == "\\ No newline at end of file"
 
 
 class HunkContent(TextRange):
