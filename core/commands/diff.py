@@ -213,44 +213,63 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         self.view.settings().set("git_savvy.diff_view.raw_diff", diff)
         text = prelude + '\n--\n' + diff
 
-        added_regions = []  # type: List[sublime.Region]
-        removed_regions = []  # type: List[sublime.Region]
-
         if word_diff_regex:
-            def extractor(match):
-                # We generally transform `{+text+}` (and likewise `[-text-]`) into just
-                # `text`.
-                text = match.group()[2:-2]
-                # The `start/end` offsets are based on the original input, so we need
-                # to adjust them for the regions we want to draw.
-                total_matches_so_far = len(added_regions) + len(removed_regions)
-                start, _end = match.span()
-                # On each match the original diff is shortened by 4 chars.
-                offset = start - (total_matches_so_far * 4)
-
-                regions = added_regions if match.group()[1] == '+' else removed_regions
-                regions.append(sublime.Region(offset, offset + len(text)))
-                return text
-
-            text = WORD_DIFF_MARKERS_RE.sub(extractor, text)
+            text, added_regions, removed_regions = postprocess_word_diff(text)
         else:
-            # import profile
-            # profile.runctx('compute_intra_line_diffs(text)', globals(), locals(), sort='cumtime')
-            removed_regions, added_regions = compute_intra_line_diffs(text)
+            added_regions, removed_regions = [], []
 
-        self.view.run_command(
-            "gs_replace_view_text", {"text": text, "restore_cursors": True}
+        sublime.set_timeout(
+            lambda: _draw(
+                self.view,
+                text,
+                bool(word_diff_regex),
+                added_regions,
+                removed_regions,
+                navigate=not old_diff
+            )
         )
 
-        self.view.add_regions(
+
+def _draw(view, text, is_word_diff, added_regions, removed_regions, navigate):
+    # type: (sublime.View, str, bool, List[sublime.Region], List[sublime.Region], bool) -> None
+    view.run_command(
+        "gs_replace_view_text", {"text": text, "restore_cursors": True}
+    )
+    if navigate:
+        view.run_command("gs_diff_navigate")
+
+    if is_word_diff:
+        view.add_regions(
             "git-savvy-added-bold", added_regions, scope="diff.inserted.char.git-savvy.diff"
         )
-        self.view.add_regions(
+        view.add_regions(
             "git-savvy-removed-bold", removed_regions, scope="diff.deleted.char.git-savvy.diff"
         )
+    else:
+        annotate_intra_line_differences(view)
 
-        if not old_diff:
-            self.view.run_command("gs_diff_navigate")
+
+def postprocess_word_diff(text):
+    # type: (str) -> Tuple[str, List[sublime.Region], List[sublime.Region]]
+    added_regions = []  # type: List[sublime.Region]
+    removed_regions = []  # type: List[sublime.Region]
+
+    def extractor(match):
+        # We generally transform `{+text+}` (and likewise `[-text-]`) into just
+        # `text`.
+        text = match.group()[2:-2]
+        # The `start/end` offsets are based on the original input, so we need
+        # to adjust them for the regions we want to draw.
+        total_matches_so_far = len(added_regions) + len(removed_regions)
+        start, _end = match.span()
+        # On each match the original diff is shortened by 4 chars.
+        offset = start - (total_matches_so_far * 4)
+
+        regions = added_regions if match.group()[1] == '+' else removed_regions
+        regions.append(sublime.Region(offset, offset + len(text)))
+        return text
+
+    return WORD_DIFF_MARKERS_RE.sub(extractor, text), added_regions, removed_regions
 
 
 @contextmanager
@@ -261,6 +280,20 @@ def print_runtime(message):
     duration = round((end_time - start_time) * 1000)
     thread_name = threading.current_thread().name[0]
     print('{} took {}ms [{}]'.format(message, duration, thread_name))
+
+
+def annotate_intra_line_differences(view):
+    # type: (sublime.View) -> None
+    text = view.substr(sublime.Region(0, view.size()))
+    # import profile
+    # profile.runctx('compute_intra_line_diffs(text)', globals(), locals(), sort='cumtime')
+    removed_regions, added_regions = compute_intra_line_diffs(text)
+    view.add_regions(
+        "git-savvy-added-bold", added_regions, scope="diff.inserted.char.git-savvy.diff"
+    )
+    view.add_regions(
+        "git-savvy-removed-bold", removed_regions, scope="diff.deleted.char.git-savvy.diff"
+    )
 
 
 @print_runtime('compute_intra_line_diffs')
