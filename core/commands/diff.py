@@ -6,7 +6,8 @@ current diff.
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import lru_cache, partial
-from itertools import accumulate as accumulate_, chain, groupby, tee
+import inspect
+from itertools import accumulate as accumulate_, chain, groupby, tee, zip_longest
 import difflib
 import os
 import re
@@ -27,8 +28,8 @@ flatten = chain.from_iterable
 MYPY = False
 if MYPY:
     from typing import (
-        Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set, Sequence, Tuple,
-        Type, TypeVar
+        Callable, Dict, Iterable, Iterator, List, Literal, NamedTuple, Optional, Set, Sequence,
+        Tuple, Type, TypeVar, Union
     )
 
     T = TypeVar('T')
@@ -282,12 +283,92 @@ def print_runtime(message):
     print('{} took {}ms [{}]'.format(message, duration, thread_name))
 
 
+AWAIT_UI_THREAD = 'AWAIT_UI_THREAD'  # type: Literal["AWAIT_UI_THREAD"]
+AWAIT_WORKER = 'AWAIT_WORKER'  # type: Literal["AWAIT_WORKER"]
+if MYPY:
+    HopperR = Iterator[Union[Literal["AWAIT_UI_THREAD", "AWAIT_WORKER"]]]
+    HoperFn = Callable[..., HopperR]
+
+
+def cooperative_thread_hopper(fn):
+    # type: (HoperFn) -> Callable[..., None]
+    def tick(gen, send_value=None):
+        try:
+            rv = gen.send(send_value)
+        except StopIteration:
+            return
+        except Exception as ex:
+            raise ex from None
+
+        if rv == AWAIT_UI_THREAD:
+            sublime.set_timeout(lambda: tick(gen))
+        elif rv == AWAIT_WORKER:
+            sublime.set_timeout_async(lambda: tick(gen))
+
+    def decorated(*args, **kwargs):
+        gen = fn(*args, **kwargs)
+        if inspect.isgenerator(gen):
+            tick(gen)
+
+    return decorated
+
+
 def annotate_intra_line_differences(view):
     # type: (sublime.View) -> None
-    text = view.substr(sublime.Region(0, view.size()))
     # import profile
-    # profile.runctx('compute_intra_line_diffs(text)', globals(), locals(), sort='cumtime')
-    removed_regions, added_regions = compute_intra_line_diffs(text)
+    # profile.runctx('compute_intra_line_diffs(view)', globals(), locals(), sort='cumtime')
+    compute_intra_line_diffs(view)
+
+
+@cooperative_thread_hopper
+def compute_intra_line_diffs(view):
+    # type: (sublime.View) -> HopperR
+    diff = SplittedDiff.from_view(view)
+    viewport = view.visible_region()
+    cc = view.change_count()
+
+    def should_continue():
+        return view.is_valid() and view.change_count() == cc
+
+    above_viewport, in_viewport, below_viewport = [], [], []  # type: Tuple[List[Hunk], List[Hunk], List[Hunk]]
+    for hunk in diff.hunks:
+        hunk_region = hunk.region
+        container = (
+            in_viewport if hunk_region.intersects(viewport)
+            else above_viewport if hunk_region < viewport
+            else below_viewport
+        )
+        container.append(hunk)
+
+    from_regions = []
+    to_regions = []
+
+    with print_runtime('IN_VIEWPORT'):
+        for hunk in in_viewport:
+            new_from_regions, new_to_regions = intra_line_diff_for_hunk(hunk)
+            from_regions.extend(new_from_regions)
+            to_regions.extend(new_to_regions)
+
+        _draw_intra_diff_regions(view, to_regions, from_regions)
+
+    yield AWAIT_WORKER
+    if not should_continue():
+        print('ABORT')
+        return
+
+    with print_runtime('OTHERS     '):
+        for hunk in filter_(flatten(zip_longest(reversed(above_viewport), below_viewport))):
+            new_from_regions, new_to_regions = intra_line_diff_for_hunk(hunk)
+            from_regions.extend(new_from_regions)
+            to_regions.extend(new_to_regions)
+
+        if not should_continue():
+            print('ABORT')
+            return
+        _draw_intra_diff_regions(view, to_regions, from_regions)
+
+
+def _draw_intra_diff_regions(view, added_regions, removed_regions):
     view.add_regions(
         "git-savvy-added-bold", added_regions, scope="diff.inserted.char.git-savvy.diff"
     )
@@ -296,50 +377,46 @@ def annotate_intra_line_differences(view):
     )
 
 
-@print_runtime('compute_intra_line_diffs')
-def compute_intra_line_diffs(text):
-    # type: (str) -> Tuple[List[Region], List[Region]]
-    diff = SplittedDiff.from_string(text)
+def intra_line_diff_for_hunk(hunk):
+    # type: (Hunk) -> Tuple[List[Region], List[Region]]
+    groups = [
+        list(lines)
+        for is_context, lines in groupby(
+            (
+                line
+                for line in hunk.content().lines()
+                if not line.is_no_newline_marker()
+            ),
+            key=lambda line: line.is_context()
+        )
+        # skip groups of context lines
+        if not is_context
+    ]
+    # Keep only groups which have both + and - modes, but since these
+    # groups are always sorted in git, from a to b, such a group starts
+    # with a "-" and ends with a "+".
+    groups = [
+        group
+        for group in groups
+        if group[0].mode == '-' and group[-1].mode == '+'
+    ]
+
     from_regions = []
     to_regions = []
-    for hunk in diff.hunks:
-        # group modification lines together
-        groups = [
+    for group in groups:
+        from_lines, to_lines = [
             list(lines)
-            for is_context, lines in groupby(
-                (
-                    line
-                    for line in hunk.content().lines()
-                    if not line.is_no_newline_marker()
-                ),
-                key=lambda line: line.is_context()
-            )
-            # skip groups of context lines
-            if not is_context
-        ]
-        # Keep only groups which have both + and - modes, but since these
-        # groups are always sorted in git, from a to b, such a group starts
-        # with a "-" and ends with a "+".
-        groups = [
-            group
-            for group in groups
-            if group[0].mode == '-' and group[-1].mode == '+'
+            for mode, lines in groupby(group, key=lambda line: line.mode)
         ]
 
-        for group in groups:
-            from_lines, to_lines = [
-                list(lines)
-                for mode, lines in groupby(group, key=lambda line: line.mode)
-            ]
-
-            algo = (
-                intra_diff_line_by_line
-                if len(from_lines) == len(to_lines)
-                else intra_diff_general_algorithm
-            )
-            new_from_regions, new_to_regions = algo(from_lines, to_lines)
-            from_regions.extend(new_from_regions)
-            to_regions.extend(new_to_regions)
+        algo = (
+            intra_diff_line_by_line
+            if len(from_lines) == len(to_lines)
+            else intra_diff_general_algorithm
+        )
+        new_from_regions, new_to_regions = algo(from_lines, to_lines)
+        from_regions.extend(new_from_regions)
+        to_regions.extend(new_to_regions)
 
     return from_regions, to_regions
 
