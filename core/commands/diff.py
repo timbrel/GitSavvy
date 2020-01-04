@@ -19,9 +19,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ..exceptions import GitSavvyError
-from ..settings import GitSavvySettings
 from ...common import util
-from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 filter_ = partial(filter, None)  # type: Callable[[Iterator[Optional[T]]], Iterator[T]]
 flatten = chain.from_iterable
 
@@ -126,46 +124,6 @@ class GsDiffCommand(WindowCommand, GitCommand):
             diff_views[view_key] = diff_view
 
             diff_view.run_command("gs_handle_vintageous")
-            threading.Thread(target=partial(augment_color_scheme, diff_view)).run()
-
-
-def augment_color_scheme(view):
-    # type: (sublime.View) -> None
-    settings = GitSavvySettings()
-    colors = settings.get('colors').get('inline_diff')
-    if not colors:
-        return
-
-    color_scheme = view.settings().get('color_scheme')
-    if color_scheme.endswith(".tmTheme"):
-        themeGenerator = XMLThemeGenerator(color_scheme)
-    else:
-        themeGenerator = JSONThemeGenerator(color_scheme)
-    themeGenerator.add_scoped_style(
-        "GitSavvy Added Line",
-        "git_savvy.change.addition",
-        background=colors["add_background"],
-        foreground=colors["add_foreground"]
-    )
-    themeGenerator.add_scoped_style(
-        "GitSavvy Removed Line",
-        "git_savvy.change.removal",
-        background=colors["remove_background"],
-        foreground=colors["remove_foreground"]
-    )
-    themeGenerator.add_scoped_style(
-        "GitSavvy Added Line Bold",
-        "git_savvy.change.addition.bold",
-        background=colors["add_background_bold"],
-        foreground=colors["add_foreground_bold"]
-    )
-    themeGenerator.add_scoped_style(
-        "GitSavvy Removed Line Bold",
-        "git_savvy.change.removal.bold",
-        background=colors["remove_background_bold"],
-        foreground=colors["remove_foreground_bold"]
-    )
-    themeGenerator.apply_new_theme("diff_view", view)
 
 
 WORD_DIFF_PATTERNS = [
