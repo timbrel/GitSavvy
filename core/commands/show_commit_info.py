@@ -64,8 +64,12 @@ class GsShowCommitInfoCommand(WindowCommand, GitCommand):
             output_view.run_command("gs_replace_view_text", {"text": text, "nuke_cursors": True})
             output_view.settings().set("git_savvy.show_commit_info.commit", self._commit_hash)
 
-            output_view.add_regions("git-savvy-added-bold", added_regions, scope="diff.inserted.char")
-            output_view.add_regions("git-savvy-removed-bold", removed_regions, scope="diff.deleted.char")
+            output_view.add_regions(
+                "git-savvy-added-bold", added_regions, scope="diff.inserted.char.git-savvy.diff"
+            )
+            output_view.add_regions(
+                "git-savvy-removed-bold", removed_regions, scope="diff.deleted.char.git-savvy.diff"
+            )
 
             prev_position = storage.get(self._commit_hash, (0, 0))
             output_view.set_viewport_position(prev_position, False)

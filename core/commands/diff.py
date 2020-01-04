@@ -242,8 +242,12 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
             "gs_replace_view_text", {"text": text, "restore_cursors": True}
         )
 
-        self.view.add_regions("git-savvy-added-bold", added_regions, scope="diff.inserted.char")
-        self.view.add_regions("git-savvy-removed-bold", removed_regions, scope="diff.deleted.char")
+        self.view.add_regions(
+            "git-savvy-added-bold", added_regions, scope="diff.inserted.char.git-savvy.diff"
+        )
+        self.view.add_regions(
+            "git-savvy-removed-bold", removed_regions, scope="diff.deleted.char.git-savvy.diff"
+        )
 
         if not old_diff:
             self.view.run_command("gs_diff_navigate")
