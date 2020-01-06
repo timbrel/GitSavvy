@@ -36,6 +36,8 @@ if MYPY:
     Point = int
     RowCol = Tuple[int, int]
 
+    Chunk = List['HunkLine']
+
 
 DIFF_TITLE = "DIFF: {}"
 DIFF_CACHED_TITLE = "DIFF (cached): {}"
@@ -330,22 +332,23 @@ def compute_intra_line_diffs(view):
     def should_continue():
         return view.is_valid() and view.change_count() == cc
 
-    above_viewport, in_viewport, below_viewport = [], [], []  # type: Tuple[List[Hunk], List[Hunk], List[Hunk]]
-    for hunk in diff.hunks:
-        hunk_region = hunk.region
+    chunks = filter(is_modification_group, flatten(map(group_non_context_lines, diff.hunks)))
+    above_viewport, in_viewport, below_viewport = [], [], []  # type: Tuple[List[Chunk], List[Chunk], List[Chunk]]
+    for chunk in chunks:
+        chunk_region = compute_chunk_region(chunk)
         container = (
-            in_viewport if hunk_region.intersects(viewport)
-            else above_viewport if hunk_region < viewport
+            in_viewport if chunk_region.intersects(viewport)
+            else above_viewport if chunk_region < viewport
             else below_viewport
         )
-        container.append(hunk)
+        container.append(chunk)
 
     from_regions = []
     to_regions = []
 
     with print_runtime('IN_VIEWPORT'):
-        for hunk in in_viewport:
-            new_from_regions, new_to_regions = intra_line_diff_for_hunk(hunk)
+        for chunk in in_viewport:
+            new_from_regions, new_to_regions = intra_line_diff_for_chunk(chunk)
             from_regions.extend(new_from_regions)
             to_regions.extend(new_to_regions)
 
@@ -357,8 +360,8 @@ def compute_intra_line_diffs(view):
         return
 
     with print_runtime('OTHERS     '):
-        for hunk in filter_(flatten(zip_longest(reversed(above_viewport), below_viewport))):
-            new_from_regions, new_to_regions = intra_line_diff_for_hunk(hunk)
+        for chunk in filter_(flatten(zip_longest(reversed(above_viewport), below_viewport))):
+            new_from_regions, new_to_regions = intra_line_diff_for_chunk(chunk)
             from_regions.extend(new_from_regions)
             to_regions.extend(new_to_regions)
 
@@ -377,48 +380,55 @@ def _draw_intra_diff_regions(view, added_regions, removed_regions):
     )
 
 
-def intra_line_diff_for_hunk(hunk):
-    # type: (Hunk) -> Tuple[List[Region], List[Region]]
-    groups = [
+def group_non_context_lines(hunk):
+    # type: (Hunk) -> List[Chunk]
+    """Return groups of chunks(?) (without context) from a hunk."""
+    # A hunk can contain many modifications interleaved
+    # with context lines. Return just these modification
+    # lines grouped as units.
+    # Note: No newline marker lines are just ignored t.i.
+    # skipped. Alternatively, `is_context` could mark them
+    # as context lines.
+    return [
         list(lines)
         for is_context, lines in groupby(
             (
                 line
                 for line in hunk.content().lines()
-                if not line.is_no_newline_marker()
+                if not line.is_no_newline_marker()  # <==
             ),
             key=lambda line: line.is_context()
         )
-        # skip groups of context lines
         if not is_context
     ]
-    # Keep only groups which have both + and - modes, but since these
-    # groups are always sorted in git, from a to b, such a group starts
-    # with a "-" and ends with a "+".
-    groups = [
-        group
-        for group in groups
-        if group[0].mode == '-' and group[-1].mode == '+'
+
+
+def is_modification_group(lines):
+    # type: (Chunk) -> bool
+    """Mark groups which have both + and - modes."""
+    # Since these groups are always sorted in git, from a to b,
+    # such a group starts with a "-" and ends with a "+".
+    return lines[0].mode == '-' and lines[-1].mode == '+'
+
+
+def compute_chunk_region(lines):
+    # type: (Chunk) -> sublime.Region
+    return sublime.Region(lines[0].a, lines[-1].b)
+
+
+def intra_line_diff_for_chunk(group):
+    # type: (Chunk) -> Tuple[List[Region], List[Region]]
+    from_lines, to_lines = [
+        list(lines)
+        for mode, lines in groupby(group, key=lambda line: line.mode)
     ]
 
-    from_regions = []
-    to_regions = []
-    for group in groups:
-        from_lines, to_lines = [
-            list(lines)
-            for mode, lines in groupby(group, key=lambda line: line.mode)
-        ]
-
-        algo = (
-            intra_diff_line_by_line
-            if len(from_lines) == len(to_lines)
-            else intra_diff_general_algorithm
-        )
-        new_from_regions, new_to_regions = algo(from_lines, to_lines)
-        from_regions.extend(new_from_regions)
-        to_regions.extend(new_to_regions)
-
-    return from_regions, to_regions
+    algo = (
+        intra_diff_line_by_line
+        if len(from_lines) == len(to_lines)
+        else intra_diff_general_algorithm
+    )
+    return algo(from_lines, to_lines)
 
 
 @lru_cache(maxsize=512)
