@@ -322,15 +322,23 @@ def annotate_intra_line_differences(view):
     compute_intra_line_diffs(view)
 
 
+def view_has_changed_factory(view):
+    # type: (sublime.View) -> Callable[[], bool]
+    cc = view.change_count()
+
+    def view_has_changed():
+        # type: () -> bool
+        return not view.is_valid() or view.change_count() != cc
+
+    return view_has_changed
+
+
 @cooperative_thread_hopper
 def compute_intra_line_diffs(view):
     # type: (sublime.View) -> HopperR
     diff = SplittedDiff.from_view(view)
     viewport = view.visible_region()
-    cc = view.change_count()
-
-    def should_continue():
-        return view.is_valid() and view.change_count() == cc
+    view_has_changed = view_has_changed_factory(view)
 
     chunks = filter(is_modification_group, flatten(map(group_non_context_lines, diff.hunks)))
     above_viewport, in_viewport, below_viewport = [], [], []  # type: Tuple[List[Chunk], List[Chunk], List[Chunk]]
@@ -355,7 +363,7 @@ def compute_intra_line_diffs(view):
         _draw_intra_diff_regions(view, to_regions, from_regions)
 
     yield AWAIT_WORKER
-    if not should_continue():
+    if view_has_changed():
         print('ABORT')
         return
 
@@ -365,7 +373,7 @@ def compute_intra_line_diffs(view):
             from_regions.extend(new_from_regions)
             to_regions.extend(new_to_regions)
 
-        if not should_continue():
+        if view_has_changed():
             print('ABORT')
             return
         _draw_intra_diff_regions(view, to_regions, from_regions)
