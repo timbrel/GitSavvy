@@ -386,6 +386,10 @@ def compute_intra_line_diffs(view):
     if view_has_changed():
         return
 
+    # Consider some chunks [1, 2, 3, 4] where 3 was *in* the viewport and thus
+    # rendered immediately. Now, [1, 2] + [4] await their render. The following
+    # `zip_longest(reversed` dance generates [2, 4, 1] as the unit of work, t.i.
+    # we move from the viewport to the edges (inside-out).
     for chunk in filter_(flatten(zip_longest(reversed(above_viewport), below_viewport))):
         new_from_regions, new_to_regions = intra_line_diff_for_chunk(chunk)
         from_regions.extend(new_from_regions)
@@ -528,10 +532,13 @@ boundary = re.compile(r'(\W)')
 
 def intra_diff_line_by_line(from_lines, to_lines):
     # type: (List[HunkLine], List[HunkLine]) -> Tuple[List[Region], List[Region]]
+    # Note: We have no guarantees here that from_lines and to_lines
+    # have the same length, we use `zip` currently which produces
+    # iterables of the shortest length of both!
     from_regions = []
     to_regions = []
 
-    for from_line, to_line in zip(from_lines, to_lines):
+    for from_line, to_line in zip(from_lines, to_lines):  # zip! see comment above
         # Compare without the leading mode char using ".content", but
         # also dedent both lines because leading common spaces will produce
         # higher ratios and produce slightly more ugly diffs.
