@@ -333,12 +333,33 @@ def view_has_changed_factory(view):
     return view_has_changed
 
 
+MAX_BLOCK_TIME = 17
+
+
+def block_time_passed_factory(block_time):
+    start_time = time.perf_counter()
+
+    def block_time_passed():
+        nonlocal start_time
+
+        end_time = time.perf_counter()
+        duration = round((end_time - start_time) * 1000)
+        if duration > block_time:
+            start_time = time.perf_counter()
+            return True
+        else:
+            return False
+
+    return block_time_passed
+
+
 @cooperative_thread_hopper
 def compute_intra_line_diffs(view):
     # type: (sublime.View) -> HopperR
     diff = SplittedDiff.from_view(view)
     viewport = view.visible_region()
     view_has_changed = view_has_changed_factory(view)
+    block_time_passed = block_time_passed_factory(MAX_BLOCK_TIME)
 
     chunks = filter(is_modification_group, flatten(map(group_non_context_lines, diff.hunks)))
     above_viewport, in_viewport, below_viewport = [], [], []  # type: Tuple[List[Chunk], List[Chunk], List[Chunk]]
@@ -354,29 +375,33 @@ def compute_intra_line_diffs(view):
     from_regions = []
     to_regions = []
 
-    with print_runtime('IN_VIEWPORT'):
-        for chunk in in_viewport:
-            new_from_regions, new_to_regions = intra_line_diff_for_chunk(chunk)
-            from_regions.extend(new_from_regions)
-            to_regions.extend(new_to_regions)
+    for chunk in in_viewport:
+        new_from_regions, new_to_regions = intra_line_diff_for_chunk(chunk)
+        from_regions.extend(new_from_regions)
+        to_regions.extend(new_to_regions)
 
-        _draw_intra_diff_regions(view, to_regions, from_regions)
+    _draw_intra_diff_regions(view, to_regions, from_regions)
 
     yield AWAIT_WORKER
     if view_has_changed():
-        print('ABORT')
         return
 
-    with print_runtime('OTHERS     '):
-        for chunk in filter_(flatten(zip_longest(reversed(above_viewport), below_viewport))):
-            new_from_regions, new_to_regions = intra_line_diff_for_chunk(chunk)
-            from_regions.extend(new_from_regions)
-            to_regions.extend(new_to_regions)
+    for chunk in filter_(flatten(zip_longest(reversed(above_viewport), below_viewport))):
+        new_from_regions, new_to_regions = intra_line_diff_for_chunk(chunk)
+        from_regions.extend(new_from_regions)
+        to_regions.extend(new_to_regions)
 
-        if view_has_changed():
-            print('ABORT')
-            return
-        _draw_intra_diff_regions(view, to_regions, from_regions)
+        if block_time_passed():
+            if view_has_changed():
+                return
+            _draw_intra_diff_regions(view, to_regions, from_regions)
+            yield AWAIT_WORKER
+            if view_has_changed():
+                return
+
+    if view_has_changed():
+        return
+    _draw_intra_diff_regions(view, to_regions, from_regions)
 
 
 def _draw_intra_diff_regions(view, added_regions, removed_regions):
