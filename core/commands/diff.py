@@ -555,7 +555,7 @@ def intra_diff_line_by_line(from_lines, to_lines):
             # is really low, like here 0.5, drop the hunk altogether.
             continue
 
-        # Use tokenize strategy when there are "nearby"/fragmented splits
+        # Use tokenize strategy when there are "nearby" or fragmented splits
         # because it produces more calm output.
         if is_fragmented_match(matches):
             a_input = tuple(filter(None, boundary.split(a_input)))  # type: ignore
@@ -584,15 +584,20 @@ def is_fragmented_match(matches):
     a_input, b_input = matches.a, matches.b  # type: ignore  # stub bug?
     return any(
         (
-            a_end - a_start == 1
+            op == 'equal'
+            and a_end - a_start == 1
             and not a_input[a_start:a_end] == '\n'
         )
         or (
-            b_end - b_start == 1
+            op == 'equal'
+            and b_end - b_start == 1
             and not b_input[b_start:b_end] == '\n'
         )
+        or (
+            op != 'equal'
+            and boundary.search(a_input[a_start:a_end] + b_input[b_start:b_end])
+        )
         for op, a_start, a_end, b_start, b_end in matches.get_opcodes()
-        if op == 'equal'
     )
 
 
