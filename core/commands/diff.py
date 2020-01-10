@@ -469,11 +469,21 @@ def intra_line_diff_for_chunk(group):
 
 
 @lru_cache(maxsize=512)
-def match_sequences(a, b, is_junk=difflib.IS_CHARACTER_JUNK):
-    # type: (Sequence, Sequence, Callable[[str], bool]) -> difflib.SequenceMatcher
+def match_sequences(a, b, is_junk=difflib.IS_CHARACTER_JUNK, max_token_length=250):
+    # type: (Sequence, Sequence, Callable[[str], bool], int) -> difflib.SequenceMatcher
+    if (len(a) + len(b)) > max_token_length:
+        return NullSequenceMatcher(is_junk, a='', b='')
     matches = difflib.SequenceMatcher(is_junk, a=a, b=b)
     matches.ratio()  # for the side-effect of doing the computational work and caching it
     return matches
+
+
+class NullSequenceMatcher(difflib.SequenceMatcher):
+    def ratio(self):
+        return 0
+
+    def get_opcodes(self):
+        return []
 
 
 def intra_diff_general_algorithm(from_lines, to_lines):
