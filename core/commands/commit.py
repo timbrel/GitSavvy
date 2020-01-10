@@ -4,6 +4,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand
 from sublime_plugin import EventListener
 
+from . import diff
 from ..git_command import GitCommand
 from ...common import util
 from ...core.settings import SettingsMixin
@@ -166,7 +167,8 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
 
         show_commit_diff = self.savvy_settings.get("show_commit_diff")
         # for backward compatibility, check also if show_commit_diff is True
-        if show_commit_diff is True or show_commit_diff == "full":
+        shows_diff = show_commit_diff is True or show_commit_diff == "full"
+        if shows_diff:
             git_args.append("--patch")
 
         show_diffstat = self.savvy_settings.get("show_diffstat")
@@ -186,6 +188,8 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
             "text": initial_text,
             "nuke_cursors": True
         })
+        if shows_diff:
+            diff.annotate_intra_line_differences(self.view)
 
 
 class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
