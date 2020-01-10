@@ -1146,12 +1146,15 @@ class SplittedDiff(SplittedDiffBase):
     @classmethod
     def from_string(cls, text):
         # type: (str) -> SplittedDiff
-        header_starts = tuple(match.start() for match in re.finditer("^diff", text, re.M))
-        header_ends = tuple(match.end() for match in re.finditer(r"^\+{3}.+\n(?=@@)", text, re.M))
+        headers = [
+            (match.start(), match.end())
+            for match in re.finditer(r"^diff.*\n(?:.*\n)+?(?=diff|@@)", text, re.M)
+        ]
+        header_starts, header_ends = zip(*headers) if headers else ([], [])
         hunk_starts = tuple(match.start() for match in re.finditer("^@@", text, re.M))
         hunk_ends = tuple(sorted(
-            # Hunks end when the next diff starts.
-            set(header_starts[1:]) |
+            # Hunks end when a diff starts, except for empty diffs.
+            (set(header_starts[1:]) - set(header_ends)) |
             # Hunks end when the next hunk starts, except for hunks
             # immediately following diff headers.
             (set(hunk_starts) - set(header_ends)) |

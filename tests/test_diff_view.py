@@ -673,3 +673,13 @@ class TestDiffView(DeferrableTestCase):
             ('+++ b/core/commands/diff.py', 21)
         ]
         self.assertEqual(actual, expected)
+
+    def test_parse_diff(self):
+        DIFF = fixture('diff_2.txt')
+        diff = module.SplittedDiff.from_string(DIFF)
+
+        self.assertEqual(len(diff.hunks), 2)
+        self.assertEqual(len(diff.headers), 3)
+
+        self.assertEqual(diff.head_for_hunk(diff.hunks[0]), diff.headers[-1])
+        self.assertEqual(diff.head_for_hunk(diff.hunks[1]), diff.headers[-1])
