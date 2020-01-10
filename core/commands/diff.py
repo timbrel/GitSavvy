@@ -527,9 +527,6 @@ def find_best_slice(matcher, lines):
     return slice(n, None)
 
 
-boundary = re.compile(r'(\W)')
-
-
 def intra_diff_line_by_line(from_lines, to_lines):
     # type: (List[HunkLine], List[HunkLine]) -> Tuple[List[Region], List[Region]]
     # Note: We have no guarantees here that from_lines and to_lines
@@ -558,8 +555,8 @@ def intra_diff_line_by_line(from_lines, to_lines):
         # Use tokenize strategy when there are "nearby" or fragmented splits
         # because it produces more calm output.
         if is_fragmented_match(matches):
-            a_input = tuple(filter(None, boundary.split(a_input)))  # type: ignore
-            b_input = tuple(filter(None, boundary.split(b_input)))  # type: ignore
+            a_input = tokenize_string(a_input)  # type: ignore
+            b_input = tokenize_string(b_input)  # type: ignore
             matches = match_sequences(a_input, b_input)
 
         a_offset = from_line.a + 1 + indentation
@@ -577,6 +574,35 @@ def intra_diff_line_by_line(from_lines, to_lines):
                 to_regions.append(Region(to_offsets[b_start], to_offsets[b_end]))
 
     return from_regions, to_regions
+
+
+boundary = re.compile(r'(\W)')
+OPERATOR_CHARS = '=!<>'
+COMPARISON_SENTINEL = object()
+
+
+def tokenize_string(input_str):
+    # type: (str) -> Sequence[str]
+    # Usually a simple split on "\W" suffices, but here we join some
+    # "operator" chars again.
+    # About the "operator" chars: we want to treat e.g. "==" and "!="
+    # as one token.  It is not important to treat e.g. "&&" as one token
+    # because there is probably no "|&".  That is to say, if all chars
+    # change we get a clean diff anyway, for the comparison operators
+    # often only *one* of the characters changes ("<" to "<=" or "=="
+    # to "!=") and then it looks better esp. with ligatures (!) if we
+    # treat them as one token.
+    return tuple(
+        flatten(
+            [''.join(chars)]
+            if ch is COMPARISON_SENTINEL
+            else list(chars)
+            for ch, chars in groupby(
+                filter(None, boundary.split(input_str)),
+                key=lambda x: COMPARISON_SENTINEL if x in OPERATOR_CHARS else x
+            )
+        )
+    )
 
 
 def is_fragmented_match(matches):
