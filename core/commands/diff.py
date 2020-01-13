@@ -28,8 +28,8 @@ flatten = chain.from_iterable
 MYPY = False
 if MYPY:
     from typing import (
-        Callable, Dict, Iterable, Iterator, List, Literal, NamedTuple, Optional, Set, Sequence,
-        Tuple, Type, TypeVar, Union
+        Callable, Dict, Final, Iterable, Iterator, List, Literal, NamedTuple, Optional, Set,
+        Sequence, Tuple, Type, TypeVar, Union
     )
 
     T = TypeVar('T')
@@ -1133,12 +1133,9 @@ if MYPY:
     SplittedDiffBase = NamedTuple(
         'SplittedDiff', [('headers', Tuple['FileHeader', ...]), ('hunks', Tuple['Hunk', ...])]
     )
-    TextRangeBase = NamedTuple('TextRange', [('text', str), ('a', int), ('b', int)])
     HunkLineWithB = NamedTuple('HunkLineWithB', [('mode', str), ('text', str), ('b', int)])
-    TTextRange = TypeVar('TTextRange', bound='TextRange')
 else:
     SplittedDiffBase = namedtuple('SplittedDiff', 'headers hunks')
-    TextRangeBase = namedtuple('TextRange', 'text a b')
     HunkLineWithB = namedtuple('HunkLineWithB', 'mode text b')
 
 
@@ -1194,12 +1191,28 @@ HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+)$')
 HUNKS_LINES_RE = re.compile(r'@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? ')
 
 
-class TextRange(TextRangeBase):
-    def __new__(cls, text, a=0, b=None):
-        # type: (Type[TTextRange], str, int, int) -> TTextRange
+class TextRange:
+    def __init__(self, text, a=0, b=None):
+        # type: (str, int, int) -> None
         if b is None:
             b = len(text)
-        return super().__new__(cls, text, a, b)
+        self.text = text  # type: Final[str]
+        self.a = a  # type: Final[int]
+        self.b = b  # type: Final[int]
+
+    def _as_tuple(self):
+        # type: () -> Tuple[str, int, int]
+        return (self.text, self.a, self.b)
+
+    def __hash__(self):
+        # type: () -> int
+        return hash(self._as_tuple)
+
+    def __eq__(self, other):
+        # type: (object) -> bool
+        if isinstance(other, TextRange):
+            return self._as_tuple() == other._as_tuple()
+        return False
 
     _line_factory = None  # type: Type[TextRange]
 
