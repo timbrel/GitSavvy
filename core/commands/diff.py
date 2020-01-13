@@ -1131,7 +1131,7 @@ class GsDiffUndo(TextCommand, GitCommand):
 
 if MYPY:
     SplittedDiffBase = NamedTuple(
-        'SplittedDiff', [('headers', Tuple['Header', ...]), ('hunks', Tuple['Hunk', ...])]
+        'SplittedDiff', [('headers', Tuple['FileHeader', ...]), ('hunks', Tuple['Hunk', ...])]
     )
     TextRangeBase = NamedTuple('TextRange', [('text', str), ('a', int), ('b', int)])
     HunkLineWithB = NamedTuple('HunkLineWithB', [('mode', str), ('text', str), ('b', int)])
@@ -1163,7 +1163,7 @@ class SplittedDiff(SplittedDiffBase):
             set((len(text) + 1, ))
         ))
         return cls(
-            tuple(Header(text[a:b], a, b) for a, b in zip(header_starts, header_ends)),
+            tuple(FileHeader(text[a:b], a, b) for a, b in zip(header_starts, header_ends)),
             tuple(Hunk(text[a:b], a, b) for a, b in zip(hunk_starts, hunk_ends)),
         )
 
@@ -1173,7 +1173,7 @@ class SplittedDiff(SplittedDiffBase):
         return cls.from_string(view.substr(sublime.Region(0, view.size())))
 
     def head_and_hunk_for_pt(self, pt):
-        # type: (int) -> Optional[Tuple[Header, Hunk]]
+        # type: (int) -> Optional[Tuple[FileHeader, Hunk]]
         for hunk in self.hunks:
             if hunk.a <= pt < hunk.b:
                 break
@@ -1183,7 +1183,7 @@ class SplittedDiff(SplittedDiffBase):
         return self.head_for_hunk(hunk), hunk
 
     def head_for_hunk(self, hunk):
-        # type: (Hunk) -> Header
+        # type: (Hunk) -> FileHeader
         return max(
             (header for header in self.headers if header.a < hunk.a),
             key=lambda h: h.a
@@ -1227,7 +1227,7 @@ class TextRange(TextRangeBase):
         return [line.region for line in self.substr(region).lines()]
 
 
-class Header(TextRange):
+class FileHeader(TextRange):
     def b_filename(self):
         # type: () -> Optional[str]
         match = HEADER_TO_FILE_RE.search(self.text)
