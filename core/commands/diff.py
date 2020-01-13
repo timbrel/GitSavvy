@@ -1216,7 +1216,6 @@ class TextRange:
 
     _line_factory = None  # type: Type[TextRange]
 
-    @property
     def region(self):
         # type: () -> Region
         return Region(self.a, self.b)
@@ -1237,7 +1236,7 @@ class TextRange:
 
     def split_region_by_newlines(self, region):
         # type: (Region) -> List[Region]
-        return [line.region for line in self.substr(region).lines()]
+        return [line.region() for line in self.substr(region).lines()]
 
 
 class FileHeader(TextRange):
