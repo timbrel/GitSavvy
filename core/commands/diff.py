@@ -7,7 +7,7 @@ from collections import namedtuple
 from contextlib import contextmanager
 from functools import lru_cache, partial
 import inspect
-from itertools import accumulate as accumulate_, chain, groupby, tee, zip_longest
+from itertools import accumulate as accumulate_, chain, groupby, takewhile, tee, zip_longest
 import difflib
 import os
 import re
@@ -422,19 +422,23 @@ def group_non_context_lines(hunk):
     """Return groups of chunks(?) (without context) from a hunk."""
     # A hunk can contain many modifications interleaved
     # with context lines. Return just these modification
-    # lines grouped as units.
+    # lines grouped as units. Note that we process per
+    # column here which enables basic support for combined
+    # diffs.
     # Note: No newline marker lines are just ignored t.i.
-    # skipped. Alternatively, `is_context` could mark them
-    # as context lines.
+    # skipped.
+    mode_len = hunk.mode_len()
+    content_lines = list(
+        line
+        for line in hunk.content().lines()
+        if not line.is_no_newline_marker()  # <==
+    )
     return [
         list(lines)
+        for n in range(mode_len)  # <== usually one except for combined diffs
         for is_context, lines in groupby(
-            (
-                line
-                for line in hunk.content().lines()
-                if not line.is_no_newline_marker()  # <==
-            ),
-            key=lambda line: line.is_context()
+            content_lines,
+            key=lambda line: line.mode[n] == ' '
         )
         if not is_context
     ]
@@ -445,7 +449,7 @@ def is_modification_group(lines):
     """Mark groups which have both + and - modes."""
     # Since these groups are always sorted in git, from a to b,
     # such a group starts with a "-" and ends with a "+".
-    return lines[0].mode == '-' and lines[-1].mode == '+'
+    return lines[0].is_from_line() and lines[-1].is_to_line()
 
 
 def compute_chunk_region(lines):
@@ -457,7 +461,7 @@ def intra_line_diff_for_chunk(group):
     # type: (Chunk) -> Tuple[List[Region], List[Region]]
     from_lines, to_lines = [
         list(lines)
-        for mode, lines in groupby(group, key=lambda line: line.mode)
+        for mode, lines in groupby(group, key=lambda line: line.is_from_line())
     ]
 
     algo = (
@@ -569,8 +573,8 @@ def intra_diff_line_by_line(from_lines, to_lines):
             b_input = tokenize_string(b_input)  # type: ignore
             matches = match_sequences(a_input, b_input)
 
-        a_offset = from_line.a + 1 + indentation
-        b_offset = to_line.a + 1 + indentation
+        a_offset = from_line.a + from_line.mode_len + indentation
+        b_offset = to_line.a + to_line.mode_len + indentation
         from_offsets = tuple(accumulate(map(len, a_input), initial=a_offset))
         to_offsets = tuple(accumulate(map(len, b_input), initial=b_offset))
         for op, a_start, a_end, b_start, b_end in matches.get_opcodes():
@@ -1214,18 +1218,16 @@ class TextRange:
             return self._as_tuple() == other._as_tuple()
         return False
 
-    _line_factory = None  # type: Type[TextRange]
-
     def region(self):
         # type: () -> Region
         return Region(self.a, self.b)
 
-    def lines(self):
-        # type: () -> List[TextRange]
-        _factory = self._line_factory or TextRange
+    def lines(self, _factory=None):
+        # type: (Type[TextRange]) -> List[TextRange]
+        factory = _factory or TextRange
         lines = self.text.splitlines(keepends=True)
         return [
-            _factory(line, *a_b)
+            factory(line, *a_b)
             for line, a_b in zip(lines, pairwise(accumulate(map(len, lines), initial=self.a)))
         ]
 
@@ -1250,6 +1252,10 @@ class FileHeader(TextRange):
 
 
 class Hunk(TextRange):
+    def mode_len(self):
+        # type: () -> int
+        return len(list(takewhile(lambda x: x == '@', self.text))) - 1
+
     def header(self):
         # type: () -> HunkHeader
         content_start = self.text.index('\n') + 1
@@ -1258,7 +1264,12 @@ class Hunk(TextRange):
     def content(self):
         # type: () -> HunkContent
         content_start = self.text.index('\n') + 1
-        return HunkContent(self.text[content_start:], self.a + content_start, self.b)
+        return HunkContent(
+            self.text[content_start:],
+            self.a + content_start,
+            self.b,
+            self.mode_len()
+        )
 
 
 class HunkHeader(TextRange):
@@ -1276,15 +1287,28 @@ class HunkHeader(TextRange):
 
 
 class HunkLine(TextRange):
+    def __init__(self, text, a=0, b=None, mode_len=1):
+        # type: (str, int, int, int) -> None
+        super().__init__(text, a, b)
+        self.mode_len = mode_len  # type: Final[int]
+
+    def is_from_line(self):
+        # type: () -> bool
+        return '-' in self.mode
+
+    def is_to_line(self):
+        # type: () -> bool
+        return '+' in self.mode
+
     @property
     def mode(self):
         # type: () -> str
-        return self.text[0]
+        return self.text[:self.mode_len]
 
     @property
     def content(self):
         # type: () -> str
-        return self.text[1:]
+        return self.text[self.mode_len:]
 
     def is_context(self):
         return self.mode.strip() == ''
@@ -1294,12 +1318,15 @@ class HunkLine(TextRange):
 
 
 class HunkContent(TextRange):
-    _line_factory = HunkLine
+    def __init__(self, text, a=0, b=None, mode_len=1):
+        # type: (str, int, int, int) -> None
+        super().__init__(text, a, b)
+        self.mode_len = mode_len  # type: Final[int]
 
-    if MYPY:
-        def lines(self):  # type: ignore
-            # type: () -> List[HunkLine]
-            return super().lines()  # type: ignore
+    def lines(self):  # type: ignore
+        # type: () -> List[HunkLine]
+        factory = partial(HunkLine, mode_len=self.mode_len)
+        return super().lines(_factory=factory)  # type: ignore
 
 
 def find_hunk_in_view(view, patch):
