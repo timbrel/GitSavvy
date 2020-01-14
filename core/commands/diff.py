@@ -1239,15 +1239,6 @@ class TextRange:
             for line, a_b in zip(lines, pairwise(accumulate(map(len, lines), initial=self.a)))
         ]
 
-    def substr(self, region):
-        # type: (Region) -> TextRange
-        text = self.text[region.as_slice()]
-        return TextRange(text, *(region + self.a))
-
-    def split_region_by_newlines(self, region):
-        # type: (Region) -> List[Region]
-        return [line.region() for line in self.substr(region).lines()]
-
 
 class FileHeader(TextRange):
     def b_filename(self):
