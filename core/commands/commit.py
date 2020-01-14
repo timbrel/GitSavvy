@@ -160,36 +160,31 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
             with util.file.safe_open(commit_help_extra_path, "r", encoding="utf-8") as f:
                 initial_text += f.read()
 
-        git_args = [
-            "diff",
-            "--no-color"
-        ]
-
         show_commit_diff = self.savvy_settings.get("show_commit_diff")
         # for backward compatibility, check also if show_commit_diff is True
         shows_diff = show_commit_diff is True or show_commit_diff == "full"
+        shows_stat = (
+            show_commit_diff == "stat"
+            or (show_commit_diff == "full" and self.savvy_settings.get("show_diffstat"))
+        )
+        if shows_diff or shows_stat:
+            diff_text = self.git(
+                "diff",
+                "--no-color",
+                "--patch" if shows_diff else None,
+                "--stat" if shows_stat else None,
+                "--cached" if not include_unstaged else None,
+                "HEAD^" if option_amend
+                else "HEAD" if include_unstaged
+                else None
+            )
+        else:
+            diff_text = ''
+
+        text = initial_text + diff_text
+        self.view.run_command("gs_replace_view_text", {"text": text, "restore_cursors": True})
         if shows_diff:
-            git_args.append("--patch")
-
-        show_diffstat = self.savvy_settings.get("show_diffstat")
-        if show_commit_diff == "stat" or (show_commit_diff == "full" and show_diffstat):
-            git_args.append("--stat")
-
-        if not include_unstaged:
-            git_args.append("--cached")
-
-        if option_amend:
-            git_args.append("HEAD^")
-        elif include_unstaged:
-            git_args.append("HEAD")
-
-        initial_text += self.git(*git_args) if show_commit_diff else ''
-        self.view.run_command("gs_replace_view_text", {
-            "text": initial_text,
-            "nuke_cursors": True
-        })
-        if shows_diff:
-            diff.annotate_intra_line_differences(self.view)
+            diff.annotate_intra_line_differences(self.view, diff_text, len(initial_text))
 
 
 class GsPedanticEnforceEventListener(EventListener, SettingsMixin):

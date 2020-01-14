@@ -215,17 +215,18 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 
         old_diff = self.view.settings().get("git_savvy.diff_view.raw_diff")
         self.view.settings().set("git_savvy.diff_view.raw_diff", diff)
-        text = prelude + '\n--\n' + diff
+        prelude += "\n--\n"
 
         if word_diff_regex:
-            text, added_regions, removed_regions = postprocess_word_diff(text)
+            diff, added_regions, removed_regions = postprocess_word_diff(diff, len(prelude))
         else:
-            added_regions, removed_regions = [], []
+            diff, added_regions, removed_regions = diff, [], []
 
         sublime.set_timeout(
             lambda: _draw(
                 self.view,
-                text,
+                prelude,
+                diff,
                 bool(word_diff_regex),
                 added_regions,
                 removed_regions,
@@ -234,8 +235,9 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         )
 
 
-def _draw(view, text, is_word_diff, added_regions, removed_regions, navigate):
-    # type: (sublime.View, str, bool, List[sublime.Region], List[sublime.Region], bool) -> None
+def _draw(view, prelude, diff_text, is_word_diff, added_regions, removed_regions, navigate):
+    # type: (sublime.View, str, str, bool, List[sublime.Region], List[sublime.Region], bool) -> None
+    text = prelude + diff_text
     view.run_command(
         "gs_replace_view_text", {"text": text, "restore_cursors": True}
     )
@@ -250,11 +252,11 @@ def _draw(view, text, is_word_diff, added_regions, removed_regions, navigate):
             "git-savvy-removed-bold", removed_regions, scope="diff.deleted.char.git-savvy.diff"
         )
     else:
-        annotate_intra_line_differences(view)
+        annotate_intra_line_differences(view, diff_text, len(prelude))
 
 
-def postprocess_word_diff(text):
-    # type: (str) -> Tuple[str, List[sublime.Region], List[sublime.Region]]
+def postprocess_word_diff(text, global_offset=0):
+    # type: (str, int) -> Tuple[str, List[sublime.Region], List[sublime.Region]]
     added_regions = []  # type: List[sublime.Region]
     removed_regions = []  # type: List[sublime.Region]
 
@@ -267,7 +269,7 @@ def postprocess_word_diff(text):
         total_matches_so_far = len(added_regions) + len(removed_regions)
         start, _end = match.span()
         # On each match the original diff is shortened by 4 chars.
-        offset = start - (total_matches_so_far * 4)
+        offset = global_offset + start - (total_matches_so_far * 4)
 
         regions = added_regions if match.group()[1] == '+' else removed_regions
         regions.append(sublime.Region(offset, offset + len(text)))
@@ -325,11 +327,15 @@ def cooperative_thread_hopper(fn):
 
 
 @eat_but_log_errors()
-def annotate_intra_line_differences(view):
-    # type: (sublime.View) -> None
+def annotate_intra_line_differences(view, diff_text=None, offset=0):
+    # type: (sublime.View, str, int) -> None
     # import profile
     # profile.runctx('compute_intra_line_diffs(view)', globals(), locals(), sort='cumtime')
-    compute_intra_line_diffs(view)
+    if diff_text is None:
+        diff = SplittedDiff.from_view(view)
+    else:
+        diff = SplittedDiff.from_string(diff_text, offset)
+    compute_intra_line_diffs(view, diff)
 
 
 def view_has_changed_factory(view):
@@ -364,9 +370,8 @@ def block_time_passed_factory(block_time):
 
 
 @cooperative_thread_hopper
-def compute_intra_line_diffs(view):
-    # type: (sublime.View) -> HopperR
-    diff = SplittedDiff.from_view(view)
+def compute_intra_line_diffs(view, diff):
+    # type: (sublime.View, SplittedDiff) -> HopperR
     viewport = view.visible_region()
     view_has_changed = view_has_changed_factory(view)
     block_time_passed = block_time_passed_factory(MAX_BLOCK_TIME)
@@ -1157,8 +1162,8 @@ else:
 
 class SplittedDiff(SplittedDiffBase):
     @classmethod
-    def from_string(cls, text):
-        # type: (str) -> SplittedDiff
+    def from_string(cls, text, offset=0):
+        # type: (str, int) -> SplittedDiff
         factories = {'commit': CommitHeader, 'diff': FileHeader, '@@': Hunk}
         containers = {'commit': [], 'diff': [], '@@': []}
         sections = (
@@ -1166,7 +1171,7 @@ class SplittedDiff(SplittedDiffBase):
             for match in re.finditer(r'^(commit|diff|@@)', text, re.M)
         )
         for (id, start), (_, end) in pairwise(chain(sections, [('END', len(text) + 1)])):
-            containers[id].append(factories[id](text[start:end], start, end))
+            containers[id].append(factories[id](text[start:end], start + offset, end + offset))
 
         return cls(
             tuple(containers['commit']),
