@@ -996,10 +996,10 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
 
         # Extract the starting line at "b" encoded in the hunk header t.i. for
         # "@@ -685,8 +686,14 @@ ..." extract the "686".
-        b = hunk.header().b_line_start()
-        if b is None:
+        from_start = hunk.header().from_line_start()
+        if from_start is None:
             return None
-        row = b + rel_row
+        row = from_start + rel_row
 
         filename = header.from_filename()
         if not filename:
@@ -1073,7 +1073,7 @@ def counted_lines(hunk):
 
     Note that rows point to available rows on the b-side.
     """
-    b = hunk.header().b_line_start()
+    b = hunk.header().from_line_start()
     if b is None:
         return None
     return list(_recount_lines(hunk.content().lines(), b))
@@ -1272,7 +1272,7 @@ class Hunk(TextRange):
 
 
 class HunkHeader(TextRange):
-    def b_line_start(self):
+    def from_line_start(self):
         # type: () -> Optional[int]
         """Extract the starting line at "b" encoded in the hunk header
 
