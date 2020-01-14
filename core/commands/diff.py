@@ -947,7 +947,7 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
 
         row, col = rowcol
 
-        filename = header.b_filename()
+        filename = header.from_filename()
         if not filename:
             return None
 
@@ -1001,7 +1001,7 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
             return None
         row = b + rel_row
 
-        filename = header.b_filename()
+        filename = header.from_filename()
         if not filename:
             return None
 
@@ -1241,7 +1241,7 @@ class TextRange:
 
 
 class FileHeader(TextRange):
-    def b_filename(self):
+    def from_filename(self):
         # type: () -> Optional[str]
         match = HEADER_TO_FILE_RE.search(self.text)
         if not match:
