@@ -1026,35 +1026,35 @@ def real_rowcol_in_hunk(hunk, relative_rowcol):
         row_in_hunk = next(
             (
                 index
-                for index, line in enumerate(hunk_lines, 1)
-                if line.mode in ('+', ' ') and line.text.strip()
+                for index, (line, _) in enumerate(hunk_lines, 1)
+                if not line.is_from_line() and line.content.strip()
             ),
             1
         )
         col = 1
 
-    line = hunk_lines[row_in_hunk - 1]
+    line, b = hunk_lines[row_in_hunk - 1]
 
     # Happy path since the user is on a present line
-    if line.mode != '-':
-        return line.b, col
+    if not line.is_from_line():
+        return b, col
 
     # The user is on a deleted line ('-') we cannot jump to. If possible,
     # select the next guaranteed to be available line
-    for next_line in hunk_lines[row_in_hunk:]:
-        if next_line.mode == '+':
-            return next_line.b, min(col, len(next_line.text) + 1)
-        elif next_line.mode == ' ':
+    for next_line, next_b in hunk_lines[row_in_hunk:]:
+        if next_line.is_to_line():
+            return next_b, min(col, len(next_line.content) + 1)
+        elif next_line.is_context():
             # If we only have a contextual line, choose this or the
             # previous line, pretty arbitrary, depending on the
             # indentation.
-            next_lines_indentation = line_indentation(next_line.text)
-            if next_lines_indentation == line_indentation(line.text):
-                return next_line.b, next_lines_indentation + 1
+            next_lines_indentation = line_indentation(next_line.content)
+            if next_lines_indentation == line_indentation(line.content):
+                return next_b, next_lines_indentation + 1
             else:
-                return max(1, line.b - 1), 1
+                return max(1, b - 1), 1
     else:
-        return line.b, 1
+        return b, 1
 
 
 def counted_lines(hunk):
@@ -1066,19 +1066,17 @@ def counted_lines(hunk):
     b = hunk.header().b_line_start()
     if b is None:
         return None
-    return list(_recount_lines(hunk.content().text.splitlines(), b))
+    return list(_recount_lines(hunk.content().lines(), b))
 
 
 def _recount_lines(lines, b):
-    # type: (List[str], int) -> Iterator[HunkLineWithB]
+    # type: (List[HunkLine], int) -> Iterator[HunkLineWithB]
 
     # Be aware that we only consider the b-line numbers, and that we
     # always yield a b value, even for deleted lines.
     for line in lines:
-        first_char, tail = line[0], line[1:]
-        yield HunkLineWithB(first_char, tail, b)
-
-        if first_char != '-':
+        yield HunkLineWithB(line, b)
+        if not line.is_from_line():
             b += 1
 
 
@@ -1137,10 +1135,10 @@ if MYPY:
     SplittedDiffBase = NamedTuple(
         'SplittedDiff', [('headers', Tuple['FileHeader', ...]), ('hunks', Tuple['Hunk', ...])]
     )
-    HunkLineWithB = NamedTuple('HunkLineWithB', [('mode', str), ('text', str), ('b', int)])
+    HunkLineWithB = NamedTuple('HunkLineWithB', [('line', 'HunkLine'), ('b', int)])
 else:
     SplittedDiffBase = namedtuple('SplittedDiff', 'headers hunks')
-    HunkLineWithB = namedtuple('HunkLineWithB', 'mode text b')
+    HunkLineWithB = namedtuple('HunkLineWithB', 'line b')
 
 
 class SplittedDiff(SplittedDiffBase):
@@ -1192,7 +1190,7 @@ class SplittedDiff(SplittedDiffBase):
 
 
 HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+)$')
-HUNKS_LINES_RE = re.compile(r'@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? ')
+HUNKS_LINES_RE = re.compile(r'@@*.+\+(\d+)(?:,\d+)? ')
 
 
 class TextRange:
@@ -1283,7 +1281,7 @@ class HunkHeader(TextRange):
         if not match:
             return None
 
-        return int(match.group(2))
+        return int(match.group(1))
 
 
 class HunkLine(TextRange):
