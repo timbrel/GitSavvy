@@ -1143,11 +1143,15 @@ class GsDiffUndo(TextCommand, GitCommand):
 
 if MYPY:
     SplittedDiffBase = NamedTuple(
-        'SplittedDiff', [('headers', Tuple['FileHeader', ...]), ('hunks', Tuple['Hunk', ...])]
+        'SplittedDiff', [
+            ('commits', Tuple['CommitHeader', ...]),
+            ('headers', Tuple['FileHeader', ...]),
+            ('hunks', Tuple['Hunk', ...])
+        ]
     )
     HunkLineWithB = NamedTuple('HunkLineWithB', [('line', 'HunkLine'), ('b', int)])
 else:
-    SplittedDiffBase = namedtuple('SplittedDiff', 'headers hunks')
+    SplittedDiffBase = namedtuple('SplittedDiff', 'commits headers hunks')
     HunkLineWithB = namedtuple('HunkLineWithB', 'line b')
 
 
@@ -1155,25 +1159,19 @@ class SplittedDiff(SplittedDiffBase):
     @classmethod
     def from_string(cls, text):
         # type: (str) -> SplittedDiff
-        headers = [
-            (match.start(), match.end())
-            for match in re.finditer(r"^diff.*\n(?:.*\n)+?(?=diff|@@)", text, re.M)
-        ]
-        header_starts, header_ends = zip(*headers) if headers else ([], [])
-        hunk_starts = tuple(match.start() for match in re.finditer("^@@", text, re.M))
-        hunk_ends = tuple(sorted(
-            # Hunks end when a diff starts, except for empty diffs.
-            (set(header_starts[1:]) - set(header_ends)) |
-            # Hunks end when the next hunk starts, except for hunks
-            # immediately following diff headers.
-            (set(hunk_starts) - set(header_ends)) |
-            # The last hunk ends at the end of the file.
-            # It should include the last line (`+ 1`).
-            set((len(text) + 1, ))
-        ))
+        factories = {'commit': CommitHeader, 'diff': FileHeader, '@@': Hunk}
+        containers = {'commit': [], 'diff': [], '@@': []}
+        sections = (
+            (match.group(1), match.start())
+            for match in re.finditer(r'^(commit|diff|@@)', text, re.M)
+        )
+        for (id, start), (_, end) in pairwise(chain(sections, [('END', len(text) + 1)])):
+            containers[id].append(factories[id](text[start:end], start, end))
+
         return cls(
-            tuple(FileHeader(text[a:b], a, b) for a, b in zip(header_starts, header_ends)),
-            tuple(Hunk(text[a:b], a, b) for a, b in zip(hunk_starts, hunk_ends)),
+            tuple(containers['commit']),
+            tuple(containers['diff']),
+            tuple(containers['@@'])
         )
 
     @classmethod
@@ -1238,6 +1236,10 @@ class TextRange:
             factory(line, *a_b)
             for line, a_b in zip(lines, pairwise(accumulate(map(len, lines), initial=self.a)))
         ]
+
+
+class CommitHeader(TextRange):
+    pass
 
 
 class FileHeader(TextRange):
