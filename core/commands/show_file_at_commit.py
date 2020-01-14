@@ -29,9 +29,10 @@ class GsShowFileAtCommitCommand(WindowCommand, GitCommand):
         settings.set("git_savvy.repo_path", repo_path)
         if not lang:
             lang = util.file.get_syntax_for_file(filepath)
+        nice_hash = self.get_short_hash(commit_hash) if len(commit_hash) >= 40 else commit_hash
         title = SHOW_COMMIT_TITLE.format(
             os.path.basename(filepath),
-            self.get_short_hash(commit_hash),
+            nice_hash,
         )
 
         view.set_syntax_file(lang)
