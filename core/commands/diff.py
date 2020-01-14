@@ -1196,6 +1196,16 @@ class SplittedDiff(SplittedDiffBase):
             key=lambda h: h.a
         )
 
+    def commit_for_hunk(self, hunk):
+        # type: (Hunk) -> Optional[CommitHeader]
+        try:
+            return max(
+                (commit for commit in self.commits if commit.a < hunk.a),
+                key=lambda c: c.a
+            )
+        except ValueError:
+            return None
+
 
 HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+)$')
 HUNKS_LINES_RE = re.compile(r'@@*.+\+(\d+)(?:,\d+)? ')

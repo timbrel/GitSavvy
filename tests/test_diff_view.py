@@ -675,6 +675,11 @@ class TestDiffView(DeferrableTestCase):
         self.assertEqual(actual, expected)
 
     def test_parse_diff(self):
+        DIFF = fixture('diff_1.txt')
+        diff = module.SplittedDiff.from_string(DIFF)
+        self.assertEqual(diff.commit_for_hunk(diff.hunks[0]), None)
+
+    def test_parse_commit(self):
         DIFF = fixture('diff_2.txt')
         diff = module.SplittedDiff.from_string(DIFF)
 
@@ -683,3 +688,6 @@ class TestDiffView(DeferrableTestCase):
 
         self.assertEqual(diff.head_for_hunk(diff.hunks[0]), diff.headers[-1])
         self.assertEqual(diff.head_for_hunk(diff.hunks[1]), diff.headers[-1])
+
+        self.assertEqual(diff.commit_for_hunk(diff.hunks[0]), diff.commits[0])
+        self.assertEqual(diff.commit_for_hunk(diff.hunks[1]), diff.commits[0])
