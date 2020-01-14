@@ -13,6 +13,7 @@ import os
 import re
 import time
 import threading
+import traceback
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -285,6 +286,14 @@ def print_runtime(message):
     print('{} took {}ms [{}]'.format(message, duration, thread_name))
 
 
+@contextmanager
+def eat_but_log_errors(exception=Exception):
+    try:
+        yield
+    except exception:
+        traceback.print_exc()
+
+
 AWAIT_UI_THREAD = 'AWAIT_UI_THREAD'  # type: Literal["AWAIT_UI_THREAD"]
 AWAIT_WORKER = 'AWAIT_WORKER'  # type: Literal["AWAIT_WORKER"]
 if MYPY:
@@ -315,6 +324,7 @@ def cooperative_thread_hopper(fn):
     return decorated
 
 
+@eat_but_log_errors()
 def annotate_intra_line_differences(view):
     # type: (sublime.View) -> None
     # import profile
