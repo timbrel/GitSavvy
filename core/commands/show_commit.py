@@ -2,8 +2,8 @@ import os
 
 from sublime_plugin import WindowCommand, TextCommand
 
+from . import diff
 from ..git_command import GitCommand
-from .diff import GsDiffOpenFileAtHunkCommand
 
 
 SHOW_COMMIT_TITLE = "COMMIT: {}"
@@ -50,6 +50,7 @@ class GsShowCommitRefreshCommand(TextCommand, GitCommand):
             commit_hash)
         self.view.run_command("gs_replace_view_text", {"text": content, "restore_cursors": True})
         self.view.set_read_only(True)
+        diff.annotate_intra_line_differences(self.view)
 
 
 class GsShowCommitToggleSetting(TextCommand):
@@ -66,7 +67,7 @@ class GsShowCommitToggleSetting(TextCommand):
         self.view.run_command("gs_show_commit_refresh")
 
 
-class GsShowCommitOpenFileAtHunkCommand(GsDiffOpenFileAtHunkCommand):
+class GsShowCommitOpenFileAtHunkCommand(diff.GsDiffOpenFileAtHunkCommand):
 
     """
     For each cursor in the view, identify the hunk in which the cursor lies,
