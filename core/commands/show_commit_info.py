@@ -4,7 +4,7 @@ from functools import lru_cache
 import sublime
 from sublime_plugin import WindowCommand
 
-from . import diff
+from . import intra_line_colorizer
 from ..git_command import GitCommand
 
 
@@ -81,7 +81,7 @@ def _draw(window, view, text, commit):
         with restore_viewport_position(view, commit):
             view.run_command("gs_replace_view_text", {"text": text, "nuke_cursors": True})
 
-        diff.annotate_intra_line_differences(view)
+        intra_line_colorizer.annotate_intra_line_differences(view)
 
     # In case we reuse a hidden panel, show the panel after updating
     # the content to reduce visual flicker.

@@ -4,7 +4,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand
 from sublime_plugin import EventListener
 
-from . import diff
+from . import intra_line_colorizer
 from ..git_command import GitCommand
 from ...common import util
 from ...core.settings import SettingsMixin
@@ -184,7 +184,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         text = initial_text + diff_text
         self.view.run_command("gs_replace_view_text", {"text": text, "restore_cursors": True})
         if shows_diff:
-            diff.annotate_intra_line_differences(self.view, diff_text, len(initial_text))
+            intra_line_colorizer.annotate_intra_line_differences(self.view, diff_text, len(initial_text))
 
 
 class GsPedanticEnforceEventListener(EventListener, SettingsMixin):

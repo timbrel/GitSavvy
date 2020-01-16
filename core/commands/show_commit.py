@@ -3,6 +3,7 @@ import os
 from sublime_plugin import WindowCommand, TextCommand
 
 from . import diff
+from . import intra_line_colorizer
 from ..git_command import GitCommand
 
 
@@ -50,7 +51,7 @@ class GsShowCommitRefreshCommand(TextCommand, GitCommand):
             commit_hash)
         self.view.run_command("gs_replace_view_text", {"text": content, "restore_cursors": True})
         self.view.set_read_only(True)
-        diff.annotate_intra_line_differences(self.view)
+        intra_line_colorizer.annotate_intra_line_differences(self.view)
 
 
 class GsShowCommitToggleSetting(TextCommand):

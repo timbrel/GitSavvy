@@ -5,39 +5,36 @@ current diff.
 
 from collections import namedtuple
 from contextlib import contextmanager
-from functools import lru_cache, partial
-import inspect
-from itertools import accumulate as accumulate_, chain, groupby, takewhile, tee, zip_longest
-import difflib
 import os
 import re
-import time
-import threading
-import traceback
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
+from . import intra_line_colorizer
 from .navigate import GsNavigate
+from ..fns import filter_, flatten
+from ..parse_diff import SplittedDiff
+from ..utils import line_indentation
 from ..git_command import GitCommand
 from ..exceptions import GitSavvyError
 from ...common import util
-filter_ = partial(filter, None)  # type: Callable[[Iterator[Optional[T]]], Iterator[T]]
-flatten = chain.from_iterable
 
 
 MYPY = False
 if MYPY:
     from typing import (
-        Callable, Dict, Final, Iterable, Iterator, List, Literal, NamedTuple, Optional, Set,
-        Sequence, Tuple, Type, TypeVar, Union
+        Dict, Iterable, Iterator, List, NamedTuple, Optional, Set,
+        Tuple, TypeVar
     )
+    from ..parse_diff import Hunk, HunkLine
 
     T = TypeVar('T')
     Point = int
     RowCol = Tuple[int, int]
-
-    Chunk = List['HunkLine']
+    HunkLineWithB = NamedTuple('HunkLineWithB', [('line', 'HunkLine'), ('b', int)])
+else:
+    HunkLineWithB = namedtuple('HunkLineWithB', 'line b')
 
 
 DIFF_TITLE = "DIFF: {}"
@@ -252,7 +249,7 @@ def _draw(view, prelude, diff_text, is_word_diff, added_regions, removed_regions
             "git-savvy-removed-bold", removed_regions, scope="diff.deleted.char.git-savvy.diff"
         )
     else:
-        annotate_intra_line_differences(view, diff_text, len(prelude))
+        intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(prelude))
 
 
 def postprocess_word_diff(text, global_offset=0):
@@ -276,406 +273,6 @@ def postprocess_word_diff(text, global_offset=0):
         return text
 
     return WORD_DIFF_MARKERS_RE.sub(extractor, text), added_regions, removed_regions
-
-
-@contextmanager
-def print_runtime(message):
-    start_time = time.perf_counter()
-    yield
-    end_time = time.perf_counter()
-    duration = round((end_time - start_time) * 1000)
-    thread_name = threading.current_thread().name[0]
-    print('{} took {}ms [{}]'.format(message, duration, thread_name))
-
-
-@contextmanager
-def eat_but_log_errors(exception=Exception):
-    try:
-        yield
-    except exception:
-        traceback.print_exc()
-
-
-AWAIT_UI_THREAD = 'AWAIT_UI_THREAD'  # type: Literal["AWAIT_UI_THREAD"]
-AWAIT_WORKER = 'AWAIT_WORKER'  # type: Literal["AWAIT_WORKER"]
-if MYPY:
-    HopperR = Iterator[Union[Literal["AWAIT_UI_THREAD", "AWAIT_WORKER"]]]
-    HoperFn = Callable[..., HopperR]
-
-
-def cooperative_thread_hopper(fn):
-    # type: (HoperFn) -> Callable[..., None]
-    def tick(gen, send_value=None):
-        try:
-            rv = gen.send(send_value)
-        except StopIteration:
-            return
-        except Exception as ex:
-            raise ex from None
-
-        if rv == AWAIT_UI_THREAD:
-            sublime.set_timeout(lambda: tick(gen))
-        elif rv == AWAIT_WORKER:
-            sublime.set_timeout_async(lambda: tick(gen))
-
-    def decorated(*args, **kwargs):
-        gen = fn(*args, **kwargs)
-        if inspect.isgenerator(gen):
-            tick(gen)
-
-    return decorated
-
-
-@eat_but_log_errors()
-def annotate_intra_line_differences(view, diff_text=None, offset=0):
-    # type: (sublime.View, str, int) -> None
-    # import profile
-    # profile.runctx('compute_intra_line_diffs(view)', globals(), locals(), sort='cumtime')
-    if diff_text is None:
-        diff = SplittedDiff.from_view(view)
-    else:
-        diff = SplittedDiff.from_string(diff_text, offset)
-    compute_intra_line_diffs(view, diff)
-
-
-def view_has_changed_factory(view):
-    # type: (sublime.View) -> Callable[[], bool]
-    cc = view.change_count()
-
-    def view_has_changed():
-        # type: () -> bool
-        return not view.is_valid() or view.change_count() != cc
-
-    return view_has_changed
-
-
-MAX_BLOCK_TIME = 17
-
-
-def block_time_passed_factory(block_time):
-    start_time = time.perf_counter()
-
-    def block_time_passed():
-        nonlocal start_time
-
-        end_time = time.perf_counter()
-        duration = round((end_time - start_time) * 1000)
-        if duration > block_time:
-            start_time = time.perf_counter()
-            return True
-        else:
-            return False
-
-    return block_time_passed
-
-
-@cooperative_thread_hopper
-def compute_intra_line_diffs(view, diff):
-    # type: (sublime.View, SplittedDiff) -> HopperR
-    viewport = view.visible_region()
-    view_has_changed = view_has_changed_factory(view)
-    block_time_passed = block_time_passed_factory(MAX_BLOCK_TIME)
-
-    chunks = filter(is_modification_group, flatten(map(group_non_context_lines, diff.hunks)))
-    above_viewport, in_viewport, below_viewport = [], [], []  # type: Tuple[List[Chunk], List[Chunk], List[Chunk]]
-    for chunk in chunks:
-        chunk_region = compute_chunk_region(chunk)
-        container = (
-            in_viewport if chunk_region.intersects(viewport)
-            else above_viewport if chunk_region < viewport
-            else below_viewport
-        )
-        container.append(chunk)
-
-    from_regions = []
-    to_regions = []
-
-    for chunk in in_viewport:
-        new_from_regions, new_to_regions = intra_line_diff_for_chunk(chunk)
-        from_regions.extend(new_from_regions)
-        to_regions.extend(new_to_regions)
-
-    _draw_intra_diff_regions(view, to_regions, from_regions)
-
-    yield AWAIT_WORKER
-    if view_has_changed():
-        return
-
-    # Consider some chunks [1, 2, 3, 4] where 3 was *in* the viewport and thus
-    # rendered immediately. Now, [1, 2] + [4] await their render. The following
-    # `zip_longest(reversed` dance generates [2, 4, 1] as the unit of work, t.i.
-    # we move from the viewport to the edges (inside-out).
-    for chunk in filter_(flatten(zip_longest(reversed(above_viewport), below_viewport))):
-        new_from_regions, new_to_regions = intra_line_diff_for_chunk(chunk)
-        from_regions.extend(new_from_regions)
-        to_regions.extend(new_to_regions)
-
-        if block_time_passed():
-            if view_has_changed():
-                return
-            _draw_intra_diff_regions(view, to_regions, from_regions)
-            yield AWAIT_WORKER
-            if view_has_changed():
-                return
-
-    if view_has_changed():
-        return
-    _draw_intra_diff_regions(view, to_regions, from_regions)
-
-
-def _draw_intra_diff_regions(view, added_regions, removed_regions):
-    view.add_regions(
-        "git-savvy-added-bold", added_regions, scope="diff.inserted.char.git-savvy.diff"
-    )
-    view.add_regions(
-        "git-savvy-removed-bold", removed_regions, scope="diff.deleted.char.git-savvy.diff"
-    )
-
-
-def group_non_context_lines(hunk):
-    # type: (Hunk) -> List[Chunk]
-    """Return groups of chunks(?) (without context) from a hunk."""
-    # A hunk can contain many modifications interleaved
-    # with context lines. Return just these modification
-    # lines grouped as units. Note that we process per
-    # column here which enables basic support for combined
-    # diffs.
-    # Note: No newline marker lines are just ignored t.i.
-    # skipped.
-    mode_len = hunk.mode_len()
-    content_lines = list(
-        line
-        for line in hunk.content().lines()
-        if not line.is_no_newline_marker()  # <==
-    )
-    return [
-        list(lines)
-        for n in range(mode_len)  # <== usually one except for combined diffs
-        for is_context, lines in groupby(
-            content_lines,
-            key=lambda line: line.mode[n] == ' '
-        )
-        if not is_context
-    ]
-
-
-def is_modification_group(lines):
-    # type: (Chunk) -> bool
-    """Mark groups which have both + and - modes."""
-    # Since these groups are always sorted in git, from a to b,
-    # such a group starts with a "-" and ends with a "+".
-    return lines[0].is_from_line() and lines[-1].is_to_line()
-
-
-def compute_chunk_region(lines):
-    # type: (Chunk) -> sublime.Region
-    return sublime.Region(lines[0].a, lines[-1].b)
-
-
-def intra_line_diff_for_chunk(group):
-    # type: (Chunk) -> Tuple[List[Region], List[Region]]
-    from_lines, to_lines = [
-        list(lines)
-        for mode, lines in groupby(group, key=lambda line: line.is_from_line())
-    ]
-
-    algo = (
-        intra_diff_line_by_line
-        if len(from_lines) == len(to_lines)
-        else intra_diff_general_algorithm
-    )
-    return algo(from_lines, to_lines)
-
-
-@lru_cache(maxsize=512)
-def match_sequences(a, b, is_junk=difflib.IS_CHARACTER_JUNK, max_token_length=250):
-    # type: (Sequence, Sequence, Callable[[str], bool], int) -> difflib.SequenceMatcher
-    if (len(a) + len(b)) > max_token_length:
-        return NullSequenceMatcher(is_junk, a='', b='')
-    matches = difflib.SequenceMatcher(is_junk, a=a, b=b)
-    matches.ratio()  # for the side-effect of doing the computational work and caching it
-    return matches
-
-
-class NullSequenceMatcher(difflib.SequenceMatcher):
-    def ratio(self):
-        return 0
-
-    def get_opcodes(self):
-        return []
-
-
-def intra_diff_general_algorithm(from_lines, to_lines):
-    # type: (List[HunkLine], List[HunkLine]) -> Tuple[List[Region], List[Region]]
-    # Generally, if the two line chunks have different size, try to fit
-    # the smaller one into the bigger, or try to find how and where the
-    # smaller could be placed in the bigger one.
-    #
-    # E.g. you have 3 "+" lines, but 5 "-" lines. For now take the *first*
-    # "+" line, and match it against "-" lines. The highest match ratio wins,
-    # and we take it as the starting point for the intra-diff line-by-line
-    # algorithm.
-    if len(from_lines) < len(to_lines):
-        base_line = from_lines[0].content
-        matcher = partial(match_sequences, base_line)
-        # We want that the smaller list fits completely into the bigger,
-        # so we can't compare against *all* lines but have to stop
-        # somewhere earlier.
-        #
-        # E.g. a = [1, 2, 3, 4, 5]; b = [1, 2].  Then, the candidates are
-        #          [1, 2, 3, 4] otherwise b won't fit anymore
-        #                   [1, 2]
-        match_candidates = to_lines[:len(to_lines) - len(from_lines) + 1]
-        to_lines = to_lines[find_best_slice(matcher, match_candidates)]
-    else:
-        base_line = to_lines[0].content
-        matcher = partial(match_sequences, b=base_line)
-        match_candidates = from_lines[:len(from_lines) - len(to_lines) + 1]
-        from_lines = from_lines[find_best_slice(matcher, match_candidates)]
-
-    if to_lines and from_lines:
-        return intra_diff_line_by_line(from_lines, to_lines)
-    else:
-        return [], []
-
-
-def find_best_slice(matcher, lines):
-    # type: (Callable[[str], difflib.SequenceMatcher], List[HunkLine]) -> slice
-    scores = []
-    for n, line in enumerate(lines):
-        matches = matcher(line.content)
-        ratio = matches.ratio()
-        if ratio >= 0.85:
-            break
-        scores.append((ratio, n))
-    else:
-        ratio, n = max(scores)
-        if ratio < 0.75:
-            return slice(0)
-
-    return slice(n, None)
-
-
-def intra_diff_line_by_line(from_lines, to_lines):
-    # type: (List[HunkLine], List[HunkLine]) -> Tuple[List[Region], List[Region]]
-    # Note: We have no guarantees here that from_lines and to_lines
-    # have the same length, we use `zip` currently which produces
-    # iterables of the shortest length of both!
-    from_regions = []
-    to_regions = []
-
-    for from_line, to_line in zip(from_lines, to_lines):  # zip! see comment above
-        # Compare without the leading mode char using ".content", but
-        # also dedent both lines because leading common spaces will produce
-        # higher ratios and produce slightly more ugly diffs.
-        indentation = min(
-            line_indentation(from_line.content),
-            line_indentation(to_line.content)
-        )
-        a_input, b_input = from_line.content[indentation:], to_line.content[indentation:]
-        matches = match_sequences(a_input, b_input)
-        if matches.ratio() < 0.5:
-            # We just continue, so it is possible that for a given chunk
-            # *some* lines have markers, others not.
-            # A different implementation could be: if *any* line within a hunk
-            # is really low, like here 0.5, drop the hunk altogether.
-            continue
-
-        # Use tokenize strategy when there are "nearby" or fragmented splits
-        # because it produces more calm output.
-        if is_fragmented_match(matches):
-            a_input = tokenize_string(a_input)  # type: ignore
-            b_input = tokenize_string(b_input)  # type: ignore
-            matches = match_sequences(a_input, b_input)
-
-        a_offset = from_line.a + from_line.mode_len + indentation
-        b_offset = to_line.a + to_line.mode_len + indentation
-        from_offsets = tuple(accumulate(map(len, a_input), initial=a_offset))
-        to_offsets = tuple(accumulate(map(len, b_input), initial=b_offset))
-        for op, a_start, a_end, b_start, b_end in matches.get_opcodes():
-            if op == 'equal':
-                continue
-
-            if a_start != a_end:
-                from_regions.append(Region(from_offsets[a_start], from_offsets[a_end]))
-
-            if b_start != b_end:
-                to_regions.append(Region(to_offsets[b_start], to_offsets[b_end]))
-
-    return from_regions, to_regions
-
-
-boundary = re.compile(r'(\W)')
-OPERATOR_CHARS = '=!<>'
-COMPARISON_SENTINEL = object()
-
-
-def tokenize_string(input_str):
-    # type: (str) -> Sequence[str]
-    # Usually a simple split on "\W" suffices, but here we join some
-    # "operator" chars again.
-    # About the "operator" chars: we want to treat e.g. "==" and "!="
-    # as one token.  It is not important to treat e.g. "&&" as one token
-    # because there is probably no "|&".  That is to say, if all chars
-    # change we get a clean diff anyway, for the comparison operators
-    # often only *one* of the characters changes ("<" to "<=" or "=="
-    # to "!=") and then it looks better esp. with ligatures (!) if we
-    # treat them as one token.
-    return tuple(
-        flatten(
-            [''.join(chars)]
-            if ch is COMPARISON_SENTINEL
-            else list(chars)
-            for ch, chars in groupby(
-                filter(None, boundary.split(input_str)),
-                key=lambda x: COMPARISON_SENTINEL if x in OPERATOR_CHARS else x
-            )
-        )
-    )
-
-
-def is_fragmented_match(matches):
-    # type: (difflib.SequenceMatcher) -> bool
-    a_input, b_input = matches.a, matches.b  # type: ignore  # stub bug?
-    return any(
-        (
-            op == 'equal'
-            and a_end - a_start == 1
-            and not a_input[a_start:a_end] == '\n'
-        )
-        or (
-            op == 'equal'
-            and b_end - b_start == 1
-            and not b_input[b_start:b_end] == '\n'
-        )
-        or (
-            op != 'equal'
-            and boundary.search(a_input[a_start:a_end] + b_input[b_start:b_end])
-        )
-        for op, a_start, a_end, b_start, b_end in matches.get_opcodes()
-    )
-
-
-class Region(sublime.Region):
-    def __iter__(self):
-        # type: () -> Iterator[int]
-        return iter((self.a, self.b))
-
-    def __add__(self, other):
-        # type: (int) -> Region
-        return self.transpose(other)
-
-    def __sub__(self, other):
-        # type: (int) -> Region
-        return self.transpose(-other)
-
-    def transpose(self, n):
-        # type: (int) -> Region
-        return Region(self.a + n, self.b + n)
-
-    def as_slice(self):
-        # type: () -> slice
-        return slice(self.a, self.b)
 
 
 class GsDiffToggleSetting(TextCommand):
@@ -1095,11 +692,6 @@ def _recount_lines(lines, b):
             b += 1
 
 
-def line_indentation(line):
-    # type: (str) -> int
-    return len(line) - len(line.lstrip())
-
-
 class GsDiffNavigateCommand(GsNavigate):
 
     """
@@ -1141,208 +733,6 @@ class GsDiffUndo(TextCommand, GitCommand):
         # The cursor is only applicable if we're still in the same cache/stage mode
         if self.view.settings().get("git_savvy.diff_view.in_cached_mode") == in_cached_mode:
             set_and_show_cursor(self.view, cursors)
-
-
-# ---  TYPES  --- #
-
-
-if MYPY:
-    SplittedDiffBase = NamedTuple(
-        'SplittedDiff', [
-            ('commits', Tuple['CommitHeader', ...]),
-            ('headers', Tuple['FileHeader', ...]),
-            ('hunks', Tuple['Hunk', ...])
-        ]
-    )
-    HunkLineWithB = NamedTuple('HunkLineWithB', [('line', 'HunkLine'), ('b', int)])
-else:
-    SplittedDiffBase = namedtuple('SplittedDiff', 'commits headers hunks')
-    HunkLineWithB = namedtuple('HunkLineWithB', 'line b')
-
-
-class SplittedDiff(SplittedDiffBase):
-    @classmethod
-    def from_string(cls, text, offset=0):
-        # type: (str, int) -> SplittedDiff
-        factories = {'commit': CommitHeader, 'diff': FileHeader, '@@': Hunk}
-        containers = {'commit': [], 'diff': [], '@@': []}
-        sections = (
-            (match.group(1), match.start())
-            for match in re.finditer(r'^(commit|diff|@@)', text, re.M)
-        )
-        for (id, start), (_, end) in pairwise(chain(sections, [('END', len(text) + 1)])):
-            containers[id].append(factories[id](text[start:end], start + offset, end + offset))
-
-        return cls(
-            tuple(containers['commit']),
-            tuple(containers['diff']),
-            tuple(containers['@@'])
-        )
-
-    @classmethod
-    def from_view(cls, view):
-        # type: (sublime.View) -> SplittedDiff
-        return cls.from_string(view.substr(sublime.Region(0, view.size())))
-
-    def head_and_hunk_for_pt(self, pt):
-        # type: (int) -> Optional[Tuple[FileHeader, Hunk]]
-        for hunk in self.hunks:
-            if hunk.a <= pt < hunk.b:
-                break
-        else:
-            return None
-
-        return self.head_for_hunk(hunk), hunk
-
-    def head_for_hunk(self, hunk):
-        # type: (Hunk) -> FileHeader
-        return max(
-            (header for header in self.headers if header.a < hunk.a),
-            key=lambda h: h.a
-        )
-
-    def commit_for_hunk(self, hunk):
-        # type: (Hunk) -> Optional[CommitHeader]
-        try:
-            return max(
-                (commit for commit in self.commits if commit.a < hunk.a),
-                key=lambda c: c.a
-            )
-        except ValueError:
-            return None
-
-
-HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+)$')
-HUNKS_LINES_RE = re.compile(r'@@*.+\+(\d+)(?:,\d+)? ')
-
-
-class TextRange:
-    def __init__(self, text, a=0, b=None):
-        # type: (str, int, int) -> None
-        if b is None:
-            b = len(text)
-        self.text = text  # type: Final[str]
-        self.a = a  # type: Final[int]
-        self.b = b  # type: Final[int]
-
-    def _as_tuple(self):
-        # type: () -> Tuple[str, int, int]
-        return (self.text, self.a, self.b)
-
-    def __hash__(self):
-        # type: () -> int
-        return hash(self._as_tuple)
-
-    def __eq__(self, other):
-        # type: (object) -> bool
-        if isinstance(other, TextRange):
-            return self._as_tuple() == other._as_tuple()
-        return False
-
-    def region(self):
-        # type: () -> Region
-        return Region(self.a, self.b)
-
-    def lines(self, _factory=None):
-        # type: (Type[TextRange]) -> List[TextRange]
-        factory = _factory or TextRange
-        lines = self.text.splitlines(keepends=True)
-        return [
-            factory(line, *a_b)
-            for line, a_b in zip(lines, pairwise(accumulate(map(len, lines), initial=self.a)))
-        ]
-
-
-class CommitHeader(TextRange):
-    pass
-
-
-class FileHeader(TextRange):
-    def from_filename(self):
-        # type: () -> Optional[str]
-        match = HEADER_TO_FILE_RE.search(self.text)
-        if not match:
-            return None
-
-        return match.group(1)
-
-
-class Hunk(TextRange):
-    def mode_len(self):
-        # type: () -> int
-        return len(list(takewhile(lambda x: x == '@', self.text))) - 1
-
-    def header(self):
-        # type: () -> HunkHeader
-        content_start = self.text.index('\n') + 1
-        return HunkHeader(self.text[:content_start], self.a, self.a + content_start)
-
-    def content(self):
-        # type: () -> HunkContent
-        content_start = self.text.index('\n') + 1
-        return HunkContent(
-            self.text[content_start:],
-            self.a + content_start,
-            self.b,
-            self.mode_len()
-        )
-
-
-class HunkHeader(TextRange):
-    def from_line_start(self):
-        # type: () -> Optional[int]
-        """Extract the starting line at "b" encoded in the hunk header
-
-        T.i. for "@@ -685,8 +686,14 @@ ..." extract the "686".
-        """
-        match = HUNKS_LINES_RE.search(self.text)
-        if not match:
-            return None
-
-        return int(match.group(1))
-
-
-class HunkLine(TextRange):
-    def __init__(self, text, a=0, b=None, mode_len=1):
-        # type: (str, int, int, int) -> None
-        super().__init__(text, a, b)
-        self.mode_len = mode_len  # type: Final[int]
-
-    def is_from_line(self):
-        # type: () -> bool
-        return '-' in self.mode
-
-    def is_to_line(self):
-        # type: () -> bool
-        return '+' in self.mode
-
-    @property
-    def mode(self):
-        # type: () -> str
-        return self.text[:self.mode_len]
-
-    @property
-    def content(self):
-        # type: () -> str
-        return self.text[self.mode_len:]
-
-    def is_context(self):
-        return self.mode.strip() == ''
-
-    def is_no_newline_marker(self):
-        return self.text.strip() == "\\ No newline at end of file"
-
-
-class HunkContent(TextRange):
-    def __init__(self, text, a=0, b=None, mode_len=1):
-        # type: (str, int, int, int) -> None
-        super().__init__(text, a, b)
-        self.mode_len = mode_len  # type: Final[int]
-
-    def lines(self):  # type: ignore
-        # type: () -> List[HunkLine]
-        factory = partial(HunkLine, mode_len=self.mode_len)
-        return super().lines(_factory=factory)  # type: ignore
 
 
 def find_hunk_in_view(view, patch):
@@ -1394,22 +784,6 @@ def shrink_list_sym(list):
     while list:
         yield list
         list = list[1:-1]
-
-
-def accumulate(iterable, initial):
-    # type: (Iterable[int], int) -> Iterable[int]
-    if initial is None:
-        return accumulate_(iterable)
-    else:
-        return accumulate_(chain([initial], iterable))
-
-
-def pairwise(iterable):
-    # type: (Iterable[T]) -> Iterable[Tuple[T, T]]
-    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
-    a, b = tee(iterable)
-    next(b, None)
-    return zip(a, b)
 
 
 def pickle_sel(sel):
