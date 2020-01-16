@@ -9,7 +9,7 @@ import sublime
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Iterator, Literal, Union
+    from typing import Callable, Iterator, Literal
 
 
 @contextmanager
@@ -33,7 +33,7 @@ def eat_but_log_errors(exception=Exception):
 AWAIT_UI_THREAD = 'AWAIT_UI_THREAD'  # type: Literal["AWAIT_UI_THREAD"]
 AWAIT_WORKER = 'AWAIT_WORKER'  # type: Literal["AWAIT_WORKER"]
 if MYPY:
-    HopperR = Iterator[Union[Literal["AWAIT_UI_THREAD", "AWAIT_WORKER"]]]
+    HopperR = Iterator[Literal["AWAIT_UI_THREAD", "AWAIT_WORKER"]]
     HoperFn = Callable[..., HopperR]
 
 
