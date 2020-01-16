@@ -67,7 +67,6 @@ def compute_intra_line_diffs(view, diff):
     # type: (sublime.View, SplittedDiff) -> HopperR
     viewport = view.visible_region()
     view_has_changed = view_has_changed_factory(view)
-    block_time_passed = block_time_passed_factory(MAX_BLOCK_TIME)
 
     chunks = filter(is_modification_group, flatten(map(group_non_context_lines, diff.hunks)))
     above_viewport, in_viewport, below_viewport = [], [], []  # type: Tuple[List[Chunk], List[Chunk], List[Chunk]]
@@ -93,6 +92,7 @@ def compute_intra_line_diffs(view, diff):
     yield AWAIT_WORKER
     if view_has_changed():
         return
+    block_time_passed = block_time_passed_factory(MAX_BLOCK_TIME)
 
     # Consider some chunks [1, 2, 3, 4] where 3 was *in* the viewport and thus
     # rendered immediately. Now, [1, 2] + [4] await their render. The following
