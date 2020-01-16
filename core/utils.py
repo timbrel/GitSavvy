@@ -34,11 +34,11 @@ AWAIT_UI_THREAD = 'AWAIT_UI_THREAD'  # type: Literal["AWAIT_UI_THREAD"]
 AWAIT_WORKER = 'AWAIT_WORKER'  # type: Literal["AWAIT_WORKER"]
 if MYPY:
     HopperR = Iterator[Literal["AWAIT_UI_THREAD", "AWAIT_WORKER"]]
-    HoperFn = Callable[..., HopperR]
+    HopperFn = Callable[..., HopperR]
 
 
 def cooperative_thread_hopper(fn):
-    # type: (HoperFn) -> Callable[..., None]
+    # type: (HopperFn) -> Callable[..., None]
     def tick(gen, send_value=None):
         try:
             rv = gen.send(send_value)
