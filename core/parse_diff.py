@@ -84,7 +84,7 @@ class TextRange:
     def __init__(self, text, a=0, b=None):
         # type: (str, int, int) -> None
         if b is None:
-            b = len(text)
+            b = a + len(text)
         self.text = text  # type: Final[str]
         self.a = a  # type: Final[int]
         self.b = b  # type: Final[int]
