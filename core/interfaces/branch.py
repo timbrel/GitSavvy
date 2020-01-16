@@ -1,5 +1,6 @@
-import os
 from itertools import groupby
+import os
+import re
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
@@ -262,6 +263,13 @@ class GsBranchesCreateNewCommand(TextCommand, GitCommand):
             self.view.window().run_command("gs_checkout_new_branch", {"base_branch": ref})
 
 
+DELETE_UNDO_MESSAGE = """\
+GitSavvy: Deleted branch ({0}), in case you want to undo, run:
+  $ git branch {0} {1}
+"""
+EXTRACT_COMMIT = re.compile(r"\(was (.+)\)")
+
+
 class GsBranchesDeleteCommand(TextCommand, GitCommand):
 
     """
@@ -285,12 +293,20 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
 
     @util.actions.destructive(description="delete a local branch")
     def delete_local_branch(self, branch_name):
-        self.git(
+        rv = self.git(
             "branch",
             "-D" if self.force else "-d",
             branch_name
         )
-        self.view.window().status_message("Deleted local branch.")
+        match = EXTRACT_COMMIT.search(rv.strip())
+        if match:
+            commit = match.group(1)
+            print(DELETE_UNDO_MESSAGE.format(branch_name, commit))
+        util.view.flash(
+            self.view,
+            "Deleted local branch ({}).".format(branch_name)
+            + (" Open Sublime console for undo instructions." if match else "")
+        )
         util.view.refresh_gitsavvy(self.view)
 
     @util.actions.destructive(description="delete a remote branch")
