@@ -153,7 +153,7 @@ class GitCommand(StatusMixin,
         """
         args = self._include_global_flags(args)
         command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
-        command_str = " ".join(command)
+        command_str = " ".join(["git"] + list(filter(None, args)))
 
         show_panel_overrides = self.savvy_settings.get("show_panel_for")
         if show_panel is None:
@@ -253,7 +253,8 @@ class GitCommand(StatusMixin,
         if throw_on_stderr and not p.returncode == 0:
             if show_status_message_on_stderr:
                 sublime.active_window().status_message(
-                    "Failed to run `git {}`. See log for details.".format(command[1])
+                    "`git {}` failed.".format(command[1])
+                    + (" See log for details." if not show_panel_on_stderr else "")
                 )
 
             if "*** Please tell me who you are." in stderr:
@@ -261,12 +262,15 @@ class GitCommand(StatusMixin,
                     lambda: sublime.active_window().run_command("gs_setup_user"))
 
             if stdout or stderr:
-                raise GitSavvyError("`{}` failed with following output:\n{}\n{}".format(
-                    command_str, stdout, stderr
-                ), show_panel=show_panel_on_stderr)
+                raise GitSavvyError(
+                    "$ {}\n\n{}".format(command_str, ''.join([stdout, stderr])),
+                    show_panel=show_panel_on_stderr
+                )
             else:
                 raise GitSavvyError(
-                    "`{}` failed.".format(command_str), show_panel=show_panel_on_stderr)
+                    "`{}` failed.".format(command_str),
+                    show_panel=show_panel_on_stderr
+                )
 
         if stdout and decode:
             stdout = ANSI_ESCAPE.sub('', stdout)
