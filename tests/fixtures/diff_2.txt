@@ -1,0 +1,49 @@
+commit 9dd4769f090aec1c6bceee49019680d0dba8108d
+Author:     Not Herr Kaste <not.herr.kaste@gmail.com>
+AuthorDate: Fri Oct 6 13:25:58 2017 -0300
+Commit:     Not Herr Kaste <not.herr.kaste@gmail.com>
+CommitDate: Fri Oct 6 13:25:58 2017 -0300
+
+    modules ... maybe
+---
+ src/{constants.js => constants.mjs}     |  0
+ src/{detected.js => detected.mjs}       |  0
+ src/{hyperhtml.js => hyperhtml.mjs}     |  4 ++--
+ src/{poorlyfills.js => poorlyfills.mjs} | 24 ++++++++++++++++++++++--
+ src/{sanitizer.js => sanitizer.mjs}     |  0
+ src/{utils.js => utils.mjs}             | 24 ++++++++++++++++--------
+ 6 files changed, 40 insertions(+), 12 deletions(-)
+
+diff --git a/src/constants.js b/src/constants.mjs
+similarity index 100%
+rename from src/constants.js
+rename to src/constants.mjs
+diff --git a/src/detected.js b/src/detected.mjs
+similarity index 100%
+rename from src/detected.js
+rename to src/detected.mjs
+diff --git a/src/hyperhtml.js b/src/hyperhtml.mjs
+similarity index 98%
+rename from src/hyperhtml.js
+rename to src/hyperhtml.mjs
+index afbc271..6a7cd7a 100644
+--- a/src/hyperhtml.js
++++ b/src/hyperhtml.mjs
+@@ -39,6 +39,8 @@ export function Component() {};
+ hyper.MAX_LIST_SIZE = 1000;
+ hyper.Component = Component;
+ hyper.document = document;
++hyper.bind = bind;
++hyper.wire = wire;
+ export default hyper;
+
+ export const hyperHTML = hyper;
+@@ -82,8 +84,6 @@ function upgrade() {
+
+ }
+
+-
+-
+ ///////////////////////////////////////////////////////////////////////////
+ // hyper.Component
+ ///////////////////////////////////////////////////////////////////////////

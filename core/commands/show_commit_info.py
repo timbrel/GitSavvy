@@ -1,14 +1,16 @@
+from contextlib import contextmanager
 from functools import lru_cache
 
 import sublime
 from sublime_plugin import WindowCommand
 
+from . import intra_line_colorizer
 from ..git_command import GitCommand
 
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Tuple
+    from typing import Dict, Optional, Tuple
 
 
 storage = {}  # type: Dict[str, Tuple[float, float]]
@@ -51,22 +53,13 @@ class GsShowCommitInfoCommand(WindowCommand, GitCommand):
         )
 
         if self._commit_hash:
-            prev_commit = output_view.settings().get("git_savvy.show_commit_info.commit")
-            if prev_commit:
-                storage[prev_commit] = output_view.viewport_position()
-
             show_full = self.savvy_settings.get("show_full_commit_info")
             show_diffstat = self.savvy_settings.get("show_diffstat")
             text = self.show_commit(self._commit_hash, self._file_path, show_diffstat, show_full)
-            output_view.run_command("gs_replace_view_text", {"text": text, "nuke_cursors": True})
-            output_view.settings().set("git_savvy.show_commit_info.commit", self._commit_hash)
+        else:
+            text = None
 
-            prev_position = storage.get(self._commit_hash, (0, 0))
-            output_view.set_viewport_position(prev_position, False)
-
-        # In case we reuse a hidden panel, show the panel after updating
-        # the content to reduce visual flicker.
-        ensure_panel_is_visible(self.window, PANEL_NAME)
+        sublime.set_timeout(lambda: _draw(self.window, output_view, text, self._commit_hash))
 
     @lru_cache(maxsize=64)
     def show_commit(self, commit_hash, file_path, show_diffstat, show_full):
@@ -80,3 +73,29 @@ class GsShowCommitInfoCommand(WindowCommand, GitCommand):
             "--" if file_path else None,
             file_path if file_path else None
         )
+
+
+def _draw(window, view, text, commit):
+    # type: (sublime.Window, sublime.View, Optional[str], str) -> None
+    if text is not None:
+        with restore_viewport_position(view, commit):
+            view.run_command("gs_replace_view_text", {"text": text, "nuke_cursors": True})
+
+        intra_line_colorizer.annotate_intra_line_differences(view)
+
+    # In case we reuse a hidden panel, show the panel after updating
+    # the content to reduce visual flicker.
+    ensure_panel_is_visible(window, PANEL_NAME)
+
+
+@contextmanager
+def restore_viewport_position(view, next_commit):
+    prev_commit = view.settings().get("git_savvy.show_commit_info.commit")
+    if prev_commit:
+        storage[prev_commit] = view.viewport_position()
+
+    yield
+
+    view.settings().set("git_savvy.show_commit_info.commit", next_commit)
+    prev_position = storage.get(next_commit, (0, 0))
+    view.set_viewport_position(prev_position, False)

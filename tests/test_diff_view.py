@@ -67,131 +67,24 @@ class TestDiffViewInternalFunctions(DeferrableTestCase):
         self.assertEqual(actual, expected)
 
     @p.expand([
-        (26, [(20, 24), (15, 19), (10, 14), (5, 9), (0, 4)]),
-        (25, [(20, 24), (15, 19), (10, 14), (5, 9), (0, 4)]),
+        ("@@ 1\n1234\n1567\n1890", (41, 46)),
+        ("@@ 1\n1234\n1567", (41, 46)),
+        ("@@ 1\n1567\n1890", (41, 46)),
+        ("@@ 1\n1234", (41, 46)),
+        ("@@ 1\n1567", (41, 46)),
+        ("@@ 1\n1890", (41, 46)),
 
-        (24, [(15, 19), (10, 14), (5, 9), (0, 4)]),
-        (23, [(15, 19), (10, 14), (5, 9), (0, 4)]),
-        (22, [(15, 19), (10, 14), (5, 9), (0, 4)]),
-        (21, [(15, 19), (10, 14), (5, 9), (0, 4)]),
-        (20, [(15, 19), (10, 14), (5, 9), (0, 4)]),
+        ("@@ 1\n1XXX\n1XXX", (41, 46)),
 
-        (19, [(10, 14), (5, 9), (0, 4)]),
-        (18, [(10, 14), (5, 9), (0, 4)]),
-        (17, [(10, 14), (5, 9), (0, 4)]),
-        (16, [(10, 14), (5, 9), (0, 4)]),
-        (15, [(10, 14), (5, 9), (0, 4)]),
-
-        (14, [(5, 9), (0, 4)]),
-        (13, [(5, 9), (0, 4)]),
-        (12, [(5, 9), (0, 4)]),
-        (11, [(5, 9), (0, 4)]),
-        (10, [(5, 9), (0, 4)]),
-
-        (9, [(0, 4)]),
-        (8, [(0, 4)]),
-        (7, [(0, 4)]),
-        (6, [(0, 4)]),
-        (5, [(0, 4)]),
-
-        (4, []),
-        (3, []),
-        (2, []),
-        (1, []),
-        (0, []),
-
-        (-1, []),
-    ])
-    def test_line_ranges_before_point(self, IN, expected):
-        # ATT: All '0123' actually are '0123\n' (length: 5)
-        VIEW_CONTENT = """\
-0123
-0123
-0123
-0123
-0123
-"""
-        view = self.window.new_file()
-        self.addCleanup(view.close)
-        view.run_command('append', {'characters': VIEW_CONTENT})
-        view.set_scratch(True)
-
-        actual = module.line_regions_before_pt(view, IN)
-        # unpack `sublime.Region`s
-        actual = module.pickle_sel(actual)
-
-        self.assertEqual(actual, expected)
-
-    @p.expand([
-        (0, None),
-        (1, None),
-        (2, None),
-        (3, None),
-        (4, None),
-
-        (10, (5, 9)),
-        (11, (5, 9)),
-        (12, (5, 9)),
-        (13, (5, 9)),
-        (14, (5, 9)),
-        (15, (5, 9)),
-        (16, (5, 9)),
-        (17, (5, 9)),
-        (18, (5, 9)),
-        (19, (5, 9)),
-
-        (25, (20, 24)),
-        (26, (20, 24)),
-        (27, (20, 24)),
-        (28, (20, 24)),
-        (29, (20, 24)),
-        (30, (20, 24)),
-        (31, (20, 24)),
-        (32, (20, 24)),
-        (33, (20, 24)),
-        (34, (20, 24)),
-        (35, (20, 24)),
-
-    ])
-    def test_find_hunk_start_before_pt(self, IN, expected):
-        VIEW_CONTENT = """\
-0123
-@@ 1
-1123
-1123
-@@ 2
-2123
-2123
-"""
-
-        view = self.window.new_file()
-        self.addCleanup(view.close)
-        view.run_command('append', {'characters': VIEW_CONTENT})
-        view.set_scratch(True)
-
-        actual = module.find_hunk_start_before_pt(view, IN)
-        actual = (actual.a, actual.b) if actual else actual
-        self.assertEqual(actual, expected)
-
-    @p.expand([
-        ("@@ 1\n1234\n1567\n1890", (30, 34)),
-        ("@@ 1\n1234\n1567", (30, 34)),
-        ("@@ 1\n1567\n1890", (30, 34)),
-        ("@@ 1\n1234", (30, 34)),
-        ("@@ 1\n1567", (30, 34)),
-        ("@@ 1\n1890", (30, 34)),
-
-        ("@@ 1\n1XXX\n1XXX", (30, 34)),
-
-        ("@@ X\n1234\n1567\n1890", (30, 34)),
-        ("@@ X\n1567\n1890", (30, 34)),
-        ("@@ X\n1234\n1567", (30, 34)),
-        ("@@ X\n1234", (30, 34)),
-        ("@@ X\n1567", (30, 34)),
-        ("@@ X\n1890", (30, 34)),
-        ("@@ X\n1XXX\n1567\n1890", (30, 34)),
-        ("@@ X\n1234\n1567\n1XXX", (30, 34)),
-        ("@@ X\n1XXX\n1567\n1XXX", (30, 34)),
+        ("@@ X\n1234\n1567\n1890", (41, 46)),
+        ("@@ X\n1567\n1890", (41, 46)),
+        ("@@ X\n1234\n1567", (41, 46)),
+        ("@@ X\n1234", (41, 46)),
+        ("@@ X\n1567", (41, 46)),
+        ("@@ X\n1890", (41, 46)),
+        ("@@ X\n1XXX\n1567\n1890", (41, 46)),
+        ("@@ X\n1234\n1567\n1XXX", (41, 46)),
+        ("@@ X\n1XXX\n1567\n1XXX", (41, 46)),
 
         ("@@ X\n1234\n1XXX\n1XXX", None),
         ("@@ X\n1XXX\n1XXX\n1890", None),
@@ -199,12 +92,11 @@ class TestDiffViewInternalFunctions(DeferrableTestCase):
         ("@@ X\n0123", None),
 
         # Only consider first hunk in input
-        ("@@ X\n1234\n1567\n1890\n@@ 2\n2345\n2678", (30, 34)),
-        ("@@ X\n1234\n@@ 2\n2345\n2678", (30, 34)),
-        ("@@ X\n1234\n1567\n1890\n@@ X\n2XXX\n2678", (30, 34)),
+        ("@@ X\n1234\n1567\n1890\n@@ 2\n2345\n2678", (41, 46)),
+        ("@@ X\n1234\n@@ 2\n2345\n2678", (41, 46)),
+        ("@@ X\n1234\n1567\n1890\n@@ X\n2XXX\n2678", (41, 46)),
 
         # Ensure invalid input doesn't throw
-        ("@@ X", None),
         ("@@ X\n", None),
         ("1234\n1567\n1890", None),
     ])
@@ -212,6 +104,7 @@ class TestDiffViewInternalFunctions(DeferrableTestCase):
         VIEW_CONTENT = """\
 0123
 diff --git a/barz b/fooz
++++ b/fooz
 @@ 1
 1234
 1567
@@ -226,7 +119,7 @@ diff --git a/barz b/fooz
         view.run_command('append', {'characters': VIEW_CONTENT})
         view.set_scratch(True)
 
-        actual = module.find_hunk_in_view(view, IN)
+        actual = module.find_hunk_in_view(view, "diff --git a/barz b/fooz\n+++ b/fooz\n" + IN)
         actual = (actual.a, actual.b) if actual else actual
         self.assertEqual(actual, expected)
 
@@ -671,7 +564,7 @@ class TestDiffView(DeferrableTestCase):
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
 
-        cmd.run_async()
+        cmd.run()
 
         diff_view = self.window.active_view()
         self.addCleanup(diff_view.close)
@@ -685,7 +578,7 @@ class TestDiffView(DeferrableTestCase):
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
 
-        cmd.run_async()
+        cmd.run()
 
         diff_view = self.window.active_view()
         self.addCleanup(diff_view.close)
@@ -701,7 +594,7 @@ class TestDiffView(DeferrableTestCase):
         when(GsDiffRefreshCommand).git('diff', ...).thenReturn(DIFF)
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
-        cmd.run_async()
+        cmd.run()
         yield AWAIT_WORKER  # await activated_async
         yield AWAIT_WORKER  # await refresh async
 
@@ -727,7 +620,7 @@ class TestDiffView(DeferrableTestCase):
         when(GsDiffRefreshCommand).git('diff', ...).thenReturn(DIFF)
         cmd = GsDiffCommand(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
-        cmd.run_async()
+        cmd.run()
         yield AWAIT_WORKER  # await activated_async
         yield AWAIT_WORKER  # await refresh async
 
@@ -780,3 +673,21 @@ class TestDiffView(DeferrableTestCase):
             ('+++ b/core/commands/diff.py', 21)
         ]
         self.assertEqual(actual, expected)
+
+    def test_parse_diff(self):
+        DIFF = fixture('diff_1.txt')
+        diff = module.SplittedDiff.from_string(DIFF)
+        self.assertEqual(diff.commit_for_hunk(diff.hunks[0]), None)
+
+    def test_parse_commit(self):
+        DIFF = fixture('diff_2.txt')
+        diff = module.SplittedDiff.from_string(DIFF)
+
+        self.assertEqual(len(diff.hunks), 2)
+        self.assertEqual(len(diff.headers), 3)
+
+        self.assertEqual(diff.head_for_hunk(diff.hunks[0]), diff.headers[-1])
+        self.assertEqual(diff.head_for_hunk(diff.hunks[1]), diff.headers[-1])
+
+        self.assertEqual(diff.commit_for_hunk(diff.hunks[0]), diff.commits[0])
+        self.assertEqual(diff.commit_for_hunk(diff.hunks[1]), diff.commits[0])
