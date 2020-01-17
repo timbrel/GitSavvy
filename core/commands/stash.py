@@ -3,6 +3,7 @@ import re
 import sublime
 from sublime_plugin import EventListener, TextCommand, WindowCommand
 
+from ..utils import hprint
 from ..runtime import enqueue_on_worker
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelCommandMixin
@@ -68,7 +69,7 @@ class SelectStashIdMixin(TextCommand):
                     self.view,
                     "Nothing done, the stash you're looking at is outdated. "
                 )
-                print(
+                hprint(
                     "GitSavvy: The stash you're looking at is outdated. "
                     "Maybe its number ({}) changed because you modified the "
                     "stash list since opening this view. ".format(stash_id)

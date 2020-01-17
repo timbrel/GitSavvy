@@ -27,6 +27,16 @@ def eat_but_log_errors(exception=Exception):
         traceback.print_exc()
 
 
+def hprint(msg):
+    # type: (str) -> None
+    """Print help message for e.g. a failed action"""
+    # Note this does a plain and boring print. We use it to
+    # mark some usages of print throughout the code-base.
+    # We later might find better ways to show these help
+    # messages to the user.
+    print(msg)
+
+
 def line_indentation(line):
     # type: (str) -> int
     return len(line) - len(line.lstrip())
