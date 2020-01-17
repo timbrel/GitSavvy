@@ -3,6 +3,7 @@ import re
 import sublime
 from sublime_plugin import EventListener, TextCommand, WindowCommand
 
+from ..runtime import enqueue_on_worker
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelCommandMixin
 from ..ui_mixins.quick_panel import show_stash_panel
@@ -27,7 +28,7 @@ class RevalidateStashView(EventListener):
             return
 
         view.settings().set("git_savvy.stash_view.status", "revalidate")
-        sublime.set_timeout_async(lambda: revalidate(view, stash_id))
+        enqueue_on_worker(revalidate, view, stash_id)  # <== on worker
 
 
 def revalidate(view, stash_id):
@@ -61,7 +62,7 @@ class SelectStashIdMixin(TextCommand):
                 # Enqueue as worker task to ensure that we run after
                 # on_activated's `revalidate` has finished which runs
                 # on the worker as well.
-                sublime.set_timeout_async(lambda: self.view.run_command(self.name()))
+                enqueue_on_worker(self.view.run_command, self.name())
             elif view_status == "invalid":
                 util.view.flash(
                     self.view,
