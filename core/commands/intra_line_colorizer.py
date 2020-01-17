@@ -7,14 +7,15 @@ import time
 import sublime
 from ..fns import accumulate, filter_, flatten
 from ..parse_diff import Hunk, SplittedDiff, Region
-from ..utils import cooperative_thread_hopper, eat_but_log_errors, line_indentation, AWAIT_WORKER
+from ..utils import eat_but_log_errors, line_indentation
+from ..runtime import cooperative_thread_hopper, AWAIT_WORKER
 
 
 MYPY = False
 if MYPY:
     from typing import Callable, List, Tuple, Sequence
     from ..parse_diff import HunkLine
-    from ..utils import HopperR
+    from ..runtime import HopperR
 
     Chunk = List[HunkLine]
 
