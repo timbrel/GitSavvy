@@ -1,6 +1,7 @@
 import re
 
-from sublime_plugin import TextCommand, WindowCommand
+import sublime
+from sublime_plugin import EventListener, TextCommand, WindowCommand
 
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelCommandMixin
@@ -12,9 +13,38 @@ from ...common import util
 MYPY = False
 if MYPY:
     from typing import Optional, Union
-    import sublime
-
     StashId = Union[int, str]
+
+
+class RevalidateStashView(EventListener):
+    def on_activated(self, view):
+        # type: (sublime.View) -> None
+        # Subtle runtime nuance: this "on_activated" runs sync when
+        # the view is created in `create_stash_view` t.i. even before
+        # we change its settings.  Thus we don't revalidate initially.
+        stash_id = view.settings().get("git_savvy.stash_view.stash_id", None)
+        if stash_id is None:
+            return
+
+        view.settings().set("git_savvy.stash_view.status", "revalidate")
+        sublime.set_timeout_async(lambda: revalidate(view, stash_id))
+
+
+def revalidate(view, stash_id):
+    # type: (sublime.View, StashId) -> None
+    view_text = view.substr(sublime.Region(0, view.size()))
+
+    try:
+        git = GitCommand()
+        git.view = view  # type: ignore
+        stash_patch = git.show_stash(stash_id)
+    except Exception:
+        stash_patch = ":-("
+
+    if stash_patch == view_text:
+        view.settings().set("git_savvy.stash_view.status", "valid")
+    else:
+        view.settings().set("git_savvy.stash_view.status", "invalid")
 
 
 class SelectStashIdMixin(TextCommand):
@@ -26,7 +56,26 @@ class SelectStashIdMixin(TextCommand):
 
         stash_id = self.view.settings().get("git_savvy.stash_view.stash_id", None)
         if stash_id is not None:
-            self.do(stash_id)
+            view_status = self.view.settings().get("git_savvy.stash_view.status")
+            if view_status == "revalidate":
+                # Enqueue as worker task to ensure that we run after
+                # on_activated's `revalidate` has finished which runs
+                # on the worker as well.
+                sublime.set_timeout_async(lambda: self.view.run_command(self.name()))
+            elif view_status == "invalid":
+                util.view.flash(
+                    self.view,
+                    "Nothing done, the stash you're looking at is outdated. "
+                )
+                print(
+                    "GitSavvy: The stash you're looking at is outdated. "
+                    "Maybe its number ({}) changed because you modified the "
+                    "stash list since opening this view. ".format(stash_id)
+                )
+            elif view_status == "valid":
+                self.do(stash_id)
+            else:
+                raise RuntimeError("stash view in invalid state '{}'".format(view_status))
             return
 
         show_stash_panel(self.on_done)
@@ -142,6 +191,7 @@ class GsStashShowCommand(WindowCommand, GitCommand):
         stash_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
         stash_view.settings().set("git_savvy.repo_path", repo_path)
         stash_view.settings().set("git_savvy.stash_view.stash_id", stash_id)
+        stash_view.settings().set("git_savvy.stash_view.status", "valid")
         window.focus_view(stash_view)
 
         return stash_view
