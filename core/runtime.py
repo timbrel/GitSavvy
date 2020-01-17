@@ -1,5 +1,8 @@
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 import inspect
+import threading
+
 import sublime
 
 
@@ -7,6 +10,8 @@ MYPY = False
 if MYPY:
     from typing import Any, Callable, Iterator, Literal
 
+
+savvy_executor = ThreadPoolExecutor(max_workers=1)
 
 # `enqueue_on_*` functions emphasize that we run two queues and
 # just put tasks on it.  In contrast to `set_timeout_*` which
@@ -19,6 +24,7 @@ if MYPY:
 # the functions to change the behavior without changing the
 # arguments.
 
+
 def enqueue_on_ui(fn, *args, **kwargs):
     # type: (Callable, Any, Any) -> None
     sublime.set_timeout(partial(fn, *args, **kwargs))
@@ -27,6 +33,16 @@ def enqueue_on_ui(fn, *args, **kwargs):
 def enqueue_on_worker(fn, *args, **kwargs):
     # type: (Callable, Any, Any) -> None
     sublime.set_timeout_async(partial(fn, *args, **kwargs))
+
+
+def enqueue_on_savvy(fn, *args, **kwargs):
+    # type: (Callable, Any, Any) -> None
+    savvy_executor.submit(fn, *args, **kwargs)
+
+
+def run_on_new_thread(fn, *args, **kwargs):
+    # type: (Callable, Any, Any) -> None
+    threading.Thread(target=fn, args=args, kwargs=kwargs).start()
 
 
 AWAIT_UI_THREAD = 'AWAIT_UI_THREAD'  # type: Literal["AWAIT_UI_THREAD"]
