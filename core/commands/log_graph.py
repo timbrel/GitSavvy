@@ -343,10 +343,12 @@ def _colorize_dots(vid, dots):
 
 
 def draw_info_panel(view, show_panel):
-    """Extract line under the first cursor and draw info panel."""
+    """Extract line under the last cursor and draw info panel."""
     try:
-        cursor = next(s.a for s in view.sel() if s.empty())
-    except StopIteration:
+        # Intentional `b` (not `end()`!) because b is where the
+        # cursor is. (If you select upwards b becomes < a.)
+        cursor = [s.b for s in view.sel()][-1]
+    except IndexError:
         return
 
     line_span = view.line(cursor)
