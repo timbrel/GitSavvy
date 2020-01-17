@@ -67,9 +67,9 @@ def cooperative_thread_hopper(fn):
             raise ex from None
 
         if rv == AWAIT_UI_THREAD:
-            sublime.set_timeout(lambda: tick(gen))
+            enqueue_on_ui(tick, gen)
         elif rv == AWAIT_WORKER:
-            sublime.set_timeout_async(lambda: tick(gen))
+            enqueue_on_worker(tick, gen)
 
     def decorated(*args, **kwargs):
         gen = fn(*args, **kwargs)
