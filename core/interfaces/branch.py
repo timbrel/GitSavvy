@@ -653,14 +653,15 @@ class GsBranchesLogCommand(LogMixin, TextCommand, GitCommand):
         super().run_async(branch=branch)
 
 
-class GsBranchesLogGraphCommand(LogGraphMixin, TextCommand, GitCommand):
+class GsBranchesLogGraphCommand(LogGraphMixin, WindowCommand, GitCommand):
 
     """
     Show log graph for the selected branch.
     """
 
-    def run_async(self):
-        interface = ui.get_interface(self.view.id())
+    def run(self):
+        view = self.window.active_view()
+        interface = ui.get_interface(view.id())
         remote_name, branch_name = interface.get_selected_branch()
         if not branch_name:
             return
@@ -671,8 +672,7 @@ class GsBranchesLogGraphCommand(LogGraphMixin, TextCommand, GitCommand):
                 remote=remote_name, branch=branch_name)
         else:
             self._branch = branch_name
-        self._file_path = None
-        super().run_async()
+        super().run()
 
     def prepare_target_view(self, view):
         view.settings().set("git_savvy.log_graph_view.filter_by_branch", self._branch)

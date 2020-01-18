@@ -45,6 +45,26 @@ def run_on_new_thread(fn, *args, **kwargs):
     threading.Thread(target=fn, args=args, kwargs=kwargs).start()
 
 
+THROTTLED_CACHE = {}
+THROTTLED_LOCK = threading.Lock()
+
+
+def throttled(fn, *args, **kwargs):
+    # type: (...) -> Callable[[], None]
+    token = (fn,)
+    action = partial(fn, *args, **kwargs)
+    with THROTTLED_LOCK:
+        THROTTLED_CACHE[token] = action
+
+    def task():
+        with THROTTLED_LOCK:
+            ok = THROTTLED_CACHE[token] == action
+        if ok:
+            action()
+
+    return task
+
+
 AWAIT_UI_THREAD = 'AWAIT_UI_THREAD'  # type: Literal["AWAIT_UI_THREAD"]
 AWAIT_WORKER = 'AWAIT_WORKER'  # type: Literal["AWAIT_WORKER"]
 if MYPY:
