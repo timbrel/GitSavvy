@@ -1,11 +1,8 @@
-from functools import wraps
 import os
-import sys
-from unittest.case import _ExpectedFailure, _UnexpectedSuccess
 
 import sublime
 
-from unittesting import DeferrableTestCase
+from unittesting import DeferrableTestCase, expectedFailure
 from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.mockito import unstub, when
 
@@ -17,23 +14,6 @@ from GitSavvy.core.commands.log_graph import (
 )
 from GitSavvy.core.commands.show_commit_info import GsShowCommitInfoCommand
 from GitSavvy.core.settings import GitSavvySettings
-
-
-def isiterable(obj):
-    return hasattr(obj, '__iter__')
-
-
-def expectedFailure(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            deferred = func(*args, **kwargs)
-            if isiterable(deferred):
-                yield from deferred
-        except Exception:
-            raise _ExpectedFailure(sys.exc_info())
-        raise _UnexpectedSuccess
-    return wrapper
 
 
 RUNNING_ON_LINUX_TRAVIS = os.environ.get('TRAVIS_OS_NAME') == 'linux'
