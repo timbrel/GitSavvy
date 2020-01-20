@@ -268,7 +268,7 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
 
         # Auto-hide panel if the user switches to a different buffer
         if not self.is_applicable(view) and commit_info_panel_is_open(window):
-            panel = OPEN_PANELS_PER_WINDOW.get(window.id(), None)
+            panel = PREVIOUS_OPEN_PANEL_PER_WINDOW.get(window.id(), None)
             if panel:
                 window.run_command("show_panel", {"panel": panel})
             else:
@@ -302,7 +302,7 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
         sublime.set_timeout(lambda: colorize_dots(view))
 
     def on_window_command(self, window, command_name, args):
-        # type: (sublime.Window, str, dict) -> None
+        # type: (sublime.Window, str, Dict) -> None
         if command_name == 'hide_panel':
             view = window.active_view()
             if not view:
@@ -315,7 +315,7 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             # remember the intent *if* the `active_view` is a 'log_graph'
             if self.is_applicable(view):
                 self.savvy_settings.set("graph_show_more_commit_info", False)
-            OPEN_PANELS_PER_WINDOW[window.id()] = None
+            PREVIOUS_OPEN_PANEL_PER_WINDOW[window.id()] = None
 
         elif command_name == 'show_panel':
             view = window.active_view()
@@ -330,18 +330,24 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             if args.get('panel') == "incremental_find":
                 return
 
-            # TODO: 'show_panel' can also be used to actually *hide* a panel if you pass
-            # the 'toggle' arg.
-            if args.get('panel') == "output.show_commit_info":
-                self.savvy_settings.set("graph_show_more_commit_info", True)
-                draw_info_panel(view)
-            else:
+            toggle = args.get('toggle', False)
+            panel = args.get('panel')
+            if toggle and window.active_panel() == panel:  # <== actually *hide* panel
+                # E.g. the same side-effect as in above "hide_panel" case
                 if self.is_applicable(view):
                     self.savvy_settings.set("graph_show_more_commit_info", False)
-                OPEN_PANELS_PER_WINDOW[window.id()] = args.get('panel')
+                PREVIOUS_OPEN_PANEL_PER_WINDOW[window.id()] = None
+            else:
+                if panel == "output.show_commit_info":
+                    self.savvy_settings.set("graph_show_more_commit_info", True)
+                    PREVIOUS_OPEN_PANEL_PER_WINDOW[window.id()] = window.active_panel()
+                    draw_info_panel(view)
+                else:
+                    if self.is_applicable(view):
+                        self.savvy_settings.set("graph_show_more_commit_info", False)
 
 
-OPEN_PANELS_PER_WINDOW = {}  # type: Dict[sublime.WindowId, Optional[str]]
+PREVIOUS_OPEN_PANEL_PER_WINDOW = {}  # type: Dict[sublime.WindowId, Optional[str]]
 
 
 def commit_info_panel_is_open(window):
@@ -412,7 +418,8 @@ def draw_info_panel_for_line(vid, line_text):
     # is falsy.  That only looks nice iff the main graph view is
     # also blank. (Which it only ever is directly after creation.)
     # If you just move the cursor to a line not containing a
-    # commit_hash, it looks better to not draw at all.
+    # commit_hash, it looks better to not draw at all, t.i. the
+    # information in the panel stays untouched.
     if view.size() == 0 or commit_hash:
         window.run_command("gs_show_commit_info", {"commit_hash": commit_hash})
 
