@@ -119,6 +119,13 @@ def reload_package(pkg_name, dummy=True, verbose=True, then=None):
     except Exception:
         dprint("reload failed.", fill='-')
         reload_missing(all_modules, verbose)
+        # Try reloading again to get the commands back. Here esp. the
+        # reload command itself.
+        for pkg_name in packages:
+            for plugin in package_plugins(pkg_name):
+                sublime_plugin.reload_plugin(plugin)
+        print('--- Reloading GitSavvy failed. Restarting Sublime is highly recommended. ---')
+        sublime.active_window().status_message('GitSavvy reloading 💣ed. 😒.')
         raise
 
     if dummy:
