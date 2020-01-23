@@ -31,12 +31,12 @@ def ensure_panel(window, name=PANEL_NAME, syntax="Packages/GitSavvy/syntax/show_
     return output_view
 
 
-def panel_is_visible(window, name):
+def panel_is_visible(window, name=PANEL_NAME):
     # type: (sublime.Window, str) -> bool
     return window.active_panel() == "output.{}".format(name)
 
 
-def ensure_panel_is_visible(window, name):
+def ensure_panel_is_visible(window, name=PANEL_NAME):
     # type: (sublime.Window, str) -> None
     if not panel_is_visible(window, name):
         window.run_command("show_panel", {"panel": "output.{}".format(name)})
@@ -55,7 +55,7 @@ class GsShowCommitInfoCommand(WindowCommand, GitCommand):
         # and thus we need to be off the UI thread so the user can navigate
         # faster than we can actually render.
         if (
-            not panel_is_visible(self.window, PANEL_NAME) or
+            not panel_is_visible(self.window) or
             ensure_panel(self.window).size() == 0
         ):
             self.run_impl(commit_hash, file_path)
@@ -97,7 +97,7 @@ def _draw(window, view, text, commit):
 
     # In case we reuse a hidden panel, show the panel after updating
     # the content to reduce visual flicker.
-    ensure_panel_is_visible(window, PANEL_NAME)
+    ensure_panel_is_visible(window)
 
 
 @contextmanager

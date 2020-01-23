@@ -59,7 +59,7 @@ class LogGraphMixin(object):
         show_commit_info.ensure_panel(self.window)
         if (
             self.savvy_settings.get("graph_show_more_commit_info")
-            and not commit_info_panel_is_open(self.window)
+            and not show_commit_info.panel_is_visible(self.window)
         ):
             self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
@@ -267,7 +267,7 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             return
 
         # Auto-hide panel if the user switches to a different buffer
-        if not self.is_applicable(view) and commit_info_panel_is_open(window):
+        if not self.is_applicable(view) and show_commit_info.panel_is_visible(window):
             panel = PREVIOUS_OPEN_PANEL_PER_WINDOW.get(window.id(), None)
             if panel:
                 window.run_command("show_panel", {"panel": panel})
@@ -277,7 +277,7 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
         # Auto-show panel if the user switches back
         elif (
             self.is_applicable(view)
-            and not commit_info_panel_is_open(window)
+            and not show_commit_info.panel_is_visible(window)
             and self.savvy_settings.get("graph_show_more_commit_info")
         ):
             window.run_command("show_panel", {"panel": "output.show_commit_info"})
@@ -292,7 +292,8 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
         if not self.is_applicable(view):
             return
 
-        if commit_info_panel_is_open(view.window()):
+        window = view.window()
+        if window and show_commit_info.panel_is_visible(window):
             draw_info_panel(view)
 
         # `colorize_dots` queries the view heavily. We want that to
@@ -348,11 +349,6 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
 
 
 PREVIOUS_OPEN_PANEL_PER_WINDOW = {}  # type: Dict[sublime.WindowId, Optional[str]]
-
-
-def commit_info_panel_is_open(window):
-    # (Optional[sublime.Window]) -> bool
-    return window and window.active_panel() == 'output.show_commit_info'
 
 
 def colorize_dots(view):
@@ -438,7 +434,7 @@ class GsLogGraphToggleMoreInfoCommand(TextCommand, WindowCommand, GitCommand):
     def run(self, edit):
         window = self.view.window()
         assert window
-        if commit_info_panel_is_open(window):
+        if show_commit_info.panel_is_visible(window):
             window.run_command("hide_panel", {"panel": "output.show_commit_info"})
         else:
             window.run_command("show_panel", {"panel": "output.show_commit_info"})
