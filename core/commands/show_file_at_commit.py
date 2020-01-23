@@ -1,3 +1,4 @@
+import os
 import sublime
 from sublime_plugin import WindowCommand
 
@@ -5,7 +6,7 @@ from ..git_command import GitCommand
 from ...common import util
 from .log import LogMixin
 
-SHOW_COMMIT_TITLE = "COMMIT: {}:{}"
+SHOW_COMMIT_TITLE = "FILE: {} --{}"
 
 
 class GsShowFileAtCommitCommand(WindowCommand, GitCommand):
@@ -25,19 +26,23 @@ class GsShowFileAtCommitCommand(WindowCommand, GitCommand):
         settings = view.settings()
         settings.set("git_savvy.show_file_at_commit_view.commit", commit_hash)
         settings.set("git_savvy.file_path", filepath)
-        settings.set("git_savvy.show_file_at_commit_view.lineno", lineno)
         settings.set("git_savvy.repo_path", repo_path)
         if not lang:
             lang = util.file.get_syntax_for_file(filepath)
-        view.set_syntax_file(lang)
-        view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash), self.get_rel_path(filepath)))
-        sublime.set_timeout_async(lambda: self.render_text(view), 0)
+        nice_hash = self.get_short_hash(commit_hash) if len(commit_hash) >= 40 else commit_hash
+        title = SHOW_COMMIT_TITLE.format(
+            os.path.basename(filepath),
+            nice_hash,
+        )
 
-    def render_text(self, view):
-        commit_hash = view.settings().get("git_savvy.show_file_at_commit_view.commit")
-        content = self.get_file_content_at_commit(self.file_path, commit_hash)
-        view.run_command("gs_replace_view_text", {"text": content, "nuke_cursors": True})
-        lineno = view.settings().get("git_savvy.show_file_at_commit_view.lineno")
+        view.set_syntax_file(lang)
+        view.set_name(title)
+
+        text = self.get_file_content_at_commit(self.file_path, commit_hash)
+        sublime.set_timeout(lambda: self.render_text(view, text, lineno))
+
+    def render_text(self, view, text, lineno):
+        view.run_command("gs_replace_view_text", {"text": text, "nuke_cursors": True})
         util.view.move_cursor(view, lineno, 0)
 
 

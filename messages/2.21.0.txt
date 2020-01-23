@@ -1,0 +1,15 @@
+GitSavvy 2.21.0
+===============
+
+- We now highlight intra-line differences when we show git-diffs. 
+  https://github.com/timbrel/GitSavvy/pull/1220
+
+  For the annonations we use the scopes "diff.inserted.char.git-savvy.diff" 
+  and "diff.deleted.char.git-savvy.diff". These are the same scopes
+  Sublime uses for their "Incremental Diff" feature (but namespaced with
+  ".git-savvy.diff") so every user should see proper colors right 
+  away. 
+
+
+For more info:
+  https://github.com/timbrel/GitSavvy/compare/2.20.0...2.21.0

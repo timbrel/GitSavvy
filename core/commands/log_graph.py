@@ -1,6 +1,5 @@
 from functools import lru_cache, partial
 import re
-import threading
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -10,6 +9,7 @@ from .log import GsLogActionCommand, GsLogCommand
 from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ..settings import GitSavvySettings
+from ..runtime import run_on_new_thread
 from ..ui_mixins.quick_panel import show_branch_panel
 from ...common import util
 from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
@@ -50,7 +50,7 @@ class LogGraphMixin(object):
         view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
         view.run_command("gs_handle_vintageous")
         view.run_command("gs_handle_arrow_keys")
-        threading.Thread(target=partial(augment_color_scheme, view)).run()
+        run_on_new_thread(augment_color_scheme, view)
 
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)

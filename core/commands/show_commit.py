@@ -2,8 +2,9 @@ import os
 
 from sublime_plugin import WindowCommand, TextCommand
 
+from . import diff
+from . import intra_line_colorizer
 from ..git_command import GitCommand
-from .diff import GsDiffOpenFileAtHunkCommand
 
 
 SHOW_COMMIT_TITLE = "COMMIT: {}"
@@ -23,7 +24,8 @@ class GsShowCommitCommand(WindowCommand, GitCommand):
         settings.set("git_savvy.show_commit_view.show_word_diff", False)
         settings.set("git_savvy.show_commit_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
         view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
-        view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash)))
+        nice_hash = self.get_short_hash(commit_hash) if len(commit_hash) >= 40 else commit_hash
+        view.set_name(SHOW_COMMIT_TITLE.format(nice_hash))
         view.set_scratch(True)
         view.run_command("gs_show_commit_refresh")
         view.run_command("gs_diff_navigate")
@@ -47,8 +49,9 @@ class GsShowCommitRefreshCommand(TextCommand, GitCommand):
             "--format=fuller",
             "--no-color",
             commit_hash)
-        self.view.run_command("gs_replace_view_text", {"text": content, "nuke_cursors": True})
+        self.view.run_command("gs_replace_view_text", {"text": content, "restore_cursors": True})
         self.view.set_read_only(True)
+        intra_line_colorizer.annotate_intra_line_differences(self.view)
 
 
 class GsShowCommitToggleSetting(TextCommand):
@@ -65,7 +68,7 @@ class GsShowCommitToggleSetting(TextCommand):
         self.view.run_command("gs_show_commit_refresh")
 
 
-class GsShowCommitOpenFileAtHunkCommand(GsDiffOpenFileAtHunkCommand):
+class GsShowCommitOpenFileAtHunkCommand(diff.GsDiffOpenFileAtHunkCommand):
 
     """
     For each cursor in the view, identify the hunk in which the cursor lies,
