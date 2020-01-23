@@ -99,12 +99,13 @@ def reload_package(pkg_name, dummy=True, verbose=True, then=None):
         for module_name, module in get_package_modules(pkg_name).items()
     }
 
+    plugins = [plugin for pkg_name in packages for plugin in package_plugins(pkg_name)]
+
     # Tell Sublime to unload plugins
-    for pkg_name in packages:
-        for plugin in package_plugins(pkg_name):
-            module = sys.modules.get(plugin)
-            if module:
-                sublime_plugin.unload_module(module)
+    for plugin in plugins:
+        module = sys.modules.get(plugin)
+        if module:
+            sublime_plugin.unload_module(module)
 
     # Unload modules
     for module_name in all_modules:
@@ -113,17 +114,18 @@ def reload_package(pkg_name, dummy=True, verbose=True, then=None):
     # Reload packages
     try:
         with intercepting_imports(all_modules, verbose), importing_fromlist_aggressively(all_modules):
-            for pkg_name in packages:
-                for plugin in package_plugins(pkg_name):
-                    sublime_plugin.reload_plugin(plugin)
+            for plugin in plugins:
+                sublime_plugin.reload_plugin(plugin)
     except Exception:
         dprint("reload failed.", fill='-')
-        reload_missing(all_modules, verbose)
+        # Rollback modules
+        for name, module in all_modules.items():
+            sys.modules[name] = module
+
         # Try reloading again to get the commands back. Here esp. the
         # reload command itself.
-        for pkg_name in packages:
-            for plugin in package_plugins(pkg_name):
-                sublime_plugin.reload_plugin(plugin)
+        for plugin in plugins:
+            sublime_plugin.reload_plugin(plugin)
         print('--- Reloading GitSavvy failed. Restarting Sublime is highly recommended. ---')
         sublime.active_window().status_message('GitSavvy reloading 💣ed. 😒.')
         raise
@@ -219,18 +221,6 @@ def load_dummy(verbose):
     condition.acquire()
     condition.wait(30)  # 30 seconds should be enough for all regular usages
     condition.release()
-
-
-def reload_missing(modules, verbose):
-    missing_modules = {name: module for name, module in modules.items()
-                       if name not in sys.modules}
-    if missing_modules:
-        if verbose:
-            dprint("reload missing modules")
-        for name in missing_modules:
-            if verbose:
-                dprint("reloading missing module", name)
-            sys.modules[name] = modules[name]
 
 
 @contextmanager
