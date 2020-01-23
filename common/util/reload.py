@@ -112,7 +112,7 @@ def reload_package(pkg_name, dummy=True, verbose=True, then=None):
 
     # Reload packages
     try:
-        with intercepting_imports(all_modules, verbose), importing_fromlist_aggresively(all_modules):
+        with intercepting_imports(all_modules, verbose), importing_fromlist_aggressively(all_modules):
             for pkg_name in packages:
                 for plugin in package_plugins(pkg_name):
                     sublime_plugin.reload_plugin(plugin)
@@ -245,7 +245,7 @@ def intercepting_imports(modules, verbose):
 
 
 @contextmanager
-def importing_fromlist_aggresively(modules):
+def importing_fromlist_aggressively(modules):
     orig___import__ = builtins.__import__
 
     @functools.wraps(orig___import__)
