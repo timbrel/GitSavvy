@@ -425,19 +425,17 @@ def extract_commit_hash(line):
     return match.groupdict()['commit_hash'] if match else ""
 
 
-class GsLogGraphToggleMoreInfoCommand(TextCommand, WindowCommand, GitCommand):
+class GsLogGraphToggleMoreInfoCommand(WindowCommand, GitCommand):
 
     """
     Toggle global `graph_show_more_commit_info` setting. Also used by compare_commit_view.
     """
 
-    def run(self, edit):
-        window = self.view.window()
-        assert window
-        if show_commit_info.panel_is_visible(window):
-            window.run_command("hide_panel", {"panel": "output.show_commit_info"})
+    def run(self):
+        if show_commit_info.panel_is_visible(self.window):
+            self.window.run_command("hide_panel", {"panel": "output.show_commit_info"})
         else:
-            window.run_command("show_panel", {"panel": "output.show_commit_info"})
+            self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
 
 class GraphActionMixin(GsLogActionCommand):
