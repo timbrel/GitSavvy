@@ -7,6 +7,7 @@ import builtins
 import functools
 import importlib
 import sys
+import traceback
 from inspect import ismodule
 from contextlib import contextmanager
 from .debug import StackMeter
@@ -126,9 +127,11 @@ def reload_package(pkg_name, dummy=True, verbose=True, then=None):
         # reload command itself.
         for plugin in plugins:
             sublime_plugin.reload_plugin(plugin)
+
+        traceback.print_exc()
         print('--- Reloading GitSavvy failed. Restarting Sublime is highly recommended. ---')
         sublime.active_window().status_message('GitSavvy reloading 💣ed. 😒.')
-        raise
+        return
 
     if dummy:
         load_dummy(verbose)
