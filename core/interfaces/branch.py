@@ -8,7 +8,6 @@ from sublime_plugin import WindowCommand, TextCommand
 from ...common import ui, util
 from ..commands import GsNavigate
 from ..commands.log import LogMixin
-from ..commands.log_graph import LogGraphMixin
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -653,7 +652,7 @@ class GsBranchesLogCommand(LogMixin, TextCommand, GitCommand):
         super().run_async(branch=branch)
 
 
-class GsBranchesLogGraphCommand(LogGraphMixin, WindowCommand, GitCommand):
+class GsBranchesLogGraphCommand(WindowCommand, GitCommand):
 
     """
     Show log graph for the selected branch.
@@ -668,11 +667,10 @@ class GsBranchesLogGraphCommand(LogGraphMixin, WindowCommand, GitCommand):
 
         # prefix the (optional) remote name to branch
         if remote_name:
-            self._branch = '{remote}/{branch}'.format(
-                remote=remote_name, branch=branch_name)
+            branch = '{remote}/{branch}'.format(
+                remote=remote_name, branch=branch_name
+            )
         else:
-            self._branch = branch_name
-        super().run()
+            branch = branch_name
 
-    def prepare_target_view(self, view):
-        view.settings().set("git_savvy.log_graph_view.filter_by_branch", self._branch)
+        self.window.run_command('gs_graph', {'branch': branch})

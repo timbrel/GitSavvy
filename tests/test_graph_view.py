@@ -7,7 +7,6 @@ from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.mockito import unstub, when
 
 from GitSavvy.core.commands.log_graph import (
-    GsLogGraphCurrentBranch,
     GsLogGraphRefreshCommand,
     GsLogGraphCursorListener,
     extract_commit_hash
@@ -167,9 +166,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
     def create_graph_view_async(self, repo_path, log, wait_for):
         when(GsLogGraphRefreshCommand).git('log', ...).thenReturn(log)
-        cmd = GsLogGraphCurrentBranch(self.window)
-        when(cmd).get_repo_path().thenReturn(repo_path)
-        cmd.run()
+        self.window.run_command('gs_graph', {'repo_path': repo_path})
         yield lambda: self.window.active_view().settings().get('git_savvy.log_graph_view') is True
         log_view = self.window.active_view()
         yield from self.await_string_in_view(log_view, wait_for)

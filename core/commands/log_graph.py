@@ -30,16 +30,10 @@ DOT_SCOPE = 'git_savvy.graph.dot'
 PATH_SCOPE = 'git_savvy.graph.path_char'
 
 
-class LogGraphMixin(object):
-
-    """
-    Open a new window displaying an ASCII-graphic representation
-    of the repo's branch relationships.
-    """
-
-    def run(self, file_path=None, title="GRAPH"):
-        # need to get repo_path before the new view is created.
-        repo_path = self.repo_path
+class GsGraphCommand(WindowCommand, GitCommand):
+    def run(self, repo_path=None, file_path=None, all=False, branch=None, author='', title='GRAPH'):
+        if repo_path is None:
+            repo_path = self.repo_path
 
         view = util.view.get_scratch_view(self, "log_graph", read_only=True)
         view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
@@ -50,7 +44,9 @@ class LogGraphMixin(object):
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)
         settings.set("git_savvy.file_path", file_path)
-        self.prepare_target_view(view)
+        settings.set("git_savvy.log_graph_view.all_branches", all)
+        settings.set("git_savvy.log_graph_view.filter_by_author", author)
+        settings.set("git_savvy.log_graph_view.filter_by_branch", branch)
         view.set_name(title)
 
         # We need to ensure the panel has been created, so it appears
@@ -64,9 +60,6 @@ class LogGraphMixin(object):
             self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
         view.run_command("gs_log_graph_refresh", {"navigate_after_draw": True})
-
-    def prepare_target_view(self, view):
-        pass
 
 
 def augment_color_scheme(view):
@@ -163,17 +156,17 @@ class GsLogGraphCommand(GsLogCommand):
     ]
 
 
-class GsLogGraphCurrentBranch(LogGraphMixin, WindowCommand, GitCommand):
-    pass
+class GsLogGraphCurrentBranch(WindowCommand, GitCommand):
+    def run(self, file_path=None):
+        self.window.run_command('gs_graph', {'file_path': file_path})
 
 
-class GsLogGraphAllBranches(LogGraphMixin, WindowCommand, GitCommand):
+class GsLogGraphAllBranches(WindowCommand, GitCommand):
+    def run(self, file_path=None):
+        self.window.run_command('gs_graph', {'file_path': file_path, 'all': True})
 
-    def prepare_target_view(self, view):
-        view.settings().set("git_savvy.log_graph_view.all_branches", True)
 
-
-class GsLogGraphByAuthorCommand(LogGraphMixin, WindowCommand, GitCommand):
+class GsLogGraphByAuthorCommand(WindowCommand, GitCommand):
 
     """
     Open a quick panel containing all committers for the active
@@ -182,49 +175,48 @@ class GsLogGraphByAuthorCommand(LogGraphMixin, WindowCommand, GitCommand):
     by the specified author.
     """
 
-    def run_async(self):
-        email = self.git("config", "user.email").strip()
-        self._entries = []
-
+    def run(self, file_path=None):
         commiter_str = self.git("shortlog", "-sne", "HEAD")
+        entries = []
         for line in commiter_str.split('\n'):
             m = re.search(r'\s*(\d*)\s*(.*)\s<(.*)>', line)
             if m is None:
                 continue
             commit_count, author_name, author_email = m.groups()
             author_text = "{} <{}>".format(author_name, author_email)
-            self._entries.append((commit_count, author_name, author_email, author_text))
+            entries.append((commit_count, author_name, author_email, author_text))
 
+        def on_select(index):
+            if index == -1:
+                return
+            selected_author = entries[index][3]
+            self.window.run_command(
+                'gs_graph',
+                {'file_path': file_path, 'author': selected_author}
+            )
+
+        email = self.git("config", "user.email").strip()
         self.window.show_quick_panel(
-            [entry[3] for entry in self._entries],
-            self.on_author_selection,
+            [entry[3] for entry in entries],
+            on_select,
             flags=sublime.MONOSPACE_FONT,
-            selected_index=(list(line[2] for line in self._entries)).index(email)
+            selected_index=[line[2] for line in entries].index(email)
         )
 
-    def on_author_selection(self, index):
-        if index == -1:
-            return
-        self._selected_author = self._entries[index][3]
-        super().run_async()
 
-    def prepare_target_view(self, view):
-        view.settings().set("git_savvy.log_graph_view.filter_by_author", self._selected_author)
-
-
-class GsLogGraphByBranchCommand(LogGraphMixin, WindowCommand, GitCommand):
+class GsLogGraphByBranchCommand(WindowCommand, GitCommand):
     _selected_branch = None
 
-    def run_async(self):
-        show_branch_panel(self.on_branch_selection, selected_branch=self._selected_branch)
+    def run(self, file_path=None):
+        def on_select(branch):
+            if branch:
+                self._selected_branch = branch  # remember last selection
+                self.window.run_command(
+                    'gs_graph',
+                    {'file_path': file_path, 'branch': branch}
+                )
 
-    def on_branch_selection(self, branch):
-        if branch:
-            self._selected_branch = branch
-            super().run_async()
-
-    def prepare_target_view(self, view):
-        view.settings().set("git_savvy.log_graph_view.filter_by_branch", self._selected_branch)
+        show_branch_panel(on_select, selected_branch=self._selected_branch)
 
 
 class GsLogGraphNavigateCommand(GsNavigate):
