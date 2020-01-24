@@ -213,7 +213,11 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
         self._diff_commit(cache=True)
 
     def show_file_at_commit(self):
-        lang = self.window.active_view().settings().get('syntax')
+        view = self.window.active_view()
+        if view and view.file_name() == self._file_path:
+            lang = view.settings().get('syntax')
+        else:
+            lang = None
         self.window.run_command(
             "gs_show_file_at_commit",
             {"commit_hash": self._commit_hash, "filepath": self._file_path, "lang": lang})
