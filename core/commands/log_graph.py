@@ -9,7 +9,7 @@ from .log import GsLogActionCommand, GsLogCommand
 from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ..settings import GitSavvySettings
-from ..runtime import run_on_new_thread
+from ..runtime import enqueue_on_ui, run_on_new_thread, text_command
 from ..ui_mixins.quick_panel import show_branch_panel
 from ...common import util
 from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
@@ -112,9 +112,15 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             r'\1' + COMMIT_NODE_CHAR, graph_content,
             flags=re.MULTILINE)
 
-        self.view.run_command("gs_replace_view_text", {"text": graph_content, "restore_cursors": True})
-        if navigate_after_draw:
-            self.view.run_command("gs_log_graph_navigate")
+        def program():
+            follow = self.view.settings().get('git_savvy.log_graph_view.follow')
+            self.view.run_command("gs_replace_view_text", {"text": graph_content, "restore_cursors": True})
+            if follow:
+                navigate_to_symbol(self.view, follow)
+            elif navigate_after_draw:  # on init
+                self.view.run_command("gs_log_graph_navigate")
+
+        enqueue_on_ui(program)
 
     def build_git_command(self):
         args = self.savvy_settings.get("git_graph_args")
@@ -292,7 +298,9 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
         # happen on the main thread (t.i. blocking) bc it is way, way
         # faster. But we still defer that task, so others can run code
         # that actually *needs* to be a sync side-effect to this event.
-        sublime.set_timeout(lambda: colorize_dots(view))
+        enqueue_on_ui(colorize_dots, view)
+
+        enqueue_on_ui(set_symbol_to_follow, view)
 
     def on_window_command(self, window, command_name, args):
         # type: (sublime.Window, str, Dict) -> None
@@ -341,6 +349,107 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
 
 
 PREVIOUS_OPEN_PANEL_PER_WINDOW = {}  # type: Dict[sublime.WindowId, Optional[str]]
+
+
+def set_symbol_to_follow(view):
+    # type: (sublime.View) -> None
+    """Extract a symbol to follow."""
+    try:
+        # Intentional `b` (not `end()`!) because b is where the
+        # cursor is. (If you select upwards b becomes < a.)
+        cursor = [s.b for s in view.sel()][-1]
+    except IndexError:
+        return
+
+    line_span = view.line(cursor)
+    line_text = view.substr(line_span)
+
+    symbol = _extract_symbol_to_follow(view.id(), line_text)
+    if symbol:
+        view.settings().set('git_savvy.log_graph_view.follow', symbol)
+
+
+@lru_cache(maxsize=512)
+def _extract_symbol_to_follow(vid, _line_text):
+    # type: (sublime.ViewId, str) -> Optional[str]
+    view = sublime.View(vid)
+    try:
+        # Intentional `b` (not `end()`!) because b is where the
+        # cursor is. (If you select upwards b becomes < a.)
+        cursor = [s.b for s in view.sel()][-1]
+    except IndexError:
+        return None
+
+    line_span = view.line(cursor)
+    if view.match_selector(cursor, 'meta.graph.graph-line.head.git-savvy'):
+        return 'HEAD'
+
+    symbols_on_line = [
+        symbol
+        for r, symbol in view.symbols()
+        if line_span.contains(r)
+    ]
+    if symbols_on_line:
+        # git always puts the remotes first so we take
+        # the last one which is (then) a local branch.
+        return symbols_on_line[-1]
+
+    line_text = view.substr(line_span)
+    return extract_commit_hash(line_text)
+
+
+def navigate_to_symbol(view, symbol):
+    # type: (sublime.View, str) -> None
+    region = _find_symbol(view, symbol)
+    if region:
+        set_and_show_cursor(view, region.begin())
+
+
+def _find_symbol(view, symbol):
+    # type: (sublime.View, str) -> Optional[sublime.Region]
+    if symbol == 'HEAD':
+        try:
+            return view.find_by_selector(
+                'meta.graph.graph-line.head.git-savvy '
+                'constant.numeric.graph.commit-hash.git-savvy'
+            )[0]
+        except IndexError:
+            return None
+
+    for r, symbol_ in view.symbols():
+        if symbol_ == symbol:
+            line_of_symbol = view.line(r)
+            return extract_comit_hash_span(view, line_of_symbol)
+
+    r = view.find(FIND_COMMIT_HASH + re.escape(symbol), 0)
+    if not r.empty():
+        line_of_symbol = view.line(r)
+        return extract_comit_hash_span(view, line_of_symbol)
+    return None
+
+
+def extract_comit_hash_span(view, line_span):
+    # type: (sublime.View, sublime.Region) -> Optional[sublime.Region]
+    line_text = view.substr(line_span)
+    match = COMMIT_LINE.search(line_text)
+    if match:
+        a, b = match.span('commit_hash')
+        return sublime.Region(a + line_span.a, b + line_span.a)
+    return None
+
+
+FIND_COMMIT_HASH = "^[{graph_chars}]*[{node_chars}][{graph_chars}]* ".format(
+    graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS
+)
+
+
+@text_command
+def set_and_show_cursor(view, cursor):
+    # type: (sublime.View, int) -> None
+    sel = view.sel()
+    sel.clear()
+    sel.add(cursor)
+    view.show(sel, True)
 
 
 def colorize_dots(view):
