@@ -675,6 +675,6 @@ class GsBranchesLogGraphCommand(WindowCommand, GitCommand):
 
         self.window.run_command('gs_graph', {
             'all': True,
-            'branch': branch,
+            'branches': [branch],
             'follow': branch
         })

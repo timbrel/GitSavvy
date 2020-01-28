@@ -37,7 +37,7 @@ class GsGraphCommand(WindowCommand, GitCommand):
         repo_path=None,
         file_path=None,
         all=False,
-        branch=None,
+        branches=None,
         author='',
         title='GRAPH',
         follow=None
@@ -56,7 +56,7 @@ class GsGraphCommand(WindowCommand, GitCommand):
         settings.set("git_savvy.file_path", file_path)
         settings.set("git_savvy.log_graph_view.all_branches", all)
         settings.set("git_savvy.log_graph_view.filter_by_author", author)
-        settings.set("git_savvy.log_graph_view.filter_by_branch", branch)
+        settings.set("git_savvy.log_graph_view.branches", branches or [])
         settings.set('git_savvy.log_graph_view.follow', follow)
         view.set_name(title)
 
@@ -150,9 +150,9 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         if author:
             args.insert(1, "--author={}".format(author))
 
-        branch = self.view.settings().get("git_savvy.log_graph_view.filter_by_branch")
-        if branch:
-            args.append(branch)
+        branches = self.view.settings().get("git_savvy.log_graph_view.branches")
+        if branches:
+            args.extend(branches)
 
         if self.file_path:
             file_path = self.get_rel_path(self.file_path)
@@ -173,13 +173,13 @@ def prelude(view):
     elif repo_path:
         prelude += "  REPO: {}\n".format(repo_path)
 
-    all_ = settings.get("git_savvy.log_graph_view.all_branches") or ""
-    branch = settings.get("git_savvy.log_graph_view.filter_by_branch") or ""
+    all_ = settings.get("git_savvy.log_graph_view.all_branches") or False
+    branches = settings.get("git_savvy.log_graph_view.branches") or []
     prelude += (
         "  "
         + "  ".join(filter(None, [
             '[a]ll: true' if all_ else '[a]ll: false',
-            branch
+            " ".join(branches)
         ]))
         + "\n"
     )
@@ -267,7 +267,7 @@ class GsLogGraphByBranchCommand(WindowCommand, GitCommand):
                 self.window.run_command('gs_graph', {
                     'file_path': file_path,
                     'all': True,
-                    'branch': branch,
+                    'branches': [branch],
                     'follow': branch,
                 })
 
