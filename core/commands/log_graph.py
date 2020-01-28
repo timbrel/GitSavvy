@@ -31,7 +31,16 @@ PATH_SCOPE = 'git_savvy.graph.path_char'
 
 
 class GsGraphCommand(WindowCommand, GitCommand):
-    def run(self, repo_path=None, file_path=None, all=False, branch=None, author='', title='GRAPH'):
+    def run(
+        self,
+        repo_path=None,
+        file_path=None,
+        all=False,
+        branch=None,
+        author='',
+        title='GRAPH',
+        follow=None
+    ):
         if repo_path is None:
             repo_path = self.repo_path
 
@@ -47,6 +56,7 @@ class GsGraphCommand(WindowCommand, GitCommand):
         settings.set("git_savvy.log_graph_view.all_branches", all)
         settings.set("git_savvy.log_graph_view.filter_by_author", author)
         settings.set("git_savvy.log_graph_view.filter_by_branch", branch)
+        settings.set('git_savvy.log_graph_view.follow', follow)
         view.set_name(title)
 
         # We need to ensure the panel has been created, so it appears
@@ -164,12 +174,19 @@ class GsLogGraphCommand(GsLogCommand):
 
 class GsLogGraphCurrentBranch(WindowCommand, GitCommand):
     def run(self, file_path=None):
-        self.window.run_command('gs_graph', {'file_path': file_path})
+        self.window.run_command('gs_graph', {
+            'file_path': file_path,
+            'all': True,
+            'follow': 'HEAD',
+        })
 
 
 class GsLogGraphAllBranches(WindowCommand, GitCommand):
     def run(self, file_path=None):
-        self.window.run_command('gs_graph', {'file_path': file_path, 'all': True})
+        self.window.run_command('gs_graph', {
+            'file_path': file_path,
+            'all': True,
+        })
 
 
 class GsLogGraphByAuthorCommand(WindowCommand, GitCommand):
@@ -217,10 +234,12 @@ class GsLogGraphByBranchCommand(WindowCommand, GitCommand):
         def on_select(branch):
             if branch:
                 self._selected_branch = branch  # remember last selection
-                self.window.run_command(
-                    'gs_graph',
-                    {'file_path': file_path, 'branch': branch}
-                )
+                self.window.run_command('gs_graph', {
+                    'file_path': file_path,
+                    'all': True,
+                    'branch': branch,
+                    'follow': branch,
+                })
 
         show_branch_panel(on_select, selected_branch=self._selected_branch)
 

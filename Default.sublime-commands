@@ -75,14 +75,21 @@
     },
     {
         "caption": "git: graph",
-        "command": "gs_log_graph"
+        "command": "gs_graph",
+        "args": { "all": true, "follow": "HEAD" }
     },
     {
-        "caption": "git: graph current branch",
-        "command": "gs_log_graph_current_branch"
+        "caption": "git: Repo History",
+        "command": "gs_graph",
+        "args": { "all": true, "follow": "HEAD" }
     },
     {
         "caption": "git: graph current file",
+        "command": "gs_log_graph",
+        "args": { "current_file": true }
+    },
+    {
+        "caption": "git: File history",
         "command": "gs_log_graph",
         "args": { "current_file": true }
     },

@@ -673,4 +673,8 @@ class GsBranchesLogGraphCommand(WindowCommand, GitCommand):
         else:
             branch = branch_name
 
-        self.window.run_command('gs_graph', {'branch': branch})
+        self.window.run_command('gs_graph', {
+            'all': True,
+            'branch': branch,
+            'follow': branch
+        })
