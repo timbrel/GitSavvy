@@ -9,6 +9,16 @@ variables:
   sha: '[0-9a-f]{6,40}'
 contexts:
   main:
+    - match: ^
+      push:
+        - meta_scope: meta.prelude.git_savvy.graph
+        - match: '^(?=\S)'
+          set: graph
+        - match: .*
+          scope: comment.prelude.git_savvy.graph
+
+  graph:
+    - meta_scope: meta.content.git_savvy.graph
     - match: (?=^.*{{sha}} +\(HEAD( ->|\)))
       push:
         - meta_scope: meta.graph.graph-line.head.git-savvy

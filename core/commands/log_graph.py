@@ -1,4 +1,5 @@
 from functools import lru_cache, partial
+import os
 import re
 
 import sublime
@@ -118,12 +119,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(partial(self.run_async, navigate_after_draw))
 
     def run_async(self, navigate_after_draw=False):
-        file_path = self.file_path
-        if file_path:
-            graph_content = "File: {}\n\n".format(file_path)
-        else:
-            graph_content = ""
-
+        graph_content = prelude(self.view)
         args = self.build_git_command()
         graph_content += self.git(*args)
         graph_content = re.sub(
@@ -163,6 +159,31 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             args = args + ["--", file_path]
 
         return args
+
+
+def prelude(view):
+    # type: (sublime.View) -> str
+    prelude = "\n"
+    settings = view.settings()
+    repo_path = settings.get("git_savvy.repo_path")
+    file_path = settings.get("git_savvy.file_path")
+    if file_path:
+        rel_file_path = os.path.relpath(file_path, repo_path)
+        prelude += "  FILE: {}\n".format(rel_file_path)
+    elif repo_path:
+        prelude += "  REPO: {}\n".format(repo_path)
+
+    all_ = settings.get("git_savvy.log_graph_view.all_branches") or ""
+    branch = settings.get("git_savvy.log_graph_view.filter_by_branch") or ""
+    prelude += (
+        "  "
+        + "  ".join(filter(None, [
+            '[a]ll: true' if all_ else '[a]ll: false',
+            branch
+        ]))
+        + "\n"
+    )
+    return prelude + "\n"
 
 
 class GsLogGraphCommand(GsLogCommand):
