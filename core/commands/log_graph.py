@@ -72,6 +72,15 @@ class GsGraphCommand(WindowCommand, GitCommand):
         view.run_command("gs_log_graph_refresh", {"navigate_after_draw": True})
 
 
+class GsGraphCurrentFile(WindowCommand, GitCommand):
+    def run(self, **kwargs):
+        file_path = self.file_path
+        if file_path:
+            self.window.run_command('gs_graph', dict(file_path=file_path, **kwargs))
+        else:
+            self.window.status_message("View has no filename to track.")
+
+
 def augment_color_scheme(view):
     # type: (sublime.View) -> None
     settings = GitSavvySettings()

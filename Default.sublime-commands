@@ -85,13 +85,13 @@
     },
     {
         "caption": "git: graph current file",
-        "command": "gs_log_graph",
-        "args": { "current_file": true }
+        "command": "gs_graph_current_file",
+        "args": { "all": false }
     },
     {
         "caption": "git: File history",
-        "command": "gs_log_graph",
-        "args": { "current_file": true }
+        "command": "gs_graph_current_file",
+        "args": { "all": false }
     },
     {
         "caption": "github: open file on remote",
