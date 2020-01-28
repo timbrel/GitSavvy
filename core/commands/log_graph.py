@@ -264,6 +264,15 @@ class GsLogGraphNavigateCommand(GsNavigate):
         return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
 
 
+class GsLogGraphToggleAllSetting(TextCommand, GitCommand):
+    def run(self, edit):
+        settings = self.view.settings()
+        current = settings.get("git_savvy.log_graph_view.all_branches")
+        next_state = not current
+        settings.set("git_savvy.log_graph_view.all_branches", next_state)
+        self.view.run_command("gs_log_graph_refresh")
+
+
 class GsLogGraphCursorListener(EventListener, GitCommand):
     def is_applicable(self, view):
         # type: (sublime.View) -> bool
