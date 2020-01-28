@@ -619,15 +619,5 @@ class GraphActionMixin(GsLogActionCommand):
         super().run(commit_hash=self._commit_hash, file_path=self._file_path)
 
 
-class GsCompareCommitActionCommand(GraphActionMixin):
-    default_actions = [
-        ["show_commit", "Show commit"],
-        ["checkout_commit", "Checkout commit"],
-        ["cherry_pick", "Cherry-pick commit"],
-        ["compare_against", "Compare commit against ..."],
-        ["copy_sha", "Copy the full SHA"]
-    ]
-
-
 class GsLogGraphActionCommand(GraphActionMixin):
     ...
