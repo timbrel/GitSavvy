@@ -74,7 +74,17 @@ class GsGraphCommand(WindowCommand, GitCommand):
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
                 focus_view(view)
-                if follow:
+                if follow and follow != extract_symbol_to_follow(view):
+                    if show_commit_info.panel_is_visible(self.window):
+                        # Hack to force a synchronous update of the panel
+                        # *as a result of* `navigate_to_symbol` (by
+                        # `on_selection_modified`) since we know that
+                        # "show_commit_info" will run blocking if the panel
+                        # is empty (or closed).
+                        panel = show_commit_info.ensure_panel(self.window)
+                        panel.run_command(
+                            "gs_replace_view_text", {"text": "", "restore_cursors": True}
+                        )
                     navigate_to_symbol(view, follow)
                 break
         else:
@@ -84,6 +94,19 @@ class GsGraphCommand(WindowCommand, GitCommand):
             view.run_command("gs_handle_arrow_keys")
             run_on_new_thread(augment_color_scheme, view)
 
+            # We need to ensure the panel has been created, so it appears
+            # e.g. in the menu. Otherwise Sublime will not handle `show_panel`
+            # events for that panel at all.
+            # Note that the following is basically what `on_activated` does,
+            # but `on_activated` runs synchronous when a view gets created t.i.
+            # even before we can mark it as "graph_view" in the settings.
+            show_commit_info.ensure_panel(self.window)
+            if (
+                self.savvy_settings.get("graph_show_more_commit_info")
+                and not show_commit_info.panel_is_visible(self.window)
+            ):
+                self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
+
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)
         settings.set("git_savvy.file_path", file_path)
@@ -92,16 +115,6 @@ class GsGraphCommand(WindowCommand, GitCommand):
         settings.set("git_savvy.log_graph_view.branches", branches or [])
         settings.set('git_savvy.log_graph_view.follow', follow)
         view.set_name(title)
-
-        # We need to ensure the panel has been created, so it appears
-        # e.g. in the menu. Otherwise Sublime will not handle `show_panel`
-        # events for that panel at all.
-        show_commit_info.ensure_panel(self.window)
-        if (
-            self.savvy_settings.get("graph_show_more_commit_info")
-            and not show_commit_info.panel_is_visible(self.window)
-        ):
-            self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
         view.run_command("gs_log_graph_refresh", {"navigate_after_draw": True})
 
