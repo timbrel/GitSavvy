@@ -128,6 +128,11 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             flags=re.MULTILINE)
 
         def program():
+            # TODO: Preserve column if possible instead of going to the beginning
+            #       of the commit hash blindly.
+            # TODO: Only jump iff cursor is in viewport. If the user scrolled
+            #       away (without changing the cursor) just set the cursor but
+            #       do NOT show it.
             follow = self.view.settings().get('git_savvy.log_graph_view.follow')
             self.view.run_command("gs_replace_view_text", {"text": graph_content, "restore_cursors": True})
             if follow:
