@@ -355,11 +355,7 @@ class GsLogGraphToggleAllSetting(TextCommand, GitCommand):
 class GsLogGraphCursorListener(EventListener, GitCommand):
     def is_applicable(self, view):
         # type: (sublime.View) -> bool
-        settings = view.settings()
-        return bool(
-            settings.get("git_savvy.log_graph_view")
-            or settings.get("git_savvy.compare_commit_view")
-        )
+        return bool(view.settings().get("git_savvy.log_graph_view"))
 
     def on_activated(self, view):
         window = view.window()
