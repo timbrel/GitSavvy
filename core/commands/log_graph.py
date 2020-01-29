@@ -31,6 +31,27 @@ DOT_SCOPE = 'git_savvy.graph.dot'
 PATH_SCOPE = 'git_savvy.graph.path_char'
 
 
+def compute_identifier_for_view(view):
+    # type: (sublime.View) -> Tuple
+    settings = view.settings()
+    return (
+        settings.get('git_savvy.repo_path'),
+        settings.get('git_savvy.file_path'),
+        settings.get('git_savvy.log_graph_view.all_branches')
+        or settings.get('git_savvy.log_graph_view.branches')
+    )
+
+
+def focus_view(view):
+    window = view.window()
+    if not window:
+        return
+
+    group, _ = window.get_view_index(view)
+    window.focus_group(group)
+    window.focus_view(view)
+
+
 class GsGraphCommand(WindowCommand, GitCommand):
     def run(
         self,
@@ -45,11 +66,23 @@ class GsGraphCommand(WindowCommand, GitCommand):
         if repo_path is None:
             repo_path = self.repo_path
 
-        view = util.view.get_scratch_view(self, "log_graph", read_only=True)
-        view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
-        view.run_command("gs_handle_vintageous")
-        view.run_command("gs_handle_arrow_keys")
-        run_on_new_thread(augment_color_scheme, view)
+        this_id = (
+            repo_path,
+            file_path,
+            all or branches
+        )
+        for view in self.window.views():
+            if compute_identifier_for_view(view) == this_id:
+                focus_view(view)
+                if follow:
+                    navigate_to_symbol(view, follow)
+                break
+        else:
+            view = util.view.get_scratch_view(self, "log_graph", read_only=True)
+            view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
+            view.run_command("gs_handle_vintageous")
+            view.run_command("gs_handle_arrow_keys")
+            run_on_new_thread(augment_color_scheme, view)
 
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)
