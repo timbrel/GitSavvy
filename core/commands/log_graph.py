@@ -449,6 +449,13 @@ PREVIOUS_OPEN_PANEL_PER_WINDOW = {}  # type: Dict[sublime.WindowId, Optional[str
 
 def set_symbol_to_follow(view):
     # type: (sublime.View) -> None
+    symbol = extract_symbol_to_follow(view)
+    if symbol:
+        view.settings().set('git_savvy.log_graph_view.follow', symbol)
+
+
+def extract_symbol_to_follow(view):
+    # type: (sublime.View) -> Optional[str]
     """Extract a symbol to follow."""
     try:
         # Intentional `b` (not `end()`!) because b is where the
@@ -459,10 +466,7 @@ def set_symbol_to_follow(view):
 
     line_span = view.line(cursor)
     line_text = view.substr(line_span)
-
-    symbol = _extract_symbol_to_follow(view.id(), line_text)
-    if symbol:
-        view.settings().set('git_savvy.log_graph_view.follow', symbol)
+    return _extract_symbol_to_follow(view.id(), line_text)
 
 
 @lru_cache(maxsize=512)
