@@ -73,6 +73,11 @@ class GsGraphCommand(WindowCommand, GitCommand):
         )
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
+                settings = view.settings()
+                settings.set("git_savvy.log_graph_view.all_branches", all)
+                settings.set("git_savvy.log_graph_view.filter_by_author", author)
+                settings.set("git_savvy.log_graph_view.branches", branches or [])
+                settings.set('git_savvy.log_graph_view.follow', follow)
                 focus_view(view)
                 if follow and follow != extract_symbol_to_follow(view):
                     if show_commit_info.panel_is_visible(self.window):
@@ -107,16 +112,16 @@ class GsGraphCommand(WindowCommand, GitCommand):
             ):
                 self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
-        settings = view.settings()
-        settings.set("git_savvy.repo_path", repo_path)
-        settings.set("git_savvy.file_path", file_path)
-        settings.set("git_savvy.log_graph_view.all_branches", all)
-        settings.set("git_savvy.log_graph_view.filter_by_author", author)
-        settings.set("git_savvy.log_graph_view.branches", branches or [])
-        settings.set('git_savvy.log_graph_view.follow', follow)
-        view.set_name(title)
+            settings = view.settings()
+            settings.set("git_savvy.repo_path", repo_path)
+            settings.set("git_savvy.file_path", file_path)
+            settings.set("git_savvy.log_graph_view.all_branches", all)
+            settings.set("git_savvy.log_graph_view.filter_by_author", author)
+            settings.set("git_savvy.log_graph_view.branches", branches or [])
+            settings.set('git_savvy.log_graph_view.follow', follow)
+            view.set_name(title)
 
-        view.run_command("gs_log_graph_refresh", {"navigate_after_draw": True})
+            view.run_command("gs_log_graph_refresh", {"navigate_after_draw": True})
 
 
 class GsGraphCurrentFile(WindowCommand, GitCommand):
