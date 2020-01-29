@@ -645,7 +645,7 @@ def extract_commit_hash(line):
 class GsLogGraphToggleMoreInfoCommand(WindowCommand, GitCommand):
 
     """
-    Toggle global `graph_show_more_commit_info` setting. Also used by compare_commit_view.
+    Toggle global `graph_show_more_commit_info` setting.
     """
 
     def run(self):
