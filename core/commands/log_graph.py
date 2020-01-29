@@ -655,7 +655,7 @@ class GsLogGraphToggleMoreInfoCommand(WindowCommand, GitCommand):
             self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
 
-class GraphActionMixin(GsLogActionCommand):
+class GsLogGraphActionCommand(GsLogActionCommand):
     def run(self):
         view = self.window.active_view()
 
@@ -675,7 +675,3 @@ class GraphActionMixin(GsLogActionCommand):
         self._file_path = self.file_path
 
         super().run(commit_hash=self._commit_hash, file_path=self._file_path)
-
-
-class GsLogGraphActionCommand(GraphActionMixin):
-    ...
