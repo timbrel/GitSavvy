@@ -658,20 +658,19 @@ class GsLogGraphToggleMoreInfoCommand(WindowCommand, GitCommand):
 class GsLogGraphActionCommand(GsLogActionCommand):
     def run(self):
         view = self.window.active_view()
+        if not view:
+            return
 
-        self.selections = view.sel()
-        if not len(self.selections) == 1:
+        sel = view.sel()
+        if len(sel) > 1:
             self.window.status_message("You can only do actions on one commit at a time.")
             return
 
-        lines = util.view.get_lines_from_regions(view, self.selections)
-        line = lines[0]
-
-        commit_hash = extract_commit_hash(line)
+        cursor = sel[0].b
+        line_span = view.line(cursor)
+        line_text = view.substr(line_span)
+        commit_hash = extract_commit_hash(line_text)
         if not commit_hash:
             return
 
-        self._commit_hash = commit_hash
-        self._file_path = self.file_path
-
-        super().run(commit_hash=self._commit_hash, file_path=self._file_path)
+        super().run(commit_hash=commit_hash, file_path=self.file_path)
