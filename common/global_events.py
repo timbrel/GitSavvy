@@ -5,6 +5,9 @@ from . import util
 from ..core.settings import SettingsMixin
 
 
+IGNORE_NEXT_ACTIVATE = False
+
+
 class GsInterfaceFocusEventListener(EventListener):
 
     """
@@ -12,8 +15,18 @@ class GsInterfaceFocusEventListener(EventListener):
     """
 
     def on_activated(self, view):
-        # status bar is handled by GsStatusBarEventListener
-        util.view.refresh_gitsavvy(view, refresh_status_bar=False)
+        global IGNORE_NEXT_ACTIVATE
+
+        # When the user just opened e.g. the goto or command palette overlay
+        # prevent a refresh signal on closing that panel.
+        # Whitelist "Terminus" which reports itself as a widget as well.
+        if view.settings().get('is_widget') and not view.settings().get("terminus_view"):
+            IGNORE_NEXT_ACTIVATE = True
+        elif IGNORE_NEXT_ACTIVATE:
+            IGNORE_NEXT_ACTIVATE = False
+        else:
+            # status bar is handled by GsStatusBarEventListener
+            util.view.refresh_gitsavvy(view, refresh_status_bar=False)
 
     def on_close(self, view):
         util.view.handle_closed_view(view)
