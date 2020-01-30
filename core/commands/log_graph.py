@@ -4,7 +4,7 @@ import re
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
-from . import log_graph_colorizer as colorizer
+from . import log_graph_colorizer as colorizer, show_commit_info
 from .log import GsLogActionCommand, GsLogCommand
 from .navigate import GsNavigate
 from ..git_command import GitCommand
@@ -17,7 +17,7 @@ from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
 MYPY = False
 if MYPY:
-    from typing import Iterator, Set, Tuple
+    from typing import Dict, Iterator, Optional, Set, Tuple
 
 
 COMMIT_NODE_CHAR = "●"
@@ -30,21 +30,10 @@ DOT_SCOPE = 'git_savvy.graph.dot'
 PATH_SCOPE = 'git_savvy.graph.path_char'
 
 
-class LogGraphMixin(object):
-
-    """
-    Open a new window displaying an ASCII-graphic representation
-    of the repo's branch relationships.
-    """
-
-    def run(self, file_path=None, title=None):
-        self._file_path = file_path
-        self.title = title or "GRAPH"
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
-        # need to get repo_path before the new view is created.
-        repo_path = self.repo_path
+class GsGraphCommand(WindowCommand, GitCommand):
+    def run(self, repo_path=None, file_path=None, all=False, branch=None, author='', title='GRAPH'):
+        if repo_path is None:
+            repo_path = self.repo_path
 
         view = util.view.get_scratch_view(self, "log_graph", read_only=True)
         view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
@@ -54,14 +43,23 @@ class LogGraphMixin(object):
 
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)
-        settings.set("git_savvy.file_path", self._file_path)
-        self.prepare_target_view(view)
-        view.set_name(self.title)
+        settings.set("git_savvy.file_path", file_path)
+        settings.set("git_savvy.log_graph_view.all_branches", all)
+        settings.set("git_savvy.log_graph_view.filter_by_author", author)
+        settings.set("git_savvy.log_graph_view.filter_by_branch", branch)
+        view.set_name(title)
+
+        # We need to ensure the panel has been created, so it appears
+        # e.g. in the menu. Otherwise Sublime will not handle `show_panel`
+        # events for that panel at all.
+        show_commit_info.ensure_panel(self.window)
+        if (
+            self.savvy_settings.get("graph_show_more_commit_info")
+            and not show_commit_info.panel_is_visible(self.window)
+        ):
+            self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
         view.run_command("gs_log_graph_refresh", {"navigate_after_draw": True})
-
-    def prepare_target_view(self, view):
-        pass
 
 
 def augment_color_scheme(view):
@@ -118,8 +116,6 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         if navigate_after_draw:
             self.view.run_command("gs_log_graph_navigate")
 
-        draw_info_panel(self.view, self.savvy_settings.get("graph_show_more_commit_info"))
-
     def build_git_command(self):
         args = self.savvy_settings.get("git_graph_args")
         follow = self.savvy_settings.get("log_follow_rename")
@@ -160,17 +156,17 @@ class GsLogGraphCommand(GsLogCommand):
     ]
 
 
-class GsLogGraphCurrentBranch(LogGraphMixin, WindowCommand, GitCommand):
-    pass
+class GsLogGraphCurrentBranch(WindowCommand, GitCommand):
+    def run(self, file_path=None):
+        self.window.run_command('gs_graph', {'file_path': file_path})
 
 
-class GsLogGraphAllBranches(LogGraphMixin, WindowCommand, GitCommand):
+class GsLogGraphAllBranches(WindowCommand, GitCommand):
+    def run(self, file_path=None):
+        self.window.run_command('gs_graph', {'file_path': file_path, 'all': True})
 
-    def prepare_target_view(self, view):
-        view.settings().set("git_savvy.log_graph_view.all_branches", True)
 
-
-class GsLogGraphByAuthorCommand(LogGraphMixin, WindowCommand, GitCommand):
+class GsLogGraphByAuthorCommand(WindowCommand, GitCommand):
 
     """
     Open a quick panel containing all committers for the active
@@ -179,49 +175,48 @@ class GsLogGraphByAuthorCommand(LogGraphMixin, WindowCommand, GitCommand):
     by the specified author.
     """
 
-    def run_async(self):
-        email = self.git("config", "user.email").strip()
-        self._entries = []
-
+    def run(self, file_path=None):
         commiter_str = self.git("shortlog", "-sne", "HEAD")
+        entries = []
         for line in commiter_str.split('\n'):
             m = re.search(r'\s*(\d*)\s*(.*)\s<(.*)>', line)
             if m is None:
                 continue
             commit_count, author_name, author_email = m.groups()
             author_text = "{} <{}>".format(author_name, author_email)
-            self._entries.append((commit_count, author_name, author_email, author_text))
+            entries.append((commit_count, author_name, author_email, author_text))
 
+        def on_select(index):
+            if index == -1:
+                return
+            selected_author = entries[index][3]
+            self.window.run_command(
+                'gs_graph',
+                {'file_path': file_path, 'author': selected_author}
+            )
+
+        email = self.git("config", "user.email").strip()
         self.window.show_quick_panel(
-            [entry[3] for entry in self._entries],
-            self.on_author_selection,
+            [entry[3] for entry in entries],
+            on_select,
             flags=sublime.MONOSPACE_FONT,
-            selected_index=(list(line[2] for line in self._entries)).index(email)
+            selected_index=[line[2] for line in entries].index(email)
         )
 
-    def on_author_selection(self, index):
-        if index == -1:
-            return
-        self._selected_author = self._entries[index][3]
-        super().run_async()
 
-    def prepare_target_view(self, view):
-        view.settings().set("git_savvy.log_graph_view.filter_by_author", self._selected_author)
-
-
-class GsLogGraphByBranchCommand(LogGraphMixin, WindowCommand, GitCommand):
+class GsLogGraphByBranchCommand(WindowCommand, GitCommand):
     _selected_branch = None
 
-    def run_async(self):
-        show_branch_panel(self.on_branch_selection, selected_branch=self._selected_branch)
+    def run(self, file_path=None):
+        def on_select(branch):
+            if branch:
+                self._selected_branch = branch  # remember last selection
+                self.window.run_command(
+                    'gs_graph',
+                    {'file_path': file_path, 'branch': branch}
+                )
 
-    def on_branch_selection(self, branch):
-        if branch:
-            self._selected_branch = branch
-            super().run_async()
-
-    def prepare_target_view(self, view):
-        view.settings().set("git_savvy.log_graph_view.filter_by_branch", self._selected_branch)
+        show_branch_panel(on_select, selected_branch=self._selected_branch)
 
 
 class GsLogGraphNavigateCommand(GsNavigate):
@@ -252,6 +247,9 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
         if view not in window.views():
             return
 
+        if self.is_applicable(view):
+            show_commit_info.ensure_panel(window)
+
         panel_view = window.find_output_panel('show_commit_info')
         if not panel_view:
             return
@@ -261,12 +259,17 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             return
 
         # Auto-hide panel if the user switches to a different buffer
-        if not self.is_applicable(view) and window.active_panel() == 'output.show_commit_info':
-            window.run_command('hide_panel')
+        if not self.is_applicable(view) and show_commit_info.panel_is_visible(window):
+            panel = PREVIOUS_OPEN_PANEL_PER_WINDOW.get(window.id(), None)
+            if panel:
+                window.run_command("show_panel", {"panel": panel})
+            else:
+                window.run_command('hide_panel')
+
         # Auto-show panel if the user switches back
         elif (
             self.is_applicable(view)
-            and window.active_panel() != 'output.show_commit_info'
+            and not show_commit_info.panel_is_visible(window)
             and self.savvy_settings.get("graph_show_more_commit_info")
         ):
             window.run_command("show_panel", {"panel": "output.show_commit_info"})
@@ -276,39 +279,68 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
     # hence it is *important* to throttle these events.
     # We do this seperately per side-effect. See the fn
     # implementations.
-    def on_selection_modified_async(self, view):
+    def on_selection_modified(self, view):
+        # type: (sublime.View) -> None
         if not self.is_applicable(view):
             return
 
-        draw_info_panel(view, self.savvy_settings.get("graph_show_more_commit_info"))
+        window = view.window()
+        if window and show_commit_info.panel_is_visible(window):
+            draw_info_panel(view)
+
         # `colorize_dots` queries the view heavily. We want that to
         # happen on the main thread (t.i. blocking) bc it is way, way
-        # faster.
+        # faster. But we still defer that task, so others can run code
+        # that actually *needs* to be a sync side-effect to this event.
         sublime.set_timeout(lambda: colorize_dots(view))
 
-    def on_post_window_command(self, window, command_name, args):
-        # type: (sublime.Window, str, dict) -> None
-        view = window.active_view()
-        if not view:
-            return
+    def on_window_command(self, window, command_name, args):
+        # type: (sublime.Window, str, Dict) -> None
+        if command_name == 'hide_panel':
+            view = window.active_view()
+            if not view:
+                return
 
-        # If the user hides the panel via `<ESC>` or mouse click, remember the intent *if*
-        # the `active_view` is a 'log_graph'
-        if command_name == 'hide_panel' and self.is_applicable(view):
-            self.savvy_settings.set("graph_show_more_commit_info", False)
-            draw_info_panel(view, False)
+            if window.active_panel() == "incremental_find":
+                return
 
-        # If the user opens a different panel, don't fight with it.
-        elif command_name == 'show_panel':
-            # Note: 'show_panel' can also be used to actually *hide* a panel if you pass
-            # the 'toggle' arg.
-            show_panel = args.get('panel') == "output.show_commit_info"
-            self.savvy_settings.set("graph_show_more_commit_info", show_panel)
-            # Note: After 'show_panel' `on_selection_modified` runs *if* you used a
-            # keyboard shortcut for it. If you open a panel via mouse it doesn't.
-            # Since we cannot differentiate here, we do for now:
+            # If the user hides the panel via `<ESC>` or mouse click,
+            # remember the intent *if* the `active_view` is a 'log_graph'
             if self.is_applicable(view):
-                draw_info_panel(view, show_panel)
+                self.savvy_settings.set("graph_show_more_commit_info", False)
+            PREVIOUS_OPEN_PANEL_PER_WINDOW[window.id()] = None
+
+        elif command_name == 'show_panel':
+            view = window.active_view()
+            if not view:
+                return
+
+            # Special case some panels. For these panels, showing them does not count
+            # as intent to close the show_commit panel. It will thus reappear
+            # automatically as soon as you focus the graph again. E.g. closing the
+            # incremantal find panel via `<enter>` will bring the commit panel up
+            # again.
+            if args.get('panel') == "incremental_find":
+                return
+
+            toggle = args.get('toggle', False)
+            panel = args.get('panel')
+            if toggle and window.active_panel() == panel:  # <== actually *hide* panel
+                # E.g. the same side-effect as in above "hide_panel" case
+                if self.is_applicable(view):
+                    self.savvy_settings.set("graph_show_more_commit_info", False)
+                PREVIOUS_OPEN_PANEL_PER_WINDOW[window.id()] = None
+            else:
+                if panel == "output.show_commit_info":
+                    self.savvy_settings.set("graph_show_more_commit_info", True)
+                    PREVIOUS_OPEN_PANEL_PER_WINDOW[window.id()] = window.active_panel()
+                    draw_info_panel(view)
+                else:
+                    if self.is_applicable(view):
+                        self.savvy_settings.set("graph_show_more_commit_info", False)
+
+
+PREVIOUS_OPEN_PANEL_PER_WINDOW = {}  # type: Dict[sublime.WindowId, Optional[str]]
 
 
 def colorize_dots(view):
@@ -342,32 +374,42 @@ def _colorize_dots(vid, dots):
     view.add_regions('gs_log_graph_follow_path', paths, scope=PATH_SCOPE)
 
 
-def draw_info_panel(view, show_panel):
-    """Extract line under the first cursor and draw info panel."""
+def draw_info_panel(view):
+    # type: (sublime.View) -> None
+    """Extract line under the last cursor and draw info panel."""
     try:
-        cursor = next(s.a for s in view.sel() if s.empty())
-    except StopIteration:
+        # Intentional `b` (not `end()`!) because b is where the
+        # cursor is. (If you select upwards b becomes < a.)
+        cursor = [s.b for s in view.sel()][-1]
+    except IndexError:
         return
 
     line_span = view.line(cursor)
     line_text = view.substr(line_span)
 
     # Defer to a second fn to reduce side-effects
-    draw_info_panel_for_line(view.window().id(), line_text, show_panel)
+    draw_info_panel_for_line(view.id(), line_text)
 
 
 @lru_cache(maxsize=1)
 # ^- used to throttle the side-effect!
-# Read: distinct until      (wid, line_text, show_panel) changes
-def draw_info_panel_for_line(wid, line_text, show_panel):
-    window = sublime.Window(wid)
+# Read: distinct until      (vid, line_text) changes
+def draw_info_panel_for_line(vid, line_text):
+    # type: (sublime.ViewId, str) -> None
+    view = sublime.View(vid)
+    window = view.window()
+    if not window:
+        return
 
-    if show_panel:
-        commit_hash = extract_commit_hash(line_text)
+    commit_hash = extract_commit_hash(line_text)
+    # `gs_show_commit_info` draws a blank panel if `commit_hash`
+    # is falsy.  That only looks nice iff the main graph view is
+    # also blank. (Which it only ever is directly after creation.)
+    # If you just move the cursor to a line not containing a
+    # commit_hash, it looks better to not draw at all, t.i. the
+    # information in the panel stays untouched.
+    if view.size() == 0 or commit_hash:
         window.run_command("gs_show_commit_info", {"commit_hash": commit_hash})
-    else:
-        if window.active_panel() == "output.show_commit_info":
-            window.run_command("hide_panel")
 
 
 def extract_commit_hash(line):
@@ -375,16 +417,17 @@ def extract_commit_hash(line):
     return match.groupdict()['commit_hash'] if match else ""
 
 
-class GsLogGraphToggleMoreInfoCommand(TextCommand, WindowCommand, GitCommand):
+class GsLogGraphToggleMoreInfoCommand(WindowCommand, GitCommand):
 
     """
     Toggle global `graph_show_more_commit_info` setting. Also used by compare_commit_view.
     """
 
-    def run(self, edit):
-        show_panel = not self.savvy_settings.get("graph_show_more_commit_info")
-        self.savvy_settings.set("graph_show_more_commit_info", show_panel)
-        draw_info_panel(self.view, show_panel)
+    def run(self):
+        if show_commit_info.panel_is_visible(self.window):
+            self.window.run_command("hide_panel", {"panel": "output.show_commit_info"})
+        else:
+            self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
 
 class GraphActionMixin(GsLogActionCommand):

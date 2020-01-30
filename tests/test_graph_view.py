@@ -1,39 +1,18 @@
-from functools import wraps
 import os
-import sys
-from unittest.case import _ExpectedFailure, _UnexpectedSuccess
 
 import sublime
 
-from unittesting import DeferrableTestCase
+from unittesting import DeferrableTestCase, expectedFailure
 from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.mockito import unstub, when
 
 from GitSavvy.core.commands.log_graph import (
-    GsLogGraphCurrentBranch,
     GsLogGraphRefreshCommand,
     GsLogGraphCursorListener,
     extract_commit_hash
 )
 from GitSavvy.core.commands.show_commit_info import GsShowCommitInfoCommand
 from GitSavvy.core.settings import GitSavvySettings
-
-
-def isiterable(obj):
-    return hasattr(obj, '__iter__')
-
-
-def expectedFailure(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            deferred = func(*args, **kwargs)
-            if isiterable(deferred):
-                yield from deferred
-        except Exception:
-            raise _ExpectedFailure(sys.exc_info())
-        raise _UnexpectedSuccess
-    return wrapper
 
 
 RUNNING_ON_LINUX_TRAVIS = os.environ.get('TRAVIS_OS_NAME') == 'linux'
@@ -187,9 +166,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
     def create_graph_view_async(self, repo_path, log, wait_for):
         when(GsLogGraphRefreshCommand).git('log', ...).thenReturn(log)
-        cmd = GsLogGraphCurrentBranch(self.window)
-        when(cmd).get_repo_path().thenReturn(repo_path)
-        cmd.run()
+        self.window.run_command('gs_graph', {'repo_path': repo_path})
         yield lambda: self.window.active_view().settings().get('git_savvy.log_graph_view') is True
         log_view = self.window.active_view()
         yield from self.await_string_in_view(log_view, wait_for)
@@ -266,7 +243,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
         log_view.sel().clear()
         log_view.sel().add(log_view.text_point(1, 14))
-        GsLogGraphCursorListener().on_selection_modified_async(log_view)
+        GsLogGraphCursorListener().on_selection_modified(log_view)
         yield from self.await_string_in_view(panel, COMMIT_2)
 
         actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
@@ -327,7 +304,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         # move around
         log_view.sel().clear()
         log_view.sel().add(log_view.text_point(1, 14))
-        GsLogGraphCursorListener().on_selection_modified_async(log_view)
+        GsLogGraphCursorListener().on_selection_modified(log_view)
 
         # show panel
         self.window.run_command('gs_log_graph_toggle_more_info')
@@ -346,7 +323,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         # move around
         log_view.sel().clear()
         log_view.sel().add(log_view.text_point(1, 14))
-        GsLogGraphCursorListener().on_selection_modified_async(log_view)
+        GsLogGraphCursorListener().on_selection_modified(log_view)
 
         # show panel e.g. via mouse
         self.window.run_command('show_panel', {'panel': 'output.show_commit_info'})

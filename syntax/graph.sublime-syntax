@@ -45,7 +45,7 @@ contexts:
           scope: punctuation.expression.end.git-savvy
           pop: true
         - match: (tag)(:) ([^ ,)]+)
-          scope: meta.graph.tag.git-savvy
+          scope: meta.graph.tag.git-savvy gitsavvy.gotosymbol
           captures:
             1: storage.type.git-savvy.graph
             2: punctuation.separator.other.git-savvy
@@ -55,9 +55,9 @@ contexts:
         - match: '->'
           scope: punctuation.separator.key-value.branch.git-savvy
         - match: HEAD
-          scope: constant.other.git.head.git-savvy
+          scope: constant.other.git.head.git-savvy gitsavvy.gotosymbol
         - match: ([^ ,)]+)
-          scope: constant.other.git.branch.git-savvy
+          scope: constant.other.git.branch.git-savvy gitsavvy.gotosymbol
 
   message:
     - meta_scope: meta.graph.message.git-savvy
