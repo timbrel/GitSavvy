@@ -9,7 +9,7 @@ if MYPY:
     from typing import List
 
 
-EXTRACT_BRANCH_NAME = re.compile(r'^.*\[(.*?)(?:[\^\~]+[\d]*)*\]')
+EXTRACT_BRANCH_NAME = re.compile(r'^[^[]+\[(.*?)(?:[\^\~]+[\d]*)*\]')
 
 
 class NearestBranchMixin(object):
