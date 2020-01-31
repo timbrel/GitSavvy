@@ -6,10 +6,8 @@ from ..git_command import GitCommand
 
 
 class GsStatusBarEventListener(EventListener):
+    # Note: `on_activated` is registered in global_events.py
     def on_new_async(self, view):
-        view.run_command("gs_update_status_bar")
-
-    def on_activated_async(self, view):
         view.run_command("gs_update_status_bar")
 
     def on_post_save(self, view):
