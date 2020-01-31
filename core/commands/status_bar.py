@@ -3,7 +3,6 @@ import sublime
 from sublime_plugin import TextCommand, EventListener
 
 from ..git_command import GitCommand
-from ...common.util import debug
 
 
 class GsStatusBarEventListener(EventListener):
@@ -70,15 +69,13 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
             last_execution = int(round(time.time() * 1000))
 
     def run_async(self):
-        # disable logging and git raise error
-        with debug.disable_logging():
-            # ignore all other possible errors
-            try:
-                self.get_repo_path(offer_init=False)  # check for ValueError
-                short_status = self.get_branch_status_short()
-                self.view.set_status("gitsavvy-repo-status", short_status)
-            except Exception:
-                self.view.erase_status("gitsavvy-repo-status")
+        # Ignore all possible errors
+        try:
+            self.get_repo_path(offer_init=False)
+            short_status = self.get_branch_status_short()
+            self.view.set_status("gitsavvy-repo-status", short_status)
+        except Exception:
+            self.view.erase_status("gitsavvy-repo-status")
 
         global update_status_bar_soon
         update_status_bar_soon = False
