@@ -196,25 +196,31 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         enqueue_on_ui(program)
 
     def build_git_command(self):
-        args = self.savvy_settings.get("git_graph_args")
+        settings = self.view.settings()
         follow = self.savvy_settings.get("log_follow_rename")
-        if self.file_path and follow:
-            args.insert(1, "--follow")
+        author = settings.get("git_savvy.log_graph_view.filter_by_author")
+        all_branches = settings.get("git_savvy.log_graph_view.all_branches")
+        args = [
+            'log',
+            '--graph',
+            '--decorate',  # set explicitly for "decorate-refs-exclude" to work
+            '--pretty=format:%h%d %s (%ar) <%an>',
+            '--follow' if self.file_path and follow else None,
+            '--author={}'.format(author) if author else None,
+            '--decorate-refs-exclude=refs/remotes/origin/HEAD',  # cosmetics
+            '--exclude=refs/stash',
+            '--all' if all_branches else None,
+            '--simplify-by-decoration',
+            '--sparse',
+        ]
 
-        if self.view.settings().get("git_savvy.log_graph_view.all_branches"):
-            args.insert(1, "--all")
-
-        author = self.view.settings().get("git_savvy.log_graph_view.filter_by_author")
-        if author:
-            args.insert(1, "--author={}".format(author))
-
-        branches = self.view.settings().get("git_savvy.log_graph_view.branches")
+        branches = settings.get("git_savvy.log_graph_view.branches")
         if branches:
-            args.extend(branches)
+            args += branches
 
         if self.file_path:
             file_path = self.get_rel_path(self.file_path)
-            args = args + ["--", file_path]
+            args += ["--", file_path]
 
         return args
 
