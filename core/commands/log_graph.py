@@ -343,6 +343,27 @@ class GsLogGraphNavigateCommand(GsNavigate):
         return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
 
 
+class GsLogGraphNavigateToHeadCommand(TextCommand):
+
+    """
+    Travel to the HEAD commit.
+    """
+
+    def run(self, edit):
+        try:
+            head_commit = self.view.find_by_selector(
+                "git-savvy.graph meta.graph.graph-line.head.git-savvy "
+                "constant.numeric.graph.commit-hash.git-savvy"
+            )[0]
+        except IndexError:
+            settings = self.view.settings()
+            settings.set("git_savvy.log_graph_view.all_branches", True)
+            settings.set("git_savvy.log_graph_view.follow", "HEAD")
+            self.view.run_command("gs_log_graph_refresh")
+        else:
+            set_and_show_cursor(self.view, head_commit.begin())
+
+
 class GsLogGraphToggleAllSetting(TextCommand, GitCommand):
     def run(self, edit):
         settings = self.view.settings()
