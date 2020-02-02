@@ -50,6 +50,7 @@ class ResetMixin(object):
 
         def do_reset():
             self.git("reset", *args)
+            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
         if reset_mode == "--hard":
             util.actions.destructive("perform a hard reset")(do_reset)()
