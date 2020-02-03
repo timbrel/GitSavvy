@@ -26,15 +26,20 @@ contexts:
         - match: $
           pop: true
 
-    - include: content
+    - match: ^
+      push:
+        - include: content
+        - match: $
+          pop: true
 
   content:
-    - match: '([| \\/_.-]+)'
+    - match: '^([| \\/_.-]+)?([*●])?([| \\/_.-]+)?(?= *)'
       comment: graph lines
-      scope: punctuation.other.git-savvy.graph.graph-line
-
-    - match: '[*●]'
-      scope: keyword.graph.commit.git-savvy
+      scope: meta.graph.branch-art
+      captures:
+        1: punctuation.other.git-savvy.graph.graph-line
+        2: keyword.graph.commit.git-savvy
+        3: punctuation.other.git-savvy.graph.graph-line
 
     - match: \s*({{sha}})\b
       comment: SHA
