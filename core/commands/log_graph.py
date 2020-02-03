@@ -204,7 +204,8 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             'log',
             '--graph',
             '--decorate',  # set explicitly for "decorate-refs-exclude" to work
-            '--pretty=format:%h%d %s (%ar) <%an>',
+            '--date=human',
+            '--pretty=format:%h%d %<|(80,trunc)%s | %ad, %an',
             '--follow' if self.file_path and follow else None,
             '--author={}'.format(author) if author else None,
             '--decorate-refs-exclude=refs/remotes/origin/HEAD',  # cosmetics
