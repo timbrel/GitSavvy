@@ -8,9 +8,9 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import log_graph_colorizer as colorizer, show_commit_info
 from .log import GsLogActionCommand, GsLogCommand
 from .navigate import GsNavigate
-from ..git_command import GitCommand
+from ..git_command import GitCommand, GitSavvyError
 from ..settings import GitSavvySettings
-from ..runtime import enqueue_on_ui, run_on_new_thread, text_command
+from ..runtime import enqueue_on_ui, enqueue_on_worker, run_on_new_thread, text_command
 from ..ui_mixins.quick_panel import show_branch_panel
 from ...common import util
 from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
@@ -162,6 +162,11 @@ def augment_color_scheme(view):
     themeGenerator.apply_new_theme("log_graph_view", view)
 
 
+DATE_FORMAT = 'human'
+FALLBACK_DATE_FORMAT = 'format:%Y-%m-%d %H:%M'
+DATE_FORMAT_STATE = 'trying'
+
+
 class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
     """
@@ -173,12 +178,12 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
     def run_async(self, navigate_after_draw=False):
         graph_content = prelude(self.view)
-        args = self.build_git_command()
-        graph_content += self.git(*args)
-        graph_content = re.sub(
+        graph_content += re.sub(
             r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
-            r'\1' + COMMIT_NODE_CHAR, graph_content,
-            flags=re.MULTILINE)
+            r'\1' + COMMIT_NODE_CHAR,
+            self.read_graph(),
+            flags=re.MULTILINE
+        )
 
         def program():
             # TODO: Preserve column if possible instead of going to the beginning
@@ -195,7 +200,36 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
         enqueue_on_ui(program)
 
+    def read_graph(self):
+        # type: () -> str
+        global DATE_FORMAT, DATE_FORMAT_STATE
+
+        args = self.build_git_command()
+        if DATE_FORMAT_STATE == 'trying':
+            try:
+                rv = self.git(
+                    *args,
+                    throw_on_stderr=True,
+                    show_status_message_on_stderr=False,
+                    show_panel_on_stderr=False
+                )
+            except GitSavvyError as e:
+                if e.stderr and DATE_FORMAT in e.stderr:
+                    DATE_FORMAT = FALLBACK_DATE_FORMAT
+                    DATE_FORMAT_STATE = 'final'
+
+                enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
+                return ''
+            else:
+                DATE_FORMAT_STATE = 'final'
+                return rv
+
+        else:
+            return self.git(*args)
+
     def build_git_command(self):
+        global DATE_FORMAT
+
         settings = self.view.settings()
         follow = self.savvy_settings.get("log_follow_rename")
         author = settings.get("git_savvy.log_graph_view.filter_by_author")
@@ -204,7 +238,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             'log',
             '--graph',
             '--decorate',  # set explicitly for "decorate-refs-exclude" to work
-            '--date=human',
+            '--date={}'.format(DATE_FORMAT),
             '--pretty=format:%h%d %<|(80,trunc)%s | %ad, %an',
             '--follow' if self.file_path and follow else None,
             '--author={}'.format(author) if author else None,
