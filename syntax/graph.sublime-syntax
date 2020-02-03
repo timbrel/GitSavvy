@@ -41,7 +41,7 @@ contexts:
         2: keyword.graph.commit.git-savvy
         3: punctuation.other.git-savvy.graph.graph-line
 
-    - match: \s*({{sha}})\b
+    - match: ({{sha}})\b
       comment: SHA
       scope: constant.numeric.graph.commit-hash.git-savvy
 
@@ -51,7 +51,7 @@ contexts:
       push: message
 
   branch-name:
-    - match: \s*\(
+    - match: \(
       comment: branch-name
       scope: punctuation.expression.begin.git-savvy
       push:
@@ -84,7 +84,7 @@ contexts:
       comment: issue numbers
       scope: string.other.issue.git-savvy
 
-    - match: Merge branch (')(.*?)(')\s*(?:(?:of|into)\s+(\S*))?
+    - match: Merge branch (')(.*?)(')(?:\s+(?:of|into)\s+(\S*))?
       comment: merges
       scope: meta.git-savvy.grph.merge
       captures:
