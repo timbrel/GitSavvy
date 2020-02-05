@@ -1,5 +1,6 @@
+from contextlib import contextmanager
 from functools import lru_cache, partial
-from itertools import chain, islice
+from itertools import chain, islice, takewhile
 import os
 import re
 import shlex
@@ -184,6 +185,46 @@ FALLBACK_DATE_FORMAT = 'format:%Y-%m-%d %H:%M'
 DATE_FORMAT_STATE = 'trying'
 
 
+@text_command
+def replace_region(view, edit, text, region):
+    view.replace(edit, region, text)
+
+
+@contextmanager
+def writable_view(view):
+    is_read_only = view.is_read_only()
+    view.set_read_only(False)
+    try:
+        yield
+    finally:
+        view.set_read_only(is_read_only)
+
+
+def slice_new_content(old_content, new_content):
+    # type: (str, str) -> Tuple[str, int]
+    """Return actually new front content by comparing line-by-line."""
+    # `+ ['']` is a trick so that we can slice `[:-x]` later.
+    # This same content will be stripped by the algorithm, and
+    # we avoid x to become 0. Remember `[:-0]` returns nothing
+    # and thus behaves completely different from `[:-1]` and
+    # so on.
+    new_content_lines = new_content.splitlines() + ['']
+    old_content_lines = old_content.splitlines() + ['']
+    # Here we really go from the end of the content and compare.
+    # On the first change we stop.
+    # The idea is that on a simple refresh the old content (at
+    # the end) stays stable, and so we hope to only paint a few
+    # lines on the top.
+    len_same_lines = len(list(takewhile(
+        lambda a_b: a_b[0] == a_b[1],
+        zip(reversed(old_content_lines), reversed(new_content_lines))
+    )))
+
+    adjusted_content = '\n'.join(new_content_lines[:-len_same_lines])
+    lines_to_replace = len(old_content_lines) - len_same_lines
+    return adjusted_content, lines_to_replace
+
+
 class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
     """
@@ -194,14 +235,36 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(partial(self.run_async, navigate_after_draw))
 
     def run_async(self, navigate_after_draw=False):
-        graph_content = prelude(self.view)
-        graph_content += re.sub(
-            r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
-            r'\1' + COMMIT_NODE_CHAR,
-            self.read_graph(),
-            flags=re.MULTILINE
+        from .. import utils
+        prelude_text = prelude(self.view)
+        next_graph = self.read_graph()
+        current_graph = self.view.settings().get('git_savvy.log_graph_view._raw_graph', '')
+        self.view.settings().set('git_savvy.log_graph_view._raw_graph', next_graph)
+
+        content_to_replace, lines_to_replace = slice_new_content(current_graph, next_graph)
+        with utils.print_runtime("resub"):
+            content_to_replace = re.sub(
+                r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
+                r'\1' + COMMIT_NODE_CHAR,
+                content_to_replace,
+                flags=re.MULTILINE
+            )
+
+        print('--> lines_to_replace', lines_to_replace)
+        try:
+            current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
+        except LookupError:
+            current_prelude_region = sublime.Region(0, 0)
+        len_next_prelude = len(prelude_text)
+        prelude_height = self.view.rowcol(current_prelude_region.b)[0]
+        content_region = sublime.Region(
+            len_next_prelude,
+            self.view.line(self.view.text_point(prelude_height + lines_to_replace - 1, 0)).b
+            - (current_prelude_region.b - len_next_prelude)
+            + (1 if lines_to_replace == 0 else 0)
         )
 
+        @utils.print_runtime("draw")
         def program():
             # TODO: Preserve column if possible instead of going to the beginning
             #       of the commit hash blindly.
@@ -209,7 +272,11 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             #       away (without changing the cursor) just set the cursor but
             #       do NOT show it.
             follow = self.view.settings().get('git_savvy.log_graph_view.follow')
-            self.view.run_command("gs_replace_view_text", {"text": graph_content, "restore_cursors": True})
+
+            with writable_view(self.view):
+                replace_region(self.view, prelude_text, current_prelude_region)
+                replace_region(self.view, content_to_replace, content_region)
+
             if follow:
                 navigate_to_symbol(self.view, follow)
             elif navigate_after_draw:  # on init
