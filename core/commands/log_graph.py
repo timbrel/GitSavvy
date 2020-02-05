@@ -32,14 +32,14 @@ PATH_SCOPE = 'git_savvy.graph.path_char'
 
 
 def compute_identifier_for_view(view):
-    # type: (sublime.View) -> Tuple
+    # type: (sublime.View) -> Optional[Tuple]
     settings = view.settings()
     return (
         settings.get('git_savvy.repo_path'),
         settings.get('git_savvy.file_path'),
         settings.get('git_savvy.log_graph_view.all_branches')
         or settings.get('git_savvy.log_graph_view.branches')
-    )
+    ) if settings.get('git_savvy.log_graph_view') else None
 
 
 def focus_view(view):
@@ -65,6 +65,7 @@ class GsGraphCommand(WindowCommand, GitCommand):
     ):
         if repo_path is None:
             repo_path = self.repo_path
+        assert repo_path
 
         this_id = (
             repo_path,
