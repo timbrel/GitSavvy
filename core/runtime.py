@@ -10,7 +10,7 @@ import sublime_plugin
 
 MYPY = False
 if MYPY:
-    from typing import Any, Callable, Dict, Iterator, Literal, Tuple, TypeVar
+    from typing import Any, Callable, Dict, Iterator, Literal, Optional, Tuple, TypeVar
     T = TypeVar('T')
     Callback = Tuple[Callable, Tuple[Any, ...], Dict[str, Any]]
     ReturnValue = Any
@@ -56,21 +56,25 @@ RESULTS = {}  # type: Dict[str, ReturnValue]
 
 
 def run_as_text_command(fn, view, *args, **kwargs):
-    # type: (Callable[..., T], sublime.View, Any, Any) -> T
+    # type: (Callable[..., T], sublime.View, Any, Any) -> Optional[T]
     token = uuid.uuid4().hex
     with lock:
         COMMANDS[token] = (fn, (view, ) + args, kwargs)
     view.run_command('gs_generic_text_cmd', {'token': token})
     with lock:
-        rv = RESULTS.pop(token)
+        # If the view has been closed, Sublime will not run
+        # text commands on it anymore (but also not throw).
+        # For now, we stay close, don't raise and just return
+        # `None`.
+        rv = RESULTS.pop(token, None)
     return rv
 
 
 def text_command(fn):
-    # type: (T) -> T
+    # type: (Callable[..., T]) -> Callable[..., T]
     @wraps(fn)
     def decorated(view, *args, **kwargs):
-        # type: (sublime.View, Any, Any) -> T
+        # type: (sublime.View, Any, Any) -> Optional[T]
         return run_as_text_command(fn, view, *args, **kwargs)
     return decorated
 
