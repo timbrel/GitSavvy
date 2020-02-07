@@ -1,9 +1,13 @@
 from contextlib import contextmanager, ExitStack
 from functools import lru_cache, partial
 from itertools import chain, islice, takewhile
+import math
 import os
 import re
 import shlex
+import time
+import threading
+import uuid
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -11,11 +15,14 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import log_graph_colorizer as colorizer, show_commit_info
 from .log import GsLogCommand
 from .navigate import GsNavigate
-from ..fns import filter_, unique
+from ..fns import accumulate, filter_, pairwise, unique
 from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region
 from ..settings import GitSavvySettings
-from ..runtime import enqueue_on_ui, enqueue_on_worker, run_on_new_thread, text_command
+from ..runtime import (
+    cooperative_thread_hopper, enqueue_on_ui, enqueue_on_worker, run_on_new_thread,
+    text_command, AWAIT_WORKER
+)
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
 from ...common import util
@@ -241,16 +248,16 @@ def stable_viewport(view):
         view.set_viewport_position((vx, vy))
 
 
-def slice_new_content(old_content, new_content):
-    # type: (str, str) -> Tuple[str, int]
+def drop_common_suffix(old_content, new_content):
+    # type: (str, str) -> Tuple[List[str], List[str]]
     """Return actually new front content by comparing line-by-line."""
     # `+ ['']` is a trick so that we can slice `[:-x]` later.
     # This same content will be stripped by the algorithm, and
     # we avoid x to become 0. Remember `[:-0]` returns nothing
     # and thus behaves completely different from `[:-1]` and
     # so on.
-    new_content_lines = new_content.splitlines() + ['']
-    old_content_lines = old_content.splitlines() + ['']
+    new_content_lines = new_content.splitlines(keepends=True) + ['']
+    old_content_lines = old_content.splitlines(keepends=True) + ['']
     # Here we really go from the end of the content and compare.
     # On the first change we stop.
     # The idea is that on a simple refresh the old content (at
@@ -261,9 +268,11 @@ def slice_new_content(old_content, new_content):
         zip(reversed(old_content_lines), reversed(new_content_lines))
     )))
 
-    adjusted_content = '\n'.join(new_content_lines[:-len_same_lines])
-    lines_to_replace = len(old_content_lines) - len_same_lines
-    return adjusted_content, lines_to_replace
+    return new_content_lines[:-len_same_lines], old_content_lines[:-len_same_lines]
+
+
+running_draws_lock = threading.Lock()
+RUNNING_DRAWS = {}  # type: Dict[sublime.BufferId, str]
 
 
 class GsLogGraphRefreshCommand(TextCommand, GitCommand):
@@ -273,55 +282,120 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, navigate_after_draw=False):
-        sublime.set_timeout_async(partial(self.run_async, navigate_after_draw))
+        enqueue_on_worker(self.run_impl, navigate_after_draw)
 
-    def run_async(self, navigate_after_draw=False):
-        from .. import utils
+    def run_impl(self, navigate_after_draw=False):
+        with running_draws_lock:
+            RUNNING_DRAWS[self.view.buffer_id()] = draw_token = uuid.uuid4().hex
+
         prelude_text = prelude(self.view)
+        if self.view.size() == 0:
+            replace_region(self.view, prelude_text, sublime.Region(0, 1))
+
         next_graph = self.read_graph()
         current_graph = self.view.settings().get('git_savvy.log_graph_view._raw_graph', '')
         self.view.settings().set('git_savvy.log_graph_view._raw_graph', next_graph)
 
-        content_to_replace, lines_to_replace = slice_new_content(current_graph, next_graph)
-        with utils.print_runtime("resub"):
-            content_to_replace = re.sub(
-                r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
-                r'\1' + COMMIT_NODE_CHAR,
-                content_to_replace,
-                flags=re.MULTILINE
-            )
+        new_content, old_content = drop_common_suffix(current_graph, next_graph)
+        lines_to_replace = len(old_content)
 
-        print('--> lines_to_replace', lines_to_replace)
         try:
             current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
         except LookupError:
             current_prelude_region = sublime.Region(0, 0)
-        len_next_prelude = len(prelude_text)
         prelude_height = self.view.rowcol(current_prelude_region.b)[0]
-        content_region = sublime.Region(
-            len_next_prelude,
-            self.view.line(self.view.text_point(prelude_height + lines_to_replace - 1, 0)).b
-            - (current_prelude_region.b - len_next_prelude)
-            + (1 if lines_to_replace == 0 else 0)
-        )
+        len_next_prelude = len(prelude_text)
 
-        @utils.print_runtime("draw")
+        CHUNK_SIZE = max(100, math.ceil(400 - 1 / 30 * len(new_content)))
+        chunks = []  # type: List[List[str]]
+        accumulated_lengths = []
+        for n in range(math.ceil(len(new_content) / CHUNK_SIZE)):
+            chunks += [new_content[n * CHUNK_SIZE: (n + 1) * CHUNK_SIZE]]
+            accumulated_lengths.append(min(n * CHUNK_SIZE, lines_to_replace))
+        accumulated_lengths.append(lines_to_replace)
+
+        chunk_contents = [
+            re.sub(
+                r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
+                r'\1' + COMMIT_NODE_CHAR,
+                ''.join(c),
+                flags=re.MULTILINE
+            )
+            for c in chunks
+        ]
+
+        pts = pairwise(
+            self.view.text_point(prelude_height + lines_, 0)
+            - (current_prelude_region.b - len_next_prelude)
+            for lines_ in accumulated_lengths
+        )
+        chunk_regions = [Region(a, b) for a, b in pts]
+        assert len(chunk_regions) == len(chunks)
+        accumulated_char_deltas = accumulate(
+            (
+                a - b
+                for a, b in zip(map(len, chunk_contents), map(len, chunk_regions))
+            ),
+            initial=0
+        )
+        adj_regions = [
+            region + offset
+            for region, offset in zip(chunk_regions, accumulated_char_deltas)
+        ]
+        uow = zip(chunk_contents, adj_regions)
+        last_region_to_draw = adj_regions[-1] if adj_regions else None
+
+        # @utils.print_runtime("draw")
+        @cooperative_thread_hopper
         def program():
             # TODO: Preserve column if possible instead of going to the beginning
             #       of the commit hash blindly.
             # TODO: Only jump iff cursor is in viewport. If the user scrolled
             #       away (without changing the cursor) just set the cursor but
             #       do NOT show it.
+            start_time = time.perf_counter()
             follow = self.view.settings().get('git_savvy.log_graph_view.follow')
+            did_navigate = False
 
-            with writable_view(self.view):
-                replace_region(self.view, prelude_text, current_prelude_region)
-                replace_region(self.view, content_to_replace, content_region)
+            replace_region(self.view, prelude_text, current_prelude_region)
+            for content, region in uow:
+                replace_region(self.view, content, region, [stable_viewport, restore_cursors])
 
-            if follow:
+                if not did_navigate:
+                    if follow:
+                        did_navigate = navigate_to_symbol(self.view, follow, if_before=region)
+
+                        if did_navigate:
+                            end_time = time.perf_counter()
+                            duration = round((end_time - start_time) * 1000)
+                            thread_name = threading.current_thread().name[0]
+                            print('{} after {}ms [{}]'.format('first paint', duration, thread_name))
+
+                    elif navigate_after_draw:  # on init
+                        self.view.run_command("gs_log_graph_navigate")
+                        did_navigate = True
+
+                if did_navigate and region != last_region_to_draw:
+                    yield AWAIT_WORKER
+                    if not self.view.is_valid():
+                        print('ABORT closed')
+                        return
+
+                    with running_draws_lock:
+                        if RUNNING_DRAWS[self.view.buffer_id()] != draw_token:
+                            print('ABORT next refresh')
+                            return
+
+            if follow and not did_navigate:
+                # If we still did not navigate the symbol is either
+                # gone, or happens to be after the fold of fresh
+                # content.
                 navigate_to_symbol(self.view, follow)
-            elif navigate_after_draw:  # on init
-                self.view.run_command("gs_log_graph_navigate")
+
+            end_time = time.perf_counter()
+            duration = round((end_time - start_time) * 1000)
+            thread_name = threading.current_thread().name[0]
+            print('{} after {}ms [{}]'.format('last paint', duration, thread_name))
 
         enqueue_on_ui(program)
 
@@ -746,11 +820,17 @@ def _extract_symbol_to_follow(vid, _line_text):
     return extract_commit_hash(line_text)
 
 
-def navigate_to_symbol(view, symbol):
-    # type: (sublime.View, str) -> None
+def navigate_to_symbol(view, symbol, if_before=None):
+    # type: (sublime.View, str, Optional[sublime.Region]) -> bool
     region = _find_symbol(view, symbol)
-    if region:
-        set_and_show_cursor(view, region.begin())
+    navigate = region and (
+        region.end() <= if_before.end()
+        if if_before is not None  # explicit bc empty regions are falsy!
+        else True
+    )
+    if navigate:
+        set_and_show_cursor(view, region.begin())  # type: ignore
+    return bool(navigate)
 
 
 def _find_symbol(view, symbol):
