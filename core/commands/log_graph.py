@@ -5,7 +5,6 @@ import math
 import os
 import re
 import shlex
-import time
 import threading
 import uuid
 
@@ -15,6 +14,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import log_graph_colorizer as colorizer, show_commit_info
 from .log import GsLogCommand
 from .navigate import GsNavigate
+from .. import utils
 from ..fns import accumulate, filter_, pairwise, unique
 from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region
@@ -345,7 +345,6 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         uow = zip(chunk_contents, adj_regions)
         last_region_to_draw = adj_regions[-1] if adj_regions else None
 
-        # @utils.print_runtime("draw")
         @cooperative_thread_hopper
         def program():
             # TODO: Preserve column if possible instead of going to the beginning
@@ -353,7 +352,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             # TODO: Only jump iff cursor is in viewport. If the user scrolled
             #       away (without changing the cursor) just set the cursor but
             #       do NOT show it.
-            start_time = time.perf_counter()
+            mark_perf = utils.measure_runtime()
             follow = self.view.settings().get('git_savvy.log_graph_view.follow')
             did_navigate = False
 
@@ -364,12 +363,8 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 if not did_navigate:
                     if follow:
                         did_navigate = navigate_to_symbol(self.view, follow, if_before=region)
-
                         if did_navigate:
-                            end_time = time.perf_counter()
-                            duration = round((end_time - start_time) * 1000)
-                            thread_name = threading.current_thread().name[0]
-                            print('{} after {}ms [{}]'.format('first paint', duration, thread_name))
+                            mark_perf('first paint')
 
                     elif navigate_after_draw:  # on init
                         self.view.run_command("gs_log_graph_navigate")
@@ -392,10 +387,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 # content.
                 navigate_to_symbol(self.view, follow)
 
-            end_time = time.perf_counter()
-            duration = round((end_time - start_time) * 1000)
-            thread_name = threading.current_thread().name[0]
-            print('{} after {}ms [{}]'.format('last paint', duration, thread_name))
+            mark_perf('last paint')
 
         enqueue_on_ui(program)
 

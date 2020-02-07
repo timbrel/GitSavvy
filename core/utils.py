@@ -6,11 +6,12 @@ import traceback
 
 MYPY = False
 if MYPY:
-    ...
+    from typing import Callable, Iterator, Type
 
 
 @contextmanager
 def print_runtime(message):
+    # type: (str) -> Iterator[None]
     start_time = time.perf_counter()
     yield
     end_time = time.perf_counter()
@@ -19,8 +20,23 @@ def print_runtime(message):
     print('{} took {}ms [{}]'.format(message, duration, thread_name))
 
 
+def measure_runtime():
+    # type: () -> Callable[[str], None]
+    start_time = time.perf_counter()
+
+    def print_mark(message):
+        # type: (str) -> None
+        end_time = time.perf_counter()
+        duration = round((end_time - start_time) * 1000)
+        thread_name = threading.current_thread().name[0]
+        print('{} after {}ms [{}]'.format(message, duration, thread_name))
+
+    return print_mark
+
+
 @contextmanager
 def eat_but_log_errors(exception=Exception):
+    # type: (Type[Exception]) -> Iterator[None]
     try:
         yield
     except exception:
