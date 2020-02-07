@@ -90,7 +90,11 @@ class gs_generic_text_cmd(sublime_plugin.TextCommand):
         cmd_args = self.filter_args(cmd_args)
         token = cmd_args['token']
         with lock:
-            fn, args, kwargs = COMMANDS.pop(token)
+            # Any user can "redo" text commands, but we don't want that.
+            try:
+                fn, args, kwargs = COMMANDS.pop(token)
+            except KeyError:
+                return
 
         edit = self.view.begin_edit(edit_token, self.name(), cmd_args)
         try:
