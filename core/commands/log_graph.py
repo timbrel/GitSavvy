@@ -271,8 +271,22 @@ def drop_common_suffix(old_content, new_content):
     return new_content_lines[:-len_same_lines], old_content_lines[:-len_same_lines]
 
 
-running_draws_lock = threading.Lock()
-RUNNING_DRAWS = {}  # type: Dict[sublime.BufferId, str]
+def abort_signal(view, store={}, _lock=threading.Lock()):
+    # type: (sublime.View, Dict[sublime.BufferId, str], threading.Lock) -> Callable[[], bool]
+    with _lock:
+        store[view.buffer_id()] = token = uuid.uuid4().hex
+
+    def should_abort():
+        # type: () -> bool
+        if not view.is_valid():
+            return True
+
+        with _lock:
+            if store[view.buffer_id()] != token:
+                return True
+        return False
+
+    return should_abort
 
 
 class GsLogGraphRefreshCommand(TextCommand, GitCommand):
@@ -285,8 +299,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         enqueue_on_worker(self.run_impl, navigate_after_draw)
 
     def run_impl(self, navigate_after_draw=False):
-        with running_draws_lock:
-            RUNNING_DRAWS[self.view.buffer_id()] = draw_token = uuid.uuid4().hex
+        should_abort = abort_signal(self.view)
 
         prelude_text = prelude(self.view)
         if self.view.size() == 0:
@@ -372,14 +385,11 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
                 if did_navigate and region != last_region_to_draw:
                     yield AWAIT_WORKER
-                    if not self.view.is_valid():
-                        print('ABORT closed')
+                    if should_abort():
+                        # TODO: Just aborting will leave the storage `_raw_graph`
+                        # and the actual view inconsistent. We have to see if that
+                        # matters, just reopening the graph is okay maybe.
                         return
-
-                    with running_draws_lock:
-                        if RUNNING_DRAWS[self.view.buffer_id()] != draw_token:
-                            print('ABORT next refresh')
-                            return
 
             if follow and not did_navigate:
                 # If we still did not navigate the symbol is either
