@@ -11,7 +11,7 @@ filter_ = partial(filter, None)  # type: Callable[[Iterator[Optional[T]]], Itera
 flatten = chain.from_iterable
 
 
-def accumulate(iterable, initial):
+def accumulate(iterable, initial=None):
     # type: (Iterable[int], int) -> Iterable[int]
     if initial is None:
         return accumulate_(iterable)
