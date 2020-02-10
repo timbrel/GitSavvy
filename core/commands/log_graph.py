@@ -6,7 +6,6 @@ import os
 import re
 import shlex
 import threading
-import uuid
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -271,10 +270,16 @@ def drop_common_suffix(old_content, new_content):
     return new_content_lines[:-len_same_lines], old_content_lines[:-len_same_lines]
 
 
-def abort_signal(view, store={}, _lock=threading.Lock()):
-    # type: (sublime.View, Dict[sublime.BufferId, str], threading.Lock) -> Callable[[], bool]
-    with _lock:
-        store[view.buffer_id()] = token = uuid.uuid4().hex
+if MYPY:
+    ShouldAbort = Callable[[], bool]
+    Runners = Dict[sublime.BufferId, ShouldAbort]
+runners_lock = threading.Lock()
+REFRESH_RUNNERS = {}  # type: Runners
+
+
+def register_running(view, store=REFRESH_RUNNERS, _lock=runners_lock):
+    # type: (sublime.View, Runners, threading.Lock) -> Tuple[ShouldAbort, bool]
+    bid = view.buffer_id()
 
     def should_abort():
         # type: () -> bool
@@ -282,11 +287,23 @@ def abort_signal(view, store={}, _lock=threading.Lock()):
             return True
 
         with _lock:
-            if store[view.buffer_id()] != token:
+            if store[bid] != should_abort:
                 return True
         return False
 
-    return should_abort
+    with _lock:
+        another_process_is_running = bid in store
+        store[bid] = should_abort
+    return should_abort, another_process_is_running
+
+
+def mark_finished(view, should_abort, store=REFRESH_RUNNERS, _lock=runners_lock):
+    # type: (sublime.View, ShouldAbort, Runners, threading.Lock) -> None
+    bid = view.buffer_id()
+    with _lock:
+        token = store.pop(bid)
+        if token != should_abort:
+            store[bid] = should_abort
 
 
 class GsLogGraphRefreshCommand(TextCommand, GitCommand):
@@ -296,28 +313,31 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, navigate_after_draw=False):
-        enqueue_on_worker(self.run_impl, navigate_after_draw)
+        # type: (object, bool) -> None
+        should_abort, previous_run_unfinished = register_running(self.view)
+        enqueue_on_worker(self.run_impl, previous_run_unfinished, should_abort, navigate_after_draw)
 
-    def run_impl(self, navigate_after_draw=False):
-        should_abort = abort_signal(self.view)
+    def run_impl(self, previous_run_unfinished, should_abort, navigate_after_draw=False):
+        mark_perf = utils.measure_runtime()
 
         prelude_text = prelude(self.view)
         if self.view.size() == 0:
             replace_region(self.view, prelude_text, sublime.Region(0, 1))
 
         next_graph = self.read_graph()
-        current_graph = self.view.settings().get('git_savvy.log_graph_view._raw_graph', '')
+
+        current_graph = (
+            self.view.substr(self.view.find_by_selector('meta.content.git_savvy.graph')[0])
+            if previous_run_unfinished
+            else self.view.settings().get('git_savvy.log_graph_view._raw_graph', '')
+        )
         self.view.settings().set('git_savvy.log_graph_view._raw_graph', next_graph)
+        current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
+        prelude_height = self.view.rowcol(current_prelude_region.b)[0]
+        len_next_prelude = len(prelude_text)
 
         new_content, old_content = drop_common_suffix(current_graph, next_graph)
         lines_to_replace = len(old_content)
-
-        try:
-            current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
-        except LookupError:
-            current_prelude_region = sublime.Region(0, 0)
-        prelude_height = self.view.rowcol(current_prelude_region.b)[0]
-        len_next_prelude = len(prelude_text)
 
         CHUNK_SIZE = max(100, math.ceil(400 - 1 / 30 * len(new_content)))
         chunks = []  # type: List[List[str]]
@@ -342,6 +362,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             - (current_prelude_region.b - len_next_prelude)
             for lines_ in accumulated_lengths
         )
+
         chunk_regions = [Region(a, b) for a, b in pts]
         assert len(chunk_regions) == len(chunks)
         accumulated_char_deltas = accumulate(
@@ -366,6 +387,9 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             #       away (without changing the cursor) just set the cursor but
             #       do NOT show it.
             mark_perf = utils.measure_runtime()
+            if should_abort():
+                mark_perf('ABORT')
+                return
             follow = self.view.settings().get('git_savvy.log_graph_view.follow')
             did_navigate = False
 
@@ -386,9 +410,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 if did_navigate and region != last_region_to_draw:
                     yield AWAIT_WORKER
                     if should_abort():
-                        # TODO: Just aborting will leave the storage `_raw_graph`
-                        # and the actual view inconsistent. We have to see if that
-                        # matters, just reopening the graph is okay maybe.
+                        mark_perf('ABORT')
                         return
 
             if follow and not did_navigate:
@@ -397,6 +419,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 # content.
                 navigate_to_symbol(self.view, follow)
 
+            mark_finished(self.view, should_abort)
             mark_perf('last paint')
 
         enqueue_on_ui(program)
