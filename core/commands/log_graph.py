@@ -1,6 +1,6 @@
 from contextlib import contextmanager, ExitStack
 from functools import lru_cache, partial
-from itertools import chain, islice, takewhile
+from itertools import chain, islice
 import math
 import os
 import re
@@ -11,16 +11,17 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer, show_commit_info
+from .intra_line_colorizer import block_time_passed_factory, MAX_BLOCK_TIME
 from .log import GsLogCommand
 from .navigate import GsNavigate
 from .. import utils
-from ..fns import accumulate, filter_, pairwise, unique
+from ..fns import chunked, filter_, flatten, unique
 from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region
 from ..settings import GitSavvySettings
 from ..runtime import (
-    cooperative_thread_hopper, enqueue_on_ui, enqueue_on_worker, run_on_new_thread,
-    text_command, AWAIT_WORKER
+    enqueue_on_ui, enqueue_on_worker, run_on_new_thread,
+    text_command
 )
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
@@ -30,7 +31,9 @@ from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Sequence, Tuple
+    from typing import (
+        Callable, Dict, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, Union
+    )
 
 
 COMMIT_NODE_CHAR = "●"
@@ -247,27 +250,112 @@ def stable_viewport(view):
         view.set_viewport_position((vx, vy))
 
 
-def drop_common_suffix(old_content, new_content):
-    # type: (str, str) -> Tuple[List[str], List[str]]
-    """Return actually new front content by comparing line-by-line."""
-    # `+ ['']` is a trick so that we can slice `[:-x]` later.
-    # This same content will be stripped by the algorithm, and
-    # we avoid x to become 0. Remember `[:-0]` returns nothing
-    # and thus behaves completely different from `[:-1]` and
-    # so on.
-    new_content_lines = new_content.splitlines(keepends=True) + ['']
-    old_content_lines = old_content.splitlines(keepends=True) + ['']
-    # Here we really go from the end of the content and compare.
-    # On the first change we stop.
-    # The idea is that on a simple refresh the old content (at
-    # the end) stays stable, and so we hope to only paint a few
-    # lines on the top.
-    len_same_lines = len(list(takewhile(
-        lambda a_b: a_b[0] == a_b[1],
-        zip(reversed(old_content_lines), reversed(new_content_lines))
-    )))
+MYPY = False
+if MYPY:
+    from typing import NamedTuple
+    Ins = NamedTuple('Ins', [('idx', int), ('line', str)])
+    Del = NamedTuple('Del', [('start', int), ('end', int)])
+    Replace = NamedTuple('Replace', [('start', int), ('end', int), ('text', List[str])])
+else:
+    from collections import namedtuple
+    Ins = namedtuple('Ins', 'idx line')
+    Del = namedtuple('Del', 'start end')
+    Replace = namedtuple('Replace', 'start end text')
 
-    return new_content_lines[:-len_same_lines], old_content_lines[:-len_same_lines]
+
+MAX_LOOK_AHEAD = 10000
+
+
+def diff(a, b):
+    # type: (Sequence[str], Sequence[str]) -> Iterator[Union[Ins, Del]]
+    a_index = 0
+    b_index = -1  # init in case b is empty
+    len_a = len(a)
+    a_set = set(a)
+    for b_index, line in enumerate(b):
+        is_commit_line = re.match(FIND_COMMIT_HASH, line)
+        if is_commit_line and line not in a_set:
+            len_a += 1
+            yield Ins(b_index, line)
+            continue
+
+        look_ahead = MAX_LOOK_AHEAD if is_commit_line else 1
+        try:
+            i = a.index(line, a_index, a_index + look_ahead) - a_index
+        except ValueError:
+            len_a += 1
+            yield Ins(b_index, line)
+        else:
+            if i == 0:
+                a_index += 1
+            else:
+                len_a -= i
+                a_index += i + 1
+                yield Del(b_index, b_index + i)
+
+    if b_index < (len_a - 1):
+        yield Del(b_index + 1, len_a)
+
+
+def simplify(diff):
+    # type: (Iterable[Union[Ins, Del]]) -> Iterator[Union[Ins, Del, Replace]]
+    previous = None  # type: Union[Ins, Del, Replace, None]
+    for token in diff:
+        if previous is None:
+            previous = token
+            continue
+
+        if isinstance(token, Ins):
+            if isinstance(previous, Replace):
+                if previous.start + len(previous.text) == token.idx:
+                    previous = Replace(previous.start, previous.end, previous.text + [token.line])
+                    continue
+            elif isinstance(previous, Ins):
+                if previous.idx + 1 == token.idx:
+                    previous = Replace(previous.idx, previous.idx, [previous.line, token.line])
+                    continue
+        elif isinstance(token, Del):
+            if isinstance(previous, Ins):
+                if previous.idx + 1 == token.start:
+                    yield Replace(previous.idx, previous.idx + token.end - token.start, [previous.line])
+                    previous = None
+                    continue
+            elif isinstance(previous, Replace):
+                if previous.end + len(previous.text) == token.start:
+                    yield Replace(previous.start, previous.end + token.end - token.start, previous.text)
+                    previous = None
+                    continue
+
+        yield previous
+        previous = token
+        continue
+
+    if previous is not None:
+        yield previous
+
+
+def normalize_tokens(tokens):
+    # type: (Iterator[Union[Ins, Del, Replace]]) -> Iterator[Replace]
+    for token in tokens:
+        if isinstance(token, Ins):
+            yield Replace(token.idx, token.idx, [token.line])
+        elif isinstance(token, Del):
+            yield Replace(token.start, token.end, [])
+        else:
+            yield token
+
+
+def apply_diff(a, diff):
+    # type: (List[str], Iterable[Union[Ins, Del, Replace]]) -> List[str]
+    a = a[:]
+    for token in diff:
+        if isinstance(token, Replace):
+            a[token.start:token.end] = token.text
+        elif isinstance(token, Ins):
+            a[token.idx:token.idx] = [token.line]
+        elif isinstance(token, Del):
+            a[token.start:token.end] = []
+    return a
 
 
 if MYPY:
@@ -317,69 +405,63 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         should_abort, previous_run_unfinished = register_running(self.view)
         enqueue_on_worker(self.run_impl, previous_run_unfinished, should_abort, navigate_after_draw)
 
-    def run_impl(self, previous_run_unfinished, should_abort, navigate_after_draw=False):
-        mark_perf = utils.measure_runtime()
+    def format_line(self, line):
+        return re.sub(
+            r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
+            r'\1' + COMMIT_NODE_CHAR,
+            line,
+            flags=re.MULTILINE
+        )
 
+    def run_impl(self, previous_run_unfinished, should_abort, navigate_after_draw=False):
         prelude_text = prelude(self.view)
         if self.view.size() == 0:
             replace_region(self.view, prelude_text, sublime.Region(0, 1))
 
         next_graph = self.read_graph()
-
         current_graph = (
             self.view.substr(self.view.find_by_selector('meta.content.git_savvy.graph')[0])
             if previous_run_unfinished
             else self.view.settings().get('git_savvy.log_graph_view._raw_graph', '')
         )
         self.view.settings().set('git_savvy.log_graph_view._raw_graph', next_graph)
+
+        current_graph_splitted = current_graph.splitlines(keepends=True)
+        next_graph_splitted = next_graph.splitlines(keepends=True)
+        CHUNK_SIZE = max(100, math.ceil(400 - 1 / 30 * len(next_graph_splitted)))
+        print('--> CHUNK_SIZE', CHUNK_SIZE)
+        with utils.print_runtime("real diff"):
+            chunks = [
+                list(normalize_tokens(simplify(chunk)))
+                for chunk in chunked(
+                    diff(current_graph_splitted, next_graph_splitted),
+                    CHUNK_SIZE
+                )
+            ]
+
         current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
         prelude_height = self.view.rowcol(current_prelude_region.b)[0]
-        len_next_prelude = len(prelude_text)
+        next_prelude_len = len(prelude_text)
 
-        new_content, old_content = drop_common_suffix(current_graph, next_graph)
-        lines_to_replace = len(old_content)
-
-        CHUNK_SIZE = max(100, math.ceil(400 - 1 / 30 * len(new_content)))
-        chunks = []  # type: List[List[str]]
-        accumulated_lengths = []
-        for n in range(math.ceil(len(new_content) / CHUNK_SIZE)):
-            chunks += [new_content[n * CHUNK_SIZE: (n + 1) * CHUNK_SIZE]]
-            accumulated_lengths.append(min(n * CHUNK_SIZE, lines_to_replace))
-        accumulated_lengths.append(lines_to_replace)
-
-        chunk_contents = [
-            re.sub(
-                r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
-                r'\1' + COMMIT_NODE_CHAR,
-                ''.join(c),
-                flags=re.MULTILINE
+        def apply_token(view, token, prelude_height):
+            nonlocal current_graph_splitted
+            managers = [stable_viewport, restore_cursors]
+            start, end, text = token
+            text = self.format_line(''.join(text))
+            computed_start = (
+                sum(len(line) for line in current_graph_splitted[:start])
+                + next_prelude_len
             )
-            for c in chunks
-        ]
+            computed_end = (
+                sum(len(line) for line in current_graph_splitted[start:end])
+                + computed_start
+            )
+            region = sublime.Region(computed_start, computed_end)
 
-        pts = pairwise(
-            self.view.text_point(prelude_height + lines_, 0)
-            - (current_prelude_region.b - len_next_prelude)
-            for lines_ in accumulated_lengths
-        )
+            current_graph_splitted = apply_diff(current_graph_splitted, [token])
+            replace_region(view, text, region, managers)
+            return region
 
-        chunk_regions = [Region(a, b) for a, b in pts]
-        assert len(chunk_regions) == len(chunks)
-        accumulated_char_deltas = accumulate(
-            (
-                a - b
-                for a, b in zip(map(len, chunk_contents), map(len, chunk_regions))
-            ),
-            initial=0
-        )
-        adj_regions = [
-            region + offset
-            for region, offset in zip(chunk_regions, accumulated_char_deltas)
-        ]
-        uow = zip(chunk_contents, adj_regions)
-        last_region_to_draw = adj_regions[-1] if adj_regions else None
-
-        @cooperative_thread_hopper
         def program():
             # TODO: Preserve column if possible instead of going to the beginning
             #       of the commit hash blindly.
@@ -391,36 +473,41 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 mark_perf('ABORT')
                 return
             follow = self.view.settings().get('git_savvy.log_graph_view.follow')
-            did_navigate = False
 
-            replace_region(self.view, prelude_text, current_prelude_region)
-            for content, region in uow:
-                replace_region(self.view, content, region, [stable_viewport, restore_cursors])
+            @text_command
+            def draw_(view, tokens_it, prelude_height, did_navigate):
+                if should_abort():
+                    mark_perf('ABORT')
+                    return
+                block_time_passed = block_time_passed_factory(MAX_BLOCK_TIME)
+                for token in tokens_it:
+                    region = apply_token(view, token, prelude_height)
 
-                if not did_navigate:
-                    if follow:
-                        did_navigate = navigate_to_symbol(self.view, follow, if_before=region)
+                    if not did_navigate:
+                        if follow:
+                            did_navigate = navigate_to_symbol(self.view, follow, if_before=region)
+                        elif navigate_after_draw:  # on init
+                            self.view.run_command("gs_log_graph_navigate")
+                            did_navigate = True
+
                         if did_navigate:
                             mark_perf('first paint')
 
-                    elif navigate_after_draw:  # on init
-                        self.view.run_command("gs_log_graph_navigate")
-                        did_navigate = True
-
-                if did_navigate and region != last_region_to_draw:
-                    yield AWAIT_WORKER
-                    if should_abort():
-                        mark_perf('ABORT')
+                    if did_navigate and block_time_passed():
+                        enqueue_on_worker(draw_, view, tokens_it, prelude_height, did_navigate)
                         return
 
-            if follow and not did_navigate:
-                # If we still did not navigate the symbol is either
-                # gone, or happens to be after the fold of fresh
-                # content.
-                navigate_to_symbol(self.view, follow)
+                if follow and not did_navigate:
+                    # If we still did not navigate the symbol is either
+                    # gone, or happens to be after the fold of fresh
+                    # content.
+                    navigate_to_symbol(self.view, follow)
 
-            mark_finished(self.view, should_abort)
-            mark_perf('last paint')
+                mark_finished(self.view, should_abort)
+                mark_perf('last paint')
+
+            replace_region(self.view, prelude_text, current_prelude_region)
+            draw_(self.view, flatten(chunks), prelude_height, False)
 
         enqueue_on_ui(program)
 
