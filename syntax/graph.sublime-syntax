@@ -19,7 +19,7 @@ contexts:
 
   graph:
     - meta_scope: meta.content.git_savvy.graph
-    - match: (?=^.*{{sha}} +\(HEAD( ->|\)))
+    - match: (?=^.*{{sha}} +\(HEAD( ->|\)|,))
       push:
         - meta_scope: meta.graph.graph-line.head.git-savvy
         - include: content
