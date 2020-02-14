@@ -4,7 +4,7 @@ from GitSavvy.tests.parameterized import parameterized as p
 
 
 from GitSavvy.core.commands.log_graph import (
-    diff, simplify, normalize_tokens, apply_diff, Ins, Del, Replace
+    diff, simplify, normalize_tokens, apply_diff, Ins, Del, Replace, Same
 )
 
 
@@ -25,6 +25,10 @@ def tx(tokens):
     ]
 
 
+def filter_same(it):
+    return filter(lambda t: t is not Same, it)
+
+
 class TestGraphDiff(DeferrableTestCase):
     @p.expand([
         ('abcdef', 'abcdef', []),
@@ -43,7 +47,7 @@ class TestGraphDiff(DeferrableTestCase):
         A = _(A)
         B = _(B)
         ops = tx(ops)
-        self.assertEqual(list(diff(A, B)), ops)
+        self.assertEqual(list(filter_same(diff(A, B))), ops)
 
     @p.expand([
         ('abcdef', 'abcdef', []),
@@ -68,7 +72,7 @@ class TestGraphDiff(DeferrableTestCase):
         A = _(A)
         B = _(B)
         ops = tx(ops)
-        self.assertEqual(list(simplify(diff(A, B))), ops)
+        self.assertEqual(list(simplify(diff(A, B), 100)), ops)
 
     @p.expand([
         ('abcdef', 'abcdef', []),
@@ -83,7 +87,7 @@ class TestGraphDiff(DeferrableTestCase):
         A = _(A)
         B = _(B)
         ops = tx(ops)
-        self.assertEqual(list(normalize_tokens(simplify(diff(A, B)))), ops)
+        self.assertEqual(list(normalize_tokens(simplify(diff(A, B), 100))), ops)
 
     @p.expand([
         ('abcdef', 'abcdef', []),
@@ -98,4 +102,4 @@ class TestGraphDiff(DeferrableTestCase):
         A = _(A)
         B = _(B)
         ops = tx(ops)
-        self.assertEqual(apply_diff(A, normalize_tokens(simplify(diff(A, B)))), B)
+        self.assertEqual(apply_diff(A, normalize_tokens(simplify(diff(A, B), 100))), B)

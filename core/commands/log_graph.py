@@ -1,21 +1,23 @@
 from contextlib import contextmanager, ExitStack
 from functools import lru_cache, partial
 from itertools import chain, islice
-import math
+import locale
 import os
+from queue import Empty, Queue
 import re
 import shlex
+import time
 import threading
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer, show_commit_info
-from .intra_line_colorizer import block_time_passed_factory, MAX_BLOCK_TIME
+from .intra_line_colorizer import block_time_passed_factory
 from .log import GsLogCommand
 from .navigate import GsNavigate
 from .. import utils
-from ..fns import chunked, filter_, flatten, unique
+from ..fns import filter_, take, unique
 from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region
 from ..settings import GitSavvySettings
@@ -32,8 +34,10 @@ from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 MYPY = False
 if MYPY:
     from typing import (
-        Callable, Dict, Iterable, Iterator, List, Optional, Set, Sequence, Tuple, Union
+        Callable, Dict, Iterable, Iterator, List, Optional, Set, Sequence, Tuple,
+        TypeVar, Union
     )
+    T = TypeVar('T')
 
 
 COMMIT_NODE_CHAR = "●"
@@ -264,10 +268,11 @@ else:
 
 
 MAX_LOOK_AHEAD = 10000
+Same = object()
 
 
 def diff(a, b):
-    # type: (Sequence[str], Sequence[str]) -> Iterator[Union[Ins, Del]]
+    # type: (Sequence[str], Iterable[str]) -> Iterator[Union[Ins, Del]]
     a_index = 0
     b_index = -1  # init in case b is empty
     len_a = len(a)
@@ -288,6 +293,7 @@ def diff(a, b):
         else:
             if i == 0:
                 a_index += 1
+                yield Same
             else:
                 len_a -= i
                 a_index += i + 1
@@ -297,18 +303,28 @@ def diff(a, b):
         yield Del(b_index + 1, len_a)
 
 
-def simplify(diff):
-    # type: (Iterable[Union[Ins, Del]]) -> Iterator[Union[Ins, Del, Replace]]
+def simplify(diff, max_size):
+    # type: (Iterable[Union[Ins, Del]], int) -> Iterator[Union[Ins, Del, Replace]]
     previous = None  # type: Union[Ins, Del, Replace, None]
     for token in diff:
+        if token is Same:
+            if previous is not None:
+                yield previous
+                previous = None
+            continue
+
         if previous is None:
             previous = token
             continue
 
         if isinstance(token, Ins):
             if isinstance(previous, Replace):
-                if previous.start + len(previous.text) == token.idx:
+                len_previous = len(previous.text)
+                if previous.start + len_previous == token.idx:
                     previous = Replace(previous.start, previous.end, previous.text + [token.line])
+                    if len_previous >= max_size:
+                        yield previous
+                        previous = None
                     continue
             elif isinstance(previous, Ins):
                 if previous.idx + 1 == token.idx:
@@ -394,6 +410,37 @@ def mark_finished(view, should_abort, store=REFRESH_RUNNERS, _lock=runners_lock)
             store[bid] = should_abort
 
 
+TheEnd = object()
+
+
+def put_on_queue(queue, it):
+    # type: (Queue[T], Iterable[T]) -> None
+    try:
+        for item in it:
+            queue.put(item)
+    finally:
+        queue.put(TheEnd)
+
+
+def log_git_command(fn):
+    # type: (Callable[..., Iterator[T]]) -> Callable[..., Iterator[T]]
+    def decorated(self, *args, **kwargs):
+        start_time = time.perf_counter()
+        stderr = ''
+        saved_exception = None
+        try:
+            yield from fn(self, *args, **kwargs)
+        except GitSavvyError as e:
+            stderr = e.stderr
+            saved_exception = e
+        finally:
+            end_time = time.perf_counter()
+            util.debug.log_git(args, None, "<SNIP>", stderr, end_time - start_time)
+            if saved_exception:
+                raise saved_exception from None
+    return decorated
+
+
 class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
     """
@@ -418,32 +465,30 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         if self.view.size() == 0:
             replace_region(self.view, prelude_text, sublime.Region(0, 1))
 
-        next_graph = self.read_graph()
+        mark_perf = utils.measure_runtime()
+
         try:
             current_graph = self.view.substr(
                 self.view.find_by_selector('meta.content.git_savvy.graph')[0]
             )
         except IndexError:
             current_graph = ''
-
         current_graph_splitted = current_graph.splitlines(keepends=True)
-        next_graph_splitted = list(map(self.format_line, next_graph.splitlines(keepends=True)))
-        CHUNK_SIZE = max(100, math.ceil(400 - 1 / 30 * len(next_graph_splitted)))
-        print('--> CHUNK_SIZE', CHUNK_SIZE)
-        with utils.print_runtime("real diff"):
-            chunks = [
-                list(normalize_tokens(simplify(chunk)))
-                for chunk in chunked(
-                    diff(current_graph_splitted, next_graph_splitted),
-                    CHUNK_SIZE
-                )
-            ]
 
-        current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
-        prelude_height = self.view.rowcol(current_prelude_region.b)[0]
-        next_prelude_len = len(prelude_text)
+        token_queue = Queue()  # type: Queue[Replace]
 
-        def apply_token(view, token, prelude_height):
+        def reader():
+            next_graph_splitted = map(self.format_line, self.read_graph())
+            tokens = normalize_tokens(simplify(
+                diff(current_graph_splitted, next_graph_splitted),
+                max_size=100
+            ))
+            graph = iter(tokens)
+            head = take(1, graph)
+            enqueue_on_ui(draw)
+            put_on_queue(token_queue, chain(head, graph))
+
+        def apply_token(view, token, next_prelude_len):
             nonlocal current_graph_splitted
             managers = [stable_viewport, restore_cursors]
             start, end, text = token
@@ -462,25 +507,32 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             replace_region(view, text, region, managers)
             return region
 
-        def program():
+        def draw():
             # TODO: Preserve column if possible instead of going to the beginning
             #       of the commit hash blindly.
             # TODO: Only jump iff cursor is in viewport. If the user scrolled
             #       away (without changing the cursor) just set the cursor but
             #       do NOT show it.
-            mark_perf = utils.measure_runtime()
             if should_abort():
                 mark_perf('ABORT')
                 return
             follow = self.view.settings().get('git_savvy.log_graph_view.follow')
 
             @text_command
-            def draw_(view, tokens_it, prelude_height, did_navigate):
+            def draw_(view, token_queue, prelude_height, did_navigate):
                 if should_abort():
                     mark_perf('ABORT')
                     return
-                block_time_passed = block_time_passed_factory(MAX_BLOCK_TIME)
-                for token in tokens_it:
+                block_time_passed = block_time_passed_factory(13)
+                while True:
+                    try:
+                        token = token_queue.get(block=True if not did_navigate else False)
+                    except Empty:
+                        enqueue_on_worker(draw_, view, token_queue, prelude_height, did_navigate)
+                        return
+                    if token is TheEnd:
+                        break
+
                     region = apply_token(view, token, prelude_height)
 
                     if not did_navigate:
@@ -491,10 +543,10 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                             did_navigate = True
 
                         if did_navigate:
-                            mark_perf('first paint')
+                            mark_perf('==> FIRST PAINT')
 
                     if did_navigate and block_time_passed():
-                        enqueue_on_worker(draw_, view, tokens_it, prelude_height, did_navigate)
+                        enqueue_on_worker(draw_, view, token_queue, prelude_height, did_navigate)
                         return
 
                 if follow and not did_navigate:
@@ -504,21 +556,52 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                     navigate_to_symbol(self.view, follow)
 
                 mark_finished(self.view, should_abort)
-                mark_perf('last paint')
+                mark_perf('==> LAST PAINT')
 
+            current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
             replace_region(self.view, prelude_text, current_prelude_region)
-            draw_(self.view, flatten(chunks), prelude_height, False)
+            next_prelude_len = len(prelude_text)
+            draw_(self.view, token_queue, next_prelude_len, False)
 
-        enqueue_on_ui(program)
+        run_on_new_thread(reader)
+
+    @log_git_command
+    def git_stdout(self, *args, show_panel_on_stderr=True, throw_on_stderr=True, **kwargs):
+        # type: (...) -> Iterator[str]
+        # Note: Can't use `self.decode_stdout` because it blocks the
+        # main thread!
+        decode = decoder(self.savvy_settings)
+        proc = self.git(*args, just_the_proc=True, **kwargs)
+        with proc:
+            for line in proc.stdout:
+                if not line:
+                    break
+
+                yield decode(line)
+
+            stderr = ''.join(map(decode, proc.stderr.readlines()))
+
+        if throw_on_stderr and stderr:
+            stdout = "<SNIP>"
+            raise GitSavvyError(
+                "$ {}\n\n{}".format(
+                    " ".join(["git"] + list(filter(None, args))),
+                    ''.join([stdout, stderr])
+                ),
+                cmd=proc.args,
+                stdout=stdout,
+                stderr=stderr,
+                show_panel=show_panel_on_stderr
+            )
 
     def read_graph(self):
-        # type: () -> str
+        # type: () -> Iterator[str]
         global DATE_FORMAT, DATE_FORMAT_STATE
 
         args = self.build_git_command()
         if DATE_FORMAT_STATE == 'trying':
             try:
-                rv = self.git(
+                yield from self.git_stdout(
                     *args,
                     throw_on_stderr=True,
                     show_status_message_on_stderr=False,
@@ -530,13 +613,12 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                     DATE_FORMAT_STATE = 'final'
 
                 enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
-                return ''
+                return iter('')
             else:
                 DATE_FORMAT_STATE = 'final'
-                return rv
 
         else:
-            return self.git(*args)
+            yield from self.git_stdout(*args)
 
     def build_git_command(self):
         global DATE_FORMAT
@@ -573,6 +655,23 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             args += ["--", file_path]
 
         return args
+
+
+locally_preferred_encoding = locale.getpreferredencoding()
+
+
+def decoder(settings):
+    encodings = ['utf8', locally_preferred_encoding, settings.get("fallback_encoding")]
+
+    def decode(bytes):
+        # type: (bytes) -> str
+        for encoding in encodings:
+            try:
+                return bytes.decode(encoding)
+            except UnicodeDecodeError:
+                pass
+        return bytes.decode('utf8', errors='replace')
+    return decode
 
 
 def prelude(view):
