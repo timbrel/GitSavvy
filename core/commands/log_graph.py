@@ -423,6 +423,13 @@ def put_on_queue(queue, it):
         queue.put(TheEnd)
 
 
+def wait_for_first_item(it):
+    # type: (Iterable[T]) -> Iterator[T]
+    iterable = iter(it)
+    head = take(1, iterable)
+    return chain(head, iterable)
+
+
 def log_git_command(fn):
     # type: (Callable[..., Iterator[T]]) -> Callable[..., Iterator[T]]
     def decorated(self, *args, **kwargs):
@@ -504,10 +511,9 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 diff(current_graph_splitted, next_graph_splitted),
                 max_size=100
             ))
-            graph = iter(tokens)
-            head = take(1, graph)
+            tokens = wait_for_first_item(tokens)
             enqueue_on_ui(draw)
-            put_on_queue(token_queue, chain(head, graph))
+            put_on_queue(token_queue, tokens)
 
         def apply_token(view, token, next_prelude_len):
             nonlocal current_graph_splitted
