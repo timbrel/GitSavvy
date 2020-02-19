@@ -1,9 +1,10 @@
+from collections import deque
 from contextlib import contextmanager, ExitStack
 from functools import lru_cache, partial
 from itertools import chain, islice
 import locale
 import os
-from queue import Empty, Queue
+from queue import Empty
 import re
 import shlex
 import time
@@ -34,7 +35,7 @@ from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 MYPY = False
 if MYPY:
     from typing import (
-        Callable, Dict, Iterable, Iterator, List, Optional, Set, Sequence, Tuple,
+        Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple,
         TypeVar, Union
     )
     T = TypeVar('T')
@@ -414,7 +415,7 @@ TheEnd = object()
 
 
 def put_on_queue(queue, it):
-    # type: (Queue[T], Iterable[T]) -> None
+    # type: (SimpleQueue[T], Iterable[T]) -> None
     try:
         for item in it:
             queue.put(item)
@@ -439,6 +440,26 @@ def log_git_command(fn):
             if saved_exception:
                 raise saved_exception from None
     return decorated
+
+
+if MYPY:
+    class SimpleQueue(Generic[T]):
+        def put(self, item: T) -> None: ...  # noqa: E704
+        def get(self, block=True) -> T: ...  # noqa: E704
+else:
+    class SimpleQueue:
+        def __init__(self):
+            self._queue = deque()
+            self._count = threading.Semaphore(0)
+
+        def put(self, item):
+            self._queue.append(item)
+            self._count.release()
+
+        def get(self, block=True):
+            if not self._count.acquire(block):
+                raise Empty
+            return self._queue.popleft()
 
 
 class GsLogGraphRefreshCommand(TextCommand, GitCommand):
@@ -475,7 +496,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             current_graph = ''
         current_graph_splitted = current_graph.splitlines(keepends=True)
 
-        token_queue = Queue()  # type: Queue[Replace]
+        token_queue = SimpleQueue()  # type: SimpleQueue[Replace]
 
         def reader():
             next_graph_splitted = map(self.format_line, self.read_graph())
