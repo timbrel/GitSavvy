@@ -7,6 +7,7 @@ import os
 from queue import Empty
 import re
 import shlex
+import subprocess
 import time
 import threading
 
@@ -473,6 +474,11 @@ else:
             return self._queue.popleft()
 
 
+def try_kill_proc(proc):
+    if proc:
+        utils.kill_proc(proc)
+
+
 class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
     """
@@ -509,9 +515,15 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         current_graph_splitted = current_graph.splitlines(keepends=True)
 
         token_queue = SimpleQueue()  # type: SimpleQueue[Replace]
+        current_proc = None
+
+        def remember_proc(proc):
+            # type: (subprocess.Popen) -> None
+            nonlocal current_proc
+            current_proc = proc
 
         def reader():
-            next_graph_splitted = map(self.format_line, self.read_graph())
+            next_graph_splitted = map(self.format_line, self.read_graph(got_proc=remember_proc))
             tokens = normalize_tokens(simplify(
                 diff(current_graph_splitted, next_graph_splitted),
                 max_size=100
@@ -526,7 +538,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 try:
                     tokens = run_or_timeout(lambda: wait_for_first_item(tokens), timeout=1.0)
                 except TimeoutError:
-                    # TODO: Actually kill the running `proc`
+                    try_kill_proc(current_proc)
                     self.view.settings().set('git_savvy.log_graph_view.decoration', None)
                     enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
                     return
@@ -561,6 +573,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             #       away (without changing the cursor) just set the cursor but
             #       do NOT show it.
             if should_abort():
+                try_kill_proc(current_proc)
                 mark_perf('ABORT')
                 return
             follow = self.view.settings().get('git_savvy.log_graph_view.follow')
@@ -568,6 +581,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             @text_command
             def draw_(view, token_queue, prelude_height, did_navigate):
                 if should_abort():
+                    try_kill_proc(current_proc)
                     mark_perf('ABORT')
                     return
                 block_time_passed = block_time_passed_factory(1000 if not did_navigate else 13)
@@ -621,12 +635,14 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         run_on_new_thread(reader)
 
     @log_git_command
-    def git_stdout(self, *args, show_panel_on_stderr=True, throw_on_stderr=True, **kwargs):
+    def git_stdout(self, *args, show_panel_on_stderr=True, throw_on_stderr=True, got_proc=None, **kwargs):
         # type: (...) -> Iterator[str]
         # Note: Can't use `self.decode_stdout` because it blocks the
         # main thread!
         decode = decoder(self.savvy_settings)
         proc = self.git(*args, just_the_proc=True, **kwargs)
+        if got_proc:
+            got_proc(proc)
         with proc:
             while True:
                 # Block size 2**14 taken from Sublime's `exec.py`. This
@@ -658,8 +674,8 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 show_panel=show_panel_on_stderr
             )
 
-    def read_graph(self):
-        # type: () -> Iterator[str]
+    def read_graph(self, got_proc=None):
+        # type: (Callable[[subprocess.Popen], None]) -> Iterator[str]
         global DATE_FORMAT, DATE_FORMAT_STATE
 
         args = self.build_git_command()
@@ -669,7 +685,8 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                     *args,
                     throw_on_stderr=True,
                     show_status_message_on_stderr=False,
-                    show_panel_on_stderr=False
+                    show_panel_on_stderr=False,
+                    got_proc=got_proc
                 )
             except GitSavvyError as e:
                 if e.stderr and DATE_FORMAT in e.stderr:
@@ -682,7 +699,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 DATE_FORMAT_STATE = 'final'
 
         else:
-            yield from self.git_stdout(*args)
+            yield from self.git_stdout(*args, got_proc=got_proc)
 
     def build_git_command(self):
         global DATE_FORMAT

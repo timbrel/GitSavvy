@@ -1,4 +1,8 @@
 from contextlib import contextmanager
+import os
+import signal
+import subprocess
+import sys
 import time
 import threading
 import traceback
@@ -56,3 +60,17 @@ def hprint(msg):
 def line_indentation(line):
     # type: (str) -> int
     return len(line) - len(line.lstrip())
+
+
+def kill_proc(proc):
+    if sys.platform == "win32":
+        # terminate would not kill process opened by the shell cmd.exe,
+        # it will only kill cmd.exe leaving the child running
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        subprocess.Popen(
+            "taskkill /PID %d /T /F" % proc.pid,
+            startupinfo=startupinfo)
+    else:
+        os.killpg(proc.pid, signal.SIGTERM)
+        proc.terminate()
