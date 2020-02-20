@@ -522,6 +522,15 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             nonlocal current_proc
             current_proc = proc
 
+        def ensure_not_aborted(fn):
+            def decorated(*args, **kwargs):
+                if should_abort():
+                    try_kill_proc(current_proc)
+                    mark_perf('ABORT')
+                else:
+                    return fn(*args, **kwargs)
+            return decorated
+
         def reader():
             next_graph_splitted = map(self.format_line, self.read_graph(got_proc=remember_proc))
             tokens = normalize_tokens(simplify(
@@ -568,24 +577,18 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             occupied_space = sublime.Region(computed_start, computed_start + len(text))
             return occupied_space
 
+        @ensure_not_aborted
         def draw():
             # TODO: Preserve column if possible instead of going to the beginning
             #       of the commit hash blindly.
             # TODO: Only jump iff cursor is in viewport. If the user scrolled
             #       away (without changing the cursor) just set the cursor but
             #       do NOT show it.
-            if should_abort():
-                try_kill_proc(current_proc)
-                mark_perf('ABORT')
-                return
             follow = self.view.settings().get('git_savvy.log_graph_view.follow')
 
+            @ensure_not_aborted
             @text_command
             def draw_(view, token_queue, prelude_height, did_navigate):
-                if should_abort():
-                    try_kill_proc(current_proc)
-                    mark_perf('ABORT')
-                    return
                 block_time_passed = block_time_passed_factory(1000 if not did_navigate else 13)
                 while True:
                     # If only the head commits changed, and the cursor (and with it `follow`)
