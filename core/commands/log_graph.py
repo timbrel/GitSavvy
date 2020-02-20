@@ -467,8 +467,8 @@ else:
             self._queue.append(item)
             self._count.release()
 
-        def get(self, block=True):
-            if not self._count.acquire(block):
+        def get(self, block=True, timeout=None):
+            if not self._count.acquire(block, timeout):
                 raise Empty
             return self._queue.popleft()
 
@@ -572,8 +572,14 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                     return
                 block_time_passed = block_time_passed_factory(13)
                 while True:
+                    # If only the head commits changed, and the cursor (and with it `follow`)
+                    # is a few lines below, the `if_before=region` will probably never catch.
+                    # We would block here 'til TheEnd without a timeout.
                     try:
-                        token = token_queue.get(block=True if not did_navigate else False)
+                        token = token_queue.get(
+                            block=True if not did_navigate else False,
+                            timeout=0.05 if not did_navigate else None
+                        )
                     except Empty:
                         enqueue_on_worker(draw_, view, token_queue, prelude_height, did_navigate)
                         return
