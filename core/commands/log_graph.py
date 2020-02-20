@@ -487,6 +487,10 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
     def run(self, edit, navigate_after_draw=False):
         # type: (object, bool) -> None
+        # Edge case: If you restore a workspace/project, the view might still be
+        # loading and hence not ready for refresh calls.
+        if self.view.is_loading():
+            return
         should_abort, previous_run_unfinished = register_running(self.view)
         enqueue_on_worker(self.run_impl, previous_run_unfinished, should_abort, navigate_after_draw)
 
