@@ -600,11 +600,20 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         decode = decoder(self.savvy_settings)
         proc = self.git(*args, just_the_proc=True, **kwargs)
         with proc:
-            for line in proc.stdout:
-                if not line:
+            while True:
+                # Block size 2**14 taken from Sublime's `exec.py`. This
+                # may be a hint on how much chars Sublime can draw efficiently.
+                # But here we don't draw every line (except initially) but
+                # a diff. So we oscillate between getting a first meaningful
+                # content fast and not blocking too much here.
+                # TODO: `len(lines)` could be a good indicator of how fast
+                # the system currently is because it seems to vary a lot when
+                # comapring rather short or long (in count of commits) repos.
+                lines = proc.stdout.readlines(2**14)
+                if not lines:
                     break
-
-                yield decode(line)
+                for line in lines:
+                    yield decode(line)
 
             stderr = ''.join(map(decode, proc.stderr.readlines()))
 
