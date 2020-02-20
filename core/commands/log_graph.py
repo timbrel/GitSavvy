@@ -23,7 +23,8 @@ from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region
 from ..settings import GitSavvySettings
 from ..runtime import (
-    enqueue_on_ui, enqueue_on_worker, run_on_new_thread,
+    enqueue_on_ui, enqueue_on_worker,
+    run_or_timeout, run_on_new_thread,
     text_command
 )
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -86,7 +87,8 @@ class GsGraphCommand(WindowCommand, GitCommand):
         branches=None,
         author='',
         title='GRAPH',
-        follow=None
+        follow=None,
+        decoration='sparse'
     ):
         if repo_path is None:
             repo_path = self.repo_path
@@ -104,6 +106,7 @@ class GsGraphCommand(WindowCommand, GitCommand):
                 settings.set("git_savvy.log_graph_view.filter_by_author", author)
                 settings.set("git_savvy.log_graph_view.branches", branches or [])
                 settings.set('git_savvy.log_graph_view.follow', follow)
+                settings.set('git_savvy.log_graph_view.decoration', decoration)
 
                 if follow and follow != extract_symbol_to_follow(view):
                     if show_commit_info.panel_is_visible(self.window):
@@ -134,6 +137,7 @@ class GsGraphCommand(WindowCommand, GitCommand):
             settings.set("git_savvy.log_graph_view.filter_by_author", author)
             settings.set("git_savvy.log_graph_view.branches", branches or [])
             settings.set('git_savvy.log_graph_view.follow', follow)
+            settings.set('git_savvy.log_graph_view.decoration', decoration)
             view.set_name(title)
 
             # We need to ensure the panel has been created, so it appears
@@ -490,7 +494,8 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
     def run_impl(self, previous_run_unfinished, should_abort, navigate_after_draw=False):
         prelude_text = prelude(self.view)
-        if self.view.size() == 0:
+        initial_draw = self.view.size() == 0
+        if initial_draw:
             replace_region(self.view, prelude_text, sublime.Region(0, 1))
 
         mark_perf = utils.measure_runtime()
@@ -511,7 +516,22 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 diff(current_graph_splitted, next_graph_splitted),
                 max_size=100
             ))
-            tokens = wait_for_first_item(tokens)
+            if (
+                initial_draw
+                and self.view.settings().get('git_savvy.log_graph_view.decoration') == 'sparse'
+            ):
+                # On large repos (e.g. the "git" repo) "--sparse" can be excessive to compute
+                # upfront t.i. before the first byte. For now, just race with a timeout and
+                # maybe fallback.
+                try:
+                    tokens = run_or_timeout(lambda: wait_for_first_item(tokens), timeout=1.0)
+                except TimeoutError:
+                    # TODO: Actually kill the running `proc`
+                    self.view.settings().set('git_savvy.log_graph_view.decoration', None)
+                    enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
+                    return
+            else:
+                tokens = wait_for_first_item(tokens)
             enqueue_on_ui(draw)
             put_on_queue(token_queue, tokens)
 
@@ -674,9 +694,10 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             '--decorate-refs-exclude=refs/remotes/origin/HEAD',  # cosmetics
             '--exclude=refs/stash',
             '--all' if all_branches else None,
-            '--simplify-by-decoration',
-            '--sparse',
         ]
+
+        if settings.get('git_savvy.log_graph_view.decoration') == 'sparse':
+            args += ['--simplify-by-decoration', '--sparse']
 
         branches = settings.get("git_savvy.log_graph_view.branches")
         if branches:
