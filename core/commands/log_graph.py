@@ -570,7 +570,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 if should_abort():
                     mark_perf('ABORT')
                     return
-                block_time_passed = block_time_passed_factory(13)
+                block_time_passed = block_time_passed_factory(1000 if not did_navigate else 13)
                 while True:
                     # If only the head commits changed, and the cursor (and with it `follow`)
                     # is a few lines below, the `if_before=region` will probably never catch.
@@ -588,6 +588,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
                     region = apply_token(view, token, prelude_height)
 
+                    just_navigated = False
                     if not did_navigate:
                         if follow:
                             did_navigate = navigate_to_symbol(self.view, follow, if_before=region)
@@ -597,8 +598,9 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
                         if did_navigate:
                             mark_perf('==> FIRST PAINT')
+                            just_navigated = True
 
-                    if did_navigate and block_time_passed():
+                    if just_navigated or block_time_passed():
                         enqueue_on_worker(draw_, view, token_queue, prelude_height, did_navigate)
                         return
 
