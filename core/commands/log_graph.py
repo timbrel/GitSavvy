@@ -610,9 +610,9 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                     just_navigated = False
                     if not did_navigate:
                         if follow:
-                            did_navigate = navigate_to_symbol(self.view, follow, if_before=region)
+                            did_navigate = navigate_to_symbol(view, follow, if_before=region)
                         elif navigate_after_draw:  # on init
-                            self.view.run_command("gs_log_graph_navigate")
+                            view.run_command("gs_log_graph_navigate")
                             did_navigate = True
 
                         if did_navigate:
@@ -627,9 +627,9 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                     # If we still did not navigate the symbol is either
                     # gone, or happens to be after the fold of fresh
                     # content.
-                    navigate_to_symbol(self.view, follow)
+                    navigate_to_symbol(view, follow)
 
-                mark_finished(self.view, should_abort)
+                mark_finished(view, should_abort)
                 mark_perf('==> LAST PAINT')
 
             current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
