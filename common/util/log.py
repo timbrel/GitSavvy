@@ -1,12 +1,16 @@
+import re
 import sublime
 
 
-def universal_newlines(string):
-    return string.replace('\r\n', '\n').replace('\r', '\n')
+ANSI_ESCAPE_RE = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+
+
+def normalize(string):
+    return ANSI_ESCAPE_RE.sub('', string.replace('\r\n', '\n').replace('\r', '\n'))
 
 
 def panel(message, run_async=True):
-    message = universal_newlines(str(message))
+    message = normalize(str(message))
     view = sublime.active_window().active_view()
     if run_async:
         sublime.set_timeout_async(
@@ -17,7 +21,7 @@ def panel(message, run_async=True):
 
 
 def panel_append(message, run_async=True):
-    message = universal_newlines(str(message))
+    message = normalize(str(message))
     view = sublime.active_window().active_view()
     if run_async:
         sublime.set_timeout_async(
