@@ -55,9 +55,6 @@ GIT_REQUIRE_MINOR = 9
 GIT_REQUIRE_PATCH = 0
 
 
-ANSI_ESCAPE = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-
-
 class LoggingProcessWrapper(object):
 
     """
@@ -271,9 +268,6 @@ class GitCommand(StatusMixin,
                     "`{}` failed.".format(command_str),
                     show_panel=show_panel_on_stderr
                 )
-
-        if stdout and decode:
-            stdout = ANSI_ESCAPE.sub('', stdout)
 
         return stdout
 
