@@ -202,7 +202,7 @@ class GitCommand(StatusMixin,
                 if self.savvy_settings.get("show_stdin_in_output") and stdin is not None:
                     util.log.panel_append("STDIN\n{}\n".format(stdin), run_async=False)
                 if self.savvy_settings.get("show_input_in_output"):
-                    util.log.panel_append("> {}\n".format(command_str), run_async=False)
+                    util.log.panel_append("$ {}\n".format(command_str), run_async=False)
 
             if show_panel and live_panel_output:
                 wrapper = LoggingProcessWrapper(p, self.savvy_settings.get("live_panel_output_timeout", 10000))
