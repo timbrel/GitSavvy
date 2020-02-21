@@ -15,6 +15,7 @@ from . import intra_line_colorizer
 from .navigate import GsNavigate
 from ..fns import filter_, flatten
 from ..parse_diff import SplittedDiff
+from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import line_indentation
 from ..git_command import GitCommand
 from ..exceptions import GitSavvyError
@@ -140,11 +141,11 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 
     def run(self, edit, sync=True):
         if sync:
-            self._run()
+            self.run_impl(sync)
         else:
-            sublime.set_timeout_async(self._run)
+            enqueue_on_worker(self.run_impl, sync)
 
-    def _run(self):
+    def run_impl(self, runs_on_ui_thread):
         if self.view.settings().get("git_savvy.disable_diff"):
             return
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
@@ -219,17 +220,19 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         else:
             diff, added_regions, removed_regions = diff, [], []
 
-        sublime.set_timeout(
-            lambda: _draw(
-                self.view,
-                prelude,
-                diff,
-                bool(word_diff_regex),
-                added_regions,
-                removed_regions,
-                navigate=not old_diff
-            )
+        draw = lambda: _draw(
+            self.view,
+            prelude,
+            diff,
+            bool(word_diff_regex),
+            added_regions,
+            removed_regions,
+            navigate=not old_diff
         )
+        if runs_on_ui_thread:
+            draw()
+        else:
+            enqueue_on_ui(draw)
 
 
 def _draw(view, prelude, diff_text, is_word_diff, added_regions, removed_regions, navigate):
