@@ -15,6 +15,7 @@ from . import intra_line_colorizer
 from .navigate import GsNavigate
 from ..fns import filter_, flatten
 from ..parse_diff import SplittedDiff
+from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import line_indentation
 from ..git_command import GitCommand
 from ..exceptions import GitSavvyError
@@ -24,7 +25,7 @@ from ...common import util
 MYPY = False
 if MYPY:
     from typing import (
-        Dict, Iterable, Iterator, List, NamedTuple, Optional, Set,
+        Iterable, Iterator, List, NamedTuple, Optional, Set,
         Tuple, TypeVar
     )
     from ..parse_diff import Hunk, HunkLine
@@ -38,7 +39,7 @@ else:
 
 
 DIFF_TITLE = "DIFF: {}"
-DIFF_CACHED_TITLE = "DIFF (cached): {}"
+DIFF_CACHED_TITLE = "DIFF: {} (staged)"
 
 # Clickable lines:
 # (A)  common/commands/view_manipulation.py  |   1 +
@@ -66,7 +67,26 @@ FILE_RE = (
 #           ^^ we want the second (current) line offset of the diff
 LINE_RE = r"^@@ [^+]*\+(\d+)"
 
-diff_views = {}  # type: Dict[str, sublime.View]
+
+def compute_identifier_for_view(view):
+    # type: (sublime.View) -> Optional[Tuple]
+    settings = view.settings()
+    return (
+        settings.get('git_savvy.repo_path'),
+        settings.get('git_savvy.file_path'),
+        settings.get('git_savvy.diff_view.base_commit'),
+        settings.get('git_savvy.diff_view.target_commit')
+    ) if settings.get('git_savvy.diff_view') else None
+
+
+def focus_view(view):
+    window = view.window()
+    if not window:
+        return
+
+    group, _ = window.get_view_index(view)
+    window.focus_group(group)
+    window.focus_view(view)
 
 
 class GsDiffCommand(WindowCommand, GitCommand):
@@ -79,35 +99,52 @@ class GsDiffCommand(WindowCommand, GitCommand):
     disable Ctrl-Enter in the diff view.
     """
 
-    def run(self, in_cached_mode=False, file_path=None, current_file=False, base_commit=None,
-            target_commit=None, disable_stage=False, title=None):
-        repo_path = self.repo_path
+    def run(
+        self,
+        repo_path=None,
+        file_path=None,
+        in_cached_mode=False,
+        current_file=False,
+        base_commit=None,
+        target_commit=None,
+        disable_stage=False,
+        title=None,
+        ignore_whitespace=False,
+        show_word_diff=False,
+        context_lines=3
+    ):
+        if repo_path is None:
+            repo_path = self.repo_path
+        assert repo_path
         if current_file:
             file_path = self.file_path or file_path
 
-        view_key = "{0}{1}+{2}".format(
-            in_cached_mode,
-            "-" if base_commit is None else "--" + base_commit,
-            file_path or repo_path
+        this_id = (
+            repo_path,
+            file_path,
+            base_commit,
+            target_commit
         )
-
-        if view_key in diff_views and diff_views[view_key] in sublime.active_window().views():
-            diff_view = diff_views[view_key]
-            self.window.focus_view(diff_view)
+        for view in self.window.views():
+            if compute_identifier_for_view(view) == this_id:
+                settings = view.settings()
+                focus_view(view)
+                break
 
         else:
             diff_view = util.view.get_scratch_view(self, "diff", read_only=True)
 
+            show_diffstat = self.savvy_settings.get("show_diffstat", True)
             settings = diff_view.settings()
             settings.set("git_savvy.repo_path", repo_path)
             settings.set("git_savvy.file_path", file_path)
             settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
-            settings.set("git_savvy.diff_view.ignore_whitespace", False)
-            settings.set("git_savvy.diff_view.show_word_diff", False)
-            settings.set("git_savvy.diff_view.context_lines", 3)
+            settings.set("git_savvy.diff_view.ignore_whitespace", ignore_whitespace)
+            settings.set("git_savvy.diff_view.show_word_diff", show_word_diff)
+            settings.set("git_savvy.diff_view.context_lines", context_lines)
             settings.set("git_savvy.diff_view.base_commit", base_commit)
             settings.set("git_savvy.diff_view.target_commit", target_commit)
-            settings.set("git_savvy.diff_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
+            settings.set("git_savvy.diff_view.show_diffstat", show_diffstat)
             settings.set("git_savvy.diff_view.disable_stage", disable_stage)
             settings.set("git_savvy.diff_view.history", [])
             settings.set("git_savvy.diff_view.just_hunked", "")
@@ -122,7 +159,6 @@ class GsDiffCommand(WindowCommand, GitCommand):
                 )
             diff_view.set_name(title)
             diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff_view.sublime-syntax")
-            diff_views[view_key] = diff_view
 
             diff_view.run_command("gs_handle_vintageous")
 
@@ -140,13 +176,15 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 
     def run(self, edit, sync=True):
         if sync:
-            self._run()
+            self.run_impl(sync)
         else:
-            sublime.set_timeout_async(self._run)
+            enqueue_on_worker(self.run_impl, sync)
 
-    def _run(self):
+    def run_impl(self, runs_on_ui_thread):
         if self.view.settings().get("git_savvy.disable_diff"):
             return
+        repo_path = self.view.settings().get("git_savvy.repo_path")
+        file_path = self.view.settings().get("git_savvy.file_path")
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
         ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
         show_word_diff = self.view.settings().get("git_savvy.diff_view.show_word_diff")
@@ -159,21 +197,29 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         word_diff_regex = WORD_DIFF_PATTERNS[show_word_diff]
 
         prelude = "\n"
-        if self.file_path:
-            rel_file_path = os.path.relpath(self.file_path, self.repo_path)
+        title = ["DIFF:"]
+        if file_path:
+            rel_file_path = os.path.relpath(file_path, repo_path)
             prelude += "  FILE: {}\n".format(rel_file_path)
+            title += [os.path.basename(file_path)]
+        elif not disable_stage:
+            title += [os.path.basename(repo_path)]
 
         if disable_stage:
             if in_cached_mode:
-                prelude += "  INDEX..{}\n".format(base_commit or target_commit)
+                prelude += "  {}..INDEX\n".format(base_commit or target_commit)
+                title += ["{}..INDEX".format(base_commit or target_commit)]
             else:
                 if base_commit and target_commit:
                     prelude += "  {}..{}\n".format(base_commit, target_commit)
+                    title += ["{}..{}".format(base_commit, target_commit)]
                 else:
-                    prelude += "  WORKING DIR..{}\n".format(base_commit or target_commit)
+                    prelude += "  {}..WORKING DIR\n".format(base_commit or target_commit)
+                    title += ["{}..WORKING DIR".format(base_commit or target_commit)]
         else:
             if in_cached_mode:
                 prelude += "  STAGED CHANGES (Will commit)\n"
+                title += ["(staged)"]
             else:
                 prelude += "  UNSTAGED CHANGES\n"
 
@@ -194,7 +240,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
                 "--cached" if in_cached_mode else None,
                 base_commit,
                 target_commit,
-                "--", self.file_path)
+                "--", file_path)
         except GitSavvyError as err:
             # When the output of the above Git command fails to correctly parse,
             # the expected notification will be displayed to the user.  However,
@@ -219,21 +265,25 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         else:
             diff, added_regions, removed_regions = diff, [], []
 
-        sublime.set_timeout(
-            lambda: _draw(
-                self.view,
-                prelude,
-                diff,
-                bool(word_diff_regex),
-                added_regions,
-                removed_regions,
-                navigate=not old_diff
-            )
+        draw = lambda: _draw(
+            self.view,
+            ' '.join(title),
+            prelude,
+            diff,
+            bool(word_diff_regex),
+            added_regions,
+            removed_regions,
+            navigate=not old_diff
         )
+        if runs_on_ui_thread:
+            draw()
+        else:
+            enqueue_on_ui(draw)
 
 
-def _draw(view, prelude, diff_text, is_word_diff, added_regions, removed_regions, navigate):
-    # type: (sublime.View, str, str, bool, List[sublime.Region], List[sublime.Region], bool) -> None
+def _draw(view, title, prelude, diff_text, is_word_diff, added_regions, removed_regions, navigate):
+    # type: (sublime.View, str, str, str, bool, List[sublime.Region], List[sublime.Region], bool) -> None
+    view.set_name(title)
     text = prelude + diff_text
     view.run_command(
         "gs_replace_view_text", {"text": text, "restore_cursors": True}

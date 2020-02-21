@@ -494,6 +494,7 @@ class TestZooming(DeferrableTestCase):
         view = self.window.new_file()
         self.addCleanup(view.close)
         view.set_scratch(True)
+        view.settings().set("git_savvy.repo_path", "fake_repo_path")
         view.settings().set("git_savvy.diff_view.show_word_diff", False)
 
         view.settings().set('git_savvy.diff_view.context_lines', CONTEXT_LINES)
