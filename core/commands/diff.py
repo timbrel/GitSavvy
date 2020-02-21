@@ -108,7 +108,10 @@ class GsDiffCommand(WindowCommand, GitCommand):
         base_commit=None,
         target_commit=None,
         disable_stage=False,
-        title=None
+        title=None,
+        ignore_whitespace=False,
+        show_word_diff=False,
+        context_lines=3
     ):
         if repo_path is None:
             repo_path = self.repo_path
@@ -131,16 +134,17 @@ class GsDiffCommand(WindowCommand, GitCommand):
         else:
             diff_view = util.view.get_scratch_view(self, "diff", read_only=True)
 
+            show_diffstat = self.savvy_settings.get("show_diffstat", True)
             settings = diff_view.settings()
             settings.set("git_savvy.repo_path", repo_path)
             settings.set("git_savvy.file_path", file_path)
             settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
-            settings.set("git_savvy.diff_view.ignore_whitespace", False)
-            settings.set("git_savvy.diff_view.show_word_diff", False)
-            settings.set("git_savvy.diff_view.context_lines", 3)
+            settings.set("git_savvy.diff_view.ignore_whitespace", ignore_whitespace)
+            settings.set("git_savvy.diff_view.show_word_diff", show_word_diff)
+            settings.set("git_savvy.diff_view.context_lines", context_lines)
             settings.set("git_savvy.diff_view.base_commit", base_commit)
             settings.set("git_savvy.diff_view.target_commit", target_commit)
-            settings.set("git_savvy.diff_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
+            settings.set("git_savvy.diff_view.show_diffstat", show_diffstat)
             settings.set("git_savvy.diff_view.disable_stage", disable_stage)
             settings.set("git_savvy.diff_view.history", [])
             settings.set("git_savvy.diff_view.just_hunked", "")
