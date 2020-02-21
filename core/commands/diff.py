@@ -165,12 +165,12 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 
         if disable_stage:
             if in_cached_mode:
-                prelude += "  INDEX..{}\n".format(base_commit or target_commit)
+                prelude += "  {}..INDEX\n".format(base_commit or target_commit)
             else:
                 if base_commit and target_commit:
                     prelude += "  {}..{}\n".format(base_commit, target_commit)
                 else:
-                    prelude += "  WORKING DIR..{}\n".format(base_commit or target_commit)
+                    prelude += "  {}..WORKING DIR\n".format(base_commit or target_commit)
         else:
             if in_cached_mode:
                 prelude += "  STAGED CHANGES (Will commit)\n"
