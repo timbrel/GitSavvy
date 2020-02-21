@@ -73,7 +73,7 @@ class GsCustomCommand(WindowCommand, GitCommand):
         self.window.status_message(complete_msg)
 
         if output_to_panel:
-            util.log.panel(stdout.replace("\r", "\n"))
+            util.log.panel(stdout)
         if output_to_buffer:
             view = self.window.new_file()
             view.set_scratch(True)

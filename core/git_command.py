@@ -55,9 +55,6 @@ GIT_REQUIRE_MINOR = 9
 GIT_REQUIRE_PATCH = 0
 
 
-ANSI_ESCAPE = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-
-
 class LoggingProcessWrapper(object):
 
     """
@@ -202,7 +199,7 @@ class GitCommand(StatusMixin,
                 if self.savvy_settings.get("show_stdin_in_output") and stdin is not None:
                     util.log.panel_append("STDIN\n{}\n".format(stdin), run_async=False)
                 if self.savvy_settings.get("show_input_in_output"):
-                    util.log.panel_append("> {}\n".format(command_str), run_async=False)
+                    util.log.panel_append("$ {}\n".format(command_str), run_async=False)
 
             if show_panel and live_panel_output:
                 wrapper = LoggingProcessWrapper(p, self.savvy_settings.get("live_panel_output_timeout", 10000))
@@ -280,9 +277,6 @@ class GitCommand(StatusMixin,
                     stderr=stderr,
                     show_panel=show_panel_on_stderr
                 )
-
-        if stdout and decode:
-            stdout = ANSI_ESCAPE.sub('', stdout)
 
         return stdout
 
