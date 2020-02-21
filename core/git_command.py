@@ -231,7 +231,10 @@ class GitCommand(StatusMixin,
         except Exception as e:
             # this should never be reached
             raise GitSavvyError(
-                "Please report this error to GitSavvy:\n\n{}\n\n{}".format(e, traceback.format_exc()),
+                "Please report this error to GitSavvy:\n\n{}\n\n{}".format(
+                    e, traceback.format_exc()
+                ),
+                cmd=command,
                 show_panel=show_panel_on_stderr)
 
         finally:
@@ -264,11 +267,17 @@ class GitCommand(StatusMixin,
             if stdout or stderr:
                 raise GitSavvyError(
                     "$ {}\n\n{}".format(command_str, ''.join([stdout, stderr])),
+                    cmd=command,
+                    stdout=stdout,
+                    stderr=stderr,
                     show_panel=show_panel_on_stderr
                 )
             else:
                 raise GitSavvyError(
                     "`{}` failed.".format(command_str),
+                    cmd=command,
+                    stdout=stdout,
+                    stderr=stderr,
                     show_panel=show_panel_on_stderr
                 )
 

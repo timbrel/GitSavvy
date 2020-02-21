@@ -7,6 +7,7 @@ import sublime
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin
 from ..ui_mixins.quick_panel import show_log_panel, show_branch_panel
+from ...common import util
 
 
 class LogMixin(object):
@@ -180,14 +181,15 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
 
     def checkout_commit(self):
         self.checkout_ref(self._commit_hash)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def cherry_pick(self):
         self.git("cherry-pick", self._commit_hash)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def revert_commit(self):
-        self.window.run_command("gs_revert_commit", {
-            "commit_hash": self._commit_hash
-        })
+        self.git("revert", self._commit_hash)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def compare_against(self):
         self.window.run_command("gs_compare_against", {
@@ -229,3 +231,4 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
 
     def checkout_file_at_commit(self):
         self.checkout_ref(self._commit_hash, fpath=self._file_path)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)

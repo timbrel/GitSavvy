@@ -110,6 +110,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
 
         self.window.status_message("Checking out PR...")
         self.checkout_ref(branch_name or self.pr["head"]["sha"])
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def create_branch_for_pr(self, branch_name):
         self.window.status_message("Fetching PR commit...")

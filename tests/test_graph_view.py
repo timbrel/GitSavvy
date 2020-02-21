@@ -8,8 +8,8 @@ from GitSavvy.tests.mockito import unstub, when
 
 from GitSavvy.core.commands.log_graph import (
     GsLogGraphRefreshCommand,
-    GsLogGraphCursorListener,
-    extract_commit_hash
+    extract_commit_hash,
+    navigate_to_symbol
 )
 from GitSavvy.core.commands.show_commit_info import GsShowCommitInfoCommand
 from GitSavvy.core.settings import GitSavvySettings
@@ -241,9 +241,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         log_view = yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
 
-        log_view.sel().clear()
-        log_view.sel().add(log_view.text_point(1, 14))
-        GsLogGraphCursorListener().on_selection_modified(log_view)
+        navigate_to_symbol(log_view, 'f461ea1')
         yield from self.await_string_in_view(panel, COMMIT_2)
 
         actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
@@ -302,9 +300,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         self.window.run_command('gs_log_graph_toggle_more_info')
 
         # move around
-        log_view.sel().clear()
-        log_view.sel().add(log_view.text_point(1, 14))
-        GsLogGraphCursorListener().on_selection_modified(log_view)
+        navigate_to_symbol(log_view, 'f461ea1')
 
         # show panel
         self.window.run_command('gs_log_graph_toggle_more_info')
@@ -321,9 +317,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         self.window.run_command('gs_log_graph_toggle_more_info')
 
         # move around
-        log_view.sel().clear()
-        log_view.sel().add(log_view.text_point(1, 14))
-        GsLogGraphCursorListener().on_selection_modified(log_view)
+        navigate_to_symbol(log_view, 'f461ea1')
 
         # show panel e.g. via mouse
         self.window.run_command('show_panel', {'panel': 'output.show_commit_info'})

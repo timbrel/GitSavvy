@@ -281,15 +281,6 @@
     "show_full_commit_info": false,
 
     /*
-        Update the desired graph arguments for a customized experience.
-        Do not add "--all" in this setting, it is added in graph all branches
-
-        NOTE: Changes you make may break in-view functionality, so use with caution.
-     */
-    // "git_graph_args": ["log", "--oneline", "--graph", "--decorate"],
-    "git_graph_args": ["log", "--pretty=format:%h%d %s (%ar) <%an>", "--graph"],
-
-    /*
         When set to `true`, GitSavvy will follow file renames when running git log/graph
     */
     "log_follow_rename": false,

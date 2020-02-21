@@ -1,4 +1,5 @@
 from functools import lru_cache, partial
+import os
 import re
 
 import sublime
@@ -7,9 +8,9 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import log_graph_colorizer as colorizer, show_commit_info
 from .log import GsLogActionCommand, GsLogCommand
 from .navigate import GsNavigate
-from ..git_command import GitCommand
+from ..git_command import GitCommand, GitSavvyError
 from ..settings import GitSavvySettings
-from ..runtime import run_on_new_thread
+from ..runtime import enqueue_on_ui, enqueue_on_worker, run_on_new_thread, text_command
 from ..ui_mixins.quick_panel import show_branch_panel
 from ...common import util
 from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
@@ -30,36 +31,109 @@ DOT_SCOPE = 'git_savvy.graph.dot'
 PATH_SCOPE = 'git_savvy.graph.path_char'
 
 
+def compute_identifier_for_view(view):
+    # type: (sublime.View) -> Optional[Tuple]
+    settings = view.settings()
+    return (
+        settings.get('git_savvy.repo_path'),
+        settings.get('git_savvy.file_path'),
+        settings.get('git_savvy.log_graph_view.all_branches')
+        or settings.get('git_savvy.log_graph_view.branches')
+    ) if settings.get('git_savvy.log_graph_view') else None
+
+
+def focus_view(view):
+    window = view.window()
+    if not window:
+        return
+
+    group, _ = window.get_view_index(view)
+    window.focus_group(group)
+    window.focus_view(view)
+
+
 class GsGraphCommand(WindowCommand, GitCommand):
-    def run(self, repo_path=None, file_path=None, all=False, branch=None, author='', title='GRAPH'):
+    def run(
+        self,
+        repo_path=None,
+        file_path=None,
+        all=False,
+        branches=None,
+        author='',
+        title='GRAPH',
+        follow=None
+    ):
         if repo_path is None:
             repo_path = self.repo_path
+        assert repo_path
 
-        view = util.view.get_scratch_view(self, "log_graph", read_only=True)
-        view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
-        view.run_command("gs_handle_vintageous")
-        view.run_command("gs_handle_arrow_keys")
-        run_on_new_thread(augment_color_scheme, view)
+        this_id = (
+            repo_path,
+            file_path,
+            all or branches
+        )
+        for view in self.window.views():
+            if compute_identifier_for_view(view) == this_id:
+                settings = view.settings()
+                settings.set("git_savvy.log_graph_view.all_branches", all)
+                settings.set("git_savvy.log_graph_view.filter_by_author", author)
+                settings.set("git_savvy.log_graph_view.branches", branches or [])
+                settings.set('git_savvy.log_graph_view.follow', follow)
 
-        settings = view.settings()
-        settings.set("git_savvy.repo_path", repo_path)
-        settings.set("git_savvy.file_path", file_path)
-        settings.set("git_savvy.log_graph_view.all_branches", all)
-        settings.set("git_savvy.log_graph_view.filter_by_author", author)
-        settings.set("git_savvy.log_graph_view.filter_by_branch", branch)
-        view.set_name(title)
+                if follow and follow != extract_symbol_to_follow(view):
+                    if show_commit_info.panel_is_visible(self.window):
+                        # Hack to force a synchronous update of the panel
+                        # *as a result of* `navigate_to_symbol` (by
+                        # `on_selection_modified`) since we know that
+                        # "show_commit_info" will run blocking if the panel
+                        # is empty (or closed).
+                        panel = show_commit_info.ensure_panel(self.window)
+                        panel.run_command(
+                            "gs_replace_view_text", {"text": "", "restore_cursors": True}
+                        )
+                    navigate_to_symbol(view, follow)
 
-        # We need to ensure the panel has been created, so it appears
-        # e.g. in the menu. Otherwise Sublime will not handle `show_panel`
-        # events for that panel at all.
-        show_commit_info.ensure_panel(self.window)
-        if (
-            self.savvy_settings.get("graph_show_more_commit_info")
-            and not show_commit_info.panel_is_visible(self.window)
-        ):
-            self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
+                focus_view(view)
+                break
+        else:
+            view = util.view.get_scratch_view(self, "log_graph", read_only=True)
+            view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
+            view.run_command("gs_handle_vintageous")
+            view.run_command("gs_handle_arrow_keys")
+            run_on_new_thread(augment_color_scheme, view)
 
-        view.run_command("gs_log_graph_refresh", {"navigate_after_draw": True})
+            settings = view.settings()
+            settings.set("git_savvy.repo_path", repo_path)
+            settings.set("git_savvy.file_path", file_path)
+            settings.set("git_savvy.log_graph_view.all_branches", all)
+            settings.set("git_savvy.log_graph_view.filter_by_author", author)
+            settings.set("git_savvy.log_graph_view.branches", branches or [])
+            settings.set('git_savvy.log_graph_view.follow', follow)
+            view.set_name(title)
+
+            # We need to ensure the panel has been created, so it appears
+            # e.g. in the menu. Otherwise Sublime will not handle `show_panel`
+            # events for that panel at all.
+            # Note that the following is basically what `on_activated` does,
+            # but `on_activated` runs synchronous when a view gets created t.i.
+            # even before we can mark it as "graph_view" in the settings.
+            show_commit_info.ensure_panel(self.window)
+            if (
+                self.savvy_settings.get("graph_show_more_commit_info")
+                and not show_commit_info.panel_is_visible(self.window)
+            ):
+                self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
+
+            view.run_command("gs_log_graph_refresh", {"navigate_after_draw": True})
+
+
+class GsGraphCurrentFile(WindowCommand, GitCommand):
+    def run(self, **kwargs):
+        file_path = self.file_path
+        if file_path:
+            self.window.run_command('gs_graph', dict(file_path=file_path, **kwargs))
+        else:
+            self.window.status_message("View has no filename to track.")
 
 
 def augment_color_scheme(view):
@@ -89,6 +163,11 @@ def augment_color_scheme(view):
     themeGenerator.apply_new_theme("log_graph_view", view)
 
 
+DATE_FORMAT = 'human'
+FALLBACK_DATE_FORMAT = 'format:%Y-%m-%d %H:%M'
+DATE_FORMAT_STATE = 'trying'
+
+
 class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
     """
@@ -99,45 +178,112 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(partial(self.run_async, navigate_after_draw))
 
     def run_async(self, navigate_after_draw=False):
-        file_path = self.file_path
-        if file_path:
-            graph_content = "File: {}\n\n".format(file_path)
-        else:
-            graph_content = ""
+        graph_content = prelude(self.view)
+        graph_content += re.sub(
+            r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
+            r'\1' + COMMIT_NODE_CHAR,
+            self.read_graph(),
+            flags=re.MULTILINE
+        )
+
+        def program():
+            # TODO: Preserve column if possible instead of going to the beginning
+            #       of the commit hash blindly.
+            # TODO: Only jump iff cursor is in viewport. If the user scrolled
+            #       away (without changing the cursor) just set the cursor but
+            #       do NOT show it.
+            follow = self.view.settings().get('git_savvy.log_graph_view.follow')
+            self.view.run_command("gs_replace_view_text", {"text": graph_content, "restore_cursors": True})
+            if follow:
+                navigate_to_symbol(self.view, follow)
+            elif navigate_after_draw:  # on init
+                self.view.run_command("gs_log_graph_navigate")
+
+        enqueue_on_ui(program)
+
+    def read_graph(self):
+        # type: () -> str
+        global DATE_FORMAT, DATE_FORMAT_STATE
 
         args = self.build_git_command()
-        graph_content += self.git(*args)
-        graph_content = re.sub(
-            r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
-            r'\1' + COMMIT_NODE_CHAR, graph_content,
-            flags=re.MULTILINE)
+        if DATE_FORMAT_STATE == 'trying':
+            try:
+                rv = self.git(
+                    *args,
+                    throw_on_stderr=True,
+                    show_status_message_on_stderr=False,
+                    show_panel_on_stderr=False
+                )
+            except GitSavvyError as e:
+                if e.stderr and DATE_FORMAT in e.stderr:
+                    DATE_FORMAT = FALLBACK_DATE_FORMAT
+                    DATE_FORMAT_STATE = 'final'
 
-        self.view.run_command("gs_replace_view_text", {"text": graph_content, "restore_cursors": True})
-        if navigate_after_draw:
-            self.view.run_command("gs_log_graph_navigate")
+                enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
+                return ''
+            else:
+                DATE_FORMAT_STATE = 'final'
+                return rv
+
+        else:
+            return self.git(*args)
 
     def build_git_command(self):
-        args = self.savvy_settings.get("git_graph_args")
+        global DATE_FORMAT
+
+        settings = self.view.settings()
         follow = self.savvy_settings.get("log_follow_rename")
-        if self.file_path and follow:
-            args.insert(1, "--follow")
+        author = settings.get("git_savvy.log_graph_view.filter_by_author")
+        all_branches = settings.get("git_savvy.log_graph_view.all_branches")
+        args = [
+            'log',
+            '--graph',
+            '--decorate',  # set explicitly for "decorate-refs-exclude" to work
+            '--date={}'.format(DATE_FORMAT),
+            '--pretty=format:%h%d %<|(80,trunc)%s | %ad, %an',
+            '--follow' if self.file_path and follow else None,
+            '--author={}'.format(author) if author else None,
+            '--decorate-refs-exclude=refs/remotes/origin/HEAD',  # cosmetics
+            '--exclude=refs/stash',
+            '--all' if all_branches else None,
+            '--simplify-by-decoration',
+            '--sparse',
+        ]
 
-        if self.view.settings().get("git_savvy.log_graph_view.all_branches"):
-            args.insert(1, "--all")
-
-        author = self.view.settings().get("git_savvy.log_graph_view.filter_by_author")
-        if author:
-            args.insert(1, "--author={}".format(author))
-
-        branch = self.view.settings().get("git_savvy.log_graph_view.filter_by_branch")
-        if branch:
-            args.append(branch)
+        branches = settings.get("git_savvy.log_graph_view.branches")
+        if branches:
+            args += branches
 
         if self.file_path:
             file_path = self.get_rel_path(self.file_path)
-            args = args + ["--", file_path]
+            args += ["--", file_path]
 
         return args
+
+
+def prelude(view):
+    # type: (sublime.View) -> str
+    prelude = "\n"
+    settings = view.settings()
+    repo_path = settings.get("git_savvy.repo_path")
+    file_path = settings.get("git_savvy.file_path")
+    if file_path:
+        rel_file_path = os.path.relpath(file_path, repo_path)
+        prelude += "  FILE: {}\n".format(rel_file_path)
+    elif repo_path:
+        prelude += "  REPO: {}\n".format(repo_path)
+
+    all_ = settings.get("git_savvy.log_graph_view.all_branches") or False
+    branches = settings.get("git_savvy.log_graph_view.branches") or []
+    prelude += (
+        "  "
+        + "  ".join(filter(None, [
+            '[a]ll: true' if all_ else '[a]ll: false',
+            " ".join(branches)
+        ]))
+        + "\n"
+    )
+    return prelude + "\n"
 
 
 class GsLogGraphCommand(GsLogCommand):
@@ -158,12 +304,19 @@ class GsLogGraphCommand(GsLogCommand):
 
 class GsLogGraphCurrentBranch(WindowCommand, GitCommand):
     def run(self, file_path=None):
-        self.window.run_command('gs_graph', {'file_path': file_path})
+        self.window.run_command('gs_graph', {
+            'file_path': file_path,
+            'all': True,
+            'follow': 'HEAD',
+        })
 
 
 class GsLogGraphAllBranches(WindowCommand, GitCommand):
     def run(self, file_path=None):
-        self.window.run_command('gs_graph', {'file_path': file_path, 'all': True})
+        self.window.run_command('gs_graph', {
+            'file_path': file_path,
+            'all': True,
+        })
 
 
 class GsLogGraphByAuthorCommand(WindowCommand, GitCommand):
@@ -211,10 +364,12 @@ class GsLogGraphByBranchCommand(WindowCommand, GitCommand):
         def on_select(branch):
             if branch:
                 self._selected_branch = branch  # remember last selection
-                self.window.run_command(
-                    'gs_graph',
-                    {'file_path': file_path, 'branch': branch}
-                )
+                self.window.run_command('gs_graph', {
+                    'file_path': file_path,
+                    'all': True,
+                    'branches': [branch],
+                    'follow': branch,
+                })
 
         show_branch_panel(on_select, selected_branch=self._selected_branch)
 
@@ -230,14 +385,40 @@ class GsLogGraphNavigateCommand(GsNavigate):
         return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
 
 
+class GsLogGraphNavigateToHeadCommand(TextCommand):
+
+    """
+    Travel to the HEAD commit.
+    """
+
+    def run(self, edit):
+        try:
+            head_commit = self.view.find_by_selector(
+                "git-savvy.graph meta.graph.graph-line.head.git-savvy "
+                "constant.numeric.graph.commit-hash.git-savvy"
+            )[0]
+        except IndexError:
+            settings = self.view.settings()
+            settings.set("git_savvy.log_graph_view.all_branches", True)
+            settings.set("git_savvy.log_graph_view.follow", "HEAD")
+            self.view.run_command("gs_log_graph_refresh")
+        else:
+            set_and_show_cursor(self.view, head_commit.begin())
+
+
+class GsLogGraphToggleAllSetting(TextCommand, GitCommand):
+    def run(self, edit):
+        settings = self.view.settings()
+        current = settings.get("git_savvy.log_graph_view.all_branches")
+        next_state = not current
+        settings.set("git_savvy.log_graph_view.all_branches", next_state)
+        self.view.run_command("gs_log_graph_refresh")
+
+
 class GsLogGraphCursorListener(EventListener, GitCommand):
     def is_applicable(self, view):
         # type: (sublime.View) -> bool
-        settings = view.settings()
-        return bool(
-            settings.get("git_savvy.log_graph_view")
-            or settings.get("git_savvy.compare_commit_view")
-        )
+        return bool(view.settings().get("git_savvy.log_graph_view"))
 
     def on_activated(self, view):
         window = view.window()
@@ -292,7 +473,9 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
         # happen on the main thread (t.i. blocking) bc it is way, way
         # faster. But we still defer that task, so others can run code
         # that actually *needs* to be a sync side-effect to this event.
-        sublime.set_timeout(lambda: colorize_dots(view))
+        enqueue_on_ui(colorize_dots, view)
+
+        enqueue_on_ui(set_symbol_to_follow, view)
 
     def on_window_command(self, window, command_name, args):
         # type: (sublime.Window, str, Dict) -> None
@@ -341,6 +524,111 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
 
 
 PREVIOUS_OPEN_PANEL_PER_WINDOW = {}  # type: Dict[sublime.WindowId, Optional[str]]
+
+
+def set_symbol_to_follow(view):
+    # type: (sublime.View) -> None
+    symbol = extract_symbol_to_follow(view)
+    if symbol:
+        view.settings().set('git_savvy.log_graph_view.follow', symbol)
+
+
+def extract_symbol_to_follow(view):
+    # type: (sublime.View) -> Optional[str]
+    """Extract a symbol to follow."""
+    try:
+        # Intentional `b` (not `end()`!) because b is where the
+        # cursor is. (If you select upwards b becomes < a.)
+        cursor = [s.b for s in view.sel()][-1]
+    except IndexError:
+        return
+
+    line_span = view.line(cursor)
+    line_text = view.substr(line_span)
+    return _extract_symbol_to_follow(view.id(), line_text)
+
+
+@lru_cache(maxsize=512)
+def _extract_symbol_to_follow(vid, _line_text):
+    # type: (sublime.ViewId, str) -> Optional[str]
+    view = sublime.View(vid)
+    try:
+        # Intentional `b` (not `end()`!) because b is where the
+        # cursor is. (If you select upwards b becomes < a.)
+        cursor = [s.b for s in view.sel()][-1]
+    except IndexError:
+        return None
+
+    line_span = view.line(cursor)
+    if view.match_selector(cursor, 'meta.graph.graph-line.head.git-savvy'):
+        return 'HEAD'
+
+    symbols_on_line = [
+        symbol
+        for r, symbol in view.symbols()
+        if line_span.contains(r)
+    ]
+    if symbols_on_line:
+        # git always puts the remotes first so we take
+        # the last one which is (then) a local branch.
+        return symbols_on_line[-1]
+
+    line_text = view.substr(line_span)
+    return extract_commit_hash(line_text)
+
+
+def navigate_to_symbol(view, symbol):
+    # type: (sublime.View, str) -> None
+    region = _find_symbol(view, symbol)
+    if region:
+        set_and_show_cursor(view, region.begin())
+
+
+def _find_symbol(view, symbol):
+    # type: (sublime.View, str) -> Optional[sublime.Region]
+    if symbol == 'HEAD':
+        try:
+            return view.find_by_selector(
+                'meta.graph.graph-line.head.git-savvy '
+                'constant.numeric.graph.commit-hash.git-savvy'
+            )[0]
+        except IndexError:
+            return None
+
+    for r, symbol_ in view.symbols():
+        if symbol_ == symbol:
+            line_of_symbol = view.line(r)
+            return extract_comit_hash_span(view, line_of_symbol)
+
+    r = view.find(FIND_COMMIT_HASH + re.escape(symbol), 0)
+    if not r.empty():
+        line_of_symbol = view.line(r)
+        return extract_comit_hash_span(view, line_of_symbol)
+    return None
+
+
+def extract_comit_hash_span(view, line_span):
+    # type: (sublime.View, sublime.Region) -> Optional[sublime.Region]
+    line_text = view.substr(line_span)
+    match = COMMIT_LINE.search(line_text)
+    if match:
+        a, b = match.span('commit_hash')
+        return sublime.Region(a + line_span.a, b + line_span.a)
+    return None
+
+
+FIND_COMMIT_HASH = "^[{graph_chars}]*[{node_chars}][{graph_chars}]* ".format(
+    graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS
+)
+
+
+@text_command
+def set_and_show_cursor(view, cursor):
+    # type: (sublime.View, int) -> None
+    sel = view.sel()
+    sel.clear()
+    sel.add(cursor)
+    view.show(sel, True)
 
 
 def colorize_dots(view):
@@ -420,7 +708,7 @@ def extract_commit_hash(line):
 class GsLogGraphToggleMoreInfoCommand(WindowCommand, GitCommand):
 
     """
-    Toggle global `graph_show_more_commit_info` setting. Also used by compare_commit_view.
+    Toggle global `graph_show_more_commit_info` setting.
     """
 
     def run(self):
@@ -430,37 +718,22 @@ class GsLogGraphToggleMoreInfoCommand(WindowCommand, GitCommand):
             self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
 
-class GraphActionMixin(GsLogActionCommand):
+class GsLogGraphActionCommand(GsLogActionCommand):
     def run(self):
         view = self.window.active_view()
+        if not view:
+            return
 
-        self.selections = view.sel()
-        if not len(self.selections) == 1:
+        sel = view.sel()
+        if len(sel) > 1:
             self.window.status_message("You can only do actions on one commit at a time.")
             return
 
-        lines = util.view.get_lines_from_regions(view, self.selections)
-        line = lines[0]
-
-        commit_hash = extract_commit_hash(line)
+        cursor = sel[0].b
+        line_span = view.line(cursor)
+        line_text = view.substr(line_span)
+        commit_hash = extract_commit_hash(line_text)
         if not commit_hash:
             return
 
-        self._commit_hash = commit_hash
-        self._file_path = self.file_path
-
-        super().run(commit_hash=self._commit_hash, file_path=self._file_path)
-
-
-class GsCompareCommitActionCommand(GraphActionMixin):
-    default_actions = [
-        ["show_commit", "Show commit"],
-        ["checkout_commit", "Checkout commit"],
-        ["cherry_pick", "Cherry-pick commit"],
-        ["compare_against", "Compare commit against ..."],
-        ["copy_sha", "Copy the full SHA"]
-    ]
-
-
-class GsLogGraphActionCommand(GraphActionMixin):
-    ...
+        super().run(commit_hash=commit_hash, file_path=self.file_path)
