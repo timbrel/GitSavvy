@@ -25,7 +25,7 @@ from ...common import util
 MYPY = False
 if MYPY:
     from typing import (
-        Dict, Iterable, Iterator, List, NamedTuple, Optional, Set,
+        Iterable, Iterator, List, NamedTuple, Optional, Set,
         Tuple, TypeVar
     )
     from ..parse_diff import Hunk, HunkLine
@@ -67,7 +67,26 @@ FILE_RE = (
 #           ^^ we want the second (current) line offset of the diff
 LINE_RE = r"^@@ [^+]*\+(\d+)"
 
-diff_views = {}  # type: Dict[str, sublime.View]
+
+def compute_identifier_for_view(view):
+    # type: (sublime.View) -> Optional[Tuple]
+    settings = view.settings()
+    return (
+        settings.get('git_savvy.repo_path'),
+        settings.get('git_savvy.file_path'),
+        settings.get('git_savvy.diff_view.base_commit'),
+        settings.get('git_savvy.diff_view.target_commit')
+    ) if settings.get('git_savvy.diff_view') else None
+
+
+def focus_view(view):
+    window = view.window()
+    if not window:
+        return
+
+    group, _ = window.get_view_index(view)
+    window.focus_group(group)
+    window.focus_view(view)
 
 
 class GsDiffCommand(WindowCommand, GitCommand):
@@ -80,21 +99,34 @@ class GsDiffCommand(WindowCommand, GitCommand):
     disable Ctrl-Enter in the diff view.
     """
 
-    def run(self, in_cached_mode=False, file_path=None, current_file=False, base_commit=None,
-            target_commit=None, disable_stage=False, title=None):
-        repo_path = self.repo_path
+    def run(
+        self,
+        repo_path=None,
+        file_path=None,
+        in_cached_mode=False,
+        current_file=False,
+        base_commit=None,
+        target_commit=None,
+        disable_stage=False,
+        title=None
+    ):
+        if repo_path is None:
+            repo_path = self.repo_path
+        assert repo_path
         if current_file:
             file_path = self.file_path or file_path
 
-        view_key = "{0}{1}+{2}".format(
-            in_cached_mode,
-            "-" if base_commit is None else "--" + base_commit,
-            file_path or repo_path
+        this_id = (
+            repo_path,
+            file_path,
+            base_commit,
+            target_commit
         )
-
-        if view_key in diff_views and diff_views[view_key] in sublime.active_window().views():
-            diff_view = diff_views[view_key]
-            self.window.focus_view(diff_view)
+        for view in self.window.views():
+            if compute_identifier_for_view(view) == this_id:
+                settings = view.settings()
+                focus_view(view)
+                break
 
         else:
             diff_view = util.view.get_scratch_view(self, "diff", read_only=True)
@@ -123,7 +155,6 @@ class GsDiffCommand(WindowCommand, GitCommand):
                 )
             diff_view.set_name(title)
             diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff_view.sublime-syntax")
-            diff_views[view_key] = diff_view
 
             diff_view.run_command("gs_handle_vintageous")
 
