@@ -39,7 +39,7 @@ else:
 
 
 DIFF_TITLE = "DIFF: {}"
-DIFF_CACHED_TITLE = "DIFF (cached): {}"
+DIFF_CACHED_TITLE = "DIFF: {} (staged)"
 
 # Clickable lines:
 # (A)  common/commands/view_manipulation.py  |   1 +
@@ -179,6 +179,8 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
     def run_impl(self, runs_on_ui_thread):
         if self.view.settings().get("git_savvy.disable_diff"):
             return
+        repo_path = self.view.settings().get("git_savvy.repo_path")
+        file_path = self.view.settings().get("git_savvy.file_path")
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
         ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
         show_word_diff = self.view.settings().get("git_savvy.diff_view.show_word_diff")
@@ -191,21 +193,29 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
         word_diff_regex = WORD_DIFF_PATTERNS[show_word_diff]
 
         prelude = "\n"
-        if self.file_path:
-            rel_file_path = os.path.relpath(self.file_path, self.repo_path)
+        title = ["DIFF:"]
+        if file_path:
+            rel_file_path = os.path.relpath(file_path, repo_path)
             prelude += "  FILE: {}\n".format(rel_file_path)
+            title += [os.path.basename(file_path)]
+        elif not disable_stage:
+            title += [os.path.basename(repo_path)]
 
         if disable_stage:
             if in_cached_mode:
                 prelude += "  {}..INDEX\n".format(base_commit or target_commit)
+                title += ["{}..INDEX".format(base_commit or target_commit)]
             else:
                 if base_commit and target_commit:
                     prelude += "  {}..{}\n".format(base_commit, target_commit)
+                    title += ["{}..{}".format(base_commit, target_commit)]
                 else:
                     prelude += "  {}..WORKING DIR\n".format(base_commit or target_commit)
+                    title += ["{}..WORKING DIR".format(base_commit or target_commit)]
         else:
             if in_cached_mode:
                 prelude += "  STAGED CHANGES (Will commit)\n"
+                title += ["(staged)"]
             else:
                 prelude += "  UNSTAGED CHANGES\n"
 
@@ -226,7 +236,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
                 "--cached" if in_cached_mode else None,
                 base_commit,
                 target_commit,
-                "--", self.file_path)
+                "--", file_path)
         except GitSavvyError as err:
             # When the output of the above Git command fails to correctly parse,
             # the expected notification will be displayed to the user.  However,
@@ -253,6 +263,7 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
 
         draw = lambda: _draw(
             self.view,
+            ' '.join(title),
             prelude,
             diff,
             bool(word_diff_regex),
@@ -266,8 +277,9 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
             enqueue_on_ui(draw)
 
 
-def _draw(view, prelude, diff_text, is_word_diff, added_regions, removed_regions, navigate):
-    # type: (sublime.View, str, str, bool, List[sublime.Region], List[sublime.Region], bool) -> None
+def _draw(view, title, prelude, diff_text, is_word_diff, added_regions, removed_regions, navigate):
+    # type: (sublime.View, str, str, str, bool, List[sublime.Region], List[sublime.Region], bool) -> None
+    view.set_name(title)
     text = prelude + diff_text
     view.run_command(
         "gs_replace_view_text", {"text": text, "restore_cursors": True}
