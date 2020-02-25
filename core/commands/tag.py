@@ -100,9 +100,9 @@ class GsTagCreateCommand(TextCommand, GitCommand):
         Create a tag with the specified tag name and message.
         """
         if not message:
-            return
-
-        self.git("tag", self.tag_name, "-F", "-", stdin=message)
+            self.git("tag", self.tag_name)
+        else:
+            self.git("tag", self.tag_name, "-F", "-", stdin=message)
         self.view.window().status_message(TAG_CREATE_MESSAGE.format(self.tag_name))
         util.view.refresh_gitsavvy(self.view)
 
