@@ -61,14 +61,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
 
     def run(self, edit, tag_name=""):
         self.window = self.view.window()
-        self.tag_name = tag_name
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
-        """
-        Prompt the user for a tag name.
-        """
-        show_single_line_input_panel(TAG_CREATE_PROMPT, self.tag_name, self.on_entered_name)
+        show_single_line_input_panel(TAG_CREATE_PROMPT, tag_name, self.on_entered_name)
 
     def on_entered_name(self, tag_name):
         """
