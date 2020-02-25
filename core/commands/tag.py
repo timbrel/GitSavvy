@@ -59,8 +59,9 @@ class GsTagCreateCommand(TextCommand, GitCommand):
     Through a series of panels, allow the user to add a tag and message.
     """
 
-    def run(self, edit, tag_name=""):
+    def run(self, edit, tag_name="", target_commit=None):
         self.window = self.view.window()
+        self.target_commit = target_commit
         show_single_line_input_panel(TAG_CREATE_PROMPT, tag_name, self.on_entered_name)
 
     def on_entered_name(self, tag_name):
@@ -93,9 +94,9 @@ class GsTagCreateCommand(TextCommand, GitCommand):
         Create a tag with the specified tag name and message.
         """
         if not message:
-            self.git("tag", self.tag_name)
+            self.git("tag", self.tag_name, self.target_commit)
         else:
-            self.git("tag", self.tag_name, "-F", "-", stdin=message)
+            self.git("tag", self.tag_name, self.target_commit, "-F", "-", stdin=message)
         self.view.window().status_message(TAG_CREATE_MESSAGE.format(self.tag_name))
         util.view.refresh_gitsavvy(self.view)
 
