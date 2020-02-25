@@ -61,6 +61,8 @@ class GsTagCreateCommand(TextCommand, GitCommand):
 
     def run(self, edit, tag_name="", target_commit=None):
         self.window = self.view.window()
+        if not self.window:
+            return
         self.target_commit = target_commit
         show_single_line_input_panel(TAG_CREATE_PROMPT, tag_name, self.on_entered_name)
 
@@ -97,8 +99,8 @@ class GsTagCreateCommand(TextCommand, GitCommand):
             self.git("tag", self.tag_name, self.target_commit)
         else:
             self.git("tag", self.tag_name, self.target_commit, "-F", "-", stdin=message)
-        self.view.window().status_message(TAG_CREATE_MESSAGE.format(self.tag_name))
-        util.view.refresh_gitsavvy(self.view)
+        self.window.status_message(TAG_CREATE_MESSAGE.format(self.tag_name))
+        util.view.refresh_gitsavvy_interfaces(self.window)
 
 
 class GsSmartTagCommand(PanelActionMixin, TextCommand, GitCommand):
