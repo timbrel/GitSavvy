@@ -931,6 +931,14 @@ class GsLogGraphActionCommand(WindowCommand, GitCommand):
                 )
             ]
 
+        actions += [
+            ("Create tag", partial(self.create_tag, commit_hash))
+        ]
+        actions += [
+            ("Delete '{}'".format(tag_name), partial(self.delete_tag, tag_name))
+            for tag_name in info.get("tags", [])
+        ]
+
         if "HEAD" not in info:
             actions += [
                 ("Cherry-pick commit", partial(self.cherry_pick, commit_hash)),
@@ -969,6 +977,13 @@ class GsLogGraphActionCommand(WindowCommand, GitCommand):
 
     def show_commit(self, commit_hash):
         self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
+
+    def create_tag(self, commit_hash):
+        self.window.run_command("gs_tag_create", {"target_commit": commit_hash})
+
+    def delete_tag(self, tag_name):
+        self.git("tag", "-d", tag_name)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def cherry_pick(self, commit_hash):
         self.git("cherry-pick", commit_hash)
