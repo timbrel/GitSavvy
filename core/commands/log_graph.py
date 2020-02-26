@@ -873,6 +873,21 @@ def describe_graph_line(line, remotes):
     return rv
 
 
+def describe_head(view, remotes):
+    try:
+        region = view.find_by_selector(
+            'meta.graph.graph-line.head.git-savvy '
+            'constant.numeric.graph.commit-hash.git-savvy'
+        )[0]
+    except IndexError:
+        return None
+
+    cursor = region.b
+    line_span = view.line(cursor)
+    line_text = view.substr(line_span)
+    return describe_graph_line(line_text, remotes)
+
+
 class GsLogGraphActionCommand(WindowCommand, GitCommand):
     selected_index = 0
 
@@ -939,6 +954,24 @@ class GsLogGraphActionCommand(WindowCommand, GitCommand):
             for tag_name in info.get("tags", [])
         ]
 
+        good_reset_target = (
+            info["branches"][0]
+            if info.get("branches")
+            else good_commit_name
+        )
+        head_info = describe_head(view, remotes)
+        good_head_name = (
+            "'{}'".format(head_info["HEAD"])
+            if head_info and head_info["HEAD"] != head_info["commit"]
+            else "HEAD"
+        )
+        actions += [
+            (
+                "Reset {} to '{}'".format(good_head_name, good_reset_target),
+                partial(self.reset_to, good_reset_target)
+            )
+        ]
+
         if "HEAD" not in info:
             actions += [
                 ("Cherry-pick commit", partial(self.cherry_pick, commit_hash)),
@@ -984,6 +1017,9 @@ class GsLogGraphActionCommand(WindowCommand, GitCommand):
     def delete_tag(self, tag_name):
         self.git("tag", "-d", tag_name)
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+    def reset_to(self, commitish):
+        self.window.run_command("gs_reset", {"commit_hash": commitish})
 
     def cherry_pick(self, commit_hash):
         self.git("cherry-pick", commit_hash)

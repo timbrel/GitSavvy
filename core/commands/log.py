@@ -23,8 +23,11 @@ class LogMixin(object):
 
     selected_index = 0
 
-    def run(self, *args, file_path=None, **kwargs):
-        sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, **kwargs), 0)
+    def run(self, *args, commit_hash=None, file_path=None, **kwargs):
+        if commit_hash:
+            self.do_action(commit_hash, file_path=file_path, **kwargs)
+        else:
+            sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, **kwargs))
 
     def run_async(self, file_path=None, **kwargs):
         follow = self.savvy_settings.get("log_follow_rename") if file_path else False
