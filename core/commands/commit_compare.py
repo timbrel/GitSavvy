@@ -26,7 +26,10 @@ class GsCompareCommitCommand(WindowCommand, GitCommand):
             self.window.status_message("No common base for {} and {}".format(base_commit, target_commit))
             return
 
-        branches = [base_commit, target_commit] + ['{}^!'.format(base) for base in merge_bases]
+        branches = (
+            [base_commit, target_commit]
+            + ['{}^!'.format(base) for base in map(self.get_short_hash, merge_bases)]
+        )
         self.window.run_command("gs_graph", {
             'all': False,
             'file_path': file_path,
