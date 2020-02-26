@@ -1146,12 +1146,16 @@ class GsLogGraphActionCommand(WindowCommand, GitCommand):
         self.window.run_command("gs_reset", {"commit_hash": commitish})
 
     def cherry_pick(self, *commit_hash):
-        self.git("cherry-pick", *commit_hash)
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        try:
+            self.git("cherry-pick", *commit_hash)
+        finally:
+            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def revert_commit(self, *commit_hash):
-        self.git("revert", *commit_hash)
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        try:
+            self.git("revert", *commit_hash)
+        finally:
+            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def compare_against(self, base_commit, target_commit=None, file_path=None):
         self.window.run_command("gs_compare_against", {
