@@ -590,56 +590,70 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             #       do NOT show it.
             follow = self.view.settings().get('git_savvy.log_graph_view.follow')
 
-            @ensure_not_aborted
-            @text_command
-            def draw_(view, token_queue, prelude_height, did_navigate):
-                block_time_passed = block_time_passed_factory(1000 if not did_navigate else 13)
-                while True:
-                    # If only the head commits changed, and the cursor (and with it `follow`)
-                    # is a few lines below, the `if_before=region` will probably never catch.
-                    # We would block here 'til TheEnd without a timeout.
-                    try:
-                        token = token_queue.get(
-                            block=True if not did_navigate else False,
-                            timeout=0.05 if not did_navigate else None
-                        )
-                    except Empty:
-                        enqueue_on_worker(draw_, view, token_queue, prelude_height, did_navigate)
-                        return
-                    if token is TheEnd:
-                        break
-
-                    region = apply_token(view, token, prelude_height)
-
-                    just_navigated = False
-                    if not did_navigate:
-                        if follow:
-                            did_navigate = navigate_to_symbol(view, follow, if_before=region)
-                        elif navigate_after_draw:  # on init
-                            view.run_command("gs_log_graph_navigate")
-                            did_navigate = True
-
-                        if did_navigate:
-                            mark_perf('==> FIRST PAINT')
-                            just_navigated = True
-
-                    if just_navigated or block_time_passed():
-                        enqueue_on_worker(draw_, view, token_queue, prelude_height, did_navigate)
-                        return
-
-                if follow and not did_navigate:
-                    # If we still did not navigate the symbol is either
-                    # gone, or happens to be after the fold of fresh
-                    # content.
-                    navigate_to_symbol(view, follow)
-
-                mark_finished(view, should_abort)
-                mark_perf('==> LAST PAINT')
-
             current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
             replace_region(self.view, prelude_text, current_prelude_region)
             next_prelude_len = len(prelude_text)
-            draw_(self.view, token_queue, next_prelude_len, False)
+            drain_and_draw_queue(self.view, token_queue, next_prelude_len, False, follow)
+
+        @ensure_not_aborted
+        @text_command
+        def drain_and_draw_queue(view, token_queue, prelude_height, did_navigate, follow):
+            block_time_passed = block_time_passed_factory(1000 if not did_navigate else 13)
+            while True:
+                # If only the head commits changed, and the cursor (and with it `follow`)
+                # is a few lines below, the `if_before=region` will probably never catch.
+                # We would block here 'til TheEnd without a timeout.
+                try:
+                    token = token_queue.get(
+                        block=True if not did_navigate else False,
+                        timeout=0.05 if not did_navigate else None
+                    )
+                except Empty:
+                    enqueue_on_worker(
+                        drain_and_draw_queue,
+                        view,
+                        token_queue,
+                        prelude_height,
+                        did_navigate,
+                        follow
+                    )
+                    return
+                if token is TheEnd:
+                    break
+
+                region = apply_token(view, token, prelude_height)
+
+                just_navigated = False
+                if not did_navigate:
+                    if follow:
+                        did_navigate = navigate_to_symbol(view, follow, if_before=region)
+                    elif navigate_after_draw:  # on init
+                        view.run_command("gs_log_graph_navigate")
+                        did_navigate = True
+
+                    if did_navigate:
+                        mark_perf('==> FIRST PAINT')
+                        just_navigated = True
+
+                if just_navigated or block_time_passed():
+                    enqueue_on_worker(
+                        drain_and_draw_queue,
+                        view,
+                        token_queue,
+                        prelude_height,
+                        did_navigate,
+                        follow
+                    )
+                    return
+
+            if follow and not did_navigate:
+                # If we still did not navigate the symbol is either
+                # gone, or happens to be after the fold of fresh
+                # content.
+                navigate_to_symbol(view, follow)
+
+            mark_finished(view, should_abort)
+            mark_perf('==> LAST PAINT')
 
         run_on_new_thread(reader)
 
