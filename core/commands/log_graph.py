@@ -701,9 +701,16 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 if e.stderr and DATE_FORMAT in e.stderr:
                     DATE_FORMAT = FALLBACK_DATE_FORMAT
                     DATE_FORMAT_STATE = 'final'
-
-                enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
-                return iter('')
+                    enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
+                    return iter('')
+                else:
+                    raise GitSavvyError(
+                        e.message,
+                        cmd=e.cmd,
+                        stdout=e.stdout,
+                        stderr=e.stderr,
+                        show_panel=True,
+                    )
             else:
                 DATE_FORMAT_STATE = 'final'
 
