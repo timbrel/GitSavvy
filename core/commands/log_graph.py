@@ -419,15 +419,15 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             replace_region(self.view, prelude_text, sublime.Region(0, 1))
 
         next_graph = self.read_graph()
-        current_graph = (
-            self.view.substr(self.view.find_by_selector('meta.content.git_savvy.graph')[0])
-            if previous_run_unfinished
-            else self.view.settings().get('git_savvy.log_graph_view._raw_graph', '')
-        )
-        self.view.settings().set('git_savvy.log_graph_view._raw_graph', next_graph)
+        try:
+            current_graph = self.view.substr(
+                self.view.find_by_selector('meta.content.git_savvy.graph')[0]
+            )
+        except IndexError:
+            current_graph = ''
 
         current_graph_splitted = current_graph.splitlines(keepends=True)
-        next_graph_splitted = next_graph.splitlines(keepends=True)
+        next_graph_splitted = list(map(self.format_line, next_graph.splitlines(keepends=True)))
         CHUNK_SIZE = max(100, math.ceil(400 - 1 / 30 * len(next_graph_splitted)))
         print('--> CHUNK_SIZE', CHUNK_SIZE)
         with utils.print_runtime("real diff"):
@@ -447,7 +447,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             nonlocal current_graph_splitted
             managers = [stable_viewport, restore_cursors]
             start, end, text = token
-            text = self.format_line(''.join(text))
+            text = ''.join(text)
             computed_start = (
                 sum(len(line) for line in current_graph_splitted[:start])
                 + next_prelude_len
