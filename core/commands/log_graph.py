@@ -394,8 +394,8 @@ runners_lock = threading.Lock()
 REFRESH_RUNNERS = {}  # type: Runners
 
 
-def register_running(view, store=REFRESH_RUNNERS, _lock=runners_lock):
-    # type: (sublime.View, Runners, threading.Lock) -> Tuple[ShouldAbort, bool]
+def make_aborter(view, store=REFRESH_RUNNERS, _lock=runners_lock):
+    # type: (sublime.View, Runners, threading.Lock) -> ShouldAbort
     bid = view.buffer_id()
 
     def should_abort():
@@ -409,18 +409,8 @@ def register_running(view, store=REFRESH_RUNNERS, _lock=runners_lock):
         return False
 
     with _lock:
-        another_process_is_running = bid in store
         store[bid] = should_abort
-    return should_abort, another_process_is_running
-
-
-def mark_finished(view, should_abort, store=REFRESH_RUNNERS, _lock=runners_lock):
-    # type: (sublime.View, ShouldAbort, Runners, threading.Lock) -> None
-    bid = view.buffer_id()
-    with _lock:
-        token = store.pop(bid)
-        if token != should_abort:
-            store[bid] = should_abort
+    return should_abort
 
 
 TheEnd = object()
@@ -498,8 +488,8 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         # loading and hence not ready for refresh calls.
         if self.view.is_loading():
             return
-        should_abort, previous_run_unfinished = register_running(self.view)
-        enqueue_on_worker(self.run_impl, previous_run_unfinished, should_abort, navigate_after_draw)
+        should_abort = make_aborter(self.view)
+        enqueue_on_worker(self.run_impl, should_abort, navigate_after_draw)
 
     def format_line(self, line):
         return re.sub(
@@ -509,7 +499,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             flags=re.MULTILINE
         )
 
-    def run_impl(self, previous_run_unfinished, should_abort, navigate_after_draw=False):
+    def run_impl(self, should_abort, navigate_after_draw=False):
         prelude_text = prelude(self.view)
         initial_draw = self.view.size() == 0
         if initial_draw:
@@ -658,7 +648,6 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 # content.
                 navigate_to_symbol(view, follow)
 
-            mark_finished(view, should_abort)
             mark_perf('==> LAST PAINT')
 
         run_on_new_thread(reader)
