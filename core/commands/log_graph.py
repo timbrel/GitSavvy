@@ -652,6 +652,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         proc = self.git(*args, just_the_proc=True, **kwargs)
         if got_proc:
             got_proc(proc)
+        received_some_stdout = False
         with proc:
             while True:
                 # Block size 2**14 taken from Sublime's `exec.py`. This
@@ -665,13 +666,15 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 lines = proc.stdout.readlines(2**14)
                 if not lines:
                     break
+                elif not received_some_stdout:
+                    received_some_stdout = True
                 for line in lines:
                     yield decode(line)
 
             stderr = ''.join(map(decode, proc.stderr.readlines()))
 
         if throw_on_stderr and stderr:
-            stdout = "<SNIP>"
+            stdout = "<STDOUT SNIPPED>\n" if received_some_stdout else ""
             raise GitSavvyError(
                 "$ {}\n\n{}".format(
                     " ".join(["git"] + list(filter(None, args))),
