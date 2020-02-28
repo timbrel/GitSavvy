@@ -548,10 +548,11 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             put_on_queue(token_queue, tokens)
 
         def apply_token(view, token, next_prelude_len):
+            # type: (sublime.View, Replace, int) -> sublime.Region
             nonlocal current_graph_splitted
             managers = [stable_viewport, restore_cursors]
-            start, end, text = token
-            text = ''.join(text)
+            start, end, text_ = token
+            text = ''.join(text_)
             computed_start = (
                 sum(len(line) for line in current_graph_splitted[:start])
                 + next_prelude_len
@@ -564,7 +565,8 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
             current_graph_splitted = apply_diff(current_graph_splitted, [token])
             replace_region(view, text, region, managers)
-            return region
+            occupied_space = sublime.Region(computed_start, computed_start + len(text))
+            return occupied_space
 
         def draw():
             # TODO: Preserve column if possible instead of going to the beginning
