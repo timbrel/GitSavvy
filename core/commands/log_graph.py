@@ -213,6 +213,13 @@ def replace_region(view, edit, text, region=None, wrappers=[]):
         # care of it out of box.
         region = sublime.Region(0, max(1, view.size()))
 
+    wrappers = wrappers[:] + [stable_viewport]
+    if any(
+        region.contains(s) or region.intersects(s)
+        for s in view.sel()
+    ):
+        wrappers += [restore_cursors]
+
     with ExitStack() as stack:
         for wrapper in wrappers:
             stack.enter_context(wrapper(view))
@@ -563,7 +570,6 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         def apply_token(view, token, next_prelude_len):
             # type: (sublime.View, Replace, int) -> sublime.Region
             nonlocal current_graph_splitted
-            managers = [stable_viewport, restore_cursors]
             start, end, text_ = token
             text = ''.join(text_)
             computed_start = (
@@ -577,7 +583,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             region = sublime.Region(computed_start, computed_end)
 
             current_graph_splitted = apply_diff(current_graph_splitted, [token])
-            replace_region(view, text, region, managers)
+            replace_region(view, text, region)
             occupied_space = sublime.Region(computed_start, computed_start + len(text))
             return occupied_space
 
