@@ -557,26 +557,6 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             enqueue_on_ui(draw)
             put_on_queue(token_queue, tokens)
 
-        def apply_token(view, token, next_prelude_len):
-            # type: (sublime.View, Replace, int) -> sublime.Region
-            nonlocal current_graph_splitted
-            start, end, text_ = token
-            text = ''.join(text_)
-            computed_start = (
-                sum(len(line) for line in current_graph_splitted[:start])
-                + next_prelude_len
-            )
-            computed_end = (
-                sum(len(line) for line in current_graph_splitted[start:end])
-                + computed_start
-            )
-            region = sublime.Region(computed_start, computed_end)
-
-            current_graph_splitted = apply_diff(current_graph_splitted, [token])
-            replace_region(view, text, region)
-            occupied_space = sublime.Region(computed_start, computed_start + len(text))
-            return occupied_space
-
         @ensure_not_aborted
         def draw():
             # TODO: Preserve column if possible instead of going to the beginning
@@ -649,6 +629,26 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 navigate_to_symbol(view, follow)
 
             mark_perf('==> LAST PAINT')
+
+        def apply_token(view, token, next_prelude_len):
+            # type: (sublime.View, Replace, int) -> sublime.Region
+            nonlocal current_graph_splitted
+            start, end, text_ = token
+            text = ''.join(text_)
+            computed_start = (
+                sum(len(line) for line in current_graph_splitted[:start])
+                + next_prelude_len
+            )
+            computed_end = (
+                sum(len(line) for line in current_graph_splitted[start:end])
+                + computed_start
+            )
+            region = sublime.Region(computed_start, computed_end)
+
+            current_graph_splitted = apply_diff(current_graph_splitted, [token])
+            replace_region(view, text, region)
+            occupied_space = sublime.Region(computed_start, computed_start + len(text))
+            return occupied_space
 
         run_on_new_thread(reader)
 
