@@ -626,11 +626,16 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                     )
                     return
 
-            if follow and not did_navigate:
+            if not did_navigate:
                 # If we still did not navigate the symbol is either
                 # gone, or happens to be after the fold of fresh
                 # content.
-                navigate_to_symbol(view, follow)
+                if follow:
+                    did_navigate = navigate_to_symbol(view, follow)
+                # The symbol is gone, ensure the user can see the
+                # cursor.
+                if not did_navigate:
+                    view.show(view.sel(), True)
 
             mark_perf('==> LAST PAINT')
 
