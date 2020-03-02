@@ -100,3 +100,19 @@ class gs_show_commit_open_file_at_hunk(diff.GsDiffOpenFileAtHunkCommand):
                 "filepath": full_path,
                 "lineno": row
             })
+
+
+class gs_show_commit_show_hunk_on_head(diff.GsDiffOpenFileAtHunkCommand):
+    def load_file_at_line(self, filename, row, col):
+        # type: (str, int, int) -> None
+        commit_hash = self.view.settings().get("git_savvy.show_commit_view.commit")
+        full_path = os.path.join(self.repo_path, filename)
+        window = self.view.window()
+        if not window:
+            return
+
+        row = self.find_matching_lineno(commit_hash, "HEAD", row, full_path)
+        window.open_file(
+            "{file}:{row}:{col}".format(file=full_path, row=row, col=col),
+            sublime.ENCODED_POSITION
+        )
