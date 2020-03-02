@@ -146,6 +146,7 @@ class HistoryMixin():
         return sha != ""
 
     def get_short_hash(self, commit_hash):
+        # type: (str) -> str
         return self.git("rev-parse", "--short", commit_hash).strip()
 
     def filename_at_commit(self, filename, commit_hash, follow=False):

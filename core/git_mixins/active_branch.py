@@ -130,11 +130,11 @@ class ActiveBranchMixin():
         merge_head = self.merge_head() if self.in_merge() else ""
         return output if not merge_head else output + " (merging {})".format(merge_head)
 
-    def get_commit_hash_for_head(self):
+    def get_commit_hash_for_head(self, short=False):
         """
         Get the SHA1 commit hash for the commit at HEAD.
         """
-        return self.git("rev-parse", "HEAD").strip()
+        return self.git("rev-parse", "--short" if short else None, "HEAD").strip()
 
     def get_latest_commit_msg_for_head(self):
         """

@@ -1,5 +1,6 @@
 import os
 
+import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
 from . import diff
@@ -68,7 +69,7 @@ class GsShowCommitToggleSetting(TextCommand):
         self.view.run_command("gs_show_commit_refresh")
 
 
-class GsShowCommitOpenFileAtHunkCommand(diff.GsDiffOpenFileAtHunkCommand):
+class gs_show_commit_open_file_at_hunk(diff.GsDiffOpenFileAtHunkCommand):
 
     """
     For each cursor in the view, identify the hunk in which the cursor lies,
@@ -87,8 +88,15 @@ class GsShowCommitOpenFileAtHunkCommand(diff.GsDiffOpenFileAtHunkCommand):
         if not window:
             return
 
-        window.run_command("gs_show_file_at_commit", {
-            "commit_hash": commit_hash,
-            "filepath": full_path,
-            "lineno": row
-        })
+        short_hash = self.get_short_hash(commit_hash)
+        if self.get_commit_hash_for_head(short=True) == short_hash:
+            window.open_file(
+                "{file}:{row}:{col}".format(file=full_path, row=row, col=col),
+                sublime.ENCODED_POSITION
+            )
+        else:
+            window.run_command("gs_show_file_at_commit", {
+                "commit_hash": short_hash,
+                "filepath": full_path,
+                "lineno": row
+            })
