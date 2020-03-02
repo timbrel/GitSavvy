@@ -551,8 +551,6 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        # Filter out any cursors that are larger than a single point.
-        cursor_pts = tuple(cursor.a for cursor in self.view.sel() if cursor.a == cursor.b)
 
         def first_per_file(items):
             # type: (Iterator[JumpTo]) -> Iterator[JumpTo]
@@ -563,15 +561,21 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
                     yield item
 
         word_diff_mode = bool(self.view.settings().get('git_savvy.diff_view.show_word_diff'))
-        diff = SplittedDiff.from_view(self.view)
         algo = (
             self.jump_position_to_file_for_word_diff_mode
             if word_diff_mode
             else self.jump_position_to_file
         )
-        jump_positions = filter_(algo(diff, pt) for pt in cursor_pts)
-        for jp in first_per_file(jump_positions):
-            self.load_file_at_line(*jp)
+        diff = SplittedDiff.from_view(self.view)
+        jump_positions = list(first_per_file(filter_(
+            algo(diff, s.begin())
+            for s in self.view.sel()
+        )))
+        if not jump_positions:
+            util.view.flash(self.view, "Not within a hunk")
+        else:
+            for jp in jump_positions:
+                self.load_file_at_line(*jp)
 
     def load_file_at_line(self, commit_hash, filename, row, col):
         # type: (Optional[str], str, int, int) -> None
