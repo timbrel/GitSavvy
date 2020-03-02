@@ -7,7 +7,7 @@ if MYPY:
     T = TypeVar('T')
 
 
-filter_ = partial(filter, None)  # type: Callable[[Iterator[Optional[T]]], Iterator[T]]
+filter_ = partial(filter, None)  # type: Callable[[Iterable[Optional[T]]], Iterator[T]]
 flatten = chain.from_iterable
 
 
