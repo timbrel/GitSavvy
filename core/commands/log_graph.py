@@ -454,7 +454,7 @@ def log_git_command(fn):
 if MYPY:
     class SimpleQueue(Generic[T]):
         def put(self, item: T) -> None: ...  # noqa: E704
-        def get(self, block=True) -> T: ...  # noqa: E704
+        def get(self, block=True, timeout=float) -> T: ...  # noqa: E704
 else:
     class SimpleQueue:
         def __init__(self):
@@ -574,6 +574,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         @ensure_not_aborted
         @text_command
         def drain_and_draw_queue(view, token_queue, prelude_height, did_navigate, follow):
+            # type: (sublime.View, SimpleQueue[Replace], int, bool, Optional[str]) -> None
             block_time_passed = block_time_passed_factory(1000 if not did_navigate else 13)
             while True:
                 # If only the head commits changed, and the cursor (and with it `follow`)
