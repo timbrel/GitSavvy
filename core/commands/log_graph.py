@@ -756,7 +756,7 @@ def follow_dots(dot):
     """Follow dot to dot omitting the path chars in between."""
     while True:
         try:
-            dot = list(colorizer.follow_path(dot))[-1]
+            dot = colorizer.follow_path(dot)[-1]
         except IndexError:
             break
         else:
