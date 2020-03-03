@@ -476,6 +476,14 @@ def try_kill_proc(proc):
         utils.kill_proc(proc)
 
 
+def selection_is_before_region(view, region):
+    # type: (sublime.View, sublime.Region) -> bool
+    try:
+        return view.sel()[-1].end() <= region.end()
+    except IndexError:
+        return True
+
+
 class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
     """
@@ -607,6 +615,8 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                     elif navigate_after_draw:  # on init
                         view.run_command("gs_log_graph_navigate")
                         did_navigate = True
+                    else:
+                        did_navigate = selection_is_before_region(view, region)
 
                     if did_navigate:
                         just_navigated = True
