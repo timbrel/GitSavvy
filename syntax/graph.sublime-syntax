@@ -119,14 +119,14 @@ contexts:
       scope: punctuation.separator.key-value.git-savvy
 
 
-    - match: '(?=\s+\|)'
+    - match: '(?=\s+(\|) ([^|]+), ([^|]+)$\n?)'
       set: date-author-info
 
     - match: $
       pop: true
 
   date-author-info:
-    - match: '(\|) (.*), (.*)$\n?'
+    - match: '\s+(\|) ([^|]+), ([^|]+)$\n?'
       scope: meta.git-savvy.grph.info
       captures:
         1: punctuation.separator.git-savvy
