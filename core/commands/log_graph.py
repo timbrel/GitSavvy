@@ -575,6 +575,8 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         def drain_and_draw_queue(view, token_queue, offset, did_navigate, follow):
             # type: (sublime.View, SimpleQueue[Replace], int, bool, Optional[str]) -> None
             block_time_passed = block_time_passed_factory(1000 if not did_navigate else 13)
+            just_navigated = False
+            viewport_readied = False
             while True:
                 # If only the head commits changed, and the cursor (and with it `follow`)
                 # is a few lines below, the `if_before=region` will probably never catch.
@@ -599,7 +601,6 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
                 region = apply_token(view, token, offset)
 
-                just_navigated = False
                 if not did_navigate:
                     if follow:
                         did_navigate = navigate_to_symbol(view, follow, if_before=region)
@@ -608,10 +609,13 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                         did_navigate = True
 
                     if did_navigate:
-                        mark_perf('==> FIRST PAINT')
                         just_navigated = True
+                        mark_perf('==> FIRST PAINT')
 
-                if just_navigated or block_time_passed():
+                if just_navigated:
+                    viewport_readied = region.end() >= view.visible_region().end()
+
+                if viewport_readied or block_time_passed():
                     enqueue_on_worker(
                         drain_and_draw_queue,
                         view,
