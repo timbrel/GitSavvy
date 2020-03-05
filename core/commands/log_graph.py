@@ -568,12 +568,11 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
             current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
             replace_region(self.view, prelude_text, current_prelude_region)
-            next_prelude_len = len(prelude_text)
-            drain_and_draw_queue(self.view, token_queue, next_prelude_len, False, follow)
+            drain_and_draw_queue(self.view, token_queue, len(prelude_text), False, follow)
 
         @ensure_not_aborted
         @text_command
-        def drain_and_draw_queue(view, token_queue, prelude_height, did_navigate, follow):
+        def drain_and_draw_queue(view, token_queue, offset, did_navigate, follow):
             # type: (sublime.View, SimpleQueue[Replace], int, bool, Optional[str]) -> None
             block_time_passed = block_time_passed_factory(1000 if not did_navigate else 13)
             while True:
@@ -590,7 +589,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                         drain_and_draw_queue,
                         view,
                         token_queue,
-                        prelude_height,
+                        offset,
                         did_navigate,
                         follow
                     )
@@ -598,7 +597,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 if token is TheEnd:
                     break
 
-                region = apply_token(view, token, prelude_height)
+                region = apply_token(view, token, offset)
 
                 just_navigated = False
                 if not did_navigate:
@@ -617,7 +616,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                         drain_and_draw_queue,
                         view,
                         token_queue,
-                        prelude_height,
+                        offset,
                         did_navigate,
                         follow
                     )
@@ -631,14 +630,14 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
             mark_perf('==> LAST PAINT')
 
-        def apply_token(view, token, next_prelude_len):
+        def apply_token(view, token, offset):
             # type: (sublime.View, Replace, int) -> sublime.Region
             nonlocal current_graph_splitted
             start, end, text_ = token
             text = ''.join(text_)
             computed_start = (
                 sum(len(line) for line in current_graph_splitted[:start])
-                + next_prelude_len
+                + offset
             )
             computed_end = (
                 sum(len(line) for line in current_graph_splitted[start:end])
