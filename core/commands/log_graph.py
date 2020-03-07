@@ -15,7 +15,6 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer, show_commit_info
-from .intra_line_colorizer import block_time_passed_factory
 from .log import GsLogCommand
 from .navigate import GsNavigate
 from .. import utils
@@ -37,10 +36,11 @@ from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 MYPY = False
 if MYPY:
     from typing import (
-        Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple,
+        Callable, Dict, Generic, Iterable, Iterator, List, Literal, Optional, Set, Sequence, Tuple,
         TypeVar, Union
     )
     T = TypeVar('T')
+    PainterState = Literal['initial', 'navigated', 'viewport_readied']
 
 
 COMMIT_NODE_CHAR = "●"
@@ -580,7 +580,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
             current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
             replace_region(self.view, prelude_text, current_prelude_region)
-            drain_and_draw_queue(self.view, False, follow, col_range)
+            drain_and_draw_queue(self.view, 'initial', follow, col_range)
 
         # Sublime will not run any event handlers until the (outermost) TextCommand exits.
         # T.i. the (inner) commands `replace_region` and `set_and_show_cursor` will run
@@ -588,25 +588,23 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         # `on_selection_modified` runs *once* even if we painted multiple times.
         @ensure_not_aborted
         @text_command
-        def drain_and_draw_queue(view, did_navigate, follow, col_range):
-            # type: (sublime.View, bool, Optional[str], Optional[Tuple[int, int]]) -> None
-            block_time_passed = block_time_passed_factory(1000 if not did_navigate else 13)
-            just_navigated = False
-            viewport_readied = False
+        def drain_and_draw_queue(view, painter_state, follow, col_range):
+            # type: (sublime.View, PainterState, Optional[str], Optional[Tuple[int, int]]) -> None
+            block_time = utils.timer()
             while True:
                 # If only the head commits changed, and the cursor (and with it `follow`)
                 # is a few lines below, the `if_before=region` will probably never catch.
                 # We would block here 'til TheEnd without a timeout.
                 try:
                     token = token_queue.get(
-                        block=True if not did_navigate else False,
-                        timeout=0.05 if not did_navigate else None
+                        block=True if painter_state != 'viewport_readied' else False,
+                        timeout=0.05 if painter_state != 'viewport_readied' else None
                     )
                 except Empty:
                     enqueue_on_worker(
                         drain_and_draw_queue,
                         view,
-                        did_navigate,
+                        painter_state,
                         follow,
                         col_range
                     )
@@ -616,41 +614,36 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
                 region = apply_token(view, token, graph_offset)
 
-                if not did_navigate:
+                if painter_state == 'initial':
                     if follow:
-                        did_navigate = navigate_to_symbol(view, follow, region, col_range)
+                        if navigate_to_symbol(view, follow, region, col_range):
+                            painter_state = 'navigated'
                     elif navigate_after_draw:  # on init
                         view.run_command("gs_log_graph_navigate")
-                        did_navigate = True
-                    else:
-                        did_navigate = selection_is_before_region(view, region)
+                        painter_state = 'navigated'
+                    elif selection_is_before_region(view, region):
+                        painter_state = 'navigated'
 
-                    if did_navigate:
-                        just_navigated = True
+                if painter_state == 'navigated':
+                    if region.end() >= view.visible_region().end():
                         mark_perf('==> FIRST PAINT')
+                        painter_state = 'viewport_readied'
 
-                if just_navigated:
-                    viewport_readied = region.end() >= view.visible_region().end()
-
-                if viewport_readied or block_time_passed():
+                if block_time.passed(13 if painter_state == 'viewport_readied' else 1000):
                     enqueue_on_worker(
                         drain_and_draw_queue,
                         view,
-                        did_navigate,
+                        painter_state,
                         follow,
                         col_range
                     )
                     return
 
-            if not did_navigate:
+            if painter_state == 'initial':
                 # If we still did not navigate the symbol is either
                 # gone, or happens to be after the fold of fresh
                 # content.
-                if follow:
-                    did_navigate = navigate_to_symbol(view, follow, col_range=col_range)
-                # The symbol is gone, ensure the user can see the
-                # cursor.
-                if not did_navigate:
+                if not follow or not navigate_to_symbol(view, follow, col_range=col_range):
                     view.show(view.sel(), True)
 
             mark_perf('==> LAST PAINT')

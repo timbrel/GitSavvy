@@ -38,6 +38,17 @@ def measure_runtime():
     return print_mark
 
 
+class timer:
+    def __init__(self):
+        self._start_time = time.perf_counter()
+
+    def passed(self, ms):
+        # type: (int) -> bool
+        cur_time = time.perf_counter()
+        duration = (cur_time - self._start_time) * 1000
+        return duration > ms
+
+
 @contextmanager
 def eat_but_log_errors(exception=Exception):
     # type: (Type[Exception]) -> Iterator[None]
