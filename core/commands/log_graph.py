@@ -525,6 +525,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
         token_queue = SimpleQueue()  # type: SimpleQueue[Replace]
         current_proc = None
+        graph_offset = len(prelude_text)
 
         def remember_proc(proc):
             # type: (subprocess.Popen) -> None
@@ -579,7 +580,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
             current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
             replace_region(self.view, prelude_text, current_prelude_region)
-            drain_and_draw_queue(self.view, token_queue, len(prelude_text), False, follow, col_range)
+            drain_and_draw_queue(self.view, False, follow, col_range)
 
         # Sublime will not run any event handlers until the (outermost) TextCommand exits.
         # T.i. the (inner) commands `replace_region` and `set_and_show_cursor` will run
@@ -587,8 +588,8 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         # `on_selection_modified` runs *once* even if we painted multiple times.
         @ensure_not_aborted
         @text_command
-        def drain_and_draw_queue(view, token_queue, offset, did_navigate, follow, col_range):
-            # type: (sublime.View, SimpleQueue[Replace], int, bool, Optional[str], Optional[Tuple[int, int]]) -> None
+        def drain_and_draw_queue(view, did_navigate, follow, col_range):
+            # type: (sublime.View, bool, Optional[str], Optional[Tuple[int, int]]) -> None
             block_time_passed = block_time_passed_factory(1000 if not did_navigate else 13)
             just_navigated = False
             viewport_readied = False
@@ -605,8 +606,6 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                     enqueue_on_worker(
                         drain_and_draw_queue,
                         view,
-                        token_queue,
-                        offset,
                         did_navigate,
                         follow,
                         col_range
@@ -615,7 +614,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 if token is TheEnd:
                     break
 
-                region = apply_token(view, token, offset)
+                region = apply_token(view, token, graph_offset)
 
                 if not did_navigate:
                     if follow:
@@ -637,8 +636,6 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                     enqueue_on_worker(
                         drain_and_draw_queue,
                         view,
-                        token_queue,
-                        offset,
                         did_navigate,
                         follow,
                         col_range
