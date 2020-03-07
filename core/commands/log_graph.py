@@ -581,6 +581,10 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             replace_region(self.view, prelude_text, current_prelude_region)
             drain_and_draw_queue(self.view, token_queue, len(prelude_text), False, follow, col_range)
 
+        # Sublime will not run any event handlers until the (outermost) TextCommand exits.
+        # T.i. the (inner) commands `replace_region` and `set_and_show_cursor` will run
+        # through uninterrupted until `drain_and_draw_queue` yields. Then e.g.
+        # `on_selection_modified` runs *once* even if we painted multiple times.
         @ensure_not_aborted
         @text_command
         def drain_and_draw_queue(view, token_queue, offset, did_navigate, follow, col_range):
