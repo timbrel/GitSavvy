@@ -568,19 +568,17 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
         @ensure_not_aborted
         def draw():
-            # TODO: Only jump iff cursor is in viewport. If the user scrolled
-            #       away (without changing the cursor) just set the cursor but
-            #       do NOT show it.
             sel = get_simple_selection(self.view)
             if sel is None:
                 follow, col_range = None, None
             else:
                 follow = self.view.settings().get('git_savvy.log_graph_view.follow')
                 col_range = get_column_range(self.view, sel)
+            visible_selection = is_sel_in_viewport(self.view)
 
             current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
             replace_region(self.view, prelude_text, current_prelude_region)
-            drain_and_draw_queue(self.view, 'initial', follow, col_range)
+            drain_and_draw_queue(self.view, 'initial', follow, col_range, visible_selection)
 
         # Sublime will not run any event handlers until the (outermost) TextCommand exits.
         # T.i. the (inner) commands `replace_region` and `set_and_show_cursor` will run
@@ -588,8 +586,15 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         # `on_selection_modified` runs *once* even if we painted multiple times.
         @ensure_not_aborted
         @text_command
-        def drain_and_draw_queue(view, painter_state, follow, col_range):
-            # type: (sublime.View, PainterState, Optional[str], Optional[Tuple[int, int]]) -> None
+        def drain_and_draw_queue(view, painter_state, follow, col_range, visible_selection):
+            # type: (sublime.View, PainterState, Optional[str], Optional[Tuple[int, int]], bool) -> None
+            try_navigate_to_symbol = partial(
+                navigate_to_symbol,
+                view,
+                follow,
+                col_range=col_range,
+                method=set_and_show_cursor if visible_selection else just_set_cursor
+            )
             block_time = utils.timer()
             while True:
                 # If only the head commits changed, and the cursor (and with it `follow`)
@@ -606,7 +611,8 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                         view,
                         painter_state,
                         follow,
-                        col_range
+                        col_range,
+                        visible_selection,
                     )
                     return
                 if token is TheEnd:
@@ -616,7 +622,7 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
                 if painter_state == 'initial':
                     if follow:
-                        if navigate_to_symbol(view, follow, region, col_range):
+                        if try_navigate_to_symbol(if_before=region):
                             painter_state = 'navigated'
                     elif navigate_after_draw:  # on init
                         view.run_command("gs_log_graph_navigate")
@@ -635,7 +641,8 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                         view,
                         painter_state,
                         follow,
-                        col_range
+                        col_range,
+                        visible_selection,
                     )
                     return
 
@@ -643,8 +650,9 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 # If we still did not navigate the symbol is either
                 # gone, or happens to be after the fold of fresh
                 # content.
-                if not follow or not navigate_to_symbol(view, follow, col_range=col_range):
-                    view.show(view.sel(), True)
+                if not follow or not try_navigate_to_symbol():
+                    if visible_selection:
+                        view.show(view.sel(), True)
 
             mark_perf('==> LAST PAINT')
 
@@ -1159,27 +1167,48 @@ def _extract_symbol_to_follow(vid, _line_text):
     return extract_commit_hash(line_text)
 
 
-def navigate_to_symbol(view, symbol, if_before=None, col_range=None):
-    # type: (sublime.View, str, Optional[sublime.Region], Optional[Tuple[int, int]]) -> bool
+def navigate_to_symbol(
+    view,            # type: sublime.View
+    symbol,          # type: str
+    if_before=None,  # type: sublime.Region
+    col_range=None,  # type: Tuple[int, int]
+    method=None,     # type: Callable[[sublime.View, Union[sublime.Region, sublime.Point]], None]
+):
+    # type: (...) -> bool
+    jump_position = jump_position_for_symbol(view, symbol, if_before, col_range)
+    if jump_position is None:
+        return False
+
+    if method is None:
+        method = set_and_show_cursor
+    method(view, jump_position)
+    return True
+
+
+def jump_position_for_symbol(
+    view,            # type: sublime.View
+    symbol,          # type: str
+    if_before=None,  # type: Optional[sublime.Region]
+    col_range=None   # type: Optional[Tuple[int, int]]
+):
+    # type: (...) -> Optional[Union[sublime.Region, sublime.Point]]
     region = _find_symbol(view, symbol)
-    if region and (
-        region.end() <= if_before.end()
-        if if_before is not None  # explicit bc empty regions are falsy!
-        else True
-    ):
-        if col_range is None:
-            set_and_show_cursor(view, region.begin())
-        else:
-            line_start = line_start_of_region(view, region)
-            wanted_region = Region(*col_range) + line_start
-            # Normalize single cursors *before* the commit hash
-            # (`region.end()`) to `region.begin()`.
-            if wanted_region.empty() and wanted_region.a < region.end():
-                set_and_show_cursor(view, region.begin())
-            else:
-                set_and_show_cursor(view, wanted_region)
-        return True
-    return False
+    if region is None:  # explicit `None` checks bc empty regions are falsy!
+        return None
+    if if_before is not None and region.end() > if_before.end():
+        return None
+
+    if col_range is None:
+        return region.begin()
+
+    line_start = line_start_of_region(view, region)
+    wanted_region = Region(*col_range) + line_start
+    # Normalize single cursors *before* the commit hash
+    # (t.i. `region.end()`) to `region.begin()`.
+    if wanted_region.empty() and wanted_region.a < region.end():
+        return region.begin()
+    else:
+        return wanted_region
 
 
 def _find_symbol(view, symbol):
@@ -1223,10 +1252,16 @@ FIND_COMMIT_HASH = "^[{graph_chars}]*[{node_chars}][{graph_chars}]* ".format(
 @text_command
 def set_and_show_cursor(view, point_or_region):
     # type: (sublime.View, Union[sublime.Region, sublime.Point]) -> None
+    just_set_cursor(view, point_or_region)
+    view.show(view.sel(), True)
+
+
+@text_command
+def just_set_cursor(view, point_or_region):
+    # type: (sublime.View, Union[sublime.Region, sublime.Point]) -> None
     sel = view.sel()
     sel.clear()
     sel.add(point_or_region)
-    view.show(sel, True)
 
 
 def get_simple_selection(view):
@@ -1242,6 +1277,12 @@ def get_column_range(view, region):
     # type: (sublime.View, sublime.Region) -> Tuple[int, int]
     line_start = line_start_of_region(view, region)
     return (region.begin() - line_start, region.end() - line_start)
+
+
+def is_sel_in_viewport(view):
+    # type: (sublime.View) -> bool
+    viewport = view.visible_region()
+    return all(viewport.intersects(s) for s in view.sel())
 
 
 def line_start_of_region(view, region):
