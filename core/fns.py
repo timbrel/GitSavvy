@@ -3,7 +3,7 @@ from itertools import accumulate as accumulate_, chain, tee
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Iterable, Iterator, Optional, Tuple, TypeVar
+    from typing import Callable, Iterable, Iterator, Optional, Set, Tuple, TypeVar
     T = TypeVar('T')
 
 
@@ -25,3 +25,13 @@ def pairwise(iterable):
     a, b = tee(iterable)
     next(b, None)
     return zip(a, b)
+
+
+def unique(iterable):
+    # type: (Iterable[T]) -> Iterator[T]
+    seen = set()  # type: Set[T]
+    for item in iterable:
+        if item in seen:
+            continue
+        seen.add(item)
+        yield item

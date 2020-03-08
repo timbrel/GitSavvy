@@ -213,6 +213,9 @@ class GsDiffRefreshCommand(TextCommand, GitCommand):
                 if base_commit and target_commit:
                     prelude += "  {}..{}\n".format(base_commit, target_commit)
                     title += ["{}..{}".format(base_commit, target_commit)]
+                elif base_commit and "..." in base_commit:
+                    prelude += "  {}\n".format(base_commit)
+                    title += [base_commit]
                 else:
                     prelude += "  {}..WORKING DIR\n".format(base_commit or target_commit)
                     title += ["{}..WORKING DIR".format(base_commit or target_commit)]
@@ -375,6 +378,12 @@ class GsDiffToggleCachedMode(TextCommand):
         if base_commit and target_commit:
             settings.set("git_savvy.diff_view.base_commit", target_commit)
             settings.set("git_savvy.diff_view.target_commit", base_commit)
+            self.view.run_command("gs_diff_refresh")
+            return
+
+        if base_commit and "..." in base_commit:
+            a, b = base_commit.split("...")
+            settings.set("git_savvy.diff_view.base_commit", "{}...{}".format(b, a))
             self.view.run_command("gs_diff_refresh")
             return
 
