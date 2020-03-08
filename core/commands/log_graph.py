@@ -2,6 +2,7 @@ from functools import lru_cache, partial
 from itertools import islice
 import os
 import re
+import shlex
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -14,6 +15,7 @@ from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region
 from ..settings import GitSavvySettings
 from ..runtime import enqueue_on_ui, enqueue_on_worker, run_on_new_thread, text_command
+from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
 from ...common import util
 from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
@@ -268,6 +270,10 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         if branches:
             args += branches
 
+        filters = settings.get("git_savvy.log_graph_view.filters")
+        if filters:
+            args += shlex.split(filters)
+
         if self.file_path:
             file_path = self.get_rel_path(self.file_path)
             args += ["--", file_path]
@@ -289,11 +295,13 @@ def prelude(view):
 
     all_ = settings.get("git_savvy.log_graph_view.all_branches") or False
     branches = settings.get("git_savvy.log_graph_view.branches") or []
+    filters = settings.get("git_savvy.log_graph_view.filters") or ""
     prelude += (
         "  "
         + "  ".join(filter(None, [
             '[a]ll: true' if all_ else '[a]ll: false',
-            " ".join(branches)
+            " ".join(branches),
+            filters
         ]))
         + "\n"
     )
@@ -418,6 +426,44 @@ class GsLogGraphNavigateToHeadCommand(TextCommand):
             self.view.run_command("gs_log_graph_refresh")
         else:
             set_and_show_cursor(self.view, head_commit.begin())
+
+
+class gs_log_graph_edit_branches(TextCommand):
+    def run(self, edit):
+        settings = self.view.settings()
+        branches = settings.get("git_savvy.log_graph_view.branches", [])  # type: List[str]
+
+        def on_done(text):
+            # type: (str) -> None
+            new_branches = list(filter_(text.split(' ')))
+            settings.set("git_savvy.log_graph_view.branches", new_branches)
+            self.view.run_command("gs_log_graph_refresh")
+
+        show_single_line_input_panel(
+            "branches", ' '.join(branches), on_done, select_text=True
+        )
+
+
+class gs_log_graph_edit_filters(TextCommand):
+    def run(self, edit):
+        settings = self.view.settings()
+        filters = settings.get("git_savvy.log_graph_view.filters", "")
+
+        def on_done(text):
+            # type: (str) -> None
+            settings.set("git_savvy.log_graph_view.filters", text)
+            self.view.run_command("gs_log_graph_refresh")
+
+        show_single_line_input_panel(
+            "additional args", filters, on_done, select_text=True
+        )
+
+
+class gs_log_graph_reset_filters(TextCommand):
+    def run(self, edit):
+        settings = self.view.settings()
+        settings.set("git_savvy.log_graph_view.filters", "")
+        self.view.run_command("gs_log_graph_refresh")
 
 
 class GsLogGraphToggleAllSetting(TextCommand, GitCommand):
