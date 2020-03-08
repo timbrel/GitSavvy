@@ -210,6 +210,10 @@ class HunkContent(TextRange):
 
 
 class Region(sublime.Region):
+    def __hash__(self):
+        # type: () -> int
+        return hash((self.a, self.b))
+
     def __iter__(self):
         # type: () -> Iterator[int]
         return iter((self.a, self.b))
