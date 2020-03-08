@@ -1139,7 +1139,9 @@ class GsLogGraphActionCommand(WindowCommand, GitCommand):
         ]
 
         good_reset_target = (
-            info["branches"][0]
+            info["local_branches"][0]
+            if info.get("local_branches")
+            else info["branches"][0]
             if info.get("branches")
             else good_commit_name
         )
