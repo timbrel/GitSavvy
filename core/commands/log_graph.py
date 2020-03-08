@@ -1,5 +1,5 @@
 from functools import lru_cache, partial
-from itertools import islice
+from itertools import chain, islice
 import os
 import re
 import shlex
@@ -870,7 +870,7 @@ class GsLogGraphToggleMoreInfoCommand(WindowCommand, GitCommand):
 
 
 if MYPY:
-    from typing import TypedDict
+    from typing import Literal, TypedDict
     LineInfo = TypedDict('LineInfo', {
         'commit': str,
         'HEAD': str,
@@ -878,6 +878,7 @@ if MYPY:
         'local_branches': List[str],
         'tags': List[str],
     }, total=False)
+    ListItems = Literal["branches", "local_branches", "tags"]
 
 
 def describe_graph_line(line, remotes):
@@ -920,6 +921,7 @@ def describe_graph_line(line, remotes):
 
 
 def describe_head(view, remotes):
+    # type: (sublime.View, Iterable[str]) -> Optional[LineInfo]
     try:
         region = view.find_by_selector(
             'meta.graph.graph-line.head.git-savvy '
@@ -1133,18 +1135,22 @@ class GsLogGraphActionCommand(WindowCommand, GitCommand):
             for tag_name in info.get("tags", [])
         ]
 
-        good_reset_target = (
-            info["local_branches"][0]
-            if info.get("local_branches")
-            else info["branches"][0]
-            if info.get("branches")
-            else good_commit_name
-        )
         head_info = describe_head(view, remotes)
+        head_is_on_a_branch = head_info and head_info["HEAD"] != head_info["commit"]
         good_head_name = (
-            "'{}'".format(head_info["HEAD"])
-            if head_info and head_info["HEAD"] != head_info["commit"]
+            "'{}'".format(head_info["HEAD"])  # type: ignore
+            if head_is_on_a_branch
             else "HEAD"
+        )
+
+        def get_list(info, key):
+            # type: (LineInfo, ListItems) -> List[str]
+            return info.get(key, [])  # type: ignore
+
+        get = partial(get_list, info)  # type: Callable[[ListItems], List[str]]
+        good_reset_target = next(
+            chain(get("local_branches"), get("branches")),
+            good_commit_name
         )
         actions += [
             (
@@ -1152,6 +1158,24 @@ class GsLogGraphActionCommand(WindowCommand, GitCommand):
                 partial(self.reset_to, good_reset_target)
             )
         ]
+
+        if head_info and head_info["commit"] != info["commit"]:
+            get = partial(get_list, head_info)  # type: Callable[[ListItems], List[str]]  # type: ignore
+            good_move_target = (
+                head_info["HEAD"]
+                if head_is_on_a_branch
+                else next(
+                    chain(get("local_branches"), get("branches"), get("tags")),
+                    head_info["commit"]
+                )
+            )
+            actions += [
+                (
+                    "Move '{}' to '{}'".format(branch_name, good_move_target),
+                    partial(self.checkout_b, branch_name)
+                )
+                for branch_name in info.get("local_branches", [])
+            ]
 
         if "HEAD" not in info:
             actions += [
@@ -1173,6 +1197,10 @@ class GsLogGraphActionCommand(WindowCommand, GitCommand):
 
     def checkout(self, commit_hash):
         self.git("checkout", commit_hash)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+    def checkout_b(self, branch_name):
+        self.git("checkout", "-B", branch_name)
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def show_commit(self, commit_hash):
