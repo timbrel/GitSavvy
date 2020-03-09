@@ -709,6 +709,14 @@
         ]
     },
     {
+        "keys": ["g"],
+        "command": "gs_show_commit_open_graph_context",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["s"],
         "command": "gs_show_commit_toggle_setting",
         "args": { "setting": "ignore_whitespace" },

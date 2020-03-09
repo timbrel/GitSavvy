@@ -124,3 +124,19 @@ class gs_show_commit_show_hunk_on_head(diff.GsDiffOpenFileAtHunkCommand):
             "{file}:{row}:{col}".format(file=full_path, row=row, col=col),
             sublime.ENCODED_POSITION
         )
+
+
+class gs_show_commit_open_graph_context(TextCommand, GitCommand):
+    def run(self, edit):
+        # type: (...) -> None
+        window = self.view.window()
+        if not window:
+            return
+
+        settings = self.view.settings()
+        commit_hash = settings.get("git_savvy.show_commit_view.commit")
+
+        window.run_command("gs_graph", {
+            "all": True,
+            "follow": self.get_short_hash(commit_hash)
+        })
