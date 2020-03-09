@@ -997,25 +997,20 @@ class GsLogGraphActionCommand(WindowCommand, GitCommand):
 
         sel = view.sel()
         if all(s.empty() for s in sel) and len(sel) == 2:
-            first, second = infos[0], infos[1]
-            base_commit = (
-                first["local_branches"][0]
-                if first.get("local_branches")
-                else first["branches"][0]
-                if first.get("branches") and len(first["branches"]) == 1
-                else first["tags"][0]
-                if first.get("tags") and not first.get("branches")
-                else first["commit"]
-            )
-            target_commit = (
-                second["local_branches"][0]
-                if second.get("local_branches")
-                else second["branches"][0]
-                if second.get("branches")
-                else second["tags"][0]
-                if second.get("tags") and not second.get("branches")
-                else second["commit"]
-            )
+            def display_name(info):
+                # type: (LineInfo) -> str
+                if info.get("local_branches"):
+                    return info["local_branches"][0]
+                branches = info.get("branches", [])
+                if len(branches) == 1:
+                    return branches[0]
+                elif len(branches) == 0 and info.get("tags"):
+                    return info["tags"][0]
+                else:
+                    return info["commit"]
+
+            base_commit = display_name(infos[0])
+            target_commit = display_name(infos[1])
 
             actions += [
                 (
