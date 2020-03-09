@@ -6,14 +6,14 @@ hidden: true
 scope: git-savvy.commit
 contexts:
   main:
-    - match: ^(commit)(.+)
+    - match: ^(commit)(.+)$\n?
       comment: commit header
       scope: meta.commit-info.header.key-value
       captures:
         1: string.other.commit-info.header.key.git-savvy
         2: meta.commit-info.header.value.git-savvy meta.commit-info.header.sha.git-savvy
 
-    - match: ^(Author|Date|Merge|AuthorDate|Commit|CommitDate)(:)(.+)
+    - match: ^(Author|Date|Merge|AuthorDate|Commit|CommitDate)(:)(.+)$\n?
       comment: author and date info
       scope: meta.commit-info.header.key-value
       captures:
