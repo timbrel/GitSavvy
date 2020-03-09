@@ -33,7 +33,6 @@ class gs_show_commit(WindowCommand, GitCommand):
         view.set_name(SHOW_COMMIT_TITLE.format(nice_hash))
         view.set_scratch(True)
         view.run_command("gs_show_commit_refresh")
-        view.run_command("gs_diff_navigate")
         view.run_command("gs_handle_vintageous")
 
 
