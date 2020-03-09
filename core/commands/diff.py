@@ -772,8 +772,7 @@ class GsDiffNavigateCommand(GsNavigate):
     offset = 0
 
     def get_available_regions(self):
-        return [self.view.line(region) for region in
-                self.view.find_by_selector("meta.diff.range.unified")]
+        return self.view.find_by_selector("meta.diff.range.unified, meta.commit-info.header")
 
 
 class GsDiffUndo(TextCommand, GitCommand):
