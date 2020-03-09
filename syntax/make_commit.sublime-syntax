@@ -5,7 +5,7 @@ name: GitSavvy Make Commit
 hidden: true
 scope: git-savvy.make-commit
 contexts:
-  main:
+  references:
     - match: \@\w*
       comment: github username
       scope: constant.other.git-savvy.make-commit.github-username
@@ -14,6 +14,8 @@ contexts:
       comment: issue
       scope: constant.other.git-savvy.make-commit.issue-ref
 
+  main:
+    - include: references
     - match: ^(#{1,2}).*\n$
       comment: commit header
       scope: comment.git-savvy.make-commit
