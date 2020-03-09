@@ -15,7 +15,7 @@ if MYPY:
 SHOW_COMMIT_TITLE = "COMMIT: {}"
 
 
-class GsShowCommitCommand(WindowCommand, GitCommand):
+class gs_show_commit(WindowCommand, GitCommand):
 
     def run(self, commit_hash):
         # need to get repo_path before the new view is created.
@@ -37,7 +37,7 @@ class GsShowCommitCommand(WindowCommand, GitCommand):
         view.run_command("gs_handle_vintageous")
 
 
-class GsShowCommitRefreshCommand(TextCommand, GitCommand):
+class gs_show_commit_refresh(TextCommand, GitCommand):
 
     def run(self, edit):
         settings = self.view.settings()
@@ -59,7 +59,7 @@ class GsShowCommitRefreshCommand(TextCommand, GitCommand):
         intra_line_colorizer.annotate_intra_line_differences(self.view)
 
 
-class GsShowCommitToggleSetting(TextCommand):
+class gs_show_commit_toggle_setting(TextCommand):
 
     """
     Toggle view settings: `ignore_whitespace` or `show_word_diff`.
