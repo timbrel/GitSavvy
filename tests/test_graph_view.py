@@ -11,7 +11,7 @@ from GitSavvy.core.commands.log_graph import (
     extract_commit_hash,
     navigate_to_symbol
 )
-from GitSavvy.core.commands.show_commit_info import GsShowCommitInfoCommand
+from GitSavvy.core.commands.show_commit_info import gs_show_commit_info
 from GitSavvy.core.settings import GitSavvySettings
 
 
@@ -162,7 +162,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
     def register_commit_info(self, info):
         for sha1, info in info.items():
-            when(GsShowCommitInfoCommand).show_commit(sha1, ...).thenReturn(info)
+            when(gs_show_commit_info).show_commit(sha1, ...).thenReturn(info)
 
     def create_graph_view_async(self, repo_path, log, wait_for):
         when(GsLogGraphRefreshCommand).git('log', ...).thenReturn(log)

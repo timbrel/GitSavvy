@@ -43,7 +43,7 @@ def ensure_panel_is_visible(window, name=PANEL_NAME):
         window.run_command("show_panel", {"panel": "output.{}".format(name)})
 
 
-class GsShowCommitInfoCommand(WindowCommand, GitCommand):
+class gs_show_commit_info(WindowCommand, GitCommand):
     def run(self, commit_hash, file_path=None):
         # We're running either blocking or lazy, and currently choose
         # automatically.  Generally, we run blocking to reduce multiple
