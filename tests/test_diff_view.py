@@ -219,7 +219,8 @@ diff --git a/foxx b/boxx
 
         cmd.run({'unused_edit'})
 
-        verify(cmd).load_file_at_line(*EXPECTED)
+        # In all cases here "commit" is `None`
+        verify(cmd).load_file_at_line(None, *EXPECTED)
 
 
 class TestDiffViewHunking(DeferrableTestCase):

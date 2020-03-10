@@ -528,6 +528,20 @@ class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
         self.view.run_command("gs_diff_refresh")
 
 
+MYPY = False
+if MYPY:
+    from typing import NamedTuple
+    JumpTo = NamedTuple('JumpTo', [
+        ('commit_hash', Optional[str]),
+        ('filename', str),
+        ('row', int),
+        ('col', int)
+    ])
+else:
+    from collections import namedtuple
+    JumpTo = namedtuple('JumpTo', 'commit_hash filename row col')
+
+
 class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
 
     """
@@ -541,12 +555,11 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
         cursor_pts = tuple(cursor.a for cursor in self.view.sel() if cursor.a == cursor.b)
 
         def first_per_file(items):
-            # type: (Iterator[Tuple[str, int, int]]) -> Iterator[Tuple[str, int, int]]
+            # type: (Iterator[JumpTo]) -> Iterator[JumpTo]
             seen = set()  # type: Set[str]
             for item in items:
-                filename, _, _ = item
-                if filename not in seen:
-                    seen.add(filename)
+                if item.filename not in seen:
+                    seen.add(item.filename)
                     yield item
 
         word_diff_mode = bool(self.view.settings().get('git_savvy.diff_view.show_word_diff'))
@@ -560,13 +573,13 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
         for jp in first_per_file(jump_positions):
             self.load_file_at_line(*jp)
 
-    def load_file_at_line(self, filename, row, col):
-        # type: (str, int, int) -> None
+    def load_file_at_line(self, commit_hash, filename, row, col):
+        # type: (Optional[str], str, int, int) -> None
         """
         Show file at target commit if `git_savvy.diff_view.target_commit` is non-empty.
         Otherwise, open the file directly.
         """
-        target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
+        target_commit = commit_hash or self.view.settings().get("git_savvy.diff_view.target_commit")
         full_path = os.path.join(self.repo_path, filename)
         window = self.view.window()
         if not window:
@@ -585,7 +598,7 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
             )
 
     def jump_position_to_file(self, diff, pt):
-        # type: (SplittedDiff, int) -> Optional[Tuple[str, int, int]]
+        # type: (SplittedDiff, int) -> Optional[JumpTo]
         head_and_hunk = diff.head_and_hunk_for_pt(pt)
         if not head_and_hunk:
             return None
@@ -603,10 +616,12 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
         if not filename:
             return None
 
-        return filename, row, col
+        commit_header = diff.commit_for_hunk(hunk)
+        commit_hash = commit_header.commit_hash() if commit_header else None
+        return JumpTo(commit_hash, filename, row, col)
 
     def jump_position_to_file_for_word_diff_mode(self, diff, pt):
-        # type: (SplittedDiff, int) -> Optional[Tuple[str, int, int]]
+        # type: (SplittedDiff, int) -> Optional[JumpTo]
         head_and_hunk = diff.head_and_hunk_for_pt(pt)
         if not head_and_hunk:
             return None
@@ -659,7 +674,9 @@ class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
 
         row = row - removed_lines_before_pt
         col = col + 1 - removed_chars_before_pt
-        return filename, row, col
+        commit_header = diff.commit_for_hunk(hunk)
+        commit_hash = commit_header.commit_hash() if commit_header else None
+        return JumpTo(commit_hash, filename, row, col)
 
 
 def relative_rowcol_in_hunk(view, hunk, pt):

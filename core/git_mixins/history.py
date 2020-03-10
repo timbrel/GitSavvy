@@ -2,6 +2,10 @@ from collections import namedtuple
 from ...common import util
 
 
+MYPY = False
+if MYPY:
+    from typing import Optional
+
 LogEntry = namedtuple("LogEntry", (
     "short_hash",
     "long_hash",
@@ -177,6 +181,7 @@ class HistoryMixin():
         return self.git("show", commit_hash + ':' + filename)
 
     def find_matching_lineno(self, base_commit, target_commit, line, file_path=None):
+        # type: (Optional[str], str, int, str) -> int
         """
         Return the matching line of the target_commit given the line number of the base_commit.
         """

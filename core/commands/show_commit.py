@@ -8,6 +8,10 @@ from . import intra_line_colorizer
 from ..git_command import GitCommand
 
 
+MYPY = False
+if MYPY:
+    from typing import Optional
+
 SHOW_COMMIT_TITLE = "COMMIT: {}"
 
 
@@ -76,18 +80,20 @@ class gs_show_commit_open_file_at_hunk(diff.GsDiffOpenFileAtHunkCommand):
     and open the file at that hunk in a separate view.
     """
 
-    def load_file_at_line(self, filename, row, col):
-        # type: (str, int, int) -> None
+    def load_file_at_line(self, commit_hash, filename, row, col):
+        # type: (Optional[str], str, int, int) -> None
         """
         Show file at target commit if `git_savvy.diff_view.target_commit` is non-empty.
         Otherwise, open the file directly.
         """
-        commit_hash = self.view.settings().get("git_savvy.show_commit_view.commit")
-        full_path = os.path.join(self.repo_path, filename)
+        if not commit_hash:
+            print("Could not parse commit for its commit hash")
+            return
         window = self.view.window()
         if not window:
             return
 
+        full_path = os.path.join(self.repo_path, filename)
         short_hash = self.get_short_hash(commit_hash)
         if self.get_commit_hash_for_head(short=True) == short_hash:
             window.open_file(
@@ -103,14 +109,16 @@ class gs_show_commit_open_file_at_hunk(diff.GsDiffOpenFileAtHunkCommand):
 
 
 class gs_show_commit_show_hunk_on_head(diff.GsDiffOpenFileAtHunkCommand):
-    def load_file_at_line(self, filename, row, col):
-        # type: (str, int, int) -> None
-        commit_hash = self.view.settings().get("git_savvy.show_commit_view.commit")
-        full_path = os.path.join(self.repo_path, filename)
+    def load_file_at_line(self, commit_hash, filename, row, col):
+        # type: (Optional[str], str, int, int) -> None
+        if not commit_hash:
+            print("Could not parse commit for its commit hash")
+            return
         window = self.view.window()
         if not window:
             return
 
+        full_path = os.path.join(self.repo_path, filename)
         row = self.find_matching_lineno(commit_hash, "HEAD", row, full_path)
         window.open_file(
             "{file}:{row}:{col}".format(file=full_path, row=row, col=col),
