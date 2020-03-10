@@ -65,6 +65,7 @@ class gs_show_commit_info(WindowCommand, GitCommand):
 
     def run_impl(self, commit_hash, file_path=None):
         output_view = ensure_panel(self.window)
+        output_view.settings().set("git_savvy.repo_path", self.repo_path)
 
         if commit_hash:
             show_full = self.savvy_settings.get("show_full_commit_info")

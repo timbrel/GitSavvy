@@ -166,6 +166,11 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
     def create_graph_view_async(self, repo_path, log, wait_for):
         when(GsLogGraphRefreshCommand).git('log', ...).thenReturn(log)
+        # `GitCommand.get_repo_path` "validates" a given repo using
+        # `os.path.exists`.
+        exists = os.path.exists
+        when(os.path).exists(...).thenAnswer(exists)
+        when(os.path).exists(repo_path).thenReturn(True)
         self.window.run_command('gs_graph', {'repo_path': repo_path})
         yield lambda: self.window.active_view().settings().get('git_savvy.log_graph_view') is True
         log_view = self.window.active_view()
@@ -178,6 +183,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         LOG = fixture('log_graph_1.txt')
 
         self.set_global_setting('graph_show_more_commit_info', show_commit_info_setting)
+        self.set_global_setting('git_status_in_status_bar', False)
         self.register_commit_info({
             'fec0aca': COMMIT_1,
             'f461ea1': COMMIT_2
