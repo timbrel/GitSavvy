@@ -179,25 +179,29 @@ class HistoryMixin():
         filename = filename.replace('\\', '/')
         return self.git("show", commit_hash + ':' + filename)
 
-    def find_matching_lineno(self, base_commit, target_commit, line, file_path=None):
-        # type: (Optional[str], str, int, str) -> int
+    def find_matching_lineno(self, base_commit="HEAD", target_commit="HEAD", line=1, file_path=None):
+        # type: (Optional[str], Optional[str], int, str) -> int
         """
         Return the matching line of the target_commit given the line number of the base_commit.
         """
         if not file_path:
             file_path = self.file_path
 
-        if base_commit:
-            base_object = self.get_commit_file_object(base_commit, file_path)
-        else:
-            base_file_contents = util.file.get_file_contents_binary(self.repo_path, file_path)
-            base_object = self.get_object_from_string(base_file_contents)
+        cmd = [
+            "diff",
+            "--no-color",
+            "-U0",
+            base_commit or "-R",
+            target_commit,
+        ]
+        if file_path:
+            cmd += ["--", file_path]
 
-        target_object = self.get_commit_file_object(target_commit, file_path)
+        diff = self.git(*cmd)
+        return self._find_matching_lineno(diff, line)
 
-        stdout = self.git(
-            "diff", "--no-color", "-U0", base_object, target_object)
-        diff = util.parse_diff(stdout)
+    def _find_matching_lineno(self, rawdiff, line):
+        diff = util.parse_diff(rawdiff)
 
         if not diff:
             return line
