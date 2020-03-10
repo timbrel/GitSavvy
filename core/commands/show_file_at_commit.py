@@ -9,7 +9,7 @@ from .log import LogMixin
 SHOW_COMMIT_TITLE = "FILE: {} --{}"
 
 
-class GsShowFileAtCommitCommand(WindowCommand, GitCommand):
+class gs_show_file_at_commit(WindowCommand, GitCommand):
 
     def run(self, commit_hash, filepath, lineno=1, lang=None):
         sublime.set_timeout_async(
@@ -46,7 +46,7 @@ class GsShowFileAtCommitCommand(WindowCommand, GitCommand):
         util.view.move_cursor(view, lineno, 0)
 
 
-class GsShowCurrentFileAtCommitCommand(GsShowFileAtCommitCommand):
+class gs_show_current_file_at_commit(gs_show_file_at_commit):
 
     @util.view.single_cursor_coords
     def run(self, coords, commit_hash, lineno=None, lang=None):
@@ -61,7 +61,7 @@ class GsShowCurrentFileAtCommitCommand(GsShowFileAtCommitCommand):
             lang=lang)
 
 
-class GsShowCurrentFileCommand(LogMixin, WindowCommand, GitCommand):
+class gs_show_current_file(LogMixin, WindowCommand, GitCommand):
     """
     Show a panel of commits of current file on current branch and
     then open the file at the selected commit.
