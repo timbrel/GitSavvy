@@ -2,7 +2,7 @@ import sublime
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Dict, Iterator, Tuple, TypeVar
+    from typing import Callable, Dict, Final, Iterator, List, Tuple, TypeVar
 
     T = TypeVar('T')
 
@@ -41,8 +41,9 @@ class Char:
     """
     def __init__(self, view, pt):
         # type: (View, Point) -> None
-        self.view = view
-        self.pt = pt
+        self.view = view  # type: Final[View]
+        self.pt = pt  # type: Final[Point]
+        self._hash_val = hash((view.id(), view.change_count(), pt))  # type: Final[int]
 
     def go(self, rel_rowcol):
         # type: (RowCol) -> Char
@@ -72,14 +73,14 @@ class Char:
 
     def __hash__(self):
         # type: () -> int
-        return hash((self.view.id(), self.view.change_count(), self.pt))
+        return self._hash_val
 
     def __eq__(self, rhs):
         # type: (object) -> bool
-        if isinstance(rhs, str):
-            return self.char() == rhs
         if isinstance(rhs, self.__class__):
             return hash(self) == hash(rhs)
+        if isinstance(rhs, str):
+            return self.char() == rhs
         return NotImplemented
 
     @property
@@ -155,12 +156,17 @@ def handles(ch):
 
 
 def follow_path(dot):
+    # type: (Char) -> List[Char]
+    return list(_follow_path(dot))
+
+
+def _follow_path(dot):
     # type: (Char) -> Iterator[Char]
     for c in follow_char(dot):
         # print('{} -> {}'.format(dot, c))
         yield c
         if c != COMMIT_NODE_CHAR:
-            yield from follow_path(c)
+            yield from _follow_path(c)
 
 
 def follow_char(char):

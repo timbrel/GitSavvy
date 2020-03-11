@@ -1,4 +1,5 @@
 from functools import lru_cache, partial
+from itertools import islice
 import os
 import re
 
@@ -8,7 +9,9 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import log_graph_colorizer as colorizer, show_commit_info
 from .log import GsLogActionCommand, GsLogCommand
 from .navigate import GsNavigate
+from ..fns import filter_
 from ..git_command import GitCommand, GitSavvyError
+from ..parse_diff import Region
 from ..settings import GitSavvySettings
 from ..runtime import enqueue_on_ui, enqueue_on_worker, run_on_new_thread, text_command
 from ..ui_mixins.quick_panel import show_branch_panel
@@ -18,7 +21,7 @@ from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterator, Optional, Set, Tuple
+    from typing import Dict, Iterable, Iterator, Optional, Set, Tuple
 
 
 COMMIT_NODE_CHAR = "●"
@@ -29,6 +32,7 @@ COMMIT_LINE = re.compile(
         graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS))
 DOT_SCOPE = 'git_savvy.graph.dot'
 PATH_SCOPE = 'git_savvy.graph.path_char'
+MATCHING_COMMIT_SCOPE = 'git_savvy.graph.matching_commit'
 
 
 def compute_identifier_for_view(view):
@@ -159,6 +163,12 @@ def augment_color_scheme(view):
         PATH_SCOPE,
         background=colors['path_background'],
         foreground=colors['path_foreground'],
+    )
+    themeGenerator.add_scoped_style(
+        "GitSavvy Highlighted Matching Commit",
+        MATCHING_COMMIT_SCOPE,
+        background=colors['matching_commit_background'],
+        foreground=colors['matching_commit_foreground'],
     )
     themeGenerator.apply_new_theme("log_graph_view", view)
 
@@ -474,6 +484,7 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
         # faster. But we still defer that task, so others can run code
         # that actually *needs* to be a sync side-effect to this event.
         enqueue_on_ui(colorize_dots, view)
+        enqueue_on_ui(colorize_fixups, view)
 
         enqueue_on_ui(set_symbol_to_follow, view)
 
@@ -658,8 +669,98 @@ def _colorize_dots(vid, dots):
     # type: (sublime.ViewId, Tuple[colorizer.Char]) -> None
     view = sublime.View(vid)
     view.add_regions('gs_log_graph_dot', [d.region() for d in dots], scope=DOT_SCOPE)
-    paths = [c.region() for d in dots for c in colorizer.follow_path(d)]
+    paths = [
+        c.region()
+        for path in map(colorizer.follow_path, dots)
+        if len(path) > 1
+        for c in path
+    ]
     view.add_regions('gs_log_graph_follow_path', paths, scope=PATH_SCOPE)
+
+
+def colorize_fixups(view):
+    # type: (sublime.View) -> None
+    dots = tuple(find_dots(view))
+    _colorize_fixups(view.id(), dots)
+
+
+@lru_cache(maxsize=1)
+def _colorize_fixups(vid, dots):
+    # type: (sublime.ViewId, Tuple[colorizer.Char]) -> None
+    view = sublime.View(vid)
+    message_regions = find_by_selector(view, 'meta.graph.message.git-savvy')
+    extract_message = partial(
+        message_from_fixup_squash_line, view.id(), message_regions=message_regions
+    )
+    matching_dots = list(filter_(
+        find_matching_commit(view.id(), dot, message, message_regions)
+        for dot, message in zip(dots, map(extract_message, dots))
+        if message
+    ))
+    view.add_regions(
+        'gs_log_graph_follow_fixups',
+        [dot.region() for dot in matching_dots],
+        scope=MATCHING_COMMIT_SCOPE
+    )
+
+
+def find_by_selector(view, selector):
+    # type: (sublime.View, str) -> Tuple[Region, ...]
+    # Same as `view.find_by_selector` but the result is hashable.
+    return tuple(
+        Region(r.a, r.b)
+        for r in view.find_by_selector(selector)
+    )
+
+
+@lru_cache(maxsize=64)
+def message_from_fixup_squash_line(vid, dot, message_regions):
+    # type: (sublime.ViewId, colorizer.Char, Iterable[Region]) -> Optional[str]
+    view = sublime.View(vid)
+    message = commit_message_from_point(view, dot.pt, message_regions)
+    if not message:
+        return None
+    # Truncated messages end with one or multiple "." dots which we
+    # have to strip.
+    if message.startswith('fixup! '):
+        return message[7:].rstrip('.').strip()
+    if message.startswith('squash! '):
+        return message[8:].rstrip('.').strip()
+    return None
+
+
+def commit_message_from_point(view, pt, message_regions):
+    # type: (sublime.View, int, Iterable[Region]) -> Optional[str]
+    line_span = view.line(pt)
+    for r in message_regions:
+        if line_span.contains(r):
+            return view.substr(r)
+    else:
+        return None
+
+
+@lru_cache(maxsize=64)
+def find_matching_commit(vid, dot, message, message_regions):
+    # type: (sublime.ViewId, colorizer.Char, str, Iterable[Region]) -> Optional[colorizer.Char]
+    view = sublime.View(vid)
+    for dot in islice(follow_dots(dot), 0, 50):
+        this_message = commit_message_from_point(view, dot.pt, message_regions)
+        if this_message and this_message.startswith(message):
+            return dot
+    else:
+        return None
+
+
+def follow_dots(dot):
+    # type: (colorizer.Char) -> Iterator[colorizer.Char]
+    """Follow dot to dot omitting the path chars in between."""
+    while True:
+        try:
+            dot = colorizer.follow_path(dot)[-1]
+        except IndexError:
+            break
+        else:
+            yield dot
 
 
 def draw_info_panel(view):

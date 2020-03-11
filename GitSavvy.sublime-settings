@@ -97,7 +97,9 @@
             "commit_dot_foreground": "#9911",
             "commit_dot_background": "#991",
             "path_foreground": "#991",
-            "path_background": "#99991109"
+            "path_background": "#99991109",
+            "matching_commit_foreground": "#1991",
+            "matching_commit_background": "#199"
         }
     },
 
