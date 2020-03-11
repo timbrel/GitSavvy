@@ -513,8 +513,6 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         if initial_draw:
             replace_region(self.view, prelude_text, sublime.Region(0, 1))
 
-        mark_perf = utils.measure_runtime()
-
         try:
             current_graph = self.view.substr(
                 self.view.find_by_selector('meta.content.git_savvy.graph')[0]
@@ -536,7 +534,6 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             def decorated(*args, **kwargs):
                 if should_abort():
                     try_kill_proc(current_proc)
-                    mark_perf('ABORT')
                 else:
                     return fn(*args, **kwargs)
             return decorated
@@ -632,7 +629,6 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
                 if painter_state == 'navigated':
                     if region.end() >= view.visible_region().end():
-                        mark_perf('==> FIRST PAINT')
                         painter_state = 'viewport_readied'
 
                 if block_time.passed(13 if painter_state == 'viewport_readied' else 1000):
@@ -653,8 +649,6 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
                 if not follow or not try_navigate_to_symbol():
                     if visible_selection:
                         view.show(view.sel(), True)
-
-            mark_perf('==> LAST PAINT')
 
         def apply_token(view, token, offset):
             # type: (sublime.View, Replace, int) -> sublime.Region
