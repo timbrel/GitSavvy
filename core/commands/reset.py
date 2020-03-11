@@ -40,9 +40,9 @@ class ResetMixin(object):
 
     def on_reset_mode_selection(self, index):
         if index == -1:
+            return
             sublime.set_timeout_async(self.run_async, 100)
-        elif 0 <= index < len(GIT_RESET_MODES):
-            self.on_reset(GIT_RESET_MODES[index][0].strip())
+        self.on_reset(GIT_RESET_MODES[index][0].strip())
 
     def on_reset(self, reset_mode):
         # Split the reset mode to support multiple args, e.g. "--mixed -N"

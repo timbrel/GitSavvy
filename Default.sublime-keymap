@@ -1296,6 +1296,30 @@
         ]
     },
     {
+        "keys": ["b"],
+        "command": "gs_log_graph_edit_branches",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["f"],
+        "command": "gs_log_graph_edit_filters",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["F"],
+        "command": "gs_log_graph_reset_filters",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["h"],
         "command": "gs_log_graph_navigate_to_head",
         "context": [

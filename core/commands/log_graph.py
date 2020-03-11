@@ -1,19 +1,21 @@
 from functools import lru_cache, partial
-from itertools import islice
+from itertools import chain, islice
 import os
 import re
+import shlex
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer, show_commit_info
-from .log import GsLogActionCommand, GsLogCommand
+from .log import GsLogCommand
 from .navigate import GsNavigate
-from ..fns import filter_
+from ..fns import filter_, unique
 from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region
 from ..settings import GitSavvySettings
 from ..runtime import enqueue_on_ui, enqueue_on_worker, run_on_new_thread, text_command
+from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
 from ...common import util
 from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
@@ -21,15 +23,19 @@ from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, Iterator, Optional, Set, Tuple
+    from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Sequence, Tuple
 
 
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
 GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
 COMMIT_LINE = re.compile(
-    "^[{graph_chars}]*[{node_chars}][{graph_chars}]* (?P<commit_hash>[a-f0-9]{{5,40}})".format(
-        graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS))
+    r"^[{graph_chars}]*[{node_chars}][{graph_chars}]* "
+    r"(?P<commit_hash>[a-f0-9]{{5,40}}) "
+    r"(?P<decoration>\(.+?\))?"
+    .format(graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS)
+)
+
 DOT_SCOPE = 'git_savvy.graph.dot'
 PATH_SCOPE = 'git_savvy.graph.path_char'
 MATCHING_COMMIT_SCOPE = 'git_savvy.graph.matching_commit'
@@ -264,6 +270,10 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
         if branches:
             args += branches
 
+        filters = settings.get("git_savvy.log_graph_view.filters")
+        if filters:
+            args += shlex.split(filters)
+
         if self.file_path:
             file_path = self.get_rel_path(self.file_path)
             args += ["--", file_path]
@@ -285,11 +295,13 @@ def prelude(view):
 
     all_ = settings.get("git_savvy.log_graph_view.all_branches") or False
     branches = settings.get("git_savvy.log_graph_view.branches") or []
+    filters = settings.get("git_savvy.log_graph_view.filters") or ""
     prelude += (
         "  "
         + "  ".join(filter(None, [
             '[a]ll: true' if all_ else '[a]ll: false',
-            " ".join(branches)
+            " ".join(branches),
+            filters
         ]))
         + "\n"
     )
@@ -414,6 +426,44 @@ class GsLogGraphNavigateToHeadCommand(TextCommand):
             self.view.run_command("gs_log_graph_refresh")
         else:
             set_and_show_cursor(self.view, head_commit.begin())
+
+
+class gs_log_graph_edit_branches(TextCommand):
+    def run(self, edit):
+        settings = self.view.settings()
+        branches = settings.get("git_savvy.log_graph_view.branches", [])  # type: List[str]
+
+        def on_done(text):
+            # type: (str) -> None
+            new_branches = list(filter_(text.split(' ')))
+            settings.set("git_savvy.log_graph_view.branches", new_branches)
+            self.view.run_command("gs_log_graph_refresh")
+
+        show_single_line_input_panel(
+            "branches", ' '.join(branches), on_done, select_text=True
+        )
+
+
+class gs_log_graph_edit_filters(TextCommand):
+    def run(self, edit):
+        settings = self.view.settings()
+        filters = settings.get("git_savvy.log_graph_view.filters", "")
+
+        def on_done(text):
+            # type: (str) -> None
+            settings.set("git_savvy.log_graph_view.filters", text)
+            self.view.run_command("gs_log_graph_refresh")
+
+        show_single_line_input_panel(
+            "additional args", filters, on_done, select_text=True
+        )
+
+
+class gs_log_graph_reset_filters(TextCommand):
+    def run(self, edit):
+        settings = self.view.settings()
+        settings.set("git_savvy.log_graph_view.filters", "")
+        self.view.run_command("gs_log_graph_refresh")
 
 
 class GsLogGraphToggleAllSetting(TextCommand, GitCommand):
@@ -819,22 +869,394 @@ class GsLogGraphToggleMoreInfoCommand(WindowCommand, GitCommand):
             self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
 
-class GsLogGraphActionCommand(GsLogActionCommand):
+if MYPY:
+    from typing import Literal, TypedDict
+    LineInfo = TypedDict('LineInfo', {
+        'commit': str,
+        'HEAD': str,
+        'branches': List[str],
+        'local_branches': List[str],
+        'tags': List[str],
+    }, total=False)
+    ListItems = Literal["branches", "local_branches", "tags"]
+
+
+def describe_graph_line(line, remotes):
+    # type: (str, Iterable[str]) -> Optional[LineInfo]
+    match = COMMIT_LINE.match(line)
+    if match is None:
+        return None
+
+    commit_hash = match.group("commit_hash")
+    decoration = match.group("decoration")
+
+    rv = {"commit": commit_hash}  # type: LineInfo
+    if decoration:
+        decoration = decoration[1:-1]  # strip parentheses
+        names = decoration.split(", ")
+        if names[0].startswith("HEAD"):
+            head, *names = names
+            if head == "HEAD":
+                rv["HEAD"] = commit_hash
+            else:
+                branch = head[len("HEAD -> "):]
+                rv["HEAD"] = branch
+                names = [branch] + names
+        branches, local_branches, tags = [], [], []
+        for name in names:
+            if name.startswith("tag: "):
+                tags.append(name[len("tag: "):])
+            else:
+                branches.append(name)
+                if not any(name.startswith(remote + "/") for remote in remotes):
+                    local_branches.append(name)
+        if branches:
+            rv["branches"] = branches
+        if local_branches:
+            rv["local_branches"] = local_branches
+        if tags:
+            rv["tags"] = tags
+
+    return rv
+
+
+def describe_head(view, remotes):
+    # type: (sublime.View, Iterable[str]) -> Optional[LineInfo]
+    try:
+        region = view.find_by_selector(
+            'meta.graph.graph-line.head.git-savvy '
+            'constant.numeric.graph.commit-hash.git-savvy'
+        )[0]
+    except IndexError:
+        return None
+
+    cursor = region.b
+    line_span = view.line(cursor)
+    line_text = view.substr(line_span)
+    return describe_graph_line(line_text, remotes)
+
+
+def format_revision_list(revisions):
+    # type: (Sequence[str]) -> str
+    return (
+        "{}".format(*revisions)
+        if len(revisions) == 1
+        else "{} and {}".format(*revisions)
+        if len(revisions) == 2
+        else "{}, {}, and {}".format(revisions[0], revisions[1], revisions[-1])
+        if len(revisions) == 3
+        else "{}, {} ... {}".format(revisions[0], revisions[1], revisions[-1])
+    )
+
+
+class GsLogGraphActionCommand(WindowCommand, GitCommand):
+    selected_index = 0
+
     def run(self):
         view = self.window.active_view()
         if not view:
             return
 
+        remotes = set(self.get_remotes().keys())
+        infos = list(filter_(
+            describe_graph_line(line, remotes)
+            for line in unique(
+                view.substr(line)
+                for s in view.sel()
+                for line in view.lines(s)
+            )
+        ))
+        if not infos:
+            return
+
+        actions = (
+            self.actions_for_single_line(view, infos[0], remotes)
+            if len(infos) == 1
+            else self.actions_for_multiple_lines(view, infos, remotes)
+        )
+        if not actions:
+            return
+
+        def on_action_selection(index):
+            if index == -1:
+                return
+
+            self.selected_index = index
+            description, action = actions[index]
+            action()
+
+        self.window.show_quick_panel(
+            [a[0] for a in actions],
+            on_action_selection,
+            flags=sublime.MONOSPACE_FONT,
+            selected_index=self.selected_index,
+        )
+
+    def actions_for_multiple_lines(self, view, infos, remotes):
+        # type: (sublime.View, List[LineInfo], Iterable[str]) -> List[Tuple[str, Callable[[], None]]]
+        file_path = self.file_path
+        actions = []  # type: List[Tuple[str, Callable[[], None]]]
+
         sel = view.sel()
-        if len(sel) > 1:
-            self.window.status_message("You can only do actions on one commit at a time.")
-            return
+        if all(s.empty() for s in sel) and len(sel) == 2:
+            def display_name(info):
+                # type: (LineInfo) -> str
+                if info.get("local_branches"):
+                    return info["local_branches"][0]
+                branches = info.get("branches", [])
+                if len(branches) == 1:
+                    return branches[0]
+                elif len(branches) == 0 and info.get("tags"):
+                    return info["tags"][0]
+                else:
+                    return info["commit"]
 
-        cursor = sel[0].b
-        line_span = view.line(cursor)
-        line_text = view.substr(line_span)
-        commit_hash = extract_commit_hash(line_text)
-        if not commit_hash:
-            return
+            base_commit = display_name(infos[0])
+            target_commit = display_name(infos[1])
 
-        super().run(commit_hash=commit_hash, file_path=self.file_path)
+            actions += [
+                (
+                    "Diff {}{}...{}".format(
+                        "file " if file_path else "", base_commit, target_commit
+                    ),
+                    partial(self.sym_diff_two_commits, base_commit, target_commit, file_path)
+                ),
+                (
+                    "Diff {}{}..{}".format(
+                        "file " if file_path else "", base_commit, target_commit
+                    ),
+                    partial(self.diff_commit, base_commit, target_commit, file_path)
+                ),
+                (
+                    "Compare {}'{}' and '{}'".format(
+                        "file between " if file_path else "", base_commit, target_commit
+                    ),
+                    partial(self.compare_against, base_commit, target_commit, file_path)
+                ),
+                (
+                    "Show file history from {}..{}".format(base_commit, target_commit)
+                    if file_path
+                    else "Show graph for {}..{}".format(base_commit, target_commit),
+                    partial(self.graph_two_revisions, base_commit, target_commit, file_path)
+                ),
+                (
+                    "Show file history from {}..{}".format(target_commit, base_commit)
+                    if file_path
+                    else "Show graph for {}..{}".format(target_commit, base_commit),
+                    partial(self.graph_two_revisions, target_commit, base_commit, file_path)
+                )
+
+            ]
+
+        pickable = list(reversed([
+            info["commit"]
+            for info in infos
+            if "HEAD" not in info
+        ]))
+        if pickable:
+            actions += [
+                (
+                    "Cherry-pick {}".format(format_revision_list(pickable)),
+                    partial(self.cherry_pick, *pickable)
+                )
+            ]
+
+        revertable = list(reversed([info["commit"] for info in infos]))
+        actions += [
+            (
+                "Revert {}".format(format_revision_list(revertable)),
+                partial(self.revert_commit, *revertable)
+            )
+        ]
+
+        return actions
+
+    def sym_diff_two_commits(self, base_commit, target_commit, file_path=None):
+        self.window.run_command("gs_diff", {
+            "in_cached_mode": False,
+            "file_path": file_path,
+            "base_commit": "{}...{}".format(base_commit, target_commit),
+            "disable_stage": True
+        })
+
+    def graph_two_revisions(self, base_commit, target_commit, file_path=None):
+        branches = ["{}..{}".format(base_commit, target_commit)]
+        self.window.run_command("gs_graph", {
+            'all': False,
+            'file_path': file_path,
+            'branches': branches,
+            'follow': base_commit
+        })
+
+    def actions_for_single_line(self, view, info, remotes):
+        # type: (sublime.View, LineInfo, Iterable[str]) -> List[Tuple[str, Callable[[], None]]]
+        commit_hash = info["commit"]
+        file_path = self.file_path
+        actions = []  # type: List[Tuple[str, Callable[[], None]]]
+        actions += [
+            (
+                "Show commit", partial(self.show_commit, commit_hash)
+            )
+        ]
+        actions += [
+            ("Checkout '{}'".format(branch_name), partial(self.checkout, branch_name))
+            for branch_name in info.get("local_branches", [])
+            if info.get("HEAD") != branch_name
+        ]
+
+        good_commit_name = (
+            info["tags"][0]
+            if info.get("tags")
+            else commit_hash
+        )
+        if "HEAD" not in info or info["HEAD"] != commit_hash:
+            actions += [
+                (
+                    "Checkout '{}' detached".format(good_commit_name),
+                    partial(self.checkout, good_commit_name)
+                ),
+            ]
+
+        if file_path:
+            actions += [
+                ("Show file at commit", partial(self.show_file_at_commit, commit_hash, file_path)),
+                ("Blame file at commit", partial(self.blame_file_atcommit, commit_hash, file_path)),
+                (
+                    "Checkout file at commit",
+                    partial(self.checkout_file_at_commit, commit_hash, file_path)
+                )
+            ]
+
+        actions += [
+            ("Create tag", partial(self.create_tag, commit_hash))
+        ]
+        actions += [
+            ("Delete '{}'".format(tag_name), partial(self.delete_tag, tag_name))
+            for tag_name in info.get("tags", [])
+        ]
+
+        head_info = describe_head(view, remotes)
+        head_is_on_a_branch = head_info and head_info["HEAD"] != head_info["commit"]
+        good_head_name = (
+            "'{}'".format(head_info["HEAD"])  # type: ignore
+            if head_is_on_a_branch
+            else "HEAD"
+        )
+
+        def get_list(info, key):
+            # type: (LineInfo, ListItems) -> List[str]
+            return info.get(key, [])  # type: ignore
+
+        get = partial(get_list, info)  # type: Callable[[ListItems], List[str]]
+        good_reset_target = next(
+            chain(get("local_branches"), get("branches")),
+            good_commit_name
+        )
+        actions += [
+            (
+                "Reset {} to '{}'".format(good_head_name, good_reset_target),
+                partial(self.reset_to, good_reset_target)
+            )
+        ]
+
+        if head_info and head_info["commit"] != info["commit"]:
+            get = partial(get_list, head_info)  # type: Callable[[ListItems], List[str]]  # type: ignore
+            good_move_target = (
+                head_info["HEAD"]
+                if head_is_on_a_branch
+                else next(
+                    chain(get("local_branches"), get("branches"), get("tags")),
+                    head_info["commit"]
+                )
+            )
+            actions += [
+                (
+                    "Move '{}' to '{}'".format(branch_name, good_move_target),
+                    partial(self.checkout_b, branch_name)
+                )
+                for branch_name in info.get("local_branches", [])
+            ]
+
+        if "HEAD" not in info:
+            actions += [
+                ("Cherry-pick commit", partial(self.cherry_pick, commit_hash)),
+            ]
+
+        actions += [
+            ("Revert commit", partial(self.revert_commit, commit_hash)),
+            (
+                "Compare {}against ...".format("file " if file_path else ""),
+                partial(self.compare_against, commit_hash, file_path=file_path)
+            ),
+            (
+                "Diff {}against workdir".format("file " if file_path else ""),
+                partial(self.diff_commit, commit_hash, file_path=file_path)
+            )
+        ]
+        return actions
+
+    def checkout(self, commit_hash):
+        self.git("checkout", commit_hash)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+    def checkout_b(self, branch_name):
+        self.git("checkout", "-B", branch_name)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+    def show_commit(self, commit_hash):
+        self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
+
+    def create_tag(self, commit_hash):
+        self.window.run_command("gs_tag_create", {"target_commit": commit_hash})
+
+    def delete_tag(self, tag_name):
+        self.git("tag", "-d", tag_name)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+    def reset_to(self, commitish):
+        self.window.run_command("gs_reset", {"commit_hash": commitish})
+
+    def cherry_pick(self, *commit_hash):
+        try:
+            self.git("cherry-pick", *commit_hash)
+        finally:
+            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+    def revert_commit(self, *commit_hash):
+        try:
+            self.git("revert", *commit_hash)
+        finally:
+            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+    def compare_against(self, base_commit, target_commit=None, file_path=None):
+        self.window.run_command("gs_compare_against", {
+            "base_commit": base_commit,
+            "target_commit": target_commit,
+            "file_path": file_path
+        })
+
+    def copy_sha(self, commit_hash):
+        sublime.set_clipboard(self.git("rev-parse", commit_hash).strip())
+
+    def diff_commit(self, base_commit, target_commit=None, file_path=None):
+        self.window.run_command("gs_diff", {
+            "in_cached_mode": False,
+            "file_path": file_path,
+            "base_commit": base_commit,
+            "target_commit": target_commit,
+            "disable_stage": True
+        })
+
+    def show_file_at_commit(self, commit_hash, file_path):
+        self.window.run_command(
+            "gs_show_file_at_commit",
+            {"commit_hash": commit_hash, "filepath": file_path})
+
+    def blame_file_atcommit(self, commit_hash, file_path):
+        self.window.run_command(
+            "gs_blame",
+            {"commit_hash": commit_hash, "file_path": file_path})
+
+    def checkout_file_at_commit(self, commit_hash, file_path):
+        self.checkout_ref(commit_hash, fpath=file_path)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
