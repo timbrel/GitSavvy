@@ -6,14 +6,19 @@ hidden: true
 scope: git-savvy.commit
 contexts:
   main:
-    - match: ^(commit)(.+)
+    - match: (?=^commit)
+      push: commit-header
+
+  commit-header:
+    - meta_scope: meta.commit-info.header
+    - match: ^(commit)(.+)$\n?
       comment: commit header
       scope: meta.commit-info.header.key-value
       captures:
         1: string.other.commit-info.header.key.git-savvy
         2: meta.commit-info.header.value.git-savvy meta.commit-info.header.sha.git-savvy
 
-    - match: ^(Author|Date|Merge|AuthorDate|Commit|CommitDate)(:)(.+)
+    - match: ^(Author|Date|Merge|AuthorDate|Commit|CommitDate)(:)(.+)$\n?
       comment: author and date info
       scope: meta.commit-info.header.key-value
       captures:
@@ -21,8 +26,27 @@ contexts:
         2: string.other.commit-info.header.key.punctuation.git-savvy
         3: meta.commit-info.header.value.git-savvy
 
-    - match: ^---$
-      scope: meta.commit-header-and-stat-splitter
-      comment: Separator between commit message and diffstat
+    - match: ^$
+      set: commit-message
 
-    - include: "scope:git-savvy.diff"
+  commit-message:
+    - meta_scope: meta.commit_message
+    - match: ^\s*(?=\S+)
+      set: commit-subject
+
+  commit-subject:
+    - meta_scope: meta.commit_message meta.subject.git.commit markup.heading.subject.git.commit
+    - match: $\n?
+      set: commit-message-body
+    - include: make_commit.sublime-syntax#references
+
+  commit-message-body:
+    - match: ^
+      push:
+        - meta_scope: meta.commit_message
+        - match: (?=^diff\s)
+          set: "scope:git-savvy.diff"
+        - match: ^---$\n?
+          scope: meta.commit-header-and-stat-splitter
+          set: "scope:git-savvy.diff"
+        - include: make_commit.sublime-syntax#references

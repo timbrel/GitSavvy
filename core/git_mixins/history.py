@@ -2,6 +2,10 @@ from collections import namedtuple
 from ...common import util
 
 
+MYPY = False
+if MYPY:
+    from typing import Optional
+
 LogEntry = namedtuple("LogEntry", (
     "short_hash",
     "long_hash",
@@ -146,6 +150,7 @@ class HistoryMixin():
         return sha != ""
 
     def get_short_hash(self, commit_hash):
+        # type: (str) -> str
         return self.git("rev-parse", "--short", commit_hash).strip()
 
     def filename_at_commit(self, filename, commit_hash, follow=False):
@@ -172,10 +177,10 @@ class HistoryMixin():
     def get_file_content_at_commit(self, filename, commit_hash):
         filename = self.get_rel_path(filename)
         filename = filename.replace('\\', '/')
-        filename = self.filename_at_commit(filename, commit_hash)
         return self.git("show", commit_hash + ':' + filename)
 
     def find_matching_lineno(self, base_commit, target_commit, line, file_path=None):
+        # type: (Optional[str], str, int, str) -> int
         """
         Return the matching line of the target_commit given the line number of the base_commit.
         """

@@ -28,6 +28,7 @@ def ensure_panel(window, name=PANEL_NAME, syntax="Packages/GitSavvy/syntax/show_
     output_view.set_read_only(True)
     if syntax:
         output_view.set_syntax_file(syntax)
+    output_view.settings().set("git_savvy.show_commit_view", True)
     return output_view
 
 
@@ -42,7 +43,7 @@ def ensure_panel_is_visible(window, name=PANEL_NAME):
         window.run_command("show_panel", {"panel": "output.{}".format(name)})
 
 
-class GsShowCommitInfoCommand(WindowCommand, GitCommand):
+class gs_show_commit_info(WindowCommand, GitCommand):
     def run(self, commit_hash, file_path=None):
         # We're running either blocking or lazy, and currently choose
         # automatically.  Generally, we run blocking to reduce multiple
@@ -64,6 +65,7 @@ class GsShowCommitInfoCommand(WindowCommand, GitCommand):
 
     def run_impl(self, commit_hash, file_path=None):
         output_view = ensure_panel(self.window)
+        output_view.settings().set("git_savvy.repo_path", self.repo_path)
 
         if commit_hash:
             show_full = self.savvy_settings.get("show_full_commit_info")
@@ -102,12 +104,12 @@ def _draw(window, view, text, commit):
 
 @contextmanager
 def restore_viewport_position(view, next_commit):
-    prev_commit = view.settings().get("git_savvy.show_commit_info.commit")
+    prev_commit = view.settings().get("git_savvy.show_commit_view.commit")
     if prev_commit:
         storage[prev_commit] = view.viewport_position()
 
     yield
 
-    view.settings().set("git_savvy.show_commit_info.commit", next_commit)
+    view.settings().set("git_savvy.show_commit_view.commit", next_commit)
     prev_position = storage.get(next_commit, (0, 0))
     view.set_viewport_position(prev_position, False)
