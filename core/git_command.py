@@ -228,8 +228,9 @@ class GitCommand(StatusMixin,
         except Exception as e:
             # this should never be reached
             raise GitSavvyError(
+                "$ {} ({})\n\n"
                 "Please report this error to GitSavvy:\n\n{}\n\n{}".format(
-                    e, traceback.format_exc()
+                    command_str, working_dir, e, traceback.format_exc()
                 ),
                 cmd=command,
                 show_panel=show_panel_on_stderr)
