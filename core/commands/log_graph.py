@@ -1276,7 +1276,7 @@ def get_column_range(view, region):
 def is_sel_in_viewport(view):
     # type: (sublime.View) -> bool
     viewport = view.visible_region()
-    return all(viewport.intersects(s) for s in view.sel())
+    return all(viewport.contains(s) or viewport.intersects(s) for s in view.sel())
 
 
 def line_start_of_region(view, region):
