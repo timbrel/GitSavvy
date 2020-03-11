@@ -50,6 +50,32 @@ def run_on_new_thread(fn, *args, **kwargs):
     threading.Thread(target=fn, args=args, kwargs=kwargs).start()
 
 
+def run_or_timeout(fn, timeout):
+    cond = threading.Condition()
+    result = None
+    exc = None
+
+    def program():
+        nonlocal cond, exc, result
+        try:
+            result = fn()
+        except Exception as e:
+            exc = e
+        finally:
+            with cond:
+                cond.notify_all()
+
+    with cond:
+        run_on_new_thread(program)
+        if not cond.wait(timeout):
+            raise TimeoutError()
+
+    if exc:
+        raise exc
+    else:
+        return result
+
+
 lock = threading.Lock()
 COMMANDS = {}  # type: Dict[str, Callback]
 RESULTS = {}  # type: Dict[str, ReturnValue]

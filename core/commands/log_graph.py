@@ -1,8 +1,15 @@
+from collections import deque
+from contextlib import contextmanager, ExitStack
 from functools import lru_cache, partial
 from itertools import chain, islice
+import locale
 import os
+from queue import Empty
 import re
 import shlex
+import subprocess
+import time
+import threading
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -10,11 +17,16 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import log_graph_colorizer as colorizer, show_commit_info
 from .log import GsLogCommand
 from .navigate import GsNavigate
-from ..fns import filter_, unique
+from .. import utils
+from ..fns import filter_, take, unique
 from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region
 from ..settings import GitSavvySettings
-from ..runtime import enqueue_on_ui, enqueue_on_worker, run_on_new_thread, text_command
+from ..runtime import (
+    enqueue_on_ui, enqueue_on_worker,
+    run_or_timeout, run_on_new_thread,
+    text_command
+)
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
 from ...common import util
@@ -23,7 +35,12 @@ from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Sequence, Tuple
+    from typing import (
+        Callable, Dict, Generic, Iterable, Iterator, List, Literal, Optional, Set, Sequence, Tuple,
+        TypeVar, Union
+    )
+    T = TypeVar('T')
+    PainterState = Literal['initial', 'navigated', 'viewport_readied']
 
 
 COMMIT_NODE_CHAR = "●"
@@ -71,7 +88,8 @@ class GsGraphCommand(WindowCommand, GitCommand):
         branches=None,
         author='',
         title='GRAPH',
-        follow=None
+        follow=None,
+        decoration='sparse'
     ):
         if repo_path is None:
             repo_path = self.repo_path
@@ -89,6 +107,7 @@ class GsGraphCommand(WindowCommand, GitCommand):
                 settings.set("git_savvy.log_graph_view.filter_by_author", author)
                 settings.set("git_savvy.log_graph_view.branches", branches or [])
                 settings.set('git_savvy.log_graph_view.follow', follow)
+                settings.set('git_savvy.log_graph_view.decoration', decoration)
 
                 if follow and follow != extract_symbol_to_follow(view):
                     if show_commit_info.panel_is_visible(self.window):
@@ -119,6 +138,7 @@ class GsGraphCommand(WindowCommand, GitCommand):
             settings.set("git_savvy.log_graph_view.filter_by_author", author)
             settings.set("git_savvy.log_graph_view.branches", branches or [])
             settings.set('git_savvy.log_graph_view.follow', follow)
+            settings.set('git_savvy.log_graph_view.decoration', decoration)
             view.set_name(title)
 
             # We need to ensure the panel has been created, so it appears
@@ -184,6 +204,286 @@ FALLBACK_DATE_FORMAT = 'format:%Y-%m-%d %H:%M'
 DATE_FORMAT_STATE = 'trying'
 
 
+@text_command
+def replace_region(view, edit, text, region=None, wrappers=[]):
+    if region is None:
+        # If you "replace" (or expand) directly at the cursor,
+        # the cursor expands into a selection.
+        # This is a common case for an empty view so we take
+        # care of it out of box.
+        region = sublime.Region(0, max(1, view.size()))
+
+    wrappers = wrappers[:] + [stable_viewport]
+    if any(
+        region.contains(s) or region.intersects(s)
+        for s in view.sel()
+    ):
+        wrappers += [restore_cursors]
+
+    with ExitStack() as stack:
+        for wrapper in wrappers:
+            stack.enter_context(wrapper(view))
+        stack.enter_context(writable_view(view))
+        view.replace(edit, region, text)
+
+
+@contextmanager
+def writable_view(view):
+    is_read_only = view.is_read_only()
+    view.set_read_only(False)
+    try:
+        yield
+    finally:
+        view.set_read_only(is_read_only)
+
+
+@contextmanager
+def restore_cursors(view):
+    save_cursors = [
+        (view.rowcol(s.begin()), view.rowcol(s.end()))
+        for s in view.sel()
+    ] or [((0, 0), (0, 0))]
+
+    try:
+        yield
+    finally:
+        view.sel().clear()
+        for (begin, end) in save_cursors:
+            view.sel().add(
+                sublime.Region(view.text_point(*begin), view.text_point(*end))
+            )
+
+
+@contextmanager
+def stable_viewport(view):
+    # Ref: https://github.com/SublimeTextIssues/Core/issues/2560
+    # See https://github.com/jonlabelle/SublimeJsPrettier/pull/171/files
+    # for workaround.
+    vx, vy = view.viewport_position()
+    try:
+        yield
+    finally:
+        view.set_viewport_position((0, 0))  # intentional!
+        view.set_viewport_position((vx, vy))
+
+
+MYPY = False
+if MYPY:
+    from typing import NamedTuple
+    Ins = NamedTuple('Ins', [('idx', int), ('line', str)])
+    Del = NamedTuple('Del', [('start', int), ('end', int)])
+    Replace = NamedTuple('Replace', [('start', int), ('end', int), ('text', List[str])])
+else:
+    from collections import namedtuple
+    Ins = namedtuple('Ins', 'idx line')
+    Del = namedtuple('Del', 'start end')
+    Replace = namedtuple('Replace', 'start end text')
+
+
+MAX_LOOK_AHEAD = 10000
+Same = object()
+
+
+def diff(a, b):
+    # type: (Sequence[str], Iterable[str]) -> Iterator[Union[Ins, Del]]
+    a_index = 0
+    b_index = -1  # init in case b is empty
+    len_a = len(a)
+    a_set = set(a)
+    for b_index, line in enumerate(b):
+        is_commit_line = re.match(FIND_COMMIT_HASH, line)
+        if is_commit_line and line not in a_set:
+            len_a += 1
+            yield Ins(b_index, line)
+            continue
+
+        look_ahead = MAX_LOOK_AHEAD if is_commit_line else 1
+        try:
+            i = a.index(line, a_index, a_index + look_ahead) - a_index
+        except ValueError:
+            len_a += 1
+            yield Ins(b_index, line)
+        else:
+            if i == 0:
+                a_index += 1
+                yield Same
+            else:
+                len_a -= i
+                a_index += i + 1
+                yield Del(b_index, b_index + i)
+
+    if b_index < (len_a - 1):
+        yield Del(b_index + 1, len_a)
+
+
+def simplify(diff, max_size):
+    # type: (Iterable[Union[Ins, Del]], int) -> Iterator[Union[Ins, Del, Replace]]
+    previous = None  # type: Union[Ins, Del, Replace, None]
+    for token in diff:
+        if token is Same:
+            if previous is not None:
+                yield previous
+                previous = None
+            continue
+
+        if previous is None:
+            previous = token
+            continue
+
+        if isinstance(token, Ins):
+            if isinstance(previous, Replace):
+                len_previous = len(previous.text)
+                if previous.start + len_previous == token.idx:
+                    previous = Replace(previous.start, previous.end, previous.text + [token.line])
+                    if len_previous >= max_size:
+                        yield previous
+                        previous = None
+                    continue
+            elif isinstance(previous, Ins):
+                if previous.idx + 1 == token.idx:
+                    previous = Replace(previous.idx, previous.idx, [previous.line, token.line])
+                    continue
+        elif isinstance(token, Del):
+            if isinstance(previous, Ins):
+                if previous.idx + 1 == token.start:
+                    yield Replace(previous.idx, previous.idx + token.end - token.start, [previous.line])
+                    previous = None
+                    continue
+            elif isinstance(previous, Replace):
+                if previous.end + len(previous.text) == token.start:
+                    yield Replace(previous.start, previous.end + token.end - token.start, previous.text)
+                    previous = None
+                    continue
+
+        yield previous
+        previous = token
+        continue
+
+    if previous is not None:
+        yield previous
+
+
+def normalize_tokens(tokens):
+    # type: (Iterator[Union[Ins, Del, Replace]]) -> Iterator[Replace]
+    for token in tokens:
+        if isinstance(token, Ins):
+            yield Replace(token.idx, token.idx, [token.line])
+        elif isinstance(token, Del):
+            yield Replace(token.start, token.end, [])
+        else:
+            yield token
+
+
+def apply_diff(a, diff):
+    # type: (List[str], Iterable[Union[Ins, Del, Replace]]) -> List[str]
+    a = a[:]
+    for token in diff:
+        if isinstance(token, Replace):
+            a[token.start:token.end] = token.text
+        elif isinstance(token, Ins):
+            a[token.idx:token.idx] = [token.line]
+        elif isinstance(token, Del):
+            a[token.start:token.end] = []
+    return a
+
+
+if MYPY:
+    ShouldAbort = Callable[[], bool]
+    Runners = Dict[sublime.BufferId, ShouldAbort]
+runners_lock = threading.Lock()
+REFRESH_RUNNERS = {}  # type: Runners
+
+
+def make_aborter(view, store=REFRESH_RUNNERS, _lock=runners_lock):
+    # type: (sublime.View, Runners, threading.Lock) -> ShouldAbort
+    bid = view.buffer_id()
+
+    def should_abort():
+        # type: () -> bool
+        if not view.is_valid():
+            return True
+
+        with _lock:
+            if store[bid] != should_abort:
+                return True
+        return False
+
+    with _lock:
+        store[bid] = should_abort
+    return should_abort
+
+
+TheEnd = object()
+
+
+def put_on_queue(queue, it):
+    # type: (SimpleQueue[T], Iterable[T]) -> None
+    try:
+        for item in it:
+            queue.put(item)
+    finally:
+        queue.put(TheEnd)
+
+
+def wait_for_first_item(it):
+    # type: (Iterable[T]) -> Iterator[T]
+    iterable = iter(it)
+    head = take(1, iterable)
+    return chain(head, iterable)
+
+
+def log_git_command(fn):
+    # type: (Callable[..., Iterator[T]]) -> Callable[..., Iterator[T]]
+    def decorated(self, *args, **kwargs):
+        start_time = time.perf_counter()
+        stderr = ''
+        saved_exception = None
+        try:
+            yield from fn(self, *args, **kwargs)
+        except GitSavvyError as e:
+            stderr = e.stderr
+            saved_exception = e
+        finally:
+            end_time = time.perf_counter()
+            util.debug.log_git(args, None, "<SNIP>", stderr, end_time - start_time)
+            if saved_exception:
+                raise saved_exception from None
+    return decorated
+
+
+if MYPY:
+    class SimpleQueue(Generic[T]):
+        def put(self, item: T) -> None: ...  # noqa: E704
+        def get(self, block=True, timeout=float) -> T: ...  # noqa: E704
+else:
+    class SimpleQueue:
+        def __init__(self):
+            self._queue = deque()
+            self._count = threading.Semaphore(0)
+
+        def put(self, item):
+            self._queue.append(item)
+            self._count.release()
+
+        def get(self, block=True, timeout=None):
+            if not self._count.acquire(block, timeout):
+                raise Empty
+            return self._queue.popleft()
+
+
+def try_kill_proc(proc):
+    if proc:
+        utils.kill_proc(proc)
+
+
+def selection_is_before_region(view, region):
+    # type: (sublime.View, sublime.Region) -> bool
+    try:
+        return view.sel()[-1].end() <= region.end()
+    except IndexError:
+        return True
+
+
 class GsLogGraphRefreshCommand(TextCommand, GitCommand):
 
     """
@@ -191,58 +491,263 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, navigate_after_draw=False):
-        sublime.set_timeout_async(partial(self.run_async, navigate_after_draw))
+        # type: (object, bool) -> None
+        # Edge case: If you restore a workspace/project, the view might still be
+        # loading and hence not ready for refresh calls.
+        if self.view.is_loading():
+            return
+        should_abort = make_aborter(self.view)
+        enqueue_on_worker(self.run_impl, should_abort, navigate_after_draw)
 
-    def run_async(self, navigate_after_draw=False):
-        graph_content = prelude(self.view)
-        graph_content += re.sub(
+    def format_line(self, line):
+        return re.sub(
             r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
             r'\1' + COMMIT_NODE_CHAR,
-            self.read_graph(),
+            line,
             flags=re.MULTILINE
         )
 
-        def program():
-            # TODO: Preserve column if possible instead of going to the beginning
-            #       of the commit hash blindly.
-            # TODO: Only jump iff cursor is in viewport. If the user scrolled
-            #       away (without changing the cursor) just set the cursor but
-            #       do NOT show it.
-            follow = self.view.settings().get('git_savvy.log_graph_view.follow')
-            self.view.run_command("gs_replace_view_text", {"text": graph_content, "restore_cursors": True})
-            if follow:
-                navigate_to_symbol(self.view, follow)
-            elif navigate_after_draw:  # on init
-                self.view.run_command("gs_log_graph_navigate")
+    def run_impl(self, should_abort, navigate_after_draw=False):
+        prelude_text = prelude(self.view)
+        initial_draw = self.view.size() == 0
+        if initial_draw:
+            replace_region(self.view, prelude_text, sublime.Region(0, 1))
 
-        enqueue_on_ui(program)
+        try:
+            current_graph = self.view.substr(
+                self.view.find_by_selector('meta.content.git_savvy.graph')[0]
+            )
+        except IndexError:
+            current_graph = ''
+        current_graph_splitted = current_graph.splitlines(keepends=True)
 
-    def read_graph(self):
-        # type: () -> str
+        token_queue = SimpleQueue()  # type: SimpleQueue[Replace]
+        current_proc = None
+        graph_offset = len(prelude_text)
+
+        def remember_proc(proc):
+            # type: (subprocess.Popen) -> None
+            nonlocal current_proc
+            current_proc = proc
+
+        def ensure_not_aborted(fn):
+            def decorated(*args, **kwargs):
+                if should_abort():
+                    try_kill_proc(current_proc)
+                else:
+                    return fn(*args, **kwargs)
+            return decorated
+
+        def reader():
+            next_graph_splitted = map(self.format_line, self.read_graph(got_proc=remember_proc))
+            tokens = normalize_tokens(simplify(
+                diff(current_graph_splitted, next_graph_splitted),
+                max_size=100
+            ))
+            if (
+                initial_draw
+                and self.view.settings().get('git_savvy.log_graph_view.decoration') == 'sparse'
+            ):
+                # On large repos (e.g. the "git" repo) "--sparse" can be excessive to compute
+                # upfront t.i. before the first byte. For now, just race with a timeout and
+                # maybe fallback.
+                try:
+                    tokens = run_or_timeout(lambda: wait_for_first_item(tokens), timeout=1.0)
+                except TimeoutError:
+                    try_kill_proc(current_proc)
+                    self.view.settings().set('git_savvy.log_graph_view.decoration', None)
+                    enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
+                    return
+            else:
+                tokens = wait_for_first_item(tokens)
+            enqueue_on_ui(draw)
+            put_on_queue(token_queue, tokens)
+
+        @ensure_not_aborted
+        def draw():
+            sel = get_simple_selection(self.view)
+            if sel is None:
+                follow, col_range = None, None
+            else:
+                follow = self.view.settings().get('git_savvy.log_graph_view.follow')
+                col_range = get_column_range(self.view, sel)
+            visible_selection = is_sel_in_viewport(self.view)
+
+            current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
+            replace_region(self.view, prelude_text, current_prelude_region)
+            drain_and_draw_queue(self.view, 'initial', follow, col_range, visible_selection)
+
+        # Sublime will not run any event handlers until the (outermost) TextCommand exits.
+        # T.i. the (inner) commands `replace_region` and `set_and_show_cursor` will run
+        # through uninterrupted until `drain_and_draw_queue` yields. Then e.g.
+        # `on_selection_modified` runs *once* even if we painted multiple times.
+        @ensure_not_aborted
+        @text_command
+        def drain_and_draw_queue(view, painter_state, follow, col_range, visible_selection):
+            # type: (sublime.View, PainterState, Optional[str], Optional[Tuple[int, int]], bool) -> None
+            try_navigate_to_symbol = partial(
+                navigate_to_symbol,
+                view,
+                follow,
+                col_range=col_range,
+                method=set_and_show_cursor if visible_selection else just_set_cursor
+            )
+            block_time = utils.timer()
+            while True:
+                # If only the head commits changed, and the cursor (and with it `follow`)
+                # is a few lines below, the `if_before=region` will probably never catch.
+                # We would block here 'til TheEnd without a timeout.
+                try:
+                    token = token_queue.get(
+                        block=True if painter_state != 'viewport_readied' else False,
+                        timeout=0.05 if painter_state != 'viewport_readied' else None
+                    )
+                except Empty:
+                    enqueue_on_worker(
+                        drain_and_draw_queue,
+                        view,
+                        painter_state,
+                        follow,
+                        col_range,
+                        visible_selection,
+                    )
+                    return
+                if token is TheEnd:
+                    break
+
+                region = apply_token(view, token, graph_offset)
+
+                if painter_state == 'initial':
+                    if follow:
+                        if try_navigate_to_symbol(if_before=region):
+                            painter_state = 'navigated'
+                    elif navigate_after_draw:  # on init
+                        view.run_command("gs_log_graph_navigate")
+                        painter_state = 'navigated'
+                    elif selection_is_before_region(view, region):
+                        painter_state = 'navigated'
+
+                if painter_state == 'navigated':
+                    if region.end() >= view.visible_region().end():
+                        painter_state = 'viewport_readied'
+
+                if block_time.passed(13 if painter_state == 'viewport_readied' else 1000):
+                    enqueue_on_worker(
+                        drain_and_draw_queue,
+                        view,
+                        painter_state,
+                        follow,
+                        col_range,
+                        visible_selection,
+                    )
+                    return
+
+            if painter_state == 'initial':
+                # If we still did not navigate the symbol is either
+                # gone, or happens to be after the fold of fresh
+                # content.
+                if not follow or not try_navigate_to_symbol():
+                    if visible_selection:
+                        view.show(view.sel(), True)
+
+        def apply_token(view, token, offset):
+            # type: (sublime.View, Replace, int) -> sublime.Region
+            nonlocal current_graph_splitted
+            start, end, text_ = token
+            text = ''.join(text_)
+            computed_start = (
+                sum(len(line) for line in current_graph_splitted[:start])
+                + offset
+            )
+            computed_end = (
+                sum(len(line) for line in current_graph_splitted[start:end])
+                + computed_start
+            )
+            region = sublime.Region(computed_start, computed_end)
+
+            current_graph_splitted = apply_diff(current_graph_splitted, [token])
+            replace_region(view, text, region)
+            occupied_space = sublime.Region(computed_start, computed_start + len(text))
+            return occupied_space
+
+        run_on_new_thread(reader)
+
+    @log_git_command
+    def git_stdout(self, *args, show_panel_on_stderr=True, throw_on_stderr=True, got_proc=None, **kwargs):
+        # type: (...) -> Iterator[str]
+        # Note: Can't use `self.decode_stdout` because it blocks the
+        # main thread!
+        decode = decoder(self.savvy_settings)
+        proc = self.git(*args, just_the_proc=True, **kwargs)
+        if got_proc:
+            got_proc(proc)
+        received_some_stdout = False
+        with proc:
+            while True:
+                # Block size 2**14 taken from Sublime's `exec.py`. This
+                # may be a hint on how much chars Sublime can draw efficiently.
+                # But here we don't draw every line (except initially) but
+                # a diff. So we oscillate between getting a first meaningful
+                # content fast and not blocking too much here.
+                # TODO: `len(lines)` could be a good indicator of how fast
+                # the system currently is because it seems to vary a lot when
+                # comapring rather short or long (in count of commits) repos.
+                lines = proc.stdout.readlines(2**14)
+                if not lines:
+                    break
+                elif not received_some_stdout:
+                    received_some_stdout = True
+                for line in lines:
+                    yield decode(line)
+
+            stderr = ''.join(map(decode, proc.stderr.readlines()))
+
+        if throw_on_stderr and stderr:
+            stdout = "<STDOUT SNIPPED>\n" if received_some_stdout else ""
+            raise GitSavvyError(
+                "$ {}\n\n{}".format(
+                    " ".join(["git"] + list(filter(None, args))),
+                    ''.join([stdout, stderr])
+                ),
+                cmd=proc.args,
+                stdout=stdout,
+                stderr=stderr,
+                show_panel=show_panel_on_stderr
+            )
+
+    def read_graph(self, got_proc=None):
+        # type: (Callable[[subprocess.Popen], None]) -> Iterator[str]
         global DATE_FORMAT, DATE_FORMAT_STATE
 
         args = self.build_git_command()
         if DATE_FORMAT_STATE == 'trying':
             try:
-                rv = self.git(
+                yield from self.git_stdout(
                     *args,
                     throw_on_stderr=True,
                     show_status_message_on_stderr=False,
-                    show_panel_on_stderr=False
+                    show_panel_on_stderr=False,
+                    got_proc=got_proc
                 )
             except GitSavvyError as e:
                 if e.stderr and DATE_FORMAT in e.stderr:
                     DATE_FORMAT = FALLBACK_DATE_FORMAT
                     DATE_FORMAT_STATE = 'final'
-
-                enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
-                return ''
+                    enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
+                    return iter('')
+                else:
+                    raise GitSavvyError(
+                        e.message,
+                        cmd=e.cmd,
+                        stdout=e.stdout,
+                        stderr=e.stderr,
+                        show_panel=True,
+                    )
             else:
                 DATE_FORMAT_STATE = 'final'
-                return rv
 
         else:
-            return self.git(*args)
+            yield from self.git_stdout(*args, got_proc=got_proc)
 
     def build_git_command(self):
         global DATE_FORMAT
@@ -262,9 +767,10 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             '--decorate-refs-exclude=refs/remotes/origin/HEAD',  # cosmetics
             '--exclude=refs/stash',
             '--all' if all_branches else None,
-            '--simplify-by-decoration',
-            '--sparse',
         ]
+
+        if settings.get('git_savvy.log_graph_view.decoration') == 'sparse':
+            args += ['--simplify-by-decoration', '--sparse']
 
         branches = settings.get("git_savvy.log_graph_view.branches")
         if branches:
@@ -279,6 +785,23 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             args += ["--", file_path]
 
         return args
+
+
+locally_preferred_encoding = locale.getpreferredencoding()
+
+
+def decoder(settings):
+    encodings = ['utf8', locally_preferred_encoding, settings.get("fallback_encoding")]
+
+    def decode(bytes):
+        # type: (bytes) -> str
+        for encoding in encodings:
+            try:
+                return bytes.decode(encoding)
+            except UnicodeDecodeError:
+                pass
+        return bytes.decode('utf8', errors='replace')
+    return decode
 
 
 def prelude(view):
@@ -602,7 +1125,7 @@ def extract_symbol_to_follow(view):
         # cursor is. (If you select upwards b becomes < a.)
         cursor = [s.b for s in view.sel()][-1]
     except IndexError:
-        return
+        return None
 
     line_span = view.line(cursor)
     line_text = view.substr(line_span)
@@ -638,11 +1161,48 @@ def _extract_symbol_to_follow(vid, _line_text):
     return extract_commit_hash(line_text)
 
 
-def navigate_to_symbol(view, symbol):
-    # type: (sublime.View, str) -> None
+def navigate_to_symbol(
+    view,            # type: sublime.View
+    symbol,          # type: str
+    if_before=None,  # type: sublime.Region
+    col_range=None,  # type: Tuple[int, int]
+    method=None,     # type: Callable[[sublime.View, Union[sublime.Region, sublime.Point]], None]
+):
+    # type: (...) -> bool
+    jump_position = jump_position_for_symbol(view, symbol, if_before, col_range)
+    if jump_position is None:
+        return False
+
+    if method is None:
+        method = set_and_show_cursor
+    method(view, jump_position)
+    return True
+
+
+def jump_position_for_symbol(
+    view,            # type: sublime.View
+    symbol,          # type: str
+    if_before=None,  # type: Optional[sublime.Region]
+    col_range=None   # type: Optional[Tuple[int, int]]
+):
+    # type: (...) -> Optional[Union[sublime.Region, sublime.Point]]
     region = _find_symbol(view, symbol)
-    if region:
-        set_and_show_cursor(view, region.begin())
+    if region is None:  # explicit `None` checks bc empty regions are falsy!
+        return None
+    if if_before is not None and region.end() > if_before.end():
+        return None
+
+    if col_range is None:
+        return region.begin()
+
+    line_start = line_start_of_region(view, region)
+    wanted_region = Region(*col_range) + line_start
+    # Normalize single cursors *before* the commit hash
+    # (t.i. `region.end()`) to `region.begin()`.
+    if wanted_region.empty() and wanted_region.a < region.end():
+        return region.begin()
+    else:
+        return wanted_region
 
 
 def _find_symbol(view, symbol):
@@ -684,12 +1244,44 @@ FIND_COMMIT_HASH = "^[{graph_chars}]*[{node_chars}][{graph_chars}]* ".format(
 
 
 @text_command
-def set_and_show_cursor(view, cursor):
-    # type: (sublime.View, int) -> None
+def set_and_show_cursor(view, point_or_region):
+    # type: (sublime.View, Union[sublime.Region, sublime.Point]) -> None
+    just_set_cursor(view, point_or_region)
+    view.show(view.sel(), True)
+
+
+@text_command
+def just_set_cursor(view, point_or_region):
+    # type: (sublime.View, Union[sublime.Region, sublime.Point]) -> None
     sel = view.sel()
     sel.clear()
-    sel.add(cursor)
-    view.show(sel, True)
+    sel.add(point_or_region)
+
+
+def get_simple_selection(view):
+    # type: (sublime.View) -> Optional[sublime.Region]
+    sel = [s for s in view.sel()]
+    if len(sel) != 1 or len(view.lines(sel[0])) != 1:
+        return None
+
+    return sel[0]
+
+
+def get_column_range(view, region):
+    # type: (sublime.View, sublime.Region) -> Tuple[int, int]
+    line_start = line_start_of_region(view, region)
+    return (region.begin() - line_start, region.end() - line_start)
+
+
+def is_sel_in_viewport(view):
+    # type: (sublime.View) -> bool
+    viewport = view.visible_region()
+    return all(viewport.intersects(s) for s in view.sel())
+
+
+def line_start_of_region(view, region):
+    # type: (sublime.View, sublime.Region) -> sublime.Point
+    return view.line(region).begin()
 
 
 def colorize_dots(view):

@@ -128,17 +128,21 @@ class GitCommand(StatusMixin,
 
     _last_remotes_used = {}
 
-    def git(self, *args,
-            stdin=None,
-            working_dir=None,
-            show_panel=None,
-            show_panel_on_stderr=True,
-            show_status_message_on_stderr=True,
-            throw_on_stderr=True,
-            decode=True,
-            encode=True,
-            stdin_encoding="UTF-8",
-            custom_environ=None):
+    def git(
+        self,
+        *args,
+        stdin=None,
+        working_dir=None,
+        show_panel=None,
+        show_panel_on_stderr=True,
+        show_status_message_on_stderr=True,
+        throw_on_stderr=True,
+        decode=True,
+        encode=True,
+        stdin_encoding="UTF-8",
+        custom_environ=None,
+        just_the_proc=False
+    ):
         """
         Run the git command specified in `*args` and return the output
         of the git command as a string.
@@ -193,6 +197,9 @@ class GitCommand(StatusMixin,
                                  env=environ,
                                  startupinfo=startupinfo)
 
+            if just_the_proc:
+                return p
+
             def initialize_panel():
                 # clear panel
                 util.log.panel("", run_async=False)
@@ -236,20 +243,21 @@ class GitCommand(StatusMixin,
                 show_panel=show_panel_on_stderr)
 
         finally:
-            end = time.time()
-            if decode:
-                util.debug.log_git(args, stdin, stdout, stderr, end - start)
-            else:
-                util.debug.log_git(
-                    args,
-                    stdin,
-                    self.decode_stdout(stdout),
-                    self.decode_stdout(stderr),
-                    end - start
-                )
+            if not just_the_proc:
+                end = time.time()
+                if decode:
+                    util.debug.log_git(args, stdin, stdout, stderr, end - start)
+                else:
+                    util.debug.log_git(
+                        args,
+                        stdin,
+                        self.decode_stdout(stdout),
+                        self.decode_stdout(stderr),
+                        end - start
+                    )
 
-            if show_panel and self.savvy_settings.get("show_time_elapsed_in_output", True):
-                util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
+                if show_panel and self.savvy_settings.get("show_time_elapsed_in_output", True):
+                    util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
 
         if throw_on_stderr and not p.returncode == 0:
             if show_status_message_on_stderr:
