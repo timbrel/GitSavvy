@@ -222,9 +222,6 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         if match_position is None:
             if cur_pos == (0, 0) and self.savvy_settings.get("inline_diff_auto_scroll", False):
                 self.view.run_command("gs_inline_diff_navigate_hunk")
-            elif cur_pos:
-                row, _ = cur_pos
-                place_cursor_and_show(self.view, row, 0)
         else:
             row, col = match_position
             new_row = translate_row_to_inline_diff(self.view, row)
