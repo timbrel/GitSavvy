@@ -1732,27 +1732,28 @@ class GsLogGraphActionCommand(WindowCommand, GitCommand):
 
         head_info = describe_head(view, remotes)
         head_is_on_a_branch = head_info and head_info["HEAD"] != head_info["commit"]
-        good_head_name = (
-            "'{}'".format(head_info["HEAD"])  # type: ignore
-            if head_is_on_a_branch
-            else "HEAD"
-        )
 
         def get_list(info, key):
             # type: (LineInfo, ListItems) -> List[str]
             return info.get(key, [])  # type: ignore
 
-        get = partial(get_list, info)  # type: Callable[[ListItems], List[str]]
-        good_reset_target = next(
-            chain(get("local_branches"), get("branches")),
-            good_commit_name
-        )
-        actions += [
-            (
-                "Reset {} to '{}'".format(good_head_name, good_reset_target),
-                partial(self.reset_to, good_reset_target)
+        if not head_info or head_info["commit"] != info["commit"]:
+            good_head_name = (
+                "'{}'".format(head_info["HEAD"])  # type: ignore
+                if head_is_on_a_branch
+                else "HEAD"
             )
-        ]
+            get = partial(get_list, info)  # type: Callable[[ListItems], List[str]]
+            good_reset_target = next(
+                chain(get("local_branches"), get("branches")),
+                good_commit_name
+            )
+            actions += [
+                (
+                    "Reset {} to '{}'".format(good_head_name, good_reset_target),
+                    partial(self.reset_to, good_reset_target)
+                )
+            ]
 
         if head_info and head_info["commit"] != info["commit"]:
             get = partial(get_list, head_info)  # type: Callable[[ListItems], List[str]]  # type: ignore
