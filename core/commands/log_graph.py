@@ -539,7 +539,10 @@ class GsLogGraphRefreshCommand(TextCommand, GitCommand):
             return decorated
 
         def reader():
-            next_graph_splitted = map(self.format_line, self.read_graph(got_proc=remember_proc))
+            next_graph_splitted = chain(
+                map(self.format_line, self.read_graph(got_proc=remember_proc)),
+                ['\n']
+            )
             tokens = normalize_tokens(simplify(
                 diff(current_graph_splitted, next_graph_splitted),
                 max_size=100
