@@ -94,6 +94,7 @@ class gs_show_commit_open_file_at_hunk(diff.GsDiffOpenFileAtHunkCommand):
 
         full_path = os.path.join(self.repo_path, filename)
         if self.newest_commit_for_file(full_path) == commit_hash:
+            row = self.find_matching_lineno(commit_hash, None, row, full_path)
             window.open_file(
                 "{file}:{row}:{col}".format(file=full_path, row=row, col=col),
                 sublime.ENCODED_POSITION
