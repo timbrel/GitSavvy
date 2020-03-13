@@ -1,8 +1,5 @@
 import re
 
-from ..exceptions import GitSavvyError
-from ...common import util
-
 
 MYPY = False
 if MYPY:
@@ -59,17 +56,8 @@ class NearestBranchMixin(object):
         specified).
 
         """
-        try:
-            relatives = self.branch_relatives(branch)
-        except GitSavvyError:
-            return default
-
+        relatives = self.branch_relatives(branch)
         if not relatives:
-            util.debug.add_to_log('nearest_branch: No relatives found. '
-                                  'Possibly on a root branch!')
             return default
-
-        util.debug.add_to_log('nearest_branch: found {} relatives: {}'.format(
-                              len(relatives), relatives))
 
         return relatives[0]
