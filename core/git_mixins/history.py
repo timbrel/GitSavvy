@@ -187,6 +187,11 @@ class HistoryMixin():
         if not file_path:
             file_path = self.file_path
 
+        diff = self.no_context_diff(base_commit, target_commit, file_path)
+        return self.adjust_line_according_to_diff(diff, line)
+
+    def no_context_diff(self, base_commit, target_commit, file_path=None):
+        # type: (Optional[str], Optional[str], Optional[str]) -> str
         cmd = [
             "diff",
             "--no-color",
@@ -197,16 +202,16 @@ class HistoryMixin():
         if file_path:
             cmd += ["--", file_path]
 
-        diff = self.git(*cmd)
-        return self._find_matching_lineno(diff, line)
+        return self.git(*cmd)
 
-    def _find_matching_lineno(self, rawdiff, line):
-        diff = util.parse_diff(rawdiff)
+    def adjust_line_according_to_diff(self, diff, line):
+        # type: (str, int) -> int
+        parsed_diff = util.parse_diff(diff)
 
-        if not diff:
+        if not parsed_diff:
             return line
 
-        for hunk in reversed(diff):
+        for hunk in reversed(parsed_diff):
             head_start = hunk.head_start if hunk.head_length else hunk.head_start + 1
             saved_start = hunk.saved_start if hunk.saved_length else hunk.saved_start + 1
             head_end = head_start + hunk.head_length
