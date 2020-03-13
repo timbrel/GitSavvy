@@ -93,15 +93,14 @@ class gs_show_commit_open_file_at_hunk(diff.GsDiffOpenFileAtHunkCommand):
             return
 
         full_path = os.path.join(self.repo_path, filename)
-        short_hash = self.get_short_hash(commit_hash)
-        if self.get_commit_hash_for_head(short=True) == short_hash:
+        if self.newest_commit_for_file(full_path) == commit_hash:
             window.open_file(
                 "{file}:{row}:{col}".format(file=full_path, row=row, col=col),
                 sublime.ENCODED_POSITION
             )
         else:
             window.run_command("gs_show_file_at_commit", {
-                "commit_hash": short_hash,
+                "commit_hash": commit_hash,
                 "filepath": full_path,
                 "lineno": row
             })

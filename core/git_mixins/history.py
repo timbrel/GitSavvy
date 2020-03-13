@@ -253,8 +253,13 @@ class HistoryMixin():
         Get the newest commit for a given file.
         """
         return self.git(
-            "log", "--format=%H",
-            "--follow" if follow else None, "-n", "1", file_path).strip()
+            "log",
+            "--format=%H",
+            "--follow" if follow else None,
+            "-1",
+            "--",
+            file_path,
+        ).strip()
 
     def get_indexed_file_object(self, file_path):
         """
