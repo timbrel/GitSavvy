@@ -55,16 +55,9 @@ class NearestBranchMixin(object):
         Find the nearest commit in current branch history that exists
         on a different branch and return that branch name.
 
-        We filter these branches through a list of known ancestors which have
-        an initial branch point with current branch, and pick the first one
-        that matches both.
-
-        If no such branch is found, returns the given default ("master" if not
+        If no such branch is found, return the given default ("master" if not
         specified).
 
-        Solution snagged from:
-        http://stackoverflow.com/a/17843908/484127
-        http://stackoverflow.com/questions/1527234
         """
         try:
             relatives = self.branch_relatives(branch)
