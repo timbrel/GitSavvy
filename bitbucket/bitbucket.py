@@ -4,11 +4,10 @@ Bitbucket methods that are functionally separate from anything Sublime-related.
 
 import re
 from collections import namedtuple
-from functools import partial, lru_cache
+from functools import lru_cache
 from webbrowser import open as open_in_browser
 
-from ..common import interwebs, util
-from ..core.exceptions import FailedBitbucketRequest
+from ..common import util
 from ..core.settings import GitSavvySettings
 
 
