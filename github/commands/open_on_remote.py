@@ -1,6 +1,7 @@
 import sublime
 from sublime_plugin import TextCommand
 
+from GitSavvy.common import util
 from ...core.git_command import GitCommand
 from ..github import open_file_in_browser  # , open_repo, open_issues
 from ..github import open_repo
@@ -74,6 +75,9 @@ class GsGithubOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.Github
                         return
 
                     commit_hash = merge_base
+            else:
+                util.view.flash(self.view, "This revision has not been pushed upstream yet.")
+                return
 
         start_line = None
         end_line = None
@@ -89,10 +93,9 @@ class GsGithubOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.Github
 
                 # forward line number if the opening commit is the merge base
                 if base_hash != commit_hash:
-                    start_line = self.find_matching_lineno(
-                        base_hash, commit_hash, line=start_line, file_path=fpath[0])
-                    end_line = self.find_matching_lineno(
-                        base_hash, commit_hash, line=end_line, file_path=fpath[0])
+                    diff = self.no_context_diff(base_hash, commit_hash, fpath[0])
+                    start_line = self.adjust_line_according_to_diff(diff, start_line)
+                    end_line = self.adjust_line_according_to_diff(diff, end_line)
 
         for p in fpath:
             open_file_in_browser(

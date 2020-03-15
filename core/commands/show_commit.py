@@ -93,21 +93,21 @@ class gs_show_commit_open_file_at_hunk(diff.GsDiffOpenFileAtHunkCommand):
             return
 
         full_path = os.path.join(self.repo_path, filename)
-        short_hash = self.get_short_hash(commit_hash)
-        if self.get_commit_hash_for_head(short=True) == short_hash:
+        if self.newest_commit_for_file(full_path) == commit_hash:
+            row = self.find_matching_lineno(commit_hash, None, row, full_path)
             window.open_file(
                 "{file}:{row}:{col}".format(file=full_path, row=row, col=col),
                 sublime.ENCODED_POSITION
             )
         else:
             window.run_command("gs_show_file_at_commit", {
-                "commit_hash": short_hash,
+                "commit_hash": commit_hash,
                 "filepath": full_path,
                 "lineno": row
             })
 
 
-class gs_show_commit_show_hunk_on_head(diff.GsDiffOpenFileAtHunkCommand):
+class gs_show_commit_show_hunk_on_working_dir(diff.GsDiffOpenFileAtHunkCommand):
     def load_file_at_line(self, commit_hash, filename, row, col):
         # type: (Optional[str], str, int, int) -> None
         if not commit_hash:
@@ -118,7 +118,7 @@ class gs_show_commit_show_hunk_on_head(diff.GsDiffOpenFileAtHunkCommand):
             return
 
         full_path = os.path.join(self.repo_path, filename)
-        row = self.find_matching_lineno(commit_hash, "HEAD", row, full_path)
+        row = self.find_matching_lineno(commit_hash, None, row, full_path)
         window.open_file(
             "{file}:{row}:{col}".format(file=full_path, row=row, col=col),
             sublime.ENCODED_POSITION

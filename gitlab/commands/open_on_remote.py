@@ -87,10 +87,9 @@ class GsGitlabOpenFileOnRemoteCommand(TextCommand, GitCommand, GitLabRemotesMixi
 
                 # forward line number if the opening commit is the merge base
                 if base_hash != commit_hash:
-                    start_line = self.find_matching_lineno(
-                        base_hash, commit_hash, line=start_line, file_path=fpath[0])
-                    end_line = self.find_matching_lineno(
-                        base_hash, commit_hash, line=end_line, file_path=fpath[0])
+                    diff = self.no_context_diff(base_hash, commit_hash, fpath[0])
+                    start_line = self.adjust_line_according_to_diff(diff, start_line)
+                    end_line = self.adjust_line_according_to_diff(diff, end_line)
 
         for p in fpath:
             open_file_in_browser(

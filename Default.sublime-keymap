@@ -702,7 +702,7 @@
     },
     {
         "keys": ["O"],
-        "command": "gs_show_commit_show_hunk_on_head",
+        "command": "gs_show_commit_show_hunk_on_working_dir",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
