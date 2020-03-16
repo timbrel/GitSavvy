@@ -16,7 +16,7 @@ Branch = namedtuple("Branch", (
 
 class BranchesMixin():
 
-    def get_branches(self, sort_by_recent=False):
+    def get_branches(self, sort_by_recent=False, fetch_descriptions=False):
         """
         Return a list of all local and remote branches.
         """
@@ -26,12 +26,17 @@ class BranchesMixin():
             "--sort=-committerdate" if sort_by_recent else None,
             "refs/heads",
             "refs/remotes")
-        return (branch
-                for branch in (self._parse_branch_line(self, line) for line in stdout.split("\n"))
-                if branch and branch.name != "HEAD")
+        return (
+            branch
+            for branch in (
+                self._parse_branch_line(self, line, fetch_descriptions)
+                for line in stdout.split("\n")
+            )
+            if branch and branch.name != "HEAD"
+        )
 
     @staticmethod
-    def _parse_branch_line(self, line):
+    def _parse_branch_line(self, line, fetch_descriptions=False):
         line = line.strip()
         if not line:
             return None
@@ -47,14 +52,17 @@ class BranchesMixin():
             # remove brackets
             tracking_status = tracking_status[1:len(tracking_status) - 1]
 
-        enable_branch_descriptions = self.savvy_settings.get("enable_branch_descriptions")
+        enable_branch_descriptions = (
+            fetch_descriptions
+            and not is_remote
+            and self.savvy_settings.get("enable_branch_descriptions")
+        )
 
-        hide_description = is_remote or not enable_branch_descriptions
-        description = "" if hide_description else self.git(
+        description = self.git(
             "config",
             "branch.{}.description".format(branch_name),
             throw_on_stderr=False
-        ).strip("\n")
+        ).strip("\n") if enable_branch_descriptions else ""
 
         return Branch(
             "/".join(branch_name.split("/")[1:]) if is_remote else branch_name,
