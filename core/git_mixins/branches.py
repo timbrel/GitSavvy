@@ -29,13 +29,12 @@ class BranchesMixin():
         return (
             branch
             for branch in (
-                self._parse_branch_line(self, line, fetch_descriptions)
+                self._parse_branch_line(line, fetch_descriptions)
                 for line in stdout.split("\n")
             )
             if branch and branch.name != "HEAD"
         )
 
-    @staticmethod
     def _parse_branch_line(self, line, fetch_descriptions=False):
         line = line.strip()
         if not line:
