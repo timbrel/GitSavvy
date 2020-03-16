@@ -745,6 +745,36 @@
     },
 
     ////////////////
+    // FILE VIEW //
+    ////////////////
+
+    {
+        "keys": ["o"],
+        "command": "gs_show_file_at_commit_open_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_file_at_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["O"],
+        "command": "gs_show_file_at_commit_open_file_on_working_dir",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_file_at_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["g"],
+        "command": "gs_show_file_at_commit_open_graph_context",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_file_at_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+
+
+    ////////////////
     // BLAME VIEW //
     ////////////////
 
