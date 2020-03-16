@@ -1708,11 +1708,6 @@ class GsLogGraphActionCommand(WindowCommand, GitCommand):
         file_path = self.file_path
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
         actions += [
-            (
-                "Show commit", partial(self.show_commit, commit_hash)
-            )
-        ]
-        actions += [
             ("Checkout '{}'".format(branch_name), partial(self.checkout, branch_name))
             for branch_name in info.get("local_branches", [])
             if info.get("HEAD") != branch_name
