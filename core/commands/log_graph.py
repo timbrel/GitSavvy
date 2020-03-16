@@ -1001,6 +1001,25 @@ class GsLogGraphToggleAllSetting(TextCommand, GitCommand):
         self.view.run_command("gs_log_graph_refresh")
 
 
+class gs_log_graph_open_commit(TextCommand):
+    def run(self, edit):
+        # type: (...) -> None
+        window = self.view.window()
+        if not window:
+            return
+
+        sel = get_simple_selection(self.view)
+        if sel is None:
+            return
+        line_span = self.view.line(sel)
+        line_text = self.view.substr(line_span)
+        commit_hash = extract_commit_hash(line_text)
+        if not commit_hash:
+            return
+
+        window.run_command("gs_show_commit", {"commit_hash": commit_hash})
+
+
 class GsLogGraphCursorListener(EventListener, GitCommand):
     def is_applicable(self, view):
         # type: (sublime.View) -> bool
