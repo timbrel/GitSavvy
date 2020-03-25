@@ -1808,6 +1808,12 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 for branch_name in info.get("local_branches", [])
             ]
 
+        actions += [
+            ("Delete branch '{}'".format(branch_name), partial(self.delete_branch, branch_name))
+            for branch_name in info.get("local_branches", [])
+            if info.get("HEAD") != branch_name
+        ]
+
         if "HEAD" not in info:
             actions += [
                 ("Cherry-pick commit", partial(self.cherry_pick, commit_hash)),
@@ -1833,6 +1839,9 @@ class gs_log_graph_action(WindowCommand, GitCommand):
     def checkout_b(self, branch_name):
         self.git("checkout", "-B", branch_name)
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+    def delete_branch(self, branch_name):
+        self.window.run_command("gs_delete_branch", {"branch": branch_name})
 
     def show_commit(self, commit_hash):
         self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
