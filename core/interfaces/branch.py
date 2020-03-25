@@ -82,7 +82,7 @@ class BranchInterface(ui.Interface, GitCommand):
 
     def pre_render(self):
         sort_by_recent = self.savvy_settings.get("sort_by_recent_in_branch_dashboard")
-        self._branches = tuple(self.get_branches(sort_by_recent))
+        self._branches = tuple(self.get_branches(sort_by_recent, fetch_descriptions=True))
 
     def on_new_dashboard(self):
         self.view.run_command("gs_branches_set_cursor")
