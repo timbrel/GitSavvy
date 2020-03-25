@@ -30,14 +30,11 @@ class gs_delete_branch(WindowCommand, GitCommand):
     def run(self, branch=None, force=False):
         # type: (Optional[str], bool) -> None
         self.force = force
-        enqueue_on_worker(self.run_impl, branch)
-
-    def run_impl(self, branch):
-        # type: (Optional[str]) -> None
         if branch:
-            self.on_branch_selection(branch)
+            self.delete_local_branch(branch)
         else:
-            show_branch_panel(
+            enqueue_on_worker(
+                show_branch_panel,
                 self.on_branch_selection,
                 local_branches_only=True,
                 ignore_current_branch=True,
