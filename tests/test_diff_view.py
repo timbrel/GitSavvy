@@ -11,7 +11,7 @@ from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 import GitSavvy.core.commands.diff as module
-from GitSavvy.core.commands.diff import GsDiffCommand, GsDiffRefreshCommand
+from GitSavvy.core.commands.diff import gs_diff, gs_diff_refresh
 
 
 def isiterable(obj):
@@ -211,7 +211,7 @@ diff --git a/foxx b/boxx
         view.run_command('append', {'characters': VIEW_CONTENT})
         view.set_scratch(True)
 
-        cmd = module.GsDiffOpenFileAtHunkCommand(view)
+        cmd = module.gs_diff_open_file_at_hunk(view)
         when(cmd).load_file_at_line(...)
 
         view.sel().clear()
@@ -294,7 +294,7 @@ diff --git a/foxx b/boxx
 
         view.settings().set('git_savvy.diff_view.in_cached_mode', IN_CACHED_MODE)
         view.settings().set('git_savvy.diff_view.history', [])
-        cmd = module.GsDiffStageOrResetHunkCommand(view)
+        cmd = module.gs_diff_stage_or_reset_hunk(view)
         when(cmd).git(...)
         when(cmd.view).run_command("gs_diff_refresh")
 
@@ -377,10 +377,10 @@ diff --git a/foxx b/boxx
 
         view.settings().set('git_savvy.diff_view.in_cached_mode', IN_CACHED_MODE)
         view.settings().set('git_savvy.diff_view.history', [])
-        cmd = module.GsDiffStageOrResetHunkCommand(view)
+        cmd = module.gs_diff_stage_or_reset_hunk(view)
         when(cmd).git(...)
         when(cmd.view).run_command("gs_diff_refresh")
-        # when(module.GsDiffStageOrResetHunkCommand).git(...)
+        # when(module.gs_diff_stage_or_reset_hunk).git(...)
         # when(module).refresh(view)
 
         view.sel().clear()
@@ -417,7 +417,7 @@ diff --git a/fooz b/barz
         view.settings().set('git_savvy.diff_view.history', [])
         view.settings().set('git_savvy.diff_view.context_lines', 0)
 
-        cmd = module.GsDiffStageOrResetHunkCommand(view)
+        cmd = module.gs_diff_stage_or_reset_hunk(view)
         when(cmd).git(...)
         when(cmd.view).run_command("gs_diff_refresh")
 
@@ -466,7 +466,7 @@ diff --git a/foxx b/boxx
         view.sel().add(0)
 
         # Manually instantiate the cmd so we can inject our known view
-        cmd = module.GsDiffStageOrResetHunkCommand(view)
+        cmd = module.gs_diff_stage_or_reset_hunk(view)
         cmd.run('_unused_edit')
 
         verify(window, times=1).status_message('Not within a hunk')
@@ -499,7 +499,7 @@ class TestZooming(DeferrableTestCase):
         view.settings().set("git_savvy.diff_view.show_word_diff", False)
 
         view.settings().set('git_savvy.diff_view.context_lines', CONTEXT_LINES)
-        cmd = module.GsDiffRefreshCommand(view)
+        cmd = module.gs_diff_refresh(view)
         when(cmd).git(...).thenReturn('NEW CONTENT')
 
         cmd.run({'unused_edit'})
@@ -519,7 +519,7 @@ class TestZooming(DeferrableTestCase):
         view.set_scratch(True)
 
         view.settings().set('git_savvy.diff_view.context_lines', BEFORE)
-        cmd = module.GsDiffZoom(view)
+        cmd = module.gs_diff_zoom(view)
         when(cmd.view).run_command("gs_diff_refresh")
 
         cmd.run({'unused_edit'}, AMOUNT)
@@ -562,8 +562,8 @@ class TestDiffView(DeferrableTestCase):
     ])
     def test_default_view_state(self, KEY, DEFAULT_VALUE):
         REPO_PATH = '/not/there'
-        when(GsDiffRefreshCommand).git('diff', ...).thenReturn('')
-        cmd = GsDiffCommand(self.window)
+        when(gs_diff_refresh).git('diff', ...).thenReturn('')
+        cmd = gs_diff(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
 
         cmd.run()
@@ -576,8 +576,8 @@ class TestDiffView(DeferrableTestCase):
 
     def test_sets_repo_path(self):
         REPO_PATH = '/not/there'
-        when(GsDiffRefreshCommand).git('diff', ...).thenReturn('')
-        cmd = GsDiffCommand(self.window)
+        when(gs_diff_refresh).git('diff', ...).thenReturn('')
+        cmd = gs_diff(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
 
         cmd.run()
@@ -593,8 +593,8 @@ class TestDiffView(DeferrableTestCase):
         REPO_PATH = '/not/there'
         DIFF = fixture('diff_1.txt')
 
-        when(GsDiffRefreshCommand).git('diff', ...).thenReturn(DIFF)
-        cmd = GsDiffCommand(self.window)
+        when(gs_diff_refresh).git('diff', ...).thenReturn(DIFF)
+        cmd = gs_diff(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
         cmd.run()
         yield AWAIT_WORKER  # await activated_async
@@ -619,8 +619,8 @@ class TestDiffView(DeferrableTestCase):
         REPO_PATH = '/not/there'
         DIFF = fixture('diff_1.txt')
 
-        when(GsDiffRefreshCommand).git('diff', ...).thenReturn(DIFF)
-        cmd = GsDiffCommand(self.window)
+        when(gs_diff_refresh).git('diff', ...).thenReturn(DIFF)
+        cmd = gs_diff(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
         cmd.run()
         yield AWAIT_WORKER  # await activated_async

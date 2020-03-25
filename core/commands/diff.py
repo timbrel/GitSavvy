@@ -22,6 +22,21 @@ from ..exceptions import GitSavvyError
 from ...common import util
 
 
+__all__ = (
+    "gs_diff",
+    "gs_diff_refresh",
+    "gs_diff_toggle_setting",
+    "gs_diff_cycle_word_diff",
+    "gs_diff_toggle_cached_mode",
+    "gs_diff_zoom",
+    "gs_diff_stage_or_reset_hunk",
+    "gs_diff_open_file_at_hunk",
+    "gs_diff_navigate",
+    "gs_diff_undo",
+    "GsDiffFocusEventListener",
+)
+
+
 MYPY = False
 if MYPY:
     from typing import (
@@ -89,7 +104,7 @@ def focus_view(view):
     window.focus_view(view)
 
 
-class GsDiffCommand(WindowCommand, GitCommand):
+class gs_diff(WindowCommand, GitCommand):
 
     """
     Create a new view to display the difference of `target_commit`
@@ -171,7 +186,7 @@ WORD_DIFF_PATTERNS = [
 WORD_DIFF_MARKERS_RE = re.compile(r"{\+(.*?)\+}|\[-(.*?)-\]")
 
 
-class GsDiffRefreshCommand(TextCommand, GitCommand):
+class gs_diff_refresh(TextCommand, GitCommand):
     """Refresh the diff view with the latest repo state."""
 
     def run(self, edit, sync=True):
@@ -328,7 +343,7 @@ def postprocess_word_diff(text, global_offset=0):
     return WORD_DIFF_MARKERS_RE.sub(extractor, text), added_regions, removed_regions
 
 
-class GsDiffToggleSetting(TextCommand):
+class gs_diff_toggle_setting(TextCommand):
 
     """
     Toggle view settings: `ignore_whitespace`.
@@ -346,7 +361,7 @@ class GsDiffToggleSetting(TextCommand):
         self.view.run_command("gs_diff_refresh")
 
 
-class GsDiffCycleWordDiff(TextCommand):
+class gs_diff_cycle_word_diff(TextCommand):
 
     """
     Cycle through different word diff patterns.
@@ -363,7 +378,7 @@ class GsDiffCycleWordDiff(TextCommand):
         self.view.run_command("gs_diff_refresh")
 
 
-class GsDiffToggleCachedMode(TextCommand):
+class gs_diff_toggle_cached_mode(TextCommand):
 
     """
     Toggle `in_cached_mode` or flip `base` with `target`.
@@ -419,7 +434,7 @@ class GsDiffToggleCachedMode(TextCommand):
                 set_and_show_cursor(self.view, unpickle_sel(last_cursors))
 
 
-class GsDiffZoom(TextCommand):
+class gs_diff_zoom(TextCommand):
     """
     Update the number of context lines the diff shows by given `amount`
     and refresh the view.
@@ -464,7 +479,7 @@ class GsDiffFocusEventListener(EventListener):
             view.run_command("gs_diff_refresh", {"sync": False})
 
 
-class GsDiffStageOrResetHunkCommand(TextCommand, GitCommand):
+class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
 
     """
     Depending on whether the user is in cached mode and what action
@@ -551,7 +566,7 @@ else:
     JumpTo = namedtuple('JumpTo', 'commit_hash filename row col')
 
 
-class GsDiffOpenFileAtHunkCommand(TextCommand, GitCommand):
+class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
 
     """
     For each cursor in the view, identify the hunk in which the cursor lies,
@@ -772,7 +787,7 @@ def _recount_lines(lines, b):
             b += 1
 
 
-class GsDiffNavigateCommand(GsNavigate):
+class gs_diff_navigate(GsNavigate):
 
     """
     Travel between hunks. It is also used by show_commit_view.
@@ -784,7 +799,7 @@ class GsDiffNavigateCommand(GsNavigate):
         return self.view.find_by_selector("meta.diff.range.unified, meta.commit-info.header")
 
 
-class GsDiffUndo(TextCommand, GitCommand):
+class gs_diff_undo(TextCommand, GitCommand):
 
     """
     Undo the last action taken in the diff view, if possible.
