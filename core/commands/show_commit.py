@@ -8,6 +8,15 @@ from . import intra_line_colorizer
 from ..git_command import GitCommand
 
 
+__all__ = (
+    "gs_show_commit",
+    "gs_show_commit_refresh",
+    "gs_show_commit_toggle_setting",
+    "gs_show_commit_open_file_at_hunk",
+    "gs_show_commit_show_hunk_on_working_dir",
+    "gs_show_commit_open_graph_context",
+)
+
 MYPY = False
 if MYPY:
     from typing import Optional
