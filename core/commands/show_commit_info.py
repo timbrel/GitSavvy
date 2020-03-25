@@ -9,6 +9,10 @@ from ..git_command import GitCommand
 from ..runtime import enqueue_on_worker, enqueue_on_ui, throttled
 
 
+__all__ = (
+    "gs_show_commit_info",
+)
+
 MYPY = False
 if MYPY:
     from typing import Dict, Tuple
