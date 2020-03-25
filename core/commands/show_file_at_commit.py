@@ -8,6 +8,16 @@ from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ...common import util
 from .log import LogMixin
 
+
+__all__ = (
+    "gs_show_file_at_commit",
+    "gs_show_current_file_at_commit",
+    "gs_show_current_file",
+    "gs_show_file_at_commit_open_commit",
+    "gs_show_file_at_commit_open_file_on_working_dir",
+    "gs_show_file_at_commit_open_graph_context",
+)
+
 SHOW_COMMIT_TITLE = "FILE: {} --{}"
 
 
