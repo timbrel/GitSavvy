@@ -1,6 +1,5 @@
 from itertools import groupby
 import os
-import re
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
@@ -262,13 +261,6 @@ class GsBranchesCreateNewCommand(TextCommand, GitCommand):
             self.view.window().run_command("gs_checkout_new_branch", {"base_branch": ref})
 
 
-DELETE_UNDO_MESSAGE = """\
-GitSavvy: Deleted branch ({0}), in case you want to undo, run:
-  $ git branch {0} {1}
-"""
-EXTRACT_COMMIT = re.compile(r"\(was (.+)\)")
-
-
 class GsBranchesDeleteCommand(TextCommand, GitCommand):
 
     """
@@ -280,44 +272,30 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
+        window = self.view.window()
+        if not window:
+            return
+
         interface = ui.get_interface(self.view.id())
         remote_name, branch_name = interface.get_selected_branch()
         if not branch_name:
             return
 
         if remote_name:
-            self.delete_remote_branch(remote_name, branch_name)
+            self.delete_remote_branch(remote_name, branch_name, window)
         else:
-            self.delete_local_branch(branch_name)
-
-    @util.actions.destructive(description="delete a local branch")
-    def delete_local_branch(self, branch_name):
-        rv = self.git(
-            "branch",
-            "-D" if self.force else "-d",
-            branch_name
-        )
-        match = EXTRACT_COMMIT.search(rv.strip())
-        if match:
-            commit = match.group(1)
-            print(DELETE_UNDO_MESSAGE.format(branch_name, commit))
-        util.view.flash(
-            self.view,
-            "Deleted local branch ({}).".format(branch_name)
-            + (" Open Sublime console for undo instructions." if match else "")
-        )
-        util.view.refresh_gitsavvy(self.view)
+            window.run_command("gs_delete_branch", {"branch": branch_name})
 
     @util.actions.destructive(description="delete a remote branch")
-    def delete_remote_branch(self, remote, branch_name):
-        self.view.window().status_message("Deleting remote branch...")
+    def delete_remote_branch(self, remote, branch_name, window):
+        window.status_message("Deleting remote branch...")
         self.git(
             "push",
             "--force" if self.force else None,
             remote,
             ":" + branch_name
         )
-        self.view.window().status_message("Deleted remote branch.")
+        window.status_message("Deleted remote branch.")
         util.view.refresh_gitsavvy(self.view)
 
 

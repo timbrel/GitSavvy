@@ -1,5 +1,6 @@
 from .amend import *
 from .blame import *
+from .branch import *
 from .changelog import *
 from .checkout import *
 from .cherry_pick import *
