@@ -2,6 +2,7 @@ import sublime
 import threading
 from sublime_plugin import WindowCommand
 
+from ..runtime import enqueue_on_worker
 from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -12,19 +13,6 @@ __all__ = (
 )
 
 
-class CustomCommandThread(threading.Thread):
-    def __init__(self, func, *args, custom_environ=None, **kwargs):
-        self.custom_environ = custom_environ
-        super(CustomCommandThread, self).__init__(**kwargs)
-        self.cmd_args = args
-        self.cmd_func = func
-        self.daemon = True
-
-    def run(self):
-        return self.cmd_func(*self.cmd_args,
-                             custom_environ=self.custom_environ)
-
-
 class gs_custom(WindowCommand, GitCommand):
 
     """
@@ -32,33 +20,34 @@ class gs_custom(WindowCommand, GitCommand):
     """
 
     def run(self, **kwargs):
-        if not kwargs.get('args'):
+        args = kwargs.get('args')
+        if not args:
             sublime.error_message("Custom command must provide args.")
             return
 
         # prompt for custom command argument
-        if '{PROMPT_ARG}' in kwargs.get('args'):
+        if '{PROMPT_ARG}' in args:
             prompt_msg = kwargs.pop("prompt_msg", "Command argument: ")
             return show_single_line_input_panel(
                 prompt_msg,
                 "",
-                lambda arg: sublime.set_timeout_async(
-                    lambda: self.run_async(custom_argument=arg, **kwargs), 0
-                )
+                lambda arg: self.run_impl(custom_argument=arg, **kwargs)
             )
 
-        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
+        self.run_impl(**kwargs)
 
-    def run_async(self,
-                  output_to_panel=False,
-                  output_to_buffer=False,
-                  args=None,
-                  start_msg="Starting custom command...",
-                  complete_msg="Completed custom command.",
-                  syntax=None,
-                  run_in_thread=False,
-                  custom_argument=None,
-                  custom_environ=None):
+    def run_impl(
+        self,
+        output_to_panel=False,
+        output_to_buffer=False,
+        args=None,
+        start_msg="Starting custom command...",
+        complete_msg="Completed custom command.",
+        syntax=None,
+        run_in_thread=False,
+        custom_argument=None,
+        custom_environ=None,
+    ):
 
         for idx, arg in enumerate(args):
             if arg == "{REPO_PATH}":
@@ -68,22 +57,26 @@ class gs_custom(WindowCommand, GitCommand):
             elif arg == "{PROMPT_ARG}":
                 args[idx] = custom_argument
 
-        self.window.status_message(start_msg)
-        if run_in_thread:
-            stdout = ''
-            cmd_thread = CustomCommandThread(self.git, *args, custom_environ=custom_environ)
-            cmd_thread.start()
-        else:
+        def program():
+            self.window.status_message(start_msg)
             stdout = self.git(*args, custom_environ=custom_environ)
-        self.window.status_message(complete_msg)
+            self.window.status_message(complete_msg)
 
-        if output_to_panel:
-            util.log.panel(stdout)
-        if output_to_buffer:
-            view = self.window.new_file()
-            view.set_scratch(True)
-            view.run_command("gs_replace_view_text", {"text": stdout.replace("\r", "\n"), "nuke_cursors": True})
-            if syntax:
-                view.set_syntax_file(syntax)
+            if output_to_panel:
+                util.log.panel(stdout)
+            if output_to_buffer:
+                view = self.window.new_file()
+                view.set_scratch(True)
+                view.run_command("gs_replace_view_text", {
+                    "text": stdout.replace("\r", "\n"),
+                    "nuke_cursors": True,
+                })
+                if syntax:
+                    view.set_syntax_file(syntax)
 
-        util.view.refresh_gitsavvy(self.window.active_view())
+            util.view.refresh_gitsavvy_interfaces(self.window)
+
+        if run_in_thread:
+            threading.Thread(target=program, daemon=True).start()
+        else:
+            enqueue_on_worker(program)
