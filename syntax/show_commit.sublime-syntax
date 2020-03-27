@@ -46,6 +46,9 @@ contexts:
         - meta_scope: meta.commit_message
         - match: (?=^diff\s)
           set: "scope:git-savvy.diff"
+        # Merge commits "just" start the diffstat without the "---" line
+        - match: (?=^ \S)
+          set: "scope:git-savvy.diff"
         - match: ^---$\n?
           scope: meta.commit-header-and-stat-splitter
           set: "scope:git-savvy.diff"
