@@ -1,18 +1,20 @@
 import sublime
 from sublime_plugin import WindowCommand
-import re
 
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
-COMMIT_NODE_CHAR = "●"
-COMMIT_NODE_CHAR_OPTIONS = "●*"
-COMMIT_LINE = re.compile(r"[%s][ /_\|\-.]*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
+__all__ = (
+    "gs_compare_commit",
+    "gs_compare_against_reference",
+    "gs_compare_against_branch",
+    "gs_compare_against",
+)
 
 
-class GsCompareCommitCommand(WindowCommand, GitCommand):
+class gs_compare_commit(WindowCommand, GitCommand):
 
     """
     Show a view of all commits diff between branches.
@@ -38,7 +40,7 @@ class GsCompareCommitCommand(WindowCommand, GitCommand):
         })
 
 
-class GsCompareAgainstReferenceCommand(WindowCommand, GitCommand):
+class gs_compare_against_reference(WindowCommand, GitCommand):
     def run(self, base_commit=None, target_commit=None, file_path=None):
         self._file_path = file_path
         self._base_commit = base_commit
@@ -63,7 +65,7 @@ class GsCompareAgainstReferenceCommand(WindowCommand, GitCommand):
         })
 
 
-class GsCompareAgainstBranchCommand(WindowCommand, GitCommand):
+class gs_compare_against_branch(WindowCommand, GitCommand):
     def run(self, base_commit=None, target_commit=None, file_path=None):
         self._file_path = file_path
         self._base_commit = base_commit
@@ -88,7 +90,7 @@ class GsCompareAgainstBranchCommand(WindowCommand, GitCommand):
             })
 
 
-class GsCompareAgainstCommand(PanelActionMixin, WindowCommand, GitCommand):
+class gs_compare_against(PanelActionMixin, WindowCommand, GitCommand):
     default_actions = [
         ["compare_against_branch", "Branch"],
         ["compare_against_reference", "Reference"],

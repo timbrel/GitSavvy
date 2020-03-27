@@ -5,7 +5,7 @@ import unicodedata
 import sublime
 from sublime_plugin import TextCommand
 
-from ..commands import GsNavigate
+from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ...common import util
 from .log import LogMixin

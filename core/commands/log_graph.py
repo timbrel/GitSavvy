@@ -33,6 +33,27 @@ from ...common import util
 from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
 
+__all__ = (
+    "gs_graph",
+    "gs_graph_current_file",
+    "gs_log_graph_refresh",
+    "gs_log_graph",
+    "gs_log_graph_current_branch",
+    "gs_log_graph_all_branches",
+    "gs_log_graph_by_author",
+    "gs_log_graph_by_branch",
+    "gs_log_graph_navigate",
+    "gs_log_graph_navigate_to_head",
+    "gs_log_graph_edit_branches",
+    "gs_log_graph_edit_filters",
+    "gs_log_graph_reset_filters",
+    "gs_log_graph_toggle_all_setting",
+    "gs_log_graph_open_commit",
+    "gs_log_graph_toggle_more_info",
+    "gs_log_graph_action",
+    "GsLogGraphCursorListener",
+)
+
 MYPY = False
 if MYPY:
     from typing import (
@@ -79,7 +100,7 @@ def focus_view(view):
     window.focus_view(view)
 
 
-class GsGraphCommand(WindowCommand, GitCommand):
+class gs_graph(WindowCommand, GitCommand):
     def run(
         self,
         repo_path=None,
@@ -157,7 +178,7 @@ class GsGraphCommand(WindowCommand, GitCommand):
             view.run_command("gs_log_graph_refresh", {"navigate_after_draw": True})
 
 
-class GsGraphCurrentFile(WindowCommand, GitCommand):
+class gs_graph_current_file(WindowCommand, GitCommand):
     def run(self, **kwargs):
         file_path = self.file_path
         if file_path:
@@ -484,7 +505,7 @@ def selection_is_before_region(view, region):
         return True
 
 
-class GsLogGraphRefreshCommand(TextCommand, GitCommand):
+class gs_log_graph_refresh(TextCommand, GitCommand):
 
     """
     Refresh the current graph view with the latest commits.
@@ -834,7 +855,7 @@ def prelude(view):
     return prelude + "\n"
 
 
-class GsLogGraphCommand(GsLogCommand):
+class gs_log_graph(GsLogCommand):
     """
     Defines the main menu if you invoke `git: graph` or `git: graph current file`.
 
@@ -850,7 +871,7 @@ class GsLogGraphCommand(GsLogCommand):
     ]
 
 
-class GsLogGraphCurrentBranch(WindowCommand, GitCommand):
+class gs_log_graph_current_branch(WindowCommand, GitCommand):
     def run(self, file_path=None):
         self.window.run_command('gs_graph', {
             'file_path': file_path,
@@ -859,7 +880,7 @@ class GsLogGraphCurrentBranch(WindowCommand, GitCommand):
         })
 
 
-class GsLogGraphAllBranches(WindowCommand, GitCommand):
+class gs_log_graph_all_branches(WindowCommand, GitCommand):
     def run(self, file_path=None):
         self.window.run_command('gs_graph', {
             'file_path': file_path,
@@ -867,7 +888,7 @@ class GsLogGraphAllBranches(WindowCommand, GitCommand):
         })
 
 
-class GsLogGraphByAuthorCommand(WindowCommand, GitCommand):
+class gs_log_graph_by_author(WindowCommand, GitCommand):
 
     """
     Open a quick panel containing all committers for the active
@@ -905,7 +926,7 @@ class GsLogGraphByAuthorCommand(WindowCommand, GitCommand):
         )
 
 
-class GsLogGraphByBranchCommand(WindowCommand, GitCommand):
+class gs_log_graph_by_branch(WindowCommand, GitCommand):
     _selected_branch = None
 
     def run(self, file_path=None):
@@ -922,7 +943,7 @@ class GsLogGraphByBranchCommand(WindowCommand, GitCommand):
         show_branch_panel(on_select, selected_branch=self._selected_branch)
 
 
-class GsLogGraphNavigateCommand(GsNavigate):
+class gs_log_graph_navigate(GsNavigate):
 
     """
     Travel between commits. It is also used by compare_commit_view.
@@ -933,7 +954,7 @@ class GsLogGraphNavigateCommand(GsNavigate):
         return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
 
 
-class GsLogGraphNavigateToHeadCommand(TextCommand):
+class gs_log_graph_navigate_to_head(TextCommand):
 
     """
     Travel to the HEAD commit.
@@ -992,7 +1013,7 @@ class gs_log_graph_reset_filters(TextCommand):
         self.view.run_command("gs_log_graph_refresh")
 
 
-class GsLogGraphToggleAllSetting(TextCommand, GitCommand):
+class gs_log_graph_toggle_all_setting(TextCommand, GitCommand):
     def run(self, edit):
         settings = self.view.settings()
         current = settings.get("git_savvy.log_graph_view.all_branches")
@@ -1470,7 +1491,7 @@ def extract_commit_hash(line):
     return match.groupdict()['commit_hash'] if match else ""
 
 
-class GsLogGraphToggleMoreInfoCommand(WindowCommand, GitCommand):
+class gs_log_graph_toggle_more_info(WindowCommand, GitCommand):
 
     """
     Toggle global `graph_show_more_commit_info` setting.
@@ -1563,7 +1584,7 @@ def format_revision_list(revisions):
     )
 
 
-class GsLogGraphActionCommand(WindowCommand, GitCommand):
+class gs_log_graph_action(WindowCommand, GitCommand):
     selected_index = 0
 
     def run(self):

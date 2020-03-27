@@ -8,6 +8,15 @@ from . import intra_line_colorizer
 from ..git_command import GitCommand
 
 
+__all__ = (
+    "gs_show_commit",
+    "gs_show_commit_refresh",
+    "gs_show_commit_toggle_setting",
+    "gs_show_commit_open_file_at_hunk",
+    "gs_show_commit_show_hunk_on_working_dir",
+    "gs_show_commit_open_graph_context",
+)
+
 MYPY = False
 if MYPY:
     from typing import Optional
@@ -72,7 +81,7 @@ class gs_show_commit_toggle_setting(TextCommand):
         self.view.run_command("gs_show_commit_refresh")
 
 
-class gs_show_commit_open_file_at_hunk(diff.GsDiffOpenFileAtHunkCommand):
+class gs_show_commit_open_file_at_hunk(diff.gs_diff_open_file_at_hunk):
 
     """
     For each cursor in the view, identify the hunk in which the cursor lies,
@@ -100,7 +109,7 @@ class gs_show_commit_open_file_at_hunk(diff.GsDiffOpenFileAtHunkCommand):
         })
 
 
-class gs_show_commit_show_hunk_on_working_dir(diff.GsDiffOpenFileAtHunkCommand):
+class gs_show_commit_show_hunk_on_working_dir(diff.gs_diff_open_file_at_hunk):
     def load_file_at_line(self, commit_hash, filename, row, col):
         # type: (Optional[str], str, int, int) -> None
         if not commit_hash:

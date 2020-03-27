@@ -7,6 +7,11 @@ from ...common import util
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
+__all__ = (
+    "gs_custom",
+)
+
+
 class CustomCommandThread(threading.Thread):
     def __init__(self, func, *args, custom_environ=None, **kwargs):
         self.custom_environ = custom_environ
@@ -20,7 +25,7 @@ class CustomCommandThread(threading.Thread):
                              custom_environ=self.custom_environ)
 
 
-class GsCustomCommand(WindowCommand, GitCommand):
+class gs_custom(WindowCommand, GitCommand):
 
     """
     Run the specified custom command asynchronously.

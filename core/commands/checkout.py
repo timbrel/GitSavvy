@@ -10,11 +10,20 @@ from ..ui_mixins.quick_panel import show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
+__all__ = (
+    "gs_checkout_branch",
+    "gs_checkout_new_branch",
+    "gs_checkout_remote_branch",
+    "gs_checkout_current_file_at_commit",
+    "gs_show_file_diff",
+)
+
+
 NEW_BRANCH_PROMPT = "Branch name:"
 NEW_BRANCH_INVALID = "`{}` is a invalid branch name.\nRead more on $(man git-check-ref-format)"
 
 
-class GsCheckoutBranchCommand(WindowCommand, GitCommand):
+class gs_checkout_branch(WindowCommand, GitCommand):
 
     """
     Display a panel of all local branches.  Change to the branch the
@@ -50,7 +59,7 @@ class GsCheckoutBranchCommand(WindowCommand, GitCommand):
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
-class GsCheckoutNewBranchCommand(WindowCommand, GitCommand):
+class gs_checkout_new_branch(WindowCommand, GitCommand):
 
     """
     Prompt the user for a new branch name, create it, and check it out.
@@ -81,7 +90,7 @@ class GsCheckoutNewBranchCommand(WindowCommand, GitCommand):
                                               interface_reset_cursor=True)
 
 
-class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
+class gs_checkout_remote_branch(WindowCommand, GitCommand):
 
     """
     Display a panel of all remote branches.  When the user makes a selection,
@@ -127,7 +136,7 @@ class GsCheckoutRemoteBranchCommand(WindowCommand, GitCommand):
                                               interface_reset_cursor=True)
 
 
-class GsCheckoutCurrentFileAtCommitCommand(LogMixin, WindowCommand, GitCommand):
+class gs_checkout_current_file_at_commit(LogMixin, WindowCommand, GitCommand):
 
     """
     Reset the current active file to a given commit.
@@ -159,7 +168,7 @@ class GsCheckoutCurrentFileAtCommitCommand(LogMixin, WindowCommand, GitCommand):
             util.view.refresh_gitsavvy_interfaces(self.window, interface_reset_cursor=True)
 
 
-class GsShowFileDiffCommand(WindowCommand, GitCommand):
+class gs_show_file_diff(WindowCommand, GitCommand):
     def run(self, commit_hash, file_path):
         self._commit_hash = commit_hash
         self._file_path = file_path

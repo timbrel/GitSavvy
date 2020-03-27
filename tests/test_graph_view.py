@@ -7,7 +7,7 @@ from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.mockito import unstub, when
 
 from GitSavvy.core.commands.log_graph import (
-    GsLogGraphRefreshCommand,
+    gs_log_graph_refresh,
     extract_commit_hash,
     navigate_to_symbol
 )
@@ -165,7 +165,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
             when(gs_show_commit_info).show_commit(sha1, ...).thenReturn(info)
 
     def create_graph_view_async(self, repo_path, log, wait_for):
-        when(GsLogGraphRefreshCommand).read_graph(...).thenReturn(log.splitlines(keepends=True))
+        when(gs_log_graph_refresh).read_graph(...).thenReturn(log.splitlines(keepends=True))
         # `GitCommand.get_repo_path` "validates" a given repo using
         # `os.path.exists`.
         exists = os.path.exists
