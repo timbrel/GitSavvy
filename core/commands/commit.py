@@ -247,8 +247,8 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
         warning_lines = []
         illegal_lines = []
 
-        first_line = self.view.lines(sublime.Region(0, 0))[0]
-        length = first_line.b - first_line.a
+        first_line = self.view.line(sublime.Region(0, 0))
+        length = len(self.view.substr(first_line).rstrip())
         if length > self.first_line_limit:
             warning_lines.append(sublime.Region(
                 first_line.a + self.first_line_limit,
