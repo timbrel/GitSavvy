@@ -9,7 +9,6 @@ from ..runtime import enqueue_on_worker
 from ..git_command import GitCommand
 from ...common import util
 from ...core.settings import SettingsMixin
-from ..exceptions import GitSavvyError
 
 
 COMMIT_HELP_TEXT_EXTRA = """##
@@ -54,92 +53,40 @@ class GsCommitCommand(WindowCommand, GitCommand):
     message area with the previous commit message.
     """
 
-    def run(self, **kwargs):
-        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
-
-    def run_async(self, repo_path=None, include_unstaged=False, amend=False):
-
+    def run(self, repo_path=None, include_unstaged=False, amend=False):
         repo_path = repo_path or self.repo_path
-        # run `pre-commit` and `prepare-commit-msg` hooks
-        hooks_path = os.path.join(repo_path, ".git", "hooks")
-        pre_commit = os.path.join(hooks_path, "pre-commit")
-        prepare_commit_msg = os.path.join(hooks_path, "prepare-commit-msg")
-        has_pre_commit_hook = os.path.isfile(pre_commit)
-        has_prepare_commit_msg_hook = os.path.isfile(prepare_commit_msg)
-        if has_pre_commit_hook or has_prepare_commit_msg_hook:
-            self.pre_commit_hooks(repo_path, include_unstaged, amend)
 
         view = self.window.new_file()
         settings = view.settings()
+        settings.set("git_savvy.repo_path", repo_path)
         settings.set("git_savvy.get_long_text_view", True)
         settings.set("git_savvy.commit_view", True)
         settings.set("git_savvy.commit_view.include_unstaged", include_unstaged)
         settings.set("git_savvy.commit_view.amend", amend)
-        settings.set("git_savvy.commit_view.has_pre_commit_hook", has_pre_commit_hook)
-        settings.set("git_savvy.commit_view.has_prepare_commit_msg_hook", has_prepare_commit_msg_hook)
-        settings.set("git_savvy.repo_path", repo_path)
+        commit_on_close = self.savvy_settings.get("commit_on_close")
+        settings.set("git_savvy.commit_on_close", commit_on_close)
+        prompt_on_abort_commit = self.savvy_settings.get("prompt_on_abort_commit")
+        settings.set("git_savvy.prompt_on_abort_commit", prompt_on_abort_commit)
 
         view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
         view.run_command("gs_handle_vintageous")
 
-        commit_on_close = self.savvy_settings.get("commit_on_close")
-        settings.set("git_savvy.commit_on_close", commit_on_close)
-
-        prompt_on_abort_commit = self.savvy_settings.get("prompt_on_abort_commit")
-        settings.set("git_savvy.prompt_on_abort_commit", prompt_on_abort_commit)
-
         title = COMMIT_TITLE.format(os.path.basename(repo_path))
         view.set_name(title)
         view.set_scratch(True)  # ignore dirty on actual commit
-        view.run_command("gs_commit_initialize_view")
+        self.initialize_view(view, include_unstaged, amend)
 
-    def pre_commit_hooks(self, repo_path, include_unstaged, amend):
-        show_panel_overrides = self.savvy_settings.get("show_panel_for")
-        try:
-            # a trick to execuate the pre hooks
-            # https://vi.stackexchange.com/questions/2544/how-to-manage-fugitive-commit-with-a-git-pre-commit-hook/2749#2749
-            # and it is expected to fail because we didn't provide any messages
-            self.git(
-                "commit",
-                "-q" if "commit" not in show_panel_overrides else None,
-                "-a" if include_unstaged else None,
-                "--amend" if amend else None,
-                show_panel=False,
-                show_panel_on_stderr=False,
-                show_status_message_on_stderr=False,
-                custom_environ={"GIT_EDITOR": "false"}
-            )
-        except GitSavvyError as e:
-            if "using either -m or -F option" in e.args[0]:
-                pass
-            else:
-                raise GitSavvyError(e.args[0])
-
-
-class GsCommitInitializeViewCommand(TextCommand, GitCommand):
-
-    """
-    Fill the view with the commit view help message, and optionally
-    the previous commit message if amending.
-    """
-
-    def run(self, edit):
-
-        view_settings = self.view.settings()
-        commit_editmsg_path = os.path.join(self.repo_path, ".git", "COMMIT_EDITMSG")
+    def initialize_view(self, view, include_unstaged, amend):
+        # type: (sublime.View, bool, bool) -> None
         merge_msg_path = os.path.join(self.repo_path, ".git", "MERGE_MSG")
 
-        help_text = (COMMIT_HELP_TEXT_ALT
-                     if self.savvy_settings.get("commit_on_close")
-                     else COMMIT_HELP_TEXT)
-        include_unstaged = view_settings.get("git_savvy.commit_view.include_unstaged", False)
-        option_amend = view_settings.get("git_savvy.commit_view.amend")
-        has_prepare_commit_msg_hook = view_settings.get("git_savvy.commit_view.has_prepare_commit_msg_hook")
+        help_text = (
+            COMMIT_HELP_TEXT_ALT
+            if self.savvy_settings.get("commit_on_close")
+            else COMMIT_HELP_TEXT
+        )
 
-        if has_prepare_commit_msg_hook and os.path.exists(commit_editmsg_path):
-            with util.file.safe_open(commit_editmsg_path, "r") as f:
-                initial_text = "\n" + f.read().rstrip() + help_text
-        elif option_amend:
+        if amend:
             last_commit_message = self.git("log", "-1", "--pretty=%B").strip()
             initial_text = last_commit_message + help_text
         elif os.path.exists(merge_msg_path):
@@ -168,7 +115,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
                 "--patch" if shows_diff else None,
                 "--stat" if shows_stat else None,
                 "--cached" if not include_unstaged else None,
-                "HEAD^" if option_amend
+                "HEAD^" if amend
                 else "HEAD" if include_unstaged
                 else None
             )
@@ -176,9 +123,9 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
             diff_text = ''
 
         text = initial_text + diff_text
-        self.view.run_command("gs_replace_view_text", {"text": text, "restore_cursors": True})
+        view.run_command("gs_replace_view_text", {"text": text, "restore_cursors": True})
         if shows_diff:
-            intra_line_colorizer.annotate_intra_line_differences(self.view, diff_text, len(initial_text))
+            intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(initial_text))
 
 
 class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
