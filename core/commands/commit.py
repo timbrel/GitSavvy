@@ -279,6 +279,16 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
         return [warning_lines, illegal_lines]
 
 
+def extract_commit_message(view):
+    # type: (sublime.View) -> str
+    try:
+        region = view.find_by_selector("meta.commit.message")[0]
+    except IndexError:
+        return ""
+
+    return view.substr(region)
+
+
 class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
 
     """
@@ -295,9 +305,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
             return
 
         if commit_message is None:
-            view_text = self.view.substr(sublime.Region(0, self.view.size()))
-            help_text = view_settings.get("git_savvy.commit_view.help_text")
-            commit_message = view_text.split(help_text)[0]
+            commit_message = extract_commit_message(self.view)
 
         include_unstaged = view_settings.get("git_savvy.commit_view.include_unstaged")
 
@@ -359,10 +367,7 @@ class GsCommitViewCloseCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        view_text = self.view.substr(sublime.Region(0, self.view.size()))
-        help_text = self.view.settings().get("git_savvy.commit_view.help_text")
-        message_txt = view_text.split(help_text)[0]
-        message_txt = message_txt.strip()
+        message_txt = extract_commit_message(self.view).strip()
 
         if self.view.settings().get("git_savvy.commit_on_close"):
             if message_txt and not message_txt.startswith("#"):
