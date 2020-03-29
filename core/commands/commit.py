@@ -218,11 +218,13 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
         on_first_line = False
         on_message_body = False
 
+        subject_near_limit = len(self.view.substr(self.view.line(sublime.Region(0))).rstrip()) >= 40
+
         for region in self.view.sel():
             first_line = self.view.rowcol(region.begin())[0]
             last_line = self.view.rowcol(region.end())[0]
 
-            if on_first_line or first_line == 0:
+            if first_line == 0 and subject_near_limit:
                 on_first_line = True
 
             if self.first_comment_line:
