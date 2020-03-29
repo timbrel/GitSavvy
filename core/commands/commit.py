@@ -343,19 +343,18 @@ class GsCommitViewSignCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        view_text = self.view.substr(sublime.Region(0, self.view.size()))
-        help_text = self.view.settings().get("git_savvy.commit_view.help_text")
-        view_text_list = view_text.split(help_text)
-
         config_name = self.git("config", "user.name").strip()
         config_email = self.git("config", "user.email").strip()
+        commit_message = extract_commit_message(self.view)
 
         sign_text = COMMIT_SIGN_TEXT.format(name=config_name, email=config_email)
-        view_text_list[0] = view_text_list[0].rstrip() + sign_text + "\n"
+        new_commit_message = commit_message.rstrip() + sign_text + "\n"
 
+        view_text = self.view.substr(sublime.Region(0, self.view.size()))
+        new_view_text = new_commit_message + view_text[len(commit_message):]
         self.view.run_command("gs_replace_view_text", {
-            "text": help_text.join(view_text_list),
-            "nuke_cursors": True
+            "text": new_view_text,
+            "restore_cursors": True
         })
 
 
