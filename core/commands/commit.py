@@ -364,22 +364,17 @@ class GsCommitViewCloseCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        message_txt = extract_commit_message(self.view).strip()
-
         if self.view.settings().get("git_savvy.commit_on_close"):
-            if message_txt and not message_txt.startswith("#"):
-                # the view will be closed by gs_commit_view_do_commit
+            message_txt = extract_commit_message(self.view).strip()
+            if message_txt:
                 self.view.run_command("gs_commit_view_do_commit", {"message": message_txt})
             else:
                 self.view.close()
 
         elif self.view.settings().get("git_savvy.prompt_on_abort_commit"):
-            if message_txt and not message_txt.startswith("#"):
-                ok = sublime.ok_cancel_dialog(CONFIRM_ABORT)
-            else:
-                ok = True
-
-            if ok:
+            message_txt = extract_commit_message(self.view).strip()
+            if not message_txt or sublime.ok_cancel_dialog(CONFIRM_ABORT):
                 self.view.close()
+
         else:
             self.view.close()
