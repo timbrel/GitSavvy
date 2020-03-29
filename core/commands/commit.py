@@ -78,12 +78,7 @@ class GsCommitCommand(WindowCommand, GitCommand):
         settings.set("git_savvy.commit_view.has_prepare_commit_msg_hook", has_prepare_commit_msg_hook)
         settings.set("git_savvy.repo_path", repo_path)
 
-        if self.savvy_settings.get("use_syntax_for_commit_editmsg"):
-            syntax_file = util.file.get_syntax_for_file("COMMIT_EDITMSG")
-            view.set_syntax_file(syntax_file)
-        else:
-            view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
-
+        view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
         view.run_command("gs_handle_vintageous")
 
         commit_on_close = self.savvy_settings.get("commit_on_close")
