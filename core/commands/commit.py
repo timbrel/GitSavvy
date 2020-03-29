@@ -5,6 +5,7 @@ from sublime_plugin import WindowCommand, TextCommand
 from sublime_plugin import EventListener
 
 from . import intra_line_colorizer
+from ..runtime import enqueue_on_worker
 from ..git_command import GitCommand
 from ...common import util
 from ...core.settings import SettingsMixin
@@ -295,43 +296,39 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, message=None):
-        sublime.set_timeout_async(lambda: self.run_async(commit_message=message), 0)
+        enqueue_on_worker(self.run_impl, message)
 
-    def run_async(self, commit_message=None):
-        view_settings = self.view.settings()
-        if view_settings.get("git_savvy.commit_view.is_commiting", False):
+    def run_impl(self, commit_message=None):
+        window = self.view.window()
+        if not window:
+            print("No window?")
+            return
+
+        settings = self.view.settings()
+        if settings.get("git_savvy.commit_view.is_commiting", False):
             return
 
         if commit_message is None:
             commit_message = extract_commit_message(self.view)
 
-        include_unstaged = view_settings.get("git_savvy.commit_view.include_unstaged")
-
-        show_panel_overrides = self.savvy_settings.get("show_panel_for")
-
-        view_settings.set("git_savvy.commit_view.is_commiting", True)
-        sublime.active_window().status_message("Commiting...")
-
+        settings.set("git_savvy.commit_view.is_commiting", True)
+        window.status_message("Commiting...")
         try:
             self.git(
                 "commit",
-                "-q" if "commit" not in show_panel_overrides else None,
-                "-a" if include_unstaged else None,
-                "--amend" if view_settings.get("git_savvy.commit_view.amend") else None,
+                "-a" if settings.get("git_savvy.commit_view.include_unstaged") else None,
+                "--amend" if settings.get("git_savvy.commit_view.amend") else None,
                 "-F",
                 "-",
                 stdin=commit_message
             )
         finally:
-            view_settings.set("git_savvy.commit_view.is_commiting", False)
+            settings.set("git_savvy.commit_view.is_commiting", False)
 
-        sublime.active_window().status_message("Committed successfully.")
+        window.status_message("Committed successfully.")
 
-        if view_settings.get("git_savvy.commit_view"):
-            self.view.close()
-
-        sublime.set_timeout_async(
-            lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
+        self.view.close()
+        util.view.refresh_gitsavvy_interfaces(window)
 
 
 class GsCommitViewSignCommand(TextCommand, GitCommand):
