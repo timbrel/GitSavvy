@@ -189,7 +189,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
 
 class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
     """
-    Set regions to worn for Pedantic commits
+    Set regions to warn for pedantic commits
     """
 
     def on_selection_modified(self, view):
@@ -212,9 +212,9 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
         if self.savvy_settings.get('pedantic_commit_ruler'):
             self.view.settings().set("rulers", self.find_rulers())
 
-        waring, illegal = self.find_too_long_lines()
+        warning, illegal = self.find_too_long_lines()
         self.view.add_regions(
-            'make_commit_warning', waring,
+            'make_commit_warning', warning,
             scope='invalid.deprecated.line-too-long.git-commit', flags=sublime.DRAW_NO_FILL)
         self.view.add_regions(
             'make_commit_illegal', illegal,
