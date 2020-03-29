@@ -135,8 +135,6 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
         option_amend = view_settings.get("git_savvy.commit_view.amend")
         has_prepare_commit_msg_hook = view_settings.get("git_savvy.commit_view.has_prepare_commit_msg_hook")
 
-        view_settings.set("git_savvy.commit_view.help_text", help_text)
-
         if has_prepare_commit_msg_hook and os.path.exists(commit_editmsg_path):
             with util.file.safe_open(commit_editmsg_path, "r") as f:
                 initial_text = "\n" + f.read().rstrip() + help_text
