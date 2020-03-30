@@ -7,7 +7,7 @@ from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p
 
-from GitSavvy.core.commands.commit import extract_commit_message, GsCommitCommand
+from GitSavvy.core.commands.commit import extract_commit_message, gs_commit
 
 
 examples = [
@@ -82,7 +82,7 @@ class TestExtractCommitMessage(DeferrableTestCase):
         exists = os.path.exists
         when(os.path).exists(...).thenAnswer(exists)
         when(os.path).exists("/foo").thenReturn(True)
-        when(GsCommitCommand).git("diff", ...).thenReturn(dedent("""\
+        when(gs_commit).git("diff", ...).thenReturn(dedent("""\
         diff --git a/bar/test.txt b/bar/test.txt
         index 9303f2c..5a9ce64 100644
         --- a/bar/test.txt

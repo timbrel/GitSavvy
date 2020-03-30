@@ -11,6 +11,15 @@ from ...common import util
 from ...core.settings import SettingsMixin
 
 
+__all__ = (
+    "gs_commit",
+    "gs_commit_view_do_commit",
+    "gs_commit_view_sign",
+    "gs_commit_view_close",
+    "GsPedanticEnforceEventListener",
+)
+
+
 COMMIT_HELP_TEXT_EXTRA = """##
 ## You may also reference or close a GitHub issue with this commit.
 ## To do so, type `#` followed by the `tab` key.  You will be shown a
@@ -45,7 +54,7 @@ COMMIT_TITLE = "COMMIT: {}"
 CONFIRM_ABORT = "Confirm to abort commit?"
 
 
-class GsCommitCommand(WindowCommand, GitCommand):
+class gs_commit(WindowCommand, GitCommand):
 
     """
     Display a transient window to capture the user's desired commit message.
@@ -237,7 +246,7 @@ def extract_commit_message(view):
     return view.substr(region)
 
 
-class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
+class gs_commit_view_do_commit(TextCommand, GitCommand):
 
     """
     Take the text of the current view (minus the help message text) and
@@ -280,7 +289,7 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy_interfaces(window)
 
 
-class GsCommitViewSignCommand(TextCommand, GitCommand):
+class gs_commit_view_sign(TextCommand, GitCommand):
 
     """
     Sign off on the commit with full name and email.
@@ -302,7 +311,7 @@ class GsCommitViewSignCommand(TextCommand, GitCommand):
         })
 
 
-class GsCommitViewCloseCommand(TextCommand, GitCommand):
+class gs_commit_view_close(TextCommand, GitCommand):
 
     """
     Perform commit action on commit view close if `commit_on_close` setting
