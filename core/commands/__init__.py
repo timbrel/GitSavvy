@@ -23,7 +23,6 @@ from .pull import *
 from .push import *
 from .quick_commit import *
 from .quick_stage import *
-from .rebase_interactive import *
 from .reflog import *
 from .remote import *
 from .reset import *
