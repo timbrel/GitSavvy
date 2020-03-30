@@ -199,7 +199,7 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
         self.body_line_limit = self.savvy_settings.get('pedantic_commit_message_line_length')
         self.warning_length = self.savvy_settings.get('pedantic_commit_warning_length')
 
-        self.comment_start_region = self.view.find_all('^#')
+        self.comment_start_region = self.view.find_by_selector("meta.dropped.git.commit")
         self.first_comment_line = None
         if self.comment_start_region:
             self.first_comment_line = self.view.rowcol(self.comment_start_region[0].begin())[0]
