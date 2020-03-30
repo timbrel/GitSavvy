@@ -59,15 +59,17 @@ class GitCommandFromTerminal(EventListener, SettingsMixin):
 PROJECT_MSG = """
 <body>
 <p>Add the key <code>"GitSavvy"</code> as follows</p>
+<code>
 {<br>
-&nbsp;&nbsp;"settings": {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;"GitSavvy": {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// GitSavvy settings go here<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;}<br>
-}
+  "settings": {<br>
+    "GitSavvy": {<br>
+        // GitSavvy settings go here<br>
+    }<br>
+  }<br>
+}<br>
+</code>
 </body>
-"""
+""".replace(" ", "&nbsp;")
 
 
 class KeyboardSettingsListener(EventListener):
@@ -79,11 +81,14 @@ class KeyboardSettingsListener(EventListener):
                 w.focus_group(0)
                 w.run_command("open_file", {"file": "${packages}/GitSavvy/Default.sublime-keymap"})
                 w.focus_group(1)
-            elif base.endswith("GitSavvy.sublime-settings"):
+            elif args.get("user_file", "").endswith(".sublime-project"):
                 w = sublime.active_window()
                 view = w.active_view()
-                sublime.set_timeout(
-                    lambda: view.show_popup(PROJECT_MSG), 1000)
+                data = window.project_data()
+                if view and "GitSavvy" not in data.get("settings", {}):
+                    sublime.set_timeout_async(
+                        lambda: view.show_popup(PROJECT_MSG, max_width=550)  # type: ignore
+                    )
 
 
 class GsEditSettingsCommand(WindowCommand):
