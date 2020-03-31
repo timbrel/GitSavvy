@@ -1,0 +1,39 @@
+GitSavvy 2.22.0
+===============
+
+- Greatly improved graph view (`git: Repo History` or `git: File History` via
+  the Command Palette)
+
+  [ctrl+R]  Goto symbols, tags, branches
+  [h]       Goto HEAD commit
+  [enter]   Open a menu with additonal actions, for example to checkout or
+            remove a branch, reset HEAD, or to create or delete a tag.
+  [o]       To open the commit in a new view
+  [m]       Open or close a panel to always see the current commit details
+
+  further experimental bindings
+  [a]       to toggle `--all`
+  [f]       to enter additional filter verbatim
+            E.g. try `--reflog` or `-Ssearch_term`
+
+- Improved navigation with [oOg] throughout the application
+
+  When viewing a commit:
+  [o]       To open the file revision at hunk position
+  [O]       To open the same file but currently checked out on disk
+  [g]       To open the graph showing the context of the commit
+
+  When viewing a file revision:
+  [o]       To open the commit this revision belongs to
+  [O]       To open the same file but currently checked out on disk
+  [g]       To open the graph showing the context of said commit
+
+  From the status dashboard
+  [g]       To open the graph showing HEAD
+
+  From the branches dashboard
+  [g]       To open the graph showing the selected branch
+
+
+For more info:
+  https://github.com/timbrel/GitSavvy/compare/2.21.0...2.22.0
