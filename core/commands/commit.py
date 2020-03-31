@@ -137,28 +137,29 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
             show_commit_diff == "stat"
             or (show_commit_diff == "full" and self.savvy_settings.get("show_diffstat"))
         )
-        if shows_diff or shows_stat:
-            diff_text = "\n"
-            diff_text += self.git(
-                "diff",
-                "--no-color",
-                "--patch" if shows_diff else None,
-                "--stat" if shows_stat else None,
-                "--cached" if not include_unstaged else None,
-                "HEAD^" if amend
-                else "HEAD" if include_unstaged
-                else None
-            ) or "Nothing to commit.\n"
+        diff_text = self.git(
+            "diff",
+            "--no-color",
+            "--patch" if shows_diff else None,
+            "--stat" if shows_stat else None,
+            "--cached" if not include_unstaged else None,
+            "HEAD^" if amend
+            else "HEAD" if include_unstaged
+            else None
+        )
+        if diff_text:
+            final_text = ("\n" + diff_text) if shows_diff or shows_stat else ""
         else:
-            diff_text = ''
+            final_text = "\nNothing to commit.\n"
 
         try:
             region = view.find_by_selector("git-savvy.diff")[0]
         except IndexError:
             region = sublime.Region(view.size())
-        replace_region(view, diff_text, region)
+
+        replace_region(view, final_text, region)
         if shows_diff:
-            intra_line_colorizer.annotate_intra_line_differences(view, diff_text, region.begin())
+            intra_line_colorizer.annotate_intra_line_differences(view, final_text, region.begin())
 
 
 class GsPrepareCommitFocusEventListener(EventListener):
