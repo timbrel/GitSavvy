@@ -387,8 +387,9 @@
         ]
     },
     {
-        "keys": ["r"],
-        "command": "gs_interface_refresh",
+        "keys": ["g"],
+        "command": "gs_graph",
+        "args": { "all": true, "follow": "HEAD" },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
