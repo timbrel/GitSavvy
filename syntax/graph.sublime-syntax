@@ -9,24 +9,39 @@ variables:
   sha: '[0-9a-f]{6,40}'
 contexts:
   main:
-    - match: (?=^.*{{sha}} +\(HEAD( ->|\)))
+    - match: ^
+      push:
+        - meta_scope: meta.prelude.git_savvy.graph
+        - match: '^(?=\S)'
+          set: graph
+        - match: .*
+          scope: comment.prelude.git_savvy.graph
+
+  graph:
+    - meta_scope: meta.content.git_savvy.graph
+    - match: (?=^.*{{sha}} +\(HEAD( ->|\)|,))
       push:
         - meta_scope: meta.graph.graph-line.head.git-savvy
         - include: content
         - match: $
           pop: true
 
-    - include: content
+    - match: ^
+      push:
+        - include: content
+        - match: $
+          pop: true
 
   content:
-    - match: '([| \\/_.-]+)'
+    - match: '^([| \\/_.-]+)?([*●])?([| \\/_.-]+)?(?= *)'
       comment: graph lines
-      scope: punctuation.other.git-savvy.graph.graph-line
+      scope: meta.graph.branch-art
+      captures:
+        1: punctuation.other.git-savvy.graph.graph-line
+        2: keyword.graph.commit.git-savvy
+        3: punctuation.other.git-savvy.graph.graph-line
 
-    - match: '[*●]'
-      scope: keyword.graph.commit.git-savvy
-
-    - match: \s*({{sha}})\b
+    - match: ({{sha}})\b
       comment: SHA
       scope: constant.numeric.graph.commit-hash.git-savvy
 
@@ -36,7 +51,7 @@ contexts:
       push: message
 
   branch-name:
-    - match: \s*\(
+    - match: \(
       comment: branch-name
       scope: punctuation.expression.begin.git-savvy
       push:
@@ -45,7 +60,7 @@ contexts:
           scope: punctuation.expression.end.git-savvy
           pop: true
         - match: (tag)(:) ([^ ,)]+)
-          scope: meta.graph.tag.git-savvy
+          scope: meta.graph.tag.git-savvy gitsavvy.gotosymbol
           captures:
             1: storage.type.git-savvy.graph
             2: punctuation.separator.other.git-savvy
@@ -55,9 +70,9 @@ contexts:
         - match: '->'
           scope: punctuation.separator.key-value.branch.git-savvy
         - match: HEAD
-          scope: constant.other.git.head.git-savvy
+          scope: constant.other.git.head.git-savvy gitsavvy.gotosymbol
         - match: ([^ ,)]+)
-          scope: constant.other.git.branch.git-savvy
+          scope: constant.other.git.branch.git-savvy gitsavvy.gotosymbol
 
   message:
     - meta_scope: meta.graph.message.git-savvy
@@ -69,7 +84,7 @@ contexts:
       comment: issue numbers
       scope: string.other.issue.git-savvy
 
-    - match: Merge branch (')(.*?)(')\s*(?:(?:of|into)\s+(\S*))?
+    - match: Merge branch (')(.*?)(')(?:\s+(?:of|into)\s+(\S*))?
       comment: merges
       scope: meta.git-savvy.grph.merge
       captures:
@@ -104,11 +119,18 @@ contexts:
       scope: punctuation.separator.key-value.git-savvy
 
 
-    - match: (\([^)]*?\)) (<[^>]*?>)(?=$)
+    - match: '(?=\s+(\|) ([^|]+), ([^|]+)$\n?)'
+      set: date-author-info
+
+    - match: $
+      pop: true
+
+  date-author-info:
+    - match: '\s+(\|) ([^|]+), ([^|]+)$\n?'
       scope: meta.git-savvy.grph.info
       captures:
-        1: storage.type.time.git-savvy
-        2: entity.name.tag.author.git-savvy
-
+        1: punctuation.separator.git-savvy
+        2: storage.type.time.git-savvy
+        3: entity.name.tag.author.git-savvy
     - match: $
       pop: true

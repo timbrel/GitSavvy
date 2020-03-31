@@ -131,7 +131,7 @@ class StatusInterface(ui.Interface, GitCommand):
       ## OTHER ##
       ###########
 
-      [r]         refresh status
+      [g]         show graph repop history
       [?]         toggle this help menu
       [tab]       transition to next dashboard
       [SHIFT-tab] transition to previous dashboard
@@ -600,7 +600,7 @@ class GsStatusUnstageFileCommand(TextCommand, GitCommand):
         if not (window and interface):
             return
 
-        file_paths = get_selected_subjects(self.view, 'staged')
+        file_paths = get_selected_subjects(self.view, 'staged', 'merge-conflicts')
         if file_paths:
             self.unstage_file(*file_paths)
             window.status_message("Unstaged files successfully.")

@@ -5,7 +5,7 @@ import unicodedata
 import sublime
 from sublime_plugin import TextCommand
 
-from ..commands import GsNavigate
+from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ...common import util
 from .log import LogMixin
@@ -426,6 +426,7 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand
         self.view.window().run_command("gs_show_file_at_commit", {
             "commit_hash": commit_hash,
             "filepath": self.file_path,
+            "check_for_renames": True,
             "lineno": lineno,
             "lang": settings.get('git_savvy.original_syntax', None)
         })

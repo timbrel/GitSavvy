@@ -59,16 +59,12 @@ class GsTagCreateCommand(TextCommand, GitCommand):
     Through a series of panels, allow the user to add a tag and message.
     """
 
-    def run(self, edit, tag_name=""):
+    def run(self, edit, tag_name="", target_commit=None):
         self.window = self.view.window()
-        self.tag_name = tag_name
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
-        """
-        Prompt the user for a tag name.
-        """
-        show_single_line_input_panel(TAG_CREATE_PROMPT, self.tag_name, self.on_entered_name)
+        if not self.window:
+            return
+        self.target_commit = target_commit
+        show_single_line_input_panel(TAG_CREATE_PROMPT, tag_name, self.on_entered_name)
 
     def on_entered_name(self, tag_name):
         """
@@ -100,11 +96,11 @@ class GsTagCreateCommand(TextCommand, GitCommand):
         Create a tag with the specified tag name and message.
         """
         if not message:
-            return
-
-        self.git("tag", self.tag_name, "-F", "-", stdin=message)
-        self.view.window().status_message(TAG_CREATE_MESSAGE.format(self.tag_name))
-        util.view.refresh_gitsavvy(self.view)
+            self.git("tag", self.tag_name, self.target_commit)
+        else:
+            self.git("tag", self.tag_name, self.target_commit, "-F", "-", stdin=message)
+        self.window.status_message(TAG_CREATE_MESSAGE.format(self.tag_name))
+        util.view.refresh_gitsavvy_interfaces(self.window)
 
 
 class GsSmartTagCommand(PanelActionMixin, TextCommand, GitCommand):

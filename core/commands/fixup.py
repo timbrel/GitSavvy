@@ -1,6 +1,6 @@
 import sublime
 import re
-from . import GsLogCurrentBranchCommand
+from .log import GsLogCurrentBranchCommand
 from ...common import util
 
 fixup_command = re.compile("^fixup! (.*)")

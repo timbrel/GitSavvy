@@ -97,7 +97,9 @@
             "commit_dot_foreground": "#9911",
             "commit_dot_background": "#991",
             "path_foreground": "#991",
-            "path_background": "#99991109"
+            "path_background": "#99991109",
+            "matching_commit_foreground": "#1991",
+            "matching_commit_background": "#199"
         }
     },
 
@@ -281,15 +283,6 @@
     "show_full_commit_info": false,
 
     /*
-        Update the desired graph arguments for a customized experience.
-        Do not add "--all" in this setting, it is added in graph all branches
-
-        NOTE: Changes you make may break in-view functionality, so use with caution.
-     */
-    // "git_graph_args": ["log", "--oneline", "--graph", "--decorate"],
-    "git_graph_args": ["log", "--pretty=format:%h%d %s (%ar) <%an>", "--graph"],
-
-    /*
         When set to `true`, GitSavvy will follow file renames when running git log/graph
     */
     "log_follow_rename": false,
@@ -399,14 +392,6 @@
         reset mode prompt and always use that reset mode.
      */
     "use_reset_mode": null,
-
-    /*
-        By default, GitSavvy allows you attach arbitrary text meta-data to the
-        branches that you track locally.  If, however, you experience performance
-        problems because of this, feel free to turn this setting off, and the
-        descriptions will not be displayed.
-     */
-    "enable_branch_descriptions": true,
 
     /*
         When set to `true`, you can navigate the dashboards by using arrow keys.

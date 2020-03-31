@@ -1,6 +1,5 @@
 from itertools import groupby
 import os
-import re
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
@@ -8,7 +7,6 @@ from sublime_plugin import WindowCommand, TextCommand
 from ...common import ui, util
 from ..commands import GsNavigate
 from ..commands.log import LogMixin
-from ..commands.log_graph import LogGraphMixin
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -83,7 +81,7 @@ class BranchInterface(ui.Interface, GitCommand):
 
     def pre_render(self):
         sort_by_recent = self.savvy_settings.get("sort_by_recent_in_branch_dashboard")
-        self._branches = tuple(self.get_branches(sort_by_recent))
+        self._branches = tuple(self.get_branches(sort_by_recent, fetch_descriptions=True))
 
     def on_new_dashboard(self):
         self.view.run_command("gs_branches_set_cursor")
@@ -263,13 +261,6 @@ class GsBranchesCreateNewCommand(TextCommand, GitCommand):
             self.view.window().run_command("gs_checkout_new_branch", {"base_branch": ref})
 
 
-DELETE_UNDO_MESSAGE = """\
-GitSavvy: Deleted branch ({0}), in case you want to undo, run:
-  $ git branch {0} {1}
-"""
-EXTRACT_COMMIT = re.compile(r"\(was (.+)\)")
-
-
 class GsBranchesDeleteCommand(TextCommand, GitCommand):
 
     """
@@ -281,44 +272,30 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
+        window = self.view.window()
+        if not window:
+            return
+
         interface = ui.get_interface(self.view.id())
         remote_name, branch_name = interface.get_selected_branch()
         if not branch_name:
             return
 
         if remote_name:
-            self.delete_remote_branch(remote_name, branch_name)
+            self.delete_remote_branch(remote_name, branch_name, window)
         else:
-            self.delete_local_branch(branch_name)
-
-    @util.actions.destructive(description="delete a local branch")
-    def delete_local_branch(self, branch_name):
-        rv = self.git(
-            "branch",
-            "-D" if self.force else "-d",
-            branch_name
-        )
-        match = EXTRACT_COMMIT.search(rv.strip())
-        if match:
-            commit = match.group(1)
-            print(DELETE_UNDO_MESSAGE.format(branch_name, commit))
-        util.view.flash(
-            self.view,
-            "Deleted local branch ({}).".format(branch_name)
-            + (" Open Sublime console for undo instructions." if match else "")
-        )
-        util.view.refresh_gitsavvy(self.view)
+            window.run_command("gs_delete_branch", {"branch": branch_name})
 
     @util.actions.destructive(description="delete a remote branch")
-    def delete_remote_branch(self, remote, branch_name):
-        self.view.window().status_message("Deleting remote branch...")
+    def delete_remote_branch(self, remote, branch_name, window):
+        window.status_message("Deleting remote branch...")
         self.git(
             "push",
             "--force" if self.force else None,
             remote,
             ":" + branch_name
         )
-        self.view.window().status_message("Deleted remote branch.")
+        window.status_message("Deleted remote branch.")
         util.view.refresh_gitsavvy(self.view)
 
 
@@ -653,26 +630,29 @@ class GsBranchesLogCommand(LogMixin, TextCommand, GitCommand):
         super().run_async(branch=branch)
 
 
-class GsBranchesLogGraphCommand(LogGraphMixin, TextCommand, GitCommand):
+class GsBranchesLogGraphCommand(WindowCommand, GitCommand):
 
     """
     Show log graph for the selected branch.
     """
 
-    def run_async(self):
-        interface = ui.get_interface(self.view.id())
+    def run(self):
+        view = self.window.active_view()
+        interface = ui.get_interface(view.id())
         remote_name, branch_name = interface.get_selected_branch()
         if not branch_name:
             return
 
         # prefix the (optional) remote name to branch
         if remote_name:
-            self._branch = '{remote}/{branch}'.format(
-                remote=remote_name, branch=branch_name)
+            branch = '{remote}/{branch}'.format(
+                remote=remote_name, branch=branch_name
+            )
         else:
-            self._branch = branch_name
-        self._file_path = None
-        super().run_async()
+            branch = branch_name
 
-    def prepare_target_view(self, view):
-        view.settings().set("git_savvy.log_graph_view.filter_by_branch", self._branch)
+        self.window.run_command('gs_graph', {
+            'all': True,
+            'branches': [branch],
+            'follow': branch
+        })

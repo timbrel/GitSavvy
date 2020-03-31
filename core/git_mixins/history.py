@@ -2,6 +2,10 @@ from collections import namedtuple
 from ...common import util
 
 
+MYPY = False
+if MYPY:
+    from typing import Optional
+
 LogEntry = namedtuple("LogEntry", (
     "short_hash",
     "long_hash",
@@ -146,6 +150,7 @@ class HistoryMixin():
         return sha != ""
 
     def get_short_hash(self, commit_hash):
+        # type: (str) -> str
         return self.git("rev-parse", "--short", commit_hash).strip()
 
     def filename_at_commit(self, filename, commit_hash, follow=False):
@@ -172,32 +177,41 @@ class HistoryMixin():
     def get_file_content_at_commit(self, filename, commit_hash):
         filename = self.get_rel_path(filename)
         filename = filename.replace('\\', '/')
-        filename = self.filename_at_commit(filename, commit_hash)
         return self.git("show", commit_hash + ':' + filename)
 
-    def find_matching_lineno(self, base_commit, target_commit, line, file_path=None):
+    def find_matching_lineno(self, base_commit="HEAD", target_commit="HEAD", line=1, file_path=None):
+        # type: (Optional[str], Optional[str], int, str) -> int
         """
         Return the matching line of the target_commit given the line number of the base_commit.
         """
         if not file_path:
             file_path = self.file_path
 
-        if base_commit:
-            base_object = self.get_commit_file_object(base_commit, file_path)
-        else:
-            base_file_contents = util.file.get_file_contents_binary(self.repo_path, file_path)
-            base_object = self.get_object_from_string(base_file_contents)
+        diff = self.no_context_diff(base_commit, target_commit, file_path)
+        return self.adjust_line_according_to_diff(diff, line)
 
-        target_object = self.get_commit_file_object(target_commit, file_path)
+    def no_context_diff(self, base_commit, target_commit, file_path=None):
+        # type: (Optional[str], Optional[str], Optional[str]) -> str
+        cmd = [
+            "diff",
+            "--no-color",
+            "-U0",
+            base_commit or "-R",
+            target_commit,
+        ]
+        if file_path:
+            cmd += ["--", file_path]
 
-        stdout = self.git(
-            "diff", "--no-color", "-U0", base_object, target_object)
-        diff = util.parse_diff(stdout)
+        return self.git(*cmd)
 
-        if not diff:
+    def adjust_line_according_to_diff(self, diff, line):
+        # type: (str, int) -> int
+        parsed_diff = util.parse_diff(diff)
+
+        if not parsed_diff:
             return line
 
-        for hunk in reversed(diff):
+        for hunk in reversed(parsed_diff):
             head_start = hunk.head_start if hunk.head_length else hunk.head_start + 1
             saved_start = hunk.saved_start if hunk.saved_length else hunk.saved_start + 1
             head_end = head_start + hunk.head_length
@@ -239,8 +253,13 @@ class HistoryMixin():
         Get the newest commit for a given file.
         """
         return self.git(
-            "log", "--format=%H",
-            "--follow" if follow else None, "-n", "1", file_path).strip()
+            "log",
+            "--format=%H",
+            "--follow" if follow else None,
+            "-1",
+            "--",
+            file_path,
+        ).strip()
 
     def get_indexed_file_object(self, file_path):
         """

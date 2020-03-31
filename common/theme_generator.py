@@ -42,6 +42,7 @@ class ThemeGenerator():
     """
 
     def __init__(self, original_color_scheme):
+        self._dirty = False
         try:
             self.color_scheme_string = sublime.load_resource(original_color_scheme)
         except IOError:
@@ -75,7 +76,14 @@ class ThemeGenerator():
         as well as a scope corresponding to regions of text.  Any keyword arguments
         will be used as key and value for the newly-defined style.
         """
-        pass
+        if scope in self.color_scheme_string:
+            return
+
+        self._dirty = True
+        self._add_scoped_style(name, scope, **kwargs)
+
+    def _add_scoped_style(self, name, scope, **kwargs):
+        raise NotImplementedError
 
     def write_new_theme(self, name):
         """
@@ -87,6 +95,9 @@ class ThemeGenerator():
         """
         Apply the transformed theme to the specified target view.
         """
+        if not self._dirty:
+            return
+
         self.write_new_theme(name)
 
         path_in_packages = self.get_theme_path(name)
@@ -108,7 +119,7 @@ class XMLThemeGenerator(ThemeGenerator):
         self.plist = ElementTree.XML(self.color_scheme_string)
         self.styles = self.plist.find("./dict/array")
 
-    def add_scoped_style(self, name, scope, **kwargs):
+    def _add_scoped_style(self, name, scope, **kwargs):
         properties = "".join(PROPERTY_TEMPLATE.format(key=k, value=v) for k, v in kwargs.items())
         new_style = STYLE_TEMPLATE.format(name=name, scope=scope, properties=properties)
         self.styles.append(ElementTree.XML(new_style))
@@ -132,7 +143,7 @@ class JSONThemeGenerator(ThemeGenerator):
         super().__init__(original_color_scheme)
         self.dict = OrderedDict(sublime.decode_value(self.color_scheme_string))
 
-    def add_scoped_style(self, name, scope, **kwargs):
+    def _add_scoped_style(self, name, scope, **kwargs):
         new_rule = OrderedDict([("name", name), ("scope", scope)])
         for (k, v) in kwargs.items():
             new_rule[k] = v

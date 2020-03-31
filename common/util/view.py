@@ -4,6 +4,11 @@ import sublime
 from ...core.settings import GitSavvySettings
 
 
+MYPY = False
+if MYPY:
+    from typing import Optional
+
+
 ##############
 # DECORATORS #
 ##############
@@ -59,10 +64,13 @@ def get_is_view_of_type(view, typ):
 # GLOBAL #
 ##########
 
-def refresh_gitsavvy_interfaces(window,
-                                refresh_sidebar=False,
-                                refresh_status_bar=True,
-                                interface_reset_cursor=False):
+def refresh_gitsavvy_interfaces(
+    window,
+    refresh_sidebar=False,
+    refresh_status_bar=True,
+    interface_reset_cursor=False
+):
+    # type: (Optional[sublime.Window], bool, bool, bool) -> None
     """
     Looks for GitSavvy interface views in the current window and refresh them.
 
@@ -75,7 +83,9 @@ def refresh_gitsavvy_interfaces(window,
     if refresh_sidebar:
         window.run_command("refresh_folder_list")
     if refresh_status_bar:
-        window.active_view().run_command("gs_update_status_bar")
+        av = window.active_view()
+        if av:
+            av.run_command("gs_update_status_bar")
 
     for group in range(window.num_groups()):
         view = window.active_view_in_group(group)
@@ -86,8 +96,13 @@ def refresh_gitsavvy_interfaces(window,
             view.run_command("gs_log_graph_refresh")
 
 
-def refresh_gitsavvy(view, refresh_sidebar=False, refresh_status_bar=True,
-                     interface_reset_cursor=False):
+def refresh_gitsavvy(
+    view,
+    refresh_sidebar=False,
+    refresh_status_bar=True,
+    interface_reset_cursor=False
+):
+    # type: (Optional[sublime.View], bool, bool, bool) -> None
     """
     Called after GitSavvy action was taken that may have effected the
     state of the Git repo.
@@ -104,11 +119,13 @@ def refresh_gitsavvy(view, refresh_sidebar=False, refresh_status_bar=True,
     if view.window() and refresh_status_bar:
         view.run_command("gs_update_status_bar")
 
-    if view.window() and refresh_sidebar:
-        view.window().run_command("refresh_folder_list")
+    window = view.window()
+    if window and refresh_sidebar:
+        window.run_command("refresh_folder_list")
 
 
 def handle_closed_view(view):
+    # type: (sublime.View) -> None
     if view.settings().get("git_savvy.interface") is not None:
         view.run_command("gs_interface_close")
     if view.settings().get("git_savvy.edit_view"):
@@ -120,6 +137,7 @@ def handle_closed_view(view):
 ############################
 
 def move_cursor(view, line_no, char_no):
+    # type: (sublime.View, int, int) -> None
     # Line numbers are one-based, rows are zero-based.
     line_no -= 1
 

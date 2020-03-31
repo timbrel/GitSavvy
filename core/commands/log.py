@@ -7,6 +7,7 @@ import sublime
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin
 from ..ui_mixins.quick_panel import show_log_panel, show_branch_panel
+from ...common import util
 
 
 class LogMixin(object):
@@ -22,8 +23,11 @@ class LogMixin(object):
 
     selected_index = 0
 
-    def run(self, *args, file_path=None, **kwargs):
-        sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, **kwargs), 0)
+    def run(self, *args, commit_hash=None, file_path=None, **kwargs):
+        if commit_hash:
+            self.do_action(commit_hash, file_path=file_path, **kwargs)
+        else:
+            sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, **kwargs))
 
     def run_async(self, file_path=None, **kwargs):
         follow = self.savvy_settings.get("log_follow_rename") if file_path else False
@@ -180,14 +184,15 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
 
     def checkout_commit(self):
         self.checkout_ref(self._commit_hash)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def cherry_pick(self):
         self.git("cherry-pick", self._commit_hash)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def revert_commit(self):
-        self.window.run_command("gs_revert_commit", {
-            "commit_hash": self._commit_hash
-        })
+        self.git("revert", self._commit_hash)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def compare_against(self):
         self.window.run_command("gs_compare_against", {
@@ -213,7 +218,11 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
         self._diff_commit(cache=True)
 
     def show_file_at_commit(self):
-        lang = self.window.active_view().settings().get('syntax')
+        view = self.window.active_view()
+        if view and view.file_name() == self._file_path:
+            lang = view.settings().get('syntax')
+        else:
+            lang = None
         self.window.run_command(
             "gs_show_file_at_commit",
             {"commit_hash": self._commit_hash, "filepath": self._file_path, "lang": lang})
@@ -225,3 +234,4 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
 
     def checkout_file_at_commit(self):
         self.checkout_ref(self._commit_hash, fpath=self._file_path)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)

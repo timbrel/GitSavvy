@@ -1,6 +1,13 @@
 from collections import namedtuple
+import re
 
 
+MYPY = False
+if MYPY:
+    from typing import Dict, Iterable, Optional
+
+
+BRANCH_DESCRIPTION_RE = re.compile(r"^branch\.(.*?)\.description (.*)$")
 Branch = namedtuple("Branch", (
     "name",
     "remote",
@@ -16,7 +23,8 @@ Branch = namedtuple("Branch", (
 
 class BranchesMixin():
 
-    def get_branches(self, sort_by_recent=False):
+    def get_branches(self, sort_by_recent=False, fetch_descriptions=False):
+        # type: (bool, bool) -> Iterable[Branch]
         """
         Return a list of all local and remote branches.
         """
@@ -26,12 +34,42 @@ class BranchesMixin():
             "--sort=-committerdate" if sort_by_recent else None,
             "refs/heads",
             "refs/remotes")
-        return (branch
-                for branch in (self._parse_branch_line(self, line) for line in stdout.split("\n"))
-                if branch and branch.name != "HEAD")
+        branches = (
+            branch
+            for branch in (
+                self._parse_branch_line(line)
+                for line in stdout.split("\n")
+            )
+            if branch and branch.name != "HEAD"
+        )
+        if not fetch_descriptions:
+            return branches
 
-    @staticmethod
+        descriptions = self.fetch_branch_description_subjects()
+        return (
+            branch._replace(description=descriptions.get(branch.name_with_remote, ""))
+            for branch in branches
+        )
+
+    def fetch_branch_description_subjects(self):
+        # type: () -> Dict[str, str]
+        rv = {}
+        for line in self.git(
+            "config",
+            "--get-regex",
+            r"branch\..*\.description",
+            throw_on_stderr=False
+        ).strip("\n").splitlines():
+            match = BRANCH_DESCRIPTION_RE.match(line)
+            if match is None:
+                continue
+
+            branch_name, description = match.group(1), match.group(2)
+            rv[branch_name] = description
+        return rv
+
     def _parse_branch_line(self, line):
+        # type: (str) -> Optional[Branch]
         line = line.strip()
         if not line:
             return None
@@ -47,15 +85,6 @@ class BranchesMixin():
             # remove brackets
             tracking_status = tracking_status[1:len(tracking_status) - 1]
 
-        enable_branch_descriptions = self.savvy_settings.get("enable_branch_descriptions")
-
-        hide_description = is_remote or not enable_branch_descriptions
-        description = "" if hide_description else self.git(
-            "config",
-            "branch.{}.description".format(branch_name),
-            throw_on_stderr=False
-        ).strip("\n")
-
         return Branch(
             "/".join(branch_name.split("/")[1:]) if is_remote else branch_name,
             remote,
@@ -65,7 +94,7 @@ class BranchesMixin():
             tracking_branch,
             tracking_status,
             active,
-            description
+            description=""
         )
 
     def merge(self, branch_names):

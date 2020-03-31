@@ -118,7 +118,12 @@ class TextRange:
 
 
 class CommitHeader(TextRange):
-    pass
+    def commit_hash(self):
+        # type: () -> Optional[str]
+        first_line = self.text[:self.text.index('\n')]
+        if first_line.startswith('commit '):
+            return first_line[7:]
+        return None
 
 
 class FileHeader(TextRange):
@@ -210,6 +215,10 @@ class HunkContent(TextRange):
 
 
 class Region(sublime.Region):
+    def __hash__(self):
+        # type: () -> int
+        return hash((self.a, self.b))
+
     def __iter__(self):
         # type: () -> Iterator[int]
         return iter((self.a, self.b))

@@ -4,7 +4,12 @@ from .log import GsLogByBranchCommand
 from ...common import util
 
 
-class GsCherryPickCommand(GsLogByBranchCommand):
+__all__ = (
+    "gs_cherry_pick",
+)
+
+
+class gs_cherry_pick(GsLogByBranchCommand):
 
     def log(self, **kwargs):
         kwargs["cherry"] = True

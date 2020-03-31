@@ -55,9 +55,6 @@ GIT_REQUIRE_MINOR = 9
 GIT_REQUIRE_PATCH = 0
 
 
-ANSI_ESCAPE = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-
-
 class LoggingProcessWrapper(object):
 
     """
@@ -131,17 +128,21 @@ class GitCommand(StatusMixin,
 
     _last_remotes_used = {}
 
-    def git(self, *args,
-            stdin=None,
-            working_dir=None,
-            show_panel=None,
-            show_panel_on_stderr=True,
-            show_status_message_on_stderr=True,
-            throw_on_stderr=True,
-            decode=True,
-            encode=True,
-            stdin_encoding="UTF-8",
-            custom_environ=None):
+    def git(
+        self,
+        *args,
+        stdin=None,
+        working_dir=None,
+        show_panel=None,
+        show_panel_on_stderr=True,
+        show_status_message_on_stderr=True,
+        throw_on_stderr=True,
+        decode=True,
+        encode=True,
+        stdin_encoding="UTF-8",
+        custom_environ=None,
+        just_the_proc=False
+    ):
         """
         Run the git command specified in `*args` and return the output
         of the git command as a string.
@@ -196,13 +197,16 @@ class GitCommand(StatusMixin,
                                  env=environ,
                                  startupinfo=startupinfo)
 
+            if just_the_proc:
+                return p
+
             def initialize_panel():
                 # clear panel
                 util.log.panel("", run_async=False)
                 if self.savvy_settings.get("show_stdin_in_output") and stdin is not None:
                     util.log.panel_append("STDIN\n{}\n".format(stdin), run_async=False)
                 if self.savvy_settings.get("show_input_in_output"):
-                    util.log.panel_append("> {}\n".format(command_str), run_async=False)
+                    util.log.panel_append("$ {}\n".format(command_str), run_async=False)
 
             if show_panel and live_panel_output:
                 wrapper = LoggingProcessWrapper(p, self.savvy_settings.get("live_panel_output_timeout", 10000))
@@ -231,24 +235,29 @@ class GitCommand(StatusMixin,
         except Exception as e:
             # this should never be reached
             raise GitSavvyError(
-                "Please report this error to GitSavvy:\n\n{}\n\n{}".format(e, traceback.format_exc()),
+                "$ {} ({})\n\n"
+                "Please report this error to GitSavvy:\n\n{}\n\n{}".format(
+                    command_str, working_dir, e, traceback.format_exc()
+                ),
+                cmd=command,
                 show_panel=show_panel_on_stderr)
 
         finally:
-            end = time.time()
-            if decode:
-                util.debug.log_git(args, stdin, stdout, stderr, end - start)
-            else:
-                util.debug.log_git(
-                    args,
-                    stdin,
-                    self.decode_stdout(stdout),
-                    self.decode_stdout(stderr),
-                    end - start
-                )
+            if not just_the_proc:
+                end = time.time()
+                if decode:
+                    util.debug.log_git(args, stdin, stdout, stderr, end - start)
+                else:
+                    util.debug.log_git(
+                        args,
+                        stdin,
+                        self.decode_stdout(stdout),
+                        self.decode_stdout(stderr),
+                        end - start
+                    )
 
-            if show_panel and self.savvy_settings.get("show_time_elapsed_in_output", True):
-                util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
+                if show_panel and self.savvy_settings.get("show_time_elapsed_in_output", True):
+                    util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
 
         if throw_on_stderr and not p.returncode == 0:
             if show_status_message_on_stderr:
@@ -264,16 +273,19 @@ class GitCommand(StatusMixin,
             if stdout or stderr:
                 raise GitSavvyError(
                     "$ {}\n\n{}".format(command_str, ''.join([stdout, stderr])),
+                    cmd=command,
+                    stdout=stdout,
+                    stderr=stderr,
                     show_panel=show_panel_on_stderr
                 )
             else:
                 raise GitSavvyError(
                     "`{}` failed.".format(command_str),
+                    cmd=command,
+                    stdout=stdout,
+                    stderr=stderr,
                     show_panel=show_panel_on_stderr
                 )
-
-        if stdout and decode:
-            stdout = ANSI_ESCAPE.sub('', stdout)
 
         return stdout
 

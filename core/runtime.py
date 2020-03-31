@@ -1,14 +1,19 @@
 from concurrent.futures import ThreadPoolExecutor
-from functools import partial
+from functools import lru_cache, partial, wraps
 import inspect
 import threading
+import uuid
 
 import sublime
+import sublime_plugin
 
 
 MYPY = False
 if MYPY:
-    from typing import Any, Callable, Iterator, Literal
+    from typing import Any, Callable, Dict, Iterator, Literal, Optional, Tuple, TypeVar
+    T = TypeVar('T')
+    Callback = Tuple[Callable, Tuple[Any, ...], Dict[str, Any]]
+    ReturnValue = Any
 
 
 savvy_executor = ThreadPoolExecutor(max_workers=1)
@@ -43,6 +48,113 @@ def enqueue_on_savvy(fn, *args, **kwargs):
 def run_on_new_thread(fn, *args, **kwargs):
     # type: (Callable, Any, Any) -> None
     threading.Thread(target=fn, args=args, kwargs=kwargs).start()
+
+
+def run_or_timeout(fn, timeout):
+    cond = threading.Condition()
+    result = None
+    exc = None
+
+    def program():
+        nonlocal cond, exc, result
+        try:
+            result = fn()
+        except Exception as e:
+            exc = e
+        finally:
+            with cond:
+                cond.notify_all()
+
+    with cond:
+        run_on_new_thread(program)
+        if not cond.wait(timeout):
+            raise TimeoutError()
+
+    if exc:
+        raise exc
+    else:
+        return result
+
+
+lock = threading.Lock()
+COMMANDS = {}  # type: Dict[str, Callback]
+RESULTS = {}  # type: Dict[str, ReturnValue]
+
+
+def run_as_text_command(fn, view, *args, **kwargs):
+    # type: (Callable[..., T], sublime.View, Any, Any) -> Optional[T]
+    token = uuid.uuid4().hex
+    with lock:
+        COMMANDS[token] = (fn, (view, ) + args, kwargs)
+    view.run_command('gs_generic_text_cmd', {'token': token})
+    with lock:
+        # If the view has been closed, Sublime will not run
+        # text commands on it anymore (but also not throw).
+        # For now, we stay close, don't raise and just return
+        # `None`.
+        rv = RESULTS.pop(token, None)
+    return rv
+
+
+def text_command(fn):
+    # type: (Callable[..., T]) -> Callable[..., T]
+    @wraps(fn)
+    def decorated(view, *args, **kwargs):
+        # type: (sublime.View, Any, Any) -> Optional[T]
+        return run_as_text_command(fn, view, *args, **kwargs)
+    return decorated
+
+
+@lru_cache()
+def wants_edit_object(fn):
+    sig = inspect.signature(fn)
+    return 'edit' in sig.parameters
+
+
+class gs_generic_text_cmd(sublime_plugin.TextCommand):
+    def run_(self, edit_token, cmd_args):
+        cmd_args = self.filter_args(cmd_args)
+        token = cmd_args['token']
+        with lock:
+            # Any user can "redo" text commands, but we don't want that.
+            try:
+                fn, args, kwargs = COMMANDS.pop(token)
+            except KeyError:
+                return
+
+        edit = self.view.begin_edit(edit_token, self.name(), cmd_args)
+        try:
+            if wants_edit_object(fn):
+                return self.run(token, fn, args[0], edit, *args[1:], **kwargs)
+            else:
+                return self.run(token, fn, *args, **kwargs)
+        finally:
+            self.view.end_edit(edit)
+
+    def run(self, token, fn, *args, **kwargs):
+        rv = fn(*args, **kwargs)
+        with lock:
+            RESULTS[token] = rv
+
+
+THROTTLED_CACHE = {}
+THROTTLED_LOCK = threading.Lock()
+
+
+def throttled(fn, *args, **kwargs):
+    # type: (...) -> Callable[[], None]
+    token = (fn,)
+    action = partial(fn, *args, **kwargs)
+    with THROTTLED_LOCK:
+        THROTTLED_CACHE[token] = action
+
+    def task():
+        with THROTTLED_LOCK:
+            ok = THROTTLED_CACHE[token] == action
+        if ok:
+            action()
+
+    return task
 
 
 AWAIT_UI_THREAD = 'AWAIT_UI_THREAD'  # type: Literal["AWAIT_UI_THREAD"]

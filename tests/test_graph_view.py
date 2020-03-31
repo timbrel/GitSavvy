@@ -1,39 +1,18 @@
-from functools import wraps
 import os
-import sys
-from unittest.case import _ExpectedFailure, _UnexpectedSuccess
 
 import sublime
 
-from unittesting import DeferrableTestCase
+from unittesting import DeferrableTestCase, expectedFailure
 from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.mockito import unstub, when
 
 from GitSavvy.core.commands.log_graph import (
-    GsLogGraphCurrentBranch,
-    GsLogGraphRefreshCommand,
-    GsLogGraphCursorListener,
-    extract_commit_hash
+    gs_log_graph_refresh,
+    extract_commit_hash,
+    navigate_to_symbol
 )
-from GitSavvy.core.commands.show_commit_info import GsShowCommitInfoCommand
+from GitSavvy.core.commands.show_commit_info import gs_show_commit_info
 from GitSavvy.core.settings import GitSavvySettings
-
-
-def isiterable(obj):
-    return hasattr(obj, '__iter__')
-
-
-def expectedFailure(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            deferred = func(*args, **kwargs)
-            if isiterable(deferred):
-                yield from deferred
-        except Exception:
-            raise _ExpectedFailure(sys.exc_info())
-        raise _UnexpectedSuccess
-    return wrapper
 
 
 RUNNING_ON_LINUX_TRAVIS = os.environ.get('TRAVIS_OS_NAME') == 'linux'
@@ -183,13 +162,16 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
     def register_commit_info(self, info):
         for sha1, info in info.items():
-            when(GsShowCommitInfoCommand).show_commit(sha1, ...).thenReturn(info)
+            when(gs_show_commit_info).show_commit(sha1, ...).thenReturn(info)
 
     def create_graph_view_async(self, repo_path, log, wait_for):
-        when(GsLogGraphRefreshCommand).git('log', ...).thenReturn(log)
-        cmd = GsLogGraphCurrentBranch(self.window)
-        when(cmd).get_repo_path().thenReturn(repo_path)
-        cmd.run()
+        when(gs_log_graph_refresh).read_graph(...).thenReturn(log.splitlines(keepends=True))
+        # `GitCommand.get_repo_path` "validates" a given repo using
+        # `os.path.exists`.
+        exists = os.path.exists
+        when(os.path).exists(...).thenAnswer(exists)
+        when(os.path).exists(repo_path).thenReturn(True)
+        self.window.run_command('gs_graph', {'repo_path': repo_path})
         yield lambda: self.window.active_view().settings().get('git_savvy.log_graph_view') is True
         log_view = self.window.active_view()
         yield from self.await_string_in_view(log_view, wait_for)
@@ -201,6 +183,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         LOG = fixture('log_graph_1.txt')
 
         self.set_global_setting('graph_show_more_commit_info', show_commit_info_setting)
+        self.set_global_setting('git_status_in_status_bar', False)
         self.register_commit_info({
             'fec0aca': COMMIT_1,
             'f461ea1': COMMIT_2
@@ -264,9 +247,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         log_view = yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
 
-        log_view.sel().clear()
-        log_view.sel().add(log_view.text_point(1, 14))
-        GsLogGraphCursorListener().on_selection_modified_async(log_view)
+        navigate_to_symbol(log_view, 'f461ea1')
         yield from self.await_string_in_view(panel, COMMIT_2)
 
         actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
@@ -325,9 +306,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         self.window.run_command('gs_log_graph_toggle_more_info')
 
         # move around
-        log_view.sel().clear()
-        log_view.sel().add(log_view.text_point(1, 14))
-        GsLogGraphCursorListener().on_selection_modified_async(log_view)
+        navigate_to_symbol(log_view, 'f461ea1')
 
         # show panel
         self.window.run_command('gs_log_graph_toggle_more_info')
@@ -344,9 +323,7 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         self.window.run_command('gs_log_graph_toggle_more_info')
 
         # move around
-        log_view.sel().clear()
-        log_view.sel().add(log_view.text_point(1, 14))
-        GsLogGraphCursorListener().on_selection_modified_async(log_view)
+        navigate_to_symbol(log_view, 'f461ea1')
 
         # show panel e.g. via mouse
         self.window.run_command('show_panel', {'panel': 'output.show_commit_info'})
