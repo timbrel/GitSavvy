@@ -46,9 +46,7 @@ contexts:
       scope: comment.help-text.git-savvy.make-commit
       set:
         - meta_scope: meta.dropped.git.commit
-        - match: (?=^diff\s)
-          push: [scope:git-savvy.diff]
-        - match: (?=^ \S)
+        - match: ^$
           push: [scope:git-savvy.diff]
         - match: .
           scope: comment.help-text.git-savvy.make-commit
