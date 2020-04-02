@@ -47,12 +47,8 @@ FALLBACK_PARSE_ERROR_MSG = (
     "operation has been aborted."
 )
 
+MIN_GIT_VERSION = (2, 16, 0)
 GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d} or above."
-
-# git minimum requirement
-GIT_REQUIRE_MAJOR = 1
-GIT_REQUIRE_MINOR = 9
-GIT_REQUIRE_PATCH = 0
 
 
 class LoggingProcessWrapper(object):
@@ -346,16 +342,9 @@ class GitCommand(StatusMixin,
 
             match = re.match(r"git version ([0-9]+)\.([0-9]+)\.([0-9]+)", stdout)
             if match:
-                major = int(match.group(1))
-                minor = int(match.group(2))
-                patch = int(match.group(3))
-                if major < GIT_REQUIRE_MAJOR \
-                        or (major == GIT_REQUIRE_MAJOR and minor < GIT_REQUIRE_MINOR) \
-                        or (major == GIT_REQUIRE_MAJOR and minor == GIT_REQUIRE_MINOR and patch < GIT_REQUIRE_PATCH):
-                    msg = GIT_TOO_OLD_MSG.format(
-                        GIT_REQUIRE_MAJOR,
-                        GIT_REQUIRE_MINOR,
-                        GIT_REQUIRE_PATCH)
+                version = tuple(map(int, match.groups()))
+                if version < MIN_GIT_VERSION:
+                    msg = GIT_TOO_OLD_MSG.format(*MIN_GIT_VERSION)
                     git_path = None
                     if not error_message_displayed:
                         sublime.error_message(msg)
