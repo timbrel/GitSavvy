@@ -5,10 +5,19 @@ from sublime_plugin import WindowCommand, TextCommand
 from sublime_plugin import EventListener
 
 from . import intra_line_colorizer
+from ..runtime import enqueue_on_worker
 from ..git_command import GitCommand
 from ...common import util
 from ...core.settings import SettingsMixin
-from ..exceptions import GitSavvyError
+
+
+__all__ = (
+    "gs_commit",
+    "gs_commit_view_do_commit",
+    "gs_commit_view_sign",
+    "gs_commit_view_close",
+    "GsPedanticEnforceEventListener",
+)
 
 
 COMMIT_HELP_TEXT_EXTRA = """##
@@ -45,7 +54,7 @@ COMMIT_TITLE = "COMMIT: {}"
 CONFIRM_ABORT = "Confirm to abort commit?"
 
 
-class GsCommitCommand(WindowCommand, GitCommand):
+class gs_commit(WindowCommand, GitCommand):
 
     """
     Display a transient window to capture the user's desired commit message.
@@ -53,99 +62,40 @@ class GsCommitCommand(WindowCommand, GitCommand):
     message area with the previous commit message.
     """
 
-    def run(self, **kwargs):
-        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
-
-    def run_async(self, repo_path=None, include_unstaged=False, amend=False):
-
+    def run(self, repo_path=None, include_unstaged=False, amend=False):
         repo_path = repo_path or self.repo_path
-        # run `pre-commit` and `prepare-commit-msg` hooks
-        hooks_path = os.path.join(repo_path, ".git", "hooks")
-        pre_commit = os.path.join(hooks_path, "pre-commit")
-        prepare_commit_msg = os.path.join(hooks_path, "prepare-commit-msg")
-        has_pre_commit_hook = os.path.isfile(pre_commit)
-        has_prepare_commit_msg_hook = os.path.isfile(prepare_commit_msg)
-        if has_pre_commit_hook or has_prepare_commit_msg_hook:
-            self.pre_commit_hooks(repo_path, include_unstaged, amend)
 
         view = self.window.new_file()
         settings = view.settings()
+        settings.set("git_savvy.repo_path", repo_path)
         settings.set("git_savvy.get_long_text_view", True)
         settings.set("git_savvy.commit_view", True)
         settings.set("git_savvy.commit_view.include_unstaged", include_unstaged)
         settings.set("git_savvy.commit_view.amend", amend)
-        settings.set("git_savvy.commit_view.has_pre_commit_hook", has_pre_commit_hook)
-        settings.set("git_savvy.commit_view.has_prepare_commit_msg_hook", has_prepare_commit_msg_hook)
-        settings.set("git_savvy.repo_path", repo_path)
-
-        if self.savvy_settings.get("use_syntax_for_commit_editmsg"):
-            syntax_file = util.file.get_syntax_for_file("COMMIT_EDITMSG")
-            view.set_syntax_file(syntax_file)
-        else:
-            view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
-
-        view.run_command("gs_handle_vintageous")
-
         commit_on_close = self.savvy_settings.get("commit_on_close")
         settings.set("git_savvy.commit_on_close", commit_on_close)
-
         prompt_on_abort_commit = self.savvy_settings.get("prompt_on_abort_commit")
         settings.set("git_savvy.prompt_on_abort_commit", prompt_on_abort_commit)
+
+        view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
+        view.run_command("gs_handle_vintageous")
 
         title = COMMIT_TITLE.format(os.path.basename(repo_path))
         view.set_name(title)
         view.set_scratch(True)  # ignore dirty on actual commit
-        view.run_command("gs_commit_initialize_view")
+        self.initialize_view(view, include_unstaged, amend)
 
-    def pre_commit_hooks(self, repo_path, include_unstaged, amend):
-        show_panel_overrides = self.savvy_settings.get("show_panel_for")
-        try:
-            # a trick to execuate the pre hooks
-            # https://vi.stackexchange.com/questions/2544/how-to-manage-fugitive-commit-with-a-git-pre-commit-hook/2749#2749
-            # and it is expected to fail because we didn't provide any messages
-            self.git(
-                "commit",
-                "-q" if "commit" not in show_panel_overrides else None,
-                "-a" if include_unstaged else None,
-                "--amend" if amend else None,
-                show_panel=False,
-                show_panel_on_stderr=False,
-                show_status_message_on_stderr=False,
-                custom_environ={"GIT_EDITOR": "false"}
-            )
-        except GitSavvyError as e:
-            if "using either -m or -F option" in e.args[0]:
-                pass
-            else:
-                raise GitSavvyError(e.args[0])
-
-
-class GsCommitInitializeViewCommand(TextCommand, GitCommand):
-
-    """
-    Fill the view with the commit view help message, and optionally
-    the previous commit message if amending.
-    """
-
-    def run(self, edit):
-
-        view_settings = self.view.settings()
-        commit_editmsg_path = os.path.join(self.repo_path, ".git", "COMMIT_EDITMSG")
+    def initialize_view(self, view, include_unstaged, amend):
+        # type: (sublime.View, bool, bool) -> None
         merge_msg_path = os.path.join(self.repo_path, ".git", "MERGE_MSG")
 
-        help_text = (COMMIT_HELP_TEXT_ALT
-                     if self.savvy_settings.get("commit_on_close")
-                     else COMMIT_HELP_TEXT)
-        include_unstaged = view_settings.get("git_savvy.commit_view.include_unstaged", False)
-        option_amend = view_settings.get("git_savvy.commit_view.amend")
-        has_prepare_commit_msg_hook = view_settings.get("git_savvy.commit_view.has_prepare_commit_msg_hook")
+        help_text = (
+            COMMIT_HELP_TEXT_ALT
+            if self.savvy_settings.get("commit_on_close")
+            else COMMIT_HELP_TEXT
+        )
 
-        view_settings.set("git_savvy.commit_view.help_text", help_text)
-
-        if has_prepare_commit_msg_hook and os.path.exists(commit_editmsg_path):
-            with util.file.safe_open(commit_editmsg_path, "r") as f:
-                initial_text = "\n" + f.read().rstrip() + help_text
-        elif option_amend:
+        if amend:
             last_commit_message = self.git("log", "-1", "--pretty=%B").strip()
             initial_text = last_commit_message + help_text
         elif os.path.exists(merge_msg_path):
@@ -174,7 +124,7 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
                 "--patch" if shows_diff else None,
                 "--stat" if shows_stat else None,
                 "--cached" if not include_unstaged else None,
-                "HEAD^" if option_amend
+                "HEAD^" if amend
                 else "HEAD" if include_unstaged
                 else None
             )
@@ -182,14 +132,14 @@ class GsCommitInitializeViewCommand(TextCommand, GitCommand):
             diff_text = ''
 
         text = initial_text + diff_text
-        self.view.run_command("gs_replace_view_text", {"text": text, "restore_cursors": True})
+        view.run_command("gs_replace_view_text", {"text": text, "restore_cursors": True})
         if shows_diff:
-            intra_line_colorizer.annotate_intra_line_differences(self.view, diff_text, len(initial_text))
+            intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(initial_text))
 
 
 class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
     """
-    Set regions to worn for Pedantic commits
+    Set regions to warn for pedantic commits
     """
 
     def on_selection_modified(self, view):
@@ -204,7 +154,7 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
         self.body_line_limit = self.savvy_settings.get('pedantic_commit_message_line_length')
         self.warning_length = self.savvy_settings.get('pedantic_commit_warning_length')
 
-        self.comment_start_region = self.view.find_all('^#')
+        self.comment_start_region = self.view.find_by_selector("meta.dropped.git.commit")
         self.first_comment_line = None
         if self.comment_start_region:
             self.first_comment_line = self.view.rowcol(self.comment_start_region[0].begin())[0]
@@ -212,9 +162,9 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
         if self.savvy_settings.get('pedantic_commit_ruler'):
             self.view.settings().set("rulers", self.find_rulers())
 
-        waring, illegal = self.find_too_long_lines()
+        warning, illegal = self.find_too_long_lines()
         self.view.add_regions(
-            'make_commit_warning', waring,
+            'make_commit_warning', warning,
             scope='invalid.deprecated.line-too-long.git-commit', flags=sublime.DRAW_NO_FILL)
         self.view.add_regions(
             'make_commit_illegal', illegal,
@@ -224,11 +174,13 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
         on_first_line = False
         on_message_body = False
 
+        subject_near_limit = len(self.view.substr(self.view.line(sublime.Region(0))).rstrip()) >= 40
+
         for region in self.view.sel():
             first_line = self.view.rowcol(region.begin())[0]
             last_line = self.view.rowcol(region.end())[0]
 
-            if on_first_line or first_line == 0:
+            if first_line == 0 and subject_near_limit:
                 on_first_line = True
 
             if self.first_comment_line:
@@ -251,8 +203,8 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
         warning_lines = []
         illegal_lines = []
 
-        first_line = self.view.lines(sublime.Region(0, 0))[0]
-        length = first_line.b - first_line.a
+        first_line = self.view.line(sublime.Region(0, 0))
+        length = len(self.view.substr(first_line).rstrip())
         if length > self.first_line_limit:
             warning_lines.append(sublime.Region(
                 first_line.a + self.first_line_limit,
@@ -284,7 +236,17 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
         return [warning_lines, illegal_lines]
 
 
-class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
+def extract_commit_message(view):
+    # type: (sublime.View) -> str
+    try:
+        region = view.find_by_selector("meta.commit.message")[0]
+    except IndexError:
+        return ""
+
+    return view.substr(region)
+
+
+class gs_commit_view_do_commit(TextCommand, GitCommand):
 
     """
     Take the text of the current view (minus the help message text) and
@@ -292,71 +254,64 @@ class GsCommitViewDoCommitCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, message=None):
-        sublime.set_timeout_async(lambda: self.run_async(commit_message=message), 0)
+        enqueue_on_worker(self.run_impl, message)
 
-    def run_async(self, commit_message=None):
-        view_settings = self.view.settings()
-        if view_settings.get("git_savvy.commit_view.is_commiting", False):
+    def run_impl(self, commit_message=None):
+        window = self.view.window()
+        if not window:
+            print("No window?")
+            return
+
+        settings = self.view.settings()
+        if settings.get("git_savvy.commit_view.is_commiting", False):
             return
 
         if commit_message is None:
-            view_text = self.view.substr(sublime.Region(0, self.view.size()))
-            help_text = view_settings.get("git_savvy.commit_view.help_text")
-            commit_message = view_text.split(help_text)[0]
+            commit_message = extract_commit_message(self.view)
 
-        include_unstaged = view_settings.get("git_savvy.commit_view.include_unstaged")
-
-        show_panel_overrides = self.savvy_settings.get("show_panel_for")
-
-        view_settings.set("git_savvy.commit_view.is_commiting", True)
-        sublime.active_window().status_message("Commiting...")
-
+        settings.set("git_savvy.commit_view.is_commiting", True)
+        window.status_message("Commiting...")
         try:
             self.git(
                 "commit",
-                "-q" if "commit" not in show_panel_overrides else None,
-                "-a" if include_unstaged else None,
-                "--amend" if view_settings.get("git_savvy.commit_view.amend") else None,
+                "-a" if settings.get("git_savvy.commit_view.include_unstaged") else None,
+                "--amend" if settings.get("git_savvy.commit_view.amend") else None,
                 "-F",
                 "-",
                 stdin=commit_message
             )
         finally:
-            view_settings.set("git_savvy.commit_view.is_commiting", False)
+            settings.set("git_savvy.commit_view.is_commiting", False)
 
-        sublime.active_window().status_message("Committed successfully.")
+        window.status_message("Committed successfully.")
 
-        if view_settings.get("git_savvy.commit_view"):
-            self.view.close()
-
-        sublime.set_timeout_async(
-            lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
+        self.view.close()
+        util.view.refresh_gitsavvy_interfaces(window)
 
 
-class GsCommitViewSignCommand(TextCommand, GitCommand):
+class gs_commit_view_sign(TextCommand, GitCommand):
 
     """
     Sign off on the commit with full name and email.
     """
 
     def run(self, edit):
-        view_text = self.view.substr(sublime.Region(0, self.view.size()))
-        help_text = self.view.settings().get("git_savvy.commit_view.help_text")
-        view_text_list = view_text.split(help_text)
-
         config_name = self.git("config", "user.name").strip()
         config_email = self.git("config", "user.email").strip()
+        commit_message = extract_commit_message(self.view)
 
         sign_text = COMMIT_SIGN_TEXT.format(name=config_name, email=config_email)
-        view_text_list[0] = view_text_list[0].rstrip() + sign_text + "\n"
+        new_commit_message = commit_message.rstrip() + sign_text + "\n"
 
+        view_text = self.view.substr(sublime.Region(0, self.view.size()))
+        new_view_text = new_commit_message + view_text[len(commit_message):]
         self.view.run_command("gs_replace_view_text", {
-            "text": help_text.join(view_text_list),
-            "nuke_cursors": True
+            "text": new_view_text,
+            "restore_cursors": True
         })
 
 
-class GsCommitViewCloseCommand(TextCommand, GitCommand):
+class gs_commit_view_close(TextCommand, GitCommand):
 
     """
     Perform commit action on commit view close if `commit_on_close` setting
@@ -364,25 +319,17 @@ class GsCommitViewCloseCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        view_text = self.view.substr(sublime.Region(0, self.view.size()))
-        help_text = self.view.settings().get("git_savvy.commit_view.help_text")
-        message_txt = view_text.split(help_text)[0]
-        message_txt = message_txt.strip()
-
         if self.view.settings().get("git_savvy.commit_on_close"):
-            if message_txt and not message_txt.startswith("#"):
-                # the view will be closed by gs_commit_view_do_commit
+            message_txt = extract_commit_message(self.view).strip()
+            if message_txt:
                 self.view.run_command("gs_commit_view_do_commit", {"message": message_txt})
             else:
                 self.view.close()
 
         elif self.view.settings().get("git_savvy.prompt_on_abort_commit"):
-            if message_txt and not message_txt.startswith("#"):
-                ok = sublime.ok_cancel_dialog(CONFIRM_ABORT)
-            else:
-                ok = True
-
-            if ok:
+            message_txt = extract_commit_message(self.view).strip()
+            if not message_txt or sublime.ok_cancel_dialog(CONFIRM_ABORT):
                 self.view.close()
+
         else:
             self.view.close()

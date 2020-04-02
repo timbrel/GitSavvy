@@ -1,3 +1,5 @@
+import os
+
 import sublime
 from sublime_plugin import EventListener, WindowCommand
 
@@ -32,46 +34,42 @@ class GsInterfaceFocusEventListener(EventListener):
         util.view.handle_closed_view(view)
 
 
-git_view_syntax = {
-    'MERGE_MSG': 'Packages/GitSavvy/syntax/make_commit.sublime-syntax',
-    'COMMIT_EDITMSG': 'Packages/GitSavvy/syntax/make_commit.sublime-syntax',
-    'PULLREQ_EDITMSG': 'Packages/GitSavvy/syntax/make_commit.sublime-syntax',
-    'git-rebase-todo': 'Packages/GitSavvy/syntax/rebase_interactive.sublime-syntax',
+NATIVE_GIT_EDITOR_FILES = {
+    'MERGE_MSG',
+    'COMMIT_EDITMSG',
+    'PULLREQ_EDITMSG',
+    'git-rebase-todo',
 }
 
 
 class GitCommandFromTerminal(EventListener, SettingsMixin):
     def on_load(self, view):
-        if view.file_name():
-            name = view.file_name().split("/")[-1]
-            if name in git_view_syntax.keys():
-                syntax_file = git_view_syntax[name]
-                if "COMMIT_EDITMSG" == name and self.savvy_settings.get("use_syntax_for_commit_editmsg"):
-                    syntax_file = util.file.get_syntax_for_file("COMMIT_EDITMSG")
-
-                view.set_syntax_file(syntax_file)
-                view.settings().set("git_savvy.{}_view".format(name), True)
-                view.set_scratch(True)
+        # type: (sublime.View) -> None
+        file_path = view.file_name()
+        if file_path and os.path.basename(file_path) in NATIVE_GIT_EDITOR_FILES:
+            view.set_scratch(True)
 
     def on_pre_close(self, view):
-        if view.file_name():
-            name = view.file_name().split("/")[-1]
-            if name in git_view_syntax.keys():
-                view.run_command("save")
+        # type: (sublime.View) -> None
+        file_path = view.file_name()
+        if file_path and os.path.basename(file_path) in NATIVE_GIT_EDITOR_FILES:
+            view.run_command("save")
 
 
 PROJECT_MSG = """
 <body>
 <p>Add the key <code>"GitSavvy"</code> as follows</p>
+<code>
 {<br>
-&nbsp;&nbsp;"settings": {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;"GitSavvy": {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// GitSavvy settings go here<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;}<br>
-}
+  "settings": {<br>
+    "GitSavvy": {<br>
+        // GitSavvy settings go here<br>
+    }<br>
+  }<br>
+}<br>
+</code>
 </body>
-"""
+""".replace(" ", "&nbsp;")
 
 
 class KeyboardSettingsListener(EventListener):
@@ -83,11 +81,14 @@ class KeyboardSettingsListener(EventListener):
                 w.focus_group(0)
                 w.run_command("open_file", {"file": "${packages}/GitSavvy/Default.sublime-keymap"})
                 w.focus_group(1)
-            elif base.endswith("GitSavvy.sublime-settings"):
+            elif args.get("user_file", "").endswith(".sublime-project"):
                 w = sublime.active_window()
                 view = w.active_view()
-                sublime.set_timeout(
-                    lambda: view.show_popup(PROJECT_MSG), 1000)
+                data = window.project_data()
+                if view and "GitSavvy" not in data.get("settings", {}):
+                    sublime.set_timeout_async(
+                        lambda: view.show_popup(PROJECT_MSG, max_width=550)  # type: ignore
+                    )
 
 
 class GsEditSettingsCommand(WindowCommand):
