@@ -6,6 +6,7 @@ from sublime_plugin import EventListener
 
 from . import intra_line_colorizer
 from ..runtime import enqueue_on_worker
+from ..view import replace_region
 from ..git_command import GitCommand
 from ...common import util
 from ...core.settings import SettingsMixin
@@ -13,9 +14,11 @@ from ...core.settings import SettingsMixin
 
 __all__ = (
     "gs_commit",
+    "gs_prepare_commit_refresh_diff",
     "gs_commit_view_do_commit",
     "gs_commit_view_sign",
     "gs_commit_view_close",
+    "GsPrepareCommitFocusEventListener",
     "GsPedanticEnforceEventListener",
 )
 
@@ -26,7 +29,6 @@ COMMIT_HELP_TEXT_EXTRA = """##
 ## list of issues related to the current repo.  You may also type
 ## `owner/repo#` plus the `tab` key to reference an issue in a
 ## different GitHub repo.
-
 """
 
 COMMIT_HELP_TEXT_ALT = """
@@ -110,6 +112,24 @@ class gs_commit(WindowCommand, GitCommand):
             with util.file.safe_open(commit_help_extra_path, "r", encoding="utf-8") as f:
                 initial_text += f.read()
 
+        replace_region(view, initial_text)
+        view.run_command("gs_prepare_commit_refresh_diff")
+
+
+class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
+    def run(self, edit, sync=True):
+        # type: (sublime.Edit, bool) -> None
+        if sync:
+            self.run_impl()
+        else:
+            enqueue_on_worker(self.run_impl)
+
+    def run_impl(self):
+        # type: () -> None
+        view = self.view
+        settings = view.settings()
+        include_unstaged = settings.get("git_savvy.commit_view.include_unstaged")
+        amend = settings.get("git_savvy.commit_view.amend")
         show_commit_diff = self.savvy_settings.get("show_commit_diff")
         # for backward compatibility, check also if show_commit_diff is True
         shows_diff = show_commit_diff is True or show_commit_diff == "full"
@@ -117,24 +137,35 @@ class gs_commit(WindowCommand, GitCommand):
             show_commit_diff == "stat"
             or (show_commit_diff == "full" and self.savvy_settings.get("show_diffstat"))
         )
-        if shows_diff or shows_stat:
-            diff_text = self.git(
-                "diff",
-                "--no-color",
-                "--patch" if shows_diff else None,
-                "--stat" if shows_stat else None,
-                "--cached" if not include_unstaged else None,
-                "HEAD^" if amend
-                else "HEAD" if include_unstaged
-                else None
-            )
+        diff_text = self.git(
+            "diff",
+            "--no-color",
+            "--patch" if shows_diff else None,
+            "--stat" if shows_stat else None,
+            "--cached" if not include_unstaged else None,
+            "HEAD^" if amend
+            else "HEAD" if include_unstaged
+            else None
+        )
+        if diff_text:
+            final_text = ("\n" + diff_text) if shows_diff or shows_stat else ""
         else:
-            diff_text = ''
+            final_text = "\nNothing to commit.\n"
 
-        text = initial_text + diff_text
-        view.run_command("gs_replace_view_text", {"text": text, "restore_cursors": True})
+        try:
+            region = view.find_by_selector("git-savvy.diff")[0]
+        except IndexError:
+            region = sublime.Region(view.size())
+
+        replace_region(view, final_text, region)
         if shows_diff:
-            intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(initial_text))
+            intra_line_colorizer.annotate_intra_line_differences(view, final_text, region.begin())
+
+
+class GsPrepareCommitFocusEventListener(EventListener):
+    def on_activated(self, view):
+        if view.settings().get("git_savvy.commit_view"):
+            view.run_command("gs_prepare_commit_refresh_diff", {"sync": False})
 
 
 class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
