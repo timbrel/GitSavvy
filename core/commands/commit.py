@@ -290,7 +290,6 @@ class gs_commit_view_do_commit(TextCommand, GitCommand):
     def run_impl(self, commit_message=None):
         window = self.view.window()
         if not window:
-            print("No window?")
             return
 
         settings = self.view.settings()
