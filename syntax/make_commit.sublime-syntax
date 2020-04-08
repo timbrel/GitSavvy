@@ -4,30 +4,49 @@
 name: GitSavvy Make Commit
 hidden: true
 scope: git-savvy.make-commit
+
 contexts:
+  main:
+    - match: '(?=^## To make a commit.+)'
+      set: dropped-content
+
+    - match: .
+      set: commit-subject
+
+    - match: ^
+      set: commit-message
+
   references:
     - match: \@\w*
       comment: github username
-      scope: constant.other.git-savvy.make-commit.github-username
+      scope: constant.other.github-username.git-savvy.make-commit
 
     - match: '(\w+/\w+)?#[0-9]+'
       comment: issue
-      scope: constant.other.git-savvy.make-commit.issue-ref
+      scope: constant.other.issue-ref.git-savvy.make-commit
 
-  main:
+    - match: \b\h{7,}\b
+      comment: sha reference
+      scope: constant.other.commit-sha.git-savvy.make-commit
+
+  commit-subject:
+    - match: \n
+      pop: true
+    - meta_scope: meta.commit.message.subject markup.heading.subject.git.commit
     - include: references
-    - match: ^(#{1,2}).*\n$
-      comment: commit header
-      scope: comment.git-savvy.make-commit
-      captures:
-        1: punctuation.definition.comment.make-commit.header.git-savvy
 
-    - match: ^(?=diff --git)
-      comment: diff section
-      push:
-        - meta_scope: meta.git-savvy.commit-diff
+  commit-message:
+    - meta_scope: meta.commit.message.body
+    - include: references
+    - match: '(?=^## To make a commit.+)'
+      set: dropped-content
+
+  dropped-content:
+    - match: '^## To make a commit.+'
+      scope: comment.help-text.git-savvy.make-commit
+      set:
+        - meta_scope: meta.dropped.git.commit
         - match: ^$
-          pop: true
-        - include: scope:git-savvy.diff
-
-    - include: "scope:git-savvy.commit-diffstat"
+          push: [scope:git-savvy.diff]
+        - match: .
+          scope: comment.help-text.git-savvy.make-commit

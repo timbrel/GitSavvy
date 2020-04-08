@@ -137,13 +137,6 @@
     "live_panel_output_timeout": 10000,
 
     /*
-        Use the Sublime configured syntax for COMMIT_EDITMSG rather than
-        the custom bundled syntax that comes with GitSavvy.
-    */
-
-    "use_syntax_for_commit_editmsg": false,
-
-    /*
         https://git-scm.com/book/en/v2/Distributed-Git-Contributing-to-a-Project#Commit-Guidelines
         Add a distinct style guide for the commit messages:
 
