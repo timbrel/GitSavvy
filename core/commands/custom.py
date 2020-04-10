@@ -2,10 +2,11 @@ import sublime
 import threading
 from sublime_plugin import WindowCommand
 
-from ..runtime import enqueue_on_worker
 from ..git_command import GitCommand
-from ...common import util
+from ..runtime import enqueue_on_worker
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from ..view import replace_view_content
+from ...common import util
 
 
 __all__ = (
@@ -67,12 +68,9 @@ class gs_custom(WindowCommand, GitCommand):
             if output_to_buffer:
                 view = self.window.new_file()
                 view.set_scratch(True)
-                view.run_command("gs_replace_view_text", {
-                    "text": stdout.replace("\r", "\n"),
-                    "nuke_cursors": True,
-                })
                 if syntax:
                     view.set_syntax_file(syntax)
+                replace_view_content(view, stdout.replace("\r", "\n"))
 
             util.view.refresh_gitsavvy_interfaces(self.window)
 
