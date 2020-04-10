@@ -5,6 +5,7 @@ from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from ..view import replace_view_content
 
 REF_PROMPT = "Ref or commit hash:"
 
@@ -86,10 +87,7 @@ class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
 
         view = self.window.new_file()
         view.set_scratch(True)
-        view.run_command("gs_replace_view_text", {
-            "text": changelog,
-            "nuke_cursors": True
-        })
+        replace_view_content(view, changelog)
 
     @staticmethod
     def get_message_groups(messages):
