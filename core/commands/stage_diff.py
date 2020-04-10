@@ -8,9 +8,9 @@ import sys
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
+from ..git_command import GitCommand, GitSavvyError
+from ..view import replace_view_content
 from ...common import util
-from ..git_command import GitCommand
-from ..exceptions import GitSavvyError
 
 
 TITLE = "STAGE-DIFF: {}"
@@ -66,8 +66,7 @@ class GsStageDiffRefreshCommand(TextCommand, GitCommand):
         super_key = "SUPER" if sys.platform == "darwin" else "CTRL"
         message = "Press {}-Enter to apply the diff.  Close the window to cancel.".format(super_key)
         content = message + "\n\n" + stdout
-
-        self.view.run_command("gs_replace_view_text", {"text": content})
+        replace_view_content(self.view, content)
 
 
 class GsStageDiffApplyCommand(TextCommand, GitCommand):
