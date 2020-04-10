@@ -134,9 +134,6 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         diff_view = util.view.get_scratch_view(self, "pr_diff", read_only=True)
         diff_view.set_name("PR #{}".format(self.pr["number"]))
         diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
-
-        self.window.focus_view(diff_view)
-        diff_view.sel().clear()
         replace_view_content(diff_view, response.payload.decode("utf-8"))
 
     def open_pr_in_browser(self):
