@@ -138,9 +138,7 @@ class gs_graph(WindowCommand, GitCommand):
                         # "show_commit_info" will run blocking if the panel
                         # is empty (or closed).
                         panel = show_commit_info.ensure_panel(self.window)
-                        panel.run_command(
-                            "gs_replace_view_text", {"text": "", "restore_cursors": True}
-                        )
+                        replace_view_content(panel, "")
                     navigate_to_symbol(view, follow)
 
                 focus_view(view)
