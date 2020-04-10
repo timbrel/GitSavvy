@@ -4,11 +4,12 @@ from collections import namedtuple
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
-from ...common import util
 from .navigate import GsNavigate
-from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
-from ..git_command import GitCommand
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
+from ..git_command import GitCommand
+from ..view import replace_view_content
+from ...common import util
+from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
 
@@ -214,10 +215,7 @@ class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
         if match_position is None:
             cur_pos = capture_cur_position(self.view)
 
-        self.view.run_command("gs_replace_view_text", {
-            "text": inline_diff_contents,
-            "restore_cursors": True
-        })
+        replace_view_content(self.view, inline_diff_contents)
 
         if match_position is None:
             if cur_pos == (0, 0) and self.savvy_settings.get("inline_diff_auto_scroll", False):
