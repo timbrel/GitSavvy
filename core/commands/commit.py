@@ -6,7 +6,7 @@ from sublime_plugin import EventListener
 
 from . import intra_line_colorizer
 from ..runtime import enqueue_on_worker
-from ..view import replace_region
+from ..view import replace_view_content
 from ..git_command import GitCommand
 from ...common import util
 from ...core.settings import SettingsMixin
@@ -112,7 +112,7 @@ class gs_commit(WindowCommand, GitCommand):
             with util.file.safe_open(commit_help_extra_path, "r", encoding="utf-8") as f:
                 initial_text += f.read()
 
-        replace_region(view, initial_text)
+        replace_view_content(view, initial_text)
         view.run_command("gs_prepare_commit_refresh_diff")
 
 
@@ -157,7 +157,7 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
         except IndexError:
             region = sublime.Region(view.size())
 
-        replace_region(view, final_text, region)
+        replace_view_content(view, final_text, region)
         if shows_diff:
             intra_line_colorizer.annotate_intra_line_differences(view, final_text, region.begin())
 

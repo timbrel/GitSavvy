@@ -26,7 +26,7 @@ from ..runtime import (
     run_or_timeout, run_on_new_thread,
     text_command
 )
-from ..view import replace_region
+from ..view import replace_view_content
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
 from ...common import util
@@ -469,7 +469,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         prelude_text = prelude(self.view)
         initial_draw = self.view.size() == 0
         if initial_draw:
-            replace_region(self.view, prelude_text, sublime.Region(0, 1))
+            replace_view_content(self.view, prelude_text, sublime.Region(0, 1))
 
         try:
             current_graph = self.view.substr(
@@ -535,11 +535,11 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             visible_selection = is_sel_in_viewport(self.view)
 
             current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
-            replace_region(self.view, prelude_text, current_prelude_region)
+            replace_view_content(self.view, prelude_text, current_prelude_region)
             drain_and_draw_queue(self.view, 'initial', follow, col_range, visible_selection)
 
         # Sublime will not run any event handlers until the (outermost) TextCommand exits.
-        # T.i. the (inner) commands `replace_region` and `set_and_show_cursor` will run
+        # T.i. the (inner) commands `replace_view_content` and `set_and_show_cursor` will run
         # through uninterrupted until `drain_and_draw_queue` yields. Then e.g.
         # `on_selection_modified` runs *once* even if we painted multiple times.
         @ensure_not_aborted
@@ -627,7 +627,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             region = sublime.Region(computed_start, computed_end)
 
             current_graph_splitted = apply_diff(current_graph_splitted, [token])
-            replace_region(view, text, region)
+            replace_view_content(view, text, region)
             occupied_space = sublime.Region(computed_start, computed_start + len(text))
             return occupied_space
 
