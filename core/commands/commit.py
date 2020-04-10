@@ -335,10 +335,7 @@ class gs_commit_view_sign(TextCommand, GitCommand):
 
         view_text = self.view.substr(sublime.Region(0, self.view.size()))
         new_view_text = new_commit_message + view_text[len(commit_message):]
-        self.view.run_command("gs_replace_view_text", {
-            "text": new_view_text,
-            "restore_cursors": True
-        })
+        replace_view_content(self.view, new_view_text)
 
 
 class gs_commit_view_close(TextCommand, GitCommand):
