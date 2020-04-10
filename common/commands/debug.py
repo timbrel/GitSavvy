@@ -6,6 +6,8 @@ from sublime_plugin import WindowCommand
 
 from ..util import debug, reload
 from ...core.settings import GitSavvySettings
+from ...core.view import replace_view_content
+
 
 REPORT_URL_TEMPLATE = "https://github.com/timbrel/GitSavvy/issues/new?{q}"
 
@@ -54,7 +56,4 @@ class GsViewGitLog(WindowCommand):
         view = self.window.new_file()
         view.set_scratch(True)
         view.settings().set("syntax", "Packages/JavaScript/JSON.sublime-syntax")
-        view.run_command("gs_replace_view_text", {
-            "text": log,
-            "nuke_cursors": True
-        })
+        replace_view_content(view, log)
