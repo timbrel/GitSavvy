@@ -187,7 +187,6 @@ class GsStashShowCommand(WindowCommand, GitCommand):
         replace_view_content(stash_view, content)
 
     def create_stash_view(self, stash_id):
-        window = self.window
         repo_path = self.repo_path
         stash_view = util.view.get_scratch_view(self, "stash", read_only=True)
         title = "stash@{{{}}}".format(stash_id)
@@ -196,8 +195,6 @@ class GsStashShowCommand(WindowCommand, GitCommand):
         stash_view.settings().set("git_savvy.repo_path", repo_path)
         stash_view.settings().set("git_savvy.stash_view.stash_id", stash_id)
         stash_view.settings().set("git_savvy.stash_view.status", "valid")
-        window.focus_view(stash_view)
-
         return stash_view
 
 
