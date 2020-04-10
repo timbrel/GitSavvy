@@ -15,10 +15,10 @@ from . import intra_line_colorizer
 from .navigate import GsNavigate
 from ..fns import filter_, flatten
 from ..parse_diff import SplittedDiff
+from ..git_command import GitCommand, GitSavvyError
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import line_indentation
-from ..git_command import GitCommand
-from ..exceptions import GitSavvyError
+from ..view import replace_view_content
 from ...common import util
 
 
@@ -306,9 +306,7 @@ def _draw(view, title, prelude, diff_text, is_word_diff, added_regions, removed_
     # type: (sublime.View, str, str, str, bool, List[sublime.Region], List[sublime.Region], bool) -> None
     view.set_name(title)
     text = prelude + diff_text
-    view.run_command(
-        "gs_replace_view_text", {"text": text, "restore_cursors": True}
-    )
+    replace_view_content(view, text)
     if navigate:
         view.run_command("gs_diff_navigate")
 
