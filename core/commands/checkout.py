@@ -3,11 +3,12 @@ from collections import deque
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..git_command import GitCommand
 from .log import LogMixin
-from ...common import util
+from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from ..view import replace_view_content
+from ...common import util
 
 
 __all__ = (
@@ -185,8 +186,7 @@ class gs_show_file_diff(WindowCommand, GitCommand):
         )
 
         output_view = self.window.create_output_panel("show_file_diff")
-        output_view.set_read_only(False)
-        output_view.run_command("gs_replace_view_text", {"text": text, "nuke_cursors": True})
         output_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
         output_view.set_read_only(True)
+        replace_view_content(output_view, text)
         self.window.run_command("show_panel", {"panel": "output.show_file_diff"})
