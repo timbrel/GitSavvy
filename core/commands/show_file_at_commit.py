@@ -5,6 +5,7 @@ from sublime_plugin import TextCommand, WindowCommand
 
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_ui, enqueue_on_worker
+from ..view import replace_view_content
 from ...common import util
 from .log import LogMixin
 
@@ -59,7 +60,7 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
         enqueue_on_ui(self.render_text, view, text, lineno)
 
     def render_text(self, view, text, lineno):
-        view.run_command("gs_replace_view_text", {"text": text, "nuke_cursors": True})
+        replace_view_content(view, text)
         util.view.move_cursor(view, lineno, 0)
 
 
