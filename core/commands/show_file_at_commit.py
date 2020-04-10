@@ -4,7 +4,7 @@ import sublime
 from sublime_plugin import TextCommand, WindowCommand
 
 from ..git_command import GitCommand
-from ..runtime import enqueue_on_ui, enqueue_on_worker
+from ..runtime import enqueue_on_worker, text_command
 from ..view import replace_view_content
 from ...common import util
 from .log import LogMixin
@@ -57,11 +57,22 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
             file_path = self.filename_at_commit(file_path, commit_hash)
 
         text = self.get_file_content_at_commit(file_path, commit_hash)
-        enqueue_on_ui(self.render_text, view, text, lineno)
+        render(view, text, lineno)
 
-    def render_text(self, view, text, lineno):
-        replace_view_content(view, text)
-        util.view.move_cursor(view, lineno, 0)
+
+@text_command
+def render(view, text, lineno):
+    replace_view_content(view, text)
+    move_cursor_to_line_col(view, lineno, 0)
+
+
+def move_cursor_to_line_col(view, line, col):
+    # type: (sublime.View, int, int) -> None
+    # Herein: Line numbers are one-based, rows are zero-based.
+    pt = view.text_point(max(0, line - 1), col)
+    view.sel().clear()
+    view.sel().add(sublime.Region(pt))
+    view.show(pt)
 
 
 class gs_show_current_file_at_commit(gs_show_file_at_commit):
