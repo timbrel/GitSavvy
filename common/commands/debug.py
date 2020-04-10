@@ -9,9 +9,6 @@ from ...core.settings import GitSavvySettings
 from ...core.view import replace_view_content
 
 
-REPORT_URL_TEMPLATE = "https://github.com/timbrel/GitSavvy/issues/new?{q}"
-
-
 class GsReloadModulesDebug(WindowCommand):
 
     """
