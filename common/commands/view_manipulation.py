@@ -3,7 +3,7 @@ from sublime_plugin import TextCommand
 from ...core.settings import GitSavvySettings
 
 
-class GsInsertTextAtCursorCommand(TextCommand):
+class gs_insert_text_at_cursor(TextCommand):
 
     """
     Insert the provided text at the current cursor position(s).
@@ -22,7 +22,7 @@ class GsInsertTextAtCursorCommand(TextCommand):
                                  for begin, end in selected_ranges])
 
 
-class GsReplaceRegionCommand(TextCommand):
+class gs_replace_region(TextCommand):
 
     """
     Replace the contents of a region within the view with the provided text.
@@ -35,7 +35,7 @@ class GsReplaceRegionCommand(TextCommand):
         self.view.set_read_only(is_read_only)
 
 
-class GsHandleVintageousCommand(TextCommand):
+class gs_handle_vintageous(TextCommand):
 
     """
     Set the vintageous_friendly view setting if needed.
@@ -51,7 +51,7 @@ class GsHandleVintageousCommand(TextCommand):
                 self.view.run_command("_enter_insert_mode")
 
 
-class GsHandleArrowKeysCommand(TextCommand):
+class gs_handle_arrow_keys(TextCommand):
 
     """
     Set the arrow_keys_navigation view setting if needed.
