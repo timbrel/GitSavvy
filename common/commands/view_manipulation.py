@@ -1,19 +1,5 @@
-import sublime
 from sublime_plugin import TextCommand
 from ...core.settings import GitSavvySettings
-
-
-class gs_replace_region(TextCommand):
-
-    """
-    Replace the contents of a region within the view with the provided text.
-    """
-
-    def run(self, edit, text, begin, end):
-        is_read_only = self.view.is_read_only()
-        self.view.set_read_only(False)
-        self.view.replace(edit, sublime.Region(begin, end), text)
-        self.view.set_read_only(is_read_only)
 
 
 class gs_handle_vintageous(TextCommand):
