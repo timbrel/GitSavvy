@@ -80,7 +80,7 @@ class GsGithubShowIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemote
         if not issue:
             return
 
-        self.view.run_command("gs_insert_text_at_cursor", {"text": str(issue["number"])})
+        self.view.run_command("insert", {"characters": str(issue["number"])})
 
 
 class GsGithubShowContributorsCommand(TextCommand, GitCommand):
@@ -118,4 +118,4 @@ class GsGithubShowContributorsCommand(TextCommand, GitCommand):
         if not contributor:
             return
 
-        self.view.run_command("gs_insert_text_at_cursor", {"text": contributor["login"]})
+        self.view.run_command("insert", {"characters": contributor["login"]})
