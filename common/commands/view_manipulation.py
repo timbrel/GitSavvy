@@ -1,8 +1,8 @@
 from sublime_plugin import TextCommand
-from ...core.settings import GitSavvySettings
+from ...core.git_command import GitCommand
 
 
-class gs_handle_vintageous(TextCommand):
+class gs_handle_vintageous(TextCommand, GitCommand):
 
     """
     Set the vintageous_friendly view setting if needed.
@@ -10,15 +10,14 @@ class gs_handle_vintageous(TextCommand):
     """
 
     def run(self, edit):
-        savvy_settings = GitSavvySettings()
-        if savvy_settings.get("vintageous_friendly", False) is True:
+        if self.savvy_settings.get("vintageous_friendly"):
             self.view.settings().set("git_savvy.vintageous_friendly", True)
-            if savvy_settings.get("vintageous_enter_insert_mode", False) is True:
+            if self.savvy_settings.get("vintageous_enter_insert_mode"):
                 self.view.settings().set("vintageous_reset_mode_when_switching_tabs", False)
                 self.view.run_command("_enter_insert_mode")
 
 
-class gs_handle_arrow_keys(TextCommand):
+class gs_handle_arrow_keys(TextCommand, GitCommand):
 
     """
     Set the arrow_keys_navigation view setting if needed.
@@ -26,6 +25,5 @@ class gs_handle_arrow_keys(TextCommand):
     """
 
     def run(self, edit):
-        savvy_settings = GitSavvySettings()
-        if savvy_settings.get("arrow_keys_navigation", False) is True:
+        if self.savvy_settings.get("arrow_keys_navigation"):
             self.view.settings().set("git_savvy.arrow_keys_navigation", True)
