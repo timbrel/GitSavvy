@@ -2,6 +2,12 @@ from sublime_plugin import TextCommand
 from ...core.git_command import GitCommand
 
 
+__all__ = (
+    "gs_handle_vintageous",
+    "gs_handle_arrow_keys"
+)
+
+
 class gs_handle_vintageous(TextCommand, GitCommand):
 
     """
