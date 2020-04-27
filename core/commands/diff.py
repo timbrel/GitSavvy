@@ -143,6 +143,7 @@ class gs_diff(WindowCommand, GitCommand):
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
                 settings = view.settings()
+                settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
                 focus_view(view)
                 break
 
