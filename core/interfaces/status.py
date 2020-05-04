@@ -552,13 +552,20 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
         cached_files = get_selected_files(self.view, repo_path, 'staged')
 
         sublime.set_timeout_async(
-            lambda: self.load_diff_windows(window, non_cached_files, cached_files)
+            lambda: self.load_diff_windows(
+                window,  # type: ignore  # https://github.com/python/mypy/issues/4297
+                non_cached_files,
+                cached_files
+            )
         )
 
     def load_diff_windows(self, window, non_cached_files, cached_files):
         # type: (sublime.Window, List[str], List[str]) -> None
         for fpath in non_cached_files:
-            window.run_command("gs_diff", {"file_path": fpath})
+            window.run_command("gs_diff", {
+                "file_path": fpath,
+                "in_cached_mode": False,
+            })
 
         for fpath in cached_files:
             window.run_command("gs_diff", {
