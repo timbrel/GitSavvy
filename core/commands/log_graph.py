@@ -717,20 +717,21 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         follow = self.savvy_settings.get("log_follow_rename")
         author = settings.get("git_savvy.log_graph_view.filter_by_author")
         all_branches = settings.get("git_savvy.log_graph_view.all_branches")
+        fpath = self.file_path
         args = [
             'log',
             '--graph',
             '--decorate',  # set explicitly for "decorate-refs-exclude" to work
             '--date={}'.format(DATE_FORMAT),
             '--pretty=format:%h%d %<|(80,trunc)%s | %ad, %an',
-            '--follow' if self.file_path and follow else None,
+            '--follow' if fpath and follow else None,
             '--author={}'.format(author) if author else None,
             '--decorate-refs-exclude=refs/remotes/origin/HEAD',  # cosmetics
             '--exclude=refs/stash',
             '--all' if all_branches else None,
         ]
 
-        if settings.get('git_savvy.log_graph_view.decoration') == 'sparse':
+        if not fpath and settings.get('git_savvy.log_graph_view.decoration') == 'sparse':
             args += ['--simplify-by-decoration', '--sparse']
 
         branches = settings.get("git_savvy.log_graph_view.branches")
@@ -741,9 +742,8 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         if filters:
             args += shlex.split(filters)
 
-        if self.file_path:
-            file_path = self.get_rel_path(self.file_path)
-            args += ["--", file_path]
+        if fpath:
+            args += ["--", self.get_rel_path(fpath)]
 
         return args
 
