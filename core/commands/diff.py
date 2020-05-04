@@ -118,7 +118,7 @@ class gs_diff(WindowCommand, GitCommand):
         self,
         repo_path=None,
         file_path=None,
-        in_cached_mode=False,
+        in_cached_mode=None,  # type: Optional[bool]
         current_file=False,
         base_commit=None,
         target_commit=None,
@@ -128,6 +128,7 @@ class gs_diff(WindowCommand, GitCommand):
         show_word_diff=False,
         context_lines=3
     ):
+        # type: (...) -> None
         if repo_path is None:
             repo_path = self.repo_path
         assert repo_path
@@ -142,8 +143,9 @@ class gs_diff(WindowCommand, GitCommand):
         )
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
-                settings = view.settings()
-                settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
+                if in_cached_mode is not None:
+                    settings = view.settings()
+                    settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
                 focus_view(view)
                 break
 
@@ -154,7 +156,7 @@ class gs_diff(WindowCommand, GitCommand):
             settings = diff_view.settings()
             settings.set("git_savvy.repo_path", repo_path)
             settings.set("git_savvy.file_path", file_path)
-            settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
+            settings.set("git_savvy.diff_view.in_cached_mode", bool(in_cached_mode))
             settings.set("git_savvy.diff_view.ignore_whitespace", ignore_whitespace)
             settings.set("git_savvy.diff_view.show_word_diff", show_word_diff)
             settings.set("git_savvy.diff_view.context_lines", context_lines)
