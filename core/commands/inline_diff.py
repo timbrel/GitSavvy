@@ -11,6 +11,19 @@ from ..view import replace_view_content
 from ...common import util
 from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
+
+__all__ = (
+    "gs_inline_diff",
+    "gs_inline_diff_refresh",
+    "gs_inline_diff_stage_or_reset_line",
+    "gs_inline_diff_stage_or_reset_hunk",
+    "gs_inline_diff_open_file",
+    "gs_inline_diff_navigate_hunk",
+    "gs_inline_diff_undo",
+    "GsInlineDiffFocusEventListener",
+)
+
+
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
 
 
@@ -61,7 +74,7 @@ def translate_row_to_inline_diff(diff_view, row):
     return row + deleted_lines_before_row
 
 
-class GsInlineDiffCommand(WindowCommand, GitCommand):
+class gs_inline_diff(WindowCommand, GitCommand):
 
     """
     Given an open file in a git-tracked directory, show a new view with the
@@ -161,7 +174,7 @@ class GsInlineDiffCommand(WindowCommand, GitCommand):
         themeGenerator.apply_new_theme("active-diff-view." + file_ext, target_view)
 
 
-class GsInlineDiffRefreshCommand(TextCommand, GitCommand):
+class gs_inline_diff_refresh(TextCommand, GitCommand):
 
     """
     Diff one version of a file (the base) against another, and display the
@@ -372,7 +385,7 @@ class GsInlineDiffFocusEventListener(EventListener):
             view.run_command("gs_inline_diff_refresh", {"sync": False})
 
 
-class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
+class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
 
     """
     Base class for any stage or reset operation in the inline-diff view.
@@ -448,7 +461,7 @@ class GsInlineDiffStageOrResetBase(TextCommand, GitCommand):
         self.view.settings().set("git_savvy.inline_diff.history", history)
 
 
-class GsInlineDiffStageOrResetLineCommand(GsInlineDiffStageOrResetBase):
+class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
 
     """
     Given a line number, generate a diff of that single line in the active
@@ -540,7 +553,7 @@ class GsInlineDiffStageOrResetLineCommand(GsInlineDiffStageOrResetBase):
             )
 
 
-class GsInlineDiffStageOrResetHunkCommand(GsInlineDiffStageOrResetBase):
+class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
 
     """
     Given a line number, generate a diff of the hunk containing that line,
@@ -587,7 +600,7 @@ class GsInlineDiffStageOrResetHunkCommand(GsInlineDiffStageOrResetBase):
         return "\n".join([stand_alone_header] + hunk_ref.hunk.raw_lines[1:])
 
 
-class GsInlineDiffOpenFile(TextCommand):
+class gs_inline_diff_open_file(TextCommand):
 
     """
     Opens an editable view of the file being diff'd.
@@ -646,7 +659,7 @@ class GsInlineDiffOpenFile(TextCommand):
                 return hunk_ref
 
 
-class GsInlineDiffNavigateHunkCommand(GsNavigate):
+class gs_inline_diff_navigate_hunk(GsNavigate):
 
     """
     Navigate to the next/previous hunk that appears after the current cursor
@@ -662,7 +675,7 @@ class GsInlineDiffNavigateHunkCommand(GsNavigate):
             for hunk in diff_view_hunks[self.view.id()]]
 
 
-class GsInlineDiffUndo(TextCommand, GitCommand):
+class gs_inline_diff_undo(TextCommand, GitCommand):
 
     """
     Undo the last action taken in the inline-diff view, if possible.
