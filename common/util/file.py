@@ -44,8 +44,8 @@ def get_syntax_for_file(filename):
 
 
 def get_file_extension(filename):
-    period_delimited_segments = filename.split(".")
-    return "" if len(period_delimited_segments) < 2 else period_delimited_segments[-1]
+    # type: (str) -> str
+    return os.path.splitext(filename)[1][1:]
 
 
 def get_file_contents_binary(repo_path, file_path):
