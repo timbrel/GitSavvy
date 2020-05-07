@@ -24,6 +24,11 @@ __all__ = (
 )
 
 
+MYPY = False
+if MYPY:
+    from typing import Optional
+
+
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
 
 
@@ -83,56 +88,65 @@ class gs_inline_diff(WindowCommand, GitCommand):
     """
 
     def run(self, settings=None, cached=False, match_current_position=False):
-        file_view = self.window.active_view()
-        cur_pos = capture_cur_position(file_view) if match_current_position else None
         if settings is None:
-            syntax_file = file_view.settings().get("syntax")
-            settings = {
-                "git_savvy.file_path": self.file_path,
-                "git_savvy.repo_path": self.repo_path
-            }
-        else:
-            syntax_file = settings["syntax"]
-            del settings["syntax"]
+            file_view = self.window.active_view()
+            assert file_view
 
-        view_key = "{0}+{1}".format(cached, settings["git_savvy.file_path"])
+            repo_path = self.repo_path
+            file_path = self.file_path
+            syntax_file = file_view.settings().get("syntax")
+            cur_pos = capture_cur_position(file_view) if match_current_position else None
+
+        else:
+            repo_path = settings["repo_path"]
+            file_path = settings["file_path"]
+            syntax_file = settings["syntax"]
+            cur_pos = None
+
+        view_key = "{0}+{1}".format(cached, file_path)
 
         if view_key in inline_diff_views and inline_diff_views[view_key] in sublime.active_window().views():
             diff_view = inline_diff_views[view_key]
+            self.window.focus_view(diff_view)
+
         else:
             diff_view = util.view.get_scratch_view(self, "inline_diff", read_only=True)
+
+            settings = diff_view.settings()
+            settings.set("git_savvy.repo_path", repo_path)
+            settings.set("git_savvy.file_path", file_path)
+            settings.set("git_savvy.inline_diff_view.in_cached_mode", cached)
+            file_encoding = self.get_file_encoding(repo_path, file_path)
+            if file_encoding:
+                settings.set("git_savvy.inline_diff.encoding", file_encoding)
+
             title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
-            diff_view.set_name(title + os.path.basename(settings["git_savvy.file_path"]))
+            diff_view.set_name(title + os.path.basename(file_path))
 
             diff_view.set_syntax_file(syntax_file)
-            file_ext = util.file.get_file_extension(os.path.basename(settings["git_savvy.file_path"]))
+            file_ext = util.file.get_file_extension(os.path.basename(file_path))
             self.augment_color_scheme(diff_view, file_ext)
 
-            diff_view.settings().set("git_savvy.inline_diff_view.in_cached_mode", cached)
-            for k, v in settings.items():
-                diff_view.settings().set(k, v)
-
             inline_diff_views[view_key] = diff_view
-
-        file_binary = util.file.get_file_contents_binary(
-            settings["git_savvy.repo_path"], settings["git_savvy.file_path"])
-        try:
-            file_binary.decode()
-        except UnicodeDecodeError:
-            try:
-                file_binary.decode("latin-1")
-                diff_view.settings().set("git_savvy.inline_diff.encoding", "latin-1")
-            except UnicodeDecodeError:
-                fallback_encoding = self.savvy_settings.get("fallback_encoding")
-                diff_view.settings().set("git_savvy.inline_diff.encoding", fallback_encoding)
-
-        self.window.focus_view(diff_view)
+            diff_view.run_command("gs_handle_vintageous")
 
         diff_view.run_command("gs_inline_diff_refresh", {
             "match_position": cur_pos,
             "sync": False
         })
-        diff_view.run_command("gs_handle_vintageous")
+
+    def get_file_encoding(self, repo_path, file_path):
+        # type: (str, str) -> Optional[str]
+        file_binary = util.file.get_file_contents_binary(repo_path, file_path)
+        try:
+            file_binary.decode()
+            return None
+        except UnicodeDecodeError:
+            try:
+                file_binary.decode("latin-1")
+                return "latin-1"
+            except UnicodeDecodeError:
+                return self.savvy_settings.get("fallback_encoding")
 
     def augment_color_scheme(self, target_view, file_ext):
         """
