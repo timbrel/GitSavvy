@@ -5,8 +5,13 @@ import os
 from contextlib import contextmanager
 
 
+MYPY = False
+if MYPY:
+    from typing import Dict, List
+
+
 if 'syntax_file_map' not in globals():
-    syntax_file_map = {}
+    syntax_file_map = {}  # type: Dict[str, List[str]]
 
 if 'determine_syntax_thread' not in globals():
     determine_syntax_thread = None
