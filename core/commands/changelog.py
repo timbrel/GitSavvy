@@ -1,10 +1,10 @@
 from collections import OrderedDict
 
-import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from ..view import replace_view_content
 
 REF_PROMPT = "Ref or commit hash:"
 
@@ -26,12 +26,7 @@ class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
-        view = show_single_line_input_panel(
-            REF_PROMPT, self.get_last_local_tag(), self.on_done, None, None)
-        view.run_command("select_all")
+        show_single_line_input_panel(REF_PROMPT, self.get_last_local_tag(), self.on_done)
 
     def on_done(self, ref):
         merge_entries = self.log(
@@ -86,13 +81,9 @@ class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
 
         view = self.window.new_file()
         view.set_scratch(True)
-        view.run_command("gs_replace_view_text", {
-            "text": changelog,
-            "nuke_cursors": True
-        })
+        replace_view_content(view, changelog)
 
-    @staticmethod
-    def get_message_groups(messages):
+    def get_message_groups(self, messages):
         grouped_msgs = OrderedDict()
 
         for message in messages:

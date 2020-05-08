@@ -3,14 +3,15 @@ from sublime_plugin import WindowCommand
 from webbrowser import open as open_in_browser
 import urllib
 
-from ...core.git_command import GitCommand
-from ...core.ui_mixins.quick_panel import show_paginated_panel
-from ...core.ui_mixins.input_panel import show_single_line_input_panel
 from .. import github
 from .. import git_mixins
 from ...common import interwebs
 from ...common import util
 from ...core.commands.push import GsPushToBranchNameCommand
+from ...core.git_command import GitCommand
+from ...core.ui_mixins.quick_panel import show_paginated_panel
+from ...core.ui_mixins.input_panel import show_single_line_input_panel
+from ...core.view import replace_view_content
 
 
 PUSH_PROMPT = ("You have not set an upstream for the active branch.  "
@@ -133,12 +134,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         diff_view = util.view.get_scratch_view(self, "pr_diff", read_only=True)
         diff_view.set_name("PR #{}".format(self.pr["number"]))
         diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
-
-        self.window.focus_view(diff_view)
-        diff_view.sel().clear()
-        diff_view.run_command("gs_replace_view_text", {
-            "text": response.payload.decode("utf-8")
-        })
+        replace_view_content(diff_view, response.payload.decode("utf-8"))
 
     def open_pr_in_browser(self):
         open_in_browser(self.pr["html_url"])

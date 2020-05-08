@@ -9,6 +9,7 @@ from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelCommandMixin
 from ..ui_mixins.quick_panel import show_stash_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from ..view import replace_view_content
 from ...common import util
 
 
@@ -182,10 +183,10 @@ class GsStashShowCommand(WindowCommand, GitCommand):
             return
 
         stash_view = self.create_stash_view(stash_id)
-        stash_view.run_command("gs_replace_view_text", {"text": self.show_stash(stash_id), "nuke_cursors": True})
+        content = self.show_stash(stash_id)
+        replace_view_content(stash_view, content)
 
     def create_stash_view(self, stash_id):
-        window = self.window
         repo_path = self.repo_path
         stash_view = util.view.get_scratch_view(self, "stash", read_only=True)
         title = "stash@{{{}}}".format(stash_id)
@@ -194,8 +195,6 @@ class GsStashShowCommand(WindowCommand, GitCommand):
         stash_view.settings().set("git_savvy.repo_path", repo_path)
         stash_view.settings().set("git_savvy.stash_view.stash_id", stash_id)
         stash_view.settings().set("git_savvy.stash_view.status", "valid")
-        window.focus_view(stash_view)
-
         return stash_view
 
 

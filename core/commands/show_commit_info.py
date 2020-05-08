@@ -7,6 +7,7 @@ from sublime_plugin import WindowCommand
 from . import intra_line_colorizer
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_worker, enqueue_on_ui, throttled
+from ..view import replace_view_content
 
 
 __all__ = (
@@ -97,7 +98,7 @@ class gs_show_commit_info(WindowCommand, GitCommand):
 def _draw(window, view, text, commit):
     # type: (sublime.Window, sublime.View, str, str) -> None
     with restore_viewport_position(view, commit):
-        view.run_command("gs_replace_view_text", {"text": text, "nuke_cursors": True})
+        replace_view_content(view, text)
 
     intra_line_colorizer.annotate_intra_line_differences(view)
 

@@ -1,16 +1,14 @@
 import sublime
 from sublime_plugin import WindowCommand
 from webbrowser import open as open_in_browser
-# import urllib
 
+from .. import gitlab
+from .. import git_mixins
 from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_paginated_panel
 from ...core.ui_mixins.input_panel import show_single_line_input_panel
-from .. import gitlab
-from .. import git_mixins
-# from ...common import interwebs
+from ...core.view import replace_view_content
 from ...common import util
-# from ...core.commands.push import GsPushToBranchNameCommand
 
 
 PUSH_PROMPT = ("You have not set an upstream for the active branch.  "
@@ -118,68 +116,8 @@ class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRe
         diff_view.set_name("MR #{}".format(self.mr["iid"]))
         diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
 
-        self.window.focus_view(diff_view)
-        diff_text = (change['diff'] for change in mr_changes['changes'])
-        diff_view.sel().clear()
-        diff_view.run_command("gs_replace_view_text", {
-            "text": '\n'.join(diff_text)
-        })
+        diff_text = '\n'.join(change['diff'] for change in mr_changes['changes'])
+        replace_view_content(diff_view, diff_text)
 
     def open_mr_in_browser(self):
         open_in_browser(self.mr["web_url"])
-
-
-# class GsCreateMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin):
-#     """
-#     Create merge request of the current commit on the current repo.
-#     """
-
-#     def run(self):
-#         sublime.set_timeout_async(self.run_async, 0)
-
-#     def run_async(self):
-#         if not self.get_upstream_for_active_branch():
-#             if sublime.ok_cancel_dialog(PUSH_PROMPT):
-#                 self.window.run_command(
-#                     "gs_push_and_create_merge_request",
-#                     {"set_upstream": True})
-
-#         else:
-#             remote_branch = self.get_active_remote_branch()
-#             if not remote_branch:
-#                 sublime.message_dialog("Unable to determine remote.")
-#            else:
-#                status, secondary = self.get_branch_status()
-#                if secondary:
-#                    secondary = "\n".join(secondary)
-#                    if "ahead" in secondary or "behind" in secondary:
-#                        sublime.message_dialog(
-#                            "Your current branch is different from its remote counterpart.\n" +
-#                            secondary)
-#                        return
-
-#                owner = github.parse_remote(self.get_remotes()[remote_branch.remote]).owner
-#                self.open_comparision_in_browser(
-#                    owner,
-#                    remote_branch.name
-#                )
-
-#     def open_comparision_in_browser(self, owner, branch):
-#         base_remote = github.parse_remote(self.get_integrated_remote_url())
-#         remote_url = base_remote.url
-#         base_owner = base_remote.owner
-#         base_branch = self.get_integrated_branch_name()
-#         url = "{}/compare/{}:{}...{}:{}?expand=1".format(
-#             remote_url,
-#             base_owner,
-#             urllib.parse.quote_plus(base_branch),
-#             owner,
-#             urllib.parse.quote_plus(branch)
-#         )
-#         open_in_browser(url)
-
-# class GsPushAndCreateMergeRequestCommand(GsPushToBranchNameCommand):
-
-#     def do_push(self, *args, **kwargs):
-#         super().do_push(*args, **kwargs)
-#         self.window.run_command("gs_create_merge_request")
