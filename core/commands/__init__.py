@@ -14,6 +14,7 @@ from .flow import *
 from .ignore import *
 from .init import *
 from .inline_diff import *
+from .inline_stage_hunk import *
 from .log import *
 from .log_graph import *
 from .merge import *
