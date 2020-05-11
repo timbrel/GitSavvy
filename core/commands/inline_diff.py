@@ -7,6 +7,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from .navigate import GsNavigate
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 from ..git_command import GitCommand
+from ..runtime import enqueue_on_ui
 from ..view import replace_view_content
 from ...common import util
 from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
@@ -57,11 +58,7 @@ def place_cursor_and_show(view, row, col):
     view.sel().clear()
     pt = view.text_point(row, col)
     view.sel().add(sublime.Region(pt, pt))
-    view.show_at_center(pt)
-    # The following shouldn't strictly be necessary, but Sublime sometimes jumps
-    # to the right when show_at_center for a column-zero-point occurs.
-    _, vp_y = view.viewport_position()
-    view.set_viewport_position((0, vp_y), False)
+    view.show(pt, True)
 
 
 def translate_row_to_inline_diff(diff_view, row):
@@ -239,21 +236,23 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             inline_diff_contents, replaced_lines = \
                 self.get_inline_diff_contents(indexed_object_contents, diff)
 
-        if match_position is None:
-            cur_pos = capture_cur_position(self.view)
+        def draw(view):
+            if match_position is None:
+                cur_pos = capture_cur_position(view)
 
-        replace_view_content(self.view, inline_diff_contents)
+            replace_view_content(view, inline_diff_contents)
 
-        if match_position is None:
-            if cur_pos == (0, 0) and self.savvy_settings.get("inline_diff_auto_scroll", False):
-                self.view.run_command("gs_inline_diff_navigate_hunk")
-        else:
-            row, col = match_position
-            new_row = translate_row_to_inline_diff(self.view, row)
-            place_cursor_and_show(self.view, new_row, col)
+            if match_position is None:
+                if cur_pos == (0, 0) and self.savvy_settings.get("inline_diff_auto_scroll", False):
+                    view.run_command("gs_inline_diff_navigate_hunk")
+            else:
+                row, col = match_position
+                new_row = translate_row_to_inline_diff(view, row)
+                place_cursor_and_show(view, new_row, col)
 
-        self.highlight_regions(replaced_lines)
+            self.highlight_regions(replaced_lines)
 
+        enqueue_on_ui(draw, self.view)
         sublime.set_timeout_async(lambda: self.verify_not_conflict(), 0)
 
     def get_inline_diff_contents(self, original_contents, diff):
