@@ -5,7 +5,6 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from .navigate import GsNavigate
-from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_ui
 from ..view import replace_view_content
@@ -224,14 +223,24 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         if in_cached_mode:
             # Display the changes introduced between HEAD and index.
             stdout = self.git("diff", "--no-color", "-U0", ignore_eol_arg, "--cached", "--", file_path)
-            diff = util.parse_diff(stdout)
+            try:
+                diff = util.parse_diff(stdout)
+            except util.UnsupportedDiffMode:
+                self.abort_for_conflicted_file()
+                return
+
             head_file_contents = self.git("show", "HEAD:{}".format(rel_file_path))
             inline_diff_contents, replaced_lines = \
                 self.get_inline_diff_contents(head_file_contents, diff)
         else:
             # Display the changes introduced between index and working dir.
             stdout = self.git("diff", "--no-color", "-U0", ignore_eol_arg, "--", file_path)
-            diff = util.parse_diff(stdout)
+            try:
+                diff = util.parse_diff(stdout)
+            except util.UnsupportedDiffMode:
+                self.abort_for_conflicted_file()
+                return
+
             indexed_object_contents = self.git("show", ":{}".format(rel_file_path))
             inline_diff_contents, replaced_lines = \
                 self.get_inline_diff_contents(indexed_object_contents, diff)
@@ -253,7 +262,12 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             self.highlight_regions(replaced_lines)
 
         enqueue_on_ui(draw, self.view)
-        sublime.set_timeout_async(lambda: self.verify_not_conflict(), 0)
+
+    def abort_for_conflicted_file(self):
+        # type: () -> None
+        sublime.error_message("Inline-diff cannot be displayed for this file - "
+                              "it has a merge conflict.")
+        self.view.close()
 
     def get_inline_diff_contents(self, original_contents, diff):
         """
@@ -372,18 +386,6 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         self.view.add_regions("git-savvy-removed-lines", remove_regions, scope="git_savvy.change.removal")
         self.view.add_regions("git-savvy-added-bold", add_bold_regions, scope="git_savvy.change.addition.bold")
         self.view.add_regions("git-savvy-removed-bold", remove_bold_regions, scope="git_savvy.change.removal.bold")
-
-    def verify_not_conflict(self):
-        fpath = self.get_rel_path()
-        status_file_list = self.get_status()
-        for f in status_file_list:
-            if f.path == fpath:
-                if (f.index_status, f.working_status) in MERGE_CONFLICT_PORCELAIN_STATUSES:
-                    sublime.error_message("Inline-diff cannot be displayed for this file - "
-                                          "it has a merge conflict.")
-                    self.view.window().focus_view(self.view)
-                    self.view.window().run_command("close_file")
-                break
 
 
 class GsInlineDiffFocusEventListener(EventListener):
