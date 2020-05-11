@@ -73,6 +73,7 @@ class gs_inline_stage_hunk(TextCommand, GitCommand):
             hunks = hunks_touching_selection(diff, view)
         except UnsupportedCombinedDiff:
             flash(view, "Files with merge conflicts are not supported.")
+            return
 
         if not hunks:
             flash(view, "Not on a hunk.")
