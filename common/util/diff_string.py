@@ -42,7 +42,7 @@ def get_changes(old, new):
 
     matcher = SequenceMatcher(a=old_chunks, b=new_chunks, autojunk=False)
 
-    if matcher.quick_ratio() < 0.85:
+    if matcher.quick_ratio() < 0.75 or matcher.ratio() < 0.75:
         return []
 
     return [Change(change_type, old_indices[os], old_indices[oe], new_indices[ns], new_indices[ne])
