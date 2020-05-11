@@ -163,12 +163,11 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
 
     def run(self, edit, sync=True, match_position=None):
         if sync:
-            self._run(match_position=match_position)
+            self._run(sync, match_position)
         else:
-            sublime.set_timeout_async(lambda: self._run(match_position=match_position))
+            sublime.set_timeout_async(lambda: self._run(sync, match_position))
 
-    def _run(self, match_position=None):
-
+    def _run(self, runs_on_ui_thread, match_position):
         file_path = self.file_path
         rel_file_path = self.get_rel_path(file_path).replace('\\', '/')
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
@@ -219,7 +218,10 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
 
             self.highlight_regions(replaced_lines)
 
-        enqueue_on_ui(draw, self.view)
+        if runs_on_ui_thread:
+            draw(self.view)
+        else:
+            enqueue_on_ui(draw, self.view)
 
     def abort_for_conflicted_file(self):
         # type: () -> None
