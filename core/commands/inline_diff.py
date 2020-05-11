@@ -492,7 +492,7 @@ class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
 
         # Find the correct hunk.
         for hunk_ref in hunks:
-            if hunk_ref.section_start <= line_no and hunk_ref.section_end >= line_no:
+            if hunk_ref.section_start < line_no <= hunk_ref.section_end:
                 break
             else:
                 # we loop through all hooks before selected hunk.
@@ -515,6 +515,7 @@ class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
 
         # Determine head/staged starting line.
         index_in_hunk = line_no - section_start
+        assert index_in_hunk >= 0
         line = hunk_ref.lines[index_in_hunk]
         line_type = hunk_ref.line_types[index_in_hunk]
 
@@ -581,7 +582,7 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
 
         # Find the correct hunk.
         for hunk_ref in hunks:
-            if hunk_ref.section_start <= line_no and hunk_ref.section_end >= line_no:
+            if hunk_ref.section_start < line_no <= hunk_ref.section_end:
                 break
             else:
                 # we loop through all hooks before selected hunk.
