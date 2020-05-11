@@ -9,7 +9,6 @@ from ..git_command import GitCommand
 from ..runtime import enqueue_on_ui
 from ..view import replace_view_content
 from ...common import util
-from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
 
 __all__ = (
@@ -120,8 +119,6 @@ class gs_inline_diff(WindowCommand, GitCommand):
             diff_view.set_name(title + os.path.basename(file_path))
 
             diff_view.set_syntax_file(syntax_file)
-            file_ext = util.file.get_file_extension(os.path.basename(file_path))
-            self.augment_color_scheme(diff_view, file_ext)
 
             inline_diff_views[view_key] = diff_view
             diff_view.run_command("gs_handle_vintageous")
@@ -143,45 +140,6 @@ class gs_inline_diff(WindowCommand, GitCommand):
                 return "latin-1"
             except UnicodeDecodeError:
                 return self.savvy_settings.get("fallback_encoding")
-
-    def augment_color_scheme(self, target_view, file_ext):
-        """
-        Given a target view, generate a new color scheme from the original with
-        additional inline-diff-related style rules added.  Save this color scheme
-        to disk and set it as the target view's active color scheme.
-        """
-        colors = self.savvy_settings.get("colors")
-
-        original_color_scheme = target_view.settings().get("color_scheme")
-        if original_color_scheme.endswith(".tmTheme"):
-            themeGenerator = XMLThemeGenerator(original_color_scheme)
-        else:
-            themeGenerator = JSONThemeGenerator(original_color_scheme)
-        themeGenerator.add_scoped_style(
-            "GitSavvy Added Line",
-            "git_savvy.change.addition",
-            background=colors["inline_diff"]["add_background"],
-            foreground=colors["inline_diff"]["add_foreground"]
-        )
-        themeGenerator.add_scoped_style(
-            "GitSavvy Removed Line",
-            "git_savvy.change.removal",
-            background=colors["inline_diff"]["remove_background"],
-            foreground=colors["inline_diff"]["remove_foreground"]
-        )
-        themeGenerator.add_scoped_style(
-            "GitSavvy Added Line Bold",
-            "git_savvy.change.addition.bold",
-            background=colors["inline_diff"]["add_background_bold"],
-            foreground=colors["inline_diff"]["add_foreground_bold"]
-        )
-        themeGenerator.add_scoped_style(
-            "GitSavvy Removed Line Bold",
-            "git_savvy.change.removal.bold",
-            background=colors["inline_diff"]["remove_background_bold"],
-            foreground=colors["inline_diff"]["remove_foreground_bold"]
-        )
-        themeGenerator.apply_new_theme("active-diff-view." + file_ext, target_view)
 
 
 class gs_inline_diff_refresh(TextCommand, GitCommand):
@@ -382,10 +340,26 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
                         region_end = add_start + change.new_end
                         add_bold_regions.append(sublime.Region(region_start, region_end))
 
-        self.view.add_regions("git-savvy-added-lines", add_regions, scope="git_savvy.change.addition")
-        self.view.add_regions("git-savvy-removed-lines", remove_regions, scope="git_savvy.change.removal")
-        self.view.add_regions("git-savvy-added-bold", add_bold_regions, scope="git_savvy.change.addition.bold")
-        self.view.add_regions("git-savvy-removed-bold", remove_bold_regions, scope="git_savvy.change.removal.bold")
+        self.view.add_regions(
+            "git-savvy-added-lines",
+            add_regions,
+            scope="diff.inserted.git-savvy.inline-diff"
+        )
+        self.view.add_regions(
+            "git-savvy-removed-lines",
+            remove_regions,
+            scope="diff.deleted.git-savvy.inline-diff"
+        )
+        self.view.add_regions(
+            "git-savvy-added-bold",
+            add_bold_regions,
+            scope="diff.inserted.char.git-savvy.inline-diff"
+        )
+        self.view.add_regions(
+            "git-savvy-removed-bold",
+            remove_bold_regions,
+            scope="diff.deleted.char.git-savvy.inline-diff"
+        )
 
 
 class GsInlineDiffFocusEventListener(EventListener):
