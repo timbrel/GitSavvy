@@ -297,8 +297,8 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
                 section_start, section_end, hunk, line_types, raw_lines
             ))
 
-            # Discard the first character of every diff-line (`+`, `-`).
-            lines = lines[:section_start] + raw_lines + lines[head_end + adjustment:]
+            tail = lines[head_end + adjustment + (1 if line_types[-1] == "\\" else 0):]
+            lines = lines[:section_start] + raw_lines + tail
             replaced_lines.append((section_start, section_end, line_types, raw_lines))
 
             adjustment += len(diff_lines) - hunk.head_length
