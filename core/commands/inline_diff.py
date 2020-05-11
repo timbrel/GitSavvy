@@ -503,11 +503,6 @@ class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
                         add_length_earlier_in_diff += 1
                     elif type == "-":
                         add_length_earlier_in_diff -= 1
-                    else:
-                        # should never happen that it will raise.
-                        raise ValueError('type have to be eather "+" or "-"')
-
-        # Correct hunk not found.
         else:
             return
 
@@ -524,8 +519,7 @@ class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
         for type in hunk_ref.line_types[:index_in_hunk]:
             if type == "-":
                 cur_hunk_begin_on_minus += 1
-            else:
-                # type will be +
+            elif type == "+":
                 cur_hunk_begin_on_plus += 1
 
         # Removed lines are always first with `git diff -U0 ...`. Therefore, the
@@ -593,11 +587,6 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
                         add_length_earlier_in_diff += 1
                     elif type == "-":
                         add_length_earlier_in_diff -= 1
-                    else:
-                        # should never happen that it will raise.
-                        raise ValueError('type have to be eather "+" or "-"')
-
-        # Correct hunk not found.
         else:
             return
 
