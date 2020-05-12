@@ -92,6 +92,11 @@ def compute_identifier_for_view(view):
     ) if settings.get('git_savvy.inline_diff_view') else None
 
 
+def is_inline_diff_view(view):
+    # type: (sublime.View) -> bool
+    return view.settings().get('git_savvy.inline_diff_view')
+
+
 class gs_inline_diff(WindowCommand, GitCommand):
 
     """
@@ -104,6 +109,10 @@ class gs_inline_diff(WindowCommand, GitCommand):
         if settings is None:
             active_view = self.window.active_view()
             assert active_view
+            # Let this command act like a toggle
+            if is_inline_diff_view(active_view):
+                active_view.close()
+                return
 
             repo_path = self.repo_path
             file_path = self.file_path
