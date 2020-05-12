@@ -102,13 +102,19 @@ class gs_inline_diff(WindowCommand, GitCommand):
 
     def run(self, settings=None, cached=False, match_current_position=False):
         if settings is None:
-            file_view = self.window.active_view()
-            assert file_view
+            active_view = self.window.active_view()
+            assert active_view
 
             repo_path = self.repo_path
             file_path = self.file_path
-            syntax_file = file_view.settings().get("syntax")
-            cur_pos = capture_cur_position(file_view) if match_current_position else None
+
+            is_ordinary_view = bool(active_view.file_name())
+            if is_ordinary_view:
+                syntax_file = active_view.settings().get("syntax")
+                cur_pos = capture_cur_position(active_view) if match_current_position else None
+            else:
+                syntax_file = util.file.get_syntax_for_file(file_path)
+                cur_pos = None
 
         else:
             repo_path = settings["repo_path"]
