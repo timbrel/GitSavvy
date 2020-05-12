@@ -6,7 +6,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from .navigate import GsNavigate
 from ..git_command import GitCommand
-from ..utils import flash
+from ..utils import flash, focus_view
 from ..runtime import enqueue_on_ui
 from ..view import replace_view_content
 from ...common import util
@@ -40,7 +40,6 @@ DIFF_HEADER = """diff --git a/{path} b/{path}
 +++ b/{path}
 """
 
-inline_diff_views = {}
 diff_view_hunks = {}
 
 
@@ -83,6 +82,16 @@ def translate_row_to_inline_diff(diff_view, row):
     return row + deleted_lines_before_row
 
 
+def compute_identifier_for_view(view):
+    # type: (sublime.View) -> Optional[Tuple]
+    settings = view.settings()
+    return (
+        settings.get('git_savvy.repo_path'),
+        settings.get('git_savvy.file_path'),
+        settings.get('git_savvy.inline_diff_view.in_cached_mode'),
+    ) if settings.get('git_savvy.inline_diff_view') else None
+
+
 class gs_inline_diff(WindowCommand, GitCommand):
 
     """
@@ -107,11 +116,12 @@ class gs_inline_diff(WindowCommand, GitCommand):
             syntax_file = settings["syntax"]
             cur_pos = None
 
-        view_key = "{0}+{1}".format(cached, file_path)
-
-        if view_key in inline_diff_views and inline_diff_views[view_key] in sublime.active_window().views():
-            diff_view = inline_diff_views[view_key]
-            self.window.focus_view(diff_view)
+        this_id = (repo_path, file_path, cached)
+        for view in self.window.views():
+            if compute_identifier_for_view(view) == this_id:
+                diff_view = view
+                focus_view(view)
+                break
 
         else:
             diff_view = util.view.get_scratch_view(self, "inline_diff", read_only=True)
@@ -129,7 +139,6 @@ class gs_inline_diff(WindowCommand, GitCommand):
 
             diff_view.set_syntax_file(syntax_file)
 
-            inline_diff_views[view_key] = diff_view
             diff_view.run_command("gs_handle_vintageous")
 
         diff_view.run_command("gs_inline_diff_refresh", {

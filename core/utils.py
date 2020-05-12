@@ -76,6 +76,17 @@ def flash(view, message):
         window.status_message(message)
 
 
+def focus_view(view):
+    # type: (sublime.View) -> None
+    window = view.window()
+    if not window:
+        return
+
+    group, _ = window.get_view_index(view)
+    window.focus_group(group)
+    window.focus_view(view)
+
+
 def line_indentation(line):
     # type: (str) -> int
     return len(line) - len(line.lstrip())
