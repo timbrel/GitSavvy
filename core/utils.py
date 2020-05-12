@@ -11,6 +11,7 @@ import traceback
 MYPY = False
 if MYPY:
     from typing import Callable, Iterator, Type
+    import sublime
 
 
 @contextmanager
@@ -66,6 +67,13 @@ def hprint(msg):
     # We later might find better ways to show these help
     # messages to the user.
     print(msg)
+
+
+def flash(view, message):
+    # type: (sublime.View, str) -> None
+    window = view.window()
+    if window:
+        window.status_message(message)
 
 
 def line_indentation(line):

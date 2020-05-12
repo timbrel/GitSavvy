@@ -6,6 +6,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from .navigate import GsNavigate
 from ..git_command import GitCommand
+from ..utils import flash
 from ..runtime import enqueue_on_ui
 from ..view import replace_view_content
 from ...common import util
@@ -198,6 +199,18 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
                                   "it has a merge conflict.")
             self.view.close()
             return
+
+        hunks_count = len(diff)
+        if hunks_count == 0:
+            flash(self.view, "The file is clean.")
+            self.view.close()
+            return
+        else:
+            flash(self.view, "File has {} {} {}".format(
+                hunks_count,
+                "staged" if in_cached_mode else "unstaged",
+                "hunk" if hunks_count == 1 else "hunks"
+            ))
 
         rel_file_path = self.get_rel_path(file_path).replace('\\', '/')
         if in_cached_mode:
