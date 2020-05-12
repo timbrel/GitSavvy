@@ -191,34 +191,31 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
 
         rel_file_path = self.get_rel_path(file_path).replace('\\', '/')
         if in_cached_mode:
-            head_file_contents = self.git("show", "HEAD:{}".format(rel_file_path))
-            inline_diff_contents, replaced_lines = \
-                self.get_inline_diff_contents(head_file_contents, diff)
+            original_content = self.git("show", "HEAD:{}".format(rel_file_path))
         else:
-            indexed_object_contents = self.git("show", ":{}".format(rel_file_path))
-            inline_diff_contents, replaced_lines = \
-                self.get_inline_diff_contents(indexed_object_contents, diff)
-
-        def draw(view):
-            if match_position is None:
-                cur_pos = capture_cur_position(view)
-
-            replace_view_content(view, inline_diff_contents)
-
-            if match_position is None:
-                if cur_pos == (0, 0) and self.savvy_settings.get("inline_diff_auto_scroll", False):
-                    view.run_command("gs_inline_diff_navigate_hunk")
-            else:
-                row, col = match_position
-                new_row = translate_row_to_inline_diff(view, row)
-                place_cursor_and_show(view, new_row, col)
-
-            self.highlight_regions(replaced_lines)
+            original_content = self.git("show", ":{}".format(rel_file_path))
+        inline_diff_contents, replaced_lines = self.get_inline_diff_contents(original_content, diff)
 
         if runs_on_ui_thread:
-            draw(self.view)
+            self.draw(self.view, match_position, inline_diff_contents, replaced_lines)
         else:
-            enqueue_on_ui(draw, self.view)
+            enqueue_on_ui(self.draw, self.view, match_position, inline_diff_contents, replaced_lines)
+
+    def draw(self, view, match_position, inline_diff_contents, replaced_lines):
+        if match_position is None:
+            cur_pos = capture_cur_position(view)
+
+        replace_view_content(view, inline_diff_contents)
+
+        if match_position is None:
+            if cur_pos == (0, 0) and self.savvy_settings.get("inline_diff_auto_scroll"):
+                view.run_command("gs_inline_diff_navigate_hunk")
+        else:
+            row, col = match_position
+            new_row = translate_row_to_inline_diff(view, row)
+            place_cursor_and_show(view, new_row, col)
+
+        self.highlight_regions(replaced_lines)
 
     def get_inline_diff_contents(self, original_contents, diff):
         """
