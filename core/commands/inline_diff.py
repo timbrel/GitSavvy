@@ -105,7 +105,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
     hunks or individual lines, and to navigate between hunks.
     """
 
-    def run(self, settings=None, cached=False, match_current_position=False):
+    def run(self, settings=None, cached=False, match_current_position=True):
         if settings is None:
             active_view = self.window.active_view()
             assert active_view
