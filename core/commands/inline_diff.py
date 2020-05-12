@@ -25,7 +25,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Optional
+    from typing import Optional, Tuple
 
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
@@ -44,19 +44,27 @@ diff_view_hunks = {}
 
 
 def capture_cur_position(view):
+    # type: (sublime.View) -> Optional[Tuple[int, int, float]]
     try:
         sel = view.sel()[0]
     except Exception:
         return None
 
-    return view.rowcol(sel.begin())
+    row, col = view.rowcol(sel.begin())
+    vx, vy = view.viewport_position()
+    row_offset = row - (vy / view.line_height())
+    return row, col, row_offset
 
 
-def place_cursor_and_show(view, row, col):
+def place_cursor_and_show(view, row, col, row_offset):
+    # type: (sublime.View, int, int, float) -> None
     view.sel().clear()
     pt = view.text_point(row, col)
     view.sel().add(sublime.Region(pt, pt))
-    view.show(pt, True)
+
+    vy = (row - row_offset) * view.line_height()
+    vx, _ = view.viewport_position()
+    view.set_viewport_position((vx, vy))
 
 
 def translate_row_to_inline_diff(diff_view, row):
@@ -125,7 +133,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
 
         diff_view.run_command("gs_inline_diff_refresh", {
             "match_position": cur_pos,
-            "sync": False
+            "sync": True
         })
 
     def get_file_encoding(self, repo_path, file_path):
@@ -162,12 +170,14 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
     """
 
     def run(self, edit, sync=True, match_position=None):
+        # type: (sublime.Edit, bool, Optional[Tuple[int, int, float]]) -> None
         if sync:
             self._run(sync, match_position)
         else:
             sublime.set_timeout_async(lambda: self._run(sync, match_position))
 
     def _run(self, runs_on_ui_thread, match_position):
+        # type: (bool, Optional[Tuple[int, int, float]]) -> None
         file_path = self.file_path
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
         ignore_eol_ws = self.savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
@@ -208,12 +218,12 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         replace_view_content(view, inline_diff_contents)
 
         if match_position is None:
-            if cur_pos == (0, 0) and self.savvy_settings.get("inline_diff_auto_scroll"):
+            if cur_pos == (0, 0, 0) and self.savvy_settings.get("inline_diff_auto_scroll"):
                 view.run_command("gs_inline_diff_navigate_hunk")
         else:
-            row, col = match_position
+            row, col, row_offset = match_position
             new_row = translate_row_to_inline_diff(view, row)
-            place_cursor_and_show(view, new_row, col)
+            place_cursor_and_show(view, new_row, col, row_offset)
 
         self.highlight_regions(replaced_lines)
 
