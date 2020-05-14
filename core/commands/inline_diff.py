@@ -145,9 +145,6 @@ class gs_inline_diff(WindowCommand, GitCommand):
             settings.set("git_savvy.repo_path", repo_path)
             settings.set("git_savvy.file_path", file_path)
             settings.set("git_savvy.inline_diff_view.in_cached_mode", cached)
-            file_encoding = self.get_file_encoding(repo_path, file_path)
-            if file_encoding:
-                settings.set("git_savvy.inline_diff.encoding", file_encoding)
 
             title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
             diff_view.set_name(title + os.path.basename(file_path))
@@ -160,19 +157,6 @@ class gs_inline_diff(WindowCommand, GitCommand):
             "match_position": cur_pos,
             "sync": True
         })
-
-    def get_file_encoding(self, repo_path, file_path):
-        # type: (str, str) -> Optional[str]
-        file_binary = util.file.get_file_contents_binary(repo_path, file_path)
-        try:
-            file_binary.decode()
-            return None
-        except UnicodeDecodeError:
-            try:
-                file_binary.decode("latin-1")
-                return "latin-1"
-            except UnicodeDecodeError:
-                return self.savvy_settings.get("fallback_encoding")
 
 
 class gs_inline_diff_refresh(TextCommand, GitCommand):
@@ -204,18 +188,24 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
     def _run(self, runs_on_ui_thread, match_position):
         # type: (bool, Optional[Tuple[int, int, float]]) -> None
         file_path = self.file_path
-        in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
+        settings = self.view.settings()
+        in_cached_mode = settings.get("git_savvy.inline_diff_view.in_cached_mode")
         ignore_eol_ws = self.savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
 
-        raw_diff = self.git(
+        raw_diff_output = self.git(
             "diff",
             "--no-color",
             "-U0",
             "--ignore-space-at-eol" if ignore_eol_ws else None,
             "--cached" if in_cached_mode else None,
             "--",
-            file_path
+            file_path,
+            decode=False
         )
+        encodings = self.get_encoding_candidates()
+        raw_diff, encoding = self.try_decode(raw_diff_output, encodings)
+        settings.set("git_savvy.inline_diff.encoding", encoding)
+
         try:
             diff = util.parse_diff(raw_diff)
         except util.UnsupportedDiffMode:
@@ -471,7 +461,7 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
             ignore_ws,
             "-"
         ]
-        encoding = self.view.settings().get('git_savvy.inline_diff.encoding', 'UTF-8')
+        encoding = self.view.settings().get('git_savvy.inline_diff.encoding', 'utf-8')
 
         self.git(*args, stdin=full_diff, stdin_encoding=encoding)
         self.save_to_history(args, full_diff, encoding)

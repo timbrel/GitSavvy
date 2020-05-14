@@ -342,12 +342,6 @@
     "load_additional_codecs": false,
 
     /*
-        Set this value to true if you'd like GitSavvy to automatically attempt
-        to decode using the `fallback_encoding` value, without prompting.
-     */
-    "silent_fallback": false,
-
-    /*
         GitSavvy allows you to press `Tab` to cycle from one dashboard interface
         to the next.  This setting defines the order of that cycle.  The following
         are valid entries, and can be included in your preferred order:
