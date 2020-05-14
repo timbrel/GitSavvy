@@ -1,4 +1,4 @@
-from itertools import takewhile
+from itertools import groupby, takewhile
 import os
 from collections import namedtuple
 
@@ -329,28 +329,21 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         remove_bold_regions = []
 
         for section_start, section_end, line_types, raw_lines in replaced_lines:
-            region_start = None
-            region_end = None
-            region_type = None
-
-            for type_index, line_number in enumerate(range(section_start, section_end)):
-                line = self.view.full_line(self.view.text_point(line_number, 0))
-                line_type = line_types[type_index]
-
-                if not region_type:
-                    region_type = line_type
-                    region_start = line.begin()
-                elif region_type != line_type:
-                    region_end = line.begin()
-                    list_ = add_regions if region_type == "+" else remove_regions
-                    list_.append(sublime.Region(region_start, region_end))
-
-                    region_type = line_type
-                    region_start = line.begin()
-
-            region_end = line.end()
-            list_ = add_regions if region_type == "+" else remove_regions
-            list_.append(sublime.Region(region_start, region_end))
+            for line_type, lines_ in groupby(
+                range(section_start, section_end),
+                key=lambda line: line_types[line - section_start]
+            ):
+                lines = list(lines_)
+                start, end = lines[0], lines[-1]
+                start_line = self.view.full_line(self.view.text_point(start, 0))
+                end_line = (
+                    self.view.full_line(self.view.text_point(end, 0))
+                    if start != end
+                    else start_line
+                )
+                region = sublime.Region(start_line.begin(), end_line.end())
+                container = add_regions if line_type == "+" else remove_regions
+                container.append(region)
 
             # If there are both additions and removals in the hunk, display additional
             # highlighting for the in-line changes (if similarity is above threshold).
