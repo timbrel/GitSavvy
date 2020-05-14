@@ -1,3 +1,4 @@
+from itertools import takewhile
 import os
 from collections import namedtuple
 
@@ -26,7 +27,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Optional, Tuple
+    from typing import Iterable, Optional, Tuple
 
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
@@ -69,17 +70,29 @@ def place_cursor_and_show(view, row, col, row_offset):
 
 def translate_row_to_inline_diff(diff_view, row):
     hunks = diff_view_hunks[diff_view.id()]
-    deleted_lines_before_row = 0
+    return row + count_deleted_lines_before_line(hunks, row + 1)
 
-    for hunk_ref in hunks:
-        if hunk_ref.section_start > row + deleted_lines_before_row:
-            break
 
-        for type in hunk_ref.line_types:
-            if type == "-":
-                deleted_lines_before_row += 1
+def count_deleted_lines_before_line(hunks, line):
+    # type: (Iterable[HunkReference], int) -> int
+    return sum(
+        hunk.head_length
+        for hunk in takewhile(
+            lambda hunk: line >= real_saved_start(hunk),
+            (hunk_ref.hunk for hunk_ref in hunks)
+        )
+    )
 
-    return row + deleted_lines_before_row
+
+def real_saved_start(hunk):
+    # For removal only hunks git reports a line decremented by one. We reverse
+    # compensate here
+    return hunk.saved_start + (1 if hunk_of_removals_only(hunk) else 0)
+
+
+def hunk_of_removals_only(hunk):
+    # Note that this can only ever be true for zero context diffs
+    return hunk.saved_length == 0 and hunk.head_length > 0
 
 
 def compute_identifier_for_view(view):
