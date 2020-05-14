@@ -27,7 +27,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Iterable, Optional, Tuple
+    from typing import Dict, Iterable, List, Optional, Tuple
 
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
@@ -41,7 +41,7 @@ DIFF_HEADER = """diff --git a/{path} b/{path}
 +++ b/{path}
 """
 
-diff_view_hunks = {}
+diff_view_hunks = {}  # type: Dict[sublime.ViewId, List[HunkReference]]
 
 
 def capture_cur_position(view):
@@ -279,7 +279,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         in `diff_view_hunks` to be used when the user takes an
         action in the view.
         """
-        hunks = []
+        hunks = []  # type: List[HunkReference]
         diff_view_hunks[self.view.id()] = hunks
 
         lines = original_contents.split("\n")
@@ -323,9 +323,9 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         for the lines in that hunk, highlight the added regions in green and
         the removed regions in red.
         """
-        add_regions = []
+        add_regions = []  # type: List[sublime.Region]
         add_bold_regions = []
-        remove_regions = []
+        remove_regions = []  # type: List[sublime.Region]
         remove_bold_regions = []
 
         for section_start, section_end, line_types, raw_lines in replaced_lines:
