@@ -345,9 +345,8 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
                 container = add_regions if line_type == "+" else remove_regions
                 container.append(region)
 
-            # If there are both additions and removals in the hunk, display additional
-            # highlighting for the in-line changes (if similarity is above threshold).
-            if "+" in line_types and "-" in line_types:
+            # For symmetric modifications show highlighting for the in-line changes
+            if sum(1 if t == "+" else -1 for t in line_types) == 0:
                 # Determine start of hunk/section.
                 section_start_idx = self.view.text_point(section_start, 0)
 
