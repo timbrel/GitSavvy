@@ -282,7 +282,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         hunks = []  # type: List[HunkReference]
         diff_view_hunks[self.view.id()] = hunks
 
-        lines = original_contents.split("\n")
+        lines = original_contents.splitlines(keepends=True)
         replaced_lines = []
 
         adjustment = 0
@@ -314,7 +314,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
 
             adjustment += len(diff_lines) - hunk.head_length
 
-        return "\n".join(lines), replaced_lines
+        return "".join(lines), replaced_lines
 
     def highlight_regions(self, replaced_lines):
         """
@@ -353,10 +353,10 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
                 # Removed lines come first in a hunk.
                 remove_start = section_start_idx
                 first_added_line = line_types.index("+")
-                add_start = section_start_idx + len("\n".join(raw_lines[:first_added_line])) + 1
+                add_start = section_start_idx + len("".join(raw_lines[:first_added_line]))
 
-                removed_part = "\n".join(raw_lines[:first_added_line])
-                added_part = "\n".join(raw_lines[first_added_line:])
+                removed_part = "".join(raw_lines[:first_added_line])
+                added_part = "".join(raw_lines[first_added_line:])
                 changes = util.diff_string.get_changes(removed_part, added_part)
 
                 for change in changes:
@@ -598,7 +598,7 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
             return
 
         stand_alone_header = \
-            "@@ -{head_start},{head_length} +{new_start},{new_length} @@".format(
+            "@@ -{head_start},{head_length} +{new_start},{new_length} @@\n".format(
                 head_start=hunk_ref.hunk.head_start + (add_length_earlier_in_diff if reset else 0),
                 head_length=hunk_ref.hunk.head_length,
                 # If head_length is zero, diff will report original start position
@@ -608,7 +608,7 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
                 new_length=hunk_ref.hunk.saved_length
             )
 
-        return "\n".join([stand_alone_header] + hunk_ref.hunk.raw_lines[1:])
+        return "".join([stand_alone_header] + hunk_ref.hunk.raw_lines[1:])
 
 
 class gs_inline_diff_open_file(TextCommand):

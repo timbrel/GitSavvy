@@ -24,7 +24,7 @@ def parse_diff(diff_str):
     """
     hunks = []
 
-    raw_hunks = _split_into_hunks(diff_str.splitlines())
+    raw_hunks = _split_into_hunks(diff_str.splitlines(keepends=True))
 
     for raw_hunk in raw_hunks:
         hunk_lines = list(raw_hunk)
