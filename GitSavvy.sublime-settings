@@ -74,10 +74,10 @@
     "show_commit_diff": "stat",
 
     /*
-        Change this to `true` to scroll to the first hunk automatically when
-        you open the inline-diff view.
+        Change this to `false` to not scroll to the first hunk automatically when
+        you open the inline-diff view from the status dashboard.
      */
-    "inline_diff_auto_scroll": false,
+    "inline_diff_auto_scroll": true,
 
     "colors": {
         "log_graph": {

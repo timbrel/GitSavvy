@@ -258,7 +258,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         replace_view_content(view, inline_diff_contents)
 
         if match_position is None:
-            if cur_pos == (0, 0, 0) and self.savvy_settings.get("inline_diff_auto_scroll"):
+            if cur_pos == (0, 0, 0) and self.savvy_settings.get("inline_diff_auto_scroll", True):
                 view.run_command("gs_inline_diff_navigate_hunk")
         else:
             row, col, row_offset = match_position
