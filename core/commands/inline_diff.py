@@ -29,6 +29,13 @@ MYPY = False
 if MYPY:
     from typing import Dict, Iterable, List, Optional, Tuple
 
+    # Use LineNo, ColNo for 1-based line column counting (like git or `window.open_file`),
+    # use Row, Col for 0-based counting like Sublime's `view.rowcol`!
+    LineNo = int
+    ColNo = int
+    Row = int
+    Col = int
+
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
 
@@ -58,7 +65,7 @@ def capture_cur_position(view):
 
 
 def place_cursor_and_show(view, row, col, row_offset):
-    # type: (sublime.View, int, int, float) -> None
+    # type: (sublime.View, Row, Col, float) -> None
     view.sel().clear()
     pt = view.text_point(row, col)
     view.sel().add(sublime.Region(pt, pt))
@@ -69,12 +76,13 @@ def place_cursor_and_show(view, row, col, row_offset):
 
 
 def translate_row_to_inline_diff(diff_view, row):
+    # type: (sublime.View, Row) -> Row
     hunks = diff_view_hunks[diff_view.id()]
     return row + count_deleted_lines_before_line(hunks, row + 1)
 
 
 def count_deleted_lines_before_line(hunks, line):
-    # type: (Iterable[HunkReference], int) -> int
+    # type: (Iterable[HunkReference], LineNo) -> int
     return sum(
         hunk.head_length
         for hunk in takewhile(
@@ -614,52 +622,61 @@ class gs_inline_diff_open_file(TextCommand):
 
     @util.view.single_cursor_coords
     def run(self, coords, edit):
+        window = self.view.window()
+        if not window:
+            return
+
         if not coords:
             return
-        cursor_line, cursor_column = coords
+        row, col = coords
 
-        # Git lines/columns are 1-indexed; Sublime rows/columns are 0-indexed.
-        row, col = self.get_editable_position(cursor_line + 1, cursor_column + 1)
-        self.open_file(row, col)
-
-    def open_file(self, row, col):
+        line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
         file_name = self.view.settings().get("git_savvy.file_path")
-        self.view.window().open_file(
-            "{file}:{row}:{col}".format(
+        self.open_file(window, file_name, line_no, col_no)
+
+    def open_file(self, window, file_name, line_no, col_no):
+        # type: (sublime.Window, str, LineNo, ColNo) -> None
+        window.open_file(
+            "{file}:{line_no}:{col_no}".format(
                 file=file_name,
-                row=row,
-                col=col
+                line_no=line_no,
+                col_no=col_no
             ),
             sublime.ENCODED_POSITION
         )
 
-    def get_editable_position(self, line_no, col_no):
-        hunk_ref = self.get_closest_hunk_ref_before(line_no)
 
-        # No diff hunks exist before the selected line.
-        if not hunk_ref:
-            return line_no, col_no
+def translate_pos_from_diff_view_to_file(view, line_no, col_no):
+    # type: (sublime.View, LineNo, ColNo) -> Tuple[LineNo, ColNo]
+    hunks = diff_view_hunks[view.id()]
+    hunk_ref = closest_hunk_ref_before_line(hunks, line_no)
 
-        # The selected line is within the hunk.
-        if hunk_ref.section_end >= line_no:
-            hunk_change_index = line_no - hunk_ref.section_start - 1
-            change = hunk_ref.hunk.changes[hunk_change_index]
-            # If a removed line is selected, the cursor will be offset by non-existant
-            # columns of the removed lines.  Therefore, move the cursor to column zero
-            # when removed line is selected.
-            return change.saved_pos, col_no if change.type == "+" else 0
+    # No diff hunks exist before the selected line.
+    if not hunk_ref:
+        return line_no, col_no
 
-        # The selected line is after the hunk.
-        else:
-            lines_after_hunk_end = line_no - hunk_ref.section_end - 1
-            hunk_end_in_saved = real_saved_start(hunk_ref.hunk) + hunk_ref.hunk.saved_length
-            return hunk_end_in_saved + lines_after_hunk_end, col_no
+    # The selected line is within the hunk.
+    if hunk_ref.section_end >= line_no:
+        hunk_change_index = line_no - hunk_ref.section_start - 1
+        change = hunk_ref.hunk.changes[hunk_change_index]
+        # For removed lines, we use the previous or next visible line.
+        # We reset the column "1".
+        return change.saved_pos, col_no if change.type == "+" else 1
 
-    def get_closest_hunk_ref_before(self, line_no):
-        hunks = diff_view_hunks[self.view.id()]
-        for hunk_ref in reversed(hunks):
-            if hunk_ref.section_start < line_no:
-                return hunk_ref
+    # The selected line is after the hunk.
+    else:
+        lines_after_hunk_end = line_no - hunk_ref.section_end - 1
+        hunk_end_in_saved = real_saved_start(hunk_ref.hunk) + hunk_ref.hunk.saved_length
+        return hunk_end_in_saved + lines_after_hunk_end, col_no
+
+
+def closest_hunk_ref_before_line(hunks, line):
+    # type: (List[HunkReference], LineNo) -> Optional[HunkReference]
+    for hunk_ref in reversed(hunks):
+        if hunk_ref.section_start < line:
+            return hunk_ref
+    else:
+        return None
 
 
 class gs_inline_diff_navigate_hunk(GsNavigate):
