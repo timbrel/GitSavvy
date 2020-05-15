@@ -657,10 +657,7 @@ class gs_inline_diff_open_file(TextCommand):
         # The selected line is after the hunk.
         else:
             lines_after_hunk_end = line_no - hunk_ref.section_end - 1
-            # Adjust line position for remove-only hunks.
-            if all(change.type == "-" for change in hunk_ref.hunk.changes):
-                lines_after_hunk_end += 1
-            hunk_end_in_saved = hunk_ref.hunk.saved_start + hunk_ref.hunk.saved_length
+            hunk_end_in_saved = real_saved_start(hunk_ref.hunk) + hunk_ref.hunk.saved_length
             return hunk_end_in_saved + lines_after_hunk_end, col_no
 
     def get_closest_hunk_ref_before(self, line_no):
