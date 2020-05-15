@@ -473,7 +473,17 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
 
         self.git(*args, stdin=full_diff, stdin_encoding=encoding)
         self.save_to_history(args, full_diff, encoding)
-        self.view.run_command("gs_inline_diff_refresh")
+
+        cur_pos = capture_cur_position(self.view) if not reset else None
+        if cur_pos is not None:
+            row, col, offset = cur_pos
+            line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
+            cur_pos = (line_no - 1, col_no - 1, offset)
+
+        self.view.run_command("gs_inline_diff_refresh", {
+            "match_position": cur_pos,
+            "sync": True
+        })
 
     def save_to_history(self, args, full_diff, encoding):
         """
@@ -711,9 +721,19 @@ class gs_inline_diff_undo(TextCommand, GitCommand):
 
         last_args, last_stdin, encoding = history.pop()
         # Toggle the `--reverse` flag.
+        was_reset = last_args[2] and not last_args[3]
         last_args[2] = "--reverse" if not last_args[2] else None
 
         self.git(*last_args, stdin=last_stdin, stdin_encoding=encoding)
         self.view.settings().set("git_savvy.inline_diff.history", history)
 
-        self.view.run_command("gs_inline_diff_refresh")
+        cur_pos = capture_cur_position(self.view) if not was_reset else None
+        if cur_pos is not None:
+            row, col, offset = cur_pos
+            line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
+            cur_pos = (line_no - 1, col_no - 1, offset)
+
+        self.view.run_command("gs_inline_diff_refresh", {
+            "match_position": cur_pos,
+            "sync": True
+        })
