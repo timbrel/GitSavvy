@@ -498,6 +498,10 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
         history.append((args, full_diff, encoding))
         self.view.settings().set("git_savvy.inline_diff.history", history)
 
+    def get_diff_from_line(self, line_no, reset):
+        # type: (LineNo, bool) -> str
+        raise NotImplementedError
+
 
 class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
 
