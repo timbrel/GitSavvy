@@ -462,7 +462,7 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
         #    apply the patch in reverse, but only apply it against the cached/
         #    indexed file.
         #
-        # NOTE: When in cached mode, the action taken will always be to apply
+        # Note: When in cached mode, the action taken will always be to apply
         #       the patch in reverse only to the index.
 
         args = [
