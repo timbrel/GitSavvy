@@ -628,7 +628,7 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
         return "".join([stand_alone_header] + hunk_ref.hunk.raw_lines[1:])
 
 
-class gs_inline_diff_open_file(TextCommand):
+class gs_inline_diff_open_file(TextCommand, GitCommand):
 
     """
     Opens an editable view of the file being diff'd.
@@ -644,15 +644,18 @@ class gs_inline_diff_open_file(TextCommand):
             return
         row, col = coords
 
+        file_path = self.file_path
         line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
-        file_name = self.view.settings().get("git_savvy.file_path")
-        self.open_file(window, file_name, line_no, col_no)
+        if self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode"):
+            diff = self.git("diff", "-U0", "--", file_path)
+            line_no = self.adjust_line_according_to_diff(diff, line_no)
+        self.open_file(window, file_path, line_no, col_no)
 
-    def open_file(self, window, file_name, line_no, col_no):
+    def open_file(self, window, file_path, line_no, col_no):
         # type: (sublime.Window, str, LineNo, ColNo) -> None
         window.open_file(
             "{file}:{line_no}:{col_no}".format(
-                file=file_name,
+                file=file_path,
                 line_no=line_no,
                 col_no=col_no
             ),
