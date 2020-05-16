@@ -142,6 +142,10 @@ class gs_inline_diff(WindowCommand, GitCommand):
             if is_ordinary_view:
                 syntax_file = active_view.settings().get("syntax")
                 cur_pos = capture_cur_position(active_view) if match_current_position else None
+                if cur_pos is not None and cached:
+                    row, col, offset = cur_pos
+                    new_row = self.find_matching_lineno(None, None, row + 1, self.file_path) - 1
+                    cur_pos = (new_row, col, offset)
             else:
                 syntax_file = util.file.get_syntax_for_file(file_path)
                 cur_pos = None
