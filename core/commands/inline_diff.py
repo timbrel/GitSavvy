@@ -131,7 +131,10 @@ class gs_inline_diff(WindowCommand, GitCommand):
             active_view = self.window.active_view()
             assert active_view
             # Let this command act like a toggle
-            if is_inline_diff_view(active_view):
+            if (
+                is_inline_diff_view(active_view) and
+                active_view.settings().get('git_savvy.inline_diff_view.in_cached_mode') == cached
+            ):
                 active_view.close()
                 return
 
