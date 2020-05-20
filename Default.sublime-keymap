@@ -41,14 +41,6 @@
         ]
     },
     {
-        "keys": ["r"],
-        "command": "gs_inline_diff_refresh",
-        "context": [
-            { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
-        ]
-    },
-    {
         "keys": ["."],
         "command": "gs_inline_diff_navigate_hunk",
         "args": { "forward": true },
