@@ -571,6 +571,15 @@
         ]
     },
     {
+        "keys": ["m"],
+        "command": "gs_commit",
+        "args": {"amend": true},
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["."],
         "command": "gs_diff_navigate",
         "args": { "forward": true },
