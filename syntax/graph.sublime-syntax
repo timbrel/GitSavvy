@@ -76,6 +76,10 @@ contexts:
 
   message:
     - meta_scope: meta.graph.message.git-savvy
+    - match: (fixup|squash)(!)
+      captures:
+        1: string.other.rebase-hint.git-savvy
+        2: punctuation.string.end.git-savvy
     - match: (`[^`]*`)
       comment: by name
       scope: keyword.by-name.git-savvy.
