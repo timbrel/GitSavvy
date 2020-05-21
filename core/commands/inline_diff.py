@@ -110,7 +110,6 @@ def compute_identifier_for_view(view):
     return (
         settings.get('git_savvy.repo_path'),
         settings.get('git_savvy.file_path'),
-        settings.get('git_savvy.inline_diff_view.in_cached_mode'),
     ) if settings.get('git_savvy.inline_diff_view') else None
 
 
@@ -127,14 +126,14 @@ class gs_inline_diff(WindowCommand, GitCommand):
     hunks or individual lines, and to navigate between hunks.
     """
 
-    def run(self, settings=None, cached=False, match_current_position=True):
+    def run(self, settings=None, cached=None, match_current_position=True):
         if settings is None:
             active_view = self.window.active_view()
             assert active_view
             # Let this command act like a toggle
-            if (
-                is_inline_diff_view(active_view) and
-                active_view.settings().get('git_savvy.inline_diff_view.in_cached_mode') == cached
+            if is_inline_diff_view(active_view) and (
+                cached is None
+                or active_view.settings().get('git_savvy.inline_diff_view.in_cached_mode') == cached
             ):
                 active_view.close()
                 return
@@ -160,11 +159,13 @@ class gs_inline_diff(WindowCommand, GitCommand):
             syntax_file = settings["syntax"]
             cur_pos = None
 
-        this_id = (repo_path, file_path, cached)
+        this_id = (repo_path, file_path)
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
                 diff_view = view
-                focus_view(view)
+                settings = diff_view.settings()
+                settings.set("git_savvy.inline_diff_view.in_cached_mode", bool(cached))
+                focus_view(diff_view)
                 break
 
         else:
@@ -173,7 +174,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
             settings = diff_view.settings()
             settings.set("git_savvy.repo_path", repo_path)
             settings.set("git_savvy.file_path", file_path)
-            settings.set("git_savvy.inline_diff_view.in_cached_mode", cached)
+            settings.set("git_savvy.inline_diff_view.in_cached_mode", bool(cached))
 
             title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
             diff_view.set_name(title + os.path.basename(file_path))
