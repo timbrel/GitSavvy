@@ -140,6 +140,9 @@ class gs_inline_diff(WindowCommand, GitCommand):
 
             repo_path = self.repo_path
             file_path = self.file_path
+            if not file_path:
+                flash(active_view, "Cannot show diff for unnamed buffers.")
+                return
 
             is_ordinary_view = bool(active_view.file_name())
             if is_ordinary_view:
