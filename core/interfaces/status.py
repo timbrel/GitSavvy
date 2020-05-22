@@ -517,7 +517,10 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
                 "repo_path": self.repo_path,
                 "syntax": syntax
             }
-            window.run_command("gs_inline_diff", {"settings": settings})
+            window.run_command("gs_inline_diff", {
+                "settings": settings,
+                "cached": False
+            })
 
         for fpath in cached_files:
             syntax = util.file.get_syntax_for_file(fpath)
