@@ -49,7 +49,7 @@ class gs_inline_stage_hunk(TextCommand, GitCommand):
         view = self.view
         fpath = view.file_name()
         if not fpath:
-            flash(view, "Cannot stage unnnamed files.")
+            flash(view, "Cannot stage on unnnamed buffers.")
             return
 
         if view.is_dirty():
