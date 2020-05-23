@@ -108,9 +108,26 @@ def hunk_containing_row(hunks, row):
     for hunk in hunks:
         if row < hunk.b_start:
             break
-        if hunk.b_start <= row < (hunk.b_start + max(hunk.b_length, 1)):
+        # Assume a length of "1" for removal only hunks so the
+        # user can actually grab them exactly on the line above the
+        # removal gutter mark.
+        b_end = hunk.b_start + max(hunk.b_length, 1)
+        if hunk_with_no_newline_marker(hunk):
+            # Make the hit area one line longer so that the user
+            # can stage being on the last line of the view (if the
+            # newline gets *added* in this hunk). This is technially
+            # wrong if the newline gets *removed* but doesn't do any
+            # harm because there can't be any line after that anyway.
+            b_end += 1
+        if hunk.b_start <= row < b_end:
             return hunk
     return None
+
+
+def hunk_with_no_newline_marker(hunk):
+    # type: (Hunk) -> bool
+    # Avoid looking for "No newline..." which depends on the locale setting
+    return "\n\\ " in hunk.content
 
 
 def format_patch(header, hunks):
