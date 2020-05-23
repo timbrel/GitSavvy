@@ -485,6 +485,9 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
         # Git lines are 1-indexed; Sublime rows are 0-indexed.
         line_number = self.view.rowcol(region.begin())[0] + 1
         diff_lines = self.get_diff_from_line(line_number, reset)
+        if not diff_lines:
+            flash(self.view, "Not on a hunk.")
+            return
 
         rel_path = self.get_rel_path()
         if os.name == "nt":
