@@ -14,7 +14,6 @@ from .flow import *
 from .ignore import *
 from .init import *
 from .inline_diff import *
-from .inline_stage_hunk import *
 from .log import *
 from .log_graph import *
 from .merge import *
@@ -32,6 +31,7 @@ from .show_commit import *
 from .show_commit_info import *
 from .show_file_at_commit import *
 from .stage_diff import *
+from .stage_hunk import *
 from .stash import *
 from .status_bar import *
 from .tag import *

@@ -11,7 +11,7 @@ from ..parse_diff import SplittedDiff
 
 
 __all__ = (
-    "gs_inline_stage_hunk",
+    "gs_stage_hunk",
 )
 
 
@@ -44,7 +44,7 @@ def flash(view, message):
         window.status_message(message)
 
 
-class gs_inline_stage_hunk(TextCommand, GitCommand):
+class gs_stage_hunk(TextCommand, GitCommand):
     def run(self, edit):
         view = self.view
         fpath = view.file_name()
