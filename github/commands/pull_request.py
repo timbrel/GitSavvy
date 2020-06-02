@@ -94,49 +94,45 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
             self.open_pr_in_browser()
 
     def fetch_and_checkout_pr(self, branch_name=None):
-        self.window.status_message("Fetching PR commit...")
-        self.git(
-            "fetch",
-            self.pr["head"]["repo"]["clone_url"],
-            self.pr["head"]["ref"]
-        )
-
         if branch_name:
-            self.window.status_message("Creating local branch for PR...")
+            self.create_branch_for_pr(branch_name, checkout=True)
+        else:  # detached HEAD
+            self.checkout_detached()
+
+    def checkout_detached(self):
+        self.window.status_message("Checking out PR...")
+
+        clone_url = self.pr["head"]["repo"]["clone_url"]
+        ssh_url = self.pr["head"]["repo"]["ssh_url"]
+
+        def on_select_url(index):
+            if index < 0:
+                return
+            elif index == 0:
+                url = clone_url
+            elif index == 1:
+                url = ssh_url
+
             self.git(
-                "branch",
-                branch_name,
-                self.pr["head"]["sha"]
+                "fetch",
+                url,
+                self.pr["head"]["ref"]
             )
 
-        self.window.status_message("Checking out PR...")
-        self.checkout_ref(branch_name or self.pr["head"]["ref"])
+            self.checkout_ref(self.pr["head"]["sha"])
+            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
-        if branch_name:
-            self.set_upstream_for_branch(branch_name)
-
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
-
-    def create_branch_for_pr(self, branch_name):
-        self.window.status_message("Fetching PR commit...")
-        self.git(
-            "fetch",
-            self.pr["head"]["repo"]["clone_url"],
-            self.pr["head"]["ref"]
+        sublime.set_timeout(
+            lambda: self.window.show_quick_panel(
+                [clone_url, ssh_url], on_select_url)
         )
 
+    def create_branch_for_pr(self, branch_name, checkout=False):
         if not branch_name:
             return
 
         self.window.status_message("Creating local branch for PR...")
-        self.git(
-            "branch",
-            branch_name,
-            self.pr["head"]["sha"]
-        )
-        self.set_upstream_for_branch(branch_name)
 
-    def set_upstream_for_branch(self, branch_name):
         remotes = list(self.get_remotes().keys())
         remote = self.pr["user"]["login"]
         remote_branch = self.pr["head"]["ref"]
@@ -157,16 +153,25 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
                     url = ssh_url
 
                 self.git("remote", "add", remote, url)
-                self.git("fetch", remote, remote_branch)
-                self.git("branch", "-u", "{}/{}".format(remote, remote_branch), branch_name)
+                self.set_upstream_for_pr(branch_name, remote, remote_branch, checkout)
 
             sublime.set_timeout(
                 lambda: self.window.show_quick_panel(
                     [clone_url, ssh_url], on_select_url)
             )
         else:
-            self.git("fetch", remote, remote_branch)
-            self.git("branch", "-u", "{}/{}".format(remote, remote_branch), branch_name)
+            self.set_upstream_for_pr(branch_name, remote, remote_branch, checkout)
+
+    def set_upstream_for_pr(self, branch_name, remote, remote_branch, checkout):
+        self.git("fetch", remote, remote_branch)
+        ref = "{}/{}".format(remote, remote_branch)
+        self.git("branch", branch_name, ref)
+        self.git("branch", "-u", ref, branch_name)
+
+        if checkout:
+            self.checkout_ref(branch_name)
+
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def view_diff_for_pr(self):
         response = interwebs.get_url(self.pr["diff_url"])
