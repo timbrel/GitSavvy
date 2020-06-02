@@ -79,13 +79,13 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         elif idx == 1:
             show_single_line_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
-                "{}/{}".format(self.pr["user"]["login"], self.pr["head"]["ref"]),
+                "{}-{}".format(self.pr["user"]["login"], self.pr["head"]["ref"]),
                 self.fetch_and_checkout_pr
             )
         elif idx == 2:
             show_single_line_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
-                "{}/{}".format(self.pr["user"]["login"], self.pr["head"]["ref"]),
+                "{}-{}".format(self.pr["user"]["login"], self.pr["head"]["ref"]),
                 self.create_branch_for_pr
             )
         elif idx == 3:
@@ -110,7 +110,11 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
             )
 
         self.window.status_message("Checking out PR...")
-        self.checkout_ref(branch_name or self.pr["head"]["sha"])
+        self.checkout_ref(branch_name or self.pr["head"]["ref"])
+
+        if branch_name:
+            self.set_upstream_for_branch(branch_name)
+
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def create_branch_for_pr(self, branch_name):
@@ -121,12 +125,48 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
             self.pr["head"]["ref"]
         )
 
+        if not branch_name:
+            return
+
         self.window.status_message("Creating local branch for PR...")
         self.git(
             "branch",
             branch_name,
             self.pr["head"]["sha"]
         )
+        self.set_upstream_for_branch(branch_name)
+
+    def set_upstream_for_branch(self, branch_name):
+        remotes = list(self.get_remotes().keys())
+        remote = self.pr["user"]["login"]
+        remote_branch = self.pr["head"]["ref"]
+
+        clone_url = self.pr["head"]["repo"]["clone_url"]
+        ssh_url = self.pr["head"]["repo"]["ssh_url"]
+
+        if remote not in remotes:
+            if not sublime.ok_cancel_dialog("Add remote '{}'?".format(remote)):
+                return
+
+            def on_select_url(index):
+                if index < 0:
+                    return
+                elif index == 0:
+                    url = clone_url
+                elif index == 1:
+                    url = ssh_url
+
+                self.git("remote", "add", remote, url)
+                self.git("fetch", remote, remote_branch)
+                self.git("branch", "-u", "{}/{}".format(remote, remote_branch), branch_name)
+
+            sublime.set_timeout(
+                lambda: self.window.show_quick_panel(
+                    [clone_url, ssh_url], on_select_url)
+            )
+        else:
+            self.git("fetch", remote, remote_branch)
+            self.git("branch", "-u", "{}/{}".format(remote, remote_branch), branch_name)
 
     def view_diff_for_pr(self):
         response = interwebs.get_url(self.pr["diff_url"])
