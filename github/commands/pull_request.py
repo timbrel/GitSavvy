@@ -136,7 +136,6 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         remotes = list(self.get_remotes().keys())
         remote = self.pr["user"]["login"]
         remote_branch = self.pr["head"]["ref"]
-        sha = self.pr["head"]["sha"]
 
         clone_url = self.pr["head"]["repo"]["clone_url"]
         ssh_url = self.pr["head"]["repo"]["ssh_url"]
@@ -147,30 +146,27 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         else:
             set_upstream = False
 
-        if remote not in remotes:
-            def on_select_url(index):
-                if index < 0:
-                    return
-                elif index == 0:
-                    url = clone_url
-                elif index == 1:
-                    url = ssh_url
-
-                if set_upstream:
-                    self.git("remote", "add", remote, url)
-                    self.create_branch_from_remote_for_pr(branch_name, remote, remote_branch, checkout)
-                else:
-                    self.checkout_sha_for_pr(branch_name, sha)
-
-            sublime.set_timeout(
-                lambda: self.window.show_quick_panel(
-                    [clone_url, ssh_url], on_select_url)
-            )
-        else:
-            if set_upstream:
+        if set_upstream:
+            if remote in remotes:
                 self.create_branch_from_remote_for_pr(branch_name, remote, remote_branch, checkout)
             else:
-                self.checkout_sha_for_pr(branch_name, sha)
+                def on_select_url(index):
+                    if index < 0:
+                        return
+                    elif index == 0:
+                        url = clone_url
+                    elif index == 1:
+                        url = ssh_url
+
+                    self.git("remote", "add", remote, url)
+                    self.create_branch_from_remote_for_pr(branch_name, remote, remote_branch, checkout)
+
+                sublime.set_timeout(
+                    lambda: self.window.show_quick_panel(
+                        [clone_url, ssh_url], on_select_url)
+                )
+        else:
+            self.create_branch_from_sha_for_pr(branch_name, checkout)
 
     def create_branch_from_remote_for_pr(self, branch_name, remote, remote_branch, checkout):
         self.git("fetch", remote, remote_branch)
@@ -183,8 +179,12 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
 
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
-    def checkout_sha_for_pr(self, branch_name, sha):
-        self.git("branch", branch_name, sha)
+    def create_branch_from_sha_for_pr(self, branch_name, checkout):
+        self.git("branch", branch_name, self.pr["head"]["sha"])
+
+        if checkout:
+            self.checkout_ref(branch_name)
+
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def view_diff_for_pr(self):
