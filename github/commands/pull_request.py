@@ -141,7 +141,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         ssh_url = self.pr["head"]["repo"]["ssh_url"]
 
         if ask_set_upstream:
-            set_upstream = not sublime.ok_cancel_dialog(
+            set_upstream = sublime.ok_cancel_dialog(
                 "Set upstream to '{}/{}'?".format(remote, remote_branch))
         else:
             set_upstream = False
