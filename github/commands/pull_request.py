@@ -64,7 +64,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         self.window.show_quick_panel(
             ["Checkout as detached HEAD.",
              "Checkout as local branch.",
-             "Create local branch, but do not checkout.",
+             "Create local branch without checking out.",
              "View diff.",
              "Open in browser."],
             self.on_select_action
@@ -86,7 +86,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
             show_single_line_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
                 "{}-{}".format(self.pr["user"]["login"], self.pr["head"]["ref"]),
-                self.create_branch_for_pr
+                lambda x: self.create_branch_for_pr(x, ask_set_upstream=True)
             )
         elif idx == 3:
             self.view_diff_for_pr()
@@ -95,7 +95,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
 
     def fetch_and_checkout_pr(self, branch_name=None):
         if branch_name:
-            self.create_branch_for_pr(branch_name, checkout=True)
+            self.create_branch_for_pr(branch_name, checkout=True, ask_set_upstream=True)
         else:  # detached HEAD
             self.checkout_detached()
 
@@ -127,7 +127,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
                 [clone_url, ssh_url], on_select_url)
         )
 
-    def create_branch_for_pr(self, branch_name, checkout=False):
+    def create_branch_for_pr(self, branch_name, checkout=False, ask_set_upstream=False):
         if not branch_name:
             return
 
@@ -136,14 +136,18 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         remotes = list(self.get_remotes().keys())
         remote = self.pr["user"]["login"]
         remote_branch = self.pr["head"]["ref"]
+        sha = self.pr["head"]["sha"]
 
         clone_url = self.pr["head"]["repo"]["clone_url"]
         ssh_url = self.pr["head"]["repo"]["ssh_url"]
 
-        if remote not in remotes:
-            if not sublime.ok_cancel_dialog("Add remote '{}'?".format(remote)):
-                return
+        if ask_set_upstream:
+            set_upstream = not sublime.ok_cancel_dialog(
+                "Set upstream to '{}/{}'?".format(remote, remote_branch))
+        else:
+            set_upstream = False
 
+        if remote not in remotes:
             def on_select_url(index):
                 if index < 0:
                     return
@@ -152,17 +156,23 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
                 elif index == 1:
                     url = ssh_url
 
-                self.git("remote", "add", remote, url)
-                self.set_upstream_for_pr(branch_name, remote, remote_branch, checkout)
+                if set_upstream:
+                    self.git("remote", "add", remote, url)
+                    self.create_branch_from_remote_for_pr(branch_name, remote, remote_branch, checkout)
+                else:
+                    self.checkout_sha_for_pr(branch_name, sha)
 
             sublime.set_timeout(
                 lambda: self.window.show_quick_panel(
                     [clone_url, ssh_url], on_select_url)
             )
         else:
-            self.set_upstream_for_pr(branch_name, remote, remote_branch, checkout)
+            if set_upstream:
+                self.create_branch_from_remote_for_pr(branch_name, remote, remote_branch, checkout)
+            else:
+                self.checkout_sha_for_pr(branch_name, sha)
 
-    def set_upstream_for_pr(self, branch_name, remote, remote_branch, checkout):
+    def create_branch_from_remote_for_pr(self, branch_name, remote, remote_branch, checkout):
         self.git("fetch", remote, remote_branch)
         ref = "{}/{}".format(remote, remote_branch)
         self.git("branch", branch_name, ref)
@@ -171,6 +181,10 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         if checkout:
             self.checkout_ref(branch_name)
 
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+    def checkout_sha_for_pr(self, branch_name, sha):
+        self.git("branch", branch_name, sha)
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def view_diff_for_pr(self):
