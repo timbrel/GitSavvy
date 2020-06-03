@@ -78,8 +78,8 @@ class HistoryMixin():
             logs = self.log(limit=limit, skip=skip, **kwargs)
             if not logs:
                 break
-            for l in logs:
-                yield l
+            for entry in logs:
+                yield entry
             if len(logs) < limit:
                 break
             skip = skip + limit
@@ -111,11 +111,11 @@ class HistoryMixin():
             logs = self.reflog(limit=limit, skip=skip)
             if not logs:
                 break
-            for l in logs:
-                yield (["{} {}".format(l.reflog_selector, l.reflog_name),
-                        "{} {}".format(l.short_hash, l.summary),
-                        "{}, {}".format(l.author, util.dates.fuzzy(l.datetime))],
-                       l.long_hash)
+            for entry in logs:
+                yield (["{} {}".format(entry.reflog_selector, entry.reflog_name),
+                        "{} {}".format(entry.short_hash, entry.summary),
+                        "{}, {}".format(entry.author, util.dates.fuzzy(entry.datetime))],
+                       entry.long_hash)
             skip = skip + limit
 
     def log1(self, commit_hash):
