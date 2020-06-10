@@ -1,0 +1,78 @@
+GitSavvy 2.23.0
+===============
+
+- Improved "inline diff" experience (`git: diff current file inline`) (#1306)
+
+It is recommended to bind `gs_inline_diff` to a key combo so it becomes a main
+entry point into the GitSavvy world. E.g.
+
+```
+  {
+      "keys": ["ctrl+shift+["],
+      "command": "gs_inline_diff",
+  },
+```
+
+Now, this key acts like a toggle. You press it to switch to the inline view.
+Press it again to close it. This should give you a experience very close to
+Sublime Text's built in `toggle_inline_diff` ("Show Diff Hunk") feature.
+
+However, being in that view, you can of course stage, undo staging, or discard
+changes.
+
+Use `[TAB]` to switch between the staged and unstaged area.
+
+Use `[c]` (commit stage), `[C]` (commit -a) or `[m]` (amend commit from stage)
+to enter the commit message view.  Tip: These commands are also available for
+the "normal" diff view `git: diff` (command name: `gs_diff`).
+
+Notable: We now use the builtin color scopes (just like the intra line
+colorization for the normal diff views does).  The Sublime Text scopes (e.g.
+"diff.inserted.char") are suffixed with ".git-savvy.inline-diff".
+
+A lot of bugs have been fixed for this view as well.
+
+
+- GitSavvy learned a new command `gs_stage_hunk` (#1305)
+
+The command works from normal views t.i. while editing your files. Note that
+we don't ship any bindings. If you want to use this feature, it is expected you
+bind it to a key combo, the Command Palette, or maybe the context menu on your
+own. E.g.
+
+```
+    { "keys": ["ctrl+alt+s"], "command": "gs_stage_hunk"},
+```
+
+Now having this binding, you can stage "hunks" directly from the file.
+This works best with the default Sublime Text settings:
+
+```
+    "mini_diff": true,  // or "auto"
+    "show_git_status": true,
+    "git_diff_target": "index",  // !
+```
+
+With these settings, the Sublime gutter will show you the modified lines.
+
+Just try it! Edit some lines, hit the key combo, and the gutter will reflect
+that immediately. Btw, the commands supports single and multiple cursors, and
+single or multiple selections.
+
+If that's your next quick workflow, maybe consider the following binding
+
+```
+  {
+      "keys": ["ctrl+shift+["],
+      "command": "gs_inline_diff",
+      "args": { "cached": true }
+  },
+```
+
+so you can quickly see the staged hunks, maybe to unstage, but of course to
+enter the commit process using `[cCm]`.
+
+
+For more info:
+  https://github.com/timbrel/GitSavvy/compare/2.22.0...2.23.0
+
