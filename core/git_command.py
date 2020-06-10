@@ -6,10 +6,12 @@ Define a base command class that:
      for Git operations.
 """
 
+import locale
 import os
 import subprocess
 import shutil
 import re
+import time
 import threading
 import traceback
 
@@ -30,21 +32,21 @@ from .git_mixins.rewrite import RewriteMixin
 from .git_mixins.merge import MergeMixin
 from .exceptions import GitSavvyError
 from .settings import SettingsMixin
-import time
+
+
+MYPY = False
+if MYPY:
+    from typing import Sequence, Tuple
+
 
 git_path = None
 error_message_displayed = False
 
-UTF8_PARSE_ERROR_MSG = (
-    "GitSavvy was unable to parse Git output as UTF-8. Would "
-    "you like to use the fallback encoding specified in GitSavvy "
-    "settings? Text may not appear as expected."
-)
-
 FALLBACK_PARSE_ERROR_MSG = (
-    "The Git command returned data that unparsable.  This may happen "
-    "if you have checked binary data into your repository.  The current "
-    "operation has been aborted."
+    "The Git command returned data that is unparsable.  This may happen "
+    "if you have checked binary data into your repository, or not UTF-8 "
+    "encoded files.  In the latter case use the 'fallback_encoding' setting.  "
+    "The current operation has been aborted."
 )
 
 MIN_GIT_VERSION = (2, 16, 0)
@@ -285,22 +287,30 @@ class GitCommand(StatusMixin,
 
         return stdout
 
+    def get_encoding_candidates(self):
+        # type: () -> Sequence[str]
+        return [
+            'utf-8',
+            locale.getpreferredencoding(),
+            self.savvy_settings.get("fallback_encoding")
+        ]
+
     def decode_stdout(self, stdout):
-        fallback_encoding = self.savvy_settings.get("fallback_encoding")
-        silent_fallback = self.savvy_settings.get("silent_fallback")
-        try:
-            return stdout.decode()
-        except UnicodeDecodeError:
+        # type: (bytes) -> str
+        encodings = self.get_encoding_candidates()
+        decoded, _ = self.try_decode(stdout, encodings)
+        return decoded
+
+    def try_decode(self, input, encodings):  # type: ignore  # missing return statement
+        # type: (bytes, Sequence[str]) -> Tuple[str, str]
+        assert encodings
+        for n, encoding in enumerate(encodings, start=1):
             try:
-                return stdout.decode("latin-1")
-            except UnicodeDecodeError as unicode_err:
-                if silent_fallback or sublime.ok_cancel_dialog(UTF8_PARSE_ERROR_MSG, "Fallback?"):
-                    try:
-                        return stdout.decode(fallback_encoding)
-                    except UnicodeDecodeError as fallback_err:
-                        sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
-                        raise fallback_err
-                raise unicode_err
+                return input.decode(encoding), encoding
+            except UnicodeDecodeError as err:
+                if n == len(encodings):
+                    sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
+                    raise err
 
     @property
     def encoding(self):

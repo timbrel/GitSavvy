@@ -6,6 +6,7 @@ from sublime_plugin import WindowCommand, TextCommand
 from . import diff
 from . import intra_line_colorizer
 from ..git_command import GitCommand
+from ..view import replace_view_content
 
 
 __all__ = (
@@ -41,6 +42,7 @@ class gs_show_commit(WindowCommand, GitCommand):
         nice_hash = self.get_short_hash(commit_hash) if len(commit_hash) >= 40 else commit_hash
         view.set_name(SHOW_COMMIT_TITLE.format(nice_hash))
         view.set_scratch(True)
+        view.set_read_only(True)
         view.run_command("gs_show_commit_refresh")
         view.run_command("gs_handle_vintageous")
 
@@ -62,8 +64,7 @@ class gs_show_commit_refresh(TextCommand, GitCommand):
             "--format=fuller",
             "--no-color",
             commit_hash)
-        self.view.run_command("gs_replace_view_text", {"text": content, "restore_cursors": True})
-        self.view.set_read_only(True)
+        replace_view_content(self.view, content)
         intra_line_colorizer.annotate_intra_line_differences(self.view)
 
 

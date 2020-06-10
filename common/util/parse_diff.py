@@ -12,6 +12,10 @@ Change = namedtuple("Change", ("raw", "type", "head_pos", "saved_pos", "text"))
 re_metadata = re.compile(r"^@@ -(\d+)(,(\d+))? \+(\d+)(,(\d+))? @@")
 
 
+class UnsupportedDiffMode(RuntimeError):
+    pass
+
+
 def parse_diff(diff_str):
     """
     Given the string output from a `git diff` command, parse the string into
@@ -20,7 +24,7 @@ def parse_diff(diff_str):
     """
     hunks = []
 
-    raw_hunks = _split_into_hunks(diff_str.splitlines())
+    raw_hunks = _split_into_hunks(diff_str.splitlines(keepends=True))
 
     for raw_hunk in raw_hunks:
         hunk_lines = list(raw_hunk)
@@ -65,6 +69,9 @@ def _get_metadata(meta_str):
     the start and length values from that header.
     """
     match = re_metadata.match(meta_str)
+    if match is None:
+        raise UnsupportedDiffMode(meta_str)
+
     head_start, _, head_length, saved_start, _, saved_length = match.groups()
     return (int(head_start),
             int(head_length or "1"),

@@ -5,8 +5,13 @@ import os
 from contextlib import contextmanager
 
 
+MYPY = False
+if MYPY:
+    from typing import Dict, List
+
+
 if 'syntax_file_map' not in globals():
-    syntax_file_map = {}
+    syntax_file_map = {}  # type: Dict[str, List[str]]
 
 if 'determine_syntax_thread' not in globals():
     determine_syntax_thread = None
@@ -44,8 +49,8 @@ def get_syntax_for_file(filename):
 
 
 def get_file_extension(filename):
-    period_delimited_segments = filename.split(".")
-    return "" if len(period_delimited_segments) < 2 else period_delimited_segments[-1]
+    # type: (str) -> str
+    return os.path.splitext(filename)[1][1:]
 
 
 def get_file_contents_binary(repo_path, file_path):

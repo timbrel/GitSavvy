@@ -78,8 +78,8 @@ class HistoryMixin():
             logs = self.log(limit=limit, skip=skip, **kwargs)
             if not logs:
                 break
-            for l in logs:
-                yield l
+            for entry in logs:
+                yield entry
             if len(logs) < limit:
                 break
             skip = skip + limit
@@ -111,11 +111,11 @@ class HistoryMixin():
             logs = self.reflog(limit=limit, skip=skip)
             if not logs:
                 break
-            for l in logs:
-                yield (["{} {}".format(l.reflog_selector, l.reflog_name),
-                        "{} {}".format(l.short_hash, l.summary),
-                        "{}, {}".format(l.author, util.dates.fuzzy(l.datetime))],
-                       l.long_hash)
+            for entry in logs:
+                yield (["{} {}".format(entry.reflog_selector, entry.reflog_name),
+                        "{} {}".format(entry.short_hash, entry.summary),
+                        "{}, {}".format(entry.author, util.dates.fuzzy(entry.datetime))],
+                       entry.long_hash)
             skip = skip + limit
 
     def log1(self, commit_hash):
@@ -206,12 +206,14 @@ class HistoryMixin():
 
     def adjust_line_according_to_diff(self, diff, line):
         # type: (str, int) -> int
-        parsed_diff = util.parse_diff(diff)
-
-        if not parsed_diff:
+        hunks = util.parse_diff(diff)
+        if not hunks:
             return line
 
-        for hunk in reversed(parsed_diff):
+        return self.adjust_line_according_to_hunks(hunks, line)
+
+    def adjust_line_according_to_hunks(self, hunks, line):
+        for hunk in reversed(hunks):
             head_start = hunk.head_start if hunk.head_length else hunk.head_start + 1
             saved_start = hunk.saved_start if hunk.saved_length else hunk.saved_start + 1
             head_end = head_start + hunk.head_length
@@ -221,6 +223,25 @@ class HistoryMixin():
                 return saved_end + line - head_end
             elif head_start <= line:
                 return saved_start
+
+        # fails to find matching
+        return line
+
+    def reverse_adjust_line_according_to_hunks(self, hunks, line):
+        for hunk in reversed(hunks):
+            head_start = hunk.head_start
+            saved_start = hunk.saved_start
+            if hunk.saved_length == 0:
+                saved_start += 1
+            elif hunk.head_length == 0:
+                saved_start -= 1
+            head_end = head_start + hunk.head_length
+            saved_end = saved_start + hunk.saved_length
+
+            if saved_end <= line:
+                return head_end + line - saved_end
+            elif saved_start <= line:
+                return head_start
 
         # fails to find matching
         return line

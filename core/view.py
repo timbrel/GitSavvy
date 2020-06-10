@@ -5,8 +5,27 @@ import sublime
 from .runtime import text_command
 
 
+MYPY = False
+if MYPY:
+    from typing import Callable, ContextManager, Iterator, List
+    WrapperFn = Callable[[sublime.View], ContextManager[None]]
+
+
+# `replace_view_content` is a wrapper for `_replace_region` to get some
+# typing support from mypy.
+def replace_view_content(view, text, region=None, wrappers=[]):
+    # type: (sublime.View, str, sublime.Region, List[WrapperFn]) -> None
+    """Replace the content of the view
+
+    If no region is given the whole content will get replaced. Otherwise
+    only the selected region.
+    """
+    _replace_region(view, text, region, wrappers)
+
+
 @text_command
-def replace_region(view, edit, text, region=None, wrappers=[]):
+def _replace_region(view, edit, text, region=None, wrappers=[]):
+    # type: (sublime.View, sublime.Edit, str, sublime.Region, List[WrapperFn]) -> None
     if region is None:
         # If you "replace" (or expand) directly at the cursor,
         # the cursor expands into a selection.
@@ -30,6 +49,7 @@ def replace_region(view, edit, text, region=None, wrappers=[]):
 
 @contextmanager
 def writable_view(view):
+    # type: (sublime.View) -> Iterator[None]
     is_read_only = view.is_read_only()
     view.set_read_only(False)
     try:
@@ -40,6 +60,7 @@ def writable_view(view):
 
 @contextmanager
 def restore_cursors(view):
+    # type: (sublime.View) -> Iterator[None]
     save_cursors = [
         (view.rowcol(s.begin()), view.rowcol(s.end()))
         for s in view.sel()
@@ -57,6 +78,7 @@ def restore_cursors(view):
 
 @contextmanager
 def stable_viewport(view):
+    # type: (sublime.View) -> Iterator[None]
     # Ref: https://github.com/SublimeTextIssues/Core/issues/2560
     # See https://github.com/jonlabelle/SublimeJsPrettier/pull/171/files
     # for workaround.
