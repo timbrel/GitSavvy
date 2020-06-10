@@ -206,12 +206,14 @@ class HistoryMixin():
 
     def adjust_line_according_to_diff(self, diff, line):
         # type: (str, int) -> int
-        parsed_diff = util.parse_diff(diff)
-
-        if not parsed_diff:
+        hunks = util.parse_diff(diff)
+        if not hunks:
             return line
 
-        for hunk in reversed(parsed_diff):
+        return self.adjust_line_according_to_hunks(hunks, line)
+
+    def adjust_line_according_to_hunks(self, hunks, line):
+        for hunk in reversed(hunks):
             head_start = hunk.head_start if hunk.head_length else hunk.head_start + 1
             saved_start = hunk.saved_start if hunk.saved_length else hunk.saved_start + 1
             head_end = head_start + hunk.head_length
@@ -221,6 +223,25 @@ class HistoryMixin():
                 return saved_end + line - head_end
             elif head_start <= line:
                 return saved_start
+
+        # fails to find matching
+        return line
+
+    def reverse_adjust_line_according_to_hunks(self, hunks, line):
+        for hunk in reversed(hunks):
+            head_start = hunk.head_start
+            saved_start = hunk.saved_start
+            if hunk.saved_length == 0:
+                saved_start += 1
+            elif hunk.head_length == 0:
+                saved_start -= 1
+            head_end = head_start + hunk.head_length
+            saved_end = saved_start + hunk.saved_length
+
+            if saved_end <= line:
+                return head_end + line - saved_end
+            elif saved_start <= line:
+                return head_start
 
         # fails to find matching
         return line

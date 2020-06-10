@@ -74,25 +74,12 @@
     "show_commit_diff": "stat",
 
     /*
-        Change this to `true` to scroll to the first hunk automatically when
-        you open the inline-diff view.
+        Change this to `false` to not scroll to the first hunk automatically when
+        you open the inline-diff view from the status dashboard.
      */
-    "inline_diff_auto_scroll": false,
+    "inline_diff_auto_scroll": true,
 
     "colors": {
-        /*
-            Colors used by the inline-diff view to display changes.
-         */
-        "inline_diff": {
-            "add_foreground": "#F9F9F4",
-            "add_background": "#37A832",
-            "add_foreground_bold": "#F9F9F4",
-            "add_background_bold": "#287020",
-            "remove_foreground": "#F9F9F4",
-            "remove_background": "#A83732",
-            "remove_foreground_bold": "#F9F9F4",
-            "remove_background_bold": "#702820"
-        },
         "log_graph": {
             "commit_dot_foreground": "#9911",
             "commit_dot_background": "#991",
@@ -353,12 +340,6 @@
             `fallback_encoding` value
      */
     "load_additional_codecs": false,
-
-    /*
-        Set this value to true if you'd like GitSavvy to automatically attempt
-        to decode using the `fallback_encoding` value, without prompting.
-     */
-    "silent_fallback": false,
 
     /*
         GitSavvy allows you to press `Tab` to cycle from one dashboard interface

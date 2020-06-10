@@ -513,17 +513,20 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
         for fpath in non_cached_files:
             syntax = util.file.get_syntax_for_file(fpath)
             settings = {
-                "git_savvy.file_path": fpath,
-                "git_savvy.repo_path": self.repo_path,
+                "file_path": fpath,
+                "repo_path": self.repo_path,
                 "syntax": syntax
             }
-            window.run_command("gs_inline_diff", {"settings": settings})
+            window.run_command("gs_inline_diff", {
+                "settings": settings,
+                "cached": False
+            })
 
         for fpath in cached_files:
             syntax = util.file.get_syntax_for_file(fpath)
             settings = {
-                "git_savvy.file_path": fpath,
-                "git_savvy.repo_path": self.repo_path,
+                "file_path": fpath,
+                "repo_path": self.repo_path,
                 "syntax": syntax
             }
             window.run_command("gs_inline_diff", {

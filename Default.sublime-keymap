@@ -41,8 +41,26 @@
         ]
     },
     {
-        "keys": ["r"],
-        "command": "gs_inline_diff_refresh",
+        "keys": ["c"],
+        "command": "gs_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["C"],
+        "command": "gs_commit",
+        "args": {"include_unstaged": true},
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["m"],
+        "command": "gs_commit",
+        "args": {"amend": true},
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
@@ -94,6 +112,15 @@
             { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["tab"],
+        "command": "gs_inline_diff_toggle_cached_mode",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+
     {
         "keys": ["?"],
         "command": "gs_interface_toggle_popup_help",
@@ -550,6 +577,15 @@
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
             { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
+        ]
+    },
+    {
+        "keys": ["m"],
+        "command": "gs_commit",
+        "args": {"amend": true},
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
         ]
     },
     {

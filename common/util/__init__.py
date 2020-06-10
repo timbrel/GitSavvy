@@ -1,6 +1,6 @@
 import sys
 
-from .parse_diff import parse_diff
+from .parse_diff import parse_diff, UnsupportedDiffMode
 from . import dates
 from . import view
 from . import file
