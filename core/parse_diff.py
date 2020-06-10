@@ -95,7 +95,7 @@ class TextRange:
 
     def __hash__(self):
         # type: () -> int
-        return hash(self._as_tuple)
+        return hash(self._as_tuple())
 
     def __eq__(self, other):
         # type: (object) -> bool
