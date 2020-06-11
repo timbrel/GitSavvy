@@ -30,8 +30,10 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        base_remote = github.parse_remote(self.get_integrated_remote_url())
-        self.pull_requests = github.get_pull_requests(base_remote)
+        self.base_remote_name = self.get_integrated_remote_name()
+        self.base_remote_url = self.get_integrated_remote_url()
+        self.base_remote = github.parse_remote(self.base_remote_url)
+        self.pull_requests = github.get_pull_requests(self.base_remote)
 
         pp = show_paginated_panel(
             self.pull_requests,
@@ -74,18 +76,26 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         if idx == -1:
             return
 
+        owner = self.pr["head"]["repo"]["owner"]["login"]
+
+        if owner == self.base_remote.owner:
+            # don't add prefix for integrated remote
+            branch_name = self.pr["head"]["ref"]
+        else:
+            branch_name = "{}-{}".format(owner, self.pr["head"]["ref"])
+
         if idx == 0:
             self.fetch_and_checkout_pr()
         elif idx == 1:
             show_single_line_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
-                "{}-{}".format(self.pr["user"]["login"], self.pr["head"]["ref"]),
+                branch_name,
                 self.fetch_and_checkout_pr
             )
         elif idx == 2:
             show_single_line_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
-                "{}-{}".format(self.pr["user"]["login"], self.pr["head"]["ref"]),
+                branch_name,
                 lambda x: self.create_branch_for_pr(x, ask_set_upstream=True)
             )
         elif idx == 3:
@@ -104,67 +114,54 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
 
         clone_url = self.pr["head"]["repo"]["clone_url"]
         ssh_url = self.pr["head"]["repo"]["ssh_url"]
+        ref = self.pr["head"]["ref"]
 
-        def on_select_url(index):
-            if index < 0:
-                return
-            elif index == 0:
-                url = clone_url
-            elif index == 1:
-                url = ssh_url
+        if self.base_remote_url.startswith("https://"):
+            url = clone_url
+        elif self.base_remote_url.startswith("git@"):
+            url = ssh_url
+        else:
+            raise RuntimeError("Cannot recognize url {}.".format(self.base_remote_url))
 
-            self.git(
-                "fetch",
-                url,
-                self.pr["head"]["ref"]
-            )
-
-            self.checkout_ref(self.pr["head"]["sha"])
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
-
-        sublime.set_timeout(
-            lambda: self.window.show_quick_panel(
-                [clone_url, ssh_url], on_select_url)
-        )
+        self.git("fetch", url, ref)
+        self.checkout_ref(ref)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def create_branch_for_pr(self, branch_name, checkout=False, ask_set_upstream=False):
         if not branch_name:
             return
 
         self.window.status_message("Creating local branch for PR...")
+        set_upstream = False
 
-        remotes = list(self.get_remotes().keys())
-        remote = self.pr["user"]["login"]
-        remote_branch = self.pr["head"]["ref"]
+        remotes = self.get_remotes()
+        owner = self.pr["head"]["repo"]["owner"]["login"]
+        if owner == self.base_remote.owner:
+            owner = self.base_remote_name
+            # set upstream automatically if the pr is from integrated remote
+            ask_set_upstream = False
+            set_upstream = True
 
         clone_url = self.pr["head"]["repo"]["clone_url"]
         ssh_url = self.pr["head"]["repo"]["ssh_url"]
+        ref = self.pr["head"]["ref"]
 
         if ask_set_upstream:
             set_upstream = sublime.ok_cancel_dialog(
-                "Set upstream to '{}/{}'?".format(remote, remote_branch))
-        else:
-            set_upstream = False
+                "Set upstream to '{}/{}'?".format(owner, ref))
 
         if set_upstream:
-            if remote in remotes:
-                self.create_branch_from_remote_for_pr(branch_name, remote, remote_branch, checkout)
-            else:
-                def on_select_url(index):
-                    if index < 0:
-                        return
-                    elif index == 0:
-                        url = clone_url
-                    elif index == 1:
-                        url = ssh_url
+            if owner not in remotes.keys():
+                if self.base_remote_url.startswith("https://"):
+                    url = clone_url
+                elif self.base_remote_url.startswith("git@"):
+                    url = ssh_url
+                else:
+                    raise RuntimeError("Cannot recognize url {}.".format(self.base_remote_url))
 
-                    self.git("remote", "add", remote, url)
-                    self.create_branch_from_remote_for_pr(branch_name, remote, remote_branch, checkout)
+                self.git("remote", "add", owner, url)
 
-                sublime.set_timeout(
-                    lambda: self.window.show_quick_panel(
-                        [clone_url, ssh_url], on_select_url)
-                )
+            self.create_branch_from_remote_for_pr(branch_name, owner, ref, checkout)
         else:
             self.create_branch_from_sha_for_pr(branch_name, checkout)
 
