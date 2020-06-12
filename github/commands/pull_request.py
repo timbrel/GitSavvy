@@ -113,7 +113,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
 
         url = ssh_url if self.base_remote_url.startswith("git@") else clone_url
         self.git("fetch", url, ref)
-        self.checkout_ref(ref)
+        self.checkout_ref("FETCH_HEAD")
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def create_branch_for_pr(self, branch_name, checkout=False, ask_set_upstream=True):
@@ -132,6 +132,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
 
         clone_url = self.pr["head"]["repo"]["clone_url"]
         ssh_url = self.pr["head"]["repo"]["ssh_url"]
+        url = ssh_url if self.base_remote_url.startswith("git@") else clone_url
         ref = self.pr["head"]["ref"]
 
         if ask_set_upstream:
@@ -140,12 +141,11 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
 
         if set_upstream:
             if owner not in self.remotes.keys():
-                url = ssh_url if self.base_remote_url.startswith("git@") else clone_url
                 self.git("remote", "add", owner, url)
 
             self.create_branch_from_remote_for_pr(branch_name, owner, ref, checkout)
         else:
-            self.create_branch_from_sha_for_pr(branch_name, owner, checkout)
+            self.create_branch_from_sha_for_pr(branch_name, url, checkout)
 
     def create_branch_from_remote_for_pr(self, branch_name, remote, remote_branch, checkout):
         self.git("fetch", remote, remote_branch)
@@ -158,9 +158,9 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
 
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
-    def create_branch_from_sha_for_pr(self, branch_name, remote, checkout):
-        self.git("fetch", remote, self.pr["head"]["sha"])
-        self.git("branch", branch_name, self.pr["head"]["sha"])
+    def create_branch_from_sha_for_pr(self, branch_name, remote_url, checkout):
+        self.git("fetch", remote_url, self.pr["head"]["ref"])
+        self.git("branch", branch_name, "FETCH_HEAD")
 
         if checkout:
             self.checkout_ref(branch_name)
