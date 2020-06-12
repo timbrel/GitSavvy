@@ -284,7 +284,7 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
         if remote_name:
             self.delete_remote_branch(remote_name, branch_name, window)
         else:
-            window.run_command("gs_delete_branch", {"branch": branch_name})
+            window.run_command("gs_delete_branch", {"branch": branch_name, "force": self.force})
 
     @util.actions.destructive(description="delete a remote branch")
     def delete_remote_branch(self, remote, branch_name, window):
