@@ -30,8 +30,9 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
+        self.remotes = self.get_remotes()
         self.base_remote_name = self.get_integrated_remote_name()
-        self.base_remote_url = self.get_integrated_remote_url()
+        self.base_remote_url = self.remotes[self.base_remote_name]
         self.base_remote = github.parse_remote(self.base_remote_url)
         self.pull_requests = github.get_pull_requests(self.base_remote)
 
@@ -85,29 +86,23 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
             branch_name = "{}-{}".format(owner, self.pr["head"]["ref"])
 
         if idx == 0:
-            self.fetch_and_checkout_pr()
+            self.checkout_detached()
         elif idx == 1:
             show_single_line_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
                 branch_name,
-                self.fetch_and_checkout_pr
+                lambda branch_name: self.create_branch_for_pr(branch_name, checkout=True)
             )
         elif idx == 2:
             show_single_line_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
                 branch_name,
-                lambda x: self.create_branch_for_pr(x, ask_set_upstream=True)
+                lambda branch_name: self.create_branch_for_pr(branch_name, checkout=False)
             )
         elif idx == 3:
             self.view_diff_for_pr()
         elif idx == 4:
             self.open_pr_in_browser()
-
-    def fetch_and_checkout_pr(self, branch_name=None):
-        if branch_name:
-            self.create_branch_for_pr(branch_name, checkout=True, ask_set_upstream=True)
-        else:  # detached HEAD
-            self.checkout_detached()
 
     def checkout_detached(self):
         self.window.status_message("Checking out PR...")
@@ -116,25 +111,18 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         ssh_url = self.pr["head"]["repo"]["ssh_url"]
         ref = self.pr["head"]["ref"]
 
-        if self.base_remote_url.startswith("https://"):
-            url = clone_url
-        elif self.base_remote_url.startswith("git@"):
-            url = ssh_url
-        else:
-            raise RuntimeError("Cannot recognize url {}.".format(self.base_remote_url))
-
+        url = ssh_url if self.base_remote_url.startswith("git@") else clone_url
         self.git("fetch", url, ref)
         self.checkout_ref(ref)
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
-    def create_branch_for_pr(self, branch_name, checkout=False, ask_set_upstream=False):
+    def create_branch_for_pr(self, branch_name, checkout=False, ask_set_upstream=True):
         if not branch_name:
             return
 
         self.window.status_message("Creating local branch for PR...")
         set_upstream = False
 
-        remotes = self.get_remotes()
         owner = self.pr["head"]["repo"]["owner"]["login"]
         if owner == self.base_remote.owner:
             owner = self.base_remote_name
@@ -151,19 +139,13 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
                 "Set upstream to '{}/{}'?".format(owner, ref))
 
         if set_upstream:
-            if owner not in remotes.keys():
-                if self.base_remote_url.startswith("https://"):
-                    url = clone_url
-                elif self.base_remote_url.startswith("git@"):
-                    url = ssh_url
-                else:
-                    raise RuntimeError("Cannot recognize url {}.".format(self.base_remote_url))
-
+            if owner not in self.remotes.keys():
+                url = ssh_url if self.base_remote_url.startswith("git@") else clone_url
                 self.git("remote", "add", owner, url)
 
             self.create_branch_from_remote_for_pr(branch_name, owner, ref, checkout)
         else:
-            self.create_branch_from_sha_for_pr(branch_name, checkout)
+            self.create_branch_from_sha_for_pr(branch_name, owner, checkout)
 
     def create_branch_from_remote_for_pr(self, branch_name, remote, remote_branch, checkout):
         self.git("fetch", remote, remote_branch)
@@ -176,7 +158,8 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
 
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
-    def create_branch_from_sha_for_pr(self, branch_name, checkout):
+    def create_branch_from_sha_for_pr(self, branch_name, remote, checkout):
+        self.git("fetch", remote, self.pr["head"]["sha"])
         self.git("branch", branch_name, self.pr["head"]["sha"])
 
         if checkout:
