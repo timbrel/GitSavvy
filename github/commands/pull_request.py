@@ -117,8 +117,6 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         if not branch_name:
             return
 
-        self.window.status_message("Creating local branch for PR...")
-
         url = self.best_remote_url_for_pr()
         ref = self.pr["head"]["ref"]
 
@@ -131,6 +129,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         set_upstream = sublime.ok_cancel_dialog(
             "Set upstream to '{}'?".format(remote_ref)) if ask_set_upstream else True
 
+        self.window.status_message("Creating local branch for PR...")
         if set_upstream:
             if owner not in self.remotes.keys():
                 self.git("remote", "add", owner, url)
