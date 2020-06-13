@@ -13,7 +13,9 @@ class GithubRemotesMixin():
         else:
             return "master"
 
-    def get_integrated_remote_name(self):
+    def get_integrated_remote_name(self, remotes=None):
+        if remotes is None:
+            remotes = self.get_remotes()
         configured_remote_name = self.git(
             "config",
             "--local",
@@ -21,7 +23,6 @@ class GithubRemotesMixin():
             "GitSavvy.ghRemote",
             throw_on_stderr=False
         ).strip()
-        remotes = self.get_remotes()
 
         if len(remotes) == 0:
             raise ValueError("GitHub integration will not function when no remotes defined.")
