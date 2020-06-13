@@ -191,12 +191,12 @@ def iteratively_query_github(api_url_template, github_repo):
     while True:
         if response is not None:
             # it means this is not the first iter
-            if "Link" not in response.headers:
+            if "link" not in response.headers:
                 break
 
             # following next link
             # https://developer.github.com/v3/#pagination
-            match = re.match(r'.*<([^>]+)>; rel="next"', response.headers["Link"])
+            match = re.match(r'.*<([^>]+)>; rel="next"', response.headers["link"])
             if not match:
                 break
 

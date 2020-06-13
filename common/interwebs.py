@@ -12,6 +12,16 @@ from collections import namedtuple
 Response = namedtuple("Response", ("payload", "headers", "status", "is_json"))
 
 
+class Headers(dict):
+    def __init__(self, response):
+        for key, value in response.getheaders():
+            key = key.lower()
+            prev_val = self.get(key)
+            if prev_val is not None:
+                value = ", ".join((prev_val, value))
+            self[key] = value
+
+
 def request(verb, host, port, path, payload=None, https=False, headers=None, auth=None, redirect=True):
     """
     Make an HTTP(S) request with the provided HTTP verb, host FQDN, port number, path,
@@ -34,10 +44,10 @@ def request(verb, host, port, path, payload=None, https=False, headers=None, aut
 
     response = connection.getresponse()
     response_payload = response.read()
-    response_headers = dict(response.getheaders())
+    response_headers = Headers(response)
     status = response.status
 
-    is_json = "application/json" in response_headers["Content-Type"]
+    is_json = "application/json" in response_headers["content-type"]
     if is_json:
         response_payload = json.loads(response_payload.decode("utf-8"))
 
@@ -47,7 +57,7 @@ def request(verb, host, port, path, payload=None, https=False, headers=None, aut
     if redirect and verb == "GET" and status == 301 or status == 302:
         return request_url(
             verb,
-            response_headers["Location"],
+            response_headers["location"],
             headers=headers,
             auth=auth
         )

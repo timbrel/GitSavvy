@@ -209,12 +209,12 @@ def iteratively_query_gitlab(api_url_template, gitlab_repo, **url_params):
     while True:
         if response is not None:
             # it means this is not the first iter
-            if "Link" not in response.headers:
+            if "link" not in response.headers:
                 break
 
             # following next link
             # https://docs.gitlab.com/ee/api/README.html#pagination
-            match = re.match(r'<([^>]+)>; rel="next"', response.headers["Link"])
+            match = re.match(r'<([^>]+)>; rel="next"', response.headers["link"])
             if not match:
                 break
 
