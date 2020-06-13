@@ -123,8 +123,6 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         ref = self.pr["head"]["ref"]
         self.git("fetch", url, ref)
         self.git("branch", branch_name, "FETCH_HEAD")
-        if checkout:
-            self.checkout_ref(branch_name)
 
         owner = self.pr["head"]["repo"]["owner"]["login"]
         if owner == self.base_remote.owner:
@@ -139,6 +137,9 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
             if owner not in self.remotes.keys():
                 self.git("remote", "add", owner, url)
             self.git("branch", "-u", remote_ref, branch_name)
+
+        if checkout:
+            self.checkout_ref(branch_name)
 
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
