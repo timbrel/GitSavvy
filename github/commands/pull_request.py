@@ -27,6 +27,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
     """
 
     def run(self):
+        print("random change")
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
