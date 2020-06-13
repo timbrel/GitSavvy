@@ -31,7 +31,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
 
     def run_async(self):
         self.remotes = self.get_remotes()
-        self.base_remote_name = self.get_integrated_remote_name()
+        self.base_remote_name = self.get_integrated_remote_name(self.remotes)
         self.base_remote_url = self.remotes[self.base_remote_name]
         self.base_remote = github.parse_remote(self.base_remote_url)
         self.pull_requests = github.get_pull_requests(self.base_remote)
