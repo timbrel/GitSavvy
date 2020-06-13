@@ -107,11 +107,8 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
     def checkout_detached(self):
         self.window.status_message("Checking out PR...")
 
-        clone_url = self.pr["head"]["repo"]["clone_url"]
-        ssh_url = self.pr["head"]["repo"]["ssh_url"]
+        url = self.best_remote_url_for_pr()
         ref = self.pr["head"]["ref"]
-
-        url = ssh_url if self.base_remote_url.startswith("git@") else clone_url
         self.git("fetch", url, ref)
         self.checkout_ref("FETCH_HEAD")
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
@@ -121,51 +118,34 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
             return
 
         self.window.status_message("Creating local branch for PR...")
-        set_upstream = False
+
+        url = self.best_remote_url_for_pr()
+        ref = self.pr["head"]["ref"]
+        self.git("fetch", url, ref)
+        self.git("branch", branch_name, "FETCH_HEAD")
+        if checkout:
+            self.checkout_ref(branch_name)
 
         owner = self.pr["head"]["repo"]["owner"]["login"]
         if owner == self.base_remote.owner:
             owner = self.base_remote_name
-            # set upstream automatically if the pr is from integrated remote
             ask_set_upstream = False
-            set_upstream = True
 
-        clone_url = self.pr["head"]["repo"]["clone_url"]
-        ssh_url = self.pr["head"]["repo"]["ssh_url"]
-        url = ssh_url if self.base_remote_url.startswith("git@") else clone_url
-        ref = self.pr["head"]["ref"]
-
-        if ask_set_upstream:
-            set_upstream = sublime.ok_cancel_dialog(
-                "Set upstream to '{}/{}'?".format(owner, ref))
+        remote_ref = "{}/{}".format(owner, ref)
+        set_upstream = sublime.ok_cancel_dialog(
+            "Set upstream to '{}'?".format(remote_ref)) if ask_set_upstream else True
 
         if set_upstream:
             if owner not in self.remotes.keys():
                 self.git("remote", "add", owner, url)
-
-            self.create_branch_from_remote_for_pr(branch_name, owner, ref, checkout)
-        else:
-            self.create_branch_from_sha_for_pr(branch_name, url, checkout)
-
-    def create_branch_from_remote_for_pr(self, branch_name, remote, remote_branch, checkout):
-        self.git("fetch", remote, remote_branch)
-        ref = "{}/{}".format(remote, remote_branch)
-        self.git("branch", branch_name, ref)
-        self.git("branch", "-u", ref, branch_name)
-
-        if checkout:
-            self.checkout_ref(branch_name)
+            self.git("branch", "-u", remote_ref, branch_name)
 
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
-    def create_branch_from_sha_for_pr(self, branch_name, remote_url, checkout):
-        self.git("fetch", remote_url, self.pr["head"]["ref"])
-        self.git("branch", branch_name, "FETCH_HEAD")
-
-        if checkout:
-            self.checkout_ref(branch_name)
-
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+    def best_remote_url_for_pr(self):
+        clone_url = self.pr["head"]["repo"]["clone_url"]
+        ssh_url = self.pr["head"]["repo"]["ssh_url"]
+        return ssh_url if self.base_remote_url.startswith("git@") else clone_url
 
     def view_diff_for_pr(self):
         response = interwebs.get_url(self.pr["diff_url"])
