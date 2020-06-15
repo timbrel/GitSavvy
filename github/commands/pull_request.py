@@ -30,8 +30,11 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        base_remote = github.parse_remote(self.get_integrated_remote_url())
-        self.pull_requests = github.get_pull_requests(base_remote)
+        self.remotes = self.get_remotes()
+        self.base_remote_name = self.get_integrated_remote_name(self.remotes)
+        self.base_remote_url = self.remotes[self.base_remote_name]
+        self.base_remote = github.parse_remote(self.base_remote_url)
+        self.pull_requests = github.get_pull_requests(self.base_remote)
 
         pp = show_paginated_panel(
             self.pull_requests,
@@ -64,7 +67,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         self.window.show_quick_panel(
             ["Checkout as detached HEAD.",
              "Checkout as local branch.",
-             "Create local branch, but do not checkout.",
+             "Create local branch without checking out.",
              "View diff.",
              "Open in browser."],
             self.on_select_action
@@ -74,59 +77,78 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         if idx == -1:
             return
 
+        owner = self.pr["head"]["repo"]["owner"]["login"]
+
+        if owner == self.base_remote.owner:
+            # don't add prefix for integrated remote
+            branch_name = self.pr["head"]["ref"]
+        else:
+            branch_name = "{}-{}".format(owner, self.pr["head"]["ref"])
+
         if idx == 0:
-            self.fetch_and_checkout_pr()
+            self.checkout_detached()
         elif idx == 1:
             show_single_line_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
-                "{}/{}".format(self.pr["user"]["login"], self.pr["head"]["ref"]),
-                self.fetch_and_checkout_pr
+                branch_name,
+                lambda branch_name: self.create_branch_for_pr(branch_name, checkout=True)
             )
         elif idx == 2:
             show_single_line_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
-                "{}/{}".format(self.pr["user"]["login"], self.pr["head"]["ref"]),
-                self.create_branch_for_pr
+                branch_name,
+                lambda branch_name: self.create_branch_for_pr(branch_name, checkout=False)
             )
         elif idx == 3:
             self.view_diff_for_pr()
         elif idx == 4:
             self.open_pr_in_browser()
 
-    def fetch_and_checkout_pr(self, branch_name=None):
-        self.window.status_message("Fetching PR commit...")
-        self.git(
-            "fetch",
-            self.pr["head"]["repo"]["clone_url"],
-            self.pr["head"]["ref"]
-        )
-
-        if branch_name:
-            self.window.status_message("Creating local branch for PR...")
-            self.git(
-                "branch",
-                branch_name,
-                self.pr["head"]["sha"]
-            )
-
+    def checkout_detached(self):
         self.window.status_message("Checking out PR...")
-        self.checkout_ref(branch_name or self.pr["head"]["sha"])
+
+        url = self.best_remote_url_for_pr()
+        ref = self.pr["head"]["ref"]
+        self.git("fetch", url, ref)
+        self.checkout_ref("FETCH_HEAD")
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
-    def create_branch_for_pr(self, branch_name):
-        self.window.status_message("Fetching PR commit...")
-        self.git(
-            "fetch",
-            self.pr["head"]["repo"]["clone_url"],
-            self.pr["head"]["ref"]
-        )
+    def create_branch_for_pr(self, branch_name, checkout=False, ask_set_upstream=True):
+        if not branch_name:
+            return
+
+        url = self.best_remote_url_for_pr()
+        ref = self.pr["head"]["ref"]
+
+        owner = self.pr["head"]["repo"]["owner"]["login"]
+        if owner == self.base_remote.owner:
+            owner = self.base_remote_name
+            ask_set_upstream = False
+
+        remote_ref = "{}/{}".format(owner, ref)
+        set_upstream = sublime.ok_cancel_dialog(
+            "Set upstream to '{}'?".format(remote_ref)) if ask_set_upstream else True
 
         self.window.status_message("Creating local branch for PR...")
-        self.git(
-            "branch",
-            branch_name,
-            self.pr["head"]["sha"]
-        )
+        if set_upstream:
+            if owner not in self.remotes.keys():
+                self.git("remote", "add", owner, url)
+            self.git("fetch", owner, ref)
+            self.git("branch", branch_name, "FETCH_HEAD")
+            self.git("branch", "-u", remote_ref, branch_name)
+        else:
+            self.git("fetch", url, ref)
+            self.git("branch", branch_name, "FETCH_HEAD")
+
+        if checkout:
+            self.checkout_ref(branch_name)
+
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+    def best_remote_url_for_pr(self):
+        clone_url = self.pr["head"]["repo"]["clone_url"]
+        ssh_url = self.pr["head"]["repo"]["ssh_url"]
+        return ssh_url if self.base_remote_url.startswith("git@") else clone_url
 
     def view_diff_for_pr(self):
         response = interwebs.get_url(self.pr["diff_url"])
