@@ -1,6 +1,7 @@
 from collections import defaultdict
 from contextlib import contextmanager
 import os
+import plistlib
 import re
 import threading
 import yaml
@@ -46,6 +47,26 @@ def _try_yaml_parse(text):
 
 
 def _determine_syntax_files():
+    # type: () -> None
+    handle_tm_language_files()
+    handle_sublime_syntax_files()
+
+
+def handle_tm_language_files():
+    # type: () -> None
+    syntax_files = sublime.find_resources("*.tmLanguage")
+    for syntax_file in syntax_files:
+        try:
+            resource = sublime.load_binary_resource(syntax_file)
+        except Exception:
+            print("GitSavvy: could not load {}".format(syntax_file))
+            continue
+
+        for extension in plistlib.readPlistFromBytes(resource).get("fileTypes", []):
+            syntax_file_map[extension].append(syntax_file)
+
+
+def handle_sublime_syntax_files():
     # type: () -> None
     syntax_files = sublime.find_resources("*.sublime-syntax")
     for syntax_file in syntax_files:
