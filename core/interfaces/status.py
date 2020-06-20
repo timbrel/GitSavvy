@@ -443,7 +443,7 @@ def get_selected_files(view, base_path, *sections):
 
     make_abs_path = partial(os.path.join, base_path)
     return [
-        make_abs_path(filename)
+        os.path.normpath(make_abs_path(filename))
         for filename in get_selected_subjects(view, *sections)
     ]
 
@@ -511,7 +511,7 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
     def load_inline_diff_views(self, window, non_cached_files, cached_files):
         # type: (sublime.Window, List[str], List[str]) -> None
         for fpath in non_cached_files:
-            syntax = util.file.get_syntax_for_file(fpath)
+            syntax = util.file.guess_syntax_for_file(window, fpath)
             settings = {
                 "file_path": fpath,
                 "repo_path": self.repo_path,
@@ -523,7 +523,7 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
             })
 
         for fpath in cached_files:
-            syntax = util.file.get_syntax_for_file(fpath)
+            syntax = util.file.guess_syntax_for_file(window, fpath)
             settings = {
                 "file_path": fpath,
                 "repo_path": self.repo_path,

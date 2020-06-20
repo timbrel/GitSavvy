@@ -61,7 +61,9 @@ class GsHelp(WindowCommand):
         view = util.view.get_scratch_view(self, "help", read_only=True)
         view.set_name("GITSAVVY HELP")
 
-        syntax_file = util.file.get_syntax_for_file("*.md")
+        syntax_file = util.file.get_syntax_for_file(
+            "*.md", default="Packages/Markdown/Markdown.sublime-syntax"
+        )
         view.set_syntax_file(syntax_file)
 
         view.run_command("gs_help_browse", {"page": page, "anchor": anchor})
@@ -79,7 +81,11 @@ class GsHelpBrowse(TextCommand):
 
         if not page == previous_page:
             settings.set("git_savvy.help.page", page)
-            content = sublime.load_resource("Packages/GitSavvy/docs/" + page)
+            content = (
+                sublime.load_resource("Packages/GitSavvy/docs/" + page)
+                .replace('\r\n', '\n')
+                .replace('\r', '\n')
+            )
 
             is_read_only = self.view.is_read_only()
             self.view.set_read_only(False)
