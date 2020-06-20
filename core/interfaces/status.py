@@ -512,26 +512,20 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
         # type: (sublime.Window, List[str], List[str]) -> None
         for fpath in non_cached_files:
             syntax = util.file.guess_syntax_for_file(window, fpath)
-            settings = {
-                "file_path": fpath,
+            window.run_command("gs_inline_diff_open", {
                 "repo_path": self.repo_path,
-                "syntax": syntax
-            }
-            window.run_command("gs_inline_diff", {
-                "settings": settings,
-                "cached": False
+                "file_path": fpath,
+                "syntax": syntax,
+                "cached": False,
             })
 
         for fpath in cached_files:
             syntax = util.file.guess_syntax_for_file(window, fpath)
-            settings = {
-                "file_path": fpath,
+            window.run_command("gs_inline_diff_open", {
                 "repo_path": self.repo_path,
-                "syntax": syntax
-            }
-            window.run_command("gs_inline_diff", {
-                "settings": settings,
-                "cached": True
+                "file_path": fpath,
+                "syntax": syntax,
+                "cached": True,
             })
 
 
