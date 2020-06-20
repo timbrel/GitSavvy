@@ -81,7 +81,11 @@ class GsHelpBrowse(TextCommand):
 
         if not page == previous_page:
             settings.set("git_savvy.help.page", page)
-            content = sublime.load_resource("Packages/GitSavvy/docs/" + page)
+            content = (
+                sublime.load_resource("Packages/GitSavvy/docs/" + page)
+                .replace('\r\n', '\n')
+                .replace('\r', '\n')
+            )
 
             is_read_only = self.view.is_read_only()
             self.view.set_read_only(False)
