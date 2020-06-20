@@ -80,6 +80,27 @@ def handle_sublime_syntax_files():
             syntax_file_map[extension].append(syntax_file)
 
 
+def guess_syntax_for_file(window, filename):
+    # type: (sublime.Window, str) -> str
+    view = window.find_open_file(filename)
+    if view:
+        syntax = view.settings().get("syntax")
+        remember_syntax_choice(filename, syntax)
+        return syntax
+    return get_syntax_for_file(filename)
+
+
+def remember_syntax_choice(filename, syntax):
+    # type: (str, str) -> None
+    registered_syntaxes = (
+        syntax_file_map.get(filename, [])
+        or syntax_file_map.get(get_file_extension(filename), [])
+    )
+    if syntax in registered_syntaxes:
+        registered_syntaxes.remove(syntax)
+    registered_syntaxes.append(syntax)
+
+
 def get_syntax_for_file(filename, default="Packages/Text/Plain text.tmLanguage"):
     # type: (str, str) -> str
     if not determine_syntax_thread or determine_syntax_thread.is_alive():
