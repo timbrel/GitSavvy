@@ -160,7 +160,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
             cur_pos = capture_cur_position(active_view)
             if cur_pos and cached:
                 row, col, offset = cur_pos
-                new_row = self.find_matching_lineno(None, None, row + 1, self.file_path) - 1
+                new_row = self.find_matching_lineno(None, None, row + 1, file_path) - 1
                 cur_pos = Position(new_row, col, offset)
         else:
             syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
