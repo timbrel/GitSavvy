@@ -443,7 +443,7 @@ def get_selected_files(view, base_path, *sections):
 
     make_abs_path = partial(os.path.join, base_path)
     return [
-        make_abs_path(filename)
+        os.path.normpath(make_abs_path(filename))
         for filename in get_selected_subjects(view, *sections)
     ]
 
