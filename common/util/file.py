@@ -1,23 +1,27 @@
-import sublime
+from collections import defaultdict
+from contextlib import contextmanager
+import os
+import re
 import threading
 import yaml
-import os
-from contextlib import contextmanager
+
+import sublime
 
 
 MYPY = False
 if MYPY:
-    from typing import Dict, List
+    from typing import DefaultDict, List, Optional
 
 
 if 'syntax_file_map' not in globals():
-    syntax_file_map = {}  # type: Dict[str, List[str]]
+    syntax_file_map = defaultdict(list)  # type: DefaultDict[str, List[str]]
 
 if 'determine_syntax_thread' not in globals():
     determine_syntax_thread = None
 
 
 def determine_syntax_files():
+    # type: () -> None
     global determine_syntax_thread
     if not syntax_file_map:
         determine_syntax_thread = threading.Thread(
@@ -25,27 +29,46 @@ def determine_syntax_files():
         determine_syntax_thread.start()
 
 
+def try_parse_for_file_extensions(text):
+    # type: (str) -> Optional[List[str]]
+    match = re.search(r"^file_extensions:\n((.*\n)+?)^(?=\w)", text, re.M)
+    if match:
+        return _try_yaml_parse(match.group(0))
+    return _try_yaml_parse(text)
+
+
+def _try_yaml_parse(text):
+    # type: (str) -> Optional[List[str]]
+    try:
+        return yaml.safe_load(text)["file_extensions"]
+    except Exception:
+        return None
+
+
 def _determine_syntax_files():
+    # type: () -> None
     syntax_files = sublime.find_resources("*.sublime-syntax")
     for syntax_file in syntax_files:
         try:
-            # Use `sublime.load_resource`, in case Package is `*.sublime-package`.
             resource = sublime.load_resource(syntax_file)
-            for extension in yaml.safe_load(resource)["file_extensions"]:
-                if extension not in syntax_file_map:
-                    syntax_file_map[extension] = []
-                extension_list = syntax_file_map[extension]
-                extension_list.append(syntax_file)
         except Exception:
+            print("GitSavvy: could not load {}".format(syntax_file))
             continue
 
+        for extension in try_parse_for_file_extensions(resource) or []:
+            syntax_file_map[extension].append(syntax_file)
 
-def get_syntax_for_file(filename):
+
+def get_syntax_for_file(filename, default="Packages/Text/Plain text.tmLanguage"):
+    # type: (str, str) -> str
     if not determine_syntax_thread or determine_syntax_thread.is_alive():
-        return "Packages/Text/Plain text.tmLanguage"
-    extension = get_file_extension(filename)
-    syntaxes = syntax_file_map.get(filename, None) or syntax_file_map.get(extension, None)
-    return syntaxes[-1] if syntaxes else "Packages/Text/Plain text.tmLanguage"
+        return default
+    syntaxes = (
+        syntax_file_map.get(filename, [])
+        or syntax_file_map.get(get_file_extension(filename), [])
+        or [default]
+    )
+    return syntaxes[-1]
 
 
 def get_file_extension(filename):
