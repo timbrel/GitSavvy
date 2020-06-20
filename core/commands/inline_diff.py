@@ -5,10 +5,12 @@ from collections import namedtuple
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
+from . import diff
 from .navigate import GsNavigate
 from ..git_command import GitCommand
-from ..utils import flash, focus_view
+from ..parse_diff import SplittedDiff
 from ..runtime import enqueue_on_ui
+from ..utils import flash, focus_view
 from ..view import replace_view_content
 from ...common import util
 
@@ -64,9 +66,13 @@ def capture_cur_position(view):
         return None
 
     row, col = view.rowcol(sel.begin())
+    return Position(row, col, row_offset(row, view))
+
+
+def row_offset(row, view):
+    # type: (Row, sublime.View) -> float
     vx, vy = view.viewport_position()
-    row_offset = row - (vy / view.line_height())
-    return Position(row, col, row_offset)
+    return row - (vy / view.line_height())
 
 
 def place_cursor_and_show(view, row, col, row_offset):
@@ -149,6 +155,39 @@ class gs_inline_diff(WindowCommand, GitCommand):
             return
 
         repo_path = self.repo_path
+
+        if active_view.settings().get("git_savvy.diff_view"):
+            cached = active_view.settings().get("git_savvy.diff_view.in_cached_mode")
+            cursor = active_view.sel()[0].b
+            jump_position = diff.jump_position_to_file(
+                active_view,
+                SplittedDiff.from_view(active_view),
+                cursor
+            )
+            if jump_position and not jump_position.commit_hash:
+                file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
+                syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
+
+                row_in_view = active_view.rowcol(cursor)[0]
+                offset = row_offset(row_in_view, active_view)
+                cur_pos = Position(
+                    # jump_position.row (sic!); actually 1-based line_no
+                    jump_position.row - 1, jump_position.col - 1, offset
+                )  # type: Optional[Position]
+                if cur_pos and cached:
+                    row, col, offset = cur_pos
+                    new_row = self.find_matching_lineno(None, None, row + 1, file_path) - 1
+                    cur_pos = Position(new_row, col, offset)
+
+                self.window.run_command("gs_inline_diff_open", {
+                    "repo_path": repo_path,
+                    "file_path": file_path,
+                    "syntax": syntax_file,
+                    "cached": bool(cached),
+                    "match_position": cur_pos
+                })
+                return
+
         file_path = self.file_path
         if not file_path:
             flash(active_view, "Cannot show diff for unnamed buffers.")
