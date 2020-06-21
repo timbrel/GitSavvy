@@ -62,7 +62,13 @@ def handle_tm_language_files():
             print("GitSavvy: could not load {}".format(syntax_file))
             continue
 
-        for extension in plistlib.readPlistFromBytes(resource).get("fileTypes", []):
+        try:
+            extensions = plistlib.readPlistFromBytes(resource).get("fileTypes", [])
+        except Exception:
+            print("GitSavvy: could not parse {}".format(syntax_file))
+            continue
+
+        for extension in extensions:
             syntax_file_map[extension].append(syntax_file)
 
 
