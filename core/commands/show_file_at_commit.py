@@ -84,13 +84,8 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         text = self.get_file_content_at_commit(file_path, commit_hash)
         render(view, text, line, col)
         view.reset_reference_document()
+        self.update_title(commit_hash, file_path)
 
-        # Subtle drawing bugs in 3211
-        # `view.set_name` removes the gutter markers from `set_reference_document`
-        # so we need `update_title` first.
-        # On the other hand, we want to render sooner, so we defer `update_title` by
-        # `1`. Using `None` does *not* render in between!
-        sublime.set_timeout(partial(self.update_title, commit_hash, file_path), 1)
         sublime.set_timeout_async(partial(self.update_reference_document, commit_hash, file_path))
 
     def update_reference_document(self, commit_hash, file_path):
