@@ -268,6 +268,18 @@ class HistoryMixin():
 
     def previous_commit(self, current_commit, file_path, follow=False):
         # type: (str, str, bool) -> str
+        if not current_commit or current_commit == "HEAD":
+            return self._previous_commit(current_commit, file_path, follow)
+
+        key = ("previous_commit", self.repo_path, current_commit, file_path, follow)
+        try:
+            return store.cache[key]
+        except KeyError:
+            rv = store.cache[key] = self._previous_commit(current_commit, file_path, follow)
+            return rv
+
+    def _previous_commit(self, current_commit, file_path, follow):
+        # type: (str, str, bool) -> str
         return self.git(
             "log",
             "--format=%H",
