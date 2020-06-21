@@ -182,6 +182,19 @@ class HistoryMixin():
         return filename
 
     def get_file_content_at_commit(self, filename, commit_hash):
+        # type: (str, str) -> str
+        if not commit_hash or commit_hash == "HEAD":
+            return self._get_file_content_at_commit(filename, commit_hash)
+
+        key = ("get_file_content_at_commit", self.repo_path, filename, commit_hash)
+        try:
+            return store.cache[key]
+        except KeyError:
+            rv = store.cache[key] = self._get_file_content_at_commit(filename, commit_hash)
+            return rv
+
+    def _get_file_content_at_commit(self, filename, commit_hash):
+        # type: (str, str) -> str
         filename = self.get_rel_path(filename)
         filename = filename.replace('\\', '/')
         return self.git("show", commit_hash + ':' + filename)
