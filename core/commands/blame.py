@@ -395,7 +395,11 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand
         else:
             commit_hash = settings.get("git_savvy.commit_hash")
 
-        neighbor_hash = self.neighbor_commit(commit_hash, position, follow=follow)
+        if position == "older":
+            neighbor_hash = self.previous_commit(commit_hash, self.file_path, follow)
+        elif position == "newer":
+            neighbor_hash = self.next_commit(commit_hash, self.file_path, follow)
+
         if neighbor_hash:
             settings.set("git_savvy.commit_hash", neighbor_hash)
 

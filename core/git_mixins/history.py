@@ -246,28 +246,31 @@ class HistoryMixin():
         # fails to find matching
         return line
 
-    def neighbor_commit(self, commit_hash, position, follow=False):
-        """
-        Get the commit before or after a specific commit
-        """
-        if position == "older":
+    def previous_commit(self, current_commit, file_path, follow=False):
+        # type: (str, str, bool) -> str
+        return self.git(
+            "log",
+            "--format=%H",
+            "--follow" if follow else None,
+            "--skip", "1",
+            "-n", "1",
+            current_commit,
+            "--",
+            file_path
+        ).strip()
+
+    def next_commit(self, current_commit, file_path, follow=False):
+        try:
             return self.git(
                 "log",
                 "--format=%H",
                 "--follow" if follow else None,
-                "-n", "1",
-                "{}~1".format(commit_hash),
-                "--", self.file_path
-            ).strip()
-        elif position == "newer":
-            return self.git(
-                "log",
-                "--format=%H",
-                "--follow" if follow else None,
-                "--reverse",
-                "{}..{}".format(commit_hash, "HEAD"),
-                "--", self.file_path
-            ).strip().split("\n", 1)[0]
+                "{}..".format(current_commit),
+                "--",
+                file_path
+            ).strip().splitlines()[-1]
+        except IndexError:
+            return ""
 
     def newest_commit_for_file(self, file_path, follow=False):
         """
