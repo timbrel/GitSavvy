@@ -1,3 +1,4 @@
+from functools import partial
 import os
 
 import sublime
@@ -5,6 +6,7 @@ from sublime_plugin import TextCommand, WindowCommand
 
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_worker, text_command
+from ..utils import flash
 from ..view import replace_view_content
 from ...common import util
 from .log import LogMixin
@@ -12,29 +14,38 @@ from .log import LogMixin
 
 __all__ = (
     "gs_show_file_at_commit",
+    "gs_show_file_at_commit_refresh",
     "gs_show_current_file_at_commit",
     "gs_show_current_file",
+    "gs_show_file_at_commit_open_previous_commit",
+    "gs_show_file_at_commit_open_next_commit",
     "gs_show_file_at_commit_open_commit",
     "gs_show_file_at_commit_open_file_on_working_dir",
     "gs_show_file_at_commit_open_graph_context",
 )
+
+MYPY = False
+if MYPY:
+    from typing import Optional
+
 
 SHOW_COMMIT_TITLE = "FILE: {} --{}"
 
 
 class gs_show_file_at_commit(WindowCommand, GitCommand):
 
-    def run(self, commit_hash, filepath, check_for_renames=False, lineno=1, lang=None):
+    def run(self, commit_hash, filepath, check_for_renames=False, lineno=1, col=1, lang=None):
         enqueue_on_worker(
             self.run_impl,
             commit_hash,
             filepath,
             check_for_renames,
             lineno,
+            col,
             lang,
         )
 
-    def run_impl(self, commit_hash, file_path, check_for_renames=False, lineno=1, lang=None):
+    def run_impl(self, commit_hash, file_path, check_for_renames, lineno, col, lang):
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
         view = util.view.get_scratch_view(self, "show_file_at_commit")
@@ -56,9 +67,42 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
         if check_for_renames:
             file_path = self.filename_at_commit(file_path, commit_hash)
 
+        view.run_command("gs_show_file_at_commit_refresh", {
+            "line": lineno,
+            "col": col
+        })
+
+
+class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
+    def run(self, edit, line, col=None):
+        # type: (...) -> None
+        view = self.view
+        settings = view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
+
         text = self.get_file_content_at_commit(file_path, commit_hash)
-        render(view, text, lineno)
-        view.set_reference_document(self.previous_file_version(commit_hash, file_path))
+        render(view, text, line, col)
+        view.reset_reference_document()
+
+        # Subtle drawing bugs in 3211
+        # `view.set_name` removes the gutter markers from `set_reference_document`
+        # so we need `update_title` first.
+        # On the other hand, we want to render sooner, so we defer `update_title` by
+        # `1`. Using `None` does *not* render in between!
+        sublime.set_timeout(partial(self.update_title, commit_hash, file_path), 1)
+        sublime.set_timeout_async(partial(self.update_reference_document, commit_hash, file_path))
+
+    def update_reference_document(self, commit_hash, file_path):
+        self.view.set_reference_document(self.previous_file_version(commit_hash, file_path))
+
+    def update_title(self, commit_hash, file_path):
+        nice_hash = self.get_short_hash(commit_hash) if len(commit_hash) >= 40 else commit_hash
+        title = SHOW_COMMIT_TITLE.format(
+            os.path.basename(file_path),
+            nice_hash,
+        )
+        self.view.set_name(title)
 
     def previous_file_version(self, current_commit, file_path):
         # type: (str, str) -> str
@@ -66,16 +110,61 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
         return self.get_file_content_at_commit(file_path, previous_commit)
 
 
+class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
+    def run(self, edit):
+        # type: (...) -> None
+        view = self.view
+
+        settings = view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
+
+        previous_commit = self.previous_commit(commit_hash, file_path)
+        if not previous_commit:
+            flash(view, "No older commit found.")
+            return
+
+        settings.set("git_savvy.show_file_at_commit_view.commit", previous_commit)
+        view.run_command("gs_show_file_at_commit_refresh", {
+            "line": None,
+            "col": None
+        })
+
+
+class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
+    def run(self, edit):
+        # type: (...) -> None
+        view = self.view
+
+        settings = view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
+
+        next_commit = self.next_commit(commit_hash, file_path)
+        if not next_commit:
+            flash(view, "No newer commit found.")
+            return
+
+        settings.set("git_savvy.show_file_at_commit_view.commit", next_commit)
+        view.run_command("gs_show_file_at_commit_refresh", {
+            "line": None,
+            "col": None
+        })
+
+
 @text_command
-def render(view, text, lineno):
+def render(view, text, line, col):
     replace_view_content(view, text)
-    move_cursor_to_line_col(view, lineno, 0)
+    if line is not None:
+        move_cursor_to_line_col(view, line, col)
 
 
 def move_cursor_to_line_col(view, line, col):
-    # type: (sublime.View, int, int) -> None
+    # type: (sublime.View, int, Optional[int]) -> None
     # Herein: Line numbers are one-based, rows are zero-based.
-    pt = view.text_point(max(0, line - 1), col)
+    if col is None:
+        col = 1
+    pt = view.text_point(max(0, line - 1), max(0, col - 1))
     view.sel().clear()
     view.sel().add(sublime.Region(pt))
     view.show(pt)
