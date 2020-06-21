@@ -1,6 +1,8 @@
 import re
 import string
 
+from .. import store
+
 
 class ActiveBranchMixin():
 
@@ -147,6 +149,13 @@ class ActiveBranchMixin():
             "--abbrev-commit",
             throw_on_stderr=False
         ).strip()
+        if stdout:
+            try:
+                short_hash = stdout.split(maxsplit=1)[0]
+            except IndexError:
+                pass
+            else:
+                store.state[self.repo_path]["short_hash_length"] = len(short_hash)
 
         return stdout or "No commits yet."
 
