@@ -58,6 +58,12 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
 
         text = self.get_file_content_at_commit(file_path, commit_hash)
         render(view, text, lineno)
+        view.set_reference_document(self.previous_file_version(commit_hash, file_path))
+
+    def previous_file_version(self, current_commit, file_path):
+        # type: (str, str) -> str
+        previous_commit = self.previous_commit(current_commit, file_path)
+        return self.get_file_content_at_commit(file_path, previous_commit)
 
 
 @text_command
