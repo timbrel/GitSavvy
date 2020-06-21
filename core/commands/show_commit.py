@@ -39,8 +39,7 @@ class gs_show_commit(WindowCommand, GitCommand):
         settings.set("git_savvy.show_commit_view.show_word_diff", False)
         settings.set("git_savvy.show_commit_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
         view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
-        nice_hash = self.get_short_hash(commit_hash) if len(commit_hash) >= 40 else commit_hash
-        view.set_name(SHOW_COMMIT_TITLE.format(nice_hash))
+        view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash)))
         view.set_scratch(True)
         view.set_read_only(True)
         view.run_command("gs_show_commit_refresh")

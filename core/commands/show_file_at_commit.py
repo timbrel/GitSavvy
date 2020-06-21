@@ -55,10 +55,9 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
         settings.set("git_savvy.repo_path", repo_path)
         if not lang:
             lang = util.file.guess_syntax_for_file(self.window, file_path)
-        nice_hash = self.get_short_hash(commit_hash) if len(commit_hash) >= 40 else commit_hash
         title = SHOW_COMMIT_TITLE.format(
             os.path.basename(file_path),
-            nice_hash,
+            self.get_short_hash(commit_hash),
         )
 
         view.set_syntax_file(lang)
@@ -92,10 +91,9 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         self.view.set_reference_document(self.previous_file_version(commit_hash, file_path))
 
     def update_title(self, commit_hash, file_path):
-        nice_hash = self.get_short_hash(commit_hash) if len(commit_hash) >= 40 else commit_hash
         title = SHOW_COMMIT_TITLE.format(
             os.path.basename(file_path),
-            nice_hash,
+            self.get_short_hash(commit_hash),
         )
         self.view.set_name(title)
 
