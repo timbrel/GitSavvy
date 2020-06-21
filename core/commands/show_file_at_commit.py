@@ -1,4 +1,3 @@
-from functools import partial
 import os
 
 import sublime
@@ -85,7 +84,7 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         view.reset_reference_document()
         self.update_title(commit_hash, file_path)
 
-        sublime.set_timeout_async(partial(self.update_reference_document, commit_hash, file_path))
+        enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
 
     def update_reference_document(self, commit_hash, file_path):
         self.view.set_reference_document(self.previous_file_version(commit_hash, file_path))
