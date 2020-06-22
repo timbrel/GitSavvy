@@ -121,6 +121,7 @@ class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
             "line": None,
             "col": None
         })
+        flash(view, "On commit {}".format(previous_commit))
 
 
 class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
@@ -142,6 +143,7 @@ class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
             "line": None,
             "col": None
         })
+        flash(view, "On commit {}".format(next_commit))
 
 
 @text_command
