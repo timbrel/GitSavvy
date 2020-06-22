@@ -12,6 +12,7 @@ MYPY = False
 if MYPY:
     from typing import Any, Callable, Dict, Iterator, Literal, Optional, Tuple, TypeVar
     T = TypeVar('T')
+    F = TypeVar('F', bound=Callable[..., Any])
     Callback = Tuple[Callable, Tuple[Any, ...], Dict[str, Any]]
     ReturnValue = Any
 
@@ -97,12 +98,12 @@ def run_as_text_command(fn, view, *args, **kwargs):
 
 
 def text_command(fn):
-    # type: (Callable[..., T]) -> Callable[..., T]
+    # type: (F) -> F
     @wraps(fn)
     def decorated(view, *args, **kwargs):
         # type: (sublime.View, Any, Any) -> Optional[T]
         return run_as_text_command(fn, view, *args, **kwargs)
-    return decorated
+    return decorated  # type: ignore[return-value]
 
 
 @lru_cache()
