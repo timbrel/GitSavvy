@@ -102,6 +102,25 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         return self.get_file_content_at_commit(file_path, previous_commit)
 
 
+@text_command
+def render(view, text, line, col):
+    # type: (sublime.View, str, Optional[int], Optional[int]) -> None
+    replace_view_content(view, text)
+    if line is not None:
+        move_cursor_to_line_col(view, line, col)
+
+
+def move_cursor_to_line_col(view, line, col):
+    # type: (sublime.View, int, Optional[int]) -> None
+    # Herein: Line numbers are one-based, rows are zero-based.
+    if col is None:
+        col = 1
+    pt = view.text_point(max(0, line - 1), max(0, col - 1))
+    view.sel().clear()
+    view.sel().add(sublime.Region(pt))
+    view.show(pt)
+
+
 class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
     def run(self, edit):
         # type: (...) -> None
@@ -144,24 +163,6 @@ class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
             "col": None
         })
         flash(view, "On commit {}".format(next_commit))
-
-
-@text_command
-def render(view, text, line, col):
-    replace_view_content(view, text)
-    if line is not None:
-        move_cursor_to_line_col(view, line, col)
-
-
-def move_cursor_to_line_col(view, line, col):
-    # type: (sublime.View, int, Optional[int]) -> None
-    # Herein: Line numbers are one-based, rows are zero-based.
-    if col is None:
-        col = 1
-    pt = view.text_point(max(0, line - 1), max(0, col - 1))
-    view.sel().clear()
-    view.sel().add(sublime.Region(pt))
-    view.show(pt)
 
 
 class gs_show_current_file_at_commit(gs_show_file_at_commit):
