@@ -1814,14 +1814,16 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         })
 
     def show_file_at_commit(self, commit_hash, file_path):
-        self.window.run_command(
-            "gs_show_file_at_commit",
-            {"commit_hash": commit_hash, "filepath": file_path})
+        self.window.run_command("gs_show_file_at_commit", {
+            "commit_hash": commit_hash,
+            "filepath": file_path
+        })
 
     def blame_file_atcommit(self, commit_hash, file_path):
-        self.window.run_command(
-            "gs_blame",
-            {"commit_hash": commit_hash, "file_path": file_path})
+        self.window.run_command("gs_blame", {
+            "commit_hash": commit_hash,
+            "file_path": file_path
+        })
 
     def checkout_file_at_commit(self, commit_hash, file_path):
         self.checkout_ref(commit_hash, fpath=file_path)

@@ -228,9 +228,10 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
             {"commit_hash": self._commit_hash, "filepath": self._file_path, "lang": lang})
 
     def blame_file_atcommit(self):
-        self.window.run_command(
-            "gs_blame",
-            {"commit_hash": self._commit_hash, "file_path": self._file_path})
+        self.window.run_command("gs_blame", {
+            "commit_hash": self._commit_hash,
+            "file_path": self._file_path
+        })
 
     def checkout_file_at_commit(self):
         self.checkout_ref(self._commit_hash, fpath=self._file_path)
