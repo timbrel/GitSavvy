@@ -118,14 +118,30 @@ def compute_identifier_for_view(view):
     # type: (sublime.View) -> Optional[Tuple]
     settings = view.settings()
     return (
-        settings.get('git_savvy.repo_path'),
-        settings.get('git_savvy.file_path'),
-    ) if settings.get('git_savvy.inline_diff_view') else None
+        settings.get("git_savvy.repo_path"),
+        settings.get("git_savvy.file_path"),
+        settings.get("git_savvy.inline_diff_view.base_commit"),
+        settings.get("git_savvy.inline_diff_view.target_commit"),
+    ) if settings.get("git_savvy.inline_diff_view") else None
 
 
 def is_inline_diff_view(view):
     # type: (sublime.View) -> bool
     return view.settings().get('git_savvy.inline_diff_view')
+
+
+def is_historical_diff(view):
+    # type: (sublime.View) -> bool
+    settings = view.settings()
+    return (
+        settings.get("git_savvy.inline_diff_view.base_commit")
+        or settings.get("git_savvy.inline_diff_view.target_commit")
+    )
+
+
+def is_interactive_diff(view):
+    # type: (sublime.View) -> bool
+    return not is_historical_diff(view)
 
 
 class gs_inline_diff(WindowCommand, GitCommand):
@@ -188,6 +204,21 @@ class gs_inline_diff(WindowCommand, GitCommand):
                 })
                 return
 
+        elif active_view.settings().get("git_savvy.show_file_at_commit_view"):
+            file_path = active_view.settings().get("git_savvy.file_path")
+            target_commit = active_view.settings().get("git_savvy.show_file_at_commit_view.commit")
+            base_commit = self.previous_commit(target_commit, file_path)
+            self.window.run_command("gs_inline_diff_open", {
+                "repo_path": repo_path,
+                "file_path": file_path,
+                "syntax": active_view.settings().get("syntax"),
+                "cached": False,
+                "match_position": capture_cur_position(active_view),
+                "base_commit": base_commit,
+                "target_commit": target_commit
+            })
+            return
+
         file_path = self.file_path
         if not file_path:
             flash(active_view, "Cannot show diff for unnamed buffers.")
@@ -215,9 +246,18 @@ class gs_inline_diff(WindowCommand, GitCommand):
 
 
 class gs_inline_diff_open(WindowCommand, GitCommand):
-    def run(self, repo_path, file_path, syntax, cached=False, match_position=None):
-        # type: (str, str, str, bool, Position) -> None
-        this_id = (repo_path, file_path)
+    def run(
+        self,
+        repo_path,
+        file_path,
+        syntax,
+        cached=False,
+        match_position=None,
+        base_commit=None,
+        target_commit=None
+    ):
+        # type: (str, str, str, bool, Position, str, str) -> None
+        this_id = (repo_path, file_path, base_commit, target_commit)
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
                 diff_view = view
@@ -233,6 +273,8 @@ class gs_inline_diff_open(WindowCommand, GitCommand):
             settings.set("git_savvy.repo_path", repo_path)
             settings.set("git_savvy.file_path", file_path)
             settings.set("git_savvy.inline_diff_view.in_cached_mode", cached)
+            settings.set("git_savvy.inline_diff_view.base_commit", base_commit)
+            settings.set("git_savvy.inline_diff_view.target_commit", target_commit)
 
             title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
             diff_view.set_name(title + os.path.basename(file_path))
@@ -278,6 +320,8 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         file_path = self.file_path
         settings = self.view.settings()
         in_cached_mode = settings.get("git_savvy.inline_diff_view.in_cached_mode")
+        base_commit = settings.get("git_savvy.inline_diff_view.base_commit")
+        target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
         ignore_eol_ws = self.savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
 
         if raw_diff is None:
@@ -287,6 +331,8 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
                 "-U0",
                 "--ignore-space-at-eol" if ignore_eol_ws else None,
                 "--cached" if in_cached_mode else None,
+                base_commit,
+                target_commit,
                 "--",
                 file_path,
                 decode=False
@@ -303,18 +349,18 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             self.view.close()
             return
 
-        hunks_count = len(diff)
-        flash(self.view, "File has {} {} {}".format(
-            hunks_count,
-            "staged" if in_cached_mode else "unstaged",
-            "hunk" if hunks_count == 1 else "hunks"
-        ))
+        if is_interactive_diff(self.view):
+            hunks_count = len(diff)
+            flash(self.view, "File has {} {} {}".format(
+                hunks_count,
+                "staged" if in_cached_mode else "unstaged",
+                "hunk" if hunks_count == 1 else "hunks"
+            ))
 
-        rel_file_path = self.get_rel_path(file_path).replace('\\', '/')
         if in_cached_mode:
-            original_content = self.git("show", "HEAD:{}".format(rel_file_path))
+            original_content = self.get_file_content_at_commit(file_path, "HEAD")
         else:
-            original_content = self.git("show", ":{}".format(rel_file_path))
+            original_content = self.get_file_content_at_commit(file_path, base_commit)
         inline_diff_contents, replaced_lines = self.get_inline_diff_contents(original_content, diff)
 
         title = INLINE_DIFF_CACHED_TITLE if in_cached_mode else INLINE_DIFF_TITLE
@@ -474,6 +520,9 @@ class gs_inline_diff_toggle_cached_mode(TextCommand, GitCommand):
     Toggle `in_cached_mode`.
     """
 
+    def is_enabled(self, *args, **kwargs):
+        return is_interactive_diff(self.view)
+
     def run(self, edit):
         settings = self.view.settings()
         in_cached_mode = settings.get("git_savvy.inline_diff_view.in_cached_mode")
@@ -509,7 +558,7 @@ class GsInlineDiffFocusEventListener(EventListener):
     """
 
     def on_activated(self, view):
-        if view.settings().get("git_savvy.inline_diff_view") is True:
+        if is_inline_diff_view(view) and is_interactive_diff(view):
             view.run_command("gs_inline_diff_refresh", {"sync": False})
 
 
@@ -520,6 +569,9 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
     Determine the line number of the current cursor location, and use that
     to determine what diff to apply to the file (implemented in subclass).
     """
+
+    def is_enabled(self, *args, **kwargs):
+        return is_interactive_diff(self.view)
 
     def run(self, edit, **kwargs):
         sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
@@ -753,9 +805,13 @@ class gs_inline_diff_open_file(TextCommand, GitCommand):
 
         file_path = self.file_path
         line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
-        if self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode"):
-            diff = self.git("diff", "-U0", "--", file_path)
-            line_no = self.adjust_line_according_to_diff(diff, line_no)
+        if is_interactive_diff(self.view):
+            if self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode"):
+                diff = self.git("diff", "-U0", "--", file_path)
+                line_no = self.adjust_line_according_to_diff(diff, line_no)
+        else:
+            target_commit = self.view.settings().get("git_savvy.inline_diff_view.target_commit")
+            line_no = self.find_matching_lineno(target_commit, None, line_no, file_path)
         self.open_file(window, file_path, line_no, col_no)
 
     def open_file(self, window, file_path, line_no, col_no):
@@ -824,6 +880,9 @@ class gs_inline_diff_undo(TextCommand, GitCommand):
     """
     Undo the last action taken in the inline-diff view, if possible.
     """
+
+    def is_enabled(self, *args, **kwargs):
+        return is_interactive_diff(self.view)
 
     def run(self, edit):
         sublime.set_timeout_async(self.run_async, 0)
