@@ -14,7 +14,6 @@ from .log import LogMixin
 __all__ = (
     "gs_show_file_at_commit",
     "gs_show_file_at_commit_refresh",
-    "gs_show_current_file_at_commit",
     "gs_show_current_file",
     "gs_show_file_at_commit_open_previous_commit",
     "gs_show_file_at_commit_open_next_commit",
@@ -208,23 +207,6 @@ def recall_next_commit_for(view, commit_hash):
     return store.get(commit_hash)
 
 
-class gs_show_current_file_at_commit(gs_show_file_at_commit):
-
-    @util.view.single_cursor_coords
-    def run(self, coords, commit_hash, lineno=None, lang=None):
-        if not lang:
-            av = self.window.active_view()
-            if av:
-                lang = av.settings().get('syntax')
-        if lineno is None:
-            lineno = self.find_matching_lineno(None, commit_hash, coords[0] + 1)
-        super().run(
-            commit_hash=commit_hash,
-            filepath=self.file_path,
-            lineno=lineno,
-            lang=lang)
-
-
 class gs_show_current_file(LogMixin, WindowCommand, GitCommand):
     """
     Show a panel of commits of current file on current branch and
@@ -235,8 +217,25 @@ class gs_show_current_file(LogMixin, WindowCommand, GitCommand):
         super().run(file_path=self.file_path)
 
     def do_action(self, commit_hash, **kwargs):
-        self.window.run_command("gs_show_current_file_at_commit", {
-            "commit_hash": commit_hash
+        view = self.window.active_view()
+        if not view:
+            print("RuntimeError: Window has no active view")
+            return
+
+        pos = capture_cur_position(view)
+        if pos is None:
+            lineno, col, offset = None, None, None
+        else:
+            row, col, offset = pos
+            lineno = self.find_matching_lineno(None, commit_hash, row + 1)
+            col += 1
+
+        self.window.run_command("gs_show_file_at_commit", {
+            "commit_hash": commit_hash,
+            "filepath": self.file_path,
+            "lineno": lineno,
+            "col": col,
+            "lang": view.settings().get('syntax')
         })
 
 
