@@ -7,6 +7,7 @@ from . import diff
 from . import intra_line_colorizer
 from ..git_command import GitCommand
 from ..view import replace_view_content
+from ..utils import flash
 
 
 __all__ = (
@@ -77,7 +78,7 @@ class gs_show_commit_toggle_setting(TextCommand):
         setting_str = "git_savvy.show_commit_view.{}".format(setting)
         settings = self.view.settings()
         settings.set(setting_str, not settings.get(setting_str))
-        self.view.window().status_message("{} is now {}".format(setting, settings.get(setting_str)))
+        flash(self.view, "{} is now {}".format(setting, settings.get(setting_str)))
         self.view.run_command("gs_show_commit_refresh")
 
 
