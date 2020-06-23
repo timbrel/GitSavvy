@@ -17,7 +17,7 @@ from ..fns import filter_, flatten
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand, GitSavvyError
 from ..runtime import enqueue_on_ui, enqueue_on_worker
-from ..utils import line_indentation
+from ..utils import flash, line_indentation
 from ..view import replace_view_content
 from ...common import util
 
@@ -357,7 +357,7 @@ class gs_diff_toggle_setting(TextCommand):
         current_mode = settings.get(setting_str)
         next_mode = not current_mode
         settings.set(setting_str, next_mode)
-        self.view.window().status_message("{} is now {}".format(setting, next_mode))
+        flash(self.view, "{} is now {}".format(setting, next_mode))
 
         self.view.run_command("gs_diff_refresh")
 
@@ -410,9 +410,7 @@ class gs_diff_toggle_cached_mode(TextCommand):
         current_mode = settings.get(setting_str)
         next_mode = not current_mode
         settings.set(setting_str, next_mode)
-        self.view.window().status_message(
-            "Showing {} changes".format("staged" if next_mode else "unstaged")
-        )
+        flash(self.view, "Showing {} changes".format("staged" if next_mode else "unstaged"))
 
         self.view.run_command("gs_diff_refresh")
 
@@ -597,7 +595,7 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
             for s in self.view.sel()
         )))
         if not jump_positions:
-            util.view.flash(self.view, "Not within a hunk")
+            flash(self.view, "Not within a hunk")
         else:
             for jp in jump_positions:
                 self.load_file_at_line(*jp)

@@ -1,14 +1,14 @@
 import sublime
 from sublime_plugin import TextCommand
 
-from GitSavvy.common import util
-from ...core.git_command import GitCommand
 from ..github import open_file_in_browser  # , open_repo, open_issues
 from ..github import open_repo
 from ..github import open_issues
 
 from .. import git_mixins
+from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_remote_panel
+from ...core.utils import flash
 
 
 EARLIER_COMMIT_PROMPT = ("The remote chosen may not contain the commit. "
@@ -76,7 +76,7 @@ class GsGithubOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.Github
 
                     commit_hash = merge_base
             else:
-                util.view.flash(self.view, "This revision has not been pushed upstream yet.")
+                flash(self.view, "This revision has not been pushed upstream yet.")
                 return
 
         start_line = None

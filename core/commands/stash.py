@@ -3,12 +3,12 @@ import re
 import sublime
 from sublime_plugin import EventListener, TextCommand, WindowCommand
 
-from ..utils import hprint
 from ..runtime import enqueue_on_worker
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelCommandMixin
 from ..ui_mixins.quick_panel import show_stash_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from ..utils import flash, hprint
 from ..view import replace_view_content
 from ...common import util
 
@@ -66,7 +66,7 @@ class SelectStashIdMixin(TextCommand):
                 # on the worker as well.
                 enqueue_on_worker(self.view.run_command, self.name())
             elif view_status == "invalid":
-                util.view.flash(
+                flash(
                     self.view,
                     "Nothing done, the stash you're looking at is outdated. "
                 )
@@ -102,7 +102,7 @@ class GsStashApplyCommand(SelectStashIdMixin, GitCommand):
     def do(self, stash_id):
         # type: (StashId) -> None
         self.apply_stash(stash_id)
-        util.view.flash(self.view, "Successfully applied stash ({}).".format(stash_id))
+        flash(self.view, "Successfully applied stash ({}).".format(stash_id))
         util.view.refresh_gitsavvy(self.view)
 
 
@@ -115,7 +115,7 @@ class GsStashPopCommand(SelectStashIdMixin, GitCommand):
     def do(self, stash_id):
         # type: (StashId) -> None
         self.pop_stash(stash_id)
-        util.view.flash(self.view, "Successfully popped stash ({}).".format(stash_id))
+        flash(self.view, "Successfully popped stash ({}).".format(stash_id))
 
         if self.view.settings().get("git_savvy.stash_view.stash_id", None) == stash_id:
             self.view.close()
@@ -144,7 +144,7 @@ class GsStashDropCommand(SelectStashIdMixin, GitCommand):
         if match:
             commit = match.group(1)
             print(DROP_UNDO_MESSAGE.format(stash_id, commit))
-        util.view.flash(
+        flash(
             self.view,
             "Successfully dropped stash ({}). "
             "Open Sublime console for undo instructions.".format(stash_id)

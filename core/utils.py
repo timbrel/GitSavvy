@@ -71,6 +71,7 @@ def hprint(msg):
 
 def flash(view, message):
     # type: (sublime.View, str) -> None
+    """ Flash status message on view's window. """
     window = view.window()
     if window:
         window.status_message(message)

@@ -8,6 +8,7 @@ from sublime_plugin import TextCommand
 from ..fns import accumulate, filter_, unique
 from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff
+from ..utils import flash
 
 
 __all__ = (
@@ -35,13 +36,6 @@ else:
 
 class UnsupportedCombinedDiff(RuntimeError):
     pass
-
-
-def flash(view, message):
-    # type: (sublime.View, str) -> None
-    window = view.window()
-    if window:
-        window.status_message(message)
 
 
 class gs_stage_hunk(TextCommand, GitCommand):
