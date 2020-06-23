@@ -32,7 +32,7 @@ SHOW_COMMIT_TITLE = "FILE: {} --{}"
 
 class gs_show_file_at_commit(WindowCommand, GitCommand):
 
-    def run(self, commit_hash, filepath, check_for_renames=False, lineno=1, col=1, lang=None):
+    def run(self, commit_hash, filepath, check_for_renames=False, lineno=1, col=1, row_offset=0, lang=None):
         enqueue_on_worker(
             self.run_impl,
             commit_hash,
@@ -40,10 +40,11 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
             check_for_renames,
             lineno,
             col,
+            row_offset,
             lang,
         )
 
-    def run_impl(self, commit_hash, file_path, check_for_renames, lineno, col, lang):
+    def run_impl(self, commit_hash, file_path, check_for_renames, lineno, col, row_offset, lang):
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
         view = util.view.get_scratch_view(self, "show_file_at_commit")
@@ -66,7 +67,8 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
 
         view.run_command("gs_show_file_at_commit_refresh", {
             "line": lineno,
-            "col": col
+            "col": col,
+            "row_offset": row_offset
         })
 
 
@@ -103,13 +105,13 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
 
 @text_command
 def render(view, text, line, col, row_offset=None):
-    # type: (sublime.View, str, Optional[int], Optional[int], float) -> None
+    # type: (sublime.View, str, Optional[int], Optional[int], Optional[float]) -> None
     replace_view_content(view, text)
     if line is not None:
         move_cursor_to_line_col(view, line, col, row_offset)
 
 
-def move_cursor_to_line_col(view, line, col, row_offset=None):
+def move_cursor_to_line_col(view, line, col, row_offset):
     # type: (sublime.View, int, Optional[int], Optional[float]) -> None
     # Herein: Line numbers are one-based, rows are zero-based.
     if col is None:
@@ -235,6 +237,7 @@ class gs_show_current_file(LogMixin, WindowCommand, GitCommand):
             "filepath": self.file_path,
             "lineno": lineno,
             "col": col,
+            "row_offset": offset,
             "lang": view.settings().get('syntax')
         })
 
