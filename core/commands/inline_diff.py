@@ -11,7 +11,7 @@ from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff
 from ..runtime import enqueue_on_ui
 from ..utils import flash, focus_view
-from ..view import replace_view_content
+from ..view import capture_cur_position, replace_view_content, row_offset, Position
 from ...common import util
 
 
@@ -31,18 +31,9 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
+    from typing import Dict, Iterable, List, Optional, Tuple
+    from ..types import LineNo, ColNo, Row, Col
 
-    # Use LineNo, ColNo for 1-based line column counting (like git or `window.open_file`),
-    # use Row, Col for 0-based counting like Sublime's `view.rowcol`!
-    LineNo = int
-    ColNo = int
-    Row = int
-    Col = int
-    Position = NamedTuple("Position", [("row", Row), ("col", Col), ("offset", float)])
-
-else:
-    Position = namedtuple("Position", "row col offset")
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
 
@@ -56,23 +47,6 @@ DIFF_HEADER = """diff --git a/{path} b/{path}
 """
 
 diff_view_hunks = {}  # type: Dict[sublime.ViewId, List[HunkReference]]
-
-
-def capture_cur_position(view):
-    # type: (sublime.View) -> Optional[Position]
-    try:
-        sel = view.sel()[0]
-    except Exception:
-        return None
-
-    row, col = view.rowcol(sel.begin())
-    return Position(row, col, row_offset(row, view))
-
-
-def row_offset(row, view):
-    # type: (Row, sublime.View) -> float
-    vx, vy = view.viewport_position()
-    return row - (vy / view.line_height())
 
 
 def place_cursor_and_show(view, row, col, row_offset):

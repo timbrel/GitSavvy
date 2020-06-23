@@ -6,7 +6,7 @@ from sublime_plugin import TextCommand, WindowCommand
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_worker, text_command
 from ..utils import flash
-from ..view import replace_view_content
+from ..view import capture_cur_position, replace_view_content
 from ...common import util
 from .log import LogMixin
 
@@ -25,7 +25,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Optional, Tuple
+    from typing import Dict, Optional
 
 
 SHOW_COMMIT_TITLE = "FILE: {} --{}"
@@ -128,23 +128,6 @@ def move_cursor_to_line_col(view, line, col, row_offset=None):
         view.show(pt)
 
 
-def capture_cur_position(view):
-    # type: (sublime.View) -> Tuple[Optional[int], Optional[int]]
-    try:
-        sel = view.sel()[0]
-    except Exception:
-        return (None, None)
-
-    row, col = view.rowcol(sel.b)
-    return row + 1, col + 1
-
-
-def row_offset(row, view):
-    # type: (int, sublime.View) -> float
-    vx, vy = view.viewport_position()
-    return row - (vy / view.line_height())
-
-
 class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
     def run(self, edit):
         # type: (...) -> None
@@ -162,10 +145,13 @@ class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
         remember_next_commit_for(view, {previous_commit: commit_hash})
         settings.set("git_savvy.show_file_at_commit_view.commit", previous_commit)
 
-        line, col = capture_cur_position(view)
-        offset = row_offset(line - 1, view) if line else None
-        if line:
-            line = self.find_matching_lineno(commit_hash, previous_commit, line, file_path)
+        pos = capture_cur_position(view)
+        if pos is None:
+            line, col, offset = None, None, None
+        else:
+            row, col, offset = pos
+            line = self.find_matching_lineno(commit_hash, previous_commit, row + 1, file_path)
+            col += 1
         view.run_command("gs_show_file_at_commit_refresh", {
             "line": line,
             "col": col,
@@ -192,10 +178,13 @@ class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
             return
 
         settings.set("git_savvy.show_file_at_commit_view.commit", next_commit)
-        line, col = capture_cur_position(view)
-        offset = row_offset(line - 1, view) if line else None
-        if line:
-            line = self.reverse_find_matching_lineno(next_commit, commit_hash, line, file_path)
+        pos = capture_cur_position(view)
+        if pos is None:
+            line, col, offset = None, None, None
+        else:
+            row, col, offset = pos
+            line = self.reverse_find_matching_lineno(next_commit, commit_hash, row + 1, file_path)
+            col += 1
         view.run_command("gs_show_file_at_commit_refresh", {
             "line": line,
             "col": col,
