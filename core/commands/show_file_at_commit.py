@@ -25,7 +25,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Optional
+    from typing import Optional, Tuple
 
 
 SHOW_COMMIT_TITLE = "FILE: {} --{}"
@@ -72,15 +72,15 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
 
 
 class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
-    def run(self, edit, line, col=None):
-        # type: (...) -> None
+    def run(self, edit, line=None, col=None, row_offset=None):
+        # type: (sublime.Edit, int, int, float) -> None
         view = self.view
         settings = view.settings()
         file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
 
         text = self.get_file_content_at_commit(file_path, commit_hash)
-        render(view, text, line, col)
+        render(view, text, line, col, row_offset)
         view.reset_reference_document()
         self.update_title(commit_hash, file_path)
 
@@ -103,22 +103,46 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
 
 
 @text_command
-def render(view, text, line, col):
-    # type: (sublime.View, str, Optional[int], Optional[int]) -> None
+def render(view, text, line, col, row_offset=None):
+    # type: (sublime.View, str, Optional[int], Optional[int], float) -> None
     replace_view_content(view, text)
     if line is not None:
-        move_cursor_to_line_col(view, line, col)
+        move_cursor_to_line_col(view, line, col, row_offset)
 
 
-def move_cursor_to_line_col(view, line, col):
-    # type: (sublime.View, int, Optional[int]) -> None
+def move_cursor_to_line_col(view, line, col, row_offset=None):
+    # type: (sublime.View, int, Optional[int], Optional[float]) -> None
     # Herein: Line numbers are one-based, rows are zero-based.
     if col is None:
         col = 1
-    pt = view.text_point(max(0, line - 1), max(0, col - 1))
+    row, col = line - 1, col - 1
+    pt = view.text_point(row, col)
     view.sel().clear()
     view.sel().add(sublime.Region(pt))
-    view.show(pt)
+
+    if row_offset is not None:
+        vy = (row - row_offset) * view.line_height()
+        vx, _ = view.viewport_position()
+        view.set_viewport_position((vx, vy))
+    else:
+        view.show(pt)
+
+
+def capture_cur_position(view):
+    # type: (sublime.View) -> Tuple[Optional[int], Optional[int]]
+    try:
+        sel = view.sel()[0]
+    except Exception:
+        return (None, None)
+
+    row, col = view.rowcol(sel.b)
+    return row + 1, col + 1
+
+
+def row_offset(row, view):
+    # type: (int, sublime.View) -> float
+    vx, vy = view.viewport_position()
+    return row - (vy / view.line_height())
 
 
 class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
@@ -136,9 +160,15 @@ class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
             return
 
         settings.set("git_savvy.show_file_at_commit_view.commit", previous_commit)
+
+        line, col = capture_cur_position(view)
+        offset = row_offset(line - 1, view) if line else None
+        if line:
+            line = self.find_matching_lineno(commit_hash, previous_commit, line, file_path)
         view.run_command("gs_show_file_at_commit_refresh", {
-            "line": None,
-            "col": None
+            "line": line,
+            "col": col,
+            "row_offset": offset
         })
         flash(view, "On commit {}".format(previous_commit))
 
@@ -158,9 +188,14 @@ class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
             return
 
         settings.set("git_savvy.show_file_at_commit_view.commit", next_commit)
+        line, col = capture_cur_position(view)
+        offset = row_offset(line - 1, view) if line else None
+        if line:
+            line = self.reverse_find_matching_lineno(next_commit, commit_hash, line, file_path)
         view.run_command("gs_show_file_at_commit_refresh", {
-            "line": None,
-            "col": None
+            "line": line,
+            "col": col,
+            "row_offset": offset
         })
         flash(view, "On commit {}".format(next_commit))
 

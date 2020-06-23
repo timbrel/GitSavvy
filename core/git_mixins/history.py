@@ -210,7 +210,38 @@ class HistoryMixin():
         diff = self.no_context_diff(base_commit, target_commit, file_path)
         return self.adjust_line_according_to_diff(diff, line)
 
+    def reverse_find_matching_lineno(self, base_commit="HEAD", target_commit="HEAD", line=1, file_path=None):
+        # type: (Optional[str], Optional[str], int, str) -> int
+        """
+        Return the matching line of the base_commit given the line number of the target_commit.
+        """
+        if not file_path:
+            file_path = self.file_path
+
+        diff = self.no_context_diff(base_commit, target_commit, file_path)
+        hunks = util.parse_diff(diff)
+        if not hunks:
+            return line
+        return self.reverse_adjust_line_according_to_hunks(hunks, line)
+
     def no_context_diff(self, base_commit, target_commit, file_path=None):
+        # type: (Optional[str], Optional[str], Optional[str]) -> str
+        if (
+            not base_commit
+            or base_commit == "HEAD"
+            or not target_commit
+            or target_commit == "HEAD"
+        ):
+            return self._no_context_diff(base_commit, target_commit, file_path)
+
+        key = ("no_context_diff", base_commit, target_commit, file_path)
+        try:
+            return store.cache[key]
+        except KeyError:
+            rv = store.cache[key] = self._no_context_diff(base_commit, target_commit, file_path)
+            return rv
+
+    def _no_context_diff(self, base_commit, target_commit, file_path=None):
         # type: (Optional[str], Optional[str], Optional[str]) -> str
         cmd = [
             "diff",
