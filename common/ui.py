@@ -400,9 +400,7 @@ class GsEditViewCompleteCommand(TextCommand):
         content_after = self.view.substr(sublime.Region(help_region.end(), self.view.size() - 1))
         content = (content_before + content_after).strip()
 
-        self.view.window().focus_view(self.view)
-        self.view.window().run_command("close_file")
-
+        self.view.close()
         edit_view.on_done(content)
 
 
