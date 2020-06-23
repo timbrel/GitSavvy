@@ -12,7 +12,7 @@ if MYPY:
     WrapperFn = Callable[[sublime.View], ContextManager[None]]
 
     from .types import Row, Col
-    Position = NamedTuple("Position", [("row", Row), ("col", Col), ("offset", float)])
+    Position = NamedTuple("Position", [("row", Row), ("col", Col), ("offset", Optional[float])])
 
 else:
     Position = namedtuple("Position", "row col offset")

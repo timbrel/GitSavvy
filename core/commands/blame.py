@@ -7,6 +7,7 @@ from sublime_plugin import TextCommand
 
 from .navigate import GsNavigate
 from ..git_command import GitCommand
+from ..view import Position
 from ...common import util
 from .log import LogMixin
 from ..ui_mixins.quick_panel import PanelActionMixin
@@ -431,7 +432,7 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand
             "commit_hash": commit_hash,
             "filepath": self.file_path,
             "check_for_renames": True,
-            "lineno": lineno,
+            "position": Position(lineno - 1, 0, None),
             "lang": settings.get('git_savvy.original_syntax', None)
         })
 

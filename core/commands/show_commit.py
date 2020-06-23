@@ -6,8 +6,8 @@ from sublime_plugin import WindowCommand, TextCommand
 from . import diff
 from . import intra_line_colorizer
 from ..git_command import GitCommand
-from ..view import replace_view_content
 from ..utils import flash
+from ..view import replace_view_content, Position
 
 
 __all__ = (
@@ -106,7 +106,8 @@ class gs_show_commit_open_file_at_hunk(diff.gs_diff_open_file_at_hunk):
         window.run_command("gs_show_file_at_commit", {
             "commit_hash": commit_hash,
             "filepath": full_path,
-            "lineno": row
+            # row(sic!) is actually a lineno
+            "position": Position(row - 1, col - 1, None)
         })
 
 

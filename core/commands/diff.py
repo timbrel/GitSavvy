@@ -18,7 +18,7 @@ from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand, GitSavvyError
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view, line_indentation
-from ..view import replace_view_content
+from ..view import replace_view_content, Position
 from ...common import util
 
 
@@ -606,7 +606,7 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
             window.run_command("gs_show_file_at_commit", {
                 "commit_hash": target_commit,
                 "filepath": full_path,
-                "lineno": row,
+                "position": Position(row - 1, col - 1, None),
             })
         else:
             window.open_file(
