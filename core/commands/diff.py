@@ -17,7 +17,7 @@ from ..fns import filter_, flatten
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand, GitSavvyError
 from ..runtime import enqueue_on_ui, enqueue_on_worker
-from ..utils import flash, line_indentation
+from ..utils import flash, focus_view, line_indentation
 from ..view import replace_view_content
 from ...common import util
 
@@ -92,16 +92,6 @@ def compute_identifier_for_view(view):
         settings.get('git_savvy.diff_view.base_commit'),
         settings.get('git_savvy.diff_view.target_commit')
     ) if settings.get('git_savvy.diff_view') else None
-
-
-def focus_view(view):
-    window = view.window()
-    if not window:
-        return
-
-    group, _ = window.get_view_index(view)
-    window.focus_group(group)
-    window.focus_view(view)
 
 
 class gs_diff(WindowCommand, GitCommand):
