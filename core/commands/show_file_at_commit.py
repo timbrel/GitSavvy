@@ -25,7 +25,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Optional, Tuple
+    from typing import Dict, Optional, Tuple
 
 
 SHOW_COMMIT_TITLE = "FILE: {} --{}"
@@ -159,6 +159,7 @@ class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
             flash(view, "No older commit found.")
             return
 
+        remember_next_commit_for(view, {previous_commit: commit_hash})
         settings.set("git_savvy.show_file_at_commit_view.commit", previous_commit)
 
         line, col = capture_cur_position(view)
@@ -182,7 +183,10 @@ class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
         file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
 
-        next_commit = self.next_commit(commit_hash, file_path)
+        next_commit = (
+            recall_next_commit_for(view, commit_hash)
+            or self.next_commit(commit_hash, file_path)
+        )
         if not next_commit:
             flash(view, "No newer commit found.")
             return
@@ -198,6 +202,21 @@ class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
             "row_offset": offset
         })
         flash(view, "On commit {}".format(next_commit))
+
+
+def remember_next_commit_for(view, mapping):
+    # type: (sublime.View, Dict[str, str]) -> None
+    settings = view.settings()
+    store = settings.get("git_savvy.show_file_at_commit.next_commits", {})  # type: Dict[str, str]
+    store.update(mapping)
+    settings.set("git_savvy.show_file_at_commit.next_commits", store)
+
+
+def recall_next_commit_for(view, commit_hash):
+    # type: (sublime.View, str) -> Optional[str]
+    settings = view.settings()
+    store = settings.get("git_savvy.show_file_at_commit.next_commits", {})  # type: Dict[str, str]
+    return store.get(commit_hash)
 
 
 class gs_show_current_file_at_commit(gs_show_file_at_commit):
