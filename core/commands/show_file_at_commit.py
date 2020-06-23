@@ -170,7 +170,9 @@ class gs_show_current_file_at_commit(gs_show_file_at_commit):
     @util.view.single_cursor_coords
     def run(self, coords, commit_hash, lineno=None, lang=None):
         if not lang:
-            lang = self.window.active_view().settings().get('syntax')
+            av = self.window.active_view()
+            if av:
+                lang = av.settings().get('syntax')
         if lineno is None:
             lineno = self.find_matching_lineno(None, commit_hash, coords[0] + 1)
         super().run(
