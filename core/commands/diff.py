@@ -44,6 +44,7 @@ if MYPY:
         Tuple, TypeVar
     )
     from ..parse_diff import Hunk, HunkLine
+    from ..types import LineNo, ColNo
 
     T = TypeVar('T')
     Point = int
@@ -590,8 +591,8 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
             for jp in jump_positions:
                 self.load_file_at_line(*jp)
 
-    def load_file_at_line(self, commit_hash, filename, row, col):
-        # type: (Optional[str], str, int, int) -> None
+    def load_file_at_line(self, commit_hash, filename, line, col):
+        # type: (Optional[str], str, LineNo, ColNo) -> None
         """
         Show file at target commit if `git_savvy.diff_view.target_commit` is non-empty.
         Otherwise, open the file directly.
@@ -606,11 +607,11 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
             window.run_command("gs_show_file_at_commit", {
                 "commit_hash": target_commit,
                 "filepath": full_path,
-                "position": Position(row - 1, col - 1, None),
+                "position": Position(line - 1, col - 1, None),
             })
         else:
             window.open_file(
-                "{file}:{row}:{col}".format(file=full_path, row=row, col=col),
+                "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
                 sublime.ENCODED_POSITION
             )
 

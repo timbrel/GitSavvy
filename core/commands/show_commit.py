@@ -22,6 +22,7 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import Optional
+    from ..types import LineNo, ColNo
 
 SHOW_COMMIT_TITLE = "COMMIT: {}"
 
@@ -89,8 +90,8 @@ class gs_show_commit_open_file_at_hunk(diff.gs_diff_open_file_at_hunk):
     and open the file at that hunk in a separate view.
     """
 
-    def load_file_at_line(self, commit_hash, filename, row, col):
-        # type: (Optional[str], str, int, int) -> None
+    def load_file_at_line(self, commit_hash, filename, line, col):
+        # type: (Optional[str], str, LineNo, ColNo) -> None
         """
         Show file at target commit if `git_savvy.diff_view.target_commit` is non-empty.
         Otherwise, open the file directly.
@@ -106,14 +107,13 @@ class gs_show_commit_open_file_at_hunk(diff.gs_diff_open_file_at_hunk):
         window.run_command("gs_show_file_at_commit", {
             "commit_hash": commit_hash,
             "filepath": full_path,
-            # row(sic!) is actually a lineno
-            "position": Position(row - 1, col - 1, None)
+            "position": Position(line - 1, col - 1, None)
         })
 
 
 class gs_show_commit_show_hunk_on_working_dir(diff.gs_diff_open_file_at_hunk):
-    def load_file_at_line(self, commit_hash, filename, row, col):
-        # type: (Optional[str], str, int, int) -> None
+    def load_file_at_line(self, commit_hash, filename, line, col):
+        # type: (Optional[str], str, LineNo, ColNo) -> None
         if not commit_hash:
             print("Could not parse commit for its commit hash")
             return
@@ -122,9 +122,9 @@ class gs_show_commit_show_hunk_on_working_dir(diff.gs_diff_open_file_at_hunk):
             return
 
         full_path = os.path.join(self.repo_path, filename)
-        row = self.find_matching_lineno(commit_hash, None, row, full_path)
+        line = self.find_matching_lineno(commit_hash, None, line, full_path)
         window.open_file(
-            "{file}:{row}:{col}".format(file=full_path, row=row, col=col),
+            "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
             sublime.ENCODED_POSITION
         )
 
