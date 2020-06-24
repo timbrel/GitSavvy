@@ -145,6 +145,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
             return
 
         repo_path = self.repo_path
+        cur_pos = None  # type: Optional[Position]
 
         if active_view.settings().get("git_savvy.diff_view"):
             cached = active_view.settings().get("git_savvy.diff_view.in_cached_mode")
@@ -159,12 +160,13 @@ class gs_inline_diff(WindowCommand, GitCommand):
                 syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
 
                 row_in_view = active_view.rowcol(cursor)[0]
-                offset = row_offset(row_in_view, active_view)
                 cur_pos = Position(
                     # jump_position.row (sic!); actually 1-based line_no
-                    jump_position.row - 1, jump_position.col - 1, offset
-                )  # type: Optional[Position]
-                if cur_pos and cached:
+                    jump_position.row - 1,
+                    jump_position.col - 1,
+                    row_offset(row_in_view, active_view)
+                )
+                if cached:
                     row, col, offset = cur_pos
                     new_row = self.find_matching_lineno(None, None, row + 1, file_path) - 1
                     cur_pos = Position(new_row, col, offset)
