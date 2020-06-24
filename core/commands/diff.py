@@ -48,8 +48,8 @@ if MYPY:
 
     T = TypeVar('T')
     Point = int
-    RowCol = Tuple[int, int]
-    HunkLineWithB = NamedTuple('HunkLineWithB', [('line', 'HunkLine'), ('b', int)])
+    LineCol = Tuple[LineNo, ColNo]
+    HunkLineWithB = NamedTuple('HunkLineWithB', [('line', 'HunkLine'), ('b', LineNo)])
 else:
     HunkLineWithB = namedtuple('HunkLineWithB', 'line b')
 
@@ -624,11 +624,11 @@ def jump_position_to_file(view, diff, pt):
 
     header, hunk = head_and_hunk
 
-    rowcol = real_rowcol_in_hunk(hunk, relative_rowcol_in_hunk(view, hunk, pt))
-    if not rowcol:
+    linecol = real_linecol_in_hunk(hunk, *row_offset_and_col_in_hunk(view, hunk, pt))
+    if not linecol:
         return None
 
-    row, col = rowcol
+    line, col = linecol
 
     filename = header.from_filename()
     if not filename:
@@ -636,7 +636,7 @@ def jump_position_to_file(view, diff, pt):
 
     commit_header = diff.commit_for_hunk(hunk)
     commit_hash = commit_header.commit_hash() if commit_header else None
-    return JumpTo(commit_hash, filename, row, col)
+    return JumpTo(commit_hash, filename, line, col)
 
 
 def jump_position_to_file_for_word_diff_mode(view, diff, pt):
@@ -673,33 +673,36 @@ def jump_position_to_file_for_word_diff_mode(view, diff, pt):
     # Compute the *relative* row in that hunk
     head_row, _ = view.rowcol(content_start)
     pt_row, col = view.rowcol(pt)
-    rel_row = pt_row - head_row
+    row_offset = pt_row - head_row
     # If the cursor is in the hunk header, assume instead it is
     # at `(0, 0)` position in the hunk content.
-    if rel_row < 0:
-        rel_row, col = 0, 0
+    if row_offset < 0:
+        row_offset, col = 0, 0
 
     # Extract the starting line at "b" encoded in the hunk header t.i. for
     # "@@ -685,8 +686,14 @@ ..." extract the "686".
     from_start = hunk.header().from_line_start()
     if from_start is None:
         return None
-    row = from_start + rel_row
+    line = from_start + row_offset
 
     filename = header.from_filename()
     if not filename:
         return None
 
-    row = row - removed_lines_before_pt
+    line = line - removed_lines_before_pt
     col = col + 1 - removed_chars_before_pt
     commit_header = diff.commit_for_hunk(hunk)
     commit_hash = commit_header.commit_hash() if commit_header else None
-    return JumpTo(commit_hash, filename, row, col)
+    return JumpTo(commit_hash, filename, line, col)
 
 
-def relative_rowcol_in_hunk(view, hunk, pt):
-    # type: (sublime.View, Hunk, Point) -> RowCol
-    """Return rowcol of given pt relative to hunk start"""
+def row_offset_and_col_in_hunk(view, hunk, pt):
+    # type: (sublime.View, Hunk, Point) -> Tuple[int, ColNo]
+    """Return row offset of `pt` relative to hunk start and its column
+
+    Note that the column is already 1-based t.i. a `ColNo`
+    """
     head_row, _ = view.rowcol(hunk.a)
     pt_row, col = view.rowcol(pt)
     # If `col=0` the user is on the meta char (e.g. '+- ') which is not
@@ -708,19 +711,17 @@ def relative_rowcol_in_hunk(view, hunk, pt):
     return pt_row - head_row, max(col, 1)
 
 
-def real_rowcol_in_hunk(hunk, relative_rowcol):
-    # type: (Hunk, RowCol) -> Optional[RowCol]
-    """Translate relative to absolute row, col pair"""
+def real_linecol_in_hunk(hunk, row_offset, col):
+    # type: (Hunk, int, ColNo) -> Optional[LineCol]
+    """Translate relative to absolute line, col pair"""
     hunk_lines = counted_lines(hunk)
     if not hunk_lines:
         return None
 
-    row_in_hunk, col = relative_rowcol
-
     # If the user is on the header line ('@@ ..') pretend to be on the
     # first visible line with some content instead.
-    if row_in_hunk == 0:
-        row_in_hunk = next(
+    if row_offset == 0:
+        row_offset = next(
             (
                 index
                 for index, (line, _) in enumerate(hunk_lines, 1)
@@ -730,7 +731,7 @@ def real_rowcol_in_hunk(hunk, relative_rowcol):
         )
         col = 1
 
-    line, b = hunk_lines[row_in_hunk - 1]
+    line, b = hunk_lines[row_offset - 1]
 
     # Happy path since the user is on a present line
     if not line.is_from_line():
@@ -738,7 +739,7 @@ def real_rowcol_in_hunk(hunk, relative_rowcol):
 
     # The user is on a deleted line ('-') we cannot jump to. If possible,
     # select the next guaranteed to be available line
-    for next_line, next_b in hunk_lines[row_in_hunk:]:
+    for next_line, next_b in hunk_lines[row_offset:]:
         if next_line.is_to_line():
             return next_b, min(col, len(next_line.content) + 1)
         elif next_line.is_context():
@@ -756,7 +757,7 @@ def real_rowcol_in_hunk(hunk, relative_rowcol):
 
 def counted_lines(hunk):
     # type: (Hunk) -> Optional[List[HunkLineWithB]]
-    """Split a hunk into (first char, line content, row) tuples
+    """Split a hunk into (first char, line content, line) tuples
 
     Note that rows point to available rows on the b-side.
     """
