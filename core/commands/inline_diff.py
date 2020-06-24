@@ -144,73 +144,82 @@ class gs_inline_diff(WindowCommand, GitCommand):
             active_view.close()
             return
 
-        repo_path = self.repo_path
-        cur_pos = None  # type: Optional[Position]
-
         if active_view.settings().get("git_savvy.diff_view"):
-            cached = active_view.settings().get("git_savvy.diff_view.in_cached_mode")
-            cursor = active_view.sel()[0].b
-            jump_position = diff.jump_position_to_file(
-                active_view,
-                SplittedDiff.from_view(active_view),
-                cursor
-            )
-            if jump_position and not jump_position.commit_hash:
-                file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
-                syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
+            self.open_from_diff_view(active_view)
+        elif active_view.settings().get("git_savvy.show_file_at_commit_view"):
+            self.open_from_show_file_at_commit_view(active_view)
+        else:
+            file_path = self.file_path
+            if not file_path:
+                flash(active_view, "Cannot show diff for unnamed buffers.")
+                return
 
-                row_in_view = active_view.rowcol(cursor)[0]
-                cur_pos = Position(
-                    # jump_position.row (sic!); actually 1-based line_no
-                    jump_position.row - 1,
-                    jump_position.col - 1,
-                    row_offset(row_in_view, active_view)
-                )
-                if cached:
+            is_ordinary_view = bool(active_view.file_name())
+            if is_ordinary_view:
+                syntax_file = active_view.settings().get("syntax")
+                cur_pos = capture_cur_position(active_view)
+                if cur_pos and cached:
                     row, col, offset = cur_pos
                     new_row = self.find_matching_lineno(None, None, row + 1, file_path) - 1
                     cur_pos = Position(new_row, col, offset)
+            else:
+                syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
+                cur_pos = None
 
-                self.window.run_command("gs_inline_diff_open", {
-                    "repo_path": repo_path,
-                    "file_path": file_path,
-                    "syntax": syntax_file,
-                    "cached": bool(cached),
-                    "match_position": cur_pos
-                })
+            self.window.run_command("gs_inline_diff_open", {
+                "repo_path": self.repo_path,
+                "file_path": file_path,
+                "syntax": syntax_file,
+                "cached": bool(cached),
+                "match_position": cur_pos
+            })
+
+    def open_from_diff_view(self, view):
+        # type: (sublime.View) -> None
+        settings = view.settings()
+        repo_path = settings.get("git_savvy.repo_path")
+        cached = settings.get("git_savvy.diff_view.in_cached_mode")
+        cursor = view.sel()[0].b
+
+        jump_position = diff.jump_position_to_file(
+            view,
+            SplittedDiff.from_view(view),
+            cursor
+        )
+        if not jump_position:
+            # Try to recover, maybe the diff is clean etc.
+            file_path = settings.get("git_savvy.file_path")
+            if not file_path:
+                flash(view, "Cannot show diff for unnamed buffers.")
                 return
 
-        elif active_view.settings().get("git_savvy.show_file_at_commit_view"):
-            file_path = active_view.settings().get("git_savvy.file_path")
-            target_commit = active_view.settings().get("git_savvy.show_file_at_commit_view.commit")
-            base_commit = self.previous_commit(target_commit, file_path)
             self.window.run_command("gs_inline_diff_open", {
                 "repo_path": repo_path,
                 "file_path": file_path,
-                "syntax": active_view.settings().get("syntax"),
-                "cached": False,
-                "match_position": capture_cur_position(active_view),
-                "base_commit": base_commit,
-                "target_commit": target_commit
+                "syntax": util.file.guess_syntax_for_file(self.window, file_path),
+                "cached": bool(cached),
+                "match_position": None
             })
             return
 
-        file_path = self.file_path
-        if not file_path:
-            flash(active_view, "Cannot show diff for unnamed buffers.")
+        if jump_position.commit_hash:
+            flash(view, "Sorry, not implemented for historical commits yet.")
             return
 
-        is_ordinary_view = bool(active_view.file_name())
-        if is_ordinary_view:
-            syntax_file = active_view.settings().get("syntax")
-            cur_pos = capture_cur_position(active_view)
-            if cur_pos and cached:
-                row, col, offset = cur_pos
-                new_row = self.find_matching_lineno(None, None, row + 1, file_path) - 1
-                cur_pos = Position(new_row, col, offset)
-        else:
-            syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
-            cur_pos = None
+        file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
+        syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
+
+        row_in_view = view.rowcol(cursor)[0]
+        cur_pos = Position(
+            # jump_position.row (sic!); actually 1-based line_no
+            jump_position.row - 1,
+            jump_position.col - 1,
+            row_offset(row_in_view, view)
+        )
+        if cached:
+            row, col, offset = cur_pos
+            new_row = self.find_matching_lineno(None, None, row + 1, file_path) - 1
+            cur_pos = Position(new_row, col, offset)
 
         self.window.run_command("gs_inline_diff_open", {
             "repo_path": repo_path,
@@ -218,6 +227,23 @@ class gs_inline_diff(WindowCommand, GitCommand):
             "syntax": syntax_file,
             "cached": bool(cached),
             "match_position": cur_pos
+        })
+
+    def open_from_show_file_at_commit_view(self, view):
+        # type: (sublime.View) -> None
+        settings = view.settings()
+        repo_path = settings.get("git_savvy.repo_path")
+        file_path = settings.get("git_savvy.file_path")
+        target_commit = settings.get("git_savvy.show_file_at_commit_view.commit")
+        base_commit = self.previous_commit(target_commit, file_path)
+        self.window.run_command("gs_inline_diff_open", {
+            "repo_path": repo_path,
+            "file_path": file_path,
+            "syntax": settings.get("syntax"),
+            "cached": False,
+            "match_position": capture_cur_position(view),
+            "base_commit": base_commit,
+            "target_commit": target_commit
         })
 
 
