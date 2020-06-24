@@ -548,12 +548,12 @@ if MYPY:
     JumpTo = NamedTuple('JumpTo', [
         ('commit_hash', Optional[str]),
         ('filename', str),
-        ('row', int),
-        ('col', int)
+        ('line', LineNo),
+        ('col', ColNo)
     ])
 else:
     from collections import namedtuple
-    JumpTo = namedtuple('JumpTo', 'commit_hash filename row col')
+    JumpTo = namedtuple('JumpTo', 'commit_hash filename line col')
 
 
 class gs_diff_open_file_at_hunk(TextCommand, GitCommand):

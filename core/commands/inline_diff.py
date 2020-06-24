@@ -211,8 +211,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
 
         row_in_view = view.rowcol(cursor)[0]
         cur_pos = Position(
-            # jump_position.row (sic!); actually 1-based line_no
-            jump_position.row - 1,
+            jump_position.line - 1,
             jump_position.col - 1,
             row_offset(row_in_view, view)
         )
