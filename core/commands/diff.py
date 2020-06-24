@@ -681,7 +681,7 @@ def jump_position_to_file_for_word_diff_mode(view, diff, pt):
 
     # Extract the starting line at "b" encoded in the hunk header t.i. for
     # "@@ -685,8 +686,14 @@ ..." extract the "686".
-    from_start = hunk.header().from_line_start()
+    from_start = hunk.header().to_line_start()
     if from_start is None:
         return None
     line = from_start + row_offset
@@ -761,7 +761,7 @@ def counted_lines(hunk):
 
     Note that rows point to available rows on the b-side.
     """
-    b = hunk.header().from_line_start()
+    b = hunk.header().to_line_start()
     if b is None:
         return None
     return list(_recount_lines(hunk.content().lines(), b))
