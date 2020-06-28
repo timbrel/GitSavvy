@@ -587,13 +587,13 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
 
         word_diff_mode = bool(self.view.settings().get('git_savvy.diff_view.show_word_diff'))
         algo = (
-            self.jump_position_to_file_for_word_diff_mode
+            jump_position_to_file_for_word_diff_mode
             if word_diff_mode
-            else self.jump_position_to_file
+            else jump_position_to_file
         )
         diff = SplittedDiff.from_view(self.view)
         jump_positions = list(first_per_file(filter_(
-            algo(diff, s.begin())
+            algo(self.view, diff, s.begin())
             for s in self.view.sel()
         )))
         if not jump_positions:
@@ -626,86 +626,86 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
                 sublime.ENCODED_POSITION
             )
 
-    def jump_position_to_file(self, diff, pt):
-        # type: (SplittedDiff, int) -> Optional[JumpTo]
-        head_and_hunk = diff.head_and_hunk_for_pt(pt)
-        if not head_and_hunk:
-            return None
 
-        view = self.view
-        header, hunk = head_and_hunk
+def jump_position_to_file(view, diff, pt):
+    # type: (sublime.View, SplittedDiff, int) -> Optional[JumpTo]
+    head_and_hunk = diff.head_and_hunk_for_pt(pt)
+    if not head_and_hunk:
+        return None
 
-        rowcol = real_rowcol_in_hunk(hunk, relative_rowcol_in_hunk(view, hunk, pt))
-        if not rowcol:
-            return None
+    header, hunk = head_and_hunk
 
-        row, col = rowcol
+    rowcol = real_rowcol_in_hunk(hunk, relative_rowcol_in_hunk(view, hunk, pt))
+    if not rowcol:
+        return None
 
-        filename = header.from_filename()
-        if not filename:
-            return None
+    row, col = rowcol
 
-        commit_header = diff.commit_for_hunk(hunk)
-        commit_hash = commit_header.commit_hash() if commit_header else None
-        return JumpTo(commit_hash, filename, row, col)
+    filename = header.from_filename()
+    if not filename:
+        return None
 
-    def jump_position_to_file_for_word_diff_mode(self, diff, pt):
-        # type: (SplittedDiff, int) -> Optional[JumpTo]
-        head_and_hunk = diff.head_and_hunk_for_pt(pt)
-        if not head_and_hunk:
-            return None
+    commit_header = diff.commit_for_hunk(hunk)
+    commit_hash = commit_header.commit_hash() if commit_header else None
+    return JumpTo(commit_hash, filename, row, col)
 
-        view = self.view
-        header, hunk = head_and_hunk
-        content_start = hunk.content().a
 
-        # Select all "deletion" regions in the hunk up to the cursor (pt)
-        removed_regions_before_pt = [
-            # In case the cursor is *in* a region, shorten it up to
-            # the cursor.
-            sublime.Region(region.begin(), min(region.end(), pt))
-            for region in view.get_regions('git-savvy-removed-bold')
-            if content_start <= region.begin() < pt
-        ]
+def jump_position_to_file_for_word_diff_mode(view, diff, pt):
+    # type: (sublime.View, SplittedDiff, int) -> Optional[JumpTo]
+    head_and_hunk = diff.head_and_hunk_for_pt(pt)
+    if not head_and_hunk:
+        return None
 
-        # Count all completely removed lines, but exclude lines
-        # if the cursor is exactly at the end-of-line char.
-        removed_lines_before_pt = sum(
-            region == view.line(region.begin()) and region.end() != pt
-            for region in removed_regions_before_pt
-        )
-        line_start = view.line(pt).begin()
-        removed_chars_before_pt = sum(
-            region.size()
-            for region in removed_regions_before_pt
-            if line_start <= region.begin() < pt
-        )
+    header, hunk = head_and_hunk
+    content_start = hunk.content().a
 
-        # Compute the *relative* row in that hunk
-        head_row, _ = view.rowcol(content_start)
-        pt_row, col = view.rowcol(pt)
-        rel_row = pt_row - head_row
-        # If the cursor is in the hunk header, assume instead it is
-        # at `(0, 0)` position in the hunk content.
-        if rel_row < 0:
-            rel_row, col = 0, 0
+    # Select all "deletion" regions in the hunk up to the cursor (pt)
+    removed_regions_before_pt = [
+        # In case the cursor is *in* a region, shorten it up to
+        # the cursor.
+        sublime.Region(region.begin(), min(region.end(), pt))
+        for region in view.get_regions('git-savvy-removed-bold')
+        if content_start <= region.begin() < pt
+    ]
 
-        # Extract the starting line at "b" encoded in the hunk header t.i. for
-        # "@@ -685,8 +686,14 @@ ..." extract the "686".
-        from_start = hunk.header().from_line_start()
-        if from_start is None:
-            return None
-        row = from_start + rel_row
+    # Count all completely removed lines, but exclude lines
+    # if the cursor is exactly at the end-of-line char.
+    removed_lines_before_pt = sum(
+        region == view.line(region.begin()) and region.end() != pt
+        for region in removed_regions_before_pt
+    )
+    line_start = view.line(pt).begin()
+    removed_chars_before_pt = sum(
+        region.size()
+        for region in removed_regions_before_pt
+        if line_start <= region.begin() < pt
+    )
 
-        filename = header.from_filename()
-        if not filename:
-            return None
+    # Compute the *relative* row in that hunk
+    head_row, _ = view.rowcol(content_start)
+    pt_row, col = view.rowcol(pt)
+    rel_row = pt_row - head_row
+    # If the cursor is in the hunk header, assume instead it is
+    # at `(0, 0)` position in the hunk content.
+    if rel_row < 0:
+        rel_row, col = 0, 0
 
-        row = row - removed_lines_before_pt
-        col = col + 1 - removed_chars_before_pt
-        commit_header = diff.commit_for_hunk(hunk)
-        commit_hash = commit_header.commit_hash() if commit_header else None
-        return JumpTo(commit_hash, filename, row, col)
+    # Extract the starting line at "b" encoded in the hunk header t.i. for
+    # "@@ -685,8 +686,14 @@ ..." extract the "686".
+    from_start = hunk.header().from_line_start()
+    if from_start is None:
+        return None
+    row = from_start + rel_row
+
+    filename = header.from_filename()
+    if not filename:
+        return None
+
+    row = row - removed_lines_before_pt
+    col = col + 1 - removed_chars_before_pt
+    commit_header = diff.commit_for_hunk(hunk)
+    commit_hash = commit_header.commit_hash() if commit_header else None
+    return JumpTo(commit_hash, filename, row, col)
 
 
 def relative_rowcol_in_hunk(view, hunk, pt):

@@ -5,16 +5,19 @@ from collections import namedtuple
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
+from . import diff
 from .navigate import GsNavigate
 from ..git_command import GitCommand
-from ..utils import flash, focus_view
+from ..parse_diff import SplittedDiff
 from ..runtime import enqueue_on_ui
+from ..utils import flash, focus_view
 from ..view import replace_view_content
 from ...common import util
 
 
 __all__ = (
     "gs_inline_diff",
+    "gs_inline_diff_open",
     "gs_inline_diff_refresh",
     "gs_inline_diff_toggle_cached_mode",
     "gs_inline_diff_stage_or_reset_line",
@@ -28,7 +31,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, List, Optional, Tuple
+    from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 
     # Use LineNo, ColNo for 1-based line column counting (like git or `window.open_file`),
     # use Row, Col for 0-based counting like Sublime's `view.rowcol`!
@@ -36,7 +39,10 @@ if MYPY:
     ColNo = int
     Row = int
     Col = int
+    Position = NamedTuple("Position", [("row", Row), ("col", Col), ("offset", float)])
 
+else:
+    Position = namedtuple("Position", "row col offset")
 
 HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
 
@@ -53,16 +59,20 @@ diff_view_hunks = {}  # type: Dict[sublime.ViewId, List[HunkReference]]
 
 
 def capture_cur_position(view):
-    # type: (sublime.View) -> Optional[Tuple[int, int, float]]
+    # type: (sublime.View) -> Optional[Position]
     try:
         sel = view.sel()[0]
     except Exception:
         return None
 
     row, col = view.rowcol(sel.begin())
+    return Position(row, col, row_offset(row, view))
+
+
+def row_offset(row, view):
+    # type: (Row, sublime.View) -> float
     vx, vy = view.viewport_position()
-    row_offset = row - (vy / view.line_height())
-    return row, col, row_offset
+    return row - (vy / view.line_height())
 
 
 def place_cursor_and_show(view, row, col, row_offset):
@@ -126,48 +136,93 @@ class gs_inline_diff(WindowCommand, GitCommand):
     hunks or individual lines, and to navigate between hunks.
     """
 
-    def run(self, settings=None, cached=None, match_current_position=True):
-        if settings is None:
-            active_view = self.window.active_view()
-            assert active_view
-            # Let this command act like a toggle
-            if is_inline_diff_view(active_view) and (
-                cached is None
-                or active_view.settings().get('git_savvy.inline_diff_view.in_cached_mode') == cached
-            ):
-                active_view.close()
-                return
+    def run(self, cached=None, match_current_position="<SENTINEL>"):
+        # type: (Optional[bool], object) -> None
+        if match_current_position != "<SENTINEL>":
+            print(
+                'GitSavvy: Argument "match_current_position" to "gs_inline_diff" is deprecated '
+                'and not evaluated.  You should remove it from the binding.'
+            )
 
-            repo_path = self.repo_path
-            file_path = self.file_path
-            if not file_path:
-                flash(active_view, "Cannot show diff for unnamed buffers.")
-                return
+        active_view = self.window.active_view()
+        assert active_view
+        # Let this command act like a toggle
+        if is_inline_diff_view(active_view) and (
+            cached is None
+            or active_view.settings().get('git_savvy.inline_diff_view.in_cached_mode') == cached
+        ):
+            active_view.close()
+            return
 
-            is_ordinary_view = bool(active_view.file_name())
-            if is_ordinary_view:
-                syntax_file = active_view.settings().get("syntax")
-                cur_pos = capture_cur_position(active_view) if match_current_position else None
-                if cur_pos is not None and cached:
-                    row, col, offset = cur_pos
-                    new_row = self.find_matching_lineno(None, None, row + 1, self.file_path) - 1
-                    cur_pos = (new_row, col, offset)
-            else:
+        repo_path = self.repo_path
+
+        if active_view.settings().get("git_savvy.diff_view"):
+            cached = active_view.settings().get("git_savvy.diff_view.in_cached_mode")
+            cursor = active_view.sel()[0].b
+            jump_position = diff.jump_position_to_file(
+                active_view,
+                SplittedDiff.from_view(active_view),
+                cursor
+            )
+            if jump_position and not jump_position.commit_hash:
+                file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
                 syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
-                cur_pos = None
 
+                row_in_view = active_view.rowcol(cursor)[0]
+                offset = row_offset(row_in_view, active_view)
+                cur_pos = Position(
+                    # jump_position.row (sic!); actually 1-based line_no
+                    jump_position.row - 1, jump_position.col - 1, offset
+                )  # type: Optional[Position]
+                if cur_pos and cached:
+                    row, col, offset = cur_pos
+                    new_row = self.find_matching_lineno(None, None, row + 1, file_path) - 1
+                    cur_pos = Position(new_row, col, offset)
+
+                self.window.run_command("gs_inline_diff_open", {
+                    "repo_path": repo_path,
+                    "file_path": file_path,
+                    "syntax": syntax_file,
+                    "cached": bool(cached),
+                    "match_position": cur_pos
+                })
+                return
+
+        file_path = self.file_path
+        if not file_path:
+            flash(active_view, "Cannot show diff for unnamed buffers.")
+            return
+
+        is_ordinary_view = bool(active_view.file_name())
+        if is_ordinary_view:
+            syntax_file = active_view.settings().get("syntax")
+            cur_pos = capture_cur_position(active_view)
+            if cur_pos and cached:
+                row, col, offset = cur_pos
+                new_row = self.find_matching_lineno(None, None, row + 1, file_path) - 1
+                cur_pos = Position(new_row, col, offset)
         else:
-            repo_path = settings["repo_path"]
-            file_path = settings["file_path"]
-            syntax_file = settings["syntax"]
+            syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
             cur_pos = None
 
+        self.window.run_command("gs_inline_diff_open", {
+            "repo_path": repo_path,
+            "file_path": file_path,
+            "syntax": syntax_file,
+            "cached": bool(cached),
+            "match_position": cur_pos
+        })
+
+
+class gs_inline_diff_open(WindowCommand, GitCommand):
+    def run(self, repo_path, file_path, syntax, cached=False, match_position=None):
+        # type: (str, str, str, bool, Position) -> None
         this_id = (repo_path, file_path)
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
                 diff_view = view
                 settings = diff_view.settings()
-                settings.set("git_savvy.inline_diff_view.in_cached_mode", bool(cached))
+                settings.set("git_savvy.inline_diff_view.in_cached_mode", cached)
                 focus_view(diff_view)
                 break
 
@@ -177,17 +232,17 @@ class gs_inline_diff(WindowCommand, GitCommand):
             settings = diff_view.settings()
             settings.set("git_savvy.repo_path", repo_path)
             settings.set("git_savvy.file_path", file_path)
-            settings.set("git_savvy.inline_diff_view.in_cached_mode", bool(cached))
+            settings.set("git_savvy.inline_diff_view.in_cached_mode", cached)
 
             title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
             diff_view.set_name(title + os.path.basename(file_path))
 
-            diff_view.set_syntax_file(syntax_file)
+            diff_view.set_syntax_file(syntax)
 
             diff_view.run_command("gs_handle_vintageous")
 
         diff_view.run_command("gs_inline_diff_refresh", {
-            "match_position": cur_pos,
+            "match_position": match_position,
             "sync": True
         })
 
@@ -212,14 +267,14 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
     """
 
     def run(self, edit, sync=True, match_position=None, raw_diff=None):
-        # type: (sublime.Edit, bool, Optional[Tuple[int, int, float]], Optional[str]) -> None
+        # type: (sublime.Edit, bool, Optional[Position], Optional[str]) -> None
         if sync:
             self._run(sync, match_position, raw_diff)
         else:
             sublime.set_timeout_async(lambda: self._run(sync, match_position, raw_diff))
 
     def _run(self, runs_on_ui_thread, match_position, raw_diff):
-        # type: (bool, Optional[Tuple[int, int, float]], Optional[str]) -> None
+        # type: (bool, Optional[Position], Optional[str]) -> None
         file_path = self.file_path
         settings = self.view.settings()
         in_cached_mode = settings.get("git_savvy.inline_diff_view.in_cached_mode")
@@ -437,7 +492,7 @@ class gs_inline_diff_toggle_cached_mode(TextCommand, GitCommand):
             else:
                 hunks = [hunk_ref.hunk for hunk_ref in diff_view_hunks[self.view.id()]]
                 new_row = self.reverse_adjust_line_according_to_hunks(hunks, line_no) - 1
-            cur_pos = (new_row, col, offset)
+            cur_pos = Position(new_row, col, offset)
 
         self.view.run_command("gs_inline_diff_refresh", {
             "match_position": cur_pos,
@@ -530,7 +585,7 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
         if cur_pos is not None:
             row, col, offset = cur_pos
             line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
-            cur_pos = (line_no - 1, col_no - 1, offset)
+            cur_pos = Position(line_no - 1, col_no - 1, offset)
 
         self.view.run_command("gs_inline_diff_refresh", {
             "match_position": cur_pos,
@@ -790,7 +845,7 @@ class gs_inline_diff_undo(TextCommand, GitCommand):
         if cur_pos is not None:
             row, col, offset = cur_pos
             line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
-            cur_pos = (line_no - 1, col_no - 1, offset)
+            cur_pos = Position(line_no - 1, col_no - 1, offset)
 
         self.view.run_command("gs_inline_diff_refresh", {
             "match_position": cur_pos,
