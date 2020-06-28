@@ -2,6 +2,8 @@ from collections import defaultdict
 import threading
 
 
+from .utils import Cache
+
 MYPY = False
 if MYPY:
     from typing import DefaultDict, Dict, Tuple, TypedDict
@@ -16,7 +18,7 @@ if MYPY:
     )
 
 state = defaultdict(lambda: {})  # type: DefaultDict[RepoPath, RepoStore]
-cache = {}  # type: Dict[Tuple, str]
+cache = Cache(maxsize=512)  # type: Dict[Tuple, str]
 
 
 lock = threading.Lock()
