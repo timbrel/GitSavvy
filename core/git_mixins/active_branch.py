@@ -155,7 +155,7 @@ class ActiveBranchMixin():
             except IndexError:
                 pass
             else:
-                store.state[self.repo_path]["short_hash_length"] = len(short_hash)
+                store.update_state(self.repo_path, {"short_hash_length": len(short_hash)})
 
         return stdout or "No commits yet."
 
