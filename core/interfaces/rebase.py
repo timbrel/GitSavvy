@@ -1022,19 +1022,10 @@ class GsRebaseAbortCommand(TextCommand, GitCommand):
 class GsRebaseContinueCommand(TextCommand, GitCommand):
 
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+        sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
         try:
-            if self.in_rebase_merge():
-                (staged_entries,
-                 unstaged_entries,
-                 untracked_entries,
-                 conflict_entries) = self.sort_status_entries(self.get_status())
-                if len(unstaged_entries) + len(untracked_entries) + len(conflict_entries) == 0 and \
-                        len(staged_entries) > 0:
-                    self.git("commit", "--no-edit")
-
             self.git("rebase", "--continue")
         finally:
             util.view.refresh_gitsavvy(self.view)
