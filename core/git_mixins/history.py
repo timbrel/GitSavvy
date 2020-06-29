@@ -1,4 +1,5 @@
 from collections import namedtuple
+from .. import store
 from ...common import util
 
 
@@ -151,7 +152,13 @@ class HistoryMixin():
 
     def get_short_hash(self, commit_hash):
         # type: (str) -> str
-        return self.git("rev-parse", "--short", commit_hash).strip()
+        short_hash_length = store.current_state(self.repo_path).get("short_hash_length")
+        if short_hash_length:
+            return commit_hash[:short_hash_length]
+
+        short_hash = self.git("rev-parse", "--short", commit_hash).strip()
+        store.update_state(self.repo_path, {"short_hash_length": len(short_hash)})
+        return short_hash
 
     def filename_at_commit(self, filename, commit_hash, follow=False):
         commit_len = len(commit_hash)
@@ -175,9 +182,22 @@ class HistoryMixin():
         return filename
 
     def get_file_content_at_commit(self, filename, commit_hash):
+        # type: (str, str) -> str
+        if not commit_hash or commit_hash == "HEAD":
+            return self._get_file_content_at_commit(filename, commit_hash)
+
+        key = ("get_file_content_at_commit", self.repo_path, filename, commit_hash)
+        try:
+            return store.cache[key]
+        except KeyError:
+            rv = store.cache[key] = self._get_file_content_at_commit(filename, commit_hash)
+            return rv
+
+    def _get_file_content_at_commit(self, filename, commit_hash):
+        # type: (str, str) -> str
         filename = self.get_rel_path(filename)
         filename = filename.replace('\\', '/')
-        return self.git("show", commit_hash + ':' + filename)
+        return self.git("show", "{}:{}".format(commit_hash or "", filename))
 
     def find_matching_lineno(self, base_commit="HEAD", target_commit="HEAD", line=1, file_path=None):
         # type: (Optional[str], Optional[str], int, str) -> int
@@ -190,7 +210,38 @@ class HistoryMixin():
         diff = self.no_context_diff(base_commit, target_commit, file_path)
         return self.adjust_line_according_to_diff(diff, line)
 
+    def reverse_find_matching_lineno(self, base_commit="HEAD", target_commit="HEAD", line=1, file_path=None):
+        # type: (Optional[str], Optional[str], int, str) -> int
+        """
+        Return the matching line of the base_commit given the line number of the target_commit.
+        """
+        if not file_path:
+            file_path = self.file_path
+
+        diff = self.no_context_diff(base_commit, target_commit, file_path)
+        hunks = util.parse_diff(diff)
+        if not hunks:
+            return line
+        return self.reverse_adjust_line_according_to_hunks(hunks, line)
+
     def no_context_diff(self, base_commit, target_commit, file_path=None):
+        # type: (Optional[str], Optional[str], Optional[str]) -> str
+        if (
+            not base_commit
+            or base_commit == "HEAD"
+            or not target_commit
+            or target_commit == "HEAD"
+        ):
+            return self._no_context_diff(base_commit, target_commit, file_path)
+
+        key = ("no_context_diff", base_commit, target_commit, file_path)
+        try:
+            return store.cache[key]
+        except KeyError:
+            rv = store.cache[key] = self._no_context_diff(base_commit, target_commit, file_path)
+            return rv
+
+    def _no_context_diff(self, base_commit, target_commit, file_path=None):
         # type: (Optional[str], Optional[str], Optional[str]) -> str
         cmd = [
             "diff",
@@ -246,28 +297,43 @@ class HistoryMixin():
         # fails to find matching
         return line
 
-    def neighbor_commit(self, commit_hash, position, follow=False):
-        """
-        Get the commit before or after a specific commit
-        """
-        if position == "older":
+    def previous_commit(self, current_commit, file_path, follow=False):
+        # type: (str, str, bool) -> str
+        if not current_commit or current_commit == "HEAD":
+            return self._previous_commit(current_commit, file_path, follow)
+
+        key = ("previous_commit", self.repo_path, current_commit, file_path, follow)
+        try:
+            return store.cache[key]
+        except KeyError:
+            rv = store.cache[key] = self._previous_commit(current_commit, file_path, follow)
+            return rv
+
+    def _previous_commit(self, current_commit, file_path, follow):
+        # type: (str, str, bool) -> str
+        return self.git(
+            "log",
+            "--format=%H",
+            "--follow" if follow else None,
+            "--skip", "1",
+            "-n", "1",
+            current_commit,
+            "--",
+            file_path
+        ).strip()
+
+    def next_commit(self, current_commit, file_path, follow=False):
+        try:
             return self.git(
                 "log",
                 "--format=%H",
                 "--follow" if follow else None,
-                "-n", "1",
-                "{}~1".format(commit_hash),
-                "--", self.file_path
-            ).strip()
-        elif position == "newer":
-            return self.git(
-                "log",
-                "--format=%H",
-                "--follow" if follow else None,
-                "--reverse",
-                "{}..{}".format(commit_hash, "HEAD"),
-                "--", self.file_path
-            ).strip().split("\n", 1)[0]
+                "{}..".format(current_commit),
+                "--",
+                file_path
+            ).strip().splitlines()[-1]
+        except IndexError:
+            return ""
 
     def newest_commit_for_file(self, file_path, follow=False):
         """

@@ -29,6 +29,7 @@ from ..runtime import (
 from ..view import replace_view_content
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
+from ..utils import focus_view
 from ...common import util
 from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
 
@@ -88,16 +89,6 @@ def compute_identifier_for_view(view):
         settings.get('git_savvy.log_graph_view.all_branches')
         or settings.get('git_savvy.log_graph_view.branches')
     ) if settings.get('git_savvy.log_graph_view') else None
-
-
-def focus_view(view):
-    window = view.window()
-    if not window:
-        return
-
-    group, _ = window.get_view_index(view)
-    window.focus_group(group)
-    window.focus_view(view)
 
 
 class gs_graph(WindowCommand, GitCommand):
@@ -1823,14 +1814,16 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         })
 
     def show_file_at_commit(self, commit_hash, file_path):
-        self.window.run_command(
-            "gs_show_file_at_commit",
-            {"commit_hash": commit_hash, "filepath": file_path})
+        self.window.run_command("gs_show_file_at_commit", {
+            "commit_hash": commit_hash,
+            "filepath": file_path
+        })
 
     def blame_file_atcommit(self, commit_hash, file_path):
-        self.window.run_command(
-            "gs_blame",
-            {"commit_hash": commit_hash, "file_path": file_path})
+        self.window.run_command("gs_blame", {
+            "commit_hash": commit_hash,
+            "file_path": file_path
+        })
 
     def checkout_file_at_commit(self, commit_hash, file_path):
         self.checkout_ref(commit_hash, fpath=file_path)

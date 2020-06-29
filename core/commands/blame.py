@@ -7,6 +7,7 @@ from sublime_plugin import TextCommand
 
 from .navigate import GsNavigate
 from ..git_command import GitCommand
+from ..view import Position
 from ...common import util
 from .log import LogMixin
 from ..ui_mixins.quick_panel import PanelActionMixin
@@ -395,7 +396,11 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand
         else:
             commit_hash = settings.get("git_savvy.commit_hash")
 
-        neighbor_hash = self.neighbor_commit(commit_hash, position, follow=follow)
+        if position == "older":
+            neighbor_hash = self.previous_commit(commit_hash, self.file_path, follow)
+        elif position == "newer":
+            neighbor_hash = self.next_commit(commit_hash, self.file_path, follow)
+
         if neighbor_hash:
             settings.set("git_savvy.commit_hash", neighbor_hash)
 
@@ -427,7 +432,7 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand
             "commit_hash": commit_hash,
             "filepath": self.file_path,
             "check_for_renames": True,
-            "lineno": lineno,
+            "position": Position(lineno - 1, 0, None),
             "lang": settings.get('git_savvy.original_syntax', None)
         })
 

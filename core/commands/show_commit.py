@@ -6,7 +6,8 @@ from sublime_plugin import WindowCommand, TextCommand
 from . import diff
 from . import intra_line_colorizer
 from ..git_command import GitCommand
-from ..view import replace_view_content
+from ..utils import flash
+from ..view import replace_view_content, Position
 
 
 __all__ = (
@@ -21,6 +22,7 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import Optional
+    from ..types import LineNo, ColNo
 
 SHOW_COMMIT_TITLE = "COMMIT: {}"
 
@@ -39,8 +41,7 @@ class gs_show_commit(WindowCommand, GitCommand):
         settings.set("git_savvy.show_commit_view.show_word_diff", False)
         settings.set("git_savvy.show_commit_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
         view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
-        nice_hash = self.get_short_hash(commit_hash) if len(commit_hash) >= 40 else commit_hash
-        view.set_name(SHOW_COMMIT_TITLE.format(nice_hash))
+        view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash)))
         view.set_scratch(True)
         view.set_read_only(True)
         view.run_command("gs_show_commit_refresh")
@@ -78,7 +79,7 @@ class gs_show_commit_toggle_setting(TextCommand):
         setting_str = "git_savvy.show_commit_view.{}".format(setting)
         settings = self.view.settings()
         settings.set(setting_str, not settings.get(setting_str))
-        self.view.window().status_message("{} is now {}".format(setting, settings.get(setting_str)))
+        flash(self.view, "{} is now {}".format(setting, settings.get(setting_str)))
         self.view.run_command("gs_show_commit_refresh")
 
 
@@ -89,8 +90,8 @@ class gs_show_commit_open_file_at_hunk(diff.gs_diff_open_file_at_hunk):
     and open the file at that hunk in a separate view.
     """
 
-    def load_file_at_line(self, commit_hash, filename, row, col):
-        # type: (Optional[str], str, int, int) -> None
+    def load_file_at_line(self, commit_hash, filename, line, col):
+        # type: (Optional[str], str, LineNo, ColNo) -> None
         """
         Show file at target commit if `git_savvy.diff_view.target_commit` is non-empty.
         Otherwise, open the file directly.
@@ -106,13 +107,13 @@ class gs_show_commit_open_file_at_hunk(diff.gs_diff_open_file_at_hunk):
         window.run_command("gs_show_file_at_commit", {
             "commit_hash": commit_hash,
             "filepath": full_path,
-            "lineno": row
+            "position": Position(line - 1, col - 1, None)
         })
 
 
 class gs_show_commit_show_hunk_on_working_dir(diff.gs_diff_open_file_at_hunk):
-    def load_file_at_line(self, commit_hash, filename, row, col):
-        # type: (Optional[str], str, int, int) -> None
+    def load_file_at_line(self, commit_hash, filename, line, col):
+        # type: (Optional[str], str, LineNo, ColNo) -> None
         if not commit_hash:
             print("Could not parse commit for its commit hash")
             return
@@ -121,9 +122,9 @@ class gs_show_commit_show_hunk_on_working_dir(diff.gs_diff_open_file_at_hunk):
             return
 
         full_path = os.path.join(self.repo_path, filename)
-        row = self.find_matching_lineno(commit_hash, None, row, full_path)
+        line = self.find_matching_lineno(commit_hash, None, line, full_path)
         window.open_file(
-            "{file}:{row}:{col}".format(file=full_path, row=row, col=col),
+            "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
             sublime.ENCODED_POSITION
         )
 

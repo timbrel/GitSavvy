@@ -10,6 +10,7 @@ from .fns import accumulate, pairwise
 MYPY = False
 if MYPY:
     from typing import Final, Iterator, List, NamedTuple, Optional, Tuple, Type
+    from .types import LineNo
 
 
 if MYPY:
@@ -158,8 +159,8 @@ class Hunk(TextRange):
 
 
 class HunkHeader(TextRange):
-    def from_line_start(self):
-        # type: () -> Optional[int]
+    def to_line_start(self):
+        # type: () -> Optional[LineNo]
         """Extract the starting line at "b" encoded in the hunk header
 
         T.i. for "@@ -685,8 +686,14 @@ ..." extract the "686".

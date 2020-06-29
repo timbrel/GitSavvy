@@ -7,7 +7,7 @@ from sublime_plugin import TextCommand
 
 from . import util
 from ..core.settings import GitSavvySettings
-
+from ..core.utils import focus_view
 
 MYPY = False
 if MYPY:
@@ -19,16 +19,6 @@ edit_views = {}
 subclasses = []
 
 EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press {super_key}+Enter.  To cancel, close the view.\n"
-
-
-def focus_view(view):
-    window = view.window()
-    if not window:
-        return
-
-    group, _ = window.get_view_index(view)
-    window.focus_group(group)
-    window.focus_view(view)
 
 
 class Interface():
@@ -410,9 +400,7 @@ class GsEditViewCompleteCommand(TextCommand):
         content_after = self.view.substr(sublime.Region(help_region.end(), self.view.size() - 1))
         content = (content_before + content_after).strip()
 
-        self.view.window().focus_view(self.view)
-        self.view.window().run_command("close_file")
-
+        self.view.close()
         edit_view.on_done(content)
 
 

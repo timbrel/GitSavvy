@@ -1,3 +1,4 @@
+from collections import namedtuple
 from contextlib import contextmanager, ExitStack
 
 import sublime
@@ -7,8 +8,31 @@ from .runtime import text_command
 
 MYPY = False
 if MYPY:
-    from typing import Callable, ContextManager, Iterator, List
+    from typing import Callable, ContextManager, Iterator, List, NamedTuple, Optional
     WrapperFn = Callable[[sublime.View], ContextManager[None]]
+
+    from .types import Row, Col
+    Position = NamedTuple("Position", [("row", Row), ("col", Col), ("offset", Optional[float])])
+
+else:
+    Position = namedtuple("Position", "row col offset")
+
+
+def capture_cur_position(view):
+    # type: (sublime.View) -> Optional[Position]
+    try:
+        sel = view.sel()[0]
+    except Exception:
+        return None
+
+    row, col = view.rowcol(sel.begin())
+    return Position(row, col, row_offset(row, view))
+
+
+def row_offset(row, view):
+    # type: (Row, sublime.View) -> float
+    vx, vy = view.viewport_position()
+    return row - (vy / view.line_height())
 
 
 # `replace_view_content` is a wrapper for `_replace_region` to get some
@@ -20,7 +44,7 @@ def replace_view_content(view, text, region=None, wrappers=[]):
     If no region is given the whole content will get replaced. Otherwise
     only the selected region.
     """
-    _replace_region(view, text, region, wrappers)
+    _replace_region(view, text, region, wrappers)  # type: ignore[arg-type]
 
 
 @text_command

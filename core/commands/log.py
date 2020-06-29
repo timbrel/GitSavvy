@@ -7,6 +7,7 @@ import sublime
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin
 from ..ui_mixins.quick_panel import show_log_panel, show_branch_panel
+from ..view import capture_cur_position, Position
 from ...common import util
 
 
@@ -219,18 +220,29 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
 
     def show_file_at_commit(self):
         view = self.window.active_view()
-        if view and view.file_name() == self._file_path:
-            lang = view.settings().get('syntax')
-        else:
-            lang = None
-        self.window.run_command(
-            "gs_show_file_at_commit",
-            {"commit_hash": self._commit_hash, "filepath": self._file_path, "lang": lang})
+        if not view:
+            print("RuntimeError: Window has no active view")
+            return
+
+        commit_hash = self._commit_hash
+        position = capture_cur_position(view)
+        if position is not None:
+            row, col, offset = position
+            line = self.find_matching_lineno(None, commit_hash, row + 1)
+            position = Position(line - 1, col, offset)
+
+        self.window.run_command("gs_show_file_at_commit", {
+            "commit_hash": commit_hash,
+            "filepath": self._file_path,
+            "position": position,
+            "lang": view.settings().get('syntax')
+        })
 
     def blame_file_atcommit(self):
-        self.window.run_command(
-            "gs_blame",
-            {"commit_hash": self._commit_hash, "file_path": self._file_path})
+        self.window.run_command("gs_blame", {
+            "commit_hash": self._commit_hash,
+            "file_path": self._file_path
+        })
 
     def checkout_file_at_commit(self):
         self.checkout_ref(self._commit_hash, fpath=self._file_path)
