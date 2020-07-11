@@ -1,0 +1,27 @@
+GitSavvy 2.25.0
+===============
+
+- Improve historical "file view"
+
+  When you look at a specific revision of a file (for example via
+  `git: show current file at commit`) we now show diff markers in the gutter
+  area.
+
+  Use `[p]`/`[n]` to switch to a newer or older version of that file.  You
+  can also open an "inline diff" from here, using the Command Palette or
+  preferable a key binding.
+
+  A more typical work-flow to such a file revision is from a "graph view",
+  either the `git: Repo History` or `git: File History`: press `[o]` to show
+  the full commit, and then on a specific hunk `[o]` again to show the
+  complete file at that revision.
+
+- You can now generally switch from the "normal" diff view to the
+  "inline diff".  This is useful if you want to see more of the context of a
+  hunk. Esp. it enables you to stage single lines of a hunk which is still
+  not implemented for the "normal" diff.
+
+
+
+For more info:
+  https://github.com/timbrel/GitSavvy/compare/2.24.0...2.25.0
