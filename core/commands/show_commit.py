@@ -6,7 +6,7 @@ from sublime_plugin import WindowCommand, TextCommand
 from . import diff
 from . import intra_line_colorizer
 from ..git_command import GitCommand
-from ..utils import flash
+from ..utils import flash, focus_view
 from ..view import replace_view_content, Position
 
 
@@ -21,10 +21,19 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Optional
+    from typing import Optional, Tuple
     from ..types import LineNo, ColNo
 
 SHOW_COMMIT_TITLE = "COMMIT: {}"
+
+
+def compute_identifier_for_view(view):
+    # type: (sublime.View) -> Optional[Tuple]
+    settings = view.settings()
+    return (
+        settings.get('git_savvy.repo_path'),
+        settings.get('git_savvy.show_commit_view.commit')
+    ) if settings.get('git_savvy.show_commit_view') else None
 
 
 class gs_show_commit(WindowCommand, GitCommand):
@@ -32,20 +41,29 @@ class gs_show_commit(WindowCommand, GitCommand):
     def run(self, commit_hash):
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
-        view = self.window.new_file()
-        settings = view.settings()
-        settings.set("git_savvy.show_commit_view", True)
-        settings.set("git_savvy.show_commit_view.commit", commit_hash)
-        settings.set("git_savvy.repo_path", repo_path)
-        settings.set("git_savvy.show_commit_view.ignore_whitespace", False)
-        settings.set("git_savvy.show_commit_view.show_word_diff", False)
-        settings.set("git_savvy.show_commit_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
-        view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
-        view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash)))
-        view.set_scratch(True)
-        view.set_read_only(True)
-        view.run_command("gs_show_commit_refresh")
-        view.run_command("gs_handle_vintageous")
+        this_id = (
+            self.repo_path,
+            commit_hash
+        )
+        for view in self.window.views():
+            if compute_identifier_for_view(view) == this_id:
+                focus_view(view)
+                break
+        else:
+            view = self.window.new_file()
+            settings = view.settings()
+            settings.set("git_savvy.show_commit_view", True)
+            settings.set("git_savvy.show_commit_view.commit", commit_hash)
+            settings.set("git_savvy.repo_path", repo_path)
+            settings.set("git_savvy.show_commit_view.ignore_whitespace", False)
+            settings.set("git_savvy.show_commit_view.show_word_diff", False)
+            settings.set("git_savvy.show_commit_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
+            view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
+            view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash)))
+            view.set_scratch(True)
+            view.set_read_only(True)
+            view.run_command("gs_show_commit_refresh")
+            view.run_command("gs_handle_vintageous")
 
 
 class gs_show_commit_refresh(TextCommand, GitCommand):

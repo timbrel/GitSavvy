@@ -4,10 +4,11 @@ import sublime
 from sublime_plugin import TextCommand, WindowCommand
 
 from ..git_command import GitCommand
-from ..runtime import enqueue_on_worker, text_command
-from ..utils import flash
+from ..runtime import enqueue_on_worker, run_as_text_command, text_command
+from ..utils import flash, focus_view
 from ..view import capture_cur_position, replace_view_content, Position
 from ...common import util
+
 from .log import LogMixin
 
 
@@ -24,32 +25,54 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Optional
+    from typing import Dict, Optional, Tuple
 
 
 SHOW_COMMIT_TITLE = "FILE: {} --{}"
 
 
+def compute_identifier_for_view(view):
+    # type: (sublime.View) -> Optional[Tuple]
+    settings = view.settings()
+    return (
+        settings.get('git_savvy.repo_path'),
+        settings.get('git_savvy.file_path'),
+        settings.get('git_savvy.show_file_at_commit_view.commit')
+    ) if settings.get('git_savvy.show_file_at_commit_view') else None
+
+
 class gs_show_file_at_commit(WindowCommand, GitCommand):
 
     def run(self, commit_hash, filepath, check_for_renames=False, position=None, lang=None):
-        enqueue_on_worker(
-            self.run_impl,
-            commit_hash,
+        this_id = (
+            self.repo_path,
             filepath,
-            check_for_renames,
-            position,
-            lang,
+            commit_hash
         )
+        for view in self.window.views():
+            if compute_identifier_for_view(view) == this_id:
+                focus_view(view)
+                if position:
+                    run_as_text_command(move_cursor_to_line_col, view, position)
+                break
+        else:
+            enqueue_on_worker(
+                self.run_impl,
+                commit_hash,
+                filepath,
+                check_for_renames,
+                position,
+                lang,
+            )
 
     def run_impl(self, commit_hash, file_path, check_for_renames, position, lang):
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
         view = util.view.get_scratch_view(self, "show_file_at_commit")
         settings = view.settings()
-        settings.set("git_savvy.show_file_at_commit_view.commit", commit_hash)
-        settings.set("git_savvy.file_path", file_path)
         settings.set("git_savvy.repo_path", repo_path)
+        settings.set("git_savvy.file_path", file_path)
+        settings.set("git_savvy.show_file_at_commit_view.commit", commit_hash)
         if not lang:
             lang = util.file.guess_syntax_for_file(self.window, file_path)
         title = SHOW_COMMIT_TITLE.format(
