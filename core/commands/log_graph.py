@@ -87,7 +87,8 @@ def compute_identifier_for_view(view):
         settings.get('git_savvy.repo_path'),
         settings.get('git_savvy.file_path'),
         settings.get('git_savvy.log_graph_view.all_branches')
-        or settings.get('git_savvy.log_graph_view.branches')
+        or settings.get('git_savvy.log_graph_view.branches'),
+        settings.get('git_savvy.log_graph_view.filters')
     ) if settings.get('git_savvy.log_graph_view') else None
 
 
@@ -101,7 +102,8 @@ class gs_graph(WindowCommand, GitCommand):
         author='',
         title='GRAPH',
         follow=None,
-        decoration='sparse'
+        decoration='sparse',
+        filters=''
     ):
         if repo_path is None:
             repo_path = self.repo_path
@@ -110,7 +112,8 @@ class gs_graph(WindowCommand, GitCommand):
         this_id = (
             repo_path,
             file_path,
-            all or branches
+            all or branches,
+            filters
         )
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
@@ -120,6 +123,7 @@ class gs_graph(WindowCommand, GitCommand):
                 settings.set("git_savvy.log_graph_view.branches", branches or [])
                 settings.set('git_savvy.log_graph_view.follow', follow)
                 settings.set('git_savvy.log_graph_view.decoration', decoration)
+                settings.set('git_savvy.log_graph_view.filters', filters)
 
                 if follow and follow != extract_symbol_to_follow(view):
                     if show_commit_info.panel_is_visible(self.window):
@@ -149,6 +153,7 @@ class gs_graph(WindowCommand, GitCommand):
             settings.set("git_savvy.log_graph_view.branches", branches or [])
             settings.set('git_savvy.log_graph_view.follow', follow)
             settings.set('git_savvy.log_graph_view.decoration', decoration)
+            settings.set('git_savvy.log_graph_view.filters', filters)
             view.set_name(title)
 
             # We need to ensure the panel has been created, so it appears
