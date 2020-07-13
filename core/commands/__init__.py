@@ -19,6 +19,7 @@ from .log_graph import *
 from .merge import *
 from .mv import *
 from .navigate import *
+from .next_hunk import *
 from .pull import *
 from .push import *
 from .quick_commit import *
