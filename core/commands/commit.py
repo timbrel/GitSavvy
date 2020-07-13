@@ -5,9 +5,10 @@ from sublime_plugin import WindowCommand, TextCommand
 from sublime_plugin import EventListener
 
 from . import intra_line_colorizer
-from ..runtime import enqueue_on_worker
-from ..view import replace_view_content
 from ..git_command import GitCommand
+from ..runtime import enqueue_on_worker
+from ..utils import focus_view
+from ..view import replace_view_content
 from ...common import util
 from ...core.settings import SettingsMixin
 
@@ -21,6 +22,11 @@ __all__ = (
     "GsPrepareCommitFocusEventListener",
     "GsPedanticEnforceEventListener",
 )
+
+
+MYPY = False
+if MYPY:
+    from typing import Optional, Tuple
 
 
 COMMIT_HELP_TEXT_EXTRA = """##
@@ -56,6 +62,14 @@ COMMIT_TITLE = "COMMIT: {}"
 CONFIRM_ABORT = "Confirm to abort commit?"
 
 
+def compute_identifier_for_view(view):
+    # type: (sublime.View) -> Optional[Tuple]
+    settings = view.settings()
+    return (
+        settings.get('git_savvy.repo_path'),
+    ) if settings.get('git_savvy.commit_view') else None
+
+
 class gs_commit(WindowCommand, GitCommand):
 
     """
@@ -67,25 +81,33 @@ class gs_commit(WindowCommand, GitCommand):
     def run(self, repo_path=None, include_unstaged=False, amend=False):
         repo_path = repo_path or self.repo_path
 
-        view = self.window.new_file()
-        settings = view.settings()
-        settings.set("git_savvy.repo_path", repo_path)
-        settings.set("git_savvy.get_long_text_view", True)
-        settings.set("git_savvy.commit_view", True)
-        settings.set("git_savvy.commit_view.include_unstaged", include_unstaged)
-        settings.set("git_savvy.commit_view.amend", amend)
-        commit_on_close = self.savvy_settings.get("commit_on_close")
-        settings.set("git_savvy.commit_on_close", commit_on_close)
-        prompt_on_abort_commit = self.savvy_settings.get("prompt_on_abort_commit")
-        settings.set("git_savvy.prompt_on_abort_commit", prompt_on_abort_commit)
+        this_id = (
+            repo_path,
+        )
+        for view in self.window.views():
+            if compute_identifier_for_view(view) == this_id:
+                focus_view(view)
+                break
+        else:
+            view = self.window.new_file()
+            settings = view.settings()
+            settings.set("git_savvy.repo_path", repo_path)
+            settings.set("git_savvy.get_long_text_view", True)
+            settings.set("git_savvy.commit_view", True)
+            settings.set("git_savvy.commit_view.include_unstaged", include_unstaged)
+            settings.set("git_savvy.commit_view.amend", amend)
+            commit_on_close = self.savvy_settings.get("commit_on_close")
+            settings.set("git_savvy.commit_on_close", commit_on_close)
+            prompt_on_abort_commit = self.savvy_settings.get("prompt_on_abort_commit")
+            settings.set("git_savvy.prompt_on_abort_commit", prompt_on_abort_commit)
 
-        view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
-        view.run_command("gs_handle_vintageous")
+            view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
+            view.run_command("gs_handle_vintageous")
 
-        title = COMMIT_TITLE.format(os.path.basename(repo_path))
-        view.set_name(title)
-        view.set_scratch(True)  # ignore dirty on actual commit
-        self.initialize_view(view, include_unstaged, amend)
+            title = COMMIT_TITLE.format(os.path.basename(repo_path))
+            view.set_name(title)
+            view.set_scratch(True)  # ignore dirty on actual commit
+            self.initialize_view(view, include_unstaged, amend)
 
     def initialize_view(self, view, include_unstaged, amend):
         # type: (sublime.View, bool, bool) -> None
