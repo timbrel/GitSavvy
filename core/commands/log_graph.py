@@ -1659,7 +1659,8 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         commit_hash = info["commit"]
         file_path = self.file_path
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
-        if "HEAD" in info and info["HEAD"] in info["local_branches"]:
+        on_checked_out_branch = "HEAD" in info and info["HEAD"] in info["local_branches"]
+        if on_checked_out_branch:
             actions += [
                 ("Pull", self.pull),
                 ("Push", partial(self.push, info["HEAD"])),
@@ -1764,11 +1765,25 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 "Compare {}against ...".format("file " if file_path else ""),
                 partial(self.compare_against, commit_hash, file_path=file_path)
             ),
-            (
-                "Diff {}against workdir".format("file " if file_path else ""),
-                partial(self.diff_commit, commit_hash, file_path=file_path)
-            )
         ]
+        if file_path:
+            actions += [
+                (
+                    "Diff file against workdir",
+                    partial(self.diff_commit, commit_hash)
+                ),
+            ]
+        elif on_checked_out_branch:
+            actions += [
+                ("Diff against workdir", self.diff),
+            ]
+        else:
+            actions += [
+                (
+                    "Diff '{}' against HEAD".format(good_commit_name),
+                    partial(self.diff_commit, commit_hash, target_commit="HEAD")
+                ),
+            ]
         return actions
 
     def pull(self):
@@ -1829,6 +1844,9 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
     def copy_sha(self, commit_hash):
         sublime.set_clipboard(self.git("rev-parse", commit_hash).strip())
+
+    def diff(self):
+        self.window.run_command("gs_diff", {"in_cached_mode": False})
 
     def diff_commit(self, base_commit, target_commit=None, file_path=None):
         self.window.run_command("gs_diff", {
