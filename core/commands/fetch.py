@@ -1,4 +1,3 @@
-import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
@@ -29,9 +28,9 @@ class gs_fetch(WindowCommand, GitCommand):
         if not remote:
             return
         if remote is True:
-            sublime.set_timeout_async(lambda: self.do_fetch())
+            enqueue_on_worker(self.do_fetch)
         else:
-            sublime.set_timeout_async(lambda: self.do_fetch(remote))
+            enqueue_on_worker(self.do_fetch, remote)
 
     def do_fetch(self, remote=None):
         if remote is None:
