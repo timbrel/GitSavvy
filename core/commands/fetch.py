@@ -6,7 +6,12 @@ from ...common import util
 from ..ui_mixins.quick_panel import show_remote_panel
 
 
-class GsFetchCommand(WindowCommand, GitCommand):
+__all__ = (
+    "gs_fetch",
+)
+
+
+class gs_fetch(WindowCommand, GitCommand):
 
     """
     Display a panel of all git remotes for active repository and
