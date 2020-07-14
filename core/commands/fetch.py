@@ -2,6 +2,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
+from ..runtime import enqueue_on_worker
 from ...common import util
 from ..ui_mixins.quick_panel import show_remote_panel
 
@@ -20,7 +21,7 @@ class gs_fetch(WindowCommand, GitCommand):
 
     def run(self, remote=None):
         if remote:
-            return self.do_fetch(remote)
+            return enqueue_on_worker(self.do_fetch, remote)
 
         show_remote_panel(self.on_remote_selection, show_option_all=True, allow_direct=True)
 
