@@ -1659,6 +1659,14 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         commit_hash = info["commit"]
         file_path = self.file_path
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
+        if "HEAD" in info and info["HEAD"] in info["local_branches"]:
+            actions += [
+                ("Pull", self.pull),
+                ("Push", partial(self.push, info["HEAD"])),
+                ("Fetch", partial(self.fetch, info["HEAD"])),
+                ("-" * 75, self.noop),
+            ]
+
         actions += [
             ("Checkout '{}'".format(branch_name), partial(self.checkout, branch_name))
             for branch_name in info.get("local_branches", [])
@@ -1762,6 +1770,19 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             )
         ]
         return actions
+
+    def pull(self):
+        self.window.run_command("gs_pull")
+
+    def push(self, current_branch):
+        self.window.run_command("gs_push", {"local_branch_name": current_branch})
+
+    def fetch(self, current_branch):
+        remote = self.get_remote_for_branch(current_branch)
+        self.window.run_command("gs_fetch", {"remote": remote})
+
+    def noop(self):
+        return
 
     def checkout(self, commit_hash):
         self.git("checkout", commit_hash)
