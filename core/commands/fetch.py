@@ -34,9 +34,9 @@ class gs_fetch(WindowCommand, GitCommand):
 
     def do_fetch(self, remote=None):
         if remote is None:
-            self.window.status_message("Starting fetch all remotes...")
+            self.window.status_message("Start fetching all remotes...")
         else:
-            self.window.status_message("Starting fetch {}...".format(remote))
+            self.window.status_message("Start fetching {}...".format(remote))
 
         self.fetch(remote)
         self.window.status_message("Fetch complete.")
