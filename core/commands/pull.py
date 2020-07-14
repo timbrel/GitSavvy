@@ -18,8 +18,10 @@ class GsPullBase(WindowCommand, GitCommand):
         Perform `git pull remote branch`.
         """
         self.window.status_message("Starting pull...")
-        self.pull(remote=remote, remote_branch=remote_branch, rebase=rebase)
-        self.window.status_message("Pull complete.")
+        output = self.pull(remote=remote, remote_branch=remote_branch, rebase=rebase).strip()
+        self.window.status_message(
+            output if output == "Already up to date." else "Pull complete."
+        )
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
