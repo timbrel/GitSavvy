@@ -1730,7 +1730,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             ]
 
         if head_info and head_info["commit"] != info["commit"]:
-            get = partial(get_list, head_info)  # type: Callable[[ListItems], List[str]]  # type: ignore
+            get = partial(get_list, head_info)  # type: Callable[[ListItems], List[str]]  # type: ignore[no-redef]
             good_move_target = (
                 head_info["HEAD"]
                 if head_is_on_a_branch
