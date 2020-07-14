@@ -1803,7 +1803,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
     def delete_tag(self, tag_name):
         self.git("tag", "-d", tag_name)
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        util.view.refresh_gitsavvy_interfaces(self.window)
 
     def reset_to(self, commitish):
         self.window.run_command("gs_reset", {"commit_hash": commitish})
@@ -1853,4 +1853,4 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
     def checkout_file_at_commit(self, commit_hash, file_path):
         self.checkout_ref(commit_hash, fpath=file_path)
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        util.view.refresh_gitsavvy_interfaces(self.window)
