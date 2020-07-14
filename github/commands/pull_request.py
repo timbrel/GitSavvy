@@ -7,7 +7,7 @@ from .. import github
 from .. import git_mixins
 from ...common import interwebs
 from ...common import util
-from ...core.commands.push import GsPushToBranchNameCommand
+from ...core.commands.push import gs_push_to_branch_name
 from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_paginated_panel
 from ...core.ui_mixins.input_panel import show_single_line_input_panel
@@ -212,7 +212,7 @@ class GsGithubCreatePullRequestCommand(WindowCommand, GitCommand, git_mixins.Git
         open_in_browser(url)
 
 
-class GsGithubPushAndCreatePullRequestCommand(GsPushToBranchNameCommand):
+class GsGithubPushAndCreatePullRequestCommand(gs_push_to_branch_name):
 
     def do_push(self, *args, **kwargs):
         super().do_push(*args, **kwargs)
