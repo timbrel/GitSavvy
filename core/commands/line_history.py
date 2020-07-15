@@ -50,6 +50,15 @@ class gs_line_history(TextCommand, GitCommand):
             flash(view, "No cursor to compute a line range from.")
             return
 
+        diff = self.no_context_diff(None, "HEAD", file_path)
+        ranges = [
+            (
+                self.adjust_line_according_to_diff(diff, a),
+                self.adjust_line_according_to_diff(diff, b)
+            )
+            for a, b in ranges
+        ]
+
         window.run_command("gs_open_line_history", {
             "repo_path": repo_path,
             "file_path": file_path,
