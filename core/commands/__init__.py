@@ -16,6 +16,7 @@ from .init import *
 from .inline_diff import *
 from .log import *
 from .log_graph import *
+from .log_graph_smart_copy import *
 from .merge import *
 from .mv import *
 from .navigate import *
