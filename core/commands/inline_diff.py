@@ -592,21 +592,20 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
         enqueue_on_worker(self.run_async, **kwargs)
 
     def run_async(self, reset=False):
+        # type: (bool) -> None
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
         ignore_ws = (
             "--ignore-whitespace"
             if self.savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
             else None
         )
-        selections = self.view.sel()
-        region = selections[0]
-        # For now, only support staging selections of length 0.
-        if len(selections) > 1 or not region.empty():
+        frozen_sel = [s for s in self.view.sel()]
+        if len(frozen_sel) != 1 or not frozen_sel[0].empty():
+            flash(self.view, "Only single cursors are supported.")
             return
 
-        # Git lines are 1-indexed; Sublime rows are 0-indexed.
-        line_number = self.view.rowcol(region.begin())[0] + 1
-        diff_lines = self.get_diff_from_line(line_number, reset)
+        row, _ = self.view.rowcol(frozen_sel[0].begin())
+        diff_lines = self.get_diff_from_line(row, reset)
         if not diff_lines:
             flash(self.view, "Not on a hunk.")
             return
@@ -671,8 +670,8 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
         history.append((args, full_diff, encoding))
         self.view.settings().set("git_savvy.inline_diff.history", history)
 
-    def get_diff_from_line(self, line_no, reset):
-        # type: (LineNo, bool) -> str
+    def get_diff_from_line(self, row, reset):
+        # type: (Row, bool) -> Optional[str]
         raise NotImplementedError
 
 
@@ -685,7 +684,8 @@ class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
     in HEAD).
     """
 
-    def get_diff_from_line(self, line_no, reset):
+    def get_diff_from_line(self, row, reset):
+        # type: (Row, bool) -> Optional[str]
         hunks = diff_view_hunks[self.view.id()]
         add_length_earlier_in_diff = 0
         cur_hunk_begin_on_minus = 0
@@ -693,7 +693,7 @@ class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
 
         # Find the correct hunk.
         for hunk_ref in hunks:
-            if hunk_ref.section_start < line_no <= hunk_ref.section_end:
+            if hunk_ref.section_start <= row < hunk_ref.section_end:
                 break
             else:
                 # we loop through all hooks before selected hunk.
@@ -705,12 +705,10 @@ class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
                     elif type == "-":
                         add_length_earlier_in_diff -= 1
         else:
-            return
-
-        section_start = hunk_ref.section_start + 1
+            return None
 
         # Determine head/staged starting line.
-        index_in_hunk = line_no - section_start
+        index_in_hunk = row - hunk_ref.section_start
         assert index_in_hunk >= 0
         line = hunk_ref.lines[index_in_hunk]
         line_type = hunk_ref.line_types[index_in_hunk]
@@ -780,13 +778,14 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
     apply the patch in reverse (reverting that hunk to the version in HEAD).
     """
 
-    def get_diff_from_line(self, line_no, reset):
+    def get_diff_from_line(self, row, reset):
+        # type: (Row, bool) -> Optional[str]
         hunks = diff_view_hunks[self.view.id()]
         add_length_earlier_in_diff = 0
 
         # Find the correct hunk.
         for hunk_ref in hunks:
-            if hunk_ref.section_start < line_no <= hunk_ref.section_end:
+            if hunk_ref.section_start <= row < hunk_ref.section_end:
                 break
             else:
                 # we loop through all hooks before selected hunk.
@@ -798,7 +797,7 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
                     elif type == "-":
                         add_length_earlier_in_diff -= 1
         else:
-            return
+            return None
 
         stand_alone_header = (
             "@@ -{head_start},{head_length} +{new_start},{new_length} @@\n".format(
