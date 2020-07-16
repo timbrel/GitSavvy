@@ -31,11 +31,20 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, List, Optional, Tuple
+    from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
     from ..types import LineNo, ColNo, Row, Col
+    from GitSavvy.common.util.parse_diff import Hunk as InlineDiff_Hunk
 
+    HunkReference = NamedTuple("HunkReference", [
+        ("section_start", Row),
+        ("section_end", Row),
+        ("hunk", InlineDiff_Hunk),
+        ("line_types", List[str]),
+        ("lines", List[str])  # sic! => "line_contents"
+    ])
 
-HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
+else:
+    HunkReference = namedtuple("HunkReference", "section_start section_end hunk line_types lines")
 
 
 INLINE_DIFF_TITLE = "DIFF: "
@@ -369,16 +378,16 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             original_content = ""
         else:
             original_content = self.get_file_content_at_commit(file_path, base_commit)
-        inline_diff_contents, replaced_lines = self.get_inline_diff_contents(original_content, diff)
+        inline_diff_contents, hunks = self.get_inline_diff_contents(original_content, diff)
 
         title = INLINE_DIFF_CACHED_TITLE if in_cached_mode else INLINE_DIFF_TITLE
         title += os.path.basename(file_path)
         if runs_on_ui_thread:
-            self.draw(self.view, title, match_position, inline_diff_contents, replaced_lines)
+            self.draw(self.view, title, match_position, inline_diff_contents, hunks)
         else:
-            enqueue_on_ui(self.draw, self.view, title, match_position, inline_diff_contents, replaced_lines)
+            enqueue_on_ui(self.draw, self.view, title, match_position, inline_diff_contents, hunks)
 
-    def draw(self, view, title, match_position, inline_diff_contents, replaced_lines):
+    def draw(self, view, title, match_position, inline_diff_contents, hunks):
         if match_position is None:
             cur_pos = capture_cur_position(view)
 
@@ -393,9 +402,10 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             new_row = translate_row_to_inline_diff(view, row)
             place_cursor_and_show(view, new_row, col, row_offset)
 
-        self.highlight_regions(replaced_lines)
+        self.highlight_regions(hunks)
 
     def get_inline_diff_contents(self, original_contents, diff):
+        # type: (str, List[InlineDiff_Hunk]) -> Tuple[str, List[HunkReference]]
         """
         Given a file's original contents and an array of hunks that could be
         applied to it, return a string with the diff lines inserted inline.
@@ -407,13 +417,10 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         in `diff_view_hunks` to be used when the user takes an
         action in the view.
         """
-        hunks = []  # type: List[HunkReference]
-        diff_view_hunks[self.view.id()] = hunks
-
         lines = original_contents.splitlines(keepends=True)
-        replaced_lines = []
-
+        hunks = []  # type: List[HunkReference]
         adjustment = 0
+
         for hunk in diff:
             # Git line-numbers are 1-indexed, lists are 0-indexed.
             head_start = hunk.head_start - 1
@@ -438,13 +445,13 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
 
             tail = lines[head_end + adjustment + (1 if line_types[-1] == "\\" else 0):]
             lines = lines[:section_start] + raw_lines + tail
-            replaced_lines.append((section_start, section_end, line_types, raw_lines))
-
             adjustment += len(diff_lines) - hunk.head_length
 
-        return "".join(lines), replaced_lines
+        diff_view_hunks[self.view.id()] = hunks
+        return "".join(lines), hunks
 
     def highlight_regions(self, replaced_lines):
+        # type: (List[HunkReference]) -> None
         """
         Given an array of tuples, where each tuple contains the start and end
         of an inlined diff hunk as well as an array of line-types (add/remove)
@@ -456,7 +463,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         remove_regions = []  # type: List[sublime.Region]
         remove_bold_regions = []
 
-        for section_start, section_end, line_types, raw_lines in replaced_lines:
+        for section_start, section_end, hunk, line_types, raw_lines in replaced_lines:
             for line_type, lines_ in groupby(
                 range(section_start, section_end),
                 key=lambda line: line_types[line - section_start]
