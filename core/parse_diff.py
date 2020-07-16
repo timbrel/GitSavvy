@@ -158,6 +158,11 @@ class Hunk(TextRange):
 
 
 EXTRACT_B_START = re.compile(r'@@*.+\+(\d+)(?:,\d+)? ')
+PARSE_HUNK_HEADER = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+
+
+class UnsupportedCombinedDiff(RuntimeError):
+    pass
 
 
 class HunkHeader(TextRange):
@@ -172,6 +177,14 @@ class HunkHeader(TextRange):
             return None
 
         return int(match.group(1))
+
+    def parse(self):
+        # type: () -> Tuple[LineNo, int, LineNo, int]
+        match = PARSE_HUNK_HEADER.match(self.text)
+        if match is None:
+            raise UnsupportedCombinedDiff(self.text)
+        a_start, a_length, b_start, b_length = match.groups()
+        return int(a_start), int(a_length or "1"), int(b_start), int(b_length or "1")
 
 
 class HunkLine(TextRange):

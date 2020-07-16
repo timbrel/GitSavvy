@@ -1,13 +1,12 @@
 from collections import namedtuple
 from itertools import chain
-import re
 
 import sublime
 from sublime_plugin import TextCommand
 
 from ..fns import accumulate, filter_, unique
 from ..git_command import GitCommand
-from ..parse_diff import SplittedDiff
+from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..utils import flash
 
 
@@ -18,7 +17,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Iterator, List, NamedTuple, Optional, Tuple
+    from typing import Iterator, List, NamedTuple, Optional
     from ..parse_diff import Hunk as HunkText
     from ..types import LineNo
 
@@ -33,10 +32,6 @@ if MYPY:
     ])
 else:
     Hunk = namedtuple("Hunk", "a_start a_length b_start b_length content")
-
-
-class UnsupportedCombinedDiff(RuntimeError):
-    pass
 
 
 class gs_stage_hunk(TextCommand, GitCommand):
@@ -95,7 +90,7 @@ def hunks_touching_selection(diff, view):
 
 def parse_hunk(hunk):
     # type: (HunkText) -> Hunk
-    return Hunk(*parse_metadata(hunk.header().text), content=hunk.content().text)
+    return Hunk(*hunk.header().parse(), content=hunk.content().text)
 
 
 def hunk_containing_line(hunks, line):
@@ -179,18 +174,6 @@ def rewrite_hunks_for_reset(hunks):
             new_a += 1
             new_b -= 1
         yield hunk._replace(a_start=new_a, b_start=new_b)
-
-
-LINE_METADATA = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
-
-
-def parse_metadata(line):
-    # type: (str) -> Tuple[int, int, int, int]
-    match = LINE_METADATA.match(line)
-    if match is None:
-        raise UnsupportedCombinedDiff(line)
-    a_start, a_length, b_start, b_length = match.groups()
-    return int(a_start), int(a_length or "1"), int(b_start), int(b_length or "1")
 
 
 def pluralize(word, count):
