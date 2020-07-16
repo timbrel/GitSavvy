@@ -41,8 +41,8 @@ class UnsupportedCombinedDiff(RuntimeError):
 class gs_stage_hunk(TextCommand, GitCommand):
     def run(self, edit):
         view = self.view
-        fpath = view.file_name()
-        if not fpath:
+        file_path = view.file_name()
+        if not file_path:
             flash(view, "Cannot stage on unnnamed buffers.")
             return
 
@@ -50,11 +50,11 @@ class gs_stage_hunk(TextCommand, GitCommand):
             flash(view, "Cannot stage on unsaved files.")
             return
 
-        raw_diff = self.git("diff", "-U0", fpath)
+        raw_diff = self.git("diff", "-U0", file_path)
         if not raw_diff:
-            not_tracked_file = self.git("ls-files", fpath).strip() == ""
+            not_tracked_file = self.git("ls-files", file_path).strip() == ""
             if not_tracked_file:
-                self.git("add", fpath)
+                self.git("add", file_path)
                 flash(view, "Staged whole file.")
             else:
                 flash(view, "The file is clean.")
