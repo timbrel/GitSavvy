@@ -496,14 +496,13 @@ class TestZooming(DeferrableTestCase):
         self.addCleanup(view.close)
         view.set_scratch(True)
         view.settings().set("git_savvy.repo_path", "fake_repo_path")
-        view.settings().set("git_savvy.diff_view.show_word_diff", False)
 
         view.settings().set('git_savvy.diff_view.context_lines', CONTEXT_LINES)
         cmd = module.gs_diff_refresh(view)
         when(cmd).git(...).thenReturn('NEW CONTENT')
 
         cmd.run({'unused_edit'})
-        verify(cmd).git('diff', None, None, FLAG, ...)
+        verify(cmd).git('diff', None, FLAG, ...)
 
     @p.expand([
         (0, 2, 2),
@@ -551,7 +550,6 @@ class TestDiffView(DeferrableTestCase):
     @p.expand([
         ('in_cached_mode', False),
         ('ignore_whitespace', False),
-        ('show_word_diff', False),
         ('base_commit', None),
         ('target_commit', None),
         ('show_diffstat', True),

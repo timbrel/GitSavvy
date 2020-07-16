@@ -56,7 +56,6 @@ class gs_show_commit(WindowCommand, GitCommand):
             settings.set("git_savvy.show_commit_view.commit", commit_hash)
             settings.set("git_savvy.repo_path", repo_path)
             settings.set("git_savvy.show_commit_view.ignore_whitespace", False)
-            settings.set("git_savvy.show_commit_view.show_word_diff", False)
             settings.set("git_savvy.show_commit_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
             view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
             view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash)))
@@ -72,12 +71,10 @@ class gs_show_commit_refresh(TextCommand, GitCommand):
         settings = self.view.settings()
         commit_hash = settings.get("git_savvy.show_commit_view.commit")
         ignore_whitespace = settings.get("git_savvy.show_commit_view.ignore_whitespace")
-        show_word_diff = settings.get("git_savvy.show_commit_view.show_word_diff")
         show_diffstat = settings.get("git_savvy.show_commit_view.show_diffstat")
         content = self.git(
             "show",
             "--ignore-all-space" if ignore_whitespace else None,
-            "--word-diff" if show_word_diff else None,
             "--stat" if show_diffstat else None,
             "--patch",
             "--format=fuller",
@@ -90,7 +87,7 @@ class gs_show_commit_refresh(TextCommand, GitCommand):
 class gs_show_commit_toggle_setting(TextCommand):
 
     """
-    Toggle view settings: `ignore_whitespace` or `show_word_diff`.
+    Toggle view settings: `ignore_whitespace`.
     """
 
     def run(self, edit, setting):
