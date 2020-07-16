@@ -78,7 +78,6 @@ class SplittedDiff(SplittedDiffBase):
 
 
 HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+)$')
-HUNKS_LINES_RE = re.compile(r'@@*.+\+(\d+)(?:,\d+)? ')
 
 
 class TextRange:
@@ -158,6 +157,9 @@ class Hunk(TextRange):
         )
 
 
+EXTRACT_B_START = re.compile(r'@@*.+\+(\d+)(?:,\d+)? ')
+
+
 class HunkHeader(TextRange):
     def to_line_start(self):
         # type: () -> Optional[LineNo]
@@ -165,7 +167,7 @@ class HunkHeader(TextRange):
 
         T.i. for "@@ -685,8 +686,14 @@ ..." extract the "686".
         """
-        match = HUNKS_LINES_RE.search(self.text)
+        match = EXTRACT_B_START.search(self.text)
         if not match:
             return None
 
