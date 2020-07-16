@@ -41,6 +41,7 @@ class UnsupportedCombinedDiff(RuntimeError):
 
 class gs_stage_hunk(TextCommand, GitCommand):
     def run(self, edit):
+        # type: (sublime.Edit) -> None
         view = self.view
         file_path = view.file_name()
         if not file_path:
