@@ -119,7 +119,12 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
     def previous_file_version(self, current_commit, file_path):
         # type: (str, str) -> str
         previous_commit = self.previous_commit(current_commit, file_path)
-        return self.get_file_content_at_commit(file_path, previous_commit)
+        if previous_commit:
+            return self.get_file_content_at_commit(file_path, previous_commit)
+        else:
+            # For intial revisions of a file, everything is new/added, and we
+            # just compare with the empty "".
+            return ""
 
 
 @text_command
