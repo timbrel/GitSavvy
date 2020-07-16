@@ -20,13 +20,14 @@ MYPY = False
 if MYPY:
     from typing import Iterator, List, NamedTuple, Optional, Tuple
     from ..parse_diff import Hunk as HunkText
+    from ..types import LineNo
 
 
 if MYPY:
     Hunk = NamedTuple("Hunk", [
-        ("a_start", int),
+        ("a_start", LineNo),
         ("a_length", int),
-        ("b_start", int),
+        ("b_start", LineNo),
         ("b_length", int),
         ("content", str)
     ])
@@ -82,13 +83,13 @@ class gs_stage_hunk(TextCommand, GitCommand):
 
 def hunks_touching_selection(diff, view):
     # type: (SplittedDiff, sublime.View) -> List[Hunk]
-    rows = unique(
+    lines = unique(
         view.rowcol(line.begin())[0] + 1
         for region in view.sel()
         for line in view.lines(region)
     )
     hunks = list(map(parse_hunk, diff.hunks))
-    return list(unique(filter_(hunk_containing_row(hunks, row) for row in rows)))
+    return list(unique(filter_(hunk_containing_line(hunks, line) for line in lines)))
 
 
 def parse_hunk(hunk):
@@ -96,11 +97,11 @@ def parse_hunk(hunk):
     return Hunk(*parse_metadata(hunk.header().text), content=hunk.content().text)
 
 
-def hunk_containing_row(hunks, row):
-    # type: (List[Hunk], int) -> Optional[Hunk]
+def hunk_containing_line(hunks, line):
+    # type: (List[Hunk], LineNo) -> Optional[Hunk]
     # Assumes `hunks` are sorted
     for hunk in hunks:
-        if row < hunk.b_start:
+        if line < hunk.b_start:
             break
         # Assume a length of "1" for removal only hunks so the
         # user can actually grab them exactly on the line above the
@@ -113,7 +114,7 @@ def hunk_containing_row(hunks, row):
             # wrong if the newline gets *removed* but doesn't do any
             # harm because there can't be any line after that anyway.
             b_end += 1
-        if hunk.b_start <= row < b_end:
+        if hunk.b_start <= line < b_end:
             return hunk
     return None
 
