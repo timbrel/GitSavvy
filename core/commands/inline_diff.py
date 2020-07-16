@@ -9,7 +9,7 @@ from . import diff
 from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
-from ..runtime import enqueue_on_ui
+from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view
 from ..view import capture_cur_position, replace_view_content, row_offset, Position
 from ...common import util
@@ -589,7 +589,7 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
         return is_interactive_diff(self.view)
 
     def run(self, edit, **kwargs):
-        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
+        enqueue_on_worker(self.run_async, **kwargs)
 
     def run_async(self, reset=False):
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
