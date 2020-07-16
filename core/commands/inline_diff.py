@@ -915,6 +915,7 @@ class gs_inline_diff_undo(TextCommand, GitCommand):
     def run_async(self):
         history = self.view.settings().get("git_savvy.inline_diff.history") or []
         if not history:
+            flash(self.view, "Undo stack is empty")
             return
 
         last_args, last_stdin, encoding = history.pop()
