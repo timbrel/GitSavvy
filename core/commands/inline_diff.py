@@ -8,7 +8,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import diff
 from .navigate import GsNavigate
 from ..git_command import GitCommand
-from ..parse_diff import SplittedDiff
+from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui
 from ..utils import flash, focus_view
 from ..view import capture_cur_position, replace_view_content, row_offset, Position
@@ -344,7 +344,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
 
         try:
             diff = util.parse_diff(raw_diff)
-        except util.UnsupportedDiffMode:
+        except UnsupportedCombinedDiff:
             sublime.error_message("Inline-diff cannot be displayed for this file - "
                                   "it has a merge conflict.")
             self.view.close()
