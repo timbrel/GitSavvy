@@ -648,11 +648,14 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
         self.git(*args, stdin=full_diff, stdin_encoding=encoding)
         self.save_to_history(args, full_diff, encoding)
 
-        cur_pos = capture_cur_position(self.view) if not (reset or in_cached_mode) else None
-        if cur_pos is not None:
-            row, col, offset = cur_pos
-            line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
-            cur_pos = Position(line_no - 1, col_no - 1, offset)
+        if reset or in_cached_mode or self.name() == "gs_inline_diff_stage_or_reset_line":
+            cur_pos = None
+        else:
+            cur_pos = capture_cur_position(self.view)
+            if cur_pos:
+                row, col, offset = cur_pos
+                line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
+                cur_pos = Position(line_no - 1, col_no - 1, offset)
 
         self.view.run_command("gs_inline_diff_refresh", {
             "match_position": cur_pos,
