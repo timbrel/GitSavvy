@@ -722,41 +722,50 @@ class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
 
         # Removed lines are always first with `git diff -U0 ...`. Therefore, the
         # line to remove will be the Nth line, where N is the line index in the hunk.
-        head_start = hunk_ref.hunk.head_start if line_type == "+" else hunk_ref.hunk.head_start + index_in_hunk
+        head_start = (
+            hunk_ref.hunk.head_start
+            if line_type == "+"
+            else hunk_ref.hunk.head_start + index_in_hunk
+        )
 
         if reset:
-            xhead_start = head_start - index_in_hunk + (0 if line_type == "+" else add_length_earlier_in_diff)
-            # xnew_start = head_start - cur_hunk_begin_on_minus + index_in_hunk + add_length_earlier_in_diff - 1
+            xhead_start = head_start - index_in_hunk
+            if line_type != "+":
+                xhead_start += add_length_earlier_in_diff
 
             return (
                 "@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"
-                "{line_type}{line}").format(
-                head_start=(xhead_start if xhead_start >= 0 else cur_hunk_begin_on_plus),
-                head_length="0" if line_type == "+" else "1",
-                # If head_length is zero, diff will report original start position
-                # as one less than where the content is inserted, for example:
-                #   @@ -75,0 +76,3 @@
-                new_start=xhead_start + (1 if line_type == "+" else 0),
+                "{line_type}{line}"
+                .format(
+                    head_start=(xhead_start if xhead_start >= 0 else cur_hunk_begin_on_plus),
+                    head_length="0" if line_type == "+" else "1",
+                    # If head_length is zero, diff will report original start position
+                    # as one less than where the content is inserted, for example:
+                    #   @@ -75,0 +76,3 @@
+                    new_start=xhead_start + (1 if line_type == "+" else 0),
 
-                new_length="1" if line_type == "+" else "0",
-                line_type=line_type,
-                line=line
+                    new_length="1" if line_type == "+" else "0",
+                    line_type=line_type,
+                    line=line
+                )
             )
 
         else:
             head_start += 1
             return (
                 "@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"
-                "{line_type}{line}").format(
-                head_start=head_start + (-1 if line_type == "-" else 0),
-                head_length="0" if line_type == "+" else "1",
-                # If head_length is zero, diff will report original start position
-                # as one less than where the content is inserted, for example:
-                #   @@ -75,0 +76,3 @@
-                new_start=head_start + (-1 if line_type == "-" else 0),
-                new_length="1" if line_type == "+" else "0",
-                line_type=line_type,
-                line=line
+                "{line_type}{line}"
+                .format(
+                    head_start=head_start + (-1 if line_type == "-" else 0),
+                    head_length="0" if line_type == "+" else "1",
+                    # If head_length is zero, diff will report original start position
+                    # as one less than where the content is inserted, for example:
+                    #   @@ -75,0 +76,3 @@
+                    new_start=head_start + (-1 if line_type == "-" else 0),
+                    new_length="1" if line_type == "+" else "0",
+                    line_type=line_type,
+                    line=line
+                )
             )
 
 
@@ -788,7 +797,7 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
         else:
             return
 
-        stand_alone_header = \
+        stand_alone_header = (
             "@@ -{head_start},{head_length} +{new_start},{new_length} @@\n".format(
                 head_start=hunk_ref.hunk.head_start + (add_length_earlier_in_diff if reset else 0),
                 head_length=hunk_ref.hunk.head_length,
@@ -798,6 +807,7 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
                 new_start=hunk_ref.hunk.head_start + (0 if hunk_ref.hunk.head_length else 1),
                 new_length=hunk_ref.hunk.saved_length
             )
+        )
 
         return "".join([stand_alone_header] + hunk_ref.hunk.raw_lines[1:])
 
