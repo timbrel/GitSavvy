@@ -298,7 +298,7 @@ class HistoryMixin():
         return line
 
     def previous_commit(self, current_commit, file_path, follow=False):
-        # type: (str, str, bool) -> str
+        # type: (str, str, bool) -> Optional[str]
         if not current_commit or current_commit == "HEAD":
             return self._previous_commit(current_commit, file_path, follow)
 
@@ -310,7 +310,7 @@ class HistoryMixin():
             return rv
 
     def _previous_commit(self, current_commit, file_path, follow):
-        # type: (str, str, bool) -> str
+        # type: (str, str, bool) -> Optional[str]
         return self.git(
             "log",
             "--format=%H",
@@ -320,9 +320,10 @@ class HistoryMixin():
             current_commit,
             "--",
             file_path
-        ).strip()
+        ).strip() or None
 
     def next_commit(self, current_commit, file_path, follow=False):
+        # type: (str, str, bool) -> Optional[str]
         try:
             return self.git(
                 "log",
@@ -333,7 +334,7 @@ class HistoryMixin():
                 file_path
             ).strip().splitlines()[-1]
         except IndexError:
-            return ""
+            return None
 
     def newest_commit_for_file(self, file_path, follow=False):
         """
