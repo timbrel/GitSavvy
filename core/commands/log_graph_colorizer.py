@@ -191,7 +191,7 @@ def contains(next_char, test):
 
 
 @follow(COMMIT_NODE_CHAR, "down")
-def follow_dot(char):
+def after_dot(char):
     # type: (Char) -> Iterator[Char]
     yield from contains(char.e, '-')
     yield from contains(char.s, '|' + COMMIT_NODE_CHAR)
@@ -200,7 +200,7 @@ def follow_dot(char):
 
 
 @follow('|', "down")
-def follow_vertical_bar(char):
+def after_vertical_bar(char):
     # type: (Char) -> Iterator[Char]
     yield from contains(char.s, '|' + COMMIT_NODE_CHAR)
     if char.e != '/' and char.e != '_':
@@ -209,14 +209,14 @@ def follow_vertical_bar(char):
 
 
 @follow('\\', "down")
-def follow_backslash(char):
+def after_backslash(char):
     # type: (Char) -> Iterator[Char]
     yield from contains(char.s, '/')
     yield from contains(char.se, '\\|' + COMMIT_NODE_CHAR)
 
 
 @follow('/', "down")
-def follow_forwardslash(char):
+def after_forwardslash(char):
     # type: (Char) -> Iterator[Char]
     yield from contains(char.w, '_')
 
@@ -237,7 +237,7 @@ def follow_forwardslash(char):
 
 
 @follow('_', "down")
-def follow_underscore(char):
+def after_underscore(char):
     # type: (Char) -> Iterator[Char]
     yield from contains(char.w, '_')
     if char.w == '|':
@@ -260,7 +260,7 @@ def follow_underscore(char):
 
 
 @follow('-', "down")
-def follow_horizontal_bar(char):
+def after_horizontal_bar(char):
     # type: (Char) -> Iterator[Char]
     # Multi merge octopoi
     # *---.
@@ -270,7 +270,7 @@ def follow_horizontal_bar(char):
 
 
 @follow('.', "down")
-def follow_point(char):
+def after_point(char):
     # type: (Char) -> Iterator[Char]
     yield from contains(char.se, '\\')
 
