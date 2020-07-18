@@ -1287,7 +1287,10 @@ def _colorize_dots(vid, dots):
     view.add_regions('gs_log_graph_dot', [d.region() for d in dots], scope=DOT_SCOPE)
     paths = [
         c.region()
-        for path in map(colorizer.follow_path, dots)
+        for path in chain(
+            map(colorizer.follow_path_down, dots),
+            map(colorizer.follow_path_up, dots)
+        )
         if len(path) > 1
         for c in path
     ]
@@ -1372,7 +1375,7 @@ def follow_dots(dot):
     """Follow dot to dot omitting the path chars in between."""
     while True:
         try:
-            dot = colorizer.follow_path(dot)[-1]
+            dot = colorizer.follow_path_down(dot)[-1]
         except IndexError:
             break
         else:
