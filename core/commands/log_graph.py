@@ -17,7 +17,7 @@ from . import log_graph_colorizer as colorizer, show_commit_info
 from .log import GsLogCommand
 from .navigate import GsNavigate
 from .. import utils
-from ..fns import filter_, take, unique
+from ..fns import filter_, flatten, partition, take, unique
 from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region
 from ..settings import GitSavvySettings
@@ -76,7 +76,9 @@ COMMIT_LINE = re.compile(
 )
 
 DOT_SCOPE = 'git_savvy.graph.dot'
+DOT_ABOVE_SCOPE = 'git_savvy.graph.dot.above'
 PATH_SCOPE = 'git_savvy.graph.path_char'
+PATH_ABOVE_SCOPE = 'git_savvy.graph.path_char.above'
 MATCHING_COMMIT_SCOPE = 'git_savvy.graph.matching_commit'
 
 
@@ -204,6 +206,18 @@ def augment_color_scheme(view):
         PATH_SCOPE,
         background=colors['path_background'],
         foreground=colors['path_foreground'],
+    )
+    themeGenerator.add_scoped_style(
+        "GitSavvy Highlighted Commit Dot Above",
+        DOT_ABOVE_SCOPE,
+        background=colors['commit_dot_above_background'],
+        foreground=colors['commit_dot_above_foreground'],
+    )
+    themeGenerator.add_scoped_style(
+        "GitSavvy Highlighted Path Char Above",
+        PATH_ABOVE_SCOPE,
+        background=colors['path_above_background'],
+        foreground=colors['path_above_foreground'],
     )
     themeGenerator.add_scoped_style(
         "GitSavvy Highlighted Matching Commit",
@@ -1284,17 +1298,22 @@ def _find_dots(view):
 def _colorize_dots(vid, dots):
     # type: (sublime.ViewId, Tuple[colorizer.Char]) -> None
     view = sublime.View(vid)
-    view.add_regions('gs_log_graph_dot', [d.region() for d in dots], scope=DOT_SCOPE)
-    paths = [
-        c.region()
-        for path in chain(
-            map(colorizer.follow_path_down, dots),
-            map(colorizer.follow_path_up, dots)
-        )
-        if len(path) > 1
-        for c in path
-    ]
-    view.add_regions('gs_log_graph_follow_path', paths, scope=PATH_SCOPE)
+    to_region = lambda ch: ch.region()  # type: Callable[[colorizer.Char], sublime.Region]
+
+    view.add_regions('gs_log_graph.dot', list(map(to_region, dots)), scope=DOT_SCOPE)
+    path_down = flatten(filter(
+        lambda path: len(path) > 1,  # type: ignore[arg-type]  # https://github.com/python/mypy/issues/9176
+        map(colorizer.follow_path_down, dots)
+    ))
+    view.add_regions('gs_log_graph.path_below', list(map(to_region, path_down)), scope=PATH_SCOPE)
+
+    chars_up = flatten(filter(
+        lambda path: len(path) > 1,  # type: ignore[arg-type]  # https://github.com/python/mypy/issues/9176
+        map(colorizer.follow_path_up, dots)
+    ))
+    path_up, dot_up = partition(lambda ch: ch == COMMIT_NODE_CHAR, chars_up)
+    view.add_regions('gs_log_graph.path_above', list(map(to_region, path_up)), scope=PATH_ABOVE_SCOPE)
+    view.add_regions('gs_log_graph.dot.above', list(map(to_region, dot_up)), scope=DOT_ABOVE_SCOPE)
 
 
 def colorize_fixups(view):
