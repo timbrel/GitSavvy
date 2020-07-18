@@ -1,13 +1,12 @@
 from collections import namedtuple
 from itertools import chain
-import re
 
 import sublime
 from sublime_plugin import TextCommand
 
 from ..fns import accumulate, filter_, unique
 from ..git_command import GitCommand
-from ..parse_diff import SplittedDiff
+from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..utils import flash
 
 
@@ -18,15 +17,16 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Iterator, List, NamedTuple, Optional, Tuple
+    from typing import Iterator, List, NamedTuple, Optional
     from ..parse_diff import Hunk as HunkText
+    from ..types import LineNo
 
 
 if MYPY:
     Hunk = NamedTuple("Hunk", [
-        ("a_start", int),
+        ("a_start", LineNo),
         ("a_length", int),
-        ("b_start", int),
+        ("b_start", LineNo),
         ("b_length", int),
         ("content", str)
     ])
@@ -34,15 +34,12 @@ else:
     Hunk = namedtuple("Hunk", "a_start a_length b_start b_length content")
 
 
-class UnsupportedCombinedDiff(RuntimeError):
-    pass
-
-
 class gs_stage_hunk(TextCommand, GitCommand):
     def run(self, edit):
+        # type: (sublime.Edit) -> None
         view = self.view
-        fpath = view.file_name()
-        if not fpath:
+        file_path = view.file_name()
+        if not file_path:
             flash(view, "Cannot stage on unnnamed buffers.")
             return
 
@@ -50,11 +47,11 @@ class gs_stage_hunk(TextCommand, GitCommand):
             flash(view, "Cannot stage on unsaved files.")
             return
 
-        raw_diff = self.git("diff", "-U0", fpath)
+        raw_diff = self.git("diff", "-U0", file_path)
         if not raw_diff:
-            not_tracked_file = self.git("ls-files", fpath).strip() == ""
+            not_tracked_file = self.git("ls-files", file_path).strip() == ""
             if not_tracked_file:
-                self.git("add", fpath)
+                self.git("add", file_path)
                 flash(view, "Staged whole file.")
             else:
                 flash(view, "The file is clean.")
@@ -82,25 +79,25 @@ class gs_stage_hunk(TextCommand, GitCommand):
 
 def hunks_touching_selection(diff, view):
     # type: (SplittedDiff, sublime.View) -> List[Hunk]
-    rows = unique(
+    lines = unique(
         view.rowcol(line.begin())[0] + 1
         for region in view.sel()
         for line in view.lines(region)
     )
     hunks = list(map(parse_hunk, diff.hunks))
-    return list(unique(filter_(hunk_containing_row(hunks, row) for row in rows)))
+    return list(unique(filter_(hunk_containing_line(hunks, line) for line in lines)))
 
 
 def parse_hunk(hunk):
     # type: (HunkText) -> Hunk
-    return Hunk(*parse_metadata(hunk.header().text), content=hunk.content().text)
+    return Hunk(*hunk.header().parse(), content=hunk.content().text)
 
 
-def hunk_containing_row(hunks, row):
-    # type: (List[Hunk], int) -> Optional[Hunk]
+def hunk_containing_line(hunks, line):
+    # type: (List[Hunk], LineNo) -> Optional[Hunk]
     # Assumes `hunks` are sorted
     for hunk in hunks:
-        if row < hunk.b_start:
+        if line < hunk.b_start:
             break
         # Assume a length of "1" for removal only hunks so the
         # user can actually grab them exactly on the line above the
@@ -113,7 +110,7 @@ def hunk_containing_row(hunks, row):
             # wrong if the newline gets *removed* but doesn't do any
             # harm because there can't be any line after that anyway.
             b_end += 1
-        if hunk.b_start <= row < b_end:
+        if hunk.b_start <= line < b_end:
             return hunk
     return None
 
@@ -177,18 +174,6 @@ def rewrite_hunks_for_reset(hunks):
             new_a += 1
             new_b -= 1
         yield hunk._replace(a_start=new_a, b_start=new_b)
-
-
-LINE_METADATA = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
-
-
-def parse_metadata(line):
-    # type: (str) -> Tuple[int, int, int, int]
-    match = LINE_METADATA.match(line)
-    if match is None:
-        raise UnsupportedCombinedDiff(line)
-    a_start, a_length, b_start, b_length = match.groups()
-    return int(a_start), int(a_length or "1"), int(b_start), int(b_length or "1")
 
 
 def pluralize(word, count):

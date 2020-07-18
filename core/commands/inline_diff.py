@@ -8,7 +8,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import diff
 from .navigate import GsNavigate
 from ..git_command import GitCommand
-from ..parse_diff import SplittedDiff
+from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui
 from ..utils import flash, focus_view
 from ..view import capture_cur_position, replace_view_content, row_offset, Position
@@ -324,6 +324,8 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         base_commit = settings.get("git_savvy.inline_diff_view.base_commit")
         target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
         ignore_eol_ws = self.savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
+        if target_commit and not base_commit:
+            target_commit = "{}^".format(target_commit)
 
         if raw_diff is None:
             raw_diff_output = self.git(
@@ -344,7 +346,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
 
         try:
             diff = util.parse_diff(raw_diff)
-        except util.UnsupportedDiffMode:
+        except UnsupportedCombinedDiff:
             sublime.error_message("Inline-diff cannot be displayed for this file - "
                                   "it has a merge conflict.")
             self.view.close()
@@ -360,6 +362,11 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
 
         if in_cached_mode:
             original_content = self.get_file_content_at_commit(file_path, "HEAD")
+        elif target_commit and not base_commit:
+            # For historical diffs, not having a `base_commit` means we
+            # have reached the initial revision of a file. The base content
+            # we're coming from is thus the empty "".
+            original_content = ""
         else:
             original_content = self.get_file_content_at_commit(file_path, base_commit)
         inline_diff_contents, replaced_lines = self.get_inline_diff_contents(original_content, diff)
