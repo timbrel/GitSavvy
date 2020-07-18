@@ -9,7 +9,7 @@ from . import diff
 from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
-from ..runtime import enqueue_on_ui
+from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view
 from ..view import capture_cur_position, replace_view_content, row_offset, Position
 from ...common import util
@@ -31,11 +31,20 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, List, Optional, Tuple
+    from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
     from ..types import LineNo, ColNo, Row, Col
+    from GitSavvy.common.util.parse_diff import Hunk as InlineDiff_Hunk
 
+    HunkReference = NamedTuple("HunkReference", [
+        ("section_start", Row),
+        ("section_end", Row),
+        ("hunk", InlineDiff_Hunk),
+        ("line_types", List[str]),
+        ("lines", List[str])  # sic! => "line_contents"
+    ])
 
-HunkReference = namedtuple("HunkReference", ("section_start", "section_end", "hunk", "line_types", "lines"))
+else:
+    HunkReference = namedtuple("HunkReference", "section_start section_end hunk line_types lines")
 
 
 INLINE_DIFF_TITLE = "DIFF: "
@@ -369,16 +378,16 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             original_content = ""
         else:
             original_content = self.get_file_content_at_commit(file_path, base_commit)
-        inline_diff_contents, replaced_lines = self.get_inline_diff_contents(original_content, diff)
+        inline_diff_contents, hunks = self.get_inline_diff_contents(original_content, diff)
 
         title = INLINE_DIFF_CACHED_TITLE if in_cached_mode else INLINE_DIFF_TITLE
         title += os.path.basename(file_path)
         if runs_on_ui_thread:
-            self.draw(self.view, title, match_position, inline_diff_contents, replaced_lines)
+            self.draw(self.view, title, match_position, inline_diff_contents, hunks)
         else:
-            enqueue_on_ui(self.draw, self.view, title, match_position, inline_diff_contents, replaced_lines)
+            enqueue_on_ui(self.draw, self.view, title, match_position, inline_diff_contents, hunks)
 
-    def draw(self, view, title, match_position, inline_diff_contents, replaced_lines):
+    def draw(self, view, title, match_position, inline_diff_contents, hunks):
         if match_position is None:
             cur_pos = capture_cur_position(view)
 
@@ -393,9 +402,10 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             new_row = translate_row_to_inline_diff(view, row)
             place_cursor_and_show(view, new_row, col, row_offset)
 
-        self.highlight_regions(replaced_lines)
+        self.highlight_regions(hunks)
 
     def get_inline_diff_contents(self, original_contents, diff):
+        # type: (str, List[InlineDiff_Hunk]) -> Tuple[str, List[HunkReference]]
         """
         Given a file's original contents and an array of hunks that could be
         applied to it, return a string with the diff lines inserted inline.
@@ -407,13 +417,10 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         in `diff_view_hunks` to be used when the user takes an
         action in the view.
         """
-        hunks = []  # type: List[HunkReference]
-        diff_view_hunks[self.view.id()] = hunks
-
         lines = original_contents.splitlines(keepends=True)
-        replaced_lines = []
-
+        hunks = []  # type: List[HunkReference]
         adjustment = 0
+
         for hunk in diff:
             # Git line-numbers are 1-indexed, lists are 0-indexed.
             head_start = hunk.head_start - 1
@@ -438,13 +445,13 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
 
             tail = lines[head_end + adjustment + (1 if line_types[-1] == "\\" else 0):]
             lines = lines[:section_start] + raw_lines + tail
-            replaced_lines.append((section_start, section_end, line_types, raw_lines))
-
             adjustment += len(diff_lines) - hunk.head_length
 
-        return "".join(lines), replaced_lines
+        diff_view_hunks[self.view.id()] = hunks
+        return "".join(lines), hunks
 
     def highlight_regions(self, replaced_lines):
+        # type: (List[HunkReference]) -> None
         """
         Given an array of tuples, where each tuple contains the start and end
         of an inlined diff hunk as well as an array of line-types (add/remove)
@@ -456,7 +463,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         remove_regions = []  # type: List[sublime.Region]
         remove_bold_regions = []
 
-        for section_start, section_end, line_types, raw_lines in replaced_lines:
+        for section_start, section_end, hunk, line_types, raw_lines in replaced_lines:
             for line_type, lines_ in groupby(
                 range(section_start, section_end),
                 key=lambda line: line_types[line - section_start]
@@ -582,24 +589,23 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
         return is_interactive_diff(self.view)
 
     def run(self, edit, **kwargs):
-        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
+        enqueue_on_worker(self.run_async, **kwargs)
 
     def run_async(self, reset=False):
+        # type: (bool) -> None
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
         ignore_ws = (
             "--ignore-whitespace"
             if self.savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
             else None
         )
-        selections = self.view.sel()
-        region = selections[0]
-        # For now, only support staging selections of length 0.
-        if len(selections) > 1 or not region.empty():
+        frozen_sel = [s for s in self.view.sel()]
+        if len(frozen_sel) != 1 or not frozen_sel[0].empty():
+            flash(self.view, "Only single cursors are supported.")
             return
 
-        # Git lines are 1-indexed; Sublime rows are 0-indexed.
-        line_number = self.view.rowcol(region.begin())[0] + 1
-        diff_lines = self.get_diff_from_line(line_number, reset)
+        row, _ = self.view.rowcol(frozen_sel[0].begin())
+        diff_lines = self.get_diff_from_line(row, reset)
         if not diff_lines:
             flash(self.view, "Not on a hunk.")
             return
@@ -641,11 +647,14 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
         self.git(*args, stdin=full_diff, stdin_encoding=encoding)
         self.save_to_history(args, full_diff, encoding)
 
-        cur_pos = capture_cur_position(self.view) if not (reset or in_cached_mode) else None
-        if cur_pos is not None:
-            row, col, offset = cur_pos
-            line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
-            cur_pos = Position(line_no - 1, col_no - 1, offset)
+        if reset or in_cached_mode or self.name() == "gs_inline_diff_stage_or_reset_line":
+            cur_pos = None
+        else:
+            cur_pos = capture_cur_position(self.view)
+            if cur_pos:
+                row, col, offset = cur_pos
+                line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
+                cur_pos = Position(line_no - 1, col_no - 1, offset)
 
         self.view.run_command("gs_inline_diff_refresh", {
             "match_position": cur_pos,
@@ -661,8 +670,8 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
         history.append((args, full_diff, encoding))
         self.view.settings().set("git_savvy.inline_diff.history", history)
 
-    def get_diff_from_line(self, line_no, reset):
-        # type: (LineNo, bool) -> str
+    def get_diff_from_line(self, row, reset):
+        # type: (Row, bool) -> Optional[str]
         raise NotImplementedError
 
 
@@ -675,7 +684,8 @@ class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
     in HEAD).
     """
 
-    def get_diff_from_line(self, line_no, reset):
+    def get_diff_from_line(self, row, reset):
+        # type: (Row, bool) -> Optional[str]
         hunks = diff_view_hunks[self.view.id()]
         add_length_earlier_in_diff = 0
         cur_hunk_begin_on_minus = 0
@@ -683,7 +693,7 @@ class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
 
         # Find the correct hunk.
         for hunk_ref in hunks:
-            if hunk_ref.section_start < line_no <= hunk_ref.section_end:
+            if hunk_ref.section_start <= row < hunk_ref.section_end:
                 break
             else:
                 # we loop through all hooks before selected hunk.
@@ -695,12 +705,10 @@ class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
                     elif type == "-":
                         add_length_earlier_in_diff -= 1
         else:
-            return
-
-        section_start = hunk_ref.section_start + 1
+            return None
 
         # Determine head/staged starting line.
-        index_in_hunk = line_no - section_start
+        index_in_hunk = row - hunk_ref.section_start
         assert index_in_hunk >= 0
         line = hunk_ref.lines[index_in_hunk]
         line_type = hunk_ref.line_types[index_in_hunk]
@@ -715,41 +723,50 @@ class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
 
         # Removed lines are always first with `git diff -U0 ...`. Therefore, the
         # line to remove will be the Nth line, where N is the line index in the hunk.
-        head_start = hunk_ref.hunk.head_start if line_type == "+" else hunk_ref.hunk.head_start + index_in_hunk
+        head_start = (
+            hunk_ref.hunk.head_start
+            if line_type == "+"
+            else hunk_ref.hunk.head_start + index_in_hunk
+        )
 
         if reset:
-            xhead_start = head_start - index_in_hunk + (0 if line_type == "+" else add_length_earlier_in_diff)
-            # xnew_start = head_start - cur_hunk_begin_on_minus + index_in_hunk + add_length_earlier_in_diff - 1
+            xhead_start = head_start - index_in_hunk
+            if line_type != "+":
+                xhead_start += add_length_earlier_in_diff
 
             return (
                 "@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"
-                "{line_type}{line}").format(
-                head_start=(xhead_start if xhead_start >= 0 else cur_hunk_begin_on_plus),
-                head_length="0" if line_type == "+" else "1",
-                # If head_length is zero, diff will report original start position
-                # as one less than where the content is inserted, for example:
-                #   @@ -75,0 +76,3 @@
-                new_start=xhead_start + (1 if line_type == "+" else 0),
+                "{line_type}{line}"
+                .format(
+                    head_start=(xhead_start if xhead_start >= 0 else cur_hunk_begin_on_plus),
+                    head_length="0" if line_type == "+" else "1",
+                    # If head_length is zero, diff will report original start position
+                    # as one less than where the content is inserted, for example:
+                    #   @@ -75,0 +76,3 @@
+                    new_start=xhead_start + (1 if line_type == "+" else 0),
 
-                new_length="1" if line_type == "+" else "0",
-                line_type=line_type,
-                line=line
+                    new_length="1" if line_type == "+" else "0",
+                    line_type=line_type,
+                    line=line
+                )
             )
 
         else:
             head_start += 1
             return (
                 "@@ -{head_start},{head_length} +{new_start},{new_length} @@\n"
-                "{line_type}{line}").format(
-                head_start=head_start + (-1 if line_type == "-" else 0),
-                head_length="0" if line_type == "+" else "1",
-                # If head_length is zero, diff will report original start position
-                # as one less than where the content is inserted, for example:
-                #   @@ -75,0 +76,3 @@
-                new_start=head_start + (-1 if line_type == "-" else 0),
-                new_length="1" if line_type == "+" else "0",
-                line_type=line_type,
-                line=line
+                "{line_type}{line}"
+                .format(
+                    head_start=head_start + (-1 if line_type == "-" else 0),
+                    head_length="0" if line_type == "+" else "1",
+                    # If head_length is zero, diff will report original start position
+                    # as one less than where the content is inserted, for example:
+                    #   @@ -75,0 +76,3 @@
+                    new_start=head_start + (-1 if line_type == "-" else 0),
+                    new_length="1" if line_type == "+" else "0",
+                    line_type=line_type,
+                    line=line
+                )
             )
 
 
@@ -761,13 +778,14 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
     apply the patch in reverse (reverting that hunk to the version in HEAD).
     """
 
-    def get_diff_from_line(self, line_no, reset):
+    def get_diff_from_line(self, row, reset):
+        # type: (Row, bool) -> Optional[str]
         hunks = diff_view_hunks[self.view.id()]
         add_length_earlier_in_diff = 0
 
         # Find the correct hunk.
         for hunk_ref in hunks:
-            if hunk_ref.section_start < line_no <= hunk_ref.section_end:
+            if hunk_ref.section_start <= row < hunk_ref.section_end:
                 break
             else:
                 # we loop through all hooks before selected hunk.
@@ -779,9 +797,9 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
                     elif type == "-":
                         add_length_earlier_in_diff -= 1
         else:
-            return
+            return None
 
-        stand_alone_header = \
+        stand_alone_header = (
             "@@ -{head_start},{head_length} +{new_start},{new_length} @@\n".format(
                 head_start=hunk_ref.hunk.head_start + (add_length_earlier_in_diff if reset else 0),
                 head_length=hunk_ref.hunk.head_length,
@@ -791,6 +809,7 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
                 new_start=hunk_ref.hunk.head_start + (0 if hunk_ref.hunk.head_length else 1),
                 new_length=hunk_ref.hunk.saved_length
             )
+        )
 
         return "".join([stand_alone_header] + hunk_ref.hunk.raw_lines[1:])
 
@@ -898,6 +917,7 @@ class gs_inline_diff_undo(TextCommand, GitCommand):
     def run_async(self):
         history = self.view.settings().get("git_savvy.inline_diff.history") or []
         if not history:
+            flash(self.view, "Undo stack is empty")
             return
 
         last_args, last_stdin, encoding = history.pop()
