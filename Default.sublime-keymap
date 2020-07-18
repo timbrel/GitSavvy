@@ -643,17 +643,9 @@
         ]
     },
     {
-        "keys": ["s"],
+        "keys": ["w"],
         "command": "gs_diff_toggle_setting",
         "args": { "setting": "ignore_whitespace" },
-        "context": [
-            { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
-        ]
-    },
-    {
-        "keys": ["w"],
-        "command": "gs_diff_cycle_word_diff",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
@@ -755,18 +747,9 @@
         ]
     },
     {
-        "keys": ["s"],
-        "command": "gs_show_commit_toggle_setting",
-        "args": { "setting": "ignore_whitespace" },
-        "context": [
-            { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
-        ]
-    },
-    {
         "keys": ["w"],
         "command": "gs_show_commit_toggle_setting",
-        "args": { "setting": "show_word_diff" },
+        "args": { "setting": "ignore_whitespace" },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }

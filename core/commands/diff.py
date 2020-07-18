@@ -6,7 +6,6 @@ current diff.
 from collections import namedtuple
 from contextlib import contextmanager
 import os
-import re
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -26,7 +25,6 @@ __all__ = (
     "gs_diff",
     "gs_diff_refresh",
     "gs_diff_toggle_setting",
-    "gs_diff_cycle_word_diff",
     "gs_diff_toggle_cached_mode",
     "gs_diff_zoom",
     "gs_diff_stage_or_reset_hunk",
@@ -116,7 +114,6 @@ class gs_diff(WindowCommand, GitCommand):
         disable_stage=False,
         title=None,
         ignore_whitespace=False,
-        show_word_diff=False,
         context_lines=3
     ):
         # type: (...) -> None
@@ -149,7 +146,6 @@ class gs_diff(WindowCommand, GitCommand):
             settings.set("git_savvy.file_path", file_path)
             settings.set("git_savvy.diff_view.in_cached_mode", bool(in_cached_mode))
             settings.set("git_savvy.diff_view.ignore_whitespace", ignore_whitespace)
-            settings.set("git_savvy.diff_view.show_word_diff", show_word_diff)
             settings.set("git_savvy.diff_view.context_lines", context_lines)
             settings.set("git_savvy.diff_view.base_commit", base_commit)
             settings.set("git_savvy.diff_view.target_commit", target_commit)
@@ -172,14 +168,6 @@ class gs_diff(WindowCommand, GitCommand):
             diff_view.run_command("gs_handle_vintageous")
 
 
-WORD_DIFF_PATTERNS = [
-    None,
-    r"[a-zA-Z_\-\x80-\xff]+|[^[:space:]]|[\xc0-\xff][\x80-\xbf]+",
-    ".",
-]
-WORD_DIFF_MARKERS_RE = re.compile(r"{\+(.*?)\+}|\[-(.*?)-\]")
-
-
 class gs_diff_refresh(TextCommand, GitCommand):
     """Refresh the diff view with the latest repo state."""
 
@@ -196,14 +184,11 @@ class gs_diff_refresh(TextCommand, GitCommand):
         file_path = self.view.settings().get("git_savvy.file_path")
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
         ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
-        show_word_diff = self.view.settings().get("git_savvy.diff_view.show_word_diff")
         base_commit = self.view.settings().get("git_savvy.diff_view.base_commit")
         target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
         show_diffstat = self.view.settings().get("git_savvy.diff_view.show_diffstat")
         disable_stage = self.view.settings().get("git_savvy.diff_view.disable_stage")
         context_lines = self.view.settings().get('git_savvy.diff_view.context_lines')
-
-        word_diff_regex = WORD_DIFF_PATTERNS[show_word_diff]
 
         prelude = "\n"
         title = ["DIFF:"]
@@ -235,8 +220,6 @@ class gs_diff_refresh(TextCommand, GitCommand):
             else:
                 prelude += "  UNSTAGED CHANGES\n"
 
-        if show_word_diff:
-            prelude += "  WORD REGEX: {}\n".format(word_diff_regex)
         if ignore_whitespace:
             prelude += "  IGNORING WHITESPACE\n"
 
@@ -244,7 +227,6 @@ class gs_diff_refresh(TextCommand, GitCommand):
             diff = self.git(
                 "diff",
                 "--ignore-all-space" if ignore_whitespace else None,
-                "--word-diff-regex={}".format(word_diff_regex) if word_diff_regex else None,
                 "--unified={}".format(context_lines) if context_lines is not None else None,
                 "--stat" if show_diffstat else None,
                 "--patch",
@@ -272,19 +254,11 @@ class gs_diff_refresh(TextCommand, GitCommand):
         self.view.settings().set("git_savvy.diff_view.raw_diff", diff)
         prelude += "\n--\n"
 
-        if word_diff_regex:
-            diff, added_regions, removed_regions = postprocess_word_diff(diff, len(prelude))
-        else:
-            diff, added_regions, removed_regions = diff, [], []
-
         draw = lambda: _draw(
             self.view,
             ' '.join(title),
             prelude,
             diff,
-            bool(word_diff_regex),
-            added_regions,
-            removed_regions,
             navigate=not old_diff
         )
         if runs_on_ui_thread:
@@ -293,46 +267,15 @@ class gs_diff_refresh(TextCommand, GitCommand):
             enqueue_on_ui(draw)
 
 
-def _draw(view, title, prelude, diff_text, is_word_diff, added_regions, removed_regions, navigate):
-    # type: (sublime.View, str, str, str, bool, List[sublime.Region], List[sublime.Region], bool) -> None
+def _draw(view, title, prelude, diff_text, navigate):
+    # type: (sublime.View, str, str, str, bool) -> None
     view.set_name(title)
     text = prelude + diff_text
     replace_view_content(view, text)
     if navigate:
         view.run_command("gs_diff_navigate")
 
-    if is_word_diff:
-        view.add_regions(
-            "git-savvy-added-bold", added_regions, scope="diff.inserted.char.git-savvy.diff"
-        )
-        view.add_regions(
-            "git-savvy-removed-bold", removed_regions, scope="diff.deleted.char.git-savvy.diff"
-        )
-    else:
-        intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(prelude))
-
-
-def postprocess_word_diff(text, global_offset=0):
-    # type: (str, int) -> Tuple[str, List[sublime.Region], List[sublime.Region]]
-    added_regions = []  # type: List[sublime.Region]
-    removed_regions = []  # type: List[sublime.Region]
-
-    def extractor(match):
-        # We generally transform `{+text+}` (and likewise `[-text-]`) into just
-        # `text`.
-        text = match.group()[2:-2]
-        # The `start/end` offsets are based on the original input, so we need
-        # to adjust them for the regions we want to draw.
-        total_matches_so_far = len(added_regions) + len(removed_regions)
-        start, _end = match.span()
-        # On each match the original diff is shortened by 4 chars.
-        offset = global_offset + start - (total_matches_so_far * 4)
-
-        regions = added_regions if match.group()[1] == '+' else removed_regions
-        regions.append(sublime.Region(offset, offset + len(text)))
-        return text
-
-    return WORD_DIFF_MARKERS_RE.sub(extractor, text), added_regions, removed_regions
+    intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(prelude))
 
 
 class gs_diff_toggle_setting(TextCommand):
@@ -349,23 +292,6 @@ class gs_diff_toggle_setting(TextCommand):
         next_mode = not current_mode
         settings.set(setting_str, next_mode)
         flash(self.view, "{} is now {}".format(setting, next_mode))
-
-        self.view.run_command("gs_diff_refresh")
-
-
-class gs_diff_cycle_word_diff(TextCommand):
-
-    """
-    Cycle through different word diff patterns.
-    """
-
-    def run(self, edit):
-        settings = self.view.settings()
-
-        setting_str = "git_savvy.diff_view.{}".format('show_word_diff')
-        current_mode = settings.get(setting_str)
-        next_mode = (current_mode + 1) % len(WORD_DIFF_PATTERNS)
-        settings.set(setting_str, next_mode)
 
         self.view.run_command("gs_diff_refresh")
 
@@ -483,8 +409,7 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
 
     def run(self, edit, reset=False):
         ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
-        show_word_diff = self.view.settings().get("git_savvy.diff_view.show_word_diff")
-        if ignore_whitespace or show_word_diff:
+        if ignore_whitespace:
             sublime.error_message("You have to be in a clean diff to stage.")
             return None
 
@@ -574,15 +499,9 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
                     seen.add(item.filename)
                     yield item
 
-        word_diff_mode = bool(self.view.settings().get('git_savvy.diff_view.show_word_diff'))
-        algo = (
-            jump_position_to_file_for_word_diff_mode
-            if word_diff_mode
-            else jump_position_to_file
-        )
         diff = SplittedDiff.from_view(self.view)
         jump_positions = list(first_per_file(filter_(
-            algo(self.view, diff, s.begin())
+            jump_position_to_file(self.view, diff, s.begin())
             for s in self.view.sel()
         )))
         if not jump_positions:
@@ -634,64 +553,6 @@ def jump_position_to_file(view, diff, pt):
     if not filename:
         return None
 
-    commit_header = diff.commit_for_hunk(hunk)
-    commit_hash = commit_header.commit_hash() if commit_header else None
-    return JumpTo(commit_hash, filename, line, col)
-
-
-def jump_position_to_file_for_word_diff_mode(view, diff, pt):
-    # type: (sublime.View, SplittedDiff, int) -> Optional[JumpTo]
-    head_and_hunk = diff.head_and_hunk_for_pt(pt)
-    if not head_and_hunk:
-        return None
-
-    header, hunk = head_and_hunk
-    content_start = hunk.content().a
-
-    # Select all "deletion" regions in the hunk up to the cursor (pt)
-    removed_regions_before_pt = [
-        # In case the cursor is *in* a region, shorten it up to
-        # the cursor.
-        sublime.Region(region.begin(), min(region.end(), pt))
-        for region in view.get_regions('git-savvy-removed-bold')
-        if content_start <= region.begin() < pt
-    ]
-
-    # Count all completely removed lines, but exclude lines
-    # if the cursor is exactly at the end-of-line char.
-    removed_lines_before_pt = sum(
-        region == view.line(region.begin()) and region.end() != pt
-        for region in removed_regions_before_pt
-    )
-    line_start = view.line(pt).begin()
-    removed_chars_before_pt = sum(
-        region.size()
-        for region in removed_regions_before_pt
-        if line_start <= region.begin() < pt
-    )
-
-    # Compute the *relative* row in that hunk
-    head_row, _ = view.rowcol(content_start)
-    pt_row, col = view.rowcol(pt)
-    row_offset = pt_row - head_row
-    # If the cursor is in the hunk header, assume instead it is
-    # at `(0, 0)` position in the hunk content.
-    if row_offset < 0:
-        row_offset, col = 0, 0
-
-    # Extract the starting line at "b" encoded in the hunk header t.i. for
-    # "@@ -685,8 +686,14 @@ ..." extract the "686".
-    from_start = hunk.header().to_line_start()
-    if from_start is None:
-        return None
-    line = from_start + row_offset
-
-    filename = header.from_filename()
-    if not filename:
-        return None
-
-    line = line - removed_lines_before_pt
-    col = col + 1 - removed_chars_before_pt
     commit_header = diff.commit_for_hunk(hunk)
     commit_hash = commit_header.commit_hash() if commit_header else None
     return JumpTo(commit_hash, filename, line, col)
