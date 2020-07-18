@@ -7,6 +7,13 @@ from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
+__all__ = (
+    "gs_push",
+    "gs_push_to_branch",
+    "gs_push_to_branch_name",
+)
+
+
 START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
 PUSH_TO_BRANCH_NAME_PROMPT = "Enter remote branch name:"
@@ -16,7 +23,7 @@ CONFIRM_FORCE_PUSH = ("You are about to `git push {}`. Would you  "
                       "like to proceed?")
 
 
-class PushBase(GitCommand):
+class PushBase(WindowCommand, GitCommand):
     set_upstream = False
 
     def do_push(self, remote, branch, force=False, force_with_lease=False, remote_branch=None):
@@ -44,8 +51,7 @@ class PushBase(GitCommand):
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
-class GsPushCommand(WindowCommand, PushBase):
-
+class gs_push(PushBase):
     """
     Push current branch.
     """
@@ -90,8 +96,7 @@ class GsPushCommand(WindowCommand, PushBase):
             })
 
 
-class GsPushToBranchCommand(WindowCommand, PushBase):
-
+class gs_push_to_branch(PushBase):
     """
     Through a series of panels, allow the user to push to a specific remote branch.
     """
@@ -112,8 +117,7 @@ class GsPushToBranchCommand(WindowCommand, PushBase):
                 selected_remote, current_local_branch, remote_branch=selected_branch))
 
 
-class GsPushToBranchNameCommand(WindowCommand, PushBase):
-
+class gs_push_to_branch_name(PushBase):
     """
     Prompt for remote and remote branch name, then push.
     """

@@ -6,19 +6,26 @@ from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
 
 
-class GsPullBase(GitCommand):
+__all__ = (
+    "gs_pull",
+    "gs_pull_from_branch",
+)
 
+
+class GsPullBase(WindowCommand, GitCommand):
     def do_pull(self, remote, remote_branch, rebase):
         """
         Perform `git pull remote branch`.
         """
         self.window.status_message("Starting pull...")
-        self.pull(remote=remote, remote_branch=remote_branch, rebase=rebase)
-        self.window.status_message("Pull complete.")
+        output = self.pull(remote=remote, remote_branch=remote_branch, rebase=rebase).strip()
+        self.window.status_message(
+            output if output == "Already up to date." else "Pull complete."
+        )
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
-class GsPull(WindowCommand, GsPullBase):
+class gs_pull(GsPullBase):
     """
     Pull from remote tracking branch if it is found. Otherwise, use GsPullFromBranchCommand.
     """
@@ -42,8 +49,7 @@ class GsPull(WindowCommand, GsPullBase):
             self.window.run_command("gs_pull_from_branch", {"rebase": rebase})
 
 
-class GsPullFromBranchCommand(WindowCommand, GsPullBase):
-
+class gs_pull_from_branch(GsPullBase):
     """
     Through a series of panels, allow the user to pull from a remote branch.
     """

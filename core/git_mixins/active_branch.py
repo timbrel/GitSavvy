@@ -166,6 +166,10 @@ class ActiveBranchMixin():
         return self.git("rev-parse", "--abbrev-ref", "--symbolic-full-name",
                         "@{u}", throw_on_stderr=False).strip()
 
+    def get_remote_for_branch(self, branch_name):
+        # type: (str) -> str
+        return self.git("config", "--get", "branch.{}.remote".format(branch_name)).strip()
+
     def get_active_remote_branch(self):
         """
         Return named tuple of the upstream for active branch.

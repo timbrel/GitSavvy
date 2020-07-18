@@ -47,7 +47,7 @@ class RemotesMixin():
         Pull from the specified remote and branch if provided, otherwise
         perform default `git pull`.
         """
-        self.git(
+        return self.git(
             "pull",
             "--rebase" if rebase else None,
             remote if remote else None,
@@ -66,7 +66,9 @@ class RemotesMixin():
         Push to the specified remote and branch if provided, otherwise
         perform default `git push`.
         """
-        return self.git(
+        # Do not return the output. It is always empty since the output
+        # of "git push" actually goes to stderr.
+        self.git(
             "push",
             "--force" if force else None,
             "--force-with-lease" if force_with_lease else None,
