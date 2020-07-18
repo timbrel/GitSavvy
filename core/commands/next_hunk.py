@@ -17,7 +17,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Iterable, Iterator, List, TypeVar
+    from typing import Callable, Iterable, Iterator, List, TypeVar
     T = TypeVar("T")
 
     Point = int
@@ -53,7 +53,7 @@ class gs_prev_hunk(sublime_plugin.TextCommand):
 
 def jump_to_hunk(view, using):
     # type: (sublime.View, str) -> bool
-    frozen_sel = [s for s in view.sel()]
+    restore = capture_sel_and_viewport(view)
     jump_positions = chain([cur_pos(view)], jump(view, using))
     for a, b in pairwise(take_while_unique(jump_positions)):
         if line_distance(view, a, b) >= LINE_DISTANCE_BETWEEN_EDITS:
@@ -63,7 +63,7 @@ def jump_to_hunk(view, using):
             show_region(view, r)
             return True
     else:
-        set_sel(view, frozen_sel)
+        restore()
         return False
 
 
@@ -99,6 +99,18 @@ def set_sel(view, selection):
     sel = view.sel()
     sel.clear()
     sel.add_all(selection)
+
+
+def capture_sel_and_viewport(view):
+    # type: (sublime.View) -> Callable[[], None]
+    frozen_sel = [s for s in view.sel()]
+    vp = view.viewport_position()
+
+    def restore():
+        set_sel(view, frozen_sel)
+        view.set_viewport_position(vp)
+
+    return restore
 
 
 def show_region(view, region, context=5):
