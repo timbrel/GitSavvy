@@ -85,6 +85,11 @@ class Char:
         return NotImplemented
 
     @property
+    def n(self):
+        # type: () -> Char
+        return self.go((-1, 0))
+
+    @property
     def e(self):
         # type: () -> Char
         return self.go((0, 1))
@@ -199,13 +204,39 @@ def after_dot(char):
     yield from contains(char.se, '\\')
 
 
+@follow(COMMIT_NODE_CHAR, "up")
+def before_dot(char):
+    # type: (Char) -> Iterator[Char]
+    yield from contains(char.w, '-')
+    yield from contains(char.n, '|' + COMMIT_NODE_CHAR)
+    yield from contains(char.n.e, '/')
+    yield from contains(char.n.w, '\\')
+
+
 @follow('|', "down")
 def after_vertical_bar(char):
     # type: (Char) -> Iterator[Char]
     yield from contains(char.s, '|' + COMMIT_NODE_CHAR)
+
+    # Check crossing line before following '/'
+    # | |/ / /
+    # |/| | |
+    #   ^
+    # Or:
+    # | |_|/
+    # |/| |
     if char.e != '/' and char.e != '_':
         yield from contains(char.sw, '/')
     yield from contains(char.se, '\\')
+
+
+@follow('|', "up")
+def before_vertical_bar(char):
+    # type: (Char) -> Iterator[Char]
+    yield from contains(char.n, '|' + COMMIT_NODE_CHAR)
+    if char.w != '/' and char.n.w != '_':
+        yield from contains(char.n.e, '/')
+    yield from contains(char.n.w, '\\')
 
 
 @follow('\\', "down")
@@ -213,6 +244,15 @@ def after_backslash(char):
     # type: (Char) -> Iterator[Char]
     yield from contains(char.s, '/')
     yield from contains(char.se, '\\|' + COMMIT_NODE_CHAR)
+
+
+@follow('\\', "up")
+def before_backslash(char):
+    # type: (Char) -> Iterator[Char]
+    # Don't forget multi merge octopoi
+    # *---.
+    # | \  \
+    yield from contains(char.n.w, '\\.|-' + COMMIT_NODE_CHAR)
 
 
 @follow('/', "down")
@@ -234,6 +274,16 @@ def after_forwardslash(char):
         yield from contains(char.w.sw, '/')
     else:
         yield from contains(char.sw, '/|' + COMMIT_NODE_CHAR)
+
+
+@follow('/', "up")
+def before_forwardslash(char):
+    # type: (Char) -> Iterator[Char]
+    yield from contains(char.n.e.e, '_')
+    yield from contains(char.n.e.e, '/')
+    if char.n.e.e != '_' and char.n.e.e != '/':
+        yield from contains(char.n.e, '/|' + COMMIT_NODE_CHAR)
+    yield from contains(char.n, '\\')
 
 
 @follow('_', "down")
@@ -259,6 +309,13 @@ def after_underscore(char):
         yield from contains(char.sw, '/')
 
 
+@follow('_', "up")
+def before_underscore(char):
+    # type: (Char) -> Iterator[Char]
+    yield from contains(char.e.e, '_')
+    yield from contains(char.e.e, '/')
+
+
 @follow('-', "down")
 def after_horizontal_bar(char):
     # type: (Char) -> Iterator[Char]
@@ -269,10 +326,21 @@ def after_horizontal_bar(char):
     yield from contains(char.se, '\\')
 
 
+@follow('-', "up")
+def before_horizontal_bar(char):
+    yield from contains(char.w, '-' + COMMIT_NODE_CHAR)
+
+
 @follow('.', "down")
 def after_point(char):
     # type: (Char) -> Iterator[Char]
     yield from contains(char.se, '\\')
+
+
+@follow('.', "up")
+def before_point(char):
+    # type: (Char) -> Iterator[Char]
+    yield from contains(char.w, '-')
 
 
 @follow(' ', "down")
