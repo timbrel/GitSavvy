@@ -375,18 +375,6 @@ def make_aborter(view, store=REFRESH_RUNNERS, _lock=runners_lock):
     return should_abort
 
 
-TheEnd = object()
-
-
-def put_on_queue(queue, it):
-    # type: (SimpleQueue[T], Iterable[T]) -> None
-    try:
-        for item in it:
-            queue.put(item)
-    finally:
-        queue.put(TheEnd)
-
-
 def wait_for_first_item(it):
     # type: (Iterable[T]) -> Iterator[T]
     iterable = iter(it)
@@ -413,24 +401,42 @@ def log_git_command(fn):
     return decorated
 
 
+class Done(Exception):
+    pass
+
+
 if MYPY:
-    class SimpleQueue(Generic[T]):
-        def put(self, item: T) -> None: ...  # noqa: E704
+    class SimpleFiniteQueue(Generic[T]):
+        def consume(self, it: Iterable[T]) -> None: ...  # noqa: E704
+        def _put(self, item: T) -> None: ...  # noqa: E704
         def get(self, block=True, timeout=float) -> T: ...  # noqa: E704
 else:
-    class SimpleQueue:
+    TheEnd = object()
+
+    class SimpleFiniteQueue:
         def __init__(self):
             self._queue = deque()
             self._count = threading.Semaphore(0)
 
-        def put(self, item):
+        def consume(self, it):
+            try:
+                for item in it:
+                    self._put(item)
+            finally:
+                self._put(TheEnd)
+
+        def _put(self, item):
             self._queue.append(item)
             self._count.release()
 
         def get(self, block=True, timeout=None):
             if not self._count.acquire(block, timeout):
                 raise Empty
-            return self._queue.popleft()
+            val = self._queue.popleft()
+            if val is TheEnd:
+                raise Done
+            else:
+                return val
 
 
 def try_kill_proc(proc):
@@ -483,7 +489,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             current_graph = ''
         current_graph_splitted = current_graph.splitlines(keepends=True)
 
-        token_queue = SimpleQueue()  # type: SimpleQueue[Replace]
+        token_queue = SimpleFiniteQueue()  # type: SimpleFiniteQueue[Replace]
         current_proc = None
         graph_offset = len(prelude_text)
 
@@ -526,7 +532,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             else:
                 tokens = wait_for_first_item(tokens)
             enqueue_on_ui(draw)
-            put_on_queue(token_queue, tokens)
+            token_queue.consume(tokens)
 
         @ensure_not_aborted
         def draw():
@@ -577,7 +583,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                         visible_selection,
                     )
                     return
-                if token is TheEnd:
+                except Done:
                     break
 
                 region = apply_token(view, token, graph_offset)
