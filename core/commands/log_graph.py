@@ -31,7 +31,7 @@ from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..utils import focus_view
 from ...common import util
-from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
+from ...common.theme_generator import ThemeGenerator
 
 
 __all__ = (
@@ -190,11 +190,7 @@ def augment_color_scheme(view):
     if not colors:
         return
 
-    color_scheme = view.settings().get('color_scheme')
-    if color_scheme.endswith(".tmTheme"):
-        themeGenerator = XMLThemeGenerator(color_scheme)
-    else:
-        themeGenerator = JSONThemeGenerator(color_scheme)
+    themeGenerator = ThemeGenerator.for_view(view)
     themeGenerator.add_scoped_style(
         "GitSavvy Highlighted Commit Dot",
         DOT_SCOPE,
