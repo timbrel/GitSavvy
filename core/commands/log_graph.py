@@ -594,6 +594,14 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         @text_command
         def drain_and_draw_queue(view, painter_state, follow, col_range, visible_selection):
             # type: (sublime.View, PaintingStateMachine, Optional[str], Optional[Tuple[int, int]], bool) -> None
+            call_again = partial(
+                drain_and_draw_queue,
+                view,
+                painter_state,
+                follow,
+                col_range,
+                visible_selection,
+            )
             try_navigate_to_symbol = partial(
                 navigate_to_symbol,
                 view,
@@ -612,14 +620,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                         timeout=0.05 if painter_state != 'viewport_readied' else None
                     )
                 except Empty:
-                    enqueue_on_worker(
-                        drain_and_draw_queue,
-                        view,
-                        painter_state,
-                        follow,
-                        col_range,
-                        visible_selection,
-                    )
+                    enqueue_on_worker(call_again)
                     return
                 except Done:
                     break
@@ -641,14 +642,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                         painter_state.set('viewport_readied')
 
                 if block_time.passed(13 if painter_state == 'viewport_readied' else 1000):
-                    enqueue_on_worker(
-                        drain_and_draw_queue,
-                        view,
-                        painter_state,
-                        follow,
-                        col_range,
-                        visible_selection,
-                    )
+                    enqueue_on_worker(call_again)
                     return
 
             if painter_state == 'initial':
