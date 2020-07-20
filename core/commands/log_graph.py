@@ -243,11 +243,19 @@ else:
 
 
 MAX_LOOK_AHEAD = 10000
-Same = object()
+if MYPY:
+    from enum import Enum
+
+    class FlushT(Enum):
+        token = 0
+    Flush = FlushT.token
+
+else:
+    Flush = object()
 
 
 def diff(a, b):
-    # type: (Sequence[str], Iterable[str]) -> Iterator[Union[Ins, Del]]
+    # type: (Sequence[str], Iterable[str]) -> Iterator[Union[Ins, Del, FlushT]]
     a_index = 0
     b_index = -1  # init in case b is empty
     len_a = len(a)
@@ -268,7 +276,7 @@ def diff(a, b):
         else:
             if i == 0:
                 a_index += 1
-                yield Same
+                yield Flush
             else:
                 len_a -= i
                 a_index += i + 1
@@ -279,10 +287,10 @@ def diff(a, b):
 
 
 def simplify(diff, max_size):
-    # type: (Iterable[Union[Ins, Del]], int) -> Iterator[Union[Ins, Del, Replace]]
+    # type: (Iterable[Union[Ins, Del, FlushT]], int) -> Iterator[Union[Ins, Del, Replace]]
     previous = None  # type: Union[Ins, Del, Replace, None]
     for token in diff:
-        if token is Same:
+        if token is Flush:
             if previous is not None:
                 yield previous
                 previous = None

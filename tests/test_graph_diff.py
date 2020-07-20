@@ -4,7 +4,7 @@ from GitSavvy.tests.parameterized import parameterized as p
 
 
 from GitSavvy.core.commands.log_graph import (
-    diff, simplify, normalize_tokens, apply_diff, Ins, Del, Replace, Same
+    diff, simplify, normalize_tokens, apply_diff, Ins, Del, Replace, Flush
 )
 
 
@@ -26,7 +26,7 @@ def tx(tokens):
 
 
 def filter_same(it):
-    return filter(lambda t: t is not Same, it)
+    return filter(lambda t: t is not Flush, it)
 
 
 class TestGraphDiff(DeferrableTestCase):
