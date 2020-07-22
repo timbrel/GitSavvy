@@ -1474,8 +1474,9 @@ def draw_info_panel_for_line(vid, line_text):
 
 
 def extract_commit_hash(line):
+    # type: (str) -> str
     match = COMMIT_LINE.search(line)
-    return match.groupdict()['commit_hash'] if match else ""
+    return match.group('commit_hash') if match else ""
 
 
 class gs_log_graph_toggle_more_info(WindowCommand, GitCommand):
