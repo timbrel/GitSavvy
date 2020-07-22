@@ -842,7 +842,7 @@ class gs_log_graph(GsLogCommand):
     ensures that each of the defined actions/commands in `default_actions` are finally
     called with `file_path` set.
     """
-    default_actions = [
+    default_actions = [  # type: ignore[assignment]
         ["gs_log_graph_current_branch", "For current branch"],
         ["gs_log_graph_all_branches", "For all branches"],
         ["gs_log_graph_by_author", "Filtered by author"],
