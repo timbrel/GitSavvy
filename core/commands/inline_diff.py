@@ -209,11 +209,10 @@ class gs_inline_diff(WindowCommand, GitCommand):
         file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
         syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
 
-        row_in_view = view.rowcol(cursor)[0]
         cur_pos = Position(
             jump_position.line - 1,
             jump_position.col - 1,
-            row_offset(row_in_view, view)
+            row_offset(view, cursor)
         )
         if cached:
             row, col, offset = cur_pos

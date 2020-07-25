@@ -26,13 +26,14 @@ def capture_cur_position(view):
         return None
 
     row, col = view.rowcol(sel.begin())
-    return Position(row, col, row_offset(row, view))
+    return Position(row, col, row_offset(view, sel.begin()))
 
 
-def row_offset(row, view):
-    # type: (Row, sublime.View) -> float
-    vx, vy = view.viewport_position()
-    return row - (vy / view.line_height())
+def row_offset(view, cursor):
+    # type: (sublime.View, int) -> float
+    _, cy = view.text_to_layout(cursor)
+    _, vy = view.viewport_position()
+    return (cy - vy) / view.line_height()
 
 
 # `replace_view_content` is a wrapper for `_replace_region` to get some
