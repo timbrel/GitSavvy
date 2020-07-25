@@ -81,14 +81,14 @@ contexts:
       captures:
         1: punctuation.definition.from-file.diff
         2: punctuation.definition.from-file.file-alias.diff
-        3: meta.filename.diff gitsavvy.gotosymbol
+        3: meta.filename.diff
 
     - match: ^(\+{3}) (b/)?(.+)$\n?
       scope: meta.diff.header.to-file
       captures:
         1: punctuation.definition.to-file.diff
         2: punctuation.definition.to-file.file-alias.diff
-        3: meta.filename.diff dont.need.gitsavvy.gotosymbol
+        3: meta.filename.diff gitsavvy.gotosymbol
 
     - match: ^(@@)\s*(.+?)\s*(@@)\s(.*)$\n?
       scope: meta.diff.range.unified
