@@ -50,8 +50,8 @@ class gs_prev_hunk(sublime_plugin.TextCommand):
 
 def jump_to_next_hunk(view):
     restore = capture_sel_and_viewport(view)
-    jump_positions = chain([cur_pos(view)], jump(view, "next_modification"))
-    for a, b in pairwise(take_while_unique(jump_positions)):
+    jump_positions = all_modifications(view, forwards=True)
+    for a, b in pairwise(chain([cur_pos(view)], jump_positions)):
         if line_distance(view, a, b) >= LINE_DISTANCE_BETWEEN_EDITS:
             line = view.line(b)
             r = sublime.Region(line.a)
@@ -66,8 +66,8 @@ def jump_to_next_hunk(view):
 def jump_to_previous_hunk(view):
     # type: (sublime.View) -> bool
     restore = capture_sel_and_viewport(view)
-    jump_positions = take_while_unique(chain([cur_pos(view)], jump(view, "prev_modification")))
-    for a, b in pairwise(jump_positions):
+    jump_positions = all_modifications(view, forwards=False)
+    for a, b in pairwise(chain([cur_pos(view)], jump_positions)):
         if line_distance(view, a, b) >= LINE_DISTANCE_BETWEEN_EDITS:
             break
     else:
@@ -100,6 +100,12 @@ def jump(view, method):
         with dont_move_viewport(view):
             view.run_command(method)
         yield cur_pos(view)
+
+
+def all_modifications(view, forwards=True):
+    # type: (sublime.View, bool) -> Iterator[sublime.Region]
+    method = "next_modification" if forwards else "prev_modification"
+    return take_while_unique(jump(view, method))
 
 
 def line_distance(view, a, b):
