@@ -1,5 +1,6 @@
+from collections import deque
 from contextlib import contextmanager
-from itertools import chain
+from itertools import chain, takewhile
 
 import sublime
 import sublime_plugin
@@ -33,7 +34,7 @@ class gs_next_hunk(sublime_plugin.TextCommand):
 
     def run(self, edit):
         view = self.view
-        if not jump_to_hunk(view, "next_modification"):
+        if not jump_to_next_hunk(view):
             flash(view, "No hunk to jump to")
 
 
@@ -43,18 +44,13 @@ class gs_prev_hunk(sublime_plugin.TextCommand):
 
     def run(self, edit):
         view = self.view
-        if not jump_to_hunk(view, "prev_modification"):
+        if not jump_to_previous_hunk(view):
             flash(view, "No hunk to jump to")
-        else:
-            with dont_move_viewport(view):
-                jump_to_hunk(view, "prev_modification")
-            jump_to_hunk(view, "next_modification")
 
 
-def jump_to_hunk(view, using):
-    # type: (sublime.View, str) -> bool
+def jump_to_next_hunk(view):
     restore = capture_sel_and_viewport(view)
-    jump_positions = chain([cur_pos(view)], jump(view, using))
+    jump_positions = chain([cur_pos(view)], jump(view, "next_modification"))
     for a, b in pairwise(take_while_unique(jump_positions)):
         if line_distance(view, a, b) >= LINE_DISTANCE_BETWEEN_EDITS:
             line = view.line(b)
@@ -67,15 +63,49 @@ def jump_to_hunk(view, using):
         return False
 
 
+def jump_to_previous_hunk(view):
+    # type: (sublime.View) -> bool
+    restore = capture_sel_and_viewport(view)
+    jump_positions = take_while_unique(chain([cur_pos(view)], jump(view, "prev_modification")))
+    for a, b in pairwise(jump_positions):
+        if line_distance(view, a, b) >= LINE_DISTANCE_BETWEEN_EDITS:
+            break
+    else:
+        restore()
+        return False
+
+    # On the first "big" jump we're *at the end* of the previous
+    # hunk.  So we try to jump further to the hunk before that.
+    # If any, proceed with `a` which marks the top-most modification
+    # of our previous hunk, whereby `b` is in the hunk even before
+    # that.  If not, proceed with the first found `b`
+    try:
+        _, b = last(takewhile(
+            lambda a_b: line_distance(view, *a_b) < LINE_DISTANCE_BETWEEN_EDITS,
+            pairwise(chain([b], jump_positions))
+        ))
+    except StopIteration:
+        ...
+
+    line = view.line(b)
+    r = sublime.Region(line.a)
+    set_sel(view, [r])
+    show_region(view, r)
+    return True
+
+
 def jump(view, method):
     # type: (sublime.View, str) -> Iterator[sublime.Region]
     while True:
-        view.run_command(method)
+        with dont_move_viewport(view):
+            view.run_command(method)
         yield cur_pos(view)
 
 
 def line_distance(view, a, b):
     # type: (sublime.View, sublime.Region, sublime.Region) -> int
+    if a.contains(b) or b.contains(a):
+        return 0
     a, b = sorted((a, b), key=lambda region: region.begin())
 
     # If a region `a` already contains a trailing "\n" just using
@@ -138,6 +168,14 @@ def take_while_unique(iterable):
             break
         seen.append(item)
         yield item
+
+
+def last(iterable):
+    # type: (Iterable[T]) -> T
+    try:
+        return deque(iterable, maxlen=1)[0]
+    except IndexError as e:
+        raise StopIteration from e
 
 
 @contextmanager
