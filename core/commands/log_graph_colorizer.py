@@ -216,7 +216,7 @@ def before_dot(char):
 @follow('|', "down")
 def after_vertical_bar(char):
     # type: (Char) -> Iterator[Char]
-    yield from contains(char.s, '|' + COMMIT_NODE_CHAR)
+    yield from contains(char.s, '|/' + COMMIT_NODE_CHAR)
 
     # Check crossing line before following '/'
     # | |/ / /
@@ -283,7 +283,7 @@ def before_forwardslash(char):
     yield from contains(char.n.e.e, '/')
     if char.n.e.e != '_' and char.n.e.e != '/':
         yield from contains(char.n.e, '/|' + COMMIT_NODE_CHAR)
-    yield from contains(char.n, '\\')
+    yield from contains(char.n, '|\\')
 
 
 @follow('_', "down")
