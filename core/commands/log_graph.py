@@ -26,7 +26,7 @@ from ..runtime import (
     run_or_timeout, run_on_new_thread,
     text_command
 )
-from ..view import replace_view_content
+from ..view import replace_view_content, show_region
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..utils import focus_view
@@ -44,6 +44,7 @@ __all__ = (
     "gs_log_graph_by_author",
     "gs_log_graph_by_branch",
     "gs_log_graph_navigate",
+    "gs_log_graph_navigate_first_parent",
     "gs_log_graph_navigate_to_head",
     "gs_log_graph_edit_branches",
     "gs_log_graph_edit_filters",
@@ -931,6 +932,36 @@ class gs_log_graph_navigate(GsNavigate):
 
     def get_available_regions(self):
         return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
+
+
+class gs_log_graph_navigate_first_parent(TextCommand):
+    def run(self, edit, forward=True):
+        # type: (sublime.Edit, bool) -> None
+        view = self.view
+        try:
+            dot = next(_find_dots(view))
+        except StopIteration:
+            view.run_command("gs_log_graph_navigate", {"forward": forward})
+            return
+
+        next_dot = follow_first_parent_commit(dot, forward)
+        if next_dot:
+            line_span = view.line(next_dot.region())
+            r = extract_comit_hash_span(view, line_span)
+            if r:
+                sel = view.sel()
+                sel.clear()
+                sel.add(r.a)
+                show_region(view, r)
+
+
+def follow_first_parent_commit(dot, forward):
+    # type: (colorizer.Char, bool) -> Optional[colorizer.Char]
+    fn = colorizer.follow_path_down if forward else colorizer.follow_path_up
+    try:
+        return next(ch for ch in fn(dot) if ch == COMMIT_NODE_CHAR)
+    except StopIteration:
+        return None
 
 
 class gs_log_graph_navigate_to_head(TextCommand):
