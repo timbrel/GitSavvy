@@ -1427,12 +1427,8 @@ def follow_dots(dot):
     # type: (colorizer.Char) -> Iterator[colorizer.Char]
     """Follow dot to dot omitting the path chars in between."""
     while True:
-        try:
-            dot = colorizer.follow_path_down(dot)[-1]
-        except IndexError:
-            break
-        else:
-            yield dot
+        dot = next(ch for ch in colorizer.follow_path_down(dot) if ch == COMMIT_NODE_CHAR)
+        yield dot
 
 
 def draw_info_panel(view):
