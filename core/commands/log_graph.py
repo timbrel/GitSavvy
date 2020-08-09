@@ -925,11 +925,8 @@ class gs_log_graph_by_branch(WindowCommand, GitCommand):
 
 
 class gs_log_graph_navigate(GsNavigate):
-
-    """
-    Travel between commits. It is also used by compare_commit_view.
-    """
     offset = 0
+    show_at_center = False
 
     def get_available_regions(self):
         return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
