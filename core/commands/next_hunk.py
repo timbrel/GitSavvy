@@ -8,7 +8,7 @@ import sublime_plugin
 
 from GitSavvy.core.fns import pairwise
 from GitSavvy.core.utils import flash
-from GitSavvy.core.view import show_region
+from GitSavvy.core.view import line_distance, show_region
 
 
 __all__ = (
@@ -21,9 +21,6 @@ MYPY = False
 if MYPY:
     from typing import Iterable, Iterator, List, TypeVar
     T = TypeVar("T")
-
-    Point = int
-    Row = int
 
 
 LINE_DISTANCE_BETWEEN_EDITS = 2
@@ -101,28 +98,6 @@ def jump(view, method):
     while True:
         view.run_command(method)
         yield cur_pos(view)
-
-
-def line_distance(view, a, b):
-    # type: (sublime.View, sublime.Region, sublime.Region) -> int
-    if a.contains(b) or b.contains(a):
-        return 0
-    a, b = sorted((a, b), key=lambda region: region.begin())
-
-    # If a region `a` already contains a trailing "\n" just using
-    # `view.line(a)` will not strip this newline character but
-    # `split_by_newlines` does.
-    # E.g. for a region `(1136, 1253)` `split_by_newlines` last region
-    # is                `(1214, 1252)`
-    #                              ^
-    a_end = view.split_by_newlines(a)[-1].end()
-    b_start = b.begin()
-    return abs(row_on_pt(view, a_end) - row_on_pt(view, b_start))
-
-
-def row_on_pt(view, pt):
-    # type: (sublime.View, Point) -> Row
-    return view.rowcol(pt)[0]
 
 
 def set_sel(view, selection):
