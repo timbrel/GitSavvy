@@ -8,6 +8,7 @@ import sublime_plugin
 
 from GitSavvy.core.fns import pairwise
 from GitSavvy.core.utils import flash
+from GitSavvy.core.view import show_region
 
 
 __all__ = (
@@ -141,18 +142,6 @@ def restore_sel_and_viewport(view):
     finally:
         set_sel(view, frozen_sel)
         view.set_viewport_position(vp)
-
-
-def show_region(view, region, context=5):
-    # type: (sublime.View, sublime.Region, int) -> None
-    row_a, _ = view.rowcol(region.begin())
-    row_b, _ = view.rowcol(region.end())
-    adjusted_section = sublime.Region(
-        # `text_point` is permissive and normalizes negative rows
-        view.text_point(row_a - context, 0),
-        view.text_point(row_b + context, 0)
-    )
-    view.show(adjusted_section, False)
 
 
 def cur_pos(view):

@@ -18,6 +18,18 @@ else:
     Position = namedtuple("Position", "row col offset")
 
 
+def show_region(view, region, context=5):
+    # type: (sublime.View, sublime.Region, int) -> None
+    row_a, _ = view.rowcol(region.begin())
+    row_b, _ = view.rowcol(region.end())
+    adjusted_section = sublime.Region(
+        # `text_point` is permissive and normalizes negative rows
+        view.text_point(row_a - context, 0),
+        view.text_point(row_b + context, 0)
+    )
+    view.show(adjusted_section, False)
+
+
 def capture_cur_position(view):
     # type: (sublime.View) -> Optional[Position]
     try:
