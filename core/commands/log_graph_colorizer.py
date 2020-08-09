@@ -198,10 +198,10 @@ def contains(next_char, test):
 @follow(COMMIT_NODE_CHAR, "down")
 def after_dot(char):
     # type: (Char) -> Iterator[Char]
-    yield from contains(char.e, '-')
-    yield from contains(char.s, '|' + COMMIT_NODE_CHAR)
     yield from contains(char.sw, '/')
+    yield from contains(char.s, '|' + COMMIT_NODE_CHAR)
     yield from contains(char.se, '\\')
+    yield from contains(char.e, '-')
 
 
 @follow(COMMIT_NODE_CHAR, "up")
