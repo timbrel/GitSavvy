@@ -12,6 +12,7 @@ import threading
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
+from Default import history_list  # type: ignore[import]
 
 from . import log_graph_colorizer as colorizer, show_commit_info
 from .log import GsLogCommand
@@ -26,7 +27,7 @@ from ..runtime import (
     run_or_timeout, run_on_new_thread,
     text_command
 )
-from ..view import replace_view_content, show_region
+from ..view import line_distance, replace_view_content, show_region
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..utils import focus_view
@@ -949,6 +950,8 @@ class gs_log_graph_navigate_first_parent(TextCommand):
             line_span = view.line(next_dot.region())
             r = extract_comit_hash_span(view, line_span)
             if r:
+                if line_distance(view, dot.region(), r) > 1:
+                    history_list.get_jump_history_for_view(view).push_selection(view)
                 sel = view.sel()
                 sel.clear()
                 sel.add(r.a)
