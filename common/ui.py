@@ -72,7 +72,6 @@ class Interface():
 
         if view:
             self.view = view
-            self.render(nuke_cursors=False)
         else:
             self.create_view(repo_path)
             sublime.set_timeout_async(self.on_new_dashboard, 0)
