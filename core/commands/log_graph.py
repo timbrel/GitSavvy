@@ -18,7 +18,7 @@ from . import log_graph_colorizer as colorizer, show_commit_info
 from .log import GsLogCommand
 from .navigate import GsNavigate
 from .. import utils
-from ..fns import filter_, flatten, partition, take, unique
+from ..fns import filter_, flatten, pairwise, partition, take, unique
 from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region
 from ..settings import GitSavvySettings
@@ -942,26 +942,42 @@ class gs_log_graph_navigate_first_parent(TextCommand):
             view.run_command("gs_log_graph_navigate", {"forward": forward})
             return
 
-        next_dot = follow_first_parent_commit(dot, forward)
-        if next_dot:
-            line_span = view.line(next_dot.region())
-            r = extract_comit_hash_span(view, line_span)
-            if r:
-                if line_distance(view, dot.region(), r) > 1:
-                    history_list.get_jump_history_for_view(view).push_selection(view)
-                sel = view.sel()
-                sel.clear()
-                sel.add(r.a)
-                show_region(view, r)
+        next_dots = follow_first_parent_commit(dot, forward)
+        try:
+            next_dot = next(next_dots)
+        except StopIteration:
+            return
+
+        if line_distance(view, dot.region(), next_dot.region()) < 2:
+            # If the first next dot is not already a wide jump, t.i. the
+            # cursor is not on an edge commit, follow the chain of consecutive
+            # commits and select the last one of such a block.  T.i. select
+            # the commit *before* the next wide jump.
+            for next_dot, dot in pairwise(chain([next_dot], next_dots)):
+                if line_distance(view, dot.region(), next_dot.region()) > 1:
+                    break
+            else:
+                # If there is no wide jump anymore take the last found dot.
+                # This is the case for example a the top of the graph, or if
+                # a branch ends.
+                next_dot = dot
+
+        line_span = view.line(next_dot.region())
+        r = extract_comit_hash_span(view, line_span)
+        if r:
+            history_list.get_jump_history_for_view(view).push_selection(view)
+            sel = view.sel()
+            sel.clear()
+            sel.add(r.a)
+            show_region(view, r)
 
 
 def follow_first_parent_commit(dot, forward):
-    # type: (colorizer.Char, bool) -> Optional[colorizer.Char]
+    # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
     fn = colorizer.follow_path_down if forward else colorizer.follow_path_up
-    try:
-        return next(ch for ch in fn(dot) if ch == COMMIT_NODE_CHAR)
-    except StopIteration:
-        return None
+    while True:
+        dot = next(ch for ch in fn(dot) if ch == COMMIT_NODE_CHAR)
+        yield dot
 
 
 class gs_log_graph_navigate_to_head(TextCommand):
