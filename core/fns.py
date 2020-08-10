@@ -3,7 +3,7 @@ from itertools import accumulate as accumulate_, chain, islice, tee
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Iterable, Iterator, Optional, Set, Tuple, TypeVar
+    from typing import Callable, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar
     T = TypeVar('T')
 
 
@@ -42,6 +42,7 @@ def unique(iterable):
 
 
 def take(n, iterable):
+    # type: (int, Iterable[T]) -> List[T]
     """Return first *n* items of the iterable as a list.
         >>> take(3, range(10))
         [0, 1, 2]
