@@ -36,24 +36,24 @@ similarity index 59%
 --- /dev/null
 # <- punctuation.definition.from-file.diff
 # ^ punctuation.definition.from-file.diff
-#   ^^^^^^^^^ meta.filename.diff gitsavvy.gotosymbol
+#   ^^^^^^^^^ meta.filename.diff
 
 +++ /dev/null
 # <- punctuation.definition.to-file.diff
 # ^ punctuation.definition.to-file.diff
-#   ^^^^^^^^^ meta.filename.diff dont.need.gitsavvy.gotosymbol
+#   ^^^^^^^^^ meta.filename.diff gitsavvy.gotosymbol
 
 --- a/syntax/rebase.sublime-syntax
 # <- punctuation.definition.from-file.diff
 # ^ punctuation.definition.from-file.diff
 #   ^^ punctuation.definition.from-file.file-alias.diff
-#     ^^^^^^^^^^^^^^^^^^^^^^^^^ meta.filename.diff gitsavvy.gotosymbol
+#     ^^^^^^^^^^^^^^^^^^^^^^^^^ meta.filename.diff
 
 +++ b/syntax/rebase.sublime-syntax
 # <- punctuation.definition.to-file.diff
 # ^ punctuation.definition.to-file.diff
 #   ^^ punctuation.definition.to-file.file-alias.diff
-#          ^ meta.filename.diff dont.need.gitsavvy.gotosymbol
+#          ^ meta.filename.diff gitsavvy.gotosymbol
 
 @@ -6,34 +6,39 @@ hidden: true
 # <- punctuation.definition.range.diff

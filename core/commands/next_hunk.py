@@ -1,5 +1,6 @@
+from collections import deque
 from contextlib import contextmanager
-from itertools import chain
+from itertools import chain, takewhile
 
 import sublime
 import sublime_plugin
@@ -17,7 +18,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Iterable, Iterator, List, TypeVar
+    from typing import Iterable, Iterator, List, TypeVar
     T = TypeVar("T")
 
     Point = int
@@ -33,7 +34,7 @@ class gs_next_hunk(sublime_plugin.TextCommand):
 
     def run(self, edit):
         view = self.view
-        if not jump_to_hunk(view, "next_modification"):
+        if not jump_to_hunk(view, True):
             flash(view, "No hunk to jump to")
 
 
@@ -43,28 +44,55 @@ class gs_prev_hunk(sublime_plugin.TextCommand):
 
     def run(self, edit):
         view = self.view
-        if not jump_to_hunk(view, "prev_modification"):
+        if not jump_to_hunk(view, False):
             flash(view, "No hunk to jump to")
-        else:
-            with dont_move_viewport(view):
-                jump_to_hunk(view, "prev_modification")
-            jump_to_hunk(view, "next_modification")
 
 
-def jump_to_hunk(view, using):
-    # type: (sublime.View, str) -> bool
-    restore = capture_sel_and_viewport(view)
-    jump_positions = chain([cur_pos(view)], jump(view, using))
-    for a, b in pairwise(take_while_unique(jump_positions)):
-        if line_distance(view, a, b) >= LINE_DISTANCE_BETWEEN_EDITS:
-            line = view.line(b)
-            r = sublime.Region(line.a)
-            set_sel(view, [r])
-            show_region(view, r)
-            return True
-    else:
-        restore()
+def jump_to_hunk(view, forwards):
+    # type: (sublime.View, bool) -> bool
+    try:
+        with restore_sel_and_viewport(view):
+            mod = (
+                next(modifications_per_hunk(view))
+                if forwards
+                else last(modifications_per_hunk(view, forwards=False))
+            )
+    except StopIteration:
         return False
+    else:
+        mark_and_show_line_start(view, mod)
+        return True
+
+
+def mark_and_show_line_start(view, region):
+    # type: (sublime.View, sublime.Region) -> None
+    line = view.line(region)
+    r = sublime.Region(line.a)
+    set_sel(view, [r])
+    show_region(view, r)
+
+
+def modifications_per_hunk(view, forwards=True):
+    # type: (sublime.View, bool) -> Iterator[sublime.Region]
+    jump_positions = pairwise(chain(
+        [cur_pos(view)], all_modifications(view, forwards)
+    ))
+    yield next(
+        b for a, b in jump_positions
+        if line_distance(view, a, b) >= LINE_DISTANCE_BETWEEN_EDITS
+    )
+    yield from (
+        b for a, b in takewhile(
+            lambda a_b: line_distance(view, *a_b) < LINE_DISTANCE_BETWEEN_EDITS,
+            jump_positions
+        )
+    )
+
+
+def all_modifications(view, forwards=True):
+    # type: (sublime.View, bool) -> Iterator[sublime.Region]
+    method = "next_modification" if forwards else "prev_modification"
+    return take_while_unique(jump(view, method))
 
 
 def jump(view, method):
@@ -76,6 +104,8 @@ def jump(view, method):
 
 def line_distance(view, a, b):
     # type: (sublime.View, sublime.Region, sublime.Region) -> int
+    if a.contains(b) or b.contains(a):
+        return 0
     a, b = sorted((a, b), key=lambda region: region.begin())
 
     # If a region `a` already contains a trailing "\n" just using
@@ -101,16 +131,16 @@ def set_sel(view, selection):
     sel.add_all(selection)
 
 
-def capture_sel_and_viewport(view):
-    # type: (sublime.View) -> Callable[[], None]
+@contextmanager
+def restore_sel_and_viewport(view):
+    # type: (sublime.View) -> Iterator[None]
     frozen_sel = [s for s in view.sel()]
     vp = view.viewport_position()
-
-    def restore():
+    try:
+        yield
+    finally:
         set_sel(view, frozen_sel)
         view.set_viewport_position(vp)
-
-    return restore
 
 
 def show_region(view, region, context=5):
@@ -140,11 +170,9 @@ def take_while_unique(iterable):
         yield item
 
 
-@contextmanager
-def dont_move_viewport(view):
-    # type: (sublime.View) -> Iterator[None]
-    vp = view.viewport_position()
+def last(iterable):
+    # type: (Iterable[T]) -> T
     try:
-        yield
-    finally:
-        view.set_viewport_position(vp)
+        return deque(iterable, maxlen=1)[0]
+    except IndexError as e:
+        raise StopIteration from e
