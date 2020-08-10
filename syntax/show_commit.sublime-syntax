@@ -44,12 +44,17 @@ contexts:
     - match: ^
       push:
         - meta_scope: meta.commit_message
+        - match: (?=^commit \h{7,})
+          set: main
         - match: (?=^diff\s)
-          set: "scope:git-savvy.diff"
+          embed: "scope:git-savvy.diff"
+          escape: (?=^commit \h{7,})
         # Merge commits "just" start the diffstat without the "---" line
         - match: (?=^ \S)
-          set: "scope:git-savvy.diff"
+          embed: "scope:git-savvy.diff"
+          escape: (?=^commit \h{7,})
         - match: ^---$\n?
           scope: meta.commit-header-and-stat-splitter
-          set: "scope:git-savvy.diff"
+          embed: "scope:git-savvy.diff"
+          escape: (?=^commit \h{7,})
         - include: make_commit.sublime-syntax#references

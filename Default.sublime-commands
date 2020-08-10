@@ -89,9 +89,13 @@
         "args": { "all": false }
     },
     {
-        "caption": "git: File history",
+        "caption": "git: File History",
         "command": "gs_graph_current_file",
         "args": { "all": false }
+    },
+    {
+        "caption": "git: Line History",
+        "command": "gs_line_history"
     },
     {
         "caption": "github: open file on remote",
