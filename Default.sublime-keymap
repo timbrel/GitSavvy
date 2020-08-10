@@ -1491,7 +1491,7 @@
     },
     {
         "keys": ["alt+down"],
-        "command": "gs_log_graph_navigate_first_parent",
+        "command": "gs_log_graph_navigate_wide",
         "args": { "forward": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
@@ -1500,7 +1500,7 @@
     },
     {
         "keys": ["alt+up"],
-        "command": "gs_log_graph_navigate_first_parent",
+        "command": "gs_log_graph_navigate_wide",
         "args": { "forward": false },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },

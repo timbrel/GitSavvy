@@ -45,7 +45,7 @@ __all__ = (
     "gs_log_graph_by_author",
     "gs_log_graph_by_branch",
     "gs_log_graph_navigate",
-    "gs_log_graph_navigate_first_parent",
+    "gs_log_graph_navigate_wide",
     "gs_log_graph_navigate_to_head",
     "gs_log_graph_edit_branches",
     "gs_log_graph_edit_filters",
@@ -932,7 +932,7 @@ class gs_log_graph_navigate(GsNavigate):
         return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
 
 
-class gs_log_graph_navigate_first_parent(TextCommand):
+class gs_log_graph_navigate_wide(TextCommand):
     def run(self, edit, forward=True):
         # type: (sublime.Edit, bool) -> None
         view = self.view
