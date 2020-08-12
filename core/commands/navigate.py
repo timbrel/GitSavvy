@@ -7,7 +7,7 @@ from GitSavvy.core.view import show_region
 
 MYPY = False
 if MYPY:
-    from typing import Sequence
+    from typing import Optional, Sequence
 
 
 class GsNavigate(TextCommand, GitCommand):
@@ -17,6 +17,7 @@ class GsNavigate(TextCommand, GitCommand):
 
     offset = 4
     show_at_center = True
+    wrap = True
 
     def run(self, edit, forward=True):
         sel = self.view.sel()
@@ -30,6 +31,8 @@ class GsNavigate(TextCommand, GitCommand):
             if forward
             else self.backward(current_position, available_regions)
         )
+        if not wanted_section:
+            return
 
         sel.clear()
         # Position the cursor at the beginning of the section...
@@ -46,17 +49,17 @@ class GsNavigate(TextCommand, GitCommand):
         raise NotImplementedError()
 
     def forward(self, current_position, regions):
-        # type: (sublime.Point, Sequence[sublime.Region]) -> sublime.Region
+        # type: (sublime.Point, Sequence[sublime.Region]) -> Optional[sublime.Region]
         for region in regions:
             if region.a > current_position:
                 return region
-        # Wrap around to the first one
-        return regions[0]
+
+        return regions[0] if self.wrap else None
 
     def backward(self, current_position, regions):
-        # type: (sublime.Point, Sequence[sublime.Region]) -> sublime.Region
+        # type: (sublime.Point, Sequence[sublime.Region]) -> Optional[sublime.Region]
         for region in reversed(regions):
             if region.b < current_position:
                 return region
-        # Wrap around to the last one
-        return regions[-1]
+
+        return regions[-1] if self.wrap else None
