@@ -86,6 +86,9 @@ class gs_commit(WindowCommand, GitCommand):
         )
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
+                settings = view.settings()
+                settings.set("git_savvy.commit_view.include_unstaged", include_unstaged)
+                settings.set("git_savvy.commit_view.amend", amend)
                 focus_view(view)
                 break
         else:
