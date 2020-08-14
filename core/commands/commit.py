@@ -108,6 +108,7 @@ class gs_commit(WindowCommand, GitCommand):
             settings.set("git_savvy.repo_path", repo_path)
             settings.set("git_savvy.commit_view", True)
             settings.set("git_savvy.commit_view.include_unstaged", include_unstaged)
+            settings.set("git_savvy.diff_view.in_cached_mode", not include_unstaged)
             settings.set("git_savvy.commit_view.amend", amend)
             commit_on_close = self.savvy_settings.get("commit_on_close")
             settings.set("git_savvy.commit_on_close", commit_on_close)
@@ -221,6 +222,7 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
             final_text = ("\n" + diff_text) if show_patch or show_stat else ""
         elif (show_patch or show_stat) and not include_unstaged:
             settings.set("git_savvy.commit_view.include_unstaged", True)
+            settings.set("git_savvy.diff_view.in_cached_mode", False)
             view.run_command("gs_prepare_commit_refresh_diff")
             return
         else:

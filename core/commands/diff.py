@@ -605,12 +605,15 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         args += ["-"]
         self.git(*args, stdin=patch)
 
-        history = self.view.settings().get("git_savvy.diff_view.history")
+        history = self.view.settings().get("git_savvy.diff_view.history") or []
         history.append((args, patch, pts, in_cached_mode))
         self.view.settings().set("git_savvy.diff_view.history", history)
         self.view.settings().set("git_savvy.diff_view.just_hunked", patch)
 
-        self.view.run_command("gs_diff_refresh")
+        if self.view.settings().get("git_savvy.commit_view"):
+            self.view.run_command("gs_prepare_commit_refresh_diff")
+        else:
+            self.view.run_command("gs_diff_refresh")
 
 
 def selected_line_starts(view, sel):
