@@ -58,11 +58,10 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import (
-        Callable, Dict, Generic, Iterable, Iterator, List, Literal, Optional, Set, Sequence, Tuple,
+        Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple,
         TypeVar, Union
     )
     T = TypeVar('T')
-    PainterState = Literal['initial', 'navigated', 'viewport_readied']
 
 
 COMMIT_NODE_CHAR = "●"
@@ -460,6 +459,37 @@ def selection_is_before_region(view, region):
         return True
 
 
+class PaintingStateMachine:
+    _states = {
+        "initial": {"navigated"},
+        "navigated": {"viewport_readied"},
+        "viewport_readied": set()
+    }  # type: Dict[str, Set[str]]
+
+    def __init__(self):
+        self._current_state = "initial"
+
+    def __repr__(self):
+        return "PaintingStateMachine({})".format(self._current_state)
+
+    def __eq__(self, other):
+        # type: (object) -> bool
+        if not isinstance(other, str):
+            return NotImplemented
+        return self._current_state == other
+
+    def set(self, other):
+        # type: (str) -> None
+        if other not in self._states:
+            raise RuntimeError("{} is not a valid state".format(other))
+        if other not in self._states[self._current_state]:
+            raise RuntimeError(
+                "Cannot transition to {} from {}"
+                .format(other, self._current_state)
+            )
+        self._current_state = other
+
+
 class gs_log_graph_refresh(TextCommand, GitCommand):
 
     """
@@ -554,7 +584,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
             current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
             replace_view_content(self.view, prelude_text, current_prelude_region)
-            drain_and_draw_queue(self.view, 'initial', follow, col_range, visible_selection)
+            drain_and_draw_queue(self.view, PaintingStateMachine(), follow, col_range, visible_selection)
 
         # Sublime will not run any event handlers until the (outermost) TextCommand exits.
         # T.i. the (inner) commands `replace_view_content` and `set_and_show_cursor` will run
@@ -563,7 +593,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         @ensure_not_aborted
         @text_command
         def drain_and_draw_queue(view, painter_state, follow, col_range, visible_selection):
-            # type: (sublime.View, PainterState, Optional[str], Optional[Tuple[int, int]], bool) -> None
+            # type: (sublime.View, PaintingStateMachine, Optional[str], Optional[Tuple[int, int]], bool) -> None
             try_navigate_to_symbol = partial(
                 navigate_to_symbol,
                 view,
@@ -599,16 +629,16 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 if painter_state == 'initial':
                     if follow:
                         if try_navigate_to_symbol(if_before=region):
-                            painter_state = 'navigated'
+                            painter_state.set('navigated')
                     elif navigate_after_draw:  # on init
                         view.run_command("gs_log_graph_navigate")
-                        painter_state = 'navigated'
+                        painter_state.set('navigated')
                     elif selection_is_before_region(view, region):
-                        painter_state = 'navigated'
+                        painter_state.set('navigated')
 
                 if painter_state == 'navigated':
                     if region.end() >= view.visible_region().end():
-                        painter_state = 'viewport_readied'
+                        painter_state.set('viewport_readied')
 
                 if block_time.passed(13 if painter_state == 'viewport_readied' else 1000):
                     enqueue_on_worker(
