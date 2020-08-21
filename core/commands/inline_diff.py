@@ -1,6 +1,7 @@
 from itertools import groupby, takewhile
 import os
 from collections import namedtuple
+from contextlib import contextmanager
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -56,6 +57,7 @@ DIFF_HEADER = """diff --git a/{path} b/{path}
 """
 
 diff_view_hunks = {}  # type: Dict[sublime.ViewId, List[HunkReference]]
+active_on_activated = True
 
 
 def place_cursor_and_show(view, row, col, row_offset):
@@ -254,6 +256,16 @@ class gs_inline_diff(WindowCommand, GitCommand):
         })
 
 
+@contextmanager
+def disabled_on_activated():
+    global active_on_activated
+    active_on_activated = False
+    try:
+        yield
+    finally:
+        active_on_activated = True
+
+
 class gs_inline_diff_open(WindowCommand, GitCommand):
     def run(
         self,
@@ -272,7 +284,8 @@ class gs_inline_diff_open(WindowCommand, GitCommand):
                 diff_view = view
                 settings = diff_view.settings()
                 settings.set("git_savvy.inline_diff_view.in_cached_mode", cached)
-                focus_view(diff_view)
+                with disabled_on_activated():
+                    focus_view(diff_view)
                 break
 
         else:
@@ -572,7 +585,7 @@ class GsInlineDiffFocusEventListener(EventListener):
     """
 
     def on_activated(self, view):
-        if is_inline_diff_view(view) and is_interactive_diff(view):
+        if active_on_activated and is_inline_diff_view(view) and is_interactive_diff(view):
             view.run_command("gs_inline_diff_refresh", {"sync": False})
 
 
