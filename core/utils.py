@@ -8,11 +8,12 @@ import time
 import threading
 import traceback
 
+import sublime
+
 
 MYPY = False
 if MYPY:
     from typing import Callable, Iterator, Type
-    import sublime
 
 
 @contextmanager
@@ -87,6 +88,19 @@ def focus_view(view):
     group, _ = window.get_view_index(view)
     window.focus_group(group)
     window.focus_view(view)
+
+
+if int(sublime.version()) < 4000:
+    from Default import history_list  # type: ignore[import]
+
+    def add_selection_to_jump_history(view):
+        history_list.get_jump_history_for_view(view).push_selection(view)
+
+else:
+    def add_selection_to_jump_history(view):
+        view.run_command("add_jump_record", {
+            "selection": [(r.a, r.b) for r in view.sel()]
+        })
 
 
 def line_indentation(line):
