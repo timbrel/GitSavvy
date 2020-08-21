@@ -4,6 +4,11 @@ import string
 from .. import store
 
 
+MYPY = False
+if MYPY:
+    from typing import Optional
+
+
 class ActiveBranchMixin():
 
     def get_current_branch_name(self):
@@ -167,8 +172,13 @@ class ActiveBranchMixin():
                         "@{u}", throw_on_stderr=False).strip()
 
     def get_remote_for_branch(self, branch_name):
-        # type: (str) -> str
-        return self.git("config", "--get", "branch.{}.remote".format(branch_name)).strip()
+        # type: (str) -> Optional[str]
+        return self.git(
+            "config",
+            "--get",
+            "branch.{}.remote".format(branch_name),
+            throw_on_stderr=False
+        ).strip() or None
 
     def get_active_remote_branch(self):
         """

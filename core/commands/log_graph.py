@@ -1794,7 +1794,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
     def fetch(self, current_branch):
         remote = self.get_remote_for_branch(current_branch)
-        self.window.run_command("gs_fetch", {"remote": remote})
+        self.window.run_command("gs_fetch", {"remote": remote} if remote else None)
 
     def noop(self):
         return
