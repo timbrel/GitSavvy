@@ -534,6 +534,36 @@
             { "key": "preceding_text", "operator": "regex_match", "operand": ".*[\\n ]@$" }
         ]
     },
+    {
+        "keys": ["o"],
+        "command": "gs_diff_open_file_at_hunk",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
+        ]
+    },
+    {
+        "keys": ["."],
+        "command": "gs_diff_navigate",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
+        ]
+    },
+    {
+        "keys": [","],
+        "command": "gs_diff_navigate",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
+        ]
+    },
+
 
     ///////////////
     // DIFF VIEW //

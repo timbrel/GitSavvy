@@ -71,7 +71,7 @@
 
         Change this to `false` to disable.
      */
-    "show_commit_diff": "stat",
+    "show_commit_diff": "full",
 
     /*
         Change this to `false` to not scroll to the first hunk automatically when

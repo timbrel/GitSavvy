@@ -2,7 +2,7 @@ import os
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
-from sublime_plugin import EventListener
+from sublime_plugin import EventListener, ViewEventListener
 
 from . import intra_line_colorizer
 from ..git_command import GitCommand
@@ -187,10 +187,26 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
             intra_line_colorizer.annotate_intra_line_differences(view, final_text, region.begin())
 
 
-class GsPrepareCommitFocusEventListener(EventListener):
-    def on_activated(self, view):
-        if view.settings().get("git_savvy.commit_view"):
-            view.run_command("gs_prepare_commit_refresh_diff", {"sync": False})
+class GsPrepareCommitFocusEventListener(ViewEventListener):
+    @classmethod
+    def is_applicable(cls, settings):
+        return settings.get("git_savvy.commit_view")
+
+    @classmethod
+    def applies_to_primary_view_only(cls):
+        return False
+
+    def on_activated(self):
+        self.view.run_command("gs_prepare_commit_refresh_diff", {"sync": False})
+
+    def on_selection_modified(self) -> None:
+        view = self.view
+        in_dropped_content = any(
+            r.contains(s) or r.intersects(s)
+            for r in view.find_by_selector("git-savvy.make-commit meta.dropped.git.commit")
+            for s in view.sel()
+        )
+        view.set_read_only(in_dropped_content)
 
 
 class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
