@@ -156,6 +156,11 @@ class gs_graph(WindowCommand, GitCommand):
             settings.set('git_savvy.log_graph_view.follow', follow)
             settings.set('git_savvy.log_graph_view.decoration', decoration)
             settings.set('git_savvy.log_graph_view.filters', filters)
+            show_commit_info_panel = bool(self.savvy_settings.get("graph_show_more_commit_info"))
+            settings.set(
+                "git_savvy.log_graph_view.show_commit_info_panel",
+                show_commit_info_panel
+            )
             view.set_name(title)
 
             # We need to ensure the panel has been created, so it appears
@@ -166,8 +171,8 @@ class gs_graph(WindowCommand, GitCommand):
             # even before we can mark it as "graph_view" in the settings.
             show_commit_info.ensure_panel(self.window)
             if (
-                self.savvy_settings.get("graph_show_more_commit_info")
-                and not show_commit_info.panel_is_visible(self.window)
+                not show_commit_info.panel_is_visible(self.window)
+                and show_commit_info_panel
             ):
                 self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
@@ -1103,7 +1108,7 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
         elif (
             self.is_applicable(view)
             and not show_commit_info.panel_is_visible(window)
-            and self.savvy_settings.get("graph_show_more_commit_info")
+            and view.settings().get("git_savvy.log_graph_view.show_commit_info_panel")
         ):
             window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
@@ -1141,9 +1146,9 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
                 return
 
             # If the user hides the panel via `<ESC>` or mouse click,
-            # remember the intent *if* the `active_view` is a 'log_graph'
+            # remember the intent *only if* the `active_view` is a 'log_graph'
             if self.is_applicable(view):
-                self.savvy_settings.set("graph_show_more_commit_info", False)
+                remember_commit_panel_state(view, False)
             PREVIOUS_OPEN_PANEL_PER_WINDOW[window.id()] = None
 
         elif command_name == 'show_panel':
@@ -1164,19 +1169,28 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             if toggle and window.active_panel() == panel:  # <== actually *hide* panel
                 # E.g. the same side-effect as in above "hide_panel" case
                 if self.is_applicable(view):
-                    self.savvy_settings.set("graph_show_more_commit_info", False)
+                    remember_commit_panel_state(view, False)
                 PREVIOUS_OPEN_PANEL_PER_WINDOW[window.id()] = None
             else:
                 if panel == "output.show_commit_info":
-                    self.savvy_settings.set("graph_show_more_commit_info", True)
+                    remember_commit_panel_state(view, True)
                     PREVIOUS_OPEN_PANEL_PER_WINDOW[window.id()] = window.active_panel()
                     draw_info_panel(view)
                 else:
                     if self.is_applicable(view):
-                        self.savvy_settings.set("graph_show_more_commit_info", False)
+                        remember_commit_panel_state(view, False)
 
 
 PREVIOUS_OPEN_PANEL_PER_WINDOW = {}  # type: Dict[sublime.WindowId, Optional[str]]
+
+
+def remember_commit_panel_state(view, state):
+    # type: (sublime.View, bool) -> None
+    # Note `view` is the ("parent") log graph view!
+    view.settings().set("git_savvy.log_graph_view.show_commit_info_panel", state)
+    # Also save to global state as the new initial mode
+    # for the next graph view.
+    GitSavvySettings().set("graph_show_more_commit_info", state)
 
 
 def set_symbol_to_follow(view):
@@ -1525,7 +1539,7 @@ def extract_commit_hash(line):
 class gs_log_graph_toggle_more_info(WindowCommand, GitCommand):
 
     """
-    Toggle global `graph_show_more_commit_info` setting.
+    Toggle commit info output panel.
     """
 
     def run(self):
