@@ -8,6 +8,7 @@ import sublime_plugin
 
 from GitSavvy.core.fns import pairwise
 from GitSavvy.core.utils import flash
+from GitSavvy.core.view import line_distance, show_region
 
 
 __all__ = (
@@ -20,9 +21,6 @@ MYPY = False
 if MYPY:
     from typing import Iterable, Iterator, List, TypeVar
     T = TypeVar("T")
-
-    Point = int
-    Row = int
 
 
 LINE_DISTANCE_BETWEEN_EDITS = 2
@@ -102,28 +100,6 @@ def jump(view, method):
         yield cur_pos(view)
 
 
-def line_distance(view, a, b):
-    # type: (sublime.View, sublime.Region, sublime.Region) -> int
-    if a.contains(b) or b.contains(a):
-        return 0
-    a, b = sorted((a, b), key=lambda region: region.begin())
-
-    # If a region `a` already contains a trailing "\n" just using
-    # `view.line(a)` will not strip this newline character but
-    # `split_by_newlines` does.
-    # E.g. for a region `(1136, 1253)` `split_by_newlines` last region
-    # is                `(1214, 1252)`
-    #                              ^
-    a_end = view.split_by_newlines(a)[-1].end()
-    b_start = b.begin()
-    return abs(row_on_pt(view, a_end) - row_on_pt(view, b_start))
-
-
-def row_on_pt(view, pt):
-    # type: (sublime.View, Point) -> Row
-    return view.rowcol(pt)[0]
-
-
 def set_sel(view, selection):
     # type: (sublime.View, List[sublime.Region]) -> None
     sel = view.sel()
@@ -141,18 +117,6 @@ def restore_sel_and_viewport(view):
     finally:
         set_sel(view, frozen_sel)
         view.set_viewport_position(vp)
-
-
-def show_region(view, region, context=5):
-    # type: (sublime.View, sublime.Region, int) -> None
-    row_a, _ = view.rowcol(region.begin())
-    row_b, _ = view.rowcol(region.end())
-    adjusted_section = sublime.Region(
-        # `text_point` is permissive and normalizes negative rows
-        view.text_point(row_a - context, 0),
-        view.text_point(row_b + context, 0)
-    )
-    view.show(adjusted_section, False)
 
 
 def cur_pos(view):

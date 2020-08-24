@@ -41,6 +41,17 @@ class ThemeGenerator():
     on the data, save it, and apply the transformed theme to a view.
     """
 
+    hidden_theme_extension = None  # type: str
+
+    @staticmethod
+    def for_view(view):
+        # type: (sublime.View) -> ThemeGenerator
+        color_scheme = view.settings().get('color_scheme')
+        if color_scheme.endswith(".tmTheme"):
+            return XMLThemeGenerator(color_scheme)
+        else:
+            return JSONThemeGenerator(color_scheme)
+
     def __init__(self, original_color_scheme):
         self._dirty = False
         try:
@@ -117,7 +128,9 @@ class XMLThemeGenerator(ThemeGenerator):
     def __init__(self, original_color_scheme):
         super().__init__(original_color_scheme)
         self.plist = ElementTree.XML(self.color_scheme_string)
-        self.styles = self.plist.find("./dict/array")
+        styles = self.plist.find("./dict/array")
+        assert styles
+        self.styles = styles
 
     def _add_scoped_style(self, name, scope, **kwargs):
         properties = "".join(PROPERTY_TEMPLATE.format(key=k, value=v) for k, v in kwargs.items())

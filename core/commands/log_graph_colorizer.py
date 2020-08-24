@@ -2,7 +2,7 @@ import sublime
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Dict, Final, Iterator, List, Tuple, TypeVar
+    from typing import Callable, Dict, Final, Iterator, List, Literal, Tuple, TypeVar
 
     T = TypeVar('T')
 
@@ -11,6 +11,7 @@ if MYPY:
     View = sublime.View
     Region = sublime.Region
     NextFn = Callable[['Char'], Iterator['Char']]
+    Direction = Literal["down", "up"]
 
 
 COMMIT_NODE_CHAR = '●'
@@ -84,6 +85,11 @@ class Char:
         return NotImplemented
 
     @property
+    def n(self):
+        # type: () -> Char
+        return self.go((-1, 0))
+
+    @property
     def e(self):
         # type: () -> Char
         return self.go((0, 1))
@@ -128,12 +134,13 @@ class NullChar_(Char):
 
 
 NullChar = NullChar_()
-registered_handlers = {}  # type: Dict[str, NextFn]
+down_handlers = {}  # type: Dict[str, NextFn]
+up_handlers = {}  # type: Dict[str, NextFn]
 
 
 # Notes:
 # - We want `follow_char` to be a polymorphic fn. For that we register
-# a handler for each valid graph char using `handles`.
+# a handler for each valid graph char using `follow`.
 #
 # - The following implementation for traversing a drawn graph uses
 # `Iterables` (and e.g. `yield from`) to avoid `None` checks everywhere
@@ -143,35 +150,42 @@ registered_handlers = {}  # type: Dict[str, NextFn]
 # code is straight forward, and you basically have to look at some
 # graphs (turn block cursor on in Sublime!) and peek around.
 
-def handles(ch):
-    # type: (str) -> Callable[[NextFn], NextFn]
+def follow(ch, direction):
+    # type: (str, Direction) -> Callable[[NextFn], NextFn]
     def decorator(fn):
         # type: (NextFn) -> NextFn
-        if ch in registered_handlers:
+        registry = down_handlers if direction == "down" else up_handlers
+        if ch in registry:
             raise RuntimeError('{} already has a handler registered'.format(ch))
-        registered_handlers[ch] = fn
+        registry[ch] = fn
         return fn
 
     return decorator
 
 
-def follow_path(dot):
+def follow_path_down(dot):
     # type: (Char) -> List[Char]
-    return list(_follow_path(dot))
+    return list(_follow_path(dot, "down"))
 
 
-def _follow_path(dot):
-    # type: (Char) -> Iterator[Char]
-    for c in follow_char(dot):
+def follow_path_up(dot):
+    # type: (Char) -> List[Char]
+    return list(_follow_path(dot, "up"))
+
+
+def _follow_path(dot, direction):
+    # type: (Char, Direction) -> Iterator[Char]
+    for c in follow_char(dot, direction):
         # print('{} -> {}'.format(dot, c))
         yield c
         if c != COMMIT_NODE_CHAR:
-            yield from _follow_path(c)
+            yield from _follow_path(c, direction)
 
 
-def follow_char(char):
-    # type: (Char) -> Iterator[Char]
-    fn = registered_handlers.get(char.char(), follow_none)
+def follow_char(char, direction):
+    # type: (Char, Direction) -> Iterator[Char]
+    registry = down_handlers if direction == "down" else up_handlers
+    fn = registry.get(char.char(), follow_none)
     yield from fn(char)
 
 
@@ -181,33 +195,68 @@ def contains(next_char, test):
         yield next_char
 
 
-@handles(COMMIT_NODE_CHAR)
-def follow_dot(char):
+@follow(COMMIT_NODE_CHAR, "down")
+def after_dot(char):
     # type: (Char) -> Iterator[Char]
-    yield from contains(char.e, '-')
-    yield from contains(char.s, '|' + COMMIT_NODE_CHAR)
     yield from contains(char.sw, '/')
-    yield from contains(char.se, '\\')
-
-
-@handles('|')
-def follow_vertical_bar(char):
-    # type: (Char) -> Iterator[Char]
     yield from contains(char.s, '|' + COMMIT_NODE_CHAR)
+    yield from contains(char.se, '\\')
+    yield from contains(char.e, '-')
+
+
+@follow(COMMIT_NODE_CHAR, "up")
+def before_dot(char):
+    # type: (Char) -> Iterator[Char]
+    yield from contains(char.w, '-')
+    yield from contains(char.n, '|' + COMMIT_NODE_CHAR)
+    yield from contains(char.n.e, '/')
+    yield from contains(char.n.w, '\\')
+
+
+@follow('|', "down")
+def after_vertical_bar(char):
+    # type: (Char) -> Iterator[Char]
+    yield from contains(char.s, '|/' + COMMIT_NODE_CHAR)
+
+    # Check crossing line before following '/'
+    # | |/ / /
+    # |/| | |
+    #   ^
+    # Or:
+    # | |_|/
+    # |/| |
     if char.e != '/' and char.e != '_':
         yield from contains(char.sw, '/')
     yield from contains(char.se, '\\')
 
 
-@handles('\\')
-def follow_backslash(char):
+@follow('|', "up")
+def before_vertical_bar(char):
+    # type: (Char) -> Iterator[Char]
+    yield from contains(char.n, '|' + COMMIT_NODE_CHAR)
+    if char.w != '/' and char.n.w != '_':
+        yield from contains(char.n.e, '/')
+    yield from contains(char.n.w, '\\')
+
+
+@follow('\\', "down")
+def after_backslash(char):
     # type: (Char) -> Iterator[Char]
     yield from contains(char.s, '/')
     yield from contains(char.se, '\\|' + COMMIT_NODE_CHAR)
 
 
-@handles('/')
-def follow_forwardslash(char):
+@follow('\\', "up")
+def before_backslash(char):
+    # type: (Char) -> Iterator[Char]
+    # Don't forget multi merge octopoi
+    # *---.
+    # | \  \
+    yield from contains(char.n.w, '\\.|-' + COMMIT_NODE_CHAR)
+
+
+@follow('/', "down")
+def after_forwardslash(char):
     # type: (Char) -> Iterator[Char]
     yield from contains(char.w, '_')
 
@@ -227,8 +276,18 @@ def follow_forwardslash(char):
         yield from contains(char.sw, '/|' + COMMIT_NODE_CHAR)
 
 
-@handles('_')
-def follow_underscore(char):
+@follow('/', "up")
+def before_forwardslash(char):
+    # type: (Char) -> Iterator[Char]
+    yield from contains(char.n.e.e, '_')
+    yield from contains(char.n.e.e, '/')
+    if char.n.e.e != '_' and char.n.e.e != '/':
+        yield from contains(char.n.e, '/|' + COMMIT_NODE_CHAR)
+    yield from contains(char.n, '|\\')
+
+
+@follow('_', "down")
+def after_underscore(char):
     # type: (Char) -> Iterator[Char]
     yield from contains(char.w, '_')
     if char.w == '|':
@@ -250,8 +309,15 @@ def follow_underscore(char):
         yield from contains(char.sw, '/')
 
 
-@handles('-')
-def follow_horizontal_bar(char):
+@follow('_', "up")
+def before_underscore(char):
+    # type: (Char) -> Iterator[Char]
+    yield from contains(char.e.e, '_')
+    yield from contains(char.e.e, '/')
+
+
+@follow('-', "down")
+def after_horizontal_bar(char):
     # type: (Char) -> Iterator[Char]
     # Multi merge octopoi
     # *---.
@@ -260,13 +326,25 @@ def follow_horizontal_bar(char):
     yield from contains(char.se, '\\')
 
 
-@handles('.')
-def follow_point(char):
+@follow('-', "up")
+def before_horizontal_bar(char):
+    yield from contains(char.w, '-' + COMMIT_NODE_CHAR)
+
+
+@follow('.', "down")
+def after_point(char):
     # type: (Char) -> Iterator[Char]
     yield from contains(char.se, '\\')
 
 
-@handles(' ')
+@follow('.', "up")
+def before_point(char):
+    # type: (Char) -> Iterator[Char]
+    yield from contains(char.w, '-')
+
+
+@follow(' ', "down")
+@follow(' ', "up")
 def follow_none(char):
     # type: (Char) -> Iterator[Char]
     return iter([])

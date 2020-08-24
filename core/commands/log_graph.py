@@ -17,7 +17,7 @@ from . import log_graph_colorizer as colorizer, show_commit_info
 from .log import GsLogCommand
 from .navigate import GsNavigate
 from .. import utils
-from ..fns import filter_, take, unique
+from ..fns import filter_, flatten, pairwise, partition, take, unique
 from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region
 from ..settings import GitSavvySettings
@@ -26,12 +26,12 @@ from ..runtime import (
     run_or_timeout, run_on_new_thread,
     text_command
 )
-from ..view import replace_view_content
+from ..view import line_distance, replace_view_content, show_region
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
-from ..utils import focus_view
+from ..utils import add_selection_to_jump_history, focus_view
 from ...common import util
-from ...common.theme_generator import XMLThemeGenerator, JSONThemeGenerator
+from ...common.theme_generator import ThemeGenerator
 
 
 __all__ = (
@@ -44,6 +44,7 @@ __all__ = (
     "gs_log_graph_by_author",
     "gs_log_graph_by_branch",
     "gs_log_graph_navigate",
+    "gs_log_graph_navigate_wide",
     "gs_log_graph_navigate_to_head",
     "gs_log_graph_edit_branches",
     "gs_log_graph_edit_filters",
@@ -58,11 +59,10 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import (
-        Callable, Dict, Generic, Iterable, Iterator, List, Literal, Optional, Set, Sequence, Tuple,
+        Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple,
         TypeVar, Union
     )
     T = TypeVar('T')
-    PainterState = Literal['initial', 'navigated', 'viewport_readied']
 
 
 COMMIT_NODE_CHAR = "●"
@@ -76,7 +76,9 @@ COMMIT_LINE = re.compile(
 )
 
 DOT_SCOPE = 'git_savvy.graph.dot'
+DOT_ABOVE_SCOPE = 'git_savvy.graph.dot.above'
 PATH_SCOPE = 'git_savvy.graph.path_char'
+PATH_ABOVE_SCOPE = 'git_savvy.graph.path_char.above'
 MATCHING_COMMIT_SCOPE = 'git_savvy.graph.matching_commit'
 
 
@@ -188,11 +190,7 @@ def augment_color_scheme(view):
     if not colors:
         return
 
-    color_scheme = view.settings().get('color_scheme')
-    if color_scheme.endswith(".tmTheme"):
-        themeGenerator = XMLThemeGenerator(color_scheme)
-    else:
-        themeGenerator = JSONThemeGenerator(color_scheme)
+    themeGenerator = ThemeGenerator.for_view(view)
     themeGenerator.add_scoped_style(
         "GitSavvy Highlighted Commit Dot",
         DOT_SCOPE,
@@ -204,6 +202,18 @@ def augment_color_scheme(view):
         PATH_SCOPE,
         background=colors['path_background'],
         foreground=colors['path_foreground'],
+    )
+    themeGenerator.add_scoped_style(
+        "GitSavvy Highlighted Commit Dot Above",
+        DOT_ABOVE_SCOPE,
+        background=colors['commit_dot_above_background'],
+        foreground=colors['commit_dot_above_foreground'],
+    )
+    themeGenerator.add_scoped_style(
+        "GitSavvy Highlighted Path Char Above",
+        PATH_ABOVE_SCOPE,
+        background=colors['path_above_background'],
+        foreground=colors['path_above_foreground'],
     )
     themeGenerator.add_scoped_style(
         "GitSavvy Highlighted Matching Commit",
@@ -233,11 +243,19 @@ else:
 
 
 MAX_LOOK_AHEAD = 10000
-Same = object()
+if MYPY:
+    from enum import Enum
+
+    class FlushT(Enum):
+        token = 0
+    Flush = FlushT.token
+
+else:
+    Flush = object()
 
 
 def diff(a, b):
-    # type: (Sequence[str], Iterable[str]) -> Iterator[Union[Ins, Del]]
+    # type: (Sequence[str], Iterable[str]) -> Iterator[Union[Ins, Del, FlushT]]
     a_index = 0
     b_index = -1  # init in case b is empty
     len_a = len(a)
@@ -258,7 +276,7 @@ def diff(a, b):
         else:
             if i == 0:
                 a_index += 1
-                yield Same
+                yield Flush
             else:
                 len_a -= i
                 a_index += i + 1
@@ -269,10 +287,10 @@ def diff(a, b):
 
 
 def simplify(diff, max_size):
-    # type: (Iterable[Union[Ins, Del]], int) -> Iterator[Union[Ins, Del, Replace]]
+    # type: (Iterable[Union[Ins, Del, FlushT]], int) -> Iterator[Union[Ins, Del, Replace]]
     previous = None  # type: Union[Ins, Del, Replace, None]
     for token in diff:
-        if token is Same:
+        if token is Flush:
             if previous is not None:
                 yield previous
                 previous = None
@@ -365,18 +383,6 @@ def make_aborter(view, store=REFRESH_RUNNERS, _lock=runners_lock):
     return should_abort
 
 
-TheEnd = object()
-
-
-def put_on_queue(queue, it):
-    # type: (SimpleQueue[T], Iterable[T]) -> None
-    try:
-        for item in it:
-            queue.put(item)
-    finally:
-        queue.put(TheEnd)
-
-
 def wait_for_first_item(it):
     # type: (Iterable[T]) -> Iterator[T]
     iterable = iter(it)
@@ -403,24 +409,42 @@ def log_git_command(fn):
     return decorated
 
 
+class Done(Exception):
+    pass
+
+
 if MYPY:
-    class SimpleQueue(Generic[T]):
-        def put(self, item: T) -> None: ...  # noqa: E704
+    class SimpleFiniteQueue(Generic[T]):
+        def consume(self, it: Iterable[T]) -> None: ...  # noqa: E704
+        def _put(self, item: T) -> None: ...  # noqa: E704
         def get(self, block=True, timeout=float) -> T: ...  # noqa: E704
 else:
-    class SimpleQueue:
+    TheEnd = object()
+
+    class SimpleFiniteQueue:
         def __init__(self):
             self._queue = deque()
             self._count = threading.Semaphore(0)
 
-        def put(self, item):
+        def consume(self, it):
+            try:
+                for item in it:
+                    self._put(item)
+            finally:
+                self._put(TheEnd)
+
+        def _put(self, item):
             self._queue.append(item)
             self._count.release()
 
         def get(self, block=True, timeout=None):
             if not self._count.acquire(block, timeout):
                 raise Empty
-            return self._queue.popleft()
+            val = self._queue.popleft()
+            if val is TheEnd:
+                raise Done
+            else:
+                return val
 
 
 def try_kill_proc(proc):
@@ -434,6 +458,37 @@ def selection_is_before_region(view, region):
         return view.sel()[-1].end() <= region.end()
     except IndexError:
         return True
+
+
+class PaintingStateMachine:
+    _states = {
+        "initial": {"navigated"},
+        "navigated": {"viewport_readied"},
+        "viewport_readied": set()
+    }  # type: Dict[str, Set[str]]
+
+    def __init__(self):
+        self._current_state = "initial"
+
+    def __repr__(self):
+        return "PaintingStateMachine({})".format(self._current_state)
+
+    def __eq__(self, other):
+        # type: (object) -> bool
+        if not isinstance(other, str):
+            return NotImplemented
+        return self._current_state == other
+
+    def set(self, other):
+        # type: (str) -> None
+        if other not in self._states:
+            raise RuntimeError("{} is not a valid state".format(other))
+        if other not in self._states[self._current_state]:
+            raise RuntimeError(
+                "Cannot transition to {} from {}"
+                .format(other, self._current_state)
+            )
+        self._current_state = other
 
 
 class gs_log_graph_refresh(TextCommand, GitCommand):
@@ -473,7 +528,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             current_graph = ''
         current_graph_splitted = current_graph.splitlines(keepends=True)
 
-        token_queue = SimpleQueue()  # type: SimpleQueue[Replace]
+        token_queue = SimpleFiniteQueue()  # type: SimpleFiniteQueue[Replace]
         current_proc = None
         graph_offset = len(prelude_text)
 
@@ -516,7 +571,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             else:
                 tokens = wait_for_first_item(tokens)
             enqueue_on_ui(draw)
-            put_on_queue(token_queue, tokens)
+            token_queue.consume(tokens)
 
         @ensure_not_aborted
         def draw():
@@ -530,7 +585,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
             current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
             replace_view_content(self.view, prelude_text, current_prelude_region)
-            drain_and_draw_queue(self.view, 'initial', follow, col_range, visible_selection)
+            drain_and_draw_queue(self.view, PaintingStateMachine(), follow, col_range, visible_selection)
 
         # Sublime will not run any event handlers until the (outermost) TextCommand exits.
         # T.i. the (inner) commands `replace_view_content` and `set_and_show_cursor` will run
@@ -539,7 +594,15 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         @ensure_not_aborted
         @text_command
         def drain_and_draw_queue(view, painter_state, follow, col_range, visible_selection):
-            # type: (sublime.View, PainterState, Optional[str], Optional[Tuple[int, int]], bool) -> None
+            # type: (sublime.View, PaintingStateMachine, Optional[str], Optional[Tuple[int, int]], bool) -> None
+            call_again = partial(
+                drain_and_draw_queue,
+                view,
+                painter_state,
+                follow,
+                col_range,
+                visible_selection,
+            )
             try_navigate_to_symbol = partial(
                 navigate_to_symbol,
                 view,
@@ -558,16 +621,9 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                         timeout=0.05 if painter_state != 'viewport_readied' else None
                     )
                 except Empty:
-                    enqueue_on_worker(
-                        drain_and_draw_queue,
-                        view,
-                        painter_state,
-                        follow,
-                        col_range,
-                        visible_selection,
-                    )
+                    enqueue_on_worker(call_again)
                     return
-                if token is TheEnd:
+                except Done:
                     break
 
                 region = apply_token(view, token, graph_offset)
@@ -575,26 +631,19 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 if painter_state == 'initial':
                     if follow:
                         if try_navigate_to_symbol(if_before=region):
-                            painter_state = 'navigated'
+                            painter_state.set('navigated')
                     elif navigate_after_draw:  # on init
                         view.run_command("gs_log_graph_navigate")
-                        painter_state = 'navigated'
+                        painter_state.set('navigated')
                     elif selection_is_before_region(view, region):
-                        painter_state = 'navigated'
+                        painter_state.set('navigated')
 
                 if painter_state == 'navigated':
                     if region.end() >= view.visible_region().end():
-                        painter_state = 'viewport_readied'
+                        painter_state.set('viewport_readied')
 
                 if block_time.passed(13 if painter_state == 'viewport_readied' else 1000):
-                    enqueue_on_worker(
-                        drain_and_draw_queue,
-                        view,
-                        painter_state,
-                        follow,
-                        col_range,
-                        visible_selection,
-                    )
+                    enqueue_on_worker(call_again)
                     return
 
             if painter_state == 'initial':
@@ -794,7 +843,7 @@ class gs_log_graph(GsLogCommand):
     ensures that each of the defined actions/commands in `default_actions` are finally
     called with `file_path` set.
     """
-    default_actions = [
+    default_actions = [  # type: ignore[assignment]
         ["gs_log_graph_current_branch", "For current branch"],
         ["gs_log_graph_all_branches", "For all branches"],
         ["gs_log_graph_by_author", "Filtered by author"],
@@ -875,14 +924,60 @@ class gs_log_graph_by_branch(WindowCommand, GitCommand):
 
 
 class gs_log_graph_navigate(GsNavigate):
-
-    """
-    Travel between commits. It is also used by compare_commit_view.
-    """
     offset = 0
+    show_at_center = False
+    wrap = False
 
     def get_available_regions(self):
         return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
+
+
+class gs_log_graph_navigate_wide(TextCommand):
+    def run(self, edit, forward=True):
+        # type: (sublime.Edit, bool) -> None
+        view = self.view
+        try:
+            dot = next(_find_dots(view))
+        except StopIteration:
+            view.run_command("gs_log_graph_navigate", {"forward": forward})
+            return
+
+        next_dots = follow_first_parent_commit(dot, forward)
+        try:
+            next_dot = next(next_dots)
+        except StopIteration:
+            return
+
+        if line_distance(view, dot.region(), next_dot.region()) < 2:
+            # If the first next dot is not already a wide jump, t.i. the
+            # cursor is not on an edge commit, follow the chain of consecutive
+            # commits and select the last one of such a block.  T.i. select
+            # the commit *before* the next wide jump.
+            for next_dot, dot in pairwise(chain([next_dot], next_dots)):
+                if line_distance(view, dot.region(), next_dot.region()) > 1:
+                    break
+            else:
+                # If there is no wide jump anymore take the last found dot.
+                # This is the case for example a the top of the graph, or if
+                # a branch ends.
+                next_dot = dot
+
+        line_span = view.line(next_dot.region())
+        r = extract_comit_hash_span(view, line_span)
+        if r:
+            add_selection_to_jump_history(view)
+            sel = view.sel()
+            sel.clear()
+            sel.add(r.a)
+            show_region(view, r)
+
+
+def follow_first_parent_commit(dot, forward):
+    # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
+    fn = colorizer.follow_path_down if forward else colorizer.follow_path_up
+    while True:
+        dot = next(ch for ch in fn(dot) if ch == COMMIT_NODE_CHAR)
+        yield dot
 
 
 class gs_log_graph_navigate_to_head(TextCommand):
@@ -1284,14 +1379,22 @@ def _find_dots(view):
 def _colorize_dots(vid, dots):
     # type: (sublime.ViewId, Tuple[colorizer.Char]) -> None
     view = sublime.View(vid)
-    view.add_regions('gs_log_graph_dot', [d.region() for d in dots], scope=DOT_SCOPE)
-    paths = [
-        c.region()
-        for path in map(colorizer.follow_path, dots)
-        if len(path) > 1
-        for c in path
-    ]
-    view.add_regions('gs_log_graph_follow_path', paths, scope=PATH_SCOPE)
+    to_region = lambda ch: ch.region()  # type: Callable[[colorizer.Char], sublime.Region]
+
+    view.add_regions('gs_log_graph.dot', list(map(to_region, dots)), scope=DOT_SCOPE)
+    path_down = flatten(filter(
+        lambda path: len(path) > 1,  # type: ignore[arg-type]  # https://github.com/python/mypy/issues/9176
+        map(colorizer.follow_path_down, dots)
+    ))
+    view.add_regions('gs_log_graph.path_below', list(map(to_region, path_down)), scope=PATH_SCOPE)
+
+    chars_up = flatten(filter(
+        lambda path: len(path) > 1,  # type: ignore[arg-type]  # https://github.com/python/mypy/issues/9176
+        map(colorizer.follow_path_up, dots)
+    ))
+    path_up, dot_up = partition(lambda ch: ch == COMMIT_NODE_CHAR, chars_up)
+    view.add_regions('gs_log_graph.path_above', list(map(to_region, path_up)), scope=PATH_ABOVE_SCOPE)
+    view.add_regions('gs_log_graph.dot.above', list(map(to_region, dot_up)), scope=DOT_ABOVE_SCOPE)
 
 
 def colorize_fixups(view):
@@ -1371,12 +1474,8 @@ def follow_dots(dot):
     # type: (colorizer.Char) -> Iterator[colorizer.Char]
     """Follow dot to dot omitting the path chars in between."""
     while True:
-        try:
-            dot = colorizer.follow_path(dot)[-1]
-        except IndexError:
-            break
-        else:
-            yield dot
+        dot = next(ch for ch in colorizer.follow_path_down(dot) if ch == COMMIT_NODE_CHAR)
+        yield dot
 
 
 def draw_info_panel(view):
@@ -1418,8 +1517,9 @@ def draw_info_panel_for_line(vid, line_text):
 
 
 def extract_commit_hash(line):
+    # type: (str) -> str
     match = COMMIT_LINE.search(line)
-    return match.groupdict()['commit_hash'] if match else ""
+    return match.group('commit_hash') if match else ""
 
 
 class gs_log_graph_toggle_more_info(WindowCommand, GitCommand):

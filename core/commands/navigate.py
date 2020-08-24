@@ -2,51 +2,64 @@ import sublime
 from sublime_plugin import TextCommand
 
 from ..git_command import GitCommand
+from GitSavvy.core.view import show_region
+
+
+MYPY = False
+if MYPY:
+    from typing import Optional, Sequence
 
 
 class GsNavigate(TextCommand, GitCommand):
-
     """
     Move cursor to the next (or previous).
     """
+
     offset = 4
+    show_at_center = True
+    wrap = True
 
     def run(self, edit, forward=True):
         sel = self.view.sel()
-        if not sel:
-            return
         current_position = sel[0].a
 
         available_regions = self.get_available_regions()
-
-        new_position = (self.forward(current_position, available_regions)
-                        if forward
-                        else self.backward(current_position, available_regions))
-
-        if new_position is None:
+        if not available_regions:
+            return
+        wanted_section = (
+            self.forward(current_position, available_regions)
+            if forward
+            else self.backward(current_position, available_regions)
+        )
+        if not wanted_section:
             return
 
         sel.clear()
-        # Position the cursor at the beginning of the file name.
-        new_position += self.offset
-        sel.add(sublime.Region(new_position, new_position))
-        self.view.show_at_center(new_position)
+        # Position the cursor at the beginning of the section...
+        new_cursor_position = wanted_section.begin() + self.offset
+        sel.add(sublime.Region(new_cursor_position))
 
-        # The following shouldn't strictly be necessary, but Sublime sometimes
-        # jumps to the right when show_at_center for a column-zero-point occurs.
-        _, vp_y = self.view.viewport_position()
-        self.view.set_viewport_position((0, vp_y), False)
+        if self.show_at_center:
+            self.view.show_at_center(new_cursor_position)
+        else:
+            show_region(self.view, wanted_section)
 
-    def forward(self, current_position, file_regions):
-        for file_region in file_regions:
-            if file_region.a > current_position:
-                return file_region.a
-        # If we are after the last match, pick the first one
-        return file_regions[0].a if len(file_regions) != 0 else None
+    def get_available_regions(self):
+        # type: () -> Sequence[sublime.Region]
+        raise NotImplementedError()
 
-    def backward(self, current_position, file_regions):
-        for file_region in reversed(file_regions):
-            if file_region.b < current_position:
-                return file_region.a
-        # If we are after the last match, pick the last one
-        return file_regions[-1].a if len(file_regions) != 0 else None
+    def forward(self, current_position, regions):
+        # type: (sublime.Point, Sequence[sublime.Region]) -> Optional[sublime.Region]
+        for region in regions:
+            if region.a > current_position:
+                return region
+
+        return regions[0] if self.wrap else None
+
+    def backward(self, current_position, regions):
+        # type: (sublime.Point, Sequence[sublime.Region]) -> Optional[sublime.Region]
+        for region in reversed(regions):
+            if region.b < current_position:
+                return region
+
+        return regions[-1] if self.wrap else None

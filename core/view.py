@@ -18,6 +18,38 @@ else:
     Position = namedtuple("Position", "row col offset")
 
 
+def show_region(view, region, context=5):
+    # type: (sublime.View, sublime.Region, int) -> None
+    row_a, _ = view.rowcol(region.begin())
+    row_b, _ = view.rowcol(region.end())
+    adjusted_section = sublime.Region(
+        # `text_point` is permissive and normalizes negative rows
+        view.text_point(row_a - context, 0),
+        view.text_point(row_b + context, 0)
+    )
+    view.show(adjusted_section, False)
+
+
+def line_distance(view, a, b):
+    # type: (sublime.View, sublime.Region, sublime.Region) -> int
+    a, b = sorted((a, b), key=lambda region: region.begin())
+
+    # If a region `a` already contains a trailing "\n" just using
+    # `view.line(a)` will not strip this newline character but
+    # `split_by_newlines` does.
+    # E.g. for a region `(1136, 1253)` `split_by_newlines` last region
+    # is                `(1214, 1252)`
+    #                              ^
+    a_end = view.split_by_newlines(a)[-1].end()
+    b_start = b.begin()
+    return abs(row_on_pt(view, a_end) - row_on_pt(view, b_start))
+
+
+def row_on_pt(view, pt):
+    # type: (sublime.View, sublime.Point) -> Row
+    return view.rowcol(pt)[0]
+
+
 def capture_cur_position(view):
     # type: (sublime.View) -> Optional[Position]
     try:
