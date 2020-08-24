@@ -264,7 +264,7 @@
         When set to `true,`, GitSavvy will display the full diff of the current
         commit in the output panel.
     */
-    "show_full_commit_info": false,
+    "show_full_commit_info": true,
 
     /*
         When set to `true`, GitSavvy will follow file renames when running git log/graph
