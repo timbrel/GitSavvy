@@ -72,14 +72,11 @@ class gs_show_commit_refresh(TextCommand, GitCommand):
         commit_hash = settings.get("git_savvy.show_commit_view.commit")
         ignore_whitespace = settings.get("git_savvy.show_commit_view.ignore_whitespace")
         show_diffstat = settings.get("git_savvy.show_commit_view.show_diffstat")
-        content = self.git(
-            "show",
-            "--ignore-all-space" if ignore_whitespace else None,
-            "--stat" if show_diffstat else None,
-            "--patch",
-            "--format=fuller",
-            "--no-color",
-            commit_hash)
+        content = self.read_commit(
+            commit_hash,
+            show_diffstat=show_diffstat,
+            ignore_whitespace=ignore_whitespace
+        )
         replace_view_content(self.view, content)
         intra_line_colorizer.annotate_intra_line_differences(self.view)
 

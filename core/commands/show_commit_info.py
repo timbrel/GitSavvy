@@ -1,5 +1,4 @@
 from contextlib import contextmanager
-from functools import lru_cache
 
 import sublime
 from sublime_plugin import WindowCommand
@@ -73,26 +72,13 @@ class gs_show_commit_info(WindowCommand, GitCommand):
         output_view.settings().set("git_savvy.repo_path", self.repo_path)
 
         if commit_hash:
-            show_full = self.savvy_settings.get("show_full_commit_info")
+            show_patch = self.savvy_settings.get("show_full_commit_info")
             show_diffstat = self.savvy_settings.get("show_diffstat")
-            text = self.show_commit(commit_hash, file_path, show_diffstat, show_full)
+            text = self.read_commit(commit_hash, file_path, show_diffstat, show_patch)
         else:
             text = ''
 
         enqueue_on_ui(_draw, self.window, output_view, text, commit_hash)
-
-    @lru_cache(maxsize=64)
-    def show_commit(self, commit_hash, file_path, show_diffstat, show_full):
-        return self.git(
-            "show",
-            "--no-color",
-            "--format=fuller",
-            "--stat" if show_diffstat else None,
-            "--patch" if show_full else None,
-            commit_hash,
-            "--" if file_path else None,
-            file_path if file_path else None
-        )
 
 
 def _draw(window, view, text, commit):

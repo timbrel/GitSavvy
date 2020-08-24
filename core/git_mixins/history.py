@@ -297,6 +297,50 @@ class HistoryMixin():
         # fails to find matching
         return line
 
+    def read_commit(
+        self,
+        commit_hash,
+        file_path=None,
+        show_diffstat=True,
+        show_patch=True,
+        ignore_whitespace=False
+    ):
+        # type: (str, Optional[str], bool, bool, bool) -> str
+        key = (
+            "read_commit",
+            self.repo_path,
+            commit_hash,
+            file_path,
+            show_diffstat,
+            show_patch,
+            ignore_whitespace
+        )
+        try:
+            return store.cache[key]
+        except KeyError:
+            rv = store.cache[key] = self._read_commit(
+                commit_hash,
+                file_path,
+                show_diffstat,
+                show_patch,
+                ignore_whitespace
+            )
+            return rv
+
+    def _read_commit(self, commit_hash, file_path, show_diffstat, show_patch, ignore_whitespace):
+        # type: (str, Optional[str], bool, bool, bool) -> str
+        return self.git(
+            "show",
+            "--no-color",
+            "--format=fuller",
+            "--stat" if show_diffstat else None,
+            "--ignore-all-space" if ignore_whitespace else None,
+            "--patch" if show_patch else None,
+            commit_hash,
+            "--" if file_path else None,
+            file_path if file_path else None
+        )
+
     def previous_commit(self, current_commit, file_path, follow=False):
         # type: (str, str, bool) -> Optional[str]
         if not current_commit or current_commit == "HEAD":
