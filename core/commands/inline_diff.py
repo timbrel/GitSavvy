@@ -59,7 +59,7 @@ def place_cursor_and_show(view, row, col, row_offset):
 
     vy = (row - row_offset) * view.line_height()
     vx, _ = view.viewport_position()
-    view.set_viewport_position((vx, vy))
+    view.set_viewport_position((vx, vy), animate=False)
 
 
 def translate_row_to_inline_diff(diff_view, row):
