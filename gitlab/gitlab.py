@@ -72,10 +72,7 @@ def parse_remote(remote):
         return None
 
     fqdn, owner, repo = match.groups()
-
-    api_tokens = GitSavvySettings().get("api_tokens")
-    token = api_tokens and api_tokens.get(fqdn, None) or None
-
+    token = GitSavvySettings().get("api_tokens", {}).get(fqdn)
     return GitLabRepo(url, fqdn, owner, repo, token)
 
 
