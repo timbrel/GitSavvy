@@ -111,5 +111,5 @@ def stable_viewport(view):
     try:
         yield
     finally:
-        view.set_viewport_position((0, 0))  # intentional!
-        view.set_viewport_position((vx, vy))
+        view.set_viewport_position((0, 0), animate=False)  # intentional!
+        view.set_viewport_position((vx, vy), animate=False)

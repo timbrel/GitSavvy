@@ -147,7 +147,7 @@ def move_cursor_to_line_col(view, position):
     else:
         vy = (row - row_offset) * view.line_height()
         vx, _ = view.viewport_position()
-        view.set_viewport_position((vx, vy))
+        view.set_viewport_position((vx, vy), animate=False)
 
 
 class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
