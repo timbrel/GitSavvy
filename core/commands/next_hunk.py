@@ -116,7 +116,7 @@ def restore_sel_and_viewport(view):
         yield
     finally:
         set_sel(view, frozen_sel)
-        view.set_viewport_position(vp)
+        view.set_viewport_position(vp, animate=False)
 
 
 def cur_pos(view):

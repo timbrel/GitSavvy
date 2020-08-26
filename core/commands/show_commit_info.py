@@ -103,4 +103,4 @@ def restore_viewport_position(view, next_commit):
 
     view.settings().set("git_savvy.show_commit_view.commit", next_commit)
     prev_position = storage.get(next_commit, (0, 0))
-    view.set_viewport_position(prev_position, False)
+    view.set_viewport_position(prev_position, animate=False)
