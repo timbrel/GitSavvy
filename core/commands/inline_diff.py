@@ -391,19 +391,21 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             enqueue_on_ui(self.draw, self.view, title, match_position, inline_diff_contents, replaced_lines)
 
     def draw(self, view, title, match_position, inline_diff_contents, replaced_lines):
-        if match_position is None:
-            cur_pos = capture_cur_position(view)
+        navigate_to_first_hunk = (
+            match_position is None
+            and view.size() == 0  # t.i. only on the initial draw!
+            and self.savvy_settings.get("inline_diff_auto_scroll", True)
+        )
 
         replace_view_content(view, inline_diff_contents)
         self.view.set_name(title)
 
-        if match_position is None:
-            if cur_pos == (0, 0, 0) and self.savvy_settings.get("inline_diff_auto_scroll", True):
-                view.run_command("gs_inline_diff_navigate_hunk")
-        else:
+        if match_position:
             row, col, row_offset = match_position
             new_row = translate_row_to_inline_diff(view, row)
             place_cursor_and_show(view, new_row, col, row_offset)
+        elif navigate_to_first_hunk:
+            view.run_command("gs_inline_diff_navigate_hunk")
 
         self.highlight_regions(replaced_lines)
 
