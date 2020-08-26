@@ -1,5 +1,8 @@
+from functools import partial
 from collections import OrderedDict
 from contextlib import contextmanager
+import html
+from itertools import count
 import os
 import signal
 import subprocess
@@ -13,7 +16,7 @@ import sublime
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Iterator, Type
+    from typing import Callable, Dict, Iterator, Tuple, Type
 
 
 @contextmanager
@@ -77,6 +80,104 @@ def flash(view, message):
     window = view.window()
     if window:
         window.status_message(message)
+
+
+IDS = partial(next, count())  # type: Callable[[], int]  # type: ignore[assignment]
+HIDE_POPUP_TIMERS = {}  # type: Dict[sublime.ViewId, int]
+POPUPS = {}  # type: Dict[sublime.ViewId, Tuple]
+DEFAULT_TIMEOUT = 2500  # [ms]
+DEFAULT_STYLE = {
+    'background': 'transparent',
+    'foreground': 'var(--foreground)'
+}
+
+
+def show_toast(view, message, timeout=DEFAULT_TIMEOUT, style=DEFAULT_STYLE):
+    # type: (sublime.View, str, int, Dict[str, str]) -> Callable[[], None]
+    """Show a toast popup at the bottom of the view.
+
+    A timeout of -1 makes a "sticky" toast.
+    """
+    messages_by_line = escape_text(message).splitlines()
+    content = style_message("<br />".join(messages_by_line), style)
+
+    # Order can matter here.  If we calc width *after* visible_region we get
+    # different results!
+    width, _ = view.viewport_extent()
+    visible_region = view.visible_region()
+    last_row, _ = view.rowcol(visible_region.end())
+    line_start = view.text_point(last_row - 4 - len(messages_by_line), 0)
+
+    vid = view.id()
+    key = IDS()
+
+    def on_hide(vid, key):
+        if HIDE_POPUP_TIMERS.get(vid) == key:
+            HIDE_POPUP_TIMERS.pop(vid, None)
+
+    def __hide_popup(vid, key, sink):
+        if HIDE_POPUP_TIMERS.get(vid) == key:
+            HIDE_POPUP_TIMERS.pop(vid, None)
+            sink()
+
+    inner_hide_popup = show_popup(
+        view,
+        content,
+        max_width=width * 2 / 3,
+        location=line_start,
+        on_hide=partial(on_hide, vid, key)
+    )
+    HIDE_POPUP_TIMERS[vid] = key
+
+    hide_popup = partial(__hide_popup, vid, key, inner_hide_popup)
+    if timeout > 0:
+        sublime.set_timeout(hide_popup, timeout)
+    return hide_popup
+
+
+def show_popup(view, content, max_width, location, on_hide=None):
+    vid = view.id()
+    inner_hide_popup = view.hide_popup
+    actual_key = (int(max_width), location)
+    if POPUPS.get(vid) == actual_key:
+        view.update_popup(content)
+    else:
+        def __on_hide(vid, key):
+            if POPUPS.get(vid) == key:
+                POPUPS.pop(vid, None)
+            if on_hide:
+                on_hide()
+
+        view.show_popup(
+            content,
+            max_width=max_width,
+            location=location,
+            on_hide=partial(__on_hide, vid, actual_key)
+        )
+        POPUPS[vid] = actual_key
+
+    def __hide_popup(vid, key, sink):
+        if POPUPS.get(vid) == key:
+            POPUPS.pop(vid, None)
+            sink()
+
+    return partial(__hide_popup, vid, actual_key, inner_hide_popup)
+
+
+def style_message(message, style):
+    # type: (str, Dict[str, str]) -> str
+    return """
+        <div
+            style="padding: 1rem;
+                   background-color: {background};
+                   color: {foreground}"
+        >{message}</div>
+    """.format(message=message, **style)
+
+
+def escape_text(text):
+    # type: (str) -> str
+    return html.escape(text, quote=False).replace(" ", "&nbsp;")
 
 
 def focus_view(view):

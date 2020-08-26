@@ -28,7 +28,7 @@ from ..runtime import (
 from ..view import join_regions, line_distance, replace_view_content, show_region
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
-from ..utils import add_selection_to_jump_history, focus_view
+from ..utils import add_selection_to_jump_history, focus_view, show_toast
 from ...common import util
 from ...common.theme_generator import ThemeGenerator
 
@@ -1074,11 +1074,21 @@ class gs_log_graph_edit_filters(TextCommand):
 
         def on_done(text):
             # type: (str) -> None
+            hide_toast()  # type: ignore[has-type]
             settings.set("git_savvy.log_graph_view.filters", text)
             self.view.run_command("gs_log_graph_refresh")
 
         show_single_line_input_panel(
-            "additional args", filters, on_done, select_text=True
+            "additional args",
+            filters,
+            on_done,
+            on_cancel=lambda: enqueue_on_worker(hide_toast),  # type: ignore[has-type]
+            select_text=True
+        )
+        hide_toast = show_toast(
+            self.view,
+            "Examples: --reflog  |  -Ssearch_term  |  -Gsearch_term  |  --dense",
+            timeout=-1
         )
 
 
