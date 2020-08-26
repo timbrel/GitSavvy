@@ -6,8 +6,5 @@ If you're a new user and you find yourself asking, _"Can GitSavvy do X?"_, there
 
 You can also check for configurability options by opening `Preferences > Package Settings > GitSavvy > Settings - Default` in the ST3 menu.  Any optional or configurable behavior will be documented here, along with the default values.
 
-If you need help along the way, there's usually someone around in our Gitter channel:
-https://gitter.im/divmain/GitSavvy
-
 Finally, if at any time you encounter a bug, or if you wish that GitSavvy included some missing functionality, please open an issue:
 https://github.com/timbrel/GitSavvy/issues

@@ -185,7 +185,7 @@ For all syntax specific view we have a settings file. These are nothing extra fr
 
 ### Editing Settings
 
-To open the GitSavvy settings, simply run the `Preferences: GitSavvy Settings` command from the command palette. The default settings are documented with helpful inline comments. GitSavvy also supports project specific settings, run the 
+To open the GitSavvy settings, simply run the `Preferences: GitSavvy Settings` command from the command palette. The default settings are documented with helpful inline comments. GitSavvy also supports project specific settings, run the
 `Preference: GitSavvy Project Settings` command and add the key `"GitSavvy"` as follows
 
 ```
@@ -212,12 +212,12 @@ GitSavvy's default keyboard shortcuts are defined in the package's `.sublime-key
 
 The key bindings can be edited (and new ones added) via [user defined `.sublime-keymap` files](http://docs.sublimetext.info/en/latest/reference/key_bindings.html). These can be accessed easily by running the "Preferences: Key Bindings" command in the command palette.
 
-Here is an example of defining <kbd>ctrl</kbd>+<kbd>s</kbd> to run the `git: status` dashboard on a MacOS system:
+Here is an example of defining <kbd>ctrl</kbd>+<kbd>shift</kbd>+<kbd>s</kbd> to run the `git: status` dashboard on a MacOS system:
 
 _**${ST3_PACKAGE_DIR}/User/Default (OSX).sublime-keymap**_
 ```json
 [
-    { "keys": ["ctrl+s"], "command": "gs_show_status" }
+    { "keys": ["ctrl+shift+s"], "command": "gs_show_status" }
 ]
 ```
 
