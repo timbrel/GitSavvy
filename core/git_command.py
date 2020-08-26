@@ -154,12 +154,10 @@ class GitCommand(StatusMixin,
         command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
         command_str = " ".join(["git"] + list(filter(None, args)))
 
-        show_panel_overrides = self.savvy_settings.get("show_panel_for")
         if show_panel is None:
-            show_panel = args[0] in show_panel_overrides
+            show_panel = args[0] in self.savvy_settings.get("show_panel_for")
 
-        close_panel_for = self.savvy_settings.get("close_panel_for") or []
-        if args[0] in close_panel_for:
+        if args[0] in self.savvy_settings.get("close_panel_for"):
             sublime.active_window().run_command("hide_panel", {"cancel": True})
 
         live_panel_output = self.savvy_settings.get("live_panel_output", False)
