@@ -43,8 +43,8 @@ class GsTabCycleCommand(TextCommand, GitCommand):
     def get_next(self, source, reverse=False):
         tab_order = self.savvy_settings.get("tab_order")
 
-        if reverse is True:
-            tab_order.reverse()
+        if reverse:
+            tab_order = list(reversed(tab_order))
 
         if source not in tab_order:
             return None
