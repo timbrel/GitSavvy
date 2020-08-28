@@ -131,7 +131,7 @@ class GsEditProjectSettingsCommand(WindowCommand):
             sublime.error_message("No project data found.")
             return
 
-        sublime.set_timeout(lambda: self.window.run_command("edit_settings", {
+        self.window.run_command("edit_settings", {
             "user_file": project_file_name,
             "base_file": "${packages}/GitSavvy/GitSavvy.sublime-settings"
-        }), 100)
+        })
