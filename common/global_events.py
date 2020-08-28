@@ -89,6 +89,21 @@ class KeyboardSettingsListener(EventListener):
                     sublime.set_timeout_async(
                         lambda: view.show_popup(PROJECT_MSG, max_width=550)  # type: ignore
                     )
+            else:
+                w = sublime.active_window()
+                w.focus_group(1)
+                right_view = w.active_view()
+                if not right_view:
+                    return
+                filename = os.path.basename(right_view.file_name() or "")
+                if not filename:
+                    return
+
+                w.focus_group(0)
+                for r in sublime.find_resources(filename):
+                    if r.startswith("Packages/") and "/GitSavvy/syntax/" in r:
+                        w.run_command("open_file", {"file": "${packages}/" + r[9:]})
+                w.focus_group(1)
 
 
 class GsEditSettingsCommand(WindowCommand):
