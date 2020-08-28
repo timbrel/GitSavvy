@@ -95,7 +95,6 @@ class gs_commit(WindowCommand, GitCommand):
             view = self.window.new_file()
             settings = view.settings()
             settings.set("git_savvy.repo_path", repo_path)
-            settings.set("git_savvy.get_long_text_view", True)
             settings.set("git_savvy.commit_view", True)
             settings.set("git_savvy.commit_view.include_unstaged", include_unstaged)
             settings.set("git_savvy.commit_view.amend", amend)

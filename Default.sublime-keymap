@@ -504,14 +504,12 @@
     // COMMIT VIEW //
     /////////////////
 
-    // Per-platform key-mapping for: gs_commit_view_do_commit
-
     {
         "keys": ["tab"],
         "command": "gs_github_show_issues",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
             { "key": "preceding_text", "operator": "regex_match", "operand": ".*[\\n ]#$" }
         ]
     },
@@ -521,7 +519,7 @@
         "args": { "default_repo": false },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
             { "key": "preceding_text", "operator": "regex_match", "operand": ".*[\\n ][a-zA-Z\\-_0-9\\.]+/[a-zA-Z\\-_0-9\\.]+#$" }
         ]
     },
@@ -530,7 +528,7 @@
         "command": "gs_github_show_contributors",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
             { "key": "preceding_text", "operator": "regex_match", "operand": ".*[\\n ]@$" }
         ]
     },
