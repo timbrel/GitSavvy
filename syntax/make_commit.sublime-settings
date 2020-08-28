@@ -12,6 +12,5 @@
     "word_wrap": false,
     // syntax specific
     "gutter": true,
-    "line_numbers": true,
-    "word_wrap": true
+    "line_numbers": true
 }
