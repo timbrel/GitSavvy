@@ -111,6 +111,7 @@ class GsEditSettingsCommand(WindowCommand):
     For some reasons, the command palette doesn't trigger `on_post_window_command` for
     dev version of Sublime Text. The command palette would call `gs_edit_settings` and
     subsequently trigger `on_post_window_command`.
+    Ref: https://github.com/sublimehq/sublime_text/issues/2234
     """
     def run(self, **kwargs):
         self.window.run_command("edit_settings", kwargs)
@@ -121,6 +122,7 @@ class GsEditProjectSettingsCommand(WindowCommand):
     For some reasons, the command palette doesn't trigger `on_post_window_command` for
     dev version of Sublime Text. The command palette would call `gs_edit_settings` and
     subsequently trigger `on_post_window_command`.
+    Ref: https://github.com/sublimehq/sublime_text/issues/2234
     """
     def run(self):
         project_file_name = self.window.project_file_name()
