@@ -510,7 +510,9 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
-            { "key": "preceding_text", "operator": "regex_match", "operand": ".*[\\n ]#$" }
+            { "key": "preceding_text", "operator": "regex_match", "operand": "(|.* )#$" },
+            { "key": "selection_empty" },
+            { "key": "num_selections", "operator": "equal", "operand": 1 }
         ]
     },
     {
@@ -520,7 +522,9 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
-            { "key": "preceding_text", "operator": "regex_match", "operand": ".*[\\n ][a-zA-Z\\-_0-9\\.]+/[a-zA-Z\\-_0-9\\.]+#$" }
+            { "key": "preceding_text", "operator": "regex_match", "operand": "(|.* )[a-zA-Z\\-_0-9\\.]+/[a-zA-Z\\-_0-9\\.]+#$" },
+            { "key": "selection_empty" },
+            { "key": "num_selections", "operator": "equal", "operand": 1 }
         ]
     },
     {
@@ -529,7 +533,9 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
-            { "key": "preceding_text", "operator": "regex_match", "operand": ".*[\\n ]@$" }
+            { "key": "preceding_text", "operator": "regex_match", "operand": "(|.* )@$" },
+            { "key": "selection_empty" },
+            { "key": "num_selections", "operator": "equal", "operand": 1 }
         ]
     },
     {
