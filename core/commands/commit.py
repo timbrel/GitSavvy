@@ -1,3 +1,4 @@
+from functools import lru_cache
 import os
 
 import sublime
@@ -11,6 +12,8 @@ from ..utils import focus_view
 from ..view import replace_view_content
 from ...common import util
 from ...core.settings import SettingsMixin
+from GitSavvy.core.fns import filter_
+from GitSavvy.core.ui_mixins.quick_panel import short_ref
 
 
 __all__ = (
@@ -19,6 +22,7 @@ __all__ = (
     "gs_commit_view_do_commit",
     "gs_commit_view_sign",
     "gs_commit_view_close",
+    "gs_fixup_helper",
     "GsPrepareCommitFocusEventListener",
     "GsPedanticEnforceEventListener",
 )
@@ -404,3 +408,43 @@ class gs_commit_view_close(TextCommand, GitCommand):
 
         else:
             self.view.close()
+
+
+class gs_fixup_helper(TextCommand, GitCommand):
+    def run(self, edit, action="fixup"):
+        view = self.view
+        window = view.window()
+        assert window
+
+        cursor = view.sel()[0].begin()
+        items = self.log(limit=100)
+
+        def on_done(idx):
+            window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
+            if idx == -1:
+                return
+            entry = items[idx]
+            text = "{}! {}".format(action, entry.summary)
+            replace_view_content(view, text, region=view.line(cursor))
+            view.sel().clear()
+            view.sel().add(len(text))
+
+        # `on_highlight` also gets called `on_done`, and then
+        # our "show|hide_panel" side-effects get muddled.  We
+        # reduce the side-effect here using `lru_cache`.
+        @lru_cache(1)
+        def on_highlight(idx):
+            entry = items[idx]
+            window.run_command("gs_show_commit_info", {  # type: ignore[union-attr]  # mypy bug
+                "commit_hash": entry.short_hash
+            })
+
+        format_item = lambda entry: "  ".join(filter_(
+            (entry.short_hash, short_ref(entry.ref), entry.summary)
+        ))
+        window.show_quick_panel(
+            list(map(format_item, items)),
+            on_done,
+            flags=sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST,
+            on_highlight=on_highlight
+        )

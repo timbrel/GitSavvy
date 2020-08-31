@@ -539,6 +539,31 @@
         ]
     },
     {
+        "keys": ["tab"],
+        "command": "gs_fixup_helper",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "preceding_text", "operator": "regex_match", "operand": "fix(|up(! ?)?)$" },
+            { "key": "selection_empty" },
+            { "key": "num_selections", "operator": "equal", "operand": 1 },
+            { "key": "selector", "operator": "equal", "operand": "meta.commit.message.subject" }
+        ]
+    },
+    {
+        "keys": ["tab"],
+        "command": "gs_fixup_helper",
+        "args": { "action": "squash" },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "preceding_text", "operator": "regex_match", "operand": "sq(|uash(! ?)?)$" },
+            { "key": "selection_empty" },
+            { "key": "num_selections", "operator": "equal", "operand": 1 },
+            { "key": "selector", "operator": "equal", "operand": "meta.commit.message.subject" }
+        ]
+    },
+    {
         "keys": ["o"],
         "command": "gs_diff_open_file_at_hunk",
         "context": [
