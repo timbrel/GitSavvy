@@ -1,4 +1,3 @@
-from collections import deque
 from contextlib import contextmanager
 from itertools import chain, takewhile
 
@@ -19,7 +18,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Iterable, Iterator, List, TypeVar
+    from typing import Iterable, Iterator, List, Optional, TypeVar
     T = TypeVar("T")
 
     Point = int
@@ -51,17 +50,13 @@ class gs_prev_hunk(sublime_plugin.TextCommand):
 
 def jump_to_hunk(view, forwards):
     # type: (sublime.View, bool) -> bool
-    try:
-        with restore_sel_and_viewport(view):
-            mod = (
-                next(modifications_per_hunk(view))
-                if forwards
-                else last(modifications_per_hunk(view, forwards=False))
-            )
-    except StopIteration:
+    with restore_sel_and_viewport(view):
+        hunk = hunk_region(view, forwards)
+
+    if hunk is None:
         return False
     else:
-        mark_and_show_line_start(view, mod)
+        mark_and_show_line_start(view, hunk)
         return True
 
 
@@ -70,7 +65,19 @@ def mark_and_show_line_start(view, region):
     line = view.line(region)
     r = sublime.Region(line.a)
     set_sel(view, [r])
-    show_region(view, r)
+    show_region(view, region)
+
+
+def hunk_region(view, forwards=True):
+    # type: (sublime.View, bool) -> Optional[sublime.Region]
+    mods = sorted(
+        modifications_per_hunk(view, forwards),
+        key=lambda r: r.begin()
+    )
+    if not mods:
+        return None
+    a, b = mods[0], mods[-1]
+    return sublime.Region(a.begin(), b.end())
 
 
 def modifications_per_hunk(view, forwards=True):
@@ -157,11 +164,3 @@ def take_while_unique(iterable):
             break
         seen.append(item)
         yield item
-
-
-def last(iterable):
-    # type: (Iterable[T]) -> T
-    try:
-        return deque(iterable, maxlen=1)[0]
-    except IndexError as e:
-        raise StopIteration from e
