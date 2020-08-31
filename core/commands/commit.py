@@ -182,6 +182,9 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
         except IndexError:
             region = sublime.Region(view.size())
 
+        if view.substr(region) == final_text:
+            return
+
         replace_view_content(view, final_text, region)
         if shows_diff:
             intra_line_colorizer.annotate_intra_line_differences(view, final_text, region.begin())
