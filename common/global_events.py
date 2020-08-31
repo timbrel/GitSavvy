@@ -16,19 +16,27 @@ class GsInterfaceFocusEventListener(EventListener):
     Trigger handlers for view life-cycle events.
     """
 
+    # When the user just opened e.g. the goto or command palette overlay
+    # prevent a refresh signal on closing that panel.
+    # Whitelist "Terminus" which reports itself as a widget.
+    def on_deactivated(self, view):
+        global IGNORE_NEXT_ACTIVATE
+        settings = view.settings()
+        IGNORE_NEXT_ACTIVATE = (
+            settings.get("is_widget")
+            and not settings.get("terminus_view")
+        )
+
     def on_activated(self, view):
         global IGNORE_NEXT_ACTIVATE
+        if IGNORE_NEXT_ACTIVATE:
+            return
 
-        # When the user just opened e.g. the goto or command palette overlay
-        # prevent a refresh signal on closing that panel.
-        # Whitelist "Terminus" which reports itself as a widget as well.
-        if view.settings().get('is_widget') and not view.settings().get("terminus_view"):
-            IGNORE_NEXT_ACTIVATE = True
-        elif IGNORE_NEXT_ACTIVATE:
-            IGNORE_NEXT_ACTIVATE = False
-        else:
-            # status bar is handled by GsStatusBarEventListener
-            util.view.refresh_gitsavvy(view, refresh_status_bar=False)
+        if view.settings().get("is_widget"):
+            return
+
+        # status bar is handled by GsStatusBarEventListener
+        util.view.refresh_gitsavvy(view, refresh_status_bar=False)
 
     def on_close(self, view):
         util.view.handle_closed_view(view)
