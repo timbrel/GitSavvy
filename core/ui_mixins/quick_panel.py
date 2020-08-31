@@ -1,8 +1,8 @@
-from functools import partial
 import itertools
 import sublime
 from ...common import util
 from ..git_command import GitCommand
+from GitSavvy.core.fns import filter_
 
 
 class PanelActionMixin(object):
@@ -526,9 +526,6 @@ def short_ref(ref):
     refs = ["|{}|".format(r) for r in refs]
 
     return ' '.join(refs)
-
-
-filter_ = partial(filter, None)
 
 
 class LogPanel(PaginatedPanel):
