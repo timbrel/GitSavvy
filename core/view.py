@@ -18,8 +18,8 @@ else:
     Position = namedtuple("Position", "row col offset")
 
 
-def show_region(view, region, context=5):
-    # type: (sublime.View, sublime.Region, int) -> None
+def show_region(view, region, context=5, prefer_end=False):
+    # type: (sublime.View, sublime.Region, int, bool) -> None
     # Differentiate between wide and short jumps. For
     # short jumps minimize the scrolling.
     if touching_regions(view.visible_region(), region):
@@ -27,36 +27,49 @@ def show_region(view, region, context=5):
         row_b, _ = view.rowcol(region.end())
         adjusted_section = sublime.Region(
             # `text_point` is permissive and normalizes negative rows
-            # If the region is wider than the viewport, Sublime prefers
-            # showing the `b` position; naturally since the cursor is
-            # at `b` by definition.  We flip a and b here because we
-            # prefer the region start.
-            view.text_point(row_b + context, 0),
             view.text_point(row_a - context, 0),
+            view.text_point(row_b + context, 0)
         )
-        view.show(adjusted_section, False)
+        view.show(
+            adjusted_section if prefer_end else flip_region(adjusted_section),
+            False
+        )
 
     else:
-        # For long jumps, usually keep the target, `region.begin()`, around
-        # center (`vh / 2`).  But try to always show the whole region if it fits.
+        # For long jumps, usually keep the target, for example `region.begin()`,
+        # around center (`vh / 2`).  But try to always show the whole region
+        # if it fits.
         lh = view.line_height()
         _, vh = view.viewport_extent()
         _, rt = view.text_to_layout(region.begin())
         _, rb = view.text_to_layout(region.end())
-        rh = rb - rt + lh
+        rh = abs(rb - rt) + lh
         ch = context * lh
         offset = clamp(
             clamp(lh, ch, vh - rh),
             vh / 2,
             vh - (rh + ch)
         )
-        new_top = max(0, rt - offset)
+        new_top = max(0, (rb if prefer_end else rt) - offset)
         view.set_viewport_position((0.0, new_top))
 
 
 def touching_regions(a, b):
     # type: (sublime.Region, sublime.Region) -> bool
     return a.intersects(b) or a.contains(b)
+
+
+def join_regions(a, b):
+    # type: (sublime.Region, sublime.Region) -> sublime.Region
+    return sublime.Region(
+        min(a.begin(), b.begin()),
+        max(a.end(), b.end())
+    )
+
+
+def flip_region(r):
+    # type: (sublime.Region) -> sublime.Region
+    return sublime.Region(r.b, r.a)
 
 
 def clamp(lo, hi, v):

@@ -26,7 +26,7 @@ from ..runtime import (
     run_or_timeout, run_on_new_thread,
     text_command
 )
-from ..view import line_distance, replace_view_content, show_region
+from ..view import join_regions, line_distance, replace_view_content, show_region
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..utils import add_selection_to_jump_history, focus_view
@@ -978,8 +978,12 @@ class gs_log_graph_navigate_wide(TextCommand):
             add_selection_to_jump_history(view)
             sel = view.sel()
             sel.clear()
-            sel.add(r.a)
-            show_region(view, r)
+            sel.add(r.begin())
+            show_region(
+                view,
+                join_regions(cur_dot.region(), r),
+                prefer_end=True if forward else False
+            )
 
 
 def follow_first_parent_commit(dot, forward):
