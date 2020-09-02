@@ -942,30 +942,35 @@ class gs_log_graph_navigate_wide(TextCommand):
         # type: (sublime.Edit, bool) -> None
         view = self.view
         try:
-            dot = next(_find_dots(view))
+            cur_dot = next(_find_dots(view))
         except StopIteration:
             view.run_command("gs_log_graph_navigate", {"forward": forward})
             return
 
-        next_dots = follow_first_parent_commit(dot, forward)
+        next_dots = follow_first_parent_commit(cur_dot, forward)
         try:
             next_dot = next(next_dots)
         except StopIteration:
             return
 
-        if line_distance(view, dot.region(), next_dot.region()) < 2:
+        if line_distance(view, cur_dot.region(), next_dot.region()) < 2:
             # If the first next dot is not already a wide jump, t.i. the
             # cursor is not on an edge commit, follow the chain of consecutive
             # commits and select the last one of such a block.  T.i. select
             # the commit *before* the next wide jump.
-            for next_dot, dot in pairwise(chain([next_dot], next_dots)):
-                if line_distance(view, dot.region(), next_dot.region()) > 1:
+            for next_dot, next_next_dot in pairwise(chain([next_dot], next_dots)):
+                if line_distance(view, next_dot.region(), next_next_dot.region()) > 1:
                     break
             else:
                 # If there is no wide jump anymore take the last found dot.
                 # This is the case for example a the top of the graph, or if
                 # a branch ends.
-                next_dot = dot
+                # Catch if there is no next_next_dot (t.i. `next_dots` was empty),
+                # then the last found dot is actually `next_dot`.
+                try:
+                    next_dot = next_next_dot
+                except UnboundLocalError:
+                    pass
 
         line_span = view.line(next_dot.region())
         r = extract_comit_hash_span(view, line_span)
