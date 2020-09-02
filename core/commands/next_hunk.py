@@ -1,4 +1,3 @@
-from collections import deque
 from contextlib import contextmanager
 from itertools import chain, takewhile
 
@@ -8,6 +7,7 @@ import sublime_plugin
 
 from GitSavvy.core.fns import pairwise
 from GitSavvy.core.utils import flash
+from GitSavvy.core.view import show_region
 
 
 __all__ = (
@@ -18,7 +18,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Iterable, Iterator, List, TypeVar
+    from typing import Iterable, Iterator, List, Optional, TypeVar
     T = TypeVar("T")
 
     Point = int
@@ -50,17 +50,13 @@ class gs_prev_hunk(sublime_plugin.TextCommand):
 
 def jump_to_hunk(view, forwards):
     # type: (sublime.View, bool) -> bool
-    try:
-        with restore_sel_and_viewport(view):
-            mod = (
-                next(modifications_per_hunk(view))
-                if forwards
-                else last(modifications_per_hunk(view, forwards=False))
-            )
-    except StopIteration:
+    with restore_sel_and_viewport(view):
+        hunk = hunk_region(view, forwards)
+
+    if hunk is None:
         return False
     else:
-        mark_and_show_line_start(view, mod)
+        mark_and_show_line_start(view, hunk)
         return True
 
 
@@ -69,7 +65,19 @@ def mark_and_show_line_start(view, region):
     line = view.line(region)
     r = sublime.Region(line.a)
     set_sel(view, [r])
-    show_region(view, r)
+    show_region(view, region)
+
+
+def hunk_region(view, forwards=True):
+    # type: (sublime.View, bool) -> Optional[sublime.Region]
+    mods = sorted(
+        modifications_per_hunk(view, forwards),
+        key=lambda r: r.begin()
+    )
+    if not mods:
+        return None
+    a, b = mods[0], mods[-1]
+    return sublime.Region(a.begin(), b.end())
 
 
 def modifications_per_hunk(view, forwards=True):
@@ -143,18 +151,6 @@ def restore_sel_and_viewport(view):
         view.set_viewport_position(vp, animate=False)
 
 
-def show_region(view, region, context=5):
-    # type: (sublime.View, sublime.Region, int) -> None
-    row_a, _ = view.rowcol(region.begin())
-    row_b, _ = view.rowcol(region.end())
-    adjusted_section = sublime.Region(
-        # `text_point` is permissive and normalizes negative rows
-        view.text_point(row_a - context, 0),
-        view.text_point(row_b + context, 0)
-    )
-    view.show(adjusted_section, False)
-
-
 def cur_pos(view):
     # type: (sublime.View) -> sublime.Region
     return view.sel()[0]
@@ -168,11 +164,3 @@ def take_while_unique(iterable):
             break
         seen.append(item)
         yield item
-
-
-def last(iterable):
-    # type: (Iterable[T]) -> T
-    try:
-        return deque(iterable, maxlen=1)[0]
-    except IndexError as e:
-        raise StopIteration from e
