@@ -1,0 +1,69 @@
+GitSavvy 2.26.0
+===============
+
+- Implement `git: Line History`
+
+  A "Line History" (aka "log wtf" or "log why") basically calls
+  "git log -Lx,y:<some_file>".  This is a supereasy to use tool in
+  the editor.  It is usually the faster (in terms of you get the info
+  you're looking for faster) "blame" and also the faster "File History"
+  because often you're only interested in some part of a file. Really
+  answering "Why is this line or section of code here?".
+
+  The command can be called from normal views only. Just put your cursor
+  somewhere, or drag a selection, and call the command from the Command Palette.
+  The command is called `gs_line_history` if you want to bind it to a key.
+
+  Comes with:
+  `[o]` to open the complete commit under the cursor
+  `[O]` to open the file at that revision
+  `[g]` to open the graph context
+
+
+- Improvements to the Repo History
+
+  We already showed the path down while navigating through the history.  Now
+  we also follow and colorize the path upwards.  (For customization: the scopes
+  we use here are `git_savvy.graph.dot.above`, `git_savvy.graph.path_char.above`)
+
+  This is not just fancy but allows easier and faster navigation:
+
+  Use the arrow keys `[up]` and `[down]` to get to the previous or next commit.
+  Use `[alt+up]` or `[alt+down]` for "wide" jumps usually following the first parent.
+  After such a wide jump, you can use the built-in `jump_back`/`jump_forward`
+  commands (for example `[ctrl+-]` on Windows/Linux by default) to jump back
+  to the previous location.
+
+
+  There is also a new smart copy function.  Just invoke the builtin "copy"
+  command (for example `[ctrl+c]`) to directly copy the commit hash, or commit
+  message, or a combination of both to the clipboard (if nothing is selected).
+
+
+  Minor:  If on a HEAD commit we offer "pull", "push", and "fetch" in the
+  actions menu (`[enter]`), and the diff action opens the normal diff for staging,
+  unstaging etc.
+
+  Finally, we now clearly mark fixup/squash commits.  (The scope here is:
+  `string.other.rebase-hint.git-savvy`.)
+
+
+- Improvements to the Commit Message View
+
+  Being in the diff area, you can now use `[o]` on a hunk to open that location
+  for editing.  Also `[,.]` for navigation per hunk.  But unstaging etc. is not
+  supported yet.
+
+
+- Noteable
+
+  Removed "word-diff" switch from the Diff view.  This has been superseeded
+  by the intraline diffing feature.  There is still the switch to ignore white-
+  space changes though, but the keybinding for that moved (from `[s]`) to `[w]`.
+
+  The setting "show_commit_diff" now defaults to "full" (was: "stat").
+  The setting "show_full_commit_info" now defaults to "true" (was: "false").
+
+
+For more info:
+  https://github.com/timbrel/GitSavvy/compare/2.25.0...2.26.0
