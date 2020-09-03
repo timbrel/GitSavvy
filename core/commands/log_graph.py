@@ -26,7 +26,7 @@ from ..runtime import (
     run_or_timeout, run_on_new_thread,
     text_command
 )
-from ..view import line_distance, replace_view_content, show_region
+from ..view import join_regions, line_distance, replace_view_content, show_region
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..utils import add_selection_to_jump_history, focus_view
@@ -942,30 +942,35 @@ class gs_log_graph_navigate_wide(TextCommand):
         # type: (sublime.Edit, bool) -> None
         view = self.view
         try:
-            dot = next(_find_dots(view))
+            cur_dot = next(_find_dots(view))
         except StopIteration:
             view.run_command("gs_log_graph_navigate", {"forward": forward})
             return
 
-        next_dots = follow_first_parent_commit(dot, forward)
+        next_dots = follow_first_parent_commit(cur_dot, forward)
         try:
             next_dot = next(next_dots)
         except StopIteration:
             return
 
-        if line_distance(view, dot.region(), next_dot.region()) < 2:
+        if line_distance(view, cur_dot.region(), next_dot.region()) < 2:
             # If the first next dot is not already a wide jump, t.i. the
             # cursor is not on an edge commit, follow the chain of consecutive
             # commits and select the last one of such a block.  T.i. select
             # the commit *before* the next wide jump.
-            for next_dot, dot in pairwise(chain([next_dot], next_dots)):
-                if line_distance(view, dot.region(), next_dot.region()) > 1:
+            for next_dot, next_next_dot in pairwise(chain([next_dot], next_dots)):
+                if line_distance(view, next_dot.region(), next_next_dot.region()) > 1:
                     break
             else:
                 # If there is no wide jump anymore take the last found dot.
                 # This is the case for example a the top of the graph, or if
                 # a branch ends.
-                next_dot = dot
+                # Catch if there is no next_next_dot (t.i. `next_dots` was empty),
+                # then the last found dot is actually `next_dot`.
+                try:
+                    next_dot = next_next_dot
+                except UnboundLocalError:
+                    pass
 
         line_span = view.line(next_dot.region())
         r = extract_comit_hash_span(view, line_span)
@@ -973,8 +978,12 @@ class gs_log_graph_navigate_wide(TextCommand):
             add_selection_to_jump_history(view)
             sel = view.sel()
             sel.clear()
-            sel.add(r.a)
-            show_region(view, r)
+            sel.add(r.begin())
+            show_region(
+                view,
+                join_regions(cur_dot.region(), r),
+                prefer_end=True if forward else False
+            )
 
 
 def follow_first_parent_commit(dot, forward):
