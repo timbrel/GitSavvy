@@ -410,7 +410,7 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
     def run(self, edit, reset=False):
         ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
         if ignore_whitespace:
-            sublime.error_message("You have to be in a clean diff to stage.")
+            sublime.error_message("Staging is not supported while ignoring [w]hitespace is on.")
             return None
 
         # Filter out any cursors that are larger than a single point.
