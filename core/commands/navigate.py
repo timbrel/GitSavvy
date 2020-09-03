@@ -7,7 +7,7 @@ from GitSavvy.core.view import show_region
 
 MYPY = False
 if MYPY:
-    from typing import Optional, Sequence
+    from typing import Dict, Optional, Sequence
 
 
 class GsNavigate(TextCommand, GitCommand):
@@ -18,12 +18,13 @@ class GsNavigate(TextCommand, GitCommand):
     offset = 4
     show_at_center = True
     wrap = True
+    _cache = {}  # type: Dict[int, Sequence[sublime.Region]]
 
     def run(self, edit, forward=True):
         sel = self.view.sel()
         current_position = sel[0].a
 
-        available_regions = self.get_available_regions()
+        available_regions = self._get_available_regions()
         if not available_regions:
             return
         wanted_section = (
@@ -43,6 +44,16 @@ class GsNavigate(TextCommand, GitCommand):
             self.view.show_at_center(new_cursor_position)
         else:
             show_region(self.view, wanted_section)
+
+    def _get_available_regions(self):
+        # type: () -> Sequence[sublime.Region]
+        id = self.view.change_count()
+        if id in self._cache:
+            available_regions = self._cache[id]
+        else:
+            available_regions = self.get_available_regions()
+            self._cache = {id: available_regions}
+        return available_regions
 
     def get_available_regions(self):
         # type: () -> Sequence[sublime.Region]
