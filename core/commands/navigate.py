@@ -61,16 +61,48 @@ class GsNavigate(TextCommand, GitCommand):
 
     def forward(self, current_position, regions):
         # type: (sublime.Point, Sequence[sublime.Region]) -> Optional[sublime.Region]
-        for region in regions:
-            if region.a > current_position:
-                return region
-
-        return regions[0] if self.wrap else None
+        region = find_next(regions, current_position)
+        if region is not None:
+            return region
+        else:
+            return regions[0] if self.wrap else None
 
     def backward(self, current_position, regions):
         # type: (sublime.Point, Sequence[sublime.Region]) -> Optional[sublime.Region]
-        for region in reversed(regions):
-            if region.b < current_position:
-                return region
+        region = find_previous(regions, current_position)
+        if region is not None:
+            return region
+        else:
+            return regions[-1] if self.wrap else None
 
-        return regions[-1] if self.wrap else None
+
+def find_next(regions, pos):
+    # type: (Sequence[sublime.Region], sublime.Point) -> Optional[sublime.Region]
+    lo, hi = 0, len(regions)
+    found = None
+
+    while lo < hi:
+        middle = (lo + hi) // 2
+        middle_region = regions[middle]
+        if middle_region.a > pos:
+            found = middle_region
+            hi = middle
+        else:
+            lo = middle + 1
+    return found
+
+
+def find_previous(regions, pos):
+    # type: (Sequence[sublime.Region], sublime.Point) -> Optional[sublime.Region]
+    lo, hi = 0, len(regions)
+    found = None
+
+    while lo < hi:
+        middle = (lo + hi) // 2
+        middle_region = regions[middle]
+        if middle_region.b < pos:
+            found = middle_region
+            lo = middle + 1
+        else:
+            hi = middle
+    return found
