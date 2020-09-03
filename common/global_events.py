@@ -89,6 +89,21 @@ class KeyboardSettingsListener(EventListener):
                     sublime.set_timeout_async(
                         lambda: view.show_popup(PROJECT_MSG, max_width=550)  # type: ignore
                     )
+            else:
+                w = sublime.active_window()
+                w.focus_group(1)
+                right_view = w.active_view()
+                if not right_view:
+                    return
+                filename = os.path.basename(right_view.file_name() or "")
+                if not filename:
+                    return
+
+                w.focus_group(0)
+                for r in sublime.find_resources(filename):
+                    if r.startswith("Packages/") and "/GitSavvy/syntax/" in r:
+                        w.run_command("open_file", {"file": "${packages}/" + r[9:]})
+                w.focus_group(1)
 
 
 class GsEditSettingsCommand(WindowCommand):
@@ -96,6 +111,7 @@ class GsEditSettingsCommand(WindowCommand):
     For some reasons, the command palette doesn't trigger `on_post_window_command` for
     dev version of Sublime Text. The command palette would call `gs_edit_settings` and
     subsequently trigger `on_post_window_command`.
+    Ref: https://github.com/sublimehq/sublime_text/issues/2234
     """
     def run(self, **kwargs):
         self.window.run_command("edit_settings", kwargs)
@@ -106,6 +122,7 @@ class GsEditProjectSettingsCommand(WindowCommand):
     For some reasons, the command palette doesn't trigger `on_post_window_command` for
     dev version of Sublime Text. The command palette would call `gs_edit_settings` and
     subsequently trigger `on_post_window_command`.
+    Ref: https://github.com/sublimehq/sublime_text/issues/2234
     """
     def run(self):
         project_file_name = self.window.project_file_name()
@@ -114,7 +131,7 @@ class GsEditProjectSettingsCommand(WindowCommand):
             sublime.error_message("No project data found.")
             return
 
-        sublime.set_timeout(lambda: self.window.run_command("edit_settings", {
+        self.window.run_command("edit_settings", {
             "user_file": project_file_name,
             "base_file": "${packages}/GitSavvy/GitSavvy.sublime-settings"
-        }), 100)
+        })

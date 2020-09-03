@@ -10,7 +10,12 @@
     "rulers": [],
     "translate_tabs_to_spaces": false,
     "word_wrap": false,
+
     // syntax specific
+    "gutter": true,
+    "margin": -8,
+    "fold_buttons": false,
+    "fade_fold_buttons": false,
     "match_brackets": false,
     "match_tags": false
 }

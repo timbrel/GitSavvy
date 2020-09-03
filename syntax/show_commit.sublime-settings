@@ -12,6 +12,5 @@
     "word_wrap": false,
     // syntax specific
     "match_brackets": false,
-    "match_tags": false,
-    "word_wrap": true
+    "match_tags": false
 }
