@@ -1,11 +1,23 @@
+body {
+  margin: 0em;
+  padding: 1em;
+}
 h2 {
-  margin-top: 0;
+  margin: 0;
+  margin-top: -1em;
+  margin-bottom: -0.2em;
+  font-weight: normal;
 }
 h3 {
-  margin-top: 5px;
-  margin-bottom: 5px;
+  margin: 0;
+  margin-top: 0.9em;
+  margin-bottom: 0.1em;
+  font-weight: normal;
 }
 ul {
   margin: 0;
   padding: 5px 20px 20px;
+}
+.shortcut-key {
+    color: var(--bluish);
 }
