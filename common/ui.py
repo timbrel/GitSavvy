@@ -6,6 +6,7 @@ import sublime
 from sublime_plugin import TextCommand
 
 from . import util
+from ..core.runtime import enqueue_on_worker
 from ..core.settings import GitSavvySettings
 from ..core.utils import focus_view
 
@@ -302,19 +303,19 @@ class GsInterfaceRefreshCommand(TextCommand):
     """
 
     def run(self, edit, nuke_cursors=False):
-        sublime.set_timeout_async(self.run_async, 0)
-        self.nuke_cursors = nuke_cursors
+        enqueue_on_worker(self.run_async, nuke_cursors)
 
-    def run_async(self):
+    def run_async(self, nuke_cursors):
+        # type: (bool) -> None
         interface_type = self.view.settings().get("git_savvy.interface")
-        for InterfaceSubclass in subclasses:
-            if InterfaceSubclass.interface_type == interface_type:
-                existing_interface = interfaces.get(self.view.id(), None)
-                if existing_interface:
-                    existing_interface.render(nuke_cursors=self.nuke_cursors)
-                else:
-                    interface = InterfaceSubclass(view=self.view)
-                    interfaces[interface.view.id()] = interface
+        for cls in subclasses:
+            if cls.interface_type == interface_type:
+                vid = self.view.id()
+                interface = interfaces.get(vid, None)
+                if not interface:
+                    interface = interfaces[vid] = cls(view=self.view)
+                interface.render(nuke_cursors=nuke_cursors)  # type: ignore[union-attr]
+                break
 
 
 class GsInterfaceToggleHelpCommand(TextCommand):
