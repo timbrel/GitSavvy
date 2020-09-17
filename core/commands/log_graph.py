@@ -1,6 +1,6 @@
 from collections import deque
 from functools import lru_cache, partial
-from itertools import chain, islice
+from itertools import chain, count, islice
 import locale
 import os
 from queue import Empty
@@ -15,7 +15,6 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer, show_commit_info
 from .log import GsLogCommand
-from .navigate import GsNavigate
 from .. import utils
 from ..fns import filter_, flatten, pairwise, partition, take, unique
 from ..git_command import GitCommand, GitSavvyError
@@ -928,13 +927,39 @@ class gs_log_graph_by_branch(WindowCommand, GitCommand):
         show_branch_panel(on_select, selected_branch=self._selected_branch)
 
 
-class gs_log_graph_navigate(GsNavigate):
-    offset = 0
-    show_at_center = False
-    wrap = False
+class gs_log_graph_navigate(TextCommand):
+    def run(self, edit, forward=True):
+        sel = self.view.sel()
+        current_position = sel[0].a
 
-    def get_available_regions(self):
-        return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
+        wanted_section = self.search(current_position, forward)
+        if wanted_section is None:
+            return
+
+        sel.clear()
+        sel.add(wanted_section.begin())
+        show_region(self.view, wanted_section)
+
+    def search(self, current_position, forwards=True):
+        # type: (sublime.Point, bool) -> Optional[sublime.Region]
+        view = self.view
+        row, col = view.rowcol(current_position)
+        rows = count(row + 1, 1) if forwards else count(row - 1, -1)
+        for row_ in rows:
+            line_span = view.line(view.text_point(row_, 0))
+            if len(line_span) == 0:
+                break
+
+            commit_hash_region = extract_comit_hash_span(view, line_span)
+            if not commit_hash_region:
+                continue
+
+            col_ = commit_hash_region.b - line_span.a
+            if col <= col_:
+                return commit_hash_region
+            else:
+                return sublime.Region(view.text_point(row_, col))
+        return None
 
 
 class gs_log_graph_navigate_wide(TextCommand):
