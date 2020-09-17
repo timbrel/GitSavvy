@@ -8,6 +8,17 @@ contexts:
   main:
     - match: (?=^commit)
       push: commit-header
+    - match: (?=^diff\s)
+      embed: "scope:git-savvy.diff"
+      escape: (?=^commit \h{7,})
+    # Merge commits "just" start the diffstat without the "---" line
+    - match: (?=^ \S)
+      embed: "scope:git-savvy.diff"
+      escape: (?=^commit \h{7,})
+    - match: ^---$\n?
+      scope: meta.commit-header-and-stat-splitter
+      embed: "scope:git-savvy.diff"
+      escape: (?=^commit \h{7,})
 
   commit-header:
     - meta_scope: meta.commit-info.header
@@ -35,26 +46,19 @@ contexts:
       set: commit-subject
 
   commit-subject:
-    - meta_scope: meta.commit_message meta.subject.git.commit markup.heading.subject.git.commit
+    - meta_content_scope: meta.commit_message meta.subject.git.commit markup.heading.subject.git.commit
     - match: $\n?
       set: commit-message-body
     - include: make_commit.sublime-syntax#references
 
   commit-message-body:
-    - match: ^
-      push:
-        - meta_scope: meta.commit_message
-        - match: (?=^commit \h{7,})
-          set: main
-        - match: (?=^diff\s)
-          embed: "scope:git-savvy.diff"
-          escape: (?=^commit \h{7,})
-        # Merge commits "just" start the diffstat without the "---" line
-        - match: (?=^ \S)
-          embed: "scope:git-savvy.diff"
-          escape: (?=^commit \h{7,})
-        - match: ^---$\n?
-          scope: meta.commit-header-and-stat-splitter
-          embed: "scope:git-savvy.diff"
-          escape: (?=^commit \h{7,})
-        - include: make_commit.sublime-syntax#references
+    - meta_scope: meta.commit_message
+    - match: (?=^commit \h{7,})
+      set: main
+    - match: (?=^---$\n?)
+      set: main
+    - match: (?=^diff\s)
+      set: main
+    - match: (?=^ \S)
+      set: main
+    - include: make_commit.sublime-syntax#references
