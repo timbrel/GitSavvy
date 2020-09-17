@@ -306,6 +306,15 @@ class HistoryMixin():
         ignore_whitespace=False
     ):
         # type: (str, Optional[str], bool, bool, bool) -> str
+        if not commit_hash or commit_hash == "HEAD":
+            return self._read_commit(
+                commit_hash,
+                file_path,
+                show_diffstat,
+                show_patch,
+                ignore_whitespace
+            )
+
         key = (
             "read_commit",
             self.repo_path,
