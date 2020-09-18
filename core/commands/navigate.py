@@ -31,7 +31,7 @@ class GsNavigate(TextCommand, GitCommand):
             if forward
             else self.backward(current_position, available_regions)
         )
-        if not wanted_section:
+        if wanted_section is None:
             return
 
         sel.clear()
