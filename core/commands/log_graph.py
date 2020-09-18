@@ -928,7 +928,7 @@ class gs_log_graph_by_branch(WindowCommand, GitCommand):
 
 
 class gs_log_graph_navigate(TextCommand):
-    def run(self, edit, forward=True):
+    def run(self, edit, forward=True, natural_movement=False):
         sel = self.view.sel()
         current_position = max(
             sel[0].a,
@@ -938,17 +938,18 @@ class gs_log_graph_navigate(TextCommand):
             find_by_selector(self.view, "meta.prelude")[0].b - 1
         )
 
-        wanted_section = self.search(current_position, forward)
+        wanted_section = self.search(current_position, forward, natural_movement)
         if wanted_section is None:
-            self.view.run_command("move", {"by": "lines", "forward": forward})
+            if natural_movement:
+                self.view.run_command("move", {"by": "lines", "forward": forward})
             return
 
         sel.clear()
         sel.add(wanted_section.begin())
         show_region(self.view, wanted_section)
 
-    def search(self, current_position, forwards=True):
-        # type: (sublime.Point, bool) -> Optional[sublime.Region]
+    def search(self, current_position, forwards=True, natural_movement=False):
+        # type: (sublime.Point, bool, bool) -> Optional[sublime.Region]
         view = self.view
         row, col = view.rowcol(current_position)
         rows = count(row + 1, 1) if forwards else count(row - 1, -1)
@@ -960,6 +961,9 @@ class gs_log_graph_navigate(TextCommand):
             commit_hash_region = extract_comit_hash_span(view, line_span)
             if not commit_hash_region:
                 continue
+
+            if not natural_movement:
+                return commit_hash_region
 
             col_ = commit_hash_region.b - line_span.a
             if col <= col_:

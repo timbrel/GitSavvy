@@ -1504,7 +1504,7 @@
     {
         "keys": ["down"],
         "command": "gs_log_graph_navigate",
-        "args": { "forward": true },
+        "args": { "forward": true, "natural_movement": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "selector", "operand": "git-savvy.graph meta.content.git_savvy.graph" }
@@ -1513,7 +1513,7 @@
     {
         "keys": ["up"],
         "command": "gs_log_graph_navigate",
-        "args": { "forward": false },
+        "args": { "forward": false, "natural_movement": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "selector", "operand": "git-savvy.graph meta.content.git_savvy.graph" }
