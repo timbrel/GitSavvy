@@ -934,6 +934,7 @@ class gs_log_graph_navigate(TextCommand):
 
         wanted_section = self.search(current_position, forward)
         if wanted_section is None:
+            self.view.run_command("move", {"by": "lines", "forward": forward})
             return
 
         sel.clear()

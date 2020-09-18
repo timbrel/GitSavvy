@@ -1507,7 +1507,7 @@
         "args": { "forward": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+            { "key": "selector", "operand": "git-savvy.graph meta.content.git_savvy.graph" }
         ]
     },
     {
@@ -1516,7 +1516,7 @@
         "args": { "forward": false },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+            { "key": "selector", "operand": "git-savvy.graph meta.content.git_savvy.graph" }
         ]
     },
     {
