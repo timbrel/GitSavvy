@@ -930,7 +930,13 @@ class gs_log_graph_by_branch(WindowCommand, GitCommand):
 class gs_log_graph_navigate(TextCommand):
     def run(self, edit, forward=True):
         sel = self.view.sel()
-        current_position = sel[0].a
+        current_position = max(
+            sel[0].a,
+            # If inside the prelude section, jump to the *first*
+            # commit.  For `.b`, Sublime already returns the first
+            # row of the content section, thus `- 1` to compensate.
+            find_by_selector(self.view, "meta.prelude")[0].b - 1
+        )
 
         wanted_section = self.search(current_position, forward)
         if wanted_section is None:
