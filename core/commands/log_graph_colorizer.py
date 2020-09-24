@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import sublime
 
 MYPY = False
@@ -163,11 +165,13 @@ def follow(ch, direction):
     return decorator
 
 
+@lru_cache(maxsize=64)
 def follow_path_down(dot):
     # type: (Char) -> List[Char]
     return list(_follow_path(dot, "down"))
 
 
+@lru_cache(maxsize=64)
 def follow_path_up(dot):
     # type: (Char) -> List[Char]
     return list(_follow_path(dot, "up"))

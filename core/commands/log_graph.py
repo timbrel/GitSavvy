@@ -1,6 +1,6 @@
 from collections import deque
 from functools import lru_cache, partial
-from itertools import chain, islice
+from itertools import chain, count, islice
 import locale
 import os
 from queue import Empty
@@ -15,7 +15,6 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer, show_commit_info
 from .log import GsLogCommand
-from .navigate import GsNavigate
 from .. import utils
 from ..fns import filter_, flatten, pairwise, partition, take, unique
 from ..git_command import GitCommand, GitSavvyError
@@ -928,13 +927,50 @@ class gs_log_graph_by_branch(WindowCommand, GitCommand):
         show_branch_panel(on_select, selected_branch=self._selected_branch)
 
 
-class gs_log_graph_navigate(GsNavigate):
-    offset = 0
-    show_at_center = False
-    wrap = False
+class gs_log_graph_navigate(TextCommand):
+    def run(self, edit, forward=True, natural_movement=False):
+        sel = self.view.sel()
+        current_position = max(
+            sel[0].a,
+            # If inside the prelude section, jump to the *first*
+            # commit.  For `.b`, Sublime already returns the first
+            # row of the content section, thus `- 1` to compensate.
+            find_by_selector(self.view, "meta.prelude")[0].b - 1
+        )
 
-    def get_available_regions(self):
-        return self.view.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
+        wanted_section = self.search(current_position, forward, natural_movement)
+        if wanted_section is None:
+            if natural_movement:
+                self.view.run_command("move", {"by": "lines", "forward": forward})
+            return
+
+        sel.clear()
+        sel.add(wanted_section.begin())
+        show_region(self.view, wanted_section)
+
+    def search(self, current_position, forwards=True, natural_movement=False):
+        # type: (sublime.Point, bool, bool) -> Optional[sublime.Region]
+        view = self.view
+        row, col = view.rowcol(current_position)
+        rows = count(row + 1, 1) if forwards else count(row - 1, -1)
+        for row_ in rows:
+            line_span = view.line(view.text_point(row_, 0))
+            if len(line_span) == 0:
+                break
+
+            commit_hash_region = extract_comit_hash_span(view, line_span)
+            if not commit_hash_region:
+                continue
+
+            if not natural_movement:
+                return commit_hash_region
+
+            col_ = commit_hash_region.b - line_span.a
+            if col <= col_:
+                return commit_hash_region
+            else:
+                return sublime.Region(view.text_point(row_, col))
+        return None
 
 
 class gs_log_graph_navigate_wide(TextCommand):
@@ -1430,12 +1466,9 @@ def colorize_fixups(view):
 def _colorize_fixups(vid, dots):
     # type: (sublime.ViewId, Tuple[colorizer.Char]) -> None
     view = sublime.View(vid)
-    message_regions = find_by_selector(view, 'meta.graph.message.git-savvy')
-    extract_message = partial(
-        message_from_fixup_squash_line, view.id(), message_regions=message_regions
-    )
+    extract_message = partial(message_from_fixup_squash_line, view.id())
     matching_dots = list(filter_(
-        find_matching_commit(view.id(), dot, message, message_regions)
+        find_matching_commit(view.id(), dot, message)
         for dot, message in zip(dots, map(extract_message, dots))
         if message
     ))
@@ -1446,20 +1479,29 @@ def _colorize_fixups(vid, dots):
     )
 
 
+def extract_message_regions(view):
+    # type: (sublime.View) -> List[sublime.Region]
+    return find_by_selector(view, "meta.graph.message.git-savvy")
+
+
 def find_by_selector(view, selector):
-    # type: (sublime.View, str) -> Tuple[Region, ...]
-    # Same as `view.find_by_selector` but the result is hashable.
-    return tuple(
-        Region(r.a, r.b)
-        for r in view.find_by_selector(selector)
-    )
+    # type: (sublime.View, str) -> List[sublime.Region]
+    # Same as `view.find_by_selector` but cached.
+    return _find_by_selector(view.id(), view.change_count(), selector)
+
+
+@lru_cache(maxsize=16)
+def _find_by_selector(vid, _cc, selector):
+    # type: (sublime.ViewId, int, str) -> List[sublime.Region]
+    view = sublime.View(vid)
+    return view.find_by_selector(selector)
 
 
 @lru_cache(maxsize=64)
-def message_from_fixup_squash_line(vid, dot, message_regions):
-    # type: (sublime.ViewId, colorizer.Char, Iterable[Region]) -> Optional[str]
+def message_from_fixup_squash_line(vid, dot):
+    # type: (sublime.ViewId, colorizer.Char) -> Optional[str]
     view = sublime.View(vid)
-    message = commit_message_from_point(view, dot.pt, message_regions)
+    message = commit_message_from_point(view, dot.pt)
     if not message:
         return None
     # Truncated messages end with one or multiple "." dots which we
@@ -1471,10 +1513,10 @@ def message_from_fixup_squash_line(vid, dot, message_regions):
     return None
 
 
-def commit_message_from_point(view, pt, message_regions):
-    # type: (sublime.View, int, Iterable[Region]) -> Optional[str]
+def commit_message_from_point(view, pt):
+    # type: (sublime.View, int) -> Optional[str]
     line_span = view.line(pt)
-    for r in message_regions:
+    for r in extract_message_regions(view):
         if line_span.contains(r):
             return view.substr(r)
     else:
@@ -1482,11 +1524,11 @@ def commit_message_from_point(view, pt, message_regions):
 
 
 @lru_cache(maxsize=64)
-def find_matching_commit(vid, dot, message, message_regions):
-    # type: (sublime.ViewId, colorizer.Char, str, Iterable[Region]) -> Optional[colorizer.Char]
+def find_matching_commit(vid, dot, message):
+    # type: (sublime.ViewId, colorizer.Char, str) -> Optional[colorizer.Char]
     view = sublime.View(vid)
     for dot in islice(follow_dots(dot), 0, 50):
-        this_message = commit_message_from_point(view, dot.pt, message_regions)
+        this_message = commit_message_from_point(view, dot.pt)
         if this_message and this_message.startswith(message):
             return dot
     else:
