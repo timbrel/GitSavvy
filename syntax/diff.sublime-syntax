@@ -24,6 +24,12 @@ contexts:
         3: string.unquoted.from-file.diff
         4: string.unquoted.to-file.diff
 
+    - match: ^(diff)\s+(--cc)\s+(.+?)$\n?
+      scope: meta.diff.header.git-output.command
+      captures:
+        1: keyword.other.command.diff
+        3: string.unquoted.to-file.diff
+
     # index 00000000..1861c677
     # index 1861c677..00000000
     # index 3de5387c..a8dab191 100644
