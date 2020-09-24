@@ -417,7 +417,7 @@
     {
         "keys": ["g"],
         "command": "gs_graph",
-        "args": { "all": true, "follow": "HEAD" },
+        "args": { "all": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
