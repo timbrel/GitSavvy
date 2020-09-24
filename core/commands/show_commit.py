@@ -41,6 +41,9 @@ class gs_show_commit(WindowCommand, GitCommand):
     def run(self, commit_hash):
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
+        if commit_hash in {"", "HEAD"}:
+            commit_hash = self.git("rev-parse", "--short", "HEAD").strip()
+
         this_id = (
             self.repo_path,
             commit_hash
