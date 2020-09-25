@@ -47,6 +47,7 @@ __all__ = (
     "gs_log_graph_navigate_to_head",
     "gs_log_graph_edit_branches",
     "gs_log_graph_edit_filters",
+    "gs_input_handler_go_history",
     "gs_log_graph_reset_filters",
     "gs_log_graph_toggle_all_setting",
     "gs_log_graph_open_commit",
@@ -1067,28 +1068,97 @@ class gs_log_graph_edit_branches(TextCommand):
         )
 
 
+DEFAULT_HISTORY_ENTRIES = ["--date-order", "--dense", "--first-parent", "--reflog"]
+
+
 class gs_log_graph_edit_filters(TextCommand):
     def run(self, edit):
+        # type: (sublime.Edit) -> None
         settings = self.view.settings()
         filters = settings.get("git_savvy.log_graph_view.filters", "")
+        filter_history = settings.get("git_savvy.log_graph_view.filter_history")
+        if not filter_history:
+            filter_history = DEFAULT_HISTORY_ENTRIES + ([filters] if filters else [])
+        elif not filters:
+            filters = filter_history[-1]
 
         def on_done(text):
             # type: (str) -> None
-            hide_toast()  # type: ignore[has-type]
+            new_filter_history = (
+                filter_history
+                if text in filter_history or not text
+                else (filter_history + [text])
+            )
             settings.set("git_savvy.log_graph_view.filters", text)
+            settings.set("git_savvy.log_graph_view.filter_history", new_filter_history)
+
+            hide_toast()  # type: ignore[has-type]
             self.view.run_command("gs_log_graph_refresh")
 
-        show_single_line_input_panel(
+        input_panel = show_single_line_input_panel(
             "additional args",
             filters,
             on_done,
             on_cancel=lambda: enqueue_on_worker(hide_toast),  # type: ignore[has-type]
             select_text=True
         )
+
+        input_panel_settings = input_panel.settings()
+        input_panel_settings.set("input_panel_with_history", True)
+        input_panel_settings.set("input_panel_with_history.entries", filter_history)
+        input_panel_settings.set("input_panel_with_history.active", index_of(filter_history, filters, -1))
+
         hide_toast = show_toast(
             self.view,
-            "Examples: --reflog  |  -Ssearch_term  |  -Gsearch_term  |  --dense",
+            "↑↓ for the history\n"
+            "Examples:  -Ssearch_term  |  -Gsearch_term  ",
             timeout=-1
+        )
+
+
+def index_of(seq, needle, default):
+    # type: (Sequence[T], T, int) -> int
+    try:
+        return seq.index(needle)
+    except ValueError:
+        return default
+
+
+class gs_input_handler_go_history(TextCommand):
+    def run(self, edit, forward=True):
+        # type: (sublime.Edit, bool) -> None
+        # In the case of an input handler, `self.view.settings` is cached
+        # and returns stale answers.  We work-around by recreating the
+        # `view` object which in turn recreates the `settings` object freshly.
+        view = sublime.View(self.view.id())
+        settings = view.settings()
+        history = settings.get("input_panel_with_history.entries")
+        if not history:
+            return
+
+        len_history = len(history)
+        active = settings.get("input_panel_with_history.active", -1)
+        if active == -1:
+            active = len_history
+
+        if forward:
+            active += 1
+        else:
+            active -= 1
+
+        active = max(0, min(len_history, active))
+        text = history[active] if active < len_history else ""
+        replace_view_content(view, text)
+        view.run_command("move_to", {"to": "eol", "extend": False})
+        view.settings().set("input_panel_with_history.active", active)
+
+        show_toast(
+            view,
+            "\n".join(
+                "   {}".format(entry) if idx != active else ">  {}".format(entry)
+                for idx, entry in enumerate(history + [""])
+            ),
+            timeout=2500
         )
 
 

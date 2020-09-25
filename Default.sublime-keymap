@@ -1451,6 +1451,22 @@
         ]
     },
     {
+        "keys": ["up"],
+        "command": "gs_input_handler_go_history",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.input_panel_with_history" }
+        ]
+    },
+    {
+        "keys": ["down"],
+        "command": "gs_input_handler_go_history",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.input_panel_with_history" }
+        ]
+    },
+    {
         "keys": ["F"],
         "command": "gs_log_graph_reset_filters",
         "context": [
