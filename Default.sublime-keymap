@@ -1451,6 +1451,14 @@
         ]
     },
     {
+        "keys": ["F"],
+        "command": "gs_log_graph_reset_filters",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["up"],
         "command": "gs_input_handler_go_history",
         "args": { "forward": false },
@@ -1467,8 +1475,8 @@
         ]
     },
     {
-        "keys": ["F"],
-        "command": "gs_log_graph_reset_filters",
+        "keys": ["l"],
+        "command": "gs_log_graph_edit_files",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }

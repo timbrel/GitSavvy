@@ -49,6 +49,7 @@ __all__ = (
     "gs_log_graph_edit_filters",
     "gs_input_handler_go_history",
     "gs_log_graph_reset_filters",
+    "gs_log_graph_edit_files",
     "gs_log_graph_toggle_all_setting",
     "gs_log_graph_open_commit",
     "gs_log_graph_toggle_more_info",
@@ -87,7 +88,7 @@ def compute_identifier_for_view(view):
     settings = view.settings()
     return (
         settings.get('git_savvy.repo_path'),
-        settings.get('git_savvy.file_path'),
+        settings.get('git_savvy.log_graph_view.paths'),
         settings.get('git_savvy.log_graph_view.all_branches')
         or settings.get('git_savvy.log_graph_view.branches'),
         settings.get('git_savvy.log_graph_view.filters')
@@ -110,10 +111,15 @@ class gs_graph(WindowCommand, GitCommand):
         if repo_path is None:
             repo_path = self.repo_path
         assert repo_path
+        paths = (
+            [self.get_rel_path(file_path) if os.path.isabs(file_path) else file_path]
+            if file_path
+            else []
+        )
 
         this_id = (
             repo_path,
-            file_path,
+            paths,
             all or branches,
             filters
         )
@@ -149,7 +155,7 @@ class gs_graph(WindowCommand, GitCommand):
 
             settings = view.settings()
             settings.set("git_savvy.repo_path", repo_path)
-            settings.set("git_savvy.file_path", file_path)
+            settings.set("git_savvy.log_graph_view.paths", paths)
             settings.set("git_savvy.log_graph_view.all_branches", all)
             settings.set("git_savvy.log_graph_view.filter_by_author", author)
             settings.set("git_savvy.log_graph_view.branches", branches or [])
@@ -765,21 +771,23 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         follow = self.savvy_settings.get("log_follow_rename")
         author = settings.get("git_savvy.log_graph_view.filter_by_author")
         all_branches = settings.get("git_savvy.log_graph_view.all_branches")
-        fpath = self.file_path
+        paths = settings.get("git_savvy.log_graph_view.paths", [])  # type: List[str]
         args = [
             'log',
             '--graph',
             '--decorate',  # set explicitly for "decorate-refs-exclude" to work
             '--date={}'.format(DATE_FORMAT),
             '--pretty=format:%h%d %<|(80,trunc)%s | %ad, %an',
-            '--follow' if fpath and follow else None,
+            # Git can only follow exactly one path.  Luckily, this can
+            # be a file or a directory.
+            '--follow' if len(paths) == 1 and follow else None,
             '--author={}'.format(author) if author else None,
             '--decorate-refs-exclude=refs/remotes/origin/HEAD',  # cosmetics
             '--exclude=refs/stash',
             '--all' if all_branches else None,
         ]
 
-        if not fpath and settings.get('git_savvy.log_graph_view.decoration') == 'sparse':
+        if not paths and settings.get('git_savvy.log_graph_view.decoration') == 'sparse':
             args += ['--simplify-by-decoration', '--sparse']
 
         branches = settings.get("git_savvy.log_graph_view.branches")
@@ -790,8 +798,8 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         if filters:
             args += shlex.split(filters)
 
-        if fpath:
-            args += ["--", self.get_rel_path(fpath)]
+        if paths:
+            args += ["--"] + paths
 
         return args
 
@@ -818,10 +826,9 @@ def prelude(view):
     prelude = "\n"
     settings = view.settings()
     repo_path = settings.get("git_savvy.repo_path")
-    file_path = settings.get("git_savvy.file_path")
-    if file_path:
-        rel_file_path = os.path.relpath(file_path, repo_path)
-        prelude += "  FILE: {}\n".format(rel_file_path)
+    paths = settings.get("git_savvy.log_graph_view.paths")
+    if paths:
+        prelude += "  FILE: {}\n".format(" ".join(paths))
     elif repo_path:
         prelude += "  REPO: {}\n".format(repo_path)
 
@@ -1167,6 +1174,54 @@ class gs_log_graph_reset_filters(TextCommand):
         settings = self.view.settings()
         settings.set("git_savvy.log_graph_view.filters", "")
         self.view.run_command("gs_log_graph_refresh")
+
+
+class gs_log_graph_edit_files(TextCommand, GitCommand):
+    def run(self, edit):
+        view = self.view
+        settings = view.settings()
+        window = view.window()
+        assert window
+
+        files = self.git(
+            "ls-tree",
+            "-r",
+            "--full-tree",
+            "--name-only",
+            "HEAD"
+        ).strip().splitlines()
+        paths = settings.get("git_savvy.log_graph_view.paths", [])  # type: List[str]
+        items = (
+            [
+                ">  {}".format(file)
+                for file in paths
+            ]
+            +
+            sorted(
+                "   {}".format(file)
+                for file in chain(files, set(os.path.dirname(f) for f in files))
+                if file and file not in paths
+            )
+        )
+
+        def on_done(idx):
+            if idx < 0:
+                return
+            selected = items[idx]
+            unselect = selected[0] == ">"
+            path = selected[3:]
+
+            if unselect:
+                settings.set("git_savvy.log_graph_view.paths", [p for p in paths if p != path])
+            else:
+                settings.set("git_savvy.log_graph_view.paths", paths + [path])
+            view.run_command("gs_log_graph_refresh")
+
+        window.show_quick_panel(
+            items,
+            on_done,
+            flags=sublime.MONOSPACE_FONT,
+        )
 
 
 class gs_log_graph_toggle_all_setting(TextCommand, GitCommand):
