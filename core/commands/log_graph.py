@@ -1198,13 +1198,7 @@ class gs_log_graph_edit_files(TextCommand, GitCommand):
         window = view.window()
         assert window
 
-        files = self.git(
-            "ls-tree",
-            "-r",
-            "--full-tree",
-            "--name-only",
-            "HEAD"
-        ).strip().splitlines()
+        files = self.list_controlled_files(view.change_count())
         apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
         paths = (
             settings.get("git_savvy.log_graph_view.paths", [])
@@ -1247,6 +1241,17 @@ class gs_log_graph_edit_files(TextCommand, GitCommand):
             on_done,
             flags=sublime.MONOSPACE_FONT,
         )
+
+    @lru_cache(1)
+    def list_controlled_files(self, __cc):
+        # type: (int) -> List[str]
+        return self.git(
+            "ls-tree",
+            "-r",
+            "--full-tree",
+            "--name-only",
+            "HEAD"
+        ).strip().splitlines()
 
 
 class gs_log_graph_toggle_all_setting(TextCommand, GitCommand):
