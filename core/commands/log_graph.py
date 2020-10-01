@@ -1088,7 +1088,8 @@ DEFAULT_HISTORY_ENTRIES = ["--date-order", "--dense", "--first-parent", "--reflo
 class gs_log_graph_edit_filters(TextCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        settings = self.view.settings()
+        view = self.view
+        settings = view.settings()
         filters = settings.get("git_savvy.log_graph_view.filters", "")
         filter_history = settings.get("git_savvy.log_graph_view.filter_history")
         if not filter_history:
@@ -1113,7 +1114,7 @@ class gs_log_graph_edit_filters(TextCommand):
                 settings.set("git_savvy.log_graph_view.filter_by_author", "")
 
             hide_toast()  # type: ignore[has-type]
-            self.view.run_command("gs_log_graph_refresh")
+            view.run_command("gs_log_graph_refresh")
 
         input_panel = show_single_line_input_panel(
             "additional args",
@@ -1123,17 +1124,35 @@ class gs_log_graph_edit_filters(TextCommand):
             select_text=True
         )
 
+        author_tip = self.get_author_tip()
+        history_entries = (
+            (
+                [author_tip]
+                if author_tip and author_tip not in filter_history
+                else []
+            )
+            + filter_history
+        )
         input_panel_settings = input_panel.settings()
         input_panel_settings.set("input_panel_with_history", True)
-        input_panel_settings.set("input_panel_with_history.entries", filter_history)
-        input_panel_settings.set("input_panel_with_history.active", index_of(filter_history, filters, -1))
+        input_panel_settings.set("input_panel_with_history.entries", history_entries)
+        input_panel_settings.set("input_panel_with_history.active", index_of(history_entries, filters, -1))
 
         hide_toast = show_toast(
-            self.view,
+            view,
             "↑↓ for the history\n"
             "Examples:  -Ssearch_term  |  -Gsearch_term  ",
             timeout=-1
         )
+
+    def get_author_tip(self):
+        # type: () -> str
+        view = self.view
+        line_span = view.line(view.sel()[0].b)
+        for r in find_by_selector(view, "entity.name.tag.author.git-savvy"):
+            if line_span.intersects(r):
+                return "--author='{}' -i".format(view.substr(r).strip())
+        return ""
 
 
 def index_of(seq, needle, default):
