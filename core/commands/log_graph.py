@@ -1090,14 +1090,15 @@ class gs_log_graph_edit_filters(TextCommand):
         # type: (sublime.Edit) -> None
         view = self.view
         settings = view.settings()
-        filters = settings.get("git_savvy.log_graph_view.filters", "")
+        applying_filters = settings.get("git_savvy.log_graph_view.apply_filters")
+        filters = (
+            settings.get("git_savvy.log_graph_view.filters", "")
+            if applying_filters
+            else ""
+        )
         filter_history = settings.get("git_savvy.log_graph_view.filter_history")
         if not filter_history:
             filter_history = DEFAULT_HISTORY_ENTRIES + ([filters] if filters else [])
-        elif not filters:
-            filters = filter_history[-1]
-
-        apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
 
         def on_done(text):
             # type: (str) -> None
@@ -1109,7 +1110,7 @@ class gs_log_graph_edit_filters(TextCommand):
             settings.set("git_savvy.log_graph_view.apply_filters", True)
             settings.set("git_savvy.log_graph_view.filters", text)
             settings.set("git_savvy.log_graph_view.filter_history", new_filter_history)
-            if not apply_filters:
+            if not applying_filters:
                 settings.set("git_savvy.log_graph_view.paths", [])
                 settings.set("git_savvy.log_graph_view.filter_by_author", "")
 
