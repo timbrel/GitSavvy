@@ -1100,8 +1100,35 @@ class gs_log_graph_edit_filters(TextCommand):
         if not filter_history:
             filter_history = DEFAULT_HISTORY_ENTRIES + ([filters] if filters else [])
 
+        author_tip = self.get_author_tip()
+        history_entries = (
+            (
+                [author_tip]
+                if author_tip and author_tip not in filter_history
+                else []
+            )
+            + filter_history
+        )
+        virtual_entries_count = len(history_entries) - len(filter_history)
+        active = index_of(history_entries, filters, -1)
+
         def on_done(text):
             # type: (str) -> None
+            if not text:
+                # A user can delete entries from the history by selecting
+                # an entry, deleting the contents, and finally hitting `enter`.
+                # Note that `active` can be "-1" (often the default), denoting
+                # the imaginary empty last entry. It is also offset since we may
+                # have added "virtual" entries (the `author_tip`) at the top of it
+                # which cannot be deleted, just like the `DEFAULT_HISTORY_ENTRIES`.
+                new_active = (
+                    input_panel_settings.get("input_panel_with_history.active")
+                    - virtual_entries_count
+                )
+                if 0 <= new_active < len(filter_history):
+                    if filter_history[new_active] not in DEFAULT_HISTORY_ENTRIES:
+                        filter_history.pop(new_active)
+
             new_filter_history = (
                 filter_history
                 if text in filter_history or not text
@@ -1127,20 +1154,10 @@ class gs_log_graph_edit_filters(TextCommand):
             on_cancel=on_cancel,
             select_text=True
         )
-
-        author_tip = self.get_author_tip()
-        history_entries = (
-            (
-                [author_tip]
-                if author_tip and author_tip not in filter_history
-                else []
-            )
-            + filter_history
-        )
         input_panel_settings = input_panel.settings()
         input_panel_settings.set("input_panel_with_history", True)
         input_panel_settings.set("input_panel_with_history.entries", history_entries)
-        input_panel_settings.set("input_panel_with_history.active", index_of(history_entries, filters, -1))
+        input_panel_settings.set("input_panel_with_history.active", active)
 
         hide_toast = show_toast(
             view,
