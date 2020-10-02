@@ -1113,14 +1113,17 @@ class gs_log_graph_edit_filters(TextCommand):
                 settings.set("git_savvy.log_graph_view.paths", [])
                 settings.set("git_savvy.log_graph_view.filter_by_author", "")
 
-            hide_toast()  # type: ignore[has-type]
+            hide_toast()
             view.run_command("gs_log_graph_refresh")
+
+        def on_cancel():
+            enqueue_on_worker(hide_toast)
 
         input_panel = show_single_line_input_panel(
             "additional args",
             filters,
             on_done,
-            on_cancel=lambda: enqueue_on_worker(hide_toast),  # type: ignore[has-type]
+            on_cancel=on_cancel,
             select_text=True
         )
 
