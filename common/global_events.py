@@ -52,7 +52,11 @@ class GitCommandFromTerminal(EventListener, SettingsMixin):
     def on_pre_close(self, view):
         # type: (sublime.View) -> None
         file_path = view.file_name()
-        if file_path and os.path.basename(file_path) in NATIVE_GIT_EDITOR_FILES:
+        if (
+            file_path
+            and os.path.basename(file_path) in NATIVE_GIT_EDITOR_FILES
+            and os.path.exists(file_path)
+        ):
             view.run_command("save")
 
 
