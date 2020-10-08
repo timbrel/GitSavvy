@@ -81,18 +81,31 @@ DOT_ABOVE_SCOPE = 'git_savvy.graph.dot.above'
 PATH_SCOPE = 'git_savvy.graph.path_char'
 PATH_ABOVE_SCOPE = 'git_savvy.graph.path_char.above'
 MATCHING_COMMIT_SCOPE = 'git_savvy.graph.matching_commit'
+NO_FILTERS = ([], "", "")  # type: Tuple[List[str], str, str]
 
 
 def compute_identifier_for_view(view):
     # type: (sublime.View) -> Optional[Tuple]
     settings = view.settings()
+    if not settings.get('git_savvy.log_graph_view'):
+        return None
+
+    apply_filters = settings.get('git_savvy.log_graph_view.apply_filters')
     return (
         settings.get('git_savvy.repo_path'),
-        settings.get('git_savvy.log_graph_view.paths'),
-        settings.get('git_savvy.log_graph_view.all_branches')
-        or settings.get('git_savvy.log_graph_view.branches'),
-        settings.get('git_savvy.log_graph_view.filters')
-    ) if settings.get('git_savvy.log_graph_view') else None
+        (
+            settings.get('git_savvy.log_graph_view.all_branches')
+            or settings.get('git_savvy.log_graph_view.branches')
+        ),
+        (
+            (
+                settings.get('git_savvy.log_graph_view.paths'),
+                settings.get('git_savvy.log_graph_view.filters'),
+                settings.get('git_savvy.log_graph_view.filter_by_author')
+            ) if apply_filters
+            else NO_FILTERS
+        )
+    )
 
 
 class gs_graph(WindowCommand, GitCommand):
@@ -107,7 +120,6 @@ class gs_graph(WindowCommand, GitCommand):
         follow=None,
         decoration='sparse',
         filters='',
-        apply_filters=None
     ):
         if repo_path is None:
             repo_path = self.repo_path
@@ -117,25 +129,33 @@ class gs_graph(WindowCommand, GitCommand):
             if file_path
             else []
         )
-        if apply_filters is None:
-            apply_filters = paths or filters or author
+        if branches is None:
+            branches = []
+        apply_filters = paths or filters or author
 
         this_id = (
             repo_path,
-            paths,
             all or branches,
-            filters
+            (paths, filters, author) if apply_filters else NO_FILTERS
         )
         for view in self.window.views():
-            if compute_identifier_for_view(view) == this_id:
+            other_id = compute_identifier_for_view(view)
+            if other_id in (
+                this_id,
+                (repo_path, True, NO_FILTERS),
+                (repo_path, [], NO_FILTERS)
+            ):
                 settings = view.settings()
                 settings.set("git_savvy.log_graph_view.all_branches", all)
-                settings.set("git_savvy.log_graph_view.filter_by_author", author)
-                settings.set("git_savvy.log_graph_view.branches", branches or [])
-                settings.set('git_savvy.log_graph_view.follow', follow)
+                settings.set("git_savvy.log_graph_view.branches", branches)
                 settings.set('git_savvy.log_graph_view.decoration', decoration)
-                settings.set('git_savvy.log_graph_view.filters', filters)
                 settings.set('git_savvy.log_graph_view.apply_filters', apply_filters)
+                if apply_filters:
+                    settings.set('git_savvy.log_graph_view.paths', paths)
+                    settings.set('git_savvy.log_graph_view.filters', filters)
+                    settings.set("git_savvy.log_graph_view.filter_by_author", author)
+                if follow:
+                    settings.set('git_savvy.log_graph_view.follow', follow)
 
                 if follow and follow != extract_symbol_to_follow(view):
                     if show_commit_info.panel_is_visible(self.window):
@@ -162,7 +182,7 @@ class gs_graph(WindowCommand, GitCommand):
             settings.set("git_savvy.log_graph_view.paths", paths)
             settings.set("git_savvy.log_graph_view.all_branches", all)
             settings.set("git_savvy.log_graph_view.filter_by_author", author)
-            settings.set("git_savvy.log_graph_view.branches", branches or [])
+            settings.set("git_savvy.log_graph_view.branches", branches)
             settings.set('git_savvy.log_graph_view.follow', follow)
             settings.set('git_savvy.log_graph_view.decoration', decoration)
             settings.set('git_savvy.log_graph_view.filters', filters)
