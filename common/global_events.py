@@ -5,6 +5,7 @@ from sublime_plugin import EventListener, WindowCommand
 
 from . import util
 from ..core.settings import SettingsMixin
+from ..core.utils import focus_view
 
 
 IGNORE_NEXT_ACTIVATE = False
@@ -48,6 +49,11 @@ class GitCommandFromTerminal(EventListener, SettingsMixin):
         file_path = view.file_name()
         if file_path and os.path.basename(file_path) in NATIVE_GIT_EDITOR_FILES:
             view.set_scratch(True)
+            # Sublime has problems focusing the view for example if we
+            # start a "rebase -i" session from within Sublime itself,
+            # e.g. using "Terminus" or GitSavvy.  So we try to force focus
+            # here.
+            focus_view(view)
 
     def on_pre_close(self, view):
         # type: (sublime.View) -> None
