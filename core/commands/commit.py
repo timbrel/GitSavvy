@@ -34,11 +34,10 @@ if MYPY:
 
 
 COMMIT_HELP_TEXT_EXTRA = """##
-## You may also reference or close a GitHub issue with this commit.
-## To do so, type `#` followed by the `tab` key.  You will be shown a
-## list of issues related to the current repo.  You may also type
-## `owner/repo#` plus the `tab` key to reference an issue in a
-## different GitHub repo.
+## "fixup<tab>"  to create a fixup subject  (short: "fix<tab>")
+## "squash<tab>  to create a squash subject (short: "sq<tab>")
+## "#<tab>"      to reference a GitHub issue (or: "owner/repo#<tab>")
+## In the diff below, [o] will open the file under the cursor.
 """
 
 COMMIT_HELP_TEXT_ALT = """

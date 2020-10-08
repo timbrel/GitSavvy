@@ -46,6 +46,12 @@ contexts:
       scope: comment.help-text.git-savvy.make-commit
       set:
         - meta_scope: meta.dropped.git.commit
+        - match: '(\[)(.+?)(\])'
+          captures:
+            1: punctuation.definition.git-savvy.key-bindings-key-stroke
+            2: constant.character.git-savvy-key-binding-key
+            3: punctuation.definition.git-savvy.key-bindings-key-stroke
+        - match: '(<)(.+?)(>)'
         - match: ^$
           push: [scope:git-savvy.diff]
         - match: .
