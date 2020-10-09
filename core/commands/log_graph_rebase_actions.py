@@ -1,6 +1,6 @@
 from collections import namedtuple
 from contextlib import contextmanager
-from functools import lru_cache, partial, wraps
+from functools import lru_cache, partial
 from itertools import takewhile
 import os
 import shlex
@@ -247,54 +247,16 @@ def is_fixup(commit):
     return commit.commit_message.startswith("fixup")
 
 
-def check_success(_func=None, *, cmd=None, ok_message="rebase finished"):
-    def wrapper(fn):
-        @wraps(fn)
-        def wrapped(*args, **kwargs):
-            self = cmd or args[0]
-            window = self.window
-            try:
-                fn(*args, **kwargs)
-            except GitSavvyError:
-                ...
-            else:
-                if not check_git_output(window, "rebase --continue"):
-                    auto_close_panel(window)
-            finally:
-                if self.in_rebase():
-                    flash(window, "rebase needs your attention")
-                else:
-                    flash(window, ok_message)
-                util.view.refresh_gitsavvy_interfaces(window)
-        return wrapped
-
-    if _func is None:
-        return wrapper
-    else:
-        return wrapper(_func)
-
-
-def check_git_output(window, needle):
-    # type: (sublime.Window, str) -> bool
-    view = window.find_output_panel("GitSavvy")
-    if not view:
-        return False
-
-    return needle in view.substr(sublime.Region(0, view.size()))
-
-
-def auto_close_panel(window, after=800):
-    # type: (sublime.Window, int) -> None
-    sublime.set_timeout(throttled(_close_panel, window), after)
-
-
-def _close_panel(window):
-    # type: (sublime.Window) -> None
-    window.run_command("hide_panel", {"panel": "output.GitSavvy"})
-
-
 class RebaseCommand(GitCommand):
-    def rebase(self, *args, show_panel=True, custom_environ=None, **kwargs):
+    def rebase(
+        self,
+        *args,
+        show_panel=True,
+        custom_environ=None,
+        ok_message="rebase finished",
+        **kwargs
+    ):
+        window = self.window  # type: ignore[attr-defined]
         editor = sublime_git_editor()
         environ = {
             "GIT_EDITOR": editor,
@@ -303,13 +265,28 @@ class RebaseCommand(GitCommand):
         if custom_environ:
             environ.update(custom_environ)
 
-        return self.git(
-            "rebase",
-            *args,
-            show_panel=show_panel,
-            custom_environ=environ,
-            **kwargs
-        )
+        # Python nut, if you return from the `try` clause the `else`
+        # clause never runs!  So we capture `rv` here.
+        try:
+            rv = self.git(
+                "rebase",
+                *args,
+                show_panel=show_panel,
+                custom_environ=environ,
+                **kwargs
+            )
+        except GitSavvyError:
+            ...
+        else:
+            if show_panel and not search_git_output(window, "rebase --continue"):
+                auto_close_panel(window)
+            return rv
+        finally:
+            if self.in_rebase():
+                flash(window, "rebase needs your attention")
+            else:
+                flash(window, ok_message)
+            util.view.refresh_gitsavvy_interfaces(window)
 
     def commit_is_ancestor_of_head(self, commit_hash):
         # type: (str) -> bool
@@ -333,6 +310,25 @@ class RebaseCommand(GitCommand):
             show_panel_on_stderr=False,
             **kwargs
         )
+
+
+def search_git_output(window, needle):
+    # type: (sublime.Window, str) -> bool
+    view = window.find_output_panel("GitSavvy")
+    if not view:
+        return False
+
+    return needle in view.substr(sublime.Region(0, view.size()))
+
+
+def auto_close_panel(window, after=800):
+    # type: (sublime.Window, int) -> None
+    sublime.set_timeout(throttled(_close_panel, window), after)
+
+
+def _close_panel(window):
+    # type: (sublime.Window) -> None
+    window.run_command("hide_panel", {"panel": "output.GitSavvy"})
 
 
 @lru_cache(1)
@@ -425,7 +421,6 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
             flash(self.window, "Selected commit is not part of the current branch.")
             return
 
-        @check_success(cmd=self)
         def program():
             with await_todo_list(action):  # type: ignore[arg-type]  # mypy bug
                 self.rebase(
@@ -493,7 +488,6 @@ class gs_rebase_just_autosquash(GsTextCommand, RebaseCommand):
             flash(self.window, "Selected commit is not part of the current branch.")
             return
 
-        @check_success(cmd=self)
         def program():
             self.rebase(
                 '--interactive',
@@ -508,21 +502,18 @@ class gs_rebase_just_autosquash(GsTextCommand, RebaseCommand):
 
 class gs_rebase_abort(sublime_plugin.WindowCommand, RebaseCommand):
     @on_new_thread
-    @check_success(ok_message="rebase aborted")
     def run(self):
-        self.rebase('--abort', show_panel=False)
+        self.rebase('--abort', show_panel=False, ok_message="rebase aborted")
 
 
 class gs_rebase_continue(sublime_plugin.WindowCommand, RebaseCommand):
     @on_new_thread
-    @check_success
     def run(self):
         self.rebase('--continue')
 
 
 class gs_rebase_skip(sublime_plugin.WindowCommand, RebaseCommand):
     @on_new_thread
-    @check_success
     def run(self):
         self.rebase('--skip')
 
@@ -533,7 +524,6 @@ class gs_native_rebase_interactive(GsTextCommand, RebaseCommand):
     }
 
     @on_new_thread
-    @check_success
     def run(self, edit, commitish):
         # type: (sublime.Edit, str) -> None
         self.rebase(
@@ -549,7 +539,6 @@ class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
     }
 
     @on_new_thread
-    @check_success
     def run(self, edit, commitish, onto):
         # type: (sublime.Edit, str, str) -> None
         self.rebase(
@@ -566,7 +555,6 @@ class gs_rebase_on_branch(GsTextCommand, RebaseCommand):
     }
 
     @on_new_thread
-    @check_success
     def run(self, edit, on):
         # type: (sublime.Edit, str) -> None
         self.rebase(on)
