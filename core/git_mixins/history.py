@@ -1,5 +1,6 @@
 from collections import namedtuple
 from .. import store
+from ..exceptions import GitSavvyError
 from ...common import util
 
 
@@ -149,6 +150,20 @@ class HistoryMixin():
     def commit_is_merge(self, commit_hash):
         sha = self.git("rev-list", "--merges", "-1", "{0}~1..{0}".format(commit_hash)).strip()
         return sha != ""
+
+    def commit_is_ancestor_of_head(self, commit_hash):
+        # type: (str) -> bool
+        try:
+            self.git_throwing_silently(
+                "merge-base",
+                "--is-ancestor",
+                commit_hash,
+                "HEAD",
+            )
+        except GitSavvyError:
+            return False
+        else:
+            return True
 
     def get_short_hash(self, commit_hash):
         # type: (str) -> str

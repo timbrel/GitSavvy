@@ -288,29 +288,6 @@ class RebaseCommand(GitCommand):
                 flash(window, ok_message)
             util.view.refresh_gitsavvy_interfaces(window)
 
-    def commit_is_ancestor_of_head(self, commit_hash):
-        # type: (str) -> bool
-        try:
-            self.git_throwing_silently(
-                "merge-base",
-                "--is-ancestor",
-                commit_hash,
-                "HEAD",
-            )
-        except GitSavvyError:
-            return False
-        else:
-            return True
-
-    def git_throwing_silently(self, *args, **kwargs):
-        return self.git(
-            *args,
-            throw_on_stderr=True,
-            show_status_message_on_stderr=False,
-            show_panel_on_stderr=False,
-            **kwargs
-        )
-
 
 def search_git_output(window, needle):
     # type: (sublime.Window, str) -> bool

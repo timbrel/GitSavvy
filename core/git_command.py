@@ -285,6 +285,15 @@ class GitCommand(StatusMixin,
 
         return stdout
 
+    def git_throwing_silently(self, *args, **kwargs):
+        return self.git(
+            *args,
+            throw_on_stderr=True,
+            show_status_message_on_stderr=False,
+            show_panel_on_stderr=False,
+            **kwargs
+        )
+
     def get_encoding_candidates(self):
         # type: () -> Sequence[str]
         return [

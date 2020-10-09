@@ -58,13 +58,10 @@ class gs_delete_branch(WindowCommand, GitCommand):
             )
         else:
             try:
-                rv = self.git(
+                rv = self.git_throwing_silently(
                     "branch",
                     "-d",
-                    branch_name,
-                    throw_on_stderr=True,
-                    show_status_message_on_stderr=False,
-                    show_panel_on_stderr=False,
+                    branch_name
                 )
             except GitSavvyError as e:
                 if NOT_MERGED_WARNING.search(e.stderr):
