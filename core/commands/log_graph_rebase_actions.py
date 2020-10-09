@@ -1,7 +1,7 @@
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import lru_cache, partial
-from itertools import takewhile
+from itertools import chain, takewhile
 import os
 import shlex
 
@@ -68,12 +68,29 @@ def extract_symbol_from_graph(self, done):
     view = get_view_for_command(self)
     if not view:
         return
-    symbol = log_graph.extract_symbol_to_follow(view)
-    if symbol:
-        done(symbol)
-    else:
+    sel = log_graph.get_simple_selection(view)
+    if sel is None:
+        flash(view, "Only single cursors are supported.")
+        return
+
+    line_span = view.line(sel)
+    line_text = view.substr(line_span)
+    info = log_graph.describe_graph_line(line_text, remotes=[])
+    if info is None:
         flash(view, "Not on a line with a commit.")
         return
+
+    # Since we don't pass `remotes` to `describe_graph_line` we don't get
+    # "local_branches".  Git puts remote branches first in its output, so
+    # we reverse "branches" to prefer local over remote branches.
+    symbol = next(
+        chain(
+            info.get("tags", []),
+            reversed(info.get("branches", []))
+        ),
+        info["commit"]
+    )
+    done(symbol)
 
 
 def ask_for_local_branch(self, done):
