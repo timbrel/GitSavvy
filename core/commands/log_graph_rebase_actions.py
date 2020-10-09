@@ -14,6 +14,7 @@ from GitSavvy.core.commands import log_graph
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
 from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
+from GitSavvy.core.utils import flash
 from GitSavvy.core.view import replace_view_content
 
 
@@ -71,7 +72,7 @@ def extract_symbol_from_graph(self, done):
     if symbol:
         done(symbol)
     else:
-        flash(self.window, "Not on a line with a commit.")
+        flash(view, "Not on a line with a commit.")
         return
 
 
@@ -283,9 +284,9 @@ class RebaseCommand(GitCommand):
             return rv
         finally:
             if self.in_rebase():
-                flash(window, "rebase needs your attention")
+                window.status_message("rebase needs your attention")
             else:
-                flash(window, ok_message)
+                window.status_message(ok_message)
             util.view.refresh_gitsavvy_interfaces(window)
 
 
@@ -395,7 +396,7 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
             raise NotImplementedError("action must be defined")
 
         if not self.commit_is_ancestor_of_head(commitish):
-            flash(self.window, "Selected commit is not part of the current branch.")
+            flash(self.view, "Selected commit is not part of the current branch.")
             return
 
         def program():
@@ -462,7 +463,7 @@ class gs_rebase_just_autosquash(GsTextCommand, RebaseCommand):
     def run(self, edit, commitish):
         # type: (sublime.Edit, str) -> None
         if not self.commit_is_ancestor_of_head(commitish):
-            flash(self.window, "Selected commit is not part of the current branch.")
+            flash(self.view, "Selected commit is not part of the current branch.")
             return
 
         def program():
@@ -535,8 +536,3 @@ class gs_rebase_on_branch(GsTextCommand, RebaseCommand):
     def run(self, edit, on):
         # type: (sublime.Edit, str) -> None
         self.rebase(on)
-
-
-def flash(window, msg):
-    # type: (sublime.Window, str) -> None
-    window.status_message(msg)
