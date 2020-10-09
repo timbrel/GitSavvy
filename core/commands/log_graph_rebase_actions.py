@@ -480,7 +480,7 @@ class gs_rebase_just_autosquash(GsTextCommand, RebaseCommand):
 class gs_rebase_abort(sublime_plugin.WindowCommand, RebaseCommand):
     @on_new_thread
     def run(self):
-        self.rebase('--abort', show_panel=False, ok_message="rebase aborted")
+        self.rebase('--abort', ok_message="rebase aborted")
 
 
 class gs_rebase_continue(sublime_plugin.WindowCommand, RebaseCommand):
