@@ -18,6 +18,36 @@
 * ede734e update diff syntax format
 # <- keyword.graph.commit
 #  ^ constant.numeric.graph.commit-hash
+
+| | ● 46652a2 Remove old "abort", "continue", and "skip" commands                | Fri 13:23, herr kaste
+# <- meta.graph.branch-art
+#^^^^^ meta.graph.branch-art
+#   ^ meta.graph.branch-art keyword.graph.commit
+#                                                                                ^ meta.git-savvy.grph.info punctuation.separator.git-savvy
+#                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.grph.info
+#                                                                                  ^^^^^^^^^ meta.git-savvy.grph.info storage.type.time.git-savvy
+#                                                                                             ^^^^^^^^^^ entity.name.tag.author.git-savvy
+
+| | ● 49116e9 Fix some WS                                                        | Fri 13:22, herr kaste
+| | ● e697d93 Implement rebase commands for the graph view                       | Fri 13:03, herr kaste
+| ● |   ea2fe1c Merge branches 'graph-f-help' and 'iterate-commit-view' into m.. | Fri 17:06, herr kaste
+#                                                                               ^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.grph.info
+#                                                                                ^ meta.git-savvy.grph.info punctuation.separator.git-savvy
+#                                                                                  ^^^^^^^^^ meta.git-savvy.grph.info storage.type.time.git-savvy
+#                                                                                             ^^^^^^^^^^ entity.name.tag.author.git-savvy
+
+| ● |   ea2fe1c Merge branches 'graph-f-help' and 'iterate-commit-view' into.. | Fri 17:06, herr kaste
+#                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.grph.info
+| ● |   ea2fe1c Merge branches 'graph-f-help' and 'iterate-commit-view' in.. | Fri 17:06, herr kaste
+#                                                                           ^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.grph.info
+| ● |   ea2fe1c Merge branches 'graph-f-help' and 'iterate-commit-vie.. | Fri 17:06, herr kaste
+#                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.grph.info
+
+| |\ \
+# <- meta.graph.branch-art punctuation.other.git-savvy.graph.graph-line
+#^^^^^ meta.graph.branch-art punctuation.other.git-savvy.graph.graph-line
+
+| | ● | ffc45b7 (origin/iterate-commit-view) Adjust commit message help text     | Thu 21:54, herr kaste
 * c39b5de (divmain/master) Fix: plugin_host would crash when navigating past end of graph view
 * 1bca3e0 Fix: When amending, prepopulated commit message would include two extra spaces.
 * 76ceacf Fix: When amending with show_commit_diff enabled, unstaged changes were displayed.
