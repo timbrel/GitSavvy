@@ -144,11 +144,11 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
             ),
             SEPARATOR,
             (
-                "Apply fixes and squashes {}^..HEAD".format(commitish),
+                "[R] Apply fixes and squashes {}^..HEAD".format(commitish),
                 partial(self.autosquash, view, commitish),
             ),
             (
-                "[R]ebase --interactive {}^".format(commitish),
+                "Rebase --interactive {}^".format(commitish),
                 partial(self.rebase_interactive, view, commitish)
             ),
             (

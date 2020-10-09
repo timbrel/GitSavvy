@@ -1484,7 +1484,7 @@
     },
     {
         "keys": ["R"],
-        "command": "gs_native_rebase_interactive",
+        "command": "gs_rebase_just_autosquash",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
