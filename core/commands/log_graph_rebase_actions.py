@@ -12,7 +12,7 @@ from GitSavvy.common import util
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
 from GitSavvy.core.commands import log_graph
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
-from GitSavvy.core.runtime import run_on_new_thread, throttled
+from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
 from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
 from GitSavvy.core.view import replace_view_content
 
@@ -245,13 +245,6 @@ def find_base_commit_for_fixup(view):
 def is_fixup(commit):
     # type: (Commit) -> bool
     return commit.commit_message.startswith("fixup")
-
-
-def on_new_thread(fn):
-    @wraps(fn)
-    def wrapped(*a, **kw):
-        run_on_new_thread(fn, *a, **kw)
-    return wrapped
 
 
 def check_success(_func=None, *, cmd=None, ok_message="rebase finished"):
