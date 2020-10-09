@@ -377,6 +377,18 @@
         "command": "gs_show_rebase"
     },
     {
+        "caption": "git: rebase --abort",
+        "command": "gs_rebase_abort"
+    },
+    {
+        "caption": "git: rebase --continue",
+        "command": "gs_rebase_continue"
+    },
+    {
+        "caption": "git: rebase --skip",
+        "command": "gs_rebase_skip"
+    },
+    {
         "caption": "git: reset",
         "command": "gs_reset"
     },
