@@ -146,6 +146,12 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
                     )
                 ]
 
+        head_info = log_graph.describe_head(view, [])
+        good_head_name = (
+            "HEAD"
+            if not head_info or head_info["HEAD"] == head_info["commit"]
+            else head_info["HEAD"]
+        )
         actions += [
             (
                 "Re[W]ord commit message",
@@ -161,7 +167,7 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
             ),
             SEPARATOR,
             (
-                "[R] Apply fixes and squashes {}^..HEAD".format(commitish),
+                "[R] Apply fixes and squashes {}^..{}".format(commitish, good_head_name),
                 partial(self.autosquash, view, commitish),
             ),
             (
