@@ -46,6 +46,7 @@ class GsRemoteRemoveCommand(WindowCommand, GitCommand):
         @util.actions.destructive(description="remove a remote")
         def remove():
             self.git("remote", "remove", remote)
+            util.view.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)
 
         remove()
 
@@ -68,3 +69,4 @@ class GsRemoteRenameCommand(WindowCommand, GitCommand):
     def on_enter_name(self, new_name):
         self.git("remote", "rename", self.remote, new_name)
         self.window.status_message("remote {} was renamed as {}.".format(self.remote, new_name))
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)

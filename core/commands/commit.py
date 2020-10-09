@@ -202,7 +202,8 @@ class GsPrepareCommitFocusEventListener(ViewEventListener):
     def on_activated(self):
         self.view.run_command("gs_prepare_commit_refresh_diff", {"sync": False})
 
-    def on_selection_modified(self) -> None:
+    # Must be "async", see: https://github.com/timbrel/GitSavvy/pull/1382
+    def on_selection_modified_async(self) -> None:
         view = self.view
         in_dropped_content = any(
             r.contains(s) or r.intersects(s)
