@@ -63,7 +63,7 @@ class GithubRemotesMixin(base):
         remotes = self.get_remotes()
         integrated_remote = self.get_integrated_remote_name(remotes)
 
-        if len(self.remotes) == 1:
+        if len(remotes) == 1:
             return list(remotes.keys())[0]
         elif upstream:
             tracked_remote = upstream.split("/")[0] if upstream else None
