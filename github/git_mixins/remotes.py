@@ -69,7 +69,7 @@ class GithubRemotesMixin(base):
         if upstream:
             tracked_remote = upstream.split("/")[0]
 
-            if tracked_remote and tracked_remote == integrated_remote:
+            if tracked_remote == integrated_remote:
                 return tracked_remote
             else:
                 return None
