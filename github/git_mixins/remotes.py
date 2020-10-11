@@ -21,10 +21,7 @@ class GithubRemotesMixin(base):
             "GitSavvy.ghBranch",
             throw_on_stderr=False
         ).strip()
-        if configured_branch_name:
-            return configured_branch_name
-        else:
-            return "master"
+        return configured_branch_name or "master"
 
     def get_integrated_remote_name(self, remotes):
         # type: (Dict[name, url]) -> name
