@@ -57,9 +57,8 @@ class GithubRemotesMixin(base):
         configured_remote_name = self.get_integrated_remote_name(remotes)
         return remotes[configured_remote_name]
 
-    def guess_github_remote(self):
-        # type: () -> Optional[name]
-        remotes = self.get_remotes()
+    def guess_github_remote(self, remotes):
+        # type: (Dict[name, url]) -> Optional[name]
         if len(remotes) == 1:
             return list(remotes.keys())[0]
 

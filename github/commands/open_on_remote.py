@@ -35,10 +35,10 @@ class GsGithubOpenFileOnRemoteCommand(TextCommand, git_mixins.GithubRemotesMixin
         self.fpath = fpath or self.get_rel_path()
         self.preselect = preselect
 
-        self.remotes = self.get_remotes()
+        self.remotes = remotes = self.get_remotes()
 
         if not remote:
-            remote = self.guess_github_remote()
+            remote = self.guess_github_remote(remotes)
 
         if remote:
             self.open_file_on_remote(remote)
@@ -117,10 +117,10 @@ class GsGithubOpenRepoCommand(TextCommand, git_mixins.GithubRemotesMixin, GitCom
         sublime.set_timeout_async(lambda: self.run_async(remote))
 
     def run_async(self, remote):
-        self.remotes = self.get_remotes()
+        self.remotes = remotes = self.get_remotes()
 
         if not remote:
-            remote = self.guess_github_remote()
+            remote = self.guess_github_remote(remotes)
 
         if remote:
             open_repo(self.remotes[remote])
