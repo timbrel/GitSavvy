@@ -43,11 +43,15 @@ class GithubRemotesMixin(base):
         ).strip()
         if configured_remote_name in remotes:
             return configured_remote_name
-        if "origin" in remotes:
-            return "origin"
+
+        for name in ("upstream", "origin"):
+            if name in remotes:
+                return name
+
         current_upstream = self.get_upstream_for_active_branch()
         if current_upstream:
             return current_upstream.split("/")[0]
+
         raise ValueError("Cannot determine GitHub integrated remote.")
 
     def get_integrated_remote_url(self):
