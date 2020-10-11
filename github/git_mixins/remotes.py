@@ -1,6 +1,19 @@
-class GithubRemotesMixin():
 
+MYPY = False
+if MYPY:
+    from typing import Dict, Optional
+    from GitSavvy.core.git_command import GitCommand
+    name = str
+    url = str
+
+    base = GitCommand
+else:
+    base = object
+
+
+class GithubRemotesMixin(base):
     def get_integrated_branch_name(self):
+        # type: () -> str
         configured_branch_name = self.git(
             "config",
             "--local",
@@ -14,6 +27,7 @@ class GithubRemotesMixin():
             return "master"
 
     def get_integrated_remote_name(self, remotes=None):
+        # type: (Dict[name, url]) -> name
         if remotes is None:
             remotes = self.get_remotes()
         configured_remote_name = self.git(
@@ -40,11 +54,13 @@ class GithubRemotesMixin():
             raise ValueError("Cannot determine GitHub integrated remote.")
 
     def get_integrated_remote_url(self):
+        # type: () -> url
         configured_remote_name = self.get_integrated_remote_name()
         remotes = self.get_remotes()
         return remotes[configured_remote_name]
 
     def guess_github_remote(self):
+        # type: () -> Optional[name]
         upstream = self.get_upstream_for_active_branch()
         integrated_remote = self.get_integrated_remote_name()
         remotes = self.get_remotes()
