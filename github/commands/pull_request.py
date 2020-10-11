@@ -18,7 +18,7 @@ PUSH_PROMPT = ("You have not set an upstream for the active branch.  "
                "Would you like to push to a remote?")
 
 
-class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubPullRequestCommand(WindowCommand, git_mixins.GithubRemotesMixin, GitCommand):
 
     """
     Display open pull requests on the base repo.  When a pull request is selected,
@@ -162,7 +162,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         open_in_browser(self.pr["html_url"])
 
 
-class GsGithubCreatePullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMixin, GitCommand):
     """
     Create pull request of the current commit on the current repo.
     """
