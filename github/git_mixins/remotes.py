@@ -59,13 +59,14 @@ class GithubRemotesMixin(base):
 
     def guess_github_remote(self):
         # type: () -> Optional[name]
-        upstream = self.get_upstream_for_active_branch()
         remotes = self.get_remotes()
-        integrated_remote = self.get_integrated_remote_name(remotes)
 
         if len(remotes) == 1:
             return list(remotes.keys())[0]
-        elif upstream:
+
+        integrated_remote = self.get_integrated_remote_name(remotes)
+        upstream = self.get_upstream_for_active_branch()
+        if upstream:
             tracked_remote = upstream.split("/")[0] if upstream else None
 
             if tracked_remote and tracked_remote == integrated_remote:
