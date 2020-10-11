@@ -26,10 +26,8 @@ class GithubRemotesMixin(base):
         else:
             return "master"
 
-    def get_integrated_remote_name(self, remotes=None):
+    def get_integrated_remote_name(self, remotes):
         # type: (Dict[name, url]) -> name
-        if remotes is None:
-            remotes = self.get_remotes()
         configured_remote_name = self.git(
             "config",
             "--local",
