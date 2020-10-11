@@ -67,7 +67,7 @@ class GithubRemotesMixin(base):
         integrated_remote = self.get_integrated_remote_name(remotes)
         upstream = self.get_upstream_for_active_branch()
         if upstream:
-            tracked_remote = upstream.split("/")[0] if upstream else None
+            tracked_remote = upstream.split("/")[0]
 
             if tracked_remote and tracked_remote == integrated_remote:
                 return tracked_remote
