@@ -41,7 +41,7 @@ class GithubRemotesMixin(base):
             "GitSavvy.ghRemote",
             throw_on_stderr=False
         ).strip()
-        if configured_remote_name and configured_remote_name in remotes:
+        if configured_remote_name in remotes:
             return configured_remote_name
         elif "origin" in remotes:
             return "origin"
