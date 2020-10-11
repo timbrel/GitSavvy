@@ -28,6 +28,12 @@ class GithubRemotesMixin(base):
 
     def get_integrated_remote_name(self, remotes):
         # type: (Dict[name, url]) -> name
+        if len(remotes) == 0:
+            raise ValueError("GitHub integration will not function when no remotes defined.")
+
+        if len(remotes) == 1:
+            return list(remotes.keys())[0]
+
         configured_remote_name = self.git(
             "config",
             "--local",
@@ -35,14 +41,8 @@ class GithubRemotesMixin(base):
             "GitSavvy.ghRemote",
             throw_on_stderr=False
         ).strip()
-
-        if len(remotes) == 0:
-            raise ValueError("GitHub integration will not function when no remotes defined.")
-
         if configured_remote_name and configured_remote_name in remotes:
             return configured_remote_name
-        elif len(remotes) == 1:
-            return list(remotes.keys())[0]
         elif "origin" in remotes:
             return "origin"
         elif self.get_upstream_for_active_branch():
