@@ -22,7 +22,7 @@ __all__ = (
     "gs_commit_view_do_commit",
     "gs_commit_view_sign",
     "gs_commit_view_close",
-    "gs_fixup_helper",
+    "gs_commit_log_helper",
     "GsPrepareCommitFocusEventListener",
     "GsPedanticEnforceEventListener",
 )
@@ -34,6 +34,7 @@ if MYPY:
 
 
 COMMIT_HELP_TEXT_EXTRA = """##
+## "<tab>"       at the very first char to see the recent log
 ## "fixup<tab>"  to create a fixup subject  (short: "fix<tab>")
 ## "squash<tab>  to create a squash subject (short: "sq<tab>")
 ## "#<tab>"      to reference a GitHub issue (or: "owner/repo#<tab>")
@@ -409,8 +410,8 @@ class gs_commit_view_close(TextCommand, GitCommand):
             self.view.close()
 
 
-class gs_fixup_helper(TextCommand, GitCommand):
-    def run(self, edit, action="fixup"):
+class gs_commit_log_helper(TextCommand, GitCommand):
+    def run(self, edit, prefix="fixup! ", move_to_eol=True):
         view = self.view
         window = view.window()
         assert window
@@ -423,10 +424,11 @@ class gs_fixup_helper(TextCommand, GitCommand):
             if idx == -1:
                 return
             entry = items[idx]
-            text = "{}! {}".format(action, entry.summary)
+            text = "{}{}".format(prefix, entry.summary)
             replace_view_content(view, text, region=view.line(cursor))
-            view.sel().clear()
-            view.sel().add(len(text))
+            if move_to_eol:
+                view.sel().clear()
+                view.sel().add(len(text))
 
         # `on_highlight` also gets called `on_done`, and then
         # our "show|hide_panel" side-effects get muddled.  We
