@@ -1,24 +1,23 @@
-// SYNTAX TEST "Packages/GitSavvy/syntax/make_commit.sublime-syntax"
-The subject
-^^^ meta.commit.message.subject
-
+# SYNTAX TEST "Packages/GitSavvy/syntax/make_commit.sublime-syntax"
+# <- meta.commit.message.subject
+# ^^^ meta.commit.message.subject
 Some body
-^^^ meta.commit.message.body
+# ^^^ meta.commit.message.body
 
 This is for @aziz and close #76 aziz/git#123 aziz/good
-//          ^^^^^ constant.other.github-username.git-savvy.make-commit
-//                          ^^^ constant.other.issue-ref.git-savvy.make-commit
-//                              ^^^^^^^^^^^^ constant.other.issue-ref.git-savvy.make-commit
-This is a ref to a commit 89d6780 
-//                        ^^^^^^^ constant.other.commit-sha.git-savvy.make-commit
+#           ^^^^^ constant.other.github-username.git-savvy.make-commit
+#                           ^^^ constant.other.issue-ref.git-savvy.make-commit
+#                               ^^^^^^^^^^^^ constant.other.issue-ref.git-savvy.make-commit
+This is a ref to a commit 89d6780
+#                         ^^^^^^^ constant.other.commit-sha.git-savvy.make-commit
 
 
 ## To make a commit, type your commit message and press SUPER-ENTER. To cancel
-// <- meta.dropped.git.commit comment.help-text.git-savvy.make-commit
-// ^^^ meta.dropped.git.commit comment.help-text.git-savvy.make-commit
-More help text 
-// <- comment.help-text.git-savvy.make-commit
-// ^^^ comment.help-text.git-savvy.make-commit
+# <- meta.dropped.git.commit comment.help-text.git-savvy.make-commit
+# ^^^ meta.dropped.git.commit comment.help-text.git-savvy.make-commit
+More help text
+# <- comment.help-text.git-savvy.make-commit
+# ^^^ comment.help-text.git-savvy.make-commit
 
  core/commands/commit.py | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
