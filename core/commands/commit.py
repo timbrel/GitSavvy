@@ -439,7 +439,11 @@ class gs_fixup_helper(TextCommand, GitCommand):
             })
 
         format_item = lambda entry: "  ".join(filter_(
-            (entry.short_hash, short_ref(entry.ref), entry.summary)
+            (
+                entry.short_hash,
+                short_ref(entry.ref) if not entry.ref.startswith("HEAD ->") else "",
+                entry.summary
+            )
         ))
         window.show_quick_panel(
             list(map(format_item, items)),
