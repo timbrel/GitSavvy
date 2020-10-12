@@ -13,15 +13,14 @@ else:
 
 class GithubRemotesMixin(base):
     def get_integrated_branch_name(self):
-        # type: () -> str
-        configured_branch_name = self.git(
+        # type: () -> Optional[str]
+        return self.git(
             "config",
             "--local",
             "--get",
             "GitSavvy.ghBranch",
             throw_on_stderr=False
-        ).strip()
-        return configured_branch_name or "master"
+        ).strip() or None
 
     def get_integrated_remote_name(self, remotes):
         # type: (Dict[name, url]) -> name

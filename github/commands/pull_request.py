@@ -202,13 +202,13 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
         remote_url = base_remote.url
         base_owner = base_remote.owner
         base_branch = self.get_integrated_branch_name()
-        url = "{}/compare/{}:{}...{}:{}?expand=1".format(
-            remote_url,
-            base_owner,
-            urllib.parse.quote_plus(base_branch),
-            owner,
-            urllib.parse.quote_plus(branch)
+        start = (
+            "{}:{}...".format(base_owner, urllib.parse.quote_plus(base_branch))
+            if base_branch
+            else ""
         )
+        end = "{}:{}".format(owner, urllib.parse.quote_plus(branch))
+        url = "{}/compare/{}{}?expand=1".format(remote_url, start, end)
         open_in_browser(url)
 
 
