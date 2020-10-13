@@ -97,7 +97,7 @@ class gs_push(PushBase):
         self.force = force
         self.force_with_lease = force_with_lease
         self.local_branch_name = local_branch_name
-        sublime.set_timeout_async(self.run_async)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         if not self.local_branch_name:
@@ -139,7 +139,7 @@ class gs_push_to_branch(PushBase):
     """
 
     def run(self):
-        sublime.set_timeout_async(self.run_async)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         show_branch_panel(self.on_branch_selection, ask_remote_first=True)
@@ -149,9 +149,12 @@ class gs_push_to_branch(PushBase):
             return
         current_local_branch = self.get_current_branch_name()
         selected_remote, selected_branch = branch.split("/", 1)
-        sublime.set_timeout_async(
-            lambda: self.do_push(
-                selected_remote, current_local_branch, remote_branch=selected_branch))
+        enqueue_on_worker(
+            self.do_push,
+            selected_remote,
+            current_local_branch,
+            remote_branch=selected_branch
+        )
 
 
 class gs_push_to_branch_name(PushBase):
@@ -175,7 +178,7 @@ class gs_push_to_branch_name(PushBase):
         self.set_upstream = set_upstream
         self.force = force
         self.force_with_lease = force_with_lease
-        sublime.set_timeout_async(self.run_async)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         show_remote_panel(self.on_remote_selection)
@@ -204,9 +207,11 @@ class gs_push_to_branch_name(PushBase):
         Push to the remote that was previously selected and provided branch
         name.
         """
-        sublime.set_timeout_async(lambda: self.do_push(
+        enqueue_on_worker(
+            self.do_push,
             self.selected_remote,
             self.local_branch_name,
             force=self.force,
             force_with_lease=self.force_with_lease,
-            remote_branch=branch))
+            remote_branch=branch
+        )
