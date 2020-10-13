@@ -1,10 +1,11 @@
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..git_command import GitCommand
+from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from GitSavvy.core.runtime import enqueue_on_worker
 
 
 __all__ = (
@@ -14,7 +15,6 @@ __all__ = (
 )
 
 
-START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
 PUSH_TO_BRANCH_NAME_PROMPT = "Enter remote branch name:"
 SET_UPSTREAM_PROMPT = ("You have not set an upstream for the active branch.  "
@@ -38,15 +38,52 @@ class PushBase(WindowCommand, GitCommand):
                 if not sublime.ok_cancel_dialog(CONFIRM_FORCE_PUSH.format("--force--with-lease")):
                     return
 
-        self.window.status_message(START_PUSH_MESSAGE)
-        self.push(
-            remote,
-            branch,
-            set_upstream=self.set_upstream,
-            force=force,
-            force_with_lease=force_with_lease,
-            remote_branch=remote_branch
-        )
+        self.window.status_message("Pushing '{}' to '{}'...".format(branch, remote))
+        try:
+            self.push(
+                remote,
+                branch,
+                set_upstream=self.set_upstream,
+                force=force,
+                force_with_lease=force_with_lease,
+                remote_branch=remote_branch,
+                throw_on_stderr=True,
+                show_status_message_on_stderr=False,
+                show_panel_on_stderr=False,
+            )
+        except GitSavvyError as e:
+            self.window.status_message("Push failed.")
+            if "(non-fast-forward)" in e.stderr and not force and not force_with_lease:
+                def on_action_selection(idx):
+                    if idx < 1:
+                        return
+                    enqueue_on_worker(
+                        self.do_push,
+                        remote,
+                        branch,
+                        remote_branch=remote_branch,
+                        force_with_lease=True
+                    )
+
+                actions = [
+                    "Abort, '{}' is behind '{}/{}'".format(branch, remote, remote_branch),
+                    "Force push using --force-with-lease"
+                ]
+                self.window.show_quick_panel(
+                    actions,
+                    on_action_selection,
+                    flags=sublime.MONOSPACE_FONT
+                )
+                return
+
+            raise GitSavvyError(
+                e.message,
+                cmd=e.cmd,
+                stdout=e.stdout,
+                stderr=e.stderr,
+                show_panel=True,
+            )
+
         self.window.status_message(END_PUSH_MESSAGE)
         util.view.refresh_gitsavvy(self.window.active_view())
 

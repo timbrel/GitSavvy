@@ -61,7 +61,9 @@ class RemotesMixin():
             force=False,
             force_with_lease=False,
             remote_branch=None,
-            set_upstream=False):
+            set_upstream=False,
+            **kwargs
+    ):
         """
         Push to the specified remote and branch if provided, otherwise
         perform default `git push`.
@@ -74,7 +76,8 @@ class RemotesMixin():
             "--force-with-lease" if force_with_lease else None,
             "--set-upstream" if set_upstream else None,
             remote,
-            branch if not remote_branch else "{}:{}".format(branch, remote_branch)
+            branch if not remote_branch else "{}:{}".format(branch, remote_branch),
+            **kwargs
         )
 
     def project_name_from_url(self, input_url):
