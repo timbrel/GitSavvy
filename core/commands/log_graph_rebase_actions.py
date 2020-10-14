@@ -171,7 +171,7 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
                 partial(self.autosquash, view, commitish),
             ),
             (
-                "Rebase --interactive {}^".format(commitish),
+                "Rebase from {}^ on interactive".format(commitish),
                 partial(self.rebase_interactive, view, commitish)
             ),
             (
