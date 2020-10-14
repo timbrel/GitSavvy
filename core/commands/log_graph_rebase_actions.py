@@ -95,6 +95,11 @@ def extract_symbol_from_graph(self, done):
     done(symbol)
 
 
+def extract_parent_symbol_from_graph(self, done):
+    # type: (GsCommand, Kont) -> None
+    extract_symbol_from_graph(self, lambda symbol: done("{}^".format(symbol)))
+
+
 def extract_commit_hash_from_graph(self, done):
     # type: (GsCommand, Kont) -> None
     view = get_view_for_command(self)
@@ -163,6 +168,7 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
 
         commit_hash = info["commit"]
         commitish = commitish_from_info(info)
+        parent_commitish = "{}^".format(commitish)
         commit_message = commit_message_from_line(view, line)
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
 
@@ -200,16 +206,16 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
             ),
             SEPARATOR,
             (
-                "Apply fixes and squashes {}^..{}".format(commitish, good_head_name),
-                partial(self.autosquash, view, commitish),
+                "Apply fixes and squashes {}..{}".format(parent_commitish, good_head_name),
+                partial(self.autosquash, view, parent_commitish),
             ),
             (
-                "Rebase from {}^ on interactive".format(commitish),
-                partial(self.rebase_interactive, view, commitish)
+                "Rebase from {} on interactive".format(parent_commitish),
+                partial(self.rebase_interactive, view, parent_commitish)
             ),
             (
-                "Rebase {}^ --onto <branch>".format(commitish),
-                partial(self.rebase_onto, view, commitish)
+                "Rebase {} --onto <branch>".format(parent_commitish),
+                partial(self.rebase_onto, view, parent_commitish)
             ),
             (
                 "Rebase on <branch>",
@@ -520,7 +526,7 @@ class gs_rebase_apply_fixup(gs_rebase_quick_action):
 
 class gs_rebase_just_autosquash(GsTextCommand, RebaseCommand):
     defaults = {
-        "commitish": extract_symbol_from_graph,
+        "commitish": extract_parent_symbol_from_graph,
     }
 
     def run(self, edit, commitish):
@@ -534,7 +540,7 @@ class gs_rebase_just_autosquash(GsTextCommand, RebaseCommand):
                 '--interactive',
                 "--autostash",
                 "--autosquash",
-                "{}^".format(commitish),
+                "{}".format(commitish),
                 custom_environ={"GIT_SEQUENCE_EDITOR": ":"}
             )
 
@@ -561,7 +567,7 @@ class gs_rebase_skip(sublime_plugin.WindowCommand, RebaseCommand):
 
 class gs_rebase_interactive(GsTextCommand, RebaseCommand):
     defaults = {
-        "commitish": extract_symbol_from_graph,
+        "commitish": extract_parent_symbol_from_graph,
     }
 
     @on_new_thread
@@ -569,13 +575,13 @@ class gs_rebase_interactive(GsTextCommand, RebaseCommand):
         # type: (sublime.Edit, str) -> None
         self.rebase(
             '--interactive',
-            "{}^".format(commitish),
+            "{}".format(commitish),
         )
 
 
 class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
     defaults = {
-        "commitish": extract_symbol_from_graph,
+        "commitish": extract_parent_symbol_from_graph,
         "onto": ask_for_local_branch
     }
 
@@ -584,7 +590,7 @@ class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
         # type: (sublime.Edit, str, str) -> None
         self.rebase(
             '--interactive',
-            "{}^".format(commitish),
+            "{}".format(commitish),
             "--onto",
             onto,
         )
