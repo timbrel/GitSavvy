@@ -12,6 +12,7 @@ from GitSavvy.common import util
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
 from GitSavvy.core.commands import log_graph
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
+from GitSavvy.core.parse_diff import TextRange
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
 from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
 from GitSavvy.core.utils import flash
@@ -63,6 +64,13 @@ else:
     Commit = namedtuple("Commit", "commit_hash commit_message")
 
 
+def line_from_pt(view, pt):
+    # type: (sublime.View, int) -> TextRange
+    line_span = view.line(pt)
+    line_text = view.substr(line_span)
+    return TextRange(line_text, line_span.a, line_span.b)
+
+
 def extract_symbol_from_graph(self, done):
     # type: (GsCommand, Kont) -> None
     view = get_view_for_command(self)
@@ -73,9 +81,8 @@ def extract_symbol_from_graph(self, done):
         flash(view, "Only single cursors are supported.")
         return
 
-    line_span = view.line(sel)
-    line_text = view.substr(line_span)
-    info = log_graph.describe_graph_line(line_text, remotes=[])
+    line = line_from_pt(view, sel.b)
+    info = log_graph.describe_graph_line(line.text, remotes=[])
     if info is None:
         flash(view, "Not on a line with a commit.")
         return
@@ -104,9 +111,8 @@ def extract_commit_hash_from_graph(self, done):
         flash(view, "Only single cursors are supported.")
         return
 
-    line_span = view.line(sel)
-    line_text = view.substr(line_span)
-    info = log_graph.describe_graph_line(line_text, remotes=[])
+    line = line_from_pt(view, sel.b)
+    info = log_graph.describe_graph_line(line.text, remotes=[])
     if info is None:
         flash(view, "Not on a line with a commit.")
         return
@@ -155,9 +161,8 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
             flash(view, "Only single cursors are supported.")
             return
 
-        line_span = view.line(sel)
-        line_text = view.substr(line_span)
-        info = log_graph.describe_graph_line(line_text, remotes=[])
+        line = line_from_pt(view, sel.b)
+        info = log_graph.describe_graph_line(line.text, remotes=[])
         if info is None:
             flash(view, "Not on a line with a commit.")
             return
