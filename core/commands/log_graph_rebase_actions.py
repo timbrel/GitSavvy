@@ -68,8 +68,8 @@ def commitish_from_info(info):
     # type: (log_graph.LineInfo) -> str
     return next(
         chain(
+            reversed(info.get("branches", [])),
             info.get("tags", []),
-            reversed(info.get("branches", []))
         ),
         info["commit"]
     )
