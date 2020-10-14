@@ -64,13 +64,6 @@ else:
     Commit = namedtuple("Commit", "commit_hash commit_message")
 
 
-def line_from_pt(view, pt):
-    # type: (sublime.View, int) -> TextRange
-    line_span = view.line(pt)
-    line_text = view.substr(line_span)
-    return TextRange(line_text, line_span.a, line_span.b)
-
-
 def commitish_from_info(info):
     # type: (log_graph.LineInfo) -> str
     return next(
@@ -92,7 +85,7 @@ def extract_symbol_from_graph(self, done):
         flash(view, "Only single cursors are supported.")
         return
 
-    line = line_from_pt(view, sel.b)
+    line = log_graph.line_from_pt(view, sel.b)
     info = log_graph.describe_graph_line(line.text, remotes=[])
     if info is None:
         flash(view, "Not on a line with a commit.")
@@ -112,7 +105,7 @@ def extract_commit_hash_from_graph(self, done):
         flash(view, "Only single cursors are supported.")
         return
 
-    line = line_from_pt(view, sel.b)
+    line = log_graph.line_from_pt(view, sel.b)
     info = log_graph.describe_graph_line(line.text, remotes=[])
     if info is None:
         flash(view, "Not on a line with a commit.")
@@ -162,7 +155,7 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
             flash(view, "Only single cursors are supported.")
             return
 
-        line = line_from_pt(view, sel.b)
+        line = log_graph.line_from_pt(view, sel.b)
         info = log_graph.describe_graph_line(line.text, remotes=[])
         if info is None:
             flash(view, "Not on a line with a commit.")
@@ -174,9 +167,9 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
 
         if commit_message and is_fixup_or_squash_message(commit_message):
-            fixup_commit = Commit(commit_hash, commit_message)
-            base_commit = find_base_commit_for_fixup(view)
+            base_commit = find_base_commit_for_fixup(view, line, commit_message)
             if base_commit:
+                fixup_commit = Commit(commit_hash, commit_message)
                 actions += [
                     (
                         "Apply fix to '{}'".format(base_commit)
@@ -277,6 +270,22 @@ def commit_message_from_line(view, line):
         return None
 
 
+def find_base_commit_for_fixup(view, commit_line, commit_message):
+    # type: (sublime.View, TextRange, str) -> Optional[str]
+    dot = log_graph.dot_from_line(view, commit_line)
+    if not dot:
+        return None
+
+    original_message = strip_fixup_or_squash_prefix(commit_message)
+    target_dot = log_graph.find_matching_commit(view.id(), dot, original_message)
+    if not target_dot:
+        return None
+
+    target_line = log_graph.line_from_pt(view, target_dot.pt)
+    target_commit_hash = log_graph.extract_commit_hash(target_line.text)
+    return target_commit_hash
+
+
 def is_fixup_or_squash_message(commit_message):
     # type: (str) -> bool
     return (
@@ -285,20 +294,16 @@ def is_fixup_or_squash_message(commit_message):
     )
 
 
-def find_base_commit_for_fixup(view):
-    # type: (sublime.View) -> Optional[str]
-    dot = list(log_graph._find_dots(view))[-1]
-    fixup_message = log_graph.message_from_fixup_squash_line(view.id(), dot)
-    if not fixup_message:
-        return None
-
-    target_dot = log_graph.find_matching_commit(view.id(), dot, fixup_message)
-    if not target_dot:
-        return None
-
-    target_line = view.substr(view.line(target_dot.pt))
-    target_commit_hash = log_graph.extract_commit_hash(target_line)
-    return target_commit_hash
+def strip_fixup_or_squash_prefix(commit_message):
+    # type: (str) -> str
+    # As long as we process "visually", we must deal with
+    # truncated messages which end with one or multiple dots
+    # we have to strip.
+    if commit_message.startswith('fixup! '):
+        return commit_message[7:].rstrip('.').strip()
+    if commit_message.startswith('squash! '):
+        return commit_message[8:].rstrip('.').strip()
+    return commit_message
 
 
 def is_fixup(commit):
