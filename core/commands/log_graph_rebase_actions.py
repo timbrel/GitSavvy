@@ -80,6 +80,7 @@ def extract_symbol_from_graph(self, done):
         flash(view, "Not on a line with a commit.")
         return
 
+    commit_hash = info["commit"]
     # Since we don't pass `remotes` to `describe_graph_line` we don't get
     # "local_branches".  Git puts remote branches first in its output, so
     # we reverse "branches" to prefer local over remote branches.
@@ -88,9 +89,30 @@ def extract_symbol_from_graph(self, done):
             info.get("tags", []),
             reversed(info.get("branches", []))
         ),
-        info["commit"]
+        commit_hash
     )
     done(symbol)
+
+
+def extract_commit_hash_from_graph(self, done):
+    # type: (GsCommand, Kont) -> None
+    view = get_view_for_command(self)
+    if not view:
+        return
+    sel = log_graph.get_simple_selection(view)
+    if sel is None:
+        flash(view, "Only single cursors are supported.")
+        return
+
+    line_span = view.line(sel)
+    line_text = view.substr(line_span)
+    info = log_graph.describe_graph_line(line_text, remotes=[])
+    if info is None:
+        flash(view, "Not on a line with a commit.")
+        return
+
+    commit_hash = info["commit"]
+    done(commit_hash)
 
 
 def ask_for_local_branch(self, done):
@@ -120,16 +142,37 @@ SEPARATOR = ("-" * 75, lambda: None)
 
 
 class gs_rebase_action(GsWindowCommand, GitCommand):
-    defaults = {
-        "commitish": extract_symbol_from_graph
-    }
     selected_index = 0
 
-    def run(self, commitish):
-        # type: (str) -> None
+    def run(self):
+        # type: () -> None
         view = self.window.active_view()
         if not view:
             return
+
+        sel = log_graph.get_simple_selection(view)
+        if sel is None:
+            flash(view, "Only single cursors are supported.")
+            return
+
+        line_span = view.line(sel)
+        line_text = view.substr(line_span)
+        info = log_graph.describe_graph_line(line_text, remotes=[])
+        if info is None:
+            flash(view, "Not on a line with a commit.")
+            return
+
+        commit_hash = info["commit"]
+        # Since we don't pass `remotes` to `describe_graph_line` we don't get
+        # "local_branches".  Git puts remote branches first in its output, so
+        # we reverse "branches" to prefer local over remote branches.
+        commitish = next(
+            chain(
+                info.get("tags", []),
+                reversed(info.get("branches", []))
+            ),
+            commit_hash
+        )
 
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
 
@@ -155,15 +198,15 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
         actions += [
             (
                 "Re[W]ord commit message",
-                partial(self.reword, view, commitish)
+                partial(self.reword, view, commit_hash)
             ),
             (
                 "[E]dit commit",
-                partial(self.edit, view, commitish)
+                partial(self.edit, view, commit_hash)
             ),
             (
                 "Drop commit",
-                partial(self.drop, view, commitish)
+                partial(self.drop, view, commit_hash)
             ),
             SEPARATOR,
             (
@@ -205,14 +248,14 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
             "fixes": fixup_commits
         })
 
-    def reword(self, view, commitish):
-        view.run_command("gs_rebase_reword_commit", {"commitish": commitish})
+    def reword(self, view, commit_hash):
+        view.run_command("gs_rebase_reword_commit", {"commit_hash": commit_hash})
 
-    def edit(self, view, commitish):
-        view.run_command("gs_rebase_edit_commit", {"commitish": commitish})
+    def edit(self, view, commit_hash):
+        view.run_command("gs_rebase_edit_commit", {"commit_hash": commit_hash})
 
-    def drop(self, view, commitish):
-        view.run_command("gs_rebase_drop_commit", {"commitish": commitish})
+    def drop(self, view, commit_hash):
+        view.run_command("gs_rebase_drop_commit", {"commit_hash": commit_hash})
 
     def autosquash(self, view, commitish):
         view.run_command("gs_rebase_just_autosquash", {"commitish": commitish})
@@ -409,16 +452,16 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
     action = None  # type: QuickAction
     autosquash = False
     defaults = {
-        "commitish": extract_symbol_from_graph,
+        "commit_hash": extract_commit_hash_from_graph,
     }
 
-    def run(self, edit, commitish):
+    def run(self, edit, commit_hash):
         # type: (sublime.Edit, str) -> None
         action = self.action  # type: ignore[misc]
         if action is None:
             raise NotImplementedError("action must be defined")
 
-        if not self.commit_is_ancestor_of_head(commitish):
+        if not self.commit_is_ancestor_of_head(commit_hash):
             flash(self.view, "Selected commit is not part of the current branch.")
             return
 
@@ -428,7 +471,7 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
                     '--interactive',
                     "--autostash",
                     "--autosquash" if self.autosquash else "--no-autosquash",
-                    "{}^".format(commitish),
+                    "{}^".format(commit_hash),
                 )
 
         run_on_new_thread(program)
