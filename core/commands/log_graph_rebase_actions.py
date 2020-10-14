@@ -20,7 +20,7 @@ from GitSavvy.core.view import replace_view_content
 
 __all__ = (
     "gs_rebase_action",
-    "gs_native_rebase_interactive",
+    "gs_rebase_interactive",
     "gs_rebase_interactive_onto_branch",
     "gs_rebase_on_branch",
     "gs_rebase_abort",
@@ -218,7 +218,7 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
         view.run_command("gs_rebase_just_autosquash", {"commitish": commitish})
 
     def rebase_interactive(self, view, commitish):
-        view.run_command("gs_native_rebase_interactive", {"commitish": commitish})
+        view.run_command("gs_rebase_interactive", {"commitish": commitish})
 
     def rebase_onto(self, view, commitish):
         view.run_command("gs_rebase_interactive_onto_branch", {"commitish": commitish})
@@ -519,7 +519,7 @@ class gs_rebase_skip(sublime_plugin.WindowCommand, RebaseCommand):
         self.rebase('--skip')
 
 
-class gs_native_rebase_interactive(GsTextCommand, RebaseCommand):
+class gs_rebase_interactive(GsTextCommand, RebaseCommand):
     defaults = {
         "commitish": extract_symbol_from_graph,
     }
