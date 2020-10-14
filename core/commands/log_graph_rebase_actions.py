@@ -170,12 +170,13 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
 
         commit_hash = info["commit"]
         commitish = commitish_from_info(info)
+        commit_message = commit_message_from_line(view, line)
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
 
-        base_commit = find_base_commit_for_fixup(view)
-        if base_commit:
-            fixup_commit = current_commit(view)
-            if fixup_commit:
+        if commit_message and is_fixup_or_squash_message(commit_message):
+            fixup_commit = Commit(commit_hash, commit_message)
+            base_commit = find_base_commit_for_fixup(view)
+            if base_commit:
                 actions += [
                     (
                         "Apply fix to '{}'".format(base_commit)
@@ -266,27 +267,22 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
         view.run_command("gs_rebase_on_branch")
 
 
-# Note: Just as `extract_symbol_to_follow` we always use the
-# `b` of the last cursor.
-# Multi cursor support or proper error handling for selections TBD.
-
-def current_commit(view):
-    # type: (sublime.View) -> Optional[Commit]
-    try:
-        cursor = [s.b for s in view.sel()][-1]
-    except IndexError:
+def commit_message_from_line(view, line):
+    # type: (sublime.View, TextRange) -> Optional[str]
+    line_span = line.region()
+    for r in log_graph.extract_message_regions(view):
+        if line_span.contains(r):
+            return line.text[(r.a - line_span.a):(r.b - line_span.a)]
+    else:
         return None
 
-    line_span = view.line(cursor)
-    line_text = view.substr(line_span)
-    commit_hash = log_graph.extract_commit_hash(line_text)
-    if not commit_hash:
-        return None
 
-    commit_message = log_graph.commit_message_from_point(view, cursor)
-    if not commit_message:
-        return None
-    return Commit(commit_hash, commit_message)
+def is_fixup_or_squash_message(commit_message):
+    # type: (str) -> bool
+    return (
+        commit_message.startswith("fixup! ")
+        or commit_message.startswith("squash! ")
+    )
 
 
 def find_base_commit_for_fixup(view):
