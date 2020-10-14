@@ -71,6 +71,17 @@ def line_from_pt(view, pt):
     return TextRange(line_text, line_span.a, line_span.b)
 
 
+def commitish_from_info(info):
+    # type: (log_graph.LineInfo) -> str
+    return next(
+        chain(
+            info.get("tags", []),
+            reversed(info.get("branches", []))
+        ),
+        info["commit"]
+    )
+
+
 def extract_symbol_from_graph(self, done):
     # type: (GsCommand, Kont) -> None
     view = get_view_for_command(self)
@@ -87,17 +98,7 @@ def extract_symbol_from_graph(self, done):
         flash(view, "Not on a line with a commit.")
         return
 
-    commit_hash = info["commit"]
-    # Since we don't pass `remotes` to `describe_graph_line` we don't get
-    # "local_branches".  Git puts remote branches first in its output, so
-    # we reverse "branches" to prefer local over remote branches.
-    symbol = next(
-        chain(
-            info.get("tags", []),
-            reversed(info.get("branches", []))
-        ),
-        commit_hash
-    )
+    symbol = commitish_from_info(info)
     done(symbol)
 
 
@@ -168,17 +169,7 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
             return
 
         commit_hash = info["commit"]
-        # Since we don't pass `remotes` to `describe_graph_line` we don't get
-        # "local_branches".  Git puts remote branches first in its output, so
-        # we reverse "branches" to prefer local over remote branches.
-        commitish = next(
-            chain(
-                info.get("tags", []),
-                reversed(info.get("branches", []))
-            ),
-            commit_hash
-        )
-
+        commitish = commitish_from_info(info)
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
 
         base_commit = find_base_commit_for_fixup(view)
