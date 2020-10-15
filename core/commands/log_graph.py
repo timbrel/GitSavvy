@@ -168,7 +168,10 @@ class gs_graph(WindowCommand, GitCommand):
                         replace_view_content(panel, "")
                     navigate_to_symbol(view, follow)
 
-                focus_view(view)
+                if self.window.active_view() != view:
+                    focus_view(view)
+                else:
+                    view.run_command("gs_log_graph_refresh")
                 break
         else:
             view = util.view.get_scratch_view(self, "log_graph", read_only=True)
