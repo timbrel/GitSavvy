@@ -140,11 +140,12 @@ class gs_graph(WindowCommand, GitCommand):
         )
         for view in self.window.views():
             other_id = compute_identifier_for_view(view)
-            if other_id in (
-                this_id,
-                (repo_path, True, NO_FILTERS),
-                (repo_path, [], NO_FILTERS)
-            ):
+            standard_graph_views = (
+                []
+                if branches
+                else [(repo_path, True, NO_FILTERS), (repo_path, [], NO_FILTERS)]
+            )
+            if other_id in [this_id] + standard_graph_views:
                 settings = view.settings()
                 settings.set("git_savvy.log_graph_view.all_branches", all)
                 settings.set("git_savvy.log_graph_view.branches", branches)
