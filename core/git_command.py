@@ -18,19 +18,6 @@ import traceback
 import sublime
 
 from ..common import util
-from .git_mixins.status import StatusMixin
-from .git_mixins.active_branch import ActiveBranchMixin
-from .git_mixins.branches import BranchesMixin
-from .git_mixins.stash import StashMixin
-from .git_mixins.stage_unstage import StageUnstageMixin
-from .git_mixins.checkout_discard import CheckoutDiscardMixin
-from .git_mixins.remotes import RemotesMixin
-from .git_mixins.ignore import IgnoreMixin
-from .git_mixins.tags import TagsMixin
-from .git_mixins.history import HistoryMixin
-from .git_mixins.rewrite import RewriteMixin
-from .git_mixins.merge import MergeMixin
-from .exceptions import GitSavvyError
 from .settings import SettingsMixin
 
 
@@ -105,20 +92,7 @@ class LoggingProcessWrapper(object):
         return self.stdout, self.stderr
 
 
-class GitCommand(StatusMixin,
-                 ActiveBranchMixin,
-                 BranchesMixin,
-                 StashMixin,
-                 StageUnstageMixin,
-                 CheckoutDiscardMixin,
-                 RemotesMixin,
-                 IgnoreMixin,
-                 TagsMixin,
-                 HistoryMixin,
-                 RewriteMixin,
-                 MergeMixin,
-                 SettingsMixin
-                 ):
+class _GitCommand(SettingsMixin):
 
     """
     Base class for all Sublime commands that interact with git.
@@ -544,3 +518,42 @@ class GitCommand(StatusMixin,
         class attribute dict.
         """
         self._last_remotes_used[self.repo_path] = value
+
+
+if MYPY:
+    mixin_base = _GitCommand
+else:
+    mixin_base = object
+
+
+from .git_mixins.status import StatusMixin  # noqa: E402
+from .git_mixins.active_branch import ActiveBranchMixin  # noqa: E402
+from .git_mixins.branches import BranchesMixin  # noqa: E402
+from .git_mixins.stash import StashMixin  # noqa: E402
+from .git_mixins.stage_unstage import StageUnstageMixin  # noqa: E402
+from .git_mixins.checkout_discard import CheckoutDiscardMixin  # noqa: E402
+from .git_mixins.remotes import RemotesMixin  # noqa: E402
+from .git_mixins.ignore import IgnoreMixin  # noqa: E402
+from .git_mixins.tags import TagsMixin  # noqa: E402
+from .git_mixins.history import HistoryMixin  # noqa: E402
+from .git_mixins.rewrite import RewriteMixin  # noqa: E402
+from .git_mixins.merge import MergeMixin  # noqa: E402
+from .exceptions import GitSavvyError  # noqa: E402
+
+
+class GitCommand(
+    StatusMixin,
+    ActiveBranchMixin,
+    BranchesMixin,
+    StashMixin,
+    StageUnstageMixin,
+    CheckoutDiscardMixin,
+    RemotesMixin,
+    IgnoreMixin,
+    TagsMixin,
+    HistoryMixin,
+    RewriteMixin,
+    MergeMixin,
+    _GitCommand
+):
+    pass
