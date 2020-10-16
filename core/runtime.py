@@ -51,6 +51,13 @@ def run_on_new_thread(fn, *args, **kwargs):
     threading.Thread(target=fn, args=args, kwargs=kwargs).start()
 
 
+def on_new_thread(fn):
+    @wraps(fn)
+    def wrapped(*a, **kw):
+        run_on_new_thread(fn, *a, **kw)
+    return wrapped
+
+
 def run_or_timeout(fn, timeout):
     cond = threading.Condition()
     result = None

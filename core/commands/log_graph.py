@@ -18,7 +18,7 @@ from .log import GsLogCommand
 from .. import utils
 from ..fns import filter_, flatten, pairwise, partition, take, unique
 from ..git_command import GitCommand, GitSavvyError
-from ..parse_diff import Region
+from ..parse_diff import Region, TextRange
 from ..settings import GitSavvySettings
 from ..runtime import (
     enqueue_on_ui, enqueue_on_worker,
@@ -1426,11 +1426,25 @@ def find_dots(view):
 def _find_dots(view):
     # type: (sublime.View) -> Iterator[colorizer.Char]
     for s in view.sel():
-        line_region = view.line(s.begin())
-        line_content = view.substr(line_region)
-        idx = line_content.find(COMMIT_NODE_CHAR)
-        if idx > -1:
-            yield colorizer.Char(view, line_region.begin() + idx)
+        line = line_from_pt(view, s.begin())
+        dot = dot_from_line(view, line)
+        if dot:
+            yield dot
+
+
+def line_from_pt(view, pt):
+    # type: (sublime.View, int) -> TextRange
+    line_span = view.line(pt)
+    line_text = view.substr(line_span)
+    return TextRange(line_text, line_span.a, line_span.b)
+
+
+def dot_from_line(view, line):
+    # type: (sublime.View, TextRange) -> Optional[colorizer.Char]
+    idx = line.text.find(COMMIT_NODE_CHAR)
+    if idx > -1:
+        return colorizer.Char(view, line.region().begin() + idx)
+    return None
 
 
 @lru_cache(maxsize=1)

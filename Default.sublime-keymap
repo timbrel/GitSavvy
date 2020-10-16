@@ -1518,6 +1518,31 @@
         ]
     },
     {
+        "keys": ["r"],
+        "command": "gs_rebase_action",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["W"],
+        "command": "gs_rebase_reword_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["E"],
+        "command": "gs_rebase_edit_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+
+    {
         "keys": ["?"],
         "command": "gs_interface_toggle_popup_help",
         "args": { "view_name": "log_graph_view" },
@@ -1902,7 +1927,6 @@
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": false },
-
             { "key": "setting.git_savvy.rebase_view", "operator": "equal", "operand": true }
         ]
     },
