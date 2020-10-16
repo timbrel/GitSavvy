@@ -66,12 +66,16 @@ else:
 
 def commitish_from_info(info):
     # type: (log_graph.LineInfo) -> str
+    commit_hash = info["commit"]
+    head = info.get("HEAD")
+    on_a_branch = head != commit_hash
     return next(
         chain(
+            [head] if head and on_a_branch else [],
             reversed(info.get("branches", [])),
             info.get("tags", []),
         ),
-        info["commit"]
+        commit_hash
     )
 
 
