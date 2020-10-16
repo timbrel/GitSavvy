@@ -170,6 +170,7 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
         commitish = commitish_from_info(info)
         parent_commitish = "{}^".format(commitish)
         commit_message = commit_message_from_line(view, line)
+        on_head = "HEAD" in info
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
 
         if commit_message and is_fixup_or_squash_message(commit_message):
@@ -185,12 +186,6 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
                     )
                 ]
 
-        head_info = log_graph.describe_head(view, [])
-        good_head_name = (
-            "HEAD"
-            if not head_info or head_info["HEAD"] == head_info["commit"]
-            else head_info["HEAD"]
-        )
         actions += [
             (
                 "Re[W]ord commit message",
@@ -205,10 +200,25 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
                 partial(self.drop, view, commit_hash)
             ),
             SEPARATOR,
-            (
-                "Apply fixes and squashes {}..{}".format(parent_commitish, good_head_name),
-                partial(self.autosquash, view, parent_commitish),
-            ),
+        ]
+
+        # `HEAD^..HEAD` only selects one commit which is not enough
+        # for autosquashing.
+        if not on_head:
+            head_info = log_graph.describe_head(view, [])
+            good_head_name = (
+                "HEAD"
+                if not head_info or head_info["HEAD"] == head_info["commit"]
+                else head_info["HEAD"]
+            )
+            actions += [
+                (
+                    "Apply fixes and squashes {}..{}".format(parent_commitish, good_head_name),
+                    partial(self.autosquash, view, parent_commitish),
+                ),
+            ]
+
+        actions += [
             (
                 "Rebase from {} on interactive".format(parent_commitish),
                 partial(self.rebase_interactive, view, parent_commitish)
