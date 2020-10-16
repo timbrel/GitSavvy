@@ -1,0 +1,96 @@
+GitSavvy 2.27.0
+===============
+
+- Introduce rebasing directly from the Repo History
+
+  In the history views there is a new rebase menu bound to `[r]` which offers
+  very typical rebase commands.
+
+  `[W]` to reword the commit message of the commit under the cursor
+  `[E]` to edit the commit under the cursor
+
+  If you're on a fixup or squash commit, `[r]` will offer a command to apply
+  that fix.
+
+  At any time during a rebase you can either `git: rebase --abort` or
+  `git: rebase --continue` from the Command Palette.  (`--skip` is also there.)
+
+  Note that rebasing merges is not implemented yet.
+
+
+- Other improvements to the Repo History
+
+  `[f]` now remembers the last used filters and also provides defaults like
+        "--reflog"
+  `[F]` toggles the filters on and off
+  `[l]` opens a menu with all files and folders under version control
+
+  For example, if you're searching through a "File History", `[F]` will show
+  you now the context of the commits.
+
+- Improvements to the Commit Message View
+
+  `<tab>` on the very first char of the buffer (BOF position) will show the most
+          recent commits.
+
+  Similar to that, `fixup<tab>` (and `squash<tab>`) can be used to construct
+  commit messages which are recognized as such by "git --interactive".
+
+
+
+When you're rebasing you likely get merge conflicts rather sooner than later.
+If so, a panel should open with further instructions.
+
+##### What's the current workflow to resolve merge conflicts?
+
+Usually, you should open `git: status`[*] which points out the files with
+merging conflicts.
+
+1. Select such a file and press `[e]` to open a diff showing the merge
+conflict.
+
+2. Now click into a hunk and press `[o]` to open the file at that
+position.  Edit the conflict to your liking and save.  Go back to the diff
+(`ctrl+tab`), the diff will update.
+
+Repeat with `[o]` if there are still other conflicts.  Eventually the file will
+be okay.  Unfortunately, you cannot stage such a file in the diff view at the
+moment, so close the view which will bring you back to the status dashboard.
+
+3. `[s]` to stage the file. (Double check with `[e]` on the staged file the diff
+to be committed).  Proceed with other conflicting files.
+
+4. Finally, `git: rebase --continue` to continue.
+
+
+##### How does "Edit" actually work?
+
+If you select a commit for "Edit", it will basically checkout that commit.
+Again a panel opens with further instructions.  You usually now open the file
+you want to edit, make the change and save.  Stage and amend. For example open
+the diff for that file, stage the changes and `[m]` to start the commit process.
+
+You can make more changes too, basically *adding* commits.  When you're done
+`git: rebase --continue` to continue.
+
+
+##### Shit;
+
+After a rebase, `[f]` followed by `<up>` should bring you the "--reflog".  Hit
+`<enter>` to redraw.  You can now for example compare the old with the new tip.
+Select two commits, `<enter>` for the standard menu.  Tip: Choose the diff with
+the two(!) dots "new..old".
+
+Of course, "reset --hard".
+
+
+[*] It is recommended to bind `gs_show_status` to a key-combo, for example
+
+```
+  { "keys": ["ctrl+shift+s"], "command": "gs_show_status"},
+```
+
+
+
+For more info:
+  https://github.com/timbrel/GitSavvy/compare/2.26.2...2.27.0
