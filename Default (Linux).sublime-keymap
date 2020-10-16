@@ -9,7 +9,7 @@
         "command": "gs_commit_view_do_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
             { "key": "setting.git_savvy.commit_on_close", "operator": "equal", "operand": false }
         ]
     },
@@ -18,7 +18,7 @@
         "command": "gs_commit_view_sign",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.get_long_text_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true }
         ]
     },
     {

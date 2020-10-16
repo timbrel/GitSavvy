@@ -42,7 +42,7 @@ class HistoryMixin():
             "--max-count={}".format(limit) if limit else None,
             "--skip={}".format(skip) if skip else None,
             "--reverse" if reverse else None,
-            '--format=%h%n%H%n%D%n%s%n%an%n%ae%n%at%x00%B%x00%x00%n',
+            r"--format=%h%n%H%n%D%n%s%n%an%n%ae%n%at%x00%B%x00%x00%n",  # `r"` to disable Sublime string highlighting
             "--author={}".format(author) if author else None,
             "--grep={}".format(msg_regexp) if msg_regexp else None,
             "--cherry" if cherry else None,

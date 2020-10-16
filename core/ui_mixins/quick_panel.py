@@ -1,8 +1,8 @@
-from functools import partial
 import itertools
 import sublime
 from ...common import util
 from ..git_command import GitCommand
+from GitSavvy.core.fns import filter_
 
 
 class PanelActionMixin(object):
@@ -528,9 +528,6 @@ def short_ref(ref):
     return ' '.join(refs)
 
 
-filter_ = partial(filter, None)
-
-
 class LogPanel(PaginatedPanel):
 
     def format_item(self, entry):
@@ -548,10 +545,6 @@ class LogPanel(PaginatedPanel):
                 "Skip this set of commits and choose from the next-oldest batch."]
 
     def on_selection(self, commit):
-        self.commit = commit
-        sublime.set_timeout_async(lambda: self.on_selection_async(commit), 10)
-
-    def on_selection_async(self, commit):
         self.on_done(commit)
 
 

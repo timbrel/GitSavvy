@@ -10,11 +10,8 @@ contexts:
     - match: '(?=^## To make a commit.+)'
       set: dropped-content
 
-    - match: .
-      set: commit-subject
-
     - match: ^
-      set: commit-message
+      set: commit-subject
 
   references:
     - match: \@\w*
@@ -30,13 +27,20 @@ contexts:
       scope: constant.other.commit-sha.git-savvy.make-commit
 
   commit-subject:
-    - match: \n
-      pop: true
     - meta_scope: meta.commit.message.subject markup.heading.subject.git.commit
+    - match: (?=$)\n
+      set: commit-line-separator
     - include: references
 
+  commit-line-separator:
+    - meta_content_scope: meta.commit.message
+    - match: '(?=^## To make a commit.+)'
+      set: dropped-content
+    - match: \n
+      set: commit-message
+
   commit-message:
-    - meta_scope: meta.commit.message.body
+    - meta_content_scope: meta.commit.message.body
     - include: references
     - match: '(?=^## To make a commit.+)'
       set: dropped-content
@@ -46,6 +50,12 @@ contexts:
       scope: comment.help-text.git-savvy.make-commit
       set:
         - meta_scope: meta.dropped.git.commit
+        - match: '(\[)(.+?)(\])'
+          captures:
+            1: punctuation.definition.git-savvy.key-bindings-key-stroke
+            2: constant.character.git-savvy-key-binding-key
+            3: punctuation.definition.git-savvy.key-bindings-key-stroke
+        - match: '(<)(.+?)(>)'
         - match: ^$
           push: [scope:git-savvy.diff]
         - match: .

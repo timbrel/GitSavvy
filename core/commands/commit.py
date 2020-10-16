@@ -1,3 +1,4 @@
+from functools import lru_cache
 import os
 
 import sublime
@@ -11,6 +12,8 @@ from ..utils import focus_view
 from ..view import replace_view_content
 from ...common import util
 from ...core.settings import SettingsMixin
+from GitSavvy.core.fns import filter_
+from GitSavvy.core.ui_mixins.quick_panel import short_ref
 
 
 __all__ = (
@@ -19,6 +22,7 @@ __all__ = (
     "gs_commit_view_do_commit",
     "gs_commit_view_sign",
     "gs_commit_view_close",
+    "gs_commit_log_helper",
     "GsPrepareCommitFocusEventListener",
     "GsPedanticEnforceEventListener",
 )
@@ -30,11 +34,11 @@ if MYPY:
 
 
 COMMIT_HELP_TEXT_EXTRA = """##
-## You may also reference or close a GitHub issue with this commit.
-## To do so, type `#` followed by the `tab` key.  You will be shown a
-## list of issues related to the current repo.  You may also type
-## `owner/repo#` plus the `tab` key to reference an issue in a
-## different GitHub repo.
+## "<tab>"       at the very first char to see the recent log
+## "fixup<tab>"  to create a fixup subject  (short: "fix<tab>")
+## "squash<tab>  to create a squash subject (short: "sq<tab>")
+## "#<tab>"      to reference a GitHub issue (or: "owner/repo#<tab>")
+## In the diff below, [o] will open the file under the cursor.
 """
 
 COMMIT_HELP_TEXT_ALT = """
@@ -95,7 +99,6 @@ class gs_commit(WindowCommand, GitCommand):
             view = self.window.new_file()
             settings = view.settings()
             settings.set("git_savvy.repo_path", repo_path)
-            settings.set("git_savvy.get_long_text_view", True)
             settings.set("git_savvy.commit_view", True)
             settings.set("git_savvy.commit_view.include_unstaged", include_unstaged)
             settings.set("git_savvy.commit_view.amend", amend)
@@ -405,3 +408,48 @@ class gs_commit_view_close(TextCommand, GitCommand):
 
         else:
             self.view.close()
+
+
+class gs_commit_log_helper(TextCommand, GitCommand):
+    def run(self, edit, prefix="fixup! ", move_to_eol=True):
+        view = self.view
+        window = view.window()
+        assert window
+
+        cursor = view.sel()[0].begin()
+        items = self.log(limit=100)
+
+        def on_done(idx):
+            window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
+            if idx == -1:
+                return
+            entry = items[idx]
+            text = "{}{}".format(prefix, entry.summary)
+            replace_view_content(view, text, region=view.line(cursor))
+            if move_to_eol:
+                view.sel().clear()
+                view.sel().add(len(text))
+
+        # `on_highlight` also gets called `on_done`, and then
+        # our "show|hide_panel" side-effects get muddled.  We
+        # reduce the side-effect here using `lru_cache`.
+        @lru_cache(1)
+        def on_highlight(idx):
+            entry = items[idx]
+            window.run_command("gs_show_commit_info", {  # type: ignore[union-attr]  # mypy bug
+                "commit_hash": entry.short_hash
+            })
+
+        format_item = lambda entry: "  ".join(filter_(
+            (
+                entry.short_hash,
+                short_ref(entry.ref) if not entry.ref.startswith("HEAD ->") else "",
+                entry.summary
+            )
+        ))
+        window.show_quick_panel(
+            list(map(format_item, items)),
+            on_done,
+            flags=sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST,
+            on_highlight=on_highlight
+        )
