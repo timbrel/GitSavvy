@@ -391,8 +391,8 @@ class View:
         content: str,
         flags: int = ...,
         location: int = ...,
-        max_width: int = ...,
-        max_height: int = ...,
+        max_width: Union[int, float] = ...,
+        max_height: Union[int, float] = ...,
         on_navigate: Optional[Any] = ...,
         on_hide: Optional[Any] = ...,
     ) -> None: ...

@@ -1502,6 +1502,30 @@
         ]
     },
     {
+        "keys": ["up"],
+        "command": "gs_input_handler_go_history",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.input_panel_with_history" }
+        ]
+    },
+    {
+        "keys": ["down"],
+        "command": "gs_input_handler_go_history",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.input_panel_with_history" }
+        ]
+    },
+    {
+        "keys": ["l"],
+        "command": "gs_log_graph_edit_files",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["h"],
         "command": "gs_log_graph_navigate_to_head",
         "context": [
