@@ -66,14 +66,6 @@ class FlowCommon(WindowCommand, GitCommand):
             selected = selected[2:]
         return selected
 
-    def get_local_branches(self):
-        """
-        Use get_branches  (from BranchesMixin) while filtering
-        out remote branches and returning a list of names
-        """
-        branches = self.get_branches()
-        return [b.name for b in branches if not b.remote]
-
 
 class GsGitFlowInitCommand(FlowCommon):
     """
@@ -108,7 +100,7 @@ class GsGitFlowInitCommand(FlowCommon):
             return
         self.configure_gitflow('origin', value)
 
-        self.branches = self.get_local_branches()
+        self.branches = [b.name for b in self.get_local_branches()]
 
         self._generic_select('Branch for production releases (master)',
                              self.branches, self.on_master_selected)
@@ -128,7 +120,7 @@ class GsGitFlowInitCommand(FlowCommon):
     def create_develop_branch(self, index):
         if index == 1:
             self.git('branch', 'develop')
-            self.branches = self.get_local_branches()
+            self.branches = [b.name for b in self.get_local_branches()]
             self.on_develop_selected(1)
 
     def on_develop_selected(self, index):
@@ -211,9 +203,11 @@ class GenericSelectTargetBranch(object):
             if self.curbranch.startswith(self.prefix):
                 self.cur_name = name = self.curbranch.replace(self.prefix, '')
             else:
-                self.branches = [b.replace(self.prefix, '')
-                                 for b in self.get_local_branches()
-                                 if b.startswith(self.prefix)]
+                self.branches = [
+                    b.name.replace(self.prefix, '')
+                    for b in self.get_local_branches()
+                    if b.name.startswith(self.prefix)
+                ]
                 self._generic_select(
                     self.name_prompt,
                     self.branches,

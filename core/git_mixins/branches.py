@@ -6,7 +6,7 @@ from GitSavvy.core.git_command import mixin_base
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, Optional
+    from typing import Dict, Iterable, Optional, Sequence
 
 
 BRANCH_DESCRIPTION_RE = re.compile(r"^branch\.(.*?)\.description (.*)$")
@@ -27,7 +27,7 @@ class BranchesMixin(mixin_base):
 
     def get_current_branch(self):
         # type: () -> Optional[Branch]
-        for branch in self.get_branches():
+        for branch in self.get_local_branches():
             if branch.active:
                 return branch
         return None
@@ -37,13 +37,22 @@ class BranchesMixin(mixin_base):
         """
         Get a local Branch tuple from branch name.
         """
-        for branch in self.get_branches():
-            if not branch.remote and branch.name == branch_name:
+        for branch in self.get_local_branches():
+            if branch.name == branch_name:
                 return branch
         return None
 
-    def get_branches(self, sort_by_recent=False, fetch_descriptions=False):
-        # type: (bool, bool) -> Iterable[Branch]
+    def get_local_branches(self):
+        # type: () -> Iterable[Branch]
+        return self.get_branches(refs=["refs/heads"])
+
+    def get_branches(
+        self,
+        sort_by_recent=False,
+        fetch_descriptions=False,
+        refs=["refs/heads", "refs/remotes"]
+    ):
+        # type: (bool, bool, Sequence[str]) -> Iterable[Branch]
         """
         Return a list of all local and remote branches.
         """
@@ -51,8 +60,8 @@ class BranchesMixin(mixin_base):
             "for-each-ref",
             "--format=%(HEAD)%00%(refname)%00%(upstream)%00%(upstream:track)%00%(objectname)%00%(contents:subject)",
             "--sort=-committerdate" if sort_by_recent else None,
-            "refs/heads",
-            "refs/remotes")
+            *refs
+        )
         branches = (
             branch
             for branch in (
