@@ -25,6 +25,13 @@ Branch = namedtuple("Branch", (
 
 class BranchesMixin(mixin_base):
 
+    def get_current_branch(self):
+        # type: () -> Optional[Branch]
+        for branch in self.get_branches():
+            if branch.active:
+                return branch
+        return None
+
     def get_branches(self, sort_by_recent=False, fetch_descriptions=False):
         # type: (bool, bool) -> Iterable[Branch]
         """

@@ -171,31 +171,36 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        if not self.get_upstream_for_active_branch():
+        current_branch = self.get_current_branch()
+        if not current_branch:
+            sublime.message_dialog("You're on a detached HEAD.  Can't push in that state.")
+            return
+
+        if not current_branch.tracking:
             if sublime.ok_cancel_dialog(PUSH_PROMPT):
                 self.window.run_command(
                     "gs_github_push_and_create_pull_request",
                     {"set_upstream": True})
 
         else:
-            remote_branch = self.get_active_remote_branch()
-            if not remote_branch:
-                sublime.message_dialog("Unable to determine remote.")
-            else:
-                status, secondary = self.get_branch_status()
-                if secondary:
-                    secondary = "\n".join(secondary)
-                    if "ahead" in secondary or "behind" in secondary:
-                        sublime.message_dialog(
-                            "Your current branch is different from its remote counterpart.\n" +
-                            secondary)
-                        return
-
-                owner = github.parse_remote(self.get_remotes()[remote_branch.remote]).owner
-                self.open_comparision_in_browser(
-                    owner,
-                    remote_branch.name
+            remote, remote_branch = current_branch.tracking.split("/", 1)
+            if (
+                "ahead" in current_branch.tracking_status
+                or "behind" in current_branch.tracking_status
+            ):
+                sublime.message_dialog(
+                    "Your current branch is different from '{}'.\n{}".format(
+                        current_branch.tracking, current_branch.tracking_status
+                    )
                 )
+                return
+
+            remote_url = self.get_remotes()[remote]
+            owner = github.parse_remote(remote_url).owner
+            self.open_comparision_in_browser(
+                owner,
+                remote_branch
+            )
 
     def open_comparision_in_browser(self, owner, branch):
         base_remote = github.parse_remote(self.get_integrated_remote_url())
