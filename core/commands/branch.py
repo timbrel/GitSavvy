@@ -1,12 +1,12 @@
 import re
 
-import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand, GitSavvyError
 from ..runtime import enqueue_on_worker
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
+from GitSavvy.core.utils import noop, show_actions_panel
 
 
 __all__ = (
@@ -87,23 +87,13 @@ class gs_delete_branch(WindowCommand, GitCommand):
 
     def offer_force_deletion(self, branch_name):
         # type: (str) -> None
-
-        actions = [
-            "Abort, '{}' is not fully merged.".format(branch_name),
-            "Delete anyway."
-        ]
-
-        def on_action_selection(index):
-            if index < 1:
-                return
-
-            self.window.run_command("gs_delete_branch", {
-                "branch": branch_name,
-                "force": True
-            })
-
-        self.window.show_quick_panel(
-            actions,
-            on_action_selection,
-            flags=sublime.MONOSPACE_FONT,
-        )
+        show_actions_panel(self.window, [
+            noop("Abort, '{}' is not fully merged.".format(branch_name)),
+            (
+                "Delete anyway.",
+                lambda: self.window.run_command("gs_delete_branch", {
+                    "branch": branch_name,
+                    "force": True
+                })
+            )
+        ])
