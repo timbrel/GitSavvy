@@ -1,6 +1,8 @@
 from collections import namedtuple
 import re
 
+from GitSavvy.core.git_command import mixin_base
+
 
 MYPY = False
 if MYPY:
@@ -21,7 +23,7 @@ Branch = namedtuple("Branch", (
 ))
 
 
-class BranchesMixin():
+class BranchesMixin(mixin_base):
 
     def get_branches(self, sort_by_recent=False, fetch_descriptions=False):
         # type: (bool, bool) -> Iterable[Branch]
