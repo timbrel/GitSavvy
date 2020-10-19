@@ -5,6 +5,7 @@ from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from GitSavvy.core.runtime import enqueue_on_worker
 
 
 __all__ = (
@@ -60,7 +61,7 @@ class gs_push(PushBase):
         self.force = force
         self.force_with_lease = force_with_lease
         self.local_branch_name = local_branch_name
-        sublime.set_timeout_async(self.run_async)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         if self.local_branch_name:
@@ -110,7 +111,7 @@ class gs_push_to_branch(PushBase):
     """
 
     def run(self):
-        sublime.set_timeout_async(self.run_async)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         show_branch_panel(self.on_branch_selection, ask_remote_first=True)
@@ -120,9 +121,12 @@ class gs_push_to_branch(PushBase):
             return
         current_local_branch = self.get_current_branch_name()
         selected_remote, selected_branch = branch.split("/", 1)
-        sublime.set_timeout_async(
-            lambda: self.do_push(
-                selected_remote, current_local_branch, remote_branch=selected_branch))
+        enqueue_on_worker(
+            self.do_push,
+            selected_remote,
+            current_local_branch,
+            remote_branch=selected_branch
+        )
 
 
 class gs_push_to_branch_name(PushBase):
@@ -131,12 +135,13 @@ class gs_push_to_branch_name(PushBase):
     """
 
     def run(
-            self,
-            local_branch_name=None,
-            branch_name=None,
-            set_upstream=False,
-            force=False,
-            force_with_lease=False):
+        self,
+        local_branch_name=None,
+        branch_name=None,
+        set_upstream=False,
+        force=False,
+        force_with_lease=False
+    ):
         if local_branch_name:
             self.local_branch_name = local_branch_name
         else:
@@ -146,7 +151,7 @@ class gs_push_to_branch_name(PushBase):
         self.set_upstream = set_upstream
         self.force = force
         self.force_with_lease = force_with_lease
-        sublime.set_timeout_async(self.run_async)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         show_remote_panel(self.on_remote_selection)
@@ -175,9 +180,11 @@ class gs_push_to_branch_name(PushBase):
         Push to the remote that was previously selected and provided branch
         name.
         """
-        sublime.set_timeout_async(lambda: self.do_push(
+        enqueue_on_worker(
+            self.do_push,
             self.selected_remote,
             self.local_branch_name,
+            remote_branch=branch,
             force=self.force,
-            force_with_lease=self.force_with_lease,
-            remote_branch=branch))
+            force_with_lease=self.force_with_lease
+        )
