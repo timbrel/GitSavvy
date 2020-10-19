@@ -1,3 +1,5 @@
+from functools import partial
+
 import sublime
 from sublime_plugin import WindowCommand
 
@@ -79,13 +81,29 @@ class gs_push(PushBase):
         upstream = local_branch.tracking
         if upstream:
             remote, remote_branch = upstream.split("/", 1)
-            self.do_push(
+            kont = partial(
+                self.do_push,
                 remote,
                 local_branch.name,
                 remote_branch=remote_branch,
                 force=force,
                 force_with_lease=force_with_lease
             )
+            if not force and not force_with_lease and "behind" in local_branch.tracking_status:
+                show_actions_panel(self.window, [
+                    noop(
+                        "Abort, '{}' is behind '{}/{}'."
+                        .format(local_branch.name, remote, remote_branch)
+                    ),
+                    (
+                        "Forcefully push.",
+                        partial(enqueue_on_worker, kont, force_with_lease=True)
+                    )
+                ])
+                return
+            else:
+                kont()
+
         elif self.savvy_settings.get("prompt_for_tracking_branch"):
             if sublime.ok_cancel_dialog(SET_UPSTREAM_PROMPT):
                 self.window.run_command("gs_push_to_branch_name", {
@@ -189,3 +207,35 @@ class gs_push_to_branch_name(PushBase):
             force=self.force,
             force_with_lease=self.force_with_lease
         )
+
+
+MYPY = False
+if MYPY:
+    from typing import Callable, Sequence, NamedTuple, Tuple
+    Action = NamedTuple("Action", [("description", str), ("action", Callable[[], None])])
+    ActionType = Tuple[str, Callable[[], None]]
+
+else:
+    from collections import namedtuple
+    Action = namedtuple("Action", "description action")
+
+
+def show_actions_panel(window, actions):
+    # type: (sublime.Window, Sequence[ActionType]) -> None
+    def on_action_selection(idx):
+        # type: (int) -> None
+        if idx == -1:
+            return
+        description, action = actions[idx]
+        action()
+
+    window.show_quick_panel(
+        [action[0] for action in actions],
+        on_action_selection,
+        flags=sublime.MONOSPACE_FONT
+    )
+
+
+def noop(description):
+    # type: (str) -> Action
+    return Action(description, lambda: None)
