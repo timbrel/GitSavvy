@@ -189,6 +189,10 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
                 "Drop commit",
                 partial(self.drop, view, commit_hash)
             ),
+            (
+                "Make fixup commit for {}".format(commit_hash),
+                partial(self.create_fixup_commit, commit_hash)
+            ),
             SEPARATOR,
         ]
 
@@ -237,6 +241,12 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
             flags=sublime.MONOSPACE_FONT,
             selected_index=self.selected_index,
         )
+
+    def create_fixup_commit(self, commit_hash):
+        commit_message = self.git("log", "-1", "--pretty=format:%s", commit_hash).strip()
+        self.window.run_command("gs_commit", {
+            "initial_text": "fixup! {}".format(commit_message)
+        })
 
     def apply_fixup(self, view, base_commit, fixup_commits):
         view.run_command("gs_rebase_apply_fixup", {
