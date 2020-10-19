@@ -36,7 +36,7 @@ class PushBase(WindowCommand, GitCommand):
                 if not sublime.ok_cancel_dialog(CONFIRM_FORCE_PUSH.format("--force")):
                     return
             elif force_with_lease:
-                if not sublime.ok_cancel_dialog(CONFIRM_FORCE_PUSH.format("--force--with-lease")):
+                if not sublime.ok_cancel_dialog(CONFIRM_FORCE_PUSH.format("--force-with-lease")):
                     return
 
         self.window.status_message(START_PUSH_MESSAGE)
