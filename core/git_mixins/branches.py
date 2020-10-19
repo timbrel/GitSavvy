@@ -47,7 +47,7 @@ class BranchesMixin(mixin_base):
         return self.get_branches(refs=["refs/heads"])
 
     def get_branches(
-        self,
+        self, *,
         sort_by_recent=False,
         fetch_descriptions=False,
         refs=["refs/heads", "refs/remotes"]
