@@ -63,23 +63,31 @@ class gs_push(PushBase):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        if not self.local_branch_name:
-            self.local_branch_name = self.get_current_branch_name()
+        if self.local_branch_name:
+            local_branch = self.get_local_branch(self.local_branch_name)
+            if not local_branch:
+                sublime.message_dialog("'{}' is not a local branch name.")
+                return
+        else:
+            local_branch = self.get_current_branch()
+            if not local_branch:
+                sublime.message_dialog("Can't push a detached HEAD.")
+                return
 
-        upstream = self.get_local_branch(self.local_branch_name).tracking
-
+        upstream = local_branch.tracking
         if upstream:
             remote, remote_branch = upstream.split("/", 1)
             self.do_push(
                 remote,
-                self.local_branch_name,
+                local_branch.name,
                 remote_branch=remote_branch,
                 force=self.force,
-                force_with_lease=self.force_with_lease)
+                force_with_lease=self.force_with_lease
+            )
         elif self.savvy_settings.get("prompt_for_tracking_branch"):
             if sublime.ok_cancel_dialog(SET_UPSTREAM_PROMPT):
                 self.window.run_command("gs_push_to_branch_name", {
-                    "local_branch_name": self.local_branch_name,
+                    "local_branch_name": local_branch.name,
                     "set_upstream": True,
                     "force": self.force,
                     "force_with_lease": self.force_with_lease
@@ -88,8 +96,8 @@ class gs_push(PushBase):
             # if `prompt_for_tracking_branch` is false, ask for a remote and perform
             # push current branch to a remote branch with the same name
             self.window.run_command("gs_push_to_branch_name", {
-                "local_branch_name": self.local_branch_name,
-                "branch_name": self.local_branch_name,
+                "local_branch_name": local_branch.name,
+                "branch_name": local_branch.name,
                 "set_upstream": False,
                 "force": self.force,
                 "force_with_lease": self.force_with_lease
