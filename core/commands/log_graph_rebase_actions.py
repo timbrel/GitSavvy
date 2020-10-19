@@ -9,12 +9,11 @@ import sublime
 import sublime_plugin
 
 from GitSavvy.common import util
-from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
+from GitSavvy.core.base_commands import ask_for_local_branch, GsTextCommand, GsWindowCommand
 from GitSavvy.core.commands import log_graph
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.parse_diff import TextRange
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
-from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
 from GitSavvy.core.utils import flash
 from GitSavvy.core.view import replace_view_content
 
@@ -122,19 +121,6 @@ def extract_commit_hash_from_graph(self, done):
 
     commit_hash = info["commit"]
     done(commit_hash)
-
-
-def ask_for_local_branch(self, done):
-    # type: (GsCommand, Kont) -> None
-    def on_done(branch):
-        if branch:
-            done(branch)
-
-    show_branch_panel(
-        on_done,
-        local_branches_only=True,
-        ignore_current_branch=True,
-    )
 
 
 def get_view_for_command(cmd):

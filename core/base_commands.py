@@ -7,6 +7,9 @@ import sublime
 import sublime_plugin
 
 
+from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
+
+
 MYPY = False
 if MYPY:
     from typing import Any, Callable, Dict, Iterator, List, TypeVar
@@ -137,3 +140,19 @@ class GsWindowCommand(
 if MYPY:
     from typing import Union
     GsCommand = Union[GsTextCommand, GsWindowCommand]
+
+
+# COMMON INPUT HANDLERS
+
+
+def ask_for_local_branch(self, done):
+    # type: (GsCommand, Kont) -> None
+    def on_done(branch):
+        if branch:
+            done(branch)
+
+    show_branch_panel(
+        on_done,
+        local_branches_only=True,
+        ignore_current_branch=True,
+    )
