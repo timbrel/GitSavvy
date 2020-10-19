@@ -32,6 +32,16 @@ class BranchesMixin(mixin_base):
                 return branch
         return None
 
+    def get_local_branch(self, branch_name):
+        # type: (str) -> Optional[Branch]
+        """
+        Get a local Branch tuple from branch name.
+        """
+        for branch in self.get_branches():
+            if not branch.remote and branch.name == branch_name:
+                return branch
+        return None
+
     def get_branches(self, sort_by_recent=False, fetch_descriptions=False):
         # type: (bool, bool) -> Iterable[Branch]
         """
@@ -112,14 +122,6 @@ class BranchesMixin(mixin_base):
         """
 
         self.git("merge", *branch_names)
-
-    def get_local_branch(self, branch_name):
-        """
-        Get a local Branch tuple from branch name.
-        """
-        for branch in self.get_branches():
-            if not branch.remote and branch.name == branch_name:
-                return branch
 
     def branches_containing_commit(self, commit_hash, local_only=True, remote_only=False):
         """
