@@ -195,25 +195,30 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
 
         else:
             remote, remote_branch = current_branch.tracking.split("/", 1)
-            remote_url = self.get_remotes()[remote]
-            owner = github.parse_remote(remote_url).owner
             self.open_comparision_in_browser(
-                owner,
-                remote_branch
+                remote,
+                remote_branch,
             )
 
-    def open_comparision_in_browser(self, owner, branch):
-        base_remote = github.parse_remote(self.get_integrated_remote_url())
-        remote_url = base_remote.url
-        base_owner = base_remote.owner
+    def open_comparision_in_browser(self, remote, remote_branch):
+        # type: (str, str) -> None
+        remotes = self.get_remotes()
+
+        remote_url = remotes[remote]
+        owner = github.parse_remote(remote_url).owner
+
+        base_remote_name = self.get_integrated_remote_name(remotes)
+        base_remote_url = remotes[base_remote_name]
+        base_remote = github.parse_remote(base_remote_url)
         base_branch = self.get_integrated_branch_name()
+
         start = (
-            "{}:{}...".format(base_owner, urllib.parse.quote_plus(base_branch))
+            "{}:{}...".format(base_remote.owner, urllib.parse.quote_plus(base_branch))
             if base_branch
             else ""
         )
-        end = "{}:{}".format(owner, urllib.parse.quote_plus(branch))
-        url = "{}/compare/{}{}?expand=1".format(remote_url, start, end)
+        end = "{}:{}".format(owner, urllib.parse.quote_plus(remote_branch))
+        url = "{}/compare/{}{}?expand=1".format(base_remote.url, start, end)
         open_in_browser(url)
 
 
