@@ -178,9 +178,10 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
 
         if not current_branch.tracking:
             if sublime.ok_cancel_dialog(PUSH_PROMPT):
-                self.window.run_command(
-                    "gs_github_push_and_create_pull_request",
-                    {"set_upstream": True})
+                self.window.run_command("gs_github_push_and_create_pull_request", {
+                    "local_branch_name": current_branch.name,
+                    "set_upstream": True
+                })
 
         else:
             remote, remote_branch = current_branch.tracking.split("/", 1)
