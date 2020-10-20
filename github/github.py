@@ -22,10 +22,20 @@ your settings, as described in the documentation:
 https://github.com/timbrel/GitSavvy/blob/master/docs/github.md#setup
 """
 
-GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo", "token"))
+
+MYPY = False
+if MYPY:
+    from typing import NamedTuple
+    GitHubRepo = NamedTuple("GitHubRepo", [
+        ("url", str), ("fqdn", str), ("owner", str), ("repo", str), ("token", str)
+    ])
+    remote_url = str
+else:
+    GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo", "token"))
 
 
 def remote_to_url(remote):
+    # type: (remote_url) -> str
     """
     Parse out a Github HTTP URL from a remote URI:
 
@@ -53,6 +63,7 @@ def remote_to_url(remote):
 
 
 def parse_remote(remote):
+    # type: (remote_url) -> GitHubRepo
     """
     Given a line of output from `git remote -v`, parse the string and return
     an object with original url, FQDN, owner, repo, and the token to use for
@@ -176,7 +187,7 @@ def iteratively_query_github(api_url_template, github_repo):
     while True:
         if response is not None:
             # it means this is not the first iter
-            if "link" not in response.headers:
+            if "link" not in response.headers:  # type: ignore[unreachable]
                 break
 
             # following next link
