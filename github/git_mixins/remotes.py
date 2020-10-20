@@ -22,8 +22,8 @@ class GithubRemotesMixin(base):
             throw_on_stderr=False
         ).strip() or None
 
-    def get_integrated_remote_name(self, remotes):
-        # type: (Dict[name, url]) -> name
+    def get_integrated_remote_name(self, remotes, current_upstream=None):
+        # type: (Dict[name, url], Optional[str]) -> name
         if len(remotes) == 0:
             raise ValueError("GitHub integration will not function when no remotes defined.")
 
@@ -44,7 +44,8 @@ class GithubRemotesMixin(base):
             if name in remotes:
                 return name
 
-        current_upstream = self.get_upstream_for_active_branch()
+        if current_upstream is None:
+            current_upstream = self.get_upstream_for_active_branch()
         if current_upstream:
             return current_upstream.split("/")[0]
 
@@ -61,8 +62,8 @@ class GithubRemotesMixin(base):
         if len(remotes) == 1:
             return list(remotes.keys())[0]
 
-        integrated_remote = self.get_integrated_remote_name(remotes)
         upstream = self.get_upstream_for_active_branch()
+        integrated_remote = self.get_integrated_remote_name(remotes, current_upstream=upstream)
         if upstream:
             tracked_remote = upstream.split("/")[0]
             if tracked_remote != integrated_remote:

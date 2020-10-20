@@ -14,6 +14,11 @@ from ...core.ui_mixins.input_panel import show_single_line_input_panel
 from ...core.view import replace_view_content
 
 
+MYPY = False
+if MYPY:
+    from GitSavvy.core.git_mixins.branches import Branch
+
+
 PUSH_PROMPT = ("You have not set an upstream for the active branch.  "
                "Would you like to push to a remote?")
 
@@ -194,20 +199,19 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
             )
 
         else:
-            remote, remote_branch = current_branch.tracking.split("/", 1)
-            self.open_comparision_in_browser(
-                remote,
-                remote_branch,
-            )
+            self.open_comparision_in_browser(current_branch)
 
-    def open_comparision_in_browser(self, remote, remote_branch):
-        # type: (str, str) -> None
+    def open_comparision_in_browser(self, current_branch):
+        # type: (Branch) -> None
         remotes = self.get_remotes()
+        remote, remote_branch = current_branch.tracking.split("/", 1)
 
         remote_url = remotes[remote]
         owner = github.parse_remote(remote_url).owner
 
-        base_remote_name = self.get_integrated_remote_name(remotes)
+        base_remote_name = self.get_integrated_remote_name(
+            remotes, current_upstream=current_branch.tracking
+        )
         base_remote_url = remotes[base_remote_name]
         base_remote = github.parse_remote(base_remote_url)
         base_branch = self.get_integrated_branch_name()
