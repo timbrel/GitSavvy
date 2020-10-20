@@ -209,12 +209,15 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
         remote_url = remotes[remote]
         owner = github.parse_remote(remote_url).owner
 
+        config = self.read_gitsavvy_config()
         base_remote_name = self.get_integrated_remote_name(
-            remotes, current_upstream=current_branch.tracking
+            remotes,
+            current_upstream=current_branch.tracking,
+            configured_remote_name=config.get("ghremote")
         )
         base_remote_url = remotes[base_remote_name]
         base_remote = github.parse_remote(base_remote_url)
-        base_branch = self.get_integrated_branch_name()
+        base_branch = config.get("ghbranch")
 
         start = (
             "{}:{}...".format(base_remote.owner, urllib.parse.quote_plus(base_branch))

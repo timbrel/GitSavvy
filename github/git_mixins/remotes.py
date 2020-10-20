@@ -11,32 +11,41 @@ else:
     base = object
 
 
+NOTSET = "<NOTSET>"
+
+
 class GithubRemotesMixin(base):
+    def read_gitsavvy_config(self):
+        # type: () -> Dict[str, str]
+        return dict(
+            line[9:].split()
+            for line in self.git(
+                "config",
+                "--get-regex",
+                r"^gitsavvy\..*",
+                throw_on_stderr=False
+            ).splitlines()
+        )
+
     def get_integrated_branch_name(self):
         # type: () -> Optional[str]
-        return self.git(
-            "config",
-            "--local",
-            "--get",
-            "GitSavvy.ghBranch",
-            throw_on_stderr=False
-        ).strip() or None
+        return self.read_gitsavvy_config().get("ghbranch")
 
-    def get_integrated_remote_name(self, remotes, current_upstream=None):
-        # type: (Dict[name, url], Optional[str]) -> name
+    def get_integrated_remote_name(
+        self,
+        remotes,
+        current_upstream=NOTSET,
+        configured_remote_name=NOTSET
+    ):
+        # type: (Dict[name, url], Optional[str], Optional[str]) -> name
         if len(remotes) == 0:
             raise ValueError("GitHub integration will not function when no remotes defined.")
 
         if len(remotes) == 1:
             return list(remotes.keys())[0]
 
-        configured_remote_name = self.git(
-            "config",
-            "--local",
-            "--get",
-            "GitSavvy.ghRemote",
-            throw_on_stderr=False
-        ).strip()
+        if configured_remote_name is NOTSET:
+            configured_remote_name = self.read_gitsavvy_config().get("ghremote")
         if configured_remote_name in remotes:
             return configured_remote_name
 
@@ -44,7 +53,7 @@ class GithubRemotesMixin(base):
             if name in remotes:
                 return name
 
-        if current_upstream is None:
+        if current_upstream is NOTSET:
             current_upstream = self.get_upstream_for_active_branch()
         if current_upstream:
             return current_upstream.split("/")[0]
