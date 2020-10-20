@@ -7,7 +7,7 @@ from collections import namedtuple
 from webbrowser import open as open_in_browser
 from functools import partial
 
-from ..common import interwebs, util
+from ..common import interwebs
 from ..core.exceptions import FailedGithubRequest
 from ..core.settings import GitSavvySettings
 
@@ -49,8 +49,7 @@ def remote_to_url(remote):
     elif remote.startswith("http"):
         return remote
     else:
-        util.debug.log_error('Cannot parse remote "%s" to url' % remote)
-        return None
+        raise ValueError('Cannot parse remote "{}" and transform to url'.format(remote))
 
 
 def parse_remote(remote):
@@ -60,14 +59,10 @@ def parse_remote(remote):
     this particular FQDN (if available).
     """
     url = remote_to_url(remote)
-    if not url:
-        return None
 
     match = re.match(r"https?://([a-zA-Z-\.0-9]+)/([a-zA-Z-\._0-9]+)/([a-zA-Z-\._0-9]+)/?", url)
-
     if not match:
-        util.debug.log_error('Invalid github url: %s' % url)
-        return None
+        raise ValueError("Invalid github url: {}".format(url))
 
     fqdn, owner, repo = match.groups()
     token = GitSavvySettings().get("api_tokens", {}).get(fqdn)
@@ -79,9 +74,6 @@ def open_file_in_browser(rel_path, remote, commit_hash, start_line=None, end_lin
     Open the URL corresponding to the provided `rel_path` on `remote`.
     """
     github_repo = parse_remote(remote)
-    if not github_repo:
-        return None
-
     line_numbers = "#L{}-L{}".format(start_line, end_line) if start_line is not None else ""
 
     url = "{repo_url}/blob/{commit_hash}/{path}{lines}".format(
@@ -99,8 +91,6 @@ def open_repo(remote):
     Open the GitHub repo in a new browser window, given the specified remote.
     """
     github_repo = parse_remote(remote)
-    if not github_repo:
-        return None
     open_in_browser(github_repo.url)
 
 
@@ -109,8 +99,6 @@ def open_issues(remote):
     Open the GitHub issues in a new browser window, given the specified remote.
     """
     github_repo = parse_remote(remote)
-    if not github_repo:
-        return None
     open_in_browser("{}/issues".format(github_repo.url))
 
 
