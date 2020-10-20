@@ -183,19 +183,18 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
                     "set_upstream": True
                 })
 
+        elif (
+            "ahead" in current_branch.tracking_status
+            or "behind" in current_branch.tracking_status
+        ):
+            sublime.message_dialog(
+                "Your current branch is different from '{}'.\n{}".format(
+                    current_branch.tracking, current_branch.tracking_status
+                )
+            )
+
         else:
             remote, remote_branch = current_branch.tracking.split("/", 1)
-            if (
-                "ahead" in current_branch.tracking_status
-                or "behind" in current_branch.tracking_status
-            ):
-                sublime.message_dialog(
-                    "Your current branch is different from '{}'.\n{}".format(
-                        current_branch.tracking, current_branch.tracking_status
-                    )
-                )
-                return
-
             remote_url = self.get_remotes()[remote]
             owner = github.parse_remote(remote_url).owner
             self.open_comparision_in_browser(
