@@ -60,12 +60,6 @@ class gs_push(PushBase):
     """
 
     def run(self, local_branch_name=None, force=False, force_with_lease=False):
-        self.force = force
-        self.force_with_lease = force_with_lease
-        self.local_branch_name = local_branch_name
-        enqueue_on_worker(self.run_async, local_branch_name, force, force_with_lease)
-
-    def run_async(self, local_branch_name, force, force_with_lease):
         # type: (str, bool, bool) -> None
         if local_branch_name:
             local_branch = self.get_local_branch(local_branch_name)
@@ -82,6 +76,7 @@ class gs_push(PushBase):
         if upstream:
             remote, remote_branch = upstream.split("/", 1)
             kont = partial(
+                enqueue_on_worker,
                 self.do_push,
                 remote,
                 local_branch.name,
@@ -97,7 +92,7 @@ class gs_push(PushBase):
                     ),
                     (
                         "Forcefully push.",
-                        partial(enqueue_on_worker, kont, force_with_lease=True)
+                        partial(kont, force_with_lease=True)
                     )
                 ])
                 return
