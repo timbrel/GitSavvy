@@ -254,7 +254,7 @@ class BranchPanel(GitCommand):
         if self.ignore_current_branch:
             current_branch = self.get_current_branch_name()
             self.all_branches = [b for b in self.all_branches if b != current_branch]
-        elif self.selected_branch is None:
+        elif self.selected_branch is None and not self.remote_branches_only:
             self.selected_branch = self.get_current_branch_name()
 
         if remote:
