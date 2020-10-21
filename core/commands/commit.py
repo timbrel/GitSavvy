@@ -317,8 +317,18 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
 
 def extract_commit_message(view):
     # type: (sublime.View) -> str
+    return extract_first_region(view, "meta.commit.message")
+
+
+def extract_commit_subject(view):
+    # type: (sublime.View) -> str
+    return extract_first_region(view, "meta.commit.message.subject")
+
+
+def extract_first_region(view, selector):
+    # type: (sublime.View, str) -> str
     try:
-        region = view.find_by_selector("meta.commit.message")[0]
+        region = view.find_by_selector(selector)[0]
     except IndexError:
         return ""
 
@@ -416,8 +426,15 @@ class gs_commit_log_helper(TextCommand, GitCommand):
         window = view.window()
         assert window
 
+        subject = extract_commit_subject(view).strip()
+        clean_subject = cleanup_subject(subject)
+
         cursor = view.sel()[0].begin()
         items = self.log(limit=100)
+        preselected_idx = next(
+            (idx for idx, item in enumerate(items) if item.summary == clean_subject),
+            -1
+        )
 
         def on_done(idx):
             window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
@@ -451,5 +468,15 @@ class gs_commit_log_helper(TextCommand, GitCommand):
             list(map(format_item, items)),
             on_done,
             flags=sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST,
-            on_highlight=on_highlight
+            on_highlight=on_highlight,
+            selected_index=preselected_idx
         )
+
+
+def cleanup_subject(subject):
+    # type: (str) -> str
+    if subject.startswith("fixup! "):
+        return subject[7:]
+    elif subject.startswith("squash! "):
+        return subject[8:]
+    return subject

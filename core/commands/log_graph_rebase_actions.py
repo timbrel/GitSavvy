@@ -224,7 +224,7 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
 
         actions += [
             (
-                "Rebase from {} on interactive".format(parent_commitish),
+                "[R]ebase from {} on interactive".format(parent_commitish),
                 partial(self.rebase_interactive, view, parent_commitish)
             ),
             (
@@ -362,7 +362,7 @@ class RebaseCommand(GitCommand):
         except GitSavvyError:
             ...
         else:
-            if show_panel and not search_git_output(window, "rebase --continue"):
+            if show_panel and not self.in_rebase():
                 auto_close_panel(window)
             return rv
         finally:
@@ -371,15 +371,6 @@ class RebaseCommand(GitCommand):
             else:
                 window.status_message(ok_message)
             util.view.refresh_gitsavvy_interfaces(window, refresh_sidebar=True)
-
-
-def search_git_output(window, needle):
-    # type: (sublime.Window, str) -> bool
-    view = window.find_output_panel("GitSavvy")
-    if not view:
-        return False
-
-    return needle in view.substr(sublime.Region(0, view.size()))
 
 
 def auto_close_panel(window, after=800):
