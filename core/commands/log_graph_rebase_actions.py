@@ -224,7 +224,7 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
 
         actions += [
             (
-                "Rebase from {} on interactive".format(parent_commitish),
+                "[R]ebase from {} on interactive".format(parent_commitish),
                 partial(self.rebase_interactive, view, parent_commitish)
             ),
             (
