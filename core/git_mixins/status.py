@@ -113,7 +113,7 @@ class StatusMixin():
             if f.index_status == "?":
                 untracked.append(f)
                 continue
-            elif f.working_status in ("M", "D", "T"):
+            elif f.working_status in ("M", "D", "T", "A"):
                 unstaged.append(f)
             if f.index_status != " ":
                 staged.append(f)
