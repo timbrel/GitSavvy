@@ -20,7 +20,10 @@ class gs_handle_vintageous(TextCommand, GitCommand):
             self.view.settings().set("git_savvy.vintageous_friendly", True)
             if self.savvy_settings.get("vintageous_enter_insert_mode"):
                 self.view.settings().set("vintageous_reset_mode_when_switching_tabs", False)
+                # NeoVintageous renamed the command starting with v1.22.0.
+                # We call both commands for backwards compatibility.
                 self.view.run_command("_enter_insert_mode")
+                self.view.run_command("nv_enter_insert_mode")  # since NeoVintageous 1.22.0
 
 
 class gs_handle_arrow_keys(TextCommand, GitCommand):
