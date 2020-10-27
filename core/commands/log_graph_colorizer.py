@@ -1,3 +1,4 @@
+from collections import deque
 from functools import lru_cache
 
 import sublime
@@ -179,11 +180,12 @@ def follow_path_up(dot):
 
 def _follow_path(dot, direction):
     # type: (Char, Direction) -> Iterator[Char]
-    for c in follow_char(dot, direction):
-        # print('{} -> {}'.format(dot, c))
+    stack = deque(follow_char(dot, direction))
+    while stack:
+        c = stack.popleft()
         yield c
         if c != COMMIT_NODE_CHAR:
-            yield from _follow_path(c, direction)
+            stack.extendleft(reversed(list(follow_char(c, direction))))
 
 
 def follow_char(char, direction):
