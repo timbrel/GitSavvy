@@ -1703,7 +1703,7 @@ def __colorize_dots(vid, dots):
     # type: (sublime.ViewId, Tuple[colorizer.Char]) -> HopperR
     view = sublime.View(vid)
 
-    block_time_passed = block_time_passed_factory(17)
+    block_time_passed = block_time_passed_factory()
     paths_down = []  # type: List[List[colorizer.Char]]
     paths_up = []  # type: List[List[colorizer.Char]]
 
@@ -1738,7 +1738,7 @@ def __colorize_dots(vid, dots):
             yield "AWAIT_UI_THREAD"
             if ACTIVE_COMPUTATION.get(vid) != dots:
                 return
-            block_time_passed = block_time_passed_factory(17)
+            block_time_passed = block_time_passed_factory()
 
     if ACTIVE_COMPUTATION[vid] == dots:
         ACTIVE_COMPUTATION.pop(vid, None)
