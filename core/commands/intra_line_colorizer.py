@@ -111,6 +111,7 @@ def compute_intra_line_diffs(view, diff):
             yield AWAIT_WORKER
             if view_has_changed():
                 return
+            block_time_passed = block_time_passed_factory()
 
     if view_has_changed():
         return
