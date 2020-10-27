@@ -14,6 +14,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer, show_commit_info
+from .intra_line_colorizer import block_time_passed_factory
 from .log import GsLogCommand
 from .. import utils
 from ..fns import filter_, flatten, pairwise, partition, take, unique
@@ -21,14 +22,17 @@ from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region, TextRange
 from ..settings import GitSavvySettings
 from ..runtime import (
-    enqueue_on_ui, enqueue_on_worker,
-    run_or_timeout, run_on_new_thread,
+    cooperative_thread_hopper,
+    enqueue_on_ui,
+    enqueue_on_worker,
+    run_or_timeout,
+    run_on_new_thread,
     text_command
 )
 from ..view import join_regions, line_distance, replace_view_content, show_region
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
-from ..utils import add_selection_to_jump_history, focus_view, show_toast
+from ..utils import add_selection_to_jump_history, focus_view, show_toast, Cache
 from ...common import util
 from ...common.theme_generator import ThemeGenerator
 
@@ -60,9 +64,10 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import (
-        Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple,
-        TypeVar, Union
+        Callable, Dict, Generic, Iterable, Iterator, List, MutableMapping, Optional, Set,
+        Sequence, Tuple, TypeVar, Union
     )
+    from GitSavvy.core.runtime import HopperR
     T = TypeVar('T')
 
 
@@ -1676,6 +1681,10 @@ def dot_from_line(view, line):
     return None
 
 
+ACTIVE_COMPUTATION = Cache()
+PATH_CACHE = Cache()  # type: MutableMapping[Tuple[colorizer.Char, str], List[colorizer.Char]]
+
+
 @lru_cache(maxsize=1)
 # ^- throttle side-effects
 def _colorize_dots(vid, dots):
@@ -1684,17 +1693,71 @@ def _colorize_dots(vid, dots):
     to_region = lambda ch: ch.region()  # type: Callable[[colorizer.Char], sublime.Region]
 
     view.add_regions('gs_log_graph.dot', list(map(to_region, dots)), scope=DOT_SCOPE)
+
+    ACTIVE_COMPUTATION[vid] = dots
+    __colorize_dots(vid, dots)
+
+
+@cooperative_thread_hopper
+def __colorize_dots(vid, dots):
+    # type: (sublime.ViewId, Tuple[colorizer.Char]) -> HopperR
+    view = sublime.View(vid)
+
+    block_time_passed = block_time_passed_factory(17)
+    paths_down = []  # type: List[List[colorizer.Char]]
+    paths_up = []  # type: List[List[colorizer.Char]]
+
+    uow = []
+    for container, direction in ((paths_down, "down"), (paths_up, "up")):
+        for dot in dots:
+            cache_key = (dot, direction)
+            try:
+                chars = PATH_CACHE[cache_key]
+            except KeyError:
+                values = []  # type: List[colorizer.Char]
+                container.append(values)
+                uow.append((colorizer._follow_path(dot, direction), values, cache_key))
+            else:
+                container.append(chars)
+
+    c = 0
+    while uow:
+        idx = c % len(uow)
+        iterator, values, cache_key = uow[idx]
+        try:
+            char = next(iterator)
+        except StopIteration:
+            PATH_CACHE[cache_key] = values
+            uow.pop(idx)
+        else:
+            values.append(char)
+        c += 1
+
+        if block_time_passed():
+            __paint(view, paths_down, paths_up)
+            yield "AWAIT_UI_THREAD"
+            if ACTIVE_COMPUTATION.get(vid) != dots:
+                return
+            block_time_passed = block_time_passed_factory(17)
+
+    if ACTIVE_COMPUTATION[vid] == dots:
+        ACTIVE_COMPUTATION.pop(vid, None)
+        __paint(view, paths_down, paths_up)
+
+
+def __paint(view, paths_down, paths_up):
+    # type: (sublime.View, List[List[colorizer.Char]], List[List[colorizer.Char]]) -> None
+    to_region = lambda ch: ch.region()  # type: Callable[[colorizer.Char], sublime.Region]
     path_down = flatten(filter(
         lambda path: len(path) > 1,  # type: ignore[arg-type]  # https://github.com/python/mypy/issues/9176
-        map(colorizer.follow_path_down, dots)
+        paths_down
     ))
-    view.add_regions('gs_log_graph.path_below', list(map(to_region, path_down)), scope=PATH_SCOPE)
-
     chars_up = flatten(filter(
         lambda path: len(path) > 1,  # type: ignore[arg-type]  # https://github.com/python/mypy/issues/9176
-        map(colorizer.follow_path_up, dots)
+        paths_up
     ))
     path_up, dot_up = partition(lambda ch: ch == COMMIT_NODE_CHAR, chars_up)
+    view.add_regions('gs_log_graph.path_below', list(map(to_region, path_down)), scope=PATH_SCOPE)
     view.add_regions('gs_log_graph.path_above', list(map(to_region, path_up)), scope=PATH_ABOVE_SCOPE)
     view.add_regions('gs_log_graph.dot.above', list(map(to_region, dot_up)), scope=DOT_ABOVE_SCOPE)
 
