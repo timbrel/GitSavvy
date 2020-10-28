@@ -11,6 +11,7 @@ import sublime_plugin
 from GitSavvy.common import util
 from GitSavvy.core.base_commands import ask_for_local_branch, GsTextCommand, GsWindowCommand
 from GitSavvy.core.commands import log_graph
+from GitSavvy.core.fns import filter_
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.parse_diff import TextRange
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
@@ -192,10 +193,10 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
             SEPARATOR,
         ]
 
+        head_info = log_graph.describe_head(view, [])
         # `HEAD^..HEAD` only selects one commit which is not enough
         # for autosquashing.
         if not on_head:
-            head_info = log_graph.describe_head(view, [])
             good_head_name = (
                 "HEAD"
                 if not head_info or head_info["HEAD"] == head_info["commit"]
@@ -222,6 +223,28 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
                 partial(self.rebase_on, view)
             ),
         ]
+
+        current_branch = (
+            head_info["HEAD"]
+            if head_info and head_info["HEAD"] != head_info["commit"]
+            else None
+        )
+        if current_branch:
+            settings = view.settings()
+            applying_filters = settings.get("git_savvy.log_graph_view.apply_filters")
+            filters = (
+                settings.get("git_savvy.log_graph_view.filters", "")
+                if applying_filters
+                else ""
+            )
+            previous_tip = "{}@{{1}}".format(current_branch)
+            if previous_tip not in filters:
+                actions += [
+                    (
+                        "Show previous tip of {} in the graph".format(current_branch),
+                        partial(self.add_previous_tip, view, previous_tip)
+                    )
+                ]
 
         def on_action_selection(index):
             if index == -1:
@@ -264,6 +287,23 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
 
     def rebase_on(self, view):
         view.run_command("gs_rebase_on_branch")
+
+    def add_previous_tip(self, view, previous_tip):
+        settings = view.settings()
+        applying_filters = settings.get("git_savvy.log_graph_view.apply_filters")
+        filters = (
+            settings.get("git_savvy.log_graph_view.filters", "")
+            if applying_filters
+            else ""
+        )
+        new_filters = ' '.join(filter_((filters, previous_tip)))
+        settings.set("git_savvy.log_graph_view.apply_filters", True)
+        settings.set("git_savvy.log_graph_view.filters", new_filters)
+        if not applying_filters:
+            settings.set("git_savvy.log_graph_view.paths", [])
+            settings.set("git_savvy.log_graph_view.filter_by_author", "")
+
+        view.run_command("gs_log_graph_refresh")
 
 
 def commit_message_from_line(view, line):
