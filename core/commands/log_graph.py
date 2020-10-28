@@ -1027,7 +1027,7 @@ class gs_log_graph_navigate_wide(TextCommand):
             view.run_command("gs_log_graph_navigate", {"forward": forward})
             return
 
-        next_dots = follow_first_parent_commit(cur_dot, forward)
+        next_dots = follow_first_parent(cur_dot, forward)
         try:
             next_dot = next(next_dots)
         except StopIteration:
@@ -1066,7 +1066,7 @@ class gs_log_graph_navigate_wide(TextCommand):
             )
 
 
-def follow_first_parent_commit(dot, forward=True):
+def follow_first_parent(dot, forward=True):
     # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
     """Follow dot to dot omitting the path chars in between."""
     fn = colorizer.follow_path_down if forward else colorizer.follow_path_up
@@ -1831,7 +1831,7 @@ def commit_message_from_point(view, pt):
 def find_matching_commit(vid, dot, message):
     # type: (sublime.ViewId, colorizer.Char, str) -> Optional[colorizer.Char]
     view = sublime.View(vid)
-    for dot in islice(follow_first_parent_commit(dot), 0, 50):
+    for dot in islice(follow_first_parent(dot), 0, 50):
         this_message = commit_message_from_point(view, dot.pt)
         if this_message:
             shorter, longer = sorted((message, this_message.rstrip(".")), key=len)
