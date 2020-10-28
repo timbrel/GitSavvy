@@ -179,13 +179,13 @@ def follow(ch, direction):
 
 
 def follow_path_down(dot):
-    # type: (Char) -> List[Char]
-    return list(follow_path(dot, "down"))
+    # type: (Char) -> Iterator[Char]
+    return follow_path(dot, "down")
 
 
 def follow_path_up(dot):
-    # type: (Char) -> List[Char]
-    return list(follow_path(dot, "up"))
+    # type: (Char) -> Iterator[Char]
+    return follow_path(dot, "up")
 
 
 def follow_path_if_cached(dot, direction):
