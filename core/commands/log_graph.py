@@ -1068,11 +1068,30 @@ class gs_log_graph_navigate_wide(TextCommand):
 
 def follow_first_parent(dot, forward=True):
     # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
-    """Follow dot to dot omitting the path chars in between."""
-    fn = colorizer.follow_path_down if forward else colorizer.follow_path_up
+    """Follow left (first-parent) dot to dot omitting the path chars in between."""
     while True:
-        dot = next(ch for ch in fn(dot) if ch == COMMIT_NODE_CHAR)
+        dot = next(dots_after_dot(dot, forward))
         yield dot
+
+
+def follow_dots(dot, forward=True):
+    # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
+    """Breadth first traverse dot to dot."""
+    stack = deque(dots_after_dot(dot, forward))
+    seen = set()
+    while stack:
+        dot = stack.popleft()
+        if dot not in seen:
+            yield dot
+            seen.add(dot)
+            stack.extend(dots_after_dot(dot, forward))
+
+
+def dots_after_dot(dot, forward=True):
+    # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
+    """Return exact next dots (commits) after `dot`."""
+    fn = colorizer.follow_path_down if forward else colorizer.follow_path_up
+    return filter(lambda ch: ch == COMMIT_NODE_CHAR, fn(dot))
 
 
 class gs_log_graph_navigate_to_head(TextCommand):
@@ -1831,7 +1850,7 @@ def commit_message_from_point(view, pt):
 def find_matching_commit(vid, dot, message):
     # type: (sublime.ViewId, colorizer.Char, str) -> Optional[colorizer.Char]
     view = sublime.View(vid)
-    for dot in islice(follow_first_parent(dot), 0, 50):
+    for dot in islice(follow_dots(dot), 0, 50):
         this_message = commit_message_from_point(view, dot.pt)
         if this_message:
             shorter, longer = sorted((message, this_message.rstrip(".")), key=len)
