@@ -1,11 +1,22 @@
 from collections import deque
-from functools import lru_cache
 
 import sublime
 
+from GitSavvy.core.utils import Cache
+
 MYPY = False
 if MYPY:
-    from typing import Callable, Dict, Final, Iterator, List, Literal, Tuple, TypeVar
+    from typing import (
+        Callable,
+        Dict,
+        Final,
+        Iterator,
+        List,
+        Literal,
+        MutableMapping,
+        Tuple,
+        TypeVar
+    )
 
     T = TypeVar('T')
 
@@ -139,6 +150,7 @@ class NullChar_(Char):
 NullChar = NullChar_()
 down_handlers = {}  # type: Dict[str, NextFn]
 up_handlers = {}  # type: Dict[str, NextFn]
+PATH_CACHE = Cache()  # type: MutableMapping[Tuple[Char, Direction], List[Char]]
 
 
 # Notes:
@@ -166,19 +178,39 @@ def follow(ch, direction):
     return decorator
 
 
-@lru_cache(maxsize=64)
 def follow_path_down(dot):
     # type: (Char) -> List[Char]
     return list(_follow_path(dot, "down"))
 
 
-@lru_cache(maxsize=64)
 def follow_path_up(dot):
     # type: (Char) -> List[Char]
     return list(_follow_path(dot, "up"))
 
 
+def follow_path_if_cached(dot, direction):
+    # type: (Char, Direction) -> List[Char]
+    cache_key = (dot, direction)
+    try:
+        return PATH_CACHE[cache_key]
+    except KeyError:
+        raise ValueError from None
+
+
 def _follow_path(dot, direction):
+    # type: (Char, Direction) -> Iterator[Char]
+    cache_key = (dot, direction)
+    try:
+        yield from PATH_CACHE[cache_key]
+    except KeyError:
+        values = []
+        for c in __follow_path(dot, direction):
+            values.append(c)
+            yield c
+        PATH_CACHE[cache_key] = values
+
+
+def __follow_path(dot, direction):
     # type: (Char, Direction) -> Iterator[Char]
     stack = deque(follow_char(dot, direction))
     while stack:

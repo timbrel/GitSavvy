@@ -64,8 +64,8 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import (
-        Callable, Dict, Generic, Iterable, Iterator, List, MutableMapping, Optional, Set,
-        Sequence, Tuple, TypeVar, Union
+        Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple,
+        TypeVar, Union
     )
     from GitSavvy.core.runtime import HopperR
     T = TypeVar('T')
@@ -1682,7 +1682,6 @@ def dot_from_line(view, line):
 
 
 ACTIVE_COMPUTATION = Cache()
-PATH_CACHE = Cache()  # type: MutableMapping[Tuple[colorizer.Char, str], List[colorizer.Char]]
 
 
 @lru_cache(maxsize=1)
@@ -1710,24 +1709,22 @@ def __colorize_dots(vid, dots):
     uow = []
     for container, direction in ((paths_down, "down"), (paths_up, "up")):
         for dot in dots:
-            cache_key = (dot, direction)
             try:
-                chars = PATH_CACHE[cache_key]
-            except KeyError:
+                chars = colorizer.follow_path_if_cached(dot, direction)  # type: ignore[arg-type]
+            except ValueError:
                 values = []  # type: List[colorizer.Char]
                 container.append(values)
-                uow.append((colorizer._follow_path(dot, direction), values, cache_key))
+                uow.append((colorizer._follow_path(dot, direction), values))  # type: ignore[arg-type]
             else:
                 container.append(chars)
 
     c = 0
     while uow:
         idx = c % len(uow)
-        iterator, values, cache_key = uow[idx]
+        iterator, values = uow[idx]
         try:
             char = next(iterator)
         except StopIteration:
-            PATH_CACHE[cache_key] = values
             uow.pop(idx)
         else:
             values.append(char)
