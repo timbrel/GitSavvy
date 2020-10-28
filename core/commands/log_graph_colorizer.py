@@ -180,12 +180,12 @@ def follow(ch, direction):
 
 def follow_path_down(dot):
     # type: (Char) -> List[Char]
-    return list(_follow_path(dot, "down"))
+    return list(follow_path(dot, "down"))
 
 
 def follow_path_up(dot):
     # type: (Char) -> List[Char]
-    return list(_follow_path(dot, "up"))
+    return list(follow_path(dot, "up"))
 
 
 def follow_path_if_cached(dot, direction):
@@ -197,7 +197,7 @@ def follow_path_if_cached(dot, direction):
         raise ValueError from None
 
 
-def _follow_path(dot, direction):
+def follow_path(dot, direction):
     # type: (Char, Direction) -> Iterator[Char]
     cache_key = (dot, direction)
     try:

@@ -1714,7 +1714,7 @@ def __colorize_dots(vid, dots):
             except ValueError:
                 values = []  # type: List[colorizer.Char]
                 container.append(values)
-                uow.append((colorizer._follow_path(dot, direction), values))  # type: ignore[arg-type]
+                uow.append((colorizer.follow_path(dot, direction), values))  # type: ignore[arg-type]
             else:
                 container.append(chars)
 
