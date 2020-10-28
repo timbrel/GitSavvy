@@ -1066,8 +1066,9 @@ class gs_log_graph_navigate_wide(TextCommand):
             )
 
 
-def follow_first_parent_commit(dot, forward):
+def follow_first_parent_commit(dot, forward=True):
     # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
+    """Follow dot to dot omitting the path chars in between."""
     fn = colorizer.follow_path_down if forward else colorizer.follow_path_up
     while True:
         dot = next(ch for ch in fn(dot) if ch == COMMIT_NODE_CHAR)
@@ -1830,7 +1831,7 @@ def commit_message_from_point(view, pt):
 def find_matching_commit(vid, dot, message):
     # type: (sublime.ViewId, colorizer.Char, str) -> Optional[colorizer.Char]
     view = sublime.View(vid)
-    for dot in islice(follow_dots(dot), 0, 50):
+    for dot in islice(follow_first_parent_commit(dot), 0, 50):
         this_message = commit_message_from_point(view, dot.pt)
         if this_message:
             shorter, longer = sorted((message, this_message.rstrip(".")), key=len)
@@ -1838,14 +1839,6 @@ def find_matching_commit(vid, dot, message):
                 return dot
     else:
         return None
-
-
-def follow_dots(dot):
-    # type: (colorizer.Char) -> Iterator[colorizer.Char]
-    """Follow dot to dot omitting the path chars in between."""
-    while True:
-        dot = next(ch for ch in colorizer.follow_path_down(dot) if ch == COMMIT_NODE_CHAR)
-        yield dot
 
 
 def draw_info_panel(view):
