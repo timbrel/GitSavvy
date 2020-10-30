@@ -208,7 +208,6 @@ def show_branch_panel(
         remote_branches_only=False,
         ignore_current_branch=False,
         ask_remote_first=False,
-        local_branch=None,
         selected_branch=None
 ):
     """
