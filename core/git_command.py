@@ -98,8 +98,6 @@ class _GitCommand(SettingsMixin):
     Base class for all Sublime commands that interact with git.
     """
 
-    _last_remotes_used = {}
-
     def git(
         self,
         *args,
@@ -496,22 +494,6 @@ class _GitCommand(SettingsMixin):
             args = global_pre_flags[git_cmd] + args
 
         return args
-
-    @property
-    def last_remote_used(self):
-        """
-        With this getter and setter, keep global track of last remote used
-        for each repo.
-        """
-        return self._last_remotes_used.get(self.repo_path)
-
-    @last_remote_used.setter
-    def last_remote_used(self, value):
-        """
-        Setter for above property.  Saves per-repo information in
-        class attribute dict.
-        """
-        self._last_remotes_used[self.repo_path] = value
 
 
 if MYPY:

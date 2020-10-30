@@ -6,12 +6,13 @@ from .utils import Cache
 
 MYPY = False
 if MYPY:
-    from typing import Any, DefaultDict, Dict, Tuple, TypedDict
+    from typing import Any, DefaultDict, Dict, Optional, Tuple, TypedDict
 
     RepoPath = str
     RepoStore = TypedDict(
         'RepoStore',
         {
+            "last_remote_used": Optional[str],
             "short_hash_length": int,
         },
         total=False

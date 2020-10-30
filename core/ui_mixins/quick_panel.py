@@ -3,6 +3,7 @@ import sublime
 from ...common import util
 from ..git_command import GitCommand
 from GitSavvy.core.fns import filter_
+from GitSavvy.core import store
 
 
 class PanelActionMixin(object):
@@ -178,7 +179,7 @@ class RemotePanel(GitCommand):
         if self.show_option_all and len(self.remotes) > 1:
             self.remotes.insert(0, "All remotes.")
 
-        last_remote_used = self.last_remote_used
+        last_remote_used = store.current_state(self.repo_path).get("last_remote_used")
         if last_remote_used in self.remotes:
             pre_selected_index = self.remotes.index(last_remote_used)
         else:
@@ -195,12 +196,12 @@ class RemotePanel(GitCommand):
         if index == -1:
             self.on_cancel()
         elif self.show_option_all and len(self.remotes) > 1 and index == 0:
-            self.last_remote_used = None
+            store.update_state(self.repo_path, {"last_remote_used": None})
             self.on_done(True)
         else:
-            self.remote = self.remotes[index]
-            self.last_remote_used = self.remote
-            self.on_done(self.remote)
+            remote = self.remotes[index]
+            store.update_state(self.repo_path, {"last_remote_used": remote})
+            self.on_done(remote)
 
 
 def show_branch_panel(
