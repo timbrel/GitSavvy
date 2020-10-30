@@ -178,9 +178,7 @@ class RemotePanel(GitCommand):
         if self.show_option_all and len(self.remotes) > 1:
             self.remotes.insert(0, "All remotes.")
 
-        # We don't use the GitCommand.last_remote_used property because we don't want default values
-        last_remote_used = self._last_remotes_used.get(self.repo_path)
-
+        last_remote_used = self.last_remote_used
         if last_remote_used in self.remotes:
             pre_selected_index = self.remotes.index(last_remote_used)
         else:
