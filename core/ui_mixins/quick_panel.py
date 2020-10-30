@@ -202,12 +202,15 @@ class RemotePanel(GitCommand):
 
 def show_branch_panel(
         on_done,
+        *,
+        on_cancel=lambda: None,
         local_branches_only=False,
         remote_branches_only=False,
         ignore_current_branch=False,
         ask_remote_first=False,
         local_branch=None,
-        selected_branch=None):
+        selected_branch=None
+):
     """
     Show a quick panel with branches. The callback `on_done(branch)` will
     be called when a branch is selected. If the panel is cancelled, `None`
@@ -221,11 +224,13 @@ def show_branch_panel(
     """
     bp = BranchPanel(
         on_done,
+        on_cancel,
         local_branches_only,
         remote_branches_only,
         ignore_current_branch,
         ask_remote_first,
-        selected_branch)
+        selected_branch
+    )
     bp.show()
     return bp
 
@@ -233,10 +238,18 @@ def show_branch_panel(
 class BranchPanel(GitCommand):
 
     def __init__(
-            self, on_done, local_branches_only=False, remote_branches_only=False,
-            ignore_current_branch=False, ask_remote_first=False, selected_branch=None):
+            self,
+            on_done,
+            on_cancel,
+            local_branches_only=False,
+            remote_branches_only=False,
+            ignore_current_branch=False,
+            ask_remote_first=False,
+            selected_branch=None
+    ):
         self.window = sublime.active_window()
         self.on_done = on_done
+        self.on_cancel = on_cancel
         self.local_branches_only = local_branches_only
         self.remote_branches_only = True if ask_remote_first else remote_branches_only
         self.ignore_current_branch = ignore_current_branch
@@ -299,11 +312,9 @@ class BranchPanel(GitCommand):
 
     def on_branch_selection(self, index):
         if index == -1:
-            self.branch = None
+            self.on_cancel()
         else:
-            self.branch = self.all_branches[index]
-
-        self.on_done(self.branch)
+            self.on_done(self.all_branches[index])
 
 
 def show_paginated_panel(items, on_done, **kwargs):

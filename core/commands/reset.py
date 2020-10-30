@@ -69,8 +69,7 @@ class GsResetBranch(ResetMixin, LogMixin, WindowCommand, GitCommand):
         show_branch_panel(self.on_branch_selection)
 
     def on_branch_selection(self, branch):
-        if branch:
-            self.do_action(branch)
+        self.do_action(branch)
 
 
 class GsResetReflogCommand(ResetMixin, RefLogMixin, WindowCommand, GitCommand):

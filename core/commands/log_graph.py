@@ -959,14 +959,13 @@ class gs_log_graph_by_branch(WindowCommand, GitCommand):
 
     def run(self, file_path=None):
         def on_select(branch):
-            if branch:
-                self._selected_branch = branch  # remember last selection
-                self.window.run_command('gs_graph', {
-                    'file_path': file_path,
-                    'all': True,
-                    'branches': [branch],
-                    'follow': branch,
-                })
+            self._selected_branch = branch  # remember last selection
+            self.window.run_command('gs_graph', {
+                'file_path': file_path,
+                'all': True,
+                'branches': [branch],
+                'follow': branch,
+            })
 
         show_branch_panel(on_select, selected_branch=self._selected_branch)
 

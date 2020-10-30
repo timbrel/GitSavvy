@@ -51,9 +51,6 @@ class gs_checkout_branch(WindowCommand, GitCommand):
             )
 
     def on_branch_selection(self, branch):
-        if not branch:
-            return
-
         self.git("checkout", branch)
         self._last_branches.append(branch)
         self.window.status_message("Checked out `{}` branch.".format(branch))
@@ -111,9 +108,6 @@ class gs_checkout_remote_branch(WindowCommand, GitCommand):
                 remote_branches_only=True)
 
     def on_branch_selection(self, remote_branch, local_name=None):
-        if not remote_branch:
-            return
-
         self.remote_branch = remote_branch
         if not local_name:
             local_name = remote_branch.split("/", 1)[1]
