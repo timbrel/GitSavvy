@@ -245,9 +245,7 @@ class BranchPanel(GitCommand):
 
     def show(self):
         if self.ask_remote_first:
-            show_remote_panel(
-                lambda remote: sublime.set_timeout_async(
-                    lambda: self.select_branch(remote), 100))
+            show_remote_panel(self.select_branch)
         else:
             self.select_branch(remote=None)
 
