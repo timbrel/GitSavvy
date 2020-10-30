@@ -392,9 +392,6 @@ class GsBranchesPushAllCommand(TextCommand, GitCommand):
         show_remote_panel(self.on_remote_selection)
 
     def on_remote_selection(self, remote):
-        # If the user pressed `esc` or otherwise cancelled.
-        if not remote:
-            return
         self.view.window().status_message("Pushing all branches to `{}`...".format(remote))
         self.git("push", remote, "--all")
         self.view.window().status_message("Push successful.")

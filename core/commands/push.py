@@ -175,10 +175,6 @@ class gs_push_to_branch_name(PushBase):
         """
         After the user selects a remote, prompt the user for a branch name.
         """
-        # If the user pressed `esc` or otherwise cancelled.
-        if not remote:
-            return
-
         self.selected_remote = remote
 
         if self.branch_name:

@@ -43,9 +43,6 @@ class GsGitlabOpenFileOnRemoteCommand(TextCommand, GitCommand, GitLabRemotesMixi
             show_remote_panel(self.open_file_on_remote)
 
     def open_file_on_remote(self, remote):
-        if not remote:
-            return
-
         fpath = self.fpath
         if isinstance(fpath, str):
             fpath = [fpath]
@@ -122,8 +119,6 @@ class GsGitlabOpenRepoCommand(TextCommand, GitCommand, GitLabRemotesMixin):
             show_remote_panel(self.on_remote_selection)
 
     def on_remote_selection(self, remote):
-        if not remote:
-            return
         open_repo(self.remotes[remote])
 
 

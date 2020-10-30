@@ -115,8 +115,14 @@ class PanelCommandMixin(PanelActionMixin):
 
 
 def show_remote_panel(
-    on_done, show_option_all=False, selected_remote=None, allow_direct=False,
-        show_url=False):
+    on_done,
+    *,
+    on_cancel=lambda: None,
+    show_option_all=False,
+    selected_remote=None,
+    allow_direct=False,
+    show_url=False
+):
     """
     Show a quick panel with remotes. The callback `on_done(remote)` will
     be called when a remote is selected. If the panel is cancelled, `None`
@@ -126,7 +132,14 @@ def show_remote_panel(
     show_option_all: whether the option "All remotes" should be shown. `True` will
                 be passed to `on_done` if the all remotes option is selected.
     """
-    rp = RemotePanel(on_done, show_option_all, selected_remote, allow_direct, show_url)
+    rp = RemotePanel(
+        on_done,
+        on_cancel,
+        show_option_all,
+        selected_remote,
+        allow_direct,
+        show_url
+    )
     rp.show()
     return rp
 
@@ -134,10 +147,17 @@ def show_remote_panel(
 class RemotePanel(GitCommand):
 
     def __init__(
-        self, on_done, show_option_all=False, selected_remote=None,
-            allow_direct=False, show_url=False):
+        self,
+        on_done,
+        on_cancel=lambda: None,
+        show_option_all=False,
+        selected_remote=None,
+        allow_direct=False,
+        show_url=False
+    ):
         self.window = sublime.active_window()
         self.on_done = on_done
+        self.on_cancel = on_cancel
         self.selected_remote = selected_remote
         self.show_option_all = show_option_all
         self.allow_direct = allow_direct
@@ -175,7 +195,7 @@ class RemotePanel(GitCommand):
 
     def on_remote_selection(self, index):
         if index == -1:
-            self.on_done(None)
+            self.on_cancel()
         elif self.show_option_all and len(self.remotes) > 1 and index == 0:
             self.last_remote_used = None
             self.on_done(True)
@@ -232,15 +252,9 @@ class BranchPanel(GitCommand):
         if self.ask_remote_first:
             show_remote_panel(
                 lambda remote: sublime.set_timeout_async(
-                    lambda: self.on_remote_selection(remote), 100))
+                    lambda: self.select_branch(remote), 100))
         else:
             self.select_branch(remote=None)
-
-    def on_remote_selection(self, remote):
-        if not remote:
-            return
-
-        self.select_branch(remote)
 
     def select_branch(self, remote=None):
 
