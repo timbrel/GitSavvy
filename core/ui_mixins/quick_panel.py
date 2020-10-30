@@ -252,19 +252,19 @@ class BranchPanel(GitCommand):
             self.select_branch(remote=None)
 
     def select_branch(self, remote=None):
-
+        branches = list(self.get_branches())
         if self.local_branches_only:
-            self.all_branches = [b.name_with_remote for b in self.get_branches() if not b.remote]
+            self.all_branches = [b.name_with_remote for b in branches if not b.remote]
         elif self.remote_branches_only:
-            self.all_branches = [b.name_with_remote for b in self.get_branches() if b.remote]
+            self.all_branches = [b.name_with_remote for b in branches if b.remote]
         else:
-            self.all_branches = [b.name_with_remote for b in self.get_branches()]
+            self.all_branches = [b.name_with_remote for b in branches]
 
+        current_branch = next((b.name for b in branches if b.active), None)
         if self.ignore_current_branch:
-            current_branch = self.get_current_branch_name()
             self.all_branches = [b for b in self.all_branches if b != current_branch]
         elif self.selected_branch is None and not self.remote_branches_only:
-            self.selected_branch = self.get_current_branch_name()
+            self.selected_branch = current_branch
 
         if remote:
             self.all_branches = [b for b in self.all_branches if b.startswith(remote + "/")]
