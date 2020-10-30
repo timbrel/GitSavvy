@@ -120,7 +120,6 @@ def show_remote_panel(
     *,
     on_cancel=lambda: None,
     show_option_all=False,
-    selected_remote=None,
     allow_direct=False,
     show_url=False
 ):
@@ -137,7 +136,6 @@ def show_remote_panel(
         on_done,
         on_cancel,
         show_option_all,
-        selected_remote,
         allow_direct,
         show_url
     )
@@ -152,14 +150,12 @@ class RemotePanel(GitCommand):
         on_done,
         on_cancel=lambda: None,
         show_option_all=False,
-        selected_remote=None,
         allow_direct=False,
         show_url=False
     ):
         self.window = sublime.active_window()
         self.on_done = on_done
         self.on_cancel = on_cancel
-        self.selected_remote = selected_remote
         self.show_option_all = show_option_all
         self.allow_direct = allow_direct
         self.show_url = show_url
