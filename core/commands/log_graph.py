@@ -2067,7 +2067,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         commit_hash = info["commit"]
         file_path = self.file_path
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
-        on_checked_out_branch = "HEAD" in info and info["HEAD"] in info["local_branches"]
+        on_checked_out_branch = "HEAD" in info and info["HEAD"] in info.get("local_branches", [])
         if on_checked_out_branch:
             actions += [
                 ("Pull", self.pull),
