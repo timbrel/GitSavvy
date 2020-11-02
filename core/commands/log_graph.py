@@ -1772,8 +1772,10 @@ def find_matching_commit(vid, dot, message):
     view = sublime.View(vid)
     for dot in islice(follow_dots(dot), 0, 50):
         this_message = commit_message_from_point(view, dot.pt)
-        if this_message and this_message.startswith(message):
-            return dot
+        if this_message:
+            shorter, longer = sorted((message, this_message.rstrip(".")), key=len)
+            if longer.startswith(shorter):
+                return dot
     else:
         return None
 
@@ -2067,7 +2069,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         commit_hash = info["commit"]
         file_path = self.file_path
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
-        on_checked_out_branch = "HEAD" in info and info["HEAD"] in info["local_branches"]
+        on_checked_out_branch = "HEAD" in info and info["HEAD"] in info.get("local_branches", [])
         if on_checked_out_branch:
             actions += [
                 ("Pull", self.pull),
