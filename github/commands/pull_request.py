@@ -18,7 +18,7 @@ PUSH_PROMPT = ("You have not set an upstream for the active branch.  "
                "Would you like to push to a remote?")
 
 
-class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubPullRequestCommand(WindowCommand, git_mixins.GithubRemotesMixin, GitCommand):
 
     """
     Display open pull requests on the base repo.  When a pull request is selected,
@@ -162,7 +162,7 @@ class GsGithubPullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRem
         open_in_browser(self.pr["html_url"])
 
 
-class GsGithubCreatePullRequestCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMixin, GitCommand):
     """
     Create pull request of the current commit on the current repo.
     """
@@ -202,13 +202,13 @@ class GsGithubCreatePullRequestCommand(WindowCommand, GitCommand, git_mixins.Git
         remote_url = base_remote.url
         base_owner = base_remote.owner
         base_branch = self.get_integrated_branch_name()
-        url = "{}/compare/{}:{}...{}:{}?expand=1".format(
-            remote_url,
-            base_owner,
-            urllib.parse.quote_plus(base_branch),
-            owner,
-            urllib.parse.quote_plus(branch)
+        start = (
+            "{}:{}...".format(base_owner, urllib.parse.quote_plus(base_branch))
+            if base_branch
+            else ""
         )
+        end = "{}:{}".format(owner, urllib.parse.quote_plus(branch))
+        url = "{}/compare/{}{}?expand=1".format(remote_url, start, end)
         open_in_browser(url)
 
 

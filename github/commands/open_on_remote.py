@@ -1,9 +1,7 @@
 import sublime
 from sublime_plugin import TextCommand
 
-from ..github import open_file_in_browser  # , open_repo, open_issues
-from ..github import open_repo
-from ..github import open_issues
+from ..github import open_file_in_browser, open_issues, open_repo
 
 from .. import git_mixins
 from ...core.git_command import GitCommand
@@ -15,7 +13,7 @@ EARLIER_COMMIT_PROMPT = ("The remote chosen may not contain the commit. "
                          "Open the file {} before?")
 
 
-class GsGithubOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubOpenFileOnRemoteCommand(TextCommand, git_mixins.GithubRemotesMixin, GitCommand):
 
     """
     Open a new browser window to the web-version of the currently opened
@@ -35,10 +33,10 @@ class GsGithubOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.Github
         self.fpath = fpath or self.get_rel_path()
         self.preselect = preselect
 
-        self.remotes = self.get_remotes()
+        self.remotes = remotes = self.get_remotes()
 
         if not remote:
-            remote = self.guess_github_remote()
+            remote = self.guess_github_remote(remotes)
 
         if remote:
             self.open_file_on_remote(remote)
@@ -107,7 +105,7 @@ class GsGithubOpenFileOnRemoteCommand(TextCommand, GitCommand, git_mixins.Github
             )
 
 
-class GsGithubOpenRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubOpenRepoCommand(TextCommand, git_mixins.GithubRemotesMixin, GitCommand):
 
     """
     Open a new browser window to the GitHub remote repository.
@@ -117,10 +115,10 @@ class GsGithubOpenRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesM
         sublime.set_timeout_async(lambda: self.run_async(remote))
 
     def run_async(self, remote):
-        self.remotes = self.get_remotes()
+        self.remotes = remotes = self.get_remotes()
 
         if not remote:
-            remote = self.guess_github_remote()
+            remote = self.guess_github_remote(remotes)
 
         if remote:
             open_repo(self.remotes[remote])
@@ -133,7 +131,7 @@ class GsGithubOpenRepoCommand(TextCommand, GitCommand, git_mixins.GithubRemotesM
         open_repo(self.remotes[remote])
 
 
-class GsGithubOpenIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubOpenIssuesCommand(TextCommand, git_mixins.GithubRemotesMixin, GitCommand):
 
     """
     Open a new browser window to the GitHub remote repository's issues page.

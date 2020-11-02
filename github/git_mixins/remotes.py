@@ -1,21 +1,35 @@
-class GithubRemotesMixin():
 
+MYPY = False
+if MYPY:
+    from typing import Dict, Optional
+    from GitSavvy.core.git_command import GitCommand
+    name = str
+    url = str
+
+    base = GitCommand
+else:
+    base = object
+
+
+class GithubRemotesMixin(base):
     def get_integrated_branch_name(self):
-        configured_branch_name = self.git(
+        # type: () -> Optional[str]
+        return self.git(
             "config",
             "--local",
             "--get",
             "GitSavvy.ghBranch",
             throw_on_stderr=False
-        ).strip()
-        if configured_branch_name:
-            return configured_branch_name
-        else:
-            return "master"
+        ).strip() or None
 
-    def get_integrated_remote_name(self, remotes=None):
-        if remotes is None:
-            remotes = self.get_remotes()
+    def get_integrated_remote_name(self, remotes):
+        # type: (Dict[name, url]) -> name
+        if len(remotes) == 0:
+            raise ValueError("GitHub integration will not function when no remotes defined.")
+
+        if len(remotes) == 1:
+            return list(remotes.keys())[0]
+
         configured_remote_name = self.git(
             "config",
             "--local",
@@ -23,40 +37,35 @@ class GithubRemotesMixin():
             "GitSavvy.ghRemote",
             throw_on_stderr=False
         ).strip()
-
-        if len(remotes) == 0:
-            raise ValueError("GitHub integration will not function when no remotes defined.")
-
-        if configured_remote_name and configured_remote_name in remotes:
+        if configured_remote_name in remotes:
             return configured_remote_name
-        elif len(remotes) == 1:
-            return list(remotes.keys())[0]
-        elif "origin" in remotes:
-            return "origin"
-        elif self.get_upstream_for_active_branch():
-            # fall back to the current active remote
-            return self.get_upstream_for_active_branch().split("/")[0]
-        else:
-            raise ValueError("Cannot determine GitHub integrated remote.")
+
+        for name in ("upstream", "origin"):
+            if name in remotes:
+                return name
+
+        current_upstream = self.get_upstream_for_active_branch()
+        if current_upstream:
+            return current_upstream.split("/")[0]
+
+        raise ValueError("Cannot determine GitHub integrated remote.")
 
     def get_integrated_remote_url(self):
-        configured_remote_name = self.get_integrated_remote_name()
+        # type: () -> url
         remotes = self.get_remotes()
+        configured_remote_name = self.get_integrated_remote_name(remotes)
         return remotes[configured_remote_name]
 
-    def guess_github_remote(self):
-        upstream = self.get_upstream_for_active_branch()
-        integrated_remote = self.get_integrated_remote_name()
-        remotes = self.get_remotes()
-
-        if len(self.remotes) == 1:
+    def guess_github_remote(self, remotes):
+        # type: (Dict[name, url]) -> Optional[name]
+        if len(remotes) == 1:
             return list(remotes.keys())[0]
-        elif upstream:
-            tracked_remote = upstream.split("/")[0] if upstream else None
 
-            if tracked_remote and tracked_remote == integrated_remote:
-                return tracked_remote
-            else:
+        integrated_remote = self.get_integrated_remote_name(remotes)
+        upstream = self.get_upstream_for_active_branch()
+        if upstream:
+            tracked_remote = upstream.split("/")[0]
+            if tracked_remote != integrated_remote:
                 return None
-        else:
-            return integrated_remote
+
+        return integrated_remote
