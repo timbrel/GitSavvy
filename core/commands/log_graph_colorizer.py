@@ -1,10 +1,22 @@
-from functools import lru_cache
+from collections import deque
 
 import sublime
 
+from GitSavvy.core.utils import Cache
+
 MYPY = False
 if MYPY:
-    from typing import Callable, Dict, Final, Iterator, List, Literal, Tuple, TypeVar
+    from typing import (
+        Callable,
+        Dict,
+        Final,
+        Iterator,
+        List,
+        Literal,
+        MutableMapping,
+        Tuple,
+        TypeVar
+    )
 
     T = TypeVar('T')
 
@@ -138,6 +150,7 @@ class NullChar_(Char):
 NullChar = NullChar_()
 down_handlers = {}  # type: Dict[str, NextFn]
 up_handlers = {}  # type: Dict[str, NextFn]
+PATH_CACHE = Cache()  # type: MutableMapping[Tuple[Char, Direction], List[Char]]
 
 
 # Notes:
@@ -165,25 +178,46 @@ def follow(ch, direction):
     return decorator
 
 
-@lru_cache(maxsize=64)
 def follow_path_down(dot):
-    # type: (Char) -> List[Char]
-    return list(_follow_path(dot, "down"))
+    # type: (Char) -> Iterator[Char]
+    return follow_path(dot, "down")
 
 
-@lru_cache(maxsize=64)
 def follow_path_up(dot):
-    # type: (Char) -> List[Char]
-    return list(_follow_path(dot, "up"))
+    # type: (Char) -> Iterator[Char]
+    return follow_path(dot, "up")
 
 
-def _follow_path(dot, direction):
+def follow_path_if_cached(dot, direction):
+    # type: (Char, Direction) -> List[Char]
+    cache_key = (dot, direction)
+    try:
+        return PATH_CACHE[cache_key]
+    except KeyError:
+        raise ValueError from None
+
+
+def follow_path(dot, direction):
     # type: (Char, Direction) -> Iterator[Char]
-    for c in follow_char(dot, direction):
-        # print('{} -> {}'.format(dot, c))
+    cache_key = (dot, direction)
+    try:
+        yield from PATH_CACHE[cache_key]
+    except KeyError:
+        values = []
+        for c in __follow_path(dot, direction):
+            values.append(c)
+            yield c
+        PATH_CACHE[cache_key] = values
+
+
+def __follow_path(dot, direction):
+    # type: (Char, Direction) -> Iterator[Char]
+    stack = deque(follow_char(dot, direction))
+    while stack:
+        c = stack.popleft()
         yield c
         if c != COMMIT_NODE_CHAR:
-            yield from _follow_path(c, direction)
+            stack.extendleft(reversed(list(follow_char(c, direction))))
 
 
 def follow_char(char, direction):

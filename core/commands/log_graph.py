@@ -14,6 +14,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer, show_commit_info
+from .intra_line_colorizer import block_time_passed_factory
 from .log import GsLogCommand
 from .. import utils
 from ..fns import filter_, flatten, pairwise, partition, take, unique
@@ -21,14 +22,17 @@ from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region, TextRange
 from ..settings import GitSavvySettings
 from ..runtime import (
-    enqueue_on_ui, enqueue_on_worker,
-    run_or_timeout, run_on_new_thread,
+    cooperative_thread_hopper,
+    enqueue_on_ui,
+    enqueue_on_worker,
+    run_or_timeout,
+    run_on_new_thread,
     text_command
 )
 from ..view import join_regions, line_distance, replace_view_content, show_region
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
-from ..utils import add_selection_to_jump_history, focus_view, show_toast
+from ..utils import add_selection_to_jump_history, focus_view, show_toast, Cache
 from ...common import util
 from ...common.theme_generator import ThemeGenerator
 
@@ -63,6 +67,7 @@ if MYPY:
         Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple,
         TypeVar, Union
     )
+    from GitSavvy.core.runtime import HopperR
     T = TypeVar('T')
 
 
@@ -1022,7 +1027,7 @@ class gs_log_graph_navigate_wide(TextCommand):
             view.run_command("gs_log_graph_navigate", {"forward": forward})
             return
 
-        next_dots = follow_first_parent_commit(cur_dot, forward)
+        next_dots = follow_first_parent(cur_dot, forward)
         try:
             next_dot = next(next_dots)
         except StopIteration:
@@ -1061,12 +1066,32 @@ class gs_log_graph_navigate_wide(TextCommand):
             )
 
 
-def follow_first_parent_commit(dot, forward):
+def follow_first_parent(dot, forward=True):
     # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
-    fn = colorizer.follow_path_down if forward else colorizer.follow_path_up
+    """Follow left (first-parent) dot to dot omitting the path chars in between."""
     while True:
-        dot = next(ch for ch in fn(dot) if ch == COMMIT_NODE_CHAR)
+        dot = next(dots_after_dot(dot, forward))
         yield dot
+
+
+def follow_dots(dot, forward=True):
+    # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
+    """Breadth first traverse dot to dot."""
+    stack = deque(dots_after_dot(dot, forward))
+    seen = set()
+    while stack:
+        dot = stack.popleft()
+        if dot not in seen:
+            yield dot
+            seen.add(dot)
+            stack.extend(dots_after_dot(dot, forward))
+
+
+def dots_after_dot(dot, forward=True):
+    # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
+    """Return exact next dots (commits) after `dot`."""
+    fn = colorizer.follow_path_down if forward else colorizer.follow_path_up
+    return filter(lambda ch: ch == COMMIT_NODE_CHAR, fn(dot))
 
 
 class gs_log_graph_navigate_to_head(TextCommand):
@@ -1676,6 +1701,9 @@ def dot_from_line(view, line):
     return None
 
 
+ACTIVE_COMPUTATION = Cache()
+
+
 @lru_cache(maxsize=1)
 # ^- throttle side-effects
 def _colorize_dots(vid, dots):
@@ -1684,17 +1712,69 @@ def _colorize_dots(vid, dots):
     to_region = lambda ch: ch.region()  # type: Callable[[colorizer.Char], sublime.Region]
 
     view.add_regions('gs_log_graph.dot', list(map(to_region, dots)), scope=DOT_SCOPE)
+
+    ACTIVE_COMPUTATION[vid] = dots
+    __colorize_dots(vid, dots)
+
+
+@cooperative_thread_hopper
+def __colorize_dots(vid, dots):
+    # type: (sublime.ViewId, Tuple[colorizer.Char]) -> HopperR
+    view = sublime.View(vid)
+
+    block_time_passed = block_time_passed_factory()
+    paths_down = []  # type: List[List[colorizer.Char]]
+    paths_up = []  # type: List[List[colorizer.Char]]
+
+    uow = []
+    for container, direction in ((paths_down, "down"), (paths_up, "up")):
+        for dot in dots:
+            try:
+                chars = colorizer.follow_path_if_cached(dot, direction)  # type: ignore[arg-type]
+            except ValueError:
+                values = []  # type: List[colorizer.Char]
+                container.append(values)
+                uow.append((colorizer.follow_path(dot, direction), values))  # type: ignore[arg-type]
+            else:
+                container.append(chars)
+
+    c = 0
+    while uow:
+        idx = c % len(uow)
+        iterator, values = uow[idx]
+        try:
+            char = next(iterator)
+        except StopIteration:
+            uow.pop(idx)
+        else:
+            values.append(char)
+        c += 1
+
+        if block_time_passed():
+            __paint(view, paths_down, paths_up)
+            yield "AWAIT_UI_THREAD"
+            if ACTIVE_COMPUTATION.get(vid) != dots:
+                return
+            block_time_passed = block_time_passed_factory()
+
+    if ACTIVE_COMPUTATION[vid] == dots:
+        ACTIVE_COMPUTATION.pop(vid, None)
+        __paint(view, paths_down, paths_up)
+
+
+def __paint(view, paths_down, paths_up):
+    # type: (sublime.View, List[List[colorizer.Char]], List[List[colorizer.Char]]) -> None
+    to_region = lambda ch: ch.region()  # type: Callable[[colorizer.Char], sublime.Region]
     path_down = flatten(filter(
         lambda path: len(path) > 1,  # type: ignore[arg-type]  # https://github.com/python/mypy/issues/9176
-        map(colorizer.follow_path_down, dots)
+        paths_down
     ))
-    view.add_regions('gs_log_graph.path_below', list(map(to_region, path_down)), scope=PATH_SCOPE)
-
     chars_up = flatten(filter(
         lambda path: len(path) > 1,  # type: ignore[arg-type]  # https://github.com/python/mypy/issues/9176
-        map(colorizer.follow_path_up, dots)
+        paths_up
     ))
     path_up, dot_up = partition(lambda ch: ch == COMMIT_NODE_CHAR, chars_up)
+    view.add_regions('gs_log_graph.path_below', list(map(to_region, path_down)), scope=PATH_SCOPE)
     view.add_regions('gs_log_graph.path_above', list(map(to_region, path_up)), scope=PATH_ABOVE_SCOPE)
     view.add_regions('gs_log_graph.dot.above', list(map(to_region, dot_up)), scope=DOT_ABOVE_SCOPE)
 
@@ -1778,14 +1858,6 @@ def find_matching_commit(vid, dot, message):
                 return dot
     else:
         return None
-
-
-def follow_dots(dot):
-    # type: (colorizer.Char) -> Iterator[colorizer.Char]
-    """Follow dot to dot omitting the path chars in between."""
-    while True:
-        dot = next(ch for ch in colorizer.follow_path_down(dot) if ch == COMMIT_NODE_CHAR)
-        yield dot
 
 
 def draw_info_panel(view):

@@ -46,7 +46,7 @@ def view_has_changed_factory(view):
     return view_has_changed
 
 
-def block_time_passed_factory(block_time):
+def block_time_passed_factory(block_time=MAX_BLOCK_TIME):
     start_time = time.perf_counter()
 
     def block_time_passed():
@@ -93,7 +93,7 @@ def compute_intra_line_diffs(view, diff):
     yield AWAIT_WORKER
     if view_has_changed():
         return
-    block_time_passed = block_time_passed_factory(MAX_BLOCK_TIME)
+    block_time_passed = block_time_passed_factory()
 
     # Consider some chunks [1, 2, 3, 4] where 3 was *in* the viewport and thus
     # rendered immediately. Now, [1, 2] + [4] await their render. The following
@@ -111,6 +111,7 @@ def compute_intra_line_diffs(view, diff):
             yield AWAIT_WORKER
             if view_has_changed():
                 return
+            block_time_passed = block_time_passed_factory()
 
     if view_has_changed():
         return
