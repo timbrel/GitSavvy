@@ -100,20 +100,12 @@ class gs_push(PushBase):
             else:
                 kont()
 
-        elif self.savvy_settings.get("prompt_for_tracking_branch"):
-            if sublime.ok_cancel_dialog(SET_UPSTREAM_PROMPT):
-                self.window.run_command("gs_push_to_branch_name", {
-                    "local_branch_name": local_branch.name,
-                    "set_upstream": True,
-                    "force": force,
-                    "force_with_lease": force_with_lease
-                })
-        else:
-            # If `prompt_for_tracking_branch` is false, ask for a remote and
-            # push current branch to a remote branch with the same name
+        elif (
+            not self.savvy_settings.get("prompt_for_tracking_branch") or
+            sublime.ok_cancel_dialog(SET_UPSTREAM_PROMPT)
+        ):
             self.window.run_command("gs_push_to_branch_name", {
                 "local_branch_name": local_branch.name,
-                "branch_name": local_branch.name,
                 "set_upstream": True,
                 "force": force,
                 "force_with_lease": force_with_lease
