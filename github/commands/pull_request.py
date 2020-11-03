@@ -14,6 +14,11 @@ from ...core.ui_mixins.input_panel import show_single_line_input_panel
 from ...core.view import replace_view_content
 
 
+MYPY = False
+if MYPY:
+    from GitSavvy.core.git_mixins.branches import Branch
+
+
 PUSH_PROMPT = ("You have not set an upstream for the active branch.  "
                "Would you like to push to a remote?")
 
@@ -171,44 +176,56 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        if not self.get_upstream_for_active_branch():
+        current_branch = self.get_current_branch()
+        if not current_branch:
+            sublime.message_dialog("You're on a detached HEAD.  Can't push in that state.")
+            return
+
+        if not current_branch.tracking:
             if sublime.ok_cancel_dialog(PUSH_PROMPT):
-                self.window.run_command(
-                    "gs_github_push_and_create_pull_request",
-                    {"set_upstream": True})
+                self.window.run_command("gs_github_push_and_create_pull_request", {
+                    "local_branch_name": current_branch.name,
+                    "set_upstream": True
+                })
+
+        elif (
+            "ahead" in current_branch.tracking_status
+            or "behind" in current_branch.tracking_status
+        ):
+            sublime.message_dialog(
+                "Your current branch is different from '{}'.\n{}".format(
+                    current_branch.tracking, current_branch.tracking_status
+                )
+            )
 
         else:
-            remote_branch = self.get_active_remote_branch()
-            if not remote_branch:
-                sublime.message_dialog("Unable to determine remote.")
-            else:
-                status, secondary = self.get_branch_status()
-                if secondary:
-                    secondary = "\n".join(secondary)
-                    if "ahead" in secondary or "behind" in secondary:
-                        sublime.message_dialog(
-                            "Your current branch is different from its remote counterpart.\n" +
-                            secondary)
-                        return
+            self.open_comparision_in_browser(current_branch)
 
-                owner = github.parse_remote(self.get_remotes()[remote_branch.remote]).owner
-                self.open_comparision_in_browser(
-                    owner,
-                    remote_branch.name
-                )
+    def open_comparision_in_browser(self, current_branch):
+        # type: (Branch) -> None
+        remotes = self.get_remotes()
+        remote, remote_branch = current_branch.tracking.split("/", 1)
 
-    def open_comparision_in_browser(self, owner, branch):
-        base_remote = github.parse_remote(self.get_integrated_remote_url())
-        remote_url = base_remote.url
-        base_owner = base_remote.owner
-        base_branch = self.get_integrated_branch_name()
+        remote_url = remotes[remote]
+        owner = github.parse_remote(remote_url).owner
+
+        config = self.read_gitsavvy_config()
+        base_remote_name = self.get_integrated_remote_name(
+            remotes,
+            current_upstream=current_branch.tracking,
+            configured_remote_name=config.get("ghremote")
+        )
+        base_remote_url = remotes[base_remote_name]
+        base_remote = github.parse_remote(base_remote_url)
+        base_branch = config.get("ghbranch")
+
         start = (
-            "{}:{}...".format(base_owner, urllib.parse.quote_plus(base_branch))
+            "{}:{}...".format(base_remote.owner, urllib.parse.quote_plus(base_branch))
             if base_branch
             else ""
         )
-        end = "{}:{}".format(owner, urllib.parse.quote_plus(branch))
-        url = "{}/compare/{}{}?expand=1".format(remote_url, start, end)
+        end = "{}:{}".format(owner, urllib.parse.quote_plus(remote_branch))
+        url = "{}/compare/{}{}?expand=1".format(base_remote.url, start, end)
         open_in_browser(url)
 
 

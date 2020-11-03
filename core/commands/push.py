@@ -5,6 +5,7 @@ from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from GitSavvy.core.runtime import enqueue_on_worker
 
 
 __all__ = (
@@ -35,7 +36,7 @@ class PushBase(WindowCommand, GitCommand):
                 if not sublime.ok_cancel_dialog(CONFIRM_FORCE_PUSH.format("--force")):
                     return
             elif force_with_lease:
-                if not sublime.ok_cancel_dialog(CONFIRM_FORCE_PUSH.format("--force--with-lease")):
+                if not sublime.ok_cancel_dialog(CONFIRM_FORCE_PUSH.format("--force-with-lease")):
                     return
 
         self.window.status_message(START_PUSH_MESSAGE)
@@ -60,39 +61,48 @@ class gs_push(PushBase):
         self.force = force
         self.force_with_lease = force_with_lease
         self.local_branch_name = local_branch_name
-        sublime.set_timeout_async(self.run_async)
+        enqueue_on_worker(self.run_async, local_branch_name, force, force_with_lease)
 
-    def run_async(self):
-        if not self.local_branch_name:
-            self.local_branch_name = self.get_current_branch_name()
+    def run_async(self, local_branch_name, force, force_with_lease):
+        # type: (str, bool, bool) -> None
+        if local_branch_name:
+            local_branch = self.get_local_branch(local_branch_name)
+            if not local_branch:
+                sublime.message_dialog("'{}' is not a local branch name.")
+                return
+        else:
+            local_branch = self.get_current_branch()
+            if not local_branch:
+                sublime.message_dialog("Can't push a detached HEAD.")
+                return
 
-        upstream = self.get_local_branch(self.local_branch_name).tracking
-
+        upstream = local_branch.tracking
         if upstream:
             remote, remote_branch = upstream.split("/", 1)
             self.do_push(
                 remote,
-                self.local_branch_name,
+                local_branch.name,
                 remote_branch=remote_branch,
-                force=self.force,
-                force_with_lease=self.force_with_lease)
+                force=force,
+                force_with_lease=force_with_lease
+            )
         elif self.savvy_settings.get("prompt_for_tracking_branch"):
             if sublime.ok_cancel_dialog(SET_UPSTREAM_PROMPT):
                 self.window.run_command("gs_push_to_branch_name", {
-                    "local_branch_name": self.local_branch_name,
+                    "local_branch_name": local_branch.name,
                     "set_upstream": True,
-                    "force": self.force,
-                    "force_with_lease": self.force_with_lease
+                    "force": force,
+                    "force_with_lease": force_with_lease
                 })
         else:
-            # if `prompt_for_tracking_branch` is false, ask for a remote and perform
+            # If `prompt_for_tracking_branch` is false, ask for a remote and
             # push current branch to a remote branch with the same name
             self.window.run_command("gs_push_to_branch_name", {
-                "local_branch_name": self.local_branch_name,
-                "branch_name": self.local_branch_name,
-                "set_upstream": False,
-                "force": self.force,
-                "force_with_lease": self.force_with_lease
+                "local_branch_name": local_branch.name,
+                "branch_name": local_branch.name,
+                "set_upstream": True,
+                "force": force,
+                "force_with_lease": force_with_lease
             })
 
 
@@ -102,7 +112,7 @@ class gs_push_to_branch(PushBase):
     """
 
     def run(self):
-        sublime.set_timeout_async(self.run_async)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         show_branch_panel(self.on_branch_selection, ask_remote_first=True)
@@ -112,9 +122,12 @@ class gs_push_to_branch(PushBase):
             return
         current_local_branch = self.get_current_branch_name()
         selected_remote, selected_branch = branch.split("/", 1)
-        sublime.set_timeout_async(
-            lambda: self.do_push(
-                selected_remote, current_local_branch, remote_branch=selected_branch))
+        enqueue_on_worker(
+            self.do_push,
+            selected_remote,
+            current_local_branch,
+            remote_branch=selected_branch
+        )
 
 
 class gs_push_to_branch_name(PushBase):
@@ -123,12 +136,13 @@ class gs_push_to_branch_name(PushBase):
     """
 
     def run(
-            self,
-            local_branch_name=None,
-            branch_name=None,
-            set_upstream=False,
-            force=False,
-            force_with_lease=False):
+        self,
+        local_branch_name=None,
+        branch_name=None,
+        set_upstream=False,
+        force=False,
+        force_with_lease=False
+    ):
         if local_branch_name:
             self.local_branch_name = local_branch_name
         else:
@@ -138,7 +152,7 @@ class gs_push_to_branch_name(PushBase):
         self.set_upstream = set_upstream
         self.force = force
         self.force_with_lease = force_with_lease
-        sublime.set_timeout_async(self.run_async)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         show_remote_panel(self.on_remote_selection)
@@ -167,9 +181,11 @@ class gs_push_to_branch_name(PushBase):
         Push to the remote that was previously selected and provided branch
         name.
         """
-        sublime.set_timeout_async(lambda: self.do_push(
+        enqueue_on_worker(
+            self.do_push,
             self.selected_remote,
             self.local_branch_name,
+            remote_branch=branch,
             force=self.force,
-            force_with_lease=self.force_with_lease,
-            remote_branch=branch))
+            force_with_lease=self.force_with_lease
+        )

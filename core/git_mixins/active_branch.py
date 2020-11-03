@@ -179,13 +179,3 @@ class ActiveBranchMixin():
             "branch.{}.remote".format(branch_name),
             throw_on_stderr=False
         ).strip() or None
-
-    def get_active_remote_branch(self):
-        """
-        Return named tuple of the upstream for active branch.
-        """
-        upstream = self.get_upstream_for_active_branch()
-        for branch in self.get_branches():
-            if branch.name_with_remote == upstream:
-                return branch
-        return None
