@@ -14,9 +14,10 @@ contexts:
       set: commit-subject
 
   references:
-    - match: \@\w*
+    - match: (?:\s)(\@\w+)
       comment: github username
-      scope: constant.other.github-username.git-savvy.make-commit
+      captures:
+        1: constant.other.github-username.git-savvy.make-commit
 
     - match: '(\w+/\w+)?#[0-9]+'
       comment: issue
