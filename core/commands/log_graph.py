@@ -2144,9 +2144,9 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         on_checked_out_branch = "HEAD" in info and info["HEAD"] in info.get("local_branches", [])
         if on_checked_out_branch:
             actions += [
+                ("Fetch", partial(self.fetch, info["HEAD"])),
                 ("Pull", self.pull),
                 ("Push", partial(self.push, info["HEAD"])),
-                ("Fetch", partial(self.fetch, info["HEAD"])),
                 ("-" * 75, self.noop),
             ]
 
