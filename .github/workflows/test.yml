@@ -1,9 +1,6 @@
 name: Run tests
 
-on:
-  push:
-  pull_request:
-    types: [ opened, synchronize, reopened ]
+on: [push, pull_request]
 
 # if need master branch of UnitTesting
 #  env:
