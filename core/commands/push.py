@@ -106,28 +106,6 @@ class gs_push(PushBase):
             })
 
 
-class gs_push_to_branch(PushBase):
-    """
-    Through a series of panels, allow the user to push to a specific remote branch.
-    """
-
-    def run(self):
-        enqueue_on_worker(self.run_async)
-
-    def run_async(self):
-        show_branch_panel(self.on_branch_selection, ask_remote_first=True)
-
-    def on_branch_selection(self, branch):
-        current_local_branch = self.get_current_branch_name()
-        selected_remote, selected_branch = branch.split("/", 1)
-        enqueue_on_worker(
-            self.do_push,
-            selected_remote,
-            current_local_branch,
-            remote_branch=selected_branch
-        )
-
-
 class gs_push_to_branch_name(PushBase):
     """
     Prompt for remote and remote branch name, then push.
@@ -182,4 +160,26 @@ class gs_push_to_branch_name(PushBase):
             remote_branch=branch,
             force=self.force,
             force_with_lease=self.force_with_lease
+        )
+
+
+class gs_push_to_branch(PushBase):
+    """
+    Through a series of panels, allow the user to push to a specific remote branch.
+    """
+
+    def run(self):
+        enqueue_on_worker(self.run_async)
+
+    def run_async(self):
+        show_branch_panel(self.on_branch_selection, ask_remote_first=True)
+
+    def on_branch_selection(self, branch):
+        current_local_branch = self.get_current_branch_name()
+        selected_remote, selected_branch = branch.split("/", 1)
+        enqueue_on_worker(
+            self.do_push,
+            selected_remote,
+            current_local_branch,
+            remote_branch=selected_branch
         )
