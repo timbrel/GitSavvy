@@ -18,7 +18,6 @@ __all__ = (
 )
 
 
-START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
 CONFIRM_FORCE_PUSH = ("You are about to `git push {}`. Would you  "
                       "like to proceed?")
@@ -40,7 +39,7 @@ class PushBase(WindowCommand, GitCommand):
                 if not sublime.ok_cancel_dialog(CONFIRM_FORCE_PUSH.format("--force-with-lease")):
                     return
 
-        self.window.status_message(START_PUSH_MESSAGE)
+        self.window.status_message("Pushing {} to {}...".format(branch, remote))
         self.push(
             remote,
             branch,
