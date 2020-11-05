@@ -43,4 +43,4 @@ class gs_fetch(GsWindowCommand, GitCommand):
 
         self.fetch(None if fetch_all else remote)
         self.window.status_message("Fetch complete.")
-        util.view.refresh_gitsavvy(self.window.active_view())
+        util.view.refresh_gitsavvy_interfaces(self.window)
