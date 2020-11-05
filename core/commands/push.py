@@ -55,7 +55,7 @@ class PushBase(WindowCommand, GitCommand):
             set_upstream=set_upstream
         )
         self.window.status_message(END_PUSH_MESSAGE)
-        util.view.refresh_gitsavvy(self.window.active_view())
+        util.view.refresh_gitsavvy_interfaces(self.window)
 
 
 class gs_push(PushBase):
