@@ -28,6 +28,7 @@ class PushBase(WindowCommand, GitCommand):
     set_upstream = False
 
     def do_push(self, remote, branch, force=False, force_with_lease=False, remote_branch=None):
+        # type: (str, str, bool, bool, str) -> None
         """
         Perform `git push remote branch`.
         """
@@ -119,6 +120,7 @@ class gs_push_to_branch_name(PushBase):
         force=False,
         force_with_lease=False
     ):
+        # type: (str, str, bool, bool, bool) -> None
         if local_branch_name:
             self.local_branch_name = local_branch_name
         else:
@@ -131,9 +133,11 @@ class gs_push_to_branch_name(PushBase):
         enqueue_on_worker(self.run_async)
 
     def run_async(self):
+        # type: () -> None
         show_remote_panel(self.on_remote_selection, allow_direct=True)
 
     def on_remote_selection(self, remote):
+        # type: (str) -> None
         """
         After the user selects a remote, maybe prompt the user for a branch name.
         """
@@ -149,6 +153,7 @@ class gs_push_to_branch_name(PushBase):
             )
 
     def on_entered_branch_name(self, branch):
+        # type: (str) -> None
         """
         Push to the remote that was previously selected and provided branch
         name.
@@ -169,12 +174,15 @@ class gs_push_to_branch(PushBase):
     """
 
     def run(self):
+        # type: () -> None
         enqueue_on_worker(self.run_async)
 
     def run_async(self):
+        # type: () -> None
         show_branch_panel(self.on_branch_selection, ask_remote_first=True)
 
     def on_branch_selection(self, branch):
+        # type: (str) -> None
         current_local_branch = self.get_current_branch_name()
         selected_remote, selected_branch = branch.split("/", 1)
         enqueue_on_worker(

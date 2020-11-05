@@ -6,6 +6,11 @@ from GitSavvy.core.fns import filter_
 from GitSavvy.core import store
 
 
+MYPY = False
+if MYPY:
+    from typing import Callable
+
+
 class PanelActionMixin(object):
     """
     Use this mixin to initially display a quick panel, select from pre-defined
@@ -116,13 +121,14 @@ class PanelCommandMixin(PanelActionMixin):
 
 
 def show_remote_panel(
-    on_done,
+    on_done,  # type: Callable[[str], None]
     *,
-    on_cancel=lambda: None,
-    show_option_all=False,
-    allow_direct=False,
-    show_url=False
+    on_cancel=lambda: None,  # type: Callable[[], None]
+    show_option_all=False,  # type: bool
+    allow_direct=False,  # type: bool
+    show_url=False  # type: bool
 ):
+    # type: (...) -> RemotePanel
     """
     Show a quick panel with remotes. The callback `on_done(remote)` will
     be called when a remote is selected. If the panel is cancelled, `None`
@@ -147,12 +153,13 @@ class RemotePanel(GitCommand):
 
     def __init__(
         self,
-        on_done,
-        on_cancel=lambda: None,
-        show_option_all=False,
-        allow_direct=False,
-        show_url=False
+        on_done,  # type: Callable[[str], None]
+        on_cancel=lambda: None,  # type: Callable[[], None]
+        show_option_all=False,  # type: bool
+        allow_direct=False,  # type: bool
+        show_url=False  # type: bool
     ):
+        # type: (...) -> None
         self.window = sublime.active_window()
         self.on_done = on_done
         self.on_cancel = on_cancel
@@ -161,6 +168,7 @@ class RemotePanel(GitCommand):
         self.show_url = show_url
 
     def show(self):
+        # type: () -> None
         _remotes = self.get_remotes()
         self.remotes = list(_remotes.keys())
 
@@ -189,6 +197,7 @@ class RemotePanel(GitCommand):
         )
 
     def on_remote_selection(self, index):
+        # type: (int) -> None
         if index == -1:
             self.on_cancel()
         elif self.show_option_all and len(self.remotes) > 1 and index == 0:
