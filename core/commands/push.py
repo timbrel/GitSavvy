@@ -24,10 +24,16 @@ CONFIRM_FORCE_PUSH = ("You are about to `git push {}`. Would you  "
 
 
 class PushBase(WindowCommand, GitCommand):
-    set_upstream = False
-
-    def do_push(self, remote, branch, force=False, force_with_lease=False, remote_branch=None):
-        # type: (str, str, bool, bool, str) -> None
+    def do_push(
+        self,
+        remote,
+        branch,
+        force=False,
+        force_with_lease=False,
+        remote_branch=None,
+        set_upstream=False
+    ):
+        # type: (str, str, bool, bool, str, bool) -> None
         """
         Perform `git push remote branch`.
         """
@@ -163,7 +169,8 @@ class gs_push_to_branch_name(PushBase):
             self.local_branch_name,
             remote_branch=branch,
             force=self.force,
-            force_with_lease=self.force_with_lease
+            force_with_lease=self.force_with_lease,
+            set_upstream=self.set_upstream
         )
 
 
