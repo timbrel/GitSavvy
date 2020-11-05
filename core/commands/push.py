@@ -1,12 +1,12 @@
 from functools import partial
 
 import sublime
-from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import show_actions_panel, noop
 
@@ -18,12 +18,17 @@ __all__ = (
 )
 
 
+MYPY = False
+if MYPY:
+    from GitSavvy.core.base_commands import Args, Kont
+
+
 END_PUSH_MESSAGE = "Push complete."
 CONFIRM_FORCE_PUSH = ("You are about to `git push {}`. Would you  "
                       "like to proceed?")
 
 
-class PushBase(WindowCommand, GitCommand):
+class PushBase(GsWindowCommand, GitCommand):
     def do_push(
         self,
         remote,
@@ -112,65 +117,62 @@ class gs_push(PushBase):
             })
 
 
+def take_current_branch_name(cmd, args, done):
+    # type: (PushBase, Args, Kont) -> None
+    current_branch_name = cmd.get_current_branch_name()
+    if current_branch_name:
+        done(current_branch_name)
+    else:
+        cmd.window.status_message("Can't push a detached HEAD.")
+
+
+def ask_for_remote(cmd, args, done):
+    # type: (GsWindowCommand, Args, Kont) -> None
+    show_remote_panel(done, allow_direct=True)
+
+
+def ask_for_branch_name(caption, initial_text):
+    def handler(cmd, args, done):
+        # type: (GsWindowCommand, Args, Kont) -> None
+        show_single_line_input_panel(
+            caption(args),
+            initial_text(args),
+            done
+        )
+    return handler
+
+
 class gs_push_to_branch_name(PushBase):
     """
     Prompt for remote and remote branch name, then push.
     """
+    defaults = {
+        "local_branch_name": take_current_branch_name,  # type: ignore[dict-item]
+        "remote": ask_for_remote,
+        "branch_name": ask_for_branch_name(
+            caption=lambda args: "Push to {}/".format(args["remote"]),
+            initial_text=lambda args: args["local_branch_name"]
+        )
+    }
 
     def run(
         self,
-        local_branch_name=None,
-        branch_name=None,
+        local_branch_name,
+        remote,
+        branch_name,
         set_upstream=False,
         force=False,
         force_with_lease=False
     ):
-        # type: (str, str, bool, bool, bool) -> None
-        if local_branch_name:
-            self.local_branch_name = local_branch_name
-        else:
-            self.local_branch_name = self.get_current_branch_name()
-
-        self.branch_name = branch_name
-        self.set_upstream = set_upstream
-        self.force = force
-        self.force_with_lease = force_with_lease
-        enqueue_on_worker(self.run_async)
-
-    def run_async(self):
-        # type: () -> None
-        show_remote_panel(self.on_remote_selection, allow_direct=True)
-
-    def on_remote_selection(self, remote):
-        # type: (str) -> None
-        """
-        After the user selects a remote, maybe prompt the user for a branch name.
-        """
-        self.selected_remote = remote
-
-        if self.branch_name:
-            self.on_entered_branch_name(self.branch_name)
-        else:
-            show_single_line_input_panel(
-                "Push to {}/".format(remote),
-                self.local_branch_name,
-                self.on_entered_branch_name
-            )
-
-    def on_entered_branch_name(self, branch):
-        # type: (str) -> None
-        """
-        Push to the remote that was previously selected and provided branch
-        name.
-        """
+        # type: (str, str, str, bool, bool, bool) -> None
         enqueue_on_worker(
             self.do_push,
-            self.selected_remote,
-            self.local_branch_name,
-            remote_branch=branch,
-            force=self.force,
-            force_with_lease=self.force_with_lease,
-            set_upstream=self.set_upstream
+            remote,
+            local_branch_name,
+            remote_branch=branch_name,
+            force=force,
+            force_with_lease=force_with_lease,
+            set_upstream=set_upstream
         )
 
 
