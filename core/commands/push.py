@@ -142,6 +142,11 @@ def ask_for_branch_name(caption, initial_text):
     return handler
 
 
+def ask_for_remote_branch(self, args, done):
+    # type: (GsWindowCommand, Args, Kont) -> None
+    show_branch_panel(done, ask_remote_first=True)
+
+
 class gs_push_to_branch_name(PushBase):
     """
     Prompt for remote and remote branch name, then push.
@@ -180,22 +185,17 @@ class gs_push_to_branch(PushBase):
     """
     Through a series of panels, allow the user to push to a specific remote branch.
     """
+    defaults = {
+        "local_branch_name": take_current_branch_name,  # type: ignore[dict-item]
+        "remote_branch": ask_for_remote_branch
+    }
 
-    def run(self):
-        # type: () -> None
-        enqueue_on_worker(self.run_async)
-
-    def run_async(self):
-        # type: () -> None
-        show_branch_panel(self.on_branch_selection, ask_remote_first=True)
-
-    def on_branch_selection(self, branch):
-        # type: (str) -> None
-        current_local_branch = self.get_current_branch_name()
-        selected_remote, selected_branch = branch.split("/", 1)
+    def run(self, local_branch_name, remote_branch):
+        # type: (str, str) -> None
+        remote, branch_name = remote_branch.split("/", 1)
         enqueue_on_worker(
             self.do_push,
-            selected_remote,
-            current_local_branch,
-            remote_branch=selected_branch
+            remote,
+            local_branch_name,
+            remote_branch=branch_name
         )
