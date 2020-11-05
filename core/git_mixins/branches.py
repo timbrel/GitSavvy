@@ -32,7 +32,7 @@ class BranchesMixin(mixin_base):
                 return branch
         return None
 
-    def get_local_branch(self, branch_name):
+    def get_local_branch_by_name(self, branch_name):
         # type: (str) -> Optional[Branch]
         """
         Get a local Branch tuple from branch name.

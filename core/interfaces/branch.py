@@ -432,7 +432,7 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
         for branch in branches:
             if branch[0] is None:
                 # update local branches which have tracking remote
-                local_branch = self.get_local_branch(branch[1])
+                local_branch = self.get_local_branch_by_name(branch[1])
                 if local_branch.tracking:
                     remote, remote_branch = local_branch.tracking.split("/", 1)
                     self.fetch(remote=remote, branch=branch[1], remote_branch=remote_branch)

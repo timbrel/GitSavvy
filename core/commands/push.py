@@ -60,7 +60,7 @@ class gs_push(PushBase):
     def run(self, local_branch_name=None, force=False, force_with_lease=False):
         # type: (str, bool, bool) -> None
         if local_branch_name:
-            local_branch = self.get_local_branch(local_branch_name)
+            local_branch = self.get_local_branch_by_name(local_branch_name)
             if not local_branch:
                 sublime.message_dialog("'{}' is not a local branch name.")
                 return
