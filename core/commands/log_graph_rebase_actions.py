@@ -45,7 +45,7 @@ if MYPY:
         Optional,
         Tuple
     )
-    from GitSavvy.core.base_commands import GsCommand, Kont
+    from GitSavvy.core.base_commands import GsCommand, Args, Kont
 
     RebaseItem = NamedTuple("RebaseItem", [
         ("action", str),
@@ -78,8 +78,8 @@ def commitish_from_info(info):
     )
 
 
-def extract_symbol_from_graph(self, done):
-    # type: (GsCommand, Kont) -> None
+def extract_symbol_from_graph(self, args, done):
+    # type: (GsCommand, Args, Kont) -> None
     view = get_view_for_command(self)
     if not view:
         return
@@ -98,13 +98,13 @@ def extract_symbol_from_graph(self, done):
     done(symbol)
 
 
-def extract_parent_symbol_from_graph(self, done):
-    # type: (GsCommand, Kont) -> None
-    extract_symbol_from_graph(self, lambda symbol: done("{}^".format(symbol)))
+def extract_parent_symbol_from_graph(self, args, done):
+    # type: (GsCommand, Args, Kont) -> None
+    extract_symbol_from_graph(self, args, lambda symbol: done("{}^".format(symbol)))
 
 
-def extract_commit_hash_from_graph(self, done):
-    # type: (GsCommand, Kont) -> None
+def extract_commit_hash_from_graph(self, args, done):
+    # type: (GsCommand, Args, Kont) -> None
     view = get_view_for_command(self)
     if not view:
         return
