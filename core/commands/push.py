@@ -20,7 +20,6 @@ __all__ = (
 
 START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
-PUSH_TO_BRANCH_NAME_PROMPT = "Enter remote branch name:"
 SET_UPSTREAM_PROMPT = ("You have not set an upstream for the active branch.  "
                        "Would you like to set one?")
 CONFIRM_FORCE_PUSH = ("You are about to `git push {}`. Would you  "
@@ -163,7 +162,7 @@ class gs_push_to_branch_name(PushBase):
 
     def on_remote_selection(self, remote):
         """
-        After the user selects a remote, prompt the user for a branch name.
+        After the user selects a remote, maybe prompt the user for a branch name.
         """
         self.selected_remote = remote
 
@@ -171,7 +170,7 @@ class gs_push_to_branch_name(PushBase):
             self.on_entered_branch_name(self.branch_name)
         else:
             show_single_line_input_panel(
-                PUSH_TO_BRANCH_NAME_PROMPT,
+                "Push to {}/".format(remote),
                 self.local_branch_name,
                 self.on_entered_branch_name
             )
