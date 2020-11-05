@@ -166,6 +166,11 @@ class RemotePanel(GitCommand):
         self.show_option_all = show_option_all
         self.allow_direct = allow_direct
         self.show_url = show_url
+        self.storage_key = (
+            "last_remote_used_with_option_all"
+            if self.show_option_all
+            else "last_remote_used"
+        )
 
     def show(self):
         # type: () -> None
@@ -183,7 +188,7 @@ class RemotePanel(GitCommand):
         if self.show_option_all and len(self.remotes) > 1:
             self.remotes.insert(0, "All remotes.")
 
-        last_remote_used = store.current_state(self.repo_path).get("last_remote_used")
+        last_remote_used = store.current_state(self.repo_path).get(self.storage_key, "origin")
         if last_remote_used in self.remotes:
             pre_selected_index = self.remotes.index(last_remote_used)
         else:
@@ -201,11 +206,11 @@ class RemotePanel(GitCommand):
         if index == -1:
             self.on_cancel()
         elif self.show_option_all and len(self.remotes) > 1 and index == 0:
-            store.update_state(self.repo_path, {"last_remote_used": None})
+            store.update_state(self.repo_path, {self.storage_key: "<ALL>"})  # type: ignore[misc]
             self.on_done(True)
         else:
             remote = self.remotes[index]
-            store.update_state(self.repo_path, {"last_remote_used": remote})
+            store.update_state(self.repo_path, {self.storage_key: remote})  # type: ignore[misc]
             self.on_done(remote)
 
 
