@@ -31,7 +31,7 @@ Like `git: pull from branch`, but rebasing on the remote branch instead of mergi
 
 ## `git: push`
 
-This command will push current branch to the tracking branch. If the tracking branch is not set, you will be asked to configure it unless `prompt_for_tracking_branch` is set to `false`. In that case, you will be prompted for a remote, then the current branch will be pushed to a remote branch with the same name.
+This command will push current branch to the tracking branch. If the tracking branch is not set, you will be prompted for a remote and a branch name.
 
 ## `git: push to branch`
 

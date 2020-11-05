@@ -20,8 +20,6 @@ __all__ = (
 
 START_PUSH_MESSAGE = "Starting push..."
 END_PUSH_MESSAGE = "Push complete."
-SET_UPSTREAM_PROMPT = ("You have not set an upstream for the active branch.  "
-                       "Would you like to set one?")
 CONFIRM_FORCE_PUSH = ("You are about to `git push {}`. Would you  "
                       "like to proceed?")
 
@@ -99,10 +97,7 @@ class gs_push(PushBase):
             else:
                 kont()
 
-        elif (
-            not self.savvy_settings.get("prompt_for_tracking_branch") or
-            sublime.ok_cancel_dialog(SET_UPSTREAM_PROMPT)
-        ):
+        else:
             self.window.run_command("gs_push_to_branch_name", {
                 "local_branch_name": local_branch.name,
                 "set_upstream": True,

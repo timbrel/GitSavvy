@@ -19,10 +19,6 @@ if MYPY:
     from GitSavvy.core.git_mixins.branches import Branch
 
 
-PUSH_PROMPT = ("You have not set an upstream for the active branch.  "
-               "Would you like to push to a remote?")
-
-
 class GsGithubPullRequestCommand(WindowCommand, git_mixins.GithubRemotesMixin, GitCommand):
 
     """
@@ -182,14 +178,10 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
             return
 
         if not current_branch.tracking:
-            if (
-                not self.savvy_settings.get("prompt_for_tracking_branch")
-                or sublime.ok_cancel_dialog(PUSH_PROMPT)
-            ):
-                self.window.run_command("gs_github_push_and_create_pull_request", {
-                    "local_branch_name": current_branch.name,
-                    "set_upstream": True
-                })
+            self.window.run_command("gs_github_push_and_create_pull_request", {
+                "local_branch_name": current_branch.name,
+                "set_upstream": True
+            })
 
         elif (
             "ahead" in current_branch.tracking_status
