@@ -49,10 +49,10 @@ class PushBase(WindowCommand, GitCommand):
         self.push(
             remote,
             branch,
-            set_upstream=self.set_upstream,
+            remote_branch=remote_branch,
             force=force,
             force_with_lease=force_with_lease,
-            remote_branch=remote_branch
+            set_upstream=set_upstream
         )
         self.window.status_message(END_PUSH_MESSAGE)
         util.view.refresh_gitsavvy(self.window.active_view())
