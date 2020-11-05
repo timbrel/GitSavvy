@@ -25,7 +25,7 @@ class gs_fetch(WindowCommand, GitCommand):
         show_remote_panel(self.on_remote_selection, show_option_all=True, allow_direct=True)
 
     def on_remote_selection(self, remote):
-        if remote is True:
+        if remote == "<ALL>":
             enqueue_on_worker(self.do_fetch)
         else:
             enqueue_on_worker(self.do_fetch, remote)
