@@ -386,7 +386,7 @@ class GsBranchesPushAllCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        show_remote_panel(self.on_remote_selection)
+        show_remote_panel(self.on_remote_selection, allow_direct=True)
 
     def on_remote_selection(self, remote):
         self.view.window().status_message("Pushing all branches to `{}`...".format(remote))

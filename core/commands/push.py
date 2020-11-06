@@ -167,7 +167,7 @@ class gs_push_to_branch_name(PushBase):
         enqueue_on_worker(self.run_async)
 
     def run_async(self):
-        show_remote_panel(self.on_remote_selection)
+        show_remote_panel(self.on_remote_selection, allow_direct=True)
 
     def on_remote_selection(self, remote):
         """

@@ -257,7 +257,7 @@ class BranchPanel(GitCommand):
 
     def show(self):
         if self.ask_remote_first:
-            show_remote_panel(self.select_branch)
+            show_remote_panel(self.select_branch, allow_direct=True)
         else:
             self.select_branch(remote=None)
 
