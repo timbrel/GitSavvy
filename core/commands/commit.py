@@ -1,4 +1,3 @@
-from functools import lru_cache
 import os
 
 import sublime
@@ -14,6 +13,7 @@ from ...common import util
 from ...core.settings import SettingsMixin
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.ui_mixins.quick_panel import short_ref
+from GitSavvy.core.utils import show_panel
 
 
 __all__ = (
@@ -438,8 +438,6 @@ class gs_commit_log_helper(TextCommand, GitCommand):
 
         def on_done(idx):
             window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
-            if idx == -1:
-                return
             entry = items[idx]
             text = "{}{}".format(prefix, entry.summary)
             replace_view_content(view, text, region=view.line(cursor))
@@ -447,10 +445,9 @@ class gs_commit_log_helper(TextCommand, GitCommand):
                 view.sel().clear()
                 view.sel().add(len(text))
 
-        # `on_highlight` also gets called `on_done`, and then
-        # our "show|hide_panel" side-effects get muddled.  We
-        # reduce the side-effect here using `lru_cache`.
-        @lru_cache(1)
+        def on_cancel():
+            window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
+
         def on_highlight(idx):
             entry = items[idx]
             window.run_command("gs_show_commit_info", {  # type: ignore[union-attr]  # mypy bug
@@ -464,12 +461,14 @@ class gs_commit_log_helper(TextCommand, GitCommand):
                 entry.summary
             )
         ))
-        window.show_quick_panel(
-            list(map(format_item, items)),
+        show_panel(
+            window,
+            map(format_item, items),
             on_done,
+            on_cancel,
+            on_highlight,
+            selected_index=preselected_idx,
             flags=sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST,
-            on_highlight=on_highlight,
-            selected_index=preselected_idx
         )
 
 
