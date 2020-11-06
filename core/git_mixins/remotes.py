@@ -24,24 +24,6 @@ class RemotesMixin():
             branch if not remote_branch else "{}:{}".format(remote_branch, branch)
         )
 
-    def list_remote_branches(self, remote=None):
-        """
-        Return a list of all known branches on all remotes, or a specified remote.
-        """
-        stdout = self.git("branch", "-r", "--no-color")
-        branches = [branch.strip() for branch in stdout.split("\n") if branch]
-
-        if remote:
-            branches = [branch for branch in branches if branch.startswith(remote + "/")]
-
-        # Clean up "origin/HEAD -> origin/master" to "origin/master" if present.
-        for idx, branch_name in enumerate(branches):
-            if "origin/HEAD -> " in branch_name:
-                branches[idx] = branch_name[15:]
-
-        # Remove any duplicate branch names.
-        return [branch for idx, branch in enumerate(branches) if branches.index(branch) == idx]
-
     def pull(self, remote=None, remote_branch=None, rebase=False):
         """
         Pull from the specified remote and branch if provided, otherwise

@@ -61,12 +61,10 @@ class gs_pull_from_branch(GsPullBase):
     def run_async(self):
         show_branch_panel(
             self.on_branch_selection,
-            ask_remote_first=True)
+            ask_remote_first=True
+        )
 
     def on_branch_selection(self, branch):
-        if not branch:
-            return
-
         selected_remote, selected_remote_branch = branch.split("/", 1)
 
         sublime.set_timeout_async(

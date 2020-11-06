@@ -349,13 +349,10 @@ class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
         show_branch_panel(
             self.on_branch_selection,
             ask_remote_first=True,
-            selected_branch=branch_name)
+            selected_branch=branch_name
+        )
 
     def on_branch_selection(self, branch):
-        # If the user pressed `esc` or otherwise cancelled.
-        if not branch:
-            return
-
         self.git("branch", "-u", branch, self.local_branch)
         util.view.refresh_gitsavvy(self.view)
 
@@ -392,9 +389,6 @@ class GsBranchesPushAllCommand(TextCommand, GitCommand):
         show_remote_panel(self.on_remote_selection)
 
     def on_remote_selection(self, remote):
-        # If the user pressed `esc` or otherwise cancelled.
-        if not remote:
-            return
         self.view.window().status_message("Pushing all branches to `{}`...".format(remote))
         self.git("push", remote, "--all")
         self.view.window().status_message("Push successful.")

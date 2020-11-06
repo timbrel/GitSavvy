@@ -177,7 +177,7 @@ class Window:
     def show_quick_panel(
         self,
         items: List[Any],
-        on_select: Callable[[int], None],
+        on_select: Optional[Callable[[int], None]],
         flags: int = ...,
         selected_index: int = ...,
         on_highlight: Optional[Callable[[int], None]] = ...,

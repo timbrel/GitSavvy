@@ -132,8 +132,6 @@ class gs_push_to_branch(PushBase):
         show_branch_panel(self.on_branch_selection, ask_remote_first=True)
 
     def on_branch_selection(self, branch):
-        if not branch:
-            return
         current_local_branch = self.get_current_branch_name()
         selected_remote, selected_branch = branch.split("/", 1)
         enqueue_on_worker(
@@ -175,10 +173,6 @@ class gs_push_to_branch_name(PushBase):
         """
         After the user selects a remote, prompt the user for a branch name.
         """
-        # If the user pressed `esc` or otherwise cancelled.
-        if not remote:
-            return
-
         self.selected_remote = remote
 
         if self.branch_name:

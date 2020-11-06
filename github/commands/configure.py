@@ -15,15 +15,13 @@ class GsGithubConfigureRemoteCommand(WindowCommand, GithubRemotesMixin, GitComma
         show_branch_panel(
             self.on_branch_selection,
             ask_remote_first=True,
-            selected_branch=self.get_integrated_branch_name())
+            selected_branch=self.get_integrated_branch_name()
+        )
 
     def on_branch_selection(self, branch):
         """
         After the user selects a branch, configure integrated remote branch.
         """
-        if not branch:
-            return
-
         remote, remote_branch = branch.split("/", 1)
 
         self.git("config", "--local", "--unset-all", "GitSavvy.ghRemote", throw_on_stderr=False)

@@ -20,11 +20,10 @@ class GsMergeCommand(WindowCommand, GitCommand):
     def run_async(self):
         show_branch_panel(
             self.on_branch_selection,
-            ignore_current_branch=True)
+            ignore_current_branch=True
+        )
 
     def on_branch_selection(self, branch):
-        if not branch:
-            return
         try:
             self.git(
                 "merge",

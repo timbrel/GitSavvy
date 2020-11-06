@@ -131,9 +131,8 @@ class GsLogByBranchCommand(LogMixin, WindowCommand, GitCommand):
         )
 
     def on_branch_selection(self, branch, **kwargs):
-        if branch:
-            self._selected_branch = branch
-            super().run_async(branch=branch, **kwargs)
+        self._selected_branch = branch
+        super().run_async(branch=branch, **kwargs)
 
 
 class GsLogCommand(PanelCommandMixin, WindowCommand, GitCommand):

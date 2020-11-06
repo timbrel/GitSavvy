@@ -39,16 +39,10 @@ class GsRemoteRemoveCommand(WindowCommand, GitCommand):
     def run(self):
         show_remote_panel(self.on_remote_selection, show_url=True)
 
+    @util.actions.destructive(description="remove a remote")
     def on_remote_selection(self, remote):
-        if not remote:
-            return
-
-        @util.actions.destructive(description="remove a remote")
-        def remove():
-            self.git("remote", "remove", remote)
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)
-
-        remove()
+        self.git("remote", "remove", remote)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)
 
 
 class GsRemoteRenameCommand(WindowCommand, GitCommand):
@@ -60,9 +54,6 @@ class GsRemoteRenameCommand(WindowCommand, GitCommand):
         show_remote_panel(self.on_remote_selection, show_url=True)
 
     def on_remote_selection(self, remote):
-        if not remote:
-            return
-
         self.remote = remote
         show_single_line_input_panel("Remote name", remote, self.on_enter_name, None, None)
 

@@ -148,8 +148,7 @@ if MYPY:
 def ask_for_local_branch(self, done):
     # type: (GsCommand, Kont) -> None
     def on_done(branch):
-        if branch:
-            done(branch)
+        done(branch)
 
     show_branch_panel(
         on_done,

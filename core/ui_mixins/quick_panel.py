@@ -3,6 +3,7 @@ import sublime
 from ...common import util
 from ..git_command import GitCommand
 from GitSavvy.core.fns import filter_
+from GitSavvy.core import store
 
 
 class PanelActionMixin(object):
@@ -115,8 +116,13 @@ class PanelCommandMixin(PanelActionMixin):
 
 
 def show_remote_panel(
-    on_done, show_option_all=False, selected_remote=None, allow_direct=False,
-        show_url=False):
+    on_done,
+    *,
+    on_cancel=lambda: None,
+    show_option_all=False,
+    allow_direct=False,
+    show_url=False
+):
     """
     Show a quick panel with remotes. The callback `on_done(remote)` will
     be called when a remote is selected. If the panel is cancelled, `None`
@@ -126,7 +132,13 @@ def show_remote_panel(
     show_option_all: whether the option "All remotes" should be shown. `True` will
                 be passed to `on_done` if the all remotes option is selected.
     """
-    rp = RemotePanel(on_done, show_option_all, selected_remote, allow_direct, show_url)
+    rp = RemotePanel(
+        on_done,
+        on_cancel,
+        show_option_all,
+        allow_direct,
+        show_url
+    )
     rp.show()
     return rp
 
@@ -134,11 +146,16 @@ def show_remote_panel(
 class RemotePanel(GitCommand):
 
     def __init__(
-        self, on_done, show_option_all=False, selected_remote=None,
-            allow_direct=False, show_url=False):
+        self,
+        on_done,
+        on_cancel=lambda: None,
+        show_option_all=False,
+        allow_direct=False,
+        show_url=False
+    ):
         self.window = sublime.active_window()
         self.on_done = on_done
-        self.selected_remote = selected_remote
+        self.on_cancel = on_cancel
         self.show_option_all = show_option_all
         self.allow_direct = allow_direct
         self.show_url = show_url
@@ -158,9 +175,7 @@ class RemotePanel(GitCommand):
         if self.show_option_all and len(self.remotes) > 1:
             self.remotes.insert(0, "All remotes.")
 
-        # We don't use the GitCommand.last_remote_used property because we don't want default values
-        last_remote_used = self._last_remotes_used.get(self.repo_path)
-
+        last_remote_used = store.current_state(self.repo_path).get("last_remote_used")
         if last_remote_used in self.remotes:
             pre_selected_index = self.remotes.index(last_remote_used)
         else:
@@ -175,24 +190,26 @@ class RemotePanel(GitCommand):
 
     def on_remote_selection(self, index):
         if index == -1:
-            self.on_done(None)
+            self.on_cancel()
         elif self.show_option_all and len(self.remotes) > 1 and index == 0:
-            self.last_remote_used = None
+            store.update_state(self.repo_path, {"last_remote_used": None})
             self.on_done(True)
         else:
-            self.remote = self.remotes[index]
-            self.last_remote_used = self.remote
-            self.on_done(self.remote)
+            remote = self.remotes[index]
+            store.update_state(self.repo_path, {"last_remote_used": remote})
+            self.on_done(remote)
 
 
 def show_branch_panel(
         on_done,
+        *,
+        on_cancel=lambda: None,
         local_branches_only=False,
         remote_branches_only=False,
         ignore_current_branch=False,
         ask_remote_first=False,
-        local_branch=None,
-        selected_branch=None):
+        selected_branch=None
+):
     """
     Show a quick panel with branches. The callback `on_done(branch)` will
     be called when a branch is selected. If the panel is cancelled, `None`
@@ -206,11 +223,13 @@ def show_branch_panel(
     """
     bp = BranchPanel(
         on_done,
+        on_cancel,
         local_branches_only,
         remote_branches_only,
         ignore_current_branch,
         ask_remote_first,
-        selected_branch)
+        selected_branch
+    )
     bp.show()
     return bp
 
@@ -218,10 +237,18 @@ def show_branch_panel(
 class BranchPanel(GitCommand):
 
     def __init__(
-            self, on_done, local_branches_only=False, remote_branches_only=False,
-            ignore_current_branch=False, ask_remote_first=False, selected_branch=None):
+            self,
+            on_done,
+            on_cancel,
+            local_branches_only=False,
+            remote_branches_only=False,
+            ignore_current_branch=False,
+            ask_remote_first=False,
+            selected_branch=None
+    ):
         self.window = sublime.active_window()
         self.on_done = on_done
+        self.on_cancel = on_cancel
         self.local_branches_only = local_branches_only
         self.remote_branches_only = True if ask_remote_first else remote_branches_only
         self.ignore_current_branch = ignore_current_branch
@@ -230,32 +257,24 @@ class BranchPanel(GitCommand):
 
     def show(self):
         if self.ask_remote_first:
-            show_remote_panel(
-                lambda remote: sublime.set_timeout_async(
-                    lambda: self.on_remote_selection(remote), 100))
+            show_remote_panel(self.select_branch)
         else:
             self.select_branch(remote=None)
 
-    def on_remote_selection(self, remote):
-        if not remote:
-            return
-
-        self.select_branch(remote)
-
     def select_branch(self, remote=None):
-
+        branches = list(self.get_branches())
         if self.local_branches_only:
-            self.all_branches = [b.name_with_remote for b in self.get_branches() if not b.remote]
+            self.all_branches = [b.name_with_remote for b in branches if not b.remote]
         elif self.remote_branches_only:
-            self.all_branches = [b.name_with_remote for b in self.get_branches() if b.remote]
+            self.all_branches = [b.name_with_remote for b in branches if b.remote]
         else:
-            self.all_branches = [b.name_with_remote for b in self.get_branches()]
+            self.all_branches = [b.name_with_remote for b in branches]
 
+        current_branch = next((b.name for b in branches if b.active), None)
         if self.ignore_current_branch:
-            current_branch = self.get_current_branch_name()
             self.all_branches = [b for b in self.all_branches if b != current_branch]
         elif self.selected_branch is None and not self.remote_branches_only:
-            self.selected_branch = self.get_current_branch_name()
+            self.selected_branch = current_branch
 
         if remote:
             self.all_branches = [b for b in self.all_branches if b.startswith(remote + "/")]
@@ -292,11 +311,9 @@ class BranchPanel(GitCommand):
 
     def on_branch_selection(self, index):
         if index == -1:
-            self.branch = None
+            self.on_cancel()
         else:
-            self.branch = self.all_branches[index]
-
-        self.on_done(self.branch)
+            self.on_done(self.all_branches[index])
 
 
 def show_paginated_panel(items, on_done, **kwargs):

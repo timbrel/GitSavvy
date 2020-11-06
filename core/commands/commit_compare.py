@@ -73,21 +73,21 @@ class gs_compare_against_branch(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
-        show_branch_panel(self.on_branch_selection)
+        show_branch_panel(self.on_branch_selection, on_cancel=self.recurse)
 
     def on_branch_selection(self, branch):
-        if branch:
-            self.window.run_command("gs_compare_commit", {
-                "file_path": self._file_path,
-                "base_commit": self._base_commit if self._base_commit else branch,
-                "target_commit": self._target_commit if self._target_commit else branch
-            })
-        else:
-            self.window.run_command("gs_compare_against", {
-                "base_commit": self._base_commit,
-                "target_commit": self._target_commit,
-                "file_path": self._file_path
-            })
+        self.window.run_command("gs_compare_commit", {
+            "file_path": self._file_path,
+            "base_commit": self._base_commit if self._base_commit else branch,
+            "target_commit": self._target_commit if self._target_commit else branch
+        })
+
+    def recurse(self):
+        self.window.run_command("gs_compare_against", {
+            "base_commit": self._base_commit,
+            "target_commit": self._target_commit,
+            "file_path": self._file_path
+        })
 
 
 class gs_compare_against(PanelActionMixin, WindowCommand, GitCommand):
