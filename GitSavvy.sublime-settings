@@ -229,12 +229,6 @@
     "max_items_in_tags_dashboard": -1,
 
     /*
-        When set to `true`, GitSavvy will offer to set the upstream on `git: push`
-        when tracking branch is not configured.
-     */
-    "prompt_for_tracking_branch": true,
-
-    /*
         When set to `true`, GitSavvy will automatically display more info about the
         current commit in a output panel.
      */

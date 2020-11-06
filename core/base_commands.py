@@ -14,9 +14,9 @@ MYPY = False
 if MYPY:
     from typing import Any, Callable, Dict, Iterator, List, TypeVar
     CommandT = TypeVar("CommandT", bound=sublime_plugin.Command)
-    Kont = Callable[[object], None]
-    ArgProvider = Callable[[CommandT, Kont], None]
     Args = Dict[str, Any]
+    Kont = Callable[[object], None]
+    ArgProvider = Callable[[CommandT, Args, Kont], None]
 
 
 class WithProvideWindow:
@@ -63,7 +63,7 @@ class WithInputHandlers:
                     name
                 )
                 with sync_mode.set():
-                    self.defaults[name](self, done)
+                    self.defaults[name](self, args, done)
                 if not done.called:
                     break
         else:
@@ -127,14 +127,14 @@ class GsTextCommand(
     WithProvideWindow,
     sublime_plugin.TextCommand,
 ):
-    defaults = {}  # type: Dict[str, Callable[[GsTextCommand, Kont], None]]
+    defaults = {}  # type: Dict[str, Callable[[GsTextCommand, Args, Kont], None]]
 
 
 class GsWindowCommand(
     WithInputHandlers,
     sublime_plugin.WindowCommand,
 ):
-    defaults = {}  # type: Dict[str, Callable[[GsWindowCommand, Kont], None]]
+    defaults = {}  # type: Dict[str, Callable[[GsWindowCommand, Args, Kont], None]]
 
 
 if MYPY:
@@ -145,8 +145,8 @@ if MYPY:
 # COMMON INPUT HANDLERS
 
 
-def ask_for_local_branch(self, done):
-    # type: (GsCommand, Kont) -> None
+def ask_for_local_branch(self, args, done):
+    # type: (GsCommand, Args, Kont) -> None
     def on_done(branch):
         done(branch)
 
