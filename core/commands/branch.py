@@ -1,21 +1,14 @@
 import re
 
-import sublime
-from sublime_plugin import WindowCommand
-
 from ..git_command import GitCommand, GitSavvyError
-from ..runtime import enqueue_on_worker
 from ...common import util
-from ..ui_mixins.quick_panel import show_branch_panel
+from GitSavvy.core.base_commands import ask_for_local_branch, GsWindowCommand
+from GitSavvy.core.utils import noop, show_actions_panel
 
 
 __all__ = (
     "gs_delete_branch",
 )
-
-MYPY = False
-if MYPY:
-    from typing import Optional
 
 
 DELETE_UNDO_MESSAGE = """\
@@ -26,46 +19,22 @@ EXTRACT_COMMIT = re.compile(r"\(was (.+)\)")
 NOT_MERGED_WARNING = re.compile(r"The branch.*is not fully merged\.")
 
 
-class gs_delete_branch(WindowCommand, GitCommand):
-    def run(self, branch=None, force=False):
-        # type: (Optional[str], bool) -> None
-        self.force = force
-        if branch:
-            self.delete_local_branch(branch)
-        else:
-            enqueue_on_worker(
-                show_branch_panel,
-                self.on_branch_selection,
-                local_branches_only=True,
-                ignore_current_branch=True,
-            )
-
-    def on_branch_selection(self, branch):
-        # type: (Optional[str]) -> None
-        if not branch:
-            return
-
-        self.delete_local_branch(branch)
+class gs_delete_branch(GsWindowCommand, GitCommand):
+    defaults = {
+        "branch": ask_for_local_branch,
+    }
 
     @util.actions.destructive(description="delete a local branch")
-    def delete_local_branch(self, branch_name):
-        # type: (str) -> None
-        if self.force:
-            rv = self.git(
-                "branch",
-                "-D",
-                branch_name
-            )
+    def run(self, branch, force=False):
+        # type: (str, bool) -> None
+        if force:
+            rv = self.git("branch", "-D", branch)
         else:
             try:
-                rv = self.git_throwing_silently(
-                    "branch",
-                    "-d",
-                    branch_name
-                )
+                rv = self.git_throwing_silently("branch", "-d", branch)
             except GitSavvyError as e:
                 if NOT_MERGED_WARNING.search(e.stderr):
-                    self.offer_force_deletion(branch_name)
+                    self.offer_force_deletion(branch)
                     return
                 raise GitSavvyError(
                     e.message,
@@ -78,32 +47,22 @@ class gs_delete_branch(WindowCommand, GitCommand):
         match = EXTRACT_COMMIT.search(rv.strip())
         if match:
             commit = match.group(1)
-            print(DELETE_UNDO_MESSAGE.format(branch_name, commit))
+            print(DELETE_UNDO_MESSAGE.format(branch, commit))
         self.window.status_message(
-            "Deleted local branch ({}).".format(branch_name)
+            "Deleted local branch ({}).".format(branch)
             + (" Open Sublime console for undo instructions." if match else "")
         )
         util.view.refresh_gitsavvy_interfaces(self.window)
 
     def offer_force_deletion(self, branch_name):
         # type: (str) -> None
-
-        actions = [
-            "Abort, '{}' is not fully merged.".format(branch_name),
-            "Delete anyway."
-        ]
-
-        def on_action_selection(index):
-            if index < 1:
-                return
-
-            self.window.run_command("gs_delete_branch", {
-                "branch": branch_name,
-                "force": True
-            })
-
-        self.window.show_quick_panel(
-            actions,
-            on_action_selection,
-            flags=sublime.MONOSPACE_FONT,
-        )
+        show_actions_panel(self.window, [
+            noop("Abort, '{}' is not fully merged.".format(branch_name)),
+            (
+                "Delete anyway.",
+                lambda: self.window.run_command("gs_delete_branch", {
+                    "branch": branch_name,
+                    "force": True
+                })
+            )
+        ])

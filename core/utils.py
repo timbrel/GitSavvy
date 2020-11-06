@@ -1,4 +1,4 @@
-from functools import partial
+from functools import lru_cache, partial
 from collections import OrderedDict
 from contextlib import contextmanager
 import html
@@ -178,6 +178,70 @@ def style_message(message, style):
 def escape_text(text):
     # type: (str) -> str
     return html.escape(text, quote=False).replace(" ", "&nbsp;")
+
+
+MYPY = False
+if MYPY:
+    from typing import Iterable, Sequence, NamedTuple
+    Action = NamedTuple("Action", [("description", str), ("action", Callable[[], None])])
+    ActionType = Tuple[str, Callable[[], None]]
+    QuickPanelItems = Iterable[str]
+
+else:
+    from collections import namedtuple
+    Action = namedtuple("Action", "description action")
+
+
+def show_panel(
+    window,  # type: sublime.Window
+    items,  # type: QuickPanelItems
+    on_done,  # type: Callable[[int], None]
+    on_cancel=lambda: None,  # type: Callable[[], None]
+    on_highlight=lambda _: None,  # type: Callable[[int], None]
+    selected_index=-1,  # type: int
+    flags=sublime.MONOSPACE_FONT
+):
+    # (...) -> None
+    def _on_done(idx):
+        # type: (int) -> None
+        if idx == -1:
+            on_cancel()
+        else:
+            on_done(idx)
+
+    # `on_highlight` also gets called `on_done`. We
+    # reduce the side-effects here using `lru_cache`.
+    @lru_cache(1)
+    def _on_highlight(idx):
+        # type: (int) -> None
+        on_highlight(idx)
+
+    window.show_quick_panel(
+        list(items),
+        _on_done,
+        on_highlight=_on_highlight,
+        selected_index=selected_index,
+        flags=flags
+    )
+
+
+def show_actions_panel(window, actions):
+    # type: (sublime.Window, Sequence[ActionType]) -> None
+    def on_selection(idx):
+        # type: (int) -> None
+        description, action = actions[idx]
+        action()
+
+    show_panel(
+        window,
+        (action[0] for action in actions),
+        on_selection
+    )
+
+
+def noop(description):
+    # type: (str) -> ActionType
+    return Action(description, lambda: None)
 
 
 def focus_view(view):

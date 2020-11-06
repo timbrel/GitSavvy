@@ -1,10 +1,13 @@
+from functools import wraps
+
 import sublime
+
 from ...core.settings import GitSavvySettings
 
 
 def destructive(description):
     def decorator(fn):
-
+        @wraps(fn)
         def wrapped_fn(*args, **kwargs):
             if GitSavvySettings().get("prompt_before_destructive_action"):
                 message = (
@@ -17,7 +20,5 @@ def destructive(description):
                     return
 
             return fn(*args, **kwargs)
-
         return wrapped_fn
-
     return decorator
