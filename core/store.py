@@ -13,6 +13,7 @@ if MYPY:
         'RepoStore',
         {
             "last_remote_used": Optional[str],
+            "last_remote_used_with_option_all": Optional[str],
             "short_hash_length": int,
         },
         total=False
