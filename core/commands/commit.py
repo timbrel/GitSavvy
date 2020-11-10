@@ -113,10 +113,10 @@ class gs_commit(WindowCommand, GitCommand):
             title = COMMIT_TITLE.format(os.path.basename(repo_path))
             view.set_name(title)
             view.set_scratch(True)  # ignore dirty on actual commit
-            self.initialize_view(view, include_unstaged, amend, initial_text)
+            self.initialize_view(view, amend, initial_text)
 
-    def initialize_view(self, view, include_unstaged, amend, initial_text):
-        # type: (sublime.View, bool, bool, str) -> None
+    def initialize_view(self, view, amend, initial_text):
+        # type: (sublime.View, bool, str) -> None
         merge_msg_path = os.path.join(self.repo_path, ".git", "MERGE_MSG")
 
         help_text = (
