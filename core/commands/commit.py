@@ -202,6 +202,10 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
 
         if diff_text:
             final_text = ("\n" + diff_text) if shows_diff or shows_stat else ""
+        elif (shows_diff or shows_stat) and not include_unstaged:
+            settings.set("git_savvy.commit_view.include_unstaged", True)
+            view.run_command("gs_prepare_commit_refresh_diff")
+            return
         else:
             final_text = "\nNothing to commit.\n"
 
