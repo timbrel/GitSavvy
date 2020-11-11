@@ -8,7 +8,7 @@ from sublime_plugin import EventListener, ViewEventListener
 from .diff import DECODE_ERROR_MESSAGE
 from . import intra_line_colorizer
 from ..git_command import GitCommand, GitSavvyError
-from ..runtime import enqueue_on_worker
+from ..runtime import enqueue_on_worker, text_command
 from ..settings import SettingsMixin
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import focus_view
@@ -31,7 +31,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import List, Optional, Tuple
+    from typing import Dict, List, Optional, Tuple, Union
     from ..git_mixins.history import LogEntry
 
 
@@ -327,6 +327,46 @@ class GsPrepareCommitFocusEventListener(ViewEventListener):
             for s in view.sel()
         )
         view.set_read_only(in_dropped_content)
+
+    def on_text_command(self, command_name, args):
+        # type: (str, Dict) -> Union[None, str]
+        if command_name != "select_all":
+            return None
+
+        view = self.view
+        cursor = cursor_position(view)
+        if cursor is None:
+            return None
+
+        if not view.match_selector(cursor, "meta.commit.message"):
+            return None
+
+        r = view.find_by_selector("meta.commit.message")[0]
+        set_selection(
+            view,
+            # Do not select the trailing space because that's where the
+            # read-only section begins!  We want "select_all" followed by
+            # "delete" to leave one line intact.
+            [sublime.Region(r.begin(), r.end() - 1)]
+        )
+        return "noop"
+
+
+def cursor_position(view):
+    # type: (sublime.View) -> Optional[sublime.Point]
+    sel = view.sel()
+    frozen_sel = [r for r in sel]
+    if len(frozen_sel) == 1 and frozen_sel[0].empty():
+        return frozen_sel[0].b
+    return None
+
+
+@text_command
+def set_selection(view, regions):
+    # type: (sublime.View, List[sublime.Region]) -> None
+    sel = view.sel()
+    sel.clear()
+    sel.add_all(regions)
 
 
 class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
