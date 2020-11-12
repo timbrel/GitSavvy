@@ -5,7 +5,7 @@ from sublime_plugin import WindowCommand, TextCommand
 from sublime_plugin import EventListener, ViewEventListener
 
 from . import intra_line_colorizer
-from ..git_command import GitCommand
+from ..git_command import GitCommand, GitSavvyError
 from ..runtime import enqueue_on_worker
 from ..utils import focus_view
 from ..view import replace_view_content
@@ -62,6 +62,7 @@ Signed-off-by: {name} <{email}>
 """
 
 COMMIT_TITLE = "COMMIT: {}"
+THE_EMPTY_SHA = ""
 
 CONFIRM_ABORT = "Confirm to abort commit?"
 
@@ -165,16 +166,37 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
             show_commit_diff == "stat"
             or (show_commit_diff == "full" and self.savvy_settings.get("show_diffstat"))
         )
-        diff_text = self.git(
-            "diff",
-            "--no-color",
-            "--patch" if shows_diff else None,
-            "--stat" if shows_stat else None,
-            "--cached" if not include_unstaged else None,
-            "HEAD^" if amend
-            else "HEAD" if include_unstaged
-            else None
-        )
+
+        try:
+            diff_text = self.git_throwing_silently(
+                "diff",
+                "--no-color",
+                "--patch" if shows_diff else None,
+                "--stat" if shows_stat else None,
+                "--cached" if not include_unstaged else None,
+                "HEAD^" if amend
+                else "HEAD" if include_unstaged
+                else None
+            )
+        except GitSavvyError as e:
+            if (amend or include_unstaged) and "ambiguous argument 'HEAD" in e.stderr:
+                diff_text = self.git(
+                    "diff",
+                    "--no-color",
+                    "--patch" if shows_diff else None,
+                    "--stat" if shows_stat else None,
+                    "--cached" if not include_unstaged else None,
+                    self.the_empty_sha()
+                )
+            else:
+                raise GitSavvyError(
+                    e.message,
+                    cmd=e.cmd,
+                    stdout=e.stdout,
+                    stderr=e.stderr,
+                    show_panel=True,
+                )
+
         if diff_text:
             final_text = ("\n" + diff_text) if shows_diff or shows_stat else ""
         else:
@@ -191,6 +213,13 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
         replace_view_content(view, final_text, region)
         if shows_diff:
             intra_line_colorizer.annotate_intra_line_differences(view, final_text, region.begin())
+
+    def the_empty_sha(self):
+        # type: () -> str
+        global THE_EMPTY_SHA
+        if not THE_EMPTY_SHA:
+            THE_EMPTY_SHA = self.git('mktree', stdin='').strip()
+        return THE_EMPTY_SHA
 
 
 class GsPrepareCommitFocusEventListener(ViewEventListener):
