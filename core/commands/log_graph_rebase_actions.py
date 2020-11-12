@@ -290,6 +290,27 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
 
     def add_previous_tip(self, view, previous_tip):
         settings = view.settings()
+        try:
+            commit_hash = self.git_throwing_silently(
+                "rev-parse", "--short", previous_tip
+            ).strip()
+        except GitSavvyError as e:
+            branch_name = previous_tip.split("@")[0]
+            if "log for '{}'".format(branch_name) in e.stderr:
+                flash(view, "The branch '{}' has no previous tip.".format(branch_name))
+                return
+            else:
+                raise GitSavvyError(
+                    e.message,
+                    cmd=e.cmd,
+                    stdout=e.stdout,
+                    stderr=e.stderr,
+                    show_panel=True,
+                )
+
+        else:
+            settings.set("git_savvy.log_graph_view.follow", commit_hash)
+
         applying_filters = settings.get("git_savvy.log_graph_view.apply_filters")
         filters = (
             settings.get("git_savvy.log_graph_view.filters", "")
