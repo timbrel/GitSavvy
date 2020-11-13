@@ -181,19 +181,22 @@ class gs_diff_refresh(TextCommand, GitCommand):
             enqueue_on_worker(self.run_impl, sync)
 
     def run_impl(self, runs_on_ui_thread):
-        if not runs_on_ui_thread and not self.view.is_valid():
+        view = self.view
+        if not runs_on_ui_thread and not view.is_valid():
             return
-        if self.view.settings().get("git_savvy.disable_diff"):
+
+        settings = view.settings()
+        if settings.get("git_savvy.disable_diff"):
             return
-        repo_path = self.view.settings().get("git_savvy.repo_path")
-        file_path = self.view.settings().get("git_savvy.file_path")
-        in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
-        ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
-        base_commit = self.view.settings().get("git_savvy.diff_view.base_commit")
-        target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
-        show_diffstat = self.view.settings().get("git_savvy.diff_view.show_diffstat")
-        disable_stage = self.view.settings().get("git_savvy.diff_view.disable_stage")
-        context_lines = self.view.settings().get('git_savvy.diff_view.context_lines')
+        repo_path = settings.get("git_savvy.repo_path")
+        file_path = settings.get("git_savvy.file_path")
+        in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
+        ignore_whitespace = settings.get("git_savvy.diff_view.ignore_whitespace")
+        base_commit = settings.get("git_savvy.diff_view.base_commit")
+        target_commit = settings.get("git_savvy.diff_view.target_commit")
+        show_diffstat = settings.get("git_savvy.diff_view.show_diffstat")
+        disable_stage = settings.get("git_savvy.diff_view.disable_stage")
+        context_lines = settings.get('git_savvy.diff_view.context_lines')
 
         prelude = "\n"
         title = ["DIFF:"]
@@ -248,24 +251,24 @@ class gs_diff_refresh(TextCommand, GitCommand):
             # once the userpresses OK, a new refresh event will be triggered on
             # the view. Prevent refreshing again by setting a flag.
             if err.args and type(err.args[0]) == UnicodeDecodeError:
-                self.view.settings().set("git_savvy.disable_diff", True)
+                settings.set("git_savvy.disable_diff", True)
                 return
             raise err
 
-        if self.view.settings().get("git_savvy.just_committed"):
+        if settings.get("git_savvy.just_committed"):
             if diff:
-                self.view.settings().set("git_savvy.just_committed", False)
+                settings.set("git_savvy.just_committed", False)
             else:
                 if in_cached_mode:
-                    self.view.settings().set("git_savvy.diff_view.in_cached_mode", False)
-                    self.view.run_command("gs_diff_refresh")
+                    settings.set("git_savvy.diff_view.in_cached_mode", False)
+                    view.run_command("gs_diff_refresh")
                 else:
-                    self.view.close()
+                    view.close()
                 return
 
-        has_content = self.view.find_by_selector("git-savvy.diff_view git-savvy.diff")
+        has_content = view.find_by_selector("git-savvy.diff_view git-savvy.diff")
         draw = lambda: _draw(
-            self.view,
+            view,
             ' '.join(title),
             prelude,
             diff,
