@@ -5,6 +5,7 @@ current diff.
 
 from collections import namedtuple
 from contextlib import contextmanager
+from itertools import chain, count, takewhile
 import os
 
 import sublime
@@ -381,8 +382,19 @@ class gs_diff_zoom(TextCommand):
         # type: (sublime.Edit, int) -> None
         settings = self.view.settings()
         current = settings.get('git_savvy.diff_view.context_lines')
-        next = max(current + amount, 0)
-        settings.set('git_savvy.diff_view.context_lines', next)
+
+        MINIMUM, DEFAULT, MIN_STEP_SIZE = 1, 3, 5
+        step_size = max(abs(amount), MIN_STEP_SIZE)
+        values = chain([MINIMUM, DEFAULT], count(step_size, step_size))
+        if amount > 0:
+            next_value = next(x for x in values if x > current)
+        else:
+            try:
+                next_value = list(takewhile(lambda x: x < current, values))[-1]
+            except IndexError:
+                next_value = MINIMUM
+
+        settings.set('git_savvy.diff_view.context_lines', next_value)
 
         # Getting a meaningful cursor after 'zooming' is the tricky part
         # here. We first extract all hunks under the cursors *verbatim*.
