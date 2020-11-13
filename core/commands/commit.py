@@ -1,3 +1,4 @@
+from itertools import takewhile
 import os
 
 import sublime
@@ -411,30 +412,37 @@ class gs_commit_view_do_commit(TextCommand, GitCommand):
         # it receives an `on_activated` event, refreshes, and maybe closes.
         #
         # Everything fine, *but* the user would see this diff view for a moment,
-        # before it magically disappears.  So, instead, peek at the left view,
-        # maybe close it, and only after that close this commit view all in one
+        # before it magically disappears.  So, instead, peek at the left views,
+        # maybe close them, and only after that close this commit view all in one
         # synchronous task.
-        prev_view = adjacent_view_on_the_left(self.view)
-        if prev_view and is_relevant_diff_view(prev_view, self.repo_path):
-            prev_view.run_command("gs_diff_refresh", {"sync": True})
+        handled = []
+        for v in takewhile(
+            lambda v: v in diff_views,
+            reversed(adjacent_views_on_the_left(self.view))
+        ):
+            handled.append(v)
+            v.run_command("gs_diff_refresh", {"sync": True})
+            # We can break the *sync* loop if refreshing did *not* close the view.
+            # That exact view will be the next focused view after closing the commit
+            # view and we just probed that it will not get away magically in a split
+            # second.
+            if v.is_valid():
+                break
 
         self.view.close()
         for v in diff_views:
-            if v != prev_view:
+            if v not in handled:
                 v.run_command("gs_diff_refresh", {"sync": False})
         util.view.refresh_gitsavvy_interfaces(window)
 
 
-def adjacent_view_on_the_left(view):
-    # type: (sublime.View) -> Optional[sublime.View]
+def adjacent_views_on_the_left(view):
+    # type: (sublime.View) -> List[sublime.View]
     window = view.window()
     if not window:
-        return None
+        return []
     group, idx = window.get_view_index(view)
-    try:
-        return window.views_in_group(group)[idx - 1]
-    except IndexError:
-        return None
+    return window.views_in_group(group)[:idx]
 
 
 def mark_all_diff_views(window, repo_path):
