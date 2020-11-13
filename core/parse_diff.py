@@ -51,13 +51,19 @@ class SplittedDiff(SplittedDiffBase):
 
     def head_and_hunk_for_pt(self, pt):
         # type: (int) -> Optional[Tuple[FileHeader, Hunk]]
-        for hunk in self.hunks:
-            if hunk.a <= pt < hunk.b:
-                break
+        hunk = self.hunk_for_pt(pt)
+        if hunk:
+            return self.head_for_hunk(hunk), hunk
         else:
             return None
 
-        return self.head_for_hunk(hunk), hunk
+    def hunk_for_pt(self, pt):
+        # type: (int) -> Optional[Hunk]
+        for hunk in self.hunks:
+            if hunk.a <= pt < hunk.b:
+                return hunk
+        else:
+            return None
 
     def head_for_hunk(self, hunk):
         # type: (Hunk) -> FileHeader

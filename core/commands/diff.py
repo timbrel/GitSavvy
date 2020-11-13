@@ -401,8 +401,8 @@ class gs_diff_zoom(TextCommand):
         diff = SplittedDiff.from_view(self.view)
         cur_hunks = [
             hunk.content().text
-            for header, hunk in filter_(
-                diff.head_and_hunk_for_pt(s.a)
+            for hunk in filter_(
+                diff.hunk_for_pt(s.a)
                 for s in self.view.sel()
             )
         ]
