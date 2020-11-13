@@ -166,6 +166,7 @@ class gs_diff(WindowCommand, GitCommand):
             diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff_view.sublime-syntax")
 
             diff_view.run_command("gs_handle_vintageous")
+            diff_view.run_command("gs_diff_refresh", {"sync": False})
 
 
 class gs_diff_refresh(TextCommand, GitCommand):
@@ -403,7 +404,7 @@ class GsDiffFocusEventListener(EventListener):
     when the view regains focus.
     """
 
-    def on_activated_async(self, view):
+    def on_activated(self, view):
         settings = view.settings()
         if settings.get("git_savvy.ignore_next_activated_event"):
             settings.set("git_savvy.ignore_next_activated_event", False)
