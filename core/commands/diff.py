@@ -400,8 +400,11 @@ class gs_diff_zoom(TextCommand):
         # here. We first extract all hunks under the cursors *verbatim*.
         diff = SplittedDiff.from_view(self.view)
         cur_hunks = [
-            header.text + hunk.text
-            for header, hunk in filter_(diff.head_and_hunk_for_pt(s.a) for s in self.view.sel())
+            hunk.content().text
+            for header, hunk in filter_(
+                diff.head_and_hunk_for_pt(s.a)
+                for s in self.view.sel()
+            )
         ]
 
         self.view.run_command("gs_diff_refresh")
@@ -409,12 +412,22 @@ class gs_diff_zoom(TextCommand):
         # Now, we fuzzy search the new view content for the old hunks.
         cursors = {
             region.a
-            for region in (
-                filter_(find_hunk_in_view(self.view, hunk) for hunk in cur_hunks)
+            for region in filter_(
+                fuzzy_search_hunk_content_simplified(self.view, hunk)
+                for hunk in cur_hunks
             )
         }
         if cursors:
             set_and_show_cursor(self.view, cursors)
+
+
+def fuzzy_search_hunk_content_simplified(view, hunk):
+    # type: (sublime.View, str) -> Optional[sublime.Region]
+    for content in shrink_list_sym(hunk.splitlines(keepends=True)):
+        region = view.find("".join(content), 0, sublime.LITERAL)
+        if region:
+            return region
+    return None
 
 
 class GsDiffFocusEventListener(EventListener):
