@@ -250,6 +250,17 @@ class gs_diff_refresh(TextCommand, GitCommand):
                 return
             raise err
 
+        if self.view.settings().get("git_savvy.just_committed"):
+            if diff:
+                self.view.settings().set("git_savvy.just_committed", False)
+            else:
+                if in_cached_mode:
+                    self.view.settings().set("git_savvy.diff_view.in_cached_mode", False)
+                    self.view.run_command("gs_diff_refresh")
+                else:
+                    self.view.close()
+                return
+
         old_diff = self.view.settings().get("git_savvy.diff_view.raw_diff")
         self.view.settings().set("git_savvy.diff_view.raw_diff", diff)
         prelude += "\n--\n"
