@@ -228,6 +228,8 @@ class gs_diff_refresh(TextCommand, GitCommand):
         if ignore_whitespace:
             prelude += "  IGNORING WHITESPACE\n"
 
+        prelude += "\n--\n"
+
         try:
             diff = self.git(
                 "diff",
@@ -266,16 +268,13 @@ class gs_diff_refresh(TextCommand, GitCommand):
                     self.view.close()
                 return
 
-        old_diff = self.view.settings().get("git_savvy.diff_view.raw_diff")
-        self.view.settings().set("git_savvy.diff_view.raw_diff", diff)
-        prelude += "\n--\n"
-
+        has_content = self.view.find_by_selector("git-savvy.diff_view git-savvy.diff")
         draw = lambda: _draw(
             self.view,
             ' '.join(title),
             prelude,
             diff,
-            navigate=not old_diff
+            navigate=not has_content
         )
         if runs_on_ui_thread:
             draw()
