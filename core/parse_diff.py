@@ -141,6 +141,10 @@ class FileHeader(TextRange):
 
         return match.group(1)
 
+    def first_line(self):
+        # type: () -> str
+        return self.text[:self.text.index('\n')]
+
 
 class Hunk(TextRange):
     def mode_len(self):

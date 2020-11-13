@@ -18,7 +18,7 @@ from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view, line_indentation
-from ..view import replace_view_content, Position
+from ..view import replace_view_content, row_offset, Position
 from ...common import util
 
 
@@ -42,7 +42,7 @@ if MYPY:
         Iterable, Iterator, List, NamedTuple, Optional, Set,
         Tuple, TypeVar
     )
-    from ..parse_diff import Hunk, HunkLine
+    from ..parse_diff import Hunk, HunkLine, TextRange
     from ..types import LineNo, ColNo
 
     T = TypeVar('T')
@@ -399,34 +399,75 @@ class gs_diff_zoom(TextCommand):
         # Getting a meaningful cursor after 'zooming' is the tricky part
         # here. We first extract all hunks under the cursors *verbatim*.
         diff = SplittedDiff.from_view(self.view)
-        cur_hunks = [
-            hunk.content().text
-            for hunk in filter_(
-                diff.hunk_for_pt(s.a)
-                for s in self.view.sel()
-            )
-        ]
+        cur_hunks = []
+        for s in self.view.sel():
+            hunk = diff.hunk_for_pt(s.a)
+            if hunk:
+                head_line = diff.head_for_hunk(hunk).first_line()
+                for line in recount_hunk(hunk):
+                    line_region = line[0].region()
+                    # `line_region` spans the *full* line including the
+                    # trailing newline char (if any).  Compare excluding
+                    # `line_region.b` to not match a cursor at BOL
+                    # position on the next line.
+                    if line_region.a <= s.a < line_region.b:
+                        cur_hunks.append((head_line, line, row_offset(self.view, s.a)))
+                        break
 
         self.view.run_command("gs_diff_refresh")
 
         # Now, we fuzzy search the new view content for the old hunks.
-        cursors = {
-            region.a
-            for region in filter_(
-                fuzzy_search_hunk_content_simplified(self.view, hunk)
-                for hunk in cur_hunks
-            )
-        }
-        if cursors:
-            set_and_show_cursor(self.view, cursors)
+        diff = SplittedDiff.from_view(self.view)
+        cursors = set()
+        scroll_offsets = []
+        for head_line, line, offset in cur_hunks:
+            region = find_line_in_diff(diff, head_line, line)
+            if region:
+                cursors.add(region.a)
+                row, _ = self.view.rowcol(region.a)
+                scroll_offsets.append((row, offset))
+
+        if not cursors:
+            return
+
+        self.view.sel().clear()
+        self.view.sel().add_all(list(cursors))
+
+        row, offset = min(scroll_offsets, key=lambda row_offset: abs(row_offset[1]))
+        vy = (row - offset) * self.view.line_height()
+        vx, _ = self.view.viewport_position()
+        self.view.set_viewport_position((vx, vy), animate=False)
 
 
-def fuzzy_search_hunk_content_simplified(view, hunk):
-    # type: (sublime.View, str) -> Optional[sublime.Region]
-    for content in shrink_list_sym(hunk.splitlines(keepends=True)):
-        region = view.find("".join(content), 0, sublime.LITERAL)
-        if region:
-            return region
+if MYPY:
+    HunkLineWithLineNo = Tuple[TextRange, LineNo, LineNo]
+
+
+def recount_hunk(hunk):
+    # type: (Hunk) -> Iterator[HunkLineWithLineNo]
+    a_start, _, b_start, _ = hunk.header().parse()
+    yield (hunk.header(), a_start - 1, b_start - 1)
+    for line in hunk.content().lines():
+        yield (line, a_start, b_start)
+        if line.is_context():
+            a_start += 1
+            b_start += 1
+        elif line.is_from_line():
+            a_start += 1
+        elif line.is_to_line():
+            b_start += 1
+
+
+def find_line_in_diff(diff, head_line, wanted_line):
+    # type: (SplittedDiff, str, HunkLineWithLineNo) -> Optional[sublime.Region]
+    a_, b_ = wanted_line[1], wanted_line[2]
+    for hunk in diff.hunks:
+        if diff.head_for_hunk(hunk).first_line() != head_line:
+            continue
+
+        for line, a, b in recount_hunk(hunk):
+            if (a, b) >= (a_, b_):
+                return line.region()
     return None
 
 
