@@ -246,12 +246,7 @@ class gs_diff_refresh(TextCommand, GitCommand):
             # When the output of the above Git command fails to correctly parse,
             # the expected notification will be displayed to the user.  However,
             # once the userpresses OK, a new refresh event will be triggered on
-            # the view.
-            #
-            # This causes an infinite loop of increasingly frustrating error
-            # messages, ultimately resulting in psychosis and serious medical
-            # bills.  This is a better, though somewhat cludgy, alternative.
-            #
+            # the view. Prevent refreshing again by setting a flag.
             if err.args and type(err.args[0]) == UnicodeDecodeError:
                 self.view.settings().set("git_savvy.disable_diff", True)
                 return
