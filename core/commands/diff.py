@@ -12,6 +12,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import intra_line_colorizer
+from .log_graph import line_from_pt
 from .navigate import GsNavigate
 from ..fns import filter_, flatten
 from ..parse_diff import SplittedDiff
@@ -413,6 +414,14 @@ class gs_diff_zoom(TextCommand):
                     if line_region.a <= s.a < line_region.b:
                         cur_hunks.append((head_line, line, row_offset(self.view, s.a)))
                         break
+                else:
+                    # If the user is on the very last line of the view, create
+                    # a fake line after that.
+                    cur_hunks.append((
+                        head_line,
+                        (line_from_pt(self.view, s.a), line[1] + 1, line[2] + 1),
+                        row_offset(self.view, s.a)
+                    ))
 
         self.view.run_command("gs_diff_refresh")
 
