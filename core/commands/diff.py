@@ -12,7 +12,6 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import intra_line_colorizer
-from .log_graph import line_from_pt
 from .navigate import GsNavigate
 from ..fns import filter_, flatten
 from ..parse_diff import SplittedDiff
@@ -405,21 +404,21 @@ class gs_diff_zoom(TextCommand):
             hunk = diff.hunk_for_pt(s.a)
             if hunk:
                 head_line = diff.head_for_hunk(hunk).first_line()
-                for line in recount_hunk(hunk):
-                    line_region = line[0].region()
+                for line, line_id in recount_hunk(hunk):
+                    line_region = line.region()
                     # `line_region` spans the *full* line including the
                     # trailing newline char (if any).  Compare excluding
                     # `line_region.b` to not match a cursor at BOL
                     # position on the next line.
                     if line_region.a <= s.a < line_region.b:
-                        cur_hunks.append((head_line, line, row_offset(self.view, s.a)))
+                        cur_hunks.append((head_line, line_id, row_offset(self.view, s.a)))
                         break
                 else:
                     # If the user is on the very last line of the view, create
                     # a fake line after that.
                     cur_hunks.append((
                         head_line,
-                        (line_from_pt(self.view, s.a), line[1] + 1, line[2] + 1),
+                        LineId(line_id.a + 1, line_id.b + 1),
                         row_offset(self.view, s.a)
                     ))
 
@@ -429,8 +428,8 @@ class gs_diff_zoom(TextCommand):
         diff = SplittedDiff.from_view(self.view)
         cursors = set()
         scroll_offsets = []
-        for head_line, line, offset in cur_hunks:
-            region = find_line_in_diff(diff, head_line, line)
+        for head_line, line_id, offset in cur_hunks:
+            region = find_line_in_diff(diff, head_line, line_id)
             if region:
                 cursors.add(region.a)
                 row, _ = self.view.rowcol(region.a)
@@ -449,19 +448,22 @@ class gs_diff_zoom(TextCommand):
 
 
 if MYPY:
-    HunkLineWithLineNo = Tuple[TextRange, LineNo, LineNo]
+    LineId = NamedTuple("LineId", [("a", LineNo), ("b", LineNo)])
+    HunkLineWithLineId = Tuple[TextRange, LineId]
+else:
+    LineId = namedtuple("LineId", "a b")
 
 
 def recount_hunk(hunk):
-    # type: (Hunk) -> Iterator[HunkLineWithLineNo]
+    # type: (Hunk) -> Iterator[HunkLineWithLineId]
     # Use `safely_parse_metadata` to not throw on combined diffs.
     # In that case, the computed line numbers can only be used as identifiers,
     # really counting lines from a combined diff is not implemented here!
     metadata = hunk.header().safely_parse_metadata()
     (a_start, _), (b_start, _) = metadata[0], metadata[-1]
-    yield (hunk.header(), a_start - 1, b_start - 1)
+    yield hunk.header(), LineId(a_start - 1, b_start - 1)
     for line in hunk.content().lines():
-        yield (line, a_start, b_start)
+        yield line, LineId(a_start, b_start)
         if line.is_context():
             a_start += 1
             b_start += 1
@@ -471,14 +473,13 @@ def recount_hunk(hunk):
             b_start += 1
 
 
-def find_line_in_diff(diff, head_line, wanted_line):
-    # type: (SplittedDiff, str, HunkLineWithLineNo) -> Optional[sublime.Region]
-    a_, b_ = wanted_line[1], wanted_line[2]
+def find_line_in_diff(diff, head_line, wanted_line_id):
+    # type: (SplittedDiff, str, LineId) -> Optional[sublime.Region]
     header = next((h for h in diff.headers if h.first_line() == head_line), None)
     if header:
         for hunk in diff.hunks_for_head(header):
-            for line, a, b in recount_hunk(hunk):
-                if (a, b) >= (a_, b_):
+            for line, line_id in recount_hunk(hunk):
+                if line_id >= wanted_line_id:
                     return line.region()
     return None
 
