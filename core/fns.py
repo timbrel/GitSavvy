@@ -37,6 +37,16 @@ def unique(iterable):
         yield item
 
 
+def drop(n, iterable):
+    # type: (int, Iterable[T]) -> Iterator[T]
+    return islice(iterable, n, None)
+
+
+def tail(iterable):
+    # type: (Iterable[T]) -> Iterator[T]
+    return drop(1, iterable)
+
+
 # Below functions taken from https://github.com/erikrose/more-itertools
 # Copyright (c) 2012 Erik Rose
 

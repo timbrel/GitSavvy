@@ -461,13 +461,12 @@ def recount_hunk(hunk):
 def find_line_in_diff(diff, head_line, wanted_line):
     # type: (SplittedDiff, str, HunkLineWithLineNo) -> Optional[sublime.Region]
     a_, b_ = wanted_line[1], wanted_line[2]
-    for hunk in diff.hunks:
-        if diff.head_for_hunk(hunk).first_line() != head_line:
-            continue
-
-        for line, a, b in recount_hunk(hunk):
-            if (a, b) >= (a_, b_):
-                return line.region()
+    header = next((h for h in diff.headers if h.first_line() == head_line), None)
+    if header:
+        for hunk in diff.hunks_for_head(header):
+            for line, a, b in recount_hunk(hunk):
+                if (a, b) >= (a_, b_):
+                    return line.region()
     return None
 
 

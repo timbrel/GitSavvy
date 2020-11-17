@@ -1,10 +1,10 @@
 from collections import namedtuple
 from functools import partial
-from itertools import chain, takewhile
+from itertools import chain, dropwhile, takewhile
 import re
 
 import sublime
-from .fns import accumulate, pairwise
+from .fns import accumulate, pairwise, tail
 
 
 MYPY = False
@@ -70,6 +70,16 @@ class SplittedDiff(SplittedDiffBase):
         return max(
             (header for header in self.headers if header.a < hunk.a),
             key=lambda h: h.a
+        )
+
+    def hunks_for_head(self, head):
+        # type: (FileHeader) -> Iterator[Hunk]
+        return takewhile(
+            lambda x: isinstance(x, Hunk),
+            tail(dropwhile(
+                lambda x: x != head,
+                sorted(self.headers + self.hunks, key=lambda x: x.a)
+            ))
         )
 
     def commit_for_hunk(self, hunk):
