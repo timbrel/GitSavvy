@@ -678,8 +678,6 @@ def real_linecol_in_hunk(hunk, row_offset, col):
     # type: (Hunk, int, ColNo) -> Optional[LineCol]
     """Translate relative to absolute line, col pair"""
     hunk_lines = counted_lines(hunk)
-    if not hunk_lines:
-        return None
 
     # If the user is on the header line ('@@ ..') pretend to be on the
     # first visible line with some content instead.
@@ -719,14 +717,12 @@ def real_linecol_in_hunk(hunk, row_offset, col):
 
 
 def counted_lines(hunk):
-    # type: (Hunk) -> Optional[List[HunkLineWithB]]
+    # type: (Hunk) -> List[HunkLineWithB]
     """Split a hunk into (first char, line content, line) tuples
 
     Note that rows point to available rows on the b-side.
     """
     b = hunk.header().to_line_start()
-    if b is None:
-        return None
     return list(_recount_lines(hunk.content().lines(), b))
 
 
