@@ -13,7 +13,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import intra_line_colorizer
 from .navigate import GsNavigate
-from ..fns import filter_, flatten
+from ..fns import filter_, flatten, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_ui, enqueue_on_worker
@@ -39,7 +39,7 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import (
-        Iterable, Iterator, List, NamedTuple, Optional, Set,
+        Iterator, List, NamedTuple, Optional, Set,
         Tuple, TypeVar
     )
     from ..parse_diff import Hunk, HunkLine, TextRange
@@ -827,16 +827,6 @@ def pickle_sel(sel):
 
 def unpickle_sel(pickled_sel):
     return [sublime.Region(a, b) for a, b in pickled_sel]
-
-
-def unique(items):
-    # type: (Iterable[T]) -> List[T]
-    """Remove duplicate entries but remain sorted/ordered."""
-    rv = []  # type: List[T]
-    for item in items:
-        if item not in rv:
-            rv.append(item)
-    return rv
 
 
 def set_and_show_cursor(view, cursors):
