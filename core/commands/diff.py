@@ -517,8 +517,7 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             sublime.error_message("Staging is not supported while ignoring [w]hitespace is on.")
             return None
 
-        # Filter out any cursors that are larger than a single point.
-        cursor_pts = tuple(cursor.a for cursor in self.view.sel() if cursor.a == cursor.b)
+        cursor_pts = [s.a for s in self.view.sel() if s.empty()]
         diff = SplittedDiff.from_view(self.view)
 
         patches = unique(flatten(filter_(diff.head_and_hunk_for_pt(pt) for pt in cursor_pts)))
