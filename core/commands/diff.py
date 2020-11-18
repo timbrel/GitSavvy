@@ -511,7 +511,8 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
     # the view and the repo state get out of sync and e.g. hitting 'h' very fast will
     # result in errors.
 
-    def run(self, edit, reset=False):
+    def run(self, edit, reset=False, whole_file=False):
+        # type: (sublime.Edit, bool, bool) -> None
         ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
         if ignore_whitespace:
             sublime.error_message("Staging is not supported while ignoring [w]hitespace is on.")
@@ -520,7 +521,12 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         cursor_pts = [s.a for s in self.view.sel() if s.empty()]
         diff = SplittedDiff.from_view(self.view)
 
-        patches = unique(flatten(filter_(diff.head_and_hunk_for_pt(pt) for pt in cursor_pts)))
+        if whole_file:
+            hunks = filter_(map(diff.hunk_for_pt, cursor_pts))
+            headers = unique(map(diff.head_for_hunk, hunks))
+            patches = flatten(chain([head], diff.hunks_for_head(head)) for head in headers)
+        else:
+            patches = unique(flatten(filter_(diff.head_and_hunk_for_pt(pt) for pt in cursor_pts)))
         patch = ''.join(part.text for part in patches)
 
         if patch:
@@ -531,6 +537,7 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
                 window.status_message('Not within a hunk')
 
     def apply_patch(self, patch, pts, reset):
+        # type: (str, List[int], bool) -> None
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
         context_lines = self.view.settings().get('git_savvy.diff_view.context_lines')
 
