@@ -404,7 +404,7 @@ class gs_diff_zoom(TextCommand):
             hunk = diff.hunk_for_pt(s.a)
             if hunk:
                 head_line = diff.head_for_hunk(hunk).first_line()
-                for line, line_id in recount_hunk(hunk):
+                for line, line_id in compute_line_ids_for_hunk(hunk):
                     line_region = line.region()
                     # `line_region` spans the *full* line including the
                     # trailing newline char (if any).  Compare excluding
@@ -454,7 +454,7 @@ else:
     LineId = namedtuple("LineId", "a b")
 
 
-def recount_hunk(hunk):
+def compute_line_ids_for_hunk(hunk):
     # type: (Hunk) -> Iterator[HunkLineWithLineId]
     # Use `safely_parse_metadata` to not throw on combined diffs.
     # In that case, the computed line numbers can only be used as identifiers,
@@ -478,7 +478,7 @@ def find_line_in_diff(diff, head_line, wanted_line_id):
     header = next((h for h in diff.headers if h.first_line() == head_line), None)
     if header:
         for hunk in diff.hunks_for_head(header):
-            for line, line_id in recount_hunk(hunk):
+            for line, line_id in compute_line_ids_for_hunk(hunk):
                 if line_id >= wanted_line_id:
                     return line.region()
     return None
