@@ -454,7 +454,11 @@ if MYPY:
 
 def recount_hunk(hunk):
     # type: (Hunk) -> Iterator[HunkLineWithLineNo]
-    a_start, _, b_start, _ = hunk.header().parse()
+    # Use `safely_parse_metadata` to not throw on combined diffs.
+    # In that case, the computed line numbers can only be used as identifiers,
+    # really counting lines from a combined diff is not implemented here!
+    metadata = hunk.header().safely_parse_metadata()
+    (a_start, _), (b_start, _) = metadata[0], metadata[-1]
     yield (hunk.header(), a_start - 1, b_start - 1)
     for line in hunk.content().lines():
         yield (line, a_start, b_start)
