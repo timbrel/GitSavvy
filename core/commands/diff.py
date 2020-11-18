@@ -535,33 +535,20 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
         context_lines = self.view.settings().get('git_savvy.diff_view.context_lines')
 
-        # The three argument combinations below result from the following
-        # three scenarios:
-        #
-        # 1) The user is in non-cached mode and wants to stage a hunk, so
-        #    do NOT apply the patch in reverse, but do apply it only against
-        #    the cached/indexed file (not the working tree).
-        # 2) The user is in non-cached mode and wants to undo a line/hunk, so
-        #    DO apply the patch in reverse, and do apply it both against the
-        #    index and the working tree.
-        # 3) The user is in cached mode and wants to undo a line hunk, so DO
-        #    apply the patch in reverse, but only apply it against the cached/
-        #    indexed file.
-        #
-        # NOTE: When in cached mode, no action will be taken when the user
-        #       presses SUPER-BACKSPACE.
+        # ATT: Undo expects always the same args length and order!
+        args = ["apply"]  # type: List[Optional[str]]
+        if reset:
+            args += ["-R", None]        # discard
+        elif in_cached_mode:
+            args += ["-R", "--cached"]  # unstage
+        else:
+            args += [None, "--cached"]  # stage
 
-        args = (
-            "apply",
-            "-R" if (reset or in_cached_mode) else None,
-            "--cached" if (in_cached_mode or not reset) else None,
-            "--unidiff-zero" if context_lines == 0 else None,
-            "-",
-        )
-        self.git(
-            *args,
-            stdin=patch
-        )
+        if context_lines == 0:
+            args += ["--unidiff-zero"]
+
+        args += ["-"]
+        self.git(*args, stdin=patch)
 
         history = self.view.settings().get("git_savvy.diff_view.history")
         history.append((args, patch, pts, in_cached_mode))

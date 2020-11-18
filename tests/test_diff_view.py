@@ -287,7 +287,7 @@ diff --git a/foxx b/boxx
         self.assertEqual(len(history), 1)
 
         actual = history.pop()
-        expected = [['apply', None, '--cached', None, '-'], HUNK, [CURSOR], IN_CACHED_MODE]
+        expected = [['apply', None, '--cached', '-'], HUNK, [CURSOR], IN_CACHED_MODE]
         self.assertEqual(actual, expected)
 
     HUNK3 = """\
@@ -373,7 +373,7 @@ diff --git a/foxx b/boxx
         self.assertEqual(len(history), 1)
 
         actual = history.pop()
-        expected = [['apply', None, '--cached', None, '-'], PATCH, CURSORS, IN_CACHED_MODE]
+        expected = [['apply', None, '--cached', '-'], PATCH, CURSORS, IN_CACHED_MODE]
         self.assertEqual(actual, expected)
 
     def test_sets_unidiff_zero_if_no_contextual_lines(self):
