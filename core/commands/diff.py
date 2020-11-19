@@ -42,7 +42,7 @@ if MYPY:
         Iterator, List, NamedTuple, Optional, Set,
         Tuple, TypeVar
     )
-    from ..parse_diff import Hunk, HunkLine, TextRange
+    from ..parse_diff import Hunk, TextRange
     from ..types import LineNo, ColNo
 
     T = TypeVar('T')
@@ -675,7 +675,7 @@ def row_offset_and_col_in_hunk(view, hunk, pt):
 def real_linecol_in_hunk(hunk, row_offset, col):
     # type: (Hunk, int, ColNo) -> Optional[LineCol]
     """Translate relative to absolute line, col pair"""
-    hunk_lines = counted_lines(hunk)
+    hunk_lines = list(recount_lines_for_jump_to_file(hunk))
 
     # If the user is on the header line ('@@ ..') pretend to be on the
     # first visible line with some content instead.
@@ -714,25 +714,31 @@ def real_linecol_in_hunk(hunk, row_offset, col):
         return b, 1
 
 
-def counted_lines(hunk):
-    # type: (Hunk) -> List[HunkLineWithB]
-    """Split a hunk into (first char, line content, line) tuples
+def recount_lines_for_jump_to_file(hunk):
+    # type: (Hunk) -> Iterator[HunkLineWithB]
+    """Recount lines for the jump-to-file feature.
 
-    Note that rows point to available rows on the b-side.
+    Only computes b values and handles deletions weird, e.g. for
+
+    ```
+        @@ -383,4 +383,3 @@ class gs_diff_zoom(TextCommand):
+             step_size = max(abs(amount), MIN_STEP_SIZE)
+    -        values = chain([MINIMUM, DEFAULT], count(step_size, step_size))
+    -        if amount > 0:
+    +        zif amount > 0:
+             next_value = next(x for x in values if x > current)
+
+    ```
+
+    yields `(383, 384, 384, 384, 385)`.  That's visually appealing
+    though.
+
     """
-    b = hunk.header().to_line_start()
-    return list(_recount_lines(hunk.content().lines(), b))
-
-
-def _recount_lines(lines, b):
-    # type: (List[HunkLine], int) -> Iterator[HunkLineWithB]
-
-    # Be aware that we only consider the b-line numbers, and that we
-    # always yield a b value, even for deleted lines.
-    for line in lines:
-        yield HunkLineWithB(line, b)
+    b_start = hunk.header().to_line_start()
+    for line in hunk.content().lines():
+        yield HunkLineWithB(line, b_start)
         if not line.is_from_line():
-            b += 1
+            b_start += 1
 
 
 class gs_diff_navigate(GsNavigate):
