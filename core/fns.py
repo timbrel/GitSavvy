@@ -5,6 +5,7 @@ MYPY = False
 if MYPY:
     from typing import Callable, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar
     T = TypeVar('T')
+    U = TypeVar('U')
 
 
 filter_ = partial(filter, None)  # type: Callable[[Iterable[Optional[T]]], Iterator[T]]
@@ -45,6 +46,11 @@ def drop(n, iterable):
 def tail(iterable):
     # type: (Iterable[T]) -> Iterator[T]
     return drop(1, iterable)
+
+
+def unzip(zipped):
+    # type: (Iterable[Tuple[T, U]]) -> Tuple[Tuple[T, ...], Tuple[U, ...]]
+    return tuple(zip(*zipped))  # type: ignore
 
 
 # Below functions taken from https://github.com/erikrose/more-itertools
