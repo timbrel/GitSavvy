@@ -533,6 +533,9 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
 
         if patch:
             self.apply_patch(patch, cursor_pts, reset, zero_diff)
+            first_cursor = self.view.sel()[0].begin()
+            self.view.sel().clear()
+            self.view.sel().add(first_cursor)
         else:
             window = self.view.window()
             if window:
