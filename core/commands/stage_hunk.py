@@ -121,11 +121,12 @@ def hunk_with_no_newline_marker(hunk):
     return "\n\\ " in hunk.content
 
 
-def format_patch(header, hunks):
-    # type: (str, List[Hunk]) -> str
+def format_patch(header, hunks, reverse=False):
+    # type: (str, List[Hunk], bool) -> str
+    rewrite = rewrite_hunks_for_reverse_apply if reverse else rewrite_hunks
     return ''.join(chain(
         [header],
-        map(format_hunk, rewrite_hunks(hunks))
+        map(format_hunk, rewrite(hunks))
     ))
 
 
@@ -146,6 +147,20 @@ def rewrite_hunks(hunks):
         elif hunk_of_removals_only(hunk):
             new_b -= 1
         yield hunk._replace(b_start=new_b)
+
+
+def rewrite_hunks_for_reverse_apply(hunks):
+    # type: (List[Hunk]) -> Iterator[Hunk]
+    # Assumes `hunks` are sorted, and from the same file
+    deltas = (hunk.b_length - hunk.a_length for hunk in hunks)
+    offsets = accumulate(deltas, initial=0)
+    for hunk, offset in zip(hunks, offsets):
+        new_a = hunk.b_start - offset
+        if hunk_of_additions_only(hunk):
+            new_a -= 1
+        elif hunk_of_removals_only(hunk):
+            new_a += 1
+        yield hunk._replace(a_start=new_a)
 
 
 def hunk_of_additions_only(hunk):
