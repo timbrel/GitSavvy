@@ -402,7 +402,10 @@ class GsDiffFocusEventListener(EventListener):
     """
 
     def on_activated_async(self, view):
-        if view.settings().get("git_savvy.diff_view") is True:
+        settings = view.settings()
+        if settings.get("git_savvy.ignore_next_activated_event"):
+            settings.set("git_savvy.ignore_next_activated_event", False)
+        elif settings.get("git_savvy.diff_view"):
             view.run_command("gs_diff_refresh", {"sync": False})
 
 

@@ -427,6 +427,7 @@ class gs_commit_view_do_commit(TextCommand, GitCommand):
             # view and we just probed that it will not get away magically in a split
             # second.
             if v.is_valid():
+                v.settings().set("git_savvy.ignore_next_activated_event", True)
                 break
 
         self.view.close()
