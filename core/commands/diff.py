@@ -178,6 +178,8 @@ class gs_diff_refresh(TextCommand, GitCommand):
             enqueue_on_worker(self.run_impl, sync)
 
     def run_impl(self, runs_on_ui_thread):
+        if not runs_on_ui_thread and not self.view.is_valid():
+            return
         if self.view.settings().get("git_savvy.disable_diff"):
             return
         repo_path = self.view.settings().get("git_savvy.repo_path")
