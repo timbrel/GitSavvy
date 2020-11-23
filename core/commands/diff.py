@@ -166,7 +166,9 @@ class gs_diff(WindowCommand, GitCommand):
             diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff_view.sublime-syntax")
 
             diff_view.run_command("gs_handle_vintageous")
-            diff_view.run_command("gs_diff_refresh", {"sync": False})
+            # Assume diffing a single file is very fast and do it
+            # sync because it looks better.
+            diff_view.run_command("gs_diff_refresh", {"sync": bool(file_path)})
 
 
 class gs_diff_refresh(TextCommand, GitCommand):
