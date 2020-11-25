@@ -166,6 +166,9 @@ class gs_diff(WindowCommand, GitCommand):
             diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff_view.sublime-syntax")
 
             diff_view.run_command("gs_handle_vintageous")
+            # Assume diffing a single file is very fast and do it
+            # sync because it looks better.
+            diff_view.run_command("gs_diff_refresh", {"sync": bool(file_path)})
 
 
 class gs_diff_refresh(TextCommand, GitCommand):
@@ -178,17 +181,22 @@ class gs_diff_refresh(TextCommand, GitCommand):
             enqueue_on_worker(self.run_impl, sync)
 
     def run_impl(self, runs_on_ui_thread):
-        if self.view.settings().get("git_savvy.disable_diff"):
+        view = self.view
+        if not runs_on_ui_thread and not view.is_valid():
             return
-        repo_path = self.view.settings().get("git_savvy.repo_path")
-        file_path = self.view.settings().get("git_savvy.file_path")
-        in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
-        ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
-        base_commit = self.view.settings().get("git_savvy.diff_view.base_commit")
-        target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
-        show_diffstat = self.view.settings().get("git_savvy.diff_view.show_diffstat")
-        disable_stage = self.view.settings().get("git_savvy.diff_view.disable_stage")
-        context_lines = self.view.settings().get('git_savvy.diff_view.context_lines')
+
+        settings = view.settings()
+        if settings.get("git_savvy.disable_diff"):
+            return
+        repo_path = settings.get("git_savvy.repo_path")
+        file_path = settings.get("git_savvy.file_path")
+        in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
+        ignore_whitespace = settings.get("git_savvy.diff_view.ignore_whitespace")
+        base_commit = settings.get("git_savvy.diff_view.base_commit")
+        target_commit = settings.get("git_savvy.diff_view.target_commit")
+        show_diffstat = settings.get("git_savvy.diff_view.show_diffstat")
+        disable_stage = settings.get("git_savvy.diff_view.disable_stage")
+        context_lines = settings.get('git_savvy.diff_view.context_lines')
 
         prelude = "\n"
         title = ["DIFF:"]
@@ -223,6 +231,8 @@ class gs_diff_refresh(TextCommand, GitCommand):
         if ignore_whitespace:
             prelude += "  IGNORING WHITESPACE\n"
 
+        prelude += "\n--\n"
+
         try:
             diff = self.git(
                 "diff",
@@ -239,27 +249,30 @@ class gs_diff_refresh(TextCommand, GitCommand):
             # When the output of the above Git command fails to correctly parse,
             # the expected notification will be displayed to the user.  However,
             # once the userpresses OK, a new refresh event will be triggered on
-            # the view.
-            #
-            # This causes an infinite loop of increasingly frustrating error
-            # messages, ultimately resulting in psychosis and serious medical
-            # bills.  This is a better, though somewhat cludgy, alternative.
-            #
+            # the view. Prevent refreshing again by setting a flag.
             if err.args and type(err.args[0]) == UnicodeDecodeError:
-                self.view.settings().set("git_savvy.disable_diff", True)
+                settings.set("git_savvy.disable_diff", True)
                 return
             raise err
 
-        old_diff = self.view.settings().get("git_savvy.diff_view.raw_diff")
-        self.view.settings().set("git_savvy.diff_view.raw_diff", diff)
-        prelude += "\n--\n"
+        if settings.get("git_savvy.just_committed"):
+            if diff:
+                settings.set("git_savvy.just_committed", False)
+            else:
+                if in_cached_mode:
+                    settings.set("git_savvy.diff_view.in_cached_mode", False)
+                    view.run_command("gs_diff_refresh")
+                else:
+                    view.close()
+                return
 
+        has_content = view.find_by_selector("git-savvy.diff_view git-savvy.diff")
         draw = lambda: _draw(
-            self.view,
+            view,
             ' '.join(title),
             prelude,
             diff,
-            navigate=not old_diff
+            navigate=not has_content
         )
         if runs_on_ui_thread:
             draw()
@@ -390,8 +403,11 @@ class GsDiffFocusEventListener(EventListener):
     when the view regains focus.
     """
 
-    def on_activated_async(self, view):
-        if view.settings().get("git_savvy.diff_view") is True:
+    def on_activated(self, view):
+        settings = view.settings()
+        if settings.get("git_savvy.ignore_next_activated_event"):
+            settings.set("git_savvy.ignore_next_activated_event", False)
+        elif settings.get("git_savvy.diff_view"):
             view.run_command("gs_diff_refresh", {"sync": False})
 
 

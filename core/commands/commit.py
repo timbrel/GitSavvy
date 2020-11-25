@@ -1,3 +1,4 @@
+from itertools import takewhile
 import os
 
 import sublime
@@ -30,7 +31,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Optional, Tuple
+    from typing import List, Optional, Tuple
 
 
 COMMIT_HELP_TEXT_EXTRA = """##
@@ -404,8 +405,64 @@ class gs_commit_view_do_commit(TextCommand, GitCommand):
 
         window.status_message("Committed successfully.")
 
+        # We want to refresh and maybe close open diff views.
+        diff_views = mark_all_diff_views(window, self.repo_path)
+        # Since we're closing the commit view, the next focused view will
+        # be the exact next view on the left.  If this is a marked diff view,
+        # it receives an `on_activated` event, refreshes, and maybe closes.
+        #
+        # Everything fine, *but* the user would see this diff view for a moment,
+        # before it magically disappears.  So, instead, peek at the left views,
+        # maybe close them, and only after that close this commit view all in one
+        # synchronous task.
+        handled = []
+        for v in takewhile(
+            lambda v: v in diff_views,
+            reversed(adjacent_views_on_the_left(self.view))
+        ):
+            handled.append(v)
+            v.run_command("gs_diff_refresh", {"sync": True})
+            # We can break the *sync* loop if refreshing did *not* close the view.
+            # That exact view will be the next focused view after closing the commit
+            # view and we just probed that it will not get away magically in a split
+            # second.
+            if v.is_valid():
+                v.settings().set("git_savvy.ignore_next_activated_event", True)
+                break
+
         self.view.close()
+        for v in diff_views:
+            if v not in handled:
+                v.run_command("gs_diff_refresh", {"sync": False})
         util.view.refresh_gitsavvy_interfaces(window)
+
+
+def adjacent_views_on_the_left(view):
+    # type: (sublime.View) -> List[sublime.View]
+    window = view.window()
+    if not window:
+        return []
+    group, idx = window.get_view_index(view)
+    return window.views_in_group(group)[:idx]
+
+
+def mark_all_diff_views(window, repo_path):
+    # type: (sublime.Window, str) -> List[sublime.View]
+    open_diff_views = []
+    for view in window.views():
+        if is_relevant_diff_view(view, repo_path):
+            open_diff_views.append(view)
+            view.settings().set("git_savvy.just_committed", True)
+    return open_diff_views
+
+
+def is_relevant_diff_view(view, repo_path):
+    # type: (sublime.View, str) -> bool
+    settings = view.settings()
+    return (
+        settings.get("git_savvy.diff_view")
+        and settings.get("git_savvy.repo_path") == repo_path
+    )
 
 
 class gs_commit_view_sign(TextCommand, GitCommand):

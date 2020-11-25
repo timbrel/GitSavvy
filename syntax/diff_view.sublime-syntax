@@ -6,14 +6,10 @@ hidden: true
 scope: git-savvy.diff_view
 contexts:
   main:
-    - match: .
+    - match: ^
       push: header
 
   header:
-    - match: '^--$'
-      scope: comment
-      push:
-        - include: 'scope:git-savvy.diff'
-
-    - match: .*
-      scope: comment
+    - meta_scope: comment.header.git_savvy
+    - match: '^--$\n'
+      set: 'scope:git-savvy.diff'
