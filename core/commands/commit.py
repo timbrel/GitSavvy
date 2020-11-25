@@ -83,7 +83,7 @@ class gs_commit(WindowCommand, GitCommand):
     message area with the previous commit message.
     """
 
-    def run(self, repo_path=None, include_unstaged=False, amend=False):
+    def run(self, repo_path=None, include_unstaged=False, amend=False, initial_text=""):
         repo_path = repo_path or self.repo_path
 
         this_id = (
@@ -114,10 +114,10 @@ class gs_commit(WindowCommand, GitCommand):
             title = COMMIT_TITLE.format(os.path.basename(repo_path))
             view.set_name(title)
             view.set_scratch(True)  # ignore dirty on actual commit
-            self.initialize_view(view, include_unstaged, amend)
+            self.initialize_view(view, amend, initial_text)
 
-    def initialize_view(self, view, include_unstaged, amend):
-        # type: (sublime.View, bool, bool) -> None
+    def initialize_view(self, view, amend, initial_text):
+        # type: (sublime.View, bool, str) -> None
         merge_msg_path = os.path.join(self.repo_path, ".git", "MERGE_MSG")
 
         help_text = (
@@ -126,7 +126,9 @@ class gs_commit(WindowCommand, GitCommand):
             else COMMIT_HELP_TEXT
         )
 
-        if amend:
+        if initial_text:
+            initial_text += help_text
+        elif amend:
             last_commit_message = self.git("log", "-1", "--pretty=%B").strip()
             initial_text = last_commit_message + help_text
         elif os.path.exists(merge_msg_path):

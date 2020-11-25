@@ -9,6 +9,7 @@ from ..core.utils import focus_view
 
 
 IGNORE_NEXT_ACTIVATE = False
+SEEN = set()
 
 
 class GsInterfaceFocusEventListener(EventListener):
@@ -30,16 +31,18 @@ class GsInterfaceFocusEventListener(EventListener):
 
     def on_activated(self, view):
         global IGNORE_NEXT_ACTIVATE
-        if IGNORE_NEXT_ACTIVATE:
+        vid = view.id()
+        if vid in SEEN and IGNORE_NEXT_ACTIVATE:
             return
 
         if view.settings().get("is_widget"):
             return
 
-        # status bar is handled by GsStatusBarEventListener
-        util.view.refresh_gitsavvy(view, refresh_status_bar=False)
+        SEEN.add(vid)
+        util.view.refresh_gitsavvy(view)
 
     def on_close(self, view):
+        SEEN.discard(view.id())
         util.view.handle_closed_view(view)
 
 

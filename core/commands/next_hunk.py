@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from functools import partial
 from itertools import chain, takewhile
 
 import sublime
@@ -7,7 +8,7 @@ import sublime_plugin
 
 from GitSavvy.core.fns import pairwise
 from GitSavvy.core.utils import flash
-from GitSavvy.core.view import line_distance, show_region
+from GitSavvy.core.view import line_distance, show_region, touching_regions
 
 
 __all__ = (
@@ -51,6 +52,9 @@ def jump_to_hunk(view, forwards):
         hunk = hunk_region(view, forwards)
 
     if hunk is None:
+        is_visible = partial(touching_regions, view.visible_region())
+        if not any(filter(is_visible, view.sel())):
+            view.show(view.sel())
         return False
     else:
         mark_and_show_line_start(view, hunk)

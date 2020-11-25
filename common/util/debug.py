@@ -1,4 +1,3 @@
-from contextlib import contextmanager
 import functools
 import json
 import pprint as _pprint
@@ -27,17 +26,6 @@ def start_logging():
 def stop_logging():
     global enabled
     enabled = False
-
-
-@contextmanager
-def disable_logging():
-    global enabled
-    previous_state = enabled
-    enabled = False
-    try:
-        yield
-    finally:
-        enabled = previous_state
 
 
 def get_log():
