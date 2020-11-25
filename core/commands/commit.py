@@ -164,8 +164,8 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
         amend = settings.get("git_savvy.commit_view.amend")
         show_commit_diff = self.savvy_settings.get("show_commit_diff")
         # for backward compatibility, check also if show_commit_diff is True
-        shows_diff = show_commit_diff is True or show_commit_diff == "full"
-        shows_stat = (
+        show_patch = show_commit_diff is True or show_commit_diff == "full"
+        show_stat = (
             show_commit_diff == "stat"
             or (show_commit_diff == "full" and self.savvy_settings.get("show_diffstat"))
         )
@@ -174,8 +174,8 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
             diff_text = self.git_throwing_silently(
                 "diff",
                 "--no-color",
-                "--patch" if shows_diff else None,
-                "--stat" if shows_stat else None,
+                "--patch" if show_patch else None,
+                "--stat" if show_stat else None,
                 "--cached" if not include_unstaged else None,
                 "HEAD^" if amend
                 else "HEAD" if include_unstaged
@@ -186,8 +186,8 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
                 diff_text = self.git(
                     "diff",
                     "--no-color",
-                    "--patch" if shows_diff else None,
-                    "--stat" if shows_stat else None,
+                    "--patch" if show_patch else None,
+                    "--stat" if show_stat else None,
                     "--cached" if not include_unstaged else None,
                     self.the_empty_sha()
                 )
@@ -201,8 +201,8 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
                 )
 
         if diff_text:
-            final_text = ("\n" + diff_text) if shows_diff or shows_stat else ""
-        elif (shows_diff or shows_stat) and not include_unstaged:
+            final_text = ("\n" + diff_text) if show_patch or show_stat else ""
+        elif (show_patch or show_stat) and not include_unstaged:
             settings.set("git_savvy.commit_view.include_unstaged", True)
             view.run_command("gs_prepare_commit_refresh_diff")
             return
@@ -218,7 +218,7 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
             return
 
         replace_view_content(view, final_text, region)
-        if shows_diff:
+        if show_patch:
             intra_line_colorizer.annotate_intra_line_differences(view, final_text, region.begin())
 
     def the_empty_sha(self):
