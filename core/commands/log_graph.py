@@ -1076,14 +1076,17 @@ def follow_first_parent(dot, forward=True):
 def follow_dots(dot, forward=True):
     # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
     """Breadth first traverse dot to dot."""
-    stack = deque(dots_after_dot(dot, forward))
+    # Always sort by `dot.pt` to keep the order exactly like the visual
+    # order in the view.
+    stack = sorted(dots_after_dot(dot, forward), key=lambda dot: dot.pt)
     seen = set()
     while stack:
-        dot = stack.popleft()
+        dot = stack.pop(0)
         if dot not in seen:
             yield dot
             seen.add(dot)
             stack.extend(dots_after_dot(dot, forward))
+            stack.sort(key=lambda dot: dot.pt)
 
 
 def dots_after_dot(dot, forward=True):
