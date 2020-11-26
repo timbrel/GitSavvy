@@ -154,13 +154,6 @@ class ActiveBranchMixin(mixin_base):
 
         return stdout or "No commits yet."
 
-    def get_upstream_for_active_branch(self):
-        """
-        Return ref for remote tracking branch.
-        """
-        return self.git("rev-parse", "--abbrev-ref", "--symbolic-full-name",
-                        "@{u}", throw_on_error=False).strip()
-
     def get_remote_for_branch(self, branch_name):
         # type: (str) -> Optional[str]
         return self.git(

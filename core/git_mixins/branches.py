@@ -43,6 +43,13 @@ class BranchesMixin(mixin_base):
         except StopIteration:
             return None
 
+    def get_upstream_for_active_branch(self):
+        """
+        Return ref for remote tracking branch.
+        """
+        return self.git("rev-parse", "--abbrev-ref", "--symbolic-full-name",
+                        "@{u}", throw_on_error=False).strip()
+
     def get_local_branch_by_name(self, branch_name):
         # type: (str) -> Optional[Branch]
         """
