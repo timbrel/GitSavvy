@@ -56,7 +56,7 @@ class StatusMixin(mixin_base):
 
     def _parse_status_for_file_statuses(self, lines):
         # type: (List[str]) -> List[FileStatus]
-        porcelain_entries = lines[1:].__iter__()
+        porcelain_entries = iter(lines[1:])
         entries = []
 
         for entry in porcelain_entries:
@@ -65,7 +65,7 @@ class StatusMixin(mixin_base):
             index_status = entry[0]
             working_status = entry[1].strip() or None
             path = entry[3:]
-            path_alt = porcelain_entries.__next__() if index_status in ["R", "C"] else None
+            path_alt = next(porcelain_entries) if index_status in ["R", "C"] else None
             entries.append(FileStatus(path, path_alt, index_status, working_status))
 
         return entries
