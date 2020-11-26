@@ -46,8 +46,13 @@ class BranchesMixin(mixin_base):
         """
         Return ref for remote tracking branch.
         """
-        return self.git("rev-parse", "--abbrev-ref", "--symbolic-full-name",
-                        "@{u}", throw_on_error=False).strip()
+        return self.git(
+            "rev-parse",
+            "--abbrev-ref",
+            "--symbolic-full-name",
+            "@{u}",
+            throw_on_error=False
+        ).strip()
 
     def get_remote_for_branch(self, branch_name):
         # type: (str) -> Optional[str]
