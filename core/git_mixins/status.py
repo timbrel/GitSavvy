@@ -23,13 +23,20 @@ else:
 FileStatus = namedtuple("FileStatus", ("path", "path_alt", "index_status", "working_status"))
 
 
+MYPY = False
+if MYPY:
+    from typing import List, Tuple
+
+
 class StatusMixin(mixin_base):
 
     def _get_status(self):
+        # type: () -> List[str]
         return self.git("status", "--porcelain", "-z", "-b",
                         custom_environ={"GIT_OPTIONAL_LOCKS": "0"}).rstrip("\x00").split("\x00")
 
     def _parse_status_for_file_statuses(self, lines):
+        # type: (List[str]) -> List[FileStatus]
         porcelain_entries = lines[1:].__iter__()
         entries = []
 
@@ -45,6 +52,7 @@ class StatusMixin(mixin_base):
         return entries
 
     def get_status(self):
+        # type: () -> List[FileStatus]
         """
         Return a list of FileStatus objects.  These objects correspond
         to all files that are 1) staged, 2) modified, 3) new, 4) deleted,
@@ -56,6 +64,7 @@ class StatusMixin(mixin_base):
         return self._parse_status_for_file_statuses(lines)
 
     def sort_status_entries(self, file_status_list):
+        # type: (List[FileStatus]) -> Tuple[List[FileStatus], ...]
         """
         Take entries from `git status` and sort them into groups.
         """
@@ -127,9 +136,11 @@ class StatusMixin(mixin_base):
             return ""
 
     def in_merge(self):
+        # type: () -> bool
         return os.path.exists(os.path.join(self.repo_path, ".git", "MERGE_HEAD"))
 
     def merge_head(self):
+        # type: () -> str
         path = os.path.join(self.repo_path, ".git", "MERGE_HEAD")
         with open(path, "r") as f:
             commit_hash = f.read().strip()
