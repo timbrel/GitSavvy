@@ -91,6 +91,25 @@ class StatusMixin(mixin_base):
 
         return staged, unstaged, untracked, conflicts
 
+    def get_branch_status(self, delim=None):
+        # type: (str) -> Union[str, Tuple[str, List[str]]]
+        """
+        Return a tuple of:
+
+          1) the name of the active branch
+          2) the status of the active local branch
+             compared to its remote counterpart.
+
+        If no remote or tracking branch is defined, do not include remote-data.
+        If HEAD is detached, provide that status instead.
+
+        If a delimeter is provided, join tuple components with it, and return
+        that value.
+        """
+        lines = self._get_status()
+        branch_status = self._get_branch_status_components(lines)
+        return self._format_branch_status(branch_status, delim)
+
     def _get_branch_status_components(self, lines):
         # type: (List[str]) -> HeadState
         """
@@ -131,25 +150,6 @@ class StatusMixin(mixin_base):
         branch, _, remote, _, _, _, ahead, _, _, behind, gone = status_match.groups()
 
         return False, branch, remote, clean, ahead, behind, bool(gone)
-
-    def get_branch_status(self, delim=None):
-        # type: (str) -> Union[str, Tuple[str, List[str]]]
-        """
-        Return a tuple of:
-
-          1) the name of the active branch
-          2) the status of the active local branch
-             compared to its remote counterpart.
-
-        If no remote or tracking branch is defined, do not include remote-data.
-        If HEAD is detached, provide that status instead.
-
-        If a delimeter is provided, join tuple components with it, and return
-        that value.
-        """
-        lines = self._get_status()
-        branch_status = self._get_branch_status_components(lines)
-        return self._format_branch_status(branch_status, delim)
 
     def _format_branch_status(self, branch_status, delim=None):
         # type: (HeadState, str) -> Union[str, Tuple[str, List[str]]]
