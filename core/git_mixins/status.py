@@ -1,5 +1,7 @@
 import os
 from collections import namedtuple
+
+from GitSavvy.core.git_command import mixin_base
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 
 FileStatus = namedtuple("FileStatus", ("path", "path_alt", "index_status", "working_status"))
@@ -17,7 +19,7 @@ IndexedEntry = namedtuple("IndexEntry", (
 IndexedEntry.__new__.__defaults__ = (None, ) * 8
 
 
-class StatusMixin():
+class StatusMixin(mixin_base):
 
     def _get_status(self):
         return self.git("status", "--porcelain", "-z", "-b",
