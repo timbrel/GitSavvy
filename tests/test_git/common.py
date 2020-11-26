@@ -22,7 +22,7 @@ class AssertionsMixin:
         The lengths of the staged, unstaged, untracked and conflicted entries.
         """
         self.assertEqual(
-            [len(x) for x in self.sort_status_entries(self.get_status())],
+            [len(x) for x in self.group_status_entries(self.get_status())],
             status)
 
 

@@ -279,7 +279,7 @@ class StatusInterface(ui.Interface, GitCommand):
         (staged_files,
          unstaged_files,
          untracked_files,
-         merge_conflicts) = self.sort_status_entries(files_statuses)
+         merge_conflicts) = self.group_status_entries(files_statuses)
         branch_status = self._format_branch_status(branch_status, delim="\n           ")
 
         return {

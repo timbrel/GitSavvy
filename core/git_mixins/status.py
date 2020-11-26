@@ -68,7 +68,7 @@ class StatusMixin(mixin_base):
         lines = self._get_status()
         return self._parse_status_for_file_statuses(lines)
 
-    def sort_status_entries(self, file_status_list):
+    def group_status_entries(self, file_status_list):
         # type: (List[FileStatus]) -> Tuple[List[FileStatus], ...]
         """
         Take entries from `git status` and sort them into groups.
