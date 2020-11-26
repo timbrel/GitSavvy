@@ -32,6 +32,17 @@ class BranchesMixin(mixin_base):
                 return branch
         return None
 
+    def get_current_branch_name(self):
+        """
+        Return the name of the last checkout-out branch.
+        """
+        stdout = self.git("branch", "--no-color")
+        try:
+            correct_line = next(line for line in stdout.split("\n") if line.startswith("*"))
+            return correct_line[2:]
+        except StopIteration:
+            return None
+
     def get_local_branch_by_name(self, branch_name):
         # type: (str) -> Optional[Branch]
         """

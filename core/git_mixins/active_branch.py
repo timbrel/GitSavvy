@@ -12,17 +12,6 @@ if MYPY:
 
 class ActiveBranchMixin(mixin_base):
 
-    def get_current_branch_name(self):
-        """
-        Return the name of the last checkout-out branch.
-        """
-        stdout = self.git("branch", "--no-color")
-        try:
-            correct_line = next(line for line in stdout.split("\n") if line.startswith("*"))
-            return correct_line[2:]
-        except StopIteration:
-            return None
-
     def _get_branch_status_components(self, lines):
         """
         Return a tuple of:
