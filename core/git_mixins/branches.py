@@ -43,6 +43,7 @@ class BranchesMixin(mixin_base):
         return None
 
     def get_upstream_for_active_branch(self):
+        # type: () -> Optional[str]
         """
         Return ref for remote tracking branch.
         """
@@ -52,7 +53,7 @@ class BranchesMixin(mixin_base):
             "--symbolic-full-name",
             "@{u}",
             throw_on_error=False
-        ).strip()
+        ).strip() or None
 
     def get_remote_for_branch(self, branch_name):
         # type: (str) -> Optional[str]
