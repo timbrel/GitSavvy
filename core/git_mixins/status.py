@@ -110,6 +110,15 @@ class StatusMixin(mixin_base):
         branch_status = self._get_branch_status_components(lines)
         return self._format_branch_status(branch_status, delim)
 
+    def get_branch_status_short(self):
+        # type: () -> str
+        if self.in_rebase():
+            return "(no branch, rebasing {})".format(self.rebase_branch_name())
+
+        lines = self._get_status()
+        branch_status = self._get_branch_status_components(lines)
+        return self._format_branch_status_short(branch_status)
+
     def _get_branch_status_components(self, lines):
         # type: (List[str]) -> HeadState
         """
@@ -182,15 +191,6 @@ class StatusMixin(mixin_base):
         if delim:
             return delim.join([status] + secondary) if secondary else status
         return status, secondary
-
-    def get_branch_status_short(self):
-        # type: () -> str
-        if self.in_rebase():
-            return "(no branch, rebasing {})".format(self.rebase_branch_name())
-
-        lines = self._get_status()
-        branch_status = self._get_branch_status_components(lines)
-        return self._format_branch_status_short(branch_status)
 
     def _format_branch_status_short(self, branch_status):
         # type: (HeadState) -> str
