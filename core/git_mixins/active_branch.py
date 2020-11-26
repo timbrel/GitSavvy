@@ -5,11 +5,6 @@ from GitSavvy.core.git_command import mixin_base
 from .. import store
 
 
-MYPY = False
-if MYPY:
-    from typing import Optional
-
-
 class ActiveBranchMixin(mixin_base):
 
     def _get_branch_status_components(self, lines):
@@ -153,12 +148,3 @@ class ActiveBranchMixin(mixin_base):
                 store.update_state(self.repo_path, {"short_hash_length": len(short_hash)})
 
         return stdout or "No commits yet."
-
-    def get_remote_for_branch(self, branch_name):
-        # type: (str) -> Optional[str]
-        return self.git(
-            "config",
-            "--get",
-            "branch.{}.remote".format(branch_name),
-            throw_on_error=False
-        ).strip() or None

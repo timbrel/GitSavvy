@@ -50,6 +50,15 @@ class BranchesMixin(mixin_base):
         return self.git("rev-parse", "--abbrev-ref", "--symbolic-full-name",
                         "@{u}", throw_on_error=False).strip()
 
+    def get_remote_for_branch(self, branch_name):
+        # type: (str) -> Optional[str]
+        return self.git(
+            "config",
+            "--get",
+            "branch.{}.remote".format(branch_name),
+            throw_on_error=False
+        ).strip() or None
+
     def get_local_branch_by_name(self, branch_name):
         # type: (str) -> Optional[Branch]
         """
