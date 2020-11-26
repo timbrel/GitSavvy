@@ -1,6 +1,7 @@
 import re
 import string
 
+from GitSavvy.core.git_command import mixin_base
 from .. import store
 
 
@@ -9,7 +10,7 @@ if MYPY:
     from typing import Optional
 
 
-class ActiveBranchMixin():
+class ActiveBranchMixin(mixin_base):
 
     def get_current_branch_name(self):
         """
