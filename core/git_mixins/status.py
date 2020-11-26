@@ -26,7 +26,7 @@ FileStatus = namedtuple("FileStatus", ("path", "path_alt", "index_status", "work
 
 MYPY = False
 if MYPY:
-    from typing import List, Tuple, Union
+    from typing import List, Tuple
     HeadState = Tuple
 
 
@@ -91,8 +91,8 @@ class StatusMixin(mixin_base):
 
         return staged, unstaged, untracked, conflicts
 
-    def get_branch_status(self, delim=None):
-        # type: (str) -> Union[str, Tuple[str, List[str]]]
+    def get_branch_status(self, *, delim="\n           "):
+        # type: (str) -> str
         """
         Return a tuple of:
 
@@ -160,8 +160,8 @@ class StatusMixin(mixin_base):
 
         return False, branch, remote, clean, ahead, behind, bool(gone)
 
-    def _format_branch_status(self, branch_status, delim=None):
-        # type: (HeadState, str) -> Union[str, Tuple[str, List[str]]]
+    def _format_branch_status(self, branch_status, delim="\n           "):
+        # type: (HeadState, str) -> str
         detached, branch, remote, clean, ahead, behind, gone = branch_status
 
         secondary = []
@@ -188,9 +188,7 @@ class StatusMixin(mixin_base):
         if self.in_rebase():
             secondary.append("Rebasing {}.".format(self.rebase_branch_name()))
 
-        if delim:
-            return delim.join([status] + secondary) if secondary else status
-        return status, secondary
+        return delim.join([status] + secondary) if secondary else status
 
     def _format_branch_status_short(self, branch_status):
         # type: (HeadState) -> str

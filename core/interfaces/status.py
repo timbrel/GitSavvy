@@ -274,13 +274,13 @@ class StatusInterface(ui.Interface, GitCommand):
     def fetch_repo_status(self, delim=None):
         lines = self._get_status()
         files_statuses = self._parse_status_for_file_statuses(lines)
-        branch_status = self._get_branch_status_components(lines)
+        branch_info = self._get_branch_status_components(lines)
 
         (staged_files,
          unstaged_files,
          untracked_files,
          merge_conflicts) = self.group_status_entries(files_statuses)
-        branch_status = self._format_branch_status(branch_status, delim="\n           ")
+        branch_status = self._format_branch_status(branch_info)
 
         return {
             'staged_files': staged_files,

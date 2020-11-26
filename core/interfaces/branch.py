@@ -94,7 +94,7 @@ class BranchInterface(ui.Interface, GitCommand):
 
     @ui.partial("branch_status")
     def render_branch_status(self):
-        return self.get_branch_status(delim="\n           ")
+        return self.get_branch_status()
 
     @ui.partial("git_root")
     def render_git_root(self):
