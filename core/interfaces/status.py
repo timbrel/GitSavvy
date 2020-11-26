@@ -271,7 +271,7 @@ class StatusInterface(ui.Interface, GitCommand):
         if not on_special_symbol:
             self.view.run_command("gs_status_navigate_goto")
 
-    def fetch_repo_status(self, delim=None):
+    def fetch_repo_status(self):
         lines = self._get_status()
         files_statuses = self._parse_status_for_file_statuses(lines)
         branch_info = self._get_branch_status_components(lines)
