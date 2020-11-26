@@ -24,10 +24,10 @@ else:
 
 FileStatus = namedtuple("FileStatus", ("path", "path_alt", "index_status", "working_status"))
 
-
 MYPY = False
 if MYPY:
-    from typing import List, Tuple
+    from typing import List, Tuple, Union
+    HeadState = Tuple
 
 
 class StatusMixin(mixin_base):
@@ -92,6 +92,7 @@ class StatusMixin(mixin_base):
         return staged, unstaged, untracked, conflicts
 
     def _get_branch_status_components(self, lines):
+        # type: (List[str]) -> HeadState
         """
         Return a tuple of:
 
@@ -132,6 +133,7 @@ class StatusMixin(mixin_base):
         return False, branch, remote, clean, ahead, behind, bool(gone)
 
     def get_branch_status(self, delim=None):
+        # type: (str) -> Union[str, Tuple[str, List[str]]]
         """
         Return a tuple of:
 
@@ -150,6 +152,7 @@ class StatusMixin(mixin_base):
         return self._format_branch_status(branch_status, delim)
 
     def _format_branch_status(self, branch_status, delim=None):
+        # type: (HeadState, str) -> Union[str, Tuple[str, List[str]]]
         detached, branch, remote, clean, ahead, behind, gone = branch_status
 
         secondary = []
@@ -181,6 +184,7 @@ class StatusMixin(mixin_base):
         return status, secondary
 
     def get_branch_status_short(self):
+        # type: () -> str
         if self.in_rebase():
             return "(no branch, rebasing {})".format(self.rebase_branch_name())
 
@@ -189,6 +193,7 @@ class StatusMixin(mixin_base):
         return self._format_branch_status_short(branch_status)
 
     def _format_branch_status_short(self, branch_status):
+        # type: (HeadState) -> str
         detached, branch, remote, clean, ahead, behind, gone = branch_status
 
         dirty = "" if clean else "*"
