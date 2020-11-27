@@ -1,4 +1,4 @@
-commit 9dd4769f090aec1c6bceee49019680d0dba8108d
+commit 9dd4769f090aec1c6bceee49019680d0dba8108d  (HEAD -> refactor-status-updates)
 Author:     Not Herr Kaste <not.herr.kaste@gmail.com>
 AuthorDate: Fri Oct 6 13:25:58 2017 -0300
 Commit:     Not Herr Kaste <not.herr.kaste@gmail.com>
