@@ -97,23 +97,20 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
         Determine the git status of the current working directory, and return
         a list of menu options for each file that is shown.
         """
-        status_entries = self.get_status()
-        if not status_entries:
-            return [MenuOption(False, CLEAN_WORKING_DIR, None, None)]
-
-        menu_options = []
-        staged_count = 0
-        unstaged_count = 0
-
         (staged_entries,
          unstaged_entries,
          untracked_entries,
          conflict_entries) = self.get_working_dir_status()
 
-        staged_count = len(staged_entries)
-        unstaged_count = len(unstaged_entries)
-        # untracked_count = len(untracked_entries)
-        # conflict_count = len(conflict_entries)
+        if not (
+            staged_entries
+            or unstaged_entries
+            or untracked_entries
+            or conflict_entries
+        ):
+            return [MenuOption(False, CLEAN_WORKING_DIR, None, None)]
+
+        menu_options = []
 
         for entry in unstaged_entries:
             filename = (entry.path if not entry.index_status == "R"
@@ -129,10 +126,11 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
             menu_text = "[{0}] {1}".format(entry.working_status, entry.path)
             menu_options.append(MenuOption(True, menu_text, entry.path, False))
 
-        if unstaged_count > 0:
+        if unstaged_entries:
             menu_options.append(MenuOption(True, ADD_ALL_UNSTAGED_FILES, None, None))
             menu_options.append(MenuOption(True, ADD_ALL_FILES, None, None))
 
+        staged_count = len(staged_entries)
         if staged_count > 0:
             menu_options.append(MenuOption(False, STAGED.format(staged_count), None, None))
             menu_options.append(MenuOption(True, COMMIT, None, None))
