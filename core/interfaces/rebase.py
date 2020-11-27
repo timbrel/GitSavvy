@@ -497,7 +497,7 @@ class RewriteBase(TextCommand, GitCommand):
         (staged_entries,
          unstaged_entries,
          untracked_entries,
-         conflict_entries) = self.group_status_entries(self.get_status())
+         conflict_entries) = self.get_working_dir_status()
 
         if len(unstaged_entries) + len(conflict_entries) > 0:
             sublime.message_dialog(

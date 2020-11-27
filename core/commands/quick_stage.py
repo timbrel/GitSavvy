@@ -108,7 +108,7 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
         (staged_entries,
          unstaged_entries,
          untracked_entries,
-         conflict_entries) = self.group_status_entries(self.get_status())
+         conflict_entries) = self.get_working_dir_status()
 
         staged_count = len(staged_entries)
         unstaged_count = len(unstaged_entries)
