@@ -1,10 +1,13 @@
-import re
 from collections import namedtuple
+import re
+
+from GitSavvy.core.git_command import mixin_base
+
 
 Stash = namedtuple("Stash", ("id", "description"))
 
 
-class StashMixin():
+class StashMixin(mixin_base):
 
     def get_stashes(self):
         """
