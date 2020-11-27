@@ -72,7 +72,7 @@ class StatusMixin(mixin_base):
         # type: () -> WorkingDirState
         lines = self._get_status()
         files = self._parse_status_for_file_statuses(lines)
-        return self.group_status_entries(files)
+        return self._group_status_entries(files)
 
     def _parse_status_for_file_statuses(self, lines):
         # type: (List[str]) -> List[FileStatus]
@@ -90,7 +90,7 @@ class StatusMixin(mixin_base):
 
         return entries
 
-    def group_status_entries(self, file_status_list):
+    def _group_status_entries(self, file_status_list):
         # type: (List[FileStatus]) -> WorkingDirState
         """
         Take entries from `git status` and sort them into groups.
