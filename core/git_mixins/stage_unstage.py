@@ -1,4 +1,7 @@
-class StageUnstageMixin():
+from GitSavvy.core.git_command import mixin_base
+
+
+class StageUnstageMixin(mixin_base):
 
     def stage_file(self, *fpath, force=True):
         # type: (str, bool) -> None
