@@ -1,8 +1,24 @@
 import os
 from collections import namedtuple
 
-from GitSavvy.core.git_command import mixin_base
 from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
+
+
+MYPY = False
+if MYPY:
+    from GitSavvy.core.git_command import (
+        HistoryMixin,
+        _GitCommand,
+    )
+
+    class mixin_base(
+        HistoryMixin,
+        _GitCommand,
+    ):
+        pass
+
+else:
+    mixin_base = object
 
 FileStatus = namedtuple("FileStatus", ("path", "path_alt", "index_status", "working_status"))
 
