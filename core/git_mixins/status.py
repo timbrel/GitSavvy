@@ -22,8 +22,16 @@ else:
 
 
 if MYPY:
-    from typing import List, NamedTuple, Optional, Tuple
-    HeadState = Tuple
+    from typing import List, NamedTuple, Optional
+    HeadState = NamedTuple("HeadState", [
+        ("detached", bool),
+        ("branch", Optional[str]),
+        ("remote", Optional[str]),
+        ("clean", bool),
+        ("ahead", Optional[str]),
+        ("behind", Optional[str]),
+        ("gone", bool),
+    ])
     FileStatus = NamedTuple("FileStatus", [
         ("path", str),
         ("path_alt", Optional[str]),
@@ -38,6 +46,7 @@ if MYPY:
     ])
 
 else:
+    HeadState = namedtuple("HeadState", "detached branch remote clean ahead behind gone")
     FileStatus = namedtuple("FileStatus", "path path_alt index_status working_status")
     WorkingDirState = namedtuple(
         "WorkingDirState",
@@ -158,7 +167,7 @@ class StatusMixin(mixin_base):
         clean = len(addl_lines) == 0
 
         if first_line.startswith("## HEAD (no branch)"):
-            return True, None, None, clean, None, None, False
+            return HeadState(True, None, None, clean, None, None, False)
 
         if (
             first_line.startswith("## No commits yet on ")
@@ -174,11 +183,11 @@ class StatusMixin(mixin_base):
         status_match = re.match(short_status_pattern, first_line)
 
         if not status_match:
-            return False, None if clean else addl_lines[0], None, clean, None, None, False
+            return HeadState(False, None if clean else addl_lines[0], None, clean, None, None, False)
 
         branch, _, remote, _, _, _, ahead, _, _, behind, gone = status_match.groups()
 
-        return False, branch, remote, clean, ahead, behind, bool(gone)
+        return HeadState(False, branch, remote, clean, ahead, behind, bool(gone))
 
     def _format_branch_status(self, branch_status, delim="\n           "):
         # type: (HeadState, str) -> str
@@ -219,6 +228,7 @@ class StatusMixin(mixin_base):
         if detached:
             return "DETACHED" + dirty
 
+        assert branch
         output = branch + dirty
 
         if ahead:
