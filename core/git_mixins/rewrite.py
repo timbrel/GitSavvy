@@ -270,8 +270,10 @@ class RewriteMixin(mixin_base):
             if not os.path.exists(path):
                 return dict()
             with open(path, "r") as f:
-                entries = f.read().strip().split("\n")
-                return [entry.split(" ") for entry in entries]
+                return dict(
+                    entry.split(" ")  # type: ignore[misc]
+                    for entry in f.read().strip().split("\n")
+                )
         else:
             path = os.path.join(self._rebase_replay_dir, "rewritten")
             if not os.path.exists(path):
