@@ -68,7 +68,9 @@ class TagsMixin(mixin_base):
                 # if that fails then only take the numbers and sort them
                 semver_entries = sorted(
                     semver_entries,
-                    key=lambda entry: LooseVersion(semver_test.search(entry.tag).group()),
+                    key=lambda entry: LooseVersion(
+                        semver_test.search(entry.tag).group()  # type: ignore[union-attr]
+                    ),
                     reverse=True)
 
         return semver_entries + regular_entries
