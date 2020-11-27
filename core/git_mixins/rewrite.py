@@ -209,57 +209,6 @@ class RewriteMixin(mixin_base):
         """
         return os.path.join(self.repo_path, ".git", "rebase-replay")
 
-    @property
-    def _rebase_apply_dir(self):
-        return os.path.join(self.repo_path, ".git", "rebase-apply")
-
-    @property
-    def _rebase_merge_dir(self):
-        return os.path.join(self.repo_path, ".git", "rebase-merge")
-
-    @property
-    def _rebase_dir(self):
-        return self._rebase_merge_dir if self.in_rebase_merge() else self._rebase_apply_dir
-
-    def in_rebase_merge(self):
-        return os.path.isdir(self._rebase_merge_dir)
-
-    def in_rebase_apply(self):
-        return os.path.isdir(self._rebase_apply_dir)
-
-    def in_rebase(self):
-        return self.in_rebase_apply() or self.in_rebase_merge()
-
-    def rebase_orig_head(self):
-        # type: () -> str
-        return self._read_rebase_file("orig-head")
-
-    def rebase_conflict_at(self):
-        # type: () -> str
-        if self.in_rebase_merge():
-            return (
-                self._read_rebase_file("stopped-sha")
-                or self._read_rebase_file("current-commit")
-            )
-        else:
-            return self._read_rebase_file("original-commit")
-
-    def rebase_branch_name(self):
-        return self._read_rebase_file("head-name").replace("refs/heads/", "")
-
-    def rebase_onto_commit(self):
-        # type: () -> str
-        return self._read_rebase_file("onto")
-
-    def _read_rebase_file(self, fname):
-        # type: (str) -> str
-        path = os.path.join(self._rebase_dir, fname)
-        try:
-            with open(path, "r") as f:
-                return f.read().strip()
-        except Exception:
-            return ""
-
     def rebase_rewritten(self):
         if self.in_rebase_merge():
             path = os.path.join(self._rebase_merge_dir, "rewritten")
