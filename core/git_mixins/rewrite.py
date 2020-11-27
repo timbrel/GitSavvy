@@ -263,7 +263,7 @@ class RewriteMixin(mixin_base):
                 with open(os.path.join(path, sha), "r") as f:
                     newsha = f.read().strip()
                     if newsha:
-                        entries.append([sha, newsha])
+                        entries.append((sha, newsha))
             return dict(entries)
         elif self.in_rebase_apply():
             path = os.path.join(self._rebase_apply_dir, "rewritten")
@@ -281,7 +281,7 @@ class RewriteMixin(mixin_base):
                 with open(os.path.join(path, sha), "r") as f:
                     newsha = f.read().strip()
                     if newsha:
-                        entries.append([sha, newsha])
+                        entries.append((sha, newsha))
             return dict(entries)
 
     def rewrite_meta_data(self, old_hash, new_hash):
