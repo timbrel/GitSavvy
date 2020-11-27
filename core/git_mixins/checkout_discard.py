@@ -1,4 +1,7 @@
-class CheckoutDiscardMixin():
+from GitSavvy.core.git_command import mixin_base
+
+
+class CheckoutDiscardMixin(mixin_base):
 
     def discard_all_unstaged(self):
         """
