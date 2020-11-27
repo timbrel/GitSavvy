@@ -3,8 +3,6 @@ import os
 import re
 import string
 
-from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
-
 
 MYPY = False
 if MYPY:
@@ -45,6 +43,17 @@ else:
         "WorkingDirState",
         "staged_files unstaged_files untracked_files merge_conflicts"
     )
+
+
+MERGE_CONFLICT_PORCELAIN_STATUSES = (
+    ("A", "A"),  # unmerged, both added
+    ("U", "U"),  # unmerged, both modified
+    ("D", "D"),  # unmerged, both deleted
+    ("A", "U"),  # unmerged, added by us
+    ("U", "A"),  # unmerged, added by them
+    ("D", "U"),  # unmerged, deleted by us
+    ("U", "D"),  # unmerged, deleted by them
+)
 
 
 class StatusMixin(mixin_base):
