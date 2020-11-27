@@ -2,7 +2,6 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
-from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
 
@@ -58,10 +57,9 @@ class GsRestartMergeForFileCommand(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        self._conflicts = tuple(
-            f.path for f in self.get_status()
-            if (f.index_status, f.working_status) in MERGE_CONFLICT_PORCELAIN_STATUSES
-        )
+        self._conflicts = [
+            f.path for f in self.get_working_dir_status().merge_conflicts
+        ]
 
         self.window.show_quick_panel(
             self._conflicts,

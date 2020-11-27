@@ -7,7 +7,6 @@ from sublime_plugin import WindowCommand, TextCommand
 
 from ...common import ui, util
 from ..commands import GsNavigate
-from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 from ..exceptions import GitSavvyError
 from ..git_command import GitCommand
 from ..git_mixins.rebase import NearestBranchMixin
@@ -299,11 +298,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         """
         Look for unmerged conflicts in status
         """
-        return [
-            entry
-            for entry in self.get_status()
-            if (entry.index_status, entry.working_status) in MERGE_CONFLICT_PORCELAIN_STATUSES
-        ]
+        return self.get_working_dir_status().merge_conflicts
 
     def _get_diverged_outside_rebase(self):
         return [{"caret": " ",

@@ -9,7 +9,6 @@ from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
 IGNORE_PATTERN_PROMPT = "Enter pattern to ignore:"
-UNSTAGED_WORKING_STATUSES = ("M", "D")
 
 
 class GsIgnoreCommand(WindowCommand, GitCommand):
@@ -55,10 +54,9 @@ class GsAssumeUnchangedCommand(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        self._unstaged_files = tuple(
-            f.path for f in self.get_status()
-            if f.working_status in UNSTAGED_WORKING_STATUSES
-        )
+        self._unstaged_files = [
+            f.path for f in self.get_working_dir_status().unstaged_files
+        ]
 
         self.window.show_quick_panel(
             self._unstaged_files,
