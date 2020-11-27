@@ -22,12 +22,19 @@ if MYPY:
 else:
     mixin_base = object
 
-FileStatus = namedtuple("FileStatus", ("path", "path_alt", "index_status", "working_status"))
 
-MYPY = False
 if MYPY:
-    from typing import List, Tuple
+    from typing import List, NamedTuple, Optional, Tuple
     HeadState = Tuple
+    FileStatus = NamedTuple("FileStatus", [
+        ("path", str),
+        ("path_alt", Optional[str]),
+        ("index_status", str),
+        ("working_status", Optional[str]),
+    ])
+
+else:
+    FileStatus = namedtuple("FileStatus", "path path_alt index_status working_status")
 
 
 class StatusMixin(mixin_base):
