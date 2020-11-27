@@ -3,6 +3,31 @@ import shutil
 from types import SimpleNamespace
 
 
+MYPY = False
+if MYPY:
+    from GitSavvy.core.git_command import (
+        ActiveBranchMixin,
+        BranchesMixin,
+        CheckoutDiscardMixin,
+        HistoryMixin,
+        StatusMixin,
+        _GitCommand,
+    )
+
+    class mixin_base(
+        ActiveBranchMixin,
+        BranchesMixin,
+        CheckoutDiscardMixin,
+        StatusMixin,
+        HistoryMixin,
+        _GitCommand,
+    ):
+        pass
+
+else:
+    mixin_base = object
+
+
 class RewriteTemplate(SimpleNamespace):
     # orig_hash
     do_commit = True
@@ -20,7 +45,7 @@ class RewriteTemplate(SimpleNamespace):
             return None
 
 
-class RewriteMixin():
+class RewriteMixin(mixin_base):
 
     def log_rebase(self, start, end="HEAD", preserve=False):
         return self.log(

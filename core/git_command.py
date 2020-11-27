@@ -503,17 +503,17 @@ from .exceptions import GitSavvyError  # noqa: E402
 
 
 class GitCommand(
-    StatusMixin,
+    RewriteMixin,
     ActiveBranchMixin,
     RemotesMixin,
     BranchesMixin,
+    CheckoutDiscardMixin,
+    StatusMixin,
     StashMixin,
     StageUnstageMixin,
-    CheckoutDiscardMixin,
     IgnoreMixin,
     TagsMixin,
     HistoryMixin,
-    RewriteMixin,
     MergeMixin,
     _GitCommand
 ):
