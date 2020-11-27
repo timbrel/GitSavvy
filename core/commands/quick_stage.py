@@ -113,8 +113,11 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
         menu_options = []
 
         for entry in unstaged_entries:
-            filename = (entry.path if not entry.index_status == "R"
-                        else entry.path + " <- " + entry.path_alt)
+            filename = (
+                entry.path + " <- " + entry.path_alt
+                if entry.path_alt
+                else entry.path
+            )
             menu_text = "[{0}] {1}".format(entry.working_status, filename)
             menu_options.append(MenuOption(True, menu_text, filename, False))
 
