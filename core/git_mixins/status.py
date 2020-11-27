@@ -70,19 +70,9 @@ class StatusMixin(mixin_base):
 
     def get_working_dir_status(self):
         # type: () -> WorkingDirState
-        return self.group_status_entries(self.get_status())
-
-    def get_status(self):
-        # type: () -> List[FileStatus]
-        """
-        Return a list of FileStatus objects.  These objects correspond
-        to all files that are 1) staged, 2) modified, 3) new, 4) deleted,
-        5) renamed, or 6) copied as well as additional status information that can
-        occur mid-merge.
-        """
-
         lines = self._get_status()
-        return self._parse_status_for_file_statuses(lines)
+        files = self._parse_status_for_file_statuses(lines)
+        return self.group_status_entries(files)
 
     def _parse_status_for_file_statuses(self, lines):
         # type: (List[str]) -> List[FileStatus]
