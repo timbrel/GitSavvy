@@ -25,7 +25,11 @@ class TagsMixin(mixin_base):
         if reverse:
             porcelain_entries.reverse()
 
-        entries = [TagDetails(entry[:40], entry[51:]) for entry in iter(porcelain_entries) if entry]
+        entries = [
+            TagDetails(entry[:40], entry[51:])
+            for entry in iter(porcelain_entries)
+            if entry
+        ]
         entries = self.handle_semver_tags(entries)
 
         return entries
@@ -53,7 +57,11 @@ class TagsMixin(mixin_base):
                 regular_entries.append(entry)
         if len(semver_entries):
             try:
-                semver_entries = sorted(semver_entries, key=lambda entry: LooseVersion(entry.tag), reverse=True)
+                semver_entries = sorted(
+                    semver_entries,
+                    key=lambda entry: LooseVersion(entry.tag),
+                    reverse=True
+                )
             except Exception:
                 # the error might me caused of having tags like 1.2.3.1, 1.2.3.beta
                 # exception is cant convert str to int, it is comparing 'beta' to 1
