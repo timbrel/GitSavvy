@@ -42,6 +42,18 @@ class StatusMixin(mixin_base):
             custom_environ={"GIT_OPTIONAL_LOCKS": "0"}
         ).rstrip("\x00").split("\x00")
 
+    def get_status(self):
+        # type: () -> List[FileStatus]
+        """
+        Return a list of FileStatus objects.  These objects correspond
+        to all files that are 1) staged, 2) modified, 3) new, 4) deleted,
+        5) renamed, or 6) copied as well as additional status information that can
+        occur mid-merge.
+        """
+
+        lines = self._get_status()
+        return self._parse_status_for_file_statuses(lines)
+
     def _parse_status_for_file_statuses(self, lines):
         # type: (List[str]) -> List[FileStatus]
         porcelain_entries = lines[1:].__iter__()
@@ -57,18 +69,6 @@ class StatusMixin(mixin_base):
             entries.append(FileStatus(path, path_alt, index_status, working_status))
 
         return entries
-
-    def get_status(self):
-        # type: () -> List[FileStatus]
-        """
-        Return a list of FileStatus objects.  These objects correspond
-        to all files that are 1) staged, 2) modified, 3) new, 4) deleted,
-        5) renamed, or 6) copied as well as additional status information that can
-        occur mid-merge.
-        """
-
-        lines = self._get_status()
-        return self._parse_status_for_file_statuses(lines)
 
     def group_status_entries(self, file_status_list):
         # type: (List[FileStatus]) -> Tuple[List[FileStatus], ...]
