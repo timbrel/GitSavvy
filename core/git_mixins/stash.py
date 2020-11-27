@@ -18,7 +18,9 @@ class StashMixin(mixin_base):
         for entry in stdout.split("\n"):
             if not entry:
                 continue
-            num, _, description = re.match("^stash@\\{(\\d+)}: (.*?: )?(.*)", entry).groups()
+            match = re.match("^stash@\\{(\\d+)}: (.*?: )?(.*)", entry)
+            assert match
+            num, _, description = match.groups()
             stashes.append(Stash(num, description))
         return stashes
 
