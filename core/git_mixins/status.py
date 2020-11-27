@@ -32,9 +32,19 @@ if MYPY:
         ("index_status", str),
         ("working_status", Optional[str]),
     ])
+    WorkingDirState = NamedTuple("WorkingDirState", [
+        ("staged_files", List[FileStatus]),
+        ("unstaged_files", List[FileStatus]),
+        ("untracked_files", List[FileStatus]),
+        ("merge_conflicts", List[FileStatus]),
+    ])
 
 else:
     FileStatus = namedtuple("FileStatus", "path path_alt index_status working_status")
+    WorkingDirState = namedtuple(
+        "WorkingDirState",
+        "staged_files unstaged_files untracked_files merge_conflicts"
+    )
 
 
 class StatusMixin(mixin_base):
@@ -78,7 +88,7 @@ class StatusMixin(mixin_base):
         return entries
 
     def group_status_entries(self, file_status_list):
-        # type: (List[FileStatus]) -> Tuple[List[FileStatus], ...]
+        # type: (List[FileStatus]) -> WorkingDirState
         """
         Take entries from `git status` and sort them into groups.
         """
@@ -96,7 +106,7 @@ class StatusMixin(mixin_base):
             if f.index_status != " ":
                 staged.append(f)
 
-        return staged, unstaged, untracked, conflicts
+        return WorkingDirState(staged, unstaged, untracked, conflicts)
 
     def get_branch_status(self, *, delim="\n           "):
         # type: (str) -> str
