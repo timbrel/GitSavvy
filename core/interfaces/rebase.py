@@ -142,7 +142,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         self.view.settings().set("git_savvy.in_rebase", self._in_rebase)
         cached_pre_rebase_state = self.view.settings().get("git_savvy.rebase_in_progress")
         if cached_pre_rebase_state:
-            (branch_name, ref, changed_files), target_branch = cached_pre_rebase_state
+            (branch_name, ref, _), target_branch = cached_pre_rebase_state
             self.complete_action(
                 branch_name,
                 ref,
@@ -539,7 +539,7 @@ class RewriteBase(TextCommand, GitCommand):
             )
             return
 
-        branch_name, ref, changed_files = self.interface.get_branch_state()
+        branch_name, ref, _ = self.interface.get_branch_state()
         success = True
 
         try:
