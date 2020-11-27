@@ -2,11 +2,12 @@ import re
 from collections import namedtuple
 from distutils.version import LooseVersion
 
+from GitSavvy.core.git_command import mixin_base
 
 TagDetails = namedtuple("TagDetails", ("sha", "tag"))
 
 
-class TagsMixin():
+class TagsMixin(mixin_base):
 
     def get_tags(self, remote=None, reverse=False):
         """
