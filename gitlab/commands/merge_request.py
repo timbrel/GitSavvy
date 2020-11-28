@@ -11,11 +11,16 @@ from ...core.view import replace_view_content
 from ...common import util
 
 
+__all__ = (
+    "gs_gitlab_merge_request",
+)
+
+
 PUSH_PROMPT = ("You have not set an upstream for the active branch.  "
                "Would you like to push to a remote?")
 
 
-class GsGitlabMergeRequestCommand(WindowCommand, GitCommand, git_mixins.GitLabRemotesMixin):
+class gs_gitlab_merge_request(WindowCommand, GitCommand, git_mixins.GitLabRemotesMixin):
 
     """
     Display open merge requests on the base repo.  When a merge request is selected,
