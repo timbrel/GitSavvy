@@ -231,9 +231,8 @@ class RewriteMixin(mixin_base):
         return self.in_rebase_apply() or self.in_rebase_merge()
 
     def rebase_orig_head(self):
-        path = os.path.join(self._rebase_dir, "orig-head")
-        with open(path, "r") as f:
-            return f.read().strip()
+        # type: () -> str
+        return self._read_rebase_file("orig-head")
 
     def rebase_conflict_at(self):
         if self.in_rebase_merge():
@@ -244,14 +243,20 @@ class RewriteMixin(mixin_base):
             return f.read().strip()
 
     def rebase_branch_name(self):
-        path = os.path.join(self._rebase_dir, "head-name")
-        with open(path, "r") as f:
-            return f.read().strip().replace("refs/heads/", "")
+        return self._read_rebase_file("head-name").replace("refs/heads/", "")
 
     def rebase_onto_commit(self):
-        path = os.path.join(self._rebase_dir, "onto")
-        with open(path, "r") as f:
-            return f.read().strip()
+        # type: () -> str
+        return self._read_rebase_file("onto")
+
+    def _read_rebase_file(self, fname):
+        # type: (str) -> str
+        path = os.path.join(self._rebase_dir, fname)
+        try:
+            with open(path, "r") as f:
+                return f.read().strip()
+        except Exception:
+            return ""
 
     def rebase_rewritten(self):
         if self.in_rebase_merge():
