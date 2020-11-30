@@ -275,9 +275,11 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
                 if is_conflict:
                     self._active_conflicts = self._get_conflicts_in_rebase()
                     if self._active_conflicts:
-                        conflicts = conflicts + "\n" + "\n".join(
+                        conflicts += "\n"
+                        conflicts += "\n".join(
                             "    │           ! {}".format(conflict.path)
-                            for conflict in self._active_conflicts)
+                            for conflict in self._active_conflicts
+                        )
 
             commits_info.append({
                 "caret": self.CARET if is_conflict else " ",
