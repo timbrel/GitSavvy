@@ -235,12 +235,14 @@ class RewriteMixin(mixin_base):
         return self._read_rebase_file("orig-head")
 
     def rebase_conflict_at(self):
+        # type: () -> str
         if self.in_rebase_merge():
-            path = os.path.join(self._rebase_merge_dir, "current-commit")
+            return (
+                self._read_rebase_file("stopped-sha")
+                or self._read_rebase_file("current-commit")
+            )
         else:
-            path = os.path.join(self._rebase_apply_dir, "original-commit")
-        with open(path, "r") as f:
-            return f.read().strip()
+            return self._read_rebase_file("original-commit")
 
     def rebase_branch_name(self):
         return self._read_rebase_file("head-name").replace("refs/heads/", "")

@@ -244,10 +244,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
 
     def _get_diverged_in_rebase(self):
         self._active_conflicts = None
-        try:
-            conflict_commit = self.rebase_conflict_at()
-        except Exception:
-            conflict_commit = NOT_A_COMMIT_SHA
+        conflict_commit = self.rebase_conflict_at() or NOT_A_COMMIT_SHA
         rewritten = self.rebase_rewritten()
         commits_info = []
 
