@@ -32,8 +32,13 @@ class StatusMixin(mixin_base):
 
     def _get_status(self):
         # type: () -> List[str]
-        return self.git("status", "--porcelain", "-z", "-b",
-                        custom_environ={"GIT_OPTIONAL_LOCKS": "0"}).rstrip("\x00").split("\x00")
+        return self.git(
+            "status",
+            "--porcelain",
+            "-z",
+            "-b",
+            custom_environ={"GIT_OPTIONAL_LOCKS": "0"}
+        ).rstrip("\x00").split("\x00")
 
     def _parse_status_for_file_statuses(self, lines):
         # type: (List[str]) -> List[FileStatus]
