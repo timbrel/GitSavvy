@@ -271,16 +271,17 @@ class _GitCommand(SettingsMixin):
         decoded, _ = self.try_decode(stdout, encodings)
         return decoded
 
-    def try_decode(self, input, encodings):  # type: ignore  # missing return statement
-        # type: (bytes, Sequence[str]) -> Tuple[str, str]
-        assert encodings
+    def try_decode(self, input, encodings, show_modal_on_error=True):
+        # type: (bytes, Sequence[str], bool) -> Tuple[str, str]
         for n, encoding in enumerate(encodings, start=1):
             try:
                 return input.decode(encoding), encoding
             except UnicodeDecodeError as err:
                 if n == len(encodings):
-                    sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
+                    if show_modal_on_error:
+                        sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
                     raise err
+        assert False  # no silent fall-through
 
     @property
     def encoding(self):

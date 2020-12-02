@@ -14,7 +14,7 @@ from . import intra_line_colorizer
 from .navigate import GsNavigate
 from ..fns import filter_, flatten
 from ..parse_diff import SplittedDiff
-from ..git_command import GitCommand, GitSavvyError
+from ..git_command import GitCommand
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view, line_indentation
 from ..view import replace_view_content, Position
@@ -54,6 +54,16 @@ else:
 
 DIFF_TITLE = "DIFF: {}"
 DIFF_CACHED_TITLE = "DIFF: {} (staged)"
+DECODE_ERROR_MESSAGE = """
+-- Can't decode diff output. --
+
+You may have checked in binary data git doesn't detect, or not UTF-8
+encoded files. In the latter case use the "fallback_encoding" setting,
+in the former you may want to edit the `.gitattributes` file.
+
+Note, however, that diffs with *mixed* encodings are not supported.
+"""
+
 
 # Clickable lines:
 # (A)  common/commands/view_manipulation.py  |   1 +
@@ -186,8 +196,6 @@ class gs_diff_refresh(TextCommand, GitCommand):
             return
 
         settings = view.settings()
-        if settings.get("git_savvy.disable_diff"):
-            return
         repo_path = settings.get("git_savvy.repo_path")
         file_path = settings.get("git_savvy.file_path")
         in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
@@ -233,27 +241,26 @@ class gs_diff_refresh(TextCommand, GitCommand):
 
         prelude += "\n--\n"
 
+        raw_diff = self.git(
+            "diff",
+            "--ignore-all-space" if ignore_whitespace else None,
+            "--unified={}".format(context_lines) if context_lines is not None else None,
+            "--stat" if show_diffstat else None,
+            "--patch",
+            "--no-color",
+            "--cached" if in_cached_mode else None,
+            base_commit,
+            target_commit,
+            "--",
+            file_path,
+            decode=False
+        )
+
+        encodings = self.get_encoding_candidates()
         try:
-            diff = self.git(
-                "diff",
-                "--ignore-all-space" if ignore_whitespace else None,
-                "--unified={}".format(context_lines) if context_lines is not None else None,
-                "--stat" if show_diffstat else None,
-                "--patch",
-                "--no-color",
-                "--cached" if in_cached_mode else None,
-                base_commit,
-                target_commit,
-                "--", file_path)
-        except GitSavvyError as err:
-            # When the output of the above Git command fails to correctly parse,
-            # the expected notification will be displayed to the user.  However,
-            # once the userpresses OK, a new refresh event will be triggered on
-            # the view. Prevent refreshing again by setting a flag.
-            if err.args and type(err.args[0]) == UnicodeDecodeError:
-                settings.set("git_savvy.disable_diff", True)
-                return
-            raise err
+            diff, _ = self.try_decode(raw_diff, encodings, show_modal_on_error=False)
+        except UnicodeDecodeError:
+            diff = DECODE_ERROR_MESSAGE
 
         if settings.get("git_savvy.just_committed"):
             if diff:
