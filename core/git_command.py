@@ -141,9 +141,9 @@ class _GitCommand(SettingsMixin):
                 working_dir = self.repo_path
         except RuntimeError as e:
             # do not show panel when the window does not exist
-            raise GitSavvyError(e, show_panel=False)
+            raise GitSavvyError(str(e), show_panel=False)
         except Exception as e:
-            raise GitSavvyError(e, show_panel=show_panel_on_stderr)
+            raise GitSavvyError(str(e), show_panel=show_panel_on_stderr)
 
         try:
             startupinfo = None
