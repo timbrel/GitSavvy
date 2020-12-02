@@ -35,7 +35,7 @@ if MYPY:
 
 
 COMMIT_HELP_TEXT_EXTRA = """##
-## "<tab>"       at the very first char to see the recent log
+## "<tab>"        at the very first char to see the recent log
 ## "fixup<tab>"  to create a fixup subject  (short: "fix<tab>")
 ## "squash<tab>  to create a squash subject (short: "sq<tab>")
 ## "#<tab>"      to reference a GitHub issue (or: "owner/repo#<tab>")
