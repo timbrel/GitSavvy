@@ -671,3 +671,8 @@ class TestDiffView(DeferrableTestCase):
 
         self.assertEqual(diff.commit_for_hunk(diff.hunks[0]), diff.commits[0])
         self.assertEqual(diff.commit_for_hunk(diff.hunks[1]), diff.commits[0])
+
+        self.assertEqual(
+            diff.commits[0].commit_hash(),
+            "9dd4769f090aec1c6bceee49019680d0dba8108d"
+        )

@@ -591,10 +591,13 @@ def row_offset_and_col_in_hunk(view, hunk, pt):
     """
     head_row, _ = view.rowcol(hunk.a)
     pt_row, col = view.rowcol(pt)
-    # If `col=0` the user is on the meta char (e.g. '+- ') which is not
-    # present in the source. We pin `col` to 1 because the target API
-    # `open_file` expects 1-based row, col offsets.
-    return pt_row - head_row, max(col, 1)
+    # We want to map columns in a diff output to columns in real files.
+    # Strip "line-mode" characters at the start of the line.
+    # Since `col` as returned by `rowcol` is 0-based (and we want 1-based
+    # line and columns here) account for that as well.
+    # Often the user will be on the first char of the line, t.i. within
+    # the "line-mode" section. Return `1` in that case.
+    return pt_row - head_row, max(col - hunk.mode_len() + 1, 1)
 
 
 def real_linecol_in_hunk(hunk, row_offset, col):

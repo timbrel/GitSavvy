@@ -8,11 +8,17 @@ from ..git_mixins import GitLabRemotesMixin
 from ...core.ui_mixins.quick_panel import show_remote_panel
 
 
+__all__ = (
+    "gs_gitlab_open_file_on_remote",
+    "gs_gitlab_open_repo",
+    "gs_gitlab_open_issues",
+)
+
 EARLIER_COMMIT_PROMPT = ("The remote chosen may not contain the commit. "
                          "Open the file {} before?")
 
 
-class GsGitlabOpenFileOnRemoteCommand(TextCommand, GitCommand, GitLabRemotesMixin):
+class gs_gitlab_open_file_on_remote(TextCommand, GitCommand, GitLabRemotesMixin):
 
     """
     Open a new browser window to the web-version of the currently opened
@@ -98,7 +104,7 @@ class GsGitlabOpenFileOnRemoteCommand(TextCommand, GitCommand, GitLabRemotesMixi
             )
 
 
-class GsGitlabOpenRepoCommand(TextCommand, GitCommand, GitLabRemotesMixin):
+class gs_gitlab_open_repo(TextCommand, GitCommand, GitLabRemotesMixin):
 
     """
     Open a new browser window to the GitLab remote repository.
@@ -122,7 +128,7 @@ class GsGitlabOpenRepoCommand(TextCommand, GitCommand, GitLabRemotesMixin):
         open_repo(self.remotes[remote])
 
 
-class GsGitlabOpenIssuesCommand(TextCommand, GitCommand, GitLabRemotesMixin):
+class gs_gitlab_open_issues(TextCommand, GitCommand, GitLabRemotesMixin):
 
     """
     Open a new browser window to the GitLab remote repository's issues page.

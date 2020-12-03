@@ -6,7 +6,12 @@ from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_branch_panel
 
 
-class GsGitlabConfigureRemoteCommand(WindowCommand, GitLabRemotesMixin, GitCommand):
+__all__ = (
+    "gs_gitlab_configure_remote",
+)
+
+
+class gs_gitlab_configure_remote(WindowCommand, GitLabRemotesMixin, GitCommand):
 
     def run(self):
         sublime.set_timeout_async(self.run_async)
