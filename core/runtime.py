@@ -158,7 +158,7 @@ def throttled(fn, *args, **kwargs):
 
     def task():
         with THROTTLED_LOCK:
-            ok = THROTTLED_CACHE[token] == action
+            ok = THROTTLED_CACHE.get(token) == action
         if ok:
             action()
 
