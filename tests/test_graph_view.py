@@ -115,22 +115,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         self.create_new_view(window)
 
     def tearDown(self):
-        self.do_cleanup()
         unstub()
-
-    # `addCleanup` doesn't work either in Sublime at all or
-    # with the DeferrableTestCase so we do a quick implementation
-    # here.
-    def add_cleanup(self, fn, *args, **kwargs):
-        self._cleanups.append((fn, args, kwargs))
-
-    def do_cleanup(self):
-        while self._cleanups:
-            fn, args, kwrags = self._cleanups.pop()
-            try:
-                fn(*args, **kwrags)
-            except Exception:
-                pass
 
     def await_string_in_view(self, view, needle):
         yield lambda: view.find(needle, 0, sublime.LITERAL)
@@ -146,7 +131,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
     def create_new_view(self, window=None):
         view = (window or sublime.active_window()).new_file()
-        self.add_cleanup(self.close_view, view)
+        self.addCleanup(self.close_view, view)
         return view
 
     def close_view(self, view):
@@ -158,7 +143,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         settings = GitSavvySettings()
         original_value = settings.get(key)
         settings.set(key, value)
-        self.add_cleanup(settings.set, key, original_value)
+        self.addCleanup(settings.set, key, original_value)
 
     def register_commit_info(self, info):
         for sha1, info in info.items():
