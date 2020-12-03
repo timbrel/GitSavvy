@@ -121,7 +121,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         yield lambda: view.find(needle, 0, sublime.LITERAL)
 
     def await_active_panel_to_be(self, name):
-        yield lambda: self.window.active_panel() == 'output.show_commit_info'
+        yield lambda: self.window.active_panel() == name
 
     def create_new_window(self):
         sublime.run_command("new_window")
