@@ -135,9 +135,8 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         return view
 
     def close_view(self, view):
-        if view:
-            view.set_scratch(True)
-            view.close()
+        view.set_scratch(True)
+        view.close()
 
     def set_global_setting(self, key, value):
         settings = GitSavvySettings()
