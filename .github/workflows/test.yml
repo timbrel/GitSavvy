@@ -13,7 +13,7 @@ env:
 
 jobs:
   linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     container: sublimetext/unittesting
     env:
       TRAVIS_OS_NAME: linux

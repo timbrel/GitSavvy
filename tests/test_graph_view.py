@@ -97,14 +97,14 @@ f950461
 """.strip().split('\n')
 
 
-class TestDiffViewCommitHashExtraction(DeferrableTestCase):
+class TestGraphViewCommitHashExtraction(DeferrableTestCase):
     @p.expand(list(zip(EXTRACT_COMMIT_HASH_FIXTURE, HASHES)))
     def test_extract_commit_hash_from_line(self, line, expected):
         actual = extract_commit_hash(line)
         self.assertEqual(actual, expected)
 
 
-class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
+class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
     @classmethod
     def setUpClass(cls):
         s = sublime.load_settings("Preferences.sublime-settings")
@@ -115,28 +115,13 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         self.create_new_view(window)
 
     def tearDown(self):
-        self.do_cleanup()
         unstub()
-
-    # `addCleanup` doesn't work either in Sublime at all or
-    # with the DeferrableTestCase so we do a quick implementation
-    # here.
-    def add_cleanup(self, fn, *args, **kwargs):
-        self._cleanups.append((fn, args, kwargs))
-
-    def do_cleanup(self):
-        while self._cleanups:
-            fn, args, kwrags = self._cleanups.pop()
-            try:
-                fn(*args, **kwrags)
-            except Exception:
-                pass
 
     def await_string_in_view(self, view, needle):
         yield lambda: view.find(needle, 0, sublime.LITERAL)
 
     def await_active_panel_to_be(self, name):
-        yield lambda: self.window.active_panel() == 'output.show_commit_info'
+        yield lambda: self.window.active_panel() == name
 
     def create_new_window(self):
         sublime.run_command("new_window")
@@ -144,21 +129,20 @@ class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         self.addCleanup(lambda: window.run_command('close_window'))
         return window
 
-    def create_new_view(self, window=None):
-        view = (window or sublime.active_window()).new_file()
-        self.add_cleanup(self.close_view, view)
+    def create_new_view(self, window):
+        view = window.new_file()
+        self.addCleanup(self.close_view, view)
         return view
 
     def close_view(self, view):
-        if view:
-            view.set_scratch(True)
-            view.close()
+        view.set_scratch(True)
+        view.close()
 
     def set_global_setting(self, key, value):
         settings = GitSavvySettings()
         original_value = settings.get(key)
         settings.set(key, value)
-        self.add_cleanup(settings.set, key, original_value)
+        self.addCleanup(settings.set, key, original_value)
 
     def register_commit_info(self, info):
         for sha1, info in info.items():
