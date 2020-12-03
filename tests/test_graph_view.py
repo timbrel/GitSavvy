@@ -129,8 +129,8 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         self.addCleanup(lambda: window.run_command('close_window'))
         return window
 
-    def create_new_view(self, window=None):
-        view = (window or sublime.active_window()).new_file()
+    def create_new_view(self, window):
+        view = window.new_file()
         self.addCleanup(self.close_view, view)
         return view
 
