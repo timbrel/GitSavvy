@@ -208,6 +208,8 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
             diff_text, _ = self.try_decode(raw_diff_text, encodings, show_modal_on_error=False)
         except UnicodeDecodeError:
             diff_text = DECODE_ERROR_MESSAGE
+            diff_text += "\n-- Partially decoded output follows; � denotes decoding errors --\n\n"""
+            diff_text += raw_diff_text.decode("utf-8", "replace")
 
         if diff_text:
             final_text = ("\n" + diff_text) if show_patch or show_stat else ""
