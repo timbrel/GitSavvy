@@ -1,34 +1,14 @@
-from functools import wraps
 import os
 import re
-import sys
-from unittest.case import _ExpectedFailure, _UnexpectedSuccess
 
 import sublime
 
-from unittesting import DeferrableTestCase, AWAIT_WORKER
+from unittesting import expectedFailure, DeferrableTestCase, AWAIT_WORKER
 from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 import GitSavvy.core.commands.diff as module
 from GitSavvy.core.commands.diff import gs_diff, gs_diff_refresh
-
-
-def isiterable(obj):
-    return hasattr(obj, '__iter__')
-
-
-def expectedFailure(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            deferred = func(*args, **kwargs)
-            if isiterable(deferred):
-                yield from deferred
-        except Exception:
-            raise _ExpectedFailure(sys.exc_info())
-        raise _UnexpectedSuccess
-    return wrapper
 
 
 THIS_DIRNAME = os.path.dirname(os.path.realpath(__file__))
