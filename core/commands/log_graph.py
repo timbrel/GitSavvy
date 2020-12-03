@@ -1852,7 +1852,7 @@ def commit_message_from_point(view, pt):
 def find_matching_commit(vid, dot, message):
     # type: (sublime.ViewId, colorizer.Char, str) -> Optional[colorizer.Char]
     view = sublime.View(vid)
-    for dot in islice(follow_dots(dot), 0, 50):
+    for dot in islice(follow_dots(dot), 0, 100):
         this_message = commit_message_from_point(view, dot.pt)
         if this_message:
             shorter, longer = sorted((message, this_message.rstrip(".")), key=len)
