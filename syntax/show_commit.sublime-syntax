@@ -19,6 +19,8 @@ contexts:
       scope: meta.commit-header-and-stat-splitter
       embed: "scope:git-savvy.diff"
       escape: (?=^commit \h{7,})
+    - match: ^-- .* --$
+      scope: markup.deleted
 
   commit-header:
     - meta_scope: meta.commit-info.header

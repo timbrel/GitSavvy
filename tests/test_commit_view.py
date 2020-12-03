@@ -89,7 +89,7 @@ class TestExtractCommitMessage(DeferrableTestCase):
         +++ b/bar/test.txt
         @@ -1,14 +1,22 @@
         This is a diff
-        """.rstrip()))
+        """.rstrip()).encode())
 
         self.window.run_command("gs_commit", {"repo_path": "/foo"})
         yield self.window.active_view().name() == "COMMIT: foo"

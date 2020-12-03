@@ -353,7 +353,7 @@ class HistoryMixin():
 
     def _read_commit(self, commit_hash, file_path, show_diffstat, show_patch, ignore_whitespace):
         # type: (str, Optional[str], bool, bool, bool) -> str
-        return self.git(
+        stdout = self.git(
             "show",
             "--no-color",
             "--format=fuller",
@@ -362,8 +362,16 @@ class HistoryMixin():
             "--patch" if show_patch else None,
             commit_hash,
             "--" if file_path else None,
-            file_path if file_path else None
+            file_path if file_path else None,
+            decode=False
         )
+        encodings = self.get_encoding_candidates()
+        try:
+            rv, _ = self.try_decode(stdout, encodings, show_modal_on_error=False)
+        except UnicodeDecodeError:
+            rv = "-- Partially decoded output; � denotes decoding errors --\n"
+            rv += stdout.decode("utf-8", "replace")
+        return rv
 
     def previous_commit(self, current_commit, file_path, follow=False):
         # type: (str, str, bool) -> Optional[str]

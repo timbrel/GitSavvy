@@ -68,6 +68,7 @@ class LoggingProcessWrapper(object):
             util.log.panel_append(err, run_async=False)
 
     def communicate(self, stdin):
+        # type: (bytes) -> Tuple[bytes, bytes]
         """
         Emulates Popen.communicate
         Writes stdin (if provided)
@@ -141,9 +142,9 @@ class _GitCommand(SettingsMixin):
                 working_dir = self.repo_path
         except RuntimeError as e:
             # do not show panel when the window does not exist
-            raise GitSavvyError(e, show_panel=False)
+            raise GitSavvyError(str(e), show_panel=False)
         except Exception as e:
-            raise GitSavvyError(e, show_panel=show_panel_on_stderr)
+            raise GitSavvyError(str(e), show_panel=show_panel_on_stderr)
 
         try:
             startupinfo = None
@@ -213,17 +214,7 @@ class _GitCommand(SettingsMixin):
         finally:
             if not just_the_proc:
                 end = time.time()
-                if decode:
-                    util.debug.log_git(args, stdin, stdout, stderr, end - start)
-                else:
-                    util.debug.log_git(
-                        args,
-                        stdin,
-                        self.decode_stdout(stdout),
-                        self.decode_stdout(stderr),
-                        end - start
-                    )
-
+                util.debug.log_git(args, stdin, stdout, stderr, end - start)
                 if show_panel and self.savvy_settings.get("show_time_elapsed_in_output", True):
                     util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
 
@@ -280,16 +271,17 @@ class _GitCommand(SettingsMixin):
         decoded, _ = self.try_decode(stdout, encodings)
         return decoded
 
-    def try_decode(self, input, encodings):  # type: ignore  # missing return statement
-        # type: (bytes, Sequence[str]) -> Tuple[str, str]
-        assert encodings
+    def try_decode(self, input, encodings, show_modal_on_error=True):
+        # type: (bytes, Sequence[str], bool) -> Tuple[str, str]
         for n, encoding in enumerate(encodings, start=1):
             try:
                 return input.decode(encoding), encoding
             except UnicodeDecodeError as err:
                 if n == len(encodings):
-                    sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
+                    if show_modal_on_error:
+                        sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
                     raise err
+        assert False  # no silent fall-through
 
     @property
     def encoding(self):

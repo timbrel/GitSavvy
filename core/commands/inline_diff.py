@@ -362,7 +362,13 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
                 decode=False
             )
             encodings = self.get_encoding_candidates()
-            raw_diff, encoding = self.try_decode(raw_diff_output, encodings)
+            try:
+                raw_diff, encoding = self.try_decode(
+                    raw_diff_output, encodings, show_modal_on_error=True
+                )
+            except UnicodeDecodeError:
+                self.view.close()
+                return
             settings.set("git_savvy.inline_diff.encoding", encoding)
 
         try:

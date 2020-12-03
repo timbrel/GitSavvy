@@ -499,7 +499,7 @@ class TestZooming(DeferrableTestCase):
 
         view.settings().set('git_savvy.diff_view.context_lines', CONTEXT_LINES)
         cmd = module.gs_diff_refresh(view)
-        when(cmd).git(...).thenReturn('NEW CONTENT')
+        when(cmd).git(...).thenReturn(b'NEW CONTENT')
 
         cmd.run({'unused_edit'})
         verify(cmd).git('diff', None, FLAG, ...)
@@ -591,7 +591,7 @@ class TestDiffView(DeferrableTestCase):
         REPO_PATH = '/not/there'
         DIFF = fixture('diff_1.txt')
 
-        when(gs_diff_refresh).git('diff', ...).thenReturn(DIFF)
+        when(gs_diff_refresh).git('diff', ...).thenReturn(DIFF.encode())
         cmd = gs_diff(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
         cmd.run()
@@ -617,7 +617,7 @@ class TestDiffView(DeferrableTestCase):
         REPO_PATH = '/not/there'
         DIFF = fixture('diff_1.txt')
 
-        when(gs_diff_refresh).git('diff', ...).thenReturn(DIFF)
+        when(gs_diff_refresh).git('diff', ...).thenReturn(DIFF.encode())
         cmd = gs_diff(self.window)
         when(cmd).get_repo_path().thenReturn(REPO_PATH)
         cmd.run()

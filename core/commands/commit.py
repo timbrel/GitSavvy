@@ -5,6 +5,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand
 from sublime_plugin import EventListener, ViewEventListener
 
+from .diff import DECODE_ERROR_MESSAGE
 from . import intra_line_colorizer
 from ..git_command import GitCommand, GitSavvyError
 from ..runtime import enqueue_on_worker
@@ -171,7 +172,7 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
         )
 
         try:
-            diff_text = self.git_throwing_silently(
+            raw_diff_text = self.git_throwing_silently(
                 "diff",
                 "--no-color",
                 "--patch" if show_patch else None,
@@ -179,17 +180,19 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
                 "--cached" if not include_unstaged else None,
                 "HEAD^" if amend
                 else "HEAD" if include_unstaged
-                else None
+                else None,
+                decode=False
             )
         except GitSavvyError as e:
             if (amend or include_unstaged) and "ambiguous argument 'HEAD" in e.stderr:
-                diff_text = self.git(
+                raw_diff_text = self.git(
                     "diff",
                     "--no-color",
                     "--patch" if show_patch else None,
                     "--stat" if show_stat else None,
                     "--cached" if not include_unstaged else None,
-                    self.the_empty_sha()
+                    self.the_empty_sha(),
+                    decode=False
                 )
             else:
                 raise GitSavvyError(
@@ -199,6 +202,14 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
                     stderr=e.stderr,
                     show_panel=True,
                 )
+
+        encodings = self.get_encoding_candidates()
+        try:
+            diff_text, _ = self.try_decode(raw_diff_text, encodings, show_modal_on_error=False)
+        except UnicodeDecodeError:
+            diff_text = DECODE_ERROR_MESSAGE
+            diff_text += "\n-- Partially decoded output follows; � denotes decoding errors --\n\n"""
+            diff_text += raw_diff_text.decode("utf-8", "replace")
 
         if diff_text:
             final_text = ("\n" + diff_text) if show_patch or show_stat else ""

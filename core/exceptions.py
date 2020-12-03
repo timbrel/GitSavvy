@@ -2,8 +2,14 @@ import sublime
 from ..common import util
 
 
+MYPY = False
+if MYPY:
+    from typing import Sequence
+
+
 class GitSavvyError(Exception):
-    def __init__(self, msg, *args, cmd=None, stdout=None, stderr=None, **kwargs):
+    def __init__(self, msg, *args, cmd=None, stdout="", stderr="", **kwargs):
+        # type: (str, object, Sequence[str], str, str, object) -> None
         super(GitSavvyError, self).__init__(msg, *args)
         self.message = msg
         self.cmd = cmd
