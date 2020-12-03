@@ -97,14 +97,14 @@ f950461
 """.strip().split('\n')
 
 
-class TestDiffViewCommitHashExtraction(DeferrableTestCase):
+class TestGraphViewCommitHashExtraction(DeferrableTestCase):
     @p.expand(list(zip(EXTRACT_COMMIT_HASH_FIXTURE, HASHES)))
     def test_extract_commit_hash_from_line(self, line, expected):
         actual = extract_commit_hash(line)
         self.assertEqual(actual, expected)
 
 
-class TestDiffViewInteractionWithCommitInfoPanel(DeferrableTestCase):
+class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
     @classmethod
     def setUpClass(cls):
         s = sublime.load_settings("Preferences.sublime-settings")
