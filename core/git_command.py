@@ -68,6 +68,7 @@ class LoggingProcessWrapper(object):
             util.log.panel_append(err, run_async=False)
 
     def communicate(self, stdin):
+        # type: (bytes) -> Tuple[bytes, bytes]
         """
         Emulates Popen.communicate
         Writes stdin (if provided)
