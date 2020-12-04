@@ -40,7 +40,7 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import (
-        Dict, Iterator, List, NamedTuple, Optional, Set,
+        Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set,
         Tuple, TypeVar
     )
     from ..parse_diff import FileHeader, Hunk, HunkLine, TextRange
@@ -574,6 +574,11 @@ def selected_line_starts(view, sel):
     return set(line.a for line in selected_lines)
 
 
+def chunkby(it, predicate):
+    # type: (Iterable[T], Callable[[T], bool]) -> Iterator[List[T]]
+    return (list(items) for selected, items in groupby(it, key=predicate) if selected)
+
+
 def compute_patch_for_sel(diff, line_starts, reverse):
     # type: (SplittedDiff, Set[int], bool) -> str
     hunks = unique(filter_(diff.hunk_for_pt(pt) for pt in sorted(line_starts)))
@@ -586,9 +591,8 @@ def compute_patch_for_sel(diff, line_starts, reverse):
     for hunk in hunks:
         header = diff.head_for_hunk(hunk)
         patches += [
-            (header, list(lines))
-            for selected, lines in groupby(recount_lines(hunk), key=selected_and_not_context)
-            if selected
+            (header, lines)
+            for lines in chunkby(recount_lines(hunk), selected_and_not_context)
         ]
 
     grouped_patches = defaultdict(list)  # type: Dict[FileHeader, List[stage_hunk.Hunk]]
