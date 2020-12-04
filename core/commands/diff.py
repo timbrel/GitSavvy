@@ -583,25 +583,25 @@ def compute_patch_for_sel(diff, line_starts, reverse):
     # type: (SplittedDiff, Set[int], bool) -> str
     hunks = unique(filter_(diff.hunk_for_pt(pt) for pt in sorted(line_starts)))
 
-    def selected_and_not_context(line_ab):
+    def not_context(line_ab):
         line, _ = line_ab
-        return line.a in line_starts and not line.is_context()
+        return not line.is_context()
 
-    patches = []
+    def selected(line_ab):
+        line, _ = line_ab
+        return line.a in line_starts
+
+    patches = defaultdict(list)  # type: Dict[FileHeader, List[stage_hunk.Hunk]]
     for hunk in hunks:
         header = diff.head_for_hunk(hunk)
-        patches += [
-            (header, lines)
-            for lines in chunkby(recount_lines(hunk), selected_and_not_context)
-        ]
-
-    grouped_patches = defaultdict(list)  # type: Dict[FileHeader, List[stage_hunk.Hunk]]
-    for header, lines in patches:
-        grouped_patches[header].append(form_patch(lines))
+        for chunk in chunkby(recount_lines(hunk), not_context):
+            selected_lines = list(filter(selected, chunk))
+            if selected_lines:
+                patches[header].append(form_patch(selected_lines))
 
     whole_patch = "".join(
-        stage_hunk.format_patch(header.text, patches, reverse=reverse)
-        for header, patches in grouped_patches.items()
+        stage_hunk.format_patch(header.text, hunks, reverse=reverse)
+        for header, hunks in patches.items()
     )
     return whole_patch
 
