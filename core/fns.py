@@ -38,6 +38,13 @@ def unique(iterable):
         yield item
 
 
+def peek(iterable):
+    # type: (Iterable[T]) -> Tuple[T, Iterable[T]]
+    it = iter(iterable)
+    head = next(it)
+    return head, chain([head], it)
+
+
 def drop(n, iterable):
     # type: (int, Iterable[T]) -> Iterator[T]
     return islice(iterable, n, None)
