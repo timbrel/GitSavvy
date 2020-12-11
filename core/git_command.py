@@ -6,6 +6,11 @@ Define a base command class that:
      for Git operations.
 """
 
+from collections import deque
+from concurrent.futures import Future
+from functools import partial
+import io
+from itertools import chain, repeat
 import locale
 import os
 import subprocess
@@ -23,7 +28,8 @@ from .settings import SettingsMixin
 
 MYPY = False
 if MYPY:
-    from typing import Sequence, Tuple
+    from typing import Callable, Deque, Iterator, Sequence, Tuple, TypeVar
+    T = TypeVar("T")
 
 
 git_path = None
@@ -40,57 +46,78 @@ MIN_GIT_VERSION = (2, 16, 0)
 GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d} or above."
 
 
-class LoggingProcessWrapper(object):
+def run_as_future(fn, *args, **kwargs):
+    # type: (Callable[..., T], object, object) -> Future[T]
+    fut = Future()  # type: Future[T]
 
-    """
-    Wraps a Popen object with support for logging stdin/stderr
-    """
-    def __init__(self, process, timeout):
-        self.timeout = timeout
-        self.process = process
-        self.stdout = b''
-        self.stderr = b''
-
-    def read_stdout(self):
+    def task():
+        fut.set_running_or_notify_cancel()
         try:
-            for line in iter(self.process.stdout.readline, b""):
-                self.stdout = self.stdout + line
-                util.log.panel_append(line.decode(), run_async=False)
-        except IOError as err:
-            util.log.panel_append(err, run_async=False)
+            rv = fn(*args, **kwargs)
+        except Exception as e:
+            fut.set_exception(e)
+        else:
+            fut.set_result(rv)
+    threading.Thread(target=task).start()
+    return fut
 
-    def read_stderr(self):
-        try:
-            for line in iter(self.process.stderr.readline, b""):
-                self.stderr = self.stderr + line
-                util.log.panel_append(line.decode(), run_async=False)
-        except IOError as err:
-            util.log.panel_append(err, run_async=False)
 
-    def communicate(self, stdin):
-        # type: (bytes) -> Tuple[bytes, bytes]
-        """
-        Emulates Popen.communicate
-        Writes stdin (if provided)
-        Logs output from both stdout and stderr
-        Returns stdout, stderr
-        """
-        if stdin is not None:
-            self.process.stdin.write(stdin)
-            self.process.stdin.flush()
-            self.process.stdin.close()
+def communicate_and_log(proc, stdin, log):
+    # type: (subprocess.Popen, bytes, Callable[[bytes], None]) -> Tuple[bytes, bytes]
+    """
+    Emulates Popen.communicate
+    Writes stdin (if provided)
+    Logs output from both stdout and stderr
+    Returns stdout, stderr
+    """
+    if stdin is not None:
+        assert proc.stdin
+        proc.stdin.write(stdin)
+        proc.stdin.flush()
+        proc.stdin.close()
 
-        stdout_thread = threading.Thread(target=self.read_stdout)
-        stdout_thread.start()
-        stderr_thread = threading.Thread(target=self.read_stderr)
-        stderr_thread.start()
+    stdout, stderr = b'', b''
+    for line in stream_stdout_and_err(proc):
+        if isinstance(line, Out):
+            stdout += line
+            log(line)
+        elif isinstance(line, Err):
+            stderr += line
+            log(line)
 
-        self.process.wait()
+    return stdout, stderr
 
-        stdout_thread.join(self.timeout / 1000)
-        stderr_thread.join(self.timeout / 1000)
 
-        return self.stdout, self.stderr
+class Out(bytes): pass  # noqa: E701
+class Err(bytes): pass  # noqa: E701
+
+
+def read_linewise(fh, kont):
+    # type: (io.BufferedReader, Callable[[bytes], None]) -> None
+    for line in iter(fh.readline, b''):
+        kont(line)
+
+
+def stream_stdout_and_err(proc):
+    # type: (subprocess.Popen) -> Iterator[bytes]
+    container = deque()  # type: Deque[bytes]
+    append = container.append
+    out_f = run_as_future(read_linewise, proc.stdout, lambda line: append(Out(line)))
+    err_f = run_as_future(read_linewise, proc.stderr, lambda line: append(Err(line)))
+    delay = chain([1, 2, 4, 8, 15, 30], repeat(50))
+
+    with proc:
+        while out_f.running() or err_f.running():
+            try:
+                yield container.popleft()
+            except IndexError:
+                time.sleep(next(delay) / 1000)
+
+    # Check and raise exceptions if any
+    out_f.result()
+    err_f.result()
+
+    yield from container
 
 
 class _GitCommand(SettingsMixin):
@@ -178,14 +205,15 @@ class _GitCommand(SettingsMixin):
                     util.log.panel_append("$ {}\n".format(command_str), run_async=False)
 
             if show_panel and live_panel_output:
-                wrapper = LoggingProcessWrapper(p, self.savvy_settings.get("live_panel_output_timeout", 10000))
                 initialize_panel()
 
             if stdin is not None and encode:
                 stdin = stdin.encode(encoding=stdin_encoding)
 
             if show_panel and live_panel_output:
-                stdout, stderr = wrapper.communicate(stdin)
+                _log = partial(util.log.panel_append, run_async=False)
+                log_b = lambda line: _log(line.decode())
+                stdout, stderr = communicate_and_log(p, stdin, log_b)
             else:
                 stdout, stderr = p.communicate(stdin)
 
