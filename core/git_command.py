@@ -168,13 +168,15 @@ class _GitCommand(SettingsMixin):
                 environ.update(savvy_env)
             environ.update(custom_environ or {})
             start = time.time()
-            p = subprocess.Popen(command,
-                                 stdin=subprocess.PIPE,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 cwd=working_dir,
-                                 env=environ,
-                                 startupinfo=STARTUPINFO)
+            p = subprocess.Popen(
+                command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=working_dir,
+                env=environ,
+                startupinfo=STARTUPINFO
+            )
 
             if just_the_proc:
                 return p
@@ -321,8 +323,8 @@ class _GitCommand(SettingsMixin):
                 stdout = subprocess.check_output(
                     [git_path, "--version"],
                     stderr=subprocess.PIPE,
-                    startupinfo=STARTUPINFO).decode("utf-8")
-
+                    startupinfo=STARTUPINFO
+                ).decode()
             except Exception:
                 stdout = ""
                 git_path = None
