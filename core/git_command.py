@@ -209,7 +209,7 @@ class _GitCommand(SettingsMixin):
             if not just_the_proc:
                 end = time.time()
                 util.debug.log_git(args, stdin, stdout, stderr, end - start)
-                if show_panel and self.savvy_settings.get("show_time_elapsed_in_output", True):
+                if show_panel:
                     util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
 
         if throw_on_stderr and not p.returncode == 0:
