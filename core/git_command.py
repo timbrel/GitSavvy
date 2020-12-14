@@ -102,6 +102,12 @@ def stream_stdout_and_err(proc):
     yield from container
 
 
+STARTUPINFO = None
+if os.name == "nt":
+    STARTUPINFO = subprocess.STARTUPINFO()
+    STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+
 class _GitCommand(SettingsMixin):
 
     """
@@ -156,11 +162,6 @@ class _GitCommand(SettingsMixin):
             raise GitSavvyError(str(e), show_panel=show_panel_on_stderr)
 
         try:
-            startupinfo = None
-            if os.name == "nt":
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-
             environ = os.environ.copy()
             savvy_env = self.savvy_settings.get("env")
             if savvy_env:
@@ -173,7 +174,7 @@ class _GitCommand(SettingsMixin):
                                  stderr=subprocess.PIPE,
                                  cwd=working_dir,
                                  env=environ,
-                                 startupinfo=startupinfo)
+                                 startupinfo=STARTUPINFO)
 
             if just_the_proc:
                 return p
@@ -317,15 +318,10 @@ class _GitCommand(SettingsMixin):
                 git_path = shutil.which("git")
 
             try:
-                startupinfo = None
-                if os.name == "nt":
-                    startupinfo = subprocess.STARTUPINFO()
-                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-
                 stdout = subprocess.check_output(
                     [git_path, "--version"],
                     stderr=subprocess.PIPE,
-                    startupinfo=startupinfo).decode("utf-8")
+                    startupinfo=STARTUPINFO).decode("utf-8")
 
             except Exception:
                 stdout = ""
