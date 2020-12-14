@@ -179,19 +179,16 @@ class _GitCommand(SettingsMixin):
             if just_the_proc:
                 return p
 
-            def initialize_panel():
-                # clear panel
-                util.log.panel("", run_async=False)
+            if stdin is not None and encode:
+                stdin = stdin.encode(encoding=stdin_encoding)
+
+            if show_panel:
+                util.log.panel("", run_async=False)  # clear panel
                 if self.savvy_settings.get("show_stdin_in_output") and stdin is not None:
                     util.log.panel_append("STDIN\n{}\n".format(stdin), run_async=False)
                 if self.savvy_settings.get("show_input_in_output"):
                     util.log.panel_append("$ {}\n".format(command_str), run_async=False)
 
-            if stdin is not None and encode:
-                stdin = stdin.encode(encoding=stdin_encoding)
-
-            if show_panel:
-                initialize_panel()
                 _log = partial(util.log.panel_append, run_async=False)
                 log_b = lambda line: _log(line.decode())
                 stdout, stderr = communicate_and_log(p, stdin, log_b)
