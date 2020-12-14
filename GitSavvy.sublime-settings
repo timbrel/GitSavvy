@@ -131,11 +131,6 @@
     "pedantic_commit_warning_length": 20,
 
     /*
-        Change this to `false` to suppress the input in the panel output.
-     */
-    "show_input_in_output": true,
-
-    /*
         Change this to `true` to print the stdin in the panel output.
      */
     "show_stdin_in_output": false,
