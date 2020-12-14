@@ -114,12 +114,6 @@
     "close_panel_for": [],
 
     /*
-        Whether git and githook output is logged live
-        If false, results are shown after execution.
-    */
-    "live_panel_output": false,
-
-    /*
         https://git-scm.com/book/en/v2/Distributed-Git-Contributing-to-a-Project#Commit-Guidelines
         Add a distinct style guide for the commit messages:
 

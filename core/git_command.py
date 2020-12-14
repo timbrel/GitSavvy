@@ -148,8 +148,6 @@ class _GitCommand(SettingsMixin):
         if args[0] in self.savvy_settings.get("close_panel_for"):
             sublime.active_window().run_command("hide_panel", {"cancel": True})
 
-        live_panel_output = self.savvy_settings.get("live_panel_output", False)
-
         stdout, stderr = None, None
 
         if not working_dir:
@@ -189,13 +187,11 @@ class _GitCommand(SettingsMixin):
                 if self.savvy_settings.get("show_input_in_output"):
                     util.log.panel_append("$ {}\n".format(command_str), run_async=False)
 
-            if show_panel and live_panel_output:
-                initialize_panel()
-
             if stdin is not None and encode:
                 stdin = stdin.encode(encoding=stdin_encoding)
 
-            if show_panel and live_panel_output:
+            if show_panel:
+                initialize_panel()
                 _log = partial(util.log.panel_append, run_async=False)
                 log_b = lambda line: _log(line.decode())
                 stdout, stderr = communicate_and_log(p, stdin, log_b)
@@ -204,15 +200,6 @@ class _GitCommand(SettingsMixin):
 
             if decode:
                 stdout, stderr = self.decode_stdout(stdout), self.decode_stdout(stderr)
-
-            if show_panel and not live_panel_output:
-                initialize_panel()
-                if stdout:
-                    util.log.panel_append(stdout)
-                if stderr:
-                    if stdout:
-                        util.log.panel_append("\n")
-                    util.log.panel_append(stderr)
 
         except Exception as e:
             # this should never be reached
