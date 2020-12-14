@@ -7,7 +7,6 @@ Define a base command class that:
 """
 
 from collections import deque
-from concurrent.futures import Future
 from functools import partial
 import io
 from itertools import chain, repeat
@@ -17,19 +16,18 @@ import subprocess
 import shutil
 import re
 import time
-import threading
 import traceback
 
 import sublime
 
 from ..common import util
 from .settings import SettingsMixin
+from GitSavvy.core.runtime import run_as_future
 
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Deque, Iterator, Sequence, Tuple, TypeVar
-    T = TypeVar("T")
+    from typing import Callable, Deque, Iterator, Sequence, Tuple
 
 
 git_path = None
@@ -44,22 +42,6 @@ FALLBACK_PARSE_ERROR_MSG = (
 
 MIN_GIT_VERSION = (2, 16, 0)
 GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d} or above."
-
-
-def run_as_future(fn, *args, **kwargs):
-    # type: (Callable[..., T], object, object) -> Future[T]
-    fut = Future()  # type: Future[T]
-
-    def task():
-        fut.set_running_or_notify_cancel()
-        try:
-            rv = fn(*args, **kwargs)
-        except Exception as e:
-            fut.set_exception(e)
-        else:
-            fut.set_result(rv)
-    threading.Thread(target=task).start()
-    return fut
 
 
 def communicate_and_log(proc, stdin, log):
