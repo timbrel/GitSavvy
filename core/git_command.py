@@ -121,7 +121,6 @@ class _GitCommand(SettingsMixin):
         working_dir=None,
         show_panel=None,
         show_panel_on_stderr=True,
-        show_status_message_on_stderr=True,
         throw_on_stderr=True,
         decode=True,
         encode=True,
@@ -213,12 +212,6 @@ class _GitCommand(SettingsMixin):
                     util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
 
         if throw_on_stderr and not p.returncode == 0:
-            if show_status_message_on_stderr:
-                sublime.active_window().status_message(
-                    "`git {}` failed.".format(command[1])
-                    + (" See log for details." if not show_panel_on_stderr else "")
-                )
-
             if "*** Please tell me who you are." in stderr:
                 sublime.set_timeout_async(
                     lambda: sublime.active_window().run_command("gs_setup_user"))
@@ -246,7 +239,6 @@ class _GitCommand(SettingsMixin):
         return self.git(
             *args,
             throw_on_stderr=True,
-            show_status_message_on_stderr=False,
             show_panel_on_stderr=False,
             **kwargs
         )

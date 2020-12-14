@@ -774,7 +774,6 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 yield from self.git_stdout(
                     *args,
                     throw_on_stderr=True,
-                    show_status_message_on_stderr=False,
                     show_panel_on_stderr=False,
                     got_proc=got_proc
                 )
