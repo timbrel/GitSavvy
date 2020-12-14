@@ -1,3 +1,4 @@
+from functools import partial
 import os
 import re
 
@@ -12,6 +13,7 @@ from ..git_command import GitCommand
 from ..git_mixins.rebase import NearestBranchMixin
 from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from GitSavvy.core.runtime import enqueue_on_worker
 
 
 COMMIT_NODE_CHAR = "●"
@@ -591,7 +593,7 @@ class GsRebaseSquashCommand(RewriteBase):
             self.do_action(self.interface.entries[squash_idx - 1].long_hash)
         else:
             reversed_logs = list(reversed(self.interface.entries[0:squash_idx]))
-            show_log_panel(reversed_logs, self.do_action)
+            show_log_panel(reversed_logs, partial(enqueue_on_worker, self.do_action))
 
     def do_action(self, target_commit):
         if not target_commit:
@@ -729,7 +731,7 @@ class GsRebaseMoveUpCommand(RewriteBase):
             self.do_action(self.interface.entries[move_idx - 1].long_hash)
         else:
             logs = list(reversed(self.interface.entries[:move_idx]))
-            show_log_panel(logs, self.do_action)
+            show_log_panel(logs, partial(enqueue_on_worker, self.do_action))
 
     def do_action(self, target_commit):
         if not target_commit:
@@ -778,7 +780,7 @@ class GsRebaseMoveDownCommand(RewriteBase):
             self.do_action(self.interface.entries[move_idx + 1].long_hash)
         else:
             logs = self.interface.entries[move_idx + 1:]
-            show_log_panel(logs, self.do_action)
+            show_log_panel(logs, partial(enqueue_on_worker, self.do_action))
 
     def do_action(self, target_commit):
         if not target_commit:
