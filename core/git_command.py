@@ -152,14 +152,14 @@ class _GitCommand(SettingsMixin):
 
         stdout, stderr = None, None
 
-        try:
-            if not working_dir:
+        if not working_dir:
+            try:
                 working_dir = self.repo_path
-        except RuntimeError as e:
-            # do not show panel when the window does not exist
-            raise GitSavvyError(str(e), show_panel=False)
-        except Exception as e:
-            raise GitSavvyError(str(e), show_panel=show_panel_on_stderr)
+            except RuntimeError as e:
+                # do not show panel when the window does not exist
+                raise GitSavvyError(str(e), show_panel=False)
+            except Exception as e:
+                raise GitSavvyError(str(e), show_panel=show_panel_on_stderr)
 
         environ = ChainMap(
             custom_environ or {},
