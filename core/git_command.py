@@ -6,7 +6,7 @@ Define a base command class that:
      for Git operations.
 """
 
-from collections import deque
+from collections import deque, ChainMap
 from functools import partial
 import io
 from itertools import chain, repeat
@@ -161,12 +161,12 @@ class _GitCommand(SettingsMixin):
         except Exception as e:
             raise GitSavvyError(str(e), show_panel=show_panel_on_stderr)
 
+        environ = ChainMap(
+            custom_environ or {},
+            self.savvy_settings.get("env") or {},
+            os.environ
+        )
         try:
-            environ = os.environ.copy()
-            savvy_env = self.savvy_settings.get("env")
-            if savvy_env:
-                environ.update(savvy_env)
-            environ.update(custom_environ or {})
             start = time.time()
             p = subprocess.Popen(
                 command,
