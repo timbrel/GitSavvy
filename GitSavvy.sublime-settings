@@ -108,12 +108,6 @@
     "show_panel_for": [],
 
     /*
-        Add entries to this array (e.g. "pull" or "push") if you'd like any
-        open panel to be closed at the beginning of the operation.
-     */
-    "close_panel_for": [],
-
-    /*
         https://git-scm.com/book/en/v2/Distributed-Git-Contributing-to-a-Project#Commit-Guidelines
         Add a distinct style guide for the commit messages:
 

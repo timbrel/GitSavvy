@@ -144,9 +144,6 @@ class _GitCommand(SettingsMixin):
         if show_panel is None:
             show_panel = args[0] in self.savvy_settings.get("show_panel_for")
 
-        if args[0] in self.savvy_settings.get("close_panel_for"):
-            sublime.active_window().run_command("hide_panel", {"cancel": True})
-
         stdout, stderr = None, None
 
         if not working_dir:
