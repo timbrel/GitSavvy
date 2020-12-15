@@ -367,7 +367,7 @@ class HistoryMixin():
         )
         encodings = self.get_encoding_candidates()
         try:
-            rv, _ = self.try_decode(stdout, encodings, show_modal_on_error=False)
+            rv, _ = self.try_decode(stdout, encodings)
         except UnicodeDecodeError:
             rv = "-- Partially decoded output; � denotes decoding errors --\n"
             rv += stdout.decode("utf-8", "replace")

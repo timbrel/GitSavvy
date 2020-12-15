@@ -8,7 +8,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import diff
 from .navigate import GsNavigate
-from ..git_command import GitCommand
+from ..git_command import GitCommand, FALLBACK_PARSE_ERROR_MSG
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view
@@ -363,10 +363,9 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             )
             encodings = self.get_encoding_candidates()
             try:
-                raw_diff, encoding = self.try_decode(
-                    raw_diff_output, encodings, show_modal_on_error=True
-                )
+                raw_diff, encoding = self.try_decode(raw_diff_output, encodings)
             except UnicodeDecodeError:
+                sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
                 self.view.close()
                 return
             settings.set("git_savvy.inline_diff.encoding", encoding)

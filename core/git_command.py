@@ -250,22 +250,20 @@ class _GitCommand(SettingsMixin):
         # type: (bytes) -> str
         encodings = self.get_encoding_candidates()
         try:
-            decoded, _ = self.try_decode(input, encodings, show_modal_on_error=False)
+            decoded, _ = self.try_decode(input, encodings)
         except UnicodeDecodeError as e:
             sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
             raise e
         else:
             return decoded
 
-    def try_decode(self, input, encodings, show_modal_on_error=True):
-        # type: (bytes, Sequence[str], bool) -> Tuple[str, str]
+    def try_decode(self, input, encodings):
+        # type: (bytes, Sequence[str]) -> Tuple[str, str]
         for n, encoding in enumerate(encodings, start=1):
             try:
                 return input.decode(encoding), encoding
             except UnicodeDecodeError as err:
                 if n == len(encodings):
-                    if show_modal_on_error:
-                        sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
                     raise err
         assert False  # no silent fall-through
 
