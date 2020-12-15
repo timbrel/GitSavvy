@@ -265,10 +265,6 @@ class _GitCommand(SettingsMixin):
         assert False  # no silent fall-through
 
     @property
-    def encoding(self):
-        return "UTF-8"
-
-    @property
     def git_binary_path(self):
         """
         Return the path to the available `git` binary.
