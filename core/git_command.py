@@ -187,7 +187,7 @@ class _GitCommand(SettingsMixin):
                 stdout, stderr = p.communicate(stdin)
 
             if decode:
-                stdout, stderr = self.decode_stdout(stdout), self.decode_stdout(stderr)
+                stdout, stderr = self.strict_decode(stdout), self.strict_decode(stderr)
 
         except Exception as e:
             # this should never be reached
@@ -246,10 +246,10 @@ class _GitCommand(SettingsMixin):
             self.savvy_settings.get("fallback_encoding")
         ]
 
-    def decode_stdout(self, stdout):
+    def strict_decode(self, input):
         # type: (bytes) -> str
         encodings = self.get_encoding_candidates()
-        decoded, _ = self.try_decode(stdout, encodings)
+        decoded, _ = self.try_decode(input, encodings)
         return decoded
 
     def try_decode(self, input, encodings, show_modal_on_error=True):
