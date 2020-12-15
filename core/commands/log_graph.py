@@ -1,7 +1,6 @@
 from collections import deque
 from functools import lru_cache, partial
 from itertools import chain, count, islice
-import locale
 import os
 from queue import Empty
 import re
@@ -726,7 +725,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         # type: (...) -> Iterator[str]
         # Note: Can't use `self.decode_stdout` because it blocks the
         # main thread!
-        decode = decoder(self.savvy_settings)
+        decode = lax_decoder(self.get_encoding_candidates())
         proc = self.git(*args, just_the_proc=True, **kwargs)
         if got_proc:
             got_proc(proc)
@@ -838,12 +837,8 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         return args
 
 
-locally_preferred_encoding = locale.getpreferredencoding()
-
-
-def decoder(settings):
-    encodings = ['utf8', locally_preferred_encoding, settings.get("fallback_encoding")]
-
+def lax_decoder(encodings):
+    # type: (Sequence[str]) -> Callable[[bytes], str]
     def decode(bytes):
         # type: (bytes) -> str
         for encoding in encodings:
