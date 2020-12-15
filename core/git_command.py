@@ -249,8 +249,13 @@ class _GitCommand(SettingsMixin):
     def strict_decode(self, input):
         # type: (bytes) -> str
         encodings = self.get_encoding_candidates()
-        decoded, _ = self.try_decode(input, encodings)
-        return decoded
+        try:
+            decoded, _ = self.try_decode(input, encodings, show_modal_on_error=False)
+        except UnicodeDecodeError as e:
+            sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
+            raise e
+        else:
+            return decoded
 
     def try_decode(self, input, encodings, show_modal_on_error=True):
         # type: (bytes, Sequence[str], bool) -> Tuple[str, str]
