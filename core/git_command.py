@@ -179,10 +179,10 @@ class _GitCommand(SettingsMixin):
                 stdin = stdin.encode(encoding=stdin_encoding)
 
             if show_panel:
-                util.log.panel("", run_async=False)  # clear panel
-                util.log.panel_append("$ {}\n".format(command_str), run_async=False)
+                util.log.panel("")  # clear panel
+                util.log.panel_append("$ {}\n".format(command_str))
 
-                _log = partial(util.log.panel_append, run_async=False)
+                _log = partial(util.log.panel_append)
                 log_b = lambda line: _log(line.decode())
                 stdout, stderr = communicate_and_log(p, stdin, log_b)
             else:
