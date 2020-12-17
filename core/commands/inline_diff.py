@@ -8,7 +8,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import diff
 from .navigate import GsNavigate
-from ..git_command import GitCommand, FALLBACK_PARSE_ERROR_MSG
+from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view
@@ -47,6 +47,14 @@ if MYPY:
 else:
     HunkReference = namedtuple("HunkReference", "section_start section_end hunk line_types lines")
 
+
+DECODE_ERROR_MESSAGE = (
+    "Can't decode diff output.  "
+    "You may have checked in binary data git doesn't detect, or not UTF-8 "
+    "encoded files.  In the latter case use the 'fallback_encoding' setting, "
+    "in the former you may want to edit the `.gitattributes` file.  "
+    "Note, however, that diffs with *mixed* encodings are not supported."
+)
 
 INLINE_DIFF_TITLE = "DIFF: "
 INLINE_DIFF_CACHED_TITLE = "DIFF (staged): "
@@ -365,7 +373,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             try:
                 raw_diff, encoding = self.try_decode(raw_diff_output, encodings)
             except UnicodeDecodeError:
-                sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
+                sublime.error_message(DECODE_ERROR_MESSAGE)
                 self.view.close()
                 return
             settings.set("git_savvy.inline_diff.encoding", encoding)
