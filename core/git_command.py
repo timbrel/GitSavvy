@@ -143,8 +143,6 @@ class _GitCommand(SettingsMixin):
         if show_panel is None:
             show_panel = args[0] in self.savvy_settings.get("show_panel_for")
 
-        stdout, stderr = None, None
-
         if not working_dir:
             try:
                 working_dir = self.repo_path
@@ -154,6 +152,7 @@ class _GitCommand(SettingsMixin):
             except Exception as e:
                 raise GitSavvyError(str(e), show_panel=show_panel_on_stderr)
 
+        stdout, stderr = None, None
         environ = ChainMap(
             custom_environ or {},
             self.savvy_settings.get("env") or {},
