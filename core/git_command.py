@@ -32,12 +32,13 @@ if MYPY:
 git_path = None
 error_message_displayed = False
 
-FALLBACK_PARSE_ERROR_MSG = (
-    "The Git command returned data that is unparsable.  This may happen "
-    "if you have checked binary data into your repository, or not UTF-8 "
-    "encoded files.  In the latter case use the 'fallback_encoding' setting.  "
-    "The current operation has been aborted."
-)
+DECODE_ERROR_MESSAGE = """
+The Git command returned data that is unparsable.  This may happen
+if you have checked binary data into your repository, or not UTF-8
+encoded files.  In the latter case use the 'fallback_encoding' setting.
+
+-- Partially decoded output follows; � denotes decoding errors --
+"""
 
 MIN_GIT_VERSION = (2, 16, 0)
 GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d} or above."
@@ -185,9 +186,6 @@ class _GitCommand(SettingsMixin):
             else:
                 stdout, stderr = p.communicate(stdin)
 
-            if decode:
-                stdout, stderr = self.strict_decode(stdout), self.strict_decode(stderr)
-
         except Exception as e:
             # this should never be reached
             raise GitSavvyError(
@@ -204,6 +202,23 @@ class _GitCommand(SettingsMixin):
                 util.debug.log_git(args, stdin, stdout, stderr, end - start)
                 if show_panel:
                     util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
+
+        if decode:
+            try:
+                stdout, stderr = self.strict_decode(stdout), self.strict_decode(stderr)
+            except UnicodeDecodeError:
+                raise GitSavvyError(
+                    "$ {}\n{}{}{}".format(
+                        command_str,
+                        DECODE_ERROR_MESSAGE,
+                        stdout.decode("utf-8", "replace"),
+                        stderr.decode("utf-8", "replace"),
+                    ),
+                    cmd=command,
+                    stdout=stdout,
+                    stderr=stderr,
+                    show_panel=show_panel_on_stderr
+                )
 
         if throw_on_stderr and not p.returncode == 0:
             if "*** Please tell me who you are." in stderr:
@@ -248,13 +263,8 @@ class _GitCommand(SettingsMixin):
     def strict_decode(self, input):
         # type: (bytes) -> str
         encodings = self.get_encoding_candidates()
-        try:
-            decoded, _ = self.try_decode(input, encodings)
-        except UnicodeDecodeError as e:
-            sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
-            raise e
-        else:
-            return decoded
+        decoded, _ = self.try_decode(input, encodings)
+        return decoded
 
     def try_decode(self, input, encodings):
         # type: (bytes, Sequence[str]) -> Tuple[str, str]
