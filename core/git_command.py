@@ -181,7 +181,7 @@ class _GitCommand(SettingsMixin):
                 util.log.panel("")  # clear panel
                 util.log.panel_append("$ {}\n".format(command_str))
 
-                log_b = lambda line: util.log.panel_append(line.decode())
+                log_b = lambda line: util.log.panel_append(line.decode("utf-8", "replace"))
                 stdout, stderr = communicate_and_log(p, stdin, log_b)
             else:
                 stdout, stderr = p.communicate(stdin)
