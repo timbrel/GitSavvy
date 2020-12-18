@@ -16,12 +16,18 @@ def normalize(string):
     return ANSI_ESCAPE_RE.sub('', string.replace('\r\n', '\n').replace('\r', '\n'))
 
 
+def init_panel(window):
+    # type: (sublime.Window) -> sublime.View
+    panel_view = create_panel(window)
+    show_panel(window)
+    return panel_view
+
+
 def display_panel(window, message):
     # type: (sublime.Window, str) -> sublime.View
-    panel_view = create_panel(window)
+    panel_view = init_panel(window)
     append_to_panel(panel_view, message)
     panel_view.show(0)
-    show_panel(window)
     return panel_view
 
 
