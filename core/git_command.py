@@ -26,7 +26,7 @@ from GitSavvy.core.runtime import run_as_future
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Deque, Iterator, Sequence, Tuple
+    from typing import Callable, Deque, Iterator, Sequence, Tuple, Union
 
 
 git_path = None
@@ -205,31 +205,34 @@ class _GitCommand(SettingsMixin):
 
         if decode:
             try:
-                stdout, stderr = self.strict_decode(stdout), self.strict_decode(stderr)
+                stdout, stderr = self.strict_decode(stdout), self.strict_decode(stderr)  # type: ignore[assignment]
             except UnicodeDecodeError:
+                stdout_s = stdout.decode("utf-8", "replace")
+                stderr_s = stderr.decode("utf-8", "replace")
                 raise GitSavvyError(
                     "$ {}\n{}{}{}".format(
                         command_str,
                         DECODE_ERROR_MESSAGE,
-                        stdout.decode("utf-8", "replace"),
-                        stderr.decode("utf-8", "replace"),
+                        stdout_s,
+                        stderr_s,
                     ),
                     cmd=command,
-                    stdout=stdout,
-                    stderr=stderr,
+                    stdout=stdout_s,
+                    stderr=stderr_s,
                     show_panel=show_panel_on_stderr
                 )
 
         if throw_on_stderr and not p.returncode == 0:
-            if "*** Please tell me who you are." in stderr:
+            stdout_s, stderr_s = self.ensure_decoded(stdout), self.ensure_decoded(stderr)
+            if "*** Please tell me who you are." in stderr_s:
                 sublime.set_timeout_async(
                     lambda: sublime.active_window().run_command("gs_setup_user"))
 
             raise GitSavvyError(
-                "$ {}\n\n{}".format(command_str, ''.join([stdout, stderr])),
+                "$ {}\n\n{}{}".format(command_str, stdout_s, stderr_s),
                 cmd=command,
-                stdout=stdout,
-                stderr=stderr,
+                stdout=stdout_s,
+                stderr=stderr_s,
                 show_panel=show_panel_on_stderr
             )
 
@@ -256,6 +259,19 @@ class _GitCommand(SettingsMixin):
         encodings = self.get_encoding_candidates()
         decoded, _ = self.try_decode(input, encodings)
         return decoded
+
+    def ensure_decoded(self, input):
+        # type: (Union[str, bytes]) -> str
+        if isinstance(input, str):
+            return input
+        return self.lax_decode(input)
+
+    def lax_decode(self, input):
+        # type: (bytes) -> str
+        try:
+            return self.strict_decode(input)
+        except UnicodeDecodeError:
+            return input.decode("utf-8", "replace")
 
     def try_decode(self, input, encodings):
         # type: (bytes, Sequence[str]) -> Tuple[str, str]
