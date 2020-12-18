@@ -16,22 +16,13 @@ def normalize(string):
     return ANSI_ESCAPE_RE.sub('', string.replace('\r\n', '\n').replace('\r', '\n'))
 
 
-def panel(message):
-    # type: (str) -> None
-    message = normalize(message)
-    window = sublime.active_window()
+def panel(window, message):
+    # type: (sublime.Window, str) -> sublime.View
     panel_view = create_panel(window)
-    _append_to_panel(panel_view, message)
+    append_to_panel(panel_view, message)
     panel_view.show(0)
     show_panel(window)
-
-
-def panel_append(message):
-    # type: (str) -> None
-    message = normalize(message)
-    window = sublime.active_window()
-    panel_view = ensure_panel(window)
-    _append_to_panel(panel_view, message)
+    return panel_view
 
 
 def ensure_panel(window):
@@ -54,8 +45,9 @@ def show_panel(window):
     window.run_command("show_panel", {"panel": "output.{}".format(PANEL_NAME)})
 
 
-def _append_to_panel(panel, message):
+def append_to_panel(panel, message):
     # type: (sublime.View, str) -> None
+    message = normalize(message)
     panel.set_read_only(False)
     panel.run_command('append', {
         'characters': message,
