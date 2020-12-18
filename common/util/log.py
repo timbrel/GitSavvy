@@ -16,7 +16,7 @@ def normalize(string):
     return ANSI_ESCAPE_RE.sub('', string.replace('\r\n', '\n').replace('\r', '\n'))
 
 
-def panel(window, message):
+def display_panel(window, message):
     # type: (sublime.Window, str) -> sublime.View
     panel_view = create_panel(window)
     append_to_panel(panel_view, message)

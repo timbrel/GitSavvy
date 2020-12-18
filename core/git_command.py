@@ -179,7 +179,7 @@ class _GitCommand(SettingsMixin):
 
             if show_panel:
                 window = self.some_window()
-                panel = util.log.panel(window, "")  # clear panel
+                panel = util.log.display_panel(window, "")  # clear panel
                 util.log.append_to_panel(panel, "$ {}\n".format(command_str))
 
                 log_b = lambda line: util.log.append_to_panel(

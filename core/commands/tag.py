@@ -82,7 +82,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
         )
 
         if not stdout:
-            util.log.panel(
+            util.log.display_panel(
                 self.window,  # type: ignore[arg-type]
                 "'{}' is not a valid tag name.".format(tag_name)
             )
