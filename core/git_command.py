@@ -9,6 +9,7 @@ Define a base command class that:
 from collections import deque, ChainMap
 import io
 from itertools import chain, repeat
+from functools import partial
 import locale
 import os
 import subprocess
@@ -180,12 +181,10 @@ class _GitCommand(SettingsMixin):
             if show_panel:
                 window = self.some_window()
                 panel = util.log.init_panel(window)
-                util.log.append_to_panel(panel, "$ {}\n".format(command_str))
+                log = partial(util.log.append_to_panel, panel)
+                log("$ {}\n".format(command_str))
 
-                log_b = lambda line: util.log.append_to_panel(
-                    panel,
-                    line.decode("utf-8", "replace")
-                )
+                log_b = lambda line: log(line.decode("utf-8", "replace"))
                 stdout, stderr = communicate_and_log(p, stdin, log_b)
             else:
                 stdout, stderr = p.communicate(stdin)
@@ -205,7 +204,7 @@ class _GitCommand(SettingsMixin):
                 end = time.time()
                 util.debug.log_git(args, stdin, stdout, stderr, end - start)
                 if show_panel:
-                    util.log.append_to_panel(panel, "\n[Done in {:.2f}s]".format(end - start))
+                    log("\n[Done in {:.2f}s]".format(end - start))
 
         if decode:
             try:
