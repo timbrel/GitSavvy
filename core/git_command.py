@@ -145,6 +145,12 @@ class _GitCommand(SettingsMixin):
         if show_panel is None:
             show_panel = args[0] in self.savvy_settings.get("show_panel_for")
 
+        if show_panel:
+            window = self.some_window()
+            panel = util.log.init_panel(window)
+            log = partial(util.log.append_to_panel, panel)
+            log("$ {}\n".format(command_str))
+
         if not working_dir:
             try:
                 working_dir = self.repo_path
@@ -179,11 +185,6 @@ class _GitCommand(SettingsMixin):
                 stdin = stdin.encode(encoding=stdin_encoding)
 
             if show_panel:
-                window = self.some_window()
-                panel = util.log.init_panel(window)
-                log = partial(util.log.append_to_panel, panel)
-                log("$ {}\n".format(command_str))
-
                 log_b = lambda line: log(line.decode("utf-8", "replace"))
                 stdout, stderr = communicate_and_log(p, stdin, log_b)
             else:
