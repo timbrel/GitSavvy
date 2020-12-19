@@ -7,7 +7,6 @@ Define a base command class that:
 """
 
 from collections import deque, ChainMap
-from functools import partial
 import io
 from itertools import chain, repeat
 import locale
@@ -182,8 +181,7 @@ class _GitCommand(SettingsMixin):
                 util.log.panel("")  # clear panel
                 util.log.panel_append("$ {}\n".format(command_str))
 
-                _log = partial(util.log.panel_append)
-                log_b = lambda line: _log(line.decode())
+                log_b = lambda line: util.log.panel_append(line.decode())
                 stdout, stderr = communicate_and_log(p, stdin, log_b)
             else:
                 stdout, stderr = p.communicate(stdin)
