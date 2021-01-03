@@ -470,12 +470,3 @@ class HistoryMixin():
         display the contents of that object.
         """
         return self.git("show", "--no-color", object_hash)
-
-    def get_object_from_string(self, string):
-        """
-        Given a string, pipe the contents of that string to git and have it
-        stored in the current repo, and return an object-hash that can be
-        used to diff against.
-        """
-        stdout = self.git("hash-object", "-w", "--stdin", stdin=string, encode=False)
-        return stdout.split("\n")[0]
