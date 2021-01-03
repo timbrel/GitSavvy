@@ -140,7 +140,7 @@ class _GitCommand(SettingsMixin):
         the `repo_path` value will be used.
         """
         git_cmd = args[0]
-        final_args = self._include_global_flags(args)
+        final_args = self._add_global_flags(args)
         command = [self.git_binary_path] + list(filter_(final_args))
         command_str = " ".join(["git"] + command[1:])
 
@@ -464,7 +464,7 @@ class _GitCommand(SettingsMixin):
         path = abs_path or self.file_path
         return os.path.relpath(os.path.realpath(path), start=self.repo_path)
 
-    def _include_global_flags(self, args):
+    def _add_global_flags(self, args):
         # type: (Sequence[str]) -> List[str]
         """
         Transforms the Git command arguments with flags indicated in the
