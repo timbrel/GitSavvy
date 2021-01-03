@@ -118,6 +118,7 @@ class _GitCommand(SettingsMixin):
 
     def git(
         self,
+        git_cmd,
         *args,
         stdin=None,
         working_dir=None,
@@ -139,8 +140,7 @@ class _GitCommand(SettingsMixin):
         current working directory for the git process; otherwise,
         the `repo_path` value will be used.
         """
-        git_cmd = args[0]
-        final_args = self._add_global_flags(git_cmd, list(args[1:]))
+        final_args = self._add_global_flags(git_cmd, list(args))
         command = [self.git_binary_path] + list(filter_(final_args))
         command_str = " ".join(["git"] + command[1:])
 
