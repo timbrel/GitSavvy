@@ -22,6 +22,7 @@ import sublime
 
 from ..common import util
 from .settings import SettingsMixin
+from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import run_as_future
 
 
@@ -139,8 +140,8 @@ class _GitCommand(SettingsMixin):
         the `repo_path` value will be used.
         """
         args = self._include_global_flags(args)
-        command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
-        command_str = " ".join(["git"] + list(filter(None, args)))
+        command = [self.git_binary_path] + list(filter_(args))
+        command_str = " ".join(["git"] + command[1:])
 
         if show_panel is None:
             show_panel = args[0] in self.savvy_settings.get("show_panel_for")
