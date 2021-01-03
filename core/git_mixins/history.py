@@ -410,16 +410,3 @@ class HistoryMixin():
             ).strip().splitlines()[-1]
         except IndexError:
             return None
-
-    def newest_commit_for_file(self, file_path, follow=False):
-        """
-        Get the newest commit for a given file.
-        """
-        return self.git(
-            "log",
-            "--format=%H",
-            "--follow" if follow else None,
-            "-1",
-            "--",
-            file_path,
-        ).strip()
