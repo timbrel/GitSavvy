@@ -139,12 +139,13 @@ class _GitCommand(SettingsMixin):
         current working directory for the git process; otherwise,
         the `repo_path` value will be used.
         """
+        git_cmd = args[0]
         args = self._include_global_flags(args)
         command = [self.git_binary_path] + list(filter_(args))
         command_str = " ".join(["git"] + command[1:])
 
         if show_panel is None:
-            show_panel = args[0] in self.savvy_settings.get("show_panel_for")
+            show_panel = git_cmd in self.savvy_settings.get("show_panel_for")
 
         if show_panel:
             window = self.some_window()
