@@ -437,16 +437,3 @@ class HistoryMixin():
         #        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
         git_file_entry = stdout.split(" ")
         return git_file_entry[1]
-
-    def get_head_file_object(self, file_path):
-        """
-        Given an absolute path to a file contained in a git repo, return
-        git's internal object hash associated with the version of that
-        file in the HEAD.
-        """
-        stdout = self.git("ls-tree", "HEAD", file_path)
-
-        # 100644 blob 7317069f30eafd4d7674612679322d59f9fb65a4    SomeFile.py
-        #             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        git_file_entry = stdout.split()  # split by spaces and tabs
-        return git_file_entry[2]
