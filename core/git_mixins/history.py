@@ -463,10 +463,3 @@ class HistoryMixin():
         #             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
         git_file_entry = stdout.split()  # split by spaces and tabs
         return git_file_entry[2]
-
-    def get_object_contents(self, object_hash):
-        """
-        Given the object hash to a versioned object in the current git repo,
-        display the contents of that object.
-        """
-        return self.git("show", "--no-color", object_hash)
