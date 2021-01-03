@@ -28,7 +28,7 @@ from GitSavvy.core.runtime import run_as_future
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Deque, Iterator, Sequence, Tuple, Union
+    from typing import Callable, Deque, Iterator, List, Sequence, Tuple, Union
 
 
 git_path = None
@@ -140,8 +140,8 @@ class _GitCommand(SettingsMixin):
         the `repo_path` value will be used.
         """
         git_cmd = args[0]
-        args = self._include_global_flags(args)
-        command = [self.git_binary_path] + list(filter_(args))
+        final_args = self._include_global_flags(args)
+        command = [self.git_binary_path] + list(filter_(final_args))
         command_str = " ".join(["git"] + command[1:])
 
         if show_panel is None:
@@ -205,7 +205,7 @@ class _GitCommand(SettingsMixin):
         finally:
             if not just_the_proc:
                 end = time.time()
-                util.debug.log_git(args, stdin, stdout, stderr, end - start)
+                util.debug.log_git(final_args, stdin, stdout, stderr, end - start)
                 if show_panel:
                     log("\n[Done in {:.2f}s]".format(end - start))
 
@@ -465,24 +465,15 @@ class _GitCommand(SettingsMixin):
         return os.path.relpath(os.path.realpath(path), start=self.repo_path)
 
     def _include_global_flags(self, args):
+        # type: (Sequence[str]) -> List[str]
         """
         Transforms the Git command arguments with flags indicated in the
         global GitSavvy settings.
         """
         git_cmd, *addl_args = args
-
-        global_flags = self.savvy_settings.get("global_flags")
-        global_pre_flags = self.savvy_settings.get("global_pre_flags")
-
-        if global_flags and git_cmd in global_flags:
-            args = [git_cmd] + global_flags[git_cmd] + addl_args
-        else:
-            args = [git_cmd] + list(addl_args)
-
-        if global_pre_flags and git_cmd in global_pre_flags:
-            args = global_pre_flags[git_cmd] + args
-
-        return args
+        global_pre_flags = self.savvy_settings.get("global_pre_flags", {}).get(git_cmd, [])
+        global_flags = self.savvy_settings.get("global_flags", {}).get(git_cmd, [])
+        return global_pre_flags + [git_cmd] + global_flags + addl_args
 
 
 if MYPY:
