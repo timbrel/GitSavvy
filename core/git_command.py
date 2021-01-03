@@ -140,7 +140,7 @@ class _GitCommand(SettingsMixin):
         the `repo_path` value will be used.
         """
         git_cmd = args[0]
-        final_args = self._add_global_flags(args)
+        final_args = self._add_global_flags(git_cmd, list(args[1:]))
         command = [self.git_binary_path] + list(filter_(final_args))
         command_str = " ".join(["git"] + command[1:])
 
@@ -464,16 +464,15 @@ class _GitCommand(SettingsMixin):
         path = abs_path or self.file_path
         return os.path.relpath(os.path.realpath(path), start=self.repo_path)
 
-    def _add_global_flags(self, args):
-        # type: (Sequence[str]) -> List[str]
+    def _add_global_flags(self, git_cmd, args):
+        # type: (str, List[str]) -> List[str]
         """
         Transforms the Git command arguments with flags indicated in the
         global GitSavvy settings.
         """
-        git_cmd, *addl_args = args
         global_pre_flags = self.savvy_settings.get("global_pre_flags", {}).get(git_cmd, [])
         global_flags = self.savvy_settings.get("global_flags", {}).get(git_cmd, [])
-        return global_pre_flags + [git_cmd] + global_flags + addl_args
+        return global_pre_flags + [git_cmd] + global_flags + args
 
 
 if MYPY:
