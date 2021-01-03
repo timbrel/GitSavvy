@@ -423,17 +423,3 @@ class HistoryMixin():
             "--",
             file_path,
         ).strip()
-
-    def get_indexed_file_object(self, file_path):
-        """
-        Given an absolute path to a file contained in a git repo, return
-        git's internal object hash associated with the version of that file
-        in the index (if the file is staged) or in the HEAD (if it is not
-        staged).
-        """
-        stdout = self.git("ls-files", "-s", file_path)
-
-        # 100644 c9d70aa928a3670bc2b879b4a596f10d3e81ba7c 0   SomeFile.py
-        #        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        git_file_entry = stdout.split(" ")
-        return git_file_entry[1]
