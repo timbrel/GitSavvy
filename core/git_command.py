@@ -126,8 +126,7 @@ class _GitCommand(SettingsMixin):
         show_panel_on_stderr=True,
         throw_on_stderr=True,
         decode=True,
-        encode=True,
-        stdin_encoding="UTF-8",
+        stdin_encoding="utf-8",
         custom_environ=None,
         just_the_proc=False
     ):
@@ -183,7 +182,7 @@ class _GitCommand(SettingsMixin):
             if just_the_proc:
                 return p
 
-            if stdin is not None and encode:
+            if isinstance(stdin, str):
                 stdin = stdin.encode(encoding=stdin_encoding)
 
             if show_panel:
