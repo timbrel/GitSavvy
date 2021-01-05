@@ -239,7 +239,9 @@ class _GitCommand(SettingsMixin):
                 cmd=command,
                 stdout=stdout_s,
                 stderr=stderr_s,
-                show_panel=show_panel_on_error
+                # If `show_panel` is set, we log *while* running the process
+                # and thus don't need to log again.
+                show_panel=show_panel_on_error and not show_panel
             )
 
         return stdout
