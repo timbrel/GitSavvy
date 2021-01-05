@@ -29,10 +29,10 @@ class gs_gitlab_configure_remote(WindowCommand, GitLabRemotesMixin, GitCommand):
         """
         remote, remote_branch = branch.split("/", 1)
 
-        self.git("config", "--local", "--unset-all", "GitSavvy.glRemote", throw_on_stderr=False)
+        self.git("config", "--local", "--unset-all", "GitSavvy.glRemote", throw_on_error=False)
         self.git("config", "--local", "--add", "GitSavvy.glRemote", remote)
 
-        self.git("config", "--local", "--unset-all", "GitSavvy.glBranch", throw_on_stderr=False)
+        self.git("config", "--local", "--unset-all", "GitSavvy.glBranch", throw_on_error=False)
         self.git("config", "--local", "--add", "GitSavvy.glBranch", remote_branch)
 
         sublime.status_message("Successfully configured GitLab integration.")

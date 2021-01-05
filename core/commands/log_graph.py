@@ -721,7 +721,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         run_on_new_thread(reader)
 
     @log_git_command
-    def git_stdout(self, *args, show_panel_on_stderr=True, throw_on_stderr=True, got_proc=None, **kwargs):
+    def git_stdout(self, *args, show_panel_on_stderr=True, throw_on_error=True, got_proc=None, **kwargs):
         # type: (...) -> Iterator[str]
         # Note: Can't use `self.decode_stdout` because it blocks the
         # main thread!
@@ -750,7 +750,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
             stderr = ''.join(map(decode, proc.stderr.readlines()))
 
-        if throw_on_stderr and stderr:
+        if throw_on_error and stderr:
             stdout = "<STDOUT SNIPPED>\n" if received_some_stdout else ""
             raise GitSavvyError(
                 "$ {}\n\n{}".format(
@@ -772,7 +772,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             try:
                 yield from self.git_stdout(
                     *args,
-                    throw_on_stderr=True,
+                    throw_on_error=True,
                     show_panel_on_stderr=False,
                     got_proc=got_proc
                 )

@@ -86,7 +86,7 @@ class BranchesMixin(mixin_base):
             "config",
             "--get-regex",
             r"branch\..*\.description",
-            throw_on_stderr=False
+            throw_on_error=False
         ).strip("\n").splitlines():
             match = BRANCH_DESCRIPTION_RE.match(line)
             if match is None:
@@ -147,4 +147,4 @@ class BranchesMixin(mixin_base):
 
     def validate_branch_name(self, branch):
         ref = "refs/heads/{}".format(branch)
-        return self.git("check-ref-format", "--branch", ref, throw_on_stderr=False).strip()
+        return self.git("check-ref-format", "--branch", ref, throw_on_error=False).strip()

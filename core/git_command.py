@@ -124,7 +124,7 @@ class _GitCommand(SettingsMixin):
         working_dir=None,
         show_panel=None,
         show_panel_on_stderr=True,
-        throw_on_stderr=True,
+        throw_on_error=True,
         decode=True,
         stdin_encoding="utf-8",
         custom_environ=None,
@@ -227,7 +227,7 @@ class _GitCommand(SettingsMixin):
                     show_panel=show_panel_on_stderr
                 )
 
-        if throw_on_stderr and not p.returncode == 0:
+        if throw_on_error and not p.returncode == 0:
             stdout_s, stderr_s = self.ensure_decoded(stdout), self.ensure_decoded(stderr)
             if "*** Please tell me who you are." in stderr_s:
                 sublime.set_timeout_async(
@@ -246,7 +246,7 @@ class _GitCommand(SettingsMixin):
     def git_throwing_silently(self, *args, **kwargs):
         return self.git(
             *args,
-            throw_on_stderr=True,
+            throw_on_error=True,
             show_panel_on_stderr=False,
             **kwargs
         )
@@ -368,7 +368,7 @@ class _GitCommand(SettingsMixin):
         if view and view.file_name():
             file_dir = os.path.dirname(view.file_name())
             if os.path.isdir(file_dir):
-                repo_path = self.find_git_toplevel(file_dir, throw_on_stderr=False)
+                repo_path = self.find_git_toplevel(file_dir, throw_on_error=False)
 
         # fallback: use the first folder if the current file is not inside a git repo
         if not repo_path:
@@ -376,16 +376,16 @@ class _GitCommand(SettingsMixin):
                 folders = window.folders()
                 if folders and os.path.isdir(folders[0]):
                     repo_path = self.find_git_toplevel(
-                        folders[0], throw_on_stderr=False)
+                        folders[0], throw_on_error=False)
 
         return os.path.realpath(repo_path) if repo_path else None
 
-    def find_git_toplevel(self, folder, throw_on_stderr):
+    def find_git_toplevel(self, folder, throw_on_error):
         stdout = self.git(
             "rev-parse",
             "--show-toplevel",
             working_dir=folder,
-            throw_on_stderr=throw_on_stderr
+            throw_on_error=throw_on_error
         )
         repo = stdout.strip()
         return os.path.realpath(repo) if repo else None

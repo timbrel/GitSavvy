@@ -6,7 +6,7 @@ class GitLabRemotesMixin():
             "--local",
             "--get",
             "GitSavvy.glBranch",
-            throw_on_stderr=False
+            throw_on_error=False
         ).strip()
         if configured_branch_name:
             return configured_branch_name
@@ -19,7 +19,7 @@ class GitLabRemotesMixin():
             "--local",
             "--get",
             "GitSavvy.glRemote",
-            throw_on_stderr=False
+            throw_on_error=False
         ).strip()
         remotes = self.get_remotes()
 

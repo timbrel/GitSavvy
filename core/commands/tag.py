@@ -78,7 +78,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
             "check-ref-format",
             "--normalize",
             "refs/tags/" + tag_name,
-            throw_on_stderr=False
+            throw_on_error=False
         )
 
         if not stdout:

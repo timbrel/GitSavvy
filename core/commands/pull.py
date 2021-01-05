@@ -38,7 +38,7 @@ class gs_pull(GsPullBase):
         rebase = self.rebase
         if not rebase:
             # honor the `pull.rebase` config implictly
-            pull_rebase = self.git("config", "pull.rebase", throw_on_stderr=False)
+            pull_rebase = self.git("config", "pull.rebase", throw_on_error=False)
             if pull_rebase and pull_rebase.strip() == "true":
                 rebase = True
         upstream = self.get_upstream_for_active_branch()

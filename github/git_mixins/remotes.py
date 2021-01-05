@@ -23,7 +23,7 @@ class GithubRemotesMixin(base):
                 "config",
                 "--get-regex",
                 r"^gitsavvy\..*",
-                throw_on_stderr=False
+                throw_on_error=False
             ).splitlines()
         )
 

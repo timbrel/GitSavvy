@@ -555,7 +555,7 @@ class GsBranchesEditBranchDescriptionCommand(TextCommand, GitCommand):
         current_description = self.git(
             "config",
             "branch.{}.description".format(self.branch_name),
-            throw_on_stderr=False
+            throw_on_error=False
         ).strip(" \n")
 
         show_single_line_input_panel(
