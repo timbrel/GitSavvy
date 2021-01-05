@@ -230,6 +230,7 @@ class _GitCommand(SettingsMixin):
         if throw_on_error and not p.returncode == 0:
             stdout_s, stderr_s = self.ensure_decoded(stdout), self.ensure_decoded(stderr)
             if "*** Please tell me who you are." in stderr_s:
+                show_panel_on_error = False
                 sublime.set_timeout_async(
                     lambda: sublime.active_window().run_command("gs_setup_user"))
 
