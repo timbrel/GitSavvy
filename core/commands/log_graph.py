@@ -721,7 +721,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         run_on_new_thread(reader)
 
     @log_git_command
-    def git_stdout(self, *args, show_panel_on_stderr=True, throw_on_error=True, got_proc=None, **kwargs):
+    def git_stdout(self, *args, show_panel_on_error=True, throw_on_error=True, got_proc=None, **kwargs):
         # type: (...) -> Iterator[str]
         # Note: Can't use `self.decode_stdout` because it blocks the
         # main thread!
@@ -760,7 +760,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 cmd=proc.args,
                 stdout=stdout,
                 stderr=stderr,
-                show_panel=show_panel_on_stderr
+                show_panel=show_panel_on_error
             )
 
     def read_graph(self, got_proc=None):
@@ -773,7 +773,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 yield from self.git_stdout(
                     *args,
                     throw_on_error=True,
-                    show_panel_on_stderr=False,
+                    show_panel_on_error=False,
                     got_proc=got_proc
                 )
             except GitSavvyError as e:

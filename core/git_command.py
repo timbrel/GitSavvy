@@ -123,7 +123,7 @@ class _GitCommand(SettingsMixin):
         stdin=None,
         working_dir=None,
         show_panel=None,
-        show_panel_on_stderr=True,
+        show_panel_on_error=True,
         throw_on_error=True,
         decode=True,
         stdin_encoding="utf-8",
@@ -159,7 +159,7 @@ class _GitCommand(SettingsMixin):
                 # do not show panel when the window does not exist
                 raise GitSavvyError(str(e), show_panel=False)
             except Exception as e:
-                raise GitSavvyError(str(e), show_panel=show_panel_on_stderr)
+                raise GitSavvyError(str(e), show_panel=show_panel_on_error)
 
         stdout, stderr = None, None
         environ = ChainMap(
@@ -199,7 +199,7 @@ class _GitCommand(SettingsMixin):
                     command_str, working_dir, e, traceback.format_exc()
                 ),
                 cmd=command,
-                show_panel=show_panel_on_stderr)
+                show_panel=show_panel_on_error)
 
         finally:
             if not just_the_proc:
@@ -224,7 +224,7 @@ class _GitCommand(SettingsMixin):
                     cmd=command,
                     stdout=stdout_s,
                     stderr=stderr_s,
-                    show_panel=show_panel_on_stderr
+                    show_panel=show_panel_on_error
                 )
 
         if throw_on_error and not p.returncode == 0:
@@ -238,7 +238,7 @@ class _GitCommand(SettingsMixin):
                 cmd=command,
                 stdout=stdout_s,
                 stderr=stderr_s,
-                show_panel=show_panel_on_stderr
+                show_panel=show_panel_on_error
             )
 
         return stdout
@@ -247,7 +247,7 @@ class _GitCommand(SettingsMixin):
         return self.git(
             *args,
             throw_on_error=True,
-            show_panel_on_stderr=False,
+            show_panel_on_error=False,
             **kwargs
         )
 
