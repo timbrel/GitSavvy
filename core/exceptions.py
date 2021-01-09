@@ -8,8 +8,8 @@ if MYPY:
 
 
 class GitSavvyError(Exception):
-    def __init__(self, msg, *args, cmd=None, stdout="", stderr="", show_panel=True, **kwargs):
-        # type: (str, object, Sequence[str], str, str, bool, object) -> None
+    def __init__(self, msg, *args, cmd=None, stdout="", stderr="", show_panel=True):
+        # type: (str, object, Sequence[str], str, str, bool) -> None
         super(GitSavvyError, self).__init__(msg, *args)
         self.message = msg
         self.cmd = cmd
