@@ -316,6 +316,7 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
                     stdout=e.stdout,
                     stderr=e.stderr,
                     show_panel=True,
+                    window=e.window,
                 )
 
         else:

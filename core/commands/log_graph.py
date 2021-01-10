@@ -760,7 +760,8 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 cmd=proc.args,
                 stdout=stdout,
                 stderr=stderr,
-                show_panel=show_panel_on_error
+                show_panel=show_panel_on_error,
+                window=self.view.window(),
             )
 
     def read_graph(self, got_proc=None):
@@ -789,6 +790,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                         stdout=e.stdout,
                         stderr=e.stderr,
                         show_panel=True,
+                        window=e.window,
                     )
             else:
                 DATE_FORMAT_STATE = 'final'

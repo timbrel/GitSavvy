@@ -139,6 +139,7 @@ class _GitCommand(SettingsMixin):
         current working directory for the git process; otherwise,
         the `repo_path` value will be used.
         """
+        window = self.some_window()
         final_args = self._add_global_flags(git_cmd, list(args))
         command = [self.git_binary_path] + list(filter_(final_args))
         command_str = " ".join(["git"] + command[1:])
@@ -147,7 +148,6 @@ class _GitCommand(SettingsMixin):
             show_panel = git_cmd in self.savvy_settings.get("show_panel_for")
 
         if show_panel:
-            window = self.some_window()
             panel = util.log.init_panel(window)
             log = partial(util.log.append_to_panel, panel)
             log("$ {}\n".format(command_str))
@@ -157,9 +157,9 @@ class _GitCommand(SettingsMixin):
                 working_dir = self.repo_path
             except RuntimeError as e:
                 # do not show panel when the window does not exist
-                raise GitSavvyError(str(e), show_panel=False)
+                raise GitSavvyError(str(e), show_panel=False, window=window)
             except Exception as e:
-                raise GitSavvyError(str(e), show_panel=show_panel_on_error)
+                raise GitSavvyError(str(e), show_panel=show_panel_on_error, window=window)
 
         stdout, stderr = None, None
         environ = ChainMap(
@@ -199,7 +199,9 @@ class _GitCommand(SettingsMixin):
                     command_str, working_dir, e, traceback.format_exc()
                 ),
                 cmd=command,
-                show_panel=show_panel_on_error)
+                show_panel=show_panel_on_error,
+                window=window
+            )
 
         finally:
             if not just_the_proc:
@@ -224,7 +226,8 @@ class _GitCommand(SettingsMixin):
                     cmd=command,
                     stdout=stdout_s,
                     stderr=stderr_s,
-                    show_panel=show_panel_on_error
+                    show_panel=show_panel_on_error,
+                    window=window
                 )
 
         if throw_on_error and not p.returncode == 0:
@@ -241,7 +244,8 @@ class _GitCommand(SettingsMixin):
                 stderr=stderr_s,
                 # If `show_panel` is set, we log *while* running the process
                 # and thus don't need to log again.
-                show_panel=show_panel_on_error and not show_panel
+                show_panel=show_panel_on_error and not show_panel,
+                window=window
             )
 
         return stdout

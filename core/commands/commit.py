@@ -201,6 +201,7 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
                     stdout=e.stdout,
                     stderr=e.stderr,
                     show_panel=True,
+                    window=e.window,
                 )
 
         try:
