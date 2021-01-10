@@ -8,9 +8,9 @@ if MYPY:
 
 
 class GitSavvyError(Exception):
-    def __init__(self, msg, *args, cmd=None, stdout="", stderr="", show_panel=True, window=None):
-        # type: (str, object, Sequence[str], str, str, bool, Optional[sublime.Window]) -> None
-        super(GitSavvyError, self).__init__(msg, *args)
+    def __init__(self, msg, *, cmd=None, stdout="", stderr="", show_panel=True, window=None):
+        # type: (str, Sequence[str], str, str, bool, Optional[sublime.Window]) -> None
+        super(GitSavvyError, self).__init__(msg)
         self.message = msg
         self.cmd = cmd
         self.stdout = stdout
