@@ -1,11 +1,12 @@
 import os
 from ...common import util
 
+from GitSavvy.core.git_command import mixin_base
 
 linesep = None
 
 
-class IgnoreMixin():
+class IgnoreMixin(mixin_base):
 
     def add_ignore(self, path_or_pattern):
         """

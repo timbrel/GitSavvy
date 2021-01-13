@@ -8,7 +8,7 @@ from .. import github
 from .. import git_mixins
 
 
-class GsGithubAddForkAsRemoteCommand(WindowCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubAddForkAsRemoteCommand(WindowCommand, git_mixins.GithubRemotesMixin, GitCommand):
 
     """
     Get list of repos on GitHub associated with the active repo.  Display, and when

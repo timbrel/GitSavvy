@@ -7,10 +7,11 @@ from shutil import rmtree, copyfile
 
 import sublime
 
+from GitSavvy.core.git_command import mixin_base
 from ...common import util
 
 
-class MergeMixin():
+class MergeMixin(mixin_base):
 
     def launch_tool_for_file(self, fpath):
         """

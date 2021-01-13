@@ -1,8 +1,24 @@
 import re
 from collections import OrderedDict
 
+MYPY = False
+if MYPY:
+    from GitSavvy.core.git_command import (
+        BranchesMixin,
+        _GitCommand,
+    )
 
-class RemotesMixin():
+    class mixin_base(
+        BranchesMixin,
+        _GitCommand,
+    ):
+        pass
+
+else:
+    mixin_base = object
+
+
+class RemotesMixin(mixin_base):
 
     def get_remotes(self):
         """

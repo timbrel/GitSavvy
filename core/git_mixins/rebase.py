@@ -1,5 +1,7 @@
 import re
 
+from GitSavvy.core.git_command import mixin_base
+
 
 MYPY = False
 if MYPY:
@@ -9,7 +11,7 @@ if MYPY:
 EXTRACT_BRANCH_NAME = re.compile(r'^[^[]+\[(.*?)(?:[\^\~]+[\d]*)*\]')
 
 
-class NearestBranchMixin(object):
+class NearestBranchMixin(mixin_base):
     """ Provide reusable methods for detecting the nearest of a branch relatives """
 
     def branch_relatives(self, branch):

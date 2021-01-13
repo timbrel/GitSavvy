@@ -14,7 +14,7 @@ from .. import git_mixins
 from ...common import util
 
 
-class GsGithubShowIssuesCommand(TextCommand, GitCommand, git_mixins.GithubRemotesMixin):
+class GsGithubShowIssuesCommand(TextCommand, git_mixins.GithubRemotesMixin, GitCommand):
 
     """
     Display a panel of GitHub issues to either:

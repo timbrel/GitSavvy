@@ -3,6 +3,31 @@ import shutil
 from types import SimpleNamespace
 
 
+MYPY = False
+if MYPY:
+    from GitSavvy.core.git_command import (
+        ActiveBranchMixin,
+        BranchesMixin,
+        CheckoutDiscardMixin,
+        HistoryMixin,
+        StatusMixin,
+        _GitCommand,
+    )
+
+    class mixin_base(
+        ActiveBranchMixin,
+        BranchesMixin,
+        CheckoutDiscardMixin,
+        StatusMixin,
+        HistoryMixin,
+        _GitCommand,
+    ):
+        pass
+
+else:
+    mixin_base = object
+
+
 class RewriteTemplate(SimpleNamespace):
     # orig_hash
     do_commit = True
@@ -20,7 +45,7 @@ class RewriteTemplate(SimpleNamespace):
             return None
 
 
-class RewriteMixin():
+class RewriteMixin(mixin_base):
 
     def log_rebase(self, start, end="HEAD", preserve=False):
         return self.log(
@@ -184,50 +209,6 @@ class RewriteMixin():
         """
         return os.path.join(self.repo_path, ".git", "rebase-replay")
 
-    @property
-    def _rebase_apply_dir(self):
-        return os.path.join(self.repo_path, ".git", "rebase-apply")
-
-    @property
-    def _rebase_merge_dir(self):
-        return os.path.join(self.repo_path, ".git", "rebase-merge")
-
-    @property
-    def _rebase_dir(self):
-        return self._rebase_merge_dir if self.in_rebase_merge() else self._rebase_apply_dir
-
-    def in_rebase_merge(self):
-        return os.path.isdir(self._rebase_merge_dir)
-
-    def in_rebase_apply(self):
-        return os.path.isdir(self._rebase_apply_dir)
-
-    def in_rebase(self):
-        return self.in_rebase_apply() or self.in_rebase_merge()
-
-    def rebase_orig_head(self):
-        path = os.path.join(self._rebase_dir, "orig-head")
-        with open(path, "r") as f:
-            return f.read().strip()
-
-    def rebase_conflict_at(self):
-        if self.in_rebase_merge():
-            path = os.path.join(self._rebase_merge_dir, "current-commit")
-        else:
-            path = os.path.join(self._rebase_apply_dir, "original-commit")
-        with open(path, "r") as f:
-            return f.read().strip()
-
-    def rebase_branch_name(self):
-        path = os.path.join(self._rebase_dir, "head-name")
-        with open(path, "r") as f:
-            return f.read().strip().replace("refs/heads/", "")
-
-    def rebase_onto_commit(self):
-        path = os.path.join(self._rebase_dir, "onto")
-        with open(path, "r") as f:
-            return f.read().strip()
-
     def rebase_rewritten(self):
         if self.in_rebase_merge():
             path = os.path.join(self._rebase_merge_dir, "rewritten")
@@ -238,15 +219,17 @@ class RewriteMixin():
                 with open(os.path.join(path, sha), "r") as f:
                     newsha = f.read().strip()
                     if newsha:
-                        entries.append([sha, newsha])
+                        entries.append((sha, newsha))
             return dict(entries)
         elif self.in_rebase_apply():
             path = os.path.join(self._rebase_apply_dir, "rewritten")
             if not os.path.exists(path):
                 return dict()
             with open(path, "r") as f:
-                entries = f.read().strip().split("\n")
-                return [entry.split(" ") for entry in entries]
+                return dict(
+                    entry.split(" ")  # type: ignore[misc]
+                    for entry in f.read().strip().split("\n")
+                )
         else:
             path = os.path.join(self._rebase_replay_dir, "rewritten")
             if not os.path.exists(path):
@@ -256,7 +239,7 @@ class RewriteMixin():
                 with open(os.path.join(path, sha), "r") as f:
                     newsha = f.read().strip()
                     if newsha:
-                        entries.append([sha, newsha])
+                        entries.append((sha, newsha))
             return dict(entries)
 
     def rewrite_meta_data(self, old_hash, new_hash):

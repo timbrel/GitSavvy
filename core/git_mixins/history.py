@@ -3,6 +3,8 @@ from .. import store
 from ..exceptions import GitSavvyError
 from ...common import util
 
+from GitSavvy.core.git_command import mixin_base
+
 
 MYPY = False
 if MYPY:
@@ -31,7 +33,7 @@ RefLogEntry = namedtuple("RefLogEntry", (
 ))
 
 
-class HistoryMixin():
+class HistoryMixin(mixin_base):
 
     def log(self, author=None, branch=None, file_path=None, start_end=None, cherry=None,
             limit=6000, skip=None, reverse=False, all_branches=False, msg_regexp=None,
@@ -89,7 +91,7 @@ class HistoryMixin():
     def reflog(self, limit=6000, skip=None, all_branches=False):
         log_output = self.git(
             "reflog",
-            "-{}".format(self._limit),
+            "-{}".format(limit),
             "--skip={}".format(skip) if skip else None,
             '--format=%h%n%H%n%s%n%gs%n%gd%n%an%n%at%x00%x00%n',
             "--all" if all_branches else None,

@@ -503,18 +503,21 @@ from .exceptions import GitSavvyError  # noqa: E402
 
 
 class GitCommand(
-    StatusMixin,
-    ActiveBranchMixin,
-    BranchesMixin,
-    StashMixin,
-    StageUnstageMixin,
-    CheckoutDiscardMixin,
-    RemotesMixin,
-    IgnoreMixin,
-    TagsMixin,
-    HistoryMixin,
     RewriteMixin,
+    ActiveBranchMixin,
+
+    RemotesMixin,  # depends on BranchesMixin
+    BranchesMixin,
+    CheckoutDiscardMixin,
+
+    StatusMixin,  # depends on HistoryMixin
+    HistoryMixin,
+
+    IgnoreMixin,
     MergeMixin,
+    StageUnstageMixin,
+    StashMixin,
+    TagsMixin,
     _GitCommand
 ):
     pass
