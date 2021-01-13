@@ -1,7 +1,6 @@
 from collections import deque
 from functools import lru_cache, partial
 from itertools import chain, count, islice
-import locale
 import os
 from queue import Empty
 import re
@@ -722,11 +721,11 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         run_on_new_thread(reader)
 
     @log_git_command
-    def git_stdout(self, *args, show_panel_on_stderr=True, throw_on_stderr=True, got_proc=None, **kwargs):
+    def git_stdout(self, *args, show_panel_on_error=True, throw_on_error=True, got_proc=None, **kwargs):
         # type: (...) -> Iterator[str]
         # Note: Can't use `self.decode_stdout` because it blocks the
         # main thread!
-        decode = decoder(self.savvy_settings)
+        decode = lax_decoder(self.get_encoding_candidates())
         proc = self.git(*args, just_the_proc=True, **kwargs)
         if got_proc:
             got_proc(proc)
@@ -751,7 +750,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
             stderr = ''.join(map(decode, proc.stderr.readlines()))
 
-        if throw_on_stderr and stderr:
+        if throw_on_error and stderr:
             stdout = "<STDOUT SNIPPED>\n" if received_some_stdout else ""
             raise GitSavvyError(
                 "$ {}\n\n{}".format(
@@ -761,7 +760,8 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 cmd=proc.args,
                 stdout=stdout,
                 stderr=stderr,
-                show_panel=show_panel_on_stderr
+                show_panel=show_panel_on_error,
+                window=self.view.window(),
             )
 
     def read_graph(self, got_proc=None):
@@ -773,9 +773,8 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             try:
                 yield from self.git_stdout(
                     *args,
-                    throw_on_stderr=True,
-                    show_status_message_on_stderr=False,
-                    show_panel_on_stderr=False,
+                    throw_on_error=True,
+                    show_panel_on_error=False,
                     got_proc=got_proc
                 )
             except GitSavvyError as e:
@@ -791,6 +790,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                         stdout=e.stdout,
                         stderr=e.stderr,
                         show_panel=True,
+                        window=e.window,
                     )
             else:
                 DATE_FORMAT_STATE = 'final'
@@ -839,12 +839,8 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         return args
 
 
-locally_preferred_encoding = locale.getpreferredencoding()
-
-
-def decoder(settings):
-    encodings = ['utf8', locally_preferred_encoding, settings.get("fallback_encoding")]
-
+def lax_decoder(encodings):
+    # type: (Sequence[str]) -> Callable[[bytes], str]
     def decode(bytes):
         # type: (bytes) -> str
         for encoding in encodings:

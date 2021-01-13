@@ -365,9 +365,8 @@ class HistoryMixin():
             file_path if file_path else None,
             decode=False
         )
-        encodings = self.get_encoding_candidates()
         try:
-            rv, _ = self.try_decode(stdout, encodings, show_modal_on_error=False)
+            rv = self.strict_decode(stdout)
         except UnicodeDecodeError:
             rv = "-- Partially decoded output; � denotes decoding errors --\n"
             rv += stdout.decode("utf-8", "replace")
@@ -411,72 +410,3 @@ class HistoryMixin():
             ).strip().splitlines()[-1]
         except IndexError:
             return None
-
-    def newest_commit_for_file(self, file_path, follow=False):
-        """
-        Get the newest commit for a given file.
-        """
-        return self.git(
-            "log",
-            "--format=%H",
-            "--follow" if follow else None,
-            "-1",
-            "--",
-            file_path,
-        ).strip()
-
-    def get_indexed_file_object(self, file_path):
-        """
-        Given an absolute path to a file contained in a git repo, return
-        git's internal object hash associated with the version of that file
-        in the index (if the file is staged) or in the HEAD (if it is not
-        staged).
-        """
-        stdout = self.git("ls-files", "-s", file_path)
-
-        # 100644 c9d70aa928a3670bc2b879b4a596f10d3e81ba7c 0   SomeFile.py
-        #        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        git_file_entry = stdout.split(" ")
-        return git_file_entry[1]
-
-    def get_head_file_object(self, file_path):
-        """
-        Given an absolute path to a file contained in a git repo, return
-        git's internal object hash associated with the version of that
-        file in the HEAD.
-        """
-        stdout = self.git("ls-tree", "HEAD", file_path)
-
-        # 100644 blob 7317069f30eafd4d7674612679322d59f9fb65a4    SomeFile.py
-        #             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        git_file_entry = stdout.split()  # split by spaces and tabs
-        return git_file_entry[2]
-
-    def get_commit_file_object(self, commit, file_path):
-        """
-        Given an absolute path to a file contained in a git repo, return
-        git's internal object hash associated with the version of that
-        file in the commit.
-        """
-        stdout = self.git("ls-tree", commit, file_path)
-
-        # 100644 blob 7317069f30eafd4d7674612679322d59f9fb65a4    SomeFile.py
-        #             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        git_file_entry = stdout.split()  # split by spaces and tabs
-        return git_file_entry[2]
-
-    def get_object_contents(self, object_hash):
-        """
-        Given the object hash to a versioned object in the current git repo,
-        display the contents of that object.
-        """
-        return self.git("show", "--no-color", object_hash)
-
-    def get_object_from_string(self, string):
-        """
-        Given a string, pipe the contents of that string to git and have it
-        stored in the current repo, and return an object-hash that can be
-        used to diff against.
-        """
-        stdout = self.git("hash-object", "-w", "--stdin", stdin=string, encode=False)
-        return stdout.split("\n")[0]

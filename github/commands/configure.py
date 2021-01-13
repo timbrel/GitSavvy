@@ -24,10 +24,10 @@ class GsGithubConfigureRemoteCommand(WindowCommand, GithubRemotesMixin, GitComma
         """
         remote, remote_branch = branch.split("/", 1)
 
-        self.git("config", "--local", "--unset-all", "GitSavvy.ghRemote", throw_on_stderr=False)
+        self.git("config", "--local", "--unset-all", "GitSavvy.ghRemote", throw_on_error=False)
         self.git("config", "--local", "--add", "GitSavvy.ghRemote", remote)
 
-        self.git("config", "--local", "--unset-all", "GitSavvy.ghBranch", throw_on_stderr=False)
+        self.git("config", "--local", "--unset-all", "GitSavvy.ghBranch", throw_on_error=False)
         self.git("config", "--local", "--add", "GitSavvy.ghBranch", remote_branch)
 
         self.window.status_message("Successfully configured GitHub integration.")

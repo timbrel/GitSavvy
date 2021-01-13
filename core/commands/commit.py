@@ -201,11 +201,11 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
                     stdout=e.stdout,
                     stderr=e.stderr,
                     show_panel=True,
+                    window=e.window,
                 )
 
-        encodings = self.get_encoding_candidates()
         try:
-            diff_text, _ = self.try_decode(raw_diff_text, encodings, show_modal_on_error=False)
+            diff_text = self.strict_decode(raw_diff_text)
         except UnicodeDecodeError:
             diff_text = DECODE_ERROR_MESSAGE
             diff_text += "\n-- Partially decoded output follows; � denotes decoding errors --\n\n"""

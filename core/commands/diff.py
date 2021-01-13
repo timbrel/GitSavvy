@@ -258,9 +258,8 @@ class gs_diff_refresh(TextCommand, GitCommand):
             decode=False
         )
 
-        encodings = self.get_encoding_candidates()
         try:
-            diff, _ = self.try_decode(raw_diff, encodings, show_modal_on_error=False)
+            diff = self.strict_decode(raw_diff)
         except UnicodeDecodeError:
             diff = DECODE_ERROR_MESSAGE
             diff += "\n-- Partially decoded output follows; � denotes decoding errors --\n\n"""

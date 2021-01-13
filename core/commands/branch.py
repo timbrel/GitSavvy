@@ -42,6 +42,7 @@ class gs_delete_branch(GsWindowCommand, GitCommand):
                     stdout=e.stdout,
                     stderr=e.stderr,
                     show_panel=True,
+                    window=e.window,
                 )
 
         match = EXTRACT_COMMIT.search(rv.strip())

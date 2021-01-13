@@ -78,11 +78,15 @@ class GsTagCreateCommand(TextCommand, GitCommand):
             "check-ref-format",
             "--normalize",
             "refs/tags/" + tag_name,
-            throw_on_stderr=False
+            throw_on_error=False
         )
 
         if not stdout:
-            return util.log.panel("\"{}\" is not a valid tag name.".format(tag_name))
+            util.log.display_panel(
+                self.window,  # type: ignore[arg-type]
+                "'{}' is not a valid tag name.".format(tag_name)
+            )
+            return None
 
         self.tag_name = stdout.strip()[10:]
         show_single_line_input_panel(

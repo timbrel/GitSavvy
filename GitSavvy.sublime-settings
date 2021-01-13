@@ -108,18 +108,6 @@
     "show_panel_for": [],
 
     /*
-        Add entries to this array (e.g. "pull" or "push") if you'd like any
-        open panel to be closed at the beginning of the operation.
-     */
-    "close_panel_for": [],
-
-    /*
-        Whether git and githook output is logged live
-        If false, results are shown after execution.
-    */
-    "live_panel_output": false,
-
-    /*
         https://git-scm.com/book/en/v2/Distributed-Git-Contributing-to-a-Project#Commit-Guidelines
         Add a distinct style guide for the commit messages:
 
@@ -135,21 +123,6 @@
     "pedantic_commit_first_line_length": 50,
     "pedantic_commit_message_line_length": 72,
     "pedantic_commit_warning_length": 20,
-
-    /*
-        Change this to `false` to suppress the input in the panel output.
-     */
-    "show_input_in_output": true,
-
-    /*
-        Change this to `true` to print the stdin in the panel output.
-     */
-    "show_stdin_in_output": false,
-
-    /*
-        Change this to `false` to suppress the elapsed time in the panel output.
-     */
-    "show_time_elapsed_in_output": true,
 
     /*
         Change this to `false` to suppress Git status in ST3 status bar.

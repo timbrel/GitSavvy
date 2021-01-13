@@ -754,7 +754,10 @@ class GsRebaseMoveUpCommand(RewriteBase):
             )
             move_cursor(self.view, -2 * idx)
         except Exception as e:
-            GitSavvyError("Unable to move commit, most likely due to a conflict. \n\n{}".format(e))
+            GitSavvyError(
+                "Unable to move commit, most likely due to a conflict. \n\n{}".format(e),
+                window=self.view.window()
+            )
 
 
 class GsRebaseMoveDownCommand(RewriteBase):
@@ -803,7 +806,10 @@ class GsRebaseMoveDownCommand(RewriteBase):
             )
             move_cursor(self.view, 2 * idx)
         except Exception as e:
-            GitSavvyError("Unable to move commit, most likely due to a conflict. \n\n{}".format(e))
+            GitSavvyError(
+                "Unable to move commit, most likely due to a conflict. \n\n{}".format(e),
+                window=self.view.window()
+            )
 
 
 class GsRebaseShowCommitCommand(RewriteBase):

@@ -6,10 +6,10 @@ Define a base command class that:
      for Git operations.
 """
 
-from collections import deque
-from functools import partial
+from collections import deque, ChainMap
 import io
 from itertools import chain, repeat
+from functools import partial
 import locale
 import os
 import subprocess
@@ -22,23 +22,25 @@ import sublime
 
 from ..common import util
 from .settings import SettingsMixin
+from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import run_as_future
 
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Deque, Iterator, Sequence, Tuple
+    from typing import Callable, Deque, Iterator, List, Sequence, Tuple, Union
 
 
 git_path = None
 error_message_displayed = False
 
-FALLBACK_PARSE_ERROR_MSG = (
-    "The Git command returned data that is unparsable.  This may happen "
-    "if you have checked binary data into your repository, or not UTF-8 "
-    "encoded files.  In the latter case use the 'fallback_encoding' setting.  "
-    "The current operation has been aborted."
-)
+DECODE_ERROR_MESSAGE = """
+The Git command returned data that is unparsable.  This may happen
+if you have checked binary data into your repository, or not UTF-8
+encoded files.  In the latter case use the 'fallback_encoding' setting.
+
+-- Partially decoded output follows; � denotes decoding errors --
+"""
 
 MIN_GIT_VERSION = (2, 16, 0)
 GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d} or above."
@@ -102,6 +104,12 @@ def stream_stdout_and_err(proc):
     yield from container
 
 
+STARTUPINFO = None
+if os.name == "nt":
+    STARTUPINFO = subprocess.STARTUPINFO()
+    STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+
 class _GitCommand(SettingsMixin):
 
     """
@@ -110,16 +118,15 @@ class _GitCommand(SettingsMixin):
 
     def git(
         self,
+        git_cmd,
         *args,
         stdin=None,
         working_dir=None,
         show_panel=None,
-        show_panel_on_stderr=True,
-        show_status_message_on_stderr=True,
-        throw_on_stderr=True,
+        show_panel_on_error=True,
+        throw_on_error=True,
         decode=True,
-        encode=True,
-        stdin_encoding="UTF-8",
+        stdin_encoding="utf-8",
         custom_environ=None,
         just_the_proc=False
     ):
@@ -132,84 +139,57 @@ class _GitCommand(SettingsMixin):
         current working directory for the git process; otherwise,
         the `repo_path` value will be used.
         """
-        args = self._include_global_flags(args)
-        command = (self.git_binary_path, ) + tuple(arg for arg in args if arg)
-        command_str = " ".join(["git"] + list(filter(None, args)))
+        window = self.some_window()
+        final_args = self._add_global_flags(git_cmd, list(args))
+        command = [self.git_binary_path] + list(filter_(final_args))
+        command_str = " ".join(["git"] + command[1:])
 
         if show_panel is None:
-            show_panel = args[0] in self.savvy_settings.get("show_panel_for")
+            show_panel = git_cmd in self.savvy_settings.get("show_panel_for")
 
-        if args[0] in self.savvy_settings.get("close_panel_for"):
-            sublime.active_window().run_command("hide_panel", {"cancel": True})
+        if show_panel:
+            panel = util.log.init_panel(window)
+            log = partial(util.log.append_to_panel, panel)
+            log("$ {}\n".format(command_str))
 
-        live_panel_output = self.savvy_settings.get("live_panel_output", False)
+        if not working_dir:
+            try:
+                working_dir = self.repo_path
+            except RuntimeError as e:
+                # do not show panel when the window does not exist
+                raise GitSavvyError(str(e), show_panel=False, window=window)
+            except Exception as e:
+                raise GitSavvyError(str(e), show_panel=show_panel_on_error, window=window)
 
         stdout, stderr = None, None
-
+        environ = ChainMap(
+            custom_environ or {},
+            self.savvy_settings.get("env") or {},
+            os.environ
+        )
         try:
-            if not working_dir:
-                working_dir = self.repo_path
-        except RuntimeError as e:
-            # do not show panel when the window does not exist
-            raise GitSavvyError(str(e), show_panel=False)
-        except Exception as e:
-            raise GitSavvyError(str(e), show_panel=show_panel_on_stderr)
-
-        try:
-            startupinfo = None
-            if os.name == "nt":
-                startupinfo = subprocess.STARTUPINFO()
-                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-
-            environ = os.environ.copy()
-            savvy_env = self.savvy_settings.get("env")
-            if savvy_env:
-                environ.update(savvy_env)
-            environ.update(custom_environ or {})
             start = time.time()
-            p = subprocess.Popen(command,
-                                 stdin=subprocess.PIPE,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 cwd=working_dir,
-                                 env=environ,
-                                 startupinfo=startupinfo)
+            p = subprocess.Popen(
+                command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=working_dir,
+                env=environ,
+                startupinfo=STARTUPINFO
+            )
 
             if just_the_proc:
                 return p
 
-            def initialize_panel():
-                # clear panel
-                util.log.panel("", run_async=False)
-                if self.savvy_settings.get("show_stdin_in_output") and stdin is not None:
-                    util.log.panel_append("STDIN\n{}\n".format(stdin), run_async=False)
-                if self.savvy_settings.get("show_input_in_output"):
-                    util.log.panel_append("$ {}\n".format(command_str), run_async=False)
-
-            if show_panel and live_panel_output:
-                initialize_panel()
-
-            if stdin is not None and encode:
+            if isinstance(stdin, str):
                 stdin = stdin.encode(encoding=stdin_encoding)
 
-            if show_panel and live_panel_output:
-                _log = partial(util.log.panel_append, run_async=False)
-                log_b = lambda line: _log(line.decode())
+            if show_panel:
+                log_b = lambda line: log(line.decode("utf-8", "replace"))
                 stdout, stderr = communicate_and_log(p, stdin, log_b)
             else:
                 stdout, stderr = p.communicate(stdin)
-
-            if decode:
-                stdout, stderr = self.decode_stdout(stdout), self.decode_stdout(stderr)
-
-            if show_panel and not live_panel_output:
-                initialize_panel()
-                if stdout:
-                    util.log.panel_append(stdout)
-                if stderr:
-                    if stdout:
-                        util.log.panel_append("\n")
-                    util.log.panel_append(stderr)
 
         except Exception as e:
             # this should never be reached
@@ -219,51 +199,62 @@ class _GitCommand(SettingsMixin):
                     command_str, working_dir, e, traceback.format_exc()
                 ),
                 cmd=command,
-                show_panel=show_panel_on_stderr)
+                show_panel=show_panel_on_error,
+                window=window
+            )
 
         finally:
             if not just_the_proc:
                 end = time.time()
-                util.debug.log_git(args, stdin, stdout, stderr, end - start)
-                if show_panel and self.savvy_settings.get("show_time_elapsed_in_output", True):
-                    util.log.panel_append("\n[Done in {:.2f}s]".format(end - start))
+                util.debug.log_git(final_args, stdin, stdout, stderr, end - start)
+                if show_panel:
+                    log("\n[Done in {:.2f}s]".format(end - start))
 
-        if throw_on_stderr and not p.returncode == 0:
-            if show_status_message_on_stderr:
-                sublime.active_window().status_message(
-                    "`git {}` failed.".format(command[1])
-                    + (" See log for details." if not show_panel_on_stderr else "")
+        if decode:
+            try:
+                stdout, stderr = self.strict_decode(stdout), self.strict_decode(stderr)  # type: ignore[assignment]
+            except UnicodeDecodeError:
+                stdout_s = stdout.decode("utf-8", "replace")
+                stderr_s = stderr.decode("utf-8", "replace")
+                raise GitSavvyError(
+                    "$ {}\n{}{}{}".format(
+                        command_str,
+                        DECODE_ERROR_MESSAGE,
+                        stdout_s,
+                        stderr_s,
+                    ),
+                    cmd=command,
+                    stdout=stdout_s,
+                    stderr=stderr_s,
+                    show_panel=show_panel_on_error,
+                    window=window
                 )
 
-            if "*** Please tell me who you are." in stderr:
+        if throw_on_error and not p.returncode == 0:
+            stdout_s, stderr_s = self.ensure_decoded(stdout), self.ensure_decoded(stderr)
+            if "*** Please tell me who you are." in stderr_s:
+                show_panel_on_error = False
                 sublime.set_timeout_async(
                     lambda: sublime.active_window().run_command("gs_setup_user"))
 
-            if stdout or stderr:
-                raise GitSavvyError(
-                    "$ {}\n\n{}".format(command_str, ''.join([stdout, stderr])),
-                    cmd=command,
-                    stdout=stdout,
-                    stderr=stderr,
-                    show_panel=show_panel_on_stderr
-                )
-            else:
-                raise GitSavvyError(
-                    "`{}` failed.".format(command_str),
-                    cmd=command,
-                    stdout=stdout,
-                    stderr=stderr,
-                    show_panel=show_panel_on_stderr
-                )
+            raise GitSavvyError(
+                "$ {}\n\n{}{}".format(command_str, stdout_s, stderr_s),
+                cmd=command,
+                stdout=stdout_s,
+                stderr=stderr_s,
+                # If `show_panel` is set, we log *while* running the process
+                # and thus don't need to log again.
+                show_panel=show_panel_on_error and not show_panel,
+                window=window
+            )
 
         return stdout
 
     def git_throwing_silently(self, *args, **kwargs):
         return self.git(
             *args,
-            throw_on_stderr=True,
-            show_status_message_on_stderr=False,
-            show_panel_on_stderr=False,
+            throw_on_error=True,
+            show_panel_on_error=False,
             **kwargs
         )
 
@@ -275,27 +266,34 @@ class _GitCommand(SettingsMixin):
             self.savvy_settings.get("fallback_encoding")
         ]
 
-    def decode_stdout(self, stdout):
+    def strict_decode(self, input):
         # type: (bytes) -> str
         encodings = self.get_encoding_candidates()
-        decoded, _ = self.try_decode(stdout, encodings)
+        decoded, _ = self.try_decode(input, encodings)
         return decoded
 
-    def try_decode(self, input, encodings, show_modal_on_error=True):
-        # type: (bytes, Sequence[str], bool) -> Tuple[str, str]
+    def ensure_decoded(self, input):
+        # type: (Union[str, bytes]) -> str
+        if isinstance(input, str):
+            return input
+        return self.lax_decode(input)
+
+    def lax_decode(self, input):
+        # type: (bytes) -> str
+        try:
+            return self.strict_decode(input)
+        except UnicodeDecodeError:
+            return input.decode("utf-8", "replace")
+
+    def try_decode(self, input, encodings):
+        # type: (bytes, Sequence[str]) -> Tuple[str, str]
         for n, encoding in enumerate(encodings, start=1):
             try:
                 return input.decode(encoding), encoding
             except UnicodeDecodeError as err:
                 if n == len(encodings):
-                    if show_modal_on_error:
-                        sublime.error_message(FALLBACK_PARSE_ERROR_MSG)
                     raise err
         assert False  # no silent fall-through
-
-    @property
-    def encoding(self):
-        return "UTF-8"
 
     @property
     def git_binary_path(self):
@@ -317,16 +315,11 @@ class _GitCommand(SettingsMixin):
                 git_path = shutil.which("git")
 
             try:
-                startupinfo = None
-                if os.name == "nt":
-                    startupinfo = subprocess.STARTUPINFO()
-                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-
                 stdout = subprocess.check_output(
                     [git_path, "--version"],
                     stderr=subprocess.PIPE,
-                    startupinfo=startupinfo).decode("utf-8")
-
+                    startupinfo=STARTUPINFO
+                ).decode()
             except Exception:
                 stdout = ""
                 git_path = None
@@ -382,7 +375,7 @@ class _GitCommand(SettingsMixin):
         if view and view.file_name():
             file_dir = os.path.dirname(view.file_name())
             if os.path.isdir(file_dir):
-                repo_path = self.find_git_toplevel(file_dir, throw_on_stderr=False)
+                repo_path = self.find_git_toplevel(file_dir, throw_on_error=False)
 
         # fallback: use the first folder if the current file is not inside a git repo
         if not repo_path:
@@ -390,16 +383,16 @@ class _GitCommand(SettingsMixin):
                 folders = window.folders()
                 if folders and os.path.isdir(folders[0]):
                     repo_path = self.find_git_toplevel(
-                        folders[0], throw_on_stderr=False)
+                        folders[0], throw_on_error=False)
 
         return os.path.realpath(repo_path) if repo_path else None
 
-    def find_git_toplevel(self, folder, throw_on_stderr):
+    def find_git_toplevel(self, folder, throw_on_error):
         stdout = self.git(
             "rev-parse",
             "--show-toplevel",
             working_dir=folder,
-            throw_on_stderr=throw_on_stderr
+            throw_on_error=throw_on_error
         )
         repo = stdout.strip()
         return os.path.realpath(repo) if repo else None
@@ -477,25 +470,15 @@ class _GitCommand(SettingsMixin):
         path = abs_path or self.file_path
         return os.path.relpath(os.path.realpath(path), start=self.repo_path)
 
-    def _include_global_flags(self, args):
+    def _add_global_flags(self, git_cmd, args):
+        # type: (str, List[str]) -> List[str]
         """
         Transforms the Git command arguments with flags indicated in the
         global GitSavvy settings.
         """
-        git_cmd, *addl_args = args
-
-        global_flags = self.savvy_settings.get("global_flags")
-        global_pre_flags = self.savvy_settings.get("global_pre_flags")
-
-        if global_flags and git_cmd in global_flags:
-            args = [git_cmd] + global_flags[git_cmd] + addl_args
-        else:
-            args = [git_cmd] + list(addl_args)
-
-        if global_pre_flags and git_cmd in global_pre_flags:
-            args = global_pre_flags[git_cmd] + args
-
-        return args
+        global_pre_flags = self.savvy_settings.get("global_pre_flags", {}).get(git_cmd, [])
+        global_flags = self.savvy_settings.get("global_flags", {}).get(git_cmd, [])
+        return global_pre_flags + [git_cmd] + global_flags + args
 
 
 if MYPY:

@@ -152,7 +152,7 @@ class ActiveBranchMixin():
             "-n 1",
             "--pretty=format:%h %s",
             "--abbrev-commit",
-            throw_on_stderr=False
+            throw_on_error=False
         ).strip()
         if stdout:
             try:
@@ -169,7 +169,7 @@ class ActiveBranchMixin():
         Return ref for remote tracking branch.
         """
         return self.git("rev-parse", "--abbrev-ref", "--symbolic-full-name",
-                        "@{u}", throw_on_stderr=False).strip()
+                        "@{u}", throw_on_error=False).strip()
 
     def get_remote_for_branch(self, branch_name):
         # type: (str) -> Optional[str]
@@ -177,5 +177,5 @@ class ActiveBranchMixin():
             "config",
             "--get",
             "branch.{}.remote".format(branch_name),
-            throw_on_stderr=False
+            throw_on_error=False
         ).strip() or None

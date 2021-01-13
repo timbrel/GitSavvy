@@ -25,7 +25,7 @@ class FlowCommon(WindowCommand, GitCommand):
         }
         for conf in GITFLOW_CONF:
             self.flow_settings[conf] = self.git(
-                "config", "gitflow.%s" % conf, throw_on_stderr=False
+                "config", "gitflow.%s" % conf, throw_on_error=False
             ).strip()
 
     def run(self, **kwargs):

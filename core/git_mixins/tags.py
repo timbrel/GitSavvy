@@ -18,7 +18,7 @@ class TagsMixin():
             "ls-remote" if remote else "show-ref",
             "--tags",
             remote if remote else None,
-            throw_on_stderr=False
+            throw_on_error=False
         )
         porcelain_entries = stdout.split("\n")
         if reverse:
@@ -34,7 +34,7 @@ class TagsMixin():
         Return the last tag of the current branch. get_tags() fails to return an ordered list.
         """
 
-        tag = self.git("describe", "--tags", "--abbrev=0", throw_on_stderr=False).strip()
+        tag = self.git("describe", "--tags", "--abbrev=0", throw_on_error=False).strip()
         return tag
 
     def handle_semver_tags(self, entries):

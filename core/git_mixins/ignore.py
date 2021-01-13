@@ -17,7 +17,7 @@ class IgnoreMixin():
             # Use native line ending on Windows only when `autocrlf` is set to `true`.
             if os.name == "nt":
                 autocrlf = self.git("config", "--global", "core.autocrlf",
-                                    throw_on_stderr=False).strip() == "true"
+                                    throw_on_error=False).strip() == "true"
                 linesep = os.linesep if autocrlf else "\n"
             else:
                 linesep = os.linesep
