@@ -42,6 +42,12 @@ contexts:
             1: comment.git-savvy.summary-header.title.head
             2: constant.other.git-savvy.sha1
 
+        - match: ^\s+(Stopped at[:])(?:\s+([0-9a-f]{7,40}) .+)?
+          captures:
+            1: keyword.git-savvy.summary-header.rebase.current
+            2: constant.other.git-savvy.sha1
+
+
     - match: "^  (#{3,})"
       comment: Key-bindings menu
       captures:

@@ -142,7 +142,11 @@ class StatusMixin(mixin_base):
     def get_branch_status_short(self):
         # type: () -> str
         if self.in_rebase():
-            return "(no branch, rebasing {})".format(self.rebase_branch_name())
+            rebase_progress = self._rebase_progress()
+            return "(no branch, rebasing {}{})".format(
+                self.rebase_branch_name(),
+                " {}".format(rebase_progress) if rebase_progress else ""
+            )
 
         lines = self._get_status()
         branch_status = self._get_branch_status_components(lines)
@@ -215,7 +219,18 @@ class StatusMixin(mixin_base):
             secondary.append("Merging {}.".format(self.merge_head()))
 
         if self.in_rebase():
-            secondary.append("Rebasing {}.".format(self.rebase_branch_name()))
+            onto = self._read_rebase_file("onto")
+            rebase_progress = self._rebase_progress()
+            secondary.append(
+                "Rebasing {}{}{}.".format(
+                    self.rebase_branch_name(),
+                    " onto `{}`".format(self.get_short_hash(onto)) if onto else "",
+                    " ({})".format(rebase_progress) if rebase_progress else ""
+                )
+            )
+            rebase_stopped_at = self.rebase_stopped_at()
+            if rebase_stopped_at:
+                secondary.append("Stopped at: {}.".format(rebase_stopped_at))
 
         return delim.join([status] + secondary) if secondary else status
 
@@ -281,9 +296,52 @@ class StatusMixin(mixin_base):
         # type: () -> str
         return self._read_rebase_file("onto")
 
+    def rebase_stopped_at(self):
+        # type: () -> str
+        commit_hash = self._read_git_file("REBASE_HEAD")
+        if not commit_hash:
+            return ""
+
+        done = self._read_rebase_file("done")
+        comment_char = "#"
+        try:
+            item = [
+                line
+                for line in done.splitlines()
+                if line and not line.startswith(comment_char)
+            ][-1]
+        except IndexError:
+            return ""
+
+        parts = item.split()
+        if parts[0] in {"pick", "fixup", "squash", "reword", "edit"}:
+            parts[1] = self.get_short_hash(parts[1])
+            if parts[0] in {"reword", "edit"}:
+                return " ".join(parts)
+            else:
+                return " ".join(parts[1:])
+        else:
+            return item
+
+    def _rebase_progress(self):
+        # type: () -> str
+        cursor, total = self._read_rebase_file("msgnum"), self._read_rebase_file("end")
+        if cursor and total:
+            return "{}/{}".format(cursor, total)
+        return ""
+
     def _read_rebase_file(self, fname):
         # type: (str) -> str
         path = os.path.join(self._rebase_dir, fname)
+        try:
+            with open(path, "r") as f:
+                return f.read().strip()
+        except Exception:
+            return ""
+
+    def _read_git_file(self, fname):
+        # type: (str) -> str
+        path = os.path.join(self.repo_path, ".git", fname)
         try:
             with open(path, "r") as f:
                 return f.read().strip()
