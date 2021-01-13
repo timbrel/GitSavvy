@@ -3,17 +3,18 @@ Implements a special view to visualize and stage pieces of a project's
 current diff.
 """
 
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 from contextlib import contextmanager
-from itertools import chain, count, takewhile
+from itertools import chain, count, groupby, takewhile
 import os
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import intra_line_colorizer
+from . import stage_hunk
 from .navigate import GsNavigate
-from ..fns import filter_, flatten
+from ..fns import filter_, flatten, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_ui, enqueue_on_worker
@@ -39,10 +40,10 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import (
-        Iterable, Iterator, List, NamedTuple, Optional, Set,
+        Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set,
         Tuple, TypeVar
     )
-    from ..parse_diff import Hunk, HunkLine, TextRange
+    from ..parse_diff import FileHeader, Hunk, HunkLine, TextRange
     from ..types import LineNo, ColNo
 
     T = TypeVar('T')
@@ -449,6 +450,7 @@ class gs_diff_zoom(TextCommand):
 
 if MYPY:
     LineId = NamedTuple("LineId", [("a", LineNo), ("b", LineNo)])
+    HunkLineWithLineNumbers = Tuple[HunkLine, LineId]
     HunkLineWithLineId = Tuple[TextRange, LineId]
 else:
     LineId = namedtuple("LineId", "a b")
@@ -462,15 +464,7 @@ def compute_line_ids_for_hunk(hunk):
     metadata = hunk.header().safely_parse_metadata()
     (a_start, _), (b_start, _) = metadata[0], metadata[-1]
     yield hunk.header(), LineId(a_start - 1, b_start - 1)
-    for line in hunk.content().lines():
-        yield line, LineId(a_start, b_start)
-        if line.is_context():
-            a_start += 1
-            b_start += 1
-        elif line.is_from_line():
-            a_start += 1
-        elif line.is_to_line():
-            b_start += 1
+    yield from __recount_lines(hunk.content().lines(), a_start, b_start)
 
 
 def find_line_in_diff(diff, head_line, wanted_line_id):
@@ -511,57 +505,60 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
     # the view and the repo state get out of sync and e.g. hitting 'h' very fast will
     # result in errors.
 
-    def run(self, edit, reset=False):
+    def run(self, edit, reset=False, whole_file=False):
+        # type: (sublime.Edit, bool, bool) -> None
         ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
         if ignore_whitespace:
             sublime.error_message("Staging is not supported while ignoring [w]hitespace is on.")
             return None
 
-        # Filter out any cursors that are larger than a single point.
-        cursor_pts = tuple(cursor.a for cursor in self.view.sel() if cursor.a == cursor.b)
+        frozen_sel = [s for s in self.view.sel()]
+        cursor_pts = [s.a for s in frozen_sel]
         diff = SplittedDiff.from_view(self.view)
 
-        patches = unique(flatten(filter_(diff.head_and_hunk_for_pt(pt) for pt in cursor_pts)))
-        patch = ''.join(part.text for part in patches)
+        if whole_file or all(s.empty() for s in frozen_sel):
+            if whole_file:
+                hunks = filter_(map(diff.hunk_for_pt, cursor_pts))
+                headers = unique(map(diff.head_for_hunk, hunks))
+                patches = flatten(chain([head], diff.hunks_for_head(head)) for head in headers)
+            else:
+                patches = unique(flatten(filter_(diff.head_and_hunk_for_pt(pt) for pt in cursor_pts)))
+            patch = ''.join(part.text for part in patches)
+            zero_diff = self.view.settings().get('git_savvy.diff_view.context_lines') == 0
+        else:
+            line_starts = selected_line_starts(self.view, frozen_sel)
+            in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
+            patch = compute_patch_for_sel(diff, line_starts, reset or in_cached_mode)
+            zero_diff = True
 
         if patch:
-            self.apply_patch(patch, cursor_pts, reset)
+            self.apply_patch(patch, cursor_pts, reset, zero_diff)
+            first_cursor = self.view.sel()[0].begin()
+            self.view.sel().clear()
+            self.view.sel().add(first_cursor)
         else:
             window = self.view.window()
             if window:
                 window.status_message('Not within a hunk')
 
-    def apply_patch(self, patch, pts, reset):
+    def apply_patch(self, patch, pts, reset, zero_diff):
+        # type: (str, List[int], bool, bool) -> None
         in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
-        context_lines = self.view.settings().get('git_savvy.diff_view.context_lines')
 
-        # The three argument combinations below result from the following
-        # three scenarios:
-        #
-        # 1) The user is in non-cached mode and wants to stage a hunk, so
-        #    do NOT apply the patch in reverse, but do apply it only against
-        #    the cached/indexed file (not the working tree).
-        # 2) The user is in non-cached mode and wants to undo a line/hunk, so
-        #    DO apply the patch in reverse, and do apply it both against the
-        #    index and the working tree.
-        # 3) The user is in cached mode and wants to undo a line hunk, so DO
-        #    apply the patch in reverse, but only apply it against the cached/
-        #    indexed file.
-        #
-        # NOTE: When in cached mode, no action will be taken when the user
-        #       presses SUPER-BACKSPACE.
+        # ATT: Undo expects always the same args length and order!
+        args = ["apply"]  # type: List[Optional[str]]
+        if reset:
+            args += ["-R", None]        # discard
+        elif in_cached_mode:
+            args += ["-R", "--cached"]  # unstage
+        else:
+            args += [None, "--cached"]  # stage
 
-        args = (
-            "apply",
-            "-R" if (reset or in_cached_mode) else None,
-            "--cached" if (in_cached_mode or not reset) else None,
-            "--unidiff-zero" if context_lines == 0 else None,
-            "-",
-        )
-        self.git(
-            *args,
-            stdin=patch
-        )
+        if zero_diff:
+            args += ["--unidiff-zero"]
+
+        args += ["-"]
+        self.git(*args, stdin=patch)
 
         history = self.view.settings().get("git_savvy.diff_view.history")
         history.append((args, patch, pts, in_cached_mode))
@@ -569,6 +566,56 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         self.view.settings().set("git_savvy.diff_view.just_hunked", patch)
 
         self.view.run_command("gs_diff_refresh")
+
+
+def selected_line_starts(view, sel):
+    # type: (sublime.View, List[sublime.Region]) -> Set[int]
+    selected_lines = flatten(map(view.lines, sel))
+    return set(line.a for line in selected_lines)
+
+
+def chunkby(it, predicate):
+    # type: (Iterable[T], Callable[[T], bool]) -> Iterator[List[T]]
+    return (list(items) for selected, items in groupby(it, key=predicate) if selected)
+
+
+def compute_patch_for_sel(diff, line_starts, reverse):
+    # type: (SplittedDiff, Set[int], bool) -> str
+    hunks = unique(filter_(diff.hunk_for_pt(pt) for pt in sorted(line_starts)))
+
+    def not_context(line_ab):
+        line, _ = line_ab
+        return not line.is_context()
+
+    def selected(line_ab):
+        line, _ = line_ab
+        return line.a in line_starts
+
+    patches = defaultdict(list)  # type: Dict[FileHeader, List[stage_hunk.Hunk]]
+    for hunk in hunks:
+        header = diff.head_for_hunk(hunk)
+        for chunk in chunkby(recount_lines(hunk), not_context):
+            selected_lines = list(filter(selected, chunk))
+            if selected_lines:
+                patches[header].append(form_patch(selected_lines))
+
+    whole_patch = "".join(
+        stage_hunk.format_patch(header.text, hunks, reverse=reverse)
+        for header, hunks in patches.items()
+    )
+    return whole_patch
+
+
+def form_patch(lines):
+    # type: (List[HunkLineWithLineNumbers]) -> stage_hunk.Hunk
+    line, a_b = lines[0]
+    a_start, b_start = a_b
+    if lines[0][0].is_from_line() and lines[-1][0].is_to_line():
+        b_start = next(a_b.b for line, a_b in lines if line.is_to_line())
+    alen = sum(1 for line, a_b in lines if not line.is_to_line())
+    blen = sum(1 for line, a_b in lines if not line.is_from_line())
+    content = "".join(line.text for line, a_b in lines)
+    return stage_hunk.Hunk(a_start, alen, b_start, blen, content)
 
 
 MYPY = False
@@ -682,7 +729,7 @@ def row_offset_and_col_in_hunk(view, hunk, pt):
 def real_linecol_in_hunk(hunk, row_offset, col):
     # type: (Hunk, int, ColNo) -> Optional[LineCol]
     """Translate relative to absolute line, col pair"""
-    hunk_lines = counted_lines(hunk)
+    hunk_lines = list(recount_lines_for_jump_to_file(hunk))
 
     # If the user is on the header line ('@@ ..') pretend to be on the
     # first visible line with some content instead.
@@ -721,25 +768,53 @@ def real_linecol_in_hunk(hunk, row_offset, col):
         return b, 1
 
 
-def counted_lines(hunk):
-    # type: (Hunk) -> List[HunkLineWithB]
-    """Split a hunk into (first char, line content, line) tuples
+def recount_lines_for_jump_to_file(hunk):
+    # type: (Hunk) -> Iterator[HunkLineWithB]
+    """Recount lines for the jump-to-file feature.
 
-    Note that rows point to available rows on the b-side.
+    Only computes b values and handles deletions weird, e.g. for
+
+    ```
+        @@ -383,4 +383,3 @@ class gs_diff_zoom(TextCommand):
+             step_size = max(abs(amount), MIN_STEP_SIZE)
+    -        values = chain([MINIMUM, DEFAULT], count(step_size, step_size))
+    -        if amount > 0:
+    +        zif amount > 0:
+             next_value = next(x for x in values if x > current)
+
+    ```
+
+    yields `(383, 384, 384, 384, 385)`.  That's visually appealing
+    though.
+
     """
-    b = hunk.header().to_line_start()
-    return list(_recount_lines(hunk.content().lines(), b))
-
-
-def _recount_lines(lines, b):
-    # type: (List[HunkLine], int) -> Iterator[HunkLineWithB]
-
-    # Be aware that we only consider the b-line numbers, and that we
-    # always yield a b value, even for deleted lines.
-    for line in lines:
-        yield HunkLineWithB(line, b)
+    b_start = hunk.header().to_line_start()
+    for line in hunk.content().lines():
+        yield HunkLineWithB(line, b_start)
         if not line.is_from_line():
-            b += 1
+            b_start += 1
+
+
+def recount_lines(hunk):
+    # type: (Hunk) -> Iterator[HunkLineWithLineNumbers]
+    a_start, _, b_start, _ = hunk.header().parse()
+    yield from __recount_lines(hunk.content().lines(), a_start, b_start)
+
+
+def __recount_lines(hunk_lines, a_start, b_start):
+    # type: (Iterable[HunkLine], int, int) -> Iterator[HunkLineWithLineNumbers]
+    it = iter(hunk_lines)
+    line = next(it)
+    yield line, LineId(a_start, b_start)
+    for line in it:
+        if line.is_context():
+            a_start += 1
+            b_start += 1
+        elif line.is_from_line():
+            a_start += 1
+        elif line.is_to_line():
+            b_start += 1
+        yield line, LineId(a_start, b_start)
 
 
 class gs_diff_navigate(GsNavigate):
@@ -841,16 +916,6 @@ def pickle_sel(sel):
 
 def unpickle_sel(pickled_sel):
     return [sublime.Region(a, b) for a, b in pickled_sel]
-
-
-def unique(items):
-    # type: (Iterable[T]) -> List[T]
-    """Remove duplicate entries but remain sorted/ordered."""
-    rv = []  # type: List[T]
-    for item in items:
-        if item not in rv:
-            rv.append(item)
-    return rv
 
 
 def set_and_show_cursor(view, cursors):
