@@ -1,10 +1,10 @@
 from collections import namedtuple
 from functools import partial
-from itertools import chain, takewhile
+from itertools import chain, dropwhile, takewhile
 import re
 
 import sublime
-from .fns import accumulate, pairwise
+from .fns import accumulate, flatten, pairwise, tail
 
 
 MYPY = False
@@ -51,19 +51,35 @@ class SplittedDiff(SplittedDiffBase):
 
     def head_and_hunk_for_pt(self, pt):
         # type: (int) -> Optional[Tuple[FileHeader, Hunk]]
-        for hunk in self.hunks:
-            if hunk.a <= pt < hunk.b:
-                break
+        hunk = self.hunk_for_pt(pt)
+        if hunk:
+            return self.head_for_hunk(hunk), hunk
         else:
             return None
 
-        return self.head_for_hunk(hunk), hunk
+    def hunk_for_pt(self, pt):
+        # type: (int) -> Optional[Hunk]
+        for hunk in self.hunks:
+            if hunk.a <= pt < hunk.b:
+                return hunk
+        else:
+            return None
 
     def head_for_hunk(self, hunk):
         # type: (Hunk) -> FileHeader
         return max(
             (header for header in self.headers if header.a < hunk.a),
             key=lambda h: h.a
+        )
+
+    def hunks_for_head(self, head):
+        # type: (FileHeader) -> Iterator[Hunk]
+        return takewhile(
+            lambda x: isinstance(x, Hunk),
+            tail(dropwhile(
+                lambda x: x != head,
+                sorted(self.headers + self.hunks, key=lambda x: x.a)
+            ))
         )
 
     def commit_for_hunk(self, hunk):
@@ -135,6 +151,10 @@ class FileHeader(TextRange):
 
         return match.group(1)
 
+    def first_line(self):
+        # type: () -> str
+        return self.text[:self.text.index('\n')]
+
 
 class Hunk(TextRange):
     def mode_len(self):
@@ -157,8 +177,7 @@ class Hunk(TextRange):
         )
 
 
-EXTRACT_B_START = re.compile(r'@@*.+\+(\d+)(?:,\d+)? ')
-PARSE_HUNK_HEADER = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+SAFE_PARSE_HUNK_HEADER = re.compile(r"[-+](\d+)(?:,(\d+))?")
 
 
 class UnsupportedCombinedDiff(RuntimeError):
@@ -167,24 +186,41 @@ class UnsupportedCombinedDiff(RuntimeError):
 
 class HunkHeader(TextRange):
     def to_line_start(self):
-        # type: () -> Optional[LineNo]
+        # type: () -> LineNo
         """Extract the starting line at "b" encoded in the hunk header
 
         T.i. for "@@ -685,8 +686,14 @@ ..." extract the "686".
         """
-        match = EXTRACT_B_START.search(self.text)
-        if not match:
-            return None
-
-        return int(match.group(1))
+        metadata = self.safely_parse_metadata()
+        return metadata[-1][0]
 
     def parse(self):
         # type: () -> Tuple[LineNo, int, LineNo, int]
-        match = PARSE_HUNK_HEADER.match(self.text)
-        if match is None:
+        """Extract the line start and length data for a normal patch.
+
+        T.i. for "@@ -685,8 +686,14 @@ ..." extract `(685, 8, 686, 14)`.
+
+        Raises `UnsupportedCombinedDiff` for cc diffs.
+        """
+        metadata = self.safely_parse_metadata()
+        if len(metadata) > 2:
             raise UnsupportedCombinedDiff(self.text)
-        a_start, a_length, b_start, b_length = match.groups()
-        return int(a_start), int(a_length or "1"), int(b_start), int(b_length or "1")
+        assert len(metadata) == 2
+        return tuple(flatten(metadata))  # type: ignore[return-value]
+
+    def safely_parse_metadata(self):
+        # type: () -> List[Tuple[LineNo, int]]
+        """Extract all line start/length pairs from the hunk header
+
+        T.i. for "@@ -685,8 +686,14 @@ ..." extract `[(685, 8), (686, 14)]`.
+
+        We do not extract the `-+` signs.  All leading segments have a
+        `-` sign, and the last segment has a `+`.
+        """
+        return [
+            (int(start), int(length or "1"))
+            for start, length in SAFE_PARSE_HUNK_HEADER.findall(self.text)
+        ]
 
 
 class HunkLine(TextRange):

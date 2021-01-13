@@ -485,12 +485,21 @@ class TestZooming(DeferrableTestCase):
         verify(cmd).git('diff', None, FLAG, ...)
 
     @p.expand([
-        (0, 2, 2),
-        (3, 2, 5),
-        (3, -2, 1),
-        (2, -2, 0),
-        (1, -2, 0),
-        (0, -2, 0),
+        (1, 5, 3),
+        (2, 5, 3),
+        (2, 5, 3),
+        (3, 5, 5),
+        (4, 5, 5),
+        (5, 5, 10),
+        (10, 5, 15),
+
+        (15, -5, 10),
+        (10, -5, 5),
+        (5, -5, 3),
+        (4, -5, 3),
+        (3, -5, 1),
+        (2, -5, 1),
+        (1, -5, 1),
     ])
     def test_updates_view_state_when_zooming(self, BEFORE, AMOUNT, EXPECTED):
         view = self.window.new_file()

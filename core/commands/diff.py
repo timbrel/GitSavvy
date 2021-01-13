@@ -5,6 +5,7 @@ current diff.
 
 from collections import namedtuple
 from contextlib import contextmanager
+from itertools import chain, count, takewhile
 import os
 
 import sublime
@@ -17,7 +18,7 @@ from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view, line_indentation
-from ..view import replace_view_content, Position
+from ..view import replace_view_content, row_offset, Position
 from ...common import util
 
 
@@ -41,7 +42,7 @@ if MYPY:
         Iterable, Iterator, List, NamedTuple, Optional, Set,
         Tuple, TypeVar
     )
-    from ..parse_diff import Hunk, HunkLine
+    from ..parse_diff import Hunk, HunkLine, TextRange
     from ..types import LineNo, ColNo
 
     T = TypeVar('T')
@@ -381,28 +382,106 @@ class gs_diff_zoom(TextCommand):
         # type: (sublime.Edit, int) -> None
         settings = self.view.settings()
         current = settings.get('git_savvy.diff_view.context_lines')
-        next = max(current + amount, 0)
-        settings.set('git_savvy.diff_view.context_lines', next)
+
+        MINIMUM, DEFAULT, MIN_STEP_SIZE = 1, 3, 5
+        step_size = max(abs(amount), MIN_STEP_SIZE)
+        values = chain([MINIMUM, DEFAULT], count(step_size, step_size))
+        if amount > 0:
+            next_value = next(x for x in values if x > current)
+        else:
+            try:
+                next_value = list(takewhile(lambda x: x < current, values))[-1]
+            except IndexError:
+                next_value = MINIMUM
+
+        settings.set('git_savvy.diff_view.context_lines', next_value)
 
         # Getting a meaningful cursor after 'zooming' is the tricky part
         # here. We first extract all hunks under the cursors *verbatim*.
         diff = SplittedDiff.from_view(self.view)
-        cur_hunks = [
-            header.text + hunk.text
-            for header, hunk in filter_(diff.head_and_hunk_for_pt(s.a) for s in self.view.sel())
-        ]
+        cur_hunks = []
+        for s in self.view.sel():
+            hunk = diff.hunk_for_pt(s.a)
+            if hunk:
+                head_line = diff.head_for_hunk(hunk).first_line()
+                for line, line_id in compute_line_ids_for_hunk(hunk):
+                    line_region = line.region()
+                    # `line_region` spans the *full* line including the
+                    # trailing newline char (if any).  Compare excluding
+                    # `line_region.b` to not match a cursor at BOL
+                    # position on the next line.
+                    if line_region.a <= s.a < line_region.b:
+                        cur_hunks.append((head_line, line_id, row_offset(self.view, s.a)))
+                        break
+                else:
+                    # If the user is on the very last line of the view, create
+                    # a fake line after that.
+                    cur_hunks.append((
+                        head_line,
+                        LineId(line_id.a + 1, line_id.b + 1),
+                        row_offset(self.view, s.a)
+                    ))
 
         self.view.run_command("gs_diff_refresh")
 
         # Now, we fuzzy search the new view content for the old hunks.
-        cursors = {
-            region.a
-            for region in (
-                filter_(find_hunk_in_view(self.view, hunk) for hunk in cur_hunks)
-            )
-        }
-        if cursors:
-            set_and_show_cursor(self.view, cursors)
+        diff = SplittedDiff.from_view(self.view)
+        cursors = set()
+        scroll_offsets = []
+        for head_line, line_id, offset in cur_hunks:
+            region = find_line_in_diff(diff, head_line, line_id)
+            if region:
+                cursors.add(region.a)
+                row, _ = self.view.rowcol(region.a)
+                scroll_offsets.append((row, offset))
+
+        if not cursors:
+            return
+
+        self.view.sel().clear()
+        self.view.sel().add_all(list(cursors))
+
+        row, offset = min(scroll_offsets, key=lambda row_offset: abs(row_offset[1]))
+        vy = (row - offset) * self.view.line_height()
+        vx, _ = self.view.viewport_position()
+        self.view.set_viewport_position((vx, vy), animate=False)
+
+
+if MYPY:
+    LineId = NamedTuple("LineId", [("a", LineNo), ("b", LineNo)])
+    HunkLineWithLineId = Tuple[TextRange, LineId]
+else:
+    LineId = namedtuple("LineId", "a b")
+
+
+def compute_line_ids_for_hunk(hunk):
+    # type: (Hunk) -> Iterator[HunkLineWithLineId]
+    # Use `safely_parse_metadata` to not throw on combined diffs.
+    # In that case, the computed line numbers can only be used as identifiers,
+    # really counting lines from a combined diff is not implemented here!
+    metadata = hunk.header().safely_parse_metadata()
+    (a_start, _), (b_start, _) = metadata[0], metadata[-1]
+    yield hunk.header(), LineId(a_start - 1, b_start - 1)
+    for line in hunk.content().lines():
+        yield line, LineId(a_start, b_start)
+        if line.is_context():
+            a_start += 1
+            b_start += 1
+        elif line.is_from_line():
+            a_start += 1
+        elif line.is_to_line():
+            b_start += 1
+
+
+def find_line_in_diff(diff, head_line, wanted_line_id):
+    # type: (SplittedDiff, str, LineId) -> Optional[sublime.Region]
+    header = next((h for h in diff.headers if h.first_line() == head_line), None)
+    if header:
+        for hunk in diff.hunks_for_head(header):
+            for line, line_id in compute_line_ids_for_hunk(hunk):
+                if line_id >= wanted_line_id:
+                    return line.region()
+    return None
 
 
 class GsDiffFocusEventListener(EventListener):
@@ -604,8 +683,6 @@ def real_linecol_in_hunk(hunk, row_offset, col):
     # type: (Hunk, int, ColNo) -> Optional[LineCol]
     """Translate relative to absolute line, col pair"""
     hunk_lines = counted_lines(hunk)
-    if not hunk_lines:
-        return None
 
     # If the user is on the header line ('@@ ..') pretend to be on the
     # first visible line with some content instead.
@@ -645,14 +722,12 @@ def real_linecol_in_hunk(hunk, row_offset, col):
 
 
 def counted_lines(hunk):
-    # type: (Hunk) -> Optional[List[HunkLineWithB]]
+    # type: (Hunk) -> List[HunkLineWithB]
     """Split a hunk into (first char, line content, line) tuples
 
     Note that rows point to available rows on the b-side.
     """
     b = hunk.header().to_line_start()
-    if b is None:
-        return None
     return list(_recount_lines(hunk.content().lines(), b))
 
 
