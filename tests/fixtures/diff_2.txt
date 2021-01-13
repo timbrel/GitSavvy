@@ -5,7 +5,6 @@ Commit:     Not Herr Kaste <not.herr.kaste@gmail.com>
 CommitDate: Fri Oct 6 13:25:58 2017 -0300
 
     modules ... maybe
-
 ---
  src/{constants.js => constants.mjs}     |  0
  src/{detected.js => detected.mjs}       |  0
