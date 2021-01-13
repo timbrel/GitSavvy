@@ -271,16 +271,16 @@ class StatusInterface(ui.Interface, GitCommand):
         if not on_special_symbol:
             self.view.run_command("gs_status_navigate_goto")
 
-    def fetch_repo_status(self, delim=None):
+    def fetch_repo_status(self):
         lines = self._get_status()
         files_statuses = self._parse_status_for_file_statuses(lines)
-        branch_status = self._get_branch_status_components(lines)
+        branch_info = self._get_branch_status_components(lines)
 
         (staged_files,
          unstaged_files,
          untracked_files,
-         merge_conflicts) = self.sort_status_entries(files_statuses)
-        branch_status = self._format_branch_status(branch_status, delim="\n           ")
+         merge_conflicts) = self._group_status_entries(files_statuses)
+        branch_status = self._format_branch_status(branch_info)
 
         return {
             'staged_files': staged_files,

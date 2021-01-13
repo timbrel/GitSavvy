@@ -7,7 +7,6 @@ from sublime_plugin import WindowCommand, TextCommand
 
 from ...common import ui, util
 from ..commands import GsNavigate
-from ..constants import MERGE_CONFLICT_PORCELAIN_STATUSES
 from ..exceptions import GitSavvyError
 from ..git_command import GitCommand
 from ..git_mixins.rebase import NearestBranchMixin
@@ -143,7 +142,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         self.view.settings().set("git_savvy.in_rebase", self._in_rebase)
         cached_pre_rebase_state = self.view.settings().get("git_savvy.rebase_in_progress")
         if cached_pre_rebase_state:
-            (branch_name, ref, changed_files), target_branch = cached_pre_rebase_state
+            (branch_name, ref), target_branch = cached_pre_rebase_state
             self.complete_action(
                 branch_name,
                 ref,
@@ -299,11 +298,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         """
         Look for unmerged conflicts in status
         """
-        return [
-            entry
-            for entry in self.get_status()
-            if (entry.index_status, entry.working_status) in MERGE_CONFLICT_PORCELAIN_STATUSES
-        ]
+        return self.get_working_dir_status().merge_conflicts
 
     def _get_diverged_outside_rebase(self):
         return [{"caret": " ",
@@ -376,8 +371,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
     def get_branch_state(self):
         branch_name = self.get_current_branch_name()
         ref = self.get_branch_ref(branch_name)
-        index_status = self.get_status()
-        return branch_name, ref, index_status
+        return branch_name, ref
 
     def complete_action(self, branch_name, ref_before, success, description):
         log = self.view.settings().get("git_savvy.rebase_log") or []
@@ -422,7 +416,7 @@ class GsRebaseUndoCommand(TextCommand, GitCommand):
         if log is None or cursor is None or cursor == -1:
             return
 
-        branch_name, ref, _ = self.interface.get_branch_state()
+        branch_name, ref = self.interface.get_branch_state()
 
         current = log[cursor]
         if current["branch_name"] != branch_name:
@@ -460,7 +454,7 @@ class GsRebaseRedoCommand(TextCommand, GitCommand):
         if log is None or cursor is None or cursor == len(log) - 1:
             return
 
-        branch_name, ref, _ = self.interface.get_branch_state()
+        branch_name, ref = self.interface.get_branch_state()
 
         undone_action = log[cursor + 1]
         if undone_action["branch_name"] != branch_name:
@@ -497,7 +491,7 @@ class RewriteBase(TextCommand, GitCommand):
         (staged_entries,
          unstaged_entries,
          untracked_entries,
-         conflict_entries) = self.sort_status_entries(self.get_status())
+         conflict_entries) = self.get_working_dir_status()
 
         if len(unstaged_entries) + len(conflict_entries) > 0:
             sublime.message_dialog(
@@ -544,7 +538,7 @@ class RewriteBase(TextCommand, GitCommand):
             )
             return
 
-        branch_name, ref, changed_files = self.interface.get_branch_state()
+        branch_name, ref = self.interface.get_branch_state()
         success = True
 
         try:

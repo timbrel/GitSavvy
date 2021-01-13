@@ -32,6 +32,38 @@ class BranchesMixin(mixin_base):
                 return branch
         return None
 
+    def get_current_branch_name(self):
+        # type: () -> Optional[str]
+        """
+        Return the name of the current branch.
+        """
+        branch = self.get_current_branch()
+        if branch:
+            return branch.name
+        return None
+
+    def get_upstream_for_active_branch(self):
+        # type: () -> Optional[str]
+        """
+        Return ref for remote tracking branch.
+        """
+        return self.git(
+            "rev-parse",
+            "--abbrev-ref",
+            "--symbolic-full-name",
+            "@{u}",
+            throw_on_error=False
+        ).strip() or None
+
+    def get_remote_for_branch(self, branch_name):
+        # type: (str) -> Optional[str]
+        return self.git(
+            "config",
+            "--get",
+            "branch.{}.remote".format(branch_name),
+            throw_on_error=False
+        ).strip() or None
+
     def get_local_branch_by_name(self, branch_name):
         # type: (str) -> Optional[Branch]
         """
