@@ -1,4 +1,4 @@
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from functools import lru_cache, partial, wraps
 import inspect
 import threading
@@ -56,6 +56,22 @@ def on_new_thread(fn):
     def wrapped(*a, **kw):
         run_on_new_thread(fn, *a, **kw)
     return wrapped
+
+
+def run_as_future(fn, *args, **kwargs):
+    # type: (Callable[..., T], object, object) -> Future[T]
+    fut = Future()  # type: Future[T]
+
+    def task():
+        fut.set_running_or_notify_cancel()
+        try:
+            rv = fn(*args, **kwargs)
+        except Exception as e:
+            fut.set_exception(e)
+        else:
+            fut.set_result(rv)
+    run_on_new_thread(task)
+    return fut
 
 
 def run_or_timeout(fn, timeout):
