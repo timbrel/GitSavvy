@@ -346,9 +346,16 @@ class _GitCommand(SettingsMixin):
 
         return git_path
 
+    def _current_view(self):
+        # type: () -> Optional[sublime.View]
+        try:
+            return self.view  # type: ignore[attr-defined]
+        except AttributeError:
+            return self.window.active_view()  # type: ignore[attr-defined]
+
     def find_working_dir(self):
         # type: () -> Optional[str]
-        view = self.window.active_view() if hasattr(self, "window") else self.view
+        view = self._current_view()
         window = view.window() if view else None
 
         if view and view.file_name():
@@ -369,7 +376,7 @@ class _GitCommand(SettingsMixin):
         Similar to find_working_dir, except that it does not stop on the first
         directory found, rather on the first git repository found.
         """
-        view = self.window.active_view() if hasattr(self, "window") else self.view
+        view = self._current_view()
         window = view.window() if view else None
         repo_path = None
 
@@ -400,9 +407,7 @@ class _GitCommand(SettingsMixin):
 
     def get_repo_path(self, offer_init=True):
         # type: (bool) -> str
-        # The below condition will be true if run from a WindowCommand and false
-        # from a TextCommand.
-        view = self.window.active_view() if hasattr(self, "window") else self.view
+        view = self._current_view()
         repo_path = view.settings().get("git_savvy.repo_path") if view else None
 
         if not repo_path or not os.path.exists(repo_path):
@@ -453,9 +458,7 @@ class _GitCommand(SettingsMixin):
         functionality, this default behavior can be overridden by setting the
         view's `git_savvy.file_path` setting.
         """
-        # The below condition will be true if run from a WindowCommand and false
-        # from a TextCommand.
-        view = self.window.active_view() if hasattr(self, "window") else self.view
+        view = self._current_view()
         fpath = view.settings().get("git_savvy.file_path")
 
         if not fpath:
