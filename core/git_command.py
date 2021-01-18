@@ -390,14 +390,13 @@ class _GitCommand(SettingsMixin):
 
     def find_git_toplevel(self, folder):
         # type: (str) -> Optional[str]
-        stdout = self.git(
+        repo_path = self.git(
             "rev-parse",
             "--show-toplevel",
             working_dir=folder,
             throw_on_error=False
-        )
-        repo = stdout.strip()
-        return os.path.realpath(repo) if repo else None
+        ).strip() or None
+        return os.path.normpath(repo_path) if repo_path else None
 
     def get_repo_path(self, offer_init=True):
         # type: (bool) -> str
