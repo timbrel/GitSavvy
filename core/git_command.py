@@ -417,7 +417,7 @@ class _GitCommand(SettingsMixin):
                 if window:
                     if offer_init and window.folders():
                         sublime.set_timeout_async(
-                            lambda: sublime.active_window().run_command("gs_offer_init"))
+                            lambda: window.run_command("gs_offer_init"))
                     raise ValueError("Not a git repository.")
                 else:
                     raise RuntimeError("Window does not exist.")
