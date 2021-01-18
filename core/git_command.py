@@ -414,12 +414,12 @@ class _GitCommand(SettingsMixin):
             repo_path = self.find_repo_path()
             if not repo_path:
                 window = view.window()
-                if window:
-                    if offer_init and window.folders():
-                        enqueue_on_worker(window.run_command, "gs_offer_init")
-                    raise ValueError("Not a git repository.")
-                else:
+                if not window:
                     raise RuntimeError("Window does not exist.")
+
+                if offer_init and window.folders():
+                    enqueue_on_worker(window.run_command, "gs_offer_init")
+                raise ValueError("Not a git repository.")
 
             if view:
                 file_name = view.file_name()
