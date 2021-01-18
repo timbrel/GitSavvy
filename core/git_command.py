@@ -23,7 +23,7 @@ import sublime
 from ..common import util
 from .settings import SettingsMixin
 from GitSavvy.core.fns import filter_
-from GitSavvy.core.runtime import run_as_future
+from GitSavvy.core.runtime import enqueue_on_worker, run_as_future
 
 
 MYPY = False
@@ -416,8 +416,7 @@ class _GitCommand(SettingsMixin):
                 window = view.window()
                 if window:
                     if offer_init and window.folders():
-                        sublime.set_timeout_async(
-                            lambda: window.run_command("gs_offer_init"))
+                        enqueue_on_worker(window.run_command, "gs_offer_init")
                     raise ValueError("Not a git repository.")
                 else:
                     raise RuntimeError("Window does not exist.")
