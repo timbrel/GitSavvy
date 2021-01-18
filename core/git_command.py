@@ -427,7 +427,7 @@ class _GitCommand(SettingsMixin):
                 if file_name and os.path.realpath(file_name).startswith(repo_path + os.path.sep):
                     view.settings().set("git_savvy.repo_path", repo_path)
 
-        return os.path.realpath(repo_path)
+        return repo_path
 
     @property
     def repo_path(self):
