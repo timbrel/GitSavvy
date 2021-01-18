@@ -377,18 +377,18 @@ class _GitCommand(SettingsMixin):
         if view and view.file_name():
             file_dir = os.path.dirname(view.file_name())
             if os.path.isdir(file_dir):
-                repo_path = self.find_git_toplevel(file_dir)
+                repo_path = self._find_git_toplevel(file_dir)
 
         # fallback: use the first folder if the current file is not inside a git repo
         if not repo_path:
             if window:
                 folders = window.folders()
                 if folders and os.path.isdir(folders[0]):
-                    repo_path = self.find_git_toplevel(folders[0])
+                    repo_path = self._find_git_toplevel(folders[0])
 
         return os.path.realpath(repo_path) if repo_path else None
 
-    def find_git_toplevel(self, folder):
+    def _find_git_toplevel(self, folder):
         # type: (str) -> Optional[str]
         repo_path = self.git(
             "rev-parse",
