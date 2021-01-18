@@ -415,14 +415,10 @@ class _GitCommand(SettingsMixin):
             if not repo_path:
                 window = view.window()
                 if window:
-                    if window.folders():
-                        # offer initialization
-                        if offer_init:
-                            sublime.set_timeout_async(
-                                lambda: sublime.active_window().run_command("gs_offer_init"))
-                        raise ValueError("Not a git repository.")
-                    else:
-                        raise ValueError("Unable to determine Git repo path.")
+                    if offer_init and window.folders():
+                        sublime.set_timeout_async(
+                            lambda: sublime.active_window().run_command("gs_offer_init"))
+                    raise ValueError("Not a git repository.")
                 else:
                     raise RuntimeError("Window does not exist.")
 
