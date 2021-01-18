@@ -28,7 +28,7 @@ from GitSavvy.core.runtime import run_as_future
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Deque, Iterator, List, Sequence, Tuple, Union
+    from typing import Callable, Deque, Iterator, List, Optional, Sequence, Tuple, Union
 
 
 git_path = None
@@ -347,6 +347,7 @@ class _GitCommand(SettingsMixin):
         return git_path
 
     def find_working_dir(self):
+        # type: () -> Optional[str]
         view = self.window.active_view() if hasattr(self, "window") else self.view
         window = view.window() if view else None
 
@@ -363,6 +364,7 @@ class _GitCommand(SettingsMixin):
         return None
 
     def find_repo_path(self):
+        # type: () -> Optional[str]
         """
         Similar to find_working_dir, except that it does not stop on the first
         directory found, rather on the first git repository found.
@@ -388,6 +390,7 @@ class _GitCommand(SettingsMixin):
         return os.path.realpath(repo_path) if repo_path else None
 
     def find_git_toplevel(self, folder, throw_on_error):
+        # type: (str, bool) -> Optional[str]
         stdout = self.git(
             "rev-parse",
             "--show-toplevel",
@@ -398,6 +401,7 @@ class _GitCommand(SettingsMixin):
         return os.path.realpath(repo) if repo else None
 
     def get_repo_path(self, offer_init=True):
+        # type: (bool) -> str
         # The below condition will be true if run from a WindowCommand and false
         # from a TextCommand.
         view = self.window.active_view() if hasattr(self, "window") else self.view
