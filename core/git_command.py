@@ -346,6 +346,13 @@ class _GitCommand(SettingsMixin):
 
         return git_path
 
+    def _current_window(self):
+        # type: () -> Optional[sublime.Window]
+        try:
+            return self.window  # type: ignore[attr-defined]
+        except AttributeError:
+            return self.view.window()  # type: ignore[attr-defined]
+
     def _current_view(self):
         # type: () -> Optional[sublime.View]
         try:
@@ -413,7 +420,7 @@ class _GitCommand(SettingsMixin):
         if not repo_path or not os.path.exists(repo_path):
             repo_path = self.find_repo_path()
             if not repo_path:
-                window = view.window()
+                window = self._current_window()
                 if not window:
                     raise RuntimeError("Window does not exist.")
 
