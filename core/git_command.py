@@ -454,6 +454,7 @@ class _GitCommand(SettingsMixin):
 
     @property
     def file_path(self):
+        # type: () -> Optional[str]
         """
         Return the absolute path to the file this view interacts with. In most
         cases, this will be the open file.  However, for views with special
@@ -461,6 +462,9 @@ class _GitCommand(SettingsMixin):
         view's `git_savvy.file_path` setting.
         """
         view = self._current_view()
+        if not view:
+            return None
+
         fpath = view.settings().get("git_savvy.file_path")
 
         if not fpath:
