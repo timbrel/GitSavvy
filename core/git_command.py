@@ -465,13 +465,7 @@ class _GitCommand(SettingsMixin):
         if not view:
             return None
 
-        fpath = view.settings().get("git_savvy.file_path")
-
-        if not fpath:
-            fpath = view.file_name()
-            if fpath:
-                view.settings().set("git_savvy.file_path", os.path.realpath(fpath))
-
+        fpath = view.settings().get("git_savvy.file_path") or view.file_name()
         return os.path.realpath(fpath) if fpath else fpath
 
     def get_rel_path(self, abs_path=None):
