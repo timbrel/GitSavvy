@@ -419,19 +419,20 @@ class _GitCommand(SettingsMixin):
         # type: (bool) -> str
         view = self._current_view()
         repo_path = view.settings().get("git_savvy.repo_path") if view else None
+        if repo_path and os.path.exists(repo_path):
+            return repo_path
 
-        if not repo_path or not os.path.exists(repo_path):
-            repo_path = self.find_repo_path()
-            if not repo_path:
-                window = self._current_window()
-                if not window:
-                    raise RuntimeError("Window does not exist.")
+        repo_path = self.find_repo_path()
+        if repo_path:
+            return repo_path
 
-                if offer_init and window.folders():
-                    enqueue_on_worker(window.run_command, "gs_offer_init")
-                raise ValueError("Not a git repository.")
+        window = self._current_window()
+        if not window:
+            raise RuntimeError("Window does not exist.")
 
-        return repo_path
+        if offer_init and window.folders():
+            enqueue_on_worker(window.run_command, "gs_offer_init")
+        raise ValueError("Not a git repository.")
 
     @property
     def repo_path(self):
