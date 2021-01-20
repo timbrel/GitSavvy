@@ -371,15 +371,13 @@ class _GitCommand(SettingsMixin):
 
     def find_working_dir(self):
         # type: () -> Optional[str]
-        view = self._current_view()
-        window = view.window() if view else None
-
         file_name = self._current_filename()
         if file_name:
             file_dir = os.path.dirname(file_name)
             if os.path.isdir(file_dir):
                 return file_dir
 
+        window = self._current_window()
         if window:
             folders = window.folders()
             if folders and os.path.isdir(folders[0]):
@@ -393,8 +391,6 @@ class _GitCommand(SettingsMixin):
         Similar to find_working_dir, except that it does not stop on the first
         directory found, rather on the first git repository found.
         """
-        view = self._current_view()
-        window = view.window() if view else None
         repo_path = None
 
         file_name = self._current_filename()
@@ -405,6 +401,7 @@ class _GitCommand(SettingsMixin):
 
         # fallback: use the first folder if the current file is not inside a git repo
         if not repo_path:
+            window = self._current_window()
             if window:
                 folders = window.folders()
                 if folders and os.path.isdir(folders[0]):
