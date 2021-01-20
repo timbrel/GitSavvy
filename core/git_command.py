@@ -362,13 +362,21 @@ class _GitCommand(SettingsMixin):
         except AttributeError:
             return self.window.active_view()  # type: ignore[attr-defined]
 
+    def _current_filename(self):
+        # type: () -> Optional[str]
+        try:
+            return self.view.file_name()  # type: ignore[attr-defined]
+        except AttributeError:
+            return self.window.extract_variables().get("file")  # type: ignore[attr-defined]
+
     def find_working_dir(self):
         # type: () -> Optional[str]
         view = self._current_view()
         window = view.window() if view else None
 
-        if view and view.file_name():
-            file_dir = os.path.dirname(view.file_name())
+        file_name = self._current_filename()
+        if file_name:
+            file_dir = os.path.dirname(file_name)
             if os.path.isdir(file_dir):
                 return file_dir
 
@@ -389,9 +397,9 @@ class _GitCommand(SettingsMixin):
         window = view.window() if view else None
         repo_path = None
 
-        # try the current file first
-        if view and view.file_name():
-            file_dir = os.path.dirname(view.file_name())
+        file_name = self._current_filename()
+        if file_name:
+            file_dir = os.path.dirname(file_name)
             if os.path.isdir(file_dir):
                 repo_path = self._find_git_toplevel(file_dir)
 
