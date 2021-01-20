@@ -477,7 +477,10 @@ class _GitCommand(SettingsMixin):
         """
         file_path = self.file_path if abs_path is NOT_SET else os.path.realpath(abs_path)
         assert file_path
-        return os.path.relpath(file_path, start=self.repo_path)
+        rel_path = os.path.relpath(file_path, start=self.repo_path)
+        if os.name == "nt":
+            return rel_path.replace("\\", "/")
+        return rel_path
 
     def _add_global_flags(self, git_cmd, args):
         # type: (str, List[str]) -> List[str]
