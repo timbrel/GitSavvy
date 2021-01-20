@@ -410,7 +410,7 @@ class _GitCommand(SettingsMixin):
                 if folders and os.path.isdir(folders[0]):
                     repo_path = self._find_git_toplevel(folders[0])
 
-        return os.path.realpath(repo_path) if repo_path else None
+        return repo_path
 
     def _find_git_toplevel(self, folder):
         # type: (str) -> Optional[str]
