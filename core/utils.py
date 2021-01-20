@@ -287,6 +287,35 @@ def kill_proc(proc):
         proc.terminate()
 
 
+# `realpath` also supports `bytes` and we don't, hence the indirection
+def _resolve_path(path):
+    # type: (str) -> str
+    return os.path.realpath(path)
+
+
+if (
+    os.name == "nt"
+    and sys.getwindowsversion()[:2] >= (6, 0)
+    and sys.version_info[:2] < (3, 8)
+):
+    try:
+        from nt import _getfinalpathname  # type: ignore[import]
+    except ImportError:
+        resolve_path = _resolve_path
+    else:
+        def resolve_path(path):
+            # type: (str) -> str
+            rpath = _getfinalpathname(path)
+            if rpath.startswith("\\\\?\\"):
+                rpath = rpath[4:]
+                if rpath.startswith("UNC\\"):
+                    rpath = "\\" + rpath[3:]
+            return rpath
+
+else:
+    resolve_path = _resolve_path
+
+
 class Cache(OrderedDict):
     def __init__(self, maxsize=128):
         assert maxsize > 0
