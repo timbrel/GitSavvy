@@ -28,11 +28,12 @@ from GitSavvy.core.runtime import enqueue_on_worker, run_as_future
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Deque, Iterator, List, Optional, Sequence, Tuple, Union
+    from typing import Callable, Deque, Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
 
 git_path = None
 error_message_displayed = False
+repo_paths = {}  # type: Dict[str, str]
 
 DECODE_ERROR_MESSAGE = """
 The Git command returned data that is unparsable.  This may happen
@@ -399,13 +400,19 @@ class _GitCommand(SettingsMixin):
 
     def _find_git_toplevel(self, folder):
         # type: (str) -> Optional[str]
-        repo_path = self.git(
-            "rev-parse",
-            "--show-toplevel",
-            working_dir=folder,
-            throw_on_error=False
-        ).strip() or None
-        return os.path.normpath(repo_path) if repo_path else None
+        try:
+            return repo_paths[folder]
+        except KeyError:
+            repo_path = self.git(
+                "rev-parse",
+                "--show-toplevel",
+                working_dir=folder,
+                throw_on_error=False
+            ).strip() or None
+            if repo_path:
+                repo_path = os.path.normpath(repo_path)
+                repo_paths[folder] = repo_path
+            return repo_path
 
     def get_repo_path(self, offer_init=True):
         # type: (bool) -> str
