@@ -24,6 +24,7 @@ from ..common import util
 from .settings import SettingsMixin
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, run_as_future
+from GitSavvy.core.utils import resolve_path
 
 
 MYPY = False
@@ -462,14 +463,14 @@ class _GitCommand(SettingsMixin):
             return None
 
         fpath = view.settings().get("git_savvy.file_path") or view.file_name()
-        return os.path.realpath(fpath) if fpath else fpath
+        return resolve_path(fpath) if fpath else fpath
 
     def get_rel_path(self, abs_path=NOT_SET):
         # type: (str) -> str
         """
         Return the file path relative to the repo root.
         """
-        file_path = self.file_path if abs_path is NOT_SET else os.path.realpath(abs_path)
+        file_path = self.file_path if abs_path is NOT_SET else resolve_path(abs_path)
         assert file_path
         rel_path = os.path.relpath(file_path, start=self.repo_path)
         if os.name == "nt":
