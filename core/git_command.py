@@ -369,21 +369,23 @@ class _GitCommand(SettingsMixin):
         except AttributeError:
             return self.window.extract_variables().get("file")  # type: ignore[attr-defined]
 
-    def find_working_dir(self):
-        # type: () -> Optional[str]
+    def _search_paths(self):
+        # type: () -> Iterator[str]
         file_name = self._current_filename()
         if file_name:
             file_dir = os.path.dirname(file_name)
             if os.path.isdir(file_dir):
-                return file_dir
+                yield file_dir
 
         window = self._current_window()
         if window:
             folders = window.folders()
             if folders and os.path.isdir(folders[0]):
-                return folders[0]
+                yield folders[0]
 
-        return None
+    def find_working_dir(self):
+        # type: () -> Optional[str]
+        return next(self._search_paths(), None)
 
     def find_repo_path(self):
         # type: () -> Optional[str]
@@ -391,23 +393,7 @@ class _GitCommand(SettingsMixin):
         Similar to find_working_dir, except that it does not stop on the first
         directory found, rather on the first git repository found.
         """
-        repo_path = None
-
-        file_name = self._current_filename()
-        if file_name:
-            file_dir = os.path.dirname(file_name)
-            if os.path.isdir(file_dir):
-                repo_path = self._find_git_toplevel(file_dir)
-
-        # fallback: use the first folder if the current file is not inside a git repo
-        if not repo_path:
-            window = self._current_window()
-            if window:
-                folders = window.folders()
-                if folders and os.path.isdir(folders[0]):
-                    repo_path = self._find_git_toplevel(folders[0])
-
-        return repo_path
+        return next(filter_(map(self._find_git_toplevel, self._search_paths())), None)
 
     def _find_git_toplevel(self, folder):
         # type: (str) -> Optional[str]
