@@ -45,6 +45,8 @@ encoded files.  In the latter case use the 'fallback_encoding' setting.
 MIN_GIT_VERSION = (2, 16, 0)
 GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d} or above."
 
+NOT_SET = "<NOT_SET>"
+
 
 def communicate_and_log(proc, stdin, log):
     # type: (subprocess.Popen, bytes, Callable[[bytes], None]) -> Tuple[bytes, bytes]
@@ -468,12 +470,14 @@ class _GitCommand(SettingsMixin):
         fpath = view.settings().get("git_savvy.file_path") or view.file_name()
         return os.path.realpath(fpath) if fpath else fpath
 
-    def get_rel_path(self, abs_path=None):
+    def get_rel_path(self, abs_path=NOT_SET):
+        # type: (str) -> str
         """
         Return the file path relative to the repo root.
         """
-        path = abs_path or self.file_path
-        return os.path.relpath(os.path.realpath(path), start=self.repo_path)
+        file_path = self.file_path if abs_path is NOT_SET else os.path.realpath(abs_path)
+        assert file_path
+        return os.path.relpath(file_path, start=self.repo_path)
 
     def _add_global_flags(self, git_cmd, args):
         # type: (str, List[str]) -> List[str]
