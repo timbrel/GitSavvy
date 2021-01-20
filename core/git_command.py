@@ -371,17 +371,19 @@ class _GitCommand(SettingsMixin):
 
     def _search_paths(self):
         # type: () -> Iterator[str]
-        file_name = self._current_filename()
-        if file_name:
-            file_dir = os.path.dirname(file_name)
-            if os.path.isdir(file_dir):
-                yield file_dir
+        def __search_paths():
+            # type: () -> Iterator[str]
+            file_name = self._current_filename()
+            if file_name:
+                yield os.path.dirname(file_name)
 
-        window = self._current_window()
-        if window:
-            folders = window.folders()
-            if folders and os.path.isdir(folders[0]):
-                yield folders[0]
+            window = self._current_window()
+            if window:
+                folders = window.folders()
+                if folders:
+                    yield folders[0]
+
+        return filter(os.path.isdir, __search_paths())
 
     def find_working_dir(self):
         # type: () -> Optional[str]
