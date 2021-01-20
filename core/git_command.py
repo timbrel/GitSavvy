@@ -430,12 +430,6 @@ class _GitCommand(SettingsMixin):
                     enqueue_on_worker(window.run_command, "gs_offer_init")
                 raise ValueError("Not a git repository.")
 
-            if view:
-                file_name = view.file_name()
-                # only set "git_savvy.repo_path" when the current file is in repo_path
-                if file_name and os.path.realpath(file_name).startswith(repo_path + os.path.sep):
-                    view.settings().set("git_savvy.repo_path", repo_path)
-
         return repo_path
 
     @property
