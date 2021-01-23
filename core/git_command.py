@@ -420,8 +420,8 @@ class _GitCommand(SettingsMixin):
                 repo_paths[folder] = repo_path
             return repo_path
 
-    def get_repo_path(self, offer_init=True):
-        # type: (bool) -> str
+    def get_repo_path(self):
+        # type: () -> str
         repo_path = self.find_repo_path()
         if repo_path:
             return repo_path
@@ -430,7 +430,7 @@ class _GitCommand(SettingsMixin):
         if not window:
             raise RuntimeError("Window does not exist.")
 
-        if offer_init and window.folders():
+        if window.folders():
             enqueue_on_worker(window.run_command, "gs_offer_init")
         raise ValueError("Not a git repository.")
 
