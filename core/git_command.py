@@ -397,6 +397,11 @@ class _GitCommand(SettingsMixin):
         Similar to find_working_dir, except that it does not stop on the first
         directory found, rather on the first git repository found.
         """
+        view = self._current_view()
+        repo_path = view.settings().get("git_savvy.repo_path") if view else None
+        if repo_path and os.path.exists(repo_path):
+            return repo_path
+
         return next(filter_(map(self._find_git_toplevel, self._search_paths())), None)
 
     def _find_git_toplevel(self, folder):
@@ -417,11 +422,6 @@ class _GitCommand(SettingsMixin):
 
     def get_repo_path(self, offer_init=True):
         # type: (bool) -> str
-        view = self._current_view()
-        repo_path = view.settings().get("git_savvy.repo_path") if view else None
-        if repo_path and os.path.exists(repo_path):
-            return repo_path
-
         repo_path = self.find_repo_path()
         if repo_path:
             return repo_path
