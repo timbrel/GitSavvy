@@ -138,6 +138,11 @@ def search_for_git(folder):
         return None
 
 
+def is_subpath(topfolder, path):
+    # type: (str, str) -> bool
+    return os.path.commonprefix([topfolder, path]) == topfolder
+
+
 class _GitCommand(SettingsMixin):
 
     """
@@ -407,7 +412,11 @@ class _GitCommand(SettingsMixin):
             if window:
                 folders = window.folders()
                 if folders:
-                    yield folders[0]
+                    if (
+                        not file_name
+                        or not is_subpath(resolve_path(folders[0]), resolve_path(file_name))
+                    ):
+                        yield folders[0]
 
         return filter(os.path.isdir, __search_paths())
 
