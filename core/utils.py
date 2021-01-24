@@ -316,6 +316,15 @@ else:
     resolve_path = _resolve_path
 
 
+def paths_upwards(path):
+    # type: (str) -> Iterator[str]
+    while True:
+        yield path
+        path, name = os.path.split(path)
+        if not name or path == "/":
+            break
+
+
 class Cache(OrderedDict):
     def __init__(self, maxsize=128):
         assert maxsize > 0

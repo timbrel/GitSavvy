@@ -24,7 +24,7 @@ from ..common import util
 from .settings import SettingsMixin
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, run_as_future
-from GitSavvy.core.utils import resolve_path
+from GitSavvy.core.utils import paths_upwards, resolve_path
 
 
 MYPY = False
@@ -112,6 +112,30 @@ STARTUPINFO = None
 if os.name == "nt":
     STARTUPINFO = subprocess.STARTUPINFO()
     STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+HOME = os.path.expanduser('~')
+
+
+def __search_for_git(folder):
+    # type: (str) -> Optional[str]
+    for p in paths_upwards(folder):
+        if os.path.exists(os.path.join(p, ".git")):
+            return p
+        if p == HOME:
+            break
+    return None
+
+
+def search_for_git(folder):
+    # type: (str) -> Optional[str]
+    try:
+        return __search_for_git(folder)
+    except Exception as e:
+        util.debug.dprint(
+            "Searching for .git repo raised: {}\n"
+            "Starting folder: {}".format(e, folder)
+        )
+        return None
 
 
 class _GitCommand(SettingsMixin):
@@ -409,14 +433,8 @@ class _GitCommand(SettingsMixin):
         try:
             return repo_paths[folder]
         except KeyError:
-            repo_path = self.git(
-                "rev-parse",
-                "--show-toplevel",
-                working_dir=folder,
-                throw_on_error=False
-            ).strip() or None
+            repo_path = search_for_git(resolve_path(folder))
             if repo_path:
-                repo_path = os.path.normpath(repo_path)
                 repo_paths[folder] = repo_path
             return repo_path
 

@@ -47,6 +47,12 @@ def make_log_message(_type, **kwargs):
     return message
 
 
+def dprint(*args, **kwargs):
+    global enabled
+    if enabled:
+        print(*args, **kwargs)
+
+
 def log_git(command, stdin, stdout, stderr, seconds):
     """ Add git command details to debug log """
     global enabled
