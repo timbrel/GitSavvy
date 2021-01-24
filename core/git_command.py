@@ -252,7 +252,7 @@ class _GitCommand(SettingsMixin):
         finally:
             if not just_the_proc:
                 end = time.time()
-                util.debug.log_git(final_args, stdin, stdout, stderr, end - start)
+                util.debug.log_git(final_args, working_dir, stdin, stdout, stderr, end - start)
                 if show_panel:
                     log("\n[Done in {:.2f}s]".format(end - start))
 
