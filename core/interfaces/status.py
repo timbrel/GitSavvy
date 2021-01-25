@@ -79,7 +79,6 @@ class StatusInterface(ui.Interface, GitCommand):
 
     interface_type = "status"
     syntax_file = "Packages/GitSavvy/syntax/status.sublime-syntax"
-    word_wrap = False
 
     template = """\
 
