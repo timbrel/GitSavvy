@@ -187,6 +187,7 @@ class StatusInterface(ui.Interface, GitCommand):
             'unstaged_files': [],
             'untracked_files': [],
             'merge_conflicts': [],
+            'clean': True,
             'branch_status': '',
             'git_root': '',
             'show_help': True,
@@ -272,22 +273,14 @@ class StatusInterface(ui.Interface, GitCommand):
             self.view.run_command("gs_status_navigate_goto")
 
     def fetch_repo_status(self):
-        lines = self._get_status()
-        files_statuses = self._parse_status_for_file_statuses(lines)
-        branch_info = self._get_branch_status_components(lines)
-
-        (staged_files,
-         unstaged_files,
-         untracked_files,
-         merge_conflicts) = self._group_status_entries(files_statuses)
-        branch_status = self._format_branch_status(branch_info)
-
+        status = self.get_working_dir_status()
         return {
-            'staged_files': staged_files,
-            'unstaged_files': unstaged_files,
-            'untracked_files': untracked_files,
-            'merge_conflicts': merge_conflicts,
-            'branch_status': branch_status
+            'staged_files': status.staged_files,
+            'unstaged_files': status.unstaged_files,
+            'untracked_files': status.untracked_files,
+            'merge_conflicts': status.merge_conflicts,
+            'clean': status.clean,
+            'branch_status': status.long_status
         }
 
     def refresh_repo_status_and_render(self):
@@ -366,12 +359,11 @@ class StatusInterface(ui.Interface, GitCommand):
 
     @ui.partial("no_status_message")
     def render_no_status_message(self):
-        return ("\n    Your working directory is clean.\n"
-                if not (self.state['staged_files'] or
-                        self.state['unstaged_files'] or
-                        self.state['untracked_files'] or
-                        self.state['merge_conflicts'])
-                else "")
+        return (
+            "\n    Your working directory is clean.\n"
+            if self.state['clean']
+            else ""
+        )
 
     @ui.partial("stashes")
     def render_stashes(self):

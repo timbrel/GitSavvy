@@ -22,7 +22,7 @@ else:
 
 
 if MYPY:
-    from typing import List, NamedTuple, Optional
+    from typing import List, NamedTuple, Optional, Tuple
     HeadState = NamedTuple("HeadState", [
         ("detached", bool),
         ("branch", Optional[str]),
@@ -43,6 +43,8 @@ if MYPY:
         ("unstaged_files", List[FileStatus]),
         ("untracked_files", List[FileStatus]),
         ("merge_conflicts", List[FileStatus]),
+        ("short_status", str),
+        ("long_status", str),
     ])
 
 else:
@@ -50,7 +52,8 @@ else:
     FileStatus = namedtuple("FileStatus", "path path_alt index_status working_status")
     _WorkingDirState = namedtuple(
         "_WorkingDirState",
-        "staged_files unstaged_files untracked_files merge_conflicts"
+        "staged_files unstaged_files untracked_files merge_conflicts "
+        "short_status long_status"
     )
 
 
@@ -92,8 +95,20 @@ class StatusMixin(mixin_base):
     def get_working_dir_status(self):
         # type: () -> WorkingDirState
         lines = self._get_status()
+        branch_status = self._get_branch_status_components(lines)
         files = self._parse_status_for_file_statuses(lines)
-        return self._group_status_entries(files)
+        (staged_files,
+            unstaged_files,
+            untracked_files,
+            merge_conflicts) = self._group_status_entries(files)
+        return WorkingDirState(
+            staged_files=staged_files,
+            unstaged_files=unstaged_files,
+            untracked_files=untracked_files,
+            merge_conflicts=merge_conflicts,
+            short_status=self._format_branch_status_short(branch_status),
+            long_status=self._format_branch_status(branch_status)
+        )
 
     def _parse_status_for_file_statuses(self, lines):
         # type: (List[str]) -> List[FileStatus]
@@ -112,7 +127,7 @@ class StatusMixin(mixin_base):
         return entries
 
     def _group_status_entries(self, file_status_list):
-        # type: (List[FileStatus]) -> WorkingDirState
+        # type: (List[FileStatus]) -> Tuple[List[FileStatus], ...]
         """
         Take entries from `git status` and sort them into groups.
         """
@@ -130,7 +145,7 @@ class StatusMixin(mixin_base):
             if f.index_status != " ":
                 staged.append(f)
 
-        return WorkingDirState(staged, unstaged, untracked, conflicts)
+        return (staged, unstaged, untracked, conflicts)
 
     def get_branch_status(self, *, delim="\n           "):
         # type: (str) -> str

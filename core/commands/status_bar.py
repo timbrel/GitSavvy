@@ -51,7 +51,7 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
             # Explicitly check `find_repo_path` first which does not offer
             # automatic initialization on failure.
             repo_path = self.find_repo_path()
-            short_status = self.get_branch_status_short() if repo_path else ""
+            short_status = self.get_working_dir_status().short_status if repo_path else ""
         except Exception:
             short_status = ""
         view.set_status("gitsavvy-repo-status", short_status)

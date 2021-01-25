@@ -103,7 +103,7 @@ class TagsInterface(ui.Interface, GitCommand):
 
     @ui.partial("branch_status")
     def render_branch_status(self):
-        return self.get_branch_status()
+        return self.get_working_dir_status().long_status
 
     @ui.partial("repo_root")
     def render_repo_root(self):
