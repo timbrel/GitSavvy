@@ -124,10 +124,12 @@ class Interface():
         """
         pass
 
+    def pre_render(self):
+        pass
+
     def render(self, nuke_cursors=False):
         self.clear_regions()
-        if hasattr(self, "pre_render"):
-            self.pre_render()
+        self.pre_render()
         rendered = self._render_template()
         self.view.run_command("gs_new_content_and_regions", {
             "content": rendered,
