@@ -114,6 +114,12 @@ class Interface():
         """
         pass
 
+    def on_new_dashboard(self):
+        """
+        Hook template method called after the first render.
+        """
+        pass
+
     def render(self, nuke_cursors=False):
         self.clear_regions()
         if hasattr(self, "pre_render"):
@@ -217,12 +223,6 @@ class Interface():
             self.view.sel(),
             valid_ranges=self.get_view_regions(region)
         )
-
-    def on_new_dashboard(self):
-        """
-        Hook template method called after the first render.
-        """
-        pass
 
 
 def partial(key):
