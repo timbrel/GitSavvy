@@ -244,7 +244,7 @@ class StatusInterface(ui.Interface, GitCommand):
         self.refresh_view_state()
         self.just_render(nuke_cursors)
 
-        if hasattr(self, "reset_cursor") and nuke_cursors:
+        if nuke_cursors:
             self.reset_cursor()
 
     @distinct_until_state_changed

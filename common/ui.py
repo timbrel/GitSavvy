@@ -127,6 +127,9 @@ class Interface():
     def pre_render(self):
         pass
 
+    def reset_cursor(self):
+        pass
+
     def render(self, nuke_cursors=False):
         self.clear_regions()
         self.pre_render()
@@ -136,7 +139,7 @@ class Interface():
             "regions": self.regions,
             "nuke_cursors": nuke_cursors
         })
-        if hasattr(self, "reset_cursor") and nuke_cursors:
+        if nuke_cursors:
             self.reset_cursor()
 
     def _render_template(self):
