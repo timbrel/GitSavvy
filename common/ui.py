@@ -77,9 +77,6 @@ class Interface():
             self.create_view(repo_path)
             sublime.set_timeout_async(self.on_new_dashboard, 0)
 
-        if hasattr(self, "tab_size"):
-            self.view.settings().set("tab_size", self.tab_size)
-
         interfaces[self.view.id()] = self
 
     def create_view(self, repo_path):

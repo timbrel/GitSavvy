@@ -32,7 +32,6 @@ class BranchInterface(ui.Interface, GitCommand):
     read_only = True
     syntax_file = "Packages/GitSavvy/syntax/branch.sublime-syntax"
     word_wrap = False
-    tab_size = 2
 
     show_remotes = None
 

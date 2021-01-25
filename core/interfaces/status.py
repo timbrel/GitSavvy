@@ -81,7 +81,6 @@ class StatusInterface(ui.Interface, GitCommand):
     read_only = True
     syntax_file = "Packages/GitSavvy/syntax/status.sublime-syntax"
     word_wrap = False
-    tab_size = 2
 
     template = """\
 
