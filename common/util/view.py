@@ -85,7 +85,7 @@ def refresh_gitsavvy_interfaces(
     if refresh_status_bar:
         av = window.active_view()
         if av:
-            av.run_command("gs_update_status_bar")
+            av.run_command("gs_update_status")
 
     for group in range(window.num_groups()):
         view = window.active_view_in_group(group)
@@ -117,7 +117,7 @@ def refresh_gitsavvy(
         view.run_command("gs_log_graph_refresh")
 
     if view.window() and refresh_status_bar:
-        view.run_command("gs_update_status_bar")
+        view.run_command("gs_update_status")
 
     window = view.window()
     if window and refresh_sidebar:

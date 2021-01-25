@@ -213,7 +213,7 @@ class StatusInterface(ui.Interface, GitCommand):
                 partial(self.update_state, thunk, then=self.just_render)
             )
 
-        sublime.set_timeout_async(self.fetch_repo_status)
+        self.view.run_command("gs_update_status")
         # These are cheap to compute, so we just do it!
         status = store.current_state(self.repo_path).get("status")
         if status:
@@ -273,9 +273,6 @@ class StatusInterface(ui.Interface, GitCommand):
         if not on_special_symbol:
             self.view.run_command("gs_status_navigate_goto")
 
-    def fetch_repo_status(self):
-        self.get_working_dir_status()
-
     def on_status_update(self, _repo_path, state):
         self.update_state(state["status"]._asdict(), then=self.just_render)
 
@@ -286,7 +283,7 @@ class StatusInterface(ui.Interface, GitCommand):
         So instead of calling `render` it is a good optimization to just
         ask this method if appropriate.
         """
-        self.fetch_repo_status()
+        self.get_working_dir_status()
 
     def after_view_creation(self, view):
         view.settings().set("result_file_regex", EXTRACT_FILENAME_RE)

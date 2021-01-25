@@ -9,9 +9,11 @@ from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.core.commands.log_graph import (
     gs_log_graph_refresh,
     extract_commit_hash,
-    navigate_to_symbol
+    navigate_to_symbol,
+    GitCommand
 )
 from GitSavvy.core.commands.show_commit_info import gs_show_commit_info
+from GitSavvy.core.git_mixins.status import WorkingDirState
 from GitSavvy.core.settings import GitSavvySettings
 
 
@@ -32,6 +34,7 @@ else:
 THIS_DIRNAME = os.path.dirname(os.path.realpath(__file__))
 COMMIT_1 = 'This is commit fec0aca'
 COMMIT_2 = 'This is commit f461ea1'
+CLEAN_WORKING_DIR = WorkingDirState([], [], [], [], '', '')
 
 
 def fixture(name):
@@ -155,6 +158,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         exists = os.path.exists
         when(os.path).exists(...).thenAnswer(exists)
         when(os.path).exists(repo_path).thenReturn(True)
+        when(GitCommand).get_working_dir_status().thenReturn(CLEAN_WORKING_DIR)
         self.window.run_command('gs_graph', {'repo_path': repo_path})
         yield lambda: self.window.active_view().settings().get('git_savvy.log_graph_view') is True
         log_view = self.window.active_view()

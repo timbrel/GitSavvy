@@ -1,16 +1,18 @@
+import sublime
 from sublime_plugin import TextCommand, EventListener
 
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_worker, throttled
+from GitSavvy.core import store
 
 
 class GsStatusBarEventListener(EventListener):
     # Note: `on_activated` is registered in global_events.py
     def on_new(self, view):
-        view.run_command("gs_update_status_bar")
+        view.run_command("gs_update_status")
 
     def on_post_save(self, view):
-        view.run_command("gs_update_status_bar")
+        view.run_command("gs_update_status")
 
 
 def view_is_transient(view):
@@ -31,12 +33,7 @@ def view_is_transient(view):
     return False
 
 
-class GsUpdateStatusBarCommand(TextCommand, GitCommand):
-
-    """
-    Update the short Git status in the Sublime status bar.
-    """
-
+class gs_update_status(TextCommand, GitCommand):
     def run(self, edit):
         enqueue_on_worker(throttled(self.run_impl, self.view))
 
@@ -44,14 +41,37 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
         if view_is_transient(view):
             return
 
+        repo_path = self.find_repo_path()
+        if repo_path:
+            try:
+                self.get_working_dir_status()
+            except RuntimeError:
+                # Although with `if repo_path` we have enough to make the
+                # status call to git safe, the processing of the status
+                # asks `self.repo_path` multiple times.
+                # A user might have closed the view in between so we MUST
+                # catch potential `RuntimeError`s.
+                pass
+
+
+class gs_draw_status_bar(TextCommand, GitCommand):
+
+    """
+    Update the short Git status in the Sublime status bar.
+    """
+
+    def run(self, edit, repo_path):
         if not self.savvy_settings.get("git_status_in_status_bar"):
             return
+        if self.find_repo_path() == repo_path:
+            short_status = store.current_state(repo_path)["status"].short_status
+            self.view.set_status("gitsavvy-repo-status", short_status)
 
-        try:
-            # Explicitly check `find_repo_path` first which does not offer
-            # automatic initialization on failure.
-            repo_path = self.find_repo_path()
-            short_status = self.get_working_dir_status().short_status if repo_path else ""
-        except Exception:
-            short_status = ""
-        view.set_status("gitsavvy-repo-status", short_status)
+
+def on_status_update(repo_path, state):
+    view = sublime.active_window().active_view()
+    if view:
+        view.run_command("gs_draw_status_bar", {"repo_path": repo_path})
+
+
+store.subscribe("*", {"status"}, on_status_update)

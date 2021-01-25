@@ -7,6 +7,7 @@ from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import spy2, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
+from GitSavvy.core import store
 from GitSavvy.core.interfaces.status import StatusInterface, get_selected_subjects, GitCommand
 
 
@@ -29,6 +30,7 @@ class TestStatusDashboard(DeferrableTestCase):
         cls.window.run_command('close_window')
 
     def setUp(self):
+        store.state.clear()
         self.create_new_view()
 
     def tearDown(self):
@@ -52,10 +54,10 @@ class TestStatusDashboard(DeferrableTestCase):
         spy2('os.path.exists')
         when(os.path).exists(repo_path).thenReturn(True)
         # Mocking `in_merge` is a bit surprising. TBC.
-        when(StatusInterface).in_merge().thenReturn(False)
-        when(StatusInterface).git('status', ...).thenReturn(file_status)
-        when(StatusInterface).git('log', ...).thenReturn(last_commit)
-        when(StatusInterface).git('stash', 'list').thenReturn(stash_list)
+        when(GitCommand).in_merge().thenReturn(False)
+        when(GitCommand).git('status', ...).thenReturn(file_status)
+        when(GitCommand).git('log', ...).thenReturn(last_commit)
+        when(GitCommand).git('stash', 'list').thenReturn(stash_list)
 
         interface = StatusInterface(repo_path=repo_path)
         view = interface.view
@@ -84,7 +86,11 @@ class TestStatusDashboard(DeferrableTestCase):
             REPO_PATH, FILE_STATUS, LAST_COMMIT, STASH_LIST
         )
         # The interface updates async.
-        yield lambda: view.find('fix-1048', 0, sublime.LITERAL)
+        yield lambda: (
+            view.find('fix-1048', 0, sublime.LITERAL)
+            and view.find('modified_file', 0, sublime.LITERAL)
+        )
+        verify(GitCommand, atleast=1).git('status', ...)
 
         results = view.find_all_results()
         actual = [fpath for fpath, _, _ in results]
@@ -140,7 +146,11 @@ class TestStatusDashboard(DeferrableTestCase):
             REPO_PATH, FILE_STATUS, LAST_COMMIT, STASH_LIST
         )
         # The interface updates async.
-        yield lambda: view.find('fix-1048', 0, sublime.LITERAL)
+        yield lambda: (
+            view.find('fix-1048', 0, sublime.LITERAL)
+            and view.find('modified_file', 0, sublime.LITERAL)
+        )
+        verify(GitCommand, atleast=1).git('status', ...)
 
         region = sublime.Region(0, view.size())
         view.sel().clear()
