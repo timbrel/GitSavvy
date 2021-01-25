@@ -206,7 +206,6 @@ class StatusInterface(ui.Interface, GitCommand):
         with the real world.
         """
         for thunk in (
-            self.fetch_repo_status,
             lambda: {'head': self.get_latest_commit_msg_for_head()},
             lambda: {'stashes': self.get_stashes()},
         ):
@@ -214,6 +213,7 @@ class StatusInterface(ui.Interface, GitCommand):
                 partial(self.update_state, thunk, then=self.just_render)
             )
 
+        sublime.set_timeout_async(self.fetch_repo_status)
         # These are cheap to compute, so we just do it!
         status = store.current_state(self.repo_path).get("status")
         if status:
@@ -274,7 +274,10 @@ class StatusInterface(ui.Interface, GitCommand):
             self.view.run_command("gs_status_navigate_goto")
 
     def fetch_repo_status(self):
-        return self.get_working_dir_status()._asdict()
+        self.get_working_dir_status()
+
+    def on_status_update(self, _repo_path, state):
+        self.update_state(state["status"]._asdict(), then=self.just_render)
 
     def refresh_repo_status_and_render(self):
         """Refresh `git status` state and render.
@@ -283,11 +286,17 @@ class StatusInterface(ui.Interface, GitCommand):
         So instead of calling `render` it is a good optimization to just
         ask this method if appropriate.
         """
-        self.update_state(self.fetch_repo_status, self.just_render)
+        self.fetch_repo_status()
 
     def after_view_creation(self, view):
         view.settings().set("result_file_regex", EXTRACT_FILENAME_RE)
         view.settings().set("result_base_dir", self.repo_path)
+
+    def on_create(self):
+        self._unsubscribe = store.subscribe(self.repo_path, {"status"}, self.on_status_update)
+
+    def on_close(self):
+        self._unsubscribe()
 
     @ui.partial("branch_status")
     def render_branch_status(self):

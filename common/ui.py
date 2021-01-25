@@ -77,6 +77,7 @@ class Interface():
             sublime.set_timeout_async(self.on_new_dashboard, 0)
 
         interfaces[self.view.id()] = self
+        self.on_create()
 
     def create_view(self, repo_path):
         window = sublime.active_window()
@@ -117,6 +118,18 @@ class Interface():
     def on_new_dashboard(self):
         """
         Hook template method called after the first render.
+        """
+        pass
+
+    def on_create(self):
+        """
+        Hook template method called after a new interface object has been created.
+        """
+        pass
+
+    def on_close(self):
+        """
+        Hook template method called after a view has been closed.
         """
         pass
 
@@ -293,12 +306,11 @@ class GsInterfaceCloseCommand(TextCommand):
     """
 
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         view_id = self.view.id()
-        if view_id in interfaces:
-            del interfaces[view_id]
+        interface = get_interface(view_id)
+        if interface:
+            interface.on_close()
+            enqueue_on_worker(lambda: interfaces.pop(view_id))
 
 
 class GsInterfaceRefreshCommand(TextCommand):
