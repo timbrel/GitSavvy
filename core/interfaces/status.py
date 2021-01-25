@@ -185,7 +185,7 @@ class StatusInterface(ui.Interface, GitCommand):
             'untracked_files': [],
             'merge_conflicts': [],
             'clean': True,
-            'branch_status': '',
+            'long_status': '',
             'git_root': '',
             'show_help': True,
             'head': '',
@@ -277,7 +277,7 @@ class StatusInterface(ui.Interface, GitCommand):
             'untracked_files': status.untracked_files,
             'merge_conflicts': status.merge_conflicts,
             'clean': status.clean,
-            'branch_status': status.long_status
+            'long_status': status.long_status
         }
 
     def refresh_repo_status_and_render(self):
@@ -295,7 +295,7 @@ class StatusInterface(ui.Interface, GitCommand):
 
     @ui.partial("branch_status")
     def render_branch_status(self):
-        return self.state['branch_status']
+        return self.state['long_status']
 
     @ui.partial("git_root")
     def render_git_root(self):
