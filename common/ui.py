@@ -107,6 +107,10 @@ class Interface():
 
         return self.view
 
+    def title(self):
+        # type: () -> str
+        raise NotImplementedError
+
     def after_view_creation(self, view):
         """
         Hook template method called after the view has been created.
