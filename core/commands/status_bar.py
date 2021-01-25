@@ -7,9 +7,8 @@ from GitSavvy.core import store
 
 
 class GsStatusBarEventListener(EventListener):
-    # Note: `on_activated` is registered in global_events.py
-    def on_new(self, view):
-        view.run_command("gs_update_status")
+    def on_activated(self, view):
+        view.run_command("gs_draw_status_bar")
 
     def on_post_save(self, view):
         view.run_command("gs_update_status")
@@ -60,11 +59,22 @@ class gs_draw_status_bar(TextCommand, GitCommand):
     Update the short Git status in the Sublime status bar.
     """
 
-    def run(self, edit, repo_path):
+    def run(self, edit, repo_path=None):
         if not self.savvy_settings.get("git_status_in_status_bar"):
             return
-        if self.find_repo_path() == repo_path:
+
+        if not repo_path:
+            repo_path = self.find_repo_path()
+            if not repo_path:
+                return
+        elif repo_path != self.find_repo_path():
+            return
+
+        try:
             short_status = store.current_state(repo_path)["status"].short_status
+        except Exception:
+            ...
+        else:
             self.view.set_status("gitsavvy-repo-status", short_status)
 
 
