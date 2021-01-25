@@ -38,7 +38,7 @@ if MYPY:
         ("index_status", str),
         ("working_status", Optional[str]),
     ])
-    WorkingDirState = NamedTuple("WorkingDirState", [
+    _WorkingDirState = NamedTuple("_WorkingDirState", [
         ("staged_files", List[FileStatus]),
         ("unstaged_files", List[FileStatus]),
         ("untracked_files", List[FileStatus]),
@@ -48,10 +48,22 @@ if MYPY:
 else:
     HeadState = namedtuple("HeadState", "detached branch remote clean ahead behind gone")
     FileStatus = namedtuple("FileStatus", "path path_alt index_status working_status")
-    WorkingDirState = namedtuple(
-        "WorkingDirState",
+    _WorkingDirState = namedtuple(
+        "_WorkingDirState",
         "staged_files unstaged_files untracked_files merge_conflicts"
     )
+
+
+class WorkingDirState(_WorkingDirState):
+    @property
+    def clean(self):
+        # type: () -> bool
+        return not (
+            self.staged_files
+            or self.unstaged_files
+            or self.untracked_files
+            or self.merge_conflicts
+        )
 
 
 MERGE_CONFLICT_PORCELAIN_STATUSES = (
