@@ -7,11 +7,13 @@ from .utils import Cache
 MYPY = False
 if MYPY:
     from typing import Any, DefaultDict, Dict, Optional, Tuple, TypedDict
+    from GitSavvy.core.git_mixins.status import WorkingDirState
 
     RepoPath = str
     RepoStore = TypedDict(
         'RepoStore',
         {
+            "status": WorkingDirState,
             "last_remote_used": Optional[str],
             "last_remote_used_with_option_all": Optional[str],
             "short_hash_length": int,

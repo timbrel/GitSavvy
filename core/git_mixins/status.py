@@ -3,6 +3,7 @@ import os
 import re
 import string
 
+from GitSavvy.core import store
 
 MYPY = False
 if MYPY:
@@ -58,6 +59,11 @@ else:
 
 
 class WorkingDirState(_WorkingDirState):
+    def _asdict(self):  # broken in old Python versions
+        rv = dict(zip(self._fields, self))
+        rv["clean"] = self.clean
+        return rv
+
     @property
     def clean(self):
         # type: () -> bool
@@ -101,7 +107,7 @@ class StatusMixin(mixin_base):
             unstaged_files,
             untracked_files,
             merge_conflicts) = self._group_status_entries(files)
-        return WorkingDirState(
+        rv = WorkingDirState(
             staged_files=staged_files,
             unstaged_files=unstaged_files,
             untracked_files=untracked_files,
@@ -109,6 +115,8 @@ class StatusMixin(mixin_base):
             short_status=self._format_branch_status_short(branch_status),
             long_status=self._format_branch_status(branch_status)
         )
+        store.update_state(self.repo_path, {"status": rv})
+        return rv
 
     def _parse_status_for_file_statuses(self, lines):
         # type: (List[str]) -> List[FileStatus]

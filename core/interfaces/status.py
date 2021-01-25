@@ -11,6 +11,7 @@ from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
+from GitSavvy.core import store
 
 flatten = chain.from_iterable
 
@@ -214,6 +215,9 @@ class StatusInterface(ui.Interface, GitCommand):
             )
 
         # These are cheap to compute, so we just do it!
+        status = store.current_state(self.repo_path).get("status")
+        if status:
+            self.update_state(status._asdict())
         self.update_state({
             'git_root': self.short_repo_path,
             'show_help': not self.view.settings().get("git_savvy.help_hidden")
@@ -270,15 +274,7 @@ class StatusInterface(ui.Interface, GitCommand):
             self.view.run_command("gs_status_navigate_goto")
 
     def fetch_repo_status(self):
-        status = self.get_working_dir_status()
-        return {
-            'staged_files': status.staged_files,
-            'unstaged_files': status.unstaged_files,
-            'untracked_files': status.untracked_files,
-            'merge_conflicts': status.merge_conflicts,
-            'clean': status.clean,
-            'long_status': status.long_status
-        }
+        return self.get_working_dir_status()._asdict()
 
     def refresh_repo_status_and_render(self):
         """Refresh `git status` state and render.
