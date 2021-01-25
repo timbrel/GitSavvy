@@ -56,7 +56,6 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
     """
 
     interface_type = "rebase"
-    read_only = True
     syntax_file = "Packages/GitSavvy/syntax/rebase.sublime-syntax"
     word_wrap = False
 

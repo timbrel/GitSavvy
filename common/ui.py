@@ -24,7 +24,6 @@ EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press {super_key}+Enter.  To
 
 class Interface():
     interface_type = ""
-    read_only = True
     syntax_file = ""
 
     template = ""
@@ -90,7 +89,7 @@ class Interface():
         self.view.settings().set("git_savvy.help_hidden", GitSavvySettings().get("hide_help_menu"))
         self.view.set_syntax_file(self.syntax_file)
         self.view.set_scratch(True)
-        self.view.set_read_only(self.read_only)
+        self.view.set_read_only(True)
         util.view.disable_other_plugins(self.view)
         self.after_view_creation(self.view)
 
