@@ -153,13 +153,6 @@ class StatusMixin(mixin_base):
 
     def get_branch_status_short(self):
         # type: () -> str
-        if self.in_rebase():
-            rebase_progress = self._rebase_progress()
-            return "(no branch, rebasing {}{})".format(
-                self.rebase_branch_name(),
-                " {}".format(rebase_progress) if rebase_progress else ""
-            )
-
         lines = self._get_status()
         branch_status = self._get_branch_status_components(lines)
         return self._format_branch_status_short(branch_status)
@@ -248,6 +241,13 @@ class StatusMixin(mixin_base):
 
     def _format_branch_status_short(self, branch_status):
         # type: (HeadState) -> str
+        if self.in_rebase():
+            rebase_progress = self._rebase_progress()
+            return "(no branch, rebasing {}{})".format(
+                self.rebase_branch_name(),
+                " {}".format(rebase_progress) if rebase_progress else ""
+            )
+
         detached, branch, remote, clean, ahead, behind, gone = branch_status
 
         dirty = "" if clean else "*"
