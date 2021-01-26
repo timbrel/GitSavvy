@@ -14,32 +14,11 @@ class GsStatusBarEventListener(EventListener):
         view.run_command("gs_update_status")
 
 
-def view_is_transient(view):
-    """Return whether a view can be considered 'transient'.
-
-    We especially want to exclude widgets and preview views.
-    """
-
-    # 'Detached' (already closed) views and previews don't have
-    # a window.
-    window = view.window()
-    if not window:
-        return True
-
-    if view.settings().get('is_widget'):
-        return True
-
-    return False
-
-
 class gs_update_status(TextCommand, GitCommand):
     def run(self, edit):
         enqueue_on_worker(throttled(self.run_impl, self.view))
 
     def run_impl(self, view):
-        if view_is_transient(view):
-            return
-
         repo_path = self.find_repo_path()
         if repo_path:
             try:
