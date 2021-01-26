@@ -98,6 +98,10 @@ class StatusMixin(mixin_base):
             custom_environ={"GIT_OPTIONAL_LOCKS": "0"}
         ).rstrip("\x00").split("\x00")
 
+    def update_working_dir_status(self):
+        # type: () -> None
+        self.get_working_dir_status()
+
     def get_working_dir_status(self):
         # type: () -> WorkingDirState
         lines = self._get_status()

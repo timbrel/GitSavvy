@@ -283,7 +283,7 @@ class StatusInterface(ui.Interface, GitCommand):
         So instead of calling `render` it is a good optimization to just
         ask this method if appropriate.
         """
-        self.get_working_dir_status()
+        self.update_working_dir_status()
 
     def after_view_creation(self, view):
         view.settings().set("result_file_regex", EXTRACT_FILENAME_RE)

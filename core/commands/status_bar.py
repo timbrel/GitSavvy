@@ -22,7 +22,7 @@ class gs_update_status(TextCommand, GitCommand):
         repo_path = self.find_repo_path()
         if repo_path:
             try:
-                self.get_working_dir_status()
+                self.update_working_dir_status()
             except RuntimeError:
                 # Although with `if repo_path` we have enough to make the
                 # status call to git safe, the processing of the status
