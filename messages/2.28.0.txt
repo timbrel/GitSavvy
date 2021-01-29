@@ -1,0 +1,39 @@
+GitSavvy 2.28.0
+===============
+
+- Improvements to the Diff View
+
+  The standard diff view now supports staging, unstaging, or discarding
+  selections, for example single lines, and whole files.
+
+  In consistency with the other views we bind `[sud]` to stage, unstage,
+  or discard one hunk or the concrete selection.  This works with multiple
+  cursors and selections as well.
+
+  Use the uppercase keys `[SUD]` to operate on whole files.
+
+  "Zooming", t.i. changing how many context lines are shown, via `[+-]` has
+  been greatly improved.  It's actually useable and useful now.
+
+  **Tip**  If you want to stage several single lines from the same chunk,
+  it is recommended to make use of multiple selections.  We take that as a
+  hint on which lines actually belong together and form symmetrical
+  modifications.
+
+
+With this release we start to ship a series of refactorings as well.  As a
+result, a few settings have been removed:
+
+- `live_panel_output` and `live_panel_output_timeout` as the feature has
+  been reimplemented.  We now always update the panel "live" if possible.
+
+- `close_panel_for` as this feature was poorly implemented.
+
+- `show_input_in_output`, `show_stdin_in_output`, `show_time_elapsed_in_output`
+
+You should not use them anymore and remove them from your user settings file.
+
+
+
+For more info:
+  https://github.com/timbrel/GitSavvy/compare/2.27.7...2.28.0
