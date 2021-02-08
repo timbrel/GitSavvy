@@ -219,7 +219,9 @@ class HunkHeader(TextRange):
         """
         return [
             (int(start), int(length or "1"))
-            for start, length in SAFE_PARSE_HUNK_HEADER.findall(self.text)
+            for start, length in SAFE_PARSE_HUNK_HEADER.findall(
+                self.text.lstrip("@").split("@", 1)[0]
+            )
         ]
 
 

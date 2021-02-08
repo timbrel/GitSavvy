@@ -6,6 +6,7 @@ from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.core.fns import accumulate, unzip
 
 import GitSavvy.core.commands.diff as module
+from GitSavvy.core.parse_diff import HunkHeader
 
 
 f1 = """\
@@ -274,4 +275,16 @@ class TestDiffPatchGeneration(DeferrableTestCase):
             else:
                 raise _ExpectedFailure(sys.exc_info())
 
+        self.assertEqual(expected, actual)
+
+
+class HunkHeaderNumberExtraction(DeferrableTestCase):
+    @p.expand([
+        ("@@ -685,8 +686,14 @@ ...", [(685, 8), (686, 14)]),
+        ("@@@ -685,8 -644 +686,14 @@@ ...", [(685, 8), (644, 1), (686, 14)]),
+        ('@@ -7,0 +8 @@ RCall = "6f49c342-dc21-5d91-9882-a32aef131414"', [(7, 0), (8, 1)]),
+        ("@@ -295 +313 @@ docs-main:iai-2.0.0:", [(295, 1), (313, 1)]),
+    ])
+    def test_safely_parse_metadata(self, input, expected):
+        actual = HunkHeader(input).safely_parse_metadata()
         self.assertEqual(expected, actual)
