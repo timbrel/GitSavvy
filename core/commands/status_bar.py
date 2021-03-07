@@ -47,10 +47,11 @@ class GsUpdateStatusBarCommand(TextCommand, GitCommand):
         if not self.savvy_settings.get("git_status_in_status_bar"):
             return
 
-        # Ignore all possible errors
         try:
-            self.get_repo_path(offer_init=False)
-            short_status = self.get_branch_status_short()
-            self.view.set_status("gitsavvy-repo-status", short_status)
+            # Explicitly check `find_repo_path` first which does not offer
+            # automatic initialization on failure.
+            repo_path = self.find_repo_path()
+            short_status = self.get_branch_status_short() if repo_path else ""
         except Exception:
-            self.view.erase_status("gitsavvy-repo-status")
+            short_status = ""
+        view.set_status("gitsavvy-repo-status", short_status)

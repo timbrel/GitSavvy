@@ -35,4 +35,3 @@ class GsMvCurrentFileCommand(WindowCommand, GitCommand):
         v = self.window.find_open_file(file_path)
         if v:
             v.retarget(new_path)
-            v.settings().set("git_savvy.file_path", os.path.realpath(new_path))

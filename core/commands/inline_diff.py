@@ -637,12 +637,7 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
             flash(self.view, "Not on a hunk.")
             return
 
-        rel_path = self.get_rel_path()
-        if os.name == "nt":
-            # Git expects `/`-delimited relative paths in diff.
-            rel_path = rel_path.replace("\\", "/")
-        header = DIFF_HEADER.format(path=rel_path)
-
+        header = DIFF_HEADER.format(path=self.get_rel_path())
         full_diff = header + diff_lines + "\n"
 
         # The three argument combinations below result from the following

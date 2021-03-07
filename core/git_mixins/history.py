@@ -213,7 +213,6 @@ class HistoryMixin(mixin_base):
     def _get_file_content_at_commit(self, filename, commit_hash):
         # type: (str, Optional[str]) -> str
         filename = self.get_rel_path(filename)
-        filename = filename.replace('\\', '/')
         return self.git("show", "{}:{}".format(commit_hash or "", filename))
 
     def find_matching_lineno(self, base_commit="HEAD", target_commit="HEAD", line=1, file_path=None):

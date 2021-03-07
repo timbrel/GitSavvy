@@ -23,16 +23,18 @@ import sublime
 from ..common import util
 from .settings import SettingsMixin
 from GitSavvy.core.fns import filter_
-from GitSavvy.core.runtime import run_as_future
+from GitSavvy.core.runtime import enqueue_on_worker, run_as_future
+from GitSavvy.core.utils import resolve_path
 
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Deque, Iterator, List, Sequence, Tuple, Union
+    from typing import Callable, Deque, Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
 
 git_path = None
 error_message_displayed = False
+repo_paths = {}  # type: Dict[str, str]
 
 DECODE_ERROR_MESSAGE = """
 The Git command returned data that is unparsable.  This may happen
@@ -44,6 +46,8 @@ encoded files.  In the latter case use the 'fallback_encoding' setting.
 
 MIN_GIT_VERSION = (2, 16, 0)
 GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d} or above."
+
+NOT_SET = "<NOT_SET>"
 
 
 def communicate_and_log(proc, stdin, log):
@@ -346,86 +350,89 @@ class _GitCommand(SettingsMixin):
 
         return git_path
 
+    def _current_window(self):
+        # type: () -> Optional[sublime.Window]
+        try:
+            return self.window  # type: ignore[attr-defined]
+        except AttributeError:
+            return self.view.window()  # type: ignore[attr-defined]
+
+    def _current_view(self):
+        # type: () -> Optional[sublime.View]
+        try:
+            return self.view  # type: ignore[attr-defined]
+        except AttributeError:
+            return self.window.active_view()  # type: ignore[attr-defined]
+
+    def _current_filename(self):
+        # type: () -> Optional[str]
+        try:
+            return self.view.file_name()  # type: ignore[attr-defined]
+        except AttributeError:
+            return self.window.extract_variables().get("file")  # type: ignore[attr-defined]
+
+    def _search_paths(self):
+        # type: () -> Iterator[str]
+        def __search_paths():
+            # type: () -> Iterator[str]
+            file_name = self._current_filename()
+            if file_name:
+                yield os.path.dirname(file_name)
+
+            window = self._current_window()
+            if window:
+                folders = window.folders()
+                if folders:
+                    yield folders[0]
+
+        return filter(os.path.isdir, __search_paths())
+
     def find_working_dir(self):
-        view = self.window.active_view() if hasattr(self, "window") else self.view
-        window = view.window() if view else None
-
-        if view and view.file_name():
-            file_dir = os.path.dirname(view.file_name())
-            if os.path.isdir(file_dir):
-                return file_dir
-
-        if window:
-            folders = window.folders()
-            if folders and os.path.isdir(folders[0]):
-                return folders[0]
-
-        return None
+        # type: () -> Optional[str]
+        return next(self._search_paths(), None)
 
     def find_repo_path(self):
+        # type: () -> Optional[str]
         """
         Similar to find_working_dir, except that it does not stop on the first
         directory found, rather on the first git repository found.
         """
-        view = self.window.active_view() if hasattr(self, "window") else self.view
-        window = view.window() if view else None
-        repo_path = None
-
-        # try the current file first
-        if view and view.file_name():
-            file_dir = os.path.dirname(view.file_name())
-            if os.path.isdir(file_dir):
-                repo_path = self.find_git_toplevel(file_dir, throw_on_error=False)
-
-        # fallback: use the first folder if the current file is not inside a git repo
-        if not repo_path:
-            if window:
-                folders = window.folders()
-                if folders and os.path.isdir(folders[0]):
-                    repo_path = self.find_git_toplevel(
-                        folders[0], throw_on_error=False)
-
-        return os.path.realpath(repo_path) if repo_path else None
-
-    def find_git_toplevel(self, folder, throw_on_error):
-        stdout = self.git(
-            "rev-parse",
-            "--show-toplevel",
-            working_dir=folder,
-            throw_on_error=throw_on_error
-        )
-        repo = stdout.strip()
-        return os.path.realpath(repo) if repo else None
-
-    def get_repo_path(self, offer_init=True):
-        # The below condition will be true if run from a WindowCommand and false
-        # from a TextCommand.
-        view = self.window.active_view() if hasattr(self, "window") else self.view
+        view = self._current_view()
         repo_path = view.settings().get("git_savvy.repo_path") if view else None
+        if repo_path and os.path.exists(repo_path):
+            return repo_path
 
-        if not repo_path or not os.path.exists(repo_path):
-            repo_path = self.find_repo_path()
-            if not repo_path:
-                window = view.window()
-                if window:
-                    if window.folders():
-                        # offer initialization
-                        if offer_init:
-                            sublime.set_timeout_async(
-                                lambda: sublime.active_window().run_command("gs_offer_init"))
-                        raise ValueError("Not a git repository.")
-                    else:
-                        raise ValueError("Unable to determine Git repo path.")
-                else:
-                    raise RuntimeError("Window does not exist.")
+        return next(filter_(map(self._find_git_toplevel, self._search_paths())), None)
 
-            if view:
-                file_name = view.file_name()
-                # only set "git_savvy.repo_path" when the current file is in repo_path
-                if file_name and os.path.realpath(file_name).startswith(repo_path + os.path.sep):
-                    view.settings().set("git_savvy.repo_path", repo_path)
+    def _find_git_toplevel(self, folder):
+        # type: (str) -> Optional[str]
+        try:
+            return repo_paths[folder]
+        except KeyError:
+            repo_path = self.git(
+                "rev-parse",
+                "--show-toplevel",
+                working_dir=folder,
+                throw_on_error=False
+            ).strip() or None
+            if repo_path:
+                repo_path = os.path.normpath(repo_path)
+                repo_paths[folder] = repo_path
+            return repo_path
 
-        return os.path.realpath(repo_path) if repo_path else repo_path
+    def get_repo_path(self):
+        # type: () -> str
+        repo_path = self.find_repo_path()
+        if repo_path:
+            return repo_path
+
+        window = self._current_window()
+        if not window:
+            raise RuntimeError("Window does not exist.")
+
+        if window.folders():
+            enqueue_on_worker(window.run_command, "gs_offer_init")
+        raise ValueError("Not a git repository.")
 
     @property
     def repo_path(self):
@@ -445,30 +452,31 @@ class _GitCommand(SettingsMixin):
 
     @property
     def file_path(self):
+        # type: () -> Optional[str]
         """
         Return the absolute path to the file this view interacts with. In most
         cases, this will be the open file.  However, for views with special
         functionality, this default behavior can be overridden by setting the
         view's `git_savvy.file_path` setting.
         """
-        # The below condition will be true if run from a WindowCommand and false
-        # from a TextCommand.
-        view = self.window.active_view() if hasattr(self, "window") else self.view
-        fpath = view.settings().get("git_savvy.file_path")
+        view = self._current_view()
+        if not view:
+            return None
 
-        if not fpath:
-            fpath = view.file_name()
-            if fpath:
-                view.settings().set("git_savvy.file_path", os.path.realpath(fpath))
+        fpath = view.settings().get("git_savvy.file_path") or view.file_name()
+        return resolve_path(fpath) if fpath else fpath
 
-        return os.path.realpath(fpath) if fpath else fpath
-
-    def get_rel_path(self, abs_path=None):
+    def get_rel_path(self, abs_path=NOT_SET):
+        # type: (str) -> str
         """
         Return the file path relative to the repo root.
         """
-        path = abs_path or self.file_path
-        return os.path.relpath(os.path.realpath(path), start=self.repo_path)
+        file_path = self.file_path if abs_path is NOT_SET else resolve_path(abs_path)
+        assert file_path
+        rel_path = os.path.relpath(file_path, start=self.repo_path)
+        if os.name == "nt":
+            return rel_path.replace("\\", "/")
+        return rel_path
 
     def _add_global_flags(self, git_cmd, args):
         # type: (str, List[str]) -> List[str]
