@@ -447,7 +447,7 @@ def log_git_command(fn):
             saved_exception = e
         finally:
             end_time = time.perf_counter()
-            util.debug.log_git(args, None, "<SNIP>", stderr, end_time - start_time)
+            util.debug.log_git(args, self.repo_path, None, "<SNIP>", stderr, end_time - start_time)
             if saved_exception:
                 raise saved_exception from None
     return decorated

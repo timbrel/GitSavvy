@@ -24,7 +24,7 @@ from ..common import util
 from .settings import SettingsMixin
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, run_as_future
-from GitSavvy.core.utils import resolve_path
+from GitSavvy.core.utils import paths_upwards, resolve_path
 
 
 MYPY = False
@@ -112,6 +112,48 @@ STARTUPINFO = None
 if os.name == "nt":
     STARTUPINFO = subprocess.STARTUPINFO()
     STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+HOME = os.path.expanduser('~')
+
+
+def __search_for_git(folder):
+    # type: (str) -> Optional[str]
+    for p in paths_upwards(folder):
+        if os.path.exists(os.path.join(p, ".git")):
+            return p
+        if p == HOME:
+            break
+    return None
+
+
+def search_for_git(folder):
+    # type: (str) -> Optional[str]
+    util.debug.dprint("Searching .git upwards, starting at ", folder)
+    try:
+        return __search_for_git(folder)
+    except Exception as e:
+        util.debug.dprint("Searching raised: {}".format(e))
+        return None
+
+
+def search_for_git_toplevel(start_folder):
+    # type: (str) -> Optional[str]
+    real_start_folder = resolve_path(start_folder)
+    real_repo_path = search_for_git(real_start_folder)
+    if real_start_folder == start_folder:
+        return real_repo_path
+    if not real_repo_path:
+        return None
+
+    user_repo_path = search_for_git(start_folder)
+    if user_repo_path and os.path.samefile(real_repo_path, user_repo_path):
+        return user_repo_path
+    return real_repo_path
+
+
+def is_subpath(topfolder, path):
+    # type: (str, str) -> bool
+    return os.path.commonprefix([topfolder, path]) == topfolder
 
 
 class _GitCommand(SettingsMixin):
@@ -210,7 +252,7 @@ class _GitCommand(SettingsMixin):
         finally:
             if not just_the_proc:
                 end = time.time()
-                util.debug.log_git(final_args, stdin, stdout, stderr, end - start)
+                util.debug.log_git(final_args, working_dir, stdin, stdout, stderr, end - start)
                 if show_panel:
                     log("\n[Done in {:.2f}s]".format(end - start))
 
@@ -383,7 +425,11 @@ class _GitCommand(SettingsMixin):
             if window:
                 folders = window.folders()
                 if folders:
-                    yield folders[0]
+                    if (
+                        not file_name
+                        or not is_subpath(resolve_path(folders[0]), resolve_path(file_name))
+                    ):
+                        yield folders[0]
 
         return filter(os.path.isdir, __search_paths())
 
@@ -409,15 +455,12 @@ class _GitCommand(SettingsMixin):
         try:
             return repo_paths[folder]
         except KeyError:
-            repo_path = self.git(
-                "rev-parse",
-                "--show-toplevel",
-                working_dir=folder,
-                throw_on_error=False
-            ).strip() or None
+            repo_path = search_for_git_toplevel(folder)
             if repo_path:
-                repo_path = os.path.normpath(repo_path)
+                util.debug.dprint("Using ", os.path.join(repo_path, ".git"))
                 repo_paths[folder] = repo_path
+            else:
+                util.debug.dprint("No .git path for {}".format(folder))
             return repo_path
 
     def get_repo_path(self):
@@ -463,17 +506,16 @@ class _GitCommand(SettingsMixin):
         if not view:
             return None
 
-        fpath = view.settings().get("git_savvy.file_path") or view.file_name()
-        return resolve_path(fpath) if fpath else fpath
+        return view.settings().get("git_savvy.file_path") or view.file_name()
 
     def get_rel_path(self, abs_path=NOT_SET):
         # type: (str) -> str
         """
         Return the file path relative to the repo root.
         """
-        file_path = self.file_path if abs_path is NOT_SET else resolve_path(abs_path)
-        assert file_path
-        rel_path = os.path.relpath(file_path, start=self.repo_path)
+        fpath = self.file_path if abs_path is NOT_SET else abs_path
+        assert fpath
+        rel_path = os.path.relpath(resolve_path(fpath), start=resolve_path(self.repo_path))
         if os.name == "nt":
             return rel_path.replace("\\", "/")
         return rel_path

@@ -6,6 +6,11 @@ import threading
 from ...core.settings import GitSavvySettings
 
 
+MYPY = False
+if MYPY:
+    from typing import Optional, Sequence, Union
+
+
 # Preserve state of `enabled` during hot-reloads
 try:
     enabled
@@ -47,14 +52,38 @@ def make_log_message(_type, **kwargs):
     return message
 
 
-def log_git(command, stdin, stdout, stderr, seconds):
+def dprint(*args, **kwargs):
+    global enabled
+    if enabled:
+        print(*args, **kwargs)
+
+
+@functools.lru_cache(maxsize=1)
+def print_cwd_change(cwd, left_space):
+    # type: (str, int) -> None
+    print('\n', ' ' * left_space, '  [{}]'.format(cwd))
+
+
+def log_git(
+    command,  # type: Sequence[Optional[str]]
+    cwd,      # type: str
+    stdin,    # type: Optional[Union[str, bytes]]
+    stdout,   # type: Optional[Union[str, bytes]]
+    stderr,   # type: Optional[Union[str, bytes]]
+    seconds   # type: float
+):
+    # type: (...) -> None
     """ Add git command details to debug log """
     global enabled
     if enabled:
-        print(' ({thread}) [{runtime:3.0f}ms] $ {cmd}'.format(
+        pre_info = "({thread}) [{runtime:3.0f}ms]".format(
             thread=threading.current_thread().name[0],
-            cmd=' '.join(['git'] + list(filter(None, command))),
             runtime=seconds * 1000,
+        )
+        print_cwd_change(cwd, left_space=len(pre_info))
+        print(' {pre_info} $ {cmd}'.format(
+            pre_info=pre_info,
+            cmd=' '.join(['git'] + list(filter(None, command))),
         ))
 
     message = make_log_message(
