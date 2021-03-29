@@ -12,9 +12,10 @@ from itertools import chain, repeat
 from functools import partial
 import locale
 import os
-import subprocess
-import shutil
 import re
+import shutil
+import stat
+import subprocess
 import time
 import traceback
 
@@ -119,20 +120,36 @@ HOME = os.path.expanduser('~')
 def __search_for_git(folder):
     # type: (str) -> Optional[str]
     for p in paths_upwards(folder):
-        if os.path.exists(os.path.join(p, ".git")):
+        if is_git_directory(os.path.join(p, ".git")):
             return p
         if p == HOME:
             break
     return None
 
 
+def is_git_directory(suspect):
+    # type: (str) -> bool
+    try:
+        st = os.stat(suspect)
+    except (OSError, ValueError):
+        return False
+
+    if not stat.S_ISDIR(st.st_mode):
+        return True
+    # Test if the dir looks like a git dir.  `HEAD` is mandatory.
+    ok = os.path.exists(os.path.join(suspect, "HEAD"))
+    if not ok:
+        util.debug.dprint("fatal: {} has no HEAD file.".format(suspect))
+    return ok
+
+
 def search_for_git(folder):
     # type: (str) -> Optional[str]
-    util.debug.dprint("Searching .git upwards, starting at ", folder)
+    util.debug.dprint("searching .git upwards, starting at ", folder)
     try:
         return __search_for_git(folder)
     except Exception as e:
-        util.debug.dprint("Searching raised: {}".format(e))
+        util.debug.dprint("searching raised: {}".format(e))
         return None
 
 
@@ -457,10 +474,10 @@ class _GitCommand(SettingsMixin):
         except KeyError:
             repo_path = search_for_git_toplevel(folder)
             if repo_path:
-                util.debug.dprint("Using ", os.path.join(repo_path, ".git"))
+                util.debug.dprint("using ", os.path.join(repo_path, ".git"))
                 repo_paths[folder] = repo_path
             else:
-                util.debug.dprint("No .git path for {}".format(folder))
+                util.debug.dprint("no .git path for {}".format(folder))
             return repo_path
 
     def get_repo_path(self):
