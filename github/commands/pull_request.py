@@ -11,6 +11,7 @@ from ...core.commands.push import gs_push_to_branch_name
 from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_paginated_panel
 from ...core.ui_mixins.input_panel import show_single_line_input_panel
+from ...core.utils import show_actions_panel
 from ...core.view import replace_view_content
 
 
@@ -178,10 +179,27 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
             return
 
         if not current_branch.tracking:
-            self.window.run_command("gs_github_push_and_create_pull_request", {
-                "local_branch_name": current_branch.name,
-                "set_upstream": True
-            })
+            remotes = self.get_remotes()
+            remote = self.get_integrated_remote_name(remotes)
+            branch_name = current_branch.name
+            show_actions_panel(self.window, [
+                (
+                    "Push to '{}/{}'".format(remote, current_branch.name),
+                    lambda: self.window.run_command("gs_github_push_and_create_pull_request", {
+                        "local_branch_name": branch_name,
+                        "remote": remote,
+                        "branch_name": branch_name,
+                        "set_upstream": True
+                    })
+                ),
+                (
+                    "Configure where to push to...",
+                    lambda: self.window.run_command("gs_github_push_and_create_pull_request", {
+                        "local_branch_name": branch_name,
+                        "set_upstream": True
+                    })
+                )
+            ])
 
         elif (
             "ahead" in current_branch.tracking_status
