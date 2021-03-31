@@ -36,6 +36,7 @@ if MYPY:
 git_path = None
 error_message_displayed = False
 repo_paths = {}  # type: Dict[str, str]
+git_dirs = {}  # type: Dict[str, str]
 
 DECODE_ERROR_MESSAGE = """
 The Git command returned data that is unparsable.  This may happen
@@ -496,6 +497,7 @@ class _GitCommand(SettingsMixin):
 
     @property
     def repo_path(self):
+        # type: () -> str
         """
         Return the absolute path to the git repo that contains the file that this
         view interacts with.  Like `file_path`, this can be overridden by setting
@@ -509,6 +511,26 @@ class _GitCommand(SettingsMixin):
             return self.repo_path.replace(os.environ["HOME"], "~")
         else:
             return self.repo_path
+
+    @property
+    def git_dir(self):
+        # type: () -> str
+        repo_path = self.repo_path
+        try:
+            return git_dirs[repo_path]
+        except KeyError:
+            # Note: per contract `{self.repo_path}/.git` exists.
+            gitdir = os.path.join(repo_path, ".git")
+            if os.path.isfile(gitdir):
+                try:
+                    with open(gitdir) as f:
+                        content = f.read()
+                        if content.startswith("gitdir: "):
+                            gitdir = content[8:].strip()
+                except OSError:
+                    pass
+            git_dirs[repo_path] = gitdir
+            return gitdir
 
     @property
     def file_path(self):

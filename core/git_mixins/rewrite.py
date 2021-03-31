@@ -204,10 +204,11 @@ class RewriteMixin(mixin_base):
 
     @property
     def _rebase_replay_dir(self):
+        # type: () -> str
         """
         A directory to store meta data for `rewrite_active_branch`
         """
-        return os.path.join(self.repo_path, ".git", "rebase-replay")
+        return os.path.join(self.git_dir, "rebase-replay")
 
     def rebase_rewritten(self):
         if self.in_rebase_merge():

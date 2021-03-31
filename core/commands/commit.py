@@ -120,7 +120,7 @@ class gs_commit(WindowCommand, GitCommand):
 
     def initialize_view(self, view, amend, initial_text):
         # type: (sublime.View, bool, str) -> None
-        merge_msg_path = os.path.join(self.repo_path, ".git", "MERGE_MSG")
+        merge_msg_path = os.path.join(self.git_dir, "MERGE_MSG")
 
         help_text = (
             COMMIT_HELP_TEXT_ALT
