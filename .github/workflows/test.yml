@@ -4,7 +4,7 @@ on: [push, pull_request]
 
 env:
   PACKAGE: GitSavvy
-  SUBLIME_TEXT_VERSION: 3
+  SUBLIME_TEXT_VERSION: 4
   UNITTESTING_TAG: master
 
 jobs:
@@ -24,12 +24,5 @@ jobs:
           PATH="$HOME/.local/bin:$PATH"
           sh github.sh bootstrap
           sh github.sh install_package_control
-          sh github.sh run_tests --coverage
-          sh github.sh run_syntax_tests --coverage
-      - run: |
-          apt-get update
-          apt-get install python3-pip -y
-          pip3 install coverage==4.5.4 codecov==2.0.15
-          codecov
-        env:
-          CODECOV_TOKEN: ${{secrets.CODECOV_TOKEN}}
+          sh github.sh run_tests
+          sh github.sh run_syntax_tests
