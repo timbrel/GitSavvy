@@ -2,10 +2,6 @@ name: Run tests
 
 on: [push, pull_request]
 
-# if need master branch of UnitTesting
-#  env:
-#     UNITTESTING_TAG: master
-
 env:
   PACKAGE: GitSavvy
   SUBLIME_TEXT_VERSION: 3
