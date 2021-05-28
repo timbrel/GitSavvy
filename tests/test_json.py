@@ -233,9 +233,7 @@ class TestSublimeResources(unittest.TestCase):
             for filename in fnmatch.filter(filenames, pattern):
                 yield os.path.join(root, filename)
             ignored = ('.git', '.hg', '.svn', '.tox')
-            for dirname in [d for d in dirnames if d not in ignored]:
-                for f in self._get_files(pattern, os.path.join(root, dirname)):
-                    yield f
+            dirnames[:] = [d for d in dirnames if d not in ignored]
 
     def test_json(self):
         print()  # add a new line to console output before printing file names
