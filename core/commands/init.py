@@ -8,6 +8,14 @@ from ...common import util
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
+__all__ = (
+    "gs_offer_init",
+    "gs_init",
+    "gs_clone",
+    "gs_setup_user"
+)
+
+
 NO_REPO_MESSAGE = ("It looks like you haven't initialized Git in this directory.  "
                    "Would you like to?")
 REPO_PATH_PROMPT = "Enter root path of new git repo:"
@@ -25,7 +33,7 @@ GIT_URL = "Enter git url:"
 views_with_offer_made = set()
 
 
-class GsOfferInit(WindowCommand, GitCommand):
+class gs_offer_init(WindowCommand, GitCommand):
 
     """
     If a git command fails indicating no git repo was found, this
@@ -45,7 +53,7 @@ class GsOfferInit(WindowCommand, GitCommand):
             views_with_offer_made.add(active_view_id)
 
 
-class GsInit(WindowCommand, GitCommand):
+class gs_init(WindowCommand, GitCommand):
 
     """
     If the active Sublime window has folders added to the project (or if Sublime was
@@ -77,7 +85,7 @@ class GsInit(WindowCommand, GitCommand):
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
-class GsClone(WindowCommand, GitCommand):
+class gs_clone(WindowCommand, GitCommand):
 
     """
     If the active Sublime window has folders added to the project (or if Sublime was
@@ -137,7 +145,7 @@ class GsClone(WindowCommand, GitCommand):
         sublime.active_window().set_project_data(project_data)
 
 
-class GsSetupUserCommand(WindowCommand, GitCommand):
+class gs_setup_user(WindowCommand, GitCommand):
 
     """
     Set user's name and email address in global Git config.
