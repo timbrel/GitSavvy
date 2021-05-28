@@ -78,7 +78,7 @@ class GlobalSettings:
             return current_value
 
     def set(self, name, value):
-        self._settings.set(name, value)
+        self._settings.set(name, value)  # implicitly calls `_on_update` to clear cache
 
     def _on_update(self):
         self._cache.clear()
