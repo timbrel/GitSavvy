@@ -74,7 +74,7 @@ class GlobalSettings:
         try:
             return self._cache[name]
         except KeyError:
-            self._cache[name] = current_value = self._settings.get(name, default)
+            self._cache[name] = current_value = self._settings.get(name, default)  # type: ignore[var-annotated]
             return current_value
 
     def set(self, name, value):
