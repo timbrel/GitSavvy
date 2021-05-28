@@ -4,7 +4,7 @@ import sublime
 
 from unittesting import DeferrableTestCase, expectedFailure
 from GitSavvy.tests.parameterized import parameterized as p
-from GitSavvy.tests.mockito import unstub, when
+from GitSavvy.tests.mockito import spy2, unstub, when
 
 from GitSavvy.core.commands.log_graph import (
     gs_log_graph_refresh,
@@ -155,8 +155,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         when(gs_log_graph_refresh).read_graph(...).thenReturn(log.splitlines(keepends=True))
         # `GitCommand.get_repo_path` "validates" a given repo using
         # `os.path.exists`.
-        exists = os.path.exists
-        when(os.path).exists(...).thenAnswer(exists)
+        spy2('os.path.exists')
         when(os.path).exists(repo_path).thenReturn(True)
         when(GitCommand).get_working_dir_status().thenReturn(CLEAN_WORKING_DIR)
         self.window.run_command('gs_graph', {'repo_path': repo_path})
