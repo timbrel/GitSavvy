@@ -247,11 +247,12 @@ class TestSublimeResources(unittest.TestCase):
             '*.sublime-settings-hints',
             '*.sublime-theme'
         )
-        result = False
+        not_ok = False
         folder = os.path.dirname(os.path.dirname(__file__))
         for pattern in patterns:
             for file in self._get_files(pattern, folder=folder):
                 print('checking %s ... ' % file)
-                result |= CheckJsonFormat(False, True).check_format(file)
+                not_ok |= CheckJsonFormat(False, True).check_format(file)
 
-        self.assertFalse(result, 'At least one JSON file contains errors!')
+        if not_ok:
+            self.fail('At least one JSON file contains errors!')
