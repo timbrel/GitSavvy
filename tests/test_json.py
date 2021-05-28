@@ -232,10 +232,8 @@ class TestSublimeResources(unittest.TestCase):
         for root, dirnames, filenames in os.walk(folder):
             for filename in fnmatch.filter(filenames, pattern):
                 yield os.path.join(root, filename)
-            ignored = ('.git', '.hg', '.svn', '.tox')
-            for dirname in [d for d in dirnames if d not in ignored]:
-                for f in self._get_files(pattern, os.path.join(root, dirname)):
-                    yield f
+            ignored = ('.git', '.hg', '.svn', '.tox', '.mypy_cache', '__pycache__')
+            dirnames[:] = [d for d in dirnames if d not in ignored]
 
     def test_json(self):
         print()  # add a new line to console output before printing file names
@@ -249,11 +247,12 @@ class TestSublimeResources(unittest.TestCase):
             '*.sublime-settings-hints',
             '*.sublime-theme'
         )
-        result = False
+        not_ok = False
         folder = os.path.dirname(os.path.dirname(__file__))
         for pattern in patterns:
             for file in self._get_files(pattern, folder=folder):
                 print('checking %s ... ' % file)
-                result |= CheckJsonFormat(False, True).check_format(file)
+                not_ok |= CheckJsonFormat(False, True).check_format(file)
 
-        self.assertFalse(result, 'At least one JSON file contains errors!')
+        if not_ok:
+            self.fail('At least one JSON file contains errors!')
