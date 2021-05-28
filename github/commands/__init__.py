@@ -4,3 +4,4 @@ from .configure import *
 from .create_fork import *
 from .add_fork_as_remote import *
 from .pull_request import *
+from .open_issue import *
