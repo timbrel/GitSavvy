@@ -225,8 +225,8 @@ def show_panel(
     )
 
 
-def show_actions_panel(window, actions):
-    # type: (sublime.Window, Sequence[ActionType]) -> None
+def show_actions_panel(window, actions, select=-1):
+    # type: (sublime.Window, Sequence[ActionType], int) -> None
     def on_selection(idx):
         # type: (int) -> None
         description, action = actions[idx]
@@ -235,7 +235,8 @@ def show_actions_panel(window, actions):
     show_panel(
         window,
         (action[0] for action in actions),
-        on_selection
+        on_selection,
+        selected_index=select
     )
 
 

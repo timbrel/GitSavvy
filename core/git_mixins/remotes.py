@@ -3,10 +3,13 @@ from collections import OrderedDict
 
 MYPY = False
 if MYPY:
+    from typing import Dict
     from GitSavvy.core.git_command import (
         BranchesMixin,
         _GitCommand,
     )
+    name = str
+    url = str
 
     class mixin_base(
         BranchesMixin,
@@ -21,6 +24,7 @@ else:
 class RemotesMixin(mixin_base):
 
     def get_remotes(self):
+        # type: () -> Dict[name, url]
         """
         Get a list of remotes, provided as tuples of remote name and remote
         url/resource.

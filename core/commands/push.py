@@ -4,11 +4,12 @@ import sublime
 
 from ..git_command import GitCommand
 from ...common import util
-from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
+from ..ui_mixins.quick_panel import show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.base_commands import GsWindowCommand
-from GitSavvy.core.runtime import enqueue_on_worker
+from GitSavvy.core.runtime import enqueue_on_worker, run_on_new_thread
 from GitSavvy.core.utils import show_actions_panel, noop
+from GitSavvy.core import store
 
 
 __all__ = (
@@ -20,7 +21,9 @@ __all__ = (
 
 MYPY = False
 if MYPY:
+    from typing import Dict, Sequence, TypeVar
     from GitSavvy.core.base_commands import Args, Kont
+    T = TypeVar("T")
 
 
 END_PUSH_MESSAGE = "Push complete."
@@ -29,6 +32,34 @@ CONFIRM_FORCE_PUSH = ("You are about to `git push {}`. Would you  "
 
 
 class PushBase(GsWindowCommand, GitCommand):
+    def guess_remote_to_push_to(self, available_remotes):
+        # type: (Sequence[str]) -> str
+        if len(available_remotes) == 0:
+            raise RuntimeError("")
+        if len(available_remotes) == 1:
+            return next(iter(available_remotes))
+
+        last_remote_used = store.current_state(self.repo_path).get("last_remote_used_for_push")
+        if last_remote_used in available_remotes:
+            return last_remote_used  # type: ignore[return-value]
+
+        defaults = dict(
+            (key[:-12], val)  # strip trailing ".pushdefault" from key
+            for key, val in (
+                line.split()
+                for line in self.git(
+                    "config",
+                    "--get-regexp",
+                    r".*\.pushdefault",
+                    throw_on_error=False
+                ).splitlines()
+            )
+        )  # type: Dict[str, str]
+        for key in (defaults.get("gitsavvy"), defaults.get("remote"), "fork", "origin"):
+            if key in available_remotes:
+                return key  # type: ignore[return-value]
+        return next(iter(available_remotes))
+
     def do_push(
         self,
         remote,
@@ -127,8 +158,36 @@ def take_current_branch_name(cmd, args, done):
 
 
 def ask_for_remote(cmd, args, done):
-    # type: (GsWindowCommand, Args, Kont) -> None
-    show_remote_panel(done, allow_direct=True)
+    # type: (PushBase, Args, Kont) -> None
+    available_remotes = list(cmd.get_remotes())
+    if len(available_remotes) == 0:
+        show_actions_panel(cmd.window, [noop("There are no remotes available.")])
+        return
+
+    remote = cmd.guess_remote_to_push_to(available_remotes)
+    current_branch_name = args["local_branch_name"]
+
+    show_actions_panel(cmd.window, [
+        (
+            "Push to '{}/{}'".format(remote, current_branch_name),
+            lambda: done(remote, branch_name=current_branch_name)
+        ),
+        (
+            "Configure where to push to...",
+            lambda: (
+                show_actions_panel(
+                    cmd.window,
+                    [
+                        (r, partial(done, r, remember_used_remote=True))
+                        for r in available_remotes
+                    ],
+                    select=available_remotes.index(remote)
+                )
+                if len(available_remotes) > 1
+                else done(remote)
+            )
+        ),
+    ])
 
 
 def ask_for_branch_name(caption, initial_text):
@@ -153,7 +212,7 @@ class gs_push_to_branch_name(PushBase):
     """
     defaults = {
         "local_branch_name": take_current_branch_name,  # type: ignore[dict-item]
-        "remote": ask_for_remote,
+        "remote": ask_for_remote,  # type: ignore[dict-item]
         "branch_name": ask_for_branch_name(
             caption=lambda args: "Push to {}/".format(args["remote"]),
             initial_text=lambda args: args["local_branch_name"]
@@ -167,9 +226,14 @@ class gs_push_to_branch_name(PushBase):
         branch_name,
         set_upstream=False,
         force=False,
-        force_with_lease=False
+        force_with_lease=False,
+        remember_used_remote=False,
     ):
-        # type: (str, str, str, bool, bool, bool) -> None
+        # type: (str, str, str, bool, bool, bool, bool) -> None
+        if remember_used_remote:
+            run_on_new_thread(self.git, "config", "--local", "gitsavvy.pushdefault", remote)
+            store.update_state(self.repo_path, {"last_remote_used_for_push": remote})
+
         enqueue_on_worker(
             self.do_push,
             remote,

@@ -12,10 +12,14 @@ from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
 
 MYPY = False
 if MYPY:
-    from typing import Any, Callable, Dict, Iterator, List, TypeVar
+    from typing import Any, Callable, Dict, Iterator, List, Protocol, TypeVar
     CommandT = TypeVar("CommandT", bound=sublime_plugin.Command)
     Args = Dict[str, Any]
-    Kont = Callable[[object], None]
+
+    class Kont(Protocol):
+        def __call__(self, val: object, **kw: object) -> None:
+            pass
+
     ArgProvider = Callable[[CommandT, Args, Kont], None]
 
 
@@ -99,9 +103,10 @@ class Flag:
 
 
 def make_on_done_fn(kont, args, name):
-    def on_done(value):
+    def on_done(value, **kwargs):
         on_done.called = True  # type: ignore[attr-defined]
         args[name] = value
+        args.update(kwargs)
         kont()
     on_done.called = False  # type: ignore[attr-defined]
     return on_done

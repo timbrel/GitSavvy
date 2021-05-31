@@ -17,6 +17,7 @@ if MYPY:
         {
             "status": WorkingDirState,
             "last_remote_used": Optional[str],
+            "last_remote_used_for_push": Optional[str],
             "last_remote_used_with_option_all": Optional[str],
             "short_hash_length": int,
         },
