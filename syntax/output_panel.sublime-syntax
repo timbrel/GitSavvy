@@ -1,0 +1,24 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+name: GitSavvy Output Panel
+hidden: true
+scope: output.git-savvy
+variables:
+  sha: '[0-9a-f]{6,40}'
+contexts:
+  main:
+    - match: ^(\$)\s
+      captures:
+        1: markup.heading entity.name.section
+
+    - match: ^\[Done.*\]$
+      scope: string.other
+
+    - match: ({{sha}}\^?)
+      comment: SHA
+      scope: constant.numeric.graph.commit-hash.git-savvy
+
+    - match: -> ([^ ]*)
+      captures:
+        1: storage
