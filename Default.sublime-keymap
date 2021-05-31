@@ -2212,5 +2212,15 @@
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.stash_view", "operator": "equal", "operand": true }
         ]
+    },
+
+    // COMMON
+
+    {
+        "keys": ["o"],
+        "command": "gs_github_open_issue_at_cursor",
+        "context": [
+            { "key": "selector", "operand": "constant.other.issue-ref.git-savvy, string.other.issue.git-savvy" }
+        ]
     }
 ]
