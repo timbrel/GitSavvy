@@ -1,0 +1,35 @@
+GitSavvy 2.30.0
+===============
+
+Two simple, quality-of-life improvements:
+
+- Open an GitHub issue or PR in the browser
+
+  Whenever you see a link to an issue, for example looking at the Repo
+  History or an individual commit, either hover over it to open a popup,
+  or place the cursor on it and hit `[o]` to open the issue/PR page in
+  your browser.  (#1483)
+
+
+- Simplify wizard when pushing to a remote
+
+  When pushing a branch to a remote the first time, for example prior
+  to creating a PR on GitHub, we now guess a good remote and assume you
+  don't want to have a different branch name than the local one on the
+  remote.  (#1475)
+
+
+Notable
+
+- For compatibility with the new Sublime Text 4, introduce syntax and
+  settings for the basic output panel.  And while we're at it, add some
+  color touch.  (#1484)
+- Correctly find and resolve `git_dir` for *workspaces*.  (#1477)
+- Refactor how we update the workdir status and update the status dashboard
+  in the background.  Basically introducing a *reactive* framework.  (#1478)
+
+
+Tip: Subscribe to the GitSavvy "releases" on GitHub to get a notification
+about a new version, and not be surprised on the next Sublime restart.
+
+:love:
