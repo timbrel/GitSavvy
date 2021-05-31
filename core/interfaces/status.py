@@ -11,6 +11,7 @@ from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
+from GitSavvy.core import store
 
 flatten = chain.from_iterable
 
@@ -78,10 +79,7 @@ class StatusInterface(ui.Interface, GitCommand):
     """
 
     interface_type = "status"
-    read_only = True
     syntax_file = "Packages/GitSavvy/syntax/status.sublime-syntax"
-    word_wrap = False
-    tab_size = 2
 
     template = """\
 
@@ -187,7 +185,8 @@ class StatusInterface(ui.Interface, GitCommand):
             'unstaged_files': [],
             'untracked_files': [],
             'merge_conflicts': [],
-            'branch_status': '',
+            'clean': True,
+            'long_status': '',
             'git_root': '',
             'show_help': True,
             'head': '',
@@ -207,7 +206,6 @@ class StatusInterface(ui.Interface, GitCommand):
         with the real world.
         """
         for thunk in (
-            self.fetch_repo_status,
             lambda: {'head': self.get_latest_commit_msg_for_head()},
             lambda: {'stashes': self.get_stashes()},
         ):
@@ -215,7 +213,11 @@ class StatusInterface(ui.Interface, GitCommand):
                 partial(self.update_state, thunk, then=self.just_render)
             )
 
+        self.view.run_command("gs_update_status")
         # These are cheap to compute, so we just do it!
+        status = store.current_state(self.repo_path).get("status")
+        if status:
+            self.update_state(status._asdict())
         self.update_state({
             'git_root': self.short_repo_path,
             'show_help': not self.view.settings().get("git_savvy.help_hidden")
@@ -243,7 +245,7 @@ class StatusInterface(ui.Interface, GitCommand):
         self.refresh_view_state()
         self.just_render(nuke_cursors)
 
-        if hasattr(self, "reset_cursor") and nuke_cursors:
+        if nuke_cursors:
             self.reset_cursor()
 
     @distinct_until_state_changed
@@ -271,24 +273,8 @@ class StatusInterface(ui.Interface, GitCommand):
         if not on_special_symbol:
             self.view.run_command("gs_status_navigate_goto")
 
-    def fetch_repo_status(self):
-        lines = self._get_status()
-        files_statuses = self._parse_status_for_file_statuses(lines)
-        branch_info = self._get_branch_status_components(lines)
-
-        (staged_files,
-         unstaged_files,
-         untracked_files,
-         merge_conflicts) = self._group_status_entries(files_statuses)
-        branch_status = self._format_branch_status(branch_info)
-
-        return {
-            'staged_files': staged_files,
-            'unstaged_files': unstaged_files,
-            'untracked_files': untracked_files,
-            'merge_conflicts': merge_conflicts,
-            'branch_status': branch_status
-        }
+    def on_status_update(self, _repo_path, state):
+        self.update_state(state["status"]._asdict(), then=self.just_render)
 
     def refresh_repo_status_and_render(self):
         """Refresh `git status` state and render.
@@ -297,15 +283,21 @@ class StatusInterface(ui.Interface, GitCommand):
         So instead of calling `render` it is a good optimization to just
         ask this method if appropriate.
         """
-        self.update_state(self.fetch_repo_status, self.just_render)
+        self.update_working_dir_status()
 
     def after_view_creation(self, view):
         view.settings().set("result_file_regex", EXTRACT_FILENAME_RE)
         view.settings().set("result_base_dir", self.repo_path)
 
+    def on_create(self):
+        self._unsubscribe = store.subscribe(self.repo_path, {"status"}, self.on_status_update)
+
+    def on_close(self):
+        self._unsubscribe()
+
     @ui.partial("branch_status")
     def render_branch_status(self):
-        return self.state['branch_status']
+        return self.state['long_status']
 
     @ui.partial("git_root")
     def render_git_root(self):
@@ -366,12 +358,11 @@ class StatusInterface(ui.Interface, GitCommand):
 
     @ui.partial("no_status_message")
     def render_no_status_message(self):
-        return ("\n    Your working directory is clean.\n"
-                if not (self.state['staged_files'] or
-                        self.state['unstaged_files'] or
-                        self.state['untracked_files'] or
-                        self.state['merge_conflicts'])
-                else "")
+        return (
+            "\n    Your working directory is clean.\n"
+            if self.state['clean']
+            else ""
+        )
 
     @ui.partial("stashes")
     def render_stashes(self):

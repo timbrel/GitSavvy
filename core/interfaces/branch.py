@@ -29,10 +29,7 @@ class BranchInterface(ui.Interface, GitCommand):
     """
 
     interface_type = "branch"
-    read_only = True
     syntax_file = "Packages/GitSavvy/syntax/branch.sublime-syntax"
-    word_wrap = False
-    tab_size = 2
 
     show_remotes = None
 
@@ -94,7 +91,7 @@ class BranchInterface(ui.Interface, GitCommand):
 
     @ui.partial("branch_status")
     def render_branch_status(self):
-        return self.get_branch_status()
+        return self.get_working_dir_status().long_status
 
     @ui.partial("git_root")
     def render_git_root(self):

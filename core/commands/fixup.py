@@ -8,20 +8,14 @@ fixup_command = re.compile("^fixup! (.*)")
 
 class GsFixupFromStageCommand(GsLogCurrentBranchCommand):
     def run(self):
-        (staged_entries,
-         unstaged_entries,
-         untracked_entries,
-         conflict_entries) = self.get_working_dir_status()
-
-        if len(unstaged_entries) + len(conflict_entries) > 0:
+        status = self.get_working_dir_status()
+        if status.unstaged_files or status.merge_conflicts:
             sublime.message_dialog(
                 "Unable to perform rebase actions while repo is in unclean state."
             )
             return
-        if len(staged_entries) == 0:
-            sublime.message_dialog(
-                "No staged files."
-            )
+        if not status.staged_files:
+            sublime.message_dialog("No staged files.")
             return
         super().run()
 

@@ -24,7 +24,6 @@ EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press {super_key}+Enter.  To
 
 class Interface():
     interface_type = ""
-    read_only = True
     syntax_file = ""
 
     template = ""
@@ -77,10 +76,8 @@ class Interface():
             self.create_view(repo_path)
             sublime.set_timeout_async(self.on_new_dashboard, 0)
 
-        if hasattr(self, "tab_size"):
-            self.view.settings().set("tab_size", self.tab_size)
-
         interfaces[self.view.id()] = self
+        self.on_create()
 
     def create_view(self, repo_path):
         window = sublime.active_window()
@@ -93,7 +90,7 @@ class Interface():
         self.view.settings().set("git_savvy.help_hidden", GitSavvySettings().get("hide_help_menu"))
         self.view.set_syntax_file(self.syntax_file)
         self.view.set_scratch(True)
-        self.view.set_read_only(self.read_only)
+        self.view.set_read_only(True)
         util.view.disable_other_plugins(self.view)
         self.after_view_creation(self.view)
 
@@ -107,6 +104,10 @@ class Interface():
 
         return self.view
 
+    def title(self):
+        # type: () -> str
+        raise NotImplementedError
+
     def after_view_creation(self, view):
         """
         Hook template method called after the view has been created.
@@ -114,17 +115,40 @@ class Interface():
         """
         pass
 
+    def on_new_dashboard(self):
+        """
+        Hook template method called after the first render.
+        """
+        pass
+
+    def on_create(self):
+        """
+        Hook template method called after a new interface object has been created.
+        """
+        pass
+
+    def on_close(self):
+        """
+        Hook template method called after a view has been closed.
+        """
+        pass
+
+    def pre_render(self):
+        pass
+
+    def reset_cursor(self):
+        pass
+
     def render(self, nuke_cursors=False):
         self.clear_regions()
-        if hasattr(self, "pre_render"):
-            self.pre_render()
+        self.pre_render()
         rendered = self._render_template()
         self.view.run_command("gs_new_content_and_regions", {
             "content": rendered,
             "regions": self.regions,
             "nuke_cursors": nuke_cursors
         })
-        if hasattr(self, "reset_cursor") and nuke_cursors:
+        if nuke_cursors:
             self.reset_cursor()
 
     def _render_template(self):
@@ -218,12 +242,6 @@ class Interface():
             valid_ranges=self.get_view_regions(region)
         )
 
-    def on_new_dashboard(self):
-        """
-        Hook template method called after the first render.
-        """
-        pass
-
 
 def partial(key):
     def decorator(fn):
@@ -288,12 +306,11 @@ class GsInterfaceCloseCommand(TextCommand):
     """
 
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         view_id = self.view.id()
-        if view_id in interfaces:
-            del interfaces[view_id]
+        interface = get_interface(view_id)
+        if interface:
+            interface.on_close()
+            enqueue_on_worker(lambda: interfaces.pop(view_id))
 
 
 class GsInterfaceRefreshCommand(TextCommand):

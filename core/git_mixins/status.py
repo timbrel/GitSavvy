@@ -3,6 +3,7 @@ import os
 import re
 import string
 
+from GitSavvy.core import store
 
 MYPY = False
 if MYPY:
@@ -22,7 +23,7 @@ else:
 
 
 if MYPY:
-    from typing import List, NamedTuple, Optional
+    from typing import List, NamedTuple, Optional, Tuple
     HeadState = NamedTuple("HeadState", [
         ("detached", bool),
         ("branch", Optional[str]),
@@ -38,20 +39,40 @@ if MYPY:
         ("index_status", str),
         ("working_status", Optional[str]),
     ])
-    WorkingDirState = NamedTuple("WorkingDirState", [
+    _WorkingDirState = NamedTuple("_WorkingDirState", [
         ("staged_files", List[FileStatus]),
         ("unstaged_files", List[FileStatus]),
         ("untracked_files", List[FileStatus]),
         ("merge_conflicts", List[FileStatus]),
+        ("short_status", str),
+        ("long_status", str),
     ])
 
 else:
     HeadState = namedtuple("HeadState", "detached branch remote clean ahead behind gone")
     FileStatus = namedtuple("FileStatus", "path path_alt index_status working_status")
-    WorkingDirState = namedtuple(
-        "WorkingDirState",
-        "staged_files unstaged_files untracked_files merge_conflicts"
+    _WorkingDirState = namedtuple(
+        "_WorkingDirState",
+        "staged_files unstaged_files untracked_files merge_conflicts "
+        "short_status long_status"
     )
+
+
+class WorkingDirState(_WorkingDirState):
+    def _asdict(self):  # broken in old Python versions
+        rv = dict(zip(self._fields, self))
+        rv["clean"] = self.clean
+        return rv
+
+    @property
+    def clean(self):
+        # type: () -> bool
+        return not (
+            self.staged_files
+            or self.unstaged_files
+            or self.untracked_files
+            or self.merge_conflicts
+        )
 
 
 MERGE_CONFLICT_PORCELAIN_STATUSES = (
@@ -77,11 +98,29 @@ class StatusMixin(mixin_base):
             custom_environ={"GIT_OPTIONAL_LOCKS": "0"}
         ).rstrip("\x00").split("\x00")
 
+    def update_working_dir_status(self):
+        # type: () -> None
+        self.get_working_dir_status()
+
     def get_working_dir_status(self):
         # type: () -> WorkingDirState
         lines = self._get_status()
+        branch_status = self._get_branch_status_components(lines)
         files = self._parse_status_for_file_statuses(lines)
-        return self._group_status_entries(files)
+        (staged_files,
+            unstaged_files,
+            untracked_files,
+            merge_conflicts) = self._group_status_entries(files)
+        rv = WorkingDirState(
+            staged_files=staged_files,
+            unstaged_files=unstaged_files,
+            untracked_files=untracked_files,
+            merge_conflicts=merge_conflicts,
+            short_status=self._format_branch_status_short(branch_status),
+            long_status=self._format_branch_status(branch_status)
+        )
+        store.update_state(self.repo_path, {"status": rv})
+        return rv
 
     def _parse_status_for_file_statuses(self, lines):
         # type: (List[str]) -> List[FileStatus]
@@ -100,7 +139,7 @@ class StatusMixin(mixin_base):
         return entries
 
     def _group_status_entries(self, file_status_list):
-        # type: (List[FileStatus]) -> WorkingDirState
+        # type: (List[FileStatus]) -> Tuple[List[FileStatus], ...]
         """
         Take entries from `git status` and sort them into groups.
         """
@@ -118,7 +157,7 @@ class StatusMixin(mixin_base):
             if f.index_status != " ":
                 staged.append(f)
 
-        return WorkingDirState(staged, unstaged, untracked, conflicts)
+        return (staged, unstaged, untracked, conflicts)
 
     def get_branch_status(self, *, delim="\n           "):
         # type: (str) -> str
@@ -141,13 +180,6 @@ class StatusMixin(mixin_base):
 
     def get_branch_status_short(self):
         # type: () -> str
-        if self.in_rebase():
-            rebase_progress = self._rebase_progress()
-            return "(no branch, rebasing {}{})".format(
-                self.rebase_branch_name(),
-                " {}".format(rebase_progress) if rebase_progress else ""
-            )
-
         lines = self._get_status()
         branch_status = self._get_branch_status_components(lines)
         return self._format_branch_status_short(branch_status)
@@ -236,6 +268,13 @@ class StatusMixin(mixin_base):
 
     def _format_branch_status_short(self, branch_status):
         # type: (HeadState) -> str
+        if self.in_rebase():
+            rebase_progress = self._rebase_progress()
+            return "(no branch, rebasing {}{})".format(
+                self.rebase_branch_name(),
+                " {}".format(rebase_progress) if rebase_progress else ""
+            )
+
         detached, branch, remote, clean, ahead, behind, gone = branch_status
 
         dirty = "" if clean else "*"

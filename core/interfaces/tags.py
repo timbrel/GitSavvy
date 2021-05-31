@@ -46,10 +46,7 @@ class TagsInterface(ui.Interface, GitCommand):
     """
 
     interface_type = "tags"
-    read_only = True
     syntax_file = "Packages/GitSavvy/syntax/tags.sublime-syntax"
-    word_wrap = False
-    tab_size = 2
 
     show_remotes = None
     remotes = None
@@ -103,7 +100,7 @@ class TagsInterface(ui.Interface, GitCommand):
 
     @ui.partial("branch_status")
     def render_branch_status(self):
-        return self.get_branch_status()
+        return self.get_working_dir_status().long_status
 
     @ui.partial("repo_root")
     def render_repo_root(self):

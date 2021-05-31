@@ -56,9 +56,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
     """
 
     interface_type = "rebase"
-    read_only = True
     syntax_file = "Packages/GitSavvy/syntax/rebase.sublime-syntax"
-    word_wrap = False
 
     CARET = "▸"
     SUCCESS = "✔"
@@ -487,13 +485,9 @@ class RewriteBase(TextCommand, GitCommand):
 
     def run(self, edit):
         self.interface = ui.get_interface(self.view.id())
+        status = self.get_working_dir_status()
 
-        (staged_entries,
-         unstaged_entries,
-         untracked_entries,
-         conflict_entries) = self.get_working_dir_status()
-
-        if len(unstaged_entries) + len(conflict_entries) > 0:
+        if status.unstaged_files or status.merge_conflicts:
             sublime.message_dialog(
                 "Unable to manipulate commits while repo is in unclean state."
             )

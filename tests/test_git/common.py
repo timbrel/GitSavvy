@@ -16,14 +16,20 @@ if os.name == "nt":
 
 class AssertionsMixin:
 
-    def assert_git_status(self, status):
+    def assert_git_status(self, expected_status):
         """
         Assertion of the current git status. `status` should be a list of 4 intergers:
         The lengths of the staged, unstaged, untracked and conflicted entries.
         """
+        status = self.get_working_dir_status()
         self.assertEqual(
-            [len(x) for x in self.get_working_dir_status()],
-            status)
+            [
+                len(status.staged_files),
+                len(status.unstaged_files),
+                len(status.untracked_files),
+                len(status.merge_conflicts)
+            ],
+            expected_status)
 
 
 class GitRepoTestCase(TempDirectoryTestCase, AssertionsMixin):
