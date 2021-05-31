@@ -43,7 +43,9 @@ def get_panel(window):
 
 def create_panel(window):
     # type: (sublime.Window) -> sublime.View
-    return window.create_output_panel(PANEL_NAME)
+    panel_view = window.create_output_panel(PANEL_NAME)
+    panel_view.set_syntax_file("Packages/GitSavvy/syntax/output_panel.sublime-syntax")
+    return panel_view
 
 
 def show_panel(window):
