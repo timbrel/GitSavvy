@@ -265,11 +265,11 @@ class StatusMixin(mixin_base):
 
     @property
     def _rebase_apply_dir(self):
-        return os.path.join(self.repo_path, ".git", "rebase-apply")
+        return os.path.join(self.git_dir, "rebase-apply")
 
     @property
     def _rebase_merge_dir(self):
-        return os.path.join(self.repo_path, ".git", "rebase-merge")
+        return os.path.join(self.git_dir, "rebase-merge")
 
     @property
     def _rebase_dir(self):
@@ -341,7 +341,7 @@ class StatusMixin(mixin_base):
 
     def _read_git_file(self, fname):
         # type: (str) -> str
-        path = os.path.join(self.repo_path, ".git", fname)
+        path = os.path.join(self.git_dir, fname)
         try:
             with open(path, "r") as f:
                 return f.read().strip()
@@ -350,11 +350,11 @@ class StatusMixin(mixin_base):
 
     def in_merge(self):
         # type: () -> bool
-        return os.path.exists(os.path.join(self.repo_path, ".git", "MERGE_HEAD"))
+        return os.path.exists(os.path.join(self.git_dir, "MERGE_HEAD"))
 
     def merge_head(self):
         # type: () -> str
-        path = os.path.join(self.repo_path, ".git", "MERGE_HEAD")
+        path = os.path.join(self.git_dir, "MERGE_HEAD")
         with open(path, "r") as f:
             commit_hash = f.read().strip()
         return self.get_short_hash(commit_hash)
