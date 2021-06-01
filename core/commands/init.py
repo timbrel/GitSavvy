@@ -1,8 +1,10 @@
 import os
+import re
 
 import sublime
 from sublime_plugin import WindowCommand
 
+from GitSavvy.core.fns import filter_
 from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -85,6 +87,28 @@ class gs_init(WindowCommand, GitCommand):
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
+def parse_url_from_clipboard(clip_content):
+    # type: (str) -> str
+    if not clip_content:
+        return ""
+
+    if (
+        clip_content.endswith(".git")
+        and re.match(r"^(https?|git)://|git@", clip_content)
+    ):
+        return clip_content
+
+    if clip_content.startswith("https://github.com/"):
+        path = clip_content[19:]
+        try:
+            owner, name = filter_(path.split("/")[:2])
+        except ValueError:
+            return ""
+        else:
+            return "https://github.com/{}/{}.git".format(owner, name)
+    return ""
+
+
 class gs_clone(WindowCommand, GitCommand):
 
     """
@@ -99,7 +123,12 @@ class gs_clone(WindowCommand, GitCommand):
 
     def run(self, recursive=False):
         self.recursive = recursive
-        show_single_line_input_panel(GIT_URL, '', self.on_enter_url, None, None)
+        clip_content = sublime.get_clipboard(256).strip()
+        show_single_line_input_panel(
+            GIT_URL,
+            parse_url_from_clipboard(clip_content),
+            self.on_enter_url
+        )
 
     def on_enter_url(self, url):
         self.git_url = url
