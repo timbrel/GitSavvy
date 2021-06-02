@@ -132,8 +132,8 @@ class gs_clone(WindowCommand, GitCommand):
 
     def on_enter_url(self, url):
         self.git_url = url
-        self.suggested_git_root = self.find_suggested_git_root()
-        show_single_line_input_panel(REPO_PATH_PROMPT, self.suggested_git_root, self.on_enter_directory, None, None)
+        suggested_git_root = self.find_suggested_git_root()
+        show_single_line_input_panel(REPO_PATH_PROMPT, suggested_git_root, self.on_enter_directory, None, None)
 
     def find_suggested_git_root(self):
         folder = self.find_working_dir()
