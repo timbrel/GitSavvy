@@ -69,9 +69,6 @@ class gs_init(WindowCommand, GitCommand):
     """
 
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         git_root = self.find_working_dir()
 
         if git_root and os.path.exists(os.path.join(git_root, ".git")):
@@ -198,9 +195,6 @@ class gs_setup_user(WindowCommand, GitCommand):
     """
 
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         if sublime.ok_cancel_dialog(NO_CONFIG_MESSAGE):
             self.get_name()
 
