@@ -4,7 +4,7 @@ import re
 import sublime
 from sublime_plugin import WindowCommand
 
-from GitSavvy.core.fns import filter_
+from GitSavvy.core.fns import filter_, maybe
 from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -131,20 +131,29 @@ class gs_clone(WindowCommand, GitCommand):
         )
 
     def on_enter_url(self, url):
+        if not url:
+            return
         self.git_url = url
-        suggested_git_root = self.find_suggested_git_root()
-        show_single_line_input_panel(REPO_PATH_PROMPT, suggested_git_root, self.on_enter_directory, None, None)
+        suggested_git_root = self.find_suggested_git_root(url)
+        show_single_line_input_panel(
+            REPO_PATH_PROMPT,
+            suggested_git_root,
+            self.on_enter_directory,
+            select_text=False
+        )
 
-    def find_suggested_git_root(self):
-        folder = self.find_working_dir()
-        project = self.project_name_from_url(self.git_url)
-        if folder:
-            if not os.path.exists(os.path.join(folder, project, ".git")):
-                return os.path.join(folder, project)
-            else:
-                parent = os.path.dirname(folder)
-                return os.path.join(parent, project)
-        return ""
+    def find_suggested_git_root(self, url):
+        # type: (str) -> str
+        base_folder = self.guess_base_folder()
+        project_name = self.project_name_from_url(url)
+        return os.path.join(base_folder, project_name)
+
+    def guess_base_folder(self):
+        # type: () -> str
+        return (
+            maybe(lambda: os.path.dirname(self.window.folders()[0]))
+            or os.path.expanduser('~')
+        )
 
     def on_enter_directory(self, path):
         if not path:
