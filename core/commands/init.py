@@ -69,16 +69,25 @@ class gs_init(WindowCommand, GitCommand):
     """
 
     def run(self):
-        git_root = self.find_working_dir()
-
+        git_root = (
+            maybe(lambda: self.window.folders()[0])
+            or maybe(lambda: os.path.dirname(self._current_filename()))  # type: ignore[type-var]
+        )
         if git_root and os.path.exists(os.path.join(git_root, ".git")):
             if sublime.ok_cancel_dialog(CONFIRM_REINITIALIZE):
                 self.on_done(git_root, re_init=True)
             return
 
-        show_single_line_input_panel(REPO_PATH_PROMPT, git_root, self.on_done, None, None)
+        show_single_line_input_panel(
+            REPO_PATH_PROMPT,
+            git_root,
+            self.on_done,
+            select_text=False
+        )
 
     def on_done(self, path, re_init=False):
+        if not path:
+            return
         self.git("init", working_dir=path)
         self.window.status_message("{word_start}nitialized repo successfully.".format(
             word_start="Re-i" if re_init else "I"))
