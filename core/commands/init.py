@@ -158,7 +158,7 @@ class gs_clone(WindowCommand, GitCommand):
             return
         self.target_dir = os.path.expanduser(path)
         if os.path.exists(os.path.join(self.target_dir, ".git")):
-            sublime.ok_cancel_dialog(RECLONE_CANT_BE_DONE)
+            sublime.error_message(RECLONE_CANT_BE_DONE)
             return
 
         enqueue_on_worker(self.do_clone)
