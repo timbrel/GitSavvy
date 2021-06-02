@@ -147,8 +147,10 @@ class gs_clone(WindowCommand, GitCommand):
         return ""
 
     def on_enter_directory(self, path):
-        self.suggested_git_root = os.path.expanduser(path)  # handle ~/%HOME%
-        if self.suggested_git_root and os.path.exists(os.path.join(self.suggested_git_root, ".git")):
+        if not path:
+            return
+        self.target_dir = os.path.expanduser(path)
+        if os.path.exists(os.path.join(self.target_dir, ".git")):
             sublime.ok_cancel_dialog(RECLONE_CANT_BE_DONE)
             return
 
@@ -160,10 +162,11 @@ class gs_clone(WindowCommand, GitCommand):
             "clone",
             "--recursive" if self.recursive else None,
             self.git_url,
-            self.suggested_git_root,
-            working_dir='.')
+            self.target_dir,
+            working_dir='.'
+        )
         self.window.status_message("Cloned repo successfully.")
-        open_folder_in_new_window(self.suggested_git_root)
+        open_folder_in_new_window(self.target_dir)
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
