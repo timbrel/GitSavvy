@@ -147,7 +147,7 @@ class GsSetupUserCommand(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        if sublime.ok_cancel_dialog(NO_CONFIG_MESSAGE, "OK"):
+        if sublime.ok_cancel_dialog(NO_CONFIG_MESSAGE):
             self.get_name()
 
     def get_name(self):
