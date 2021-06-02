@@ -5,6 +5,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from GitSavvy.core.fns import filter_, maybe
+from GitSavvy.core.runtime import enqueue_on_worker
 from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -163,7 +164,7 @@ class gs_clone(WindowCommand, GitCommand):
             sublime.ok_cancel_dialog(RECLONE_CANT_BE_DONE)
             return
 
-        sublime.set_timeout_async(self.do_clone, 0)
+        enqueue_on_worker(self.do_clone)
 
     def do_clone(self):
         self.window.status_message("Start cloning {}".format(self.git_url))
