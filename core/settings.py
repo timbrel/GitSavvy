@@ -3,6 +3,8 @@ from functools import lru_cache
 import sublime
 import sublime_plugin
 
+from GitSavvy.core.fns import maybe
+
 
 __all__ = (
     "ProjectFileChanges",
@@ -10,8 +12,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Dict, Optional, TypeVar
-    T = TypeVar("T")
+    from typing import Dict
 
 
 class GitSavvySettings:
@@ -101,11 +102,3 @@ class SettingsMixin:
             or maybe(lambda: self.view.window())  # type: ignore[attr-defined]
             or sublime.active_window()
         )
-
-
-def maybe(fn):
-    # type: (Callable[[], T]) -> Optional[T]
-    try:
-        return fn()
-    except Exception:
-        return None
