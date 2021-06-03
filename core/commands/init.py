@@ -154,11 +154,11 @@ class GsSetupUserCommand(WindowCommand, GitCommand):
         show_single_line_input_panel(NAME_MESSAGE, "", self.on_done_name, None, None)
 
     def on_done_name(self, name):
-        self.git("config", "--global", "user.name", "\"{}\"".format(name))
+        self.git("config", "--global", "user.name", "{}".format(name))
         self.get_email()
 
     def get_email(self):
         show_single_line_input_panel(EMAIL_MESSAGE, "", self.on_done_email, None, None)
 
     def on_done_email(self, email):
-        self.git("config", "--global", "user.email", "\"{}\"".format(email))
+        self.git("config", "--global", "user.email", "{}".format(email))
