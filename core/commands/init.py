@@ -64,7 +64,7 @@ class gs_init(WindowCommand, GitCommand):
     at that location.  If that directory cannot be determined, use the open file's
     directory.  If there is no open file, prompt the user for the directory to use.
 
-    If the selected directory has previosly been initialized with Git, prompt the user
+    If the selected directory has previously been initialized with Git, prompt the user
     to confirm a re-initialize before proceeding.
     """
 
