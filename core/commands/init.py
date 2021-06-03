@@ -90,8 +90,11 @@ class gs_init(WindowCommand, GitCommand):
         if not path:
             return
         self.git("init", working_dir=path)
-        self.window.status_message("{word_start}nitialized repo successfully.".format(
-            word_start="Re-i" if re_init else "I"))
+        self.window.status_message(
+            "{word_start}nitialized repo successfully.".format(
+                word_start="Re-i" if re_init else "I"
+            )
+        )
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
