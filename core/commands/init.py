@@ -59,13 +59,14 @@ class gs_offer_init(WindowCommand, GitCommand):
 class gs_init(WindowCommand, GitCommand):
 
     """
-    If the active Sublime window has folders added to the project (or if Sublime was
-    opened from the terminal with something like `subl .`), initialize a new Git repo
-    at that location.  If that directory cannot be determined, use the open file's
-    directory.  If there is no open file, prompt the user for the directory to use.
+    If the active Sublime window has folders added to the project (or if
+    Sublime was opened from the terminal with something like `subl .`),
+    initialize a new Git repo at that location.  If that directory cannot be
+    determined, use the open file's directory.  If there is no open file,
+    prompt the user for the directory to use.
 
-    If the selected directory has previously been initialized with Git, prompt the user
-    to confirm a re-initialize before proceeding.
+    If the selected directory has previously been initialized with Git, prompt
+    the user to confirm a re-initialize before proceeding.
     """
 
     def run(self):
