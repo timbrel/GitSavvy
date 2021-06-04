@@ -122,16 +122,6 @@ def parse_url_from_clipboard(clip_content):
 
 class gs_clone(WindowCommand, GitCommand):
 
-    """
-    If the active Sublime window has folders added to the project (or if Sublime was
-    opened from the terminal with something like `subl .`), initialize a new Git repo
-    at that location.  If that directory cannot be determined, use the open file's
-    directory.  If there is no open file, prompt the user for the directory to use.
-
-    If the selected directory has previously been initialized with Git, prompt the user
-    to confirm a re-initialize before proceeding.
-    """
-
     def run(self, recursive=False):
         self.recursive = recursive
         clip_content = sublime.get_clipboard(256).strip()
