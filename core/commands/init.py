@@ -172,10 +172,17 @@ class gs_clone(WindowCommand, GitCommand):
         enqueue_on_worker(self.do_clone)
 
     def do_clone(self):
-        window = open_folder_in_new_window(self.target_dir)
+        if not self.window.folders() and not self.window.views():
+            window = self.window
+        else:
+            window = open_new_window()
+            # HACK: `git()` uses `self.window`, we can't pass anything down
+            self.window = window
+
+        window.set_project_data({
+            "folders": [dict(follow_symlinks=True, path=self.target_dir)]
+        })
         window.status_message("Start cloning {}".format(self.git_url))
-        # HACK: `git()` uses `self.window`, we can't pass anything down
-        self.window = window
         self.git(
             "clone",
             "--recursive" if self.recursive else None,
@@ -190,16 +197,10 @@ class gs_clone(WindowCommand, GitCommand):
         util.view.refresh_gitsavvy_interfaces(window, refresh_sidebar=True)
 
 
-def open_folder_in_new_window(folder):
-    # type: (str) -> sublime.Window
-    # taken from
-    # https://github.com/rosshemsley/iOpener/blob/a35117a201290b63b53ba6372dbf8bbfc68f28b9/i_opener.py#L203-L205
+def open_new_window():
+    # type: () -> sublime.Window
     sublime.run_command("new_window")
-    new_window = sublime.active_window()
-    new_window.set_project_data({
-        "folders": [dict(follow_symlinks=True, path=folder)]
-    })
-    return new_window
+    return sublime.active_window()
 
 
 class gs_setup_user(WindowCommand, GitCommand):
