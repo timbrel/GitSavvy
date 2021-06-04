@@ -31,6 +31,11 @@ NO_CONFIG_MESSAGE = ("It looks like you haven't configured Git yet.  Would you "
 RECLONE_CANT_BE_DONE = ("It looks like Git is already initialized here.  "
                         "You can not re-clone")
 GIT_URL = "Enter git url:"
+DEFAULT_PROJECT_ROOT = (
+    os.path.expanduser(R'~\Desktop')
+    if os.name == "nt"
+    else os.path.expanduser('~')
+)
 
 
 views_with_offer_made = set()
@@ -153,7 +158,7 @@ class gs_clone(WindowCommand, GitCommand):
         # type: () -> str
         return (
             maybe(lambda: os.path.dirname(self.window.folders()[0]))
-            or os.path.expanduser('~')
+            or DEFAULT_PROJECT_ROOT
         )
 
     def on_enter_directory(self, path):
