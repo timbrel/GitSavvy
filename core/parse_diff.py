@@ -93,7 +93,7 @@ class SplittedDiff(SplittedDiffBase):
             return None
 
 
-HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+)$')
+HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+?)\t?$')
 
 
 class TextRange:

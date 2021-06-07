@@ -202,6 +202,40 @@ diff --git a/foxx b/boxx
         # In all cases here "commit" is `None`
         verify(cmd).load_file_at_line(None, *EXPECTED)
 
+    @p.expand([
+        ("+++ b/barz", "barz"),
+        # git puts a "\t" at EOL if the name has a space
+        ("+++ b/Side Bar.sublime-menu\t", "Side Bar.sublime-menu"),
+    ])
+    def test_extracted_filename(self, B_LINE, EXPECTED):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/fooz b/barz
+--- a/fooz
+{b_line}
+@@ -16,1 +16,1 @@ Hi
+ one
++two
+""".format(b_line=B_LINE)
+        CURSOR = 79
+        view = self.window.new_file()
+        view.settings().set("translate_tabs_to_spaces", False)
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        cmd = module.gs_diff_open_file_at_hunk(view)
+        when(cmd).load_file_at_line(...)
+
+        view.sel().clear()
+        view.sel().add(CURSOR)
+
+        cmd.run({'unused_edit'})
+
+        # In all cases here "commit" is `None`
+        verify(cmd).load_file_at_line(None, EXPECTED, ...)
+
 
 class TestDiffViewHunking(DeferrableTestCase):
     @classmethod
