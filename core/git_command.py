@@ -436,6 +436,8 @@ class _GitCommand(SettingsMixin):
         def __search_paths():
             # type: () -> Iterator[str]
             file_name = self._current_filename()
+            if file_name and not os.path.isfile(file_name):
+                file_name = None
             if file_name:
                 yield os.path.dirname(file_name)
 
