@@ -769,7 +769,7 @@ def real_linecol_in_hunk(hunk, row_offset, col):
 
 def recount_lines_for_jump_to_file(hunk):
     # type: (Hunk) -> Iterator[HunkLineWithB]
-    """Recount lines for the jump-to-file feature.
+    """Recoun t lines for the jump-to-file feature.
 
     Only computes b values and handles deletions weird, e.g. for
 
