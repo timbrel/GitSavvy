@@ -12,6 +12,14 @@ filter_ = partial(filter, None)  # type: Callable[[Iterable[Optional[T]]], Itera
 flatten = chain.from_iterable
 
 
+def maybe(fn):
+    # type: (Callable[[], T]) -> Optional[T]
+    try:
+        return fn()
+    except Exception:
+        return None
+
+
 def accumulate(iterable, initial=None):
     # type: (Iterable[int], int) -> Iterable[int]
     if initial is None:

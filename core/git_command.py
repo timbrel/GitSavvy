@@ -451,16 +451,8 @@ class _GitCommand(SettingsMixin):
 
         return filter(os.path.isdir, __search_paths())
 
-    def find_working_dir(self):
-        # type: () -> Optional[str]
-        return next(self._search_paths(), None)
-
     def find_repo_path(self):
         # type: () -> Optional[str]
-        """
-        Similar to find_working_dir, except that it does not stop on the first
-        directory found, rather on the first git repository found.
-        """
         view = self._current_view()
         repo_path = view.settings().get("git_savvy.repo_path") if view else None
         if repo_path and os.path.exists(repo_path):
