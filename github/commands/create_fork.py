@@ -6,7 +6,7 @@ from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import PanelCommandMixin
 from .. import github, git_mixins
 
-START_CREATE_MESSAGE = "Creating fork of {repo} ..."
+START_CREATE_MESSAGE = "Forking {repo} ..."
 END_CREATE_MESSAGE = "Fork created successfully."
 
 
@@ -28,7 +28,7 @@ class GsGithubCreateForkCommand(
 
     def run_async(self):
         base_remote = github.parse_remote(self.get_integrated_remote_url())
-        self.window.status_message(START_CREATE_MESSAGE.format(repo=base_remote))
+        self.window.status_message(START_CREATE_MESSAGE.format(repo=base_remote.url))
         result = github.create_fork(base_remote)
         self.clone_url = result["clone_url"] if "clone_url" in result else None
         self.ssh_url = result["ssh_url"] if "ssh_url" in result else None
