@@ -18,10 +18,7 @@ class gs_github_create_fork(
     git_mixins.GithubRemotesMixin,
     GitCommand,
 ):
-    """
-    Get list of repos on GitHub associated with the active repo.  Display, and when
-    selected, add selection as git remote.
-    """
+
     def run(self):
         enqueue_on_worker(self.run_async)
 
