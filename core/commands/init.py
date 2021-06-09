@@ -147,18 +147,18 @@ class GsSetupUserCommand(WindowCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
-        if sublime.ok_cancel_dialog(NO_CONFIG_MESSAGE, "OK"):
+        if sublime.ok_cancel_dialog(NO_CONFIG_MESSAGE):
             self.get_name()
 
     def get_name(self):
-        show_single_line_input_panel(NAME_MESSAGE, "", self.on_done_name, None, None)
+        show_single_line_input_panel(NAME_MESSAGE, "", self.on_done_name)
 
     def on_done_name(self, name):
-        self.git("config", "--global", "user.name", "\"{}\"".format(name))
+        self.git("config", "--global", "user.name", "{}".format(name))
         self.get_email()
 
     def get_email(self):
-        show_single_line_input_panel(EMAIL_MESSAGE, "", self.on_done_email, None, None)
+        show_single_line_input_panel(EMAIL_MESSAGE, "", self.on_done_email)
 
     def on_done_email(self, email):
-        self.git("config", "--global", "user.email", "\"{}\"".format(email))
+        self.git("config", "--global", "user.email", "{}".format(email))
