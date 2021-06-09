@@ -19,13 +19,13 @@ class GsRemoteAddCommand(WindowCommand, GitCommand):
         if url:
             self.on_enter_remote(url)
         else:
-            show_single_line_input_panel("Remote URL", "", self.on_enter_remote, None, None)
+            show_single_line_input_panel("Remote URL", "", self.on_enter_remote)
 
     def on_enter_remote(self, input_url):
         self.url = input_url
         owner = self.username_from_url(input_url)
 
-        show_single_line_input_panel("Remote name", owner, self.on_enter_name, None, None)
+        show_single_line_input_panel("Remote name", owner, self.on_enter_name)
 
     def on_enter_name(self, remote_name):
         self.git("remote", "add", remote_name, self.url)
@@ -64,7 +64,7 @@ class GsRemoteRenameCommand(WindowCommand, GitCommand):
 
     def on_remote_selection(self, remote):
         self.remote = remote
-        show_single_line_input_panel("Remote name", remote, self.on_enter_name, None, None)
+        show_single_line_input_panel("Remote name", remote, self.on_enter_name)
 
     def on_enter_name(self, new_name):
         self.git("remote", "rename", self.remote, new_name)
