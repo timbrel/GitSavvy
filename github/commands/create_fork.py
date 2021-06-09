@@ -1,9 +1,9 @@
-import sublime
 from sublime_plugin import WindowCommand
 
 from ...common import util
 from ...core.git_command import GitCommand
 from .. import github, git_mixins
+from GitSavvy.core.runtime import enqueue_on_worker
 
 
 START_CREATE_MESSAGE = "Forking {repo} ..."
@@ -23,7 +23,7 @@ class gs_github_create_fork(
     selected, add selection as git remote.
     """
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         remotes = self.get_remotes()
