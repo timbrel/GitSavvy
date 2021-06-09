@@ -41,4 +41,7 @@ class gs_github_create_fork(
             if base_remote_url.startswith("git@")
             else result["clone_url"]
         )
-        self.window.run_command("gs_remote_add", {"url": url})
+        self.window.run_command("gs_remote_add", {
+            "url": url,
+            "set_as_push_default": True
+        })
