@@ -10,10 +10,10 @@ START_CREATE_MESSAGE = "Forking {repo} ..."
 END_CREATE_MESSAGE = "Fork created successfully."
 
 
-__all__ = ['GsGithubCreateForkCommand']
+__all__ = ['gs_github_create_fork']
 
 
-class GsGithubCreateForkCommand(
+class gs_github_create_fork(
     WindowCommand,
     git_mixins.GithubRemotesMixin,
     GitCommand,
