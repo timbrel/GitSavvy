@@ -3,7 +3,6 @@ from sublime_plugin import WindowCommand
 
 from ...common import util
 from ...core.git_command import GitCommand
-from ...core.ui_mixins.quick_panel import PanelCommandMixin
 from .. import github, git_mixins
 
 START_CREATE_MESSAGE = "Forking {repo} ..."
@@ -15,7 +14,6 @@ __all__ = ['GsGithubCreateForkCommand']
 
 class GsGithubCreateForkCommand(
     WindowCommand,
-    PanelCommandMixin,
     git_mixins.GithubRemotesMixin,
     GitCommand,
 ):
