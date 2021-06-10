@@ -125,6 +125,16 @@ def parse_url_from_clipboard(clip_content):
     return ""
 
 
+def project_name_from_url(input_url):
+    # URLs can come in various formats, for example
+    # https://github.com/timbrel/GitSavvy.git
+    #     git@github.com:divmain/GitSavvy.git
+    _split_url = input_url.rsplit("/", 1)[-1]
+    if _split_url.endswith(".git"):
+        _split_url = _split_url[:-4]
+    return _split_url
+
+
 class gs_clone(WindowCommand, GitCommand):
 
     def run(self, recursive=False):
@@ -151,7 +161,7 @@ class gs_clone(WindowCommand, GitCommand):
     def find_suggested_git_root(self, url):
         # type: (str) -> str
         base_folder = self.guess_base_folder()
-        project_name = self.project_name_from_url(url)
+        project_name = project_name_from_url(url)
         return os.path.join(base_folder, project_name)
 
     def guess_base_folder(self):
