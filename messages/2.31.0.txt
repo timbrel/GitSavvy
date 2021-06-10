@@ -1,0 +1,30 @@
+GitSavvy 2.31.0
+===============
+
+- Revamped `git: clone` and `git: init`
+
+  Both commands now find sane root folders for the ".git" repository.
+
+  For `git: clone`, we suggest a sibling folder of the current open folder in
+  the side-bar, and if there is none we fallback to `~`.
+
+  Try it!  Copy a URL from your browser, or for example
+
+      `https://github.com/timbrel/GitSavvy/blob/master/README.md`
+
+  Open a new window (`ctrl+shift+n`), open the Command Palette (`ctrl+p`),
+  `git: clone`.  And just leave the defaults.
+
+  The idea is:  Whenever you read code on GitHub, and it's getting complicated,
+  grab it and read it in Sublime instead.  You can "Go To Definition"s back and
+  forth way faster.
+
+
+Want to contribute back?
+
+It's actually easy.  Here's the workflow:  `checkout new branch` (`cnb`), edit,
+then commit as usual.  `create fork`, `create pull request` (`cpr`).  Done.
+
+
+
+
