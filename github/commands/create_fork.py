@@ -3,48 +3,52 @@ from sublime_plugin import WindowCommand
 
 from ...common import util
 from ...core.git_command import GitCommand
-from ...core.ui_mixins.quick_panel import PanelCommandMixin
 from .. import github, git_mixins
+from GitSavvy.core.runtime import enqueue_on_worker
 
-START_CREATE_MESSAGE = "Creating fork of {repo} ..."
+
+START_CREATE_MESSAGE = "Forking {repo} ..."
 END_CREATE_MESSAGE = "Fork created successfully."
 
 
-__all__ = ['GsGithubCreateForkCommand']
+__all__ = ['gs_github_create_fork']
 
 
-class GsGithubCreateForkCommand(
+class gs_github_create_fork(
     WindowCommand,
-    PanelCommandMixin,
     git_mixins.GithubRemotesMixin,
     GitCommand,
 ):
-    """
-    Get list of repos on GitHub associated with the active repo.  Display, and when
-    selected, add selection as git remote.
-    """
+
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
-        base_remote = github.parse_remote(self.get_integrated_remote_url())
-        self.window.status_message(START_CREATE_MESSAGE.format(repo=base_remote))
-        result = github.create_fork(base_remote)
-        self.clone_url = result["clone_url"] if "clone_url" in result else None
-        self.ssh_url = result["ssh_url"] if "ssh_url" in result else None
-        self.window.status_message(END_CREATE_MESSAGE)
-        util.debug.add_to_log(("github: fork result:\n{}".format(result)))
-        self.window.show_quick_panel(
-            ["Add fork as remote?",
-             self.clone_url,
-             self.ssh_url],
-            self.on_select_action
-        )
+        remotes = self.get_remotes()
+        base_remote_name = self.get_integrated_remote_name(remotes)
+        base_remote_url = remotes[base_remote_name]
+        base_remote = github.parse_remote(base_remote_url)
 
-    def on_select_action(self, idx):
-        if idx == 0:
-            return
-        elif idx == 1:
-            self.window.run_command("gs_remote_add", {"url": self.clone_url})
-        elif idx == 2:
-            self.window.run_command("gs_remote_add", {"url": self.ssh_url})
+        self.window.status_message(START_CREATE_MESSAGE.format(repo=base_remote.url))
+        result = github.create_fork(base_remote)
+        util.debug.add_to_log({"github: fork result": result})
+
+        url = (
+            result["ssh_url"]
+            if base_remote_url.startswith("git@")
+            else result["clone_url"]
+        )
+        for remote_name, remote_url in remotes.items():
+            if remote_url == url:
+                sublime.ok_cancel_dialog(
+                    "You forked previously!  "
+                    "The fork is available under the name '{}'."
+                    .format(remote_name)
+                )
+                break
+        else:
+            self.window.status_message(END_CREATE_MESSAGE)
+            self.window.run_command("gs_remote_add", {
+                "url": url,
+                "set_as_push_default": True
+            })
