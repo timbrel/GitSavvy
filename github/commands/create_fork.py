@@ -31,7 +31,7 @@ class gs_github_create_fork(
         self.window.status_message(START_CREATE_MESSAGE.format(repo=base_remote.url))
         result = github.create_fork(base_remote)
         self.window.status_message(END_CREATE_MESSAGE)
-        util.debug.add_to_log(("github: fork result:\n{}".format(result)))
+        util.debug.add_to_log({"github: fork result": result})
 
         url = (
             result["ssh_url"]
