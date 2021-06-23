@@ -19,7 +19,7 @@ from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view, line_indentation
-from ..view import replace_view_content, row_offset, Position
+from ..view import replace_view_content, place_view, row_offset, Position
 from ...common import util
 
 
@@ -155,6 +155,8 @@ class gs_diff(WindowCommand, GitCommand):
                 if in_cached_mode is not None:
                     settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
                 focus_view(view)
+                if active_view:
+                    place_view(self.window, view, after=active_view)
                 break
 
         else:

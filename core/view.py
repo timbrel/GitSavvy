@@ -115,6 +115,15 @@ def row_offset(view, cursor):
     return (cy - vy) / view.line_height()
 
 
+def place_view(window, view, after):
+    # type: (sublime.Window, sublime.View, sublime.View) -> None
+    view_group, current_index = window.get_view_index(view)
+    group, index = window.get_view_index(after)
+    if view_group == group:
+        wanted_index = index + 1 if index < current_index else index
+        window.set_view_index(view, group, wanted_index)
+
+
 # `replace_view_content` is a wrapper for `_replace_region` to get some
 # typing support from mypy.
 def replace_view_content(view, text, region=None, wrappers=[]):
