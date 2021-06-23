@@ -24,7 +24,7 @@ if MYPY:
     from typing import Optional, Tuple
     from ..types import LineNo, ColNo
 
-SHOW_COMMIT_TITLE = "COMMIT: {}"
+SHOW_COMMIT_TITLE = "SHOW-COMMIT: {}"
 
 
 def compute_identifier_for_view(view):
