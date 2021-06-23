@@ -22,6 +22,11 @@ __all__ = (
 )
 
 
+MYPY = False
+if MYPY:
+    from typing import Deque, Optional
+
+
 NEW_BRANCH_PROMPT = "Branch name:"
 NEW_BRANCH_INVALID = "`{}` is a invalid branch name.\nRead more on $(man git-check-ref-format)"
 
@@ -33,7 +38,7 @@ class gs_checkout_branch(WindowCommand, GitCommand):
     user selected.
     """
 
-    _last_branches = deque([None], 2)
+    _last_branches = deque([None], 2)  # type: Deque[Optional[str]]
 
     def run(self, branch=None):
         sublime.set_timeout_async(lambda: self.run_async(branch), 0)
