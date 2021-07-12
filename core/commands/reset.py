@@ -21,7 +21,7 @@ GIT_RESET_MODES = [
 ]
 
 
-class ResetMixin(object):
+class ResetMixin(GitCommand, WindowCommand):
 
     def do_action(self, commit_hash, **kwargs):
         if not commit_hash:
@@ -58,12 +58,11 @@ class ResetMixin(object):
             do_reset()
 
 
-class GsResetCommand(ResetMixin, LogMixin, WindowCommand, GitCommand):
-
+class GsResetCommand(ResetMixin, LogMixin):
     pass
 
 
-class GsResetBranch(ResetMixin, LogMixin, WindowCommand, GitCommand):
+class GsResetBranch(ResetMixin, LogMixin):
 
     def run_async(self, **kwargs):
         show_branch_panel(self.on_branch_selection)
@@ -72,6 +71,5 @@ class GsResetBranch(ResetMixin, LogMixin, WindowCommand, GitCommand):
         self.do_action(branch)
 
 
-class GsResetReflogCommand(ResetMixin, RefLogMixin, WindowCommand, GitCommand):
-
+class GsResetReflogCommand(ResetMixin, RefLogMixin):
     pass
