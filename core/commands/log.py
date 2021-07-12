@@ -19,7 +19,7 @@ class LogMixin(GitCommand):
     Supports paginated fetching of log (defaults to 6000 entries per "page").
 
     This mixin can be used with both ``WindowCommand`` and ``TextCommand``,
-    but the subclass must also inherit fro GitCommand (for the `git()` method)
+    but the subclass must also inherit from GitCommand (for the `git()` method)
     """
 
     selected_index = 0
