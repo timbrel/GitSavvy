@@ -14,11 +14,10 @@ __all__ = (
 )
 
 
-PADDING = "                                                "
 GIT_RESET_MODES = [
     # See analysis at
     # http://stackoverflow.com/questions/34149356/what-exactly-is-the-difference-between-all-the-git-reset-modes/34155307#34155307
-    ["--mixed" + PADDING, "unstage staged, keep unstaged, don't touch working (safe)"],
+    ["--mixed", "unstage staged, keep unstaged, don't touch working (safe)"],
     ["--soft", "just move HEAD, stage differences (safe)"],
     ["--hard", "discard staged, discard unstaged, update working (unsafe)"],
     ["--merge", "discard staged, keep unstaged, update working (abort if unsafe)"],
