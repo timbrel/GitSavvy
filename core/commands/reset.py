@@ -7,6 +7,13 @@ from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
 
 
+__all__ = (
+    "gs_reset",
+    "gs_reset_branch",
+    "gs_reset_reflog",
+)
+
+
 PADDING = "                                                "
 GIT_RESET_MODES = [
     # See analysis at
@@ -58,11 +65,11 @@ class ResetMixin(GitCommand, WindowCommand):
             do_reset()
 
 
-class GsResetCommand(ResetMixin, LogMixin):
+class gs_reset(ResetMixin, LogMixin, WindowCommand):
     pass
 
 
-class GsResetBranch(ResetMixin, LogMixin):
+class gs_reset_branch(ResetMixin, LogMixin, WindowCommand):
 
     def run_async(self, **kwargs):
         show_branch_panel(self.on_branch_selection)
@@ -71,5 +78,5 @@ class GsResetBranch(ResetMixin, LogMixin):
         self.do_action(branch)
 
 
-class GsResetReflogCommand(ResetMixin, RefLogMixin):
+class gs_reset_reflog(ResetMixin, RefLogMixin, WindowCommand):
     pass
