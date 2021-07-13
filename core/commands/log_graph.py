@@ -1862,7 +1862,7 @@ def commit_message_from_point(view, pt):
     # type: (sublime.View, int) -> Optional[str]
     line_span = view.line(pt)
     for r in extract_message_regions(view):
-        if line_span.contains(r):
+        if line_span.a <= r.a <= line_span.b:  # optimized `line_span.contains(r)`
             return view.substr(r)
     else:
         return None
