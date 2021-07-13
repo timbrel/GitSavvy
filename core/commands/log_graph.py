@@ -1,6 +1,6 @@
 from collections import deque
 from functools import lru_cache, partial
-from itertools import chain, count, islice
+from itertools import chain, count
 import os
 from queue import Empty
 import re
@@ -1075,7 +1075,7 @@ def follow_dots(dot, forward=True):
     """Breadth first traverse dot to dot."""
     # Always sort by `dot.pt` to keep the order exactly like the visual
     # order in the view.
-    stack = sorted(dots_after_dot(dot, forward), key=lambda dot: dot.pt)
+    stack = sorted(dots_after_dot(dot, forward), key=lambda dot: dot.pt, reverse=not forward)
     seen = set()
     while stack:
         dot = stack.pop(0)
@@ -1083,7 +1083,7 @@ def follow_dots(dot, forward=True):
             yield dot
             seen.add(dot)
             stack.extend(dots_after_dot(dot, forward))
-            stack.sort(key=lambda dot: dot.pt)
+            stack.sort(key=lambda dot: dot.pt, reverse=not forward)
 
 
 def dots_after_dot(dot, forward=True):
@@ -1788,17 +1788,28 @@ def colorize_fixups(view):
 def _colorize_fixups(vid, dots):
     # type: (sublime.ViewId, Tuple[colorizer.Char]) -> None
     view = sublime.View(vid)
-    extract_message = partial(message_from_fixup_squash_line, view.id())
-    matching_dots = list(filter_(
-        find_matching_commit(view.id(), dot, message)
-        for dot, message in zip(dots, map(extract_message, dots))
-        if message
-    ))
+
+    matching_dots = flatten(__find_matching_dots(vid, dot) for dot in dots)
     view.add_regions(
         'gs_log_graph_follow_fixups',
         [dot.region() for dot in matching_dots],
         scope=MATCHING_COMMIT_SCOPE
     )
+
+
+@lru_cache(maxsize=64)  # If we cache, we must return non-lazy `List`!
+def __find_matching_dots(vid, dot):
+    # type: (sublime.ViewId, colorizer.Char) -> List[colorizer.Char]
+    view = sublime.View(vid)
+    commit_message = commit_message_from_point(view, dot.pt)
+    if not commit_message:
+        return []
+
+    if is_fixup_or_squash_message(commit_message):
+        original_message = strip_fixup_or_squash_prefix(commit_message)
+        return take(1, find_matching_commit(dot, original_message))
+    else:
+        return list(_find_fixups_upwards(dot, commit_message))
 
 
 def extract_message_regions(view):
@@ -1819,20 +1830,32 @@ def _find_by_selector(vid, _cc, selector):
     return view.find_by_selector(selector)
 
 
-@lru_cache(maxsize=64)
-def message_from_fixup_squash_line(vid, dot):
-    # type: (sublime.ViewId, colorizer.Char) -> Optional[str]
-    view = sublime.View(vid)
-    message = commit_message_from_point(view, dot.pt)
-    if not message:
-        return None
-    # Truncated messages end with one or multiple "." dots which we
-    # have to strip.
-    if message.startswith('fixup! '):
-        return message[7:].rstrip('.').strip()
-    if message.startswith('squash! '):
-        return message[8:].rstrip('.').strip()
-    return None
+def is_fixup_or_squash_message(commit_message):
+    # type: (str) -> bool
+    return (
+        commit_message.startswith("fixup! ")
+        or commit_message.startswith("squash! ")
+    )
+
+
+def strip_fixup_or_squash_prefix(commit_message):
+    # type: (str) -> str
+    # As long as we process "visually", we must deal with
+    # truncated messages which end with one or multiple dots
+    # we have to strip.
+    if commit_message.startswith('fixup! '):
+        return commit_message[7:].rstrip('.').strip()
+    if commit_message.startswith('squash! '):
+        return commit_message[8:].rstrip('.').strip()
+    return commit_message
+
+
+def add_fixup_or_squash_prefixes(commit_message):
+    # type: (str) -> List[str]
+    return [
+        "fixup! " + commit_message,
+        "squash! " + commit_message
+    ]
 
 
 def commit_message_from_point(view, pt):
@@ -1845,18 +1868,41 @@ def commit_message_from_point(view, pt):
         return None
 
 
-@lru_cache(maxsize=64)
-def find_matching_commit(vid, dot, message):
-    # type: (sublime.ViewId, colorizer.Char, str) -> Optional[colorizer.Char]
-    view = sublime.View(vid)
-    for dot in islice(follow_dots(dot), 0, 100):
-        this_message = commit_message_from_point(view, dot.pt)
-        if this_message:
-            shorter, longer = sorted((message, this_message.rstrip(".")), key=len)
-            if longer.startswith(shorter):
-                return dot
-    else:
-        return None
+def find_matching_commit(dot, message, forward=True):
+    # type: (colorizer.Char, str, bool) -> Iterator[colorizer.Char]
+    dots = follow_dots(dot, forward=forward)
+    for dot, this_message in _with_message(take(100, dots)):
+        this_message = this_message.rstrip(".").strip()
+        shorter, longer = sorted((message, this_message), key=len)
+        if longer.startswith(shorter):
+            yield dot
+
+
+def _find_fixups_upwards(dot, message):
+    # type: (colorizer.Char, str) -> Iterator[colorizer.Char]
+    messages = add_fixup_or_squash_prefixes(message)
+
+    previous_dots = follow_dots(dot, forward=False)
+    for dot, this_message in _with_message(take(50, previous_dots)):
+        this_message = this_message.rstrip(".").strip()
+        if is_fixup_or_squash_message(this_message):
+            for message in messages:
+                shorter, longer = sorted((message, this_message), key=len)
+                if longer.startswith(shorter):
+                    yield dot
+
+
+def _with_message(dots):
+    # type: (Iterable[colorizer.Char]) -> Iterator[Tuple[colorizer.Char, str]]
+    return filter_(map(with_message, dots))
+
+
+def with_message(dot):
+    # type: (colorizer.Char) -> Optional[Tuple[colorizer.Char, str]]
+    commit_message = commit_message_from_point(dot.view, dot.pt)
+    if commit_message:
+        return dot, commit_message
+    return None
 
 
 def draw_info_panel(view):

@@ -164,7 +164,7 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
         on_head = "HEAD" in info
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
 
-        if commit_message and is_fixup_or_squash_message(commit_message):
+        if commit_message and log_graph.is_fixup_or_squash_message(commit_message):
             base_commit = find_base_commit_for_fixup(view, line, commit_message)
             if base_commit:
                 fixup_commit = Commit(commit_hash, commit_message)
@@ -354,34 +354,14 @@ def find_base_commit_for_fixup(view, commit_line, commit_message):
     if not dot:
         return None
 
-    original_message = strip_fixup_or_squash_prefix(commit_message)
-    target_dot = log_graph.find_matching_commit(view.id(), dot, original_message)
+    original_message = log_graph.strip_fixup_or_squash_prefix(commit_message)
+    target_dot = next(log_graph.find_matching_commit(dot, original_message), None)
     if not target_dot:
         return None
 
     target_line = log_graph.line_from_pt(view, target_dot.pt)
     target_commit_hash = log_graph.extract_commit_hash(target_line.text)
     return target_commit_hash
-
-
-def is_fixup_or_squash_message(commit_message):
-    # type: (str) -> bool
-    return (
-        commit_message.startswith("fixup! ")
-        or commit_message.startswith("squash! ")
-    )
-
-
-def strip_fixup_or_squash_prefix(commit_message):
-    # type: (str) -> str
-    # As long as we process "visually", we must deal with
-    # truncated messages which end with one or multiple dots
-    # we have to strip.
-    if commit_message.startswith('fixup! '):
-        return commit_message[7:].rstrip('.').strip()
-    if commit_message.startswith('squash! '):
-        return commit_message[8:].rstrip('.').strip()
-    return commit_message
 
 
 def is_fixup(commit):
