@@ -5,6 +5,7 @@ from .log import LogMixin
 from .reflog import RefLogMixin
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
+from GitSavvy.core import store
 
 
 __all__ = (
@@ -38,10 +39,21 @@ class ResetMixin(GitCommand, WindowCommand):
         if use_reset_mode:
             self.on_reset(use_reset_mode)
         else:
+            last_reset_mode_used = \
+                store.current_state(self.repo_path).get("last_reset_mode_used")
+            selected_index = next(
+                (
+                    idx
+                    for idx, (mode, _) in enumerate(GIT_RESET_MODES)
+                    if mode == last_reset_mode_used
+                ),
+                -1
+            )
             self.window.show_quick_panel(
                 GIT_RESET_MODES,
                 self.on_reset_mode_selection,
-                flags=sublime.MONOSPACE_FONT
+                flags=sublime.MONOSPACE_FONT,
+                selected_index=selected_index
             )
 
     def on_reset_mode_selection(self, index):
@@ -54,6 +66,7 @@ class ResetMixin(GitCommand, WindowCommand):
         args = reset_mode.split() + [self._selected_hash]
 
         def do_reset():
+            store.update_state(self.repo_path, {"last_reset_mode_used": reset_mode})
             self.git("reset", *args)
             util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
