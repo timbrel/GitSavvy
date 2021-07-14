@@ -67,9 +67,8 @@ class gs_reset(ResetMixin, LogMixin, WindowCommand):
     pass
 
 
-class gs_reset_branch(ResetMixin, LogMixin, WindowCommand):
-
-    def run_async(self, **kwargs):
+class gs_reset_branch(ResetMixin, WindowCommand):
+    def run(self, **kwargs):
         show_branch_panel(self.on_branch_selection)
 
     def on_branch_selection(self, branch):
