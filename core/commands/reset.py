@@ -26,6 +26,7 @@ GIT_RESET_MODES = [
     # For reference, in case we ever include the (very similar) checkout command
     # ["--checkout", "keep staged, keep unstaged, update working, move branches (abort if unsafe)"]
 ]
+MODES = [mode for mode, _ in GIT_RESET_MODES]
 
 
 class ResetMixin(GitCommand, WindowCommand):
@@ -36,30 +37,37 @@ class ResetMixin(GitCommand, WindowCommand):
         self._selected_hash = commit_hash
 
         use_reset_mode = self.savvy_settings.get("use_reset_mode")
-        if use_reset_mode:
-            self.on_reset(use_reset_mode)
-        else:
-            last_reset_mode_used = \
-                store.current_state(self.repo_path).get("last_reset_mode_used")
-            selected_index = next(
-                (
-                    idx
-                    for idx, (mode, _) in enumerate(GIT_RESET_MODES)
-                    if mode == last_reset_mode_used
-                ),
-                -1
+        last_reset_mode_used = (
+            store.current_state(self.repo_path)
+                 .get("last_reset_mode_used", use_reset_mode)
+        )
+        reset_modes = (
+            GIT_RESET_MODES
+            + (
+                [[use_reset_mode, ""]]
+                if use_reset_mode and use_reset_mode not in MODES
+                else []
             )
-            self.window.show_quick_panel(
-                GIT_RESET_MODES,
-                self.on_reset_mode_selection,
-                flags=sublime.MONOSPACE_FONT,
-                selected_index=selected_index
+        )
+        try:
+            selected_index = (
+                [m for m, _ in reset_modes]
+                .index(last_reset_mode_used)  # type: ignore[arg-type]
             )
+        except ValueError:
+            selected_index = -1
 
-    def on_reset_mode_selection(self, index):
-        if index == -1:
-            return
-        self.on_reset(GIT_RESET_MODES[index][0].strip())
+        def on_done(index):
+            if index == -1:
+                return
+            self.on_reset(reset_modes[index][0].strip())
+
+        self.window.show_quick_panel(
+            reset_modes,
+            on_done,
+            flags=sublime.MONOSPACE_FONT,
+            selected_index=selected_index
+        )
 
     def on_reset(self, reset_mode):
         # Split the reset mode to support multiple args, e.g. "--mixed -N"
