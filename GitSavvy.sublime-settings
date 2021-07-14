@@ -319,7 +319,7 @@
         Set this value to a valid git reset mode (e.g. --hard, --soft) to use
         it as the preselected default.
      */
-    "use_reset_mode": null,
+    "use_reset_mode": "--mixed",
 
     /*
         When set to `true`, you can navigate the dashboards by using arrow keys.
