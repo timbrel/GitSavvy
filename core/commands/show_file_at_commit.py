@@ -207,7 +207,9 @@ class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
         position = capture_cur_position(view)
         if position is not None:
             row, col, offset = position
-            line = self.reverse_find_matching_lineno(next_commit, commit_hash, row + 1, file_path)
+            line = self.reverse_find_matching_lineno(
+                next_commit, commit_hash, row + 1, file_path
+            )
             position = Position(line - 1, col, offset)
 
         view.run_command("gs_show_file_at_commit_refresh", {
