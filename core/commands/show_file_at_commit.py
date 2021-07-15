@@ -129,7 +129,7 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         if previous_commit:
             return self.get_file_content_at_commit(file_path, previous_commit)
         else:
-            # For intial revisions of a file, everything is new/added, and we
+            # For initial revisions of a file, everything is new/added, and we
             # just compare with the empty "".
             return ""
 
