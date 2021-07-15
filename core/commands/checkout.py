@@ -4,6 +4,7 @@ from functools import partial
 import sublime
 from sublime_plugin import WindowCommand
 
+from . import intra_line_colorizer
 from .log import LogMixin
 from ..git_command import GitCommand, GitSavvyError
 from ..ui_mixins.quick_panel import show_branch_panel
@@ -219,3 +220,4 @@ class gs_show_file_diff(WindowCommand, GitCommand):
         view.set_read_only(True)
         replace_view_content(view, text)
         self.window.run_command("show_panel", {"panel": "output.show_file_diff"})
+        intra_line_colorizer.annotate_intra_line_differences(view)
