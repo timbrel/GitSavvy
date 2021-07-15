@@ -214,8 +214,8 @@ class gs_show_file_diff(WindowCommand, GitCommand):
             self._file_path
         )
 
-        output_view = self.window.create_output_panel("show_file_diff")
-        output_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
-        output_view.set_read_only(True)
-        replace_view_content(output_view, text)
+        view = self.window.create_output_panel("show_file_diff")
+        view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
+        view.set_read_only(True)
+        replace_view_content(view, text)
         self.window.run_command("show_panel", {"panel": "output.show_file_diff"})
