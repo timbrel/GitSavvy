@@ -73,6 +73,13 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
         settings.set("git_savvy.repo_path", repo_path)
         settings.set("git_savvy.file_path", file_path)
         settings.set("git_savvy.show_file_at_commit_view.commit", commit_hash)
+        for key, value in {
+            "auto_indent": False,
+            "detect_indentation": False,
+            "translate_tabs_to_spaces": False,
+        }.items():
+            settings.set(key, value)
+
         if not lang:
             lang = util.file.guess_syntax_for_file(self.window, file_path)
         title = SHOW_COMMIT_TITLE.format(
