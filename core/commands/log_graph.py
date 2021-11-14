@@ -750,7 +750,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
             stderr = ''.join(map(decode, proc.stderr.readlines()))
 
-        if throw_on_error and stderr:
+        if throw_on_error and not proc.returncode == 0:
             stdout = "<STDOUT SNIPPED>\n" if received_some_stdout else ""
             raise GitSavvyError(
                 "$ {}\n\n{}".format(
