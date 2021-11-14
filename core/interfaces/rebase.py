@@ -997,7 +997,7 @@ class GsRebaseOnTopOfCommand(GsRebaseDefineBaseRefCommand):
         self.view.settings().set("git_savvy.rebase.base_ref", selection)
         self.git(
             "rebase",
-            "-p" if interface.preserve_merges() else None,
+            "--rebase-merges" if interface.preserve_merges() else None,
             selection)
         util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
