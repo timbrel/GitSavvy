@@ -723,8 +723,9 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
     @log_git_command
     def git_stdout(self, *args, show_panel_on_error=True, throw_on_error=True, got_proc=None, **kwargs):
         # type: (...) -> Iterator[str]
-        # Note: Can't use `self.decode_stdout` because it blocks the
-        # main thread!
+        # Note: Can't use `self.lax_decode` because it internally uses
+        # `self.get_encoding_candidates()` which blocks the main thread as it
+        # needs to access the settings!
         decode = lax_decoder(self.get_encoding_candidates())
         proc = self.git(*args, just_the_proc=True, **kwargs)
         if got_proc:
