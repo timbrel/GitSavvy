@@ -739,7 +739,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 # content fast and not blocking too much here.
                 # TODO: `len(lines)` could be a good indicator of how fast
                 # the system currently is because it seems to vary a lot when
-                # comapring rather short or long (in count of commits) repos.
+                # comparing rather short or long (in count of commits) repos.
                 lines = proc.stdout.readlines(2**14)
                 if not lines:
                     break
