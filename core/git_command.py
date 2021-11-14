@@ -46,7 +46,7 @@ encoded files.  In the latter case use the 'fallback_encoding' setting.
 -- Partially decoded output follows; � denotes decoding errors --
 """
 
-MIN_GIT_VERSION = (2, 16, 0)
+MIN_GIT_VERSION = (2, 18, 0)
 GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d} or above."
 
 NOT_SET = "<NOT_SET>"
@@ -167,6 +167,24 @@ def search_for_git_toplevel(start_folder):
     if user_repo_path and os.path.samefile(real_repo_path, user_repo_path):
         return user_repo_path
     return real_repo_path
+
+
+def git_version_from_path(git_path):
+    try:
+        stdout = subprocess.check_output(
+            [git_path, "--version"],
+            stderr=subprocess.PIPE,
+            startupinfo=STARTUPINFO
+        ).decode()
+    except Exception:
+        stdout = ""
+
+    match = re.match(r"git version ([0-9]+)\.([0-9]+)\.([0-9]+)", stdout)
+    if match:
+        version = tuple(map(int, match.groups()))
+        return version
+    else:
+        return None
 
 
 def is_subpath(topfolder, path):
@@ -378,26 +396,18 @@ class _GitCommand(SettingsMixin):
             if not git_path:
                 git_path = shutil.which("git")
 
-            try:
-                stdout = subprocess.check_output(
-                    [git_path, "--version"],
-                    stderr=subprocess.PIPE,
-                    startupinfo=STARTUPINFO
-                ).decode()
-            except Exception:
-                stdout = ""
-                git_path = None
-
-            match = re.match(r"git version ([0-9]+)\.([0-9]+)\.([0-9]+)", stdout)
-            if match:
-                version = tuple(map(int, match.groups()))
-                if version < MIN_GIT_VERSION:
-                    msg = GIT_TOO_OLD_MSG.format(*MIN_GIT_VERSION)
+            if git_path:
+                version = git_version_from_path(git_path)
+                if version:
+                    if version < MIN_GIT_VERSION:
+                        msg = GIT_TOO_OLD_MSG.format(*MIN_GIT_VERSION)
+                        git_path = None
+                        if not error_message_displayed:
+                            sublime.error_message(msg)
+                            error_message_displayed = True
+                        raise ValueError("Git binary too old.")
+                else:
                     git_path = None
-                    if not error_message_displayed:
-                        sublime.error_message(msg)
-                        error_message_displayed = True
-                    raise ValueError("Git binary too old.")
 
         if not git_path:
             msg = ("Your Git binary cannot be found.  If it is installed, add it "
