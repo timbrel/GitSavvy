@@ -995,11 +995,13 @@ class GsRebaseOnTopOfCommand(GsRebaseDefineBaseRefCommand):
         self.view.settings().set("git_savvy.rebase_in_progress", (branch_state, selection))
 
         self.view.settings().set("git_savvy.rebase.base_ref", selection)
-        self.git(
-            "rebase",
-            "-p" if interface.preserve_merges() else None,
-            selection)
-        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
+        try:
+            self.git(
+                "rebase",
+                "--rebase-merges" if interface.preserve_merges() else None,
+                selection)
+        finally:
+            util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class GsRebaseTogglePreserveModeCommand(TextCommand, GitCommand):
