@@ -533,7 +533,7 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
             return
 
         def program():
-            with await_todo_list(action):
+            with await_todo_list(partial(action, commit_hash)):
                 self.rebase(
                     '--interactive',
                     "--autostash",
@@ -567,8 +567,8 @@ def format_rebase_items(items):
     )
 
 
-def change_first_action(new_action, buffer_content):
-    # type: (str, str) -> str
+def change_first_action(new_action, base_commit, buffer_content):
+    # type: (str, str, str) -> str
     items = _parse_buffer(buffer_content)
     return format_rebase_items(_change_first_action(new_action, items))
 
@@ -578,8 +578,8 @@ def _change_first_action(new_action, items):
     return [items[0]._replace(action=new_action)] + items[1:]
 
 
-def fixup_commits(fixup_commits, buffer_content):
-    # type: (List[Commit], str) -> str
+def fixup_commits(fixup_commits, base_commit, buffer_content):
+    # type: (List[Commit], str, str) -> str
     items = _parse_buffer(buffer_content)
     return format_rebase_items(_fixup_commits(fixup_commits, items))
 
