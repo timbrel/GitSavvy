@@ -512,6 +512,7 @@ class AwaitTodoListView(sublime_plugin.EventListener):
 class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
     action = None  # type: QuickAction
     autosquash = False
+    rebase_merges = False
     defaults = {
         "commit_hash": extract_commit_hash_from_graph,
     }
@@ -530,6 +531,7 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
             with await_todo_list(partial(action, commit_hash)):
                 self.rebase(
                     '--interactive',
+                    "--rebase-merges" if self.rebase_merges else "--no-rebase-merges",
                     "--autostash",
                     "--autosquash" if self.autosquash else "--no-autosquash",
                     "{}^".format(commit_hash),
@@ -576,21 +578,25 @@ def fixup_commits(fixup_commits, base_commit, buffer_content):
 class gs_rebase_edit_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "edit")
     autosquash = False
+    rebase_merges = True
 
 
 class gs_rebase_drop_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "drop")
     autosquash = False
+    rebase_merges = True
 
 
 class gs_rebase_reword_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "reword")
     autosquash = False
+    rebase_merges = True
 
 
 class gs_rebase_apply_fixup(gs_rebase_quick_action):
     action = partial(fixup_commits)
     autosquash = False
+    rebase_merges = True
 
     def run(self, edit, base_commit, fixes):
         self.action = partial(self.action, [Commit(*fix) for fix in fixes])
@@ -613,6 +619,7 @@ class gs_rebase_just_autosquash(GsTextCommand, RebaseCommand):
                 '--interactive',
                 "--autostash",
                 "--autosquash",
+                "--rebase-merges",
                 "{}".format(commitish),
                 custom_environ={"GIT_SEQUENCE_EDITOR": ":"}
             )
