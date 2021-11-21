@@ -1,7 +1,7 @@
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import lru_cache, partial
-from itertools import chain, takewhile
+from itertools import chain
 import os
 import re
 import shlex
@@ -51,11 +51,6 @@ if MYPY:
     )
     from GitSavvy.core.base_commands import GsCommand, Args, Kont
 
-    RebaseItem = NamedTuple("RebaseItem", [
-        ("action", str),
-        ("commit_hash", str),
-        ("commit_message", str)
-    ])
     Commit = NamedTuple("Commit", [
         ("commit_hash", str),
         ("commit_message", str)
@@ -63,7 +58,6 @@ if MYPY:
     QuickAction = Callable[[str], str]
 
 else:
-    RebaseItem = namedtuple("RebaseItem", "action commit_hash commit_message")
     Commit = namedtuple("Commit", "commit_hash commit_message")
 
 
@@ -544,59 +538,39 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
         run_on_new_thread(program)
 
 
-def _parse_buffer(buffer_content):
-    # type: (str) -> List[RebaseItem]
-    return [
-        RebaseItem(*line.split(" ", 2))
-        for line in takewhile(
-            lambda line: bool(line.strip()),
-            buffer_content.splitlines(keepends=True)
-        )
-    ]
-
-
-def ensure_newline(text):
-    # type: (str) -> str
-    return text if text.endswith("\n") else "{}\n".format(text)
-
-
-def format_rebase_items(items):
-    # type: (List[RebaseItem]) -> str
-    return "".join(
-        ensure_newline(" ".join(item)) for item in items
-    )
-
-
 def change_first_action(new_action, base_commit, buffer_content):
     # type: (str, str, str) -> str
-    items = _parse_buffer(buffer_content)
-    return format_rebase_items(_change_first_action(new_action, items))
-
-
-def _change_first_action(new_action, items):
-    # type: (str, List[RebaseItem]) -> List[RebaseItem]
-    return [items[0]._replace(action=new_action)] + items[1:]
+    needle = "pick {} ".format(base_commit)
+    return "".join(
+        new_action + line[4:]  # replace "pick" with `new_action`; len("pick") == 4
+        if line.startswith(needle)
+        else line
+        for line in buffer_content.splitlines(keepends=True)
+        if not line.startswith("#")
+    )
 
 
 def fixup_commits(fixup_commits, base_commit, buffer_content):
     # type: (List[Commit], str, str) -> str
-    items = _parse_buffer(buffer_content)
-    return format_rebase_items(_fixup_commits(fixup_commits, items))
+    def inner():
+        # type: () -> Iterator[str]
+        # The algorithm assumes that all commit hashes provided
+        # have the same length, short or long
+        needle = "pick {} ".format(base_commit)
+        fixup_prefixes = {"pick {} ".format(commit.commit_hash) for commit in fixup_commits}
+        prefix_len = len(fixup_commits[0].commit_hash) + 6  # len("pick  ") == 6
+        for line in buffer_content.splitlines(keepends=True):
+            if line.startswith("#") or line[:prefix_len] in fixup_prefixes:
+                continue
 
-
-def _fixup_commits(fixup_commits, items):
-    # type: (List[Commit], List[RebaseItem]) -> List[RebaseItem]
-    fixup_commit_hashes = {commit.commit_hash for commit in fixup_commits}
-    return [items[0]] + [
-        RebaseItem(
-            "fixup" if is_fixup(commit) else "squash",
-            *commit
-        )
-        for commit in reversed(fixup_commits)
-    ] + [
-        item for item in items[1:]
-        if item.commit_hash not in fixup_commit_hashes
-    ]
+            yield line
+            if line.startswith(needle):
+                for commit in reversed(fixup_commits):
+                    yield "{} {} {}\n".format(
+                        "fixup" if is_fixup(commit) else "squash",
+                        *commit
+                    )
+    return "".join(inner())
 
 
 class gs_rebase_edit_commit(gs_rebase_quick_action):
