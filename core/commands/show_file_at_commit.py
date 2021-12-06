@@ -73,6 +73,13 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
         settings.set("git_savvy.repo_path", repo_path)
         settings.set("git_savvy.file_path", file_path)
         settings.set("git_savvy.show_file_at_commit_view.commit", commit_hash)
+        for key, value in {
+            "auto_indent": False,
+            "detect_indentation": False,
+            "translate_tabs_to_spaces": False,
+        }.items():
+            settings.set(key, value)
+
         if not lang:
             lang = util.file.guess_syntax_for_file(self.window, file_path)
         title = SHOW_COMMIT_TITLE.format(
@@ -122,7 +129,7 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         if previous_commit:
             return self.get_file_content_at_commit(file_path, previous_commit)
         else:
-            # For intial revisions of a file, everything is new/added, and we
+            # For initial revisions of a file, everything is new/added, and we
             # just compare with the empty "".
             return ""
 
@@ -200,7 +207,9 @@ class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
         position = capture_cur_position(view)
         if position is not None:
             row, col, offset = position
-            line = self.reverse_find_matching_lineno(next_commit, commit_hash, row + 1, file_path)
+            line = self.reverse_find_matching_lineno(
+                next_commit, commit_hash, row + 1, file_path
+            )
             position = Position(line - 1, col, offset)
 
         view.run_command("gs_show_file_at_commit_refresh", {
