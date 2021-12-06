@@ -1,0 +1,21 @@
+# SYNTAX TEST "Packages/GitSavvy/syntax/output_panel.sublime-syntax"
+
+$ git push --set-upstream origin test:test
+# <- markup.heading entity.name.section
+
+remote:
+remote: Create a pull request for 'test' on GitHub by visiting:
+remote:      https://github.com/example/example/pull/new/test
+#            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ markup.underline.link
+remote:
+To github.com:example/example.git
+ * [new branch]            test -> test
+#                                  ^^^^ storage
+
+Branch 'test' set up to track remote branch 'test' from 'origin'.
+Lirum larum 8f7c117e ipsim...
+#           ^^^^^^^^ constant.numeric.graph.commit-hash.git-savvy
+
+[Done in 4.92s]
+# <- string.other
+# ^^^^^^^^^^^^^ string.other
