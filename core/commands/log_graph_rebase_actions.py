@@ -15,7 +15,7 @@ from GitSavvy.core.fns import filter_
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.parse_diff import TextRange
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
-from GitSavvy.core.utils import flash
+from GitSavvy.core.utils import flash, noop, show_actions_panel
 from GitSavvy.core.view import replace_view_content
 
 
@@ -396,6 +396,7 @@ class RebaseCommand(GitCommand):
         show_panel=True,
         custom_environ=None,
         ok_message="rebase finished",
+        offer_autostash=False,
         **kwargs
     ):
         window = self.window  # type: ignore[attr-defined]
@@ -417,12 +418,35 @@ class RebaseCommand(GitCommand):
                 custom_environ=environ,
                 **kwargs
             )
-        except GitSavvyError:
-            ...
+        except GitSavvyError as e:
+            if (
+                offer_autostash and
+                "error: cannot rebase: You have unstaged changes." in e.stderr
+            ):
+                show_actions_panel(window, [
+                    noop("Abort. You have unstaged changes."),
+                    (
+                        "Try again with '--autostash'.",
+                        partial(
+                            run_on_new_thread,
+                            self.rebase,
+                            "--autostash",
+                            *args,
+                            show_panel=show_panel,
+                            custom_environ=custom_environ,
+                            ok_message=ok_message,
+                            offer_autostash=False,
+                            **kwargs
+                        )
+                    )
+                ])
+                return
+
         else:
             if show_panel and not self.in_rebase():
                 auto_close_panel(window)
             return rv
+
         finally:
             if self.in_rebase():
                 window.status_message("rebase needs your attention")
@@ -639,6 +663,7 @@ class gs_rebase_interactive(GsTextCommand, RebaseCommand):
         self.rebase(
             '--interactive',
             "{}".format(commitish),
+            offer_autostash=True,
         )
 
 
@@ -656,6 +681,7 @@ class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
             "{}".format(commitish),
             "--onto",
             onto,
+            offer_autostash=True,
         )
 
 
@@ -667,4 +693,4 @@ class gs_rebase_on_branch(GsTextCommand, RebaseCommand):
     @on_new_thread
     def run(self, edit, on):
         # type: (sublime.Edit, str) -> None
-        self.rebase(on)
+        self.rebase(on, offer_autostash=True)
