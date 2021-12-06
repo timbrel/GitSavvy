@@ -1,14 +1,16 @@
 from collections import deque
+from functools import partial
 
 import sublime
 from sublime_plugin import WindowCommand
 
 from .log import LogMixin
-from ..git_command import GitCommand
+from ..git_command import GitCommand, GitSavvyError
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..view import replace_view_content
 from ...common import util
+from GitSavvy.core.utils import noop, show_actions_panel
 
 
 __all__ = (
@@ -18,6 +20,11 @@ __all__ = (
     "gs_checkout_current_file_at_commit",
     "gs_show_file_diff",
 )
+
+
+MYPY = False
+if MYPY:
+    from typing import Deque, Optional
 
 
 NEW_BRANCH_PROMPT = "Branch name:"
@@ -31,7 +38,7 @@ class gs_checkout_branch(WindowCommand, GitCommand):
     user selected.
     """
 
-    _last_branches = deque([None], 2)
+    _last_branches = deque([None], 2)  # type: Deque[Optional[str]]
 
     def run(self, branch=None):
         sublime.set_timeout_async(lambda: self.run_async(branch), 0)
@@ -50,10 +57,38 @@ class gs_checkout_branch(WindowCommand, GitCommand):
                 selected_branch=self._last_branches[0]
             )
 
-    def on_branch_selection(self, branch):
-        self.git("checkout", branch)
+    def on_branch_selection(self, branch, merge=False):
+        try:
+            self.git_throwing_silently(
+                "checkout",
+                "--merge" if merge else None,
+                branch
+            )
+        except GitSavvyError as e:
+            if (
+                "Please commit your changes or stash them before you switch branches" in e.stderr
+                and not merge
+            ):
+                show_actions_panel(self.window, [
+                    noop("Abort, local changes would be overwritten by checkout."),
+                    (
+                        "Try a 'checkout --merge'.",
+                        partial(self.on_branch_selection, branch, merge=True)
+                    )
+                ])
+                return
+            else:
+                raise GitSavvyError(
+                    e.message,
+                    cmd=e.cmd,
+                    stdout=e.stdout,
+                    stderr=e.stderr,
+                    show_panel=True,
+                    window=e.window,
+                )
+
         self._last_branches.append(branch)
-        self.window.status_message("Checked out `{}` branch.".format(branch))
+        self.window.status_message("Checked out `{}`.".format(branch))
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 

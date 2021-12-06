@@ -2327,8 +2327,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         return
 
     def checkout(self, commit_hash):
-        self.git("checkout", commit_hash)
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        self.window.run_command("gs_checkout_branch", {"branch": commit_hash})
 
     def checkout_b(self, branch_name):
         self.git("checkout", "-B", branch_name)
