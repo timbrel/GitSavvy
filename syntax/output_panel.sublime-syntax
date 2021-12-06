@@ -22,3 +22,7 @@ contexts:
     - match: -> ([^ ]*)
       captures:
         1: storage
+
+    - match: \s(https?:\S+)
+      captures:
+        1: markup.underline.link
