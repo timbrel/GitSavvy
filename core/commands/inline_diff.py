@@ -12,7 +12,7 @@ from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view
-from ..view import capture_cur_position, replace_view_content, row_offset, Position
+from ..view import capture_cur_position, place_view, replace_view_content, row_offset, Position
 from ...common import util
 
 
@@ -286,6 +286,7 @@ class gs_inline_diff_open(WindowCommand, GitCommand):
         target_commit=None
     ):
         # type: (str, str, str, bool, Position, str, str) -> None
+        active_view = self.window.active_view()
         this_id = (repo_path, file_path, base_commit, target_commit)
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
@@ -294,6 +295,8 @@ class gs_inline_diff_open(WindowCommand, GitCommand):
                 settings.set("git_savvy.inline_diff_view.in_cached_mode", cached)
                 with disabled_on_activated():
                     focus_view(diff_view)
+                if active_view:
+                    place_view(self.window, view, after=active_view)
                 break
 
         else:
