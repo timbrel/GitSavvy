@@ -550,9 +550,7 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             self.view.sel().clear()
             self.view.sel().add(first_cursor)
         else:
-            window = self.view.window()
-            if window:
-                window.status_message('Not within a hunk')
+            flash(self.view, "Not within a hunk")
 
     def apply_patch(self, patch, pts, reset, zero_diff):
         # type: (str, List[int], bool, bool) -> None
@@ -852,9 +850,7 @@ class gs_diff_undo(TextCommand, GitCommand):
     def run(self, edit):
         history = self.view.settings().get("git_savvy.diff_view.history")
         if not history:
-            window = self.view.window()
-            if window:
-                window.status_message("Undo stack is empty")
+            flash(self.view, "Undo stack is empty")
             return
 
         args, stdin, cursors, in_cached_mode = history.pop()
