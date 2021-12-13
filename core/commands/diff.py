@@ -521,6 +521,11 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             sublime.error_message("Staging is not supported while ignoring [w]hitespace is on.")
             return None
 
+        in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
+        if in_cached_mode and reset:
+            flash(self.view, "Can't discard staged changes.  Unstage first.")
+            return None
+
         frozen_sel = [s for s in self.view.sel()]
         cursor_pts = [s.a for s in frozen_sel]
         diff = SplittedDiff.from_view(self.view)
@@ -536,7 +541,6 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             zero_diff = self.view.settings().get('git_savvy.diff_view.context_lines') == 0
         else:
             line_starts = selected_line_starts(self.view, frozen_sel)
-            in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
             patch = compute_patch_for_sel(diff, line_starts, reset or in_cached_mode)
             zero_diff = True
 
