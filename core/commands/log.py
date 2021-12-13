@@ -11,7 +11,7 @@ from ..view import capture_cur_position, Position
 from ...common import util
 
 
-class LogMixin(object):
+class LogMixin(GitCommand):
     """
     Display git log in a quick panel for given file and branch. Upon selection
     of a commit, displays an "action menu" via the ``GsLogActionCommand``.
@@ -40,7 +40,9 @@ class LogMixin(object):
         )
 
     def on_done(self, commit, **kwargs):
-        sublime.active_window().run_command("hide_panel", {"panel": "output.show_commit_info"})
+        window = self._current_window()
+        if window:
+            window.run_command("hide_panel", {"panel": "output.show_commit_info"})
         if commit:
             self.do_action(commit, **kwargs)
 
@@ -49,22 +51,20 @@ class LogMixin(object):
             return
         if not self.savvy_settings.get("log_show_more_commit_info", True):
             return
-        if hasattr(self, 'window'):
-            window = self.window
-        else:
-            window = self.view.window()
-        window.run_command(
-            "gs_show_commit_info", {"commit_hash": commit, "file_path": file_path})
+        window = self._current_window()
+        if window:
+            window.run_command("gs_show_commit_info", {
+                "commit_hash": commit,
+                "file_path": file_path
+            })
 
     def do_action(self, commit_hash, **kwargs):
-        if hasattr(self, 'window'):
-            window = self.window
-        else:
-            window = self.view.window()
-        window.run_command("gs_log_action", {
-            "commit_hash": commit_hash,
-            "file_path": kwargs.get("file_path")
-        })
+        window = self._current_window()
+        if window:
+            window.run_command("gs_log_action", {
+                "commit_hash": commit_hash,
+                "file_path": kwargs.get("file_path")
+            })
 
 
 class GsLogCurrentBranchCommand(LogMixin, WindowCommand, GitCommand):
