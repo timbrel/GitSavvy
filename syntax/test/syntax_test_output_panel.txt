@@ -16,6 +16,44 @@ Branch 'test' set up to track remote branch 'test' from 'origin'.
 Lirum larum 8f7c117e ipsim...
 #           ^^^^^^^^ constant.numeric.graph.commit-hash.git-savvy
 
+To https://github.com/timbrel/GitSavvy
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ markup.underline.link
+ + 702db93c...eb024923 iterate-push-to-remote -> iterate-push-to-remote (forced update)
+#  ^^^^^^^^             constant.numeric.graph.commit-hash.git-savvy
+#             ^^^^^^^^  constant.numeric.graph.commit-hash.git-savvy
+#                                                ^^^^^^^^^^^^^^^^^^^^^^ storage
+#                                                                      ^^^^ - storage
+
 [Done in 4.92s]
 # <- string.other
 # ^^^^^^^^^^^^^ string.other
+
+
+$ git rebase --interactive --autostash --no-autosquash 87e57b9d^
+# <- markup.heading entity.name.section
+#                                                      ^^^^^^^^^ constant.numeric.graph.commit-hash.git-savvy
+[detached HEAD at 87e57b9d]
+#                 ^^^^^^^^ constant.numeric.graph.commit-hash.git-savvy
+Rebasing (2/3)
+Rebasing (3/3)
+
+Successfully rebased and updated refs/heads/open-issue-at-hand.
+Successfully rebased and updated refs/heads/open-issue-at-hand
+
+[Done in 1.01s]
+
+
+$ git fetch origin --prune
+remote: Enumerating objects: 13, done.
+remote: Counting objects: 100% (13/13), done.
+remote: Compressing objects: 100% (13/13), done.
+remote: Total 13 (delta 5), reused 0 (delta 0), pack-reused 0
+Unpacking objects: 100% (13/13), 5.35 KiB | 57.00 KiB/s, done.
+From https://github.com/SublimeLinter/SublimeLinter
+#    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ markup.underline.link
+   f324708..0f0cec2  master     -> origin/master
+#  ^^^^^^^            constant.numeric.graph.commit-hash.git-savvy
+#           ^^^^^^^   constant.numeric.graph.commit-hash.git-savvy
+#                                  ^^^^^^^^^^^^^ storage
+ = [up to date]      master              -> origin/master
+#                                           ^^^^^^^^^^^^^ storage
