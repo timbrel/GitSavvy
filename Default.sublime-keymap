@@ -26,8 +26,7 @@
         "args": { "reset": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true },
-            { "key": "setting.git_savvy.inline_diff_view.in_cached_mode", "operator": "equal", "operand": false }
+            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
@@ -36,8 +35,7 @@
         "args": { "reset": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true },
-            { "key": "setting.git_savvy.inline_diff_view.in_cached_mode", "operator": "equal", "operand": false }
+            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
