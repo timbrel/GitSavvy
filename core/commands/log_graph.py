@@ -1495,7 +1495,7 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
     # `on_selection_modified` triggers twice per mouse click
     # multiplied with the number of views into the same buffer,
     # hence it is *important* to throttle these events.
-    # We do this seperately per side-effect. See the fn
+    # We do this separately per side-effect. See the fn
     # implementations.
     def on_selection_modified(self, view):
         # type: (sublime.View) -> None
@@ -1539,7 +1539,7 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             # Special case some panels. For these panels, showing them does not count
             # as intent to close the show_commit panel. It will thus reappear
             # automatically as soon as you focus the graph again. E.g. closing the
-            # incremantal find panel via `<enter>` will bring the commit panel up
+            # incremental find panel via `<enter>` will bring the commit panel up
             # again.
             if args.get('panel') == "incremental_find":
                 return
