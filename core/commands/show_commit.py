@@ -216,10 +216,15 @@ class gs_show_commit_show_hunk_on_working_dir(diff.gs_diff_open_file_at_hunk):
 
         full_path = os.path.join(self.repo_path, filename)
         line = self.find_matching_lineno(commit_hash, None, line, full_path)
-        window.open_file(
+        view = window.open_file(
             "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
             sublime.ENCODED_POSITION
         )
+        # https://github.com/sublimehq/sublime_text/issues/4418
+        # Sublime Text 4 focuses the view automatically *if* it
+        # was already open, otherwise it makes the view only
+        # visible. Force the focus for a consistent behavior.
+        focus_view(view)
 
 
 class gs_show_commit_open_graph_context(TextCommand, GitCommand):
