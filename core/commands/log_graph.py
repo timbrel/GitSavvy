@@ -1451,7 +1451,11 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             return
 
         # Auto-hide panel if the user switches to a different buffer
-        if not self.is_applicable(view) and show_commit_info.panel_is_visible(window):
+        if (
+            not self.is_applicable(view)
+            and show_commit_info.panel_is_visible(window)
+            and show_commit_info.panel_belongs_to_graph(panel_view)
+        ):
             panel = PREVIOUS_OPEN_PANEL_PER_WINDOW.get(window.id(), None)
             if panel:
                 window.run_command("show_panel", {"panel": panel})

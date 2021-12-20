@@ -42,6 +42,11 @@ def panel_is_visible(window, name=PANEL_NAME):
     return window.active_panel() == "output.{}".format(name)
 
 
+def panel_belongs_to_graph(panel):
+    # type: (sublime.View) -> bool
+    return panel.settings().get("git_savvy.show_commit_view.belongs_to_a_graph", False)
+
+
 def ensure_panel_is_visible(window, name=PANEL_NAME):
     # type: (sublime.Window, str) -> None
     if not panel_is_visible(window, name):
@@ -72,6 +77,7 @@ class gs_show_commit_info(WindowCommand, GitCommand):
         output_view = ensure_panel(self.window)
         settings = output_view.settings()
         settings.set("git_savvy.repo_path", self.repo_path)
+        settings.set("git_savvy.show_commit_view.belongs_to_a_graph", from_log_graph)
 
         settings.set("result_file_regex", diff.FILE_RE)
         settings.set("result_line_regex", diff.LINE_RE)
