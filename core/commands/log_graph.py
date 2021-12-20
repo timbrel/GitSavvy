@@ -1426,12 +1426,25 @@ class gs_log_graph_open_commit(TextCommand):
         window.run_command("gs_show_commit", {"commit_hash": commit_hash})
 
 
+PANEL_JUST_LOST_FOCUS = False
+
+
 class GsLogGraphCursorListener(EventListener, GitCommand):
     def is_applicable(self, view):
         # type: (sublime.View) -> bool
         return bool(view.settings().get("git_savvy.log_graph_view"))
 
+    def on_deactivated(self, view):
+        # type: (sublime.View) -> None
+        global PANEL_JUST_LOST_FOCUS
+        window = view.window()
+        if not window:
+            return
+        panel_view = window.find_output_panel('show_commit_info')
+        PANEL_JUST_LOST_FOCUS = bool(panel_view and panel_view.id() == view.id())
+
     def on_activated(self, view):
+        # type: (sublime.View) -> None
         window = view.window()
         if not window:
             return
@@ -1456,6 +1469,9 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             and show_commit_info.panel_is_visible(window)
             and show_commit_info.panel_belongs_to_graph(panel_view)
         ):
+            if PANEL_JUST_LOST_FOCUS:
+                panel_view.settings().set("git_savvy.show_commit_view.had_focus", True)
+
             panel = PREVIOUS_OPEN_PANEL_PER_WINDOW.get(window.id(), None)
             if panel:
                 window.run_command("show_panel", {"panel": panel})
@@ -1469,6 +1485,12 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             and view.settings().get("git_savvy.log_graph_view.show_commit_info_panel")
         ):
             window.run_command("show_panel", {"panel": "output.show_commit_info"})
+            if panel_view.settings().get("git_savvy.show_commit_view.had_focus"):
+                # At this point `active_panel()` is already "show_commit_info"`
+                # but still it can't receive focus before the next tick.
+                # :shrug: as I could not find a reason or work-around.
+                enqueue_on_ui(window.focus_view, panel_view)
+                panel_view.settings().set("git_savvy.show_commit_view.had_focus", False)
 
     # `on_selection_modified` triggers twice per mouse click
     # multiplied with the number of views into the same buffer,
