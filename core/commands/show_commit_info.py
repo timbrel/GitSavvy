@@ -84,6 +84,9 @@ class gs_show_commit_info(WindowCommand, GitCommand):
         else:
             text = ''
 
+        # Because this command runs as a by-effect (t.i. automatically) of
+        # the `show_panel` command, the `ensure_panel_is_visible` inside `_draw`
+        # MUST run on a next UI or we can get a recursive loop.
         enqueue_on_ui(_draw, self.window, output_view, text, commit_hash)
 
 
@@ -95,7 +98,11 @@ def _draw(window, view, text, commit):
     intra_line_colorizer.annotate_intra_line_differences(view)
 
     # In case we reuse a hidden panel, show the panel after updating
-    # the content to reduce visual flicker.
+    # the content to reduce visual flicker.  This is only ever useful
+    # if `show_commit_info` is used to enhance a quick panel. For the
+    # graph view `_draw` effectively runs as a by-product of calling
+    # `show_panel`, thus `ensure_panel_is_visible` is not needed and
+    # has even the risk of running into indefinite, recursive loops.
     ensure_panel_is_visible(window)
 
 
