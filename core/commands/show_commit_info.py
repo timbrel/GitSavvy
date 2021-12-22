@@ -6,7 +6,7 @@ from sublime_plugin import WindowCommand
 from . import diff
 from . import intra_line_colorizer
 from ..git_command import GitCommand
-from ..runtime import enqueue_on_worker, enqueue_on_ui, throttled
+from ..runtime import enqueue_on_worker, ensure_on_ui, throttled
 from ..view import replace_view_content
 
 
@@ -49,7 +49,7 @@ def ensure_panel_is_visible(window, name=PANEL_NAME):
 
 
 class gs_show_commit_info(WindowCommand, GitCommand):
-    def run(self, commit_hash, file_path=None):
+    def run(self, commit_hash, file_path=None, from_log_graph=False):
         # We're running either blocking or lazy, and currently choose
         # automatically.  Generally, we run blocking to reduce multiple
         # UI changes in short times.  Since this panel is a companion
@@ -64,11 +64,11 @@ class gs_show_commit_info(WindowCommand, GitCommand):
             not panel_is_visible(self.window) or
             ensure_panel(self.window).size() == 0
         ):
-            self.run_impl(commit_hash, file_path)
+            self.run_impl(commit_hash, file_path, from_log_graph)
         else:
-            enqueue_on_worker(throttled(self.run_impl, commit_hash, file_path))
+            enqueue_on_worker(throttled(self.run_impl, commit_hash, file_path, from_log_graph))
 
-    def run_impl(self, commit_hash, file_path=None):
+    def run_impl(self, commit_hash, file_path=None, from_log_graph=False):
         output_view = ensure_panel(self.window)
         settings = output_view.settings()
         settings.set("git_savvy.repo_path", self.repo_path)
@@ -84,26 +84,24 @@ class gs_show_commit_info(WindowCommand, GitCommand):
         else:
             text = ''
 
-        # Because this command runs as a by-effect (t.i. automatically) of
-        # the `show_panel` command, the `ensure_panel_is_visible` inside `_draw`
-        # MUST run on a next UI or we can get a recursive loop.
-        enqueue_on_ui(_draw, self.window, output_view, text, commit_hash)
+        ensure_on_ui(_draw, self.window, output_view, text, commit_hash, from_log_graph)
 
 
-def _draw(window, view, text, commit):
-    # type: (sublime.Window, sublime.View, str, str) -> None
+def _draw(window, view, text, commit, from_log_graph):
+    # type: (sublime.Window, sublime.View, str, str, bool) -> None
     with restore_viewport_position(view, commit):
         replace_view_content(view, text)
 
     intra_line_colorizer.annotate_intra_line_differences(view)
 
-    # In case we reuse a hidden panel, show the panel after updating
+    # In case we reuse a hidden panel, show the panel *after* updating
     # the content to reduce visual flicker.  This is only ever useful
-    # if `show_commit_info` is used to enhance a quick panel. For the
+    # if `show_commit_info` is used to enhance a quick panel.  For the
     # graph view `_draw` effectively runs as a by-product of calling
-    # `show_panel`, thus `ensure_panel_is_visible` is not needed and
-    # has even the risk of running into indefinite, recursive loops.
-    ensure_panel_is_visible(window)
+    # `show_panel`, thus `ensure_panel_is_visible` is not needed in
+    # that case.
+    if not from_log_graph:
+        ensure_panel_is_visible(window)
 
 
 @contextmanager

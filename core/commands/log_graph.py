@@ -1983,7 +1983,10 @@ def draw_info_panel_for_line(vid, line_text):
     # commit_hash, it looks better to not draw at all, t.i. the
     # information in the panel stays untouched.
     if view.size() == 0 or commit_hash:
-        window.run_command("gs_show_commit_info", {"commit_hash": commit_hash})
+        window.run_command("gs_show_commit_info", {
+            "commit_hash": commit_hash,
+            "from_log_graph": True
+        })
 
 
 def extract_commit_hash(line):
