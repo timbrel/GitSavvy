@@ -399,8 +399,8 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
 
     def _run(self, runs_on_ui_thread, match_position, raw_diff):
         # type: (bool, Optional[Position], Optional[str]) -> None
-        file_path = self.file_path
         settings = self.view.settings()
+        file_path = settings.get("git_savvy.file_path")
         in_cached_mode = settings.get("git_savvy.inline_diff_view.in_cached_mode")
         base_commit = settings.get("git_savvy.inline_diff_view.base_commit")
         target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
@@ -914,14 +914,15 @@ class gs_inline_diff_open_file(TextCommand, GitCommand):
             return
         row, col = coords
 
-        file_path = self.file_path
+        settings = self.view.settings()
+        file_path = settings.get("git_savvy.file_path")
         line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
         if is_interactive_diff(self.view):
-            if self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode"):
+            if settings.get("git_savvy.inline_diff_view.in_cached_mode"):
                 diff = self.git("diff", "-U0", "--", file_path)
                 line_no = self.adjust_line_according_to_diff(diff, line_no)
         else:
-            target_commit = self.view.settings().get("git_savvy.inline_diff_view.target_commit")
+            target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
             line_no = self.find_matching_lineno(target_commit, None, line_no, file_path)
         self.open_file(window, file_path, line_no, col_no)
 
