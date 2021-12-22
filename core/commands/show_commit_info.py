@@ -16,10 +16,12 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Tuple
+    from typing import Dict, Iterator, List, Tuple
+    ViewportPosition = Tuple[float, float]
+    Selection = List[sublime.Region]
 
 
-storage = {}  # type: Dict[str, Tuple[float, float]]
+storage = {}  # type: Dict[str, Tuple[ViewportPosition, Selection]]
 PANEL_NAME = "show_commit_info"
 
 
@@ -112,12 +114,15 @@ def _draw(window, view, text, commit, from_log_graph):
 
 @contextmanager
 def restore_viewport_position(view, next_commit):
+    # type: (sublime.View, str) -> Iterator
     prev_commit = view.settings().get("git_savvy.show_commit_view.commit")
     if prev_commit:
-        storage[prev_commit] = view.viewport_position()
+        storage[prev_commit] = (view.viewport_position(), [r for r in view.sel()])
 
     yield
 
     view.settings().set("git_savvy.show_commit_view.commit", next_commit)
-    prev_position = storage.get(next_commit, (0, 0))
+    prev_position, prev_sel = storage.get(next_commit, ((0, 0), [sublime.Region(0)]))
     view.set_viewport_position(prev_position, animate=False)
+    view.sel().clear()
+    view.sel().add_all(prev_sel)
