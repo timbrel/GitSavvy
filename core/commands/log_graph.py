@@ -1476,7 +1476,7 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             if panel:
                 window.run_command("show_panel", {"panel": panel})
             else:
-                window.run_command('hide_panel')
+                window.run_command("hide_panel")
 
         # Auto-show panel if the user switches back
         elif (
