@@ -147,7 +147,7 @@ class gs_diff(WindowCommand, GitCommand):
                 settings = view.settings()
                 if view == active_view and (
                     in_cached_mode is None
-                    or settings.get("diff_view.in_cached_mode") == in_cached_mode
+                    or settings.get("git_savvy.diff_view.in_cached_mode") == in_cached_mode
                 ):
                     view.close()
                     return
