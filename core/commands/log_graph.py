@@ -1531,7 +1531,8 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
                 PREVIOUS_OPEN_PANEL_PER_WINDOW[window.id()] = None
             else:
                 if panel == "output.show_commit_info":
-                    remember_commit_panel_state(view, True)
+                    if self.is_applicable(view):
+                        remember_commit_panel_state(view, True)
                     PREVIOUS_OPEN_PANEL_PER_WINDOW[window.id()] = window.active_panel()
                     draw_info_panel(view)
                 else:
