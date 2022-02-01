@@ -5,7 +5,7 @@ name: GitSavvy Output Panel
 hidden: true
 scope: output.git-savvy
 variables:
-  sha: '[0-9a-f]{6,40}'
+  sha: '\h{6,40}'
 contexts:
   main:
     - match: ^(\$)\s
