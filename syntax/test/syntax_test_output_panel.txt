@@ -57,3 +57,7 @@ From https://github.com/SublimeLinter/SublimeLinter
 #                                  ^^^^^^^^^^^^^ storage
  = [up to date]      master              -> origin/master
 #                                           ^^^^^^^^^^^^^ storage
+
+
+Traceback (most recent call last):
+# ^^^^^^ - constant.numeric.graph.commit-hash.git-savvy

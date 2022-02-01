@@ -15,7 +15,7 @@ contexts:
     - match: ^\[Done.*\]$
       scope: string.other
 
-    - match: ({{sha}}\^?)
+    - match: (\b{{sha}}\^?)
       comment: SHA
       scope: constant.numeric.graph.commit-hash.git-savvy
 
