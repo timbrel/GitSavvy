@@ -52,8 +52,17 @@ class GsGithubOpenFileOnRemoteCommand(TextCommand, git_mixins.GithubRemotesMixin
         if self.view.settings().get("git_savvy.show_file_at_commit_view"):
             # if it is a show_file_at_commit_view, get the hash from settings
             commit_hash = self.view.settings().get("git_savvy.show_file_at_commit_view.commit")
-        else:
+        elif len(fpath) > 1:
             commit_hash = self.get_commit_hash_for_head()
+        else:
+            commit_hash = self.git(
+                "rev-list",
+                "-1",
+                "HEAD",
+                "--",
+                fpath[0],
+                throw_on_error=False
+            ).strip() or self.get_commit_hash_for_head()
 
         base_hash = commit_hash
 
