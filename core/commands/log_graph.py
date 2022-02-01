@@ -2283,7 +2283,6 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         actions += [
             ("Delete branch '{}'".format(branch_name), partial(self.delete_branch, branch_name))
             for branch_name in info.get("local_branches", [])
-            if info.get("HEAD") != branch_name
         ]
 
         if "HEAD" not in info:
