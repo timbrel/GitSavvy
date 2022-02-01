@@ -6,21 +6,32 @@ from GitSavvy.core.git_command import mixin_base
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, Optional, Sequence
-
+    from typing import Dict, Iterable, NamedTuple, Optional, Sequence
+    Branch = NamedTuple("Branch", [
+        ("name", str),
+        ("remote", Optional[str]),
+        ("name_with_remote", str),
+        ("commit_hash", str),
+        ("commit_msg", str),
+        ("tracking", str),
+        ("tracking_status", str),
+        ("active", bool),
+        ("description", str)
+    ])
+else:
+    Branch = namedtuple("Branch", (
+        "name",
+        "remote",
+        "name_with_remote",
+        "commit_hash",
+        "commit_msg",
+        "tracking",
+        "tracking_status",
+        "active",
+        "description"
+    ))
 
 BRANCH_DESCRIPTION_RE = re.compile(r"^branch\.(.*?)\.description (.*)$")
-Branch = namedtuple("Branch", (
-    "name",
-    "remote",
-    "name_with_remote",
-    "commit_hash",
-    "commit_msg",
-    "tracking",
-    "tracking_status",
-    "active",
-    "description"
-))
 
 
 class BranchesMixin(mixin_base):
