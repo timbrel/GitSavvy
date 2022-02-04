@@ -166,6 +166,12 @@ class gs_inline_diff(WindowCommand, GitCommand):
 
         if active_view.settings().get("git_savvy.diff_view"):
             self.open_from_diff_view(active_view)
+        elif (
+            # Or: cursor matches the scope `git-savvy.commit git-savvy.diff`
+            active_view.settings().get("git_savvy.line_history_view")
+            or active_view.settings().get("git_savvy.show_commit_view")
+        ):
+            self.open_from_commit_info(active_view)
         elif active_view.settings().get("git_savvy.show_file_at_commit_view"):
             self.open_from_show_file_at_commit_view(active_view)
         else:
@@ -264,6 +270,43 @@ class gs_inline_diff(WindowCommand, GitCommand):
             "syntax": settings.get("syntax"),
             "cached": False,
             "match_position": capture_cur_position(view),
+            "base_commit": base_commit,
+            "target_commit": target_commit
+        })
+
+    def open_from_commit_info(self, view):
+        # type: (sublime.View) -> None
+        settings = view.settings()
+        repo_path = settings.get("git_savvy.repo_path")
+        cursor = view.sel()[0].b
+        jump_position = diff.jump_position_to_file(
+            view,
+            SplittedDiff.from_view(view),
+            cursor
+        )
+        if not jump_position:
+            flash(view, "Could not parse for a filename and position at cursor position.")
+            return
+
+        if not jump_position.commit_hash:
+            flash(view, "Could not parse for a commit hash at cursor position.")
+            return
+
+        file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
+        syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
+        target_commit = jump_position.commit_hash
+        base_commit = self.previous_commit(target_commit, file_path)
+        cur_pos = Position(
+            jump_position.line - 1,
+            jump_position.col - 1,
+            y_offset(view, cursor)
+        )
+        self.window.run_command("gs_inline_diff_open", {
+            "repo_path": repo_path,
+            "file_path": file_path,
+            "syntax": syntax_file,
+            "cached": False,
+            "match_position": cur_pos,
             "base_commit": base_commit,
             "target_commit": target_commit
         })
