@@ -228,6 +228,8 @@ class gs_inline_diff(WindowCommand, GitCommand):
 
         file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
         syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
+        base_commit = settings.get("git_savvy.diff_view.base_commit")
+        target_commit = settings.get("git_savvy.diff_view.target_commit")
 
         cur_pos = Position(
             jump_position.line - 1,
@@ -244,7 +246,9 @@ class gs_inline_diff(WindowCommand, GitCommand):
             "file_path": file_path,
             "syntax": syntax_file,
             "cached": bool(cached),
-            "match_position": cur_pos
+            "match_position": cur_pos,
+            "base_commit": base_commit,
+            "target_commit": target_commit
         })
 
     def open_from_show_file_at_commit_view(self, view):
