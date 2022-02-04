@@ -459,6 +459,12 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
 
         title = INLINE_DIFF_CACHED_TITLE if in_cached_mode else INLINE_DIFF_TITLE
         title += os.path.basename(file_path)
+        if target_commit:
+            title += (
+                "  ({} <-{})".format(target_commit, base_commit)
+                if base_commit
+                else "  (initial version)"
+            )
         if runs_on_ui_thread:
             self.draw(self.view, title, match_position, inline_diff_contents, hunks)
         else:
