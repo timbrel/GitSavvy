@@ -229,8 +229,9 @@ class gs_inline_diff(WindowCommand, GitCommand):
             return
 
         if jump_position.commit_hash:
-            flash(view, "Sorry, not implemented for historical commits yet.")
-            return
+            raise RuntimeError(
+                "Assertion failed! "
+                "Historical diffs shouldn't have `jump_position.commit_hash`.")
 
         file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
         syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
