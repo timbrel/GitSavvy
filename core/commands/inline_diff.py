@@ -384,7 +384,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
     selected and the secondary action for the view is taken (pressing `L` or
     `H`), remove those changes from the file in the working tree.
 
-    If in `cached` mode, compare the file in the index againt the same file
+    If in `cached` mode, compare the file in the index against the same file
     in the HEAD.  If a link or hunk is selected and the primary action for
     the view is taken, remove that line from the index.  Secondary actions
     are not supported in `cached` mode.
