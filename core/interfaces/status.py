@@ -129,7 +129,7 @@ class StatusInterface(ui.Interface, GitCommand):
       ## OTHER ##
       ###########
 
-      [g]         show graph repop history
+      [g]         show graph repo history
       [?]         toggle this help menu
       [tab]       transition to next dashboard
       [SHIFT-tab] transition to previous dashboard
