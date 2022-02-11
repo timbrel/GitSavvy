@@ -9,7 +9,15 @@ from ...core.settings import GitSavvySettings
 from ...core.view import replace_view_content
 
 
-class GsReloadModulesDebug(WindowCommand):
+__all__ = (
+    "gs_reload_modules_debug",
+    "gs_start_logging",
+    "gs_stop_logging",
+    "gs_view_git_log",
+)
+
+
+class gs_reload_modules_debug(WindowCommand):
 
     """
     When triggered, reload all GitSavvy submodules.
@@ -22,7 +30,7 @@ class GsReloadModulesDebug(WindowCommand):
         return GitSavvySettings().get("dev_mode")
 
 
-class GsStartLoggingCommand(WindowCommand):
+class gs_start_logging(WindowCommand):
 
     """
     Starts recording all interactions with Git for reporting issues.
@@ -32,7 +40,7 @@ class GsStartLoggingCommand(WindowCommand):
         debug.start_logging()
 
 
-class GsStopLoggingCommand(WindowCommand):
+class gs_stop_logging(WindowCommand):
 
     """
     Stops recording interactions with Git.
@@ -42,7 +50,7 @@ class GsStopLoggingCommand(WindowCommand):
         debug.stop_logging()
 
 
-class GsViewGitLog(WindowCommand):
+class gs_view_git_log(WindowCommand):
 
     """
     Displays the recent recording.
