@@ -34,15 +34,6 @@
     "dev_mode": false,
 
     /*
-        A list of tags (subsystems) to filter the output of debug.trace().
-        Only takes its effect when "dev_mode" is set to `true`.
-     */
-    "dev_trace": [
-        "debug",
-        "reload"
-    ],
-
-    /*
         Enter your github API key in the field below.  To interact with
         a GitHub Enterprise instance, add a field with the FQDN as the key
         and the API key as the value.
