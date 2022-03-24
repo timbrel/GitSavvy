@@ -118,18 +118,6 @@ def log_error(err):
     })
 
 
-def log_on_exception(fn):
-    def wrapped_fn(*args, **kwargs):
-        try:
-            fn(*args, **kwargs)
-        except Exception as e:
-            add_to_log({
-                "type": "exception",
-                "exception": repr(e)
-            })
-            raise e
-
-
 def dump_var(name, value, width=79, end='\n', **kwargs):
     is_str = isinstance(value, str)
 
