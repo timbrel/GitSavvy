@@ -8,16 +8,17 @@ from ...core.settings import GitSavvySettings
 
 MYPY = False
 if MYPY:
-    from typing import Optional, Sequence, Union
+    from typing import Dict, List, Optional, Sequence, Union
+    LogEntry = Dict
 
 
 # Preserve state of `enabled` during hot-reloads
 try:
-    enabled
+    enabled  # type: ignore[has-type]
 except NameError:
     enabled = False
 
-_log = []
+_log = []  # type: List[LogEntry]
 ENCODING_NOT_UTF8 = "{} was sent as binaries and we dont know the encoding, not utf-8"
 
 
@@ -188,7 +189,7 @@ def trace_for_tag(tag):
     return functools.partial(trace, tag=tag)
 
 
-trace.for_tag = trace_for_tag
+trace.for_tag = trace_for_tag  # type: ignore[attr-defined]
 
 
 class StackMeter:
