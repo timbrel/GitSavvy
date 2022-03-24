@@ -185,13 +185,6 @@ def trace(*args, tag="debug", fill=None, fill_width=60, **kwargs):
     print("GS [{}]".format(tag), *args, **kwargs)
 
 
-def trace_for_tag(tag):
-    return functools.partial(trace, tag=tag)
-
-
-trace.for_tag = trace_for_tag  # type: ignore[attr-defined]
-
-
 class StackMeter:
     """Reentrant context manager counting the reentrancy depth."""
 
