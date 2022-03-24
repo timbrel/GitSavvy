@@ -148,14 +148,6 @@ def dump(*args, **kwargs):
         dump_var(name, arg)
 
 
-# backward-compatibility
-def pprint(*args, **kwargs):
-    """
-    Pretty print since we can not use debugger
-    """
-    dump(*args, **kwargs)
-
-
 class StackMeter:
     """Reentrant context manager counting the reentrancy depth."""
 
