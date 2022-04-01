@@ -1,23 +1,21 @@
 import functools
 import json
-import pprint as _pprint
 import threading
-
-from ...core.settings import GitSavvySettings
 
 
 MYPY = False
 if MYPY:
-    from typing import Optional, Sequence, Union
+    from typing import Dict, List, Optional, Sequence, Union
+    LogEntry = Dict
 
 
 # Preserve state of `enabled` during hot-reloads
 try:
-    enabled
+    enabled  # type: ignore[has-type]
 except NameError:
     enabled = False
 
-_log = []
+_log = []  # type: List[LogEntry]
 ENCODING_NOT_UTF8 = "{} was sent as binaries and we dont know the encoding, not utf-8"
 
 
@@ -117,78 +115,6 @@ def log_error(err):
         "type": "error",
         "error": repr(err)
     })
-
-
-def log_on_exception(fn):
-    def wrapped_fn(*args, **kwargs):
-        try:
-            fn(*args, **kwargs)
-        except Exception as e:
-            add_to_log({
-                "type": "exception",
-                "exception": repr(e)
-            })
-            raise e
-
-
-def dump_var(name, value, width=79, end='\n', **kwargs):
-    is_str = isinstance(value, str)
-
-    prefix = "{}{}".format(name, ': ' if is_str else '=')
-    line_prefix = end + ' ' * len(prefix)
-    if not is_str:
-        value = _pprint.pformat(value, width=max(49, width - len(prefix)))
-
-    print(prefix + line_prefix.join(value.splitlines()), end=end, **kwargs)
-
-
-def dump(*args, **kwargs):
-    for i, arg in enumerate(args):
-        dump_var("_arg{}".format(i), arg)
-    for name, arg in sorted(kwargs.items()):
-        dump_var(name, arg)
-
-
-# backward-compatibility
-def pprint(*args, **kwargs):
-    """
-    Pretty print since we can not use debugger
-    """
-    dump(*args, **kwargs)
-
-
-def get_trace_tags():
-    savvy_settings = GitSavvySettings()
-    if savvy_settings.get("dev_mode"):
-        return savvy_settings.get("dev_trace", [])
-    else:
-        return []
-
-
-def trace(*args, tag="debug", fill=None, fill_width=60, **kwargs):
-    """
-    Lightweight logging facility. Provides simple print-like interface with
-    filtering by tags and pretty-printed captions for delimiting output
-    sections.
-
-    See the "dev_trace" setting for possible values of the "tag" keyword.
-    """
-    if tag not in get_trace_tags():
-        return
-
-    if fill is not None:
-        sep = str(kwargs.get('sep', ' '))
-        caption = sep.join(args)
-        args = "{0:{fill}<{width}}".format(caption and caption + sep,
-                                           fill=fill, width=fill_width),
-    print("GS [{}]".format(tag), *args, **kwargs)
-
-
-def trace_for_tag(tag):
-    return functools.partial(trace, tag=tag)
-
-
-trace.for_tag = trace_for_tag
 
 
 class StackMeter:
