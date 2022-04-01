@@ -1,4 +1,3 @@
-import functools
 import json
 import threading
 
@@ -17,6 +16,7 @@ except NameError:
 
 _log = []  # type: List[LogEntry]
 ENCODING_NOT_UTF8 = "{} was sent as binaries and we dont know the encoding, not utf-8"
+last_working_dir = ""
 
 
 def start_logging():
@@ -56,10 +56,12 @@ def dprint(*args, **kwargs):
         print(*args, **kwargs)
 
 
-@functools.lru_cache(maxsize=1)
 def print_cwd_change(cwd, left_space):
     # type: (str, int) -> None
-    print('\n', ' ' * left_space, '  [{}]'.format(cwd))
+    global last_working_dir
+    if cwd != last_working_dir:
+        last_working_dir = cwd
+        print('\n', ' ' * left_space, '  [{}]'.format(cwd))
 
 
 def log_git(
