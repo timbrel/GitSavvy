@@ -291,9 +291,9 @@ class gs_show_file_at_commit_open_file_on_working_dir(TextCommand, GitCommand):
 
         full_path = os.path.join(self.repo_path, file_path)
         row, col = self.view.rowcol(self.view.sel()[0].begin())
-        row = self.find_matching_lineno(commit_hash, None, row + 1, full_path)
+        line = self.find_matching_lineno(commit_hash, None, row + 1, full_path)
         window.open_file(
-            "{file}:{row}:{col}".format(file=full_path, row=row, col=col),
+            "{file}:{line}:{col}".format(file=full_path, line=line, col=col + 1),
             sublime.ENCODED_POSITION
         )
 
