@@ -619,6 +619,8 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
         if untracked_files or unstaged_files:
             window.status_message("Successfully discarded changes.")
             interface.refresh_repo_status_and_render()
+        if get_selected_subjects(self.view, 'staged'):
+            window.status_message("Staged files cannot be discarded.  Unstage them first.")
 
     def discard_untracked(self):
         # type: () -> Optional[List[str]]

@@ -624,6 +624,10 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
     def run_async(self, reset=False):
         # type: (bool) -> None
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
+        if in_cached_mode and reset:
+            flash(self.view, "Can't discard staged changes.  Unstage first.")
+            return None
+
         ignore_ws = (
             "--ignore-whitespace"
             if self.savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
