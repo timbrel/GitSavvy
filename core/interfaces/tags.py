@@ -86,8 +86,8 @@ class TagsInterface(ui.Interface, GitCommand):
     def pre_render(self):
         if self.show_remotes is None:
             self.show_remotes = self.savvy_settings.get("show_remotes_in_tags_dashboard")
-            self.max_items = self.savvy_settings.get("max_items_in_tags_dashboard", None)
 
+        self.max_items = self.savvy_settings.get("max_items_in_tags_dashboard", None)
         self.local_tags = self.get_tags(reverse=True)
         if self.remotes is None:
             self.remotes = {
