@@ -1,3 +1,4 @@
+from itertools import chain
 import os
 
 import sublime
@@ -24,8 +25,8 @@ END_PUSH_MESSAGE = "Push complete."
 def tag_from_lines(lines):
     tags = []
     for line in lines:
-        m = line.strip().split(" ", 1)
-        if len(m) == 2:
+        m = line.strip().split(" ", 2)
+        if len(m) in (2, 3):
             tags.append(m[1].strip())
     return tags
 
@@ -113,12 +114,21 @@ class TagsInterface(ui.Interface, GitCommand):
 
     @ui.partial("local_tags")
     def render_local_tags(self):
-        if not self.local_tags:
+        if not any(chain(*self.local_tags)):
             return NO_LOCAL_TAGS_MESSAGE
 
-        return "\n".join(
-            "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
-            for tag in self.local_tags[0:self.max_items]
+        return "\n{}\n".format(" " * 60).join(  # need some spaces on the separator line otherwise
+                                                # the syntax expects the remote section begins
+            "\n".join(
+                "    {} {:<10} {}{}".format(
+                    self.get_short_hash(tag.sha),
+                    tag.tag,
+                    tag.human_date,
+                    " ({})".format(tag.relative_date) if tag.relative_date != tag.human_date else ""
+                )
+                for tag in section[:self.max_items]
+            )
+            for section in self.local_tags
         )
 
     @ui.partial("remote_tags")
@@ -155,7 +165,7 @@ class TagsInterface(ui.Interface, GitCommand):
     def get_remote_tags_list(self, remote, remote_name):
         if "tags" in remote:
             if remote["tags"]:
-                seen = {tag.sha: tag.tag for tag in self.local_tags}
+                seen = {tag.sha: tag.tag for tag in chain(*self.local_tags)}
                 tags_list = [
                     tag
                     for tag in remote["tags"]
@@ -174,7 +184,7 @@ class TagsInterface(ui.Interface, GitCommand):
 
         else:
             def do_tags_fetch(remote=remote, remote_name=remote_name):
-                remote["tags"] = self.get_tags(remote_name)
+                remote["tags"] = list(chain(*self.get_tags(remote_name)))
                 self.render()
 
             sublime.set_timeout_async(do_tags_fetch, 0)

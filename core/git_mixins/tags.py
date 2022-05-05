@@ -4,7 +4,7 @@ from distutils.version import LooseVersion
 
 from GitSavvy.core.git_command import mixin_base
 
-TagDetails = namedtuple("TagDetails", ("sha", "tag"))
+TagDetails = namedtuple("TagDetails", ("sha", "tag", "human_date", "relative_date"))
 
 
 class TagsMixin(mixin_base):
@@ -15,6 +15,28 @@ class TagsMixin(mixin_base):
         to all tags found in the repository, containing abbreviated
         hashes and reference names.
         """
+        if not remote:
+            stdout = self.git(
+                "for-each-ref",
+                "--sort=-creatordate",
+                "--format={}".format(
+                    "%00".join((
+                        "%(objectname)",
+                        "%(refname:short)",
+                        "%(creatordate:format:%e %b %Y)",
+                        "%(creatordate:relative)",
+                    ))
+                ),
+                "refs/tags"
+            )
+            entries = [
+                TagDetails(*line.split("\x00"))
+                for line in stdout.splitlines()
+                if line
+            ]
+            entries = self.handle_semver_tags(entries)
+            return entries
+
         stdout = self.git(
             "ls-remote" if remote else "show-ref",
             "--tags",
@@ -23,7 +45,7 @@ class TagsMixin(mixin_base):
         )
         porcelain_entries = stdout.splitlines()
         entries = [
-            TagDetails(entry[:40], entry[51:])
+            TagDetails(entry[:40], entry[51:], "", "")
             for entry in reversed(porcelain_entries)
             if entry
         ]
@@ -70,4 +92,4 @@ class TagsMixin(mixin_base):
                     ),
                     reverse=True)
 
-        return semver_entries + regular_entries
+        return (regular_entries, semver_entries)
