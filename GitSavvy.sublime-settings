@@ -182,7 +182,7 @@
     /*
         Limit the number of tags listed in the tags dashboard.
     */
-    "max_items_in_tags_dashboard": -1,
+    "max_items_in_tags_dashboard": null,
 
     /*
         When set to `true`, GitSavvy will automatically display more info about the
