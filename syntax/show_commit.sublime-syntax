@@ -6,7 +6,7 @@ hidden: true
 scope: git-savvy.commit
 contexts:
   main:
-    - match: (?=^commit)
+    - match: (?=^(commit|tag))
       push: commit-header
     - match: (?=^diff\s)
       embed: "scope:git-savvy.diff"
@@ -24,14 +24,14 @@ contexts:
 
   commit-header:
     - meta_scope: meta.commit-info.header
-    - match: ^(commit)(.+)$\n?
+    - match: ^(commit|tag) (.+)$\n?
       comment: commit header
       scope: meta.commit-info.header.key-value
       captures:
         1: string.other.commit-info.header.key.git-savvy
         2: meta.commit-info.header.value.git-savvy meta.commit-info.header.sha.git-savvy
 
-    - match: ^(Author|Date|Merge|AuthorDate|Commit|CommitDate)(:)(.+)$\n?
+    - match: ^(Author|Date|Merge|AuthorDate|Commit|CommitDate|Tagger|TaggerDate)(:)(.+)$\n?
       comment: author and date info
       scope: meta.commit-info.header.key-value
       captures:
