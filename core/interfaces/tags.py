@@ -14,6 +14,7 @@ NO_REMOTES_MESSAGE = "You have not configured any remotes."
 
 NO_LOCAL_TAGS_MESSAGE = "    Your repository has no tags."
 NO_REMOTE_TAGS_MESSAGE = "    Unable to retrieve tags for this remote."
+NO_MORE_TAGS_MESSAGE = "    No further tags on the remote."
 LOADING_TAGS_MESSAGE = "    Loading tags from remote..."
 
 START_PUSH_MESSAGE = "Pushing tag..."
@@ -154,11 +155,17 @@ class TagsInterface(ui.Interface, GitCommand):
     def get_remote_tags_list(self, remote, remote_name):
         if "tags" in remote:
             if remote["tags"]:
-                tags_list = [tag for tag in remote["tags"] if tag.tag[-3:] != "^{}"]
-                tags_list = tags_list[0:self.max_items]
+                seen = {tag.sha: tag.tag for tag in self.local_tags}
+                tags_list = [
+                    tag
+                    for tag in remote["tags"]
+                    if tag.tag[-3:] != "^{}" and tag.sha not in seen
+                ]
+                msg = "\n".join(
+                    "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
+                    for tag in tags_list[:self.max_items]
+                ) or NO_MORE_TAGS_MESSAGE
 
-                msg = "\n".join("    {} {}".format(
-                    self.get_short_hash(tag.sha), tag.tag) for tag in tags_list)
             else:
                 msg = NO_REMOTE_TAGS_MESSAGE
 
