@@ -1,6 +1,10 @@
 name: Run tests
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+  pull_request:
 
 env:
   TRAVIS_OS_NAME: linux
