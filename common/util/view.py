@@ -147,13 +147,13 @@ def get_lines_from_regions(view, regions, valid_ranges=None):
     if valid_ranges == []:
         return []
 
-    line_regions = (view.line(region) for region in regions)
+    line_regions = (line for region in regions for line in view.lines(region))
 
     valid_regions = ([region for region in line_regions if _region_within_regions(valid_ranges, region)]
                      if valid_ranges else
                      line_regions)
 
-    return [line for region in valid_regions for line in view.substr(region).split("\n")]
+    return [view.substr(region) for region in valid_regions]
 
 
 def get_instance_before_pt(view, pt, pattern):
