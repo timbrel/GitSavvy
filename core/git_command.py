@@ -398,8 +398,10 @@ class _GitCommand(SettingsMixin):
                 git_path = shutil.which("git")
 
             if git_path:
+                util.debug.dprint("git executable: {}".format(git_path))
                 version = git_version_from_path(git_path)
                 if version:
+                    util.debug.dprint("git version: {}".format(version))
                     if version < MIN_GIT_VERSION:
                         msg = GIT_TOO_OLD_MSG.format(*MIN_GIT_VERSION)
                         git_path = None
