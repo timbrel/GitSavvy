@@ -146,7 +146,7 @@ def is_git_directory(suspect):
 
 def search_for_git(folder):
     # type: (str) -> Optional[str]
-    util.debug.dprint("searching .git upwards, starting at ", folder)
+    util.debug.dprint("searching .git repo starting at ", folder)
     try:
         return __search_for_git(folder)
     except Exception as e:
@@ -479,10 +479,10 @@ class _GitCommand(SettingsMixin):
         except KeyError:
             repo_path = search_for_git_toplevel(folder)
             if repo_path:
-                util.debug.dprint("using ", os.path.join(repo_path, ".git"))
+                util.debug.dprint("repo path:", os.path.join(repo_path, ".git"))
                 repo_paths[folder] = repo_path
             else:
-                util.debug.dprint("no .git path for {}".format(folder))
+                util.debug.dprint("found no .git path for {}".format(folder))
             return repo_path
 
     def get_repo_path(self):
