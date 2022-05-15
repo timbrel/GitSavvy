@@ -170,6 +170,7 @@ def search_for_git_toplevel(start_folder):
 
 
 def git_version_from_path(git_path):
+    # type: (str) -> Optional[Tuple[int, ...]]
     try:
         stdout = subprocess.check_output(
             [git_path, "--version"],
