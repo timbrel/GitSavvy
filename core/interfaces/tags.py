@@ -8,6 +8,7 @@ from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
+from GitSavvy.core.fns import filter_
 
 TAG_DELETE_MESSAGE = "Tag(s) deleted."
 
@@ -117,18 +118,27 @@ class TagsInterface(ui.Interface, GitCommand):
         if not any(chain(*self.local_tags)):
             return NO_LOCAL_TAGS_MESSAGE
 
+        regular_tags, versions = self.local_tags
         return "\n{}\n".format(" " * 60).join(  # need some spaces on the separator line otherwise
                                                 # the syntax expects the remote section begins
-            "\n".join(
-                "    {} {:<10} {}{}".format(
-                    self.get_short_hash(tag.sha),
-                    tag.tag,
-                    tag.human_date,
-                    " ({})".format(tag.relative_date) if tag.relative_date != tag.human_date else ""
+            filter_((
+                "\n".join(
+                    "    {} {:<10}".format(
+                        self.get_short_hash(tag.sha),
+                        tag.tag,
+                    )
+                    for tag in regular_tags[:self.max_items]
+                ),
+                "\n".join(
+                    "    {} {:<10} {}{}".format(
+                        self.get_short_hash(tag.sha),
+                        tag.tag,
+                        tag.human_date,
+                        " ({})".format(tag.relative_date) if tag.relative_date != tag.human_date else ""
+                    )
+                    for tag in versions[:self.max_items]
                 )
-                for tag in section[:self.max_items]
-            )
-            for section in self.local_tags
+            ))
         )
 
     @ui.partial("remote_tags")
