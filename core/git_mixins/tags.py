@@ -37,11 +37,10 @@ class TagsMixin(mixin_base):
             entries = self.handle_semver_tags(entries)
             return entries
 
-        stdout = self.git(
+        stdout = self.git_throwing_silently(
             "ls-remote",
             "--tags",
             remote,
-            throw_on_error=False
         )
         porcelain_entries = stdout.splitlines()
         entries = [

@@ -6,7 +6,7 @@ from sublime_plugin import WindowCommand, TextCommand
 
 from ..commands import GsNavigate
 from ...common import ui
-from ..git_command import GitCommand
+from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 from GitSavvy.core.fns import filter_
 
@@ -15,8 +15,9 @@ TAG_DELETE_MESSAGE = "Tag(s) deleted."
 NO_REMOTES_MESSAGE = "You have not configured any remotes."
 
 NO_LOCAL_TAGS_MESSAGE = "    Your repository has no tags."
-NO_REMOTE_TAGS_MESSAGE = "    Unable to retrieve tags for this remote."
+NO_REMOTE_TAGS_MESSAGE = "    The remote has no tags."
 NO_MORE_TAGS_MESSAGE = "    No further tags on the remote."
+REMOTE_ERRED = "    Unable to retrieve tags for this remote."
 LOADING_TAGS_MESSAGE = "    Loading tags from remote..."
 
 START_PUSH_MESSAGE = "Pushing tag..."
@@ -189,12 +190,18 @@ class TagsInterface(ui.Interface, GitCommand):
             else:
                 msg = NO_REMOTE_TAGS_MESSAGE
 
+        elif "erred" in remote:
+            msg = remote["erred"]
+
         elif "loading" in remote:
             msg = LOADING_TAGS_MESSAGE
 
         else:
             def do_tags_fetch(remote=remote, remote_name=remote_name):
-                remote["tags"] = list(chain(*self.get_tags(remote_name)))
+                try:
+                    remote["tags"] = list(chain(*self.get_tags(remote_name)))
+                except GitSavvyError as e:
+                    remote["erred"] = "    {}".format(e.stderr)
                 self.render()
 
             sublime.set_timeout_async(do_tags_fetch, 0)
