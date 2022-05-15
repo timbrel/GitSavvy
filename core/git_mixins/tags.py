@@ -38,9 +38,9 @@ class TagsMixin(mixin_base):
             return entries
 
         stdout = self.git(
-            "ls-remote" if remote else "show-ref",
+            "ls-remote",
             "--tags",
-            remote if remote else None,
+            remote,
             throw_on_error=False
         )
         porcelain_entries = stdout.splitlines()
