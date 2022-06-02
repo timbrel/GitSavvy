@@ -1,4 +1,5 @@
 import os
+import re
 
 import sublime
 from sublime_plugin import TextCommand
@@ -6,7 +7,7 @@ from sublime_plugin import TextCommand
 from ..base_commands import GsTextCommand, GsWindowCommand
 from ..fns import filter_
 from ..runtime import enqueue_on_worker, run_as_text_command, text_command
-from ..utils import flash, focus_view
+from ..utils import flash, focus_view, escape_text, style_message, DEFAULT_STYLE
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
 from ...common import util
 from GitSavvy.core.git_mixins.history import CommitInfo
@@ -23,6 +24,7 @@ __all__ = (
     "gs_show_file_at_commit_open_commit",
     "gs_show_file_at_commit_open_file_on_working_dir",
     "gs_show_file_at_commit_open_graph_context",
+    "gs_show_file_at_commit_open_info_popup",
 )
 
 
@@ -326,3 +328,30 @@ class gs_show_file_at_commit_open_graph_context(GsTextCommand):
             "all": True,
             "follow": self.get_short_hash(commit_hash),
         })
+
+
+class gs_show_file_at_commit_open_info_popup(GsTextCommand):
+    def run(self, edit):
+        # type: (...) -> None
+        settings = self.view.settings()
+        commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
+        show_patch = self.savvy_settings.get("show_full_commit_info")
+        show_diffstat = self.savvy_settings.get("show_diffstat")
+        text = self.read_commit(commit_hash, None, show_diffstat, show_patch)
+
+        message = (
+            line
+            for line in re.split(r"^diff", text, 1, re.M)[0].splitlines()
+            if not line.startswith("AuthorDate:") and not line.startswith("Commit:")
+        )
+        content = style_message("<br />".join(map(escape_text, message)), style=DEFAULT_STYLE)
+        width, _ = self.view.viewport_extent()
+        visible_region = self.view.visible_region()
+        self.view.show_popup(
+            content,
+            max_width=width,
+            max_height=450,
+            location=visible_region.begin(),
+            on_hide=lambda: settings.set("git_savvy.show_file_at_commit.info_popup_visible", False)
+        )
+        settings.set("git_savvy.show_file_at_commit.info_popup_visible", True)

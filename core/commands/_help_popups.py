@@ -191,6 +191,7 @@ class gs_show_file_at_commit_help_tooltip(GsAbstractHelpPopup):
     [,]/[.]        go to next/previous hunk
 
     ### Other ###
+    [i]            show commit info popup
     [?]            show this help popup
     """)
 
