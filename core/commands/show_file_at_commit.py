@@ -268,6 +268,15 @@ class gs_show_current_file(LogMixin, GsTextCommand):
             "lang": view.settings().get('syntax')
         })
 
+    def selected_index(self, commit_hash):
+        view = self.view
+        settings = view.settings()
+        _commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
+        if not _commit_hash:
+            return True
+
+        return _commit_hash == commit_hash
+
 
 class gs_show_file_at_commit_open_commit(TextCommand):
     def run(self, edit) -> None:
