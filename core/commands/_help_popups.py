@@ -188,6 +188,7 @@ class gs_show_file_at_commit_help_tooltip(GsAbstractHelpPopup):
     [O]            open working dir file
     [g]            show in graph
     [n]/[p]        show next/previous revision of this file
+    [l]            choose different revision of this file
     [,]/[.]        go to next/previous hunk
 
     ### Other ###

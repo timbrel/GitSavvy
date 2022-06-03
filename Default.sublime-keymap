@@ -1160,6 +1160,14 @@
         ]
     },
     {
+        "keys": ["l"],
+        "command": "gs_show_current_file",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_file_at_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["?"],
         "command": "gs_show_file_at_commit_help_tooltip",
         "context": [
