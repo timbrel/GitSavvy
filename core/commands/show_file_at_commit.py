@@ -45,8 +45,38 @@ def compute_identifier_for_view(view: sublime.View) -> Optional[Tuple]:
 
 class gs_show_file_at_commit(GsWindowCommand):
 
-    def run(self, commit_hash: str, filepath: str,
+    def run(self, commit_hash: str = None, filepath: str = None,
             position: Optional[Position] = None, lang: Optional[str] = None) -> None:
+        fix_position = False
+        if not filepath:
+            view = self._current_view()
+            if not view:
+                raise RuntimeError("can't grab an active view.")
+
+            filepath = view.file_name()
+            if not filepath:
+                self.window.status_message("Not available for unsaved/unnamed files.")
+                return
+
+            if position is None:
+                position = capture_cur_position(view)
+                fix_position = position is not None
+
+            if lang is None:
+                lang = view.settings().get('syntax')
+
+        if not commit_hash:
+            commit_hash = self.previous_commit(None, filepath)
+            if not commit_hash:
+                self.window.status_message("No older revision of this file found.")
+                return
+
+            if fix_position:
+                assert position
+                row, col, offset = position
+                line = self.find_matching_lineno(None, commit_hash, row + 1, filepath)
+                position = Position(line - 1, col, offset)
+
         this_id = (
             self.repo_path,
             filepath,
