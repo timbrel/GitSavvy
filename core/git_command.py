@@ -702,8 +702,11 @@ class _GitCommand(SettingsMixin):
         """
         fpath = self.file_path if abs_path is NOT_SET else abs_path
         assert fpath
+        repo_path = self.repo_path
+        repo_path_ = repo_path.rstrip(os.path.sep) + os.path.sep
         rel_path = (
-            os.path.relpath(resolve_path(fpath), start=resolve_path(self.repo_path))
+            fpath[len(repo_path_):] if fpath.startswith(repo_path_) else
+            os.path.relpath(resolve_path(fpath), start=resolve_path(repo_path))
             if os.path.isabs(fpath) else
             fpath
         )
