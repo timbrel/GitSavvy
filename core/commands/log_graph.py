@@ -494,6 +494,11 @@ else:
 def try_kill_proc(proc):
     if proc:
         utils.kill_proc(proc)
+        proc.got_killed = True
+
+
+def proc_has_been_killed(proc):
+    return getattr(proc, "got_killed", False)
 
 
 def selection_is_before_region(view, region):
@@ -751,7 +756,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
             stderr = ''.join(map(decode, proc.stderr.readlines()))
 
-        if throw_on_error and not proc.returncode == 0:
+        if throw_on_error and not proc.returncode == 0 and not proc_has_been_killed(proc):
             stdout = "<STDOUT SNIPPED>\n" if received_some_stdout else ""
             raise GitSavvyError(
                 "$ {}\n\n{}".format(
