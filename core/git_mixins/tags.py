@@ -81,14 +81,16 @@ class TagsMixin(mixin_base):
                     reverse=True
                 )
             except Exception:
-                # the error might me caused of having tags like 1.2.3.1, 1.2.3.beta
-                # exception is cant convert str to int, it is comparing 'beta' to 1
-                # if that fails then only take the numbers and sort them
+                # The error might me caused of having tags like 1.2.3.1 and 1.2.3.beta.
+                # Exception thrown is "can't convert str to int" as it is comparing
+                # 'beta' with 1.
+                # Fallback and take only the numbers as sorting key.
                 semver_entries = sorted(
                     semver_entries,
                     key=lambda entry: LooseVersion(
                         semver_test.search(entry.tag).group()  # type: ignore[union-attr]
                     ),
-                    reverse=True)
+                    reverse=True
+                )
 
         return (regular_entries, semver_entries)
