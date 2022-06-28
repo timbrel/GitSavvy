@@ -9,6 +9,7 @@ from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 from GitSavvy.core.fns import filter_
+from GitSavvy.core.utils import flash
 
 TAG_DELETE_MESSAGE = "Tag(s) deleted."
 
@@ -275,7 +276,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
         for tag in tags_to_delete:
             self.git("tag", "-d", tag)
 
-        self.view.window().status_message(TAG_DELETE_MESSAGE)
+        flash(self.view, TAG_DELETE_MESSAGE)
         util.view.refresh_gitsavvy(self.view)
 
     def delete_remote(self, interface):
@@ -294,7 +295,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
                     *("refs/tags/" + tag for tag in tags_to_delete)
                 )
 
-        self.view.window().status_message(TAG_DELETE_MESSAGE)
+        flash(self.view, TAG_DELETE_MESSAGE)
         interface.remotes = None
         util.view.refresh_gitsavvy(self.view)
 
@@ -337,9 +338,9 @@ class GsTagsPushCommand(TextCommand, GitCommand):
         lines = interface.get_selection_lines_in_region("local_tags")
         tags_to_push = tag_from_lines(lines)
 
-        self.view.window().status_message(START_PUSH_MESSAGE)
+        flash(self.view, START_PUSH_MESSAGE)
         self.git("push", remote, *("refs/tags/" + tag for tag in tags_to_push))
-        self.view.window().status_message(END_PUSH_MESSAGE)
+        flash(self.view, END_PUSH_MESSAGE)
 
         interface.remotes = None
         util.view.refresh_gitsavvy(self.view)
@@ -349,9 +350,9 @@ class GsTagsPushCommand(TextCommand, GitCommand):
         if remote_idx == -1:
             return
         remote = self.remotes[remote_idx]
-        self.view.window().status_message(START_PUSH_MESSAGE)
+        flash(self.view, START_PUSH_MESSAGE)
         self.git("push", remote, "--tags")
-        self.view.window().status_message(END_PUSH_MESSAGE)
+        flash(self.view, END_PUSH_MESSAGE)
 
         interface = ui.get_interface(self.view.id())
         if interface:
