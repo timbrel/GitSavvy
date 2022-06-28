@@ -312,7 +312,7 @@ class GsTagsPushCommand(TextCommand, GitCommand):
         enqueue_on_worker(self.run_async, push_all=push_all)
 
     def run_async(self, push_all):
-        self.remotes = tuple(self.get_remotes().keys())
+        self.remotes = list(self.get_remotes().keys())
         if not self.remotes:
             self.view.window().show_quick_panel([NO_REMOTES_MESSAGE], None)
             return
