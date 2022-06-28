@@ -143,15 +143,28 @@ def group_non_context_lines(hunk):
         for line in hunk.content().lines()
         if not line.is_no_newline_marker()  # <==
     )
-    return [
+    chunks = [
         list(lines)
-        for n in range(mode_len)  # <== usually one except for combined diffs
         for is_context, lines in groupby(
             content_lines,
-            key=lambda line: line.mode[n] == ' '
+            key=lambda line: line.is_context()
         )
         if not is_context
     ]
+    if mode_len < 2:
+        return chunks
+
+    # For combined diffs, go over all chunks again, now column by column,
+    # first removing "local" context lines. After that filter out empty
+    # chunks.
+    return list(filter_(  # <== remove now empty chunks
+        [
+            line for line in chunk
+            if line.mode[n] != ' '  # <== remove context lines
+        ]
+        for n in range(mode_len)
+        for chunk in chunks
+    ))
 
 
 def is_modification_group(lines):
