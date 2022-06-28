@@ -9,6 +9,7 @@ from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 from GitSavvy.core.fns import filter_
+from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import flash
 
 TAG_DELETE_MESSAGE = "Tag(s) deleted."
@@ -205,7 +206,7 @@ class TagsInterface(ui.Interface, GitCommand):
                     remote["erred"] = "    {}".format(e.stderr)
                 self.render()
 
-            sublime.set_timeout_async(do_tags_fetch, 0)
+            enqueue_on_worker(do_tags_fetch)
             remote["loading"] = True
             msg = LOADING_TAGS_MESSAGE
 
@@ -258,7 +259,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         interface = ui.get_interface(self.view.id())
@@ -308,7 +309,7 @@ class GsTagsPushCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, push_all=False):
-        sublime.set_timeout_async(lambda: self.run_async(push_all=push_all), 0)
+        enqueue_on_worker(self.run_async, push_all=push_all)
 
     def run_async(self, push_all):
         self.remotes = tuple(self.get_remotes().keys())
@@ -324,9 +325,9 @@ class GsTagsPushCommand(TextCommand, GitCommand):
 
     def push_async(self, remote_idx, push_all=False):
         if push_all:
-            sublime.set_timeout_async(lambda: self.push_all(remote_idx), 0)
+            enqueue_on_worker(self.push_all, remote_idx)
         else:
-            sublime.set_timeout_async(lambda: self.push_selected(remote_idx), 0)
+            enqueue_on_worker(self.push_selected, remote_idx)
 
     def push_selected(self, remote_idx):
         # The user pressed `esc` or otherwise cancelled.
@@ -367,7 +368,7 @@ class GsTagsViewLogCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         interface = ui.get_interface(self.view.id())
