@@ -92,7 +92,7 @@ class TagsInterface(ui.Interface, GitCommand):
             self.show_remotes = self.savvy_settings.get("show_remotes_in_tags_dashboard")
 
         self.max_items = self.savvy_settings.get("max_items_in_tags_dashboard", None)
-        self.local_tags = self.get_tags()
+        self.local_tags = self.get_local_tags()
         if self.remotes is None:
             self.remotes = {
                 name: {"uri": uri}
@@ -199,7 +199,7 @@ class TagsInterface(ui.Interface, GitCommand):
         else:
             def do_tags_fetch(remote=remote, remote_name=remote_name):
                 try:
-                    remote["tags"] = list(chain(*self.get_tags(remote_name)))
+                    remote["tags"] = list(chain(*self.get_remote_tags(remote_name)))
                 except GitSavvyError as e:
                     remote["erred"] = "    {}".format(e.stderr)
                 self.render()
