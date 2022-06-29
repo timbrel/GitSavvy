@@ -9,10 +9,12 @@ from . import util
 from ..core.runtime import enqueue_on_worker
 from ..core.settings import GitSavvySettings
 from ..core.utils import focus_view
+from GitSavvy.core.base_commands import GsTextCommand
+
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Optional
+    from typing import Dict, Optional, Type
 
 
 interfaces = {}  # type: Dict[sublime.ViewId, Interface]
@@ -297,6 +299,27 @@ def register_listeners(InterfaceClass):
 def get_interface(view_id):
     # type: (sublime.ViewId) -> Optional[Interface]
     return interfaces.get(view_id, None)
+
+
+class InterfaceCommand(GsTextCommand):
+    interface_type = None  # type: Type[Interface]
+    interface = None  # type: Interface
+
+    def run_(self, edit_token, args):
+        vid = self.view.id()
+        interface = get_interface(vid)
+        if not interface:
+            raise RuntimeError(
+                "Assertion failed! "
+                "no dashboard registered for {}".format(vid))
+        if not isinstance(interface, self.interface_type):
+            raise RuntimeError(
+                "Assertion failed! "
+                "registered interface `{}` is not of type `{}`"
+                .format(interface, self.interface_type.__name__)
+            )
+        self.interface = interface
+        return super().run_(edit_token, args)
 
 
 class GsInterfaceCloseCommand(TextCommand):

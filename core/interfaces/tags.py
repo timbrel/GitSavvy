@@ -8,10 +8,10 @@ from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
 from ...common import util
-from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker
 from GitSavvy.core.utils import flash
+
 
 TAG_DELETE_MESSAGE = "Tag(s) deleted."
 
@@ -223,24 +223,9 @@ class TagsInterface(ui.Interface, GitCommand):
 ui.register_listeners(TagsInterface)
 
 
-class TagsInterfaceCommand(GsTextCommand):
+class TagsInterfaceCommand(ui.InterfaceCommand):
+    interface_type = TagsInterface
     interface = None  # type: TagsInterface
-
-    def run_(self, edit_token, args):
-        vid = self.view.id()
-        interface = ui.get_interface(vid)
-        if not interface:
-            raise RuntimeError(
-                "Assertion failed! "
-                "no dashboard registered for {}".format(vid))
-        if not isinstance(interface, TagsInterface):
-            raise RuntimeError(
-                "Assertion failed! "
-                "registered interface `{}` is not of type `TagsInterface`"
-                .format(interface)
-            )
-        self.interface = interface
-        return super().run_(edit_token, args)
 
 
 class GsTagsToggleRemotesCommand(TagsInterfaceCommand):
