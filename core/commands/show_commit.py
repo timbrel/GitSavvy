@@ -60,6 +60,11 @@ class gs_show_commit(WindowCommand, GitCommand):
             settings.set("git_savvy.repo_path", repo_path)
             settings.set("git_savvy.show_commit_view.ignore_whitespace", False)
             settings.set("git_savvy.show_commit_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
+
+            settings.set("result_file_regex", diff.FILE_RE)
+            settings.set("result_line_regex", diff.LINE_RE)
+            settings.set("result_base_dir", repo_path)
+
             view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
             view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash)))
             view.set_scratch(True)
