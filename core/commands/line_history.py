@@ -3,6 +3,7 @@ import os
 import sublime
 from sublime_plugin import TextCommand, WindowCommand
 
+from . import diff
 from ..fns import filter_
 from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff
@@ -82,6 +83,10 @@ class gs_open_line_history(WindowCommand, GitCommand):
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)
         settings.set("git_savvy.file_path", file_path)
+
+        settings.set("result_file_regex", diff.FILE_RE)
+        settings.set("result_line_regex", diff.LINE_RE)
+        settings.set("result_base_dir", repo_path)
 
         rel_file_path = os.path.relpath(file_path, repo_path)
         title = ''.join(
