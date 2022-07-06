@@ -21,6 +21,9 @@ CommitDate: Mon Jun 12 19:58:27 2017 +0200
 #                            ^ markup.deleted.git-savvy.delete-block.content
 #                              ^ markup.deleted.git-savvy.delete-block.content
 # <- meta.commit-info.diffstat.line
+ common/ui.py           |  0
+#                          ^ constant.numeric.lines-count.git-savvy
+# <- meta.commit-info.diffstat.line
  popups/bl|me_view.html | 8 ++++
 #                           ^ markup.inserted.git-savvy.add-block.content
 #                              ^ markup.inserted.git-savvy.add-block.content

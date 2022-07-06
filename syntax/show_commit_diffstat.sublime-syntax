@@ -6,7 +6,7 @@ hidden: true
 scope: git-savvy.commit-diffstat
 contexts:
   main:
-    - match: ^ (\S.+) \| +(\d+) (\+*)(-*)$\n?
+    - match: ^ (\S.+) \| +(\d+ |0)(\+*)(-*)$\n?
       comment: author and date info
       scope: meta.commit-info.diffstat.line
       captures:
