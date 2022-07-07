@@ -181,6 +181,10 @@
         "command": "gs_checkout_current_file_at_commit"
     },
     {
+        "caption": "git: rename current branch",
+        "command": "gs_rename_branch"
+    },
+    {
         "caption": "git: fetch",
         "command": "gs_fetch"
     },
