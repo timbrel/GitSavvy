@@ -309,22 +309,16 @@ class GsBranchesRenameCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(self.run_async, 0)
 
     def run_async(self):
+        window = self.view.window()
+        if not window:
+            return
+
         interface = ui.get_interface(self.view.id())
         remote_name, branch_name = interface.get_selected_branch()
         if not branch_name or remote_name:
             return
-        self.branch_name = branch_name
 
-        show_single_line_input_panel(
-            "Enter new branch name (for {}):".format(self.branch_name),
-            self.branch_name,
-            self.on_entered_name
-        )
-
-    def on_entered_name(self, new_name):
-        new_name = new_name.strip().replace(" ", "-")
-        self.git("branch", "-m", self.branch_name, new_name)
-        util.view.refresh_gitsavvy(self.view)
+        window.run_command("gs_rename_branch", {"branch": branch_name})
 
 
 class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
