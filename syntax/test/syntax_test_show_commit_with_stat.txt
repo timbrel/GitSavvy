@@ -6,6 +6,12 @@ Commit:     Simon <simon.toivo@telhaug.no>
 CommitDate: Mon Jun 12 19:58:27 2017 +0200
 
     Blame popup option 2
+
+    This is a message.  Fixes #12
+#                             ^^^ constant.other.issue-ref.git-savvy.make-commit
+    @betty made this.  :thanks:
+#   ^^^^^^ constant.other.github-username.git-savvy.make-commit
+
 ---
 # <- git-savvy.commit meta.commit-header-and-stat-splitter
  Default.sublime-keymap | 22 +-
