@@ -550,12 +550,21 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
     Refresh the current graph view with the latest commits.
     """
 
-    def run(self, edit, navigate_after_draw=False):
-        # type: (object, bool) -> None
+    def run(self, edit, navigate_after_draw=False, assume_complete_redraw=False):
+        # type: (object, bool, bool) -> None
         # Edge case: If you restore a workspace/project, the view might still be
         # loading and hence not ready for refresh calls.
         if self.view.is_loading():
             return
+
+        if assume_complete_redraw:
+            try:
+                content_region = self.view.find_by_selector("meta.content.git_savvy.graph")[0]
+            except IndexError:
+                pass
+            else:
+                replace_view_content(self.view, "", content_region)
+                self.view.set_viewport_position((0, 0))
         should_abort = make_aborter(self.view)
         enqueue_on_worker(self.run_impl, should_abort, navigate_after_draw)
 
@@ -1273,7 +1282,7 @@ class gs_log_graph_reset_filters(TextCommand):
         current = settings.get("git_savvy.log_graph_view.apply_filters")
         next_state = not current
         settings.set("git_savvy.log_graph_view.apply_filters", next_state)
-        self.view.run_command("gs_log_graph_refresh")
+        self.view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": True})
 
 
 class gs_log_graph_edit_files(TextCommand, GitCommand):
