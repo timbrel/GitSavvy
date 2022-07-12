@@ -737,22 +737,10 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             got_proc(proc)
         received_some_stdout = False
         with proc:
-            while True:
-                # Block size 2**14 taken from Sublime's `exec.py`. This
-                # may be a hint on how much chars Sublime can draw efficiently.
-                # But here we don't draw every line (except initially) but
-                # a diff. So we oscillate between getting a first meaningful
-                # content fast and not blocking too much here.
-                # TODO: `len(lines)` could be a good indicator of how fast
-                # the system currently is because it seems to vary a lot when
-                # comparing rather short or long (in count of commits) repos.
-                lines = proc.stdout.readlines(2**14)
-                if not lines:
-                    break
-                elif not received_some_stdout:
+            for line in iter(proc.stdout.readline, b''):
+                yield decode(line)
+                if not received_some_stdout:
                     received_some_stdout = True
-                for line in lines:
-                    yield decode(line)
 
             stderr = ''.join(map(decode, proc.stderr.readlines()))
 
