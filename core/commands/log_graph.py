@@ -544,6 +544,48 @@ class PaintingStateMachine:
         self._current_state = other
 
 
+caret_styles = {}  # type: Dict[sublime.ViewId, str]
+overwrite_statuses = {}  # type: Dict[sublime.ViewId, bool]
+
+
+def set_caret_style(view, caret_style="smooth"):
+    # type: (sublime.View, str) -> None
+    vid = view.id()
+    if vid not in caret_styles:
+        caret_styles[vid] = view.settings().get("caret_style")
+    view.settings().set("caret_style", caret_style)
+
+
+def reset_caret_style(view):
+    # type: (sublime.View) -> None
+    vid = view.id()
+    try:
+        caret_style = caret_styles[vid]
+    except KeyError:
+        pass
+    else:
+        view.settings().set("caret_style", caret_style)
+
+
+def set_overwrite_status(view):
+    # type: (sublime.View) -> None
+    vid = view.id()
+    if vid not in overwrite_statuses:
+        overwrite_statuses[vid] = view.overwrite_status()
+    view.set_overwrite_status(True)
+
+
+def reset_overwrite_status(view):
+    # type: (sublime.View) -> None
+    vid = view.id()
+    try:
+        overwrite_status = overwrite_statuses[vid]
+    except KeyError:
+        pass
+    else:
+        view.set_overwrite_status(overwrite_status)
+
+
 class gs_log_graph_refresh(TextCommand, GitCommand):
 
     """
@@ -565,6 +607,10 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             else:
                 replace_view_content(self.view, "", content_region)
                 self.view.set_viewport_position((0, 0))
+
+                set_overwrite_status(self.view)
+                set_caret_style(self.view)
+
         should_abort = make_aborter(self.view)
         enqueue_on_worker(self.run_impl, should_abort, navigate_after_draw)
 
@@ -637,6 +683,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
         @ensure_not_aborted
         def draw():
+            set_overwrite_status(self.view)
             sel = get_simple_selection(self.view)
             if sel is None:
                 follow, col_range = None, None
@@ -703,6 +750,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 if painter_state == 'navigated':
                     if region.end() >= view.visible_region().end():
                         painter_state.set('viewport_readied')
+                    reset_overwrite_status(view)
 
                 if block_time.passed(13 if painter_state == 'viewport_readied' else 1000):
                     enqueue_on_worker(call_again)
@@ -715,6 +763,8 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 if not follow or not try_navigate_to_symbol():
                     if visible_selection:
                         view.show(view.sel(), True)
+            reset_overwrite_status(view)
+            reset_caret_style(view)
 
         def apply_token(view, token, offset):
             # type: (sublime.View, Replace, int) -> sublime.Region
