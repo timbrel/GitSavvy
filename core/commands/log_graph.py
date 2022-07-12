@@ -300,11 +300,15 @@ else:
 
 def diff(a, b):
     # type: (Sequence[str], Iterable[str]) -> Iterator[Union[Ins, Del, FlushT]]
+    block_time_passed = block_time_passed_factory(100)
     a_index = 0
     b_index = -1  # init in case b is empty
     len_a = len(a)
     a_set = set(a)
     for b_index, line in enumerate(b):
+        if block_time_passed():
+            yield Flush
+
         is_commit_line = re.match(FIND_COMMIT_HASH, line)
         if is_commit_line and line not in a_set:
             len_a += 1
