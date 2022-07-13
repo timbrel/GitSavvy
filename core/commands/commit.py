@@ -9,13 +9,11 @@ from .diff import DECODE_ERROR_MESSAGE
 from . import intra_line_colorizer
 from ..git_command import GitCommand, GitSavvyError
 from ..runtime import enqueue_on_worker
+from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import focus_view
 from ..view import replace_view_content
 from ...common import util
 from ...core.settings import SettingsMixin
-from GitSavvy.core.fns import filter_
-from GitSavvy.core.ui_mixins.quick_panel import short_ref
-from GitSavvy.core.utils import show_panel
 
 
 __all__ = (
@@ -33,6 +31,7 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import List, Optional, Tuple
+    from ..git_mixins.history import LogEntry
 
 
 COMMIT_HELP_TEXT_EXTRA = """##
@@ -524,56 +523,22 @@ class gs_commit_view_close(TextCommand, GitCommand):
             self.view.close()
 
 
-class gs_commit_log_helper(TextCommand, GitCommand):
+class gs_commit_log_helper(TextCommand, LogHelperMixin):
     def run(self, edit, prefix="fixup! ", move_to_eol=True):
         view = self.view
-        window = view.window()
-        assert window
-
         subject = extract_commit_subject(view).strip()
         clean_subject = cleanup_subject(subject)
-
         cursor = view.sel()[0].begin()
-        items = self.log(limit=100)
-        preselected_idx = next(
-            (idx for idx, item in enumerate(items) if item.summary == clean_subject),
-            -1
-        )
 
-        def on_done(idx):
-            window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
-            entry = items[idx]
+        def action(entry):
+            # type: (LogEntry) -> None
             text = "{}{}".format(prefix, entry.summary)
             replace_view_content(view, text, region=view.line(cursor))
             if move_to_eol:
                 view.sel().clear()
                 view.sel().add(len(text))
 
-        def on_cancel():
-            window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
-
-        def on_highlight(idx):
-            entry = items[idx]
-            window.run_command("gs_show_commit_info", {  # type: ignore[union-attr]  # mypy bug
-                "commit_hash": entry.short_hash
-            })
-
-        format_item = lambda entry: "  ".join(filter_(
-            (
-                entry.short_hash,
-                short_ref(entry.ref) if not entry.ref.startswith("HEAD ->") else "",
-                entry.summary
-            )
-        ))
-        show_panel(
-            window,
-            map(format_item, items),
-            on_done,
-            on_cancel,
-            on_highlight,
-            selected_index=preselected_idx,
-            flags=sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST,
-        )
+        self.show_log_panel(action, preselected_commit_message=clean_subject)
 
 
 def cleanup_subject(subject):
