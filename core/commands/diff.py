@@ -534,7 +534,10 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             if whole_file:
                 hunks = filter_(map(diff.hunk_for_pt, cursor_pts))
                 headers = unique(map(diff.head_for_hunk, hunks))
-                patches = flatten(chain([head], diff.hunks_for_head(head)) for head in headers)
+                patches = flatten(
+                    chain([head], diff.hunks_for_head(head))
+                    for head in headers
+                )  # type: Iterable[TextRange]
             else:
                 patches = unique(flatten(filter_(diff.head_and_hunk_for_pt(pt) for pt in cursor_pts)))
             patch = ''.join(part.text for part in patches)
