@@ -1782,6 +1782,14 @@
         ]
     },
     {
+        "keys": ["f"],
+        "command": "gs_line_history_initiate_fixup_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.line_history_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["."],
         "command": "gs_diff_navigate",
         "args": { "forward": true },
