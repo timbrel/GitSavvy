@@ -76,6 +76,11 @@ def compute_identifier_for_view(view):
     ) if settings.get('git_savvy.commit_view') else None
 
 
+def view_has_simple_cursor(view):
+    # type: (sublime.View) -> bool
+    return len(view.sel()) == 1 and view.sel()[0].empty()
+
+
 class gs_commit(WindowCommand, GitCommand):
 
     """
@@ -96,6 +101,12 @@ class gs_commit(WindowCommand, GitCommand):
                 settings.set("git_savvy.commit_view.include_unstaged", include_unstaged)
                 settings.set("git_savvy.commit_view.amend", amend)
                 focus_view(view)
+                initial_text_ = initial_text.rstrip()
+                if initial_text_:
+                    replace_view_content(view, initial_text_ + "\n", sublime.Region(0))
+                    if view_has_simple_cursor(view):
+                        view.sel().clear()
+                        view.sel().add(len(initial_text_))
                 break
         else:
             view = self.window.new_file()
