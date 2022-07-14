@@ -101,12 +101,6 @@ class gs_commit(WindowCommand, GitCommand):
                 settings.set("git_savvy.commit_view.include_unstaged", include_unstaged)
                 settings.set("git_savvy.commit_view.amend", amend)
                 focus_view(view)
-                initial_text_ = initial_text.rstrip()
-                if initial_text_:
-                    replace_view_content(view, initial_text_ + "\n", sublime.Region(0))
-                    if view_has_simple_cursor(view):
-                        view.sel().clear()
-                        view.sel().add(len(initial_text_))
                 break
         else:
             view = self.window.new_file()
@@ -127,10 +121,17 @@ class gs_commit(WindowCommand, GitCommand):
             title = COMMIT_TITLE.format(os.path.basename(repo_path))
             view.set_name(title)
             view.set_scratch(True)  # ignore dirty on actual commit
-            self.initialize_view(view, amend, initial_text)
+            self.initialize_view(view, amend)
 
-    def initialize_view(self, view, amend, initial_text):
-        # type: (sublime.View, bool, str) -> None
+        initial_text_ = initial_text.rstrip()
+        if initial_text_:
+            replace_view_content(view, initial_text_ + "\n", sublime.Region(0))
+            if view_has_simple_cursor(view):
+                view.sel().clear()
+                view.sel().add(len(initial_text_))
+
+    def initialize_view(self, view, amend):
+        # type: (sublime.View, bool) -> None
         merge_msg_path = os.path.join(self.git_dir, "MERGE_MSG")
 
         help_text = (
@@ -139,9 +140,7 @@ class gs_commit(WindowCommand, GitCommand):
             else COMMIT_HELP_TEXT
         )
 
-        if initial_text:
-            initial_text += help_text
-        elif amend:
+        if amend:
             last_commit_message = self.git("log", "-1", "--pretty=%B").strip()
             initial_text = last_commit_message + help_text
         elif os.path.exists(merge_msg_path):
