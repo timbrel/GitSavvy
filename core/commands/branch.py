@@ -12,6 +12,7 @@ from GitSavvy.core.utils import noop, show_actions_panel
 
 __all__ = (
     "gs_rename_branch",
+    "gs_unset_tracking_information",
     "gs_delete_branch",
 )
 
@@ -60,6 +61,17 @@ class gs_rename_branch(GsWindowCommand, GitCommand):
             return
         self.git("branch", "-m", branch, new_name)
         self.window.status_message("Renamed {} -> {}".format(branch, new_name))
+        util.view.refresh_gitsavvy_interfaces(self.window)
+
+
+class gs_unset_tracking_information(GsWindowCommand, GitCommand):
+    defaults = {
+        "branch": push.take_current_branch_name,  # type: ignore[dict-item]
+    }
+
+    def run(self, branch):
+        self.git("branch", branch, "--unset-upstream")
+        self.window.status_message("Remove the upstream information for {}".format(branch))
         util.view.refresh_gitsavvy_interfaces(self.window)
 
 
