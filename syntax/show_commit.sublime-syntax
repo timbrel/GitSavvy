@@ -49,7 +49,7 @@ contexts:
 
   commit-subject:
     - meta_content_scope: meta.commit_message meta.subject.git.commit markup.heading.subject.git.commit
-    - match: $\n?
+    - match: $
       set: commit-message-body
     - include: make_commit.sublime-syntax#references
 
