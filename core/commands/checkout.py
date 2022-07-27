@@ -35,9 +35,6 @@ class gs_checkout_branch(WindowCommand, GitCommand):
     """
 
     def run(self, branch=None):
-        sublime.set_timeout_async(lambda: self.run_async(branch), 0)
-
-    def run_async(self, branch):
         if branch:
             self.on_branch_selection(branch)
         else:
