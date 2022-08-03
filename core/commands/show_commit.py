@@ -7,7 +7,12 @@ from . import diff
 from . import intra_line_colorizer
 from ..git_command import GitCommand
 from ..utils import flash, focus_view
+from ..runtime import enqueue_on_worker
 from ..view import replace_view_content, Position
+from GitSavvy.github import github
+from GitSavvy.github.git_mixins import GithubRemotesMixin
+from GitSavvy.common import interwebs
+SUBLIME_SUPPORTS_REGION_ANNOTATIONS = int(sublime.version()) >= 4050
 
 
 __all__ = (
@@ -73,7 +78,7 @@ class gs_show_commit(WindowCommand, GitCommand):
             view.run_command("gs_handle_vintageous")
 
 
-class gs_show_commit_refresh(TextCommand, GitCommand):
+class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
 
     def run(self, edit):
         settings = self.view.settings()
@@ -87,6 +92,33 @@ class gs_show_commit_refresh(TextCommand, GitCommand):
         )
         replace_view_content(self.view, content)
         intra_line_colorizer.annotate_intra_line_differences(self.view)
+        if SUBLIME_SUPPORTS_REGION_ANNOTATIONS:
+            enqueue_on_worker(self.annotate_with_github_link, commit_hash)
+
+    def annotate_with_github_link(self, commit):
+        # type: (str) -> None
+        try:
+            remote_url = self.get_integrated_remote_url()
+        except ValueError:
+            return
+        github_repo = github.parse_remote(remote_url)
+        auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
+        url = "{}/commit/{}".format(github_repo.url, commit)
+        try:
+            response = interwebs.request_url("HEAD", url, auth=auth)
+        except Exception:
+            return
+
+        if 200 <= response.status < 300:
+            self.view.add_regions(
+                "link_to_github",
+                [sublime.Region(0)],
+                annotations=[
+                    '<a href="{}">Open on GitHub</a>'
+                    .format(url)
+                ],
+                annotation_color="#aaa0"
+            )
 
 
 class gs_show_commit_toggle_setting(TextCommand):
