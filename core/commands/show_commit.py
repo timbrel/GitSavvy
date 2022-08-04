@@ -1,4 +1,5 @@
 import os
+from webbrowser import open as open_in_browser
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
@@ -18,6 +19,7 @@ SUBLIME_SUPPORTS_REGION_ANNOTATIONS = int(sublime.version()) >= 4050
 __all__ = (
     "gs_show_commit",
     "gs_show_commit_refresh",
+    "gs_show_commit_open_on_github",
     "gs_show_commit_toggle_setting",
     "gs_show_commit_open_file_at_hunk",
     "gs_show_commit_show_hunk_on_working_dir",
@@ -119,6 +121,31 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
                 ],
                 annotation_color="#aaa0"
             )
+
+
+class gs_show_commit_open_on_github(TextCommand, GithubRemotesMixin, GitCommand):
+    def run(self, edit):
+        settings = self.view.settings()
+        commit = settings.get("git_savvy.show_commit_view.commit")
+        try:
+            remote_url = self.get_integrated_remote_url()
+        except ValueError as exc:
+            flash(self.view, str(exc))
+            return
+
+        github_repo = github.parse_remote(remote_url)
+        auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
+        url = "{}/commit/{}".format(github_repo.url, commit)
+        try:
+            response = interwebs.request_url("HEAD", url, auth=auth)
+        except Exception as exc:
+            flash(self.view, str(exc))
+            return
+
+        if 200 <= response.status < 300:
+            open_in_browser(url)
+        else:
+            flash(self.view, "commit not found on {}".format(github_repo.url))
 
 
 class gs_show_commit_toggle_setting(TextCommand):

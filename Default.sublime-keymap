@@ -889,6 +889,14 @@
         ]
     },
     {
+        "keys": ["h"],
+        "command": "gs_show_commit_open_on_github",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["g"],
         "command": "gs_show_commit_open_graph_context",
         "context": [
