@@ -178,5 +178,4 @@ class BranchesMixin(mixin_base):
         return [branch.strip() for branch in branches]
 
     def validate_branch_name(self, branch):
-        ref = "refs/heads/{}".format(branch)
-        return self.git("check-ref-format", "--branch", ref, throw_on_error=False).strip()
+        return self.git("check-ref-format", "--branch", branch, throw_on_error=False).strip()
