@@ -1782,6 +1782,14 @@
         ]
     },
     {
+        "keys": ["h"],
+        "command": "gs_show_commit_open_on_github",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.line_history_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["g"],
         "command": "gs_line_history_open_graph_context",
         "context": [

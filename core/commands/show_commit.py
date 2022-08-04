@@ -6,10 +6,13 @@ from sublime_plugin import WindowCommand, TextCommand
 
 from . import diff
 from . import intra_line_colorizer
+from ..fns import filter_, unique
 from ..git_command import GitCommand
 from ..utils import flash, focus_view
+from ..parse_diff import SplittedDiff
 from ..runtime import enqueue_on_worker
 from ..view import replace_view_content, Position
+
 from GitSavvy.github import github
 from GitSavvy.github.git_mixins import GithubRemotesMixin
 from GitSavvy.common import interwebs
@@ -125,8 +128,7 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
 
 class gs_show_commit_open_on_github(TextCommand, GithubRemotesMixin, GitCommand):
     def run(self, edit):
-        settings = self.view.settings()
-        commit = settings.get("git_savvy.show_commit_view.commit")
+        commits = self.commits()
         try:
             remote_url = self.get_integrated_remote_url()
         except ValueError as exc:
@@ -135,17 +137,29 @@ class gs_show_commit_open_on_github(TextCommand, GithubRemotesMixin, GitCommand)
 
         github_repo = github.parse_remote(remote_url)
         auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
-        url = "{}/commit/{}".format(github_repo.url, commit)
-        try:
-            response = interwebs.request_url("HEAD", url, auth=auth)
-        except Exception as exc:
-            flash(self.view, str(exc))
-            return
 
-        if 200 <= response.status < 300:
-            open_in_browser(url)
+        for commit in commits:
+            url = "{}/commit/{}".format(github_repo.url, commit)
+            try:
+                response = interwebs.request_url("HEAD", url, auth=auth)
+            except Exception as exc:
+                flash(self.view, str(exc))
+                return
+
+            if 200 <= response.status < 300:
+                open_in_browser(url)
+            else:
+                flash(self.view, "commit {} not found on {}".format(commit, github_repo.url))
+
+    def commits(self):
+        view = self.view
+        settings = view.settings()
+        commit = settings.get("git_savvy.show_commit_view.commit")
+        if commit:
+            yield commit
         else:
-            flash(self.view, "commit not found on {}".format(github_repo.url))
+            diff = SplittedDiff.from_view(view)
+            yield from unique(filter_(diff.commit_hash_before_pt(s.begin()) for s in view.sel()))
 
 
 class gs_show_commit_toggle_setting(TextCommand):
