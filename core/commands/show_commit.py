@@ -119,7 +119,7 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
                 "link_to_github",
                 [sublime.Region(0)],
                 annotations=[
-                    '<a href="{}">Open on GitHub</a>'
+                    '<span class="shortcut-key">[h]</span>&nbsp;<a href="{}">Open on GitHub</a>'
                     .format(url)
                 ],
                 annotation_color="#aaa0"
