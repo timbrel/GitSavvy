@@ -3,6 +3,7 @@ from contextlib import contextmanager
 import sublime
 from sublime_plugin import WindowCommand
 
+from . import diff
 from . import intra_line_colorizer
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_worker, enqueue_on_ui, throttled
@@ -69,7 +70,12 @@ class gs_show_commit_info(WindowCommand, GitCommand):
 
     def run_impl(self, commit_hash, file_path=None):
         output_view = ensure_panel(self.window)
-        output_view.settings().set("git_savvy.repo_path", self.repo_path)
+        settings = output_view.settings()
+        settings.set("git_savvy.repo_path", self.repo_path)
+
+        settings.set("result_file_regex", diff.FILE_RE)
+        settings.set("result_line_regex", diff.LINE_RE)
+        settings.set("result_base_dir", self.repo_path)
 
         if commit_hash:
             show_patch = self.savvy_settings.get("show_full_commit_info")
