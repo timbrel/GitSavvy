@@ -108,6 +108,7 @@ class gs_checkout_new_branch(WindowCommand, GitCommand):
             NEW_BRANCH_PROMPT, new_branch or base_branch or "", self.on_done)
 
     def on_done(self, branch_name):
+        branch_name = branch_name.strip().replace(" ", "-")
         if not self.validate_branch_name(branch_name):
             sublime.error_message(NEW_BRANCH_INVALID.format(branch_name))
             sublime.set_timeout_async(
