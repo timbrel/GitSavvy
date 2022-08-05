@@ -9,11 +9,18 @@ from ...core.ui_mixins.quick_panel import show_remote_panel
 from ...core.utils import flash
 
 
+__all__ = (
+    "gs_github_open_file_on_remote",
+    "gs_github_open_repo",
+    "gs_github_open_issues",
+)
+
+
 EARLIER_COMMIT_PROMPT = ("The remote chosen may not contain the commit. "
                          "Open the file {} before?")
 
 
-class GsGithubOpenFileOnRemoteCommand(TextCommand, git_mixins.GithubRemotesMixin, GitCommand):
+class gs_github_open_file_on_remote(TextCommand, git_mixins.GithubRemotesMixin, GitCommand):
 
     """
     Open a new browser window to the web-version of the currently opened
@@ -52,8 +59,17 @@ class GsGithubOpenFileOnRemoteCommand(TextCommand, git_mixins.GithubRemotesMixin
         if self.view.settings().get("git_savvy.show_file_at_commit_view"):
             # if it is a show_file_at_commit_view, get the hash from settings
             commit_hash = self.view.settings().get("git_savvy.show_file_at_commit_view.commit")
-        else:
+        elif len(fpath) > 1:
             commit_hash = self.get_commit_hash_for_head()
+        else:
+            commit_hash = self.git(
+                "rev-list",
+                "-1",
+                "HEAD",
+                "--",
+                fpath[0],
+                throw_on_error=False
+            ).strip() or self.get_commit_hash_for_head()
 
         base_hash = commit_hash
 
@@ -102,7 +118,7 @@ class GsGithubOpenFileOnRemoteCommand(TextCommand, git_mixins.GithubRemotesMixin
             )
 
 
-class GsGithubOpenRepoCommand(TextCommand, git_mixins.GithubRemotesMixin, GitCommand):
+class gs_github_open_repo(TextCommand, git_mixins.GithubRemotesMixin, GitCommand):
 
     """
     Open a new browser window to the GitHub remote repository.
@@ -126,7 +142,7 @@ class GsGithubOpenRepoCommand(TextCommand, git_mixins.GithubRemotesMixin, GitCom
         open_repo(self.remotes[remote])
 
 
-class GsGithubOpenIssuesCommand(TextCommand, git_mixins.GithubRemotesMixin, GitCommand):
+class gs_github_open_issues(TextCommand, git_mixins.GithubRemotesMixin, GitCommand):
 
     """
     Open a new browser window to the GitHub remote repository's issues page.
