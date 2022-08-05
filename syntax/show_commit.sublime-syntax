@@ -48,8 +48,8 @@ contexts:
       set: commit-subject
 
   commit-subject:
-    - meta_content_scope: meta.commit_message meta.subject.git.commit markup.heading.subject.git.commit
-    - match: $\n?
+    - meta_content_scope: gitsavvy.gotosymbol meta.commit_message meta.subject.git.commit markup.heading.subject.git.commit
+    - match: $
       set: commit-message-body
     - include: make_commit.sublime-syntax#references
 
