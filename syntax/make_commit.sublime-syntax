@@ -14,7 +14,7 @@ contexts:
       set: commit-subject
 
   references:
-    - match: (?:\s)(\@\w+)
+    - match: (?:\s|^)(\@[\w-]+)
       comment: github username
       captures:
         1: constant.other.github-username.git-savvy.make-commit
