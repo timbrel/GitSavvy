@@ -61,7 +61,7 @@ else:
 class WorkingDirState(_WorkingDirState):
     def _asdict(self):  # broken in old Python versions
         rv = dict(zip(self._fields, self))
-        rv["clean"] = self.clean
+        rv["clean"] = self.clean  # type: ignore[assignment]
         return rv
 
     @property
@@ -119,7 +119,14 @@ class StatusMixin(mixin_base):
             short_status=self._format_branch_status_short(branch_status),
             long_status=self._format_branch_status(branch_status)
         )
-        store.update_state(self.repo_path, {"status": rv})
+        current_branch = branch_status.branch
+        last_branches = store.current_state(self.repo_path)["last_branches"]
+        if current_branch and current_branch != last_branches[-1]:
+            last_branches.append(current_branch)
+        store.update_state(self.repo_path, {
+            "status": rv,
+            "last_branches": last_branches
+        })
         return rv
 
     def _parse_status_for_file_statuses(self, lines):
@@ -171,7 +178,7 @@ class StatusMixin(mixin_base):
         If no remote or tracking branch is defined, do not include remote-data.
         If HEAD is detached, provide that status instead.
 
-        If a delimeter is provided, join tuple components with it, and return
+        If a delimiter is provided, join tuple components with it, and return
         that value.
         """
         lines = self._get_status()

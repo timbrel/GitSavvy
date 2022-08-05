@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, deque
 from functools import partial
 import threading
 import uuid
@@ -8,7 +8,7 @@ from .utils import eat_but_log_errors, Cache
 
 MYPY = False
 if MYPY:
-    from typing import AbstractSet, Any, Callable, DefaultDict, Dict, Optional, Tuple, TypedDict
+    from typing import AbstractSet, Any, Callable, DefaultDict, Deque, Dict, Optional, Tuple, TypedDict
     from GitSavvy.core.git_mixins.status import WorkingDirState
 
     RepoPath = str
@@ -16,6 +16,7 @@ if MYPY:
         'RepoStore',
         {
             "status": WorkingDirState,
+            "last_branches": Deque[Optional[str]],
             "last_remote_used": Optional[str],
             "last_remote_used_for_push": Optional[str],
             "last_remote_used_with_option_all": Optional[str],
@@ -26,7 +27,13 @@ if MYPY:
     SubscriberKey = str
     Keys = AbstractSet[str]
 
-state = defaultdict(lambda: {})  # type: DefaultDict[RepoPath, RepoStore]
+
+def initial_state():
+    # type: () -> RepoStore
+    return {"last_branches": deque([None] * 2, 2)}
+
+
+state = defaultdict(initial_state)  # type: DefaultDict[RepoPath, RepoStore]
 cache = Cache(maxsize=512)  # type: Dict[Tuple, Any]
 subscribers = {}  # type: Dict[SubscriberKey, Tuple[RepoPath, Keys, Callable]]
 
