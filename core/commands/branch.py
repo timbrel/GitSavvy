@@ -23,6 +23,7 @@ GitSavvy: Deleted branch ({0}), in case you want to undo, run:
 """
 EXTRACT_COMMIT = re.compile(r"\(was (.+)\)")
 NOT_MERGED_WARNING = re.compile(r"The branch.*is not fully merged\.")
+CANT_DELETE_CURRENT_BRANCH = re.compile(r"Cannot delete branch .+ checked out at ")
 
 
 def ask_for_name(caption, initial_text):
@@ -92,6 +93,9 @@ class gs_delete_branch(GsWindowCommand, GitCommand):
                 if NOT_MERGED_WARNING.search(e.stderr):
                     self.offer_force_deletion(branch)
                     return
+                if CANT_DELETE_CURRENT_BRANCH.search(e.stderr):
+                    self.offer_detaching_head(branch)
+                    return
                 raise GitSavvyError(
                     e.message,
                     cmd=e.cmd,
@@ -122,4 +126,14 @@ class gs_delete_branch(GsWindowCommand, GitCommand):
                     "force": True
                 })
             )
+        ])
+
+    def offer_detaching_head(self, branch):
+        def kont():
+            self.git("checkout", branch, "--detach")
+            self.window.run_command("gs_delete_branch", {"branch": branch, "force": False})
+
+        show_actions_panel(self.window, [
+            noop("Abort, '{}' is checked out.".format(branch)),
+            ("Detach HEAD and delete.", kont)
         ])
