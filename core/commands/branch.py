@@ -72,7 +72,7 @@ class gs_unset_tracking_information(GsWindowCommand, GitCommand):
 
     def run(self, branch):
         self.git("branch", branch, "--unset-upstream")
-        self.window.status_message("Remove the upstream information for {}".format(branch))
+        self.window.status_message("Removed the upstream information for {}".format(branch))
         util.view.refresh_gitsavvy_interfaces(self.window)
 
 
