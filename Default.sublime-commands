@@ -185,6 +185,10 @@
         "command": "gs_rename_branch"
     },
     {
+        "caption": "git: unset tracking branch",
+        "command": "gs_unset_tracking_information"
+    },
+    {
         "caption": "git: fetch",
         "command": "gs_fetch"
     },
