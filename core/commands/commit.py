@@ -109,6 +109,7 @@ class gs_commit(WindowCommand, GitCommand):
             settings.set("git_savvy.commit_on_close", commit_on_close)
             prompt_on_abort_commit = self.savvy_settings.get("prompt_on_abort_commit")
             settings.set("git_savvy.prompt_on_abort_commit", prompt_on_abort_commit)
+            settings.set("SublimeLinter.enabled?", True)
 
             view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
             view.run_command("gs_handle_vintageous")
