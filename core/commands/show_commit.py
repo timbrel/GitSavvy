@@ -1,18 +1,28 @@
 import os
+from webbrowser import open as open_in_browser
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
 from . import diff
 from . import intra_line_colorizer
+from ..fns import filter_, unique
 from ..git_command import GitCommand
 from ..utils import flash, focus_view
+from ..parse_diff import SplittedDiff
+from ..runtime import enqueue_on_worker
 from ..view import replace_view_content, Position
+
+from GitSavvy.github import github
+from GitSavvy.github.git_mixins import GithubRemotesMixin
+from GitSavvy.common import interwebs
+SUBLIME_SUPPORTS_REGION_ANNOTATIONS = int(sublime.version()) >= 4050
 
 
 __all__ = (
     "gs_show_commit",
     "gs_show_commit_refresh",
+    "gs_show_commit_open_on_github",
     "gs_show_commit_toggle_setting",
     "gs_show_commit_open_file_at_hunk",
     "gs_show_commit_show_hunk_on_working_dir",
@@ -73,7 +83,7 @@ class gs_show_commit(WindowCommand, GitCommand):
             view.run_command("gs_handle_vintageous")
 
 
-class gs_show_commit_refresh(TextCommand, GitCommand):
+class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
 
     def run(self, edit):
         settings = self.view.settings()
@@ -87,6 +97,69 @@ class gs_show_commit_refresh(TextCommand, GitCommand):
         )
         replace_view_content(self.view, content)
         intra_line_colorizer.annotate_intra_line_differences(self.view)
+        if SUBLIME_SUPPORTS_REGION_ANNOTATIONS:
+            enqueue_on_worker(self.annotate_with_github_link, commit_hash)
+
+    def annotate_with_github_link(self, commit):
+        # type: (str) -> None
+        try:
+            remote_url = self.get_integrated_remote_url()
+        except ValueError:
+            return
+        github_repo = github.parse_remote(remote_url)
+        auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
+        url = "{}/commit/{}".format(github_repo.url, commit)
+        try:
+            response = interwebs.request_url("HEAD", url, auth=auth)
+        except Exception:
+            return
+
+        if 200 <= response.status < 300:
+            self.view.add_regions(
+                "link_to_github",
+                [sublime.Region(0)],
+                annotations=[
+                    '<span class="shortcut-key">[h]</span>&nbsp;<a href="{}">Open on GitHub</a>'
+                    .format(url)
+                ],
+                annotation_color="#aaa0"
+            )
+
+
+class gs_show_commit_open_on_github(TextCommand, GithubRemotesMixin, GitCommand):
+    def run(self, edit):
+        commits = self.commits()
+        try:
+            remote_url = self.get_integrated_remote_url()
+        except ValueError as exc:
+            flash(self.view, str(exc))
+            return
+
+        github_repo = github.parse_remote(remote_url)
+        auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
+
+        for commit in commits:
+            url = "{}/commit/{}".format(github_repo.url, commit)
+            try:
+                response = interwebs.request_url("HEAD", url, auth=auth)
+            except Exception as exc:
+                flash(self.view, str(exc))
+                return
+
+            if 200 <= response.status < 300:
+                open_in_browser(url)
+            else:
+                flash(self.view, "commit {} not found on {}".format(commit, github_repo.url))
+
+    def commits(self):
+        view = self.view
+        settings = view.settings()
+        commit = settings.get("git_savvy.show_commit_view.commit")
+        if commit:
+            yield commit
+        else:
+            diff = SplittedDiff.from_view(view)
+            yield from unique(filter_(diff.commit_hash_before_pt(s.begin()) for s in view.sel()))
 
 
 class gs_show_commit_toggle_setting(TextCommand):

@@ -92,6 +92,19 @@ class SplittedDiff(SplittedDiffBase):
         except ValueError:
             return None
 
+    def commit_before_pt(self, pt):
+        # type: (int) -> Optional[CommitHeader]
+        for commit_header in reversed(self.commits):
+            if commit_header.a <= pt:
+                return commit_header
+        else:
+            return None
+
+    def commit_hash_before_pt(self, pt):
+        # type: (int) -> Optional[str]
+        commit_header = self.commit_before_pt(pt)
+        return commit_header.commit_hash() if commit_header else None
+
 
 HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+?)\t?$')
 

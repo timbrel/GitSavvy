@@ -6,7 +6,7 @@ from sublime_plugin import TextCommand, WindowCommand
 from . import diff
 from ..fns import filter_
 from ..git_command import GitCommand
-from ..parse_diff import CommitHeader, SplittedDiff
+from ..parse_diff import SplittedDiff
 from ..runtime import enqueue_on_worker
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import flash
@@ -25,7 +25,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import List, Optional, Tuple
+    from typing import List, Tuple
     from ..types import LineNo
 
     LineRange = Tuple[LineNo, LineNo]
@@ -132,7 +132,7 @@ class gs_line_history_open_commit(TextCommand, GitCommand):
             return
 
         diff = SplittedDiff.from_view(view)
-        commits = filter_(commit_hash_before_pt(diff, s.begin()) for s in view.sel())
+        commits = filter_(diff.commit_hash_before_pt(s.begin()) for s in view.sel())
         for c in commits:
             window.run_command('gs_show_commit', {'commit_hash': c})
 
@@ -145,28 +145,12 @@ class gs_line_history_open_graph_context(TextCommand, GitCommand):
         if not window:
             return
 
-        diff = SplittedDiff.from_view(view)
-        commit_hash = commit_hash_before_pt(diff, view.sel()[0].begin())
+        commit_hash = SplittedDiff.from_view(view).commit_hash_before_pt(view.sel()[0].begin())
         if commit_hash:
             window.run_command("gs_graph", {
                 "all": True,
                 "follow": self.get_short_hash(commit_hash)
             })
-
-
-def commit_before_pt(diff, pt):
-    # type: (SplittedDiff, int) -> Optional[CommitHeader]
-    for commit_header in reversed(diff.commits):
-        if commit_header.a <= pt:
-            return commit_header
-    else:
-        return None
-
-
-def commit_hash_before_pt(diff, pt):
-    # type: (SplittedDiff, int) -> Optional[str]
-    commit_header = commit_before_pt(diff, pt)
-    return commit_header.commit_hash() if commit_header else None
 
 
 class gs_line_history_initiate_fixup_commit(TextCommand, LogHelperMixin):
@@ -175,8 +159,7 @@ class gs_line_history_initiate_fixup_commit(TextCommand, LogHelperMixin):
         window = view.window()
         assert window
 
-        diff = SplittedDiff.from_view(view)
-        commit_header = commit_before_pt(diff, view.sel()[0].begin())
+        commit_header = SplittedDiff.from_view(view).commit_before_pt(view.sel()[0].begin())
         if not commit_header:
             flash(view, "No commit header found around the cursor.")
             return
