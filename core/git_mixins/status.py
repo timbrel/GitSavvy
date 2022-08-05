@@ -178,7 +178,7 @@ class StatusMixin(mixin_base):
         If no remote or tracking branch is defined, do not include remote-data.
         If HEAD is detached, provide that status instead.
 
-        If a delimeter is provided, join tuple components with it, and return
+        If a delimiter is provided, join tuple components with it, and return
         that value.
         """
         lines = self._get_status()
