@@ -1,12 +1,17 @@
 import re
+import sublime
 
+from . import checkout
+from . import push
 from ..git_command import GitCommand, GitSavvyError
+from ..ui_mixins.input_panel import show_single_line_input_panel
 from ...common import util
 from GitSavvy.core.base_commands import ask_for_local_branch, GsWindowCommand
 from GitSavvy.core.utils import noop, show_actions_panel
 
 
 __all__ = (
+    "gs_rename_branch",
     "gs_delete_branch",
 )
 
@@ -17,6 +22,45 @@ GitSavvy: Deleted branch ({0}), in case you want to undo, run:
 """
 EXTRACT_COMMIT = re.compile(r"\(was (.+)\)")
 NOT_MERGED_WARNING = re.compile(r"The branch.*is not fully merged\.")
+
+
+def ask_for_name(caption, initial_text):
+    def handler(cmd, args, done, initial_text_=None):
+        # type: (push._Base, push.Args, push.Kont, str) -> None
+        def done_(branch_name):
+            branch_name = branch_name.strip().replace(" ", "-")
+            if not branch_name:
+                return None
+            if not cmd.validate_branch_name(branch_name):
+                sublime.error_message(checkout.NEW_BRANCH_INVALID.format(branch_name))
+                handler(cmd, args, done, initial_text_=branch_name)
+                return None
+            done(branch_name)
+
+        show_single_line_input_panel(
+            caption(args),
+            initial_text_ or initial_text(args),
+            done_
+        )
+    return handler
+
+
+class gs_rename_branch(GsWindowCommand, GitCommand):
+    defaults = {
+        "branch": push.take_current_branch_name,  # type: ignore[dict-item]
+        "new_name": ask_for_name(
+            caption=lambda args: "Enter new branch name (for {}):".format(args["branch"]),
+            initial_text=lambda args: args["branch"],
+        ),
+    }
+
+    def run(self, branch, new_name):
+        # type: (str, str) -> None
+        if branch == new_name:
+            return
+        self.git("branch", "-m", branch, new_name)
+        self.window.status_message("Renamed {} -> {}".format(branch, new_name))
+        util.view.refresh_gitsavvy_interfaces(self.window)
 
 
 class gs_delete_branch(GsWindowCommand, GitCommand):

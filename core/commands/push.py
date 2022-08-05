@@ -148,8 +148,13 @@ class gs_push(PushBase):
             })
 
 
+if MYPY:
+    class _Base(GsWindowCommand, GitCommand):
+        pass
+
+
 def take_current_branch_name(cmd, args, done):
-    # type: (PushBase, Args, Kont) -> None
+    # type: (_Base, Args, Kont) -> None
     current_branch_name = cmd.get_current_branch_name()
     if current_branch_name:
         done(current_branch_name)
