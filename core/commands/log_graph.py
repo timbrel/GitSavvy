@@ -300,11 +300,15 @@ else:
 
 def diff(a, b):
     # type: (Sequence[str], Iterable[str]) -> Iterator[Union[Ins, Del, FlushT]]
+    block_time_passed = block_time_passed_factory(100)
     a_index = 0
     b_index = -1  # init in case b is empty
     len_a = len(a)
     a_set = set(a)
     for b_index, line in enumerate(b):
+        if block_time_passed():
+            yield Flush
+
         is_commit_line = re.match(FIND_COMMIT_HASH, line)
         if is_commit_line and line not in a_set:
             len_a += 1
@@ -540,18 +544,73 @@ class PaintingStateMachine:
         self._current_state = other
 
 
+caret_styles = {}  # type: Dict[sublime.ViewId, str]
+overwrite_statuses = {}  # type: Dict[sublime.ViewId, bool]
+
+
+def set_caret_style(view, caret_style="smooth"):
+    # type: (sublime.View, str) -> None
+    vid = view.id()
+    if vid not in caret_styles:
+        caret_styles[vid] = view.settings().get("caret_style")
+    view.settings().set("caret_style", caret_style)
+
+
+def reset_caret_style(view):
+    # type: (sublime.View) -> None
+    vid = view.id()
+    try:
+        caret_style = caret_styles[vid]
+    except KeyError:
+        pass
+    else:
+        view.settings().set("caret_style", caret_style)
+
+
+def set_overwrite_status(view):
+    # type: (sublime.View) -> None
+    vid = view.id()
+    if vid not in overwrite_statuses:
+        overwrite_statuses[vid] = view.overwrite_status()
+    view.set_overwrite_status(True)
+
+
+def reset_overwrite_status(view):
+    # type: (sublime.View) -> None
+    vid = view.id()
+    try:
+        overwrite_status = overwrite_statuses[vid]
+    except KeyError:
+        pass
+    else:
+        view.set_overwrite_status(overwrite_status)
+
+
 class gs_log_graph_refresh(TextCommand, GitCommand):
 
     """
     Refresh the current graph view with the latest commits.
     """
 
-    def run(self, edit, navigate_after_draw=False):
-        # type: (object, bool) -> None
+    def run(self, edit, navigate_after_draw=False, assume_complete_redraw=False):
+        # type: (object, bool, bool) -> None
         # Edge case: If you restore a workspace/project, the view might still be
         # loading and hence not ready for refresh calls.
         if self.view.is_loading():
             return
+
+        if assume_complete_redraw:
+            try:
+                content_region = self.view.find_by_selector("meta.content.git_savvy.graph")[0]
+            except IndexError:
+                pass
+            else:
+                replace_view_content(self.view, "", content_region)
+                self.view.set_viewport_position((0, 0))
+
+                set_overwrite_status(self.view)
+                set_caret_style(self.view)
+
         should_abort = make_aborter(self.view)
         enqueue_on_worker(self.run_impl, should_abort, navigate_after_draw)
 
@@ -624,6 +683,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
         @ensure_not_aborted
         def draw():
+            set_overwrite_status(self.view)
             sel = get_simple_selection(self.view)
             if sel is None:
                 follow, col_range = None, None
@@ -690,6 +750,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 if painter_state == 'navigated':
                     if region.end() >= view.visible_region().end():
                         painter_state.set('viewport_readied')
+                    reset_overwrite_status(view)
 
                 if block_time.passed(13 if painter_state == 'viewport_readied' else 1000):
                     enqueue_on_worker(call_again)
@@ -702,6 +763,8 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 if not follow or not try_navigate_to_symbol():
                     if visible_selection:
                         view.show(view.sel(), True)
+            reset_overwrite_status(view)
+            reset_caret_style(view)
 
         def apply_token(view, token, offset):
             # type: (sublime.View, Replace, int) -> sublime.Region
@@ -737,22 +800,10 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             got_proc(proc)
         received_some_stdout = False
         with proc:
-            while True:
-                # Block size 2**14 taken from Sublime's `exec.py`. This
-                # may be a hint on how much chars Sublime can draw efficiently.
-                # But here we don't draw every line (except initially) but
-                # a diff. So we oscillate between getting a first meaningful
-                # content fast and not blocking too much here.
-                # TODO: `len(lines)` could be a good indicator of how fast
-                # the system currently is because it seems to vary a lot when
-                # comparing rather short or long (in count of commits) repos.
-                lines = proc.stdout.readlines(2**14)
-                if not lines:
-                    break
-                elif not received_some_stdout:
+            for line in iter(proc.stdout.readline, b''):
+                yield decode(line)
+                if not received_some_stdout:
                     received_some_stdout = True
-                for line in lines:
-                    yield decode(line)
 
             stderr = ''.join(map(decode, proc.stderr.readlines()))
 
@@ -1281,7 +1332,7 @@ class gs_log_graph_reset_filters(TextCommand):
         current = settings.get("git_savvy.log_graph_view.apply_filters")
         next_state = not current
         settings.set("git_savvy.log_graph_view.apply_filters", next_state)
-        self.view.run_command("gs_log_graph_refresh")
+        self.view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": True})
 
 
 class gs_log_graph_edit_files(TextCommand, GitCommand):
