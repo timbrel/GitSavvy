@@ -9,13 +9,11 @@ from .diff import DECODE_ERROR_MESSAGE
 from . import intra_line_colorizer
 from ..git_command import GitCommand, GitSavvyError
 from ..runtime import enqueue_on_worker
+from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import focus_view
 from ..view import replace_view_content
 from ...common import util
 from ...core.settings import SettingsMixin
-from GitSavvy.core.fns import filter_
-from GitSavvy.core.ui_mixins.quick_panel import short_ref
-from GitSavvy.core.utils import show_panel
 
 
 __all__ = (
@@ -33,6 +31,7 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import List, Optional, Tuple
+    from ..git_mixins.history import LogEntry
 
 
 COMMIT_HELP_TEXT_EXTRA = """##
@@ -77,6 +76,11 @@ def compute_identifier_for_view(view):
     ) if settings.get('git_savvy.commit_view') else None
 
 
+def view_has_simple_cursor(view):
+    # type: (sublime.View) -> bool
+    return len(view.sel()) == 1 and view.sel()[0].empty()
+
+
 class gs_commit(WindowCommand, GitCommand):
 
     """
@@ -117,10 +121,17 @@ class gs_commit(WindowCommand, GitCommand):
             title = COMMIT_TITLE.format(os.path.basename(repo_path))
             view.set_name(title)
             view.set_scratch(True)  # ignore dirty on actual commit
-            self.initialize_view(view, amend, initial_text)
+            self.initialize_view(view, amend)
 
-    def initialize_view(self, view, amend, initial_text):
-        # type: (sublime.View, bool, str) -> None
+        initial_text_ = initial_text.rstrip()
+        if initial_text_:
+            replace_view_content(view, initial_text_ + "\n", sublime.Region(0))
+            if view_has_simple_cursor(view):
+                view.sel().clear()
+                view.sel().add(len(initial_text_))
+
+    def initialize_view(self, view, amend):
+        # type: (sublime.View, bool) -> None
         merge_msg_path = os.path.join(self.git_dir, "MERGE_MSG")
 
         help_text = (
@@ -129,9 +140,7 @@ class gs_commit(WindowCommand, GitCommand):
             else COMMIT_HELP_TEXT
         )
 
-        if initial_text:
-            initial_text += help_text
-        elif amend:
+        if amend:
             last_commit_message = self.git("log", "-1", "--pretty=%B").strip()
             initial_text = last_commit_message + help_text
         elif os.path.exists(merge_msg_path):
@@ -524,56 +533,22 @@ class gs_commit_view_close(TextCommand, GitCommand):
             self.view.close()
 
 
-class gs_commit_log_helper(TextCommand, GitCommand):
+class gs_commit_log_helper(TextCommand, LogHelperMixin):
     def run(self, edit, prefix="fixup! ", move_to_eol=True):
         view = self.view
-        window = view.window()
-        assert window
-
         subject = extract_commit_subject(view).strip()
         clean_subject = cleanup_subject(subject)
-
         cursor = view.sel()[0].begin()
-        items = self.log(limit=100)
-        preselected_idx = next(
-            (idx for idx, item in enumerate(items) if item.summary == clean_subject),
-            -1
-        )
 
-        def on_done(idx):
-            window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
-            entry = items[idx]
+        def action(entry):
+            # type: (LogEntry) -> None
             text = "{}{}".format(prefix, entry.summary)
             replace_view_content(view, text, region=view.line(cursor))
             if move_to_eol:
                 view.sel().clear()
                 view.sel().add(len(text))
 
-        def on_cancel():
-            window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
-
-        def on_highlight(idx):
-            entry = items[idx]
-            window.run_command("gs_show_commit_info", {  # type: ignore[union-attr]  # mypy bug
-                "commit_hash": entry.short_hash
-            })
-
-        format_item = lambda entry: "  ".join(filter_(
-            (
-                entry.short_hash,
-                short_ref(entry.ref) if not entry.ref.startswith("HEAD ->") else "",
-                entry.summary
-            )
-        ))
-        show_panel(
-            window,
-            map(format_item, items),
-            on_done,
-            on_cancel,
-            on_highlight,
-            selected_index=preselected_idx,
-            flags=sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST,
-        )
+        self.show_log_panel(action, preselected_commit_message=clean_subject)
 
 
 def cleanup_subject(subject):

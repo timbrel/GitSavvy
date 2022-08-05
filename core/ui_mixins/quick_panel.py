@@ -2,13 +2,15 @@ import itertools
 import sublime
 from ...common import util
 from ..git_command import GitCommand
-from GitSavvy.core.fns import filter_
 from GitSavvy.core import store
+from GitSavvy.core.fns import filter_
+from GitSavvy.core.utils import show_panel
 
 
 MYPY = False
 if MYPY:
     from typing import Callable
+    from ..git_mixins.history import LogEntry
 
 
 class PanelActionMixin(object):
@@ -577,6 +579,50 @@ class LogPanel(PaginatedPanel):
 
     def on_selection(self, commit):
         self.on_done(commit)
+
+
+class LogHelperMixin(GitCommand):
+    def show_log_panel(self, action, preselected_commit_message=None):
+        # type: (Callable[[LogEntry], None], str) -> None
+        window = self._current_window()
+        if not window:
+            return
+
+        def on_done(idx):
+            window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
+            entry = items[idx]
+            action(entry)
+
+        def on_cancel():
+            window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
+
+        def on_highlight(idx):
+            entry = items[idx]
+            window.run_command("gs_show_commit_info", {  # type: ignore[union-attr]  # mypy bug
+                "commit_hash": entry.short_hash
+            })
+
+        items = self.log(limit=100)
+        preselected_idx = next(
+            (idx for idx, item in enumerate(items) if item.summary == preselected_commit_message),
+            -1
+        ) if preselected_commit_message else -1
+        format_item = lambda entry: "  ".join(filter_(
+            (
+                entry.short_hash,
+                short_ref(entry.ref) if not entry.ref.startswith("HEAD ->") else "",
+                entry.summary
+            )
+        ))
+        show_panel(
+            window,
+            map(format_item, items),
+            on_done,
+            on_cancel,
+            on_highlight,
+            selected_index=preselected_idx,
+            flags=sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST,
+        )
 
 
 def show_stash_panel(on_done, **kwargs):

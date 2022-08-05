@@ -18,6 +18,7 @@ from ..fns import filter_, flatten, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_ui, enqueue_on_worker
+from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import flash, focus_view, line_indentation
 from ..view import replace_view_content, place_view, row_offset, Position
 from ...common import util
@@ -30,6 +31,7 @@ __all__ = (
     "gs_diff_toggle_cached_mode",
     "gs_diff_zoom",
     "gs_diff_stage_or_reset_hunk",
+    "gs_initiate_fixup_commit",
     "gs_diff_open_file_at_hunk",
     "gs_diff_navigate",
     "gs_diff_undo",
@@ -45,6 +47,7 @@ if MYPY:
     )
     from ..parse_diff import FileHeader, Hunk, HunkLine, TextRange
     from ..types import LineNo, ColNo
+    from ..git_mixins.history import LogEntry
 
     T = TypeVar('T')
     Point = int
@@ -534,7 +537,10 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             if whole_file:
                 hunks = filter_(map(diff.hunk_for_pt, cursor_pts))
                 headers = unique(map(diff.head_for_hunk, hunks))
-                patches = flatten(chain([head], diff.hunks_for_head(head)) for head in headers)
+                patches = flatten(
+                    chain([head], diff.hunks_for_head(head))
+                    for head in headers
+                )  # type: Iterable[TextRange]
             else:
                 patches = unique(flatten(filter_(diff.head_and_hunk_for_pt(pt) for pt in cursor_pts)))
             patch = ''.join(part.text for part in patches)
@@ -627,6 +633,22 @@ def form_patch(lines):
     blen = sum(1 for line, a_b in lines if not line.is_from_line())
     content = "".join(line.text for line, a_b in lines)
     return stage_hunk.Hunk(a_start, alen, b_start, blen, content)
+
+
+class gs_initiate_fixup_commit(TextCommand, LogHelperMixin):
+    def run(self, edit):
+        view = self.view
+        window = view.window()
+        assert window
+
+        def action(entry):
+            # type: (LogEntry) -> None
+            commit_message = entry.summary
+            window.run_command("gs_commit", {  # type: ignore[union-attr]
+                "initial_text": "fixup! {}".format(commit_message)
+            })
+
+        self.show_log_panel(action)
 
 
 MYPY = False

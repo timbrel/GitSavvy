@@ -6,8 +6,9 @@ from sublime_plugin import TextCommand, WindowCommand
 from . import diff
 from ..fns import filter_
 from ..git_command import GitCommand
-from ..parse_diff import SplittedDiff
+from ..parse_diff import CommitHeader, SplittedDiff
 from ..runtime import enqueue_on_worker
+from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import flash
 from ..view import replace_view_content
 from ...common import util
@@ -18,6 +19,7 @@ __all__ = (
     "gs_open_line_history",
     "gs_line_history_open_commit",
     "gs_line_history_open_graph_context",
+    "gs_line_history_initiate_fixup_commit",
 )
 
 
@@ -152,10 +154,39 @@ class gs_line_history_open_graph_context(TextCommand, GitCommand):
             })
 
 
-def commit_hash_before_pt(diff, pt):
-    # type: (SplittedDiff, int) -> Optional[str]
+def commit_before_pt(diff, pt):
+    # type: (SplittedDiff, int) -> Optional[CommitHeader]
     for commit_header in reversed(diff.commits):
         if commit_header.a <= pt:
-            return commit_header.commit_hash()
+            return commit_header
     else:
         return None
+
+
+def commit_hash_before_pt(diff, pt):
+    # type: (SplittedDiff, int) -> Optional[str]
+    commit_header = commit_before_pt(diff, pt)
+    return commit_header.commit_hash() if commit_header else None
+
+
+class gs_line_history_initiate_fixup_commit(TextCommand, LogHelperMixin):
+    def run(self, edit):
+        view = self.view
+        window = view.window()
+        assert window
+
+        diff = SplittedDiff.from_view(view)
+        commit_header = commit_before_pt(diff, view.sel()[0].begin())
+        if not commit_header:
+            flash(view, "No commit header found around the cursor.")
+            return
+
+        for r in view.find_by_selector("meta.commit_message meta.subject.git.commit"):
+            if r.a > commit_header.a:
+                commit_message = view.substr(r).strip()
+                window.run_command("gs_commit", {
+                    "initial_text": "fixup! {}".format(commit_message)
+                })
+                break
+        else:
+            flash(view, "Could not extract commit message subject")

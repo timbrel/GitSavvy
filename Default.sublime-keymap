@@ -65,6 +65,14 @@
         ]
     },
     {
+        "keys": ["f"],
+        "command": "gs_initiate_fixup_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["."],
         "command": "gs_inline_diff_navigate_hunk",
         "args": { "forward": true },
@@ -717,6 +725,14 @@
         "keys": ["m"],
         "command": "gs_commit",
         "args": {"amend": true},
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["f"],
+        "command": "gs_initiate_fixup_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
@@ -1760,6 +1776,14 @@
     {
         "keys": ["g"],
         "command": "gs_line_history_open_graph_context",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.line_history_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["f"],
+        "command": "gs_line_history_initiate_fixup_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.line_history_view", "operator": "equal", "operand": true }
