@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from functools import lru_cache, partial
 from itertools import chain, takewhile
 import os
+import re
 import shlex
 
 import sublime
@@ -421,6 +422,28 @@ class RebaseCommand(GitCommand):
                     )
                 ])
                 return
+
+            match = re.search(r"fatal: invalid upstream '(.+\^)'", e.stderr)
+            if match:
+                commitish = match.group(1)
+                # Ensure the commit doesn't have a parent before retrying with `--root`
+                for line in self.git("cat-file", "-p", commitish[:-1]).splitlines():
+                    if line.lower().startswith("parent "):
+                        break  # Abort, the commit has a parent
+                    if line.lower().startswith("author "):
+                        # The commit does not have a parent as `author`
+                        # comes *after* `parent` in a patch (`-p`).
+                        run_on_new_thread(
+                            self.rebase,
+                            "--root",  # <-- rebase from the root!
+                            *[arg for arg in args if arg != commitish],
+                            show_panel=show_panel,
+                            custom_environ=custom_environ,
+                            ok_message=ok_message,
+                            offer_autostash=offer_autostash,
+                            **kwargs
+                        )
+                        return
 
         else:
             if show_panel and not self.in_rebase():
