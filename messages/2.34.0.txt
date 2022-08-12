@@ -1,0 +1,47 @@
+GitSavvy 2.34.0
+===============
+
+Small things matter!
+
+- Add fixup helpers (bound to `[f]`) to the `diff`, `inline-diff`, and
+  `Line History`.  (#1567)
+
+- In the `Commit View` and `Line History` bind `[h]` to open the commit on
+  GitHub in the browser.  Also add a clickable annotation in the top right
+  corner.  (#1570)
+
+- For `github: open file on remote`, usually open the last-modified revision
+  of the file.  (#1571)
+
+- Automatically treat spaces as `-` (dashes) when asking for a new branch
+  name.  (#1557)
+
+- Add command to Command Palette (`git: rename current branch`) to rename
+  the current, active branch.  (#1558)
+
+- Add command `git: unset tracking branch` to remove the tracking information
+  of the current branch  (#1559)
+
+- Allow deletion of the currently checked out ("active") branch.  (#1560)
+
+- Smooth(er), incidental drawing of the log graph view.  (#1569)
+
+  Indicate visually that we wait for a response from `git log graph` if it
+  takes too long, or that we await and expect a complete re-draw (typical
+  because a filter setting changed).
+
+- Make filenames clickable in views where we show patches.  (#1556)
+
+- Mark the commit message view as lintable by SublimeLinter.  (#1566)
+
+
+
+Fixes:
+
+- Fix validating branch name  (#1554)
+- Fix diffstat colorization  (#1555)
+- Ensure we checkout on the UI thread ("blocking")  (#1561)
+- Fix highlighting of github usernames  (#1562)
+- Fix commit message subject scopes and highlighting  (#1563)
+- Fix intra line colorization of merge conflicted files  (#1564)
+- Allow rebasing the initial (root) commit.  (#1574)
