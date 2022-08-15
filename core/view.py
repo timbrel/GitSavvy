@@ -1,5 +1,6 @@
 from collections import namedtuple
 from contextlib import contextmanager, ExitStack
+from functools import lru_cache
 
 import sublime
 
@@ -16,6 +17,19 @@ if MYPY:
 
 else:
     Position = namedtuple("Position", "row col offset")
+
+
+def find_by_selector(view, selector):
+    # type: (sublime.View, str) -> List[sublime.Region]
+    # Same as `view.find_by_selector` but cached.
+    return _find_by_selector(view.id(), view.change_count(), selector)
+
+
+@lru_cache(maxsize=16)
+def _find_by_selector(vid, _cc, selector):
+    # type: (sublime.ViewId, int, str) -> List[sublime.Region]
+    view = sublime.View(vid)
+    return view.find_by_selector(selector)
 
 
 def show_region(view, region, context=5, prefer_end=False):
