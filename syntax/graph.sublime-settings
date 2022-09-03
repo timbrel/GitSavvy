@@ -10,6 +10,7 @@
     "rulers": [],
     "translate_tabs_to_spaces": false,
     "word_wrap": false,
+    "draw_unicode_white_space": "none",
 
     // syntax specific
     "gutter": true,

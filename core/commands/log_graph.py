@@ -883,7 +883,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             '--graph',
             '--decorate',  # set explicitly for "decorate-refs-exclude" to work
             '--date={}'.format(DATE_FORMAT),
-            '--pretty=format:%h%d %<|(80,trunc)%s | %ad, %an',
+            '--format=%h%d %<|(82,trunc)%s \u200B %ad, %an',
             # Git can only follow exactly one path.  Luckily, this can
             # be a file or a directory.
             '--follow' if len(paths) == 1 and follow and apply_filters else None,

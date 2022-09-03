@@ -144,14 +144,14 @@ contexts:
       scope: punctuation.separator.key-value.git-savvy
 
 
-    - match: '(?=\s*(\|) ([^|]+), ([^|]+)$\n?)'
+    - match: '(?=\s*(\||\x{200b}) ([^|]+), ([^|]+)$\n?)'
       set: date-author-info
 
     - match: $
       pop: true
 
   date-author-info:
-    - match: '\s*(\|) ([^|]+), ([^|]+)$\n?'
+    - match: '\s*(\||\x{200b}) ([^|]+), ([^|]+)$\n?'
       scope: meta.git-savvy.grph.info
       captures:
         1: punctuation.separator.git-savvy
