@@ -58,8 +58,15 @@ class GitCommandFromTerminal(EventListener, SettingsMixin):
     def on_load(self, view):
         # type: (sublime.View) -> None
         file_path = view.file_name()
-        if file_path and os.path.basename(file_path) in NATIVE_GIT_EDITOR_FILES:
+        if not file_path:
+            return
+
+        basename = os.path.basename(file_path)
+        if basename in NATIVE_GIT_EDITOR_FILES:
             view.set_scratch(True)
+            if basename != 'git-rebase-todo':
+                util.view.mark_as_lintable(view)
+
             # Sublime has problems focusing the view for example if we
             # start a "rebase -i" session from within Sublime itself,
             # e.g. using "Terminus" or GitSavvy.  So we try to force focus
