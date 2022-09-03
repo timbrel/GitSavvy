@@ -618,8 +618,24 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 set_overwrite_status(self.view)
                 set_caret_style(self.view)
 
+        initial_draw = self.view.size() == 0
+        prelude_text = prelude(self.view)
+        if initial_draw or assume_complete_redraw:
+            prelude_region = (
+                None
+                if initial_draw else
+                self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
+            )
+            replace_view_content(self.view, prelude_text, prelude_region)
+
         should_abort = make_aborter(self.view)
-        enqueue_on_worker(self.run_impl, should_abort, navigate_after_draw)
+        enqueue_on_worker(
+            self.run_impl,
+            initial_draw,
+            prelude_text,
+            should_abort,
+            navigate_after_draw
+        )
 
     def format_line(self, line):
         return re.sub(
@@ -629,19 +645,16 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             flags=re.MULTILINE
         )
 
-    def run_impl(self, should_abort, navigate_after_draw=False):
-        prelude_text = prelude(self.view)
-        initial_draw = self.view.size() == 0
-        if initial_draw:
-            replace_view_content(self.view, prelude_text, sublime.Region(0, 1))
-
+    def run_impl(self, initial_draw, prelude_text, should_abort, navigate_after_draw=False):
+        # type: (bool, str, ShouldAbort, bool) -> None
         try:
             current_graph = self.view.substr(
                 self.view.find_by_selector('meta.content.git_savvy.graph')[0]
             )
         except IndexError:
-            current_graph = ''
-        current_graph_splitted = current_graph.splitlines(keepends=True)
+            current_graph_splitted = []
+        else:
+            current_graph_splitted = current_graph.splitlines(keepends=True)
 
         token_queue = SimpleFiniteQueue()  # type: SimpleFiniteQueue[Replace]
         current_proc = None
@@ -912,27 +925,26 @@ def lax_decoder(encodings):
 
 def prelude(view):
     # type: (sublime.View) -> str
-    prelude = "\n"
     settings = view.settings()
     repo_path = settings.get("git_savvy.repo_path")
     paths = settings.get("git_savvy.log_graph_view.paths")
     apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
+    all_ = settings.get("git_savvy.log_graph_view.all_branches") or False
+    branches = settings.get("git_savvy.log_graph_view.branches") or []
+    filters = apply_filters and settings.get("git_savvy.log_graph_view.filters") or ""
+
+    prelude = "\n"
     if apply_filters and paths:
         prelude += "  FILE: {}\n".format(" ".join(paths))
     elif repo_path:
         prelude += "  REPO: {}\n".format(repo_path)
 
-    all_ = settings.get("git_savvy.log_graph_view.all_branches") or False
-    branches = settings.get("git_savvy.log_graph_view.branches") or []
-    filters = apply_filters and settings.get("git_savvy.log_graph_view.filters") or ""
-    prelude += (
-        "  "
-        + "  ".join(filter(None, [
+    prelude += "  {}\n".format(
+        "  ".join(filter_((
             '[a]ll: true' if all_ else '[a]ll: false',
             " ".join(branches),
             filters
-        ]))
-        + "\n"
+        )))
     )
     return prelude + "\n"
 
