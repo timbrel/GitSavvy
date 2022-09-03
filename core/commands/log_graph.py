@@ -59,6 +59,7 @@ __all__ = (
     "gs_log_graph_edit_filters",
     "gs_input_handler_go_history",
     "gs_log_graph_reset_filters",
+    "gs_log_graph_toggle_overview",
     "gs_log_graph_edit_files",
     "gs_log_graph_toggle_all_setting",
     "gs_log_graph_open_commit",
@@ -84,7 +85,7 @@ GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
 COMMIT_LINE = re.compile(
     r"^[{graph_chars}]*[{node_chars}][{graph_chars}]* "
     r"(?P<commit_hash>[a-f0-9]{{5,40}}) +"
-    r"(?P<decoration>\(.+?\))?"
+    r"(\((?P<decoration>.+?)\))?"
     .format(graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS)
 )
 
@@ -126,6 +127,7 @@ class gs_graph(WindowCommand, GitCommand):
         repo_path=None,
         file_path=None,
         all=False,
+        show_tags=True,
         branches=None,
         author='',
         title='GRAPH',
@@ -160,6 +162,7 @@ class gs_graph(WindowCommand, GitCommand):
             if other_id in [this_id] + standard_graph_views:
                 settings = view.settings()
                 settings.set("git_savvy.log_graph_view.all_branches", all)
+                settings.set("git_savvy.log_graph_view.show_tags", show_tags)
                 settings.set("git_savvy.log_graph_view.branches", branches)
                 settings.set('git_savvy.log_graph_view.decoration', decoration)
                 settings.set('git_savvy.log_graph_view.apply_filters', apply_filters)
@@ -196,6 +199,7 @@ class gs_graph(WindowCommand, GitCommand):
                 "git_savvy.repo_path": repo_path,
                 "git_savvy.log_graph_view.paths": paths,
                 "git_savvy.log_graph_view.all_branches": all,
+                "git_savvy.log_graph_view.show_tags": show_tags,
                 "git_savvy.log_graph_view.filter_by_author": author,
                 "git_savvy.log_graph_view.branches": branches,
                 "git_savvy.log_graph_view.follow": follow,
@@ -769,6 +773,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
         ASCII_ART_LENGHT_LIMIT = 48
         SHORTENED_ASCII_ART = ".. / \n"
+        in_overview_mode = self.view.settings().get("git_savvy.log_graph_view.overview")
 
         def format_line(line):
             # type: (Union[str, GraphLine]) -> str
@@ -782,6 +787,9 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             if len(hash) > ASCII_ART_LENGHT_LIMIT:
                 commit_hash = hash.rsplit(" ", 1)[1]
                 hash = f".. {COMMIT_NODE_CHAR} {commit_hash}"
+            elif in_overview_mode:
+                commit_hash = hash.rsplit(" ", 1)[1]
+                hash = hash.ljust(len(commit_hash) + 6)
             if decoration:
                 left = f"{hash} ({decoration})"
             else:
@@ -978,11 +986,38 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
     def build_git_command(self):
         settings = self.view.settings()
-        follow = self.savvy_settings.get("log_follow_rename")
-        author = settings.get("git_savvy.log_graph_view.filter_by_author")
-        all_branches = settings.get("git_savvy.log_graph_view.all_branches")
-        paths = settings.get("git_savvy.log_graph_view.paths", [])  # type: List[str]
+        filters = settings.get("git_savvy.log_graph_view.filters")
         apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
+        overview = settings.get("git_savvy.log_graph_view.overview")
+        if overview:
+            show_tags = settings.get("git_savvy.log_graph_view.show_tags")
+            args = [
+                'log',
+                '--graph',
+                '--decorate',  # set explicitly for "decorate-refs-exclude" to work
+                '--decorate-refs-exclude=refs/remotes/origin/HEAD',  # cosmetics
+                '--decorate-refs-exclude=refs/tags' if not show_tags else None,
+                '--date=format:%b %e %Y',
+                '--format={}'.format(
+                    "%00".join(
+                        ("%h", "%D", "", "%ad, %an")
+                    )
+                ),
+                '--date-order',
+                '--exclude=refs/stash',
+                '--all',
+                '--simplify-by-decoration',
+            ]
+            if filters and apply_filters:
+                args += shlex.split(filters)
+
+            return args
+
+        follow = self.savvy_settings.get("log_follow_rename")
+        all_branches = settings.get("git_savvy.log_graph_view.all_branches")
+        author = settings.get("git_savvy.log_graph_view.filter_by_author")
+        branches = settings.get("git_savvy.log_graph_view.branches")
+        paths = settings.get("git_savvy.log_graph_view.paths", [])  # type: List[str]
         date_format = (
             "human"
             if self.git_version >= GIT_SUPPORTS_HUMAN_DATE_FORMAT
@@ -1013,11 +1048,9 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         ):
             args += ['--simplify-by-decoration', '--sparse']
 
-        branches = settings.get("git_savvy.log_graph_view.branches")
         if branches:
             args += branches
 
-        filters = settings.get("git_savvy.log_graph_view.filters")
         if filters and apply_filters:
             args += shlex.split(filters)
 
@@ -1044,7 +1077,9 @@ def prelude(view):
     # type: (sublime.View) -> str
     settings = view.settings()
     repo_path = settings.get("git_savvy.repo_path")
-    paths = settings.get("git_savvy.log_graph_view.paths")
+    overview = settings.get("git_savvy.log_graph_view.overview")
+
+    paths = [] if overview else settings.get("git_savvy.log_graph_view.paths")
     apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
     all_ = settings.get("git_savvy.log_graph_view.all_branches") or False
     branches = settings.get("git_savvy.log_graph_view.branches") or []
@@ -1056,14 +1091,22 @@ def prelude(view):
     elif repo_path:
         prelude += "  REPO: {}\n".format(repo_path)
 
-    prelude += "  {}\n".format(
-        "  ".join(filter_((
-            '[a]ll: true' if all_ else '[a]ll: false',
-            " ".join(branches),
+    all_ = settings.get("git_savvy.log_graph_view.all_branches") or False
+    branches = [] if overview else settings.get("git_savvy.log_graph_view.branches") or []
+    filters = apply_filters and settings.get("git_savvy.log_graph_view.filters") or ""
+    prelude += (
+        "  "
+        + "  ".join(filter_((
+            (
+                'OVERVIEW'
+                if overview
+                else '[a]ll: true' if all_ else '[a]ll: false'
+            ),
+            " ".join(branches) if not all_ else None,
             filters
         )))
     )
-    return prelude + "\n"
+    return prelude + "\n\n"
 
 
 class gs_log_graph(GsLogCommand):
@@ -1469,6 +1512,15 @@ class gs_log_graph_reset_filters(TextCommand):
         self.view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": next_state})
 
 
+class gs_log_graph_toggle_overview(TextCommand):
+    def run(self, edit):
+        settings = self.view.settings()
+        current = settings.get("git_savvy.log_graph_view.overview")
+        next_state = not current
+        settings.set("git_savvy.log_graph_view.overview", next_state)
+        self.view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": True})
+
+
 class gs_log_graph_edit_files(TextCommand, GitCommand):
     def run(self, edit):
         view = self.view
@@ -1536,9 +1588,11 @@ class gs_log_graph_edit_files(TextCommand, GitCommand):
 class gs_log_graph_toggle_all_setting(TextCommand, GitCommand):
     def run(self, edit):
         settings = self.view.settings()
-        current = settings.get("git_savvy.log_graph_view.all_branches")
+        overview = settings.get("git_savvy.log_graph_view.overview")
+        setting_name = "show_tags" if overview else "all_branches"
+        current = settings.get("git_savvy.log_graph_view.{}".format(setting_name))
         next_state = not current
-        settings.set("git_savvy.log_graph_view.all_branches", next_state)
+        settings.set("git_savvy.log_graph_view.{}".format(setting_name), next_state)
         self.view.run_command("gs_log_graph_refresh")
 
 
@@ -2221,7 +2275,6 @@ def describe_graph_line(line, known_branches):
 
     rv = {"commit": commit_hash}  # type: LineInfo
     if decoration:
-        decoration = decoration[1:-1]  # strip parentheses
         names = decoration.split(", ")
         if names[0].startswith("HEAD"):
             head, *names = names
