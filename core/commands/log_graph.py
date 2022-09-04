@@ -811,7 +811,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             stdout = "<STDOUT SNIPPED>\n" if received_some_stdout else ""
             raise GitSavvyError(
                 "$ {}\n\n{}".format(
-                    " ".join(["git"] + list(filter(None, args))),
+                    util.debug.pretty_git_command(args),
                     ''.join([stdout, stderr])
                 ),
                 cmd=proc.args,
