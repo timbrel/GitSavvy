@@ -311,14 +311,8 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
                 flash(view, "The branch '{}' has no previous tip.".format(branch_name))
                 return
             else:
-                raise GitSavvyError(
-                    e.message,
-                    cmd=e.cmd,
-                    stdout=e.stdout,
-                    stderr=e.stderr,
-                    show_panel=True,
-                    window=e.window,
-                )
+                e.show_error_panel()
+                raise
 
         else:
             settings.set("git_savvy.log_graph_view.follow", commit_hash)

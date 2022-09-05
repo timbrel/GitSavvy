@@ -96,14 +96,8 @@ class gs_delete_branch(GsWindowCommand, GitCommand):
                 if CANT_DELETE_CURRENT_BRANCH.search(e.stderr):
                     self.offer_detaching_head(branch)
                     return
-                raise GitSavvyError(
-                    e.message,
-                    cmd=e.cmd,
-                    stdout=e.stdout,
-                    stderr=e.stderr,
-                    show_panel=True,
-                    window=e.window,
-                )
+                e.show_error_panel()
+                raise
 
         match = EXTRACT_COMMIT.search(rv.strip())
         if match:

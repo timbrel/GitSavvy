@@ -207,14 +207,8 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
                     decode=False
                 )
             else:
-                raise GitSavvyError(
-                    e.message,
-                    cmd=e.cmd,
-                    stdout=e.stdout,
-                    stderr=e.stderr,
-                    show_panel=True,
-                    window=e.window,
-                )
+                e.show_error_panel()
+                raise
 
         try:
             diff_text = self.strict_decode(raw_diff_text)

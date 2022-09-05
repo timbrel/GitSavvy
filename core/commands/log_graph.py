@@ -841,14 +841,8 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                     enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
                     return iter('')
                 else:
-                    raise GitSavvyError(
-                        e.message,
-                        cmd=e.cmd,
-                        stdout=e.stdout,
-                        stderr=e.stderr,
-                        show_panel=True,
-                        window=e.window,
-                    )
+                    e.show_error_panel()
+                    raise
             else:
                 DATE_FORMAT_STATE = 'final'
 
