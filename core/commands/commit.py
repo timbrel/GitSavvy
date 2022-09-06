@@ -125,7 +125,9 @@ class gs_commit(WindowCommand, GitCommand):
 
         initial_text_ = initial_text.rstrip()
         if initial_text_:
-            replace_view_content(view, initial_text_ + "\n", sublime.Region(0))
+            if extract_commit_subject(view).strip():
+                initial_text_ += "\n\n"
+            replace_view_content(view, initial_text_, sublime.Region(0))
             if view_has_simple_cursor(view):
                 view.sel().clear()
                 view.sel().add(len(initial_text_))
