@@ -20,7 +20,7 @@ from ..git_command import GitCommand
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import flash, focus_view, line_indentation
-from ..view import replace_view_content, place_view, row_offset, Position
+from ..view import replace_view_content, place_view, y_offset, Position
 from ...common import util
 
 
@@ -424,7 +424,7 @@ class gs_diff_zoom(TextCommand):
                     # `line_region.b` to not match a cursor at BOL
                     # position on the next line.
                     if line_region.a <= s.a < line_region.b:
-                        cur_hunks.append((head_line, line_id, row_offset(self.view, s.a)))
+                        cur_hunks.append((head_line, line_id, y_offset(self.view, s.a)))
                         break
                 else:
                     # If the user is on the very last line of the view, create
@@ -432,7 +432,7 @@ class gs_diff_zoom(TextCommand):
                     cur_hunks.append((
                         head_line,
                         LineId(line_id.a + 1, line_id.b + 1),
-                        row_offset(self.view, s.a)
+                        y_offset(self.view, s.a)
                     ))
 
         self.view.run_command("gs_diff_refresh")
@@ -445,8 +445,7 @@ class gs_diff_zoom(TextCommand):
             region = find_line_in_diff(diff, head_line, line_id)
             if region:
                 cursors.add(region.a)
-                row, _ = self.view.rowcol(region.a)
-                scroll_offsets.append((row, offset))
+                scroll_offsets.append((region.a, offset))
 
         if not cursors:
             return
@@ -454,8 +453,9 @@ class gs_diff_zoom(TextCommand):
         self.view.sel().clear()
         self.view.sel().add_all(list(cursors))
 
-        row, offset = min(scroll_offsets, key=lambda row_offset: abs(row_offset[1]))
-        vy = (row - offset) * self.view.line_height()
+        cursor, offset = min(scroll_offsets, key=lambda cursor_offset: abs(cursor_offset[1]))
+        _, cy = self.view.text_to_layout(cursor)
+        vy = cy - offset
         vx, _ = self.view.viewport_position()
         self.view.set_viewport_position((vx, vy), animate=False)
 
