@@ -102,7 +102,7 @@ def extract_symbol_from_graph(self, args, done):
 
 def extract_parent_symbol_from_graph(self, args, done):
     # type: (GsCommand, Args, Kont) -> None
-    extract_symbol_from_graph(self, args, lambda symbol: done("{}^".format(symbol)))
+    extract_symbol_from_graph(self, args, lambda val, **kw: done("{}^".format(val)))
 
 
 def extract_commit_hash_from_graph(self, args, done):
