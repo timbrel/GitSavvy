@@ -115,13 +115,6 @@ def y_offset(view, cursor):
     return cy - vy
 
 
-def row_offset(view, cursor):
-    # type: (sublime.View, int) -> float
-    _, cy = view.text_to_layout(cursor)
-    _, vy = view.viewport_position()
-    return (cy - vy) / view.line_height()
-
-
 def place_view(window, view, after):
     # type: (sublime.Window, sublime.View, sublime.View) -> None
     view_group, current_index = window.get_view_index(view)
