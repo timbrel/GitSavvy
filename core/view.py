@@ -105,7 +105,14 @@ def capture_cur_position(view):
         return None
 
     row, col = view.rowcol(sel.begin())
-    return Position(row, col, row_offset(view, sel.begin()))
+    return Position(row, col, y_offset(view, sel.begin()))
+
+
+def y_offset(view, cursor):
+    # type: (sublime.View, int) -> float
+    _, cy = view.text_to_layout(cursor)
+    _, vy = view.viewport_position()
+    return cy - vy
 
 
 def row_offset(view, cursor):

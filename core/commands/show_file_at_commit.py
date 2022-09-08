@@ -152,7 +152,8 @@ def move_cursor_to_line_col(view, position):
     if row_offset is None:
         view.show(pt)
     else:
-        vy = (row - row_offset) * view.line_height()
+        _, cy = view.text_to_layout(pt)
+        vy = cy - row_offset
         vx, _ = view.viewport_position()
         view.set_viewport_position((vx, vy), animate=False)
 
