@@ -426,6 +426,13 @@ class gs_commit_view_do_commit(TextCommand, GitCommand):
 
         window.status_message("Committed successfully.")
 
+        # We close Line History right on the left side if it initiated the fixup
+        for v in reversed(adjacent_views_on_the_left(self.view)):
+            initiated_message = v.settings().get("initiated_fixup_commit")
+            if initiated_message and initiated_message in extract_commit_subject(self.view):
+                v.close()
+            break
+
         # We want to refresh and maybe close open diff views.
         diff_views = mark_all_diff_views(window, self.repo_path)
         # Since we're closing the commit view, the next focused view will
