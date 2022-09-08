@@ -138,7 +138,7 @@ def get_view_for_command(cmd):
 SEPARATOR = ("-" * 75, lambda: None)
 
 
-class gs_rebase_action(GsWindowCommand, GitCommand):
+class gs_rebase_action(GsWindowCommand):
     selected_index = 0
 
     def run(self):

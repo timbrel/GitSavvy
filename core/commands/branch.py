@@ -3,7 +3,7 @@ import sublime
 
 from . import checkout
 from . import push
-from ..git_command import GitCommand, GitSavvyError
+from ..git_command import GitSavvyError
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ...common import util
 from GitSavvy.core.base_commands import ask_for_local_branch, GsWindowCommand
@@ -28,7 +28,7 @@ CANT_DELETE_CURRENT_BRANCH = re.compile(r"Cannot delete branch .+ checked out at
 
 def ask_for_name(caption, initial_text):
     def handler(cmd, args, done, initial_text_=None):
-        # type: (push._Base, push.Args, push.Kont, str) -> None
+        # type: (GsWindowCommand, push.Args, push.Kont, str) -> None
         def done_(branch_name):
             branch_name = branch_name.strip().replace(" ", "-")
             if not branch_name:
@@ -47,9 +47,9 @@ def ask_for_name(caption, initial_text):
     return handler
 
 
-class gs_rename_branch(GsWindowCommand, GitCommand):
+class gs_rename_branch(GsWindowCommand):
     defaults = {
-        "branch": push.take_current_branch_name,  # type: ignore[dict-item]
+        "branch": push.take_current_branch_name,
         "new_name": ask_for_name(
             caption=lambda args: "Enter new branch name (for {}):".format(args["branch"]),
             initial_text=lambda args: args["branch"],
@@ -65,9 +65,9 @@ class gs_rename_branch(GsWindowCommand, GitCommand):
         util.view.refresh_gitsavvy_interfaces(self.window)
 
 
-class gs_unset_tracking_information(GsWindowCommand, GitCommand):
+class gs_unset_tracking_information(GsWindowCommand):
     defaults = {
-        "branch": push.take_current_branch_name,  # type: ignore[dict-item]
+        "branch": push.take_current_branch_name,
     }
 
     def run(self, branch):
@@ -76,7 +76,7 @@ class gs_unset_tracking_information(GsWindowCommand, GitCommand):
         util.view.refresh_gitsavvy_interfaces(self.window)
 
 
-class gs_delete_branch(GsWindowCommand, GitCommand):
+class gs_delete_branch(GsWindowCommand):
     defaults = {
         "branch": ask_for_local_branch,
     }
