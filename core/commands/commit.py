@@ -411,7 +411,7 @@ class gs_commit_view_do_commit(TextCommand, GitCommand):
             commit_message = extract_commit_message(self.view)
 
         settings.set("git_savvy.commit_view.is_commiting", True)
-        window.status_message("Commiting...")
+        window.status_message("Committing...")
         try:
             self.git(
                 "commit",
