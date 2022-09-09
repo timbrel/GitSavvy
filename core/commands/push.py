@@ -2,7 +2,6 @@ from functools import partial
 
 import sublime
 
-from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -22,7 +21,7 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import Dict, Sequence, TypeVar
-    from GitSavvy.core.base_commands import Args, Kont
+    from GitSavvy.core.base_commands import Args, GsCommand, Kont
     T = TypeVar("T")
 
 
@@ -31,7 +30,7 @@ CONFIRM_FORCE_PUSH = ("You are about to `git push {}`. Would you  "
                       "like to proceed?")
 
 
-class PushBase(GsWindowCommand, GitCommand):
+class PushBase(GsWindowCommand):
     def guess_remote_to_push_to(self, available_remotes):
         # type: (Sequence[str]) -> str
         if len(available_remotes) == 0:
@@ -148,13 +147,8 @@ class gs_push(PushBase):
             })
 
 
-if MYPY:
-    class _Base(GsWindowCommand, GitCommand):
-        pass
-
-
 def take_current_branch_name(cmd, args, done):
-    # type: (_Base, Args, Kont) -> None
+    # type: (GsWindowCommand, Args, Kont) -> None
     current_branch_name = cmd.get_current_branch_name()
     if current_branch_name:
         done(current_branch_name)
@@ -197,7 +191,7 @@ def ask_for_remote(cmd, args, done):
 
 def ask_for_branch_name(caption, initial_text):
     def handler(cmd, args, done):
-        # type: (GsWindowCommand, Args, Kont) -> None
+        # type: (GsCommand, Args, Kont) -> None
         show_single_line_input_panel(
             caption(args),
             initial_text(args),
@@ -207,7 +201,7 @@ def ask_for_branch_name(caption, initial_text):
 
 
 def ask_for_remote_branch(self, args, done):
-    # type: (GsWindowCommand, Args, Kont) -> None
+    # type: (GsCommand, Args, Kont) -> None
     show_branch_panel(done, ask_remote_first=True)
 
 
@@ -216,7 +210,7 @@ class gs_push_to_branch_name(PushBase):
     Prompt for remote and remote branch name, then push.
     """
     defaults = {
-        "local_branch_name": take_current_branch_name,  # type: ignore[dict-item]
+        "local_branch_name": take_current_branch_name,
         "remote": ask_for_remote,  # type: ignore[dict-item]
         "branch_name": ask_for_branch_name(
             caption=lambda args: "Push to {}/".format(args["remote"]),
@@ -255,7 +249,7 @@ class gs_push_to_branch(PushBase):
     Through a series of panels, allow the user to push to a specific remote branch.
     """
     defaults = {
-        "local_branch_name": take_current_branch_name,  # type: ignore[dict-item]
+        "local_branch_name": take_current_branch_name,
         "remote_branch": ask_for_remote_branch
     }
 

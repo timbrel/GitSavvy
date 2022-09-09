@@ -225,7 +225,7 @@ class _GitCommand(SettingsMixin):
         window = self.some_window()
         final_args = self._add_global_flags(git_cmd, list(args))
         command = [self.git_binary_path] + list(filter_(final_args))
-        command_str = " ".join(["git"] + command[1:])
+        command_str = util.debug.pretty_git_command(command[1:])
 
         if show_panel is None:
             show_panel = git_cmd in self.savvy_settings.get("show_panel_for")

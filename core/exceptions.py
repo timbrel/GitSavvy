@@ -19,8 +19,11 @@ class GitSavvyError(Exception):
         self.window = window
         if msg:
             if show_panel:
-                util.log.display_panel(window or sublime.active_window(), msg)
+                self.show_error_panel()
             util.debug.log_error(msg)
+
+    def show_error_panel(self):
+        util.log.display_panel(self.window or sublime.active_window(), self.message)
 
 
 class FailedGithubRequest(GitSavvyError):

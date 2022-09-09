@@ -66,14 +66,8 @@ class gs_checkout_branch(WindowCommand, GitCommand):
                 ])
                 return
             else:
-                raise GitSavvyError(
-                    e.message,
-                    cmd=e.cmd,
-                    stdout=e.stdout,
-                    stderr=e.stderr,
-                    show_panel=True,
-                    window=e.window,
-                )
+                e.show_error_panel()
+                raise
 
         self.window.status_message("Checked out `{}`.".format(branch))
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)

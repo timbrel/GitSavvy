@@ -102,7 +102,7 @@ def extract_symbol_from_graph(self, args, done):
 
 def extract_parent_symbol_from_graph(self, args, done):
     # type: (GsCommand, Args, Kont) -> None
-    extract_symbol_from_graph(self, args, lambda symbol: done("{}^".format(symbol)))
+    extract_symbol_from_graph(self, args, lambda val, **kw: done("{}^".format(val)))
 
 
 def extract_commit_hash_from_graph(self, args, done):
@@ -138,7 +138,7 @@ def get_view_for_command(cmd):
 SEPARATOR = ("-" * 75, lambda: None)
 
 
-class gs_rebase_action(GsWindowCommand, GitCommand):
+class gs_rebase_action(GsWindowCommand):
     selected_index = 0
 
     def run(self):
@@ -311,14 +311,8 @@ class gs_rebase_action(GsWindowCommand, GitCommand):
                 flash(view, "The branch '{}' has no previous tip.".format(branch_name))
                 return
             else:
-                raise GitSavvyError(
-                    e.message,
-                    cmd=e.cmd,
-                    stdout=e.stdout,
-                    stderr=e.stderr,
-                    show_panel=True,
-                    window=e.window,
-                )
+                e.show_error_panel()
+                raise
 
         else:
             settings.set("git_savvy.log_graph_view.follow", commit_hash)

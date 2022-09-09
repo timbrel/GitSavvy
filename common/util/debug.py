@@ -1,5 +1,8 @@
 import json
+import shlex
 import threading
+
+from GitSavvy.core.fns import filter_
 
 
 MYPY = False
@@ -64,6 +67,11 @@ def print_cwd_change(cwd, left_space):
         print('\n', ' ' * left_space, '  [{}]'.format(cwd))
 
 
+def pretty_git_command(args):
+    # type: (Sequence[Optional[str]]) -> str
+    return ' '.join(['git'] + list(map(shlex.quote, filter_(args))))
+
+
 def log_git(
     command,  # type: Sequence[Optional[str]]
     cwd,      # type: str
@@ -83,7 +91,7 @@ def log_git(
         print_cwd_change(cwd, left_space=len(pre_info))
         print(' {pre_info} $ {cmd}'.format(
             pre_info=pre_info,
-            cmd=' '.join(['git'] + list(filter(None, command))),
+            cmd=pretty_git_command(command)
         ))
 
     message = make_log_message(

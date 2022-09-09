@@ -6,7 +6,7 @@ import threading
 import sublime
 import sublime_plugin
 
-
+from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
 
 
@@ -131,6 +131,7 @@ class GsTextCommand(
     WithInputHandlers,
     WithProvideWindow,
     sublime_plugin.TextCommand,
+    GitCommand,
 ):
     defaults = {}  # type: Dict[str, Callable[[GsTextCommand, Args, Kont], None]]
 
@@ -138,6 +139,7 @@ class GsTextCommand(
 class GsWindowCommand(
     WithInputHandlers,
     sublime_plugin.WindowCommand,
+    GitCommand,
 ):
     defaults = {}  # type: Dict[str, Callable[[GsWindowCommand, Args, Kont], None]]
 
