@@ -12,6 +12,7 @@ from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
 from GitSavvy.core import store
+from GitSavvy.core.utils import noop, show_actions_panel
 
 flatten = chain.from_iterable
 
@@ -562,20 +563,42 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
             })
 
 
-class GsStatusStageFileCommand(TextCommand, GitCommand):
+class gs_status_stage_file(TextCommand, GitCommand):
 
     """
     For every file that is selected or under a cursor, if that file is
     unstaged, stage it.
     """
 
-    def run(self, edit):
-        # type: (sublime.Edit) -> None
+    def run(self, edit, check=True):
+        # type: (sublime.Edit, bool) -> None
         window, interface = self.view.window(), get_interface(self.view)
         if not (window and interface):
             return
 
-        file_paths = get_selected_subjects(self.view, 'unstaged', 'untracked', 'merge-conflicts')
+        files_with_merge_conflicts = get_selected_subjects(self.view, 'merge-conflicts')
+        if check and files_with_merge_conflicts:
+            failed_files = self.check_for_conflict_markers(files_with_merge_conflicts)
+            if failed_files:
+                show_actions_panel(window, [
+                    noop(
+                        "Abort, '{}' has unresolved conflicts.".format(next(iter(failed_files)))
+                        if len(failed_files) == 1 else
+                        "Abort, some files have unresolved conflicts."
+                    ),
+                    (
+                        "Stage anyway.",
+                        lambda: self.view.run_command("gs_status_stage_file", {
+                            "check": False
+                        })
+                    )
+                ])
+                return
+
+        file_paths = (
+            get_selected_subjects(self.view, 'unstaged', 'untracked')
+            + files_with_merge_conflicts
+        )
         if file_paths:
             self.stage_file(*file_paths, force=False)
             window.status_message("Staged files successfully.")

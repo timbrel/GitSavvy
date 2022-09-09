@@ -15,7 +15,7 @@ if MYPY:
 
 if MYPY:
     SplittedDiffBase = NamedTuple(
-        'SplittedDiff', [
+        'SplittedDiffBase', [
             ('commits', Tuple['CommitHeader', ...]),
             ('headers', Tuple['FileHeader', ...]),
             ('hunks', Tuple['Hunk', ...])
@@ -29,25 +29,35 @@ class SplittedDiff(SplittedDiffBase):
     @classmethod
     def from_string(cls, text, offset=0):
         # type: (str, int) -> SplittedDiff
-        factories = {'commit': CommitHeader, 'diff': FileHeader, '@@': Hunk}
-        containers = {'commit': [], 'diff': [], '@@': []}
+        commits, headers, hunks = [], [], []
         sections = (
             (match.group(1), match.start())
             for match in re.finditer(r'^(commit|diff|@@)', text, re.M)
         )
         for (id, start), (_, end) in pairwise(chain(sections, [('END', len(text) + 1)])):
-            containers[id].append(factories[id](text[start:end], start + offset, end + offset))
-
+            if id == "commit":
+                commits.append(CommitHeader(text[start:end], start + offset, end + offset))
+            elif id == "diff":
+                headers.append(FileHeader(text[start:end], start + offset, end + offset))
+            elif id == "@@":
+                hunks.append(Hunk(text[start:end], start + offset, end + offset))
         return cls(
-            tuple(containers['commit']),
-            tuple(containers['diff']),
-            tuple(containers['@@'])
+            tuple(commits),
+            tuple(headers),
+            tuple(hunks)
         )
 
     @classmethod
     def from_view(cls, view):
         # type: (sublime.View) -> SplittedDiff
         return cls.from_string(view.substr(sublime.Region(0, view.size())))
+
+    def is_combined_diff(self):
+        # type: () -> bool
+        for head in self.headers:
+            if head.first_line().startswith("diff --cc "):
+                return True
+        return False
 
     def head_and_hunk_for_pt(self, pt):
         # type: (int) -> Optional[Tuple[FileHeader, Hunk]]
@@ -65,6 +75,14 @@ class SplittedDiff(SplittedDiffBase):
         else:
             return None
 
+    def head_for_pt(self, pt):
+        # type: (int) -> Optional[FileHeader]
+        for header in reversed(self.headers):
+            if header.a <= pt:
+                return header
+        else:
+            return None
+
     def head_for_hunk(self, hunk):
         # type: (Hunk) -> FileHeader
         return max(
@@ -78,7 +96,7 @@ class SplittedDiff(SplittedDiffBase):
             lambda x: isinstance(x, Hunk),
             tail(dropwhile(
                 lambda x: x != head,
-                sorted(self.headers + self.hunks, key=lambda x: x.a)
+                sorted(self.headers + self.hunks, key=lambda x: x.a)  # type: ignore[arg-type]
             ))
         )
 

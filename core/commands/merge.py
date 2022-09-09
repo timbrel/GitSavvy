@@ -6,7 +6,14 @@ from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
 
 
-class GsMergeCommand(WindowCommand, GitCommand):
+__all__ = (
+    "gs_merge",
+    "gs_abort_merge",
+    "gs_restart_merge_for_file",
+)
+
+
+class gs_merge(WindowCommand, GitCommand):
 
     """
     Display a list of branches available to merge against the active branch.
@@ -33,7 +40,7 @@ class GsMergeCommand(WindowCommand, GitCommand):
             util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
 
 
-class GsAbortMergeCommand(WindowCommand, GitCommand):
+class gs_abort_merge(WindowCommand, GitCommand):
 
     """
     Reset all files to pre-merge conditions, and abort the merge.
@@ -47,29 +54,24 @@ class GsAbortMergeCommand(WindowCommand, GitCommand):
         util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
 
 
-class GsRestartMergeForFileCommand(WindowCommand, GitCommand):
+class gs_restart_merge_for_file(WindowCommand, GitCommand):
 
     """
     Reset a single file to pre-merge condition, but do not abort the merge.
     """
 
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
+        paths = self.conflicting_files_()
 
-    def run_async(self):
-        self._conflicts = [
-            f.path for f in self.get_working_dir_status().merge_conflicts
-        ]
+        def on_done(index):
+            if index == -1:
+                return
+            fpath = paths[index]
+            self.git("checkout", "-m", "--", fpath)
+
+            util.view.refresh_gitsavvy(self.window.active_view())
 
         self.window.show_quick_panel(
-            self._conflicts,
-            self.on_selection
+            paths,
+            on_done
         )
-
-    def on_selection(self, index):
-        if index == -1:
-            return
-        fpath = self._conflicts[index]
-        self.git("checkout", "--conflict=merge", "--", fpath)
-
-        util.view.refresh_gitsavvy(self.window.active_view())
