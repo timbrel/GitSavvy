@@ -1,7 +1,6 @@
 from functools import partial, wraps
 from itertools import chain
 import os
-import re
 import threading
 
 import sublime
@@ -20,7 +19,7 @@ flatten = chain.from_iterable
 
 MYPY = False
 if MYPY:
-    from typing import Iterable, Iterator, List, Optional, Set, Tuple
+    from typing import Iterable, Iterator, List, Optional, Tuple
 
 
 # Expected
@@ -604,24 +603,6 @@ class gs_status_stage_file(TextCommand, GitCommand):
             self.stage_file(*file_paths, force=False)
             window.status_message("Staged files successfully.")
             interface.refresh_repo_status_and_render()
-
-    def check_for_conflict_markers(self, file_paths):
-        # type: (List[str]) -> Set[str]
-        to_check = set(file_paths) & set(self.conflicting_files_())
-        if not to_check:
-            return set()
-
-        return {
-            re.search(r"^(?P<fpath>[^:]+)", line).group("fpath")  # type: ignore[union-attr]
-            for line in self.git(
-                "diff",
-                "--check",
-                "--", *to_check,
-                show_panel_on_error=False,
-                throw_on_error=False
-            ).splitlines()
-            if "leftover conflict marker" in line
-        }
 
 
 class GsStatusUnstageFileCommand(TextCommand, GitCommand):

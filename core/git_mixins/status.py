@@ -10,6 +10,7 @@ from GitSavvy.core.fns import tail
 
 MYPY = False
 if MYPY:
+    from typing import Set
     from GitSavvy.core.git_command import (
         HistoryMixin,
         _GitCommand,
@@ -451,3 +452,21 @@ class StatusMixin(mixin_base):
             ))
             if line.startswith("#\t")
         ]
+
+    def check_for_conflict_markers(self, file_paths):
+        # type: (List[str]) -> Set[str]
+        to_check = set(file_paths) & set(self.conflicting_files_())
+        if not to_check:
+            return set()
+
+        return {
+            re.search(r"^(?P<fpath>[^:]+)", line).group("fpath")  # type: ignore[union-attr]
+            for line in self.git(
+                "diff",
+                "--check",
+                "--", *to_check,
+                show_panel_on_error=False,
+                throw_on_error=False
+            ).splitlines()
+            if "leftover conflict marker" in line
+        }
