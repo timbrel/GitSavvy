@@ -15,7 +15,7 @@ if MYPY:
 
 if MYPY:
     SplittedDiffBase = NamedTuple(
-        'SplittedDiff', [
+        'SplittedDiffBase', [
             ('commits', Tuple['CommitHeader', ...]),
             ('headers', Tuple['FileHeader', ...]),
             ('hunks', Tuple['Hunk', ...])
