@@ -532,6 +532,25 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         frozen_sel = [s for s in self.view.sel()]
         cursor_pts = [s.a for s in frozen_sel]
         diff = SplittedDiff.from_view(self.view)
+        if diff.is_combined_diff():
+            hunks = filter_(map(diff.hunk_for_pt, cursor_pts))
+            headers = unique(map(diff.head_for_hunk, hunks))
+            files = list(filter_(head.from_filename() for head in headers))
+            if self.check_for_conflict_markers(files):
+                flash(self.view, "You still have unresolved conflicts.")
+            else:
+                self.stage_file(*files)
+                history = self.view.settings().get("git_savvy.diff_view.history")
+                patches = flatten(
+                    chain([head], diff.hunks_for_head(head))
+                    for head in headers
+                )  # type: Iterable[TextRange]
+                patch = ''.join(part.text for part in patches)
+                history.append((["add", files], patch, cursor_pts, in_cached_mode))
+                self.view.settings().set("git_savvy.diff_view.history", history)
+                self.view.settings().set("git_savvy.diff_view.just_hunked", patch)
+                self.view.run_command("gs_diff_refresh")
+            return
 
         if whole_file or all(s.empty() for s in frozen_sel):
             if whole_file:
@@ -540,7 +559,7 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
                 patches = flatten(
                     chain([head], diff.hunks_for_head(head))
                     for head in headers
-                )  # type: Iterable[TextRange]
+                )
             else:
                 patches = unique(flatten(filter_(diff.head_and_hunk_for_pt(pt) for pt in cursor_pts)))
             patch = ''.join(part.text for part in patches)
@@ -876,10 +895,13 @@ class gs_diff_undo(TextCommand, GitCommand):
             return
 
         args, stdin, cursors, in_cached_mode = history.pop()
-        # Toggle the `--reverse` flag.
-        args[1] = "-R" if not args[1] else None
+        if args[0] == "add":
+            self.unstage_file(*args[1])
+        else:
+            # Toggle the `--reverse` flag.
+            args[1] = "-R" if not args[1] else None
+            self.git(*args, stdin=stdin)
 
-        self.git(*args, stdin=stdin)
         self.view.settings().set("git_savvy.diff_view.history", history)
         self.view.settings().set("git_savvy.diff_view.just_hunked", stdin)
 

@@ -49,6 +49,13 @@ class SplittedDiff(SplittedDiffBase):
         # type: (sublime.View) -> SplittedDiff
         return cls.from_string(view.substr(sublime.Region(0, view.size())))
 
+    def is_combined_diff(self):
+        # type: () -> bool
+        for head in self.headers:
+            if head.first_line().startswith("diff --cc "):
+                return True
+        return False
+
     def head_and_hunk_for_pt(self, pt):
         # type: (int) -> Optional[Tuple[FileHeader, Hunk]]
         hunk = self.hunk_for_pt(pt)
@@ -62,6 +69,14 @@ class SplittedDiff(SplittedDiffBase):
         for hunk in self.hunks:
             if hunk.a <= pt < hunk.b:
                 return hunk
+        else:
+            return None
+
+    def head_for_pt(self, pt):
+        # type: (int) -> Optional[FileHeader]
+        for header in reversed(self.headers):
+            if header.a <= pt:
+                return header
         else:
             return None
 
