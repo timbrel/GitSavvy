@@ -93,7 +93,7 @@ class SplittedDiff(SplittedDiffBase):
             lambda x: isinstance(x, Hunk),
             tail(dropwhile(
                 lambda x: x != head,
-                sorted(self.headers + self.hunks, key=lambda x: x.a)
+                sorted(self.headers + self.hunks, key=lambda x: x.a)  # type: ignore[arg-type]
             ))
         )
 
