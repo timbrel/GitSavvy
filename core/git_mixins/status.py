@@ -1,9 +1,12 @@
 from collections import namedtuple
+from itertools import dropwhile
 import os
 import re
 import string
 
 from GitSavvy.core import store
+from GitSavvy.core.fns import tail
+
 
 MYPY = False
 if MYPY:
@@ -422,3 +425,29 @@ class StatusMixin(mixin_base):
         # type: () -> str
         commit_hash = self._read_git_file("CHERRY_PICK_HEAD")
         return self.get_short_hash(commit_hash) if commit_hash else ""
+
+    def conflicting_files_(self):
+        # type: () -> List[str]
+        # List all files that are or *were* conflicting.  This is a bit of a hack
+        # as I could not find an API for that.  Note that this is not `git ls-files -u`
+        # or `git diff --name-only --diff-filter=U` because we want to see also files
+        # already staged ("resolved").  We exactly may want to revert such a resolution
+        # with `checkout -m -- <path>`.
+
+        # We parse something like this:
+        """
+        Merge branch 'n' into m
+
+        # Conflicts:
+        #   core/commands/merge.py
+        """
+        merge_msg = self._read_git_file("MERGE_MSG")
+        return [
+            # E.g. "#  core/commands/merge.py"
+            line[1:].strip()
+            for line in tail(dropwhile(
+                lambda x: not x.startswith("# Conflicts:"),
+                merge_msg.splitlines()
+            ))
+            if line.startswith("#\t")
+        ]

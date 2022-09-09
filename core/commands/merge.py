@@ -61,22 +61,17 @@ class gs_restart_merge_for_file(WindowCommand, GitCommand):
     """
 
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
+        paths = self.conflicting_files_()
 
-    def run_async(self):
-        self._conflicts = [
-            f.path for f in self.get_working_dir_status().merge_conflicts
-        ]
+        def on_done(index):
+            if index == -1:
+                return
+            fpath = paths[index]
+            self.git("checkout", "-m", "--", fpath)
+
+            util.view.refresh_gitsavvy(self.window.active_view())
 
         self.window.show_quick_panel(
-            self._conflicts,
-            self.on_selection
+            paths,
+            on_done
         )
-
-    def on_selection(self, index):
-        if index == -1:
-            return
-        fpath = self._conflicts[index]
-        self.git("checkout", "--conflict=merge", "--", fpath)
-
-        util.view.refresh_gitsavvy(self.window.active_view())
