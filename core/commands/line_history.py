@@ -167,6 +167,7 @@ class gs_line_history_initiate_fixup_commit(TextCommand, LogHelperMixin):
         for r in view.find_by_selector("meta.commit_message meta.subject.git.commit"):
             if r.a > commit_header.a:
                 commit_message = view.substr(r).strip()
+                view.settings().set("initiated_fixup_commit", commit_message)
                 window.run_command("gs_commit", {
                     "initial_text": "fixup! {}".format(commit_message)
                 })
