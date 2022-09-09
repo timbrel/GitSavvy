@@ -12,7 +12,7 @@ from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view
-from ..view import capture_cur_position, place_view, replace_view_content, row_offset, Position
+from ..view import capture_cur_position, place_view, replace_view_content, y_offset, Position
 from ...common import util
 
 
@@ -74,7 +74,8 @@ def place_cursor_and_show(view, row, col, row_offset):
     pt = view.text_point(row, col)
     view.sel().add(sublime.Region(pt, pt))
 
-    vy = (row - row_offset) * view.line_height()
+    _, cy = view.text_to_layout(pt)
+    vy = cy - row_offset
     vx, _ = view.viewport_position()
     view.set_viewport_position((vx, vy), animate=False)
 
@@ -231,7 +232,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
         cur_pos = Position(
             jump_position.line - 1,
             jump_position.col - 1,
-            row_offset(view, cursor)
+            y_offset(view, cursor)
         )
         if cached:
             row, col, offset = cur_pos
