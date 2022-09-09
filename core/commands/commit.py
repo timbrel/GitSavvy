@@ -113,7 +113,7 @@ class gs_commit(WindowCommand, GitCommand):
             settings.set("git_savvy.commit_on_close", commit_on_close)
             prompt_on_abort_commit = self.savvy_settings.get("prompt_on_abort_commit")
             settings.set("git_savvy.prompt_on_abort_commit", prompt_on_abort_commit)
-            settings.set("SublimeLinter.enabled?", True)
+            util.view.mark_as_lintable(view)
 
             view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
             view.run_command("gs_handle_vintageous")
@@ -125,7 +125,9 @@ class gs_commit(WindowCommand, GitCommand):
 
         initial_text_ = initial_text.rstrip()
         if initial_text_:
-            replace_view_content(view, initial_text_ + "\n", sublime.Region(0))
+            if extract_commit_subject(view).strip():
+                initial_text_ += "\n\n"
+            replace_view_content(view, initial_text_, sublime.Region(0))
             if view_has_simple_cursor(view):
                 view.sel().clear()
                 view.sel().add(len(initial_text_))

@@ -271,6 +271,9 @@ class StatusMixin(mixin_base):
             if rebase_stopped_at:
                 secondary.append("Stopped at: {}.".format(rebase_stopped_at))
 
+        if self.in_cherry_pick():
+            secondary.append("Cherry-picking {}.".format(self.cherry_pick_head()))
+
         return delim.join([status] + secondary) if secondary else status
 
     def _format_branch_status_short(self, branch_status):
@@ -298,7 +301,13 @@ class StatusMixin(mixin_base):
             output += "-" + behind
 
         merge_head = self.merge_head() if self.in_merge() else ""
-        return output if not merge_head else output + " (merging {})".format(merge_head)
+        if merge_head:
+            output += " (merging {})".format(merge_head)
+        cherry_pick_head = self.cherry_pick_head() if self.in_cherry_pick() else ""
+        if cherry_pick_head:
+            output += " (cherry-picking {})".format(cherry_pick_head)
+
+        return output
 
     def in_rebase(self):
         return self.in_rebase_apply() or self.in_rebase_merge()
@@ -404,3 +413,12 @@ class StatusMixin(mixin_base):
         with open(path, "r") as f:
             commit_hash = f.read().strip()
         return self.get_short_hash(commit_hash)
+
+    def in_cherry_pick(self):
+        # type: () -> bool
+        return os.path.exists(os.path.join(self.git_dir, "CHERRY_PICK_HEAD"))
+
+    def cherry_pick_head(self):
+        # type: () -> str
+        commit_hash = self._read_git_file("CHERRY_PICK_HEAD")
+        return self.get_short_hash(commit_hash) if commit_hash else ""

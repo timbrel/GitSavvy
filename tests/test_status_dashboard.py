@@ -53,8 +53,8 @@ class TestStatusDashboard(DeferrableTestCase):
         # by a `when` to just fake the specific check for REPO_PATH.
         spy2('os.path.exists')
         when(os.path).exists(repo_path).thenReturn(True)
-        # Mocking `in_merge` is a bit surprising. TBC.
         when(GitCommand).in_merge().thenReturn(False)
+        when(GitCommand).in_cherry_pick().thenReturn(False)
         when(GitCommand).git('status', ...).thenReturn(file_status)
         when(GitCommand).git('log', ...).thenReturn(last_commit)
         when(GitCommand).git('stash', 'list').thenReturn(stash_list)

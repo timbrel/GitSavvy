@@ -177,3 +177,7 @@ def disable_other_plugins(view):
     # https://github.com/guillermooo/Vintageous/wiki/Disabling
     if GitSavvySettings().get("vintageous_friendly", False) is False:
         view.settings().set("__vi_external_disable", False)
+
+
+def mark_as_lintable(view):
+    view.settings().set("SublimeLinter.enabled?", True)
