@@ -338,7 +338,7 @@ class gs_diff_toggle_cached_mode(TextCommand):
     Toggle `in_cached_mode` or flip `base` with `target`.
     """
 
-    # NOTE: MUST NOT be async, otherwise `view.show` will not update the view 100%!
+    # NOTE: Blocking because `set_and_show_cursor` must run within a `TextCommand`
     def run(self, edit):
         settings = self.view.settings()
 
@@ -887,7 +887,7 @@ class gs_diff_undo(TextCommand, GitCommand):
     Undo the last action taken in the diff view, if possible.
     """
 
-    # NOTE: MUST NOT be async, otherwise `view.show` will not update the view 100%!
+    # NOTE: Blocking because `set_and_show_cursor` must run within a `TextCommand`
     def run(self, edit):
         history = self.view.settings().get("git_savvy.diff_view.history")
         if not history:
