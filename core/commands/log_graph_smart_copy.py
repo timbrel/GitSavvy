@@ -2,9 +2,11 @@ import sublime
 import sublime_plugin
 
 from . import log_graph
-from ..parse_diff import TextRange
+from ..fns import pairwise, peek
+from ..parse_diff import Region, TextRange
 from ..runtime import throttled
 from ..utils import flash
+from ..view import find_by_selector
 
 
 __all__ = (
@@ -14,7 +16,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, List, Optional, Union
+    from typing import Dict, Iterator, List, Optional, Tuple, Union
 
 
 HIGHLIGHT_REGION_KEY = "GS.flashs.{}"
@@ -41,34 +43,43 @@ class CopyIntercepterForGraph(sublime_plugin.EventListener):
         cursor = frozen_sel[0].a
         line_span = view.line(cursor)
 
-        commit_hash = read_commit_hash(view, line_span)
-        if not commit_hash:
-            return None
+        def candidates():
+            # type: () -> Iterator[Tuple[str, List[Region]]]
+            commit_hash = read_commit_hash(view, line_span)
+            if commit_hash:
+                yield commit_hash.text, [commit_hash.region()]
+            for d in read_commit_decoration(view, line_span):
+                yield d.text, [d.region()]
+            commit_msg = read_commit_message(view, line_span)
+            if commit_msg:
+                yield commit_msg.text, [commit_msg.region()]
+            if commit_hash and commit_msg:
+                yield (
+                    "{} ({})".format(commit_hash.text, commit_msg.text),
+                    [commit_hash.region(), commit_msg.region()]
+                )
 
         clip_content = sublime.get_clipboard(128)
-        if not clip_content:
-            set_clipboard_and_flash(view, commit_hash.text, [commit_hash.region()])
-            return "noop"
-
-        commit_msg = read_commit_message(view, line_span)
-        if not commit_msg:
+        try:
+            first, candidates_ = peek(candidates())
+        except StopIteration:
             return None
 
-        if clip_content == commit_hash.text:
-            set_clipboard_and_flash(view, commit_msg.text, [commit_msg.region()])
-        elif clip_content == commit_msg.text:
-            set_clipboard_and_flash(
-                view,
-                "{} ({})".format(commit_hash.text, commit_msg.text),
-                [commit_hash.region(), commit_msg.region()]
-            )
+        if not clip_content:
+            set_clipboard_and_flash(view, *first)
+            return "noop"
+
+        for left, right in pairwise(candidates_):
+            if left[0] == clip_content:
+                set_clipboard_and_flash(view, *right)
+                return "noop"
         else:
-            set_clipboard_and_flash(view, commit_hash.text, [commit_hash.region()])
-        return "noop"
+            set_clipboard_and_flash(view, *first)
+            return "noop"
 
 
 def set_clipboard_and_flash(view, text, regions):
-    # type: (sublime.View, str, List[sublime.Region]) -> None
+    # type: (sublime.View, str, List[Region]) -> None
     sublime.set_clipboard(text)
     flash_copied_regions(view, regions)
     flash(view, "Copied '{}' to the clipboard".format(text))
@@ -83,9 +94,18 @@ def read_commit_hash(view, line_span):
     return TextRange(view.substr(commit_region), commit_region.a, commit_region.b)
 
 
+def read_commit_decoration(view, line_span):
+    # type: (sublime.View, sublime.Region) -> Iterator[TextRange]
+    for r in find_by_selector(view, "constant.other.git.branch.git-savvy"):
+        if r.a > line_span.b:
+            break
+        if line_span.contains(r):
+            yield TextRange(view.substr(r), r.a, r.b)
+
+
 def read_commit_message(view, line_span):
     # type: (sublime.View, sublime.Region) -> Optional[TextRange]
-    for r in view.find_by_selector("meta.graph.message.git-savvy"):
+    for r in find_by_selector(view, "meta.graph.message.git-savvy"):
         if line_span.contains(r):
             return TextRange(view.substr(r), r.a, r.b)
     else:
@@ -93,7 +113,7 @@ def read_commit_message(view, line_span):
 
 
 def flash_copied_regions(view, regions):
-    # type: (sublime.View, List[sublime.Region]) -> None
+    # type: (sublime.View, List[Region]) -> None
     region_key = HIGHLIGHT_REGION_KEY.format("flash_copied_regions")
     view.add_regions(region_key, regions, **STYLE)  # type: ignore[arg-type]
 

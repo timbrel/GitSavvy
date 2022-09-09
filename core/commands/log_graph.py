@@ -28,7 +28,13 @@ from ..runtime import (
     run_on_new_thread,
     text_command
 )
-from ..view import join_regions, line_distance, replace_view_content, show_region
+from ..view import (
+    find_by_selector,
+    join_regions,
+    line_distance,
+    replace_view_content,
+    show_region
+)
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..utils import add_selection_to_jump_history, focus_view, show_toast, Cache
@@ -1865,19 +1871,6 @@ def __find_matching_dots(vid, dot):
 def extract_message_regions(view):
     # type: (sublime.View) -> List[sublime.Region]
     return find_by_selector(view, "meta.graph.message.git-savvy")
-
-
-def find_by_selector(view, selector):
-    # type: (sublime.View, str) -> List[sublime.Region]
-    # Same as `view.find_by_selector` but cached.
-    return _find_by_selector(view.id(), view.change_count(), selector)
-
-
-@lru_cache(maxsize=16)
-def _find_by_selector(vid, _cc, selector):
-    # type: (sublime.ViewId, int, str) -> List[sublime.Region]
-    view = sublime.View(vid)
-    return view.find_by_selector(selector)
 
 
 def is_fixup_or_squash_message(commit_message):
