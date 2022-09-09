@@ -370,7 +370,7 @@ class gs_diff_toggle_cached_mode(TextCommand):
         just_hunked = self.view.settings().get("git_savvy.diff_view.just_hunked")
         # Check for `last_cursors` as well bc it is only falsy on the *first*
         # switch. T.i. if the user hunked and then switches to see what will be
-        # actually comitted, the view starts at the top. Later, the view will
+        # actually committed, the view starts at the top. Later, the view will
         # show the last added hunk.
         if just_hunked and last_cursors:
             self.view.settings().set("git_savvy.diff_view.just_hunked", "")
