@@ -29,19 +29,22 @@ class SplittedDiff(SplittedDiffBase):
     @classmethod
     def from_string(cls, text, offset=0):
         # type: (str, int) -> SplittedDiff
-        factories = {'commit': CommitHeader, 'diff': FileHeader, '@@': Hunk}
-        containers = {'commit': [], 'diff': [], '@@': []}
+        commits, headers, hunks = [], [], []
         sections = (
             (match.group(1), match.start())
             for match in re.finditer(r'^(commit|diff|@@)', text, re.M)
         )
         for (id, start), (_, end) in pairwise(chain(sections, [('END', len(text) + 1)])):
-            containers[id].append(factories[id](text[start:end], start + offset, end + offset))
-
+            if id == "commit":
+                commits.append(CommitHeader(text[start:end], start + offset, end + offset))
+            elif id == "diff":
+                headers.append(FileHeader(text[start:end], start + offset, end + offset))
+            elif id == "@@":
+                hunks.append(Hunk(text[start:end], start + offset, end + offset))
         return cls(
-            tuple(containers['commit']),
-            tuple(containers['diff']),
-            tuple(containers['@@'])
+            tuple(commits),
+            tuple(headers),
+            tuple(hunks)
         )
 
     @classmethod
