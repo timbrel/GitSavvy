@@ -37,7 +37,7 @@ class gs_merge(WindowCommand, GitCommand):
                 branch
             )
         finally:
-            util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
+            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_abort_merge(WindowCommand, GitCommand):
@@ -51,7 +51,7 @@ class gs_abort_merge(WindowCommand, GitCommand):
 
     def run_async(self):
         self.git("reset", "--merge")
-        util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_restart_merge_for_file(WindowCommand, GitCommand):
@@ -69,7 +69,7 @@ class gs_restart_merge_for_file(WindowCommand, GitCommand):
             fpath = paths[index]
             self.git("checkout", "-m", "--", fpath)
 
-            util.view.refresh_gitsavvy(self.window.active_view())
+            util.view.refresh_gitsavvy_interfaces(self.window)
 
         self.window.show_quick_panel(
             paths,
