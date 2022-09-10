@@ -333,8 +333,8 @@
         "command": "gs_merge"
     },
     {
-        "caption": "git: abort merge",
-        "command": "gs_abort_merge"
+        "caption": "git: merge --abort",
+        "command": "gs_merge_abort"
     },
     {
         "caption": "git: restart merge for file...",

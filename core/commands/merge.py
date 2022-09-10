@@ -7,7 +7,7 @@ from GitSavvy.core.runtime import enqueue_on_worker
 
 __all__ = (
     "gs_merge",
-    "gs_abort_merge",
+    "gs_merge_abort",
     "gs_restart_merge_for_file",
 )
 
@@ -35,7 +35,7 @@ class gs_merge(GsWindowCommand):
             util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
-class gs_abort_merge(GsWindowCommand):
+class gs_merge_abort(GsWindowCommand):
 
     """
     Reset all files to pre-merge conditions, and abort the merge.

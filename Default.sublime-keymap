@@ -223,7 +223,7 @@
     },
     {
         "keys": ["B"],
-        "command": "gs_abort_merge",
+        "command": "gs_merge_abort",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
