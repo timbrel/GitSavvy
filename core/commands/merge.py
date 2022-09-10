@@ -1,8 +1,6 @@
-from sublime_plugin import WindowCommand
-
-from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
+from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import enqueue_on_worker
 
 
@@ -13,7 +11,7 @@ __all__ = (
 )
 
 
-class gs_merge(WindowCommand, GitCommand):
+class gs_merge(GsWindowCommand):
 
     """
     Display a list of branches available to merge against the active branch.
@@ -40,7 +38,7 @@ class gs_merge(WindowCommand, GitCommand):
             util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
-class gs_abort_merge(WindowCommand, GitCommand):
+class gs_abort_merge(GsWindowCommand):
 
     """
     Reset all files to pre-merge conditions, and abort the merge.
@@ -54,7 +52,7 @@ class gs_abort_merge(WindowCommand, GitCommand):
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
-class gs_restart_merge_for_file(WindowCommand, GitCommand):
+class gs_restart_merge_for_file(GsWindowCommand):
 
     """
     Reset a single file to pre-merge condition, but do not abort the merge.
