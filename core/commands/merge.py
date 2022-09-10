@@ -1,6 +1,7 @@
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
 from GitSavvy.core.base_commands import GsWindowCommand
+from GitSavvy.core.utils import show_panel
 from GitSavvy.core.runtime import enqueue_on_worker
 
 
@@ -58,11 +59,9 @@ class gs_restart_merge_for_file(GsWindowCommand):
         paths = self.conflicting_files_()
 
         def on_done(index):
-            if index == -1:
-                return
             fpath = paths[index]
             self.git("checkout", "-m", "--", fpath)
 
             util.view.refresh_gitsavvy_interfaces(self.window)
 
-        self.window.show_quick_panel(paths, on_done)
+        show_panel(self.window, paths, on_done)
