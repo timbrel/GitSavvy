@@ -31,7 +31,6 @@ class gs_merge(GsWindowCommand):
         try:
             self.git(
                 "merge",
-                "--log" if self.savvy_settings.get("merge_log") else None,
                 branch
             )
         finally:

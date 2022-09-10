@@ -245,14 +245,6 @@
     "show_git_flow_commands": false,
 
     /*
-        When set to `true`, GitSavvy will include the `--log` flag when performing
-        merges.  This will mean commit summaries will be included in the merge commit
-        message.
-    */
-    "merge_log": false,
-
-
-    /*
         The default base for the rebase dashboard.
     */
     "rebase_default_base_ref": "",
