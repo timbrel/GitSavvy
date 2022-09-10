@@ -249,7 +249,7 @@
         merges.  This will mean commit summaries will be included in the merge commit
         message.
     */
-    "merge_log": true,
+    "merge_log": false,
 
 
     /*
