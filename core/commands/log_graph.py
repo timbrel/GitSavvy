@@ -1451,7 +1451,11 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
             return
 
         # Auto-hide panel if the user switches to a different buffer
-        if not self.is_applicable(view) and show_commit_info.panel_is_visible(window):
+        if (
+            not self.is_applicable(view)
+            and show_commit_info.panel_is_visible(window)
+            and show_commit_info.panel_belongs_to_graph(panel_view)
+        ):
             panel = PREVIOUS_OPEN_PANEL_PER_WINDOW.get(window.id(), None)
             if panel:
                 window.run_command("show_panel", {"panel": panel})
@@ -1527,7 +1531,8 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
                 PREVIOUS_OPEN_PANEL_PER_WINDOW[window.id()] = None
             else:
                 if panel == "output.show_commit_info":
-                    remember_commit_panel_state(view, True)
+                    if self.is_applicable(view):
+                        remember_commit_panel_state(view, True)
                     PREVIOUS_OPEN_PANEL_PER_WINDOW[window.id()] = window.active_panel()
                     draw_info_panel(view)
                 else:
@@ -1983,7 +1988,10 @@ def draw_info_panel_for_line(vid, line_text):
     # commit_hash, it looks better to not draw at all, t.i. the
     # information in the panel stays untouched.
     if view.size() == 0 or commit_hash:
-        window.run_command("gs_show_commit_info", {"commit_hash": commit_hash})
+        window.run_command("gs_show_commit_info", {
+            "commit_hash": commit_hash,
+            "from_log_graph": True
+        })
 
 
 def extract_commit_hash(line):

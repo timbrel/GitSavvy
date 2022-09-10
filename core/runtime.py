@@ -17,7 +17,29 @@ if MYPY:
     ReturnValue = Any
 
 
+UI_THREAD_NAME = None  # type: Optional[str]
 savvy_executor = ThreadPoolExecutor(max_workers=1)
+
+
+def determine_thread_names():
+    def callback():
+        global UI_THREAD_NAME
+        UI_THREAD_NAME = threading.current_thread().name
+    sublime.set_timeout(callback)
+
+
+def it_runs_on_ui():
+    # type: () -> bool
+    return threading.current_thread().name == UI_THREAD_NAME
+
+
+def ensure_on_ui(fn, *args, **kwargs):
+    # type: (Callable, Any, Any) -> None
+    if it_runs_on_ui():
+        fn(*args, **kwargs)
+    else:
+        enqueue_on_ui(fn, *args, **kwargs)
+
 
 # `enqueue_on_*` functions emphasize that we run two queues and
 # just put tasks on it.  In contrast to `set_timeout_*` which

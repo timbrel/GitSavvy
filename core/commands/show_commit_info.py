@@ -6,7 +6,7 @@ from sublime_plugin import WindowCommand
 from . import diff
 from . import intra_line_colorizer
 from ..git_command import GitCommand
-from ..runtime import enqueue_on_worker, enqueue_on_ui, throttled
+from ..runtime import enqueue_on_worker, ensure_on_ui, throttled
 from ..view import replace_view_content
 
 
@@ -16,10 +16,12 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Tuple
+    from typing import Dict, Iterator, List, Tuple
+    ViewportPosition = Tuple[float, float]
+    Selection = List[sublime.Region]
 
 
-storage = {}  # type: Dict[str, Tuple[float, float]]
+storage = {}  # type: Dict[str, Tuple[ViewportPosition, Selection]]
 PANEL_NAME = "show_commit_info"
 
 
@@ -42,6 +44,11 @@ def panel_is_visible(window, name=PANEL_NAME):
     return window.active_panel() == "output.{}".format(name)
 
 
+def panel_belongs_to_graph(panel):
+    # type: (sublime.View) -> bool
+    return panel.settings().get("git_savvy.show_commit_view.belongs_to_a_graph", False)
+
+
 def ensure_panel_is_visible(window, name=PANEL_NAME):
     # type: (sublime.Window, str) -> None
     if not panel_is_visible(window, name):
@@ -49,7 +56,7 @@ def ensure_panel_is_visible(window, name=PANEL_NAME):
 
 
 class gs_show_commit_info(WindowCommand, GitCommand):
-    def run(self, commit_hash, file_path=None):
+    def run(self, commit_hash, file_path=None, from_log_graph=False):
         # We're running either blocking or lazy, and currently choose
         # automatically.  Generally, we run blocking to reduce multiple
         # UI changes in short times.  Since this panel is a companion
@@ -64,14 +71,15 @@ class gs_show_commit_info(WindowCommand, GitCommand):
             not panel_is_visible(self.window) or
             ensure_panel(self.window).size() == 0
         ):
-            self.run_impl(commit_hash, file_path)
+            self.run_impl(commit_hash, file_path, from_log_graph)
         else:
-            enqueue_on_worker(throttled(self.run_impl, commit_hash, file_path))
+            enqueue_on_worker(throttled(self.run_impl, commit_hash, file_path, from_log_graph))
 
-    def run_impl(self, commit_hash, file_path=None):
+    def run_impl(self, commit_hash, file_path=None, from_log_graph=False):
         output_view = ensure_panel(self.window)
         settings = output_view.settings()
         settings.set("git_savvy.repo_path", self.repo_path)
+        settings.set("git_savvy.show_commit_view.belongs_to_a_graph", from_log_graph)
 
         settings.set("result_file_regex", diff.FILE_RE)
         settings.set("result_line_regex", diff.LINE_RE)
@@ -84,29 +92,37 @@ class gs_show_commit_info(WindowCommand, GitCommand):
         else:
             text = ''
 
-        enqueue_on_ui(_draw, self.window, output_view, text, commit_hash)
+        ensure_on_ui(_draw, self.window, output_view, text, commit_hash, from_log_graph)
 
 
-def _draw(window, view, text, commit):
-    # type: (sublime.Window, sublime.View, str, str) -> None
+def _draw(window, view, text, commit, from_log_graph):
+    # type: (sublime.Window, sublime.View, str, str, bool) -> None
     with restore_viewport_position(view, commit):
         replace_view_content(view, text)
 
     intra_line_colorizer.annotate_intra_line_differences(view)
 
-    # In case we reuse a hidden panel, show the panel after updating
-    # the content to reduce visual flicker.
-    ensure_panel_is_visible(window)
+    # In case we reuse a hidden panel, show the panel *after* updating
+    # the content to reduce visual flicker.  This is only ever useful
+    # if `show_commit_info` is used to enhance a quick panel.  For the
+    # graph view `_draw` effectively runs as a by-product of calling
+    # `show_panel`, thus `ensure_panel_is_visible` is not needed in
+    # that case.
+    if not from_log_graph:
+        ensure_panel_is_visible(window)
 
 
 @contextmanager
 def restore_viewport_position(view, next_commit):
+    # type: (sublime.View, str) -> Iterator
     prev_commit = view.settings().get("git_savvy.show_commit_view.commit")
     if prev_commit:
-        storage[prev_commit] = view.viewport_position()
+        storage[prev_commit] = (view.viewport_position(), [r for r in view.sel()])
 
     yield
 
     view.settings().set("git_savvy.show_commit_view.commit", next_commit)
-    prev_position = storage.get(next_commit, (0, 0))
+    prev_position, prev_sel = storage.get(next_commit, ((0, 0), [sublime.Region(0)]))
     view.set_viewport_position(prev_position, animate=False)
+    view.sel().clear()
+    view.sel().add_all(prev_sel)
