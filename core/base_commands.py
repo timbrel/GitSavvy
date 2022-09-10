@@ -154,11 +154,8 @@ if MYPY:
 
 def ask_for_local_branch(self, args, done):
     # type: (GsCommand, Args, Kont) -> None
-    def on_done(branch):
-        done(branch)
-
     show_branch_panel(
-        on_done,
+        done,
         local_branches_only=True,
         ignore_current_branch=True,
     )
