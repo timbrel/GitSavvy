@@ -1,8 +1,7 @@
 from ...common import util
-from ..ui_mixins.quick_panel import show_branch_panel
-from GitSavvy.core.base_commands import GsWindowCommand
+from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
 from GitSavvy.core.utils import show_panel
-from GitSavvy.core.runtime import enqueue_on_worker, on_worker
+from GitSavvy.core.runtime import on_worker
 
 
 __all__ = (
@@ -19,17 +18,12 @@ class gs_merge(GsWindowCommand):
     When selected, perform merge with specified branch.
     """
 
-    def run(self):
-        enqueue_on_worker(self.run_async)
-
-    def run_async(self):
-        show_branch_panel(
-            self.on_branch_selection,
-            ignore_current_branch=True
-        )
+    defaults = {
+        "branch": ask_for_branch(ignore_current_branch=True),
+    }
 
     @on_worker
-    def on_branch_selection(self, branch):
+    def run(self, branch):
         try:
             self.git("merge", branch)
         finally:
