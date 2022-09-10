@@ -21,6 +21,7 @@ if MYPY:
             "last_remote_used": Optional[str],
             "last_remote_used_for_push": Optional[str],
             "last_remote_used_with_option_all": Optional[str],
+            "last_reset_mode_used": Optional[str],
             "short_hash_length": int,
         },
         total=False
