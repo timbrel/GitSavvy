@@ -48,7 +48,7 @@ class gs_abort_merge(GsWindowCommand):
         enqueue_on_worker(self.run_async)
 
     def run_async(self):
-        self.git("reset", "--merge")
+        self.git("merge", "--abort")
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
