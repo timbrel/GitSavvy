@@ -29,10 +29,7 @@ class gs_merge(GsWindowCommand):
 
     def on_branch_selection(self, branch):
         try:
-            self.git(
-                "merge",
-                branch
-            )
+            self.git("merge", branch)
         finally:
             util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
@@ -68,7 +65,4 @@ class gs_restart_merge_for_file(GsWindowCommand):
 
             util.view.refresh_gitsavvy_interfaces(self.window)
 
-        self.window.show_quick_panel(
-            paths,
-            on_done
-        )
+        self.window.show_quick_panel(paths, on_done)
