@@ -1,9 +1,9 @@
-import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
+from GitSavvy.core.runtime import enqueue_on_worker
 
 
 __all__ = (
@@ -21,7 +21,7 @@ class gs_merge(WindowCommand, GitCommand):
     """
 
     def run(self):
-        sublime.set_timeout_async(lambda: self.run_async(), 1)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         show_branch_panel(
@@ -47,7 +47,7 @@ class gs_abort_merge(WindowCommand, GitCommand):
     """
 
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         self.git("reset", "--merge")
