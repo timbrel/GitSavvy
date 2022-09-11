@@ -2,7 +2,7 @@ from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.utils import show_panel
-from GitSavvy.core.runtime import enqueue_on_worker
+from GitSavvy.core.runtime import enqueue_on_worker, on_worker
 
 
 __all__ = (
@@ -28,6 +28,7 @@ class gs_merge(GsWindowCommand):
             ignore_current_branch=True
         )
 
+    @on_worker
     def on_branch_selection(self, branch):
         try:
             self.git("merge", branch)
@@ -41,10 +42,8 @@ class gs_merge_abort(GsWindowCommand):
     Reset all files to pre-merge conditions, and abort the merge.
     """
 
+    @on_worker
     def run(self):
-        enqueue_on_worker(self.run_async)
-
-    def run_async(self):
         self.git("merge", "--abort")
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
