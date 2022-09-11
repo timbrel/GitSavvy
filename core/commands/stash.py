@@ -25,7 +25,7 @@ class RevalidateStashView(EventListener):
         # Subtle runtime nuance: this "on_activated" runs sync when
         # the view is created in `create_stash_view` t.i. even before
         # we change its settings.  Thus we don't revalidate initially.
-        stash_id = view.settings().get("git_savvy.stash_view.stash_id", None)
+        stash_id = view.settings().get("git_savvy.stash_view.stash_id", None)  # type: Optional[StashId]
         if stash_id is None:
             return
 
@@ -57,8 +57,8 @@ class SelectStashIdMixin(TextCommand):
             self.do(stash_id)
             return
 
-        stash_id = self.view.settings().get("git_savvy.stash_view.stash_id", None)
-        if stash_id is not None:
+        _stash_id = self.view.settings().get("git_savvy.stash_view.stash_id", None)  # type: Optional[StashId]
+        if _stash_id is not None:
             view_status = self.view.settings().get("git_savvy.stash_view.status")
             if view_status == "revalidate":
                 # Enqueue as worker task to ensure that we run after
@@ -73,10 +73,10 @@ class SelectStashIdMixin(TextCommand):
                 hprint(
                     "GitSavvy: The stash you're looking at is outdated. "
                     "Maybe its number ({}) changed because you modified the "
-                    "stash list since opening this view. ".format(stash_id)
+                    "stash list since opening this view. ".format(_stash_id)
                 )
             elif view_status == "valid":
-                self.do(stash_id)
+                self.do(_stash_id)
             else:
                 raise RuntimeError("stash view in invalid state '{}'".format(view_status))
             return
@@ -90,7 +90,7 @@ class SelectStashIdMixin(TextCommand):
 
     def do(self, stash_id):
         # type: (StashId) -> None
-        return NotImplemented
+        raise NotImplementedError
 
 
 class GsStashApplyCommand(SelectStashIdMixin, GitCommand):
