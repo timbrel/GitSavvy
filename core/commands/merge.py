@@ -1,6 +1,6 @@
 from ...common import util
 from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
-from GitSavvy.core.utils import show_panel
+from GitSavvy.core.utils import show_noop_panel, show_panel
 from GitSavvy.core.runtime import on_worker
 
 
@@ -51,10 +51,8 @@ class gs_restart_merge_for_file(GsWindowCommand):
     def run(self):
         paths = self.conflicting_files_()
         if not paths:
-            show_panel(
-                self.window,
-                ["There are no files which have or had merge conflicts."],
-                lambda _: None
+            show_noop_panel(
+                self.window, "There are no files which have or had merge conflicts."
             )
 
         def on_done(index):
