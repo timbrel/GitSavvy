@@ -60,9 +60,10 @@ class GsTagCreateCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, tag_name="", target_commit=None):
-        self.window = self.view.window()
-        if not self.window:
+        window = self.view.window()
+        if not window:
             return
+        self.window = window
         self.target_commit = target_commit
         show_single_line_input_panel(TAG_CREATE_PROMPT, tag_name, self.on_entered_name)
 
@@ -83,7 +84,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
 
         if not stdout:
             util.log.display_panel(
-                self.window,  # type: ignore[arg-type]
+                self.window,
                 "'{}' is not a valid tag name.".format(tag_name)
             )
             return None
