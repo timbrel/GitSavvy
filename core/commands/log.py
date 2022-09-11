@@ -1,4 +1,5 @@
 from copy import deepcopy
+from functools import lru_cache
 import re
 
 from sublime_plugin import WindowCommand
@@ -36,7 +37,12 @@ class LogMixin(GitCommand):
             self.log_generator(file_path=file_path, follow=follow, **kwargs),
             lambda commit: self.on_done(commit, file_path=file_path, **kwargs),
             selected_index=self.selected_index,
-            on_highlight=lambda commit: self.on_highlight(commit, file_path=file_path)
+            # `on_highlight` gets called on `on_done` as well with the same
+            # commit.  Limit the side-effect here.  Especially prevent that
+            # `on_done` wants to hide the panel and `on_highlight` wants to
+            # show it.  (Unfortunately `on_highlight` wins because it lazily
+            # updates the panel wherby `on_done` closes it immediately.)
+            on_highlight=lru_cache(1)(lambda commit: self.on_highlight(commit, file_path=file_path))
         )
 
     def on_done(self, commit, **kwargs):
