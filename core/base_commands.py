@@ -152,10 +152,16 @@ if MYPY:
 # COMMON INPUT HANDLERS
 
 
-def ask_for_local_branch(self, args, done):
-    # type: (GsCommand, Args, Kont) -> None
-    show_branch_panel(
-        done,
-        local_branches_only=True,
-        ignore_current_branch=True,
-    )
+def ask_for_branch(**kw):
+    # type: (...) -> ArgProvider
+    def handler(self, args, done):
+        # type: (GsCommand, Args, Kont) -> None
+        show_branch_panel(done, **kw)
+
+    return handler
+
+
+ask_for_local_branch = ask_for_branch(
+    ignore_current_branch=True,
+    local_branches_only=True
+)
