@@ -3,13 +3,13 @@ import sublime
 from ...common import util
 from ..git_command import GitCommand
 from GitSavvy.core import store
-from GitSavvy.core.fns import filter_
+from GitSavvy.core.fns import filter_, maybe
 from GitSavvy.core.utils import show_panel
 
 
 MYPY = False
 if MYPY:
-    from typing import Callable
+    from typing import Callable, List, Optional, Union
     from ..git_mixins.history import LogEntry
 
 
@@ -36,7 +36,7 @@ class PanelActionMixin(GitCommand):
         self.other_method(kwarg1='foo')
     """
     selected_index = 0      # Every instance gets it's own `selected_index`
-    default_actions = None  # must be set by inheriting class
+    default_actions = None  # type: List  # must be set by inheriting class
     async_action = False    # if True, executes action with set_timeout_async
 
     def run(self, *args, **kwargs):
@@ -47,7 +47,8 @@ class PanelActionMixin(GitCommand):
         self.actions = self.default_actions[:]  # copy default actions
 
     def show_panel(self, actions=None, pre_selected_index=None):
-        window = self.window if hasattr(self, 'window') else self.view.window()
+        window = self._current_window()
+        assert window
         if pre_selected_index:
             self.on_action_selection(pre_selected_index)
             return
@@ -105,12 +106,11 @@ class PanelCommandMixin(PanelActionMixin):
     """
 
     def get_callable(self, selected_action):
-        if hasattr(self, 'window'):
-            return self.window.run_command
-        elif hasattr(self, 'view'):
-            return self.view.run_command
-        else:
-            return sublime.run_command
+        return (
+            maybe(lambda: self.view.run_command)  # type: ignore[attr-defined]
+            or maybe(lambda: self.window.run_command)  # type: ignore[attr-defined]
+            or sublime.run_command
+        )
 
     def get_arguments(self, selected_action):
         """Prepares `run_command` arguments:
@@ -190,7 +190,9 @@ class RemotePanel(GitCommand):
         if self.show_option_all and len(self.remotes) > 1:
             self.remotes.insert(0, "All remotes.")
 
-        last_remote_used = store.current_state(self.repo_path).get(self.storage_key, "origin")
+        last_remote_used = (
+            store.current_state(self.repo_path).get(self.storage_key, "origin")  # type: ignore[assignment]
+        )  # type: str
         if last_remote_used in self.remotes:
             pre_selected_index = self.remotes.index(last_remote_used)
         else:
@@ -392,12 +394,12 @@ class PaginatedPanel:
 
     flags = sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST
     next_page_message = ">>> NEXT PAGE >>>"
-    empty_page_message = None
+    empty_page_message = None  # type: Optional[str]
     last_page_empty_message = ">>> LAST PAGE >>>"
-    status_message = None
+    status_message = None  # type: Optional[str]
     limit = 6000
-    selected_index = None
-    on_highlight = None
+    selected_index = None  # type: Union[Optional[int], Callable[[object], bool]]
+    on_highlight = None  # type: Optional[Callable[[Union[int|object]], None]]
 
     def __init__(self, items, on_done, **kwargs):
         self._is_empty = True
@@ -410,8 +412,8 @@ class PaginatedPanel:
             setattr(self, option, kwargs[option])
 
     def load_next_batch(self):
-        self.display_list = []
-        self.ret_list = []
+        self.display_list = []  # type: List[str]
+        self.ret_list = []  # type: List[object]
         for item in itertools.islice(self.item_generator, self.limit):
             self.extract_item(item)
         if self.ret_list and len(self.ret_list) != len(self.display_list):
@@ -456,34 +458,27 @@ class PaginatedPanel:
             self._is_empty = False
             self._is_done = True
 
-        kwargs = {}
-        if self.flags:
-            kwargs["flags"] = self.flags
-
-        selected_index = self.get_selected_index()
-
-        if selected_index:
-            kwargs["selected_index"] = selected_index
-
-        if self.on_highlight:
-            kwargs["on_highlight"] = self._on_highlight
-
         if self.display_list:
             sublime.active_window().show_quick_panel(
                 self.display_list,
                 self._on_selection,
-                **kwargs
+                flags=self.flags,
+                selected_index=self.get_selected_index(),
+                on_highlight=self._on_highlight
             )
 
-    def get_selected_index(self):
+    def get_selected_index(self) -> int:
         if callable(self.selected_index):
             for idx, entry in enumerate(self.ret_list):
                 if self.selected_index(entry):
                     return idx
         elif self.selected_index and self.skip <= self.selected_index < self.skip + self.limit:
             return self.selected_index - self.skip
+        return 0
 
-    def _on_highlight(self, index):
+    def _on_highlight(self, index: int):
+        if not self.on_highlight:
+            return
         if self._empty_message_shown:
             return
 
