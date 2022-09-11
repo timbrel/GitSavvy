@@ -161,7 +161,7 @@ class GsLogCommand(PanelCommandMixin, WindowCommand, GitCommand):
             action.append(({"file_path": self._file_path}, ))
 
 
-class GsLogActionCommand(PanelActionMixin, WindowCommand, GitCommand):
+class GsLogActionCommand(PanelActionMixin, WindowCommand):
     default_actions = [
         ["show_commit", "Show commit"],
         ["checkout_commit", "Checkout commit"],

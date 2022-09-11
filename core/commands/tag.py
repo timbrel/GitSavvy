@@ -107,7 +107,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy_interfaces(self.window)
 
 
-class GsSmartTagCommand(PanelActionMixin, TextCommand, GitCommand):
+class GsSmartTagCommand(PanelActionMixin, TextCommand):
     """
     Displays a panel of possible smart tag options, based on the choice,
     tag the current commit with the corresponding tagname.

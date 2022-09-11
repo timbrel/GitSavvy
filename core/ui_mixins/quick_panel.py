@@ -13,7 +13,7 @@ if MYPY:
     from ..git_mixins.history import LogEntry
 
 
-class PanelActionMixin(object):
+class PanelActionMixin(GitCommand):
     """
     Use this mixin to initially display a quick panel, select from pre-defined
     actions and execute the matching instance method.
