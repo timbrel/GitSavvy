@@ -240,6 +240,11 @@ def show_actions_panel(window, actions, select=-1):
     )
 
 
+def show_noop_panel(window, message):
+    # type: (sublime.Window, str) -> None
+    show_actions_panel(window, [noop(message)])
+
+
 def noop(description):
     # type: (str) -> ActionType
     return Action(description, lambda: None)

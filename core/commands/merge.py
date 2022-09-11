@@ -1,60 +1,48 @@
-import sublime
-from sublime_plugin import WindowCommand
-
-from ..git_command import GitCommand
 from ...common import util
-from ..ui_mixins.quick_panel import show_branch_panel
+from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
+from GitSavvy.core.utils import show_noop_panel, show_panel
+from GitSavvy.core.runtime import on_worker
 
 
 __all__ = (
     "gs_merge",
-    "gs_abort_merge",
+    "gs_merge_abort",
     "gs_restart_merge_for_file",
 )
 
 
-class gs_merge(WindowCommand, GitCommand):
+class gs_merge(GsWindowCommand):
 
     """
     Display a list of branches available to merge against the active branch.
     When selected, perform merge with specified branch.
     """
 
-    def run(self):
-        sublime.set_timeout_async(lambda: self.run_async(), 1)
+    defaults = {
+        "branch": ask_for_branch(ignore_current_branch=True),
+    }
 
-    def run_async(self):
-        show_branch_panel(
-            self.on_branch_selection,
-            ignore_current_branch=True
-        )
-
-    def on_branch_selection(self, branch):
+    @on_worker
+    def run(self, branch):
         try:
-            self.git(
-                "merge",
-                "--log" if self.savvy_settings.get("merge_log") else None,
-                branch
-            )
+            self.git("merge", branch)
         finally:
-            util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
+            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
-class gs_abort_merge(WindowCommand, GitCommand):
+class gs_merge_abort(GsWindowCommand):
 
     """
     Reset all files to pre-merge conditions, and abort the merge.
     """
 
+    @on_worker
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
-        self.git("reset", "--merge")
-        util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
+        self.git("merge", "--abort")
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
-class gs_restart_merge_for_file(WindowCommand, GitCommand):
+class gs_restart_merge_for_file(GsWindowCommand):
 
     """
     Reset a single file to pre-merge condition, but do not abort the merge.
@@ -62,16 +50,15 @@ class gs_restart_merge_for_file(WindowCommand, GitCommand):
 
     def run(self):
         paths = self.conflicting_files_()
+        if not paths:
+            show_noop_panel(
+                self.window, "There are no files which have or had merge conflicts."
+            )
 
         def on_done(index):
-            if index == -1:
-                return
             fpath = paths[index]
             self.git("checkout", "-m", "--", fpath)
 
-            util.view.refresh_gitsavvy(self.window.active_view())
+            util.view.refresh_gitsavvy_interfaces(self.window)
 
-        self.window.show_quick_panel(
-            paths,
-            on_done
-        )
+        show_panel(self.window, paths, on_done)

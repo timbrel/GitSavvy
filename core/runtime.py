@@ -73,6 +73,13 @@ def run_on_new_thread(fn, *args, **kwargs):
     threading.Thread(target=fn, args=args, kwargs=kwargs).start()
 
 
+def on_worker(fn):
+    @wraps(fn)
+    def wrapped(*a, **kw):
+        enqueue_on_worker(fn, *a, **kw)
+    return wrapped
+
+
 def on_new_thread(fn):
     @wraps(fn)
     def wrapped(*a, **kw):
