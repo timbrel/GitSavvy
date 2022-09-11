@@ -50,6 +50,12 @@ class gs_restart_merge_for_file(GsWindowCommand):
 
     def run(self):
         paths = self.conflicting_files_()
+        if not paths:
+            show_panel(
+                self.window,
+                ["There are no files which have or had merge conflicts."],
+                lambda _: None
+            )
 
         def on_done(index):
             fpath = paths[index]
