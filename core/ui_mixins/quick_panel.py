@@ -301,6 +301,13 @@ class BranchPanel(GitCommand):
 
         if self.selected_branch:
             selected_index = self.get_pre_selected_branch_index(self.selected_branch, remote)
+            if selected_index:
+                self.all_branches = (
+                    [self.all_branches[selected_index]]
+                    + self.all_branches[:selected_index]
+                    + self.all_branches[selected_index + 1:]
+                )
+                selected_index = 0
         else:
             selected_index = 0
 
