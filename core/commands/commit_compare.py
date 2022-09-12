@@ -90,7 +90,7 @@ class gs_compare_against_branch(WindowCommand, GitCommand):
         })
 
 
-class gs_compare_against(PanelActionMixin, WindowCommand, GitCommand):
+class gs_compare_against(PanelActionMixin, WindowCommand):
     default_actions = [
         ["compare_against_branch", "Branch"],
         ["compare_against_reference", "Reference"],

@@ -943,7 +943,7 @@ class GsRebaseLaunchMergeToolCommand(TextCommand, GitCommand):
         return False
 
 
-class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand, GitCommand):
+class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand):
 
     default_actions = [
         ["select_branch", "Select branch as base"],

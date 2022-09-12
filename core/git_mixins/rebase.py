@@ -1,5 +1,6 @@
 import re
 
+from GitSavvy.core.fns import filter_
 from GitSavvy.core.git_command import mixin_base
 
 
@@ -24,7 +25,7 @@ class NearestBranchMixin(mixin_base):
         except ValueError:
             # If there is only one branch, git changes the output format
             # and omits the prelude and column indicator.
-            lines = filter(None, output.splitlines())
+            lines = filter_(output.splitlines())
         else:
             match = re.search(r'^(\s+)\*', prelude, re.M)
             if not match:
@@ -34,7 +35,7 @@ class NearestBranchMixin(mixin_base):
             branch_column = len(match.group(1))
             lines = (
                 line
-                for line in filter(None, body.splitlines())
+                for line in filter_(body.splitlines())
                 if line[branch_column] != ' '
             )
 

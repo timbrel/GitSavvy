@@ -350,7 +350,7 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
             self.view.sel().add(sublime.Region(blame_view_pt, blame_view_pt))
 
 
-class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand, GitCommand):
+class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand):
     selected_index = 0
     """
     Be careful when changing the order since some commands depend on the
