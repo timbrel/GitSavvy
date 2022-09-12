@@ -12,6 +12,7 @@ from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
 from GitSavvy.core import store
+from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import noop, show_actions_panel
 
 flatten = chain.from_iterable
@@ -496,8 +497,8 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
         non_cached_files = get_selected_files(self.view, repo_path, 'unstaged', 'merge-conflicts')
         cached_files = get_selected_files(self.view, repo_path, 'staged')
 
-        sublime.set_timeout_async(
-            lambda: self.load_inline_diff_views(window, non_cached_files, cached_files)
+        enqueue_on_worker(
+            self.load_inline_diff_views, window, non_cached_files, cached_files
         )
 
     def load_inline_diff_views(self, window, non_cached_files, cached_files):
