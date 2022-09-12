@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import os
 from webbrowser import open as open_in_browser
 
@@ -216,10 +217,43 @@ class gs_show_commit_show_hunk_on_working_dir(diff.gs_diff_open_file_at_hunk):
 
         full_path = os.path.join(self.repo_path, filename)
         line = self.find_matching_lineno(commit_hash, None, line, full_path)
-        window.open_file(
-            "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
-            sublime.ENCODED_POSITION
-        )
+
+        with force_remember_commit_info_panel_focus_state(window):
+            view = window.open_file(
+                "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
+                sublime.ENCODED_POSITION
+            )
+            # https://github.com/sublimehq/sublime_text/issues/4418
+            # Sublime Text 4 focuses the view automatically *if* it
+            # was already open, otherwise it makes the view only
+            # visible. Force the focus for a consistent behavior.
+            focus_view(view)
+
+
+@contextmanager
+def force_remember_commit_info_panel_focus_state(window):
+    # Although we automatically detect when the panel loses its focus in `log_graph.py`,
+    # it fails when `window.open_file` brought the file to front *without* focusing
+    # it.  In that case, t.i. when it just *opens* the file, `focus_view()` will first
+    # activate the graph view and *then* the file we just opened.  This looks like
+    # a bug, probably related to https://github.com/sublimehq/sublime_text/issues/4418
+
+    # When `gs_show_commit_show_hunk_on_working_dir` runs and the graph view is the
+    # `active_view`, the panel has the focus as the command is only bound to the panel
+    # view.
+    av = window.active_view()
+    had_focus = (
+        av.settings().get("git_savvy.log_graph_view", False)
+        if av
+        else False
+    )
+
+    yield
+
+    if had_focus:
+        panel_view = window.find_output_panel('show_commit_info')
+        if panel_view:
+            panel_view.settings().set("git_savvy.show_commit_view.had_focus", True)
 
 
 class gs_show_commit_open_graph_context(TextCommand, GitCommand):
