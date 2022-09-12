@@ -29,8 +29,9 @@ contexts:
   section:
     - match: ^$
       pop: true
-    - match: '^    ([0-9a-f]{7,40}) (.+)\n$'
+    - match: '^    ([0-9a-f]{7,40}) (.+?)(?: +(.+))?\n$'
       scope: meta.git-savvy.tags.tag
       captures:
         1: constant.other.git-savvy.tags.sha1
         2: meta.git-savvy.tag.name gitsavvy.gotosymbol
+        3: comment.git-savvy.tag.age

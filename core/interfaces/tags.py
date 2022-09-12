@@ -1,3 +1,4 @@
+from itertools import chain
 import os
 
 import sublime
@@ -5,15 +6,20 @@ from sublime_plugin import WindowCommand, TextCommand
 
 from ..commands import GsNavigate
 from ...common import ui
-from ..git_command import GitCommand
+from ..git_command import GitCommand, GitSavvyError
 from ...common import util
+from GitSavvy.core.fns import filter_
+from GitSavvy.core.runtime import enqueue_on_worker
+from GitSavvy.core.utils import flash
 
 TAG_DELETE_MESSAGE = "Tag(s) deleted."
 
 NO_REMOTES_MESSAGE = "You have not configured any remotes."
 
 NO_LOCAL_TAGS_MESSAGE = "    Your repository has no tags."
-NO_REMOTE_TAGS_MESSAGE = "    Unable to retrieve tags for this remote."
+NO_REMOTE_TAGS_MESSAGE = "    The remote has no tags."
+NO_MORE_TAGS_MESSAGE = "    No further tags on the remote."
+REMOTE_ERRED = "    Unable to retrieve tags for this remote."
 LOADING_TAGS_MESSAGE = "    Loading tags from remote..."
 
 START_PUSH_MESSAGE = "Pushing tag..."
@@ -23,8 +29,8 @@ END_PUSH_MESSAGE = "Push complete."
 def tag_from_lines(lines):
     tags = []
     for line in lines:
-        m = line.strip().split(" ", 1)
-        if len(m) == 2:
+        m = line.strip().split(" ", 2)
+        if len(m) in (2, 3):
             tags.append(m[1].strip())
     return tags
 
@@ -88,7 +94,7 @@ class TagsInterface(ui.Interface, GitCommand):
             self.show_remotes = self.savvy_settings.get("show_remotes_in_tags_dashboard")
 
         self.max_items = self.savvy_settings.get("max_items_in_tags_dashboard", None)
-        self.local_tags = self.get_tags(reverse=True)
+        self.local_tags = self.get_local_tags()
         if self.remotes is None:
             self.remotes = {
                 name: {"uri": uri}
@@ -112,12 +118,30 @@ class TagsInterface(ui.Interface, GitCommand):
 
     @ui.partial("local_tags")
     def render_local_tags(self):
-        if not self.local_tags:
+        if not any(chain(*self.local_tags)):
             return NO_LOCAL_TAGS_MESSAGE
 
-        return "\n".join(
-            "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
-            for tag in self.local_tags[0:self.max_items]
+        regular_tags, versions = self.local_tags
+        return "\n{}\n".format(" " * 60).join(  # need some spaces on the separator line otherwise
+                                                # the syntax expects the remote section begins
+            filter_((
+                "\n".join(
+                    "    {} {:<10}".format(
+                        self.get_short_hash(tag.sha),
+                        tag.tag,
+                    )
+                    for tag in regular_tags[:self.max_items]
+                ),
+                "\n".join(
+                    "    {} {:<10} {}{}".format(
+                        self.get_short_hash(tag.sha),
+                        tag.tag,
+                        tag.human_date,
+                        " ({})".format(tag.relative_date) if tag.relative_date != tag.human_date else ""
+                    )
+                    for tag in versions[:self.max_items]
+                )
+            ))
         )
 
     @ui.partial("remote_tags")
@@ -154,23 +178,35 @@ class TagsInterface(ui.Interface, GitCommand):
     def get_remote_tags_list(self, remote, remote_name):
         if "tags" in remote:
             if remote["tags"]:
-                tags_list = [tag for tag in remote["tags"] if tag.tag[-3:] != "^{}"]
-                tags_list = tags_list[0:self.max_items]
+                seen = {tag.sha: tag.tag for tag in chain(*self.local_tags)}
+                tags_list = [
+                    tag
+                    for tag in remote["tags"]
+                    if tag.tag[-3:] != "^{}" and tag.sha not in seen
+                ]
+                msg = "\n".join(
+                    "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
+                    for tag in tags_list[:self.max_items]
+                ) or NO_MORE_TAGS_MESSAGE
 
-                msg = "\n".join("    {} {}".format(
-                    self.get_short_hash(tag.sha), tag.tag) for tag in tags_list)
             else:
                 msg = NO_REMOTE_TAGS_MESSAGE
+
+        elif "erred" in remote:
+            msg = remote["erred"]
 
         elif "loading" in remote:
             msg = LOADING_TAGS_MESSAGE
 
         else:
             def do_tags_fetch(remote=remote, remote_name=remote_name):
-                remote["tags"] = self.get_tags(remote_name, reverse=True)
+                try:
+                    remote["tags"] = list(chain(*self.get_remote_tags(remote_name)))
+                except GitSavvyError as e:
+                    remote["erred"] = "    {}".format(e.stderr)
                 self.render()
 
-            sublime.set_timeout_async(do_tags_fetch, 0)
+            enqueue_on_worker(do_tags_fetch)
             remote["loading"] = True
             msg = LOADING_TAGS_MESSAGE
 
@@ -223,7 +259,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         interface = ui.get_interface(self.view.id())
@@ -241,7 +277,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
         for tag in tags_to_delete:
             self.git("tag", "-d", tag)
 
-        self.view.window().status_message(TAG_DELETE_MESSAGE)
+        flash(self.view, TAG_DELETE_MESSAGE)
         util.view.refresh_gitsavvy(self.view)
 
     def delete_remote(self, interface):
@@ -260,7 +296,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
                     *("refs/tags/" + tag for tag in tags_to_delete)
                 )
 
-        self.view.window().status_message(TAG_DELETE_MESSAGE)
+        flash(self.view, TAG_DELETE_MESSAGE)
         interface.remotes = None
         util.view.refresh_gitsavvy(self.view)
 
@@ -273,10 +309,10 @@ class GsTagsPushCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, push_all=False):
-        sublime.set_timeout_async(lambda: self.run_async(push_all=push_all), 0)
+        enqueue_on_worker(self.run_async, push_all=push_all)
 
     def run_async(self, push_all):
-        self.remotes = tuple(self.get_remotes().keys())
+        self.remotes = list(self.get_remotes().keys())
         if not self.remotes:
             self.view.window().show_quick_panel([NO_REMOTES_MESSAGE], None)
             return
@@ -289,9 +325,9 @@ class GsTagsPushCommand(TextCommand, GitCommand):
 
     def push_async(self, remote_idx, push_all=False):
         if push_all:
-            sublime.set_timeout_async(lambda: self.push_all(remote_idx), 0)
+            enqueue_on_worker(self.push_all, remote_idx)
         else:
-            sublime.set_timeout_async(lambda: self.push_selected(remote_idx), 0)
+            enqueue_on_worker(self.push_selected, remote_idx)
 
     def push_selected(self, remote_idx):
         # The user pressed `esc` or otherwise cancelled.
@@ -303,9 +339,9 @@ class GsTagsPushCommand(TextCommand, GitCommand):
         lines = interface.get_selection_lines_in_region("local_tags")
         tags_to_push = tag_from_lines(lines)
 
-        self.view.window().status_message(START_PUSH_MESSAGE)
+        flash(self.view, START_PUSH_MESSAGE)
         self.git("push", remote, *("refs/tags/" + tag for tag in tags_to_push))
-        self.view.window().status_message(END_PUSH_MESSAGE)
+        flash(self.view, END_PUSH_MESSAGE)
 
         interface.remotes = None
         util.view.refresh_gitsavvy(self.view)
@@ -315,9 +351,9 @@ class GsTagsPushCommand(TextCommand, GitCommand):
         if remote_idx == -1:
             return
         remote = self.remotes[remote_idx]
-        self.view.window().status_message(START_PUSH_MESSAGE)
+        flash(self.view, START_PUSH_MESSAGE)
         self.git("push", remote, "--tags")
-        self.view.window().status_message(END_PUSH_MESSAGE)
+        flash(self.view, END_PUSH_MESSAGE)
 
         interface = ui.get_interface(self.view.id())
         if interface:
@@ -332,7 +368,7 @@ class GsTagsViewLogCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
+        enqueue_on_worker(self.run_async)
 
     def run_async(self):
         interface = ui.get_interface(self.view.id())
