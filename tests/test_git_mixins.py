@@ -69,6 +69,9 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "",
                 False,
                 "",
+                git_mixins.branches.Upstream(
+                    "origin", "master", "origin/master", ""
+                )
             )
         ])
 
@@ -88,6 +91,9 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "",
                 True,
                 "",
+                git_mixins.branches.Upstream(
+                    "origin", "master", "origin/master", ""
+                )
             )
         ])
 
@@ -107,6 +113,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "",
                 False,
                 "",
+                None
             )
         ])
 
@@ -126,6 +133,9 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "gone",
                 False,
                 "",
+                git_mixins.branches.Upstream(
+                    "origin", "master", "origin/master", "gone"
+                )
             )
         ])
 
@@ -145,5 +155,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "",
                 False,
                 "",
+                git_mixins.branches.Upstream(
+                    ".", "update-branch-from-upstream", "update-branch-from-upstream", ""
+                )
             )
         ])

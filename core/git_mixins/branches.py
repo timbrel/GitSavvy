@@ -8,6 +8,12 @@ from GitSavvy.core.fns import filter_
 MYPY = False
 if MYPY:
     from typing import Dict, Iterable, NamedTuple, Optional, Sequence
+    Upstream = NamedTuple("Upstream", [
+        ("remote", str),
+        ("branch", str),
+        ("canonical_name", str),
+        ("status", str),
+    ])
 
     # For local branches, `remote` is empty and `canonical_name == name`.
     # For remote branches:
@@ -20,9 +26,11 @@ if MYPY:
         ("tracking", str),
         ("tracking_status", str),
         ("active", bool),
-        ("description", str)
+        ("description", str),
+        ("upstream", Optional[Upstream]),
     ])
 else:
+    Upstream = namedtuple("Upstream", "remote branch canonical_name status")
     Branch = namedtuple("Branch", (
         "name",
         "remote",
@@ -32,7 +40,8 @@ else:
         "tracking",
         "tracking_status",
         "active",
-        "description"
+        "description",
+        "upstream",
     ))
 
 BRANCH_DESCRIPTION_RE = re.compile(r"^branch\.(.*?)\.description (.*)$")
@@ -176,8 +185,16 @@ class BranchesMixin(mixin_base):
                 if is_remote_upstream else
                 "./{}".format(upstream_canonical)
             )
+
+            if is_remote_upstream:
+                upstream_remote, upstream_branch = upstream_[0], "/".join(upstream_[1:])
+            else:
+                upstream_remote, upstream_branch = ".", upstream_canonical
+            ups = Upstream(upstream_remote, upstream_branch, upstream_canonical, upstream_status)
+
         else:
             backwards_compatible_upstream = ""
+            ups = None
 
         return Branch(
             branch_name,
@@ -188,7 +205,8 @@ class BranchesMixin(mixin_base):
             backwards_compatible_upstream,
             upstream_status,
             active,
-            description=""
+            description="",
+            upstream=ups
         )
 
     def merge(self, branch_names):
