@@ -104,7 +104,15 @@ class BranchesMixin(mixin_base):
         """
         stdout = self.git(
             "for-each-ref",
-            "--format=%(HEAD)%00%(refname)%00%(upstream)%00%(upstream:track)%00%(objectname)%00%(contents:subject)",
+            (
+                "--format="
+                "%(HEAD)%00"
+                "%(refname)%00"
+                "%(upstream)%00"
+                "%(upstream:track)%00"
+                "%(objectname)%00"
+                "%(contents:subject)"
+            ),
             "--sort=-committerdate" if sort_by_recent else None,
             *refs
         )
