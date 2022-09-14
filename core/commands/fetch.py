@@ -1,4 +1,4 @@
-from ..runtime import enqueue_on_worker
+from ..runtime import on_worker
 from ...common import util
 from ..ui_mixins.quick_panel import show_remote_panel
 from GitSavvy.core.base_commands import GsWindowCommand
@@ -28,12 +28,8 @@ class gs_fetch(GsWindowCommand):
         "remote": ask_for_remote
     }
 
+    @on_worker
     def run(self, remote):
-        # type: (str) -> None
-        enqueue_on_worker(self.do_fetch, remote)
-
-    def do_fetch(self, remote):
-        # type: (str) -> None
         fetch_all = remote == "<ALL>"
         if fetch_all:
             self.window.status_message("Start fetching all remotes...")
