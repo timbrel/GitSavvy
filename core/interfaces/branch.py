@@ -422,15 +422,26 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
         branches = self.interface.get_selected_branches(ignore_current_branch=True)
 
         for branch in branches:
-            if branch[0] is None:
+            remote, branch_name = branch
+            if remote is None:
                 # update local branches which have tracking remote
-                local_branch = self.get_local_branch_by_name(branch[1])
+                local_branch = self.get_local_branch_by_name(branch_name)
+                if not local_branch:
+                    raise RuntimeError(
+                        "repo and view inconsistent.  "
+                        "can't fetch more info about branch {}"
+                        .format(branch_name)
+                    )
                 if local_branch.tracking:
                     remote, remote_branch = local_branch.tracking.split("/", 1)
-                    self.fetch(remote=remote, branch=branch[1], remote_branch=remote_branch)
+                    self.fetch(
+                        remote=remote,
+                        remote_branch=remote_branch,
+                        local_branch=branch_name,
+                    )
             else:
                 # fetch remote branches
-                self.fetch(remote=branch[0], branch=branch[1])
+                self.fetch(remote, branch_name)
 
         branches_strings = self.interface.create_branches_strs(branches)
         try:
