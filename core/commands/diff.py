@@ -536,6 +536,9 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             hunks = filter_(map(diff.hunk_for_pt, cursor_pts))
             headers = unique(map(diff.head_for_hunk, hunks))
             files = list(filter_(head.from_filename() for head in headers))
+            if not files:
+                flash(self.view, "Not within a hunk")
+                return
             if self.check_for_conflict_markers(files):
                 flash(self.view, "You still have unresolved conflicts.")
             else:
