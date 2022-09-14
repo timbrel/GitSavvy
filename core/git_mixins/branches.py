@@ -155,17 +155,17 @@ class BranchesMixin(mixin_base):
         line = line.strip()
         if not line:
             return None
-        head, ref, tracking_branch, tracking_status, commit_hash, commit_msg = line.split("\x00")
+        head, ref, upstream, upstream_status, commit_hash, commit_msg = line.split("\x00")
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
 
         branch_name = ref[13:] if is_remote else ref[11:]
         remote = ref[13:].split("/", 1)[0] if is_remote else None
-        tracking_branch = tracking_branch[13:]
-        if tracking_status:
+        upstream = upstream[13:]
+        if upstream_status:
             # remove brackets
-            tracking_status = tracking_status[1:len(tracking_status) - 1]
+            upstream_status = upstream_status[1:len(upstream_status) - 1]
 
         return Branch(
             "/".join(branch_name.split("/")[1:]) if is_remote else branch_name,
@@ -173,8 +173,8 @@ class BranchesMixin(mixin_base):
             branch_name,
             commit_hash,
             commit_msg,
-            tracking_branch,
-            tracking_status,
+            upstream,
+            upstream_status,
             active,
             description=""
         )
