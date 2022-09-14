@@ -157,18 +157,22 @@ class BranchesMixin(mixin_base):
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
+        ref_ = ref.split("/")[2:]
+        canonical_name = "/".join(ref_)
+        if is_remote:
+            remote, branch_name = ref_[0], "/".join(ref_[1:])
+        else:
+            remote, branch_name = None, canonical_name
 
-        branch_name = ref[13:] if is_remote else ref[11:]
-        remote = ref[13:].split("/", 1)[0] if is_remote else None
         upstream = upstream[13:]
         if upstream_status:
             # remove brackets
-            upstream_status = upstream_status[1:len(upstream_status) - 1]
+            upstream_status = upstream_status[1:-1]
 
         return Branch(
-            "/".join(branch_name.split("/")[1:]) if is_remote else branch_name,
-            remote,
             branch_name,
+            remote,
+            canonical_name,
             commit_hash,
             commit_msg,
             upstream,
