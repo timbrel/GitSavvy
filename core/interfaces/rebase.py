@@ -326,15 +326,15 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
             branches = list(self.get_branches())
 
             # Check that the base_ref we return is a valid branch
-            if base_ref not in [branch.name_with_remote for branch in branches]:
+            if base_ref not in [branch.canonical_name for branch in branches]:
                 # base_ref isn't a valid branch, so we'll try to pick a sensible alternative
                 local_branches = [branch for branch in branches if not branch.remote]
                 inactive_local_branches = [branch for branch in local_branches if not branch.active]
 
                 if inactive_local_branches:
-                    base_ref = inactive_local_branches[0].name_with_remote
+                    base_ref = inactive_local_branches[0].canonical_name
                 elif local_branches:
-                    base_ref = local_branches[0].name_with_remote
+                    base_ref = local_branches[0].canonical_name
                 else:
                     base_ref = "HEAD"
 

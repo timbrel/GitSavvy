@@ -7,10 +7,13 @@ from GitSavvy.core.git_command import mixin_base
 MYPY = False
 if MYPY:
     from typing import Dict, Iterable, NamedTuple, Optional, Sequence
+
+    # For local branches, `remote` is empty and `canonical_name == name`.
+    # For remote branches:
     Branch = NamedTuple("Branch", [
-        ("name", str),
-        ("remote", Optional[str]),
-        ("name_with_remote", str),
+        ("name", str),              # e.g. "master"
+        ("remote", Optional[str]),  # e.g. "origin"
+        ("canonical_name", str),    # e.g. "origin/master"
         ("commit_hash", str),
         ("commit_msg", str),
         ("tracking", str),
@@ -22,7 +25,7 @@ else:
     Branch = namedtuple("Branch", (
         "name",
         "remote",
-        "name_with_remote",
+        "canonical_name",
         "commit_hash",
         "commit_msg",
         "tracking",
@@ -118,7 +121,7 @@ class BranchesMixin(mixin_base):
 
         descriptions = self.fetch_branch_description_subjects()
         return (
-            branch._replace(description=descriptions.get(branch.name_with_remote, ""))
+            branch._replace(description=descriptions.get(branch.canonical_name, ""))
             for branch in branches
         )
 
