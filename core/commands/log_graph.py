@@ -2362,7 +2362,11 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             ("Revert commit", partial(self.revert_commit, commit_hash)),
             (
                 "Compare {}against ...".format("file " if file_path else ""),
-                partial(self.compare_against, commit_hash, file_path=file_path)
+                partial(
+                    self.compare_against,
+                    info["HEAD"] if on_checked_out_branch else commit_hash,
+                    file_path=file_path
+                )
             ),
         ]
         if file_path:
