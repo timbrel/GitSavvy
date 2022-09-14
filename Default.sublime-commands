@@ -193,6 +193,10 @@
         "command": "gs_fetch"
     },
     {
+        "caption": "git: fast-forward branch from upstream",
+        "command": "gs_ff_update_branch"
+    },
+    {
         "caption": "git: pull",
         "command": "gs_pull"
     },
