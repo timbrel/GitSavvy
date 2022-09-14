@@ -29,13 +29,13 @@ class gs_fetch(GsWindowCommand):
     }
 
     @on_worker
-    def run(self, remote):
+    def run(self, remote, refspec=None):
         fetch_all = remote == "<ALL>"
         if fetch_all:
             self.window.status_message("Start fetching all remotes...")
         else:
             self.window.status_message("Start fetching {}...".format(remote))
 
-        self.fetch(None if fetch_all else remote)
+        self.fetch(None if fetch_all else remote, refspec)
         self.window.status_message("Fetch complete.")
         util.view.refresh_gitsavvy_interfaces(self.window)
