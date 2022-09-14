@@ -2,6 +2,7 @@ from collections import namedtuple
 import re
 
 from GitSavvy.core.git_command import mixin_base
+from GitSavvy.core.fns import filter_
 
 
 MYPY = False
@@ -115,14 +116,14 @@ class BranchesMixin(mixin_base):
             ),
             "--sort=-committerdate" if sort_by_recent else None,
             *refs
-        )
+        )  # type: str
         branches = (
             branch
             for branch in (
                 self._parse_branch_line(line)
-                for line in stdout.split("\n")
+                for line in filter_(stdout.splitlines())
             )
-            if branch and branch.name != "HEAD"
+            if branch.name != "HEAD"
         )
         if not fetch_descriptions:
             return branches
@@ -151,10 +152,7 @@ class BranchesMixin(mixin_base):
         return rv
 
     def _parse_branch_line(self, line):
-        # type: (str) -> Optional[Branch]
-        line = line.strip()
-        if not line:
-            return None
+        # type: (str) -> Branch
         head, ref, upstream, upstream_status, commit_hash, commit_msg = line.split("\x00")
 
         active = head == "*"
