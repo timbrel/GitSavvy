@@ -2415,14 +2415,12 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         remote = self.get_remote_for_branch(current_branch)
         self.window.run_command("gs_fetch", {"remote": remote} if remote else None)
 
-    def update_from_tracking(self, remote, branch_name_on_remote, branch_name):
+    def update_from_tracking(self, remote, remote_name, local_name):
         # type: (str, str, str) -> None
-        def program():
-            self.window.status_message("Start fetching from {}...".format(remote))
-            self.git("fetch", remote, "{}:{}".format(branch_name_on_remote, branch_name))
-            self.window.status_message("Fetch complete.")
-            util.view.refresh_gitsavvy_interfaces(self.window)
-        enqueue_on_worker(program)
+        self.window.run_command("gs_fetch", {
+            "remote": remote,
+            "refspec": "{}:{}".format(remote_name, local_name)
+        })
 
     def noop(self):
         return
