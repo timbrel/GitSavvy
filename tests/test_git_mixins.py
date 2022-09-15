@@ -1,3 +1,8 @@
+import shutil
+import tempfile
+
+import sublime
+
 from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p, param
@@ -157,6 +162,85 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "",
                 git_mixins.branches.Upstream(
                     ".", "update-branch-from-upstream", "update-branch-from-upstream", ""
+                )
+            )
+        ])
+
+
+TMPDIR_PREFIX = "GitSavvy-end-to-end-test-"
+
+
+class EndToEndTestCase(DeferrableTestCase):
+    def setUp(self):
+        s = sublime.load_settings("Preferences.sublime-settings")
+        s.set("close_windows_when_empty", False)
+
+        self.tmp_dir = tmp_dir = tempfile.mkdtemp(prefix=TMPDIR_PREFIX)
+        self.addCleanup(lambda: shutil.rmtree(self.tmp_dir, ignore_errors=True))
+        self.window = window = self.new_window()
+
+        project_data = dict(folders=[dict(follow_symlinks=True, path=tmp_dir)])
+        window.set_project_data(project_data)
+        yield lambda: any(d for d in window.folders() if d == tmp_dir)
+
+    def init_repo(self) -> GitCommand:
+        repo = GitCommand()
+        repo.window = self.window  # type: ignore[attr-defined]
+        repo.git("init", working_dir=self.tmp_dir)
+        repo.git("commit", "-m", "Initial commit", "--allow-empty")
+        return repo
+
+    def new_window(self):
+        sublime.run_command("new_window")
+        window = sublime.active_window()
+        self.addCleanup(lambda: window.run_command("close_window"))
+        return window
+
+
+class TestBranchParsing(EndToEndTestCase):
+    def test_current_branch_is_master(self):
+        repo = self.init_repo()
+        branch = repo.get_current_branch_name()
+        self.assertEqual(branch, "master")
+
+    def test_active_local_branch(self):
+        repo = self.init_repo()
+        commit_hash = repo.get_commit_hash_for_head()
+        actual = list(repo.get_branches())
+        self.assertEqual(actual, [
+            git_mixins.branches.Branch(
+                "master",
+                None,
+                "master",
+                commit_hash,
+                "Initial commit",
+                "",
+                "",
+                True,
+                "",
+                None
+            )
+        ])
+
+    def test_tracking_local_branch(self):
+        repo = self.init_repo()
+        commit_hash = repo.get_commit_hash_for_head()
+        repo.git("checkout", "--track", "-b", "feature-branch")
+
+        actual = list(b for b in repo.get_branches() if b.name != "master")
+        self.assertEqual(actual, [
+            git_mixins.branches.Branch(
+                "feature-branch",
+                None,
+                "feature-branch",
+                commit_hash,
+                "Initial commit",
+                "./master",
+                "",
+                True,
+                "",
+                git_mixins.branches.Upstream(
+                    ".", "master", "master", ""
                 )
             )
         ])
