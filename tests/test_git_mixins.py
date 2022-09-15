@@ -112,7 +112,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
 
     def test_tracking_status(self):
         repo = GitCommand()
-        git_output = " \x00refs/heads/master\x00refs/remotes/origin/master\x00[gone]" + sha_and_subject
+        git_output = " \x00refs/heads/master\x00refs/remotes/origin/master\x00gone" + sha_and_subject
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         actual = list(repo.get_branches())
         self.assertEqual(actual, [

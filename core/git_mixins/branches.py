@@ -110,7 +110,7 @@ class BranchesMixin(mixin_base):
                 "%(HEAD)%00"
                 "%(refname)%00"
                 "%(upstream)%00"
-                "%(upstream:track)%00"
+                "%(upstream:track,nobracket)%00"
                 "%(objectname)%00"
                 "%(contents:subject)"
             ),
@@ -165,9 +165,6 @@ class BranchesMixin(mixin_base):
             remote, branch_name = None, canonical_name
 
         upstream = upstream[13:]
-        if upstream_status:
-            # remove brackets
-            upstream_status = upstream_status[1:-1]
 
         return Branch(
             branch_name,
