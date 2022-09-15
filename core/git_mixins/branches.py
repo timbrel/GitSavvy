@@ -164,7 +164,20 @@ class BranchesMixin(mixin_base):
         else:
             remote, branch_name = None, canonical_name
 
-        upstream = upstream[13:]
+        if upstream:
+            is_remote_upstream = upstream.startswith("refs/remotes/")
+            upstream_ = upstream.split("/")[2:]
+            upstream_canonical = "/".join(upstream_)
+            # `upstream_canonical` is what git returns for `@{u}` for example, but
+            # *we* do a `remote_name = split("/")[0]` everywhere so let's make a
+            # compatible version where the `remote_name` becomes `.`.
+            backwards_compatible_upstream = (
+                upstream_canonical
+                if is_remote_upstream else
+                "./{}".format(upstream_canonical)
+            )
+        else:
+            backwards_compatible_upstream = ""
 
         return Branch(
             branch_name,
@@ -172,7 +185,7 @@ class BranchesMixin(mixin_base):
             canonical_name,
             commit_hash,
             commit_msg,
-            upstream,
+            backwards_compatible_upstream,
             upstream_status,
             active,
             description=""

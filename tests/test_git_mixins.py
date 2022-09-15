@@ -129,3 +129,21 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
             )
         ])
 
+    def test_tracking_local_branch(self):
+        repo = GitCommand()
+        git_output = " \x00refs/heads/test\x00refs/heads/update-branch-from-upstream\x00" + sha_and_subject
+        when(repo).git("for-each-ref", ...).thenReturn(git_output)
+        actual = list(repo.get_branches())
+        self.assertEqual(actual, [
+            git_mixins.branches.Branch(
+                "test",
+                None,
+                "test",
+                "89b79cd737465ed308ecc00289d00a6f923f2da5",
+                "The Subject",
+                "./update-branch-from-upstream",
+                "",
+                False,
+                "",
+            )
+        ])
