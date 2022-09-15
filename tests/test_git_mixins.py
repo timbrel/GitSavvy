@@ -1,4 +1,6 @@
 import shutil
+import subprocess
+import sys
 import tempfile
 
 import sublime
@@ -176,7 +178,7 @@ class EndToEndTestCase(DeferrableTestCase):
         s.set("close_windows_when_empty", False)
 
         self.tmp_dir = tmp_dir = tempfile.mkdtemp(prefix=TMPDIR_PREFIX)
-        self.addCleanup(lambda: shutil.rmtree(self.tmp_dir, ignore_errors=True))
+        self.addCleanup(lambda: rmdir(self.tmp_dir))
         self.window = window = self.new_window()
 
         project_data = dict(folders=[dict(follow_symlinks=True, path=tmp_dir)])
@@ -195,6 +197,18 @@ class EndToEndTestCase(DeferrableTestCase):
         window = sublime.active_window()
         self.addCleanup(lambda: window.run_command("close_window"))
         return window
+
+
+def rmdir(path):
+    if sys.platform == "win32":
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        subprocess.Popen(
+            "rmdir /s /q {}".format(path),
+            shell=True,
+            startupinfo=startupinfo)
+    else:
+        shutil.rmtree(path, ignore_errors=True)
 
 
 class TestBranchParsing(EndToEndTestCase):
