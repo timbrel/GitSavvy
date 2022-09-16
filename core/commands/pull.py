@@ -37,7 +37,7 @@ class gs_pull(GsPullBase):
     def run_async(self):
         rebase = self.rebase
         if not rebase:
-            # honor the `pull.rebase` config implictly
+            # honor the `pull.rebase` config implicitly
             pull_rebase = self.git("config", "pull.rebase", throw_on_error=False)
             if pull_rebase and pull_rebase.strip() == "true":
                 rebase = True
