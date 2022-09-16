@@ -26,6 +26,7 @@ if MYPY:
         ("tracking", str),
         ("tracking_status", str),
         ("active", bool),
+        ("is_remote", bool),
         ("description", str),
         ("upstream", Optional[Upstream]),
     ])
@@ -40,6 +41,7 @@ else:
         "tracking",
         "tracking_status",
         "active",
+        "is_remote",
         "description",
         "upstream",
     ))
@@ -206,6 +208,7 @@ class BranchesMixin(mixin_base):
             backwards_compatible_upstream,
             upstream_status,
             active,
+            is_remote,
             description="",
             upstream=ups
         )

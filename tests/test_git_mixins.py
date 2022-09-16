@@ -78,6 +78,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "origin/master",
                 "",
                 False,
+                False,
                 "",
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
@@ -102,6 +103,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "origin/master",
                 "",
                 True,
+                False,
                 "",
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
@@ -126,6 +128,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "",
                 "",
                 False,
+                True,
                 "",
                 None
             )
@@ -147,6 +150,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 "orig/in/master",
                 "",
+                False,
                 False,
                 "",
                 git_mixins.branches.Upstream(
@@ -172,6 +176,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "origin/master",
                 "gone",
                 False,
+                False,
                 "",
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", "gone"
@@ -195,6 +200,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 "./update-branch-from-upstream",
                 "",
+                False,
                 False,
                 "",
                 git_mixins.branches.Upstream(
@@ -266,6 +272,7 @@ class TestBranchParsing(EndToEndTestCase):
                 "",
                 "",
                 True,
+                False,
                 "",
                 None
             )
@@ -287,6 +294,7 @@ class TestBranchParsing(EndToEndTestCase):
                 "./master",
                 "",
                 True,
+                False,
                 "",
                 git_mixins.branches.Upstream(
                     ".", "master", "master", ""

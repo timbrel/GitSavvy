@@ -104,7 +104,7 @@ class BranchInterface(ui.Interface, GitCommand):
     @ui.partial("branch_list")
     def render_branch_list(self, branches=None):
         if not branches:
-            branches = [branch for branch in self._branches if not branch.remote]
+            branches = [branch for branch in self._branches if not branch.is_remote]
 
         return "\n".join(
             "  {indicator} {hash:.7} {name}{tracking}{description}".format(
@@ -144,7 +144,7 @@ class BranchInterface(ui.Interface, GitCommand):
         render_fns = []
 
         sorted_branches = sorted(
-            [b for b in self._branches if b.remote], key=lambda branch: branch.remote)
+            [b for b in self._branches if b.is_remote], key=lambda branch: branch.remote)
         for remote_name, branches in groupby(sorted_branches, lambda branch: branch.remote):
             if not remote_name:
                 continue
