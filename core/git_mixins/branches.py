@@ -23,8 +23,6 @@ if MYPY:
         ("canonical_name", str),    # e.g. "origin/master"
         ("commit_hash", str),
         ("commit_msg", str),
-        ("tracking", str),
-        ("tracking_status", str),
         ("active", bool),
         ("is_remote", bool),
         ("description", str),
@@ -38,8 +36,6 @@ else:
         "canonical_name",
         "commit_hash",
         "commit_msg",
-        "tracking",
-        "tracking_status",
         "active",
         "is_remote",
         "description",
@@ -185,15 +181,6 @@ class BranchesMixin(mixin_base):
             is_remote_upstream = upstream.startswith("refs/remotes/")
             upstream_ = upstream.split("/")[2:]
             upstream_canonical = "/".join(upstream_)
-            # `upstream_canonical` is what git returns for `@{u}` for example, but
-            # *we* do a `remote_name = split("/")[0]` everywhere so let's make a
-            # compatible version where the `remote_name` becomes `.`.
-            backwards_compatible_upstream = (
-                upstream_canonical
-                if is_remote_upstream else
-                "./{}".format(upstream_canonical)
-            )
-
             if is_remote_upstream:
                 upstream_branch = "/".join(upstream_[len(upstream_remote.split("/")):])
             else:
@@ -201,7 +188,6 @@ class BranchesMixin(mixin_base):
             ups = Upstream(upstream_remote, upstream_branch, upstream_canonical, upstream_status)
 
         else:
-            backwards_compatible_upstream = ""
             ups = None
 
         return Branch(
@@ -210,8 +196,6 @@ class BranchesMixin(mixin_base):
             canonical_name,
             commit_hash,
             commit_msg,
-            backwards_compatible_upstream,
-            upstream_status,
             active,
             is_remote,
             description="",
