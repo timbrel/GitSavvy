@@ -71,12 +71,10 @@ class BranchesMixin(mixin_base):
 
     def get_remote_for_branch(self, branch_name):
         # type: (str) -> Optional[str]
-        return self.git(
-            "config",
-            "--get",
-            "branch.{}.remote".format(branch_name),
-            throw_on_error=False
-        ).strip() or None
+        branch = self.get_local_branch_by_name(branch_name)
+        if branch and branch.upstream:
+            return branch.upstream.remote
+        return None
 
     def get_local_branch_by_name(self, branch_name):
         # type: (str) -> Optional[Branch]
