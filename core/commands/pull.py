@@ -41,7 +41,7 @@ class gs_pull(GsPullBase):
             pull_rebase = self.git("config", "pull.rebase", throw_on_error=False)
             if pull_rebase and pull_rebase.strip() == "true":
                 rebase = True
-        upstream = self.get_upstream_for_active_branch_()
+        upstream = self.get_upstream_for_active_branch()
         if upstream:
             self.do_pull(remote=upstream.remote, remote_branch=upstream.branch, rebase=rebase)
         else:

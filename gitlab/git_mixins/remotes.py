@@ -32,7 +32,7 @@ class GitLabRemotesMixin():
             return list(remotes.keys())[0]
         if "origin" in remotes:
             return "origin"
-        upstream = self.get_upstream_for_active_branch_()
+        upstream = self.get_upstream_for_active_branch()
         if upstream:
             return upstream.remote
         raise ValueError("Cannot determine GitLab integrated remote.")
@@ -48,7 +48,7 @@ class GitLabRemotesMixin():
         if len(remotes) == 1:
             return list(remotes.keys())[0]
         integrated_remote = self.get_integrated_remote_name()
-        upstream = self.get_upstream_for_active_branch_()
+        upstream = self.get_upstream_for_active_branch()
         if upstream:
             tracked_remote = upstream.remote
             if tracked_remote == integrated_remote:

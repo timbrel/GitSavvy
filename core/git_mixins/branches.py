@@ -64,23 +64,10 @@ class BranchesMixin(mixin_base):
             return branch.name
         return None
 
-    def get_upstream_for_active_branch_(self):
+    def get_upstream_for_active_branch(self):
         # type: () -> Optional[Upstream]
         branch = self.get_current_branch()
         return branch.upstream if branch else None
-
-    def get_upstream_for_active_branch(self):
-        # type: () -> Optional[str]
-        """
-        Return ref for remote tracking branch.
-        """
-        return self.git(
-            "rev-parse",
-            "--abbrev-ref",
-            "--symbolic-full-name",
-            "@{u}",
-            throw_on_error=False
-        ).strip() or None
 
     def get_remote_for_branch(self, branch_name):
         # type: (str) -> Optional[str]

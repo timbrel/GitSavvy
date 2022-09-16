@@ -64,7 +64,7 @@ class gs_gitlab_open_file_on_remote(TextCommand, GitCommand, GitLabRemotesMixin)
 
         # check if the remote contains the commit hash
         if remote not in self.remotes_containing_commit(commit_hash):
-            upstream = self.get_upstream_for_active_branch_()
+            upstream = self.get_upstream_for_active_branch()
             if upstream:
                 merge_base = self.git("merge-base", commit_hash, upstream.canonical_name).strip()
                 if merge_base and remote in self.remotes_containing_commit(merge_base):

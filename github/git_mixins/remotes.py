@@ -56,7 +56,7 @@ class GithubRemotesMixin(base):
                 return name
 
         if current_upstream is UPSTREAM_NOT_SET:
-            current_upstream = self.get_upstream_for_active_branch_()
+            current_upstream = self.get_upstream_for_active_branch()
         if current_upstream:
             return current_upstream.remote
 
@@ -73,7 +73,7 @@ class GithubRemotesMixin(base):
         if len(remotes) == 1:
             return list(remotes.keys())[0]
 
-        upstream = self.get_upstream_for_active_branch_()
+        upstream = self.get_upstream_for_active_branch()
         integrated_remote = self.get_integrated_remote_name(remotes, current_upstream=upstream)
         if upstream:
             tracked_remote = upstream.remote
