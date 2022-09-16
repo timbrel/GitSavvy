@@ -2048,8 +2048,8 @@ if MYPY:
     ListItems = Literal["branches", "local_branches", "tags"]
 
 
-def describe_graph_line(line, remotes):
-    # type: (str, Iterable[str]) -> Optional[LineInfo]
+def describe_graph_line(line, known_branches):
+    # type: (str, Dict[str, Branch]) -> Optional[LineInfo]
     match = COMMIT_LINE.match(line)
     if match is None:
         return None
@@ -2075,7 +2075,8 @@ def describe_graph_line(line, remotes):
                 tags.append(name[len("tag: "):])
             else:
                 branches.append(name)
-                if not any(name.startswith(remote + "/") for remote in remotes):
+                branch = known_branches.get(name)
+                if not branch or not branch.is_remote:
                     local_branches.append(name)
         if branches:
             rv["branches"] = branches
@@ -2087,8 +2088,8 @@ def describe_graph_line(line, remotes):
     return rv
 
 
-def describe_head(view, remotes):
-    # type: (sublime.View, Iterable[str]) -> Optional[LineInfo]
+def describe_head(view, branches):
+    # type: (sublime.View, Dict[str, Branch]) -> Optional[LineInfo]
     try:
         region = view.find_by_selector(
             'meta.graph.graph-line.head.git-savvy '
@@ -2100,7 +2101,7 @@ def describe_head(view, remotes):
     cursor = region.b
     line_span = view.line(cursor)
     line_text = view.substr(line_span)
-    return describe_graph_line(line_text, remotes)
+    return describe_graph_line(line_text, branches)
 
 
 def format_revision_list(revisions):
@@ -2125,9 +2126,8 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             return
 
         branches = {b.canonical_name: b for b in self.get_branches()}
-        remotes = set(b.remote for b in branches.values() if b.remote)
         infos = list(filter_(
-            describe_graph_line(line, remotes)
+            describe_graph_line(line, branches)
             for line in unique(
                 view.substr(line)
                 for s in view.sel()
@@ -2138,9 +2138,9 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             return
 
         actions = (
-            self.actions_for_single_line(view, infos[0], remotes, branches)
+            self.actions_for_single_line(view, infos[0], branches)
             if len(infos) == 1
-            else self.actions_for_multiple_lines(view, infos, remotes)
+            else self.actions_for_multiple_lines(view, infos)
         )
         if not actions:
             return
@@ -2160,8 +2160,8 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             selected_index=self.selected_index,
         )
 
-    def actions_for_multiple_lines(self, view, infos, remotes):
-        # type: (sublime.View, List[LineInfo], Iterable[str]) -> List[Tuple[str, Callable[[], None]]]
+    def actions_for_multiple_lines(self, view, infos):
+        # type: (sublime.View, List[LineInfo]) -> List[Tuple[str, Callable[[], None]]]
         file_path = self.file_path
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
 
@@ -2256,8 +2256,8 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             'follow': base_commit
         })
 
-    def actions_for_single_line(self, view, info, remotes, branches):
-        # type: (sublime.View, LineInfo, Iterable[str], Dict[str, Branch]) -> List[Tuple[str, Callable[[], None]]]
+    def actions_for_single_line(self, view, info, branches):
+        # type: (sublime.View, LineInfo, Dict[str, Branch]) -> List[Tuple[str, Callable[[], None]]]
         commit_hash = info["commit"]
         file_path = self.file_path
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
@@ -2320,7 +2320,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             for tag_name in info.get("tags", [])
         ]
 
-        head_info = describe_head(view, remotes)
+        head_info = describe_head(view, branches)
         head_is_on_a_branch = head_info and head_info["HEAD"] != head_info["commit"]
 
         def get_list(info, key):

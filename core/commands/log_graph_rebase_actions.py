@@ -93,7 +93,7 @@ def extract_symbol_from_graph(self, args, done):
         return
 
     line = log_graph.line_from_pt(view, sel.b)
-    info = log_graph.describe_graph_line(line.text, remotes=[])
+    info = log_graph.describe_graph_line(line.text, known_branches={})
     if info is None:
         flash(view, "Not on a line with a commit.")
         return
@@ -118,7 +118,7 @@ def extract_commit_hash_from_graph(self, args, done):
         return
 
     line = log_graph.line_from_pt(view, sel.b)
-    info = log_graph.describe_graph_line(line.text, remotes=[])
+    info = log_graph.describe_graph_line(line.text, known_branches={})
     if info is None:
         flash(view, "Not on a line with a commit.")
         return
@@ -155,7 +155,7 @@ class gs_rebase_action(GsWindowCommand):
             return
 
         line = log_graph.line_from_pt(view, sel.b)
-        info = log_graph.describe_graph_line(line.text, remotes=[])
+        info = log_graph.describe_graph_line(line.text, known_branches={})
         if info is None:
             flash(view, "Not on a line with a commit.")
             return
@@ -200,7 +200,7 @@ class gs_rebase_action(GsWindowCommand):
             SEPARATOR,
         ]
 
-        head_info = log_graph.describe_head(view, [])
+        head_info = log_graph.describe_head(view, {})
         # `HEAD^..HEAD` only selects one commit which is not enough
         # for autosquashing.
         if not on_head:
