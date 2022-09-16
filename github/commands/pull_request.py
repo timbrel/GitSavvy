@@ -16,7 +16,7 @@ from ...core.view import replace_view_content
 
 MYPY = False
 if MYPY:
-    from GitSavvy.core.git_mixins.branches import Branch
+    from GitSavvy.core.git_mixins.branches import Upstream
 
 
 class GsGithubPullRequestCommand(WindowCommand, git_mixins.GithubRemotesMixin, GitCommand):
@@ -194,21 +194,19 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
             )
 
         else:
-            self.open_comparision_in_browser(current_branch)
+            self.open_comparision_in_browser(current_branch.upstream)
 
-    def open_comparision_in_browser(self, current_branch):
-        # type: (Branch) -> None
-        assert current_branch.upstream
+    def open_comparision_in_browser(self, upstream):
+        # type: (Upstream) -> None
         remotes = self.get_remotes()
-        remote, remote_branch = current_branch.upstream.remote, current_branch.upstream.branch
 
-        remote_url = remotes[remote]
+        remote_url = remotes[upstream.remote]
         owner = github.parse_remote(remote_url).owner
 
         config = self.read_gitsavvy_config()
         base_remote_name = self.get_integrated_remote_name(
             remotes,
-            current_upstream=current_branch.upstream,
+            current_upstream=upstream,
             configured_remote_name=config.get("ghremote")
         )
         base_remote_url = remotes[base_remote_name]
@@ -220,7 +218,7 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
             if base_branch
             else ""
         )
-        end = "{}:{}".format(owner, urllib.parse.quote_plus(remote_branch))
+        end = "{}:{}".format(owner, urllib.parse.quote_plus(upstream.branch))
         url = "{}/compare/{}{}?expand=1".format(base_remote.url, start, end)
         open_in_browser(url)
 
