@@ -6,7 +6,7 @@ from GitSavvy.core.git_command import mixin_base
 
 MYPY = False
 if MYPY:
-    from typing import List
+    from typing import List, Optional
 
 
 EXTRACT_BRANCH_NAME = re.compile(r'^[^[]+\[(.*?)(?:[\^\~]+[\d]*)*\]')
@@ -50,7 +50,7 @@ class NearestBranchMixin(mixin_base):
         return relatives
 
     def nearest_branch(self, branch, default="master"):
-        # type: (str, str) -> str
+        # type: (Optional[str], str) -> str
         """
         Find the nearest commit in current branch history that exists
         on a different branch and return that branch name.
@@ -59,7 +59,7 @@ class NearestBranchMixin(mixin_base):
         specified).
 
         """
-        relatives = self.branch_relatives(branch)
+        relatives = self.branch_relatives(branch or default)
         if not relatives:
             return default
 
