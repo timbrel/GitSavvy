@@ -113,9 +113,9 @@ class BranchInterface(ui.Interface, GitCommand):
                 name=branch.name,
                 description=" " + branch.description if branch.description else "",
                 tracking=(" ({branch}{status})".format(
-                    branch=branch.tracking,
-                    status=", " + branch.tracking_status if branch.tracking_status else ""
-                ) if branch.tracking else "")
+                    branch=branch.upstream.canonical_name,
+                    status=", " + branch.upstream.status if branch.upstream.status else ""
+                ) if branch.upstream else "")
             ) for branch in branches
         )
 
@@ -432,11 +432,10 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
                         "can't fetch more info about branch {}"
                         .format(branch_name)
                     )
-                if local_branch.tracking:
-                    remote, remote_branch = local_branch.tracking.split("/", 1)
+                if local_branch.upstream:
                     self.fetch(
-                        remote=remote,
-                        remote_branch=remote_branch,
+                        remote=local_branch.upstream.remote,
+                        remote_branch=local_branch.upstream.branch,
                         local_branch=branch_name,
                     )
             else:

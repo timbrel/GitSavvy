@@ -177,19 +177,19 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
             sublime.message_dialog("You're on a detached HEAD.  Can't push in that state.")
             return
 
-        if not current_branch.tracking:
+        if not current_branch.upstream:
             self.window.run_command("gs_github_push_and_create_pull_request", {
                 "local_branch_name": current_branch.name,
                 "set_upstream": True
             })
 
         elif (
-            "ahead" in current_branch.tracking_status
-            or "behind" in current_branch.tracking_status
+            "ahead" in current_branch.upstream.status
+            or "behind" in current_branch.upstream.status
         ):
             sublime.message_dialog(
                 "Your current branch is different from '{}'.\n{}".format(
-                    current_branch.tracking, current_branch.tracking_status
+                    current_branch.upstream.canonical_name, current_branch.upstream.status
                 )
             )
 
@@ -198,8 +198,9 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
 
     def open_comparision_in_browser(self, current_branch):
         # type: (Branch) -> None
+        assert current_branch.upstream
         remotes = self.get_remotes()
-        remote, remote_branch = current_branch.tracking.split("/", 1)
+        remote, remote_branch = current_branch.upstream.remote, current_branch.upstream.branch
 
         remote_url = remotes[remote]
         owner = github.parse_remote(remote_url).owner
@@ -207,7 +208,7 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
         config = self.read_gitsavvy_config()
         base_remote_name = self.get_integrated_remote_name(
             remotes,
-            current_upstream=current_branch.tracking,
+            current_upstream=current_branch.upstream,
             configured_remote_name=config.get("ghremote")
         )
         base_remote_url = remotes[base_remote_name]

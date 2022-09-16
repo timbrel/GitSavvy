@@ -2294,12 +2294,11 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 continue
 
             b = branches[branch_name]
-            if b.tracking and b.tracking_status != "gone":
-                remote_name, branch_name_on_remote = b.tracking.split("/", 1)
+            if b.upstream and b.upstream.status != "gone":
                 actions += [
                     (
-                        "Update '{}' from '{}'".format(branch_name, b.tracking),
-                        partial(self.update_from_tracking, remote_name, branch_name_on_remote, b.name)
+                        "Update '{}' from '{}'".format(branch_name, b.upstream.canonical_name),
+                        partial(self.update_from_tracking, b.upstream.remote, b.upstream.branch, b.name)
                     ),
                 ]
 

@@ -318,9 +318,10 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
 
             if not base_ref:
                 # use remote tracking branch as a sane default
-                remote_branch = self.get_upstream_for_active_branch()
-                base_ref = self.nearest_branch(self.get_current_branch_name(),
-                                               default=remote_branch or "master")
+                upstream = self.get_upstream_for_active_branch_()
+                base_ref = self.nearest_branch(
+                    self.get_current_branch_name(),
+                    default=(upstream and upstream.canonical_name) or "master")
                 util.debug.add_to_log('Found base ref {}'.format(base_ref))
 
             branches = list(self.get_branches())

@@ -68,6 +68,11 @@ class BranchesMixin(mixin_base):
             return branch.name
         return None
 
+    def get_upstream_for_active_branch_(self):
+        # type: () -> Optional[Upstream]
+        branch = self.get_current_branch()
+        return branch.upstream if branch else None
+
     def get_upstream_for_active_branch(self):
         # type: () -> Optional[str]
         """

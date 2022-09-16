@@ -57,12 +57,11 @@ class gs_ff_update_branch(GsWindowCommand):
                 .format(branch)
             )
 
-        if not local_branch.tracking:
+        if not local_branch.upstream:
             self.window.status_message("{} has no upstream set.".format(branch))
             return
 
-        remote, remote_branch = local_branch.tracking.split("/", 1)
         self.window.run_command("gs_fetch", {
-            "remote": remote,
-            "refspec": "{}:{}".format(remote_branch, branch)
+            "remote": local_branch.upstream.remote,
+            "refspec": "{}:{}".format(local_branch.upstream.branch, branch)
         })
