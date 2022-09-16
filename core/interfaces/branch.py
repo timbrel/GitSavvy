@@ -144,17 +144,17 @@ class BranchInterface(ui.Interface, GitCommand):
         render_fns = []
 
         sorted_branches = sorted(
-            [b for b in self._branches if b.is_remote], key=lambda branch: branch.remote)
+            [b for b in self._branches if b.is_remote],
+            key=lambda branch: branch.canonical_name)
         for remote_name, branches in groupby(sorted_branches, lambda branch: branch.remote):
             if not remote_name:
                 continue
 
-            branches = tuple(branches)
             key = "branch_list_" + remote_name
             output_tmpl += "{" + key + "}\n"
 
             @ui.partial(key)
-            def render(remote_name=remote_name, branches=branches):
+            def render(remote_name=remote_name, branches=tuple(branches)):
                 return self.template_remote.format(
                     remote_name=remote_name,
                     remote_branch_list=self.render_branch_list(branches=branches)
