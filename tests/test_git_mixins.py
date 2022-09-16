@@ -56,13 +56,16 @@ class TestFetchInterface(TestGitMixinsUsage):
         self.assertRaises(TypeError, lambda: repo.fetch(*parameters.args, **parameters.kwargs))
 
 
-sha_and_subject = "\x0089b79cd737465ed308ecc00289d00a6f923f2da5\x00The Subject"
+sha_and_subject = ["89b79cd737465ed308ecc00289d00a6f923f2da5", "The Subject"]
+join0 = lambda x: "\x00".join(x)
 
 
 class TestGetBranchesParsing(TestGitMixinsUsage):
     def test_local_branch(self):
         repo = GitCommand()
-        git_output = " \x00refs/heads/master\x00refs/remotes/origin/master\x00" + sha_and_subject
+        git_output = join0(
+            [" ", "refs/heads/master", "refs/remotes/origin/master", "origin", ""]
+            + sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         actual = list(repo.get_branches())
         self.assertEqual(actual, [
@@ -84,7 +87,9 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
 
     def test_active_local_branch(self):
         repo = GitCommand()
-        git_output = "*\x00refs/heads/master\x00refs/remotes/origin/master\x00" + sha_and_subject
+        git_output = join0(
+            ["*", "refs/heads/master", "refs/remotes/origin/master", "origin", ""]
+            + sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         actual = list(repo.get_branches())
         self.assertEqual(actual, [
@@ -106,7 +111,9 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
 
     def test_remote_branch(self):
         repo = GitCommand()
-        git_output = " \x00refs/remotes/origin/dev\x00\x00" + sha_and_subject
+        git_output = join0(
+            [" ", "refs/remotes/origin/dev", "", "", ""]
+            + sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         actual = list(repo.get_branches())
         self.assertEqual(actual, [
@@ -124,9 +131,35 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
             )
         ])
 
+    def test_upstream_with_dashes_in_name(self):
+        repo = GitCommand()
+        git_output = join0(
+            [" ", "refs/heads/master", "refs/remotes/orig/in/master", "orig/in", ""]
+            + sha_and_subject)
+        when(repo).git("for-each-ref", ...).thenReturn(git_output)
+        actual = list(repo.get_branches())
+        self.assertEqual(actual, [
+            git_mixins.branches.Branch(
+                "master",
+                None,
+                "master",
+                "89b79cd737465ed308ecc00289d00a6f923f2da5",
+                "The Subject",
+                "orig/in/master",
+                "",
+                False,
+                "",
+                git_mixins.branches.Upstream(
+                    "orig/in", "master", "orig/in/master", ""
+                )
+            )
+        ])
+
     def test_tracking_status(self):
         repo = GitCommand()
-        git_output = " \x00refs/heads/master\x00refs/remotes/origin/master\x00gone" + sha_and_subject
+        git_output = join0(
+            [" ", "refs/heads/master", "refs/remotes/origin/master", "origin", "gone"]
+            + sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         actual = list(repo.get_branches())
         self.assertEqual(actual, [
@@ -148,7 +181,9 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
 
     def test_tracking_local_branch(self):
         repo = GitCommand()
-        git_output = " \x00refs/heads/test\x00refs/heads/update-branch-from-upstream\x00" + sha_and_subject
+        git_output = join0(
+            [" ", "refs/heads/test", "refs/heads/update-branch-from-upstream", ".", ""]
+            + sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         actual = list(repo.get_branches())
         self.assertEqual(actual, [

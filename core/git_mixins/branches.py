@@ -119,6 +119,7 @@ class BranchesMixin(mixin_base):
                 "%(HEAD)%00"
                 "%(refname)%00"
                 "%(upstream)%00"
+                "%(upstream:remotename)%00"
                 "%(upstream:track,nobracket)%00"
                 "%(objectname)%00"
                 "%(contents:subject)"
@@ -162,7 +163,7 @@ class BranchesMixin(mixin_base):
 
     def _parse_branch_line(self, line):
         # type: (str) -> Branch
-        head, ref, upstream, upstream_status, commit_hash, commit_msg = line.split("\x00")
+        head, ref, upstream, upstream_remote, upstream_status, commit_hash, commit_msg = line.split("\x00")
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
@@ -187,9 +188,9 @@ class BranchesMixin(mixin_base):
             )
 
             if is_remote_upstream:
-                upstream_remote, upstream_branch = upstream_[0], "/".join(upstream_[1:])
+                upstream_branch = "/".join(upstream_[len(upstream_remote.split("/")):])
             else:
-                upstream_remote, upstream_branch = ".", upstream_canonical
+                upstream_branch = upstream_canonical
             ups = Upstream(upstream_remote, upstream_branch, upstream_canonical, upstream_status)
 
         else:
