@@ -194,9 +194,9 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
             )
 
         else:
-            self.open_comparision_in_browser(current_branch.upstream)
+            self.open_comparison_in_browser(current_branch.upstream)
 
-    def open_comparision_in_browser(self, upstream):
+    def open_comparison_in_browser(self, upstream):
         # type: (Upstream) -> None
         remotes = self.get_remotes()
 
