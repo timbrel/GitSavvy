@@ -9,7 +9,7 @@ TagDetails = namedtuple("TagDetails", ("sha", "tag", "human_date", "relative_dat
 
 MYPY = False
 if MYPY:
-    from typing import List, Tuple
+    from typing import List, Optional, Tuple
 
 
 class TagsMixin(mixin_base):
@@ -51,13 +51,13 @@ class TagsMixin(mixin_base):
         ]
         return self.handle_semver_tags(entries)
 
-    def get_last_local_tag(self):
+    def get_last_local_semver_tag(self):
+        # type: () -> Optional[str]
         """
         Return the last tag of the current branch. get_tags() fails to return an ordered list.
         """
-
-        tag = self.git("describe", "--tags", "--abbrev=0", throw_on_error=False).strip()
-        return tag
+        _, tags = self.get_local_tags()
+        return tags[0].tag if tags else ""
 
     def handle_semver_tags(self, entries):
         # type: (List[TagDetails]) -> Tuple[List[TagDetails], List[TagDetails]]

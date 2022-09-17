@@ -1,5 +1,4 @@
 import re
-import sublime
 from sublime_plugin import TextCommand
 
 from ...common import util
@@ -12,7 +11,6 @@ RELEASE_REGEXP = re.compile(r"^([0-9A-Za-z-]*[A-Za-z-])?([0-9]+)\.([0-9]+)\.([0-
 TAG_CREATE_PROMPT = "Enter tag:"
 TAG_CREATE_MESSAGE = "Tag \"{}\" created."
 TAG_CREATE_MESSAGE_PROMPT = "Enter message:"
-TAG_PARSE_FAIL_MESSAGE = "The last tag cannot be parsed."
 
 
 def smart_incremented_tag(tag, release_type):
@@ -126,13 +124,9 @@ class GsSmartTagCommand(PanelActionMixin, TextCommand):
     ]
 
     def smart_tag(self, release_type):
-        tag_name = None
-        last_tag_name = self.get_last_local_tag()
+        tag_name = ""
+        last_tag_name = self.get_last_local_semver_tag()
         if last_tag_name:
-            tag_name = smart_incremented_tag(last_tag_name, release_type)
-
-        if not tag_name:
-            sublime.message_dialog(TAG_PARSE_FAIL_MESSAGE)
-            return
+            tag_name = smart_incremented_tag(last_tag_name, release_type) or last_tag_name
 
         self.view.run_command("gs_tag_create", {"tag_name": tag_name})

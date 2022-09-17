@@ -26,7 +26,7 @@ class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
-        show_single_line_input_panel(REF_PROMPT, self.get_last_local_tag(), self.on_done)
+        show_single_line_input_panel(REF_PROMPT, self.get_last_local_semver_tag(), self.on_done)
 
     def on_done(self, ref):
         merge_entries = self.log(
