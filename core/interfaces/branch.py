@@ -1,4 +1,3 @@
-from itertools import groupby
 import os
 
 import sublime
@@ -146,15 +145,14 @@ class BranchInterface(ui.Interface, GitCommand):
         sorted_branches = sorted(
             [b for b in self._branches if b.is_remote],
             key=lambda branch: branch.canonical_name)
-        for remote_name, branches in groupby(sorted_branches, lambda branch: branch.remote):
-            if not remote_name:
-                continue
 
+        for remote_name in self.get_remotes():
             key = "branch_list_" + remote_name
             output_tmpl += "{" + key + "}\n"
+            branches = [b for b in sorted_branches if b.canonical_name.startswith(remote_name + "/")]
 
             @ui.partial(key)
-            def render(remote_name=remote_name, branches=tuple(branches)):
+            def render(remote_name=remote_name, branches=branches):
                 return self.template_remote.format(
                     remote_name=remote_name,
                     remote_branch_list=self.render_branch_list(branches=branches)
