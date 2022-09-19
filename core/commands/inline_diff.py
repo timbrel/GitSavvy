@@ -166,6 +166,12 @@ class gs_inline_diff(WindowCommand, GitCommand):
 
         if active_view.settings().get("git_savvy.diff_view"):
             self.open_from_diff_view(active_view)
+        elif (
+            # Or: cursor matches the scope `git-savvy.commit git-savvy.diff`
+            active_view.settings().get("git_savvy.line_history_view")
+            or active_view.settings().get("git_savvy.show_commit_view")
+        ):
+            self.open_from_commit_info(active_view)
         elif active_view.settings().get("git_savvy.show_file_at_commit_view"):
             self.open_from_show_file_at_commit_view(active_view)
         else:
@@ -223,11 +229,14 @@ class gs_inline_diff(WindowCommand, GitCommand):
             return
 
         if jump_position.commit_hash:
-            flash(view, "Sorry, not implemented for historical commits yet.")
-            return
+            raise RuntimeError(
+                "Assertion failed! "
+                "Historical diffs shouldn't have `jump_position.commit_hash`.")
 
         file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
         syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
+        base_commit = settings.get("git_savvy.diff_view.base_commit")
+        target_commit = settings.get("git_savvy.diff_view.target_commit")
 
         cur_pos = Position(
             jump_position.line - 1,
@@ -244,7 +253,9 @@ class gs_inline_diff(WindowCommand, GitCommand):
             "file_path": file_path,
             "syntax": syntax_file,
             "cached": bool(cached),
-            "match_position": cur_pos
+            "match_position": cur_pos,
+            "base_commit": base_commit,
+            "target_commit": target_commit
         })
 
     def open_from_show_file_at_commit_view(self, view):
@@ -260,6 +271,43 @@ class gs_inline_diff(WindowCommand, GitCommand):
             "syntax": settings.get("syntax"),
             "cached": False,
             "match_position": capture_cur_position(view),
+            "base_commit": base_commit,
+            "target_commit": target_commit
+        })
+
+    def open_from_commit_info(self, view):
+        # type: (sublime.View) -> None
+        settings = view.settings()
+        repo_path = settings.get("git_savvy.repo_path")
+        cursor = view.sel()[0].b
+        jump_position = diff.jump_position_to_file(
+            view,
+            SplittedDiff.from_view(view),
+            cursor
+        )
+        if not jump_position:
+            flash(view, "Could not parse for a filename and position at cursor position.")
+            return
+
+        if not jump_position.commit_hash:
+            flash(view, "Could not parse for a commit hash at cursor position.")
+            return
+
+        file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
+        syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
+        target_commit = jump_position.commit_hash
+        base_commit = self.previous_commit(target_commit, file_path)
+        cur_pos = Position(
+            jump_position.line - 1,
+            jump_position.col - 1,
+            y_offset(view, cursor)
+        )
+        self.window.run_command("gs_inline_diff_open", {
+            "repo_path": repo_path,
+            "file_path": file_path,
+            "syntax": syntax_file,
+            "cached": False,
+            "match_position": cur_pos,
             "base_commit": base_commit,
             "target_commit": target_commit
         })
@@ -336,7 +384,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
     selected and the secondary action for the view is taken (pressing `L` or
     `H`), remove those changes from the file in the working tree.
 
-    If in `cached` mode, compare the file in the index againt the same file
+    If in `cached` mode, compare the file in the index against the same file
     in the HEAD.  If a link or hunk is selected and the primary action for
     the view is taken, remove that line from the index.  Secondary actions
     are not supported in `cached` mode.
@@ -351,8 +399,8 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
 
     def _run(self, runs_on_ui_thread, match_position, raw_diff):
         # type: (bool, Optional[Position], Optional[str]) -> None
-        file_path = self.file_path
         settings = self.view.settings()
+        file_path = settings.get("git_savvy.file_path")
         in_cached_mode = settings.get("git_savvy.inline_diff_view.in_cached_mode")
         base_commit = settings.get("git_savvy.inline_diff_view.base_commit")
         target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
@@ -411,6 +459,12 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
 
         title = INLINE_DIFF_CACHED_TITLE if in_cached_mode else INLINE_DIFF_TITLE
         title += os.path.basename(file_path)
+        if target_commit:
+            title += (
+                "  ({} <-{})".format(target_commit, base_commit)
+                if base_commit
+                else "  (initial version)"
+            )
         if runs_on_ui_thread:
             self.draw(self.view, title, match_position, inline_diff_contents, hunks)
         else:
@@ -860,14 +914,15 @@ class gs_inline_diff_open_file(TextCommand, GitCommand):
             return
         row, col = coords
 
-        file_path = self.file_path
+        settings = self.view.settings()
+        file_path = settings.get("git_savvy.file_path")
         line_no, col_no = translate_pos_from_diff_view_to_file(self.view, row + 1, col + 1)
         if is_interactive_diff(self.view):
-            if self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode"):
+            if settings.get("git_savvy.inline_diff_view.in_cached_mode"):
                 diff = self.git("diff", "-U0", "--", file_path)
                 line_no = self.adjust_line_according_to_diff(diff, line_no)
         else:
-            target_commit = self.view.settings().get("git_savvy.inline_diff_view.target_commit")
+            target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
             line_no = self.find_matching_lineno(target_commit, None, line_no, file_path)
         self.open_file(window, file_path, line_no, col_no)
 
