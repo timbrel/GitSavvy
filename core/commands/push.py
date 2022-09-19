@@ -111,9 +111,9 @@ class gs_push(PushBase):
                 sublime.message_dialog("Can't push a detached HEAD.")
                 return
 
-        upstream = local_branch.tracking
+        upstream = local_branch.upstream
         if upstream:
-            remote, remote_branch = upstream.split("/", 1)
+            remote, remote_branch = upstream.remote, upstream.branch
             kont = partial(
                 enqueue_on_worker,
                 self.do_push,
@@ -123,7 +123,7 @@ class gs_push(PushBase):
                 force=force,
                 force_with_lease=force_with_lease
             )
-            if not force and not force_with_lease and "behind" in local_branch.tracking_status:
+            if not force and not force_with_lease and "behind" in upstream.status:
                 show_actions_panel(self.window, [
                     noop(
                         "Abort, '{}' is behind '{}/{}'."

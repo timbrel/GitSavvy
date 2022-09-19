@@ -202,7 +202,7 @@ class _GitCommand(SettingsMixin):
     def git(
         self,
         git_cmd,
-        *args,
+        *args,  # type: Optional[str]
         stdin=None,
         working_dir=None,
         show_panel=None,
@@ -575,7 +575,7 @@ class _GitCommand(SettingsMixin):
         return rel_path
 
     def _add_global_flags(self, git_cmd, args):
-        # type: (str, List[str]) -> List[str]
+        # type: (str, List[Optional[str]]) -> List[str]
         """
         Transforms the Git command arguments with flags indicated in the
         global GitSavvy settings.

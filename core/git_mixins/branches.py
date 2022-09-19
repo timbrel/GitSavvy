@@ -8,6 +8,12 @@ from GitSavvy.core.fns import filter_
 MYPY = False
 if MYPY:
     from typing import Dict, Iterable, NamedTuple, Optional, Sequence
+    Upstream = NamedTuple("Upstream", [
+        ("remote", str),
+        ("branch", str),
+        ("canonical_name", str),
+        ("status", str),
+    ])
 
     # For local branches, `remote` is empty and `canonical_name == name`.
     # For remote branches:
@@ -17,22 +23,23 @@ if MYPY:
         ("canonical_name", str),    # e.g. "origin/master"
         ("commit_hash", str),
         ("commit_msg", str),
-        ("tracking", str),
-        ("tracking_status", str),
         ("active", bool),
-        ("description", str)
+        ("is_remote", bool),
+        ("description", str),
+        ("upstream", Optional[Upstream]),
     ])
 else:
+    Upstream = namedtuple("Upstream", "remote branch canonical_name status")
     Branch = namedtuple("Branch", (
         "name",
         "remote",
         "canonical_name",
         "commit_hash",
         "commit_msg",
-        "tracking",
-        "tracking_status",
         "active",
-        "description"
+        "is_remote",
+        "description",
+        "upstream",
     ))
 
 BRANCH_DESCRIPTION_RE = re.compile(r"^branch\.(.*?)\.description (.*)$")
@@ -58,26 +65,16 @@ class BranchesMixin(mixin_base):
         return None
 
     def get_upstream_for_active_branch(self):
-        # type: () -> Optional[str]
-        """
-        Return ref for remote tracking branch.
-        """
-        return self.git(
-            "rev-parse",
-            "--abbrev-ref",
-            "--symbolic-full-name",
-            "@{u}",
-            throw_on_error=False
-        ).strip() or None
+        # type: () -> Optional[Upstream]
+        branch = self.get_current_branch()
+        return branch.upstream if branch else None
 
     def get_remote_for_branch(self, branch_name):
         # type: (str) -> Optional[str]
-        return self.git(
-            "config",
-            "--get",
-            "branch.{}.remote".format(branch_name),
-            throw_on_error=False
-        ).strip() or None
+        branch = self.get_local_branch_by_name(branch_name)
+        if branch and branch.upstream:
+            return branch.upstream.remote
+        return None
 
     def get_local_branch_by_name(self, branch_name):
         # type: (str) -> Optional[Branch]
@@ -110,6 +107,7 @@ class BranchesMixin(mixin_base):
                 "%(HEAD)%00"
                 "%(refname)%00"
                 "%(upstream)%00"
+                "%(upstream:remotename)%00"
                 "%(upstream:track,nobracket)%00"
                 "%(objectname)%00"
                 "%(contents:subject)"
@@ -153,7 +151,7 @@ class BranchesMixin(mixin_base):
 
     def _parse_branch_line(self, line):
         # type: (str) -> Branch
-        head, ref, upstream, upstream_status, commit_hash, commit_msg = line.split("\x00")
+        head, ref, upstream, upstream_remote, upstream_status, commit_hash, commit_msg = line.split("\x00")
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
@@ -168,16 +166,14 @@ class BranchesMixin(mixin_base):
             is_remote_upstream = upstream.startswith("refs/remotes/")
             upstream_ = upstream.split("/")[2:]
             upstream_canonical = "/".join(upstream_)
-            # `upstream_canonical` is what git returns for `@{u}` for example, but
-            # *we* do a `remote_name = split("/")[0]` everywhere so let's make a
-            # compatible version where the `remote_name` becomes `.`.
-            backwards_compatible_upstream = (
-                upstream_canonical
-                if is_remote_upstream else
-                "./{}".format(upstream_canonical)
-            )
+            if is_remote_upstream:
+                upstream_branch = "/".join(upstream_[len(upstream_remote.split("/")):])
+            else:
+                upstream_branch = upstream_canonical
+            ups = Upstream(upstream_remote, upstream_branch, upstream_canonical, upstream_status)
+
         else:
-            backwards_compatible_upstream = ""
+            ups = None
 
         return Branch(
             branch_name,
@@ -185,10 +181,10 @@ class BranchesMixin(mixin_base):
             canonical_name,
             commit_hash,
             commit_msg,
-            backwards_compatible_upstream,
-            upstream_status,
             active,
-            description=""
+            is_remote,
+            description="",
+            upstream=ups
         )
 
     def merge(self, branch_names):

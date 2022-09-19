@@ -282,9 +282,9 @@ class BranchPanel(GitCommand):
     def select_branch(self, remote=None):
         branches = list(self.get_branches())
         if self.local_branches_only:
-            self.all_branches = [b.canonical_name for b in branches if not b.remote]
+            self.all_branches = [b.canonical_name for b in branches if not b.is_remote]
         elif self.remote_branches_only:
-            self.all_branches = [b.canonical_name for b in branches if b.remote]
+            self.all_branches = [b.canonical_name for b in branches if b.is_remote]
         else:
             self.all_branches = [b.canonical_name for b in branches]
 

@@ -1,4 +1,5 @@
 from unittesting import DeferrableTestCase
+from GitSavvy.tests.mockito import mock
 from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core.commands.log_graph import describe_graph_line
@@ -12,7 +13,10 @@ examples = [
     ),
     (
         "● a3062b2 (HEAD -> optimize-graph-render, origin/optimize-graph-render) Abort .. | Thu 21:07, herr kaste",
-        {"origin"},
+        {
+            "optimize-graph-render": mock({"is_remote": False}),
+            "origin/optimize-graph-render": mock({"is_remote": True})
+        },
         {
             "commit": "a3062b2",
             "HEAD": "optimize-graph-render",
@@ -22,7 +26,7 @@ examples = [
     ),
     (
         "● a3062b2 (HEAD, origin/optimize-graph-render) Abort re.. | Thu 21:07, herr kaste",
-        {"origin"},
+        {"origin/optimize-graph-render": mock({"is_remote": True})},
         {
             "commit": "a3062b2",
             "HEAD": "a3062b2",
@@ -30,8 +34,12 @@ examples = [
         }
     ),
     (
+        # Unknown branches are put under `local_branches`.  At the time of writing the
+        # test this was an arbitrary decision.
         "● a3062b2 (HEAD -> optimize-graph-render, feat/optimize-graph-render) Abort .. | Thu 21:07, herr kaste",
-        {"origin"},
+        {
+            "optimize-graph-render": mock({"is_remote": False}),
+        },
         {
             "commit": "a3062b2",
             "HEAD": "optimize-graph-render",
@@ -41,7 +49,7 @@ examples = [
     ),
     (
         "● ad6d88c (HEAD) Use view from the argument instead of on self                   | Thu 20:56, herr kaste",
-        {"origin"},
+        {},
         {
             "commit": "ad6d88c",
             "HEAD": "ad6d88c",
@@ -49,7 +57,7 @@ examples = [
     ),
     (
         "● ad6d88c Use view from the argument instead of on self                          | Thu 20:56, herr kaste",
-        {"origin"},
+        {},
         {
             "commit": "ad6d88c",
         }
@@ -57,7 +65,7 @@ examples = [
     ),
     (
         "| ●   153dca0 (HEAD, tag: 2.20.0) Merge branch 'dev' (2 months ago) <herr kaste>",
-        {"origin"},
+        {},
         {
             "commit": "153dca0",
             "HEAD": "153dca0",
@@ -69,5 +77,5 @@ examples = [
 
 class TestDescribeGraphLine(DeferrableTestCase):
     @p.expand(examples)
-    def test_a(self, input_line, remotes, output):
-        self.assertEqual(output, describe_graph_line(input_line, remotes))
+    def test_a(self, input_line, branches, output):
+        self.assertEqual(output, describe_graph_line(input_line, branches))

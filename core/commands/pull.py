@@ -37,14 +37,13 @@ class gs_pull(GsPullBase):
     def run_async(self):
         rebase = self.rebase
         if not rebase:
-            # honor the `pull.rebase` config implictly
+            # honor the `pull.rebase` config implicitly
             pull_rebase = self.git("config", "pull.rebase", throw_on_error=False)
             if pull_rebase and pull_rebase.strip() == "true":
                 rebase = True
         upstream = self.get_upstream_for_active_branch()
         if upstream:
-            remote, remote_branch = upstream.split("/", 1)
-            self.do_pull(remote=remote, remote_branch=remote_branch, rebase=rebase)
+            self.do_pull(remote=upstream.remote, remote_branch=upstream.branch, rebase=rebase)
         else:
             self.window.run_command("gs_pull_from_branch", {"rebase": rebase})
 

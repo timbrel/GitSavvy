@@ -1,4 +1,3 @@
-from itertools import groupby
 import os
 
 import sublime
@@ -102,20 +101,21 @@ class BranchInterface(ui.Interface, GitCommand):
         return self.get_latest_commit_msg_for_head()
 
     @ui.partial("branch_list")
-    def render_branch_list(self, branches=None):
+    def render_branch_list(self, remote_name=None, branches=None):
         if not branches:
-            branches = [branch for branch in self._branches if not branch.remote]
+            branches = [branch for branch in self._branches if not branch.is_remote]
 
+        remote_name_l = len(remote_name + "/") if remote_name else 0
         return "\n".join(
             "  {indicator} {hash:.7} {name}{tracking}{description}".format(
                 indicator="▸" if branch.active else " ",
                 hash=branch.commit_hash,
-                name=branch.name,
+                name=branch.canonical_name[remote_name_l:],
                 description=" " + branch.description if branch.description else "",
                 tracking=(" ({branch}{status})".format(
-                    branch=branch.tracking,
-                    status=", " + branch.tracking_status if branch.tracking_status else ""
-                ) if branch.tracking else "")
+                    branch=branch.upstream.canonical_name,
+                    status=", " + branch.upstream.status if branch.upstream.status else ""
+                ) if branch.upstream else "")
             ) for branch in branches
         )
 
@@ -144,20 +144,19 @@ class BranchInterface(ui.Interface, GitCommand):
         render_fns = []
 
         sorted_branches = sorted(
-            [b for b in self._branches if b.remote], key=lambda branch: branch.remote)
-        for remote_name, branches in groupby(sorted_branches, lambda branch: branch.remote):
-            if not remote_name:
-                continue
+            [b for b in self._branches if b.is_remote],
+            key=lambda branch: branch.canonical_name)
 
-            branches = tuple(branches)
+        for remote_name in self.get_remotes():
             key = "branch_list_" + remote_name
             output_tmpl += "{" + key + "}\n"
+            branches = [b for b in sorted_branches if b.canonical_name.startswith(remote_name + "/")]
 
             @ui.partial(key)
             def render(remote_name=remote_name, branches=branches):
                 return self.template_remote.format(
                     remote_name=remote_name,
-                    remote_branch_list=self.render_branch_list(branches=branches)
+                    remote_branch_list=self.render_branch_list(remote_name=remote_name, branches=branches)
                 )
 
             render_fns.append(render)
@@ -432,11 +431,10 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
                         "can't fetch more info about branch {}"
                         .format(branch_name)
                     )
-                if local_branch.tracking:
-                    remote, remote_branch = local_branch.tracking.split("/", 1)
+                if local_branch.upstream:
                     self.fetch(
-                        remote=remote,
-                        remote_branch=remote_branch,
+                        remote=local_branch.upstream.remote,
+                        remote_branch=local_branch.upstream.branch,
                         local_branch=branch_name,
                     )
             else:
