@@ -321,7 +321,15 @@ class _GitCommand(SettingsMixin):
                     lambda: sublime.active_window().run_command("gs_setup_user"))
 
             raise GitSavvyError(
-                "$ {}\n\n{}{}".format(command_str, stdout_s, stderr_s),
+                "$ {}\n\n{}{}".format(
+                    command_str,
+                    stdout_s,
+                    (
+                        "<no output, exit code: {}>".format(p.returncode)
+                        if not stdout_s and not stderr_s else
+                        stderr_s
+                    )
+                ),
                 cmd=command,
                 stdout=stdout_s,
                 stderr=stderr_s,
