@@ -2295,12 +2295,20 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
             b = branches[branch_name]
             if b.upstream and b.upstream.status != "gone":
-                actions += [
-                    (
-                        "Update '{}' from '{}'".format(branch_name, b.upstream.canonical_name),
-                        partial(self.update_from_tracking, b.upstream.remote, b.upstream.branch, b.name)
-                    ),
-                ]
+                if "behind" in b.upstream.status and "ahead" not in b.upstream.status:
+                    actions += [
+                        (
+                            "Fast-forward '{}' to '{}'".format(branch_name, b.upstream.canonical_name),
+                            partial(self.move_branch, branch_name, b.upstream.canonical_name)
+                        ),
+                    ]
+                else:
+                    actions += [
+                        (
+                            "Update '{}' from '{}'".format(branch_name, b.upstream.canonical_name),
+                            partial(self.update_from_tracking, b.upstream.remote, b.upstream.branch, b.name)
+                        ),
+                    ]
 
         if file_path:
             actions += [
@@ -2430,6 +2438,10 @@ class gs_log_graph_action(WindowCommand, GitCommand):
     def checkout_b(self, branch_name):
         self.git("checkout", "-B", branch_name)
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+    def move_branch(self, branch_name, target):
+        self.git("branch", "-f", branch_name, target)
+        util.view.refresh_gitsavvy_interfaces(self.window)
 
     def delete_branch(self, branch_name):
         self.window.run_command("gs_delete_branch", {"branch": branch_name})
