@@ -1,5 +1,4 @@
 import re
-import sublime
 from sublime_plugin import TextCommand
 
 from ...common import util
@@ -7,15 +6,28 @@ from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
+MYPY = False
+if MYPY:
+    from typing import Literal, Optional
+    ReleaseTypes = Literal[
+        "patch",
+        "minor",
+        "major",
+        "prerelease",
+        "prepatch",
+        "preminor",
+        "premajor"]
+
+
 RELEASE_REGEXP = re.compile(r"^([0-9A-Za-z-]*[A-Za-z-])?([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-\.]*?)?([0-9]+))?$")
 
 TAG_CREATE_PROMPT = "Enter tag:"
 TAG_CREATE_MESSAGE = "Tag \"{}\" created."
 TAG_CREATE_MESSAGE_PROMPT = "Enter message:"
-TAG_PARSE_FAIL_MESSAGE = "The last tag cannot be parsed."
 
 
 def smart_incremented_tag(tag, release_type):
+    # type: (str, ReleaseTypes) -> Optional[str]
     """
     Automatic increment of a given tag depending on the type of release.
     """
@@ -60,6 +72,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
     """
 
     def run(self, edit, tag_name="", target_commit=None):
+        # type: (object, str, str) -> None
         window = self.view.window()
         if not window:
             return
@@ -68,6 +81,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
         show_single_line_input_panel(TAG_CREATE_PROMPT, tag_name, self.on_entered_name)
 
     def on_entered_name(self, tag_name):
+        # type: (str) -> None
         """
         After the user has entered a tag name, validate the tag name and prompt for
         a tag message.
@@ -97,6 +111,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
         )
 
     def on_entered_message(self, message):
+        # type: (str) -> None
         """
         Create a tag with the specified tag name and message.
         """
@@ -126,13 +141,10 @@ class GsSmartTagCommand(PanelActionMixin, TextCommand):
     ]
 
     def smart_tag(self, release_type):
-        tag_name = None
-        last_tag_name = self.get_last_local_tag()
+        # type: (ReleaseTypes) -> None
+        tag_name = ""
+        last_tag_name = self.get_last_local_semver_tag()
         if last_tag_name:
-            tag_name = smart_incremented_tag(last_tag_name, release_type)
-
-        if not tag_name:
-            sublime.message_dialog(TAG_PARSE_FAIL_MESSAGE)
-            return
+            tag_name = smart_incremented_tag(last_tag_name, release_type) or last_tag_name
 
         self.view.run_command("gs_tag_create", {"tag_name": tag_name})
