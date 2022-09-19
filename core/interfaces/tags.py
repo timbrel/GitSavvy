@@ -19,7 +19,7 @@ __all__ = (
     "gs_tags_refresh",
     "gs_tags_delete",
     "gs_tags_push",
-    "gs_tags_view_log",
+    "gs_tags_show_commit",
     "gs_tags_navigate_tag",
 )
 
@@ -392,7 +392,7 @@ class gs_tags_push(TagsInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class gs_tags_view_log(TagsInterfaceCommand):
+class gs_tags_show_commit(TagsInterfaceCommand):
 
     """
     Display the commit for the selected tag's hash.

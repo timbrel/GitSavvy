@@ -1167,7 +1167,7 @@
     },
     {
         "keys": ["l"],
-        "command": "gs_tags_view_log",
+        "command": "gs_tags_show_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
