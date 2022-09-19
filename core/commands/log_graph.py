@@ -73,6 +73,7 @@ if MYPY:
         TypeVar, Union
     )
     from GitSavvy.core.runtime import HopperR
+    from ..git_mixins.branches import Branch
     T = TypeVar('T')
 
 
@@ -2123,7 +2124,8 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         if not view:
             return
 
-        remotes = set(self.get_remotes().keys())
+        branches = {b.name_with_remote: b for b in self.get_branches()}
+        remotes = set(b.remote for b in branches.values() if b.remote)
         infos = list(filter_(
             describe_graph_line(line, remotes)
             for line in unique(
@@ -2136,7 +2138,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             return
 
         actions = (
-            self.actions_for_single_line(view, infos[0], remotes)
+            self.actions_for_single_line(view, infos[0], remotes, branches)
             if len(infos) == 1
             else self.actions_for_multiple_lines(view, infos, remotes)
         )
@@ -2254,8 +2256,8 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             'follow': base_commit
         })
 
-    def actions_for_single_line(self, view, info, remotes):
-        # type: (sublime.View, LineInfo, Iterable[str]) -> List[Tuple[str, Callable[[], None]]]
+    def actions_for_single_line(self, view, info, remotes, branches):
+        # type: (sublime.View, LineInfo, Iterable[str], Dict[str, Branch]) -> List[Tuple[str, Callable[[], None]]]
         commit_hash = info["commit"]
         file_path = self.file_path
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
@@ -2286,6 +2288,20 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                     partial(self.checkout, good_commit_name)
                 ),
             ]
+
+        for branch_name in info.get("local_branches", []):
+            if branch_name == info.get("HEAD"):
+                continue
+
+            b = branches[branch_name]
+            if b.tracking and b.tracking_status != "gone":
+                remote_name, branch_name_on_remote = b.tracking.split("/", 1)
+                actions += [
+                    (
+                        "Update '{}' from '{}'".format(branch_name, b.tracking),
+                        partial(self.update_from_tracking, remote_name, branch_name_on_remote, b.name)
+                    ),
+                ]
 
         if file_path:
             actions += [
@@ -2398,6 +2414,13 @@ class gs_log_graph_action(WindowCommand, GitCommand):
     def fetch(self, current_branch):
         remote = self.get_remote_for_branch(current_branch)
         self.window.run_command("gs_fetch", {"remote": remote} if remote else None)
+
+    def update_from_tracking(self, remote, remote_name, local_name):
+        # type: (str, str, str) -> None
+        self.window.run_command("gs_fetch", {
+            "remote": remote,
+            "refspec": "{}:{}".format(remote_name, local_name)
+        })
 
     def noop(self):
         return

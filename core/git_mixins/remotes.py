@@ -1,6 +1,9 @@
 import re
 from collections import OrderedDict
 
+from GitSavvy.core.fns import filter_
+
+
 MYPY = False
 if MYPY:
     from typing import Dict
@@ -32,16 +35,33 @@ class RemotesMixin(mixin_base):
         entries = self.git("remote", "-v").splitlines()
         return OrderedDict(entry.split()[:2] for entry in entries)
 
-    def fetch(self, remote=None, prune=True, branch=None, remote_branch=None):
+    def fetch(self, remote=None, refspec=None, prune=True, local_branch=None, remote_branch=None):
+        # type: (str, str, bool, str, str) -> None
         """
         If provided, fetch all changes from `remote`.  Otherwise, fetch
         changes from all remotes.
         """
+        if remote is None:
+            if refspec is not None:
+                raise TypeError("do not set `refspec` when `remote` is `None`")
+            if local_branch is not None:
+                raise TypeError("do not set `local_branch` when `remote` is `None`")
+            if remote_branch is not None:
+                raise TypeError("do not set `remote_branch` when `remote` is `None`")
+        if refspec is not None:
+            if local_branch is not None:
+                raise TypeError("do not set `local_branch` when `refspec` is set")
+            if remote_branch is not None:
+                raise TypeError("do not set `remote_branch` when `refspec` is set")
+
+        if refspec is None:
+            refspec = ":".join(filter_((remote_branch, local_branch)))
+
         self.git(
             "fetch",
             "--prune" if prune else None,
             remote if remote else "--all",
-            branch if not remote_branch else "{}:{}".format(remote_branch, branch)
+            refspec or None,
         )
 
     def pull(self, remote=None, remote_branch=None, rebase=False):

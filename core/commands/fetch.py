@@ -1,11 +1,12 @@
-from ..runtime import enqueue_on_worker
+from ..runtime import on_worker
 from ...common import util
 from ..ui_mixins.quick_panel import show_remote_panel
-from GitSavvy.core.base_commands import GsWindowCommand
+from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
 
 
 __all__ = (
     "gs_fetch",
+    "gs_ff_update_branch"
 )
 
 
@@ -28,18 +29,40 @@ class gs_fetch(GsWindowCommand):
         "remote": ask_for_remote
     }
 
-    def run(self, remote):
-        # type: (str) -> None
-        enqueue_on_worker(self.do_fetch, remote)
-
-    def do_fetch(self, remote):
-        # type: (str) -> None
+    @on_worker
+    def run(self, remote, refspec=None):
         fetch_all = remote == "<ALL>"
         if fetch_all:
             self.window.status_message("Start fetching all remotes...")
         else:
             self.window.status_message("Start fetching {}...".format(remote))
 
-        self.fetch(None if fetch_all else remote)
+        self.fetch(None if fetch_all else remote, refspec)
         self.window.status_message("Fetch complete.")
         util.view.refresh_gitsavvy_interfaces(self.window)
+
+
+class gs_ff_update_branch(GsWindowCommand):
+    defaults = {
+        "branch": ask_for_branch(local_branches_only=True)
+    }
+
+    @on_worker
+    def run(self, branch):
+        local_branch = self.get_local_branch_by_name(branch)
+        if not local_branch:
+            raise RuntimeError(
+                "repo and view inconsistent.  "
+                "can't fetch more info about branch {}"
+                .format(branch)
+            )
+
+        if not local_branch.tracking:
+            self.window.status_message("{} has no upstream set.".format(branch))
+            return
+
+        remote, remote_branch = local_branch.tracking.split("/", 1)
+        self.window.run_command("gs_fetch", {
+            "remote": remote,
+            "refspec": "{}:{}".format(remote_branch, branch)
+        })
