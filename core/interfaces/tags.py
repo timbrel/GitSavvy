@@ -126,7 +126,7 @@ class TagsInterface(ui.Interface, GitCommand):
                                                 # the syntax expects the remote section begins
             filter_((
                 "\n".join(
-                    "    {} {:<10}".format(
+                    "    {} {}".format(
                         self.get_short_hash(tag.sha),
                         tag.tag,
                     )
