@@ -2124,7 +2124,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         if not view:
             return
 
-        branches = {b.name_with_remote: b for b in self.get_branches()}
+        branches = {b.canonical_name: b for b in self.get_branches()}
         remotes = set(b.remote for b in branches.values() if b.remote)
         infos = list(filter_(
             describe_graph_line(line, remotes)

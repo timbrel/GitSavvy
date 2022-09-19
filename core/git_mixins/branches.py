@@ -2,15 +2,19 @@ from collections import namedtuple
 import re
 
 from GitSavvy.core.git_command import mixin_base
+from GitSavvy.core.fns import filter_
 
 
 MYPY = False
 if MYPY:
     from typing import Dict, Iterable, NamedTuple, Optional, Sequence
+
+    # For local branches, `remote` is empty and `canonical_name == name`.
+    # For remote branches:
     Branch = NamedTuple("Branch", [
-        ("name", str),
-        ("remote", Optional[str]),
-        ("name_with_remote", str),
+        ("name", str),              # e.g. "master"
+        ("remote", Optional[str]),  # e.g. "origin"
+        ("canonical_name", str),    # e.g. "origin/master"
         ("commit_hash", str),
         ("commit_msg", str),
         ("tracking", str),
@@ -22,7 +26,7 @@ else:
     Branch = namedtuple("Branch", (
         "name",
         "remote",
-        "name_with_remote",
+        "canonical_name",
         "commit_hash",
         "commit_msg",
         "tracking",
@@ -101,24 +105,32 @@ class BranchesMixin(mixin_base):
         """
         stdout = self.git(
             "for-each-ref",
-            "--format=%(HEAD)%00%(refname)%00%(upstream)%00%(upstream:track)%00%(objectname)%00%(contents:subject)",
+            (
+                "--format="
+                "%(HEAD)%00"
+                "%(refname)%00"
+                "%(upstream)%00"
+                "%(upstream:track,nobracket)%00"
+                "%(objectname)%00"
+                "%(contents:subject)"
+            ),
             "--sort=-committerdate" if sort_by_recent else None,
             *refs
-        )
+        )  # type: str
         branches = (
             branch
             for branch in (
                 self._parse_branch_line(line)
-                for line in stdout.split("\n")
+                for line in filter_(stdout.splitlines())
             )
-            if branch and branch.name != "HEAD"
+            if branch.name != "HEAD"
         )
         if not fetch_descriptions:
             return branches
 
         descriptions = self.fetch_branch_description_subjects()
         return (
-            branch._replace(description=descriptions.get(branch.name_with_remote, ""))
+            branch._replace(description=descriptions.get(branch.canonical_name, ""))
             for branch in branches
         )
 
@@ -140,30 +152,41 @@ class BranchesMixin(mixin_base):
         return rv
 
     def _parse_branch_line(self, line):
-        # type: (str) -> Optional[Branch]
-        line = line.strip()
-        if not line:
-            return None
-        head, ref, tracking_branch, tracking_status, commit_hash, commit_msg = line.split("\x00")
+        # type: (str) -> Branch
+        head, ref, upstream, upstream_status, commit_hash, commit_msg = line.split("\x00")
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
+        ref_ = ref.split("/")[2:]
+        canonical_name = "/".join(ref_)
+        if is_remote:
+            remote, branch_name = ref_[0], "/".join(ref_[1:])
+        else:
+            remote, branch_name = None, canonical_name
 
-        branch_name = ref[13:] if is_remote else ref[11:]
-        remote = ref[13:].split("/", 1)[0] if is_remote else None
-        tracking_branch = tracking_branch[13:]
-        if tracking_status:
-            # remove brackets
-            tracking_status = tracking_status[1:len(tracking_status) - 1]
+        if upstream:
+            is_remote_upstream = upstream.startswith("refs/remotes/")
+            upstream_ = upstream.split("/")[2:]
+            upstream_canonical = "/".join(upstream_)
+            # `upstream_canonical` is what git returns for `@{u}` for example, but
+            # *we* do a `remote_name = split("/")[0]` everywhere so let's make a
+            # compatible version where the `remote_name` becomes `.`.
+            backwards_compatible_upstream = (
+                upstream_canonical
+                if is_remote_upstream else
+                "./{}".format(upstream_canonical)
+            )
+        else:
+            backwards_compatible_upstream = ""
 
         return Branch(
-            "/".join(branch_name.split("/")[1:]) if is_remote else branch_name,
-            remote,
             branch_name,
+            remote,
+            canonical_name,
             commit_hash,
             commit_msg,
-            tracking_branch,
-            tracking_status,
+            backwards_compatible_upstream,
+            upstream_status,
             active,
             description=""
         )
