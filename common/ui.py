@@ -322,6 +322,11 @@ class InterfaceCommand(GsTextCommand):
         self.interface = interface
         return super().run_(edit_token, args)
 
+    def region_name_for(self, section):
+        # type: (str) -> str
+        return "git_savvy_interface." + section
+
+
 def region_as_tuple(region):
     # type: (sublime.Region) -> Tuple[int, int]
     return region.begin(), region.end()
@@ -343,6 +348,22 @@ def unique_selected_lines(view):
     # type: (sublime.View) -> List[sublime.Region]
     return list(unique_regions(flatten(view.lines(s) for s in view.sel())))
 
+
+def extract_by_selector(view, item_selector, within_section=None):
+    # type: (sublime.View, str, str) -> List[str]
+    selected_lines = unique_selected_lines(view)
+    items = view.find_by_selector(item_selector)
+    acceptable_sections = (
+        view.get_regions(within_section)
+        if within_section else
+        [sublime.Region(0, view.size())]
+    )
+    return [
+        view.substr(item)
+        for section in acceptable_sections
+        for line in selected_lines if section.contains(line)
+        for item in items if line.contains(item)
+    ]
 
 
 class GsInterfaceCloseCommand(TextCommand):
