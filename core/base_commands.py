@@ -29,7 +29,10 @@ class WithProvideWindow:
     def run_(self, edit_token, args):
         window = self.view.window()  # type: ignore[attr-defined]
         if not window:
-            return
+            raise RuntimeError(
+                "Assertion failed! "
+                "'{}' is already detached".format(self.view)
+            )
         # Sublime instantiates `TextCommand`s for each view once.  Moving
         # a view to another window creates a new view.
         # We want to make sure that `self` is a unique context even when we
