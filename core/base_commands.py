@@ -30,13 +30,12 @@ class WithProvideWindow:
         window = self.view.window()  # type: ignore[attr-defined]
         if not window:
             return
-        # Very difficult to tell when Sublime actually instantiates
-        # new objects (selfs).  However, for some commands a TextCommand
-        # instance is long-lived.  Since we usually defer to the worker
-        # or some other thread **and** want to use `self` as the current
-        # context object, we clone manually here.
-        # So we get a new context per call which also means we can't store
-        # state on `self` to be available on the next call.
+        # Sublime instantiates `TextCommand`s for each view once.  Moving
+        # a view to another window creates a new view.
+        # We want to make sure that `self` is a unique context even when we
+        # defer to the other threads.  T.i. `self` is unique, stable and can
+        # be used as a store for *one* call.  `self` cannot be used as a store
+        # across *multiple* calls.
         cloned = self.__class__(self.view)  # type: ignore[attr-defined, call-arg]
         cloned.window = window
         return super(WithProvideWindow, cloned).run_(edit_token, args)  # type: ignore[misc]
