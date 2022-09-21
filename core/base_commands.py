@@ -133,8 +133,9 @@ def _get_run_command(cmd):
 
 
 class GsTextCommand(
-    WithInputHandlers,
+    # order matters(!), `WithProvideWindow` also ensures unique instances per call
     WithProvideWindow,
+    WithInputHandlers,
     sublime_plugin.TextCommand,
     GitCommand,
 ):
