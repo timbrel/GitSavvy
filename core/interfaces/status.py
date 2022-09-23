@@ -20,7 +20,7 @@ flatten = chain.from_iterable
 
 MYPY = False
 if MYPY:
-    from typing import Iterable, Iterator, List, Optional, Tuple
+    from typing import Iterable, List, Optional
 
 
 # Expected
@@ -397,31 +397,9 @@ def get_subjects(view, *sections):
     )
 
 
-def region_as_tuple(region):
-    # type: (sublime.Region) -> Tuple[int, int]
-    return region.begin(), region.end()
-
-
-def region_from_tuple(tuple_):
-    # type: (Tuple[int, int]) -> sublime.Region
-    return sublime.Region(*tuple_)
-
-
-def unique_regions(regions):
-    # type: (Iterable[sublime.Region]) -> Iterator[sublime.Region]
-    # Regions are not hashable so we unpack them to tuples,
-    # then use set, finally pack them again
-    return map(region_from_tuple, set(map(region_as_tuple, regions)))
-
-
-def unique_selected_lines(view):
-    # type: (sublime.View) -> List[sublime.Region]
-    return list(unique_regions(flatten(view.lines(s) for s in view.sel())))
-
-
 def get_selected_subjects(view, *sections):
     # type: (sublime.View, str) -> List[str]
-    selected_lines = unique_selected_lines(view)
+    selected_lines = ui.unique_selected_lines(view)
     return [
         view.substr(subject)
         for subject in get_subjects(view, *sections)

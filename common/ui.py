@@ -10,11 +10,12 @@ from ..core.runtime import enqueue_on_worker
 from ..core.settings import GitSavvySettings
 from ..core.utils import focus_view
 from GitSavvy.core.base_commands import GsTextCommand
+from GitSavvy.core.fns import flatten
 
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Optional, Type
+    from typing import Dict, Iterable, Iterator, List, Optional, Tuple, Type
 
 
 interfaces = {}  # type: Dict[sublime.ViewId, Interface]
@@ -320,6 +321,28 @@ class InterfaceCommand(GsTextCommand):
             )
         self.interface = interface
         return super().run_(edit_token, args)
+
+def region_as_tuple(region):
+    # type: (sublime.Region) -> Tuple[int, int]
+    return region.begin(), region.end()
+
+
+def region_from_tuple(tuple_):
+    # type: (Tuple[int, int]) -> sublime.Region
+    return sublime.Region(*tuple_)
+
+
+def unique_regions(regions):
+    # type: (Iterable[sublime.Region]) -> Iterator[sublime.Region]
+    # Regions are not hashable so we unpack them to tuples,
+    # then use set, finally pack them again
+    return map(region_from_tuple, set(map(region_as_tuple, regions)))
+
+
+def unique_selected_lines(view):
+    # type: (sublime.View) -> List[sublime.Region]
+    return list(unique_regions(flatten(view.lines(s) for s in view.sel())))
+
 
 
 class GsInterfaceCloseCommand(TextCommand):
