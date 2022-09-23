@@ -227,6 +227,7 @@ class Interface():
         self.regions = {}
 
     def get_view_regions(self, key):
+        # type: (str) -> List[sublime.Region]
         return self.view.get_regions("git_savvy_interface." + key)
 
     def get_selection_line(self):
