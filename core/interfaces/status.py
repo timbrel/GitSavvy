@@ -1,5 +1,4 @@
 from functools import partial, wraps
-from itertools import chain
 import os
 import threading
 
@@ -14,8 +13,6 @@ from ...common import util
 from GitSavvy.core import store
 from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import noop, show_actions_panel
-
-flatten = chain.from_iterable
 
 
 MYPY = False
@@ -387,24 +384,17 @@ class StatusInterface(ui.Interface, GitCommand):
 ui.register_listeners(StatusInterface)
 
 
-def get_subjects(view, *sections):
-    # type: (sublime.View, str) -> Iterable[sublime.Region]
-    return flatten(
-        view.find_by_selector(
-            'meta.git-savvy.status.section.{} meta.git-savvy.status.subject'.format(section)
-        )
+def _get_subjects_selector(sections):
+    # type: (Iterable[str]) -> str
+    return ", ".join(
+        'meta.git-savvy.status.section.{} meta.git-savvy.status.subject'.format(section)
         for section in sections
     )
 
 
 def get_selected_subjects(view, *sections):
     # type: (sublime.View, str) -> List[str]
-    selected_lines = ui.unique_selected_lines(view)
-    return [
-        view.substr(subject)
-        for subject in get_subjects(view, *sections)
-        if any(line.contains(subject) for line in selected_lines)
-    ]
+    return ui.extract_by_selector(view, _get_subjects_selector(sections))
 
 
 def get_selected_files(view, base_path, *sections):
