@@ -215,7 +215,7 @@ class Interface():
 
         return keyed_content
 
-    def update(self, key, content):
+    def update_view_section(self, key, content):
         self.view.run_command("gs_update_region", {
             "key": "git_savvy_interface." + key,
             "content": content
