@@ -17,7 +17,24 @@ from GitSavvy.core.utils import noop, show_actions_panel
 
 MYPY = False
 if MYPY:
-    from typing import Iterable, List, Optional
+    from typing import Iterable, List, Optional, TypedDict
+    from ..git_mixins.stash import Stash
+    StatusViewState = TypedDict(
+        "StatusViewState",
+        {
+            "staged_files": List[FileStatus],
+            "unstaged_files": List[FileStatus],
+            "untracked_files": List[FileStatus],
+            "merge_conflicts": List[FileStatus],
+            "clean": bool,
+            "long_status": str,
+            "git_root": str,
+            "show_help": bool,
+            "head": str,
+            "stashes": List[Stash],
+        },
+        total=False
+    )
 
 
 # Expected
@@ -47,7 +64,7 @@ EXTRACT_FILENAME_RE = (
 
 def distinct_until_state_changed(just_render_fn):
     """Custom `lru_cache`-look-alike to minimize redraws."""
-    previous_state = {}
+    previous_state = {}  # type: StatusViewState
 
     @wraps(just_render_fn)
     def wrapper(self, *args, **kwargs):
@@ -190,7 +207,7 @@ class StatusInterface(ui.Interface, GitCommand):
             'show_help': True,
             'head': '',
             'stashes': []
-        }
+        }  # type: StatusViewState
         super().__init__(*args, **kwargs)
 
     def title(self):
