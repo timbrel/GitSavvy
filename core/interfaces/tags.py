@@ -13,6 +13,17 @@ from GitSavvy.core.runtime import enqueue_on_worker, on_worker
 from GitSavvy.core.utils import flash
 
 
+__all__ = (
+    "gs_show_tags",
+    "gs_tags_toggle_remotes",
+    "gs_tags_refresh",
+    "gs_tags_delete",
+    "gs_tags_push",
+    "gs_tags_view_log",
+    "gs_tags_navigate_tag",
+)
+
+
 MYPY = False
 if MYPY:
     from typing import List
@@ -32,7 +43,7 @@ START_PUSH_MESSAGE = "Pushing tag..."
 END_PUSH_MESSAGE = "Push complete."
 
 
-class GsShowTagsCommand(WindowCommand, GitCommand):
+class gs_show_tags(WindowCommand, GitCommand):
 
     """
     Open a branch dashboard for the active Git repository.
@@ -251,7 +262,7 @@ class TagsInterfaceCommand(ui.InterfaceCommand):
         return self.region_name_for("remote_tags_list_" + remote_name)
 
 
-class GsTagsToggleRemotesCommand(TagsInterfaceCommand):
+class gs_tags_toggle_remotes(TagsInterfaceCommand):
 
     """
     Toggle display of the remote tags.
@@ -267,7 +278,7 @@ class GsTagsToggleRemotesCommand(TagsInterfaceCommand):
         interface.render()
 
 
-class GsTagsRefreshCommand(TagsInterfaceCommand):
+class gs_tags_refresh(TagsInterfaceCommand):
 
     """
     Refresh the tags dashboard.
@@ -281,7 +292,7 @@ class GsTagsRefreshCommand(TagsInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsTagsDeleteCommand(TagsInterfaceCommand):
+class gs_tags_delete(TagsInterfaceCommand):
 
     """
     Delete selected tag(s).
@@ -325,7 +336,7 @@ class GsTagsDeleteCommand(TagsInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsTagsPushCommand(TagsInterfaceCommand):
+class gs_tags_push(TagsInterfaceCommand):
 
     """
     Displays a panel of all remotes defined for the repository, then push
@@ -381,7 +392,7 @@ class GsTagsPushCommand(TagsInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsTagsViewLogCommand(TagsInterfaceCommand):
+class gs_tags_view_log(TagsInterfaceCommand):
 
     """
     Display the commit for the selected tag's hash.
@@ -400,7 +411,7 @@ class GsTagsViewLogCommand(TagsInterfaceCommand):
             self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
 
 
-class GsTagsNavigateTagCommand(GsNavigate):
+class gs_tags_navigate_tag(GsNavigate):
 
     """
     Move cursor to the next (or previous) selectable file in the dashboard.
