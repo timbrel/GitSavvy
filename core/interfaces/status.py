@@ -15,6 +15,28 @@ from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import noop, show_actions_panel
 
 
+__all__ = (
+    "gs_show_status",
+    "gs_status_open_file",
+    "gs_status_open_file_on_remote",
+    "gs_status_diff_inline",
+    "gs_status_diff",
+    "gs_status_stage_file",
+    "gs_status_unstage_file",
+    "gs_status_discard_changes_to_file",
+    "gs_status_stage_all_files",
+    "gs_status_stage_all_files_with_untracked",
+    "gs_status_unstage_all_files",
+    "gs_status_discard_all_changes",
+    "gs_status_ignore_file",
+    "gs_status_ignore_pattern",
+    "gs_status_stash",
+    "gs_status_launch_merge_tool",
+    "gs_status_use_commit_version",
+    "gs_status_use_base_version",
+)
+
+
 MYPY = False
 if MYPY:
     from typing import Iterable, List, Optional, TypedDict
@@ -78,7 +100,7 @@ def distinct_until_state_changed(just_render_fn):
     return wrapper
 
 
-class GsShowStatusCommand(WindowCommand, GitCommand):
+class gs_show_status(WindowCommand, GitCommand):
 
     """
     Open a status view for the active git repository.
@@ -431,7 +453,7 @@ def get_selected_files(view, base_path, *sections):
     ]
 
 
-class GsStatusOpenFileCommand(StatusInterfaceCommand):
+class gs_status_open_file(StatusInterfaceCommand):
 
     """
     For every file that is selected or under a cursor, open a that
@@ -444,7 +466,7 @@ class GsStatusOpenFileCommand(StatusInterfaceCommand):
             self.window.open_file(fpath)
 
 
-class GsStatusOpenFileOnRemoteCommand(StatusInterfaceCommand):
+class gs_status_open_file_on_remote(StatusInterfaceCommand):
 
     """
     For every file that is selected or under a cursor, open a new browser
@@ -458,7 +480,7 @@ class GsStatusOpenFileOnRemoteCommand(StatusInterfaceCommand):
             self.view.run_command("gs_github_open_file_on_remote", {"fpath": file_paths})
 
 
-class GsStatusDiffInlineCommand(StatusInterfaceCommand):
+class gs_status_diff_inline(StatusInterfaceCommand):
 
     """
     For every file selected or under a cursor, open a new inline-diff view for
@@ -496,7 +518,7 @@ class GsStatusDiffInlineCommand(StatusInterfaceCommand):
             })
 
 
-class GsStatusDiffCommand(StatusInterfaceCommand):
+class gs_status_diff(StatusInterfaceCommand):
 
     """
     For every file selected or under a cursor, open a new diff view for
@@ -572,7 +594,7 @@ class gs_status_stage_file(StatusInterfaceCommand):
             self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusUnstageFileCommand(StatusInterfaceCommand):
+class gs_status_unstage_file(StatusInterfaceCommand):
 
     """
     For every file that is selected or under a cursor, if that file is
@@ -588,7 +610,7 @@ class GsStatusUnstageFileCommand(StatusInterfaceCommand):
             self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusDiscardChangesToFileCommand(StatusInterfaceCommand):
+class gs_status_discard_changes_to_file(StatusInterfaceCommand):
 
     """
     For every file that is selected or under a cursor, if that file is
@@ -632,7 +654,7 @@ class GsStatusDiscardChangesToFileCommand(StatusInterfaceCommand):
         return None
 
 
-class GsStatusStageAllFilesCommand(StatusInterfaceCommand):
+class gs_status_stage_all_files(StatusInterfaceCommand):
 
     """
     Stage all unstaged files.
@@ -644,7 +666,7 @@ class GsStatusStageAllFilesCommand(StatusInterfaceCommand):
         self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusStageAllFilesWithUntrackedCommand(StatusInterfaceCommand):
+class gs_status_stage_all_files_with_untracked(StatusInterfaceCommand):
 
     """
     Stage all unstaged files, including new files.
@@ -656,7 +678,7 @@ class GsStatusStageAllFilesWithUntrackedCommand(StatusInterfaceCommand):
         self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusUnstageAllFilesCommand(StatusInterfaceCommand):
+class gs_status_unstage_all_files(StatusInterfaceCommand):
 
     """
     Unstage all staged changes.
@@ -668,7 +690,7 @@ class GsStatusUnstageAllFilesCommand(StatusInterfaceCommand):
         self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusDiscardAllChangesCommand(StatusInterfaceCommand):
+class gs_status_discard_all_changes(StatusInterfaceCommand):
 
     """
     Reset all unstaged files to HEAD.
@@ -682,7 +704,7 @@ class GsStatusDiscardAllChangesCommand(StatusInterfaceCommand):
         self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusIgnoreFileCommand(StatusInterfaceCommand):
+class gs_status_ignore_file(StatusInterfaceCommand):
 
     """
     For each file that is selected or under a cursor, add an
@@ -701,7 +723,7 @@ class GsStatusIgnoreFileCommand(StatusInterfaceCommand):
             self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusIgnorePatternCommand(StatusInterfaceCommand):
+class gs_status_ignore_pattern(StatusInterfaceCommand):
 
     """
     For the first file that is selected or under a cursor (other
@@ -718,7 +740,7 @@ class GsStatusIgnorePatternCommand(StatusInterfaceCommand):
             self.window.run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
 
 
-class GsStatusStashCommand(StatusInterfaceCommand):
+class gs_status_stash(StatusInterfaceCommand):
 
     """
     Run action from status dashboard to stash commands. Need to have this command to
@@ -753,7 +775,7 @@ class GsStatusStashCommand(StatusInterfaceCommand):
             self.window.run_command("gs_stash_drop", {"stash_id": ids[0]})
 
 
-class GsStatusLaunchMergeToolCommand(StatusInterfaceCommand):
+class gs_status_launch_merge_tool(StatusInterfaceCommand):
 
     """
     Launch external merge tool for selected file.
@@ -771,7 +793,7 @@ class GsStatusLaunchMergeToolCommand(StatusInterfaceCommand):
         sublime.set_timeout_async(lambda: self.launch_tool_for_file(file_paths[0]), 0)
 
 
-class GsStatusUseCommitVersionCommand(StatusInterfaceCommand):
+class gs_status_use_commit_version(StatusInterfaceCommand):
     # TODO: refactor this alongside interfaces.rebase.GsRebaseUseCommitVersionCommand
 
     def run(self, edit):
@@ -796,7 +818,7 @@ class GsStatusUseCommitVersionCommand(StatusInterfaceCommand):
         return False
 
 
-class GsStatusUseBaseVersionCommand(StatusInterfaceCommand):
+class gs_status_use_base_version(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
