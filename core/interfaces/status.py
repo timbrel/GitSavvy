@@ -533,12 +533,8 @@ class gs_status_diff(StatusInterfaceCommand):
         )
         cached_files = get_selected_files(self.view, repo_path, 'staged')
 
-        sublime.set_timeout_async(
-            lambda: self.load_diff_windows(
-                self.window,
-                non_cached_files,
-                cached_files
-            )
+        enqueue_on_worker(
+            self.load_diff_windows, self.window, non_cached_files, cached_files
         )
 
     def load_diff_windows(self, window, non_cached_files, cached_files):
