@@ -427,6 +427,17 @@ class StatusInterfaceCommand(ui.InterfaceCommand):
     interface_type = StatusInterface
     interface = None  # type: StatusInterface
 
+    def get_selected_files(self, base_path, *sections):
+        # type: (str, str) -> List[str]
+        if not sections:
+            sections = ('staged', 'unstaged', 'untracked', 'merge-conflicts')
+
+        make_abs_path = partial(os.path.join, base_path)
+        return [
+            os.path.normpath(make_abs_path(filename))
+            for filename in get_selected_subjects(self.view, *sections)
+        ]
+
 
 def _get_subjects_selector(sections):
     # type: (Iterable[str]) -> str
@@ -441,18 +452,6 @@ def get_selected_subjects(view, *sections):
     return ui.extract_by_selector(view, _get_subjects_selector(sections))
 
 
-def get_selected_files(view, base_path, *sections):
-    # type: (sublime.View, str, str) -> List[str]
-    if not sections:
-        sections = ('staged', 'unstaged', 'untracked', 'merge-conflicts')
-
-    make_abs_path = partial(os.path.join, base_path)
-    return [
-        os.path.normpath(make_abs_path(filename))
-        for filename in get_selected_subjects(view, *sections)
-    ]
-
-
 class gs_status_open_file(StatusInterfaceCommand):
 
     """
@@ -462,7 +461,7 @@ class gs_status_open_file(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        for fpath in get_selected_files(self.view, self.repo_path):
+        for fpath in self.get_selected_files(self.repo_path):
             self.window.open_file(fpath)
 
 
@@ -490,8 +489,8 @@ class gs_status_diff_inline(StatusInterfaceCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         repo_path = self.repo_path
-        non_cached_files = get_selected_files(self.view, repo_path, 'unstaged', 'merge-conflicts')
-        cached_files = get_selected_files(self.view, repo_path, 'staged')
+        non_cached_files = self.get_selected_files(repo_path, 'unstaged', 'merge-conflicts')
+        cached_files = self.get_selected_files(repo_path, 'staged')
 
         enqueue_on_worker(
             self.load_inline_diff_views, self.window, non_cached_files, cached_files
@@ -528,10 +527,9 @@ class gs_status_diff(StatusInterfaceCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         repo_path = self.repo_path
-        non_cached_files = get_selected_files(
-            self.view, repo_path, 'unstaged', 'untracked', 'merge-conflicts'
-        )
-        cached_files = get_selected_files(self.view, repo_path, 'staged')
+        non_cached_files = self.get_selected_files(
+            repo_path, 'unstaged', 'untracked', 'merge-conflicts')
+        cached_files = self.get_selected_files(repo_path, 'staged')
 
         enqueue_on_worker(
             self.load_diff_windows, self.window, non_cached_files, cached_files
