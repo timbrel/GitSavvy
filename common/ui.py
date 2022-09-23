@@ -239,13 +239,6 @@ class Interface():
         selection = selections[0]
         return selection, util.view.get_lines_from_regions(self.view, [selection])[0]
 
-    def get_selection_lines_in_region(self, region):
-        return util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=self.get_view_regions(region)
-        )
-
 
 def partial(key):
     def decorator(fn):
