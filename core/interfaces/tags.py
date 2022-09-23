@@ -11,7 +11,7 @@ from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker
-from GitSavvy.core.utils import flash
+from GitSavvy.core.utils import flash, uprint
 
 
 __all__ = (
@@ -323,7 +323,7 @@ class gs_tags_delete(TagsInterfaceCommand):
             match = EXTRACT_COMMIT.search(rv.strip())
             if match:
                 commit = match.group(1)
-                print(DELETE_UNDO_MESSAGE.format(tag, commit))
+                uprint(DELETE_UNDO_MESSAGE.format(tag, commit))
 
         flash(self.view, TAG_DELETE_MESSAGE)
         util.view.refresh_gitsavvy(self.view)

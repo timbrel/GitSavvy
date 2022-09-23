@@ -8,7 +8,7 @@ from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelCommandMixin
 from ..ui_mixins.quick_panel import show_stash_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
-from ..utils import flash, hprint
+from ..utils import flash, hprint, uprint
 from ..view import replace_view_content
 from ...common import util
 
@@ -145,7 +145,7 @@ class GsStashDropCommand(SelectStashIdMixin, GitCommand):
         match = EXTRACT_COMMIT.search(rv.strip())
         if match:
             commit = match.group(1)
-            print(DROP_UNDO_MESSAGE.format(stash_id, commit))
+            uprint(DROP_UNDO_MESSAGE.format(stash_id, commit))
         flash(
             self.view,
             "Successfully dropped stash ({}). "

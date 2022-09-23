@@ -7,7 +7,7 @@ from ..git_command import GitSavvyError
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ...common import util
 from GitSavvy.core.base_commands import ask_for_local_branch, GsWindowCommand
-from GitSavvy.core.utils import noop, show_actions_panel
+from GitSavvy.core.utils import noop, show_actions_panel, uprint
 
 
 __all__ = (
@@ -102,7 +102,7 @@ class gs_delete_branch(GsWindowCommand):
         match = EXTRACT_COMMIT.search(rv.strip())
         if match:
             commit = match.group(1)
-            print(DELETE_UNDO_MESSAGE.format(branch, commit))
+            uprint(DELETE_UNDO_MESSAGE.format(branch, commit))
         self.window.status_message(
             "Deleted local branch ({}).".format(branch)
             + (" Open Sublime console for undo instructions." if match else "")

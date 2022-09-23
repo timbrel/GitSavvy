@@ -74,6 +74,16 @@ def hprint(msg):
     print(msg)
 
 
+def uprint(msg):
+    # type: (str) -> None
+    """Print help message for undoing actions"""
+    # Note this does a plain and boring print. We use it to
+    # mark some usages of print throughout the code-base.
+    # We later might find better ways to show these help
+    # messages to the user.
+    print(msg)
+
+
 def flash(view, message):
     # type: (sublime.View, str) -> None
     """ Flash status message on view's window. """
