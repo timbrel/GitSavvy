@@ -427,6 +427,17 @@ class StatusInterfaceCommand(ui.InterfaceCommand):
     interface_type = StatusInterface
     interface = None  # type: StatusInterface
 
+    def _get_subjects_selector(self, sections):
+        # type: (Iterable[str]) -> str
+        return ", ".join(
+            'meta.git-savvy.status.section.{} meta.git-savvy.status.subject'.format(section)
+            for section in sections
+        )
+
+    def get_selected_subjects(self, *sections):
+        # type: (str) -> List[str]
+        return ui.extract_by_selector(self.view, self._get_subjects_selector(sections))
+
     def get_selected_files(self, base_path, *sections):
         # type: (str, str) -> List[str]
         if not sections:
@@ -435,21 +446,8 @@ class StatusInterfaceCommand(ui.InterfaceCommand):
         make_abs_path = partial(os.path.join, base_path)
         return [
             os.path.normpath(make_abs_path(filename))
-            for filename in get_selected_subjects(self.view, *sections)
+            for filename in self.get_selected_subjects(*sections)
         ]
-
-
-def _get_subjects_selector(sections):
-    # type: (Iterable[str]) -> str
-    return ", ".join(
-        'meta.git-savvy.status.section.{} meta.git-savvy.status.subject'.format(section)
-        for section in sections
-    )
-
-
-def get_selected_subjects(view, *sections):
-    # type: (sublime.View, str) -> List[str]
-    return ui.extract_by_selector(view, _get_subjects_selector(sections))
 
 
 class gs_status_open_file(StatusInterfaceCommand):
@@ -474,7 +472,7 @@ class gs_status_open_file_on_remote(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        file_paths = get_selected_subjects(self.view, 'staged', 'unstaged', 'merge-conflicts')
+        file_paths = self.get_selected_subjects('staged', 'unstaged', 'merge-conflicts')
         if file_paths:
             self.view.run_command("gs_github_open_file_on_remote", {"fpath": file_paths})
 
@@ -559,7 +557,7 @@ class gs_status_stage_file(StatusInterfaceCommand):
 
     def run(self, edit, check=True):
         # type: (sublime.Edit, bool) -> None
-        files_with_merge_conflicts = get_selected_subjects(self.view, 'merge-conflicts')
+        files_with_merge_conflicts = self.get_selected_subjects('merge-conflicts')
         if check and files_with_merge_conflicts:
             failed_files = self.check_for_conflict_markers(files_with_merge_conflicts)
             if failed_files:
@@ -579,7 +577,7 @@ class gs_status_stage_file(StatusInterfaceCommand):
                 return
 
         file_paths = (
-            get_selected_subjects(self.view, 'unstaged', 'untracked')
+            self.get_selected_subjects('unstaged', 'untracked')
             + files_with_merge_conflicts
         )
         if file_paths:
@@ -597,7 +595,7 @@ class gs_status_unstage_file(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        file_paths = get_selected_subjects(self.view, 'staged', 'merge-conflicts')
+        file_paths = self.get_selected_subjects('staged', 'merge-conflicts')
         if file_paths:
             self.unstage_file(*file_paths)
             self.window.status_message("Unstaged files successfully.")
@@ -618,12 +616,12 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
         if untracked_files or unstaged_files:
             self.window.status_message("Successfully discarded changes.")
             self.interface.refresh_repo_status_and_render()
-        if get_selected_subjects(self.view, 'staged'):
+        if self.get_selected_subjects('staged'):
             self.window.status_message("Staged files cannot be discarded.  Unstage them first.")
 
     def discard_untracked(self):
         # type: () -> Optional[List[str]]
-        file_paths = get_selected_subjects(self.view, 'untracked')
+        file_paths = self.get_selected_subjects('untracked')
 
         @util.actions.destructive(description="discard one or more untracked files")
         def do_discard():
@@ -636,7 +634,7 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
 
     def discard_unstaged(self):
         # type: () -> Optional[List[str]]
-        file_paths = get_selected_subjects(self.view, 'unstaged', 'merge-conflicts')
+        file_paths = self.get_selected_subjects('unstaged', 'merge-conflicts')
 
         @util.actions.destructive(description="discard one or more unstaged files")
         def do_discard():
@@ -707,9 +705,8 @@ class gs_status_ignore_file(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        file_paths = get_selected_subjects(
-            self.view, 'staged', 'unstaged', 'untracked', 'merge-conflicts'
-        )
+        file_paths = self.get_selected_subjects(
+            'staged', 'unstaged', 'untracked', 'merge-conflicts')
         if file_paths:
             for fpath in file_paths:
                 self.add_ignore(os.path.join("/", fpath))
@@ -727,9 +724,8 @@ class gs_status_ignore_pattern(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        file_paths = get_selected_subjects(
-            self.view, 'staged', 'unstaged', 'untracked', 'merge-conflicts'
-        )
+        file_paths = self.get_selected_subjects(
+            'staged', 'unstaged', 'untracked', 'merge-conflicts')
         if file_paths:
             self.window.run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
 
@@ -749,7 +745,7 @@ class gs_status_stash(StatusInterfaceCommand):
 
     def run(self, edit, action=None):
         # type: (sublime.Edit, str) -> None
-        ids = get_selected_subjects(self.view, 'stashes')
+        ids = self.get_selected_subjects('stashes')
         if not ids:
             return
 
@@ -777,9 +773,8 @@ class gs_status_launch_merge_tool(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        file_paths = get_selected_subjects(
-            self.view, 'staged', 'unstaged', 'untracked', 'merge-conflicts'
-        )
+        file_paths = self.get_selected_subjects(
+            'staged', 'unstaged', 'untracked', 'merge-conflicts')
         if len(file_paths) > 1:
             sublime.error_message("You can only launch merge tool for a single file at a time.")
             return
@@ -793,7 +788,7 @@ class gs_status_use_commit_version(StatusInterfaceCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         conflicts = self.interface.state['merge_conflicts']
-        file_paths = get_selected_subjects(self.view, 'merge-conflicts')
+        file_paths = self.get_selected_subjects('merge-conflicts')
 
         for fpath in file_paths:
             if self.is_commit_version_deleted(fpath, conflicts):
@@ -817,7 +812,7 @@ class gs_status_use_base_version(StatusInterfaceCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         conflicts = self.interface.state['merge_conflicts']
-        file_paths = get_selected_subjects(self.view, 'merge-conflicts')
+        file_paths = self.get_selected_subjects('merge-conflicts')
 
         for fpath in file_paths:
             if self.is_base_version_deleted(fpath, conflicts):
