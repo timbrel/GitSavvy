@@ -3,7 +3,7 @@ import os
 import threading
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import WindowCommand
 
 from ..git_mixins.status import FileStatus
 from ..commands import GsNavigate
@@ -401,6 +401,11 @@ class StatusInterface(ui.Interface, GitCommand):
 ui.register_listeners(StatusInterface)
 
 
+class StatusInterfaceCommand(ui.InterfaceCommand):
+    interface_type = StatusInterface
+    interface = None  # type: StatusInterface
+
+
 def _get_subjects_selector(sections):
     # type: (Iterable[str]) -> str
     return ", ".join(
@@ -426,15 +431,7 @@ def get_selected_files(view, base_path, *sections):
     ]
 
 
-def get_interface(view):
-    # type: (sublime.View) -> Optional[StatusInterface]
-    interface = ui.get_interface(view.id())
-    if not isinstance(interface, StatusInterface):
-        return None
-    return interface
-
-
-class GsStatusOpenFileCommand(TextCommand, GitCommand):
+class GsStatusOpenFileCommand(StatusInterfaceCommand):
 
     """
     For every file that is selected or under a cursor, open a that
@@ -443,15 +440,11 @@ class GsStatusOpenFileCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        window = self.view.window()
-        if not window:
-            return
-
         for fpath in get_selected_files(self.view, self.repo_path):
-            window.open_file(fpath)
+            self.window.open_file(fpath)
 
 
-class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
+class GsStatusOpenFileOnRemoteCommand(StatusInterfaceCommand):
 
     """
     For every file that is selected or under a cursor, open a new browser
@@ -465,7 +458,7 @@ class GsStatusOpenFileOnRemoteCommand(TextCommand, GitCommand):
             self.view.run_command("gs_github_open_file_on_remote", {"fpath": file_paths})
 
 
-class GsStatusDiffInlineCommand(TextCommand, GitCommand):
+class GsStatusDiffInlineCommand(StatusInterfaceCommand):
 
     """
     For every file selected or under a cursor, open a new inline-diff view for
@@ -474,16 +467,12 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        window = self.view.window()
-        if not window:
-            return
-
         repo_path = self.repo_path
         non_cached_files = get_selected_files(self.view, repo_path, 'unstaged', 'merge-conflicts')
         cached_files = get_selected_files(self.view, repo_path, 'staged')
 
         enqueue_on_worker(
-            self.load_inline_diff_views, window, non_cached_files, cached_files
+            self.load_inline_diff_views, self.window, non_cached_files, cached_files
         )
 
     def load_inline_diff_views(self, window, non_cached_files, cached_files):
@@ -507,7 +496,7 @@ class GsStatusDiffInlineCommand(TextCommand, GitCommand):
             })
 
 
-class GsStatusDiffCommand(TextCommand, GitCommand):
+class GsStatusDiffCommand(StatusInterfaceCommand):
 
     """
     For every file selected or under a cursor, open a new diff view for
@@ -516,10 +505,6 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        window = self.view.window()
-        if not window:
-            return
-
         repo_path = self.repo_path
         non_cached_files = get_selected_files(
             self.view, repo_path, 'unstaged', 'untracked', 'merge-conflicts'
@@ -528,7 +513,7 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
 
         sublime.set_timeout_async(
             lambda: self.load_diff_windows(
-                window,  # type: ignore  # https://github.com/python/mypy/issues/4297
+                self.window,
                 non_cached_files,
                 cached_files
             )
@@ -549,7 +534,7 @@ class GsStatusDiffCommand(TextCommand, GitCommand):
             })
 
 
-class gs_status_stage_file(TextCommand, GitCommand):
+class gs_status_stage_file(StatusInterfaceCommand):
 
     """
     For every file that is selected or under a cursor, if that file is
@@ -558,15 +543,11 @@ class gs_status_stage_file(TextCommand, GitCommand):
 
     def run(self, edit, check=True):
         # type: (sublime.Edit, bool) -> None
-        window, interface = self.view.window(), get_interface(self.view)
-        if not (window and interface):
-            return
-
         files_with_merge_conflicts = get_selected_subjects(self.view, 'merge-conflicts')
         if check and files_with_merge_conflicts:
             failed_files = self.check_for_conflict_markers(files_with_merge_conflicts)
             if failed_files:
-                show_actions_panel(window, [
+                show_actions_panel(self.window, [
                     noop(
                         "Abort, '{}' has unresolved conflicts.".format(next(iter(failed_files)))
                         if len(failed_files) == 1 else
@@ -587,11 +568,11 @@ class gs_status_stage_file(TextCommand, GitCommand):
         )
         if file_paths:
             self.stage_file(*file_paths, force=False)
-            window.status_message("Staged files successfully.")
-            interface.refresh_repo_status_and_render()
+            self.window.status_message("Staged files successfully.")
+            self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusUnstageFileCommand(TextCommand, GitCommand):
+class GsStatusUnstageFileCommand(StatusInterfaceCommand):
 
     """
     For every file that is selected or under a cursor, if that file is
@@ -600,18 +581,14 @@ class GsStatusUnstageFileCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        window, interface = self.view.window(), get_interface(self.view)
-        if not (window and interface):
-            return
-
         file_paths = get_selected_subjects(self.view, 'staged', 'merge-conflicts')
         if file_paths:
             self.unstage_file(*file_paths)
-            window.status_message("Unstaged files successfully.")
-            interface.refresh_repo_status_and_render()
+            self.window.status_message("Unstaged files successfully.")
+            self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
+class GsStatusDiscardChangesToFileCommand(StatusInterfaceCommand):
 
     """
     For every file that is selected or under a cursor, if that file is
@@ -620,16 +597,13 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        window, interface = self.view.window(), get_interface(self.view)
-        if not (window and interface):
-            return
         untracked_files = self.discard_untracked()
         unstaged_files = self.discard_unstaged()
         if untracked_files or unstaged_files:
-            window.status_message("Successfully discarded changes.")
-            interface.refresh_repo_status_and_render()
+            self.window.status_message("Successfully discarded changes.")
+            self.interface.refresh_repo_status_and_render()
         if get_selected_subjects(self.view, 'staged'):
-            window.status_message("Staged files cannot be discarded.  Unstage them first.")
+            self.window.status_message("Staged files cannot be discarded.  Unstage them first.")
 
     def discard_untracked(self):
         # type: () -> Optional[List[str]]
@@ -658,7 +632,7 @@ class GsStatusDiscardChangesToFileCommand(TextCommand, GitCommand):
         return None
 
 
-class GsStatusStageAllFilesCommand(TextCommand, GitCommand):
+class GsStatusStageAllFilesCommand(StatusInterfaceCommand):
 
     """
     Stage all unstaged files.
@@ -666,15 +640,11 @@ class GsStatusStageAllFilesCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        interface = get_interface(self.view)
-        if not interface:
-            return
-
         self.add_all_tracked_files()
-        interface.refresh_repo_status_and_render()
+        self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, GitCommand):
+class GsStatusStageAllFilesWithUntrackedCommand(StatusInterfaceCommand):
 
     """
     Stage all unstaged files, including new files.
@@ -682,15 +652,11 @@ class GsStatusStageAllFilesWithUntrackedCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        interface = get_interface(self.view)
-        if not interface:
-            return
-
         self.add_all_files()
-        interface.refresh_repo_status_and_render()
+        self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusUnstageAllFilesCommand(TextCommand, GitCommand):
+class GsStatusUnstageAllFilesCommand(StatusInterfaceCommand):
 
     """
     Unstage all staged changes.
@@ -698,15 +664,11 @@ class GsStatusUnstageAllFilesCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        interface = get_interface(self.view)
-        if not interface:
-            return
-
         self.unstage_all_files()
-        interface.refresh_repo_status_and_render()
+        self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusDiscardAllChangesCommand(TextCommand, GitCommand):
+class GsStatusDiscardAllChangesCommand(StatusInterfaceCommand):
 
     """
     Reset all unstaged files to HEAD.
@@ -716,15 +678,11 @@ class GsStatusDiscardAllChangesCommand(TextCommand, GitCommand):
                                           "and delete all untracked files")
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        interface = get_interface(self.view)
-        if not interface:
-            return
-
         self.discard_all_unstaged()
-        interface.refresh_repo_status_and_render()
+        self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
+class GsStatusIgnoreFileCommand(StatusInterfaceCommand):
 
     """
     For each file that is selected or under a cursor, add an
@@ -733,21 +691,17 @@ class GsStatusIgnoreFileCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        window, interface = self.view.window(), get_interface(self.view)
-        if not (window and interface):
-            return
-
         file_paths = get_selected_subjects(
             self.view, 'staged', 'unstaged', 'untracked', 'merge-conflicts'
         )
         if file_paths:
             for fpath in file_paths:
                 self.add_ignore(os.path.join("/", fpath))
-            window.status_message("Successfully ignored files.")
-            interface.refresh_repo_status_and_render()
+            self.window.status_message("Successfully ignored files.")
+            self.interface.refresh_repo_status_and_render()
 
 
-class GsStatusIgnorePatternCommand(TextCommand, GitCommand):
+class GsStatusIgnorePatternCommand(StatusInterfaceCommand):
 
     """
     For the first file that is selected or under a cursor (other
@@ -757,18 +711,14 @@ class GsStatusIgnorePatternCommand(TextCommand, GitCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        window, interface = self.view.window(), get_interface(self.view)
-        if not (window and interface):
-            return
-
         file_paths = get_selected_subjects(
             self.view, 'staged', 'unstaged', 'untracked', 'merge-conflicts'
         )
         if file_paths:
-            window.run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
+            self.window.run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
 
 
-class GsStatusStashCommand(TextCommand, GitCommand):
+class GsStatusStashCommand(StatusInterfaceCommand):
 
     """
     Run action from status dashboard to stash commands. Need to have this command to
@@ -783,31 +733,27 @@ class GsStatusStashCommand(TextCommand, GitCommand):
 
     def run(self, edit, action=None):
         # type: (sublime.Edit, str) -> None
-        window = self.view.window()
-        if not window:
-            return
-
         ids = get_selected_subjects(self.view, 'stashes')
         if not ids:
             return
 
         if action == "show":
-            window.run_command("gs_stash_show", {"stash_ids": ids})
+            self.window.run_command("gs_stash_show", {"stash_ids": ids})
             return
 
         if len(ids) > 1:
-            window.status_message("You can only {} one stash at a time.".format(action))
+            self.window.status_message("You can only {} one stash at a time.".format(action))
             return
 
         if action == "apply":
-            window.run_command("gs_stash_apply", {"stash_id": ids[0]})
+            self.window.run_command("gs_stash_apply", {"stash_id": ids[0]})
         elif action == "pop":
-            window.run_command("gs_stash_pop", {"stash_id": ids[0]})
+            self.window.run_command("gs_stash_pop", {"stash_id": ids[0]})
         elif action == "drop":
-            window.run_command("gs_stash_drop", {"stash_id": ids[0]})
+            self.window.run_command("gs_stash_drop", {"stash_id": ids[0]})
 
 
-class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):
+class GsStatusLaunchMergeToolCommand(StatusInterfaceCommand):
 
     """
     Launch external merge tool for selected file.
@@ -825,16 +771,12 @@ class GsStatusLaunchMergeToolCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(lambda: self.launch_tool_for_file(file_paths[0]), 0)
 
 
-class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
+class GsStatusUseCommitVersionCommand(StatusInterfaceCommand):
     # TODO: refactor this alongside interfaces.rebase.GsRebaseUseCommitVersionCommand
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        interface = get_interface(self.view)
-        if not interface:
-            return
-
-        conflicts = interface.state['merge_conflicts']
+        conflicts = self.interface.state['merge_conflicts']
         file_paths = get_selected_subjects(self.view, 'merge-conflicts')
 
         for fpath in file_paths:
@@ -844,7 +786,7 @@ class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
                 self.git("checkout", "--theirs", "--", fpath)
                 self.stage_file(fpath)
 
-        interface.refresh_repo_status_and_render()
+        self.interface.refresh_repo_status_and_render()
 
     def is_commit_version_deleted(self, path, conflicts):
         # type: (str, List[FileStatus]) -> bool
@@ -854,15 +796,11 @@ class GsStatusUseCommitVersionCommand(TextCommand, GitCommand):
         return False
 
 
-class GsStatusUseBaseVersionCommand(TextCommand, GitCommand):
+class GsStatusUseBaseVersionCommand(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        interface = get_interface(self.view)
-        if not interface:
-            return
-
-        conflicts = interface.state['merge_conflicts']
+        conflicts = self.interface.state['merge_conflicts']
         file_paths = get_selected_subjects(self.view, 'merge-conflicts')
 
         for fpath in file_paths:
@@ -872,7 +810,7 @@ class GsStatusUseBaseVersionCommand(TextCommand, GitCommand):
                 self.git("checkout", "--ours", "--", fpath)
                 self.stage_file(fpath)
 
-        interface.refresh_repo_status_and_render()
+        self.interface.refresh_repo_status_and_render()
 
     def is_base_version_deleted(self, path, conflicts):
         # type: (str, List[FileStatus]) -> bool
