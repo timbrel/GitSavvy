@@ -230,15 +230,6 @@ class Interface():
         # type: (str) -> List[sublime.Region]
         return self.view.get_regions("git_savvy_interface." + key)
 
-    def get_selection_line(self):
-        selections = self.view.sel()
-        if not selections or len(selections) > 1:
-            self.view.window().status_message("Please make a selection.")
-            return None
-
-        selection = selections[0]
-        return selection, util.view.get_lines_from_regions(self.view, [selection])[0]
-
 
 def partial(key):
     def decorator(fn):
