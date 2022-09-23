@@ -1,5 +1,6 @@
 from itertools import chain
 import os
+import re
 
 import sublime
 from sublime_plugin import WindowCommand
@@ -292,6 +293,13 @@ class gs_tags_refresh(TagsInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
+DELETE_UNDO_MESSAGE = """\
+GitSavvy: Deleted tag ({0}), in case you want to undo, run:
+  $ git tag {0} {1}
+"""
+EXTRACT_COMMIT = re.compile(r"\(was (.+)\)")
+
+
 class gs_tags_delete(TagsInterfaceCommand):
 
     """
@@ -311,7 +319,11 @@ class gs_tags_delete(TagsInterfaceCommand):
             return
 
         for tag in tags_to_delete:
-            self.git("tag", "-d", tag)
+            rv = self.git("tag", "-d", tag)
+            match = EXTRACT_COMMIT.search(rv.strip())
+            if match:
+                commit = match.group(1)
+                print(DELETE_UNDO_MESSAGE.format(tag, commit))
 
         flash(self.view, TAG_DELETE_MESSAGE)
         util.view.refresh_gitsavvy(self.view)
