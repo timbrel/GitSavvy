@@ -226,10 +226,6 @@ class Interface():
             self.view.erase_regions("git_savvy_interface." + key)
         self.regions = {}
 
-    def get_view_regions(self, key):
-        # type: (str) -> List[sublime.Region]
-        return self.view.get_regions("git_savvy_interface." + key)
-
 
 def partial(key):
     def decorator(fn):
