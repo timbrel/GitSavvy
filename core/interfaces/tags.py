@@ -32,15 +32,6 @@ START_PUSH_MESSAGE = "Pushing tag..."
 END_PUSH_MESSAGE = "Push complete."
 
 
-def tag_from_lines(lines):
-    tags = []
-    for line in lines:
-        m = line.strip().split(" ", 2)
-        if len(m) in (2, 3):
-            tags.append(m[1].strip())
-    return tags
-
-
 class GsShowTagsCommand(WindowCommand, GitCommand):
 
     """
