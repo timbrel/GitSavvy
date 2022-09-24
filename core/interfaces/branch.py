@@ -1,6 +1,5 @@
 import os
 
-import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
 from ...common import ui, util
@@ -9,6 +8,7 @@ from ..commands.log import LogMixin
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from GitSavvy.core.runtime import on_worker
 
 
 class GsShowBranchCommand(WindowCommand, GitCommand):
@@ -221,10 +221,8 @@ class GsBranchesCheckoutCommand(TextCommand, GitCommand):
     Checkout the selected branch.
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         interface = ui.get_interface(self.view.id())
         remote_name, branch_name = interface.get_selected_branch()
         if not branch_name:
@@ -243,10 +241,8 @@ class GsBranchesCreateNewCommand(TextCommand, GitCommand):
     Create a new branch from selected branch and checkout.
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         interface = ui.get_interface(self.view.id())
         remote_name, branch_name = interface.get_selected_branch()
         if not branch_name:
@@ -266,11 +262,9 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
     Delete selected branch.
     """
 
+    @on_worker
     def run(self, edit, force=False):
         self.force = force
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         window = self.view.window()
         if not window:
             return
@@ -304,10 +298,8 @@ class GsBranchesRenameCommand(TextCommand, GitCommand):
     Rename selected branch.
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         window = self.view.window()
         if not window:
             return
@@ -326,10 +318,8 @@ class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
     Configure remote branch to track against for selected branch.
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
         interface = ui.get_interface(self.view.id())
         remote_name, branch_name = interface.get_selected_branch()
         if not branch_name or remote_name:
@@ -354,10 +344,8 @@ class GsBranchesPushSelectedCommand(TextCommand, GitCommand):
     Push selected branch to remote.
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
         interface = ui.get_interface(self.view.id())
         remote_name, branch_name = interface.get_selected_branch()
 
@@ -373,10 +361,8 @@ class GsBranchesPushAllCommand(TextCommand, GitCommand):
     Push all branches to remote.
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
         show_remote_panel(self.on_remote_selection, allow_direct=True)
 
     def on_remote_selection(self, remote):
@@ -392,10 +378,8 @@ class GsBranchesMergeSelectedCommand(TextCommand, GitCommand):
     Merge selected branch into active branch.
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         self.interface = ui.get_interface(self.view.id())
 
         branches = self.interface.get_selected_branches(ignore_current_branch=True)
@@ -412,10 +396,8 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
     Fetch from remote and merge fetched branch into active branch.
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         self.interface = ui.get_interface(self.view.id())
 
         branches = self.interface.get_selected_branches(ignore_current_branch=True)
@@ -455,10 +437,8 @@ class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
     Show a diff comparing the selected branch to the active branch.
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         interface = ui.get_interface(self.view.id())
         remote_name, branch_name = interface.get_selected_branch()
         if not branch_name:
@@ -482,10 +462,8 @@ class GsBranchesDiffCommitHistoryCommand(TextCommand, GitCommand):
     Show a view of all commits diff between branches.
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
         interface = ui.get_interface(self.view.id())
         remote_name, branch_name = interface.get_selected_branch()
         if not branch_name:
@@ -542,10 +520,8 @@ class GsBranchesEditBranchDescriptionCommand(TextCommand, GitCommand):
     Save a description for the selected branch
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         interface = ui.get_interface(self.view.id())
         remote_name, branch_name = interface.get_selected_branch()
         if not branch_name or remote_name:
