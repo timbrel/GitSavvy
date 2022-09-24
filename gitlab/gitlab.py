@@ -127,7 +127,7 @@ def get_api_fqdn(gitlab_repo):
     return True, gitlab_repo.fqdn
 
 
-def gitlab_api_url(api_url_template, repository, url_params={}, **kwargs):
+def gitlab_api_url(api_url_template, repository, url_params={}, query_params={}):
     """
     Construct a GitLab URL to query using the given url template string,
     and a gitlab.GitLabRepo instance, and optionally query parameters
@@ -146,7 +146,7 @@ def gitlab_api_url(api_url_template, repository, url_params={}, **kwargs):
     return fqdn, "{base_path}{path}?{query_params}".format(
         base_path=base_path,
         path=request_path,
-        query_params=interwebs.urlencode(kwargs))
+        query_params=interwebs.urlencode(query_params))
 
 
 def validate_response(response, method="GET"):
@@ -169,13 +169,13 @@ def get_common_kwargs(gitlab_repo):
     return dict(port=443, https=True, headers=headers)
 
 
-def query_gitlab(api_url_template, gitlab_repo, **url_params):
+def query_gitlab(api_url_template, gitlab_repo, url_params={}, query_params={}):
     """
     Takes a URL template that takes `owner` and `repo` template variables
     and as a GitLab repo object.  Do a GET for the provided URL and return
     the response payload, if successful.  If unsuccessfuly raise an error.
     """
-    fqdn, path = gitlab_api_url(api_url_template, gitlab_repo, url_params)
+    fqdn, path = gitlab_api_url(api_url_template, gitlab_repo, url_params, query_params)
     kwargs = get_common_kwargs(gitlab_repo)
 
     util.debug.add_to_log({
@@ -192,13 +192,13 @@ def query_gitlab(api_url_template, gitlab_repo, **url_params):
 # get_repo_data = partial(query_gitlab, "/repos/{owner}/{repo}")
 
 
-def iteratively_query_gitlab(api_url_template, gitlab_repo, **url_params):
+def iteratively_query_gitlab(api_url_template, gitlab_repo, url_params={}, query_params={}):
     """
     Like `query_gitlab` but return a generator by repeatedly
     iterating until no link to next page.
     """
-    fqdn, path = gitlab_api_url(api_url_template, gitlab_repo, url_params,
-                                per_page=GITLAB_PER_PAGE_MAX)
+    query_params['per_page'] = GITLAB_PER_PAGE_MAX
+    fqdn, path = gitlab_api_url(api_url_template, gitlab_repo, url_params, query_params)
     kwargs = get_common_kwargs(gitlab_repo)
 
     response = None
