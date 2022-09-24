@@ -34,7 +34,7 @@ class gs_gitlab_merge_request(WindowCommand, GitCommand, git_mixins.GitLabRemote
     def run_async(self):
         self.remote_url = self.get_integrated_remote_url()
         self.base_remote = gitlab.parse_remote(self.remote_url)
-        self.merge_requests = gitlab.get_merge_requests(self.base_remote)
+        self.merge_requests = gitlab.get_merge_requests(self.base_remote, {}, { 'state': "opened" })
 
         pp = show_paginated_panel(
             self.merge_requests,
@@ -115,7 +115,7 @@ class gs_gitlab_merge_request(WindowCommand, GitCommand, git_mixins.GitLabRemote
 
     def view_diff_for_mr(self):
         mr_changes = gitlab.get_merge_request_changes(
-            self.base_remote, mr_id=self.mr['iid'])
+            self.base_remote, { 'mr_id': self.mr['iid'] })
 
         diff_view = util.view.get_scratch_view(self, "mr_diff", read_only=True)
         diff_view.set_name("MR #{}".format(self.mr["iid"]))
