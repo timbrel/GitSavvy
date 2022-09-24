@@ -1,6 +1,6 @@
 import os
 
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import WindowCommand
 
 from ...common import ui, util
 from ..commands import GsNavigate
@@ -215,7 +215,12 @@ class BranchInterface(ui.Interface, GitCommand):
 ui.register_listeners(BranchInterface)
 
 
-class GsBranchesCheckoutCommand(TextCommand, GitCommand):
+class BranchInterfaceCommand(ui.InterfaceCommand):
+    interface_type = BranchInterface
+    interface = None  # type: BranchInterface
+
+
+class GsBranchesCheckoutCommand(BranchInterfaceCommand):
 
     """
     Checkout the selected branch.
@@ -223,8 +228,7 @@ class GsBranchesCheckoutCommand(TextCommand, GitCommand):
 
     @on_worker
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        remote_name, branch_name = interface.get_selected_branch()
+        remote_name, branch_name = self.interface.get_selected_branch()
         if not branch_name:
             return
 
@@ -232,10 +236,10 @@ class GsBranchesCheckoutCommand(TextCommand, GitCommand):
             ref = "{}/{}".format(remote_name, branch_name)
         else:
             ref = branch_name
-        self.view.window().run_command("gs_checkout_branch", {"branch": ref})
+        self.window.run_command("gs_checkout_branch", {"branch": ref})
 
 
-class GsBranchesCreateNewCommand(TextCommand, GitCommand):
+class GsBranchesCreateNewCommand(BranchInterfaceCommand):
 
     """
     Create a new branch from selected branch and checkout.
@@ -243,20 +247,19 @@ class GsBranchesCreateNewCommand(TextCommand, GitCommand):
 
     @on_worker
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        remote_name, branch_name = interface.get_selected_branch()
+        remote_name, branch_name = self.interface.get_selected_branch()
         if not branch_name:
             return
 
         if remote_name:
             ref = "{}/{}".format(remote_name, branch_name)
-            self.view.window().run_command("gs_checkout_remote_branch", {"remote_branch": ref})
+            self.window.run_command("gs_checkout_remote_branch", {"remote_branch": ref})
         else:
             ref = branch_name
-            self.view.window().run_command("gs_checkout_new_branch", {"base_branch": ref})
+            self.window.run_command("gs_checkout_new_branch", {"base_branch": ref})
 
 
-class GsBranchesDeleteCommand(TextCommand, GitCommand):
+class GsBranchesDeleteCommand(BranchInterfaceCommand):
 
     """
     Delete selected branch.
@@ -265,19 +268,14 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
     @on_worker
     def run(self, edit, force=False):
         self.force = force
-        window = self.view.window()
-        if not window:
-            return
-
-        interface = ui.get_interface(self.view.id())
-        remote_name, branch_name = interface.get_selected_branch()
+        remote_name, branch_name = self.interface.get_selected_branch()
         if not branch_name:
             return
 
         if remote_name:
-            self.delete_remote_branch(remote_name, branch_name, window)
+            self.delete_remote_branch(remote_name, branch_name, self.window)
         else:
-            window.run_command("gs_delete_branch", {"branch": branch_name, "force": self.force})
+            self.window.run_command("gs_delete_branch", {"branch": branch_name, "force": self.force})
 
     @util.actions.destructive(description="delete a remote branch")
     def delete_remote_branch(self, remote, branch_name, window):
@@ -292,7 +290,7 @@ class GsBranchesDeleteCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesRenameCommand(TextCommand, GitCommand):
+class GsBranchesRenameCommand(BranchInterfaceCommand):
 
     """
     Rename selected branch.
@@ -300,19 +298,14 @@ class GsBranchesRenameCommand(TextCommand, GitCommand):
 
     @on_worker
     def run(self, edit):
-        window = self.view.window()
-        if not window:
-            return
-
-        interface = ui.get_interface(self.view.id())
-        remote_name, branch_name = interface.get_selected_branch()
+        remote_name, branch_name = self.interface.get_selected_branch()
         if not branch_name or remote_name:
             return
 
-        window.run_command("gs_rename_branch", {"branch": branch_name})
+        self.window.run_command("gs_rename_branch", {"branch": branch_name})
 
 
-class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
+class GsBranchesConfigureTrackingCommand(BranchInterfaceCommand):
 
     """
     Configure remote branch to track against for selected branch.
@@ -320,8 +313,7 @@ class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
 
     @on_worker
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        remote_name, branch_name = interface.get_selected_branch()
+        remote_name, branch_name = self.interface.get_selected_branch()
         if not branch_name or remote_name:
             return
 
@@ -338,7 +330,7 @@ class GsBranchesConfigureTrackingCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesPushSelectedCommand(TextCommand, GitCommand):
+class GsBranchesPushSelectedCommand(BranchInterfaceCommand):
 
     """
     Push selected branch to remote.
@@ -346,16 +338,14 @@ class GsBranchesPushSelectedCommand(TextCommand, GitCommand):
 
     @on_worker
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        remote_name, branch_name = interface.get_selected_branch()
-
+        remote_name, branch_name = self.interface.get_selected_branch()
         if not branch_name or remote_name:
             return
 
-        self.view.window().run_command("gs_push", {"local_branch_name": branch_name})
+        self.window.run_command("gs_push", {"local_branch_name": branch_name})
 
 
-class GsBranchesPushAllCommand(TextCommand, GitCommand):
+class GsBranchesPushAllCommand(BranchInterfaceCommand):
 
     """
     Push all branches to remote.
@@ -366,13 +356,13 @@ class GsBranchesPushAllCommand(TextCommand, GitCommand):
         show_remote_panel(self.on_remote_selection, allow_direct=True)
 
     def on_remote_selection(self, remote):
-        self.view.window().status_message("Pushing all branches to `{}`...".format(remote))
+        self.window.status_message("Pushing all branches to `{}`...".format(remote))
         self.git("push", remote, "--all")
-        self.view.window().status_message("Push successful.")
+        self.window.status_message("Push successful.")
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesMergeSelectedCommand(TextCommand, GitCommand):
+class GsBranchesMergeSelectedCommand(BranchInterfaceCommand):
 
     """
     Merge selected branch into active branch.
@@ -380,8 +370,6 @@ class GsBranchesMergeSelectedCommand(TextCommand, GitCommand):
 
     @on_worker
     def run(self, edit):
-        self.interface = ui.get_interface(self.view.id())
-
         branches = self.interface.get_selected_branches(ignore_current_branch=True)
         branches_strings = self.interface.create_branches_strs(branches)
         try:
@@ -390,7 +378,7 @@ class GsBranchesMergeSelectedCommand(TextCommand, GitCommand):
             util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
+class GsBranchesFetchAndMergeCommand(BranchInterfaceCommand):
 
     """
     Fetch from remote and merge fetched branch into active branch.
@@ -398,8 +386,6 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
 
     @on_worker
     def run(self, edit):
-        self.interface = ui.get_interface(self.view.id())
-
         branches = self.interface.get_selected_branches(ignore_current_branch=True)
 
         for branch in branches:
@@ -426,12 +412,12 @@ class GsBranchesFetchAndMergeCommand(TextCommand, GitCommand):
         branches_strings = self.interface.create_branches_strs(branches)
         try:
             self.merge(branches_strings)
-            self.view.window().status_message("Fetch and merge complete.")
+            self.window.status_message("Fetch and merge complete.")
         finally:
             util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
+class GsBranchesDiffBranchCommand(BranchInterfaceCommand):
 
     """
     Show a diff comparing the selected branch to the active branch.
@@ -439,8 +425,7 @@ class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
 
     @on_worker
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        remote_name, branch_name = interface.get_selected_branch()
+        remote_name, branch_name = self.interface.get_selected_branch()
         if not branch_name:
             return
         self.show_diff(branch_name, remote=remote_name)
@@ -448,7 +433,7 @@ class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
     def show_diff(self, branch_name, remote=None):
         comparison_branch_name = remote + "/" + branch_name if remote else branch_name
         active_branch_name = self.get_current_branch_name()
-        self.view.window().run_command("gs_diff", {
+        self.window.run_command("gs_diff", {
             "base_commit": comparison_branch_name,
             "target_commit": active_branch_name,
             "disable_stage": True,
@@ -456,7 +441,7 @@ class GsBranchesDiffBranchCommand(TextCommand, GitCommand):
         })
 
 
-class GsBranchesDiffCommitHistoryCommand(TextCommand, GitCommand):
+class GsBranchesDiffCommitHistoryCommand(BranchInterfaceCommand):
 
     """
     Show a view of all commits diff between branches.
@@ -464,8 +449,7 @@ class GsBranchesDiffCommitHistoryCommand(TextCommand, GitCommand):
 
     @on_worker
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        remote_name, branch_name = interface.get_selected_branch()
+        remote_name, branch_name = self.interface.get_selected_branch()
         if not branch_name:
             return
         self.show_commits(branch_name, remote=remote_name)
@@ -473,13 +457,13 @@ class GsBranchesDiffCommitHistoryCommand(TextCommand, GitCommand):
     def show_commits(self, branch_name, remote=None):
         target_commit = self.get_current_branch_name()
         base_commit = remote + "/" + branch_name if remote else branch_name
-        self.view.window().run_command("gs_compare_commit", {
+        self.window.run_command("gs_compare_commit", {
             "base_commit": base_commit,
             "target_commit": target_commit
         })
 
 
-class GsBranchesRefreshCommand(TextCommand, GitCommand):
+class GsBranchesRefreshCommand(BranchInterfaceCommand):
 
     """
     Refresh the branch dashboard.
@@ -489,32 +473,31 @@ class GsBranchesRefreshCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesToggleRemotesCommand(TextCommand, GitCommand):
+class GsBranchesToggleRemotesCommand(BranchInterfaceCommand):
 
     """
     Toggle display of the remote branches.
     """
 
     def run(self, edit, show=None):
-        interface = ui.get_interface(self.view.id())
         if show is None:
-            interface.show_remotes = not interface.show_remotes
+            self.interface.show_remotes = not self.interface.show_remotes
         else:
-            interface.show_remotes = show
-        interface.render()
+            self.interface.show_remotes = show
+        self.interface.render()
 
 
-class GsBranchesFetchCommand(TextCommand, GitCommand):
+class GsBranchesFetchCommand(BranchInterfaceCommand):
 
     """
     Prompt for remote and fetch branches.
     """
 
     def run(self, edit):
-        self.view.window().run_command("gs_fetch")
+        self.window.run_command("gs_fetch")
 
 
-class GsBranchesEditBranchDescriptionCommand(TextCommand, GitCommand):
+class GsBranchesEditBranchDescriptionCommand(BranchInterfaceCommand):
 
     """
     Save a description for the selected branch
@@ -522,8 +505,7 @@ class GsBranchesEditBranchDescriptionCommand(TextCommand, GitCommand):
 
     @on_worker
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        remote_name, branch_name = interface.get_selected_branch()
+        remote_name, branch_name = self.interface.get_selected_branch()
         if not branch_name or remote_name:
             return
 
@@ -583,15 +565,14 @@ class GsBranchesSetCursorCommand(GsNavigate):
             for branch_region in self.view.lines(region)]
 
 
-class GsBranchesLogCommand(LogMixin, TextCommand, GitCommand):
+class GsBranchesLogCommand(LogMixin, BranchInterfaceCommand):
 
     """
     Show log for the selected branch.
     """
 
     def run_async(self, **kwargs):
-        interface = ui.get_interface(self.view.id())
-        remote_name, branch_name = interface.get_selected_branch()
+        remote_name, branch_name = self.interface.get_selected_branch()
         if not branch_name:
             return
 
