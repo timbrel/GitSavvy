@@ -585,16 +585,14 @@ class GsBranchesLogCommand(LogMixin, BranchInterfaceCommand):
         super().run_async(branch=branch)
 
 
-class GsBranchesLogGraphCommand(WindowCommand, GitCommand):
+class GsBranchesLogGraphCommand(BranchInterfaceCommand):
 
     """
     Show log graph for the selected branch.
     """
 
-    def run(self):
-        view = self.window.active_view()
-        interface = ui.get_interface(view.id())
-        remote_name, branch_name = interface.get_selected_branch()
+    def run(self, edit):
+        remote_name, branch_name = self.interface.get_selected_branch()
         if not branch_name:
             return
 
