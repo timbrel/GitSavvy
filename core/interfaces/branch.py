@@ -221,7 +221,14 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
             canonical_name = "/".join(filter_((remote_name, branch_name)))
             for branch in self.interface._branches:
                 if branch.canonical_name == canonical_name:
-                    return branch._replace(remote=remote_name) if remote_name else branch
+                    return (
+                        branch._replace(
+                            remote=remote_name,
+                            name=branch.canonical_name[len(remote_name + "/"):]
+                        )
+                        if remote_name else
+                        branch
+                    )
             raise ValueError(
                 "View inconsistent with repository. "
                 "No branch data found for '{}'".format(canonical_name)
