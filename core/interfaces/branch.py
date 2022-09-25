@@ -81,6 +81,9 @@ class BranchInterface(ui.Interface, GitCommand):
             sort_by_recent=sort_by_recent,
             fetch_descriptions=True
         ))
+        if self.show_remotes is None:
+            self.show_remotes = self.savvy_settings.get("show_remotes_in_branch_dashboard")
+        self.remotes = self.get_remotes() if self.show_remotes else {}
 
     def on_new_dashboard(self):
         self.view.run_command("gs_branches_set_cursor")
@@ -121,9 +124,6 @@ class BranchInterface(ui.Interface, GitCommand):
 
     @ui.partial("remotes")
     def render_remotes(self):
-        if self.show_remotes is None:
-            self.show_remotes = self.savvy_settings.get("show_remotes_in_branch_dashboard")
-
         return (self.render_remotes_on()
                 if self.show_remotes else
                 self.render_remotes_off())
@@ -147,7 +147,7 @@ class BranchInterface(ui.Interface, GitCommand):
             [b for b in self._branches if b.is_remote],
             key=lambda branch: branch.canonical_name)
 
-        for remote_name in self.get_remotes():
+        for remote_name in self.remotes:
             key = "branch_list_" + remote_name
             output_tmpl += "{" + key + "}\n"
             branches = [b for b in sorted_branches if b.canonical_name.startswith(remote_name + "/")]
@@ -196,8 +196,7 @@ class BranchInterface(ui.Interface, GitCommand):
         if local_region.contains(selection):
             return (None, branch_name)
 
-        remotes = self.get_remotes()
-        for remote_name in remotes:
+        for remote_name in self.remotes:
             remote_region = self.view.get_regions("git_savvy_interface.branch_list_" + remote_name)
             if remote_region and remote_region[0].contains(selection):
                 return (remote_name, branch_name)
