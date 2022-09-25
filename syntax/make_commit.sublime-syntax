@@ -21,7 +21,7 @@ contexts:
 
     - match: '(\w+/\w+)?#[0-9]+'
       comment: issue
-      scope: constant.other.issue-ref.git-savvy.make-commit
+      scope: constant.other.issue-ref.git-savvy.make-commit meta.git-savvy.issue-reference
 
     - match: (?:\s|\w\@)(\h{7,})\b
       comment: sha reference

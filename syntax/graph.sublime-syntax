@@ -86,9 +86,11 @@ contexts:
       comment: by name
       scope: keyword.by-name.git-savvy.
 
-    - match: '(?:[Ff]ix(?:e[ds])?|[Rr]esolve[ds]?|[Cc]lose[ds]?)?\s*(?:#\d+|\[.*?\])'
+    - match: '(?:[Ff]ix(?:e[ds])?|[Rr]esolve[ds]?|[Cc]lose[ds]?)?\s*(?:(#\d+)|\[.*?\])'
       comment: issue numbers
       scope: string.other.issue.git-savvy
+      captures:
+        1: meta.git-savvy.issue-reference
 
     - match: Merge branch (')(.*?)(')(?:\s+(?:of|into)\s+(\S*))?
       comment: merges
@@ -119,7 +121,7 @@ contexts:
       scope: meta.git-savvy.grph.merge
       captures:
         0: meta.git-savvy.grph.merge.pull-request
-        1: string.other.issue.git-savvy
+        1: string.other.issue.git-savvy meta.git-savvy.issue-reference
         2: string.other.merge.remote.git-savvy
 
     - match: ':'

@@ -58,8 +58,21 @@
 *   b7f8e07 Merge pull request #359 from dnicolson/blame-commit-lengths
 #           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.grph.merge
 #           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.grph.merge.pull-request
-#                               ^ string.other.issue
+#                              ^^^^ string.other.issue
+#                              ^^^^ meta.git-savvy.issue-reference
+#                             ^      - string.other.issue
+#                             ^      - meta.git-savvy.issue-reference
+#                                  ^ - string.other.issue
+#                                  ^ - meta.git-savvy.issue-reference
 #                                         ^ string.other.merge.remote
+
+*   b7f8e07 Fix #359 from dnicolson/blame-commit-lengths
+#           ^^^^^^^^ string.other.issue
+#               ^^^^ meta.git-savvy.issue-reference
+*   b7f8e07 Look #359 'ma
+#                ^^^^ string.other.issue
+#                ^^^^ meta.git-savvy.issue-reference
+
 |\
 # <- punctuation.other.git-savvy.graph.graph-line
 #^ punctuation.other.git-savvy.graph.graph-line
