@@ -451,13 +451,14 @@ class gs_branches_diff_branch(BranchInterfaceCommand):
 
     @on_worker
     def run(self, edit):
+        # type: (object) -> None
         branch = self.get_selected_branch()
         if not branch:
             return
-        self.show_diff(branch.name, remote=branch.remote if branch.is_remote else None)
+        self.show_diff(branch.canonical_name)
 
-    def show_diff(self, branch_name, remote=None):
-        comparison_branch_name = remote + "/" + branch_name if remote else branch_name
+    def show_diff(self, comparison_branch_name):
+        # type: (str) -> None
         active_branch_name = self.get_current_branch_name()
         self.window.run_command("gs_diff", {
             "base_commit": comparison_branch_name,
@@ -475,14 +476,15 @@ class gs_branches_diff_commit_history(BranchInterfaceCommand):
 
     @on_worker
     def run(self, edit):
+        # type: (object) -> None
         branch = self.get_selected_branch()
         if not branch:
             return
-        self.show_commits(branch.name, remote=branch.remote if branch.is_remote else None)
+        self.show_commits(branch.canonical_name)
 
-    def show_commits(self, branch_name, remote=None):
+    def show_commits(self, base_commit):
+        # type: (str) -> None
         target_commit = self.get_current_branch_name()
-        base_commit = remote + "/" + branch_name if remote else branch_name
         self.window.run_command("gs_compare_commit", {
             "base_commit": base_commit,
             "target_commit": target_commit
