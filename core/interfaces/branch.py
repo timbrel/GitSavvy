@@ -35,6 +35,11 @@ __all__ = (
 )
 
 
+MYPY = False
+if MYPY:
+    from typing import List, Optional, Tuple
+
+
 class gs_show_branch(WindowCommand, GitCommand):
 
     """
@@ -187,44 +192,6 @@ class BranchInterface(ui.Interface, GitCommand):
 
         return output_tmpl, render_fns
 
-    def get_selected_branch(self):
-        """
-        Get a single selected branch. If more then one branch are selected, return (None, None).
-        """
-        selected_branches = self.get_selected_branches()
-        if selected_branches and len(selected_branches) == 1:
-            return selected_branches[0]
-        else:
-            return (None, None)
-
-    def get_selected_branches(self, ignore_current_branch=False):
-        current_branch_name = self.get_current_branch_name()
-        branches = set()
-        for sel in self.view.sel():
-            for line in util.view.get_lines_from_regions(self.view, [sel]):
-                branch = self._get_selected_branch_name(sel, line)
-                if branch:
-                    if ignore_current_branch and \
-                            (branch[0] is None and branch[1] == current_branch_name):
-                        continue
-                    branches.add(branch)
-
-        return list(branches)
-
-    def _get_selected_branch_name(self, selection, line):
-        segments = line.strip("▸ ").split(" ")
-        if len(segments) <= 1:
-            return None
-        branch_name = segments[1]
-        local_region = self.view.get_regions("git_savvy_interface.branch_list")[0]
-        if local_region.contains(selection):
-            return (None, branch_name)
-
-        for remote_name in self.remotes:
-            remote_region = self.view.get_regions("git_savvy_interface.branch_list_" + remote_name)
-            if remote_region and remote_region[0].contains(selection):
-                return (remote_name, branch_name)
-
     def create_branches_strs(self, branches):
         branches_strings = set()
         for branch in branches:
@@ -242,6 +209,42 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
     interface_type = BranchInterface
     interface = None  # type: BranchInterface
 
+    def get_selected_branch(self):
+        """
+        Get a single selected branch. If more then one branch are selected, return (None, None).
+        """
+        selected_branches = self.get_selected_branches()
+        if selected_branches and len(selected_branches) == 1:
+            return selected_branches[0]
+        else:
+            return (None, None)
+
+    def get_selected_branches(self, ignore_current_branch=False):
+        # type: (bool) -> List[Tuple[Optional[str], str]]
+        LOCAL_BRANCH_NAMES_SELECTOR = (
+            "meta.git-savvy.status.section.branch.local "
+            "meta.git-savvy.branches.branch.name"
+        )
+        EXCLUDE_CURRENT_BRANCH = " - meta.git-savvy.branches.branch.active-branch"
+        return [  # type: ignore[return-value]
+            (None, name)
+            for name in ui.extract_by_selector(
+                self.view,
+                (
+                    LOCAL_BRANCH_NAMES_SELECTOR
+                    + (EXCLUDE_CURRENT_BRANCH if ignore_current_branch else "")
+                )
+            )
+        ] + [
+            (remote_name, branch_name)  # type: ignore[misc]
+            for remote_name in self.interface.remotes
+            for branch_name in ui.extract_by_selector(
+                self.view,
+                "meta.git-savvy.branches.branch.name",
+                self.region_name_for("branch_list_" + remote_name)
+            )
+        ]
+
 
 class gs_branches_checkout(BranchInterfaceCommand):
 
@@ -251,7 +254,7 @@ class gs_branches_checkout(BranchInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        remote_name, branch_name = self.interface.get_selected_branch()
+        remote_name, branch_name = self.get_selected_branch()
         if not branch_name:
             return
 
@@ -270,7 +273,7 @@ class gs_branches_create_new(BranchInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        remote_name, branch_name = self.interface.get_selected_branch()
+        remote_name, branch_name = self.get_selected_branch()
         if not branch_name:
             return
 
@@ -291,7 +294,7 @@ class gs_branches_delete(BranchInterfaceCommand):
     @on_worker
     def run(self, edit, force=False):
         self.force = force
-        remote_name, branch_name = self.interface.get_selected_branch()
+        remote_name, branch_name = self.get_selected_branch()
         if not branch_name:
             return
 
@@ -321,7 +324,7 @@ class gs_branches_rename(BranchInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        remote_name, branch_name = self.interface.get_selected_branch()
+        remote_name, branch_name = self.get_selected_branch()
         if not branch_name or remote_name:
             return
 
@@ -336,7 +339,7 @@ class gs_branches_configure_tracking(BranchInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        remote_name, branch_name = self.interface.get_selected_branch()
+        remote_name, branch_name = self.get_selected_branch()
         if not branch_name or remote_name:
             return
 
@@ -361,7 +364,7 @@ class gs_branches_push_selected(BranchInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        remote_name, branch_name = self.interface.get_selected_branch()
+        remote_name, branch_name = self.get_selected_branch()
         if not branch_name or remote_name:
             return
 
@@ -393,7 +396,7 @@ class gs_branches_merge_selected(BranchInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        branches = self.interface.get_selected_branches(ignore_current_branch=True)
+        branches = self.get_selected_branches(ignore_current_branch=True)
         branches_strings = self.interface.create_branches_strs(branches)
         try:
             self.merge(branches_strings)
@@ -409,7 +412,7 @@ class gs_branches_fetch_and_merge(BranchInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        branches = self.interface.get_selected_branches(ignore_current_branch=True)
+        branches = self.get_selected_branches(ignore_current_branch=True)
 
         for branch in branches:
             remote, branch_name = branch
@@ -448,7 +451,7 @@ class gs_branches_diff_branch(BranchInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        remote_name, branch_name = self.interface.get_selected_branch()
+        remote_name, branch_name = self.get_selected_branch()
         if not branch_name:
             return
         self.show_diff(branch_name, remote=remote_name)
@@ -472,7 +475,7 @@ class gs_branches_diff_commit_history(BranchInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        remote_name, branch_name = self.interface.get_selected_branch()
+        remote_name, branch_name = self.get_selected_branch()
         if not branch_name:
             return
         self.show_commits(branch_name, remote=remote_name)
@@ -528,7 +531,7 @@ class gs_branches_edit_branch_description(BranchInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        remote_name, branch_name = self.interface.get_selected_branch()
+        remote_name, branch_name = self.get_selected_branch()
         if not branch_name or remote_name:
             return
 
@@ -595,7 +598,7 @@ class gs_branches_log(LogMixin, BranchInterfaceCommand):
     """
 
     def run_async(self, **kwargs):
-        remote_name, branch_name = self.interface.get_selected_branch()
+        remote_name, branch_name = self.get_selected_branch()
         if not branch_name:
             return
 
@@ -615,7 +618,7 @@ class gs_branches_log_graph(BranchInterfaceCommand):
     """
 
     def run(self, edit):
-        remote_name, branch_name = self.interface.get_selected_branch()
+        remote_name, branch_name = self.get_selected_branch()
         if not branch_name:
             return
 
