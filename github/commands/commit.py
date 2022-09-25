@@ -83,7 +83,7 @@ class GsGithubShowIssuesCommand(TextCommand, git_mixins.GithubRemotesMixin, GitC
         self.view.run_command("insert", {"characters": str(issue["number"])})
 
 
-class GsGithubShowContributorsCommand(TextCommand, GitCommand):
+class GsGithubShowContributorsCommand(TextCommand, git_mixins.GithubRemotesMixin, GitCommand):
 
     """
     Query github for a list of people that have contributed to the GitHub project
@@ -96,9 +96,7 @@ class GsGithubShowContributorsCommand(TextCommand, GitCommand):
         sublime.set_timeout_async(lambda: self.run_async())
 
     def run_async(self):
-        default_remote_name, default_remote = self.get_remotes().popitem(last=False)
-        remote = github.parse_remote(default_remote)
-
+        remote = github.parse_remote(self.get_integrated_remote_url())
         contributors = github.get_contributors(remote)
 
         pp = show_paginated_panel(
