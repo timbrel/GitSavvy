@@ -14,7 +14,7 @@ __all__ = (
 )
 
 
-ISSUE_SCOPES = "constant.other.issue-ref.git-savvy, string.other.issue.git-savvy"
+ISSUE_SCOPES = "meta.git-savvy.issue-reference"
 
 
 class gs_github_open_issue_at_cursor(TextCommand, git_mixins.GithubRemotesMixin, GitCommand):
@@ -30,7 +30,12 @@ class gs_github_open_issue_at_cursor(TextCommand, git_mixins.GithubRemotesMixin,
         def on_navigate(href: str):
             open_in_browser(href)
 
-        issue_nr = view.substr(view.extract_scope(point))[1:]
+        complete_str = view.substr(view.extract_scope(point))
+        if complete_str[0] != "#":
+            flash(view, "Only implemented for simple references.  (E.g. '#23')")
+            return
+
+        issue_nr = complete_str[1:]
         url = self.url_for_issue(issue_nr)
 
         if open_popup:

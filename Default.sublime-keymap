@@ -2255,7 +2255,7 @@
         "keys": ["o"],
         "command": "gs_github_open_issue_at_cursor",
         "context": [
-            { "key": "selector", "operand": "constant.other.issue-ref.git-savvy, string.other.issue.git-savvy" }
+            { "key": "selector", "operand": "meta.git-savvy.issue-reference" }
         ]
     }
 ]
