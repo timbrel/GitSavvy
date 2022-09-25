@@ -37,8 +37,8 @@ contexts:
 
     - match: '^  (▸) ([0-9a-f]{7,40}) (\S+)\s?(.*)$'
       captures:
-        0: meta.git-savvy.branches.branch
-        1: string.other.git-savvy.branches.active-branch.symbol
-        2: string.other.git-savvy.branches.active-branch.sha1
-        3: string.other.git-savvy.branches.active-branch.name gitsavvy.gotosymbol
-        4: comment.git-savvy.branches.active-branch.extra-info
+        0: meta.git-savvy.branches.branch.active-branch
+        1: string.other.git-savvy.branches.branch.symbol
+        2: meta.git-savvy.branches.branch.sha1 string.other.git-savvy.branches.branch.sha1
+        3: meta.git-savvy.branches.branch.name gitsavvy.gotosymbol string.other.git-savvy.branches.branch.name
+        4: comment.git-savvy.branches.branch.extra-info
