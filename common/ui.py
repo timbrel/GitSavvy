@@ -13,6 +13,18 @@ from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.fns import flatten
 
 
+__all__ = (
+    "gs_new_content_and_regions",
+    "gs_update_region",
+    "gs_interface_close",
+    "gs_interface_refresh",
+    "gs_interface_toggle_help",
+    "gs_interface_toggle_popup_help",
+    "gs_edit_view_complete",
+    "gs_edit_view_close",
+)
+
+
 MYPY = False
 if MYPY:
     from typing import Dict, Iterable, Iterator, List, Optional, Tuple, Type
@@ -234,7 +246,7 @@ def section(key):
     return decorator
 
 
-class GsNewContentAndRegionsCommand(TextCommand):
+class gs_new_content_and_regions(TextCommand):
 
     def run(self, edit, content, regions, nuke_cursors=False):
         selections = self.view.sel()
@@ -264,7 +276,7 @@ class GsNewContentAndRegionsCommand(TextCommand):
             self.view.run_command("gs_handle_arrow_keys")
 
 
-class GsUpdateRegionCommand(TextCommand):
+class gs_update_region(TextCommand):
 
     def run(self, edit, key, content):
         is_read_only = self.view.is_read_only()
@@ -347,7 +359,7 @@ def extract_by_selector(view, item_selector, within_section=None):
     ]
 
 
-class GsInterfaceCloseCommand(TextCommand):
+class gs_interface_close(TextCommand):
 
     """
     Clean up references to interfaces for closed views.
@@ -361,7 +373,7 @@ class GsInterfaceCloseCommand(TextCommand):
             enqueue_on_worker(lambda: interfaces.pop(view_id))
 
 
-class GsInterfaceRefreshCommand(TextCommand):
+class gs_interface_refresh(TextCommand):
 
     """
     Re-render GitSavvy interface view.
@@ -383,7 +395,7 @@ class GsInterfaceRefreshCommand(TextCommand):
                 break
 
 
-class GsInterfaceToggleHelpCommand(TextCommand):
+class gs_interface_toggle_help(TextCommand):
 
     """
     Toggle GitSavvy help.
@@ -398,7 +410,7 @@ class GsInterfaceToggleHelpCommand(TextCommand):
                 self.view.run_command("gs_interface_refresh")
 
 
-class GsInterfaceTogglePopupHelpCommand(TextCommand):
+class gs_interface_toggle_popup_help(TextCommand):
 
     """
     Toggle GitSavvy popup help.
@@ -448,7 +460,7 @@ class EditView():
         })
 
 
-class GsEditViewCompleteCommand(TextCommand):
+class gs_edit_view_complete(TextCommand):
 
     """
     Invoke callback with edit view content.
@@ -472,7 +484,7 @@ class GsEditViewCompleteCommand(TextCommand):
         edit_view.on_done(content)
 
 
-class GsEditViewCloseCommand(TextCommand):
+class gs_edit_view_close(TextCommand):
 
     """
     Clean up references to closed edit views.
