@@ -227,7 +227,7 @@ class Interface():
         self.regions = {}
 
 
-def partial(key):
+def section(key):
     def decorator(fn):
         fn.key = key
         return fn

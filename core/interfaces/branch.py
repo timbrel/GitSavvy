@@ -123,19 +123,19 @@ class BranchInterface(ui.Interface, GitCommand):
     def reset_cursor(self):
         self.view.run_command("gs_branches_set_cursor")
 
-    @ui.partial("branch_status")
+    @ui.section("branch_status")
     def render_branch_status(self):
         return self.get_working_dir_status().long_status
 
-    @ui.partial("git_root")
+    @ui.section("git_root")
     def render_git_root(self):
         return self.short_repo_path
 
-    @ui.partial("head")
+    @ui.section("head")
     def render_head(self):
         return self.get_latest_commit_msg_for_head()
 
-    @ui.partial("branch_list")
+    @ui.section("branch_list")
     def render_branch_list(self, remote_name=None, branches=None):
         if not branches:
             branches = [branch for branch in self._branches if not branch.is_remote]
@@ -154,13 +154,13 @@ class BranchInterface(ui.Interface, GitCommand):
             ) for branch in branches
         )
 
-    @ui.partial("remotes")
+    @ui.section("remotes")
     def render_remotes(self):
         return (self.render_remotes_on()
                 if self.show_remotes else
                 self.render_remotes_off())
 
-    @ui.partial("help")
+    @ui.section("help")
     def render_help(self):
         help_hidden = self.view.settings().get("git_savvy.help_hidden")
         if help_hidden:
@@ -184,7 +184,7 @@ class BranchInterface(ui.Interface, GitCommand):
             output_tmpl += "{" + key + "}\n"
             branches = [b for b in sorted_branches if b.canonical_name.startswith(remote_name + "/")]
 
-            @ui.partial(key)
+            @ui.section(key)
             def render(remote_name=remote_name, branches=branches):
                 return self.template_remote.format(
                     remote_name=remote_name,
