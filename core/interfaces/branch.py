@@ -11,7 +11,31 @@ from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.runtime import on_worker
 
 
-class GsShowBranchCommand(WindowCommand, GitCommand):
+__all__ = (
+    "gs_show_branch",
+    "gs_branches_checkout",
+    "gs_branches_create_new",
+    "gs_branches_delete",
+    "gs_branches_rename",
+    "gs_branches_configure_tracking",
+    "gs_branches_push_selected",
+    "gs_branches_push_all",
+    "gs_branches_merge_selected",
+    "gs_branches_fetch_and_merge",
+    "gs_branches_diff_branch",
+    "gs_branches_diff_commit_history",
+    "gs_branches_refresh",
+    "gs_branches_toggle_remotes",
+    "gs_branches_fetch",
+    "gs_branches_edit_branch_description",
+    "gs_branches_navigate_branch",
+    "gs_branches_set_cursor",
+    "gs_branches_log",
+    "gs_branches_log_graph",
+)
+
+
+class gs_show_branch(WindowCommand, GitCommand):
 
     """
     Open a branch dashboard for the active Git repository.
@@ -219,7 +243,7 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
     interface = None  # type: BranchInterface
 
 
-class GsBranchesCheckoutCommand(BranchInterfaceCommand):
+class gs_branches_checkout(BranchInterfaceCommand):
 
     """
     Checkout the selected branch.
@@ -238,7 +262,7 @@ class GsBranchesCheckoutCommand(BranchInterfaceCommand):
         self.window.run_command("gs_checkout_branch", {"branch": ref})
 
 
-class GsBranchesCreateNewCommand(BranchInterfaceCommand):
+class gs_branches_create_new(BranchInterfaceCommand):
 
     """
     Create a new branch from selected branch and checkout.
@@ -258,7 +282,7 @@ class GsBranchesCreateNewCommand(BranchInterfaceCommand):
             self.window.run_command("gs_checkout_new_branch", {"base_branch": ref})
 
 
-class GsBranchesDeleteCommand(BranchInterfaceCommand):
+class gs_branches_delete(BranchInterfaceCommand):
 
     """
     Delete selected branch.
@@ -289,7 +313,7 @@ class GsBranchesDeleteCommand(BranchInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesRenameCommand(BranchInterfaceCommand):
+class gs_branches_rename(BranchInterfaceCommand):
 
     """
     Rename selected branch.
@@ -304,7 +328,7 @@ class GsBranchesRenameCommand(BranchInterfaceCommand):
         self.window.run_command("gs_rename_branch", {"branch": branch_name})
 
 
-class GsBranchesConfigureTrackingCommand(BranchInterfaceCommand):
+class gs_branches_configure_tracking(BranchInterfaceCommand):
 
     """
     Configure remote branch to track against for selected branch.
@@ -329,7 +353,7 @@ class GsBranchesConfigureTrackingCommand(BranchInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesPushSelectedCommand(BranchInterfaceCommand):
+class gs_branches_push_selected(BranchInterfaceCommand):
 
     """
     Push selected branch to remote.
@@ -344,7 +368,7 @@ class GsBranchesPushSelectedCommand(BranchInterfaceCommand):
         self.window.run_command("gs_push", {"local_branch_name": branch_name})
 
 
-class GsBranchesPushAllCommand(BranchInterfaceCommand):
+class gs_branches_push_all(BranchInterfaceCommand):
 
     """
     Push all branches to remote.
@@ -361,7 +385,7 @@ class GsBranchesPushAllCommand(BranchInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesMergeSelectedCommand(BranchInterfaceCommand):
+class gs_branches_merge_selected(BranchInterfaceCommand):
 
     """
     Merge selected branch into active branch.
@@ -377,7 +401,7 @@ class GsBranchesMergeSelectedCommand(BranchInterfaceCommand):
             util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesFetchAndMergeCommand(BranchInterfaceCommand):
+class gs_branches_fetch_and_merge(BranchInterfaceCommand):
 
     """
     Fetch from remote and merge fetched branch into active branch.
@@ -416,7 +440,7 @@ class GsBranchesFetchAndMergeCommand(BranchInterfaceCommand):
             util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesDiffBranchCommand(BranchInterfaceCommand):
+class gs_branches_diff_branch(BranchInterfaceCommand):
 
     """
     Show a diff comparing the selected branch to the active branch.
@@ -440,7 +464,7 @@ class GsBranchesDiffBranchCommand(BranchInterfaceCommand):
         })
 
 
-class GsBranchesDiffCommitHistoryCommand(BranchInterfaceCommand):
+class gs_branches_diff_commit_history(BranchInterfaceCommand):
 
     """
     Show a view of all commits diff between branches.
@@ -462,7 +486,7 @@ class GsBranchesDiffCommitHistoryCommand(BranchInterfaceCommand):
         })
 
 
-class GsBranchesRefreshCommand(BranchInterfaceCommand):
+class gs_branches_refresh(BranchInterfaceCommand):
 
     """
     Refresh the branch dashboard.
@@ -472,7 +496,7 @@ class GsBranchesRefreshCommand(BranchInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesToggleRemotesCommand(BranchInterfaceCommand):
+class gs_branches_toggle_remotes(BranchInterfaceCommand):
 
     """
     Toggle display of the remote branches.
@@ -486,7 +510,7 @@ class GsBranchesToggleRemotesCommand(BranchInterfaceCommand):
         self.interface.render()
 
 
-class GsBranchesFetchCommand(BranchInterfaceCommand):
+class gs_branches_fetch(BranchInterfaceCommand):
 
     """
     Prompt for remote and fetch branches.
@@ -496,7 +520,7 @@ class GsBranchesFetchCommand(BranchInterfaceCommand):
         self.window.run_command("gs_fetch")
 
 
-class GsBranchesEditBranchDescriptionCommand(BranchInterfaceCommand):
+class gs_branches_edit_branch_description(BranchInterfaceCommand):
 
     """
     Save a description for the selected branch
@@ -534,7 +558,7 @@ class GsBranchesEditBranchDescriptionCommand(BranchInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsBranchesNavigateBranchCommand(GsNavigate):
+class gs_branches_navigate_branch(GsNavigate):
 
     """
     Move cursor to the next (or previous) selectable branch in the dashboard.
@@ -549,7 +573,7 @@ class GsBranchesNavigateBranchCommand(GsNavigate):
             for branch_region in self.view.lines(region)]
 
 
-class GsBranchesSetCursorCommand(GsNavigate):
+class gs_branches_set_cursor(GsNavigate):
 
     """
     Move cursor to the active branch.
@@ -564,7 +588,7 @@ class GsBranchesSetCursorCommand(GsNavigate):
             for branch_region in self.view.lines(region)]
 
 
-class GsBranchesLogCommand(LogMixin, BranchInterfaceCommand):
+class gs_branches_log(LogMixin, BranchInterfaceCommand):
 
     """
     Show log for the selected branch.
@@ -584,7 +608,7 @@ class GsBranchesLogCommand(LogMixin, BranchInterfaceCommand):
         super().run_async(branch=branch)
 
 
-class GsBranchesLogGraphCommand(BranchInterfaceCommand):
+class gs_branches_log_graph(BranchInterfaceCommand):
 
     """
     Show log graph for the selected branch.
