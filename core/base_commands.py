@@ -27,19 +27,24 @@ class WithProvideWindow:
     window = None  # type: sublime.Window
 
     def run_(self, edit_token, args):
-        window = self.view.window()  # type: ignore[attr-defined]
-        if not window:
-            return
-        # Very difficult to tell when Sublime actually instantiates
-        # new objects (selfs).  However, for some commands a TextCommand
-        # instance is long-lived.  Since we usually defer to the worker
-        # or some other thread **and** want to use `self` as the current
-        # context object, we clone manually here.
-        # So we get a new context per call which also means we can't store
-        # state on `self` to be available on the next call.
-        cloned = self.__class__(self.view)  # type: ignore[attr-defined, call-arg]
-        cloned.window = window
-        return super(WithProvideWindow, cloned).run_(edit_token, args)  # type: ignore[misc]
+        # Sublime instantiates `TextCommand`s for each view once.  Moving
+        # a view to another window creates a new view.
+        # We want to make sure that `self` is a unique context even when we
+        # defer to the other threads.  T.i. `self` is unique, stable and can
+        # be used as a store for *one* call.  `self` cannot be used as a store
+        # across *multiple* calls.
+        if self.window is None:
+            window = self.view.window()  # type: ignore[unreachable]
+            if not window:
+                raise RuntimeError(
+                    "Assertion failed! "
+                    "'{}' is already detached".format(self.view)
+                )
+            self.window = window
+            return super().run_(edit_token, args)
+        else:
+            cloned = self.__class__(self.view)  # type: ignore[attr-defined, call-arg]
+            return cloned.run_(edit_token, args)
 
 
 class WithInputHandlers:
@@ -128,8 +133,9 @@ def _get_run_command(cmd):
 
 
 class GsTextCommand(
-    WithInputHandlers,
+    # order matters(!), `WithProvideWindow` also ensures unique instances per call
     WithProvideWindow,
+    WithInputHandlers,
     sublime_plugin.TextCommand,
     GitCommand,
 ):
