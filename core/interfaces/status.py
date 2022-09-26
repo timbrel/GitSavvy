@@ -293,12 +293,7 @@ class StatusInterface(ui.Interface, GitCommand):
         # any partials.
         with self._lock:
             regions, rendered = self._render_template()
-
-        self.view.run_command("gs_new_content_and_regions", {
-            "content": rendered,
-            "regions": {key: ui.region_as_tuple(region) for key, region in regions.items()},
-            "nuke_cursors": nuke_cursors
-        })
+        self.draw(rendered, regions, nuke_cursors)
 
         on_special_symbol = any(
             self.view.match_selector(

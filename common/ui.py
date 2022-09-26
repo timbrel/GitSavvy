@@ -156,13 +156,17 @@ class Interface():
     def render(self, nuke_cursors=False):
         self.pre_render()
         regions, rendered = self._render_template()
+        self.draw(rendered, regions, nuke_cursors)
+        if nuke_cursors:
+            self.reset_cursor()
+
+    def draw(self, content, regions, nuke_cursors):
+        # type: (str, SectionRegions, bool) -> None
         self.view.run_command("gs_new_content_and_regions", {
-            "content": rendered,
+            "content": content,
             "regions": {key: region_as_tuple(region) for key, region in regions.items()},
             "nuke_cursors": nuke_cursors
         })
-        if nuke_cursors:
-            self.reset_cursor()
 
     def _render_template(self):
         # type: () -> Tuple[SectionRegions, str]
