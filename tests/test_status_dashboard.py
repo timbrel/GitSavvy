@@ -8,7 +8,7 @@ from GitSavvy.tests.mockito import spy2, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core import store
-from GitSavvy.core.interfaces.status import StatusInterface, get_selected_subjects, GitCommand
+from GitSavvy.core.interfaces.status import StatusInterface, StatusInterfaceCommand, GitCommand
 
 
 class TestStatusDashboard(DeferrableTestCase):
@@ -177,7 +177,7 @@ class TestStatusDashboard(DeferrableTestCase):
         region = view.find(SELECTED_FILE, 0, sublime.LITERAL)
         view.sel().clear()
         view.sel().add(region.begin())
-        self.assertEqual(get_selected_subjects(view, SECTION), EXPECTED)
+        self.assertEqual(StatusInterfaceCommand(view).get_selected_subjects(SECTION), EXPECTED)
 
     def test_stage_files(self):
         interface, view = yield from self.await_std_interface()
