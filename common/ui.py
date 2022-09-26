@@ -11,6 +11,7 @@ from ..core.settings import GitSavvySettings
 from ..core.utils import focus_view
 from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.fns import flatten
+from GitSavvy.core.view import replace_view_content
 
 
 __all__ = (
@@ -250,23 +251,10 @@ class gs_new_content_and_regions(TextCommand):
     current_region_names = set()  # type: Set[str]
 
     def run(self, edit, content, regions, nuke_cursors=False):
-        selections = self.view.sel()
-
-        if selections and not nuke_cursors:
-            cursors_row_col = [self.view.rowcol(cursor.a) for cursor in selections]
-        else:
-            cursors_row_col = [(0, 0)]
-
-        selections.clear()
-
-        is_read_only = self.view.is_read_only()
-        self.view.set_read_only(False)
-        self.view.replace(edit, sublime.Region(0, self.view.size()), content)
-        self.view.set_read_only(is_read_only)
-
-        for row, col in cursors_row_col:
-            pt = self.view.text_point(row, col)
-            selections.add(sublime.Region(pt, pt))
+        replace_view_content(self.view, content)
+        if nuke_cursors:
+            self.view.sel().clear()
+            self.view.sel().add(sublime.Region(0))
 
         for key, region_range in regions.items():
             self.view.add_regions("git_savvy_interface." + key, [region_from_tuple(region_range)])
