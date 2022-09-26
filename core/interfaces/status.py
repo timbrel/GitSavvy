@@ -281,19 +281,18 @@ class StatusInterface(ui.Interface, GitCommand):
     def render(self, nuke_cursors=False):
         """Refresh view state and render."""
         self.refresh_view_state()
-        self.just_render(nuke_cursors)
-
+        self.just_render()
         if nuke_cursors:
             self.reset_cursor()
 
     @distinct_until_state_changed
-    def just_render(self, nuke_cursors=False):
+    def just_render(self):
         # TODO: Rewrite to "pureness" so that we don't need a lock here
         # Note: It is forbidden to `update_state` during render, e.g. in
         # any partials.
         with self._lock:
             regions, rendered = self._render_template()
-        self.draw(rendered, regions, nuke_cursors)
+        self.draw(rendered, regions)
 
         on_special_symbol = any(
             self.view.match_selector(

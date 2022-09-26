@@ -157,16 +157,15 @@ class Interface():
     def render(self, nuke_cursors=False):
         self.pre_render()
         regions, rendered = self._render_template()
-        self.draw(rendered, regions, nuke_cursors)
+        self.draw(rendered, regions)
         if nuke_cursors:
             self.reset_cursor()
 
-    def draw(self, content, regions, nuke_cursors):
-        # type: (str, SectionRegions, bool) -> None
+    def draw(self, content, regions):
+        # type: (str, SectionRegions) -> None
         self.view.run_command("gs_new_content_and_regions", {
             "content": content,
-            "regions": {key: region_as_tuple(region) for key, region in regions.items()},
-            "nuke_cursors": nuke_cursors
+            "regions": {key: region_as_tuple(region) for key, region in regions.items()}
         })
 
     def _render_template(self):
@@ -250,11 +249,8 @@ def section(key):
 class gs_new_content_and_regions(TextCommand):
     current_region_names = set()  # type: Set[str]
 
-    def run(self, edit, content, regions, nuke_cursors=False):
+    def run(self, edit, content, regions):
         replace_view_content(self.view, content)
-        if nuke_cursors:
-            self.view.sel().clear()
-            self.view.sel().add(sublime.Region(0))
 
         for key, region_range in regions.items():
             self.view.add_regions("git_savvy_interface." + key, [region_from_tuple(region_range)])
@@ -448,8 +444,7 @@ class EditView():
 
         self.view.run_command("gs_new_content_and_regions", {
             "content": content,
-            "regions": regions,
-            "nuke_cursors": True
+            "regions": regions
         })
 
 
