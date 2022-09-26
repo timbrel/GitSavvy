@@ -189,7 +189,7 @@ class Interface():
 
                 rendered = rendered[:start] + new_content + rendered[end:]
 
-                self.adjust(start, end - start, new_content_len)
+                self._adjust_region_positions(start, end - start, new_content_len)
                 if new_content_len:
                     self.regions[key] = [start, start + new_content_len]
 
@@ -197,7 +197,7 @@ class Interface():
 
         return rendered
 
-    def adjust(self, idx, orig_len, new_len):
+    def _adjust_region_positions(self, idx, orig_len, new_len):
         """
         When interpolating template variables, update region ranges for previously-evaluated
         variables, that are situated later on in the output/template string.
