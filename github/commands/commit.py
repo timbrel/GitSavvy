@@ -5,16 +5,22 @@ GitHub extensions to the new-commit view.
 import re
 
 import sublime
-from sublime_plugin import TextCommand
 
-from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_paginated_panel
 from .. import github
 from .. import git_mixins
 from ...common import util
+from GitSavvy.core.base_commands import GsTextCommand
+from GitSavvy.core.runtime import enqueue_on_worker, on_worker
 
 
-class GsGithubShowIssuesCommand(TextCommand, git_mixins.GithubRemotesMixin, GitCommand):
+__all__ = (
+    "gs_github_show_issues",
+    "gs_github_show_contributors",
+)
+
+
+class gs_github_show_issues(git_mixins.GithubRemotesMixin, GsTextCommand):
 
     """
     Display a panel of GitHub issues to either:
@@ -31,12 +37,18 @@ class GsGithubShowIssuesCommand(TextCommand, git_mixins.GithubRemotesMixin, GitC
         if not default_repo:
             first_cursor = self.view.sel()[0].begin()
             text_before_cursor = self.view.substr(sublime.Region(0, first_cursor))
-            nondefault_repo = re.search(
-                r"([a-zA-Z\-_0-9\.]+)/([a-zA-Z\-_0-9\.]+)#$", text_before_cursor).groups()
+            match = re.search(
+                r"([a-zA-Z\-_0-9\.]+)/([a-zA-Z\-_0-9\.]+)#$", text_before_cursor)
+            if not match:
+                raise RuntimeError(
+                    "could not extract remote repository path. "
+                    "regex inconsistent with key binding context constraint. "
+                )
+            nondefault_repo = match.groups()
         else:
             nondefault_repo = None
 
-        sublime.set_timeout_async(lambda: self.run_async(nondefault_repo))
+        enqueue_on_worker(self.run_async, nondefault_repo)
 
     def run_async(self, nondefault_repo):
         remote = github.parse_remote(self.get_integrated_remote_url())
@@ -60,7 +72,7 @@ class GsGithubShowIssuesCommand(TextCommand, git_mixins.GithubRemotesMixin, GitC
             status_message="Getting issues..."
         )
         if pp.is_empty():
-            self.view.window().status_message("No issues found.")
+            self.window.status_message("No issues found.")
 
     def format_item(self, issue):
         return (
@@ -83,7 +95,7 @@ class GsGithubShowIssuesCommand(TextCommand, git_mixins.GithubRemotesMixin, GitC
         self.view.run_command("insert", {"characters": str(issue["number"])})
 
 
-class GsGithubShowContributorsCommand(TextCommand, GitCommand):
+class gs_github_show_contributors(git_mixins.GithubRemotesMixin, GsTextCommand):
 
     """
     Query github for a list of people that have contributed to the GitHub project
@@ -92,13 +104,9 @@ class GsGithubShowContributorsCommand(TextCommand, GitCommand):
     position.
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(lambda: self.run_async())
-
-    def run_async(self):
-        default_remote_name, default_remote = self.get_remotes().popitem(last=False)
-        remote = github.parse_remote(default_remote)
-
+        remote = github.parse_remote(self.get_integrated_remote_url())
         contributors = github.get_contributors(remote)
 
         pp = show_paginated_panel(
@@ -109,7 +117,7 @@ class GsGithubShowContributorsCommand(TextCommand, GitCommand):
             status_message="Getting contributors..."
         )
         if pp.is_empty():
-            self.view.window().status_message("No contributors found.")
+            self.window.status_message("No contributors found.")
 
     def format_item(self, contributor):
         return (contributor["login"], contributor)
