@@ -2,7 +2,7 @@ from itertools import chain
 import os
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import WindowCommand
 
 from ..commands import GsNavigate
 from ...common import ui
@@ -11,6 +11,23 @@ from ...common import util
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker
 from GitSavvy.core.utils import flash
+
+
+__all__ = (
+    "gs_show_tags",
+    "gs_tags_toggle_remotes",
+    "gs_tags_refresh",
+    "gs_tags_delete",
+    "gs_tags_push",
+    "gs_tags_view_log",
+    "gs_tags_navigate_tag",
+)
+
+
+MYPY = False
+if MYPY:
+    from typing import List
+
 
 TAG_DELETE_MESSAGE = "Tag(s) deleted."
 
@@ -26,16 +43,7 @@ START_PUSH_MESSAGE = "Pushing tag..."
 END_PUSH_MESSAGE = "Push complete."
 
 
-def tag_from_lines(lines):
-    tags = []
-    for line in lines:
-        m = line.strip().split(" ", 2)
-        if len(m) in (2, 3):
-            tags.append(m[1].strip())
-    return tags
-
-
-class GsShowTagsCommand(WindowCommand, GitCommand):
+class gs_show_tags(WindowCommand, GitCommand):
 
     """
     Open a branch dashboard for the active Git repository.
@@ -221,15 +229,47 @@ class TagsInterface(ui.Interface, GitCommand):
 
 ui.register_listeners(TagsInterface)
 
+TAGS_SELECTOR = "meta.git-savvy.tag.name"
+SHA_SELECTOR = "constant.other.git-savvy.tags.sha1"
 
-class GsTagsToggleRemotesCommand(TextCommand, GitCommand):
+
+class TagsInterfaceCommand(ui.InterfaceCommand):
+    interface_type = TagsInterface
+    interface = None  # type: TagsInterface
+
+    def selected_local_tags(self):
+        # type: () -> List[str]
+        return ui.extract_by_selector(
+            self.view, TAGS_SELECTOR, self.region_name_for("local_tags"))
+
+    def selected_local_commits(self):
+        # type: () -> List[str]
+        return ui.extract_by_selector(
+            self.view, SHA_SELECTOR, self.region_name_for("local_tags"))
+
+    def selected_remote_tags(self, remote_name):
+        # type: (str) -> List[str]
+        return ui.extract_by_selector(
+            self.view, TAGS_SELECTOR, self.remote_section_name_for(remote_name))
+
+    def selected_remote_commits(self, remote_name):
+        # type: (str) -> List[str]
+        return ui.extract_by_selector(
+            self.view, SHA_SELECTOR, self.remote_section_name_for(remote_name))
+
+    def remote_section_name_for(self, remote_name):
+        # type: (str) -> str
+        return self.region_name_for("remote_tags_list_" + remote_name)
+
+
+class gs_tags_toggle_remotes(TagsInterfaceCommand):
 
     """
     Toggle display of the remote tags.
     """
 
     def run(self, edit, show=None):
-        interface = ui.get_interface(self.view.id())
+        interface = self.interface
         interface.remotes = None
         if show is None:
             interface.show_remotes = not interface.show_remotes
@@ -238,21 +278,21 @@ class GsTagsToggleRemotesCommand(TextCommand, GitCommand):
         interface.render()
 
 
-class GsTagsRefreshCommand(TextCommand, GitCommand):
+class gs_tags_refresh(TagsInterfaceCommand):
 
     """
     Refresh the tags dashboard.
     """
 
     def run(self, edit, reset_remotes=False):
-        interface = ui.get_interface(self.view.id())
+        interface = self.interface
         if reset_remotes:
             interface.remotes = None
 
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsTagsDeleteCommand(TextCommand, GitCommand):
+class gs_tags_delete(TagsInterfaceCommand):
 
     """
     Delete selected tag(s).
@@ -260,15 +300,13 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
 
     @on_worker
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
+        interface = self.interface
         self.delete_local(interface)
         self.delete_remote(interface)
         util.view.refresh_gitsavvy(self.view)
 
     def delete_local(self, interface):
-        lines = interface.get_selection_lines_in_region("local_tags")
-        tags_to_delete = tag_from_lines(lines)
-
+        tags_to_delete = self.selected_local_tags()
         if not tags_to_delete:
             return
 
@@ -283,8 +321,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
             return
 
         for remote_name, remote in interface.remotes.items():
-            lines = interface.get_selection_lines_in_region("remote_tags_list_" + remote_name)
-            tags_to_delete = tag_from_lines(lines)
+            tags_to_delete = self.selected_remote_tags(remote_name)
 
             if tags_to_delete:
                 self.git(
@@ -299,7 +336,7 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsTagsPushCommand(TextCommand, GitCommand):
+class gs_tags_push(TagsInterfaceCommand):
 
     """
     Displays a panel of all remotes defined for the repository, then push
@@ -310,10 +347,10 @@ class GsTagsPushCommand(TextCommand, GitCommand):
     def run(self, edit, push_all=False):
         self.remotes = list(self.get_remotes().keys())
         if not self.remotes:
-            self.view.window().show_quick_panel([NO_REMOTES_MESSAGE], None)
+            self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
             return
 
-        self.view.window().show_quick_panel(
+        self.window.show_quick_panel(
             self.remotes,
             lambda idx: self.push_async(idx, push_all=push_all),
             flags=sublime.MONOSPACE_FONT
@@ -331,14 +368,13 @@ class GsTagsPushCommand(TextCommand, GitCommand):
             return
         remote = self.remotes[remote_idx]
 
-        interface = ui.get_interface(self.view.id())
-        lines = interface.get_selection_lines_in_region("local_tags")
-        tags_to_push = tag_from_lines(lines)
+        tags_to_push = self.selected_local_tags()
 
         flash(self.view, START_PUSH_MESSAGE)
         self.git("push", remote, *("refs/tags/" + tag for tag in tags_to_push))
         flash(self.view, END_PUSH_MESSAGE)
 
+        interface = self.interface
         interface.remotes = None
         util.view.refresh_gitsavvy(self.view)
 
@@ -351,13 +387,12 @@ class GsTagsPushCommand(TextCommand, GitCommand):
         self.git("push", remote, "--tags")
         flash(self.view, END_PUSH_MESSAGE)
 
-        interface = ui.get_interface(self.view.id())
-        if interface:
-            interface.remotes = None
-            util.view.refresh_gitsavvy(self.view)
+        interface = self.interface
+        interface.remotes = None
+        util.view.refresh_gitsavvy(self.view)
 
 
-class GsTagsViewLogCommand(TextCommand, GitCommand):
+class gs_tags_view_log(TagsInterfaceCommand):
 
     """
     Display the commit for the selected tag's hash.
@@ -365,21 +400,18 @@ class GsTagsViewLogCommand(TextCommand, GitCommand):
 
     @on_worker
     def run(self, edit):
-        interface = ui.get_interface(self.view.id())
-        local_lines = interface.get_selection_lines_in_region("local_tags")
-        commit_hashes = [line[4:11] for line in local_lines if line]
+        interface = self.interface
+        commit_hashes = self.selected_local_commits()
 
         if interface.remotes:
-            for remote_name, remote in interface.remotes.items():
-                lines = interface.get_selection_lines_in_region("remote_tags_list_" + remote_name)
-                commit_hashes.extend(line[4:11] for line in lines if line[:4] == "    ")
+            for remote_name in interface.remotes:
+                commit_hashes += self.selected_remote_commits(remote_name)
 
-        window = self.view.window()
         for commit_hash in commit_hashes:
-            window.run_command("gs_show_commit", {"commit_hash": commit_hash})
+            self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
 
 
-class GsTagsNavigateTagCommand(GsNavigate):
+class gs_tags_navigate_tag(GsNavigate):
 
     """
     Move cursor to the next (or previous) selectable file in the dashboard.

@@ -9,10 +9,13 @@ from . import util
 from ..core.runtime import enqueue_on_worker
 from ..core.settings import GitSavvySettings
 from ..core.utils import focus_view
+from GitSavvy.core.base_commands import GsTextCommand
+from GitSavvy.core.fns import flatten
+
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Optional
+    from typing import Dict, Iterable, Iterator, List, Optional, Tuple, Type
 
 
 interfaces = {}  # type: Dict[sublime.ViewId, Interface]
@@ -212,7 +215,7 @@ class Interface():
 
         return keyed_content
 
-    def update(self, key, content):
+    def update_view_section(self, key, content):
         self.view.run_command("gs_update_region", {
             "key": "git_savvy_interface." + key,
             "content": content
@@ -222,25 +225,6 @@ class Interface():
         for key in self.regions.keys():
             self.view.erase_regions("git_savvy_interface." + key)
         self.regions = {}
-
-    def get_view_regions(self, key):
-        return self.view.get_regions("git_savvy_interface." + key)
-
-    def get_selection_line(self):
-        selections = self.view.sel()
-        if not selections or len(selections) > 1:
-            self.view.window().status_message("Please make a selection.")
-            return None
-
-        selection = selections[0]
-        return selection, util.view.get_lines_from_regions(self.view, [selection])[0]
-
-    def get_selection_lines_in_region(self, region):
-        return util.view.get_lines_from_regions(
-            self.view,
-            self.view.sel(),
-            valid_ranges=self.get_view_regions(region)
-        )
 
 
 def partial(key):
@@ -297,6 +281,70 @@ def register_listeners(InterfaceClass):
 def get_interface(view_id):
     # type: (sublime.ViewId) -> Optional[Interface]
     return interfaces.get(view_id, None)
+
+
+class InterfaceCommand(GsTextCommand):
+    interface_type = None  # type: Type[Interface]
+    interface = None  # type: Interface
+
+    def run_(self, edit_token, args):
+        vid = self.view.id()
+        interface = get_interface(vid)
+        if not interface:
+            raise RuntimeError(
+                "Assertion failed! "
+                "no dashboard registered for {}".format(vid))
+        if not isinstance(interface, self.interface_type):
+            raise RuntimeError(
+                "Assertion failed! "
+                "registered interface `{}` is not of type `{}`"
+                .format(interface, self.interface_type.__name__)
+            )
+        self.interface = interface
+        return super().run_(edit_token, args)
+
+    def region_name_for(self, section):
+        # type: (str) -> str
+        return "git_savvy_interface." + section
+
+
+def region_as_tuple(region):
+    # type: (sublime.Region) -> Tuple[int, int]
+    return region.begin(), region.end()
+
+
+def region_from_tuple(tuple_):
+    # type: (Tuple[int, int]) -> sublime.Region
+    return sublime.Region(*tuple_)
+
+
+def unique_regions(regions):
+    # type: (Iterable[sublime.Region]) -> Iterator[sublime.Region]
+    # Regions are not hashable so we unpack them to tuples,
+    # then use set, finally pack them again
+    return map(region_from_tuple, set(map(region_as_tuple, regions)))
+
+
+def unique_selected_lines(view):
+    # type: (sublime.View) -> List[sublime.Region]
+    return list(unique_regions(flatten(view.lines(s) for s in view.sel())))
+
+
+def extract_by_selector(view, item_selector, within_section=None):
+    # type: (sublime.View, str, str) -> List[str]
+    selected_lines = unique_selected_lines(view)
+    items = view.find_by_selector(item_selector)
+    acceptable_sections = (
+        view.get_regions(within_section)
+        if within_section else
+        [sublime.Region(0, view.size())]
+    )
+    return [
+        view.substr(item)
+        for section in acceptable_sections
+        for line in selected_lines if section.contains(line)
+        for item in items if line.contains(item)
+    ]
 
 
 class GsInterfaceCloseCommand(TextCommand):

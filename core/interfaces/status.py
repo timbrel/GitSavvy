@@ -1,5 +1,4 @@
 from functools import partial, wraps
-from itertools import chain
 import os
 import threading
 
@@ -15,12 +14,27 @@ from GitSavvy.core import store
 from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import noop, show_actions_panel
 
-flatten = chain.from_iterable
-
 
 MYPY = False
 if MYPY:
-    from typing import Iterable, Iterator, List, Optional, Tuple
+    from typing import Iterable, List, Optional, TypedDict
+    from ..git_mixins.stash import Stash
+    StatusViewState = TypedDict(
+        "StatusViewState",
+        {
+            "staged_files": List[FileStatus],
+            "unstaged_files": List[FileStatus],
+            "untracked_files": List[FileStatus],
+            "merge_conflicts": List[FileStatus],
+            "clean": bool,
+            "long_status": str,
+            "git_root": str,
+            "show_help": bool,
+            "head": str,
+            "stashes": List[Stash],
+        },
+        total=False
+    )
 
 
 # Expected
@@ -50,7 +64,7 @@ EXTRACT_FILENAME_RE = (
 
 def distinct_until_state_changed(just_render_fn):
     """Custom `lru_cache`-look-alike to minimize redraws."""
-    previous_state = {}
+    previous_state = {}  # type: StatusViewState
 
     @wraps(just_render_fn)
     def wrapper(self, *args, **kwargs):
@@ -193,7 +207,7 @@ class StatusInterface(ui.Interface, GitCommand):
             'show_help': True,
             'head': '',
             'stashes': []
-        }
+        }  # type: StatusViewState
         super().__init__(*args, **kwargs)
 
     def title(self):
@@ -387,46 +401,17 @@ class StatusInterface(ui.Interface, GitCommand):
 ui.register_listeners(StatusInterface)
 
 
-def get_subjects(view, *sections):
-    # type: (sublime.View, str) -> Iterable[sublime.Region]
-    return flatten(
-        view.find_by_selector(
-            'meta.git-savvy.status.section.{} meta.git-savvy.status.subject'.format(section)
-        )
+def _get_subjects_selector(sections):
+    # type: (Iterable[str]) -> str
+    return ", ".join(
+        'meta.git-savvy.status.section.{} meta.git-savvy.status.subject'.format(section)
         for section in sections
     )
 
 
-def region_as_tuple(region):
-    # type: (sublime.Region) -> Tuple[int, int]
-    return region.begin(), region.end()
-
-
-def region_from_tuple(tuple_):
-    # type: (Tuple[int, int]) -> sublime.Region
-    return sublime.Region(*tuple_)
-
-
-def unique_regions(regions):
-    # type: (Iterable[sublime.Region]) -> Iterator[sublime.Region]
-    # Regions are not hashable so we unpack them to tuples,
-    # then use set, finally pack them again
-    return map(region_from_tuple, set(map(region_as_tuple, regions)))
-
-
-def unique_selected_lines(view):
-    # type: (sublime.View) -> List[sublime.Region]
-    return list(unique_regions(flatten(view.lines(s) for s in view.sel())))
-
-
 def get_selected_subjects(view, *sections):
     # type: (sublime.View, str) -> List[str]
-    selected_lines = unique_selected_lines(view)
-    return [
-        view.substr(subject)
-        for subject in get_subjects(view, *sections)
-        if any(line.contains(subject) for line in selected_lines)
-    ]
+    return ui.extract_by_selector(view, _get_subjects_selector(sections))
 
 
 def get_selected_files(view, base_path, *sections):
