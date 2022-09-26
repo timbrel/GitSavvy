@@ -136,6 +136,14 @@ class TextRange:
         self.a = a  # type: Final[int]
         self.b = b  # type: Final[int]
 
+    def __repr__(self):
+        return '{}(text="{}", a={}, b={})'.format(
+            self.__class__.__name__,
+            self.text[:20] + ("..." if len(self.text) > 20 else ""),
+            self.a,
+            self.b
+        )
+
     def _as_tuple(self):
         # type: () -> Tuple[str, int, int]
         return (self.text, self.a, self.b)
