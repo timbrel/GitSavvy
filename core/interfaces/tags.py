@@ -9,7 +9,7 @@ from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 from GitSavvy.core.fns import filter_
-from GitSavvy.core.runtime import enqueue_on_worker
+from GitSavvy.core.runtime import enqueue_on_worker, on_worker
 from GitSavvy.core.utils import flash
 
 TAG_DELETE_MESSAGE = "Tag(s) deleted."
@@ -258,10 +258,8 @@ class GsTagsDeleteCommand(TextCommand, GitCommand):
     Delete selected tag(s).
     """
 
+    @on_worker
     def run(self, edit):
-        enqueue_on_worker(self.run_async)
-
-    def run_async(self):
         interface = ui.get_interface(self.view.id())
         self.delete_local(interface)
         self.delete_remote(interface)
@@ -308,10 +306,8 @@ class GsTagsPushCommand(TextCommand, GitCommand):
     selected or all tag(s) to the selected remote.
     """
 
+    @on_worker
     def run(self, edit, push_all=False):
-        enqueue_on_worker(self.run_async, push_all=push_all)
-
-    def run_async(self, push_all):
         self.remotes = list(self.get_remotes().keys())
         if not self.remotes:
             self.view.window().show_quick_panel([NO_REMOTES_MESSAGE], None)
@@ -367,10 +363,8 @@ class GsTagsViewLogCommand(TextCommand, GitCommand):
     Display the commit for the selected tag's hash.
     """
 
+    @on_worker
     def run(self, edit):
-        enqueue_on_worker(self.run_async)
-
-    def run_async(self):
         interface = ui.get_interface(self.view.id())
         local_lines = interface.get_selection_lines_in_region("local_tags")
         commit_hashes = [line[4:11] for line in local_lines if line]
