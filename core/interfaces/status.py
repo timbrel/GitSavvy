@@ -292,12 +292,11 @@ class StatusInterface(ui.Interface, GitCommand):
         # Note: It is forbidden to `update_state` during render, e.g. in
         # any partials.
         with self._lock:
-            self.clear_regions()
-            rendered = self._render_template()
+            regions, rendered = self._render_template()
 
         self.view.run_command("gs_new_content_and_regions", {
             "content": rendered,
-            "regions": self.regions,
+            "regions": {key: ui.region_as_tuple(region) for key, region in regions.items()},
             "nuke_cursors": nuke_cursors
         })
 

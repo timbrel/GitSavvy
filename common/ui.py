@@ -27,7 +27,8 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, Iterator, List, Optional, Tuple, Type
+    from typing import Dict, Iterable, Iterator, List, Optional, Set, Tuple, Type
+    SectionRegions = Dict[str, sublime.Region]
 
 
 interfaces = {}  # type: Dict[sublime.ViewId, Interface]
@@ -70,8 +71,6 @@ class Interface():
         if self._initialized:
             return
         self._initialized = True
-
-        self.regions = {}
 
         subclass_attrs = (getattr(self, attr) for attr in vars(self.__class__).keys())
 
@@ -155,25 +154,26 @@ class Interface():
         pass
 
     def render(self, nuke_cursors=False):
-        self.clear_regions()
         self.pre_render()
-        rendered = self._render_template()
+        regions, rendered = self._render_template()
         self.view.run_command("gs_new_content_and_regions", {
             "content": rendered,
-            "regions": self.regions,
+            "regions": {key: region_as_tuple(region) for key, region in regions.items()},
             "nuke_cursors": nuke_cursors
         })
         if nuke_cursors:
             self.reset_cursor()
 
     def _render_template(self):
+        # type: () -> Tuple[SectionRegions, str]
         """
         Generate new content for the view given the interface template
         and partial content.  As partial content is added to the rendered
-        template, add regions to `self.regions` with the key, start, and
+        template, compute and build up `regions` with the key, start, and
         end of each partial.
         """
         rendered = self.template
+        regions = {}  # type: SectionRegions
 
         keyed_content = self.get_keyed_content()
         for key, new_content in keyed_content.items():
@@ -189,26 +189,27 @@ class Interface():
 
                 rendered = rendered[:start] + new_content + rendered[end:]
 
-                self._adjust_region_positions(start, end - start, new_content_len)
+                self._adjust_region_positions(regions, start, end - start, new_content_len)
                 if new_content_len:
-                    self.regions[key] = [start, start + new_content_len]
+                    regions[key] = sublime.Region(start, start + new_content_len)
 
                 match = pattern.search(rendered)
 
-        return rendered
+        return regions, rendered
 
-    def _adjust_region_positions(self, idx, orig_len, new_len):
+    def _adjust_region_positions(self, regions, idx, orig_len, new_len):
+        # type: (SectionRegions, int, int, int) -> None
         """
         When interpolating template variables, update region ranges for previously-evaluated
         variables, that are situated later on in the output/template string.
         """
         shift = new_len - orig_len
-        for key, region in self.regions.items():
-            if region[0] > idx:
-                region[0] += shift
-                region[1] += shift
-            elif region[1] > idx or region[0] == idx:
-                region[1] += shift
+        for key, region in regions.items():
+            if region.a > idx:
+                region.a += shift
+                region.b += shift
+            elif region.b > idx or region.a == idx:
+                region.b += shift
 
     def get_keyed_content(self):
         keyed_content = OrderedDict(
@@ -233,11 +234,6 @@ class Interface():
             "content": content
         })
 
-    def clear_regions(self):
-        for key in self.regions.keys():
-            self.view.erase_regions("git_savvy_interface." + key)
-        self.regions = {}
-
 
 def section(key):
     def decorator(fn):
@@ -247,6 +243,7 @@ def section(key):
 
 
 class gs_new_content_and_regions(TextCommand):
+    current_region_names = set()  # type: Set[str]
 
     def run(self, edit, content, regions, nuke_cursors=False):
         selections = self.view.sel()
@@ -268,8 +265,12 @@ class gs_new_content_and_regions(TextCommand):
             selections.add(sublime.Region(pt, pt))
 
         for key, region_range in regions.items():
-            a, b = region_range
-            self.view.add_regions("git_savvy_interface." + key, [sublime.Region(a, b)])
+            self.view.add_regions("git_savvy_interface." + key, [region_from_tuple(region_range)])
+
+        for key in self.current_region_names - regions.keys():
+            self.view.erase_regions("git_savvy_interface." + key)
+
+        self.current_region_names = regions.keys()
 
         if self.view.settings().get("git_savvy.interface"):
             self.view.run_command("gs_handle_vintageous")
