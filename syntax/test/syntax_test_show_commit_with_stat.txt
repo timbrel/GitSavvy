@@ -9,6 +9,7 @@ CommitDate: Mon Jun 12 19:58:27 2017 +0200
 
     This is a message.  Fixes #12
 #                             ^^^ constant.other.issue-ref.git-savvy.make-commit
+#                             ^^^ meta.git-savvy.issue-reference
     @betty made this.  :thanks:
 #   ^^^^^^ constant.other.github-username.git-savvy.make-commit
 
