@@ -289,7 +289,7 @@ class StatusInterface(ui.Interface, GitCommand):
     def just_render(self):
         # TODO: Rewrite to "pureness" so that we don't need a lock here
         # Note: It is forbidden to `update_state` during render, e.g. in
-        # any partials.
+        # any `ui.section`.
         with self._lock:
             content, regions = self._render_template()
         self.draw(content, regions)
