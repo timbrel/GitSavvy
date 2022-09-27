@@ -28,8 +28,14 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, Iterator, List, Optional, Set, Tuple, Type
+    from typing import Dict, Iterable, Iterator, List, Optional, Protocol, Set, Tuple, Type, Union
     SectionRegions = Dict[str, sublime.Region]
+
+    class SectionFn(Protocol):
+        key = ''  # type: str
+
+        def __call__(self) -> 'Union[str, Tuple[str, List[SectionFn]]]':
+            pass
 
 
 interfaces = {}  # type: Dict[sublime.ViewId, Interface]
@@ -49,8 +55,8 @@ class _PrepareInterface(type):
 class Interface(metaclass=_PrepareInterface):
     interface_type = ""
     syntax_file = ""
-
     template = ""
+    partials = {}  # type: Dict[str, SectionFn]
 
     _initialized = False
 
