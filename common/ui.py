@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from textwrap import dedent
 import re
 
@@ -51,12 +50,18 @@ class _PrepareInterface(type):
             if attr_name.startswith("template"):
                 setattr(cls, attr_name, dedent(value))
 
+        cls.sections = [
+            attr_name
+            for attr_name, attr in attrs.items()
+            if callable(attr) and hasattr(attr, "key")
+        ]
+
 
 class Interface(metaclass=_PrepareInterface):
     interface_type = ""
     syntax_file = ""
     template = ""
-    partials = {}  # type: Dict[str, SectionFn]
+    sections = []    # type: List[str]
 
     _initialized = False
 
@@ -85,14 +90,6 @@ class Interface(metaclass=_PrepareInterface):
         if self._initialized:
             return
         self._initialized = True
-
-        subclass_attrs = (getattr(self, attr) for attr in vars(self.__class__).keys())
-
-        self.partials = {
-            attr.key: attr
-            for attr in subclass_attrs
-            if callable(attr) and hasattr(attr, "key")
-        }
 
         if view:
             self.view = view
@@ -188,8 +185,7 @@ class Interface(metaclass=_PrepareInterface):
         rendered = self.template
         regions = {}  # type: SectionRegions
 
-        keyed_content = self.get_keyed_content()
-        for key, new_content in keyed_content.items():
+        for key, new_content in self._get_keyed_content():
             new_content_len = len(new_content)
             pattern = re.compile(r"\{(<+ )?" + key + r"\}")
 
@@ -224,22 +220,15 @@ class Interface(metaclass=_PrepareInterface):
             elif region.b > idx or region.a == idx:
                 region.b += shift
 
-    def get_keyed_content(self):
-        keyed_content = OrderedDict(
-            (key, render_fn())
-            for key, render_fn in self.partials.items()
-        )
-
-        for key in keyed_content:
-            output = keyed_content[key]
-            if isinstance(output, tuple):
-                sub_template, complex_partials = output
-                keyed_content[key] = sub_template
-
-                for render_fn in complex_partials:
-                    keyed_content[render_fn.key] = render_fn()
-
-        return keyed_content
+    def _get_keyed_content(self):
+        # type: () -> Iterator[Tuple[str, str]]
+        render_fns = [getattr(self, name) for name in self.sections]  # type: List[SectionFn]
+        for fn in render_fns:
+            result = fn()
+            if isinstance(result, tuple):
+                result, partials = result
+                render_fns += partials
+            yield fn.key, result
 
     def update_view_section(self, key, content):
         self.view.run_command("gs_update_region", {
