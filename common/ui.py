@@ -39,7 +39,14 @@ subclasses = []
 EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press {super_key}+Enter.  To cancel, close the view.\n"
 
 
-class Interface():
+class _PrepareInterface(type):
+    def __init__(cls, cls_name, bases, attrs):
+        for attr_name, value in attrs.items():
+            if attr_name.startswith("template"):
+                setattr(cls, attr_name, dedent(value))
+
+
+class Interface(metaclass=_PrepareInterface):
     interface_type = ""
     syntax_file = ""
 
@@ -80,10 +87,6 @@ class Interface():
             for attr in subclass_attrs
             if callable(attr) and hasattr(attr, "key")
         }
-
-        for attr in vars(self.__class__).keys():
-            if attr.startswith("template"):
-                setattr(self, attr, dedent(getattr(self, attr)))
 
         if view:
             self.view = view
