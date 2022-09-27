@@ -156,8 +156,8 @@ class Interface():
 
     def render(self, nuke_cursors=False):
         self.pre_render()
-        regions, rendered = self._render_template()
-        self.draw(rendered, regions)
+        content, regions = self._render_template()
+        self.draw(content, regions)
         if nuke_cursors:
             self.reset_cursor()
 
@@ -169,7 +169,7 @@ class Interface():
         })
 
     def _render_template(self):
-        # type: () -> Tuple[SectionRegions, str]
+        # type: () -> Tuple[str, SectionRegions]
         """
         Generate new content for the view given the interface template
         and partial content.  As partial content is added to the rendered
@@ -199,7 +199,7 @@ class Interface():
 
                 match = pattern.search(rendered)
 
-        return regions, rendered
+        return rendered, regions
 
     def _adjust_region_positions(self, regions, idx, orig_len, new_len):
         # type: (SectionRegions, int, int, int) -> None

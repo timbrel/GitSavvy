@@ -291,8 +291,8 @@ class StatusInterface(ui.Interface, GitCommand):
         # Note: It is forbidden to `update_state` during render, e.g. in
         # any partials.
         with self._lock:
-            regions, rendered = self._render_template()
-        self.draw(rendered, regions)
+            content, regions = self._render_template()
+        self.draw(content, regions)
 
         on_special_symbol = any(
             self.view.match_selector(
