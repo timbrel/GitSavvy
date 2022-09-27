@@ -19,7 +19,8 @@ __all__ = (
     "gs_tags_refresh",
     "gs_tags_delete",
     "gs_tags_push",
-    "gs_tags_view_log",
+    "gs_tags_show_commit",
+    "gs_tags_show_graph",
     "gs_tags_navigate_tag",
 )
 
@@ -86,6 +87,7 @@ class TagsInterface(ui.Interface, GitCommand):
       [p] push to remote              [tab]       transition to next dashboard
       [P] push all tags to remote     [SHIFT-tab] transition to previous dashboard
       [l] view commit
+      [g] show log graph
 
     -
     """
@@ -392,7 +394,7 @@ class gs_tags_push(TagsInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class gs_tags_view_log(TagsInterfaceCommand):
+class gs_tags_show_commit(TagsInterfaceCommand):
 
     """
     Display the commit for the selected tag's hash.
@@ -409,6 +411,23 @@ class gs_tags_view_log(TagsInterfaceCommand):
 
         for commit_hash in commit_hashes:
             self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
+
+
+class gs_tags_show_graph(TagsInterfaceCommand):
+    def run(self, edit) -> None:
+        # NOTE: We take the commit sha's here (instead of the tag names)
+        #       because in the graph a tag ref takes the form e.g.
+        #       `tag: 2.14.5`.  T.i we avoid prepending "tag: " here.
+        commits = self.selected_local_commits()
+        if not commits:
+            return
+        if len(commits) > 1:
+            flash(self.view, "Can only follow one tag. Taking the first one")
+
+        self.window.run_command('gs_graph', {
+            'all': True,
+            'follow': commits[0]
+        })
 
 
 class gs_tags_navigate_tag(GsNavigate):
