@@ -199,7 +199,11 @@ class RemotePanel(GitCommand):
             pre_selected_index = 0
 
         self.window.show_quick_panel(
-            [[remote, _remotes[remote]] for remote in self.remotes] if self.show_url else self.remotes,
+            (
+                [[remote, _remotes[remote]] for remote in self.remotes]  # type: ignore[arg-type]  # mypy bug
+                if self.show_url else
+                self.remotes
+            ),
             self.on_remote_selection,
             flags=sublime.MONOSPACE_FONT,
             selected_index=pre_selected_index
