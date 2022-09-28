@@ -179,14 +179,14 @@ class StatusInterface(ui.Interface, GitCommand):
     -
     """
 
-    conflicts_keybindings = """
+    conflicts_keybindings = ui.indent_by_2("""
     ###############
     ## CONFLICTS ##
     ###############
 
     [y] use version from your commit
     [b] use version from the base
-    """
+    """)
 
     template_staged = """
       STAGED:
@@ -214,8 +214,6 @@ class StatusInterface(ui.Interface, GitCommand):
     """
 
     def __init__(self, *args, **kwargs):
-        self.conflicts_keybindings = \
-            "\n".join(line[2:] for line in self.conflicts_keybindings.split("\n"))
         self._lock = threading.Lock()
         self.state = {
             'staged_files': [],

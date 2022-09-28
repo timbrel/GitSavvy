@@ -254,6 +254,10 @@ def section(key):
     return decorator
 
 
+def indent_by_2(text):
+    return "\n".join(line[2:] for line in text.split("\n"))
+
+
 class gs_new_content_and_regions(TextCommand):
     current_region_names = set()  # type: Set[str]
 
