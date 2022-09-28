@@ -228,7 +228,7 @@ class RewriteMixin(mixin_base):
                 return dict()
             with open(path, "r") as f:
                 return dict(
-                    entry.split(" ")  # type: ignore[misc]
+                    entry.split(" ")
                     for entry in f.read().strip().split("\n")
                 )
         else:
