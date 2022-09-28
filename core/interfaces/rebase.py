@@ -15,6 +15,29 @@ from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker
 
 
+__all__ = (
+    "gs_show_rebase",
+    "gs_rebase_undo",
+    "gs_rebase_redo",
+    "gs_rebase_squash",
+    "gs_rebase_squash_all",
+    "gs_rebase_edit",
+    "gs_rebase_drop",
+    "gs_rebase_move_up",
+    "gs_rebase_move_down",
+    "gs_rebase_show_commit",
+    "gs_rebase_open_file",
+    "gs_rebase_stage_file",
+    "gs_rebase_use_commit_version",
+    "gs_rebase_use_base_version",
+    "gs_rebase_launch_merge_tool",
+    "gs_rebase_define_base_ref",
+    "gs_rebase_on_top_of",
+    "gs_rebase_toggle_preserve_mode",
+    "gs_rebase_navigate_commits",
+)
+
+
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
 COMMIT_LINE = re.compile(r"\s*[%s]\s*([a-z0-9]{3,})" % COMMIT_NODE_CHAR_OPTIONS)
@@ -39,7 +62,7 @@ def move_cursor(view, line_change):
     sels.add_all(new_sels)
 
 
-class GsShowRebaseCommand(WindowCommand, GitCommand):
+class gs_show_rebase(WindowCommand, GitCommand):
 
     """
     Open a status view for the active git repository.
@@ -414,7 +437,7 @@ class RebaseInterfaceCommand(ui.InterfaceCommand):
             return m.group(1)
 
 
-class GsRebaseUndoCommand(RebaseInterfaceCommand):
+class gs_rebase_undo(RebaseInterfaceCommand):
 
     """
     Revert branch HEAD to point to commit prior to previous action.
@@ -448,7 +471,7 @@ class GsRebaseUndoCommand(RebaseInterfaceCommand):
             util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
-class GsRebaseRedoCommand(RebaseInterfaceCommand):
+class gs_rebase_redo(RebaseInterfaceCommand):
 
     """
     If an undo action was taken, set branch HEAD to point to commit of
@@ -548,7 +571,7 @@ class RewriteBase(RebaseInterfaceCommand):
         util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
-class GsRebaseSquashCommand(RewriteBase):
+class gs_rebase_squash(RewriteBase):
 
     def run(self, edit, step=None):
         self.step = step
@@ -611,7 +634,7 @@ class GsRebaseSquashCommand(RewriteBase):
         )
 
 
-class GsRebaseSquashAllCommand(RewriteBase):
+class gs_rebase_squash_all(RewriteBase):
 
     def run_async(self):
         for entry in self.interface.entries:
@@ -639,7 +662,7 @@ class GsRebaseSquashAllCommand(RewriteBase):
         self.make_changes(commit_chain, "squashed all commits")
 
 
-class GsRebaseEditCommand(RewriteBase):
+class gs_rebase_edit(RewriteBase):
 
     def run_async(self):
         short_hash = self.get_selected_short_hash()
@@ -673,7 +696,7 @@ class GsRebaseEditCommand(RewriteBase):
         )
 
 
-class GsRebaseDropCommand(RewriteBase):
+class gs_rebase_drop(RewriteBase):
 
     def run_async(self):
         short_hash = self.get_selected_short_hash()
@@ -691,7 +714,7 @@ class GsRebaseDropCommand(RewriteBase):
         )
 
 
-class GsRebaseMoveUpCommand(RewriteBase):
+class gs_rebase_move_up(RewriteBase):
 
     def run(self, edit, step=None):
         self.step = step
@@ -743,7 +766,7 @@ class GsRebaseMoveUpCommand(RewriteBase):
             )
 
 
-class GsRebaseMoveDownCommand(RewriteBase):
+class gs_rebase_move_down(RewriteBase):
 
     def run(self, edit, step=None):
         self.step = step
@@ -795,7 +818,7 @@ class GsRebaseMoveDownCommand(RewriteBase):
             )
 
 
-class GsRebaseShowCommitCommand(RewriteBase):
+class gs_rebase_show_commit(RebaseInterfaceCommand):
 
     @on_worker
     def run(self, edit):
@@ -813,7 +836,7 @@ class GsRebaseShowCommitCommand(RewriteBase):
         self.window.run_command("gs_show_commit", {"commit_hash": long_hash})
 
 
-class GsRebaseOpenFileCommand(RebaseInterfaceCommand):
+class gs_rebase_open_file(RebaseInterfaceCommand):
 
     @on_worker
     def run(self, edit):
@@ -826,7 +849,7 @@ class GsRebaseOpenFileCommand(RebaseInterfaceCommand):
             self.window.open_file(path)
 
 
-class GsRebaseStageFileCommand(RebaseInterfaceCommand):
+class gs_rebase_stage_file(RebaseInterfaceCommand):
 
     @on_worker
     def run(self, edit):
@@ -840,8 +863,8 @@ class GsRebaseStageFileCommand(RebaseInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsRebaseUseCommitVersionCommand(RebaseInterfaceCommand):
-    # TODO: refactor this alongside interfaces.status.GsStatusUseCommitVersionCommand
+class gs_rebase_use_commit_version(RebaseInterfaceCommand):
+    # TODO: refactor this alongside interfaces.status.gs_status_use_commit_version
 
     @on_worker
     def run(self, edit):
@@ -867,7 +890,7 @@ class GsRebaseUseCommitVersionCommand(RebaseInterfaceCommand):
         return False
 
 
-class GsRebaseUseBaseVersionCommand(RebaseInterfaceCommand):
+class gs_rebase_use_base_version(RebaseInterfaceCommand):
 
     @on_worker
     def run(self, edit):
@@ -893,7 +916,7 @@ class GsRebaseUseBaseVersionCommand(RebaseInterfaceCommand):
         return False
 
 
-class GsRebaseLaunchMergeToolCommand(RebaseInterfaceCommand):
+class gs_rebase_launch_merge_tool(RebaseInterfaceCommand):
 
     @on_worker
     def run(self, edit):
@@ -923,7 +946,7 @@ class GsRebaseLaunchMergeToolCommand(RebaseInterfaceCommand):
         return False
 
 
-class GsRebaseDefineBaseRefCommand(PanelActionMixin, RebaseInterfaceCommand):
+class gs_rebase_define_base_ref(PanelActionMixin, RebaseInterfaceCommand):
 
     default_actions = [
         ["select_branch", "Select branch as base"],
@@ -951,7 +974,7 @@ class GsRebaseDefineBaseRefCommand(PanelActionMixin, RebaseInterfaceCommand):
             util.view.refresh_gitsavvy(self.view)
 
 
-class GsRebaseOnTopOfCommand(GsRebaseDefineBaseRefCommand):
+class gs_rebase_on_top_of(gs_rebase_define_base_ref):
 
     default_actions = [
         ["rebase_to_base_ref", "Rebase to default base"],
@@ -979,7 +1002,7 @@ class GsRebaseOnTopOfCommand(GsRebaseDefineBaseRefCommand):
             util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
-class GsRebaseTogglePreserveModeCommand(RebaseInterfaceCommand):
+class gs_rebase_toggle_preserve_mode(RebaseInterfaceCommand):
 
     def run(self, edit):
         preserve = self.view.settings().get("git_savvy.rebase.preserve_merges", False)
@@ -988,7 +1011,7 @@ class GsRebaseTogglePreserveModeCommand(RebaseInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsRebaseNavigateCommitsCommand(GsNavigate):
+class gs_rebase_navigate_commits(GsNavigate):
 
     """
     Move cursor to the next (or previous) selectable commit in the dashboard.
