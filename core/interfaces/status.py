@@ -281,25 +281,18 @@ class StatusInterface(ui.Interface, GitCommand):
     def render(self, nuke_cursors=False):
         """Refresh view state and render."""
         self.refresh_view_state()
-        self.just_render(nuke_cursors)
-
+        self.just_render()
         if nuke_cursors:
             self.reset_cursor()
 
     @distinct_until_state_changed
-    def just_render(self, nuke_cursors=False):
+    def just_render(self):
         # TODO: Rewrite to "pureness" so that we don't need a lock here
         # Note: It is forbidden to `update_state` during render, e.g. in
-        # any partials.
+        # any `ui.section`.
         with self._lock:
-            self.clear_regions()
-            rendered = self._render_template()
-
-        self.view.run_command("gs_new_content_and_regions", {
-            "content": rendered,
-            "regions": self.regions,
-            "nuke_cursors": nuke_cursors
-        })
+            content, regions = self._render_template()
+        self.draw(content, regions)
 
         on_special_symbol = any(
             self.view.match_selector(
@@ -333,19 +326,19 @@ class StatusInterface(ui.Interface, GitCommand):
     def on_close(self):
         self._unsubscribe()
 
-    @ui.partial("branch_status")
+    @ui.section("branch_status")
     def render_branch_status(self):
         return self.state['long_status']
 
-    @ui.partial("git_root")
+    @ui.section("git_root")
     def render_git_root(self):
         return self.state['git_root']
 
-    @ui.partial("head")
+    @ui.section("head")
     def render_head(self):
         return self.state['head']
 
-    @ui.partial("staged_files")
+    @ui.section("staged_files")
     def render_staged_files(self):
         staged_files = self.state['staged_files']
         if not staged_files:
@@ -362,7 +355,7 @@ class StatusInterface(ui.Interface, GitCommand):
             for f in staged_files
         ))
 
-    @ui.partial("unstaged_files")
+    @ui.section("unstaged_files")
     def render_unstaged_files(self):
         unstaged_files = self.state['unstaged_files']
         if not unstaged_files:
@@ -373,7 +366,7 @@ class StatusInterface(ui.Interface, GitCommand):
             for f in unstaged_files
         ))
 
-    @ui.partial("untracked_files")
+    @ui.section("untracked_files")
     def render_untracked_files(self):
         untracked_files = self.state['untracked_files']
         if not untracked_files:
@@ -382,7 +375,7 @@ class StatusInterface(ui.Interface, GitCommand):
         return self.template_untracked.format(
             "\n".join("    " + f.path for f in untracked_files))
 
-    @ui.partial("merge_conflicts")
+    @ui.section("merge_conflicts")
     def render_merge_conflicts(self):
         merge_conflicts = self.state['merge_conflicts']
         if not merge_conflicts:
@@ -390,11 +383,11 @@ class StatusInterface(ui.Interface, GitCommand):
         return self.template_merge_conflicts.format(
             "\n".join("    " + f.path for f in merge_conflicts))
 
-    @ui.partial("conflicts_bindings")
+    @ui.section("conflicts_bindings")
     def render_conflicts_bindings(self):
         return self.conflicts_keybindings if self.state['merge_conflicts'] else ""
 
-    @ui.partial("no_status_message")
+    @ui.section("no_status_message")
     def render_no_status_message(self):
         return (
             "\n    Your working directory is clean.\n"
@@ -402,7 +395,7 @@ class StatusInterface(ui.Interface, GitCommand):
             else ""
         )
 
-    @ui.partial("stashes")
+    @ui.section("stashes")
     def render_stashes(self):
         stash_list = self.state['stashes']
         if not stash_list:
@@ -411,7 +404,7 @@ class StatusInterface(ui.Interface, GitCommand):
         return self.template_stashes.format("\n".join(
             "    ({}) {}".format(stash.id, stash.description) for stash in stash_list))
 
-    @ui.partial("help")
+    @ui.section("help")
     def render_help(self):
         show_help = self.state['show_help']
         if not show_help:

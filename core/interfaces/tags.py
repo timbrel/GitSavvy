@@ -115,19 +115,19 @@ class TagsInterface(ui.Interface, GitCommand):
     def on_new_dashboard(self):
         self.view.run_command("gs_tags_navigate_tag")
 
-    @ui.partial("branch_status")
+    @ui.section("branch_status")
     def render_branch_status(self):
         return self.get_working_dir_status().long_status
 
-    @ui.partial("repo_root")
+    @ui.section("repo_root")
     def render_repo_root(self):
         return self.short_repo_path
 
-    @ui.partial("head")
+    @ui.section("head")
     def render_head(self):
         return self.get_latest_commit_msg_for_head()
 
-    @ui.partial("local_tags")
+    @ui.section("local_tags")
     def render_local_tags(self):
         if not any(chain(*self.local_tags)):
             return NO_LOCAL_TAGS_MESSAGE
@@ -155,7 +155,7 @@ class TagsInterface(ui.Interface, GitCommand):
             ))
         )
 
-    @ui.partial("remote_tags")
+    @ui.section("remote_tags")
     def render_remote_tags(self):
         if not self.remotes:
             return "\n"
@@ -170,7 +170,7 @@ class TagsInterface(ui.Interface, GitCommand):
             tmpl_key = "remote_tags_list_" + remote_name
             output_tmpl += "{" + tmpl_key + "}\n"
 
-            @ui.partial(tmpl_key)
+            @ui.section(tmpl_key)
             def render_remote(remote=remote, remote_name=remote_name):
                 return self.get_remote_tags_list(remote, remote_name)
 
@@ -178,7 +178,7 @@ class TagsInterface(ui.Interface, GitCommand):
 
         return output_tmpl, render_fns
 
-    @ui.partial("help")
+    @ui.section("help")
     def render_help(self):
         help_hidden = self.view.settings().get("git_savvy.help_hidden")
         if help_hidden:

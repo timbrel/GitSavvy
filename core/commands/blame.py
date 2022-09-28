@@ -181,8 +181,7 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
 
         self.view.run_command("gs_new_content_and_regions", {
             "content": content,
-            "regions": {},
-            "nuke_cursors": False
+            "regions": {}
         })
 
         if settings.get("git_savvy.lineno", None) is not None:

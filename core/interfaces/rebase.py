@@ -152,7 +152,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
     def on_new_dashboard(self):
         self.view.run_command("gs_rebase_navigate_commits")
 
-    @ui.partial("active_branch")
+    @ui.section("active_branch")
     def render_active_branch(self):
         try:
             return (self.rebase_branch_name()
@@ -161,15 +161,15 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         except FileNotFoundError:
             return ''
 
-    @ui.partial("base_ref")
+    @ui.section("base_ref")
     def render_base_ref(self):
         return self.base_ref()
 
-    @ui.partial("base_commit")
+    @ui.section("base_commit")
     def render_base_commit(self):
         return self.get_short_hash(self.base_commit())
 
-    @ui.partial("status")
+    @ui.section("status")
     def render_status(self):
         if self._in_rebase:
             return "Rebase halted due to CONFLICT."
@@ -192,7 +192,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
 
         return "Successfully {}. Undo/redo available.".format(cursor_entry["description"])
 
-    @ui.partial("diverged_commits")
+    @ui.section("diverged_commits")
     def render_diverged_commits(self):
         try:
             commits_info = self.get_diverged_commits_info(
@@ -203,18 +203,18 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         except FileNotFoundError:
             return ""
 
-    @ui.partial("super_key")
+    @ui.section("super_key")
     def render_super_key(self):
         return util.super_key
 
-    @ui.partial("preserve_merges")
+    @ui.section("preserve_merges")
     def render_preserve_merge(self):
         if self.preserve_merges():
             return " (Preserving merges)"
         else:
             return ""
 
-    @ui.partial("help")
+    @ui.section("help")
     def render_help(self):
         help_hidden = self.view.settings().get("git_savvy.help_hidden")
         vintageous_friendly = self.view.settings().get("git_savvy.vintageous_friendly", False)
@@ -306,7 +306,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
                  "conflicts": ""}
                 for entry in self.entries]
 
-    @ui.partial("conflicts_bindings")
+    @ui.section("conflicts_bindings")
     def render_conflicts_bindings(self):
         return self.conflicts_keybindings if self._in_rebase else ""
 

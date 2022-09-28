@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from textwrap import dedent
 import re
 
@@ -6,30 +5,63 @@ import sublime
 from sublime_plugin import TextCommand
 
 from . import util
-from ..core.runtime import enqueue_on_worker
+from ..core.runtime import enqueue_on_worker, on_worker
 from ..core.settings import GitSavvySettings
 from ..core.utils import focus_view
 from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.fns import flatten
+from GitSavvy.core.view import replace_view_content
+
+
+__all__ = (
+    "gs_new_content_and_regions",
+    "gs_update_region",
+    "gs_interface_close",
+    "gs_interface_refresh",
+    "gs_interface_toggle_help",
+    "gs_interface_toggle_popup_help",
+    "gs_edit_view_complete",
+    "gs_edit_view_close",
+)
 
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, Iterator, List, Optional, Tuple, Type
+    from typing import Dict, Iterable, Iterator, List, Optional, Protocol, Set, Tuple, Type, Union
+    SectionRegions = Dict[str, sublime.Region]
+
+    class SectionFn(Protocol):
+        key = ''  # type: str
+
+        def __call__(self) -> 'Union[str, Tuple[str, List[SectionFn]]]':
+            pass
 
 
 interfaces = {}  # type: Dict[sublime.ViewId, Interface]
 edit_views = {}
-subclasses = []
+subclasses = []  # type: List[Type[Interface]]
 
 EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press {super_key}+Enter.  To cancel, close the view.\n"
 
 
-class Interface():
+class _PrepareInterface(type):
+    def __init__(cls, cls_name, bases, attrs):
+        for attr_name, value in attrs.items():
+            if attr_name.startswith("template"):
+                setattr(cls, attr_name, dedent(value))
+
+        cls.sections = [
+            attr_name
+            for attr_name, attr in attrs.items()
+            if callable(attr) and hasattr(attr, "key")
+        ]
+
+
+class Interface(metaclass=_PrepareInterface):
     interface_type = ""
     syntax_file = ""
-
     template = ""
+    sections = []    # type: List[str]
 
     _initialized = False
 
@@ -58,20 +90,6 @@ class Interface():
         if self._initialized:
             return
         self._initialized = True
-
-        self.regions = {}
-
-        subclass_attrs = (getattr(self, attr) for attr in vars(self.__class__).keys())
-
-        self.partials = {
-            attr.key: attr
-            for attr in subclass_attrs
-            if callable(attr) and hasattr(attr, "key")
-        }
-
-        for attr in vars(self.__class__).keys():
-            if attr.startswith("template"):
-                setattr(self, attr, dedent(getattr(self, attr)))
 
         if view:
             self.view = view
@@ -143,28 +161,31 @@ class Interface():
         pass
 
     def render(self, nuke_cursors=False):
-        self.clear_regions()
         self.pre_render()
-        rendered = self._render_template()
-        self.view.run_command("gs_new_content_and_regions", {
-            "content": rendered,
-            "regions": self.regions,
-            "nuke_cursors": nuke_cursors
-        })
+        content, regions = self._render_template()
+        self.draw(content, regions)
         if nuke_cursors:
             self.reset_cursor()
 
+    def draw(self, content, regions):
+        # type: (str, SectionRegions) -> None
+        self.view.run_command("gs_new_content_and_regions", {
+            "content": content,
+            "regions": {key: region_as_tuple(region) for key, region in regions.items()}
+        })
+
     def _render_template(self):
+        # type: () -> Tuple[str, SectionRegions]
         """
         Generate new content for the view given the interface template
         and partial content.  As partial content is added to the rendered
-        template, add regions to `self.regions` with the key, start, and
+        template, compute and build up `regions` with the key, start, and
         end of each partial.
         """
         rendered = self.template
+        regions = {}  # type: SectionRegions
 
-        keyed_content = self.get_keyed_content()
-        for key, new_content in keyed_content.items():
+        for key, new_content in self._get_keyed_content():
             new_content_len = len(new_content)
             pattern = re.compile(r"\{(<+ )?" + key + r"\}")
 
@@ -177,43 +198,37 @@ class Interface():
 
                 rendered = rendered[:start] + new_content + rendered[end:]
 
-                self.adjust(start, end - start, new_content_len)
+                self._adjust_region_positions(regions, start, end - start, new_content_len)
                 if new_content_len:
-                    self.regions[key] = [start, start + new_content_len]
+                    regions[key] = sublime.Region(start, start + new_content_len)
 
                 match = pattern.search(rendered)
 
-        return rendered
+        return rendered, regions
 
-    def adjust(self, idx, orig_len, new_len):
+    def _adjust_region_positions(self, regions, idx, orig_len, new_len):
+        # type: (SectionRegions, int, int, int) -> None
         """
         When interpolating template variables, update region ranges for previously-evaluated
         variables, that are situated later on in the output/template string.
         """
         shift = new_len - orig_len
-        for key, region in self.regions.items():
-            if region[0] > idx:
-                region[0] += shift
-                region[1] += shift
-            elif region[1] > idx or region[0] == idx:
-                region[1] += shift
+        for key, region in regions.items():
+            if region.a > idx:
+                region.a += shift
+                region.b += shift
+            elif region.b > idx or region.a == idx:
+                region.b += shift
 
-    def get_keyed_content(self):
-        keyed_content = OrderedDict(
-            (key, render_fn())
-            for key, render_fn in self.partials.items()
-        )
-
-        for key in keyed_content:
-            output = keyed_content[key]
-            if isinstance(output, tuple):
-                sub_template, complex_partials = output
-                keyed_content[key] = sub_template
-
-                for render_fn in complex_partials:
-                    keyed_content[render_fn.key] = render_fn()
-
-        return keyed_content
+    def _get_keyed_content(self):
+        # type: () -> Iterator[Tuple[str, str]]
+        render_fns = [getattr(self, name) for name in self.sections]  # type: List[SectionFn]
+        for fn in render_fns:
+            result = fn()
+            if isinstance(result, tuple):
+                result, partials = result
+                render_fns += partials
+            yield fn.key, result
 
     def update_view_section(self, key, content):
         self.view.run_command("gs_update_region", {
@@ -221,50 +236,34 @@ class Interface():
             "content": content
         })
 
-    def clear_regions(self):
-        for key in self.regions.keys():
-            self.view.erase_regions("git_savvy_interface." + key)
-        self.regions = {}
 
-
-def partial(key):
+def section(key):
     def decorator(fn):
         fn.key = key
         return fn
     return decorator
 
 
-class GsNewContentAndRegionsCommand(TextCommand):
+class gs_new_content_and_regions(TextCommand):
+    current_region_names = set()  # type: Set[str]
 
-    def run(self, edit, content, regions, nuke_cursors=False):
-        selections = self.view.sel()
-
-        if selections and not nuke_cursors:
-            cursors_row_col = [self.view.rowcol(cursor.a) for cursor in selections]
-        else:
-            cursors_row_col = [(0, 0)]
-
-        selections.clear()
-
-        is_read_only = self.view.is_read_only()
-        self.view.set_read_only(False)
-        self.view.replace(edit, sublime.Region(0, self.view.size()), content)
-        self.view.set_read_only(is_read_only)
-
-        for row, col in cursors_row_col:
-            pt = self.view.text_point(row, col)
-            selections.add(sublime.Region(pt, pt))
+    def run(self, edit, content, regions):
+        replace_view_content(self.view, content)
 
         for key, region_range in regions.items():
-            a, b = region_range
-            self.view.add_regions("git_savvy_interface." + key, [sublime.Region(a, b)])
+            self.view.add_regions("git_savvy_interface." + key, [region_from_tuple(region_range)])
+
+        for key in self.current_region_names - regions.keys():
+            self.view.erase_regions("git_savvy_interface." + key)
+
+        self.current_region_names = regions.keys()
 
         if self.view.settings().get("git_savvy.interface"):
             self.view.run_command("gs_handle_vintageous")
             self.view.run_command("gs_handle_arrow_keys")
 
 
-class GsUpdateRegionCommand(TextCommand):
+class gs_update_region(TextCommand):
 
     def run(self, edit, key, content):
         is_read_only = self.view.is_read_only()
@@ -347,7 +346,7 @@ def extract_by_selector(view, item_selector, within_section=None):
     ]
 
 
-class GsInterfaceCloseCommand(TextCommand):
+class gs_interface_close(TextCommand):
 
     """
     Clean up references to interfaces for closed views.
@@ -361,44 +360,42 @@ class GsInterfaceCloseCommand(TextCommand):
             enqueue_on_worker(lambda: interfaces.pop(view_id))
 
 
-class GsInterfaceRefreshCommand(TextCommand):
+class gs_interface_refresh(TextCommand):
 
     """
     Re-render GitSavvy interface view.
     """
 
+    @on_worker
     def run(self, edit, nuke_cursors=False):
-        enqueue_on_worker(self.run_async, nuke_cursors)
+        # type: (object, bool) -> None
+        vid = self.view.id()
+        interface = interfaces.get(vid, None)
+        if interface:
+            interface.render(nuke_cursors=nuke_cursors)
+            return
 
-    def run_async(self, nuke_cursors):
-        # type: (bool) -> None
         interface_type = self.view.settings().get("git_savvy.interface")
         for cls in subclasses:
             if cls.interface_type == interface_type:
-                vid = self.view.id()
-                interface = interfaces.get(vid, None)
-                if not interface:
-                    interface = interfaces[vid] = cls(view=self.view)
-                interface.render(nuke_cursors=nuke_cursors)  # type: ignore[union-attr]
+                interface = interfaces[vid] = cls(view=self.view)
+                interface.render(nuke_cursors=nuke_cursors)
                 break
 
 
-class GsInterfaceToggleHelpCommand(TextCommand):
+class gs_interface_toggle_help(TextCommand):
 
     """
     Toggle GitSavvy help.
     """
 
     def run(self, edit):
-        interface_type = self.view.settings().get("git_savvy.interface")
-        for InterfaceSubclass in subclasses:
-            if InterfaceSubclass.interface_type == interface_type:
-                current_help = bool(self.view.settings().get("git_savvy.help_hidden"))
-                self.view.settings().set("git_savvy.help_hidden", not current_help)
-                self.view.run_command("gs_interface_refresh")
+        current_help = bool(self.view.settings().get("git_savvy.help_hidden"))
+        self.view.settings().set("git_savvy.help_hidden", not current_help)
+        self.view.run_command("gs_interface_refresh")
 
 
-class GsInterfaceTogglePopupHelpCommand(TextCommand):
+class gs_interface_toggle_popup_help(TextCommand):
 
     """
     Toggle GitSavvy popup help.
@@ -443,12 +440,11 @@ class EditView():
 
         self.view.run_command("gs_new_content_and_regions", {
             "content": content,
-            "regions": regions,
-            "nuke_cursors": True
+            "regions": regions
         })
 
 
-class GsEditViewCompleteCommand(TextCommand):
+class gs_edit_view_complete(TextCommand):
 
     """
     Invoke callback with edit view content.
@@ -472,7 +468,7 @@ class GsEditViewCompleteCommand(TextCommand):
         edit_view.on_done(content)
 
 
-class GsEditViewCloseCommand(TextCommand):
+class gs_edit_view_close(TextCommand):
 
     """
     Clean up references to closed edit views.
