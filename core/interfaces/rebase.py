@@ -596,7 +596,7 @@ class GsRebaseSquashCommand(RewriteBase):
         commit_chain.insert(1, commit_chain.pop(squash_idx - target_idx))
 
         # The first commit (the one immediately previous to the selected commit) will
-        # not be commited again.  However, the second commit (the selected) must include
+        # not be committed again.  However, the second commit (the selected) must include
         # the diff from the first, and all the meta-data for the squashed commit must
         # match the first.
         commit_chain[0].do_commit = False
