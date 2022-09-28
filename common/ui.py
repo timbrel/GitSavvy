@@ -115,11 +115,6 @@ class Interface(metaclass=_PrepareInterface):
         util.view.disable_other_plugins(self.view)
         self.after_view_creation(self.view)
 
-        # Set title as late as possible, otherwise e.g. `result_file_regex` will not apply
-        # after the initial activate. (It applies after the second activation of the view,
-        # shall we say a sublime nuance.)
-        self.view.set_name(self.title())
-
         self.render()
         focus_view(self.view)
 
@@ -163,12 +158,13 @@ class Interface(metaclass=_PrepareInterface):
     def render(self, nuke_cursors=False):
         self.pre_render()
         content, regions = self._render_template()
-        self.draw(content, regions)
+        self.draw(self.title(), content, regions)
         if nuke_cursors:
             self.reset_cursor()
 
-    def draw(self, content, regions):
-        # type: (str, SectionRegions) -> None
+    def draw(self, title, content, regions):
+        # type: (str, str, SectionRegions) -> None
+        self.view.set_name(title)
         self.view.run_command("gs_new_content_and_regions", {
             "content": content,
             "regions": {key: region_as_tuple(region) for key, region in regions.items()}

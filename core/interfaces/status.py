@@ -294,7 +294,7 @@ class StatusInterface(ui.Interface, GitCommand):
         # any `ui.section`.
         with self._lock:
             content, regions = self._render_template()
-        self.draw(content, regions)
+        self.draw(self.title(), content, regions)
 
         on_special_symbol = any(
             self.view.match_selector(
