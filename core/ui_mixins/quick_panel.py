@@ -162,6 +162,10 @@ class RemotePanel(GitCommand):
         show_url=False  # type: bool
     ):
         # type: (...) -> None
+        if show_option_all and show_url:
+            raise TypeError(
+                "'show_option_all' and 'show_url' are mutual exclusive. "
+            )
         self.window = sublime.active_window()
         self.on_done = on_done
         self.on_cancel = on_cancel
