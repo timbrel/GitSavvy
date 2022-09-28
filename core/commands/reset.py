@@ -50,7 +50,7 @@ class ResetMixin(GitCommand, WindowCommand):
         try:
             selected_index = (
                 [m for m, _ in reset_modes]
-                .index(last_reset_mode_used)  # type: ignore[arg-type]
+                .index(last_reset_mode_used)
             )
         except ValueError:
             selected_index = -1
