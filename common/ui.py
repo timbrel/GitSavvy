@@ -5,7 +5,7 @@ import sublime
 from sublime_plugin import TextCommand
 
 from . import util
-from ..core.runtime import enqueue_on_worker
+from ..core.runtime import enqueue_on_worker, on_worker
 from ..core.settings import GitSavvySettings
 from ..core.utils import focus_view
 from GitSavvy.core.base_commands import GsTextCommand
@@ -39,7 +39,7 @@ if MYPY:
 
 interfaces = {}  # type: Dict[sublime.ViewId, Interface]
 edit_views = {}
-subclasses = []
+subclasses = []  # type: List[Type[Interface]]
 
 EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press {super_key}+Enter.  To cancel, close the view.\n"
 
@@ -366,19 +366,20 @@ class gs_interface_refresh(TextCommand):
     Re-render GitSavvy interface view.
     """
 
+    @on_worker
     def run(self, edit, nuke_cursors=False):
-        enqueue_on_worker(self.run_async, nuke_cursors)
+        # type: (object, bool) -> None
+        vid = self.view.id()
+        interface = interfaces.get(vid, None)
+        if interface:
+            interface.render(nuke_cursors=nuke_cursors)
+            return
 
-    def run_async(self, nuke_cursors):
-        # type: (bool) -> None
         interface_type = self.view.settings().get("git_savvy.interface")
         for cls in subclasses:
             if cls.interface_type == interface_type:
-                vid = self.view.id()
-                interface = interfaces.get(vid, None)
-                if not interface:
-                    interface = interfaces[vid] = cls(view=self.view)
-                interface.render(nuke_cursors=nuke_cursors)  # type: ignore[union-attr]
+                interface = interfaces[vid] = cls(view=self.view)
+                interface.render(nuke_cursors=nuke_cursors)
                 break
 
 
