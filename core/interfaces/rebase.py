@@ -402,6 +402,17 @@ class RebaseInterfaceCommand(ui.InterfaceCommand):
     interface_type = RebaseInterface
     interface = None  # type: RebaseInterface
 
+    def get_selected_short_hash(self):
+        sels = self.view.sel()
+        if len(sels) > 1 or not sels or sels[0].a != sels[0].b:
+            return
+
+        line = self.view.line(sels[0])
+        line_str = self.view.substr(line)
+        m = COMMIT_LINE.match(line_str)
+        if m:
+            return m.group(1)
+
 
 class GsRebaseUndoCommand(RebaseInterfaceCommand):
 
@@ -491,17 +502,6 @@ class RewriteBase(RebaseInterfaceCommand):
 
     def run_async(self):
         raise NotImplementedError
-
-    def get_selected_short_hash(self):
-        sels = self.view.sel()
-        if len(sels) > 1 or not sels or sels[0].a != sels[0].b:
-            return
-
-        line = self.view.line(sels[0])
-        line_str = self.view.substr(line)
-        m = COMMIT_LINE.match(line_str)
-        if m:
-            return m.group(1)
 
     def get_idx_entry_and_prev(self, short_hash):
         entry_before_selected = None
