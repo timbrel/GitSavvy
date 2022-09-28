@@ -57,68 +57,82 @@ class _PrepareInterface(type):
         ]
 
 
+def show_interface(window, repo_path, typ):
+    # type: (sublime.Window, str, str) -> None
+    for view in window.views():
+        vset = view.settings()
+        if (
+            vset.get("git_savvy.interface") == typ
+            and vset.get("git_savvy.repo_path") == repo_path
+        ):
+            focus_view(view)
+            ensure_interface_object(view, typ)
+            break
+    else:
+        create_interface(window, repo_path, typ)
+
+
+def create_interface(window, repo_path, typ):
+    # type: (sublime.Window, str, str) -> Interface
+    return klass_for_typ(typ).create_view(window, repo_path)
+
+
+def ensure_interface_object(view, typ):
+    # type: (sublime.View, str) -> Interface
+    vid = view.id()
+    try:
+        return interfaces[vid]
+    except KeyError:
+        interface = interfaces[vid] = klass_for_typ(typ)(view=view)
+        return interface
+
+
+def klass_for_typ(typ):
+    # type: (str) -> Type[Interface]
+    for klass in subclasses:
+        if klass.interface_type == typ:
+            return klass
+    raise RuntimeError(
+        "Assertion failed! "
+        "no class found for interface type '{}'".format(typ)
+    )
+
+
 class Interface(metaclass=_PrepareInterface):
     interface_type = ""
     syntax_file = ""
     template = ""
     sections = []    # type: List[str]
 
-    _initialized = False
-
-    def __new__(cls, repo_path=None, **kwargs):
-        """
-        Search for intended interface in active window - if found, bring it
-        to focus and return it instead of creating a new interface.
-        """
-        if repo_path is not None:
-            window = sublime.active_window()
-            for view in window.views():
-                vset = view.settings()
-                if (
-                    vset.get("git_savvy.interface") == cls.interface_type
-                    and vset.get("git_savvy.repo_path") == repo_path
-                ):
-                    focus_view(view)
-                    try:
-                        return interfaces[view.id()]
-                    except KeyError:
-                        return cls(view=view)  # surprise! we recurse
-
-        return super().__new__(cls)
-
-    def __init__(self, repo_path=None, view=None):
-        if self._initialized:
-            return
-        self._initialized = True
-
-        if view:
-            self.view = view
-        else:
-            self.create_view(repo_path)
-            sublime.set_timeout_async(self.on_new_dashboard, 0)
-
+    def __init__(self, view):
+        # type: (sublime.View) -> None
+        self.view = view
         interfaces[self.view.id()] = self
         self.on_create()
 
-    def create_view(self, repo_path):
+    @classmethod
+    def create_view(cls, window, repo_path):
+        # type: (sublime.Window, str) -> Interface
         window = sublime.active_window()
-        self.view = window.new_file()
+        view = window.new_file()
 
-        self.view.settings().set("git_savvy.repo_path", repo_path)
-        self.view.settings().set("git_savvy.{}_view".format(self.interface_type), True)
-        self.view.settings().set("git_savvy.tabbable", True)
-        self.view.settings().set("git_savvy.interface", self.interface_type)
-        self.view.settings().set("git_savvy.help_hidden", GitSavvySettings().get("hide_help_menu"))
-        self.view.set_syntax_file(self.syntax_file)
-        self.view.set_scratch(True)
-        self.view.set_read_only(True)
-        util.view.disable_other_plugins(self.view)
-        self.after_view_creation(self.view)
+        view.settings().set("git_savvy.repo_path", repo_path)
+        view.settings().set("git_savvy.{}_view".format(cls.interface_type), True)
+        view.settings().set("git_savvy.tabbable", True)
+        view.settings().set("git_savvy.interface", cls.interface_type)
+        view.settings().set("git_savvy.help_hidden", GitSavvySettings().get("hide_help_menu"))
+        view.set_syntax_file(cls.syntax_file)
+        view.set_scratch(True)
+        view.set_read_only(True)
+        util.view.disable_other_plugins(view)
 
-        self.render()
-        focus_view(self.view)
+        interface = cls(view=view)
+        interface.after_view_creation(view)  # before first render
+        interface.render()
+        enqueue_on_worker(interface.on_new_dashboard)  # after first render
 
-        return self.view
+        focus_view(view)
+        return interface
 
     def title(self):
         # type: () -> str

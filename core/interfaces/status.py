@@ -109,7 +109,7 @@ class gs_show_status(WindowCommand, GitCommand):
     """
 
     def run(self):
-        StatusInterface(repo_path=self.repo_path)
+        ui.show_interface(self.window, self.repo_path, "status")
 
 
 class StatusInterface(ui.Interface, GitCommand):
@@ -214,9 +214,6 @@ class StatusInterface(ui.Interface, GitCommand):
     """
 
     def __init__(self, *args, **kwargs):
-        if self._initialized:
-            return
-
         self.conflicts_keybindings = \
             "\n".join(line[2:] for line in self.conflicts_keybindings.split("\n"))
         self._lock = threading.Lock()

@@ -46,7 +46,7 @@ class GsShowRebaseCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
-        RebaseInterface(repo_path=self.repo_path)
+        ui.show_interface(self.window, self.repo_path, "rebase")
 
 
 class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
