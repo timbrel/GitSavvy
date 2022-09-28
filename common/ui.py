@@ -390,12 +390,9 @@ class gs_interface_toggle_help(TextCommand):
     """
 
     def run(self, edit):
-        interface_type = self.view.settings().get("git_savvy.interface")
-        for InterfaceSubclass in subclasses:
-            if InterfaceSubclass.interface_type == interface_type:
-                current_help = bool(self.view.settings().get("git_savvy.help_hidden"))
-                self.view.settings().set("git_savvy.help_hidden", not current_help)
-                self.view.run_command("gs_interface_refresh")
+        current_help = bool(self.view.settings().get("git_savvy.help_hidden"))
+        self.view.settings().set("git_savvy.help_hidden", not current_help)
+        self.view.run_command("gs_interface_refresh")
 
 
 class gs_interface_toggle_popup_help(TextCommand):
