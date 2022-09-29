@@ -34,6 +34,8 @@ __all__ = (
     "gs_status_launch_merge_tool",
     "gs_status_use_commit_version",
     "gs_status_use_base_version",
+    "gs_status_navigate_file",
+    "gs_status_navigate_goto",
 )
 
 
@@ -824,7 +826,7 @@ class gs_status_use_base_version(StatusInterfaceCommand):
         return False
 
 
-class GsStatusNavigateFileCommand(GsNavigate):
+class gs_status_navigate_file(GsNavigate):
 
     """
     Move cursor to the next (or previous) selectable item in the dashboard.
@@ -837,7 +839,7 @@ class GsStatusNavigateFileCommand(GsNavigate):
         )
 
 
-class GsStatusNavigateGotoCommand(GsNavigate):
+class gs_status_navigate_goto(GsNavigate):
 
     """
     Move cursor to the next (or previous) selectable file in the dashboard.
