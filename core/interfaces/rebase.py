@@ -3,7 +3,7 @@ import os
 import re
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import WindowCommand
 
 from ...common import ui, util
 from ..commands import GsNavigate
@@ -12,7 +12,30 @@ from ..git_command import GitCommand
 from ..git_mixins.rebase import NearestBranchMixin
 from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
-from GitSavvy.core.runtime import enqueue_on_worker
+from GitSavvy.core.runtime import enqueue_on_worker, on_worker
+
+
+__all__ = (
+    "gs_show_rebase",
+    "gs_rebase_undo",
+    "gs_rebase_redo",
+    "gs_rebase_squash",
+    "gs_rebase_squash_all",
+    "gs_rebase_edit",
+    "gs_rebase_drop",
+    "gs_rebase_move_up",
+    "gs_rebase_move_down",
+    "gs_rebase_show_commit",
+    "gs_rebase_open_file",
+    "gs_rebase_stage_file",
+    "gs_rebase_use_commit_version",
+    "gs_rebase_use_base_version",
+    "gs_rebase_launch_merge_tool",
+    "gs_rebase_define_base_ref",
+    "gs_rebase_on_top_of",
+    "gs_rebase_toggle_preserve_mode",
+    "gs_rebase_navigate_commits",
+)
 
 
 COMMIT_NODE_CHAR = "●"
@@ -39,7 +62,7 @@ def move_cursor(view, line_change):
     sels.add_all(new_sels)
 
 
-class GsShowRebaseCommand(WindowCommand, GitCommand):
+class gs_show_rebase(WindowCommand, GitCommand):
 
     """
     Open a status view for the active git repository.
@@ -395,17 +418,33 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         self.view.settings().set("git_savvy.rebase_log_cursor", cursor)
 
 
-class GsRebaseUndoCommand(TextCommand, GitCommand):
+ui.register_listeners(RebaseInterface)
+
+
+class RebaseInterfaceCommand(ui.InterfaceCommand):
+    interface_type = RebaseInterface
+    interface = None  # type: RebaseInterface
+
+    def get_selected_short_hash(self):
+        sels = self.view.sel()
+        if len(sels) > 1 or not sels or sels[0].a != sels[0].b:
+            return
+
+        line = self.view.line(sels[0])
+        line_str = self.view.substr(line)
+        m = COMMIT_LINE.match(line_str)
+        if m:
+            return m.group(1)
+
+
+class gs_rebase_undo(RebaseInterfaceCommand):
 
     """
     Revert branch HEAD to point to commit prior to previous action.
     """
 
+    @on_worker
     def run(self, edit):
-        self.interface = ui.get_interface(self.view.id())
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         log, cursor = self.interface.get_log()
         if log is None or cursor is None or cursor == -1:
             return
@@ -432,18 +471,15 @@ class GsRebaseUndoCommand(TextCommand, GitCommand):
             util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
-class GsRebaseRedoCommand(TextCommand, GitCommand):
+class gs_rebase_redo(RebaseInterfaceCommand):
 
     """
     If an undo action was taken, set branch HEAD to point to commit of
     un-done action.
     """
 
+    @on_worker
     def run(self, edit):
-        self.interface = ui.get_interface(self.view.id())
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         log, cursor = self.interface.get_log()
         if log is None or cursor is None or cursor == len(log) - 1:
             return
@@ -470,17 +506,13 @@ class GsRebaseRedoCommand(TextCommand, GitCommand):
             util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
-ui.register_listeners(RebaseInterface)
-
-
-class RewriteBase(TextCommand, GitCommand):
+class RewriteBase(RebaseInterfaceCommand):
 
     """
     Base class for all commit manipulation actions.
     """
 
     def run(self, edit):
-        self.interface = ui.get_interface(self.view.id())
         status = self.get_working_dir_status()
 
         if status.unstaged_files or status.merge_conflicts:
@@ -489,18 +521,10 @@ class RewriteBase(TextCommand, GitCommand):
             )
             return
 
-        sublime.set_timeout_async(self.run_async, 0)
+        enqueue_on_worker(self.run_async)
 
-    def get_selected_short_hash(self):
-        sels = self.view.sel()
-        if len(sels) > 1 or not sels or sels[0].a != sels[0].b:
-            return
-
-        line = self.view.line(sels[0])
-        line_str = self.view.substr(line)
-        m = COMMIT_LINE.match(line_str)
-        if m:
-            return m.group(1)
+    def run_async(self):
+        raise NotImplementedError
 
     def get_idx_entry_and_prev(self, short_hash):
         entry_before_selected = None
@@ -547,7 +571,7 @@ class RewriteBase(TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
-class GsRebaseSquashCommand(RewriteBase):
+class gs_rebase_squash(RewriteBase):
 
     def run(self, edit, step=None):
         self.step = step
@@ -595,7 +619,7 @@ class GsRebaseSquashCommand(RewriteBase):
         commit_chain.insert(1, commit_chain.pop(squash_idx - target_idx))
 
         # The first commit (the one immediately previous to the selected commit) will
-        # not be commited again.  However, the second commit (the selected) must include
+        # not be committed again.  However, the second commit (the selected) must include
         # the diff from the first, and all the meta-data for the squashed commit must
         # match the first.
         commit_chain[0].do_commit = False
@@ -610,7 +634,7 @@ class GsRebaseSquashCommand(RewriteBase):
         )
 
 
-class GsRebaseSquashAllCommand(RewriteBase):
+class gs_rebase_squash_all(RewriteBase):
 
     def run_async(self):
         for entry in self.interface.entries:
@@ -638,10 +662,9 @@ class GsRebaseSquashAllCommand(RewriteBase):
         self.make_changes(commit_chain, "squashed all commits")
 
 
-class GsRebaseEditCommand(RewriteBase):
+class gs_rebase_edit(RewriteBase):
 
     def run_async(self):
-        self.interface = ui.get_interface(self.view.id())
         short_hash = self.get_selected_short_hash()
 
         for entry in self.interface.entries:
@@ -673,7 +696,7 @@ class GsRebaseEditCommand(RewriteBase):
         )
 
 
-class GsRebaseDropCommand(RewriteBase):
+class gs_rebase_drop(RewriteBase):
 
     def run_async(self):
         short_hash = self.get_selected_short_hash()
@@ -691,7 +714,7 @@ class GsRebaseDropCommand(RewriteBase):
         )
 
 
-class GsRebaseMoveUpCommand(RewriteBase):
+class gs_rebase_move_up(RewriteBase):
 
     def run(self, edit, step=None):
         self.step = step
@@ -743,7 +766,7 @@ class GsRebaseMoveUpCommand(RewriteBase):
             )
 
 
-class GsRebaseMoveDownCommand(RewriteBase):
+class gs_rebase_move_down(RewriteBase):
 
     def run(self, edit, step=None):
         self.step = step
@@ -795,13 +818,10 @@ class GsRebaseMoveDownCommand(RewriteBase):
             )
 
 
-class GsRebaseShowCommitCommand(RewriteBase):
+class gs_rebase_show_commit(RebaseInterfaceCommand):
 
+    @on_worker
     def run(self, edit):
-        self.interface = ui.get_interface(self.view.id())
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
         short_hash = self.get_selected_short_hash()
         if not short_hash:
             return
@@ -813,30 +833,26 @@ class GsRebaseShowCommitCommand(RewriteBase):
         if not long_hash:
             return
 
-        self.view.window().run_command("gs_show_commit", {"commit_hash": long_hash})
+        self.window.run_command("gs_show_commit", {"commit_hash": long_hash})
 
 
-class GsRebaseOpenFileCommand(TextCommand, GitCommand):
+class gs_rebase_open_file(RebaseInterfaceCommand):
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
         abs_paths = [os.path.join(self.repo_path, line[18:])
                      for reg in line_regions
                      for line in self.view.substr(reg).split("\n") if line]
         for path in abs_paths:
-            self.view.window().open_file(path)
+            self.window.open_file(path)
 
 
-class GsRebaseStageFileCommand(TextCommand, GitCommand):
+class gs_rebase_stage_file(RebaseInterfaceCommand):
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
         paths = (line[18:]
@@ -847,15 +863,12 @@ class GsRebaseStageFileCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsRebaseUseCommitVersionCommand(TextCommand, GitCommand):
-    # TODO: refactor this alongside interfaces.status.GsStatusUseCommitVersionCommand
+class gs_rebase_use_commit_version(RebaseInterfaceCommand):
+    # TODO: refactor this alongside interfaces.status.gs_status_use_commit_version
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
-        interface = ui.get_interface(self.view.id())
-        conflicts = interface._active_conflicts
+        conflicts = self.interface._active_conflicts
 
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
@@ -877,14 +890,11 @@ class GsRebaseUseCommitVersionCommand(TextCommand, GitCommand):
         return False
 
 
-class GsRebaseUseBaseVersionCommand(TextCommand, GitCommand):
+class gs_rebase_use_base_version(RebaseInterfaceCommand):
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
-        interface = ui.get_interface(self.view.id())
-        conflicts = interface._active_conflicts
+        conflicts = self.interface._active_conflicts
 
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
@@ -906,14 +916,11 @@ class GsRebaseUseBaseVersionCommand(TextCommand, GitCommand):
         return False
 
 
-class GsRebaseLaunchMergeToolCommand(TextCommand, GitCommand):
+class gs_rebase_launch_merge_tool(RebaseInterfaceCommand):
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
-        interface = ui.get_interface(self.view.id())
-        conflicts = interface._active_conflicts
+        conflicts = self.interface._active_conflicts
 
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
@@ -939,17 +946,13 @@ class GsRebaseLaunchMergeToolCommand(TextCommand, GitCommand):
         return False
 
 
-class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand):
+class gs_rebase_define_base_ref(PanelActionMixin, RebaseInterfaceCommand):
 
     default_actions = [
         ["select_branch", "Select branch as base"],
         ["select_commit", "Select commit as base"],
         ["select_ref", "Enter ref as base"],
     ]
-
-    def run(self, *args):
-        self.interface = ui.get_interface(self.view.id())
-        super().run(*args)
 
     def select_branch(self, branches=None):
         base_ref = self.interface.base_ref()
@@ -971,7 +974,7 @@ class GsRebaseDefineBaseRefCommand(PanelActionMixin, TextCommand):
             util.view.refresh_gitsavvy(self.view)
 
 
-class GsRebaseOnTopOfCommand(GsRebaseDefineBaseRefCommand):
+class gs_rebase_on_top_of(gs_rebase_define_base_ref):
 
     default_actions = [
         ["rebase_to_base_ref", "Rebase to default base"],
@@ -986,21 +989,20 @@ class GsRebaseOnTopOfCommand(GsRebaseDefineBaseRefCommand):
     def set_base_ref(self, selection):
         if not selection:
             return
-        interface = ui.get_interface(self.view.id())
-        branch_state = interface.get_branch_state()
+        branch_state = self.interface.get_branch_state()
         self.view.settings().set("git_savvy.rebase_in_progress", (branch_state, selection))
 
         self.view.settings().set("git_savvy.rebase.base_ref", selection)
         try:
             self.git(
                 "rebase",
-                "--rebase-merges" if interface.preserve_merges() else None,
+                "--rebase-merges" if self.interface.preserve_merges() else None,
                 selection)
         finally:
             util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
-class GsRebaseTogglePreserveModeCommand(TextCommand, GitCommand):
+class gs_rebase_toggle_preserve_mode(RebaseInterfaceCommand):
 
     def run(self, edit):
         preserve = self.view.settings().get("git_savvy.rebase.preserve_merges", False)
@@ -1009,7 +1011,7 @@ class GsRebaseTogglePreserveModeCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class GsRebaseNavigateCommitsCommand(GsNavigate):
+class gs_rebase_navigate_commits(GsNavigate):
 
     """
     Move cursor to the next (or previous) selectable commit in the dashboard.
