@@ -135,7 +135,7 @@ class RewriteMixin(mixin_base):
             # a merge commit
             if top_level:
                 # commits within a merge is not listed in top level commit_chain
-                # they have to be replyed explictly
+                # they have to be replyed explicitly
                 merge_commits = self.perpare_rewrites(self.log_merge(commit.orig_hash))
                 for c in merge_commits:
                     if commit.squashed:
@@ -143,7 +143,7 @@ class RewriteMixin(mixin_base):
                         c.do_commit = False
                     else:
                         # replay each of the commits in the merge, commit the
-                        # changes if the merge is commited
+                        # changes if the merge is committed
                         c.do_commit = commit.do_commit
                     self._replay_commit(c)
 
@@ -228,7 +228,7 @@ class RewriteMixin(mixin_base):
                 return dict()
             with open(path, "r") as f:
                 return dict(
-                    entry.split(" ")  # type: ignore[misc]
+                    entry.split(" ")
                     for entry in f.read().strip().split("\n")
                 )
         else:

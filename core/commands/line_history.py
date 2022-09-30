@@ -115,7 +115,7 @@ class gs_open_line_history(WindowCommand, GitCommand):
                     '-L{},{}:{}'.format(lr[0], lr[1], normalized_short_filename)
                     for lr in ranges
                 ]
-                + [commit]  # type: ignore[list-item]  # mypy bug
+                + [commit]
             )
             output = self.git(*cmd)
             replace_view_content(view, output)

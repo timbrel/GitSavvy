@@ -11,6 +11,7 @@ from typing import (
     Sized,
     NewType,
     Callable,
+    Collection,
     TypeVar
 )
 
@@ -177,7 +178,7 @@ class Window:
     ) -> View: ...
     def show_quick_panel(
         self,
-        items: List[Any],
+        items: Collection[Union[str, Sequence[str]]],
         on_select: Optional[Callable[[int], None]],
         flags: int = ...,
         selected_index: int = ...,

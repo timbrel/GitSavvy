@@ -54,11 +54,15 @@ class gs_offer_init(WindowCommand, GitCommand):
         if self.savvy_settings.get("disable_git_init_prompt"):
             return
 
-        active_view_id = self.window.active_view().id()
-        if active_view_id not in views_with_offer_made and sublime.ok_cancel_dialog(NO_REPO_MESSAGE):
+        view = self.window.active_view()
+        if not view:
+            return
+
+        vid = view.id()
+        if vid not in views_with_offer_made and sublime.ok_cancel_dialog(NO_REPO_MESSAGE):
             self.window.run_command("gs_init")
         else:
-            views_with_offer_made.add(active_view_id)
+            views_with_offer_made.add(vid)
 
 
 class gs_init(WindowCommand, GitCommand):

@@ -90,7 +90,7 @@ class GsRestoreAssumedUnchangedCommand(WindowCommand, GitCommand):
             for line in self.git("ls-files", "-v").split("\n")
         )
 
-        self._ignored_files = tuple(f[1] for f in all_file_lines if f[0] == "h")
+        self._ignored_files = [f[1] for f in all_file_lines if f[0] == "h"]
 
         if not self._ignored_files:
             self.window.show_quick_panel(["No files are assumed unchanged."], None)

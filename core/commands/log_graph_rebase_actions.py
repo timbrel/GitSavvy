@@ -546,7 +546,7 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
 
     def run(self, edit, commit_hash):
         # type: (sublime.Edit, str) -> None
-        action = self.action  # type: ignore[misc]
+        action = self.action
         if action is None:
             raise NotImplementedError("action must be defined")
 
@@ -555,7 +555,7 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
             return
 
         def program():
-            with await_todo_list(action):  # type: ignore[arg-type]  # mypy bug
+            with await_todo_list(action):
                 self.rebase(
                     '--interactive',
                     "--autostash",
