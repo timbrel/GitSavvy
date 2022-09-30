@@ -8,7 +8,8 @@ from GitSavvy.tests.mockito import spy2, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core import store
-from GitSavvy.core.interfaces.status import StatusInterface, StatusInterfaceCommand, GitCommand
+from GitSavvy.core.interfaces import ui
+from GitSavvy.core.interfaces.status import StatusInterfaceCommand, GitCommand
 
 
 class TestStatusDashboard(DeferrableTestCase):
@@ -59,7 +60,7 @@ class TestStatusDashboard(DeferrableTestCase):
         when(GitCommand).git('log', ...).thenReturn(last_commit)
         when(GitCommand).git('stash', 'list').thenReturn(stash_list)
 
-        interface = StatusInterface(repo_path=repo_path)
+        interface = ui.create_interface(self.window, repo_path, "status")
         view = interface.view
 
         self.addCleanup(lambda: view.close())

@@ -50,7 +50,7 @@ class gs_show_branch(WindowCommand, GitCommand):
     """
 
     def run(self):
-        BranchInterface(repo_path=self.repo_path)
+        ui.show_interface(self.window, self.repo_path, "branch")
 
 
 class BranchInterface(ui.Interface, GitCommand):

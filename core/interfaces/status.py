@@ -109,7 +109,7 @@ class gs_show_status(WindowCommand, GitCommand):
     """
 
     def run(self):
-        StatusInterface(repo_path=self.repo_path)
+        ui.show_interface(self.window, self.repo_path, "status")
 
 
 class StatusInterface(ui.Interface, GitCommand):
@@ -179,14 +179,14 @@ class StatusInterface(ui.Interface, GitCommand):
     -
     """
 
-    conflicts_keybindings = """
+    conflicts_keybindings = ui.indent_by_2("""
     ###############
     ## CONFLICTS ##
     ###############
 
     [y] use version from your commit
     [b] use version from the base
-    """
+    """)
 
     template_staged = """
       STAGED:
@@ -214,11 +214,6 @@ class StatusInterface(ui.Interface, GitCommand):
     """
 
     def __init__(self, *args, **kwargs):
-        if self._initialized:
-            return
-
-        self.conflicts_keybindings = \
-            "\n".join(line[2:] for line in self.conflicts_keybindings.split("\n"))
         self._lock = threading.Lock()
         self.state = {
             'staged_files': [],
@@ -294,7 +289,7 @@ class StatusInterface(ui.Interface, GitCommand):
         # any `ui.section`.
         with self._lock:
             content, regions = self._render_template()
-        self.draw(content, regions)
+        self.draw(self.title(), content, regions)
 
         on_special_symbol = any(
             self.view.match_selector(

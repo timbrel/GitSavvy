@@ -46,7 +46,7 @@ class GsShowRebaseCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
-        RebaseInterface(repo_path=self.repo_path)
+        ui.show_interface(self.window, self.repo_path, "rebase")
 
 
 class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
@@ -109,7 +109,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
     -
     """
 
-    conflicts_keybindings = """
+    conflicts_keybindings = ui.indent_by_2("""
     ###############
     ## CONFLICTS ##
     ###############
@@ -119,18 +119,13 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
     [y] use version from your commit
     [b] use version from new base
     [M] launch external merge tool
-    """
+    """)
 
     separator = "\n    │\n"
     commit = "  {caret} {status}  {commit_hash}  {commit_summary}{conflicts}"
 
     _base_commit = None
     _active_conflicts = None
-
-    def __init__(self, *args, **kwargs):
-        self.conflicts_keybindings = \
-            "\n".join(line[2:] for line in self.conflicts_keybindings.split("\n"))
-        super().__init__(*args, **kwargs)
 
     def title(self):
         return "REBASE: {}".format(os.path.basename(self.repo_path))

@@ -52,7 +52,7 @@ class gs_show_tags(WindowCommand, GitCommand):
     """
 
     def run(self):
-        TagsInterface(repo_path=self.repo_path)
+        ui.show_interface(self.window, self.repo_path, "tags")
 
 
 class TagsInterface(ui.Interface, GitCommand):
