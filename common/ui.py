@@ -129,7 +129,7 @@ class Interface(metaclass=_PrepareInterface):
         interface = cls(view=view)
         interface.after_view_creation(view)  # before first render
         interface.render()
-        enqueue_on_worker(interface.on_new_dashboard)  # after first render
+        interface.on_new_dashboard()         # after first render
 
         focus_view(view)
         return interface
