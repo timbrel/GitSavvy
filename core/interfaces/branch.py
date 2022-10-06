@@ -31,7 +31,7 @@ __all__ = (
     "gs_branches_fetch",
     "gs_branches_edit_branch_description",
     "gs_branches_navigate_branch",
-    "gs_branches_set_cursor",
+    "gs_branches_navigate_to_active_branch",
     "gs_branches_log",
     "gs_branches_log_graph",
 )
@@ -118,10 +118,10 @@ class BranchInterface(ui.Interface, GitCommand):
         self.remotes = self.get_remotes() if self.show_remotes else {}
 
     def on_new_dashboard(self):
-        self.view.run_command("gs_branches_set_cursor")
+        self.view.run_command("gs_branches_navigate_to_active_branch")
 
     def reset_cursor(self):
-        self.view.run_command("gs_branches_set_cursor")
+        self.view.run_command("gs_branches_navigate_to_active_branch")
 
     @ui.section("branch_status")
     def render_branch_status(self):
@@ -587,7 +587,7 @@ class gs_branches_navigate_branch(GsNavigate):
             for branch_region in self.view.lines(region)]
 
 
-class gs_branches_set_cursor(GsNavigate):
+class gs_branches_navigate_to_active_branch(GsNavigate):
 
     """
     Move cursor to the active branch.
