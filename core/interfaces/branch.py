@@ -597,7 +597,7 @@ class gs_branches_set_cursor(GsNavigate):
         return [
             branch_region
             for region in self.view.find_by_selector(
-                "meta.git-savvy.branches.branch string.other.git-savvy.branches.active-branch.sha1"
+                "meta.git-savvy.branches.branch.active-branch meta.git-savvy.branches.branch.sha1"
             )
             for branch_region in self.view.lines(region)]
 
