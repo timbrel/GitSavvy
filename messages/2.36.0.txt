@@ -1,0 +1,35 @@
+GitSavvy 2.36.0
+===============
+
+Insane refactorings went into this one.  And you don't even see them.
+Well, 🤞, at least I hope so.
+
+Still some user facing things of course:
+
+- Re-designed the "git: tag" dashboard
+
+- In the "Repo History" it is now possible to fast-forward a branch.
+
+  Say you're on a feature branch checked out, and you know that e.g.
+  your "main" branch moved.
+
+  You can now just select the main branch, hit `[enter]` for the menu,
+  and select `Fast forward 'main' to 'origin/main'` if you already
+  fetched a new tip.  Otherwise it says `Update 'main' from 'origin/main'`
+  and fetches first before moving the branch.
+
+  You stay on the feature branch during that process, and can rebase
+  immediately after that.
+
+  Very useful.
+
+
+Some of you might love and even rely on this little package GitSavvy,
+and I do drink coffee just like others.  If that's a match consider
+donating at https://paypal.me/herrkaste  😉
+
+
+🍁🍂
+
+Full release notes are on https://github.com/timbrel/GitSavvy/releases
+Just because I see I forgot to send any for 2.35.0
