@@ -68,9 +68,8 @@ def refresh_gitsavvy_interfaces(
     window,
     refresh_sidebar=False,
     refresh_status_bar=True,
-    interface_reset_cursor=False
 ):
-    # type: (Optional[sublime.Window], bool, bool, bool) -> None
+    # type: (Optional[sublime.Window], bool, bool) -> None
     """
     Looks for GitSavvy interface views in the current window and refresh them.
 
@@ -90,7 +89,7 @@ def refresh_gitsavvy_interfaces(
     for group in range(window.num_groups()):
         view = window.active_view_in_group(group)
         if view.settings().get("git_savvy.interface") is not None:
-            view.run_command("gs_interface_refresh", {"nuke_cursors": interface_reset_cursor})
+            view.run_command("gs_interface_refresh")
 
         if view.settings().get("git_savvy.log_graph_view", False):
             view.run_command("gs_log_graph_refresh")
@@ -100,9 +99,8 @@ def refresh_gitsavvy(
     view,
     refresh_sidebar=False,
     refresh_status_bar=True,
-    interface_reset_cursor=False
 ):
-    # type: (Optional[sublime.View], bool, bool, bool) -> None
+    # type: (Optional[sublime.View], bool, bool) -> None
     """
     Called after GitSavvy action was taken that may have effected the
     state of the Git repo.
@@ -111,7 +109,7 @@ def refresh_gitsavvy(
         return
 
     if view.settings().get("git_savvy.interface") is not None:
-        view.run_command("gs_interface_refresh", {"nuke_cursors": interface_reset_cursor})
+        view.run_command("gs_interface_refresh")
 
     if view.settings().get("git_savvy.log_graph_view", False):
         view.run_command("gs_log_graph_refresh")

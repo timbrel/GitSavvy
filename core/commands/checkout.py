@@ -100,9 +100,7 @@ class gs_checkout_new_branch(WindowCommand, GitCommand):
             branch_name,
             self.base_branch if self.base_branch else None)
         self.window.status_message("Created and checked out `{}` branch.".format(branch_name))
-        util.view.refresh_gitsavvy_interfaces(self.window,
-                                              refresh_sidebar=True,
-                                              interface_reset_cursor=True)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_checkout_remote_branch(WindowCommand, GitCommand):
@@ -143,9 +141,7 @@ class gs_checkout_remote_branch(WindowCommand, GitCommand):
         self.git("checkout", "-b", branch_name, "--track", self.remote_branch)
         self.window.status_message(
             "Checked out `{}` as local branch `{}`.".format(self.remote_branch, branch_name))
-        util.view.refresh_gitsavvy_interfaces(self.window,
-                                              refresh_sidebar=True,
-                                              interface_reset_cursor=True)
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_checkout_current_file_at_commit(LogMixin, WindowCommand, GitCommand):
@@ -177,7 +173,7 @@ class gs_checkout_current_file_at_commit(LogMixin, WindowCommand, GitCommand):
                     self.get_short_hash(commit_hash)
                 )
             )
-            util.view.refresh_gitsavvy_interfaces(self.window, interface_reset_cursor=True)
+            util.view.refresh_gitsavvy_interfaces(self.window)
 
 
 class gs_show_file_diff(WindowCommand, GitCommand):

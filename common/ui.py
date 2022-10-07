@@ -169,12 +169,10 @@ class Interface(metaclass=_PrepareInterface):
     def reset_cursor(self):
         pass
 
-    def render(self, nuke_cursors=False):
+    def render(self):
         self.pre_render()
         content, regions = self._render_template()
         self.draw(self.title(), content, regions)
-        if nuke_cursors:
-            self.reset_cursor()
 
     def draw(self, title, content, regions):
         # type: (str, str, SectionRegions) -> None
@@ -381,19 +379,19 @@ class gs_interface_refresh(TextCommand):
     """
 
     @on_worker
-    def run(self, edit, nuke_cursors=False):
-        # type: (object, bool) -> None
+    def run(self, edit):
+        # type: (object) -> None
         vid = self.view.id()
         interface = interfaces.get(vid, None)
         if interface:
-            interface.render(nuke_cursors=nuke_cursors)
+            interface.render()
             return
 
         interface_type = self.view.settings().get("git_savvy.interface")
         for cls in subclasses:
             if cls.interface_type == interface_type:
                 interface = interfaces[vid] = cls(view=self.view)
-                interface.render(nuke_cursors=nuke_cursors)
+                interface.render()
                 break
 
 
