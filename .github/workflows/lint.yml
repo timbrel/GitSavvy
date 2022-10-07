@@ -18,3 +18,23 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: TrueBrain/actions-flake8@v2
+
+  mypy:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ['linux', 'darwin', 'win32']
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - name: Install mypy
+      run: |
+        pip install mypy
+    - name: Check with mypy
+      run: |
+        mypy git_savvy.py --no-check-untyped-defs --no-warn-unused-ignore --platform=${{ matrix.platform }}
+

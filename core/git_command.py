@@ -16,6 +16,7 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import time
 import traceback
 
@@ -111,7 +112,7 @@ def stream_stdout_and_err(proc):
 
 
 STARTUPINFO = None
-if os.name == "nt":
+if sys.platform == "win32":
     STARTUPINFO = subprocess.STARTUPINFO()
     STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
