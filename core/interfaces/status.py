@@ -275,12 +275,10 @@ class StatusInterface(ui.Interface, GitCommand):
         if callable(then):
             then()
 
-    def render(self, nuke_cursors=False):
+    def render(self):
         """Refresh view state and render."""
         self.refresh_view_state()
         self.just_render()
-        if nuke_cursors:
-            self.reset_cursor()
 
     @distinct_until_state_changed
     def just_render(self):

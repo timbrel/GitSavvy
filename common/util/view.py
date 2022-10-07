@@ -90,7 +90,7 @@ def refresh_gitsavvy_interfaces(
     for group in range(window.num_groups()):
         view = window.active_view_in_group(group)
         if view.settings().get("git_savvy.interface") is not None:
-            view.run_command("gs_interface_refresh", {"nuke_cursors": interface_reset_cursor})
+            view.run_command("gs_interface_refresh")
 
         if view.settings().get("git_savvy.log_graph_view", False):
             view.run_command("gs_log_graph_refresh")
@@ -111,7 +111,7 @@ def refresh_gitsavvy(
         return
 
     if view.settings().get("git_savvy.interface") is not None:
-        view.run_command("gs_interface_refresh", {"nuke_cursors": interface_reset_cursor})
+        view.run_command("gs_interface_refresh")
 
     if view.settings().get("git_savvy.log_graph_view", False):
         view.run_command("gs_log_graph_refresh")

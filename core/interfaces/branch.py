@@ -117,7 +117,7 @@ class BranchInterface(ui.Interface, GitCommand):
             self.show_remotes = self.savvy_settings.get("show_remotes_in_branch_dashboard")
         self.remotes = self.get_remotes() if self.show_remotes else {}
 
-    def render(self, nuke_cursors=False):
+    def render(self):
         def cursor_is_on_active_branch():
             sel = self.view.sel()
             return (
@@ -129,7 +129,7 @@ class BranchInterface(ui.Interface, GitCommand):
             )
 
         cursor_was_on_active_branch = cursor_is_on_active_branch()
-        super().render(nuke_cursors=nuke_cursors)
+        super().render()
         if cursor_was_on_active_branch and not cursor_is_on_active_branch():
             self.view.run_command("gs_branches_navigate_to_active_branch")
 
