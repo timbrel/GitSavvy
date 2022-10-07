@@ -310,12 +310,12 @@ def _resolve_path(path):
 
 
 if (
-    os.name == "nt"
+    sys.platform == "win32"
+    and sys.version_info < (3, 8)
     and sys.getwindowsversion()[:2] >= (6, 0)
-    and sys.version_info[:2] < (3, 8)
 ):
     try:
-        from nt import _getfinalpathname  # type: ignore[import]
+        from nt import _getfinalpathname
     except ImportError:
         resolve_path = _resolve_path
     else:
