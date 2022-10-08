@@ -391,18 +391,9 @@ class gs_interface_refresh(TextCommand):
     @on_worker
     def run(self, edit):
         # type: (object) -> None
-        vid = self.view.id()
-        interface = interfaces.get(vid, None)
-        if interface:
-            interface.render()
-            return
-
         interface_type = self.view.settings().get("git_savvy.interface")
-        for cls in subclasses:
-            if cls.interface_type == interface_type:
-                interface = interfaces[vid] = cls(view=self.view)
-                interface.render()
-                break
+        interface = ensure_interface_object(self.view, interface_type)
+        interface.render()
 
 
 class gs_interface_toggle_help(TextCommand):
