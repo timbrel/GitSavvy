@@ -408,9 +408,6 @@ class StatusInterface(ui.Interface, GitCommand):
         return self.template_help.format(conflicts_bindings=self.render_conflicts_bindings())
 
 
-ui.register_listeners(StatusInterface)
-
-
 class StatusInterfaceCommand(ui.InterfaceCommand):
     interface_type = StatusInterface
     interface = None  # type: StatusInterface

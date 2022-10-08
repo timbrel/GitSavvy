@@ -56,6 +56,15 @@ class _PrepareInterface(type):
             if callable(attr) and hasattr(attr, "key")
         ]
 
+        if cls_name == "Interface":
+            # Bail out as the class `Interface` is not yet
+            # defined.  (This `__init__` here is called *while*
+            # defining `Interface`.)
+            return
+
+        if issubclass(cls, Interface):
+            register_interface_type(cls)  # type: ignore[arg-type]
+
 
 def show_interface(window, repo_path, typ):
     # type: (sublime.Window, str, str) -> None
@@ -285,7 +294,8 @@ class gs_update_region(TextCommand):
         self.view.set_read_only(is_read_only)
 
 
-def register_listeners(InterfaceClass):
+def register_interface_type(InterfaceClass):
+    # type: (Type[Interface]) -> None
     subclasses.append(InterfaceClass)
 
 

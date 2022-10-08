@@ -230,8 +230,6 @@ class TagsInterface(ui.Interface, GitCommand):
         return "\n\n  ** Press [e] to toggle display of remote branches. **\n"
 
 
-ui.register_listeners(TagsInterface)
-
 TAGS_SELECTOR = "meta.git-savvy.tag.name"
 SHA_SELECTOR = "constant.other.git-savvy.tags.sha1"
 

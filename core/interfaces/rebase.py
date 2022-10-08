@@ -418,9 +418,6 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         self.view.settings().set("git_savvy.rebase_log_cursor", cursor)
 
 
-ui.register_listeners(RebaseInterface)
-
-
 class RebaseInterfaceCommand(ui.InterfaceCommand):
     interface_type = RebaseInterface
     interface = None  # type: RebaseInterface
