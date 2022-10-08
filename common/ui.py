@@ -79,7 +79,7 @@ def show_interface(window, repo_path, typ):
             and vset.get("git_savvy.repo_path") == repo_path
         ):
             focus_view(view)
-            ensure_interface_object(view, typ)
+            ensure_interface_object(view)
             break
     else:
         create_interface(window, repo_path, typ)
@@ -90,12 +90,18 @@ def create_interface(window, repo_path, typ):
     return klass_for_typ(typ).create_view(window, repo_path)
 
 
-def ensure_interface_object(view, typ):
-    # type: (sublime.View, str) -> Interface
+def ensure_interface_object(view):
+    # type: (sublime.View) -> Interface
     vid = view.id()
     try:
         return interfaces[vid]
     except KeyError:
+        typ = view.settings().get("git_savvy.interface")
+        if not typ:
+            raise RuntimeError(
+                "Assertion failed! "
+                "The view {} has no interface information set".format(view)
+            )
         interface = interfaces[vid] = klass_for_typ(typ)(view=view)
         return interface
 
@@ -308,8 +314,7 @@ class InterfaceCommand(GsTextCommand):
     interface = None  # type: Interface
 
     def run_(self, edit_token, args):
-        interface_type = self.view.settings().get("git_savvy.interface")
-        self.interface = ensure_interface_object(self.view, interface_type)
+        self.interface = ensure_interface_object(self.view)
         return super().run_(edit_token, args)
 
     def region_name_for(self, section):
@@ -379,8 +384,7 @@ class gs_interface_refresh(TextCommand):
     @on_worker
     def run(self, edit):
         # type: (object) -> None
-        interface_type = self.view.settings().get("git_savvy.interface")
-        interface = ensure_interface_object(self.view, interface_type)
+        interface = ensure_interface_object(self.view)
         interface.render()
 
 
