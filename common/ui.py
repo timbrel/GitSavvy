@@ -63,7 +63,7 @@ class _PrepareInterface(type):
             return
 
         if issubclass(cls, Interface):
-            register_interface_type(cls)  # type: ignore[arg-type]
+            known_interface_types[cls.interface_type] = cls
 
 
 def show_interface(window, repo_path, typ):
@@ -292,11 +292,6 @@ class gs_update_region(TextCommand):
         for region in self.view.get_regions(key):
             self.view.replace(edit, region, content)
         self.view.set_read_only(is_read_only)
-
-
-def register_interface_type(InterfaceClass):
-    # type: (Type[Interface]) -> None
-    known_interface_types[InterfaceClass.interface_type] = InterfaceClass
 
 
 def get_interface(view_id):
