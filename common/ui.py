@@ -28,8 +28,7 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import (
-        Dict, Iterable, Iterator, List, Optional, Protocol,
-        Set, Tuple, Type, TypeVar, Union
+        Dict, Iterable, Iterator, List, Protocol, Set, Tuple, Type, TypeVar, Union
     )
     T = TypeVar("T")
     SectionRegions = Dict[str, sublime.Region]
@@ -304,11 +303,6 @@ class gs_update_region(TextCommand):
         self.view.set_read_only(is_read_only)
 
 
-def get_interface(view_id):
-    # type: (sublime.ViewId) -> Optional[Interface]
-    return interfaces.get(view_id, None)
-
-
 class InterfaceCommand(GsTextCommand):
     interface_type = None  # type: Type[Interface]
     interface = None  # type: Interface
@@ -369,7 +363,7 @@ class gs_interface_close(TextCommand):
 
     def run(self, edit):
         view_id = self.view.id()
-        interface = get_interface(view_id)
+        interface = interfaces.get(view_id, None)
         if interface:
             interface.on_close()
             enqueue_on_worker(lambda: interfaces.pop(view_id))
