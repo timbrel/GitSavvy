@@ -39,7 +39,7 @@ if MYPY:
 
 interfaces = {}  # type: Dict[sublime.ViewId, Interface]
 edit_views = {}
-subclasses = {}  # type: Dict[str, Type[Interface]]
+known_interface_types = {}  # type: Dict[str, Type[Interface]]
 
 EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press {super_key}+Enter.  To cancel, close the view.\n"
 
@@ -99,7 +99,7 @@ def ensure_interface_object(view, typ):
 def klass_for_typ(typ):
     # type: (str) -> Type[Interface]
     try:
-        return subclasses[typ]
+        return known_interface_types[typ]
     except KeyError:
         raise RuntimeError(
             "Assertion failed! "
@@ -296,7 +296,7 @@ class gs_update_region(TextCommand):
 
 def register_interface_type(InterfaceClass):
     # type: (Type[Interface]) -> None
-    subclasses[InterfaceClass.interface_type] = InterfaceClass
+    known_interface_types[InterfaceClass.interface_type] = InterfaceClass
 
 
 def get_interface(view_id):
