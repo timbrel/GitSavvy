@@ -308,19 +308,8 @@ class InterfaceCommand(GsTextCommand):
     interface = None  # type: Interface
 
     def run_(self, edit_token, args):
-        vid = self.view.id()
-        interface = get_interface(vid)
-        if not interface:
-            raise RuntimeError(
-                "Assertion failed! "
-                "no dashboard registered for {}".format(vid))
-        if not isinstance(interface, self.interface_type):
-            raise RuntimeError(
-                "Assertion failed! "
-                "registered interface `{}` is not of type `{}`"
-                .format(interface, self.interface_type.__name__)
-            )
-        self.interface = interface
+        interface_type = self.view.settings().get("git_savvy.interface")
+        self.interface = ensure_interface_object(self.view, interface_type)
         return super().run_(edit_token, args)
 
     def region_name_for(self, section):
