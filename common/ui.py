@@ -28,7 +28,7 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import (
-        Dict, Iterable, Iterator, List, Protocol, Set, Tuple, Type, TypeVar, Union
+        Callable, Dict, Iterable, Iterator, List, Protocol, Set, Tuple, Type, TypeVar, Union
     )
     T = TypeVar("T")
     SectionRegions = Dict[str, sublime.Region]
@@ -264,6 +264,7 @@ class Interface(metaclass=_PrepareInterface):
 
 
 def section(key):
+    # type: (str) -> Callable[[Callable[..., Union[str, Tuple[str, List[SectionFn]]]]], SectionFn]
     def decorator(fn):
         fn.key = key
         return fn
