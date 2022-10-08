@@ -27,7 +27,11 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, Iterator, List, Optional, Protocol, Set, Tuple, Type, Union
+    from typing import (
+        Dict, Iterable, Iterator, List, Optional, Protocol,
+        Set, Tuple, Type, TypeVar, Union
+    )
+    T = TypeVar("T")
     SectionRegions = Dict[str, sublime.Region]
 
     class SectionFn(Protocol):
@@ -45,7 +49,7 @@ EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press {super_key}+Enter.  To
 
 
 class _PrepareInterface(type):
-    def __init__(cls, cls_name, bases, attrs):
+    def __init__(cls: "Type[T]", cls_name, bases, attrs):
         for attr_name, value in attrs.items():
             if attr_name.startswith("template"):
                 setattr(cls, attr_name, dedent(value))
