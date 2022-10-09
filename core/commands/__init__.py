@@ -39,3 +39,4 @@ from .stage_hunk import *
 from .stash import *
 from .status_bar import *
 from .tag import *
+from .worktree import *

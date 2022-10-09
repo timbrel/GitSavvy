@@ -1,5 +1,7 @@
 import os
 
+import sublime
+import subprocess
 from sublime_plugin import WindowCommand
 
 from ...common import ui, util
@@ -34,6 +36,7 @@ __all__ = (
     "gs_branches_navigate_to_active_branch",
     "gs_branches_log",
     "gs_branches_log_graph",
+    "gs_branches_create_worktree"
 )
 
 
@@ -42,6 +45,29 @@ if MYPY:
     from typing import List, Optional
     from GitSavvy.core.git_mixins.branches import Branch
 
+def openInNewWindow(path):
+    # type: (str) -> None
+    if sublime.platform() == 'osx':
+        try:
+            subprocess.Popen(['subl', '.'], cwd=path)
+        except:
+            try:
+                subprocess.Popen(['sublime', '.'], cwd=path)
+            except:
+                subprocess.Popen(['/Applications/Sublime Text 3.app/Contents/SharedSupport/bin/subl', '.'], cwd=path)
+    elif sublime.platform() == 'windows':
+        try:
+            subprocess.Popen(['subl', '.'], cwd=path, shell=True)
+        except:
+            try:
+                subprocess.Popen(['sublime', '.'], cwd=path, shell=True)
+            except:
+                subprocess.Popen(['/Program Files/Sublime Text 3/sublime_text.exe', '.'], cwd=path, shell=True)
+    else:
+        try:
+            subprocess.Popen(['subl', '.'], cwd=path)
+        except:
+            subprocess.Popen(['sublime', '.'], cwd=path)
 
 
 class gs_show_branch(WindowCommand, GitCommand):
@@ -91,6 +117,8 @@ class BranchInterface(ui.Interface, GitCommand):
       [f] diff against active                       [l] show branch log
       [H] diff history against active               [g] show branch log graph
       [E] edit branch description
+
+      [w] create worktree
 
       [e]         toggle display of remote branches
       [tab]       transition to next dashboard
@@ -278,6 +306,39 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
                 self.region_name_for("branch_list_" + remote_name)
             )
         ]
+
+
+class gs_branch_open_worktree_in_new_window(BranchInterfaceCommand):
+    """
+    Open the branch worktree in a new window.
+    """
+
+    @on_worker
+    def run(self, edit):
+        branch = self.get_selected_branch()
+        if not branch:
+            return
+
+        openInNewWindow(path=branch.worktree_path)
+
+
+class gs_branches_create_worktree(BranchInterfaceCommand):
+    """
+    Create a worktree from the branch.
+    """
+
+    @on_worker
+    def run(self, edit):
+        branch = self.get_selected_branch()
+        if not branch:
+            return
+
+        if branch.is_remote:
+            self.window.run_command("gs_worktree_create_for_remote", {"remote_branch": branch.canonical_name})
+        else:
+            self.window.run_command("gs_worktree_create", {"branch": branch.name})
+
+        openInNewWindow(path=branch.worktree_path)
 
 
 class gs_branches_checkout(BranchInterfaceCommand):

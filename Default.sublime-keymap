@@ -1541,6 +1541,14 @@
             { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["w"],
+        "command": "gs_branches_create_worktree",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
 
 
     ////////////////
