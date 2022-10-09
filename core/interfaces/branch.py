@@ -170,7 +170,7 @@ class BranchInterface(ui.Interface, GitCommand):
                     branch=branch.upstream.canonical_name,
                     status=", " + branch.upstream.status if branch.upstream.status else ""
                 ) if branch.upstream else ""),
-                worktreepath=" [ worktree: " + ("current" if current_worktree == branch.worktree_path else branch.worktree_path) + " ]" if branch.worktree_path and not remote_name else ""
+                worktreepath=" root: " + branch.worktree_path if branch.worktree_path and not remote_name and current_worktree != branch.worktree_path else ""
             ) for branch in branches
         )
 
