@@ -43,6 +43,7 @@ if MYPY:
     from GitSavvy.core.git_mixins.branches import Branch
 
 
+
 class gs_show_branch(WindowCommand, GitCommand):
 
     """
@@ -156,9 +157,11 @@ class BranchInterface(ui.Interface, GitCommand):
         if not branches:
             branches = [branch for branch in self._branches if not branch.is_remote]
 
+        current_worktree = self.get_current_worktree()
         remote_name_l = len(remote_name + "/") if remote_name else 0
+
         return "\n".join(
-            "  {indicator} {hash:.7} {name}{tracking}{description}".format(
+            "  {indicator} {hash:.7} {name}{tracking}{description}{worktreepath}".format(
                 indicator="▸" if branch.active else " ",
                 hash=branch.commit_hash,
                 name=branch.canonical_name[remote_name_l:],
@@ -166,7 +169,8 @@ class BranchInterface(ui.Interface, GitCommand):
                 tracking=(" ({branch}{status})".format(
                     branch=branch.upstream.canonical_name,
                     status=", " + branch.upstream.status if branch.upstream.status else ""
-                ) if branch.upstream else "")
+                ) if branch.upstream else ""),
+                worktreepath=" [ worktree: " + ("current" if current_worktree == branch.worktree_path else branch.worktree_path) + " ]" if branch.worktree_path and not remote_name else ""
             ) for branch in branches
         )
 

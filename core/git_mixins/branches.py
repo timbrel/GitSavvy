@@ -23,6 +23,7 @@ if MYPY:
         ("canonical_name", str),    # e.g. "origin/master"
         ("commit_hash", str),
         ("commit_msg", str),
+        ("worktree_path", str),
         ("active", bool),
         ("is_remote", bool),
         ("description", str),
@@ -36,6 +37,7 @@ else:
         "canonical_name",
         "commit_hash",
         "commit_msg",
+        "worktree_path",
         "active",
         "is_remote",
         "description",
@@ -64,6 +66,18 @@ class BranchesMixin(mixin_base):
             return branch.name
         return None
 
+
+    def get_current_worktree(self):
+        # type: () -> Optional[str]
+        """
+        Return the worktree path for the current branch.
+        """
+        branch = self.get_current_branch()
+        if branch:
+            return branch.worktree_path
+
+        return None
+
     def get_upstream_for_active_branch(self):
         # type: () -> Optional[Upstream]
         branch = self.get_current_branch()
@@ -84,6 +98,7 @@ class BranchesMixin(mixin_base):
         for branch in self.get_local_branches():
             if branch.name == branch_name:
                 return branch
+
         return None
 
     def get_local_branches(self):
@@ -109,6 +124,7 @@ class BranchesMixin(mixin_base):
                 "%(upstream)%00"
                 "%(upstream:remotename)%00"
                 "%(upstream:track,nobracket)%00"
+                "%(worktreepath)%00"
                 "%(objectname)%00"
                 "%(contents:subject)"
             ),
@@ -151,7 +167,7 @@ class BranchesMixin(mixin_base):
 
     def _parse_branch_line(self, line):
         # type: (str) -> Branch
-        head, ref, upstream, upstream_remote, upstream_status, commit_hash, commit_msg = line.split("\x00")
+        head, ref, upstream, upstream_remote, upstream_status, worktree_path, commit_hash, commit_msg = line.split("\x00")
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
@@ -181,6 +197,7 @@ class BranchesMixin(mixin_base):
             canonical_name,
             commit_hash,
             commit_msg,
+            worktree_path,
             active,
             is_remote,
             description="",
