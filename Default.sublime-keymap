@@ -898,7 +898,7 @@
     },
     {
         "keys": ["f"],
-        "command": "gs_line_history_initiate_fixup_commit",
+        "command": "gs_show_commit_initiate_fixup_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
@@ -1816,7 +1816,7 @@
     },
     {
         "keys": ["f"],
-        "command": "gs_line_history_initiate_fixup_commit",
+        "command": "gs_show_commit_initiate_fixup_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.line_history_view", "operator": "equal", "operand": true }

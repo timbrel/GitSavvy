@@ -19,7 +19,7 @@ __all__ = (
     "gs_open_line_history",
     "gs_line_history_open_commit",
     "gs_line_history_open_graph_context",
-    "gs_line_history_initiate_fixup_commit",
+    "gs_show_commit_initiate_fixup_commit",
 )
 
 
@@ -153,7 +153,7 @@ class gs_line_history_open_graph_context(TextCommand, GitCommand):
             })
 
 
-class gs_line_history_initiate_fixup_commit(TextCommand, LogHelperMixin):
+class gs_show_commit_initiate_fixup_commit(TextCommand, LogHelperMixin):
     def run(self, edit):
         view = self.view
         window = view.window()
