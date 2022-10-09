@@ -8,7 +8,6 @@ from ..fns import filter_
 from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff
 from ..runtime import enqueue_on_worker
-from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import flash
 from ..view import replace_view_content
 from ...common import util
@@ -19,7 +18,6 @@ __all__ = (
     "gs_open_line_history",
     "gs_line_history_open_commit",
     "gs_line_history_open_graph_context",
-    "gs_show_commit_initiate_fixup_commit",
 )
 
 
@@ -151,26 +149,3 @@ class gs_line_history_open_graph_context(TextCommand, GitCommand):
                 "all": True,
                 "follow": self.get_short_hash(commit_hash)
             })
-
-
-class gs_show_commit_initiate_fixup_commit(TextCommand, LogHelperMixin):
-    def run(self, edit):
-        view = self.view
-        window = view.window()
-        assert window
-
-        commit_header = SplittedDiff.from_view(view).commit_before_pt(view.sel()[0].begin())
-        if not commit_header:
-            flash(view, "No commit header found around the cursor.")
-            return
-
-        for r in view.find_by_selector("meta.commit_message meta.subject.git.commit"):
-            if r.a > commit_header.a:
-                commit_message = view.substr(r).strip()
-                view.settings().set("initiated_fixup_commit", commit_message)
-                window.run_command("gs_commit", {
-                    "initial_text": "fixup! {}".format(commit_message)
-                })
-                break
-        else:
-            flash(view, "Could not extract commit message subject")
