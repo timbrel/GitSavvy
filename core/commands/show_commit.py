@@ -9,7 +9,6 @@ from . import diff
 from . import intra_line_colorizer
 from ..fns import filter_, unique
 from ..git_command import GitCommand
-from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import flash, focus_view
 from ..parse_diff import SplittedDiff
 from ..runtime import enqueue_on_worker
@@ -165,7 +164,7 @@ class gs_show_commit_open_on_github(TextCommand, GithubRemotesMixin, GitCommand)
             yield from unique(filter_(diff.commit_hash_before_pt(s.begin()) for s in view.sel()))
 
 
-class gs_show_commit_initiate_fixup_commit(TextCommand, LogHelperMixin):
+class gs_show_commit_initiate_fixup_commit(TextCommand):
     def run(self, edit):
         view = self.view
         window = view.window()
