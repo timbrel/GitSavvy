@@ -167,7 +167,8 @@ class BranchesMixin(mixin_base):
 
     def _parse_branch_line(self, line):
         # type: (str) -> Branch
-        head, ref, upstream, upstream_remote, upstream_status, worktree_path, commit_hash, commit_msg = line.split("\x00")
+        head, ref, upstream, upstream_remote, upstream_status, worktree_path, \
+            commit_hash, commit_msg = line.split("\x00")
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
