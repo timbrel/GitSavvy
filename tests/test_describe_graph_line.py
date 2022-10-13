@@ -34,17 +34,16 @@ examples = [
         }
     ),
     (
-        # Unknown branches are put under `local_branches`.  At the time of writing the
-        # test this was an arbitrary decision.
-        "● a3062b2 (HEAD -> optimize-graph-render, feat/optimize-graph-render) Abort .. | Thu 21:07, herr kaste",
+        # Unknown refs are in `branches` (sic!) but *not* under `local_branches`.
+        "● a3062b2 (HEAD -> optimize-graph-render, refs/bisect/bad) Abort .. | Thu 21:07, herr kaste",
         {
             "optimize-graph-render": mock({"is_remote": False}),
         },
         {
             "commit": "a3062b2",
             "HEAD": "optimize-graph-render",
-            "branches": ["optimize-graph-render", "feat/optimize-graph-render"],
-            "local_branches": ["optimize-graph-render", "feat/optimize-graph-render"]
+            "branches": ["optimize-graph-render", "refs/bisect/bad"],
+            "local_branches": ["optimize-graph-render"]
         }
     ),
     (
