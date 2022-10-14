@@ -2399,7 +2399,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                     partial(self.diff_commit, commit_hash)
                 ),
             ]
-        elif on_checked_out_branch:
+        elif "HEAD" in info:
             actions += [
                 ("Diff against workdir", self.diff),
             ]
