@@ -1,11 +1,11 @@
 import sublime
-from sublime_plugin import TextCommand
 
-from ...core.git_command import GitCommand
 from ..gitlab import open_file_in_browser, open_repo, open_issues
 
 from ..git_mixins import GitLabRemotesMixin
 from ...core.ui_mixins.quick_panel import show_remote_panel
+from GitSavvy.core.base_commands import GsTextCommand
+from GitSavvy.core.runtime import on_worker
 
 
 __all__ = (
@@ -18,7 +18,7 @@ EARLIER_COMMIT_PROMPT = ("The remote chosen may not contain the commit. "
                          "Open the file {} before?")
 
 
-class gs_gitlab_open_file_on_remote(TextCommand, GitCommand, GitLabRemotesMixin):
+class gs_gitlab_open_file_on_remote(GsTextCommand, GitLabRemotesMixin):
 
     """
     Open a new browser window to the web-version of the currently opened
@@ -30,18 +30,15 @@ class gs_gitlab_open_file_on_remote(TextCommand, GitCommand, GitLabRemotesMixin)
     At present, this only supports gitlab.com and hosted servers.
     """
 
+    @on_worker
     def run(self, edit, remote=None, preselect=False, fpath=None):
-        sublime.set_timeout_async(
-            lambda: self.run_async(remote, preselect, fpath))
-
-    def run_async(self, remote, preselect, fpath):
         self.fpath = fpath or self.get_rel_path()
         self.preselect = preselect
 
-        self.remotes = self.get_remotes()
+        self.remotes = remotes = self.get_remotes()
 
         if not remote:
-            remote = self.guess_gitlab_remote()
+            remote = self.guess_gitlab_remote(remotes)
 
         if remote:
             self.open_file_on_remote(remote)
@@ -104,20 +101,18 @@ class gs_gitlab_open_file_on_remote(TextCommand, GitCommand, GitLabRemotesMixin)
             )
 
 
-class gs_gitlab_open_repo(TextCommand, GitCommand, GitLabRemotesMixin):
+class gs_gitlab_open_repo(GsTextCommand, GitLabRemotesMixin):
 
     """
     Open a new browser window to the GitLab remote repository.
     """
 
+    @on_worker
     def run(self, edit, remote=None):
-        sublime.set_timeout_async(lambda: self.run_async(remote))
-
-    def run_async(self, remote):
-        self.remotes = self.get_remotes()
+        self.remotes = remotes = self.get_remotes()
 
         if not remote:
-            remote = self.guess_gitlab_remote()
+            remote = self.guess_gitlab_remote(remotes)
 
         if remote:
             open_repo(self.remotes[remote])
@@ -128,7 +123,7 @@ class gs_gitlab_open_repo(TextCommand, GitCommand, GitLabRemotesMixin):
         open_repo(self.remotes[remote])
 
 
-class gs_gitlab_open_issues(TextCommand, GitCommand, GitLabRemotesMixin):
+class gs_gitlab_open_issues(GsTextCommand, GitLabRemotesMixin):
 
     """
     Open a new browser window to the GitLab remote repository's issues page.
