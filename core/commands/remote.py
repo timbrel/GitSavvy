@@ -1,15 +1,21 @@
 import sublime
-from sublime_plugin import WindowCommand
 
-from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.quick_panel import show_remote_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.runtime import run_on_new_thread
 from GitSavvy.core import store
+from GitSavvy.core.base_commands import GsWindowCommand
 
 
-class GsRemoteAddCommand(WindowCommand, GitCommand):
+__all__ = (
+    "gs_remote_add",
+    "gs_remote_remove",
+    "gs_remote_rename",
+)
+
+
+class gs_remote_add(GsWindowCommand):
     """
     Add remotes
     """
@@ -40,7 +46,7 @@ class GsRemoteAddCommand(WindowCommand, GitCommand):
             self.window.run_command("gs_fetch", {"remote": remote_name})
 
 
-class GsRemoteRemoveCommand(WindowCommand, GitCommand):
+class gs_remote_remove(GsWindowCommand):
     """
     Remove remotes
     """
@@ -54,7 +60,7 @@ class GsRemoteRemoveCommand(WindowCommand, GitCommand):
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)
 
 
-class GsRemoteRenameCommand(WindowCommand, GitCommand):
+class gs_remote_rename(GsWindowCommand):
     """
     Reame remotes
     """
