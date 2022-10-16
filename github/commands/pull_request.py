@@ -14,12 +14,19 @@ from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_worker
 
 
+__all__ = (
+    "gs_github_pull_request",
+    "gs_github_create_pull_request",
+    "gs_github_push_and_create_pull_request",
+)
+
+
 MYPY = False
 if MYPY:
     from GitSavvy.core.git_mixins.branches import Upstream
 
 
-class GsGithubPullRequestCommand(GsWindowCommand, git_mixins.GithubRemotesMixin):
+class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
 
     """
     Display open pull requests on the base repo.  When a pull request is selected,
@@ -161,7 +168,7 @@ class GsGithubPullRequestCommand(GsWindowCommand, git_mixins.GithubRemotesMixin)
         open_in_browser(self.pr["html_url"])
 
 
-class GsGithubCreatePullRequestCommand(GsWindowCommand, git_mixins.GithubRemotesMixin):
+class gs_github_create_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
     """
     Create pull request of the current commit on the current repo.
     """
@@ -219,7 +226,7 @@ class GsGithubCreatePullRequestCommand(GsWindowCommand, git_mixins.GithubRemotes
         open_in_browser(url)
 
 
-class GsGithubPushAndCreatePullRequestCommand(gs_push_to_branch_name):
+class gs_github_push_and_create_pull_request(gs_push_to_branch_name):
 
     def do_push(self, *args, **kwargs):
         super().do_push(*args, **kwargs)
