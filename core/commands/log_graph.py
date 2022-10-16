@@ -2179,8 +2179,8 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 else:
                     return info["commit"]
 
-            base_commit = display_name(infos[0])
-            target_commit = display_name(infos[1])
+            base_commit = display_name(infos[1])
+            target_commit = display_name(infos[0])
 
             actions += [
                 (
