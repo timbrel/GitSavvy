@@ -57,7 +57,7 @@ class TagsMixin(mixin_base):
         Return the last tag of the current branch. get_tags() fails to return an ordered list.
         """
         _, tags = self.get_local_tags()
-        return tags[0].tag if tags else ""
+        return tags[0].tag if tags else None
 
     def handle_semver_tags(self, entries):
         # type: (List[TagDetails]) -> Tuple[List[TagDetails], List[TagDetails]]
