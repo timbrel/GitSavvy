@@ -12,6 +12,16 @@ from ..ui_mixins.quick_panel import PanelActionMixin
 from GitSavvy.core.base_commands import GsTextCommand
 
 
+__all__ = (
+    "gs_blame",
+    "gs_blame_current_file",
+    "gs_blame_refresh",
+    "gs_blame_action",
+    "gs_blame_toggle_setting",
+    "gs_blame_navigate_chunk",
+)
+
+
 MYPY = False
 if MYPY:
     from typing import DefaultDict, List, Optional
@@ -57,7 +67,7 @@ class BlameMixin(GsTextCommand):
         return short_hash.strip()
 
 
-class GsBlameCommand(BlameMixin):
+class gs_blame(BlameMixin):
     def run(self, edit, file_path=None, repo_path=None, commit_hash=None):
         self._file_path = file_path or self.file_path
         self.__repo_path = repo_path or self.repo_path
@@ -104,7 +114,7 @@ class GsBlameCommand(BlameMixin):
         view.run_command("gs_handle_vintageous")
 
 
-class GsBlameCurrentFileCommand(LogMixin, GsTextCommand):
+class gs_blame_current_file(LogMixin, GsTextCommand):
 
     _commit_hash = None
     _file_path = None
@@ -138,7 +148,7 @@ class GsBlameCurrentFileCommand(LogMixin, GsTextCommand):
         return super().log(**kwargs)
 
 
-class GsBlameRefreshCommand(BlameMixin):
+class gs_blame_refresh(BlameMixin):
     _highlighted_count = 0  # to be implemented
     _original_color_scheme = None  # to be implemented
     _theme = None  # to be implemented
@@ -354,7 +364,7 @@ class GsBlameRefreshCommand(BlameMixin):
             self.view.sel().add(sublime.Region(blame_view_pt, blame_view_pt))
 
 
-class GsBlameActionCommand(BlameMixin, PanelActionMixin):
+class gs_blame_action(BlameMixin, PanelActionMixin):
     selected_index = 0
     """
     Be careful when changing the order since some commands depend on the
@@ -447,7 +457,7 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin):
         })
 
 
-class GsBlameToggleSetting(BlameMixin):
+class gs_blame_toggle_setting(BlameMixin):
 
     """
     Toggle view settings: `ignore_whitespace`, `detect_move_or_copy_within_file`,
@@ -472,7 +482,7 @@ class GsBlameToggleSetting(BlameMixin):
         self.view.run_command("gs_blame_refresh")
 
 
-class GsBlameNavigateChunkCommand(GsNavigate):
+class gs_blame_navigate_chunk(GsNavigate):
 
     """
     Move cursor to the next (or previous) different commit
