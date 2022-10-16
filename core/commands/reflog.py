@@ -4,6 +4,11 @@ from ..ui_mixins.quick_panel import show_paginated_panel
 from GitSavvy.core.base_commands import GsWindowCommand
 
 
+__all__ = (
+    "gs_ref_log",
+)
+
+
 class RefLogMixin(GsWindowCommand):
 
     _limit = 6000
@@ -25,5 +30,5 @@ class RefLogMixin(GsWindowCommand):
         })
 
 
-class GsRefLogCommand(RefLogMixin):
+class gs_ref_log(RefLogMixin):
     pass
