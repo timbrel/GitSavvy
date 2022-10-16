@@ -1,5 +1,6 @@
 import sublime
 
+from . import init
 from ...common import util
 from ..ui_mixins.quick_panel import show_remote_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -25,7 +26,11 @@ class gs_remote_add(GsWindowCommand):
         if url:
             self.on_enter_remote(url)
         else:
-            show_single_line_input_panel("Remote URL", "", self.on_enter_remote)
+            clip_content = sublime.get_clipboard(256).strip()
+            show_single_line_input_panel(
+                "Remote URL",
+                init.parse_url_from_clipboard(clip_content),
+                self.on_enter_remote)
 
     def on_enter_remote(self, input_url):
         self.url = input_url
