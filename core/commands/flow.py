@@ -1,4 +1,6 @@
 import sublime
+
+from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_new_thread
 
@@ -136,29 +138,29 @@ class GsGitFlowInitCommand(FlowMixin):
         # TODO: create develop branch if does not exist yet
         self.configure_gitflow('branch.develop', value)
 
-        self.window.show_input_panel("Feature branches prefix?: ", "feature/",
-                                     self.on_feature_selected, None, None)
+        show_single_line_input_panel("Feature branches prefix?: ", "feature/",
+                                     self.on_feature_selected)
 
     def on_feature_selected(self, value):
         self.configure_gitflow('prefix.feature', value)
 
-        self.window.show_input_panel("Release branches prefix?: ", "release/",
-                                     self.on_release_selectes, None, None)
+        show_single_line_input_panel("Release branches prefix?: ", "release/",
+                                     self.on_release_selectes)
 
     def on_release_selectes(self, value):
         self.configure_gitflow('prefix.release', value)
-        self.window.show_input_panel("Hotfix branches prefix?: ", "hotfix/",
-                                     self.on_hotfix_selected, None, None)
+        show_single_line_input_panel("Hotfix branches prefix?: ", "hotfix/",
+                                     self.on_hotfix_selected)
 
     def on_hotfix_selected(self, value):
         self.configure_gitflow('prefix.hotfix', value)
-        self.window.show_input_panel("Support branches prefix?: ", "support/",
-                                     self.on_support_selected, None, None)
+        show_single_line_input_panel("Support branches prefix?: ", "support/",
+                                     self.on_support_selected)
 
     def on_support_selected(self, value):
         self.configure_gitflow('prefix.support', value)
-        self.window.show_input_panel("Version tag prefix?: ", " ",
-                                     self.on_versiontag_selected, None, None)
+        show_single_line_input_panel("Version tag prefix?: ", " ",
+                                     self.on_versiontag_selected)
 
     def on_versiontag_selected(self, tag):
         self.configure_gitflow('prefix.versiontag', tag)
@@ -196,8 +198,7 @@ class GenericStartMixin(CompleteMixin):
     def run(self, **kwargs):
         super(GenericStartMixin, self).run(**kwargs)
         self.prefix = self.flow_settings[self.prefix_setting]
-        self.window.show_input_panel(self.query, "", self.complete_flow,
-                                     None, None)
+        show_single_line_input_panel(self.query, "", self.complete_flow)
 
 
 class GenericSelectTargetBranch(CompleteMixin):
@@ -268,8 +269,7 @@ class GenericTrackCommand(CompleteMixin):
         if name:
             self.complete_flow(name)
         else:
-            self.window.show_input_panel(self.query, "", self.complete_flow,
-                                         None, None)
+            show_single_line_input_panel(self.query, "", self.complete_flow)
 
 
 class GsGitFlowFeatureStartCommand(GenericStartMixin):
@@ -319,8 +319,7 @@ class GsGitFlowFeaturePullCommand(CompleteMixin):
         if not value:
             return
         self.remote = value
-        self.window.show_input_panel(self.query, "", self.complete_flow,
-                                     None, None)
+        show_single_line_input_panel(self.query, "", self.complete_flow)
 
     @on_new_thread
     def complete_flow(self, name=None):
