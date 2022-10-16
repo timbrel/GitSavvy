@@ -152,10 +152,13 @@ class BranchInterface(ui.Interface, GitCommand):
         return self.get_latest_commit_msg_for_head()
 
     @ui.section("branch_list")
-    def render_branch_list(self, remote_name=None, branches=None):
-        if not branches:
-            branches = [branch for branch in self._branches if not branch.is_remote]
+    def render_branch_list(self):
+        # type: () -> str
+        branches = [branch for branch in self._branches if not branch.is_remote]
+        return self._render_branch_list(None, branches)
 
+    def _render_branch_list(self, remote_name, branches):
+        # type: (Optional[str], List[Branch]) -> str
         remote_name_l = len(remote_name + "/") if remote_name else 0
         return "\n".join(
             "  {indicator} {hash:.7} {name}{tracking}{description}".format(
@@ -201,7 +204,7 @@ class BranchInterface(ui.Interface, GitCommand):
             def render(remote_name=remote_name, branches=branches):
                 return self.template_remote.format(
                     remote_name=remote_name,
-                    remote_branch_list=self.render_branch_list(remote_name=remote_name, branches=branches)
+                    remote_branch_list=self._render_branch_list(remote_name, branches)
                 )
 
             render_fns.append(render)
