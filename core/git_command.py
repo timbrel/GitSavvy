@@ -9,7 +9,7 @@ Define a base command class that:
 from collections import deque, ChainMap
 import io
 from itertools import chain, repeat
-from functools import partial
+from functools import lru_cache, partial
 import locale
 import os
 import re
@@ -34,9 +34,13 @@ if MYPY:
     from typing import Callable, Deque, Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
 
-git_path = None
-error_message_displayed = False
+#: A mapping from a git binary to its version
+git_binaries = {}  # type: Dict[str, Tuple[int, int, int]]
+binary_not_found_message_displayed, git_too_old_message_displayed = False, False
+
 repo_paths = {}  # type: Dict[str, str]
+#: A mapping from a repo_path to the actual ".git" path
+#: Typically this *is* "{repo_path}/.git"
 git_dirs = {}  # type: Dict[str, str]
 
 DECODE_ERROR_MESSAGE = """
@@ -170,23 +174,36 @@ def search_for_git_toplevel(start_folder):
     return real_repo_path
 
 
+@lru_cache(1)
+def which_git():
+    # type: () -> Optional[str]
+    return shutil.which("git")
+
+
 def git_version_from_path(git_path):
-    # type: (str) -> Optional[Tuple[int, ...]]
+    # type: (str) -> Tuple[int, int, int]
     try:
         stdout = subprocess.check_output(
             [git_path, "--version"],
             stderr=subprocess.PIPE,
             startupinfo=STARTUPINFO
         ).decode()
-    except Exception:
-        stdout = ""
+    except Exception as exc:
+        print(
+            "fatal: asking `{} --version` raised:\n{}"
+            .format(git_path, exc)
+        )
+        return MIN_GIT_VERSION
 
     match = re.match(r"git version ([0-9]+)\.([0-9]+)\.([0-9]+)", stdout)
     if match:
-        version = tuple(map(int, match.groups()))
-        return version
+        return tuple(map(int, match.groups()))  # type: ignore[return-value]
     else:
-        return None
+        util.debug.dprint(
+            "could not parse the `git --version` output:\n\n{}\n\n"
+            "pretend a minimal, valid version".format(stdout)
+        )
+        return MIN_GIT_VERSION
 
 
 def is_subpath(topfolder, path):
@@ -389,48 +406,55 @@ class _GitCommand(SettingsMixin):
 
     @property
     def git_binary_path(self):
+        # type: () -> str
         """
         Return the path to the available `git` binary.
         """
 
-        global git_path, error_message_displayed
-        if not git_path:
-            git_path_setting = self.savvy_settings.get("git_path")
-            if isinstance(git_path_setting, dict):
-                git_path = git_path_setting.get(sublime.platform())
-                if not git_path:
-                    git_path = git_path_setting.get('default')
-            else:
-                git_path = git_path_setting
+        global binary_not_found_message_displayed, git_too_old_message_displayed
+        global git_binaries
 
-            if not git_path:
-                git_path = shutil.which("git")
-
-            if git_path:
-                util.debug.dprint("git executable: {}".format(git_path))
-                version = git_version_from_path(git_path)
-                if version:
-                    util.debug.dprint("git version: {}".format(version))
-                    if version < MIN_GIT_VERSION:
-                        msg = GIT_TOO_OLD_MSG.format(*MIN_GIT_VERSION)
-                        git_path = None
-                        if not error_message_displayed:
-                            sublime.error_message(msg)
-                            error_message_displayed = True
-                        raise ValueError("Git binary too old.")
-                else:
-                    git_path = None
+        git_path_setting = self.savvy_settings.get("git_path")
+        git_path = (
+            (
+                git_path_setting.get(sublime.platform())
+                or git_path_setting.get('default')
+            )
+            if isinstance(git_path_setting, dict)
+            else git_path_setting
+        )
 
         if not git_path:
-            msg = ("Your Git binary cannot be found.  If it is installed, add it "
-                   "to your PATH environment variable, or add a `git_path` setting "
-                   "in the GitSavvy settings.")
-            if not error_message_displayed:
-                sublime.error_message(msg)
-                error_message_displayed = True
+            git_path = which_git()
+
+        if not git_path:
+            if not binary_not_found_message_displayed:
+                sublime.error_message(
+                    "Your Git binary cannot be found.  If it is installed, add it "
+                    "to your PATH environment variable, or add a `git_path` setting "
+                    "in the GitSavvy settings.")
+                binary_not_found_message_displayed = True
             raise ValueError("Git binary not found.")
 
+        try:
+            version = git_binaries[git_path]
+        except KeyError:
+            util.debug.dprint("git executable: {}".format(git_path))
+            git_binaries[git_path] = version = git_version_from_path(git_path)
+            util.debug.dprint("git version: {}".format(version))
+
+        if version < MIN_GIT_VERSION:
+            if not git_too_old_message_displayed:
+                sublime.error_message(GIT_TOO_OLD_MSG.format(*MIN_GIT_VERSION))
+                git_too_old_message_displayed = True
+            raise ValueError("Git binary too old.")
+
         return git_path
+
+    @property
+    def git_version(self):
+        # type: () -> Tuple[int, int, int]
+        return git_binaries[self.repo_path]
 
     def _current_window(self):
         # type: () -> Optional[sublime.Window]
