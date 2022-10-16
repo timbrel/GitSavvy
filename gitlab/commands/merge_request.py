@@ -1,14 +1,14 @@
 import sublime
-from sublime_plugin import WindowCommand
 from webbrowser import open as open_in_browser
 
 from .. import gitlab
 from .. import git_mixins
-from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_paginated_panel
 from ...core.ui_mixins.input_panel import show_single_line_input_panel
 from ...core.view import replace_view_content
 from ...common import util
+from GitSavvy.core.base_commands import GsWindowCommand
+from GitSavvy.core.runtime import on_worker
 
 
 __all__ = (
@@ -20,7 +20,7 @@ PUSH_PROMPT = ("You have not set an upstream for the active branch.  "
                "Would you like to push to a remote?")
 
 
-class gs_gitlab_merge_request(WindowCommand, GitCommand, git_mixins.GitLabRemotesMixin):
+class gs_gitlab_merge_request(GsWindowCommand, git_mixins.GitLabRemotesMixin):
 
     """
     Display open merge requests on the base repo.  When a merge request is selected,
@@ -28,10 +28,8 @@ class gs_gitlab_merge_request(WindowCommand, GitCommand, git_mixins.GitLabRemote
     a local branch, 3) view the MR's diff, or 4) open the MR in the browser.
     """
 
+    @on_worker
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         self.remote_url = self.get_integrated_remote_url()
         self.base_remote = gitlab.parse_remote(self.remote_url)
         self.merge_requests = gitlab.get_merge_requests(self.base_remote, {}, {'state': "opened"})
