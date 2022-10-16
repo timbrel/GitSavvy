@@ -1,5 +1,6 @@
 import sublime
 from GitSavvy.core.base_commands import GsWindowCommand
+from GitSavvy.core.runtime import on_new_thread
 
 
 MYPY = False
@@ -174,6 +175,7 @@ class CompleteMixin(FlowMixin):
     prefix_setting = None  # type: str
     query = None  # type: str
 
+    @on_new_thread
     def complete_flow(self, name=None):
         self.git("flow", self.flow, self.command, name)
         self.show_status_update()
@@ -320,6 +322,7 @@ class GsGitFlowFeaturePullCommand(CompleteMixin):
         self.window.show_input_panel(self.query, "", self.complete_flow,
                                      None, None)
 
+    @on_new_thread
     def complete_flow(self, name=None):
         self.git("flow", self.flow, "pull", self.remote, name)
         self.show_status_update()
