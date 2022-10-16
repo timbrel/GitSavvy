@@ -21,6 +21,14 @@ class FlowMixin(GsWindowCommand):
     Populates gitflow settings and includes useful methods
     for option selection and branch retrieval.
     """
+    def run(self, **kwargs):
+        self.get_flow_settings()
+        if not self.flow_settings['branch.master']:
+            self.window.show_quick_panel([INIT_REQUIRED_MSG], None)
+
+    def is_visible(self, **kwargs):
+        return self.savvy_settings.get("show_git_flow_commands") or False
+
     def get_flow_settings(self):
         flow_ver = self.git("flow", "version")
         self.flow_settings = {
@@ -30,14 +38,6 @@ class FlowMixin(GsWindowCommand):
             self.flow_settings[conf] = self.git(
                 "config", "gitflow.%s" % conf, throw_on_error=False
             ).strip()
-
-    def run(self, **kwargs):
-        self.get_flow_settings()
-        if not self.flow_settings['branch.master']:
-            self.window.show_quick_panel([INIT_REQUIRED_MSG], None)
-
-    def is_visible(self, **kwargs):
-        return self.savvy_settings.get("show_git_flow_commands") or False
 
     def _generic_select(self, help_text, options, callback,
                         no_opts="There are no branches available"):
