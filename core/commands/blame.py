@@ -3,14 +3,18 @@ from collections import namedtuple, defaultdict
 import unicodedata
 
 import sublime
-from sublime_plugin import TextCommand
 
 from .navigate import GsNavigate
-from ..git_command import GitCommand
 from ..view import Position
 from ...common import util
 from .log import LogMixin
 from ..ui_mixins.quick_panel import PanelActionMixin
+from GitSavvy.core.base_commands import GsTextCommand
+
+
+MYPY = False
+if MYPY:
+    from typing import DefaultDict, List, Optional
 
 
 BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))
@@ -20,7 +24,7 @@ BLAME_TITLE = "BLAME: {}{}"
 COMMIT_HASH_LENGTH = 12
 
 
-class BlameMixin:
+class BlameMixin(GsTextCommand):
     """
     Some helper functions
     """
@@ -53,7 +57,7 @@ class BlameMixin:
         return short_hash.strip()
 
 
-class GsBlameCommand(BlameMixin, TextCommand, GitCommand):
+class GsBlameCommand(BlameMixin):
     def run(self, edit, file_path=None, repo_path=None, commit_hash=None):
         self._file_path = file_path or self.file_path
         self.__repo_path = repo_path or self.repo_path
@@ -63,7 +67,7 @@ class GsBlameCommand(BlameMixin, TextCommand, GitCommand):
     @util.view.single_cursor_coords
     def blame(self, coords):
         original_view = self.view
-        view = self.view.window().new_file()
+        view = self.window.new_file()
 
         settings = view.settings()
         settings.set("git_savvy.blame_view", True)
@@ -100,7 +104,7 @@ class GsBlameCommand(BlameMixin, TextCommand, GitCommand):
         view.run_command("gs_handle_vintageous")
 
 
-class GsBlameCurrentFileCommand(LogMixin, TextCommand, GitCommand):
+class GsBlameCurrentFileCommand(LogMixin, GsTextCommand):
 
     _commit_hash = None
     _file_path = None
@@ -121,7 +125,7 @@ class GsBlameCurrentFileCommand(LogMixin, TextCommand, GitCommand):
     def do_action(self, commit_hash, **kwargs):
         self._commit_hash = commit_hash
         sublime.set_timeout(
-            lambda: self.view.window().run_command(
+            lambda: self.window.run_command(
                 "gs_blame", {"commit_hash": commit_hash, "file_path": self._file_path}),
             100)
 
@@ -134,7 +138,7 @@ class GsBlameCurrentFileCommand(LogMixin, TextCommand, GitCommand):
         return super().log(**kwargs)
 
 
-class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
+class GsBlameRefreshCommand(BlameMixin):
     _highlighted_count = 0  # to be implemented
     _original_color_scheme = None  # to be implemented
     _theme = None  # to be implemented
@@ -147,7 +151,7 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
     def run(self, edit):
 
         settings = self.view.settings()
-        commit_hash = settings.get("git_savvy.commit_hash", None)
+        commit_hash = settings.get("git_savvy.commit_hash", None)  # type: Optional[str]
 
         self.view.set_name(
             BLAME_TITLE.format(
@@ -200,7 +204,7 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
 
     def get_content(self, ignore_whitespace=False, detect_options=None, commit_hash=None):
         if commit_hash:
-            # git blame does not follow file name changes like git log, therefor we
+            # git blame does not follow file name changes like git log, therefore we
             # need to look at the log first too see if the file has changed names since
             # selected commit. I would not be surprised if this brakes in some special cases
             # like rebased or multimerged commits
@@ -256,11 +260,12 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
         lines_iter = iter(blame_porcelain)
 
         blamed_lines = []
-        commits = defaultdict(lambda: defaultdict(str))
+        commits = defaultdict(lambda: defaultdict(str))  # type: DefaultDict[str, DefaultDict[str, str]]
 
         for line in lines_iter:
-            commit_hash, orig_lineno, final_lineno, _ = \
-                re.match(r"([0-9a-f]{40}) (\d+) (\d+)( \d+)?", line).groups()
+            match = re.match(r"([0-9a-f]{40}) (\d+) (\d+)( \d+)?", line)
+            assert match
+            commit_hash, orig_lineno, final_lineno, _ = match.groups()
             commits[commit_hash]["short_hash"] = commit_hash[:COMMIT_HASH_LENGTH]
             commits[commit_hash]["long_hash"] = commit_hash
 
@@ -268,7 +273,7 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
             while not next_line.startswith("\t"):
                 # Iterate through header keys and values.
                 try:
-                    k, v = re.match(r"([^ ]+) (.+)", next_line).groups()
+                    k, v = re.match(r"([^ ]+) (.+)", next_line).groups()  # type: ignore[union-attr]
                 except AttributeError:
                     # Sometimes git-blame includes keys without values;
                     # since we don't care about these, simply discard.
@@ -293,8 +298,8 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
         prev_line = None
         current_hunk = []
         for line in blamed_lines:
-            if prev_line and line.commit_hash != prev_line.commit_hash:
-                yield current_hunk
+            if prev_line and line.commit_hash != prev_line.commit_hash:  # type: ignore[unreachable]
+                yield current_hunk  # type: ignore[unreachable]
                 current_hunk = []
 
             prev_line = line
@@ -349,7 +354,7 @@ class GsBlameRefreshCommand(BlameMixin, TextCommand, GitCommand):
             self.view.sel().add(sublime.Region(blame_view_pt, blame_view_pt))
 
 
-class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand):
+class GsBlameActionCommand(BlameMixin, PanelActionMixin):
     selected_index = 0
     """
     Be careful when changing the order since some commands depend on the
@@ -365,7 +370,7 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand):
         ["pick_new_commit", "Pick another commit to blame"],
         ["show_file_at_commit", "Show file at current commit"],
         ["show_file_at_commit", "Show file at selected commit", (), {"from_line": True}],
-    ]
+    ]  # type: List[List]
 
     def update_actions(self):
         # a deepcopy
@@ -381,7 +386,7 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand):
         if not commit_hash:
             return
 
-        self.view.window().run_command("gs_show_commit", {"commit_hash": commit_hash})
+        self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
 
     def blame_neighbor(self, position, selected=False):
         follow = self.savvy_settings.get("blame_follow_rename")
@@ -395,6 +400,7 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand):
         else:
             commit_hash = settings.get("git_savvy.commit_hash")
 
+        assert self.file_path
         if position == "older":
             neighbor_hash = self.previous_commit(commit_hash, self.file_path, follow)
         elif position == "newer":
@@ -427,7 +433,7 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand):
             lineno = self.find_matching_lineno(
                 settings.get("git_savvy.commit_hash"), commit_hash, lineno)
 
-        self.view.window().run_command("gs_show_file_at_commit", {
+        self.window.run_command("gs_show_file_at_commit", {
             "commit_hash": commit_hash,
             "filepath": self.file_path,
             "check_for_renames": True,
@@ -441,7 +447,7 @@ class GsBlameActionCommand(BlameMixin, PanelActionMixin, TextCommand):
         })
 
 
-class GsBlameToggleSetting(BlameMixin, TextCommand):
+class GsBlameToggleSetting(BlameMixin):
 
     """
     Toggle view settings: `ignore_whitespace`, `detect_move_or_copy_within_file`,
@@ -461,7 +467,7 @@ class GsBlameToggleSetting(BlameMixin, TextCommand):
         else:
             settings.set(setting_str, not settings.get(setting_str))
 
-        self.view.window().status_message("{} is now {}".format(setting, settings.get(setting_str)))
+        self.window.status_message("{} is now {}".format(setting, settings.get(setting_str)))
         self.view.settings().set("git_savvy.lineno", self.find_lineno())
         self.view.run_command("gs_blame_refresh")
 
