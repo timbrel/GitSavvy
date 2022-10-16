@@ -94,5 +94,5 @@ class gs_reset_branch(ResetMixin, WindowCommand):
         self.do_action(branch)
 
 
-class gs_reset_reflog(ResetMixin, RefLogMixin, WindowCommand):
+class gs_reset_reflog(ResetMixin, RefLogMixin):
     pass
