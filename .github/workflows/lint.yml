@@ -36,5 +36,5 @@ jobs:
         pip install mypy
     - name: Check with mypy
       run: |
-        mypy git_savvy.py --no-check-untyped-defs --no-warn-unused-ignore --platform=${{ matrix.platform }}
+        mypy git_savvy.py --platform=${{ matrix.platform }}
 
