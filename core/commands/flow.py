@@ -232,13 +232,13 @@ class GenericSelectTargetBranch(CompleteMixin):
     def on_select_current(self, index):
         if index != 1:
             return None
-        return self.complete_flow(name=self.cur_name)
+        self.complete_flow(name=self.cur_name)
 
     def on_name_selected(self, index):
         value = self.get_value(self.branches, index)
         if not value:
             return
-        return self.complete_flow(name=value)
+        self.complete_flow(name=value)
 
 
 class GenericFinishMixin(GenericSelectTargetBranch):
