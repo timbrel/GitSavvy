@@ -172,9 +172,9 @@ class Window:
         self,
         caption: str,
         initial_text: str,
-        on_done: Callable[[str], None],
-        on_change: Callable[[str], None],
-        on_cancel: Callable[[], None],
+        on_done: Optional[Callable[[str], None]],
+        on_change: Optional[Callable[[str], None]],
+        on_cancel: Optional[Callable[[], None]],
     ) -> View: ...
     def show_quick_panel(
         self,
