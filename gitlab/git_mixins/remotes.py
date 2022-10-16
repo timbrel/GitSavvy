@@ -1,59 +1,84 @@
-class GitLabRemotesMixin():
+from GitSavvy.core.git_mixins.branches import Upstream
+
+
+MYPY = False
+if MYPY:
+    from typing import Dict, Optional
+    from GitSavvy.core.git_command import GitCommand
+    name = str
+    url = str
+
+    base = GitCommand
+else:
+    base = object
+
+
+NOTSET = "<NOTSET>"
+UPSTREAM_NOT_SET = Upstream("", "", "", "")
+
+
+class GitLabRemotesMixin(base):
+    def read_gitsavvy_config(self):
+        # type: () -> Dict[str, str]
+        return dict(
+            line[9:].split()
+            for line in self.git(
+                "config",
+                "--get-regex",
+                r"^gitsavvy\..*",
+                throw_on_error=False
+            ).splitlines()
+        )
 
     def get_integrated_branch_name(self):
-        configured_branch_name = self.git(
-            "config",
-            "--local",
-            "--get",
-            "GitSavvy.glBranch",
-            throw_on_error=False
-        ).strip()
-        if configured_branch_name:
-            return configured_branch_name
-        else:
-            return "master"
+        # type: () -> Optional[str]
+        return self.read_gitsavvy_config().get("glbranch")
 
-    def get_integrated_remote_name(self):
-        configured_remote_name = self.git(
-            "config",
-            "--local",
-            "--get",
-            "GitSavvy.glRemote",
-            throw_on_error=False
-        ).strip()
-        remotes = self.get_remotes()
-
+    def get_integrated_remote_name(
+        self,
+        remotes,
+        current_upstream=UPSTREAM_NOT_SET,
+        configured_remote_name=NOTSET
+    ):
+        # type: (Dict[name, url], Optional[Upstream], Optional[str]) -> name
         if len(remotes) == 0:
             raise ValueError("GitLab integration will not function when no remotes defined.")
 
-        if configured_remote_name and configured_remote_name in remotes:
-            return configured_remote_name
         if len(remotes) == 1:
             return list(remotes.keys())[0]
-        if "origin" in remotes:
-            return "origin"
-        upstream = self.get_upstream_for_active_branch()
-        if upstream:
-            return upstream.remote
+
+        if configured_remote_name is NOTSET:
+            configured_remote_name = self.read_gitsavvy_config().get("glremote")
+        if configured_remote_name in remotes:
+            return configured_remote_name
+
+        for name in ("upstream", "origin"):
+            if name in remotes:
+                return name
+
+        if current_upstream is UPSTREAM_NOT_SET:
+            current_upstream = self.get_upstream_for_active_branch()
+        if current_upstream:
+            return current_upstream.remote
+
         raise ValueError("Cannot determine GitLab integrated remote.")
 
     def get_integrated_remote_url(self):
-        configured_remote_name = self.get_integrated_remote_name()
+        # type: () -> url
         remotes = self.get_remotes()
+        configured_remote_name = self.get_integrated_remote_name(remotes)
         return remotes[configured_remote_name]
 
-    def guess_gitlab_remote(self):
-
-        remotes = self.get_remotes()
+    def guess_gitlab_remote(self, remotes):
+        # type: (Dict[name, url]) -> Optional[name]
         if len(remotes) == 1:
             return list(remotes.keys())[0]
-        integrated_remote = self.get_integrated_remote_name()
+
         upstream = self.get_upstream_for_active_branch()
+        integrated_remote = self.get_integrated_remote_name(remotes, current_upstream=upstream)
         if upstream:
             tracked_remote = upstream.remote
-            if tracked_remote == integrated_remote:
-                return tracked_remote
-            else:
+            if tracked_remote != integrated_remote:
                 return None
-        else:
-            return integrated_remote
+
+        return integrated_remote
