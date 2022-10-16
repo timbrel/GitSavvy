@@ -265,8 +265,9 @@ class GenericTrackCommand(CompleteMixin):
         super(GenericTrackCommand, self).run(**kwargs)
         if name:
             self.complete_flow(name)
-        self.window.show_input_panel(self.query, "", self.complete_flow,
-                                     None, None)
+        else:
+            self.window.show_input_panel(self.query, "", self.complete_flow,
+                                         None, None)
 
 
 class GsGitFlowFeatureStartCommand(GenericStartMixin):
