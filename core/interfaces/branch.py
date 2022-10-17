@@ -190,15 +190,12 @@ class BranchInterface(ui.Interface, GitCommand):
     def render_remotes_on(self):
         output_tmpl = "\n"
         render_fns = []
-
-        sorted_branches = sorted(
-            [b for b in self._branches if b.is_remote],
-            key=lambda branch: branch.canonical_name)
+        remote_branches = [b for b in self._branches if b.is_remote]
 
         for remote_name in self.remotes:
             key = "branch_list_" + remote_name
             output_tmpl += "{" + key + "}\n"
-            branches = [b for b in sorted_branches if b.canonical_name.startswith(remote_name + "/")]
+            branches = [b for b in remote_branches if b.canonical_name.startswith(remote_name + "/")]
 
             @ui.section(key)
             def render(remote_name=remote_name, branches=branches):
