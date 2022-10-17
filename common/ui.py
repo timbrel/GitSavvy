@@ -27,7 +27,10 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, Iterator, List, Optional, Protocol, Set, Tuple, Type, Union
+    from typing import (
+        Callable, Dict, Iterable, Iterator, List, Protocol, Set, Tuple, Type, TypeVar, Union
+    )
+    T = TypeVar("T")
     SectionRegions = Dict[str, sublime.Region]
 
     class SectionFn(Protocol):
@@ -39,13 +42,13 @@ if MYPY:
 
 interfaces = {}  # type: Dict[sublime.ViewId, Interface]
 edit_views = {}
-subclasses = []  # type: List[Type[Interface]]
+known_interface_types = {}  # type: Dict[str, Type[Interface]]
 
 EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press {super_key}+Enter.  To cancel, close the view.\n"
 
 
 class _PrepareInterface(type):
-    def __init__(cls, cls_name, bases, attrs):
+    def __init__(cls: "Type[T]", cls_name, bases, attrs):
         for attr_name, value in attrs.items():
             if attr_name.startswith("template"):
                 setattr(cls, attr_name, dedent(value))
@@ -55,6 +58,15 @@ class _PrepareInterface(type):
             for attr_name, attr in attrs.items()
             if callable(attr) and hasattr(attr, "key")
         ]
+
+        if cls_name == "Interface":
+            # Bail out as the class `Interface` is not yet
+            # defined.  (This `__init__` here is called *while*
+            # defining `Interface`.)
+            return
+
+        if issubclass(cls, Interface):
+            known_interface_types[cls.interface_type] = cls
 
 
 def show_interface(window, repo_path, typ):
@@ -66,7 +78,7 @@ def show_interface(window, repo_path, typ):
             and vset.get("git_savvy.repo_path") == repo_path
         ):
             focus_view(view)
-            ensure_interface_object(view, typ)
+            ensure_interface_object(view)
             break
     else:
         create_interface(window, repo_path, typ)
@@ -77,25 +89,31 @@ def create_interface(window, repo_path, typ):
     return klass_for_typ(typ).create_view(window, repo_path)
 
 
-def ensure_interface_object(view, typ):
-    # type: (sublime.View, str) -> Interface
+def ensure_interface_object(view):
+    # type: (sublime.View) -> Interface
     vid = view.id()
     try:
         return interfaces[vid]
     except KeyError:
+        typ = view.settings().get("git_savvy.interface")
+        if not typ:
+            raise RuntimeError(
+                "Assertion failed! "
+                "The view {} has no interface information set".format(view)
+            )
         interface = interfaces[vid] = klass_for_typ(typ)(view=view)
         return interface
 
 
 def klass_for_typ(typ):
     # type: (str) -> Type[Interface]
-    for klass in subclasses:
-        if klass.interface_type == typ:
-            return klass
-    raise RuntimeError(
-        "Assertion failed! "
-        "no class found for interface type '{}'".format(typ)
-    )
+    try:
+        return known_interface_types[typ]
+    except KeyError:
+        raise RuntimeError(
+            "Assertion failed! "
+            "no class found for interface type '{}'".format(typ)
+        )
 
 
 class Interface(metaclass=_PrepareInterface):
@@ -246,6 +264,7 @@ class Interface(metaclass=_PrepareInterface):
 
 
 def section(key):
+    # type: (str) -> Callable[[Callable[..., Union[str, Tuple[str, List[SectionFn]]]]], SectionFn]
     def decorator(fn):
         fn.key = key
         return fn
@@ -285,33 +304,12 @@ class gs_update_region(TextCommand):
         self.view.set_read_only(is_read_only)
 
 
-def register_listeners(InterfaceClass):
-    subclasses.append(InterfaceClass)
-
-
-def get_interface(view_id):
-    # type: (sublime.ViewId) -> Optional[Interface]
-    return interfaces.get(view_id, None)
-
-
 class InterfaceCommand(GsTextCommand):
     interface_type = None  # type: Type[Interface]
     interface = None  # type: Interface
 
     def run_(self, edit_token, args):
-        vid = self.view.id()
-        interface = get_interface(vid)
-        if not interface:
-            raise RuntimeError(
-                "Assertion failed! "
-                "no dashboard registered for {}".format(vid))
-        if not isinstance(interface, self.interface_type):
-            raise RuntimeError(
-                "Assertion failed! "
-                "registered interface `{}` is not of type `{}`"
-                .format(interface, self.interface_type.__name__)
-            )
-        self.interface = interface
+        self.interface = ensure_interface_object(self.view)
         return super().run_(edit_token, args)
 
     def region_name_for(self, section):
@@ -366,7 +364,7 @@ class gs_interface_close(TextCommand):
 
     def run(self, edit):
         view_id = self.view.id()
-        interface = get_interface(view_id)
+        interface = interfaces.get(view_id, None)
         if interface:
             interface.on_close()
             enqueue_on_worker(lambda: interfaces.pop(view_id))
@@ -381,18 +379,8 @@ class gs_interface_refresh(TextCommand):
     @on_worker
     def run(self, edit):
         # type: (object) -> None
-        vid = self.view.id()
-        interface = interfaces.get(vid, None)
-        if interface:
-            interface.render()
-            return
-
-        interface_type = self.view.settings().get("git_savvy.interface")
-        for cls in subclasses:
-            if cls.interface_type == interface_type:
-                interface = interfaces[vid] = cls(view=self.view)
-                interface.render()
-                break
+        interface = ensure_interface_object(self.view)
+        interface.render()
 
 
 class gs_interface_toggle_help(TextCommand):

@@ -209,9 +209,6 @@ class BranchInterface(ui.Interface, GitCommand):
         return output_tmpl, render_fns
 
 
-ui.register_listeners(BranchInterface)
-
-
 class BranchInterfaceCommand(ui.InterfaceCommand):
     interface_type = BranchInterface
     interface = None  # type: BranchInterface
