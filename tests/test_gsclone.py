@@ -28,6 +28,11 @@ class TestGsCloneHelper(DeferrableTestCase):
         ("https://github.com/", ""),
         ("https://github.com/timbrel", ""),
         ("https://github.com/timbrel/", ""),
+
+        (
+            "https://bitbucket.org/mdaloia/sublime-compare-side-by-side/src/master/",
+            "https://bitbucket.org/mdaloia/sublime-compare-side-by-side.git"
+        ),
     ])
     def test_parse_url_from_clipboard(self, IN, OUT):
         self.assertEqual(OUT, parse_url_from_clipboard(IN))
@@ -39,6 +44,7 @@ class TestGsCloneHelper(DeferrableTestCase):
         ("https://github.com/timbrel/GitSavvy", "GitSavvy"),
         ("https://github.com/wbond/packagecontrol.io.git", "packagecontrol.io"),
         ("https://github.com/wbond/packagecontrol.io", "packagecontrol.io"),
+        ("https://bitbucket.org/mdaloia/sublime-compare-side-by-side.git", "sublime-compare-side-by-side"),
 
         # pathological cases
         ("", ""),

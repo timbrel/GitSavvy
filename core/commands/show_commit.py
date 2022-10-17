@@ -28,6 +28,7 @@ __all__ = (
     "gs_show_commit_open_file_at_hunk",
     "gs_show_commit_show_hunk_on_working_dir",
     "gs_show_commit_open_graph_context",
+    "gs_show_commit_initiate_fixup_commit",
 )
 
 MYPY = False
@@ -161,6 +162,29 @@ class gs_show_commit_open_on_github(TextCommand, GithubRemotesMixin, GitCommand)
         else:
             diff = SplittedDiff.from_view(view)
             yield from unique(filter_(diff.commit_hash_before_pt(s.begin()) for s in view.sel()))
+
+
+class gs_show_commit_initiate_fixup_commit(TextCommand):
+    def run(self, edit):
+        view = self.view
+        window = view.window()
+        assert window
+
+        commit_header = SplittedDiff.from_view(view).commit_before_pt(view.sel()[0].begin())
+        if not commit_header:
+            flash(view, "No commit header found around the cursor.")
+            return
+
+        for r in view.find_by_selector("meta.commit_message meta.subject.git.commit"):
+            if r.a > commit_header.a:
+                commit_message = view.substr(r).strip()
+                view.settings().set("initiated_fixup_commit", commit_message)
+                window.run_command("gs_commit", {
+                    "initial_text": "fixup! {}".format(commit_message)
+                })
+                break
+        else:
+            flash(view, "Could not extract commit message subject")
 
 
 class gs_show_commit_toggle_setting(TextCommand):

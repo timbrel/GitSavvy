@@ -107,6 +107,12 @@ class gs_init(WindowCommand, GitCommand):
         util.view.refresh_gitsavvy(self.window.active_view())
 
 
+HUBS = [
+    "https://github.com/",
+    "https://bitbucket.org/"
+]
+
+
 def parse_url_from_clipboard(clip_content):
     # type: (str) -> str
     if not clip_content:
@@ -118,14 +124,15 @@ def parse_url_from_clipboard(clip_content):
     ):
         return clip_content
 
-    if clip_content.startswith("https://github.com/"):
-        path = clip_content[19:]
-        try:
-            owner, name = filter_(path.split("/")[:2])
-        except ValueError:
-            return ""
-        else:
-            return "https://github.com/{}/{}.git".format(owner, name)
+    for hub in HUBS:
+        if clip_content.startswith(hub):
+            path = clip_content[len(hub):]
+            try:
+                owner, name = filter_(path.split("/")[:2])
+            except ValueError:
+                return ""
+            else:
+                return "{}{}/{}.git".format(hub, owner, name)
     return ""
 
 
