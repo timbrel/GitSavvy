@@ -30,7 +30,7 @@ CONFIRM_FORCE_PUSH = ("You are about to `git push {}`. Would you  "
                       "like to proceed?")
 
 
-class PushBase(GsWindowCommand):
+class PushMixin(GsWindowCommand):
     def guess_remote_to_push_to(self, available_remotes):
         # type: (Sequence[str]) -> str
         if len(available_remotes) == 0:
@@ -93,7 +93,7 @@ class PushBase(GsWindowCommand):
         util.view.refresh_gitsavvy_interfaces(self.window)
 
 
-class gs_push(PushBase):
+class gs_push(PushMixin):
     """
     Push current branch.
     """
@@ -157,7 +157,7 @@ def take_current_branch_name(cmd, args, done):
 
 
 def ask_for_remote(cmd, args, done):
-    # type: (PushBase, Args, Kont) -> None
+    # type: (PushMixin, Args, Kont) -> None
     available_remotes = list(cmd.get_remotes())
     if len(available_remotes) == 0:
         show_actions_panel(cmd.window, [noop("There are no remotes available.")])
@@ -205,7 +205,7 @@ def ask_for_remote_branch(self, args, done):
     show_branch_panel(done, ask_remote_first=True)
 
 
-class gs_push_to_branch_name(PushBase):
+class gs_push_to_branch_name(PushMixin):
     """
     Prompt for remote and remote branch name, then push.
     """
@@ -244,7 +244,7 @@ class gs_push_to_branch_name(PushBase):
         )
 
 
-class gs_push_to_branch(PushBase):
+class gs_push_to_branch(PushMixin):
     """
     Through a series of panels, allow the user to push to a specific remote branch.
     """

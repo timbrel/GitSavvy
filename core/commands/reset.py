@@ -1,11 +1,10 @@
 import sublime
-from sublime_plugin import WindowCommand
-from ..git_command import GitCommand
 from .log import LogMixin
 from .reflog import RefLogMixin
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
 from GitSavvy.core import store
+from GitSavvy.core.base_commands import GsWindowCommand
 
 
 __all__ = (
@@ -27,7 +26,7 @@ GIT_RESET_MODES = [
 MODES = [mode for mode, _ in GIT_RESET_MODES]
 
 
-class ResetMixin(GitCommand, WindowCommand):
+class ResetMixin(GsWindowCommand):
 
     def do_action(self, commit_hash, **kwargs):
         if not commit_hash:
@@ -82,11 +81,11 @@ class ResetMixin(GitCommand, WindowCommand):
             do_reset()
 
 
-class gs_reset(ResetMixin, LogMixin, WindowCommand):
+class gs_reset(ResetMixin, LogMixin):
     pass
 
 
-class gs_reset_branch(ResetMixin, WindowCommand):
+class gs_reset_branch(ResetMixin):
     def run(self, **kwargs):
         show_branch_panel(self.on_branch_selection)
 
@@ -94,5 +93,5 @@ class gs_reset_branch(ResetMixin, WindowCommand):
         self.do_action(branch)
 
 
-class gs_reset_reflog(ResetMixin, RefLogMixin, WindowCommand):
+class gs_reset_reflog(ResetMixin, RefLogMixin):
     pass

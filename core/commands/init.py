@@ -90,7 +90,7 @@ class gs_init(WindowCommand, GitCommand):
 
         show_single_line_input_panel(
             REPO_PATH_PROMPT,
-            git_root,
+            git_root or "",
             self.on_done,
             select_text=False
         )

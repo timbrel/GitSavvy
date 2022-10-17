@@ -2,9 +2,16 @@ import re
 from sublime_plugin import TextCommand
 
 from ...common import util
-from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from GitSavvy.core.base_commands import GsTextCommand
+
+
+__all__ = (
+    "gs_tag_create",
+    "gs_smart_tag",
+)
+
 
 MYPY = False
 if MYPY:
@@ -65,7 +72,7 @@ def smart_incremented_tag(tag, release_type):
     return None
 
 
-class GsTagCreateCommand(TextCommand, GitCommand):
+class gs_tag_create(GsTextCommand):
 
     """
     Through a series of panels, allow the user to add a tag and message.
@@ -123,7 +130,7 @@ class GsTagCreateCommand(TextCommand, GitCommand):
         util.view.refresh_gitsavvy_interfaces(self.window)
 
 
-class GsSmartTagCommand(PanelActionMixin, TextCommand):
+class gs_smart_tag(PanelActionMixin, TextCommand):
     """
     Displays a panel of possible smart tag options, based on the choice,
     tag the current commit with the corresponding tagname.

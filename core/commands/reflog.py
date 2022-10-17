@@ -1,11 +1,15 @@
 import sublime
-from sublime_plugin import WindowCommand
 
-from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import show_paginated_panel
+from GitSavvy.core.base_commands import GsWindowCommand
 
 
-class RefLogMixin(object):
+__all__ = (
+    "gs_ref_log",
+)
+
+
+class RefLogMixin(GsWindowCommand):
 
     _limit = 6000
 
@@ -21,14 +25,10 @@ class RefLogMixin(object):
             self.do_action(commit)
 
     def do_action(self, commit_hash):
-        if hasattr(self, 'window'):
-            window = self.window
-        else:
-            window = self.view.window()
-        window.run_command("gs_log_action", {
+        self.window.run_command("gs_log_action", {
             "commit_hash": commit_hash
         })
 
 
-class GsRefLogCommand(RefLogMixin, WindowCommand, GitCommand):
+class gs_ref_log(RefLogMixin):
     pass

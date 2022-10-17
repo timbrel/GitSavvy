@@ -1,8 +1,9 @@
+import filecmp
 import os
-import tempfile
 import subprocess
 import shlex
-import filecmp
+import sys
+import tempfile
 from shutil import rmtree, copyfile
 
 import sublime
@@ -59,7 +60,7 @@ class MergeMixin(mixin_base):
             copyfile(merge_path, backup_path)
 
             startupinfo = None
-            if os.name == "nt":
+            if sys.platform == "win32":
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 

@@ -13,6 +13,12 @@ from contextlib import contextmanager
 from .debug import StackMeter
 
 
+MYPY = False
+if MYPY:
+    from typing import Dict
+    from types import ModuleType
+
+
 try:
     from package_control.package_manager import PackageManager
 
@@ -44,6 +50,7 @@ def path_contains(a, b):
 
 
 def get_package_modules(pkg_name):
+    # type: (str) -> Dict[str, ModuleType]
     in_installed_path = functools.partial(
         path_contains,
         os.path.join(
@@ -263,7 +270,13 @@ def importing_fromlist_aggressively(modules):
         builtins.__import__ = orig___import__
 
 
-class FilterFinder:
+if MYPY:
+    _base = importlib.abc.MetaPathFinder
+else:
+    _base = object
+
+
+class FilterFinder(_base):
     def __init__(self, modules, verbose):
         self._modules = modules
         self._stack_meter = StackMeter()

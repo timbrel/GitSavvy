@@ -1,7 +1,13 @@
 import sublime
-from sublime_plugin import WindowCommand
 
-from ..git_command import GitCommand
+from ..ui_mixins.input_panel import show_single_line_input_panel
+from GitSavvy.core.base_commands import GsWindowCommand
+from GitSavvy.core.runtime import on_new_thread
+
+
+MYPY = False
+if MYPY:
+    from typing import List
 
 
 INIT_REQUIRED_MSG = "Please run `git: flow init` first."
@@ -11,13 +17,21 @@ GITFLOW_CONF = ['branch.master', 'branch.develop', 'prefix.feature',
                 'prefix.support', 'origin', ]
 
 
-class FlowCommon(WindowCommand, GitCommand):
+class FlowMixin(GsWindowCommand):
     """
     Common git-flow commands parent class.
 
     Populates gitflow settings and includes useful methods
     for option selection and branch retrieval.
     """
+    def run(self, **kwargs):
+        self.get_flow_settings()
+        if not self.flow_settings['branch.master']:
+            self.window.show_quick_panel([INIT_REQUIRED_MSG], None)
+
+    def is_visible(self, **kwargs):
+        return self.savvy_settings.get("show_git_flow_commands") or False
+
     def get_flow_settings(self):
         flow_ver = self.git("flow", "version")
         self.flow_settings = {
@@ -27,14 +41,6 @@ class FlowCommon(WindowCommand, GitCommand):
             self.flow_settings[conf] = self.git(
                 "config", "gitflow.%s" % conf, throw_on_error=False
             ).strip()
-
-    def run(self, **kwargs):
-        self.get_flow_settings()
-        if not self.flow_settings['branch.master']:
-            self.window.show_quick_panel([INIT_REQUIRED_MSG], None)
-
-    def is_visible(self, **kwargs):
-        return self.savvy_settings.get("show_git_flow_commands") or False
 
     def _generic_select(self, help_text, options, callback,
                         no_opts="There are no branches available"):
@@ -67,7 +73,8 @@ class FlowCommon(WindowCommand, GitCommand):
         return selected
 
 
-class GsGitFlowInitCommand(FlowCommon):
+class GsGitFlowInitCommand(FlowMixin):
+    branches = []  # type: List[str]
     """
     Through a series of panels, allow the user to initialize git-flow.
     """
@@ -131,40 +138,46 @@ class GsGitFlowInitCommand(FlowCommon):
         # TODO: create develop branch if does not exist yet
         self.configure_gitflow('branch.develop', value)
 
-        self.window.show_input_panel("Feature branches prefix?: ", "feature/",
-                                     self.on_feature_selected, None, None)
+        show_single_line_input_panel("Feature branches prefix?: ", "feature/",
+                                     self.on_feature_selected)
 
     def on_feature_selected(self, value):
         self.configure_gitflow('prefix.feature', value)
 
-        self.window.show_input_panel("Release branches prefix?: ", "release/",
-                                     self.on_release_selectes, None, None)
+        show_single_line_input_panel("Release branches prefix?: ", "release/",
+                                     self.on_release_selectes)
 
     def on_release_selectes(self, value):
         self.configure_gitflow('prefix.release', value)
-        self.window.show_input_panel("Hotfix branches prefix?: ", "hotfix/",
-                                     self.on_hotfix_selected, None, None)
+        show_single_line_input_panel("Hotfix branches prefix?: ", "hotfix/",
+                                     self.on_hotfix_selected)
 
     def on_hotfix_selected(self, value):
         self.configure_gitflow('prefix.hotfix', value)
-        self.window.show_input_panel("Support branches prefix?: ", "support/",
-                                     self.on_support_selected, None, None)
+        show_single_line_input_panel("Support branches prefix?: ", "support/",
+                                     self.on_support_selected)
 
     def on_support_selected(self, value):
         self.configure_gitflow('prefix.support', value)
-        self.window.show_input_panel("Version tag prefix?: ", " ",
-                                     self.on_versiontag_selected, None, None)
+        show_single_line_input_panel("Version tag prefix?: ", " ",
+                                     self.on_versiontag_selected)
 
     def on_versiontag_selected(self, tag):
         self.configure_gitflow('prefix.versiontag', tag)
         self.window.status_message("git flow initialized")
 
 
-class CompleteMixin(object):
+class CompleteMixin(FlowMixin):
     """
     These are the final methods called after setup, which call the actual
     git-flow command and display a `status_message` update.
     """
+    command = None  # type: str
+    flow = None  # type: str
+    prefix_setting = None  # type: str
+    query = None  # type: str
+
+    @on_new_thread
     def complete_flow(self, name=None):
         self.git("flow", self.flow, self.command, name)
         self.show_status_update()
@@ -185,23 +198,24 @@ class GenericStartMixin(CompleteMixin):
     def run(self, **kwargs):
         super(GenericStartMixin, self).run(**kwargs)
         self.prefix = self.flow_settings[self.prefix_setting]
-        self.window.show_input_panel(self.query, "", self.complete_flow,
-                                     None, None)
+        show_single_line_input_panel(self.query, "", self.complete_flow)
 
 
-class GenericSelectTargetBranch(object):
+class GenericSelectTargetBranch(CompleteMixin):
     """
     A useful helper class to prompt for confirmation (if on a branch
     belonging to flow) or prompt to select a branch if not.
     """
+    name_prompt = None  # type: str
+
     def run(self, name=None, **kwargs):
         super(GenericSelectTargetBranch, self).run(**kwargs)
         self.prefix = self.flow_settings[self.prefix_setting]
-        self.curbranch = self.get_current_branch_name()
+        curbranch = self.get_current_branch_name()
 
         if name is None:
-            if self.curbranch.startswith(self.prefix):
-                self.cur_name = name = self.curbranch.replace(self.prefix, '')
+            if curbranch and curbranch.startswith(self.prefix):
+                self.cur_name = name = curbranch.replace(self.prefix, '')
             else:
                 self.branches = [
                     b.name.replace(self.prefix, '')
@@ -213,6 +227,7 @@ class GenericSelectTargetBranch(object):
                     self.branches,
                     self.on_name_selected,
                 )
+                return
 
         self._generic_select(self.query % name, ['Yes', 'No'],
                              self.on_select_current)
@@ -220,20 +235,20 @@ class GenericSelectTargetBranch(object):
     def on_select_current(self, index):
         if index != 1:
             return None
-        return self.complete_flow(name=self.cur_name)
+        self.complete_flow(name=self.cur_name)
 
     def on_name_selected(self, index):
         value = self.get_value(self.branches, index)
         if not value:
             return
-        return self.complete_flow(name=value)
+        self.complete_flow(name=value)
 
 
-class GenericFinishMixin(CompleteMixin, GenericSelectTargetBranch):
+class GenericFinishMixin(GenericSelectTargetBranch):
     command = 'finish'
 
 
-class GenericPublishMixin(CompleteMixin, GenericSelectTargetBranch):
+class GenericPublishMixin(GenericSelectTargetBranch):
     command = 'publish'
 
     def show_status_update(self):
@@ -243,7 +258,7 @@ class GenericPublishMixin(CompleteMixin, GenericSelectTargetBranch):
                 self.command))
 
 
-class GenericTrackCommand(CompleteMixin, FlowCommon):
+class GenericTrackCommand(CompleteMixin):
     """
     Common mixin to prompt for branch to track and call `complete_flow`.
     """
@@ -253,36 +268,36 @@ class GenericTrackCommand(CompleteMixin, FlowCommon):
         super(GenericTrackCommand, self).run(**kwargs)
         if name:
             self.complete_flow(name)
-        self.window.show_input_panel(self.query, "", self.complete_flow,
-                                     None, None)
+        else:
+            show_single_line_input_panel(self.query, "", self.complete_flow)
 
 
-class GsGitFlowFeatureStartCommand(GenericStartMixin, FlowCommon):
+class GsGitFlowFeatureStartCommand(GenericStartMixin):
     prefix_setting = 'prefix.feature'
     query = "Feature name?: "
     flow = "feature"
 
 
-class GsGitFlowFeatureFinishCommand(GenericFinishMixin, FlowCommon):
+class GsGitFlowFeatureFinishCommand(GenericFinishMixin):
     prefix_setting = 'prefix.feature'
     query = 'Finish feature: %s?'
     name_prompt = 'Finish which feature?'
     flow = "feature"
 
 
-class GsGitFlowFeaturePublishCommand(GenericPublishMixin, FlowCommon):
+class GsGitFlowFeaturePublishCommand(GenericPublishMixin):
     prefix_setting = 'prefix.feature'
     query = 'Publish feature: %s?'
     name_prompt = 'Publish which feature?'
     flow = "feature"
 
 
-class GsGitFlowFeatureTrackCommand(GenericTrackCommand, FlowCommon):
+class GsGitFlowFeatureTrackCommand(GenericTrackCommand):
     query = 'Track which feature?:'
     flow = "feature"
 
 
-class GsGitFlowFeaturePullCommand(CompleteMixin, FlowCommon):
+class GsGitFlowFeaturePullCommand(CompleteMixin):
     """
     This command first prompts for a remote name and then a feature to pull,
     before completing the flow.
@@ -304,60 +319,60 @@ class GsGitFlowFeaturePullCommand(CompleteMixin, FlowCommon):
         if not value:
             return
         self.remote = value
-        self.window.show_input_panel(self.query, "", self.complete_flow,
-                                     None, None)
+        show_single_line_input_panel(self.query, "", self.complete_flow)
 
+    @on_new_thread
     def complete_flow(self, name=None):
         self.git("flow", self.flow, "pull", self.remote, name)
         self.show_status_update()
 
 
-class GsGitFlowReleaseStartCommand(GenericStartMixin, FlowCommon):
+class GsGitFlowReleaseStartCommand(GenericStartMixin):
     prefix_setting = 'prefix.release'
     query = "Release version?: "
     flow = "release"
 
 
-class GsGitFlowReleaseFinishCommand(GenericFinishMixin, FlowCommon):
+class GsGitFlowReleaseFinishCommand(GenericFinishMixin):
     prefix_setting = 'prefix.release'
     query = 'Finish release: %s?'
     name_prompt = 'Finish which release?'
     flow = "release"
 
 
-class GsGitFlowReleasePublishCommand(GenericPublishMixin, FlowCommon):
+class GsGitFlowReleasePublishCommand(GenericPublishMixin):
     prefix_setting = 'prefix.release'
     query = 'Publish release: %s?'
     name_prompt = 'Publish which release?'
     flow = "release"
 
 
-class GsGitFlowReleaseTrackCommand(GenericTrackCommand, FlowCommon):
+class GsGitFlowReleaseTrackCommand(GenericTrackCommand):
     query = 'Track which release?:'
     flow = "release"
 
 
-class GsGitFlowHotfixStartCommand(GenericStartMixin, FlowCommon):
+class GsGitFlowHotfixStartCommand(GenericStartMixin):
     prefix_setting = 'prefix.hotfix'
     query = "Hotfix name?: "
     flow = "hotfix"
 
 
-class GsGitFlowHotfixFinishCommand(GenericFinishMixin, FlowCommon):
+class GsGitFlowHotfixFinishCommand(GenericFinishMixin):
     prefix_setting = 'prefix.hotfix'
     query = 'Finish hotfix: %s?'
     name_prompt = 'Finish which hotfix?'
     flow = "hotfix"
 
 
-class GsGitFlowHotfixPublishCommand(GenericPublishMixin, FlowCommon):
+class GsGitFlowHotfixPublishCommand(GenericPublishMixin):
     prefix_setting = 'prefix.hotfix'
     query = 'Publish hotfix: %s?'
     name_prompt = 'Publish which hotfix?'
     flow = "hotfix"
 
 
-class GsGitFlowSupportStartCommand(GenericStartMixin, FlowCommon):
+class GsGitFlowSupportStartCommand(GenericStartMixin):
     prefix_setting = 'prefix.support'
     query = "Support name?: "
     flow = "support"

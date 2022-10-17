@@ -1,13 +1,16 @@
 from collections import OrderedDict
 
-from sublime_plugin import WindowCommand
-
-from ..git_command import GitCommand
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..view import replace_view_content
+from GitSavvy.core.base_commands import GsWindowCommand
+
+
+MYPY = False
+if MYPY:
+    from typing import Iterable, List
+
 
 REF_PROMPT = "Ref or commit hash:"
-
 CHANGELOG_TEMPLATE = """Changes since {ref}:
 {changes}"""
 
@@ -17,7 +20,7 @@ GROUP_TEMPLATE = """
 """
 
 
-class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
+class GsGenerateChangeLogCommand(GsWindowCommand):
 
     """
     Prompt the user for a ref or commit hash.  Once provided,
@@ -26,7 +29,7 @@ class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
     """
 
     def run(self):
-        show_single_line_input_panel(REF_PROMPT, self.get_last_local_semver_tag(), self.on_done)
+        show_single_line_input_panel(REF_PROMPT, self.get_last_local_semver_tag() or "", self.on_done)
 
     def on_done(self, ref):
         merge_entries = self.log(
@@ -84,8 +87,8 @@ class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
         replace_view_content(view, changelog)
 
     def get_message_groups(self, messages):
-        grouped_msgs = OrderedDict()
-
+        # type: (List[str]) -> OrderedDict[str, Iterable[str]]
+        grouped_msgs = OrderedDict()  # type: OrderedDict[str, List[str]]
         for message in messages:
             first_colon = message.find(":")
             first_space = message.find(" ")
@@ -105,4 +108,4 @@ class GsGenerateChangeLogCommand(WindowCommand, GitCommand):
 
             grouped_msgs[group].append(message)
 
-        return grouped_msgs
+        return grouped_msgs  # type: ignore[return-value]

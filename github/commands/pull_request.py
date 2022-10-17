@@ -1,5 +1,4 @@
 import sublime
-from sublime_plugin import WindowCommand
 from webbrowser import open as open_in_browser
 import urllib
 
@@ -8,10 +7,18 @@ from .. import git_mixins
 from ...common import interwebs
 from ...common import util
 from ...core.commands.push import gs_push_to_branch_name
-from ...core.git_command import GitCommand
 from ...core.ui_mixins.quick_panel import show_paginated_panel
 from ...core.ui_mixins.input_panel import show_single_line_input_panel
 from ...core.view import replace_view_content
+from GitSavvy.core.base_commands import GsWindowCommand
+from GitSavvy.core.runtime import on_worker
+
+
+__all__ = (
+    "gs_github_pull_request",
+    "gs_github_create_pull_request",
+    "gs_github_push_and_create_pull_request",
+)
 
 
 MYPY = False
@@ -19,7 +26,7 @@ if MYPY:
     from GitSavvy.core.git_mixins.branches import Upstream
 
 
-class GsGithubPullRequestCommand(WindowCommand, git_mixins.GithubRemotesMixin, GitCommand):
+class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
 
     """
     Display open pull requests on the base repo.  When a pull request is selected,
@@ -27,10 +34,8 @@ class GsGithubPullRequestCommand(WindowCommand, git_mixins.GithubRemotesMixin, G
     a local branch, 3) view the PR's diff, or 4) open the PR in the browser.
     """
 
+    @on_worker
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         self.remotes = self.get_remotes()
         self.base_remote_name = self.get_integrated_remote_name(self.remotes)
         self.base_remote_url = self.remotes[self.base_remote_name]
@@ -163,15 +168,13 @@ class GsGithubPullRequestCommand(WindowCommand, git_mixins.GithubRemotesMixin, G
         open_in_browser(self.pr["html_url"])
 
 
-class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMixin, GitCommand):
+class gs_github_create_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
     """
     Create pull request of the current commit on the current repo.
     """
 
+    @on_worker
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         current_branch = self.get_current_branch()
         if not current_branch:
             sublime.message_dialog("You're on a detached HEAD.  Can't push in that state.")
@@ -223,7 +226,7 @@ class GsGithubCreatePullRequestCommand(WindowCommand, git_mixins.GithubRemotesMi
         open_in_browser(url)
 
 
-class GsGithubPushAndCreatePullRequestCommand(gs_push_to_branch_name):
+class gs_github_push_and_create_pull_request(gs_push_to_branch_name):
 
     def do_push(self, *args, **kwargs):
         super().do_push(*args, **kwargs)
