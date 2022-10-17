@@ -46,7 +46,7 @@ class ThemeGenerator():
     @staticmethod
     def for_view(view):
         # type: (sublime.View) -> ThemeGenerator
-        color_scheme = view.settings().get('color_scheme')
+        color_scheme = sublime.ui_info()["color_scheme"]["resolved_value"]
         if color_scheme.endswith(".tmTheme"):
             return XMLThemeGenerator(color_scheme)
         else:
