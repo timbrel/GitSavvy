@@ -2173,9 +2173,23 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             selected_index=self.selected_index,
         )
 
+    def _get_file_path(self, view):
+        # type: (sublime.View) -> Optional[str]
+        settings = view.settings()
+        apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
+        paths = (
+            settings.get("git_savvy.log_graph_view.paths", [])
+            if apply_filters
+            else []
+        )  # type: List[str]
+        if len(paths) == 1:
+            return os.path.normcase(os.path.join(self.repo_path, paths[0]))
+
+        return None
+
     def actions_for_multiple_lines(self, view, infos):
         # type: (sublime.View, List[LineInfo]) -> List[Tuple[str, Callable[[], None]]]
-        file_path = self.file_path
+        file_path = self._get_file_path(view)
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
 
         sel = view.sel()
@@ -2272,7 +2286,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
     def actions_for_single_line(self, view, info, branches):
         # type: (sublime.View, LineInfo, Dict[str, Branch]) -> List[Tuple[str, Callable[[], None]]]
         commit_hash = info["commit"]
-        file_path = self.file_path
+        file_path = self._get_file_path(view)
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
         on_checked_out_branch = "HEAD" in info and info["HEAD"] in info.get("local_branches", [])
         if on_checked_out_branch:
