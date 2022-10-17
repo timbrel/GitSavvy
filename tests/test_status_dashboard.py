@@ -151,7 +151,6 @@ class TestStatusDashboard(DeferrableTestCase):
             view.find('fix-1048', 0, sublime.LITERAL)
             and view.find('modified_file', 0, sublime.LITERAL)
         )
-        verify(GitCommand, atleast=1).git('status', ...)
 
         region = sublime.Region(0, view.size())
         view.sel().clear()
