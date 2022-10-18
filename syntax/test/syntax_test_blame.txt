@@ -20,12 +20,12 @@ gwenzek <guillaume.wenzek@gmail.com>         |    3 # http://www.sublimetext.com
 Jan 29, 2015                                 |
 #                                            ^ comment.block.git-savvy.splitter.vertical
 # <- comment.block.git-savvy.commit-info
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.block.git-savvy.commit-info
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.block.git-savvy.commit-info
 
 Rename `base_command#BaseCommand` to ...     |    4 from ..git_command import GitCommand
 #                                            ^ comment.block.git-savvy.splitter.vertical
 # <- comment.block.git-savvy.commit-info
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.block.git-savvy.commit-info
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.block.git-savvy.commit-info
 #                                                 ^ constant.numeric.line-number
 #                                                        ^ git-savvy.blame
 
