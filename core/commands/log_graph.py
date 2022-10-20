@@ -1259,7 +1259,7 @@ class gs_log_graph_edit_filters(TextCommand):
                 settings.set("git_savvy.log_graph_view.filter_by_author", "")
 
             hide_toast()
-            view.run_command("gs_log_graph_refresh")
+            view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": bool(text)})
 
         def on_cancel():
             enqueue_on_worker(hide_toast)
@@ -1345,7 +1345,7 @@ class gs_log_graph_reset_filters(TextCommand):
         current = settings.get("git_savvy.log_graph_view.apply_filters")
         next_state = not current
         settings.set("git_savvy.log_graph_view.apply_filters", next_state)
-        self.view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": True})
+        self.view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": next_state})
 
 
 class gs_log_graph_edit_files(TextCommand, GitCommand):
@@ -1378,20 +1378,21 @@ class gs_log_graph_edit_files(TextCommand, GitCommand):
         def on_done(idx):
             if idx < 0:
                 return
+
             selected = items[idx]
             unselect = selected[0] == ">"
             path = selected[3:]
-
             if unselect:
-                settings.set("git_savvy.log_graph_view.paths", [p for p in paths if p != path])
+                next_paths = [p for p in paths if p != path]
             else:
-                settings.set("git_savvy.log_graph_view.paths", paths + [path])
+                next_paths = paths + [path]
 
+            settings.set("git_savvy.log_graph_view.paths", next_paths)
             settings.set("git_savvy.log_graph_view.apply_filters", True)
             if not apply_filters:
                 settings.set("git_savvy.log_graph_view.filters", "")
                 settings.set("git_savvy.log_graph_view.filter_by_author", "")
-            view.run_command("gs_log_graph_refresh")
+            view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": bool(next_paths)})
 
         window.show_quick_panel(
             items,
