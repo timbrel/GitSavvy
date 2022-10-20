@@ -6,7 +6,7 @@ hidden: true
 scope: git-savvy.commit
 contexts:
   main:
-    - match: (?=^(commit|tag))
+    - match: (?=^(commit|tag|From))
       push: commit-header
     - match: (?=^diff\s)
       embed: "scope:git-savvy.diff"
@@ -14,30 +14,39 @@ contexts:
     # Merge commits "just" start the diffstat without the "---" line
     - match: (?=^ \S)
       embed: "scope:git-savvy.diff"
-      escape: (?=^commit \h{7,})
+      escape: (?=^(commit|From) \h{7,})
     - match: ^---$\n?
       scope: meta.commit-header-and-stat-splitter
       embed: "scope:git-savvy.diff"
-      escape: (?=^commit \h{7,})
+      escape: (?=^(commit|From) \h{7,})
     - match: ^-- .* --$
       scope: markup.deleted
 
   commit-header:
     - meta_scope: meta.commit-info.header
-    - match: ^(commit|tag) (.+)$\n?
+    - match: ^(commit|tag|From) (.+)$\n?
       comment: commit header
       scope: meta.commit-info.header.key-value
       captures:
         1: string.other.commit-info.header.key.git-savvy
         2: meta.commit-info.header.value.git-savvy meta.commit-info.header.sha.git-savvy
 
-    - match: ^(Author|Date|Merge|AuthorDate|Commit|CommitDate|Tagger|TaggerDate)(:)(.+)$\n?
+    - match: ^(Author|AuthorDate|Commit|CommitDate|Date|From|Merge|Tagger|TaggerDate)(:)(.+)$\n?
       comment: author and date info
       scope: meta.commit-info.header.key-value
       captures:
         1: string.other.commit-info.header.key.git-savvy
         2: string.other.commit-info.header.key.punctuation.git-savvy
         3: meta.commit-info.header.value.git-savvy
+
+    - match: ^(Subject)(:)\s(.+)$\n?
+      comment: subject (in a patch)
+      scope: meta.commit-info.header.key-value
+      captures:
+        1: string.other.commit-info.header.key.git-savvy
+        2: string.other.commit-info.header.key.punctuation.git-savvy
+        3: meta.commit-info.header.value.git-savvy gitsavvy.gotosymbol meta.commit_message meta.subject.git.commit
+      set: commit-subject
 
     - match: ^$
       set: commit-message
