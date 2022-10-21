@@ -130,7 +130,7 @@ class gs_blame_current_file(LogMixin, GsTextCommand):
 
         self._file_path = self.file_path
         kwargs["file_path"] = self._file_path
-        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
+        super().run(**kwargs)
 
     def do_action(self, commit_hash, **kwargs):
         self._commit_hash = commit_hash
