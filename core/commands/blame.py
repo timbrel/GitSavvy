@@ -208,9 +208,7 @@ class gs_blame_refresh(BlameMixin):
                 self.view.show_at_center(self.view.line(self.view.sel()[0].begin()).begin())
             else:
                 cursor_layout = self.view.text_to_layout(self.view.sel()[0].begin())
-                sublime.set_timeout_async(
-                    lambda: self.view.set_viewport_position(
-                        (0, cursor_layout[1] - yoffset), animate=False), 100)
+                self.view.set_viewport_position((0, cursor_layout[1] - yoffset), animate=False)
 
     def get_content(self, ignore_whitespace=False, detect_options=None, commit_hash=None):
         if commit_hash:
