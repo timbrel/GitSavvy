@@ -231,8 +231,8 @@ class gs_blame_refresh(BlameMixin):
         blamed_lines, commits = self.parse_blame(blame_porcelain.split('\n'))
 
         commit_infos = {
-            commit_hash: self.short_commit_info(commit)
-            for commit_hash, commit in commits.items()
+            commit_hash_: self.short_commit_info(commit, current_commit_hash=commit_hash)
+            for commit_hash_, commit in commits.items()
         }
 
         partitions = tuple(self.partition(blamed_lines))
@@ -316,8 +316,7 @@ class gs_blame_refresh(BlameMixin):
             current_hunk.append(line)
         yield current_hunk
 
-    @staticmethod
-    def short_commit_info(commit):
+    def short_commit_info(self, commit, current_commit_hash):
         if commit["long_hash"] == NOT_COMMITED_HASH:
             return ("Not committed yet.", )
 
@@ -329,7 +328,10 @@ class gs_blame_refresh(BlameMixin):
             author_info = author_info[:37] + "..."
         time_stamp = util.dates.fuzzy(commit["author-time"]) if commit["author-time"] else ""
 
-        return (summary, commit["short_hash"], author_info, time_stamp)
+        commit_hash = commit["short_hash"]
+        if commit["long_hash"] == current_commit_hash:
+            commit_hash += "  (CURRENT COMMIT)"
+        return (summary, commit_hash, author_info, time_stamp)
 
     @staticmethod
     def couple_partitions_and_commits(partitions, commit_infos, left_pad):
