@@ -229,11 +229,6 @@
         "args": { "force_with_lease": true }
     },
     {
-        "caption": "git: push all tags",
-        "command": "gs_tags_push",
-        "args": { "push_all": true }
-    },
-    {
         "caption": "git: push to existing branch",
         "command": "gs_push_to_branch"
     },

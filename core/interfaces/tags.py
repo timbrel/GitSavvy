@@ -86,7 +86,7 @@ class TagsInterface(ui.Interface, GitCommand):
       [s] create smart tag            [?]         toggle this help menu
       [d] delete                      [e]         toggle display of remote branches
       [p] push to remote              [tab]       transition to next dashboard
-      [P] push all tags to remote     [SHIFT-tab] transition to previous dashboard
+                                      [SHIFT-tab] transition to previous dashboard
       [o] show commit
       [g] show log graph
 
@@ -356,7 +356,7 @@ class gs_tags_push(TagsInterfaceCommand):
     """
 
     @on_worker
-    def run(self, edit, push_all=False):
+    def run(self, edit):
         self.remotes = list(self.get_remotes().keys())
         if not self.remotes:
             self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
@@ -364,16 +364,11 @@ class gs_tags_push(TagsInterfaceCommand):
 
         self.window.show_quick_panel(
             self.remotes,
-            lambda idx: self.push_async(idx, push_all=push_all),
+            self.push_selected,
             flags=sublime.MONOSPACE_FONT
         )
 
-    def push_async(self, remote_idx, push_all=False):
-        if push_all:
-            enqueue_on_worker(self.push_all, remote_idx)
-        else:
-            enqueue_on_worker(self.push_selected, remote_idx)
-
+    @on_worker
     def push_selected(self, remote_idx):
         # The user pressed `esc` or otherwise cancelled.
         if remote_idx == -1:
@@ -384,19 +379,6 @@ class gs_tags_push(TagsInterfaceCommand):
 
         flash(self.view, START_PUSH_MESSAGE)
         self.git("push", remote, *("refs/tags/" + tag for tag in tags_to_push))
-        flash(self.view, END_PUSH_MESSAGE)
-
-        interface = self.interface
-        interface.remotes = None
-        util.view.refresh_gitsavvy(self.view)
-
-    def push_all(self, remote_idx):
-        # The user pressed `esc` or otherwise cancelled.
-        if remote_idx == -1:
-            return
-        remote = self.remotes[remote_idx]
-        flash(self.view, START_PUSH_MESSAGE)
-        self.git("push", remote, "--tags")
         flash(self.view, END_PUSH_MESSAGE)
 
         interface = self.interface
