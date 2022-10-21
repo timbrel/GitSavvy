@@ -13,6 +13,9 @@ if MYPY:
     from ..git_mixins.history import LogEntry
 
 
+NO_REMOTES_MESSAGE = "You have not configured any remotes."
+
+
 class PanelActionMixin(GitCommand):
     """
     Use this mixin to initially display a quick panel, select from pre-defined
@@ -184,7 +187,7 @@ class RemotePanel(GitCommand):
         self.remotes = list(_remotes.keys())
 
         if not self.remotes:
-            self.window.show_quick_panel(["There are no remotes available."], None)
+            self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
             return
 
         if self.allow_direct and len(self.remotes) == 1:
