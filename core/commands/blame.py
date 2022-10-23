@@ -211,15 +211,12 @@ class gs_blame_refresh(BlameMixin):
                 self.view.set_viewport_position((0, cursor_layout[1] - yoffset), animate=False)
 
     def get_content(self, ignore_whitespace=False, detect_options=None, commit_hash=None):
-        if commit_hash:
-            # git blame does not follow file name changes like git log, therefore we
-            # need to look at the log first too see if the file has changed names since
-            # selected commit. I would not be surprised if this brakes in some special cases
-            # like rebased or multimerged commits
-            follow = self.savvy_settings.get("blame_follow_rename")
-            filename_at_commit = self.filename_at_commit(self.file_path, commit_hash, follow=follow)
+        file_path = self.file_path
+        assert file_path
+        if commit_hash and self.savvy_settings.get("blame_follow_rename"):
+            filename_at_commit = self.filename_at_commit(file_path, commit_hash)
         else:
-            filename_at_commit = self.file_path
+            filename_at_commit = file_path
 
         blame_porcelain = self.git(
             "blame", "-p", '-w' if ignore_whitespace else None, detect_options,
