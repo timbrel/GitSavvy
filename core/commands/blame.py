@@ -1,5 +1,6 @@
 import re
 from collections import namedtuple, defaultdict
+from itertools import groupby
 import unicodedata
 
 import sublime
@@ -24,7 +25,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import DefaultDict, List, Optional
+    from typing import DefaultDict, List, Iterator, Optional
 
 
 BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))
@@ -299,16 +300,9 @@ class gs_blame_refresh(BlameMixin):
         return blamed_lines, commits
 
     def partition(self, blamed_lines):
-        prev_line = None
-        current_hunk = []
-        for line in blamed_lines:
-            if prev_line and line.commit_hash != prev_line.commit_hash:  # type: ignore[unreachable]
-                yield current_hunk  # type: ignore[unreachable]
-                current_hunk = []
-
-            prev_line = line
-            current_hunk.append(line)
-        yield current_hunk
+        # type: (List[BlamedLine]) -> Iterator[List[BlamedLine]]
+        for _, lines in groupby(blamed_lines, lambda line: line.commit_hash):
+            yield list(lines)
 
     def short_commit_info(self, commit, current_commit_hash):
         if commit["long_hash"] == NOT_COMMITED_HASH:
