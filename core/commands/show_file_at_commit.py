@@ -71,6 +71,8 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
         view = util.view.get_scratch_view(self, "show_file_at_commit")
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)
+        if check_for_renames:
+            file_path = self.filename_at_commit(file_path, commit_hash)
         settings.set("git_savvy.file_path", file_path)
         settings.set("git_savvy.show_file_at_commit_view.commit", commit_hash)
         for key, value in {
@@ -89,9 +91,6 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
 
         view.set_syntax_file(lang)
         view.set_name(title)
-
-        if check_for_renames:
-            file_path = self.filename_at_commit(file_path, commit_hash)
 
         view.run_command("gs_show_file_at_commit_refresh", {
             "position": position
