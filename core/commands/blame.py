@@ -161,11 +161,12 @@ class gs_blame_refresh(BlameMixin):
     def run(self, edit):
 
         settings = self.view.settings()
+        file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.commit_hash", None)  # type: Optional[str]
 
         self.view.set_name(
             BLAME_TITLE.format(
-                self.get_rel_path(self.file_path) if self.file_path else "unknown",
+                self.get_rel_path(file_path),
                 " at {}".format(commit_hash[0:7]) if commit_hash else ""
             )
         )
@@ -175,6 +176,7 @@ class gs_blame_refresh(BlameMixin):
             within_what = self.savvy_settings.get("blame_detect_move_or_copy_within")
 
         content = self.get_content(
+            file_path,
             ignore_whitespace=settings.get("git_savvy.ignore_whitespace", False),
             detect_options=self._detect_move_or_copy_dict[within_what],
             commit_hash=commit_hash
@@ -210,9 +212,7 @@ class gs_blame_refresh(BlameMixin):
                 cursor_layout = self.view.text_to_layout(self.view.sel()[0].begin())
                 self.view.set_viewport_position((0, cursor_layout[1] - yoffset), animate=False)
 
-    def get_content(self, ignore_whitespace=False, detect_options=None, commit_hash=None):
-        file_path = self.file_path
-        assert file_path
+    def get_content(self, file_path, ignore_whitespace=False, detect_options=None, commit_hash=None):
         if commit_hash and self.savvy_settings.get("blame_follow_rename"):
             filename_at_commit = self.filename_at_commit(file_path, commit_hash)
         else:
