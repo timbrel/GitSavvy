@@ -231,7 +231,7 @@ class gs_blame_refresh(BlameMixin):
             for commit_hash_, commit in commits.items()
         }
 
-        partitions = tuple(self.partition(blamed_lines))
+        partitions = tuple(self.group_consecutive_lines(blamed_lines))
 
         longest_commit_line = max(
             (line
@@ -299,7 +299,7 @@ class gs_blame_refresh(BlameMixin):
 
         return blamed_lines, commits
 
-    def partition(self, blamed_lines):
+    def group_consecutive_lines(self, blamed_lines):
         # type: (List[BlamedLine]) -> Iterator[List[BlamedLine]]
         for _, lines in groupby(blamed_lines, lambda line: line.commit_hash):
             yield list(lines)
