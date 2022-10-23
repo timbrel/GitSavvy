@@ -72,7 +72,9 @@ class gs_blame(BlameMixin):
     def run(self, edit, file_path=None, repo_path=None, commit_hash=None):
         self._file_path = file_path or self.file_path
         self.__repo_path = repo_path or self.repo_path
-        self._commit_hash = commit_hash if commit_hash else self.get_commit_hash_for_head()
+        if commit_hash == "HEAD":
+            commit_hash = self.get_commit_hash_for_head()
+        self._commit_hash = commit_hash
         sublime.set_timeout_async(self.blame)
 
     @util.view.single_cursor_coords
@@ -99,7 +101,10 @@ class gs_blame(BlameMixin):
                 settings.set(key, original_view.settings().get(key))
 
         else:
-            lineno = self.find_matching_lineno(None, self._commit_hash, coords[0] + 1)
+            if self._commit_hash:
+                lineno = self.find_matching_lineno(None, self._commit_hash, coords[0] + 1)
+            else:
+                lineno = coords[0] + 1
             settings.set("git_savvy.blame_view.ignore_whitespace", False)
             settings.set("git_savvy.blame_view.detect_move_or_copy_within", None)
             settings.set("git_savvy.original_syntax", original_view.settings().get('syntax'))
@@ -305,7 +310,7 @@ class gs_blame_refresh(BlameMixin):
 
     def short_commit_info(self, commit, current_commit_hash):
         if commit["long_hash"] == NOT_COMMITED_HASH:
-            return ("Not committed yet.", )
+            return ("Not committed yet", )
 
         summary = commit["summary"]
         if len(summary) > 40:
@@ -403,20 +408,22 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
         assert self.file_path
         if position == "older":
             neighbor_hash = self.previous_commit(commit_hash, self.file_path, follow)
+            if not neighbor_hash:
+                self.window.status_message("Already on the oldest revision.")
+                return
+
         elif position == "newer":
+            if not commit_hash:
+                self.window.status_message("Already showing the workdir state.")
+                return
             neighbor_hash = self.next_commit(commit_hash, self.file_path, follow)
 
-        if neighbor_hash:
-            settings.set("git_savvy.commit_hash", neighbor_hash)
-
-        # if there is a change, refresh blame interface
-        if commit_hash == settings.get("git_savvy.commit_hash"):
+        if commit_hash == neighbor_hash:
             return
 
-        # set line number
         lineno = self.find_matching_lineno(
-            commit_hash, settings.get("git_savvy.commit_hash"), self.find_lineno())
-
+            commit_hash, neighbor_hash, self.find_lineno())
+        settings.set("git_savvy.commit_hash", neighbor_hash)
         settings.set("git_savvy.lineno", lineno)
         self.view.run_command("gs_blame_refresh")
 
