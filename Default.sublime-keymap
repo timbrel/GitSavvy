@@ -1073,6 +1073,15 @@
         ]
     },
     {
+        "keys": ["h"],
+        "command": "gs_blame_navigate_head",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["j"],
         "command": "gs_blame_navigate_chunk",
         "args": { "forward": true },

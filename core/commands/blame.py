@@ -20,6 +20,7 @@ __all__ = (
     "gs_blame_action",
     "gs_blame_toggle_setting",
     "gs_blame_navigate_chunk",
+    "gs_blame_navigate_head",
 )
 
 
@@ -488,9 +489,25 @@ class gs_blame_navigate_chunk(GsNavigate):
     offset = 0
 
     def get_available_regions(self):
+        return self.view.find_by_selector("constant.numeric.commit-hash.git-savvy")
+
+
+class gs_blame_navigate_head(GsNavigate):
+
+    """
+    Move cursor to the most recent changes
+    """
+
+    offset = 0
+
+    def get_available_regions(self):
+        selector = (
+            "meta.current-commit.blame.git-savvy"
+            if self.view.settings().get("git_savvy.commit_hash") else
+            "meta.not-committed.blame.git-savvy"
+        )
         return [
             branch_region
-            for region in self.view.find_by_selector(
-                "constant.numeric.commit-hash.git-savvy"
-            )
+            for region in self.view.find_by_selector(selector)
+            # Grab the line region to pin the cursor at the first column
             for branch_region in self.view.lines(region)]
