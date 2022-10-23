@@ -135,10 +135,9 @@ class gs_blame_current_file(LogMixin, GsTextCommand):
 
     def do_action(self, commit_hash, **kwargs):
         self._commit_hash = commit_hash
-        sublime.set_timeout(
-            lambda: self.window.run_command(
-                "gs_blame", {"commit_hash": commit_hash, "file_path": self._file_path}),
-            100)
+        self.window.run_command("gs_blame", {
+            "commit_hash": commit_hash, "file_path": self._file_path
+        })
 
     def selected_index(self, commit_hash):
         return self._commit_hash == commit_hash
