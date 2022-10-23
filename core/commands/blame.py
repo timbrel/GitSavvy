@@ -298,8 +298,7 @@ class gs_blame_refresh(BlameMixin):
 
         return blamed_lines, commits
 
-    @staticmethod
-    def partition(blamed_lines):
+    def partition(self, blamed_lines):
         prev_line = None
         current_hunk = []
         for line in blamed_lines:
@@ -328,8 +327,7 @@ class gs_blame_refresh(BlameMixin):
             commit_hash += "  (CURRENT COMMIT)"
         return (summary, commit_hash, author_info, time_stamp)
 
-    @staticmethod
-    def couple_partitions_and_commits(partitions, commit_infos, left_pad):
+    def couple_partitions_and_commits(self, partitions, commit_infos, left_pad):
         left_fallback = " " * left_pad
         right_fallback = ""
 
