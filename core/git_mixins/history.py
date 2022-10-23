@@ -387,16 +387,18 @@ class HistoryMixin(mixin_base):
 
     def _previous_commit(self, current_commit, file_path, follow):
         # type: (str, str, bool) -> Optional[str]
-        return self.git(
-            "log",
-            "--format=%H",
-            "--follow" if follow else None,
-            "--skip", "1",
-            "-n", "1",
-            current_commit,
-            "--",
-            file_path
-        ).strip() or None
+        try:
+            return self.git(
+                "log",
+                "--format=%H",
+                "--follow" if follow else None,
+                "-2",
+                current_commit,
+                "--",
+                file_path
+            ).strip().splitlines()[1]
+        except IndexError:
+            return None
 
     def next_commit(self, current_commit, file_path, follow=False):
         # type: (str, str, bool) -> Optional[str]
