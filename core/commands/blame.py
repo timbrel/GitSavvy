@@ -279,8 +279,8 @@ class gs_blame_refresh(BlameMixin):
             while not next_line.startswith("\t"):
                 # Iterate through header keys and values.
                 try:
-                    k, v = re.match(r"([^ ]+) (.+)", next_line).groups()  # type: ignore[union-attr]
-                except AttributeError:
+                    k, v = next_line.split(" ", 1)
+                except ValueError:
                     # Sometimes git-blame includes keys without values;
                     # since we don't care about these, simply discard.
                     print("Skipping blame line: " + repr(next_line))
