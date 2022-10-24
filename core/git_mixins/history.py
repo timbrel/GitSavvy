@@ -374,7 +374,7 @@ class HistoryMixin(mixin_base):
         return rv
 
     def previous_commit(self, current_commit, file_path, follow=False):
-        # type: (str, str, bool) -> Optional[str]
+        # type: (Optional[str], str, bool) -> Optional[str]
         if not current_commit or current_commit == "HEAD":
             return self._previous_commit(current_commit, file_path, follow)
 
@@ -386,7 +386,7 @@ class HistoryMixin(mixin_base):
             return rv
 
     def _previous_commit(self, current_commit, file_path, follow):
-        # type: (str, str, bool) -> Optional[str]
+        # type: (Optional[str], str, bool) -> Optional[str]
         try:
             return self.git(
                 "log",
@@ -396,7 +396,7 @@ class HistoryMixin(mixin_base):
                 current_commit,
                 "--",
                 file_path
-            ).strip().splitlines()[1]
+            ).strip().splitlines()[1 if current_commit else 0]
         except IndexError:
             return None
 
