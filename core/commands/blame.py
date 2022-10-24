@@ -19,6 +19,7 @@ __all__ = (
     "gs_blame_refresh",
     "gs_blame_action",
     "gs_blame_toggle_setting",
+    "gs_blame_open_graph_context",
     "gs_blame_navigate_chunk",
     "gs_blame_navigate_head",
 )
@@ -452,6 +453,16 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
     def pick_new_commit(self):
         self.view.run_command("gs_blame_current_file", {
             "file_path": self.file_path
+        })
+
+
+class gs_blame_open_graph_context(BlameMixin):
+    def run(self, edit):
+        # type: (...) -> None
+        commit_hash = self.find_selected_commit_hash()
+        self.window.run_command("gs_graph", {
+            "all": True,
+            "follow": self.get_short_hash(commit_hash) if commit_hash else "HEAD",
         })
 
 
