@@ -347,8 +347,8 @@ class gs_blame_refresh(BlameMixin):
                     left=left,
                     left_pad=left_pad,
                     lineno=lineno,
-                    right=right)
-                output = output.strip() + "\n"
+                    right=right
+                )
 
             yield output
 
