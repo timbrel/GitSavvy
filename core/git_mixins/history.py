@@ -33,6 +33,16 @@ RefLogEntry = namedtuple("RefLogEntry", (
 ))
 
 
+def is_dynamic_ref(ref):
+    # type: (Optional[str]) -> bool
+    return (
+        not ref
+        or ref == "HEAD"
+        or ref.startswith(":")
+        or ref.startswith("HEAD:")
+    )
+
+
 class HistoryMixin(mixin_base):
 
     def log(self, author=None, branch=None, file_path=None, start_end=None, cherry=None,
@@ -200,7 +210,7 @@ class HistoryMixin(mixin_base):
 
     def get_file_content_at_commit(self, filename, commit_hash):
         # type: (str, Optional[str]) -> str
-        if not commit_hash or commit_hash == "HEAD":
+        if is_dynamic_ref(commit_hash):
             return self._get_file_content_at_commit(filename, commit_hash)
 
         key = ("get_file_content_at_commit", self.repo_path, filename, commit_hash)
@@ -242,12 +252,7 @@ class HistoryMixin(mixin_base):
 
     def no_context_diff(self, base_commit, target_commit, file_path=None):
         # type: (Optional[str], Optional[str], Optional[str]) -> str
-        if (
-            not base_commit
-            or base_commit == "HEAD"
-            or not target_commit
-            or target_commit == "HEAD"
-        ):
+        if any(map(is_dynamic_ref, (base_commit, target_commit))):
             return self._no_context_diff(base_commit, target_commit, file_path)
 
         key = ("no_context_diff", base_commit, target_commit, file_path)
@@ -322,7 +327,7 @@ class HistoryMixin(mixin_base):
         ignore_whitespace=False
     ):
         # type: (str, Optional[str], bool, bool, bool) -> str
-        if not commit_hash or commit_hash == "HEAD":
+        if is_dynamic_ref(commit_hash):
             return self._read_commit(
                 commit_hash,
                 file_path,
@@ -375,7 +380,7 @@ class HistoryMixin(mixin_base):
 
     def previous_commit(self, current_commit, file_path, follow=False):
         # type: (Optional[str], str, bool) -> Optional[str]
-        if not current_commit or current_commit == "HEAD":
+        if is_dynamic_ref(current_commit):
             return self._previous_commit(current_commit, file_path, follow)
 
         key = ("previous_commit", self.repo_path, current_commit, file_path, follow)
