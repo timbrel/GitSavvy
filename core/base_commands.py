@@ -133,19 +133,19 @@ def _get_run_command(cmd):
 
 
 class GsTextCommand(
+    GitCommand,
     # order matters(!), `WithProvideWindow` also ensures unique instances per call
     WithProvideWindow,
     WithInputHandlers,
     sublime_plugin.TextCommand,
-    GitCommand,
 ):
     defaults = {}  # type: Dict[str, Callable[[GsTextCommand, Args, Kont], None]]
 
 
 class GsWindowCommand(
+    GitCommand,
     WithInputHandlers,
     sublime_plugin.WindowCommand,
-    GitCommand,
 ):
     defaults = {}  # type: Dict[str, Callable[[GsWindowCommand, Args, Kont], None]]
 
