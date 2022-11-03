@@ -7,7 +7,8 @@ hidden: true
 scope: git-savvy.graph
 variables:
   sha: '[0-9a-f]{6,40}'
-  ascii_art: '[| \\/_.-]+'
+  ascii_art: (?:[| \\/_.])+
+  dot: '[*●]'
 
 contexts:
   main:
@@ -35,24 +36,39 @@ contexts:
           pop: true
 
   content:
-    - match: '^({{ascii_art}})?([*●])?({{ascii_art}})?(?= *)'
+    - match: '^({{ascii_art}})?({{dot}})([ -]+{{ascii_art}})?( *)'
       comment: graph lines
       scope: meta.graph.branch-art
       captures:
         1: punctuation.other.git-savvy.graph.graph-line
         2: keyword.graph.commit.git-savvy
         3: punctuation.other.git-savvy.graph.graph-line
+      push: commit-line
 
+    - match: '^({{ascii_art}})?( *)'
+      scope: meta.graph.branch-art
+      captures:
+        1: punctuation.other.git-savvy.graph.graph-line
+      push:
+        - match: .*$
+          scope: text.inline-diff.git-savvy
+        - match: $
+          pop: true
+
+  commit-line:
+    - include: commit-hash
+    - include: decoration
+    - match: (?=\S)
+      push: message
+    - match: $
+      pop: true
+
+  commit-hash:
     - match: ({{sha}})\b
       comment: SHA
       scope: constant.numeric.graph.commit-hash.git-savvy
 
-    - include: branch-name
-
-    - match: (?=\S)
-      push: message
-
-  branch-name:
+  decoration:
     - match: \(
       comment: branch-name
       scope: punctuation.expression.begin.git-savvy
