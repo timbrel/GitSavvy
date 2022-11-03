@@ -2,7 +2,6 @@ from itertools import chain
 import os
 import re
 
-import sublime
 from sublime_plugin import WindowCommand
 
 from ..commands import GsNavigate
@@ -12,6 +11,7 @@ from ...common import util
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker
 from GitSavvy.core.utils import flash, uprint
+from GitSavvy.core.ui_mixins.quick_panel import show_remote_panel
 
 
 __all__ = (
@@ -31,10 +31,6 @@ if MYPY:
     from typing import List
 
 
-TAG_DELETE_MESSAGE = "Tag(s) deleted."
-
-NO_REMOTES_MESSAGE = "You have not configured any remotes."
-
 NO_LOCAL_TAGS_MESSAGE = "    Your repository has no tags."
 NO_REMOTE_TAGS_MESSAGE = "    The remote has no tags."
 NO_MORE_TAGS_MESSAGE = "    No further tags on the remote."
@@ -43,6 +39,7 @@ LOADING_TAGS_MESSAGE = "    Loading tags from remote..."
 
 START_PUSH_MESSAGE = "Pushing tag..."
 END_PUSH_MESSAGE = "Push complete."
+TAG_DELETE_MESSAGE = "Tag(s) deleted."
 
 
 class gs_show_tags(WindowCommand, GitCommand):
@@ -86,7 +83,7 @@ class TagsInterface(ui.Interface, GitCommand):
       [s] create smart tag            [?]         toggle this help menu
       [d] delete                      [e]         toggle display of remote branches
       [p] push to remote              [tab]       transition to next dashboard
-      [P] push all tags to remote     [SHIFT-tab] transition to previous dashboard
+                                      [SHIFT-tab] transition to previous dashboard
       [o] show commit
       [g] show log graph
 
@@ -355,48 +352,15 @@ class gs_tags_push(TagsInterfaceCommand):
     selected or all tag(s) to the selected remote.
     """
 
+    def run(self, edit):
+        show_remote_panel(self.push_selected, allow_direct=True)
+
     @on_worker
-    def run(self, edit, push_all=False):
-        self.remotes = list(self.get_remotes().keys())
-        if not self.remotes:
-            self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
-            return
-
-        self.window.show_quick_panel(
-            self.remotes,
-            lambda idx: self.push_async(idx, push_all=push_all),
-            flags=sublime.MONOSPACE_FONT
-        )
-
-    def push_async(self, remote_idx, push_all=False):
-        if push_all:
-            enqueue_on_worker(self.push_all, remote_idx)
-        else:
-            enqueue_on_worker(self.push_selected, remote_idx)
-
-    def push_selected(self, remote_idx):
-        # The user pressed `esc` or otherwise cancelled.
-        if remote_idx == -1:
-            return
-        remote = self.remotes[remote_idx]
-
+    def push_selected(self, remote):
         tags_to_push = self.selected_local_tags()
 
         flash(self.view, START_PUSH_MESSAGE)
         self.git("push", remote, *("refs/tags/" + tag for tag in tags_to_push))
-        flash(self.view, END_PUSH_MESSAGE)
-
-        interface = self.interface
-        interface.remotes = None
-        util.view.refresh_gitsavvy(self.view)
-
-    def push_all(self, remote_idx):
-        # The user pressed `esc` or otherwise cancelled.
-        if remote_idx == -1:
-            return
-        remote = self.remotes[remote_idx]
-        flash(self.view, START_PUSH_MESSAGE)
-        self.git("push", remote, "--tags")
         flash(self.view, END_PUSH_MESSAGE)
 
         interface = self.interface
