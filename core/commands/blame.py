@@ -325,6 +325,8 @@ class gs_blame_refresh(BlameMixin):
         if len(summary) > 40:
             summary = summary[:36] + " ..."
         author_info = commit["author"] + " " + commit["author-mail"]
+        if len(author_info) > 40:
+            author_info = author_info[:37] + "..."
         time_stamp = util.dates.fuzzy(commit["author-time"]) if commit["author-time"] else ""
 
         return (summary, commit["short_hash"], author_info, time_stamp)
