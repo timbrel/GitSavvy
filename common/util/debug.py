@@ -69,7 +69,12 @@ def print_cwd_change(cwd, left_space):
 
 def pretty_git_command(args):
     # type: (Sequence[Optional[str]]) -> str
-    return ' '.join(['git'] + list(map(shlex.quote, filter_(args))))
+    return ' '.join(['git'] + list(map(_quote, filter_(args))))
+
+
+def _quote(arg):
+    # type: (str) -> str
+    return "=".join(map(shlex.quote, arg.split("=")))
 
 
 def log_git(
