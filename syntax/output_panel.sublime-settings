@@ -10,5 +10,7 @@
     "scroll_past_end": false,
     "spell_check": false,
     "translate_tabs_to_spaces": false,
-    "word_wrap": false
+    "word_wrap": true,
+    "wrap_width": 0,
+    "wrap_width_style": "min"
 }
