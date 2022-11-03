@@ -6,6 +6,7 @@
 #                     ^ constant.other.git.branch
 #               ^ punctuation.separator.key-value.branch
 #         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.graph.branch.git-savvy
+#         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ - meta.graph.message
 #                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  meta.graph.message.git-savvy
 # <- meta.graph.graph-line.head.git-savvy
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.graph.graph-line.head.git-savvy
@@ -13,6 +14,8 @@
 # <- meta.graph.graph-line.head.git-savvy
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.graph.graph-line.head.git-savvy
 #          ^^^^ constant.other.git.head
+#        ^^^^^^^^ - meta.graph.message
+
 * 6929182 update (HEAD) make_commit syntax format
 #         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ git-savvy.graph meta.graph.message.git-savvy
 * ede734e update diff syntax format
