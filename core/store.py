@@ -3,12 +3,12 @@ from functools import partial
 import threading
 import uuid
 
-from .utils import eat_but_log_errors, Cache
+from .utils import eat_but_log_errors
 
 
 MYPY = False
 if MYPY:
-    from typing import AbstractSet, Any, Callable, DefaultDict, Deque, Dict, Optional, Tuple, TypedDict
+    from typing import AbstractSet, Callable, DefaultDict, Deque, Dict, Optional, Tuple, TypedDict
     from GitSavvy.core.git_mixins.status import WorkingDirState
 
     RepoPath = str
@@ -36,7 +36,6 @@ def initial_state():
 
 
 state = defaultdict(initial_state)  # type: DefaultDict[RepoPath, RepoStore]
-cache = Cache(maxsize=512)  # type: Dict[Tuple, Any]
 subscribers = {}  # type: Dict[SubscriberKey, Tuple[RepoPath, Keys, Callable]]
 
 lock = threading.Lock()

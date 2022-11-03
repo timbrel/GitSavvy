@@ -1,7 +1,8 @@
-from functools import lru_cache, partial
+from functools import lru_cache, partial, wraps
 from collections import OrderedDict
 from contextlib import contextmanager
 import html
+import inspect
 from itertools import count
 import os
 import signal
@@ -358,3 +359,53 @@ class Cache(OrderedDict):
         super().__setitem__(key, value)
         if len(self) > self.maxsize:
             self.popitem(last=False)
+
+
+general_purpose_cache = Cache(maxsize=512)  # type: Dict[Tuple, object]
+
+
+def cached(not_if, cache=general_purpose_cache):
+    # type: (Dict, Dict[Tuple, object]) -> Callable
+    def decorator(fn):
+        fn_s = inspect.signature(fn)
+
+        def should_skip(arguments):
+            return any(
+                fn(arguments[name])
+                for name, fn in not_if.items()
+            )
+
+        @wraps(fn)
+        def decorated(*args, **kwargs):
+            arguments = _bind_arguments(fn_s, args, kwargs)
+            if should_skip(arguments):
+                return fn(*args, **kwargs)
+
+            key = (fn.__name__,) + tuple(sorted(arguments.items()))
+            try:
+                return cache[key]
+            except KeyError:
+                rv = cache[key] = fn(*args, **kwargs)
+                return rv
+
+        return decorated
+    return decorator
+
+
+def _bind_arguments(sig, args, kwargs):
+    bound = sig.bind(*args, **kwargs)
+    arguments = bound.arguments
+
+    def default_value_of(parameter):
+        if parameter.default is not parameter.empty:
+            return parameter.default
+        if parameter.kind is parameter.VAR_KEYWORD:
+            return {}
+        if parameter.kind is parameter.VAR_POSITIONAL:
+            return tuple()
+
+    return {
+        name: (arguments[name] if name in arguments else default_value_of(p))
+        for name, p in sig.parameters.items()
+        if name != "self"
+    }

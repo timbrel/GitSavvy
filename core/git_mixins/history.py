@@ -4,6 +4,7 @@ from ..exceptions import GitSavvyError
 from ...common import util
 
 from GitSavvy.core.git_command import mixin_base
+from GitSavvy.core.utils import cached
 
 
 MYPY = False
@@ -31,6 +32,16 @@ RefLogEntry = namedtuple("RefLogEntry", (
     "author",
     "datetime"
 ))
+
+
+def is_dynamic_ref(ref):
+    # type: (Optional[str]) -> bool
+    return (
+        not ref
+        or ref == "HEAD"
+        or ref.startswith(":")
+        or ref.startswith("HEAD:")
+    )
 
 
 class HistoryMixin(mixin_base):
@@ -198,19 +209,8 @@ class HistoryMixin(mixin_base):
         # If the commit hash is not for this file.
         return filename
 
+    @cached(not_if={"commit_hash": is_dynamic_ref})
     def get_file_content_at_commit(self, filename, commit_hash):
-        # type: (str, Optional[str]) -> str
-        if not commit_hash or commit_hash == "HEAD":
-            return self._get_file_content_at_commit(filename, commit_hash)
-
-        key = ("get_file_content_at_commit", self.repo_path, filename, commit_hash)
-        try:
-            return store.cache[key]
-        except KeyError:
-            rv = store.cache[key] = self._get_file_content_at_commit(filename, commit_hash)
-            return rv
-
-    def _get_file_content_at_commit(self, filename, commit_hash):
         # type: (str, Optional[str]) -> str
         filename = self.get_rel_path(filename)
         return self.git("show", "{}:{}".format(commit_hash or "", filename))
@@ -240,24 +240,8 @@ class HistoryMixin(mixin_base):
             return line
         return self.reverse_adjust_line_according_to_hunks(hunks, line)
 
+    @cached(not_if={"base_commit": is_dynamic_ref, "target_commit": is_dynamic_ref})
     def no_context_diff(self, base_commit, target_commit, file_path=None):
-        # type: (Optional[str], Optional[str], Optional[str]) -> str
-        if (
-            not base_commit
-            or base_commit == "HEAD"
-            or not target_commit
-            or target_commit == "HEAD"
-        ):
-            return self._no_context_diff(base_commit, target_commit, file_path)
-
-        key = ("no_context_diff", base_commit, target_commit, file_path)
-        try:
-            return store.cache[key]
-        except KeyError:
-            rv = store.cache[key] = self._no_context_diff(base_commit, target_commit, file_path)
-            return rv
-
-    def _no_context_diff(self, base_commit, target_commit, file_path=None):
         # type: (Optional[str], Optional[str], Optional[str]) -> str
         cmd = [
             "diff",
@@ -313,6 +297,7 @@ class HistoryMixin(mixin_base):
         # fails to find matching
         return line
 
+    @cached(not_if={"commit_hash": is_dynamic_ref})
     def read_commit(
         self,
         commit_hash,
@@ -321,38 +306,6 @@ class HistoryMixin(mixin_base):
         show_patch=True,
         ignore_whitespace=False
     ):
-        # type: (str, Optional[str], bool, bool, bool) -> str
-        if not commit_hash or commit_hash == "HEAD":
-            return self._read_commit(
-                commit_hash,
-                file_path,
-                show_diffstat,
-                show_patch,
-                ignore_whitespace
-            )
-
-        key = (
-            "read_commit",
-            self.repo_path,
-            commit_hash,
-            file_path,
-            show_diffstat,
-            show_patch,
-            ignore_whitespace
-        )
-        try:
-            return store.cache[key]
-        except KeyError:
-            rv = store.cache[key] = self._read_commit(
-                commit_hash,
-                file_path,
-                show_diffstat,
-                show_patch,
-                ignore_whitespace
-            )
-            return rv
-
-    def _read_commit(self, commit_hash, file_path, show_diffstat, show_patch, ignore_whitespace):
         # type: (str, Optional[str], bool, bool, bool) -> str
         stdout = self.git(
             "show",
@@ -373,19 +326,8 @@ class HistoryMixin(mixin_base):
             rv += stdout.decode("utf-8", "replace")
         return rv
 
+    @cached(not_if={"current_commit": is_dynamic_ref})
     def previous_commit(self, current_commit, file_path, follow=False):
-        # type: (Optional[str], str, bool) -> Optional[str]
-        if not current_commit or current_commit == "HEAD":
-            return self._previous_commit(current_commit, file_path, follow)
-
-        key = ("previous_commit", self.repo_path, current_commit, file_path, follow)
-        try:
-            return store.cache[key]
-        except KeyError:
-            rv = store.cache[key] = self._previous_commit(current_commit, file_path, follow)
-            return rv
-
-    def _previous_commit(self, current_commit, file_path, follow):
         # type: (Optional[str], str, bool) -> Optional[str]
         try:
             return self.git(
