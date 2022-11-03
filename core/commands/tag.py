@@ -31,6 +31,7 @@ RELEASE_REGEXP = re.compile(r"^([0-9A-Za-z-]*[A-Za-z-])?([0-9]+)\.([0-9]+)\.([0-
 TAG_CREATE_PROMPT = "Enter tag:"
 TAG_CREATE_MESSAGE = "Tag \"{}\" created."
 TAG_CREATE_MESSAGE_PROMPT = "Enter message:"
+VERSION_ZERO = "v0.0.0"
 
 
 def smart_incremented_tag(tag, release_type):
@@ -149,9 +150,6 @@ class gs_smart_tag(PanelActionMixin, TextCommand):
 
     def smart_tag(self, release_type):
         # type: (ReleaseTypes) -> None
-        tag_name = ""
-        last_tag_name = self.get_last_local_semver_tag()
-        if last_tag_name:
-            tag_name = smart_incremented_tag(last_tag_name, release_type) or last_tag_name
-
+        last_tag_name = self.get_last_local_semver_tag() or VERSION_ZERO
+        tag_name = smart_incremented_tag(last_tag_name, release_type) or last_tag_name
         self.view.run_command("gs_tag_create", {"tag_name": tag_name})
