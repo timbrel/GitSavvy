@@ -19,7 +19,6 @@ __all__ = (
     "gs_interface_close",
     "gs_interface_refresh",
     "gs_interface_toggle_help",
-    "gs_interface_toggle_popup_help",
     "gs_edit_view_complete",
     "gs_edit_view_close",
 )
@@ -393,22 +392,6 @@ class gs_interface_toggle_help(TextCommand):
         current_help = bool(self.view.settings().get("git_savvy.help_hidden"))
         self.view.settings().set("git_savvy.help_hidden", not current_help)
         self.view.run_command("gs_interface_refresh")
-
-
-class gs_interface_toggle_popup_help(TextCommand):
-
-    """
-    Toggle GitSavvy popup help.
-    """
-
-    def run(self, edit, view_name, popup_max_width=800, popup_max_height=900):
-        css = sublime.load_resource("Packages/GitSavvy/popups/style.css")
-        html = (
-            sublime.load_resource("Packages/GitSavvy/popups/" + view_name + ".html")
-            .format(css=css, super_key=util.super_key)
-        )
-        visible_region = self.view.visible_region()
-        self.view.show_popup(html, 0, visible_region.begin(), popup_max_width, popup_max_height)
 
 
 class EditView():
