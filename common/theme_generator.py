@@ -52,7 +52,9 @@ class ThemeGenerator():
         else:
             return JSONThemeGenerator(color_scheme)
 
-    def __init__(self, original_color_scheme):
+    def __init__(self, original_color_scheme, setting_name):
+        # type: (str, str) -> None
+        self.setting_name = setting_name
         self._dirty = False
         try:
             self.color_scheme_string = sublime.load_resource(original_color_scheme)
@@ -115,7 +117,7 @@ class ThemeGenerator():
 
         # Sublime expects `/`-delimited paths, even in Windows.
         theme_path = os.path.join("Packages", path_in_packages).replace("\\", "/")
-        try_apply_theme(target_view, theme_path)
+        try_apply_theme(target_view, self.setting_name, theme_path)
 
 
 class XMLThemeGenerator(ThemeGenerator):
@@ -125,8 +127,9 @@ class XMLThemeGenerator(ThemeGenerator):
 
     hidden_theme_extension = "hidden-tmTheme"
 
-    def __init__(self, original_color_scheme):
-        super().__init__(original_color_scheme)
+    def __init__(self, original_color_scheme, setting_name="color_scheme"):
+        # type: (str, str) -> None
+        super().__init__(original_color_scheme, setting_name)
         self.plist = ElementTree.XML(self.color_scheme_string)
         styles = self.plist.find("./dict/array")
         assert styles
@@ -152,8 +155,9 @@ class JSONThemeGenerator(ThemeGenerator):
 
     hidden_theme_extension = "hidden-color-scheme"
 
-    def __init__(self, original_color_scheme):
-        super().__init__(original_color_scheme)
+    def __init__(self, original_color_scheme, setting_name="color_scheme"):
+        # type: (str, str) -> None
+        super().__init__(original_color_scheme, setting_name)
         self.dict = OrderedDict(sublime.decode_value(self.color_scheme_string))
 
     def _add_scoped_style(self, name, scope, **kwargs):
@@ -169,7 +173,8 @@ class JSONThemeGenerator(ThemeGenerator):
             out_f.write(sublime.encode_value(self.dict, pretty=True).encode("utf-8"))
 
 
-def try_apply_theme(view, theme_path, tries=0):
+def try_apply_theme(view, setting_name, theme_path, tries=0):
+    # type: (sublime.View, str, str, int) -> None
     """ Safely apply new theme as color_scheme. """
     try:
         sublime.load_resource(theme_path)
@@ -182,7 +187,7 @@ def try_apply_theme(view, theme_path, tries=0):
             return
 
         delay = (pow(2, tries) - 1) * 10
-        sublime.set_timeout_async(lambda: try_apply_theme(view, theme_path, tries + 1), delay)
+        sublime.set_timeout_async(lambda: try_apply_theme(view, setting_name, theme_path, tries + 1), delay)
         return
 
-    view.settings().set("color_scheme", theme_path)
+    view.settings().set(setting_name, theme_path)
