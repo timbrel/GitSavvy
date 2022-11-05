@@ -96,7 +96,8 @@ class ThemeGenerator():
     def _add_scoped_style(self, name, scope, **kwargs):
         raise NotImplementedError
 
-    def _write_new_theme(self, name):
+    def _write_new_theme(self, path):
+        # type: (str) -> None
         """
         Write the new theme on disk.
         """
@@ -109,9 +110,9 @@ class ThemeGenerator():
         if not self._dirty:
             return
 
-        self._write_new_theme(name)
-
         path_in_packages = self.get_theme_path(name)
+        full_path = os.path.join(sublime.packages_path(), path_in_packages)
+        self._write_new_theme(full_path)
 
         # Sublime expects `/`-delimited paths, even in Windows.
         theme_path = os.path.join("Packages", path_in_packages).replace("\\", "/")
@@ -138,10 +139,9 @@ class XMLThemeGenerator(ThemeGenerator):
         new_style = STYLE_TEMPLATE.format(name=name, scope=scope, properties=properties)
         self.styles.append(ElementTree.XML(new_style))
 
-    def _write_new_theme(self, name):
-        full_path = os.path.join(sublime.packages_path(), self.get_theme_path(name))
-
-        with util.file.safe_open(full_path, "wb", buffering=0) as out_f:
+    def _write_new_theme(self, path):
+        # type: (str) -> None
+        with util.file.safe_open(path, "wb", buffering=0) as out_f:
             out_f.write(STYLES_HEADER.encode("utf-8"))
             out_f.write(ElementTree.tostring(self.plist, encoding="utf-8"))
 
@@ -164,10 +164,9 @@ class JSONThemeGenerator(ThemeGenerator):
             new_rule[k] = v
         self.dict["rules"].insert(0, new_rule)
 
-    def _write_new_theme(self, name):
-        full_path = os.path.join(sublime.packages_path(), self.get_theme_path(name))
-
-        with util.file.safe_open(full_path, "wb", buffering=0) as out_f:
+    def _write_new_theme(self, path):
+        # type: (str) -> None
+        with util.file.safe_open(path, "wb", buffering=0) as out_f:
             out_f.write(sublime.encode_value(self.dict, pretty=True).encode("utf-8"))
 
 
