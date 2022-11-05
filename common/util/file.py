@@ -1,17 +1,17 @@
 from collections import defaultdict
 from contextlib import contextmanager
 import os
-import plistlib
-import re
-import threading
-import yaml
 
 import sublime
+
+from GitSavvy.core.fns import maybe
 
 
 MYPY = False
 if MYPY:
     from typing import DefaultDict, List, Optional
+
+SUBLIME_HAS_SYNTAX_FUNCTIONS = int(sublime.version()) >= 4080
 
 
 if 'syntax_file_map' not in globals():
@@ -21,69 +21,75 @@ if 'determine_syntax_thread' not in globals():
     determine_syntax_thread = None
 
 
-def determine_syntax_files():
-    # type: () -> None
-    global determine_syntax_thread
-    if not syntax_file_map:
-        determine_syntax_thread = threading.Thread(
-            target=_determine_syntax_files)
-        determine_syntax_thread.start()
+if SUBLIME_HAS_SYNTAX_FUNCTIONS:
+    def determine_syntax_files():
+        # type: () -> None
+        ...
 
+else:
+    import plistlib
+    import re
+    import threading
+    import yaml
 
-def try_parse_for_file_extensions(text):
-    # type: (str) -> Optional[List[str]]
-    match = re.search(r"^file_extensions:\n((.*\n)+?)^(?=\w)", text, re.M)
-    if match:
-        return _try_yaml_parse(match.group(0))
-    return _try_yaml_parse(text)
+    def determine_syntax_files():
+        # type: () -> None
+        global determine_syntax_thread
+        if not syntax_file_map:
+            determine_syntax_thread = threading.Thread(
+                target=_determine_syntax_files)
+            determine_syntax_thread.start()
 
+    def _determine_syntax_files():
+        # type: () -> None
+        handle_tm_language_files()
+        handle_sublime_syntax_files()
 
-def _try_yaml_parse(text):
-    # type: (str) -> Optional[List[str]]
-    try:
-        return yaml.safe_load(text)["file_extensions"]
-    except Exception:
-        return None
+    def handle_tm_language_files():
+        # type: () -> None
+        syntax_files = sublime.find_resources("*.tmLanguage")
+        for syntax_file in syntax_files:
+            try:
+                resource = sublime.load_binary_resource(syntax_file)
+            except Exception:
+                print("GitSavvy: could not load {}".format(syntax_file))
+                continue
 
+            try:
+                extensions = plistlib.readPlistFromBytes(resource).get("fileTypes", [])
+            except Exception:
+                print("GitSavvy: could not parse {}".format(syntax_file))
+                continue
 
-def _determine_syntax_files():
-    # type: () -> None
-    handle_tm_language_files()
-    handle_sublime_syntax_files()
+            for extension in extensions:
+                syntax_file_map[extension].append(syntax_file)
 
+    def handle_sublime_syntax_files():
+        # type: () -> None
+        syntax_files = sublime.find_resources("*.sublime-syntax")
+        for syntax_file in syntax_files:
+            try:
+                resource = sublime.load_resource(syntax_file)
+            except Exception:
+                print("GitSavvy: could not load {}".format(syntax_file))
+                continue
 
-def handle_tm_language_files():
-    # type: () -> None
-    syntax_files = sublime.find_resources("*.tmLanguage")
-    for syntax_file in syntax_files:
+            for extension in try_parse_for_file_extensions(resource) or []:
+                syntax_file_map[extension].append(syntax_file)
+
+    def try_parse_for_file_extensions(text):
+        # type: (str) -> Optional[List[str]]
+        match = re.search(r"^file_extensions:\n((.*\n)+?)^(?=\w)", text, re.M)
+        if match:
+            return _try_yaml_parse(match.group(0))
+        return _try_yaml_parse(text)
+
+    def _try_yaml_parse(text):
+        # type: (str) -> Optional[List[str]]
         try:
-            resource = sublime.load_binary_resource(syntax_file)
+            return yaml.safe_load(text)["file_extensions"]
         except Exception:
-            print("GitSavvy: could not load {}".format(syntax_file))
-            continue
-
-        try:
-            extensions = plistlib.readPlistFromBytes(resource).get("fileTypes", [])
-        except Exception:
-            print("GitSavvy: could not parse {}".format(syntax_file))
-            continue
-
-        for extension in extensions:
-            syntax_file_map[extension].append(syntax_file)
-
-
-def handle_sublime_syntax_files():
-    # type: () -> None
-    syntax_files = sublime.find_resources("*.sublime-syntax")
-    for syntax_file in syntax_files:
-        try:
-            resource = sublime.load_resource(syntax_file)
-        except Exception:
-            print("GitSavvy: could not load {}".format(syntax_file))
-            continue
-
-        for extension in try_parse_for_file_extensions(resource) or []:
-            syntax_file_map[extension].append(syntax_file)
+            return None
 
 
 def guess_syntax_for_file(window, filename):
@@ -114,6 +120,7 @@ def get_syntax_for_file(filename, default="Packages/Text/Plain text.tmLanguage")
     syntaxes = (
         syntax_file_map.get(filename, [])
         or syntax_file_map.get(get_file_extension(filename), [])
+        or maybe(lambda: [sublime.find_syntax_for_file(filename).path])  # type: ignore[union-attr]
         or [default]
     )
     return syntaxes[-1]

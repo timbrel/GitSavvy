@@ -442,3 +442,38 @@ class PhantomSet:
     def __init__(self, view: View, key: str = ...) -> None: ...
     def __del__(self): ...
     def update(self, new_phantoms: Sequence[Phantom]): ...
+
+
+class Syntax:
+    path: str
+    name: str
+    hidden: bool
+    scope: str
+
+def list_syntaxes() -> List[Syntax]:
+    """list all known syntaxes.
+
+    Returns a list of Syntax."""
+
+def syntax_from_path(path: str) -> Optional[Syntax]:
+    """Get the syntax for a specific path.
+
+    Returns a Syntax or None."""
+
+def find_syntax_by_name(name: str) -> list[Syntax]:
+    """Find syntaxes with the specified name.
+
+    Name must match exactly. Return a list of Syntax."""
+
+def find_syntax_by_scope(scope: str) -> list[Syntax]:
+    """Find syntaxes with the specified scope.
+
+    Scope must match exactly. Return a list of Syntax."""
+
+def find_syntax_for_file(path: str, first_line: str = '') -> Optional[Syntax]:
+    """Find the syntax to use for a path.
+
+    Uses the file extension, various application settings and optionally the first line of the file to pick the right syntax for the file.
+
+    Returns a Syntax."""
+
