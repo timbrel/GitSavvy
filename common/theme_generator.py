@@ -70,17 +70,6 @@ class ThemeGenerator():
                     break
             self.color_scheme_string = sublime.load_resource(paths[0])
 
-    def get_theme_path(self, name):
-        """
-        Save the transformed theme to disk and return the path to that theme,
-        relative to the Sublime packages directory.
-        """
-        if not os.path.exists(os.path.join(sublime.packages_path(), "User", "GitSavvy")):
-            os.makedirs(os.path.join(sublime.packages_path(), "User", "GitSavvy"))
-
-        theme_name = "GitSavvy.{}.{}.{}".format(name, self.setting_name, self.hidden_theme_extension)
-        return os.path.join("User", "GitSavvy", theme_name)
-
     def add_scoped_style(self, name, scope, **kwargs):
         """
         Add scope-specific styles to the theme.  A unique name should be provided
@@ -110,13 +99,24 @@ class ThemeGenerator():
         if not self._dirty:
             return
 
-        path_in_packages = self.get_theme_path(name)
+        path_in_packages = self._get_theme_path(name)
         full_path = os.path.join(sublime.packages_path(), path_in_packages)
         self._write_new_theme(full_path)
 
         # Sublime expects `/`-delimited paths, even in Windows.
         theme_path = os.path.join("Packages", path_in_packages).replace("\\", "/")
         try_apply_theme(target_view, self.setting_name, theme_path)
+
+    def _get_theme_path(self, name):
+        """
+        Save the transformed theme to disk and return the path to that theme,
+        relative to the Sublime packages directory.
+        """
+        if not os.path.exists(os.path.join(sublime.packages_path(), "User", "GitSavvy")):
+            os.makedirs(os.path.join(sublime.packages_path(), "User", "GitSavvy"))
+
+        theme_name = "GitSavvy.{}.{}.{}".format(name, self.setting_name, self.hidden_theme_extension)
+        return os.path.join("User", "GitSavvy", theme_name)
 
 
 class XMLThemeGenerator(ThemeGenerator):
