@@ -98,11 +98,11 @@ class ThemeGenerator():
     def _add_scoped_style(self, name, scope, **kwargs):
         raise NotImplementedError
 
-    def write_new_theme(self, name):
+    def _write_new_theme(self, name):
         """
         Write the new theme on disk.
         """
-        pass
+        raise NotImplementedError
 
     def apply_new_theme(self, name, target_view):
         """
@@ -111,7 +111,7 @@ class ThemeGenerator():
         if not self._dirty:
             return
 
-        self.write_new_theme(name)
+        self._write_new_theme(name)
 
         path_in_packages = self.get_theme_path(name)
 
@@ -140,7 +140,7 @@ class XMLThemeGenerator(ThemeGenerator):
         new_style = STYLE_TEMPLATE.format(name=name, scope=scope, properties=properties)
         self.styles.append(ElementTree.XML(new_style))
 
-    def write_new_theme(self, name):
+    def _write_new_theme(self, name):
         full_path = os.path.join(sublime.packages_path(), self.get_theme_path(name))
 
         with util.file.safe_open(full_path, "wb", buffering=0) as out_f:
@@ -166,7 +166,7 @@ class JSONThemeGenerator(ThemeGenerator):
             new_rule[k] = v
         self.dict["rules"].insert(0, new_rule)
 
-    def write_new_theme(self, name):
+    def _write_new_theme(self, name):
         full_path = os.path.join(sublime.packages_path(), self.get_theme_path(name))
 
         with util.file.safe_open(full_path, "wb", buffering=0) as out_f:
