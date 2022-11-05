@@ -70,9 +70,6 @@ class ThemeGenerator():
                     break
             self.color_scheme_string = sublime.load_resource(paths[0])
 
-    def get_theme_name(self, name):
-        return "GitSavvy.{}.{}".format(name, self.hidden_theme_extension)
-
     def get_theme_path(self, name):
         """
         Save the transformed theme to disk and return the path to that theme,
@@ -81,7 +78,8 @@ class ThemeGenerator():
         if not os.path.exists(os.path.join(sublime.packages_path(), "User", "GitSavvy")):
             os.makedirs(os.path.join(sublime.packages_path(), "User", "GitSavvy"))
 
-        return os.path.join("User", "GitSavvy", self.get_theme_name(name))
+        theme_name = "GitSavvy.{}.{}".format(name, self.hidden_theme_extension)
+        return os.path.join("User", "GitSavvy", theme_name)
 
     def add_scoped_style(self, name, scope, **kwargs):
         """
