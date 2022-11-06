@@ -11,6 +11,12 @@ from collections import OrderedDict
 import sublime
 from . import util
 
+
+MYPY = False
+if MYPY:
+    from typing import Sequence
+
+
 STYLES_HEADER = """
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -35,22 +41,55 @@ PROPERTY_TEMPLATE = """
 """
 
 
+def generator_for_scheme(color_scheme, name):
+    # type: (str, str) -> AbstractThemeGenerator
+    if color_scheme.endswith(".tmTheme"):
+        return XMLThemeGenerator(color_scheme, name)
+    else:
+        return JSONThemeGenerator(color_scheme, name)
+
+
 class ThemeGenerator():
+    @classmethod
+    def for_view(cls, view):
+        # type: (sublime.View) -> ThemeGenerator
+        settings = view.settings()
+        color_scheme = settings.get("color_scheme")
+
+        if color_scheme == "auto":
+            def generator_for_key(name):
+                # type: (str) -> AbstractThemeGenerator
+                return generator_for_scheme(settings.get(name), name)
+
+            return cls([
+                generator_for_key("light_color_scheme"),
+                generator_for_key("dark_color_scheme"),
+            ])
+
+        return cls([generator_for_scheme(color_scheme, "color_scheme")])
+
+    def __init__(self, generators):
+        # type: (Sequence[AbstractThemeGenerator]) -> None
+        self._generators = generators
+
+    def add_scoped_style(self, name, scope, **kwargs):
+        # type: (str, str, object) -> None
+        for g in self._generators:
+            g.add_scoped_style(name, scope, **kwargs)
+
+    def apply_new_theme(self, name, target_view):
+        # type: (str, sublime.View) -> None
+        for g in self._generators:
+            g.apply_new_theme(name, target_view)
+
+
+class AbstractThemeGenerator:
     """
-    Given the path to a `.tmTheme` file, parse it, allow transformations
+    Given the path to a theme file, parse it, allow transformations
     on the data, save it, and apply the transformed theme to a view.
     """
 
     hidden_theme_extension = None  # type: str
-
-    @staticmethod
-    def for_view(view):
-        # type: (sublime.View) -> ThemeGenerator
-        color_scheme = view.settings().get('color_scheme')
-        if color_scheme.endswith(".tmTheme"):
-            return XMLThemeGenerator(color_scheme)
-        else:
-            return JSONThemeGenerator(color_scheme)
 
     def __init__(self, original_color_scheme, setting_name):
         # type: (str, str) -> None
@@ -71,6 +110,7 @@ class ThemeGenerator():
             self.color_scheme_string = sublime.load_resource(paths[0])
 
     def add_scoped_style(self, name, scope, **kwargs):
+        # type: (str, str, object) -> None
         """
         Add scope-specific styles to the theme.  A unique name should be provided
         as well as a scope corresponding to regions of text.  Any keyword arguments
@@ -93,6 +133,7 @@ class ThemeGenerator():
         raise NotImplementedError
 
     def apply_new_theme(self, name, target_view):
+        # type: (str, sublime.View) -> None
         """
         Apply the transformed theme to the specified target view.
         """
@@ -119,7 +160,7 @@ class ThemeGenerator():
         return os.path.join("User", "GitSavvy", theme_name)
 
 
-class XMLThemeGenerator(ThemeGenerator):
+class XMLThemeGenerator(AbstractThemeGenerator):
     """
     A theme generator for the vintage syntax `.tmTheme`
     """
@@ -146,7 +187,7 @@ class XMLThemeGenerator(ThemeGenerator):
             out_f.write(ElementTree.tostring(self.plist, encoding="utf-8"))
 
 
-class JSONThemeGenerator(ThemeGenerator):
+class JSONThemeGenerator(AbstractThemeGenerator):
     """
     A theme generator for the new syntax `.sublime-color-scheme`
     """
