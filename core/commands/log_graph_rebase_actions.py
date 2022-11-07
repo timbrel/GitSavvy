@@ -513,30 +513,6 @@ class AwaitTodoListView(sublime_plugin.EventListener):
             view.close()
 
 
-def extract_rebase_items_from_view(view):
-    # type: (sublime.View) -> List[RebaseItem]
-    buffer_content = view.substr(sublime.Region(0, view.size()))
-    return [
-        RebaseItem(*line.split(" ", 2))
-        for line in takewhile(
-            lambda line: bool(line.strip()),
-            buffer_content.splitlines(keepends=True)
-        )
-    ]
-
-
-def ensure_newline(text):
-    # type: (str) -> str
-    return text if text.endswith("\n") else "{}\n".format(text)
-
-
-def format_rebase_items(items):
-    # type: (List[RebaseItem]) -> str
-    return "".join(
-        ensure_newline(" ".join(item)) for item in items
-    )
-
-
 class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
     action = None  # type: QuickAction
     autosquash = False
@@ -564,6 +540,30 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
                 )
 
         run_on_new_thread(program)
+
+
+def extract_rebase_items_from_view(view):
+    # type: (sublime.View) -> List[RebaseItem]
+    buffer_content = view.substr(sublime.Region(0, view.size()))
+    return [
+        RebaseItem(*line.split(" ", 2))
+        for line in takewhile(
+            lambda line: bool(line.strip()),
+            buffer_content.splitlines(keepends=True)
+        )
+    ]
+
+
+def ensure_newline(text):
+    # type: (str) -> str
+    return text if text.endswith("\n") else "{}\n".format(text)
+
+
+def format_rebase_items(items):
+    # type: (List[RebaseItem]) -> str
+    return "".join(
+        ensure_newline(" ".join(item)) for item in items
+    )
 
 
 def change_first_action(new_action, items):
