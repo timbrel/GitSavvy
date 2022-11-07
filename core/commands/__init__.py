@@ -1,3 +1,4 @@
+from ._help_popups import *
 from .amend import *
 from .blame import *
 from .branch import *
