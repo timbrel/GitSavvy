@@ -192,6 +192,8 @@ class gs_graph(WindowCommand, GitCommand):
             view.run_command("gs_handle_arrow_keys")
             run_on_new_thread(augment_color_scheme, view)
 
+            if follow is None:
+                follow = "HEAD"
             settings = view.settings()
             settings.set("git_savvy.repo_path", repo_path)
             settings.set("git_savvy.log_graph_view.paths", paths)
