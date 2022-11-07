@@ -188,26 +188,21 @@ class HistoryMixin(mixin_base):
         store.update_state(self.repo_path, {"short_hash_length": len(short_hash)})
         return short_hash
 
-    def filename_at_commit(self, filename, commit_hash, follow=False):
-        commit_len = len(commit_hash)
+    def filename_at_commit(self, filename, commit_hash):
+        # type: (str, str) -> str
         lines = self.git(
             "log",
-            "--pretty=oneline",
-            "--follow" if follow else None,
+            "--format=",  # we don't need any commit info beside the name status
+            "--follow",
             "--name-status",
-            "{}..{}".format(commit_hash, "HEAD"),
+            "{}..".format(commit_hash),
             "--", filename
-        ).split("\n")
+        ).strip().splitlines()
 
-        for i in range(0, len(lines), 2):
-            if lines[i].split(" ")[0][:commit_len] == commit_hash:
-                if lines[i + 1][0] == 'R':
-                    return lines[i + 1].split("\t")[2]
-                else:
-                    return lines[i + 1].split("\t")[1]
-
-        # If the commit hash is not for this file.
-        return filename
+        try:
+            return lines[-1].split("\t")[1]
+        except IndexError:
+            return filename
 
     @cached(not_if={"commit_hash": is_dynamic_ref})
     def get_file_content_at_commit(self, filename, commit_hash):

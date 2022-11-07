@@ -1,5 +1,6 @@
 import re
 from collections import namedtuple, defaultdict
+from itertools import groupby
 import unicodedata
 
 import sublime
@@ -18,13 +19,15 @@ __all__ = (
     "gs_blame_refresh",
     "gs_blame_action",
     "gs_blame_toggle_setting",
+    "gs_blame_open_graph_context",
     "gs_blame_navigate_chunk",
+    "gs_blame_navigate_head",
 )
 
 
 MYPY = False
 if MYPY:
-    from typing import DefaultDict, List, Optional
+    from typing import DefaultDict, List, Iterator, Optional
 
 
 BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))
@@ -71,7 +74,9 @@ class gs_blame(BlameMixin):
     def run(self, edit, file_path=None, repo_path=None, commit_hash=None):
         self._file_path = file_path or self.file_path
         self.__repo_path = repo_path or self.repo_path
-        self._commit_hash = commit_hash if commit_hash else self.get_commit_hash_for_head()
+        if commit_hash == "HEAD":
+            commit_hash = self.get_commit_hash_for_head()
+        self._commit_hash = commit_hash
         sublime.set_timeout_async(self.blame)
 
     @util.view.single_cursor_coords
@@ -98,7 +103,10 @@ class gs_blame(BlameMixin):
                 settings.set(key, original_view.settings().get(key))
 
         else:
-            lineno = self.find_matching_lineno(None, self._commit_hash, coords[0] + 1)
+            if self._commit_hash:
+                lineno = self.find_matching_lineno(None, self._commit_hash, coords[0] + 1)
+            else:
+                lineno = coords[0] + 1
             settings.set("git_savvy.blame_view.ignore_whitespace", False)
             settings.set("git_savvy.blame_view.detect_move_or_copy_within", None)
             settings.set("git_savvy.original_syntax", original_view.settings().get('syntax'))
@@ -130,14 +138,13 @@ class gs_blame_current_file(LogMixin, GsTextCommand):
 
         self._file_path = self.file_path
         kwargs["file_path"] = self._file_path
-        sublime.set_timeout_async(lambda: self.run_async(**kwargs), 0)
+        super().run(**kwargs)
 
     def do_action(self, commit_hash, **kwargs):
         self._commit_hash = commit_hash
-        sublime.set_timeout(
-            lambda: self.window.run_command(
-                "gs_blame", {"commit_hash": commit_hash, "file_path": self._file_path}),
-            100)
+        self.window.run_command("gs_blame", {
+            "commit_hash": commit_hash, "file_path": self._file_path
+        })
 
     def selected_index(self, commit_hash):
         return self._commit_hash == commit_hash
@@ -161,11 +168,12 @@ class gs_blame_refresh(BlameMixin):
     def run(self, edit):
 
         settings = self.view.settings()
+        file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.commit_hash", None)  # type: Optional[str]
 
         self.view.set_name(
             BLAME_TITLE.format(
-                self.get_rel_path(self.file_path) if self.file_path else "unknown",
+                self.get_rel_path(file_path),
                 " at {}".format(commit_hash[0:7]) if commit_hash else ""
             )
         )
@@ -175,6 +183,7 @@ class gs_blame_refresh(BlameMixin):
             within_what = self.savvy_settings.get("blame_detect_move_or_copy_within")
 
         content = self.get_content(
+            file_path,
             ignore_whitespace=settings.get("git_savvy.ignore_whitespace", False),
             detect_options=self._detect_move_or_copy_dict[within_what],
             commit_hash=commit_hash
@@ -208,20 +217,13 @@ class gs_blame_refresh(BlameMixin):
                 self.view.show_at_center(self.view.line(self.view.sel()[0].begin()).begin())
             else:
                 cursor_layout = self.view.text_to_layout(self.view.sel()[0].begin())
-                sublime.set_timeout_async(
-                    lambda: self.view.set_viewport_position(
-                        (0, cursor_layout[1] - yoffset), animate=False), 100)
+                self.view.set_viewport_position((0, cursor_layout[1] - yoffset), animate=False)
 
-    def get_content(self, ignore_whitespace=False, detect_options=None, commit_hash=None):
-        if commit_hash:
-            # git blame does not follow file name changes like git log, therefore we
-            # need to look at the log first too see if the file has changed names since
-            # selected commit. I would not be surprised if this brakes in some special cases
-            # like rebased or multimerged commits
-            follow = self.savvy_settings.get("blame_follow_rename")
-            filename_at_commit = self.filename_at_commit(self.file_path, commit_hash, follow=follow)
+    def get_content(self, file_path, ignore_whitespace=False, detect_options=None, commit_hash=None):
+        if commit_hash and self.savvy_settings.get("blame_follow_rename"):
+            filename_at_commit = self.filename_at_commit(file_path, commit_hash)
         else:
-            filename_at_commit = self.file_path
+            filename_at_commit = file_path
 
         blame_porcelain = self.git(
             "blame", "-p", '-w' if ignore_whitespace else None, detect_options,
@@ -231,11 +233,11 @@ class gs_blame_refresh(BlameMixin):
         blamed_lines, commits = self.parse_blame(blame_porcelain.split('\n'))
 
         commit_infos = {
-            commit_hash: self.short_commit_info(commit)
-            for commit_hash, commit in commits.items()
+            commit_hash_: self.short_commit_info(commit, current_commit_hash=commit_hash)
+            for commit_hash_, commit in commits.items()
         }
 
-        partitions = tuple(self.partition(blamed_lines))
+        partitions = tuple(self.group_consecutive_lines(blamed_lines))
 
         longest_commit_line = max(
             (line
@@ -283,8 +285,8 @@ class gs_blame_refresh(BlameMixin):
             while not next_line.startswith("\t"):
                 # Iterate through header keys and values.
                 try:
-                    k, v = re.match(r"([^ ]+) (.+)", next_line).groups()  # type: ignore[union-attr]
-                except AttributeError:
+                    k, v = next_line.split(" ", 1)
+                except ValueError:
                     # Sometimes git-blame includes keys without values;
                     # since we don't care about these, simply discard.
                     print("Skipping blame line: " + repr(next_line))
@@ -303,23 +305,14 @@ class gs_blame_refresh(BlameMixin):
 
         return blamed_lines, commits
 
-    @staticmethod
-    def partition(blamed_lines):
-        prev_line = None
-        current_hunk = []
-        for line in blamed_lines:
-            if prev_line and line.commit_hash != prev_line.commit_hash:  # type: ignore[unreachable]
-                yield current_hunk  # type: ignore[unreachable]
-                current_hunk = []
+    def group_consecutive_lines(self, blamed_lines):
+        # type: (List[BlamedLine]) -> Iterator[List[BlamedLine]]
+        for _, lines in groupby(blamed_lines, lambda line: line.commit_hash):
+            yield list(lines)
 
-            prev_line = line
-            current_hunk.append(line)
-        yield current_hunk
-
-    @staticmethod
-    def short_commit_info(commit):
+    def short_commit_info(self, commit, current_commit_hash):
         if commit["long_hash"] == NOT_COMMITED_HASH:
-            return ("Not committed yet.", )
+            return ("Not committed yet", )
 
         summary = commit["summary"]
         if len(summary) > 40:
@@ -329,10 +322,12 @@ class gs_blame_refresh(BlameMixin):
             author_info = author_info[:37] + "..."
         time_stamp = util.dates.fuzzy(commit["author-time"]) if commit["author-time"] else ""
 
-        return (summary, commit["short_hash"], author_info, time_stamp)
+        commit_hash = commit["short_hash"]
+        if commit["long_hash"] == current_commit_hash:
+            commit_hash += "  (CURRENT COMMIT)"
+        return (summary, commit_hash, author_info, time_stamp)
 
-    @staticmethod
-    def couple_partitions_and_commits(partitions, commit_infos, left_pad):
+    def couple_partitions_and_commits(self, partitions, commit_infos, left_pad):
         left_fallback = " " * left_pad
         right_fallback = ""
 
@@ -352,8 +347,8 @@ class gs_blame_refresh(BlameMixin):
                     left=left,
                     left_pad=left_pad,
                     lineno=lineno,
-                    right=right)
-                output = output.strip() + "\n"
+                    right=right
+                )
 
             yield output
 
@@ -415,20 +410,22 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
         assert self.file_path
         if position == "older":
             neighbor_hash = self.previous_commit(commit_hash, self.file_path, follow)
+            if not neighbor_hash:
+                self.window.status_message("Already on the oldest revision.")
+                return
+
         elif position == "newer":
+            if not commit_hash:
+                self.window.status_message("Already showing the workdir state.")
+                return
             neighbor_hash = self.next_commit(commit_hash, self.file_path, follow)
 
-        if neighbor_hash:
-            settings.set("git_savvy.commit_hash", neighbor_hash)
-
-        # if there is a change, refresh blame interface
-        if commit_hash == settings.get("git_savvy.commit_hash"):
+        if commit_hash == neighbor_hash:
             return
 
-        # set line number
         lineno = self.find_matching_lineno(
-            commit_hash, settings.get("git_savvy.commit_hash"), self.find_lineno())
-
+            commit_hash, neighbor_hash, self.find_lineno())
+        settings.set("git_savvy.commit_hash", neighbor_hash)
         settings.set("git_savvy.lineno", lineno)
         self.view.run_command("gs_blame_refresh")
 
@@ -445,10 +442,12 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
             lineno = self.find_matching_lineno(
                 settings.get("git_savvy.commit_hash"), commit_hash, lineno)
 
+        assert self.file_path
+        file_path = self.filename_at_commit(self.file_path, commit_hash)
+
         self.window.run_command("gs_show_file_at_commit", {
             "commit_hash": commit_hash,
-            "filepath": self.file_path,
-            "check_for_renames": True,
+            "filepath": file_path,
             "position": Position(lineno - 1, 0, None),
             "lang": settings.get('git_savvy.original_syntax', None)
         })
@@ -456,6 +455,16 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
     def pick_new_commit(self):
         self.view.run_command("gs_blame_current_file", {
             "file_path": self.file_path
+        })
+
+
+class gs_blame_open_graph_context(BlameMixin):
+    def run(self, edit):
+        # type: (...) -> None
+        commit_hash = self.find_selected_commit_hash()
+        self.window.run_command("gs_graph", {
+            "all": True,
+            "follow": self.get_short_hash(commit_hash) if commit_hash else "HEAD",
         })
 
 
@@ -493,9 +502,25 @@ class gs_blame_navigate_chunk(GsNavigate):
     offset = 0
 
     def get_available_regions(self):
+        return self.view.find_by_selector("constant.numeric.commit-hash.git-savvy")
+
+
+class gs_blame_navigate_head(GsNavigate):
+
+    """
+    Move cursor to the most recent changes
+    """
+
+    offset = 0
+
+    def get_available_regions(self):
+        selector = (
+            "meta.current-commit.blame.git-savvy"
+            if self.view.settings().get("git_savvy.commit_hash") else
+            "meta.not-committed.blame.git-savvy"
+        )
         return [
             branch_region
-            for region in self.view.find_by_selector(
-                "constant.numeric.commit-hash.git-savvy"
-            )
+            for region in self.view.find_by_selector(selector)
+            # Grab the line region to pin the cursor at the first column
             for branch_region in self.view.lines(region)]

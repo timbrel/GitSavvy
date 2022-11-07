@@ -1053,7 +1053,14 @@
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
         ]
     },
-
+    {
+        "keys": ["g"],
+        "command": "gs_blame_open_graph_context",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
     {
         "keys": ["."],
         "command": "gs_blame_navigate_chunk",
@@ -1067,6 +1074,15 @@
         "keys": [","],
         "command": "gs_blame_navigate_chunk",
         "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["h"],
+        "command": "gs_blame_navigate_head",
+        "args": { "forward": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }

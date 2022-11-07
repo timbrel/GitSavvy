@@ -594,7 +594,11 @@ class _GitCommand(SettingsMixin):
         """
         fpath = self.file_path if abs_path is NOT_SET else abs_path
         assert fpath
-        rel_path = os.path.relpath(resolve_path(fpath), start=resolve_path(self.repo_path))
+        rel_path = (
+            os.path.relpath(resolve_path(fpath), start=resolve_path(self.repo_path))
+            if os.path.isabs(fpath) else
+            fpath
+        )
         if os.name == "nt":
             return rel_path.replace("\\", "/")
         return rel_path

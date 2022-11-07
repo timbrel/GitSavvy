@@ -43,7 +43,8 @@ def compute_identifier_for_view(view):
 
 class gs_show_file_at_commit(WindowCommand, GitCommand):
 
-    def run(self, commit_hash, filepath, check_for_renames=False, position=None, lang=None):
+    def run(self, commit_hash, filepath, position=None, lang=None):
+        # type: (str, str, Optional[Position], Optional[str]) -> None
         this_id = (
             self.repo_path,
             filepath,
@@ -60,12 +61,12 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
                 self.run_impl,
                 commit_hash,
                 filepath,
-                check_for_renames,
                 position,
                 lang,
             )
 
-    def run_impl(self, commit_hash, file_path, check_for_renames, position, lang):
+    def run_impl(self, commit_hash, file_path, position, lang):
+        # type: (str, str, Optional[Position], Optional[str]) -> None
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
         view = util.view.get_scratch_view(self, "show_file_at_commit")
@@ -90,9 +91,6 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
         view.set_syntax_file(lang)
         view.set_name(title)
 
-        if check_for_renames:
-            file_path = self.filename_at_commit(file_path, commit_hash)
-
         view.run_command("gs_show_file_at_commit_refresh", {
             "position": position
         })
@@ -114,9 +112,11 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
 
     def update_reference_document(self, commit_hash, file_path):
+        # type: (str, str) -> None
         self.view.set_reference_document(self.previous_file_version(commit_hash, file_path))
 
     def update_title(self, commit_hash, file_path):
+        # type: (str, str) -> None
         title = SHOW_COMMIT_TITLE.format(
             os.path.basename(file_path),
             self.get_short_hash(commit_hash),

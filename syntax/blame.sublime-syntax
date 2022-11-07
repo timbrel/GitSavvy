@@ -14,11 +14,16 @@ contexts:
         2: comment.block.git-savvy.splitter.vertical
         3: comment.block.git-savvy.splitter.horizontal.source
 
-    - match: ^([0-9a-f]{12})\s+
+    - match: ^Not committed yet.+?\s+
+      scope: meta.not-committed.blame.git-savvy
+      push: right-column
+
+    - match: ^([0-9a-f]{12})\s+ (\(CURRENT COMMIT\))?
       comment: SHA
       scope: meta.blame-line.git-savvy
       captures:
         1: constant.numeric.commit-hash.git-savvy
+        2: meta.current-commit.blame.git-savvy
       push: right-column
 
     - match: ^([^|]+) (<)(\S*?)(>|\.{3})\s+

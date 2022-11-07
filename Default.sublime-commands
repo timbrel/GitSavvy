@@ -296,7 +296,7 @@
     },
     {
         "caption": "git: blame current file",
-        "command": "gs_blame_current_file"
+        "command": "gs_blame"
     },
     {
         "caption": "GitSavvy: reload modules (debug)",
