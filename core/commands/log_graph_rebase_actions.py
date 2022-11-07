@@ -60,7 +60,7 @@ if MYPY:
         ("commit_hash", str),
         ("commit_message", str)
     ])
-    QuickAction = Callable[[List[RebaseItem]], List[RebaseItem]]
+    QuickAction = Callable[[str], str]
 
 else:
     RebaseItem = namedtuple("RebaseItem", "action commit_hash commit_message")
@@ -507,8 +507,10 @@ class AwaitTodoListView(sublime_plugin.EventListener):
         if os.path.basename(filename) == "git-rebase-todo":
             AWAITING = None
 
-            todo_items = extract_rebase_items_from_view(view)
-            replace_view_content(view, format_rebase_items(action(todo_items)))
+            buffer_content = view.substr(sublime.Region(0, view.size()))
+            modified_content = action(buffer_content)
+            replace_view_content(view, modified_content)
+
             view.run_command("save")
             view.close()
 
@@ -542,9 +544,8 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
         run_on_new_thread(program)
 
 
-def extract_rebase_items_from_view(view):
-    # type: (sublime.View) -> List[RebaseItem]
-    buffer_content = view.substr(sublime.Region(0, view.size()))
+def _parse_buffer(buffer_content):
+    # type: (str) -> List[RebaseItem]
     return [
         RebaseItem(*line.split(" ", 2))
         for line in takewhile(
@@ -566,12 +567,24 @@ def format_rebase_items(items):
     )
 
 
-def change_first_action(new_action, items):
+def change_first_action(new_action, buffer_content):
+    # type: (str, str) -> str
+    items = _parse_buffer(buffer_content)
+    return format_rebase_items(_change_first_action(new_action, items))
+
+
+def _change_first_action(new_action, items):
     # type: (str, List[RebaseItem]) -> List[RebaseItem]
     return [items[0]._replace(action=new_action)] + items[1:]
 
 
-def fixup_commits(fixup_commits, items):
+def fixup_commits(fixup_commits, buffer_content):
+    # type: (List[Commit], str) -> str
+    items = _parse_buffer(buffer_content)
+    return format_rebase_items(_fixup_commits(fixup_commits, items))
+
+
+def _fixup_commits(fixup_commits, items):
     # type: (List[Commit], List[RebaseItem]) -> List[RebaseItem]
     fixup_commit_hashes = {commit.commit_hash for commit in fixup_commits}
     return [items[0]] + [
