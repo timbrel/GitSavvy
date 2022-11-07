@@ -76,12 +76,12 @@
     {
         "caption": "git: graph",
         "command": "gs_graph",
-        "args": { "all": true, "follow": "HEAD" }
+        "args": { "all": true }
     },
     {
         "caption": "git: Repo History",
         "command": "gs_graph",
-        "args": { "all": true, "follow": "HEAD" }
+        "args": { "all": true }
     },
     {
         "caption": "git: graph current file",
