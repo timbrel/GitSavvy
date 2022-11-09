@@ -239,7 +239,14 @@ class gs_rebase_action(GsWindowCommand):
                 else ""
             )
             previous_tip = "{}@{{1}}".format(current_branch)
-            if previous_tip not in filters:
+            if previous_tip in filters:
+                actions += [
+                    (
+                        "Hide {} in the graph".format(previous_tip),
+                        partial(self.remove_previous_tip, view, previous_tip)
+                    )
+                ]
+            else:
                 actions += [
                     (
                         "Show previous tip of {} in the graph".format(current_branch),
@@ -326,6 +333,13 @@ class gs_rebase_action(GsWindowCommand):
             settings.set("git_savvy.log_graph_view.paths", [])
             settings.set("git_savvy.log_graph_view.filter_by_author", "")
 
+        view.run_command("gs_log_graph_refresh")
+
+    def remove_previous_tip(self, view, previous_tip):
+        settings = view.settings()
+        filters = settings.get("git_savvy.log_graph_view.filters", "")
+        new_filters = ' '.join(s for s in shlex.split(filters) if s != previous_tip)
+        settings.set("git_savvy.log_graph_view.filters", new_filters)
         view.run_command("gs_log_graph_refresh")
 
 
