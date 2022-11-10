@@ -284,6 +284,9 @@ def noop(description):
     return Action(description, lambda: None)
 
 
+SEPARATOR = noop("_" * 74)
+
+
 def focus_view(view):
     # type: (sublime.View) -> None
     window = view.window()

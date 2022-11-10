@@ -18,7 +18,7 @@ from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.parse_diff import TextRange
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
 from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
-from GitSavvy.core.utils import flash, noop, show_actions_panel
+from GitSavvy.core.utils import flash, noop, show_actions_panel, SEPARATOR
 from GitSavvy.core.view import replace_view_content
 
 
@@ -129,9 +129,6 @@ def get_view_for_command(cmd):
         return cmd.window.active_view()
     else:
         return sublime.active_window().active_view()
-
-
-SEPARATOR = ("-" * 75, lambda: None)
 
 
 class gs_rebase_action(GsWindowCommand):

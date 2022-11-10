@@ -37,7 +37,7 @@ from ..view import (
 )
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
-from ..utils import add_selection_to_jump_history, focus_view, show_toast, Cache
+from ..utils import add_selection_to_jump_history, focus_view, show_toast, Cache, SEPARATOR
 from ...common import util
 from ...common.theme_generator import ThemeGenerator
 
@@ -2275,7 +2275,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 ("Fetch", partial(self.fetch, info["HEAD"])),
                 ("Pull", self.pull),
                 ("Push", partial(self.push, info["HEAD"])),
-                ("-" * 75, self.noop),
+                SEPARATOR,
             ]
 
         actions += [
@@ -2436,9 +2436,6 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             "remote": remote,
             "refspec": "{}:{}".format(remote_name, local_name)
         })
-
-    def noop(self):
-        return
 
     def checkout(self, commit_hash):
         self.window.run_command("gs_checkout_branch", {"branch": commit_hash})
