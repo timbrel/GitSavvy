@@ -188,7 +188,6 @@ class gs_rebase_action(GsWindowCommand):
                 "Make fixup commit for {}".format(commit_hash),
                 partial(self.create_fixup_commit, commit_hash)
             ),
-            SEPARATOR,
         ]
 
         head_info = log_graph.describe_head(view, {})
@@ -208,6 +207,7 @@ class gs_rebase_action(GsWindowCommand):
             ]
 
         actions += [
+            SEPARATOR,
             (
                 "[R]ebase from {} on interactive".format(parent_commitish),
                 partial(self.rebase_interactive, view, parent_commitish)
@@ -228,6 +228,10 @@ class gs_rebase_action(GsWindowCommand):
             else None
         )
         if current_branch:
+            actions += [
+                SEPARATOR,
+            ]
+
             settings = view.settings()
             applying_filters = settings.get("git_savvy.log_graph_view.apply_filters")
             filters = (
