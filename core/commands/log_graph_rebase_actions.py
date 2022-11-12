@@ -18,7 +18,7 @@ from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.parse_diff import TextRange
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
 from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
-from GitSavvy.core.utils import flash, noop, show_actions_panel, SEPARATOR
+from GitSavvy.core.utils import flash, noop, show_actions_panel, yes_no_switch, SEPARATOR
 from GitSavvy.core.view import replace_view_content
 
 
@@ -546,9 +546,9 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
             with await_todo_list(partial(action, commit_hash)):
                 self.rebase(
                     '--interactive',
-                    "--rebase-merges" if self.rebase_merges else "--no-rebase-merges",
+                    yes_no_switch("--rebase-merges", self.rebase_merges),
                     "--autostash",
-                    "--autosquash" if self.autosquash else "--no-autosquash",
+                    yes_no_switch("--autosquash", self.autosquash),
                     "{}^".format(commit_hash),
                 )
 
