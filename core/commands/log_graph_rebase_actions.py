@@ -61,6 +61,9 @@ else:
     Commit = namedtuple("Commit", "commit_hash commit_message")
 
 
+VERSION_WITH_UPDATE_REFS = (2, 38, 0)
+
+
 def commitish_from_info(info):
     # type: (log_graph.LineInfo) -> str
     commit_hash = info["commit"]
@@ -528,6 +531,7 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
     action = None  # type: QuickAction
     autosquash = False
     rebase_merges = False
+    update_refs = False
     defaults = {
         "commit_hash": extract_commit_hash_from_graph,
     }
@@ -549,6 +553,11 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
                     yes_no_switch("--rebase-merges", self.rebase_merges),
                     "--autostash",
                     yes_no_switch("--autosquash", self.autosquash),
+                    (
+                        yes_no_switch("--update-refs", self.update_refs)
+                        if self.git_version >= VERSION_WITH_UPDATE_REFS else
+                        None
+                    ),
                     "{}^".format(commit_hash),
                 )
 
@@ -594,24 +603,28 @@ class gs_rebase_edit_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "edit")
     autosquash = False
     rebase_merges = True
+    update_refs = True
 
 
 class gs_rebase_drop_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "drop")
     autosquash = False
     rebase_merges = True
+    update_refs = True
 
 
 class gs_rebase_reword_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "reword")
     autosquash = False
     rebase_merges = True
+    update_refs = True
 
 
 class gs_rebase_apply_fixup(gs_rebase_quick_action):
     action = partial(fixup_commits)
     autosquash = False
     rebase_merges = True
+    update_refs = True
 
     def run(self, edit, base_commit, fixes):
         self.action = partial(self.action, [Commit(*fix) for fix in fixes])
@@ -635,6 +648,11 @@ class gs_rebase_just_autosquash(GsTextCommand, RebaseCommand):
                 "--autostash",
                 "--autosquash",
                 "--rebase-merges",
+                (
+                    "--update-refs"
+                    if self.git_version >= VERSION_WITH_UPDATE_REFS else
+                    None
+                ),
                 "{}".format(commitish),
                 custom_environ={"GIT_SEQUENCE_EDITOR": ":"}
             )
