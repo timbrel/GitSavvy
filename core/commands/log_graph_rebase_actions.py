@@ -676,6 +676,13 @@ class gs_rebase_skip(sublime_plugin.WindowCommand, RebaseCommand):
         self.rebase('--skip')
 
 
+ask_for_local_branch = ask_for_branch(
+    local_branches_only=True,
+    ignore_current_branch=True,
+    memorize_key="last_local_branch_for_rebase"
+)
+
+
 class gs_rebase_interactive(GsTextCommand, RebaseCommand):
     defaults = {
         "commitish": extract_parent_symbol_from_graph,
@@ -689,13 +696,6 @@ class gs_rebase_interactive(GsTextCommand, RebaseCommand):
             "{}".format(commitish),
             offer_autostash=True,
         )
-
-
-ask_for_local_branch = ask_for_branch(
-    local_branches_only=True,
-    ignore_current_branch=True,
-    memorize_key="last_local_branch_for_rebase"
-)
 
 
 class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
