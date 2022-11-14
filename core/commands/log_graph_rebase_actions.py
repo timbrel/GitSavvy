@@ -10,14 +10,12 @@ import sublime
 import sublime_plugin
 
 from GitSavvy.common import util
-from GitSavvy.core import store
-from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
+from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand, ask_for_branch
 from GitSavvy.core.commands import log_graph
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.parse_diff import TextRange
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
-from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
 from GitSavvy.core.utils import flash, noop, show_actions_panel, yes_no_switch, SEPARATOR
 from GitSavvy.core.view import replace_view_content
 
@@ -693,19 +691,11 @@ class gs_rebase_interactive(GsTextCommand, RebaseCommand):
         )
 
 
-def ask_for_local_branch(self, args, done):
-    # type: (GsCommand, Args, Kont) -> None
-    def on_done(branch):
-        store.update_state(self.repo_path, {"last_local_branch_for_rebase": branch})
-        done(branch)
-
-    selected_branch = store.current_state(self.repo_path).get("last_local_branch_for_rebase")
-    show_branch_panel(
-        on_done,
-        local_branches_only=True,
-        ignore_current_branch=True,
-        selected_branch=selected_branch
-    )
+ask_for_local_branch = ask_for_branch(
+    local_branches_only=True,
+    ignore_current_branch=True,
+    memorize_key="last_local_branch_for_rebase"
+)
 
 
 class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
