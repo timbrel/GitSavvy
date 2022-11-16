@@ -488,6 +488,16 @@ class RebaseCommand(GitCommand):
                 window.status_message(ok_message)
             util.view.refresh_gitsavvy_interfaces(window, refresh_sidebar=True)
 
+    def _merge_commits_within_reach(self, commit_hash):
+        # type: (str) -> str
+        return self.git(
+            "log",
+            "-1",
+            "--merges",
+            "--format=%H",
+            "{}..".format(commit_hash),
+        ).strip()
+
 
 def auto_close_panel(window, after=800):
     # type: (sublime.Window, int) -> None
@@ -571,9 +581,17 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
 
         def program():
             with await_todo_list(partial(action, commit_hash)):
+                start_commit = "{}^".format(commit_hash)
                 self.rebase(
                     '--interactive',
-                    yes_no_switch("--rebase-merges", self.rebase_merges),
+                    (
+                        yes_no_switch("--rebase-merges", self.rebase_merges)
+                        if (
+                            self.rebase_merges
+                            and self._merge_commits_within_reach(start_commit)
+                        ) else
+                        None
+                    ),
                     "--autostash",
                     yes_no_switch("--autosquash", self.autosquash),
                     (
@@ -581,7 +599,7 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
                         if self.git_version >= VERSION_WITH_UPDATE_REFS else
                         None
                     ),
-                    "{}^".format(commit_hash),
+                    start_commit,
                 )
 
         run_on_new_thread(program)
@@ -670,7 +688,7 @@ class gs_rebase_just_autosquash(GsTextCommand, RebaseCommand):
                 '--interactive',
                 "--autostash",
                 "--autosquash",
-                "--rebase-merges",
+                "--rebase-merges" if self._merge_commits_within_reach(commitish) else None,
                 (
                     "--update-refs"
                     if self.git_version >= VERSION_WITH_UPDATE_REFS else
@@ -747,7 +765,14 @@ class gs_rebase_interactive(GsTextCommand, RebaseCommand):
         # type: (sublime.Edit, str, Optional[bool], Optional[bool]) -> None
         self.rebase(
             '--interactive',
-            yes_no_switch("--rebase-merges", rebase_merges),
+            (
+                yes_no_switch("--rebase-merges", rebase_merges)
+                if (
+                    rebase_merges
+                    and self._merge_commits_within_reach(commitish)
+                ) else
+                None
+            ),
             yes_no_switch("--update-refs", update_refs),
             "{}".format(commitish),
             offer_autostash=True,
@@ -767,7 +792,14 @@ class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
         # type: (sublime.Edit, str, str, Optional[bool], Optional[bool]) -> None
         self.rebase(
             '--interactive',
-            yes_no_switch("--rebase-merges", rebase_merges),
+            (
+                yes_no_switch("--rebase-merges", rebase_merges)
+                if (
+                    rebase_merges
+                    and self._merge_commits_within_reach(commitish)
+                ) else
+                None
+            ),
             yes_no_switch("--update-refs", update_refs),
             "{}".format(commitish),
             "--onto",
@@ -787,7 +819,14 @@ class gs_rebase_on_branch(GsTextCommand, RebaseCommand):
     def run(self, edit, on, rebase_merges, update_refs):
         # type: (sublime.Edit, str, Optional[bool], Optional[bool]) -> None
         self.rebase(
-            yes_no_switch("--rebase-merges", rebase_merges),
+            (
+                yes_no_switch("--rebase-merges", rebase_merges)
+                if (
+                    rebase_merges
+                    and self._merge_commits_within_reach(on)
+                ) else
+                None
+            ),
             yes_no_switch("--update-refs", update_refs),
             on,
             offer_autostash=True,
