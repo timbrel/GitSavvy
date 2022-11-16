@@ -45,9 +45,11 @@ if MYPY:
         Iterator,
         NamedTuple,
         Optional,
-        Tuple
+        Tuple,
+        TypeVar,
     )
     from GitSavvy.core.base_commands import GsCommand, Args, Kont
+    _T = TypeVar("_T")
 
     Commit = NamedTuple("Commit", [
         ("commit_hash", str),
@@ -207,8 +209,15 @@ class gs_rebase_action(GsWindowCommand):
                 ),
             ]
 
+        on_off = lambda setting: "x" if setting else " "
+        rebase_merges = _get_setting(self, "git_savvy.log_graph_view.rebase_merges", DEFAULT_VALUE)
+        update_refs = _get_setting(self, "git_savvy.log_graph_view.update_refs", DEFAULT_VALUE)
         actions += [
-            SEPARATOR,
+            (
+                "———————————————————————————       [{}] --rebase-merges,   [{}] --update-refs"
+                .format(on_off(rebase_merges), on_off(update_refs)),
+                partial(self.switch_through_options, view, rebase_merges, update_refs)
+            ),
             (
                 "[R]ebase from {} on interactive".format(parent_commitish),
                 partial(self.rebase_interactive, view, parent_commitish)
@@ -270,6 +279,22 @@ class gs_rebase_action(GsWindowCommand):
             flags=sublime.MONOSPACE_FONT,
             selected_index=self.selected_index,
         )
+
+    def switch_through_options(self, view, rebase_merges, update_refs):
+        current = (rebase_merges, update_refs)
+        possible = [
+            (True, True),
+            (False, True),
+            (False, False),
+            (True, False),
+        ]
+        rebase_merges, update_refs = possible[(possible.index(current) + 1) % len(possible)]
+        if update_refs:
+            self.window.status_message("--update-refs requires git v2.38 or greater")
+
+        view.settings().set("git_savvy.log_graph_view.rebase_merges", rebase_merges)
+        view.settings().set("git_savvy.log_graph_view.update_refs", update_refs)
+        self.window.run_command("gs_rebase_action")
 
     def create_fixup_commit(self, commit_hash):
         commit_message = self.git("log", "-1", "--pretty=format:%s", commit_hash).strip()
@@ -683,16 +708,47 @@ ask_for_local_branch = ask_for_branch(
 )
 
 
+def _get_setting(self, setting, default_value):
+    # type: (GsCommand, str, _T) -> _T
+    view = self._current_view()
+    if not view:
+        return default_value
+    return view.settings().get(setting, default_value)
+
+
+# `True` because both features actually _reduce_ the intrusiveness
+# of the rebase.
+DEFAULT_VALUE = True
+
+
+def provide_rebase_merges(self, args, done):
+    # type: (GsCommand, Args, Kont) -> None
+    done(_get_setting(self, "git_savvy.log_graph_view.rebase_merges", DEFAULT_VALUE))
+
+
+def provide_update_refs(self, args, done):
+    # type: (GsCommand, Args, Kont) -> None
+    done(
+        _get_setting(self, "git_savvy.log_graph_view.update_refs", DEFAULT_VALUE)
+        if self.git_version >= VERSION_WITH_UPDATE_REFS else
+        None
+    )
+
+
 class gs_rebase_interactive(GsTextCommand, RebaseCommand):
     defaults = {
         "commitish": extract_parent_symbol_from_graph,
+        "rebase_merges": provide_rebase_merges,
+        "update_refs": provide_update_refs,
     }
 
     @on_new_thread
-    def run(self, edit, commitish):
-        # type: (sublime.Edit, str) -> None
+    def run(self, edit, commitish, rebase_merges, update_refs):
+        # type: (sublime.Edit, str, Optional[bool], Optional[bool]) -> None
         self.rebase(
             '--interactive',
+            yes_no_switch("--rebase-merges", rebase_merges),
+            yes_no_switch("--update-refs", update_refs),
             "{}".format(commitish),
             offer_autostash=True,
         )
@@ -701,14 +757,18 @@ class gs_rebase_interactive(GsTextCommand, RebaseCommand):
 class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
     defaults = {
         "commitish": extract_parent_symbol_from_graph,
-        "onto": ask_for_local_branch
+        "onto": ask_for_local_branch,
+        "rebase_merges": provide_rebase_merges,
+        "update_refs": provide_update_refs,
     }
 
     @on_new_thread
-    def run(self, edit, commitish, onto):
-        # type: (sublime.Edit, str, str) -> None
+    def run(self, edit, commitish, onto, rebase_merges, update_refs):
+        # type: (sublime.Edit, str, str, Optional[bool], Optional[bool]) -> None
         self.rebase(
             '--interactive',
+            yes_no_switch("--rebase-merges", rebase_merges),
+            yes_no_switch("--update-refs", update_refs),
             "{}".format(commitish),
             "--onto",
             onto,
@@ -719,9 +779,16 @@ class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
 class gs_rebase_on_branch(GsTextCommand, RebaseCommand):
     defaults = {
         "on": ask_for_local_branch,
+        "rebase_merges": provide_rebase_merges,
+        "update_refs": provide_update_refs,
     }
 
     @on_new_thread
-    def run(self, edit, on):
-        # type: (sublime.Edit, str) -> None
-        self.rebase(on, offer_autostash=True)
+    def run(self, edit, on, rebase_merges, update_refs):
+        # type: (sublime.Edit, str, Optional[bool], Optional[bool]) -> None
+        self.rebase(
+            yes_no_switch("--rebase-merges", rebase_merges),
+            yes_no_switch("--update-refs", update_refs),
+            on,
+            offer_autostash=True,
+        )
