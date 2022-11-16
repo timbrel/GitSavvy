@@ -454,7 +454,7 @@ class _GitCommand(SettingsMixin):
     @property
     def git_version(self):
         # type: () -> Tuple[int, int, int]
-        return git_binaries[self.repo_path]
+        return git_binaries[self.git_binary_path]
 
     def _current_window(self):
         # type: () -> Optional[sublime.Window]
