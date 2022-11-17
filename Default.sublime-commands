@@ -408,6 +408,18 @@
         "command": "gs_cherry_pick"
     },
     {
+        "caption": "git: cherry-pick --abort",
+        "command": "gs_cherry_pick_abort"
+    },
+    {
+        "caption": "git: cherry-pick --continue",
+        "command": "gs_cherry_pick_continue"
+    },
+    {
+        "caption": "git: cherry-pick --skip",
+        "command": "gs_cherry_pick_skip"
+    },
+    {
         "caption": "flow: init",
         "command": "gs_git_flow_init"
     },
