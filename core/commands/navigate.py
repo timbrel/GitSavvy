@@ -51,7 +51,13 @@ class GsNavigate(TextCommand, GitCommand):
         if self.show_at_center:
             self.view.show_at_center(new_cursor_position)
         else:
-            show_region(self.view, wanted_section)
+            # For the first entry, try to show the beginning of the buffer.
+            # (Usually we have some info/help text there.)
+            if wanted_section == available_regions[0]:
+                wanted_section = sublime.Region(0, wanted_section.a)
+                show_region(self.view, wanted_section, context=2, prefer_end=True)
+            else:
+                show_region(self.view, wanted_section, context=2)
 
     def get_available_regions(self):
         # type: () -> Sequence[sublime.Region]
