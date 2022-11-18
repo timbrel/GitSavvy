@@ -26,9 +26,6 @@ class GsTabCycleCommand(TextCommand, GitCommand):
     }
 
     def run(self, edit, source=None, target=None, reverse=False):
-        sublime.set_timeout_async(lambda: self.run_async(source, target, reverse))
-
-    def run_async(self, source, target, reverse):
         to_load = target or self.get_next(source, reverse)
         if not to_load:
             return
@@ -38,7 +35,7 @@ class GsTabCycleCommand(TextCommand, GitCommand):
         if window:
             window.run_command(self.commands[to_load])
             if not self.view.settings().get(view_signature):
-                sublime.set_timeout_async(self.view.close)
+                self.view.close()
 
     def get_next(self, source, reverse=False):
         tab_order = self.savvy_settings.get("tab_order")
