@@ -312,7 +312,6 @@ class _GitCommand(SettingsMixin):
             )
 
         except Exception as e:
-            # this should never be reached
             raise GitSavvyError(
                 "$ {} ({})\n\n"
                 "Please report this error to GitSavvy:\n\n{}\n\n{}".format(
