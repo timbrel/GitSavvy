@@ -2,6 +2,7 @@ from collections import namedtuple
 import re
 
 from GitSavvy.core.git_command import mixin_base
+from GitSavvy.core import store
 
 
 MYPY = False
@@ -30,6 +31,10 @@ class StashMixin(mixin_base):
             assert match
             num, _, description = match.groups()
             stashes.append(Stash(num, description))
+
+        store.update_state(self.repo_path, {
+            "stashes": stashes,
+        })
         return stashes
 
     def show_stash(self, id):
