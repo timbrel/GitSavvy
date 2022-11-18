@@ -877,6 +877,7 @@ class gs_diff_navigate(GsNavigate):
     """
 
     offset = 0
+    wrap_with_force = True
 
     def get_available_regions(self):
         return self.view.find_by_selector("meta.diff.range.unified, meta.commit-info.header")

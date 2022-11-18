@@ -18,6 +18,8 @@ class GsNavigate(TextCommand, GitCommand):
     offset = 4
     show_at_center = True
     wrap = True
+    wrap_with_force = False
+    _just_jumped = 0
 
     def run(self, edit, forward=True):
         sel = self.view.sel()
@@ -32,8 +34,14 @@ class GsNavigate(TextCommand, GitCommand):
             else self.backward(current_position, available_regions)
         )
         if wanted_section is None:
+            if self._just_jumped == 1:
+                window = self.view.window()
+                if window:
+                    window.status_message("press again to wrap around ...")
+            self._just_jumped -= 1
             return
 
+        self._just_jumped = 2
         sel.clear()
         # Position the cursor at the beginning of the section...
         new_cursor_position = wanted_section.begin() + self.offset
@@ -54,7 +62,7 @@ class GsNavigate(TextCommand, GitCommand):
             if region.a > current_position:
                 return region
 
-        return regions[0] if self.wrap else None
+        return regions[0] if self._wrap_around_now() else None
 
     def backward(self, current_position, regions):
         # type: (sublime.Point, Sequence[sublime.Region]) -> Optional[sublime.Region]
@@ -62,4 +70,8 @@ class GsNavigate(TextCommand, GitCommand):
             if region.b < current_position:
                 return region
 
-        return regions[-1] if self.wrap else None
+        return regions[-1] if self._wrap_around_now() else None
+
+    def _wrap_around_now(self):
+        # type: () -> bool
+        return self.wrap and (not self.wrap_with_force or self._just_jumped == 0)
