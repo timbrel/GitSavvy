@@ -16,7 +16,7 @@ class GsNavigate(TextCommand, GitCommand):
     """
 
     offset = 4
-    show_at_center = True
+    show_at_center = False
     wrap = True
     wrap_with_force = False
     _just_jumped = 0

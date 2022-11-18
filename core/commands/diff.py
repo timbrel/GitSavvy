@@ -14,7 +14,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import intra_line_colorizer
 from . import stage_hunk
 from .navigate import GsNavigate
-from ..fns import filter_, flatten, unique
+from ..fns import filter_, flatten, pairwise, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_ui, enqueue_on_worker
@@ -880,7 +880,17 @@ class gs_diff_navigate(GsNavigate):
     wrap_with_force = True
 
     def get_available_regions(self):
-        return self.view.find_by_selector("meta.diff.range.unified, meta.commit-info.header")
+        return [
+            sublime.Region(a.a, b.a - 1)
+            for a, b in pairwise(
+                chain(
+                    self.view.find_by_selector(
+                        "meta.diff.range.unified, meta.commit-info.header"
+                    ),
+                    [sublime.Region(self.view.size())]
+                )
+            )
+        ]
 
 
 class gs_diff_undo(TextCommand, GitCommand):
