@@ -28,6 +28,7 @@ class GsNavigate(TextCommand, GitCommand):
         available_regions = self.get_available_regions()
         if not available_regions:
             return
+
         wanted_section = (
             self.forward(current_position, available_regions)
             if forward
