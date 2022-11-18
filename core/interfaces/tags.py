@@ -211,7 +211,7 @@ class TagsInterface(ui.Interface, GitCommand):
                 try:
                     remote["tags"] = list(chain(*self.get_remote_tags(remote_name)))
                 except GitSavvyError as e:
-                    remote["erred"] = "    {}".format(e.stderr)
+                    remote["erred"] = "    {}".format(e.stderr.rstrip())
                 enqueue_on_worker(self.render)  # fan-in
 
             run_on_new_thread(do_tags_fetch)    # fan-out
