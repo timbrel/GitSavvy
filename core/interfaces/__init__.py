@@ -17,24 +17,15 @@ class gs_tab_cycle(TextCommand, GitCommand):
         "graph": "gs_log_graph_current_branch"
     }
 
-    view_signatures = {
-        "status": "git_savvy.status_view",
-        "branch": "git_savvy.branch_view",
-        "rebase": "git_savvy.rebase_view",
-        "tags": "git_savvy.tags_view",
-        "graph": "git_savvy.log_graph_view"
-    }
-
     def run(self, edit, source=None, target=None, reverse=False):
         to_load = target or self.get_next(source, reverse)
         if not to_load:
             return
-        view_signature = self.view_signatures[to_load]
 
         window = self.view.window()
         if window:
             window.run_command(self.commands[to_load])
-            if not self.view.settings().get(view_signature):
+            if not self.view.settings().get("git_savvy.log_graph_view"):
                 self.view.close()
 
     def get_next(self, source, reverse=False):
