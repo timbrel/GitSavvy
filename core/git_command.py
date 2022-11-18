@@ -26,7 +26,7 @@ from ..common import util
 from .settings import SettingsMixin
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, run_as_future
-from GitSavvy.core.utils import paths_upwards, resolve_path
+from GitSavvy.core.utils import kill_proc, paths_upwards, resolve_path
 
 
 MYPY = False
@@ -57,8 +57,8 @@ GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d}
 NOT_SET = "<NOT_SET>"
 
 
-def communicate_and_log(proc, stdin, log):
-    # type: (subprocess.Popen, bytes, Callable[[bytes], None]) -> Tuple[bytes, bytes]
+def communicate_and_log(proc, stdin, log, timeout=None):
+    # type: (subprocess.Popen, bytes, Callable[[bytes], None], Optional[float]) -> Tuple[bytes, bytes]
     """
     Emulates Popen.communicate
     Writes stdin (if provided)
@@ -72,7 +72,7 @@ def communicate_and_log(proc, stdin, log):
         proc.stdin.close()
 
     stdout, stderr = b'', b''
-    for line in stream_stdout_and_err(proc):
+    for line in stream_stdout_and_err(proc, timeout):
         if isinstance(line, Out):
             stdout += line
             log(line)
@@ -93,8 +93,11 @@ def read_linewise(fh, kont):
         kont(line)
 
 
-def stream_stdout_and_err(proc):
-    # type: (subprocess.Popen) -> Iterator[bytes]
+def stream_stdout_and_err(proc, timeout):
+    # type: (subprocess.Popen, Optional[float]) -> Iterator[bytes]
+    if timeout:
+        start_time = time.perf_counter()
+
     container = deque()  # type: Deque[bytes]
     append = container.append
     out_f = run_as_future(read_linewise, proc.stdout, lambda line: append(Out(line)))
@@ -107,6 +110,9 @@ def stream_stdout_and_err(proc):
                 yield container.popleft()
             except IndexError:
                 time.sleep(next(delay) / 1000)
+                if timeout and time.perf_counter() - start_time > timeout:
+                    kill_proc(proc)
+                    raise TimeoutError("timed out after {} seconds".format(timeout))
 
     # Check and raise exceptions if any
     out_f.result()
@@ -229,7 +235,8 @@ class _GitCommand(SettingsMixin):
         decode=True,
         stdin_encoding="utf-8",
         custom_environ=None,
-        just_the_proc=False
+        just_the_proc=False,
+        timeout=120.0
     ):
         """
         Run the git command specified in `*args` and return the output
@@ -288,9 +295,21 @@ class _GitCommand(SettingsMixin):
 
             if show_panel:
                 log_b = lambda line: log(line.decode("utf-8", "replace"))
-                stdout, stderr = communicate_and_log(p, stdin, log_b)
+                stdout, stderr = communicate_and_log(p, stdin, log_b, timeout=timeout)
             else:
-                stdout, stderr = p.communicate(stdin)
+                stdout, stderr = p.communicate(stdin, timeout=timeout)
+
+        except (subprocess.TimeoutExpired, TimeoutError):
+            raise GitSavvyError(
+                "$ {} ({})\n\n"
+                "Timeout after {} seconds:\n\n{}".format(
+                    command_str, working_dir, timeout, traceback.format_exc()
+                ),
+                cmd=command,
+                stderr="timed out after {} seconds".format(timeout),
+                show_panel=show_panel_on_error,
+                window=window
+            )
 
         except Exception as e:
             # this should never be reached
