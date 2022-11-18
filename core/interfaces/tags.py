@@ -9,7 +9,7 @@ from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 from GitSavvy.core.fns import filter_
-from GitSavvy.core.runtime import enqueue_on_worker, on_worker
+from GitSavvy.core.runtime import enqueue_on_worker, on_worker, run_on_new_thread
 from GitSavvy.core.utils import flash, uprint
 from GitSavvy.core.ui_mixins.quick_panel import show_remote_panel
 
@@ -212,9 +212,9 @@ class TagsInterface(ui.Interface, GitCommand):
                     remote["tags"] = list(chain(*self.get_remote_tags(remote_name)))
                 except GitSavvyError as e:
                     remote["erred"] = "    {}".format(e.stderr)
-                self.render()
+                enqueue_on_worker(self.render)  # fan-in
 
-            enqueue_on_worker(do_tags_fetch)
+            run_on_new_thread(do_tags_fetch)    # fan-out
             remote["loading"] = True
             msg = LOADING_TAGS_MESSAGE
 
