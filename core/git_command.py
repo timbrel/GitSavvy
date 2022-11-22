@@ -529,7 +529,7 @@ class _GitCommand(SettingsMixin):
 
         window = self._current_window()
         if not window:
-            raise RuntimeError("Window does not exist.")
+            raise RuntimeError("View already closed.")
 
         if window.folders():
             enqueue_on_worker(window.run_command, "gs_offer_init")
