@@ -8,7 +8,7 @@ from .tags import *  # noqa: F401, F403
 from ..git_command import GitCommand
 
 
-class GsTabCycleCommand(TextCommand, GitCommand):
+class gs_tab_cycle(TextCommand, GitCommand):
     commands = {
         "status": "gs_show_status",
         "branch": "gs_show_branch",
