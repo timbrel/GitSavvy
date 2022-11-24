@@ -115,7 +115,7 @@ def remember_syntax_choice(filename, syntax):
 
 def get_syntax_for_file(filename, default="Packages/Text/Plain text.tmLanguage"):
     # type: (str, str) -> str
-    if not determine_syntax_thread or determine_syntax_thread.is_alive():
+    if not syntax_functions_readied():
         return default
     syntaxes = (
         syntax_file_map.get(filename, [])
@@ -124,6 +124,15 @@ def get_syntax_for_file(filename, default="Packages/Text/Plain text.tmLanguage")
         or [default]
     )
     return syntaxes[-1]
+
+
+def syntax_functions_readied():
+    # type: () -> bool
+    if SUBLIME_HAS_SYNTAX_FUNCTIONS:
+        return True
+    if determine_syntax_thread and not determine_syntax_thread.is_alive():
+        return True
+    return False
 
 
 def get_file_extension(filename):
