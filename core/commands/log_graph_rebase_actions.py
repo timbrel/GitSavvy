@@ -682,7 +682,7 @@ class gs_rebase_just_autosquash(GsTextCommand, RebaseCommand):
                     if self.git_version >= VERSION_WITH_UPDATE_REFS else
                     None
                 ),
-                "{}".format(commitish),
+                commitish,
                 custom_environ={"GIT_SEQUENCE_EDITOR": ":"}
             )
 
@@ -762,7 +762,7 @@ class gs_rebase_interactive(GsTextCommand, RebaseCommand):
                 None
             ),
             yes_no_switch("--update-refs", update_refs),
-            "{}".format(commitish),
+            commitish,
             offer_autostash=True,
         )
 
@@ -789,7 +789,7 @@ class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
                 None
             ),
             yes_no_switch("--update-refs", update_refs),
-            "{}".format(commitish),
+            commitish,
             "--onto",
             onto,
             offer_autostash=True,
