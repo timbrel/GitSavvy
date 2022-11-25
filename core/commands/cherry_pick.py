@@ -2,10 +2,15 @@ import sublime
 
 from .log import GsLogByBranchCommand
 from ...common import util
+from GitSavvy.core.base_commands import GsWindowCommand
+from GitSavvy.core.runtime import on_worker
 
 
 __all__ = (
     "gs_cherry_pick",
+    "gs_cherry_pick_abort",
+    "gs_cherry_pick_continue",
+    "gs_cherry_pick_skip",
 )
 
 
@@ -20,3 +25,24 @@ class gs_cherry_pick(GsLogByBranchCommand):
         self.git("cherry-pick", commit_hash)
         sublime.active_window().status_message("Commit %s cherry-picked successfully." % commit_hash)
         util.view.refresh_gitsavvy(self.window.active_view())
+
+
+class gs_cherry_pick_abort(GsWindowCommand):
+    @on_worker
+    def run(self):
+        self.git("cherry-pick", "--abort")
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+
+class gs_cherry_pick_continue(GsWindowCommand):
+    @on_worker
+    def run(self):
+        self.git("cherry-pick", "--continue")
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+
+class gs_cherry_pick_skip(GsWindowCommand):
+    @on_worker
+    def run(self):
+        self.git("cherry-pick", "--skip")
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
