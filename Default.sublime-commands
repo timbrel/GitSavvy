@@ -324,6 +324,18 @@
         "command": "gs_revert_commit"
     },
     {
+        "caption": "git: revert --abort",
+        "command": "gs_revert_abort"
+    },
+    {
+        "caption": "git: revert --continue",
+        "command": "gs_revert_continue"
+    },
+    {
+        "caption": "git: revert --skip",
+        "command": "gs_revert_skip"
+    },
+    {
         "caption": "git: show current file at commit",
         "command": "gs_show_current_file"
     },

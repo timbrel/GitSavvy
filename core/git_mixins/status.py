@@ -277,6 +277,8 @@ class StatusMixin(mixin_base):
 
         if self.in_cherry_pick():
             secondary.append("Cherry-picking {}.".format(self.cherry_pick_head()))
+        if self.in_revert():
+            secondary.append("Reverting {}.".format(self.revert_head()))
 
         return delim.join([status] + secondary) if secondary else status
 
@@ -310,6 +312,9 @@ class StatusMixin(mixin_base):
         cherry_pick_head = self.cherry_pick_head() if self.in_cherry_pick() else ""
         if cherry_pick_head:
             output += " (cherry-picking {})".format(cherry_pick_head)
+        revert_head = self.revert_head() if self.in_revert() else ""
+        if revert_head:
+            output += " (reverting {})".format(revert_head)
 
         return output
 
@@ -425,6 +430,15 @@ class StatusMixin(mixin_base):
     def cherry_pick_head(self):
         # type: () -> str
         commit_hash = self._read_git_file("CHERRY_PICK_HEAD")
+        return self.get_short_hash(commit_hash) if commit_hash else ""
+
+    def in_revert(self):
+        # type: () -> bool
+        return os.path.exists(os.path.join(self.git_dir, "REVERT_HEAD"))
+
+    def revert_head(self):
+        # type: () -> str
+        commit_hash = self._read_git_file("REVERT_HEAD")
         return self.get_short_hash(commit_hash) if commit_hash else ""
 
     def conflicting_files_(self):

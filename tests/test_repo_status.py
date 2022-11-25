@@ -97,6 +97,7 @@ class TestShortBranchStatus(DeferrableTestCase):
         when(git).in_rebase().thenReturn(False)
         when(git).in_merge().thenReturn(False)
         when(git).in_cherry_pick().thenReturn(False)
+        when(git).in_revert().thenReturn(False)
 
         when(git).git("status", ...).thenReturn(status_lines)
 
@@ -233,6 +234,7 @@ class TestLongBranchStatus(DeferrableTestCase):
         when(git).in_rebase().thenReturn(False)
         when(git).in_merge().thenReturn(False)
         when(git).in_cherry_pick().thenReturn(False)
+        when(git).in_revert().thenReturn(False)
 
         when(git).git("status", ...).thenReturn(status_lines)
 
