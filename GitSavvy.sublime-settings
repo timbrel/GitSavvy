@@ -302,7 +302,6 @@
     "tab_order": [
         "status",
         "branch",
-        "rebase",
         "tags",
         "graph"
     ],
