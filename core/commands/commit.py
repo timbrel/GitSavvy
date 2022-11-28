@@ -39,9 +39,11 @@ COMMIT_HELP_TEXT_EXTRA = """##
 ## "fixup<tab>"  to create a fixup subject  (short: "fix<tab>")
 ## "squash<tab>  to create a squash subject (short: "sq<tab>")
 ## "#<tab>"      to reference a GitHub issue (or: "owner/repo#<tab>")
-## In the diff below, [o] will open the file under the cursor.
 """
 
+HELP_WHEN_PATCH_IS_VISIBLE = """\
+## In the diff below, [o] will open the file under the cursor.
+"""
 HELP_WHEN_UNSTAGING_IS_POSSIBLE = """\
 ## [u]/[U]       to unstage
 """
@@ -161,8 +163,8 @@ class gs_commit(WindowCommand, GitCommand):
         view.run_command("gs_prepare_commit_refresh_diff")
 
 
-def generate_help_text(view):
-    # type: (sublime.View) -> str
+def generate_help_text(view, with_patch_commands=False):
+    # type: (sublime.View, bool) -> str
     settings = view.settings()
     commit_on_close = settings.get("git_savvy.commit_on_close")
     help_text = (
@@ -170,10 +172,12 @@ def generate_help_text(view):
         if commit_on_close
         else COMMIT_HELP_TEXT
     )
-    if settings.get("git_savvy.diff_view.in_cached_mode"):
-        help_text += HELP_WHEN_UNSTAGING_IS_POSSIBLE
-    else:
-        help_text += HELP_WHEN_DISCARDING_IS_POSSIBLE
+    if with_patch_commands:
+        help_text += HELP_WHEN_PATCH_IS_VISIBLE
+        if settings.get("git_savvy.diff_view.in_cached_mode"):
+            help_text += HELP_WHEN_UNSTAGING_IS_POSSIBLE
+        else:
+            help_text += HELP_WHEN_DISCARDING_IS_POSSIBLE
     return help_text
 
 
@@ -233,7 +237,7 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
             diff_text += "\n-- Partially decoded output follows; � denotes decoding errors --\n\n"""
             diff_text += raw_diff_text.decode("utf-8", "replace")
 
-        final_text = generate_help_text(view)
+        final_text = generate_help_text(view, with_patch_commands=show_patch and bool(diff_text))
         if diff_text:
             final_text += ("\n" + diff_text) if show_patch or show_stat else ""
         elif (show_patch or show_stat) and not include_unstaged:
