@@ -42,16 +42,18 @@ COMMIT_HELP_TEXT_EXTRA = """##
 ## In the diff below, [o] will open the file under the cursor.
 """
 
-COMMIT_HELP_TEXT_ALT = """
+HELP_WHEN_UNSTAGING_IS_POSSIBLE = """\
+## [u]/[U]       to unstage
+"""
 
+COMMIT_HELP_TEXT_ALT = """\
 ## To make a commit, type your commit message and close the window.
 ## To cancel the commit, delete the commit message and close the window.
 ## To sign off on the commit, press {key}-S.
 """.format(key=util.super_key) + COMMIT_HELP_TEXT_EXTRA
 
 
-COMMIT_HELP_TEXT = """
-
+COMMIT_HELP_TEXT = """\
 ## To make a commit, type your commit message and press {key}-ENTER.
 ## To cancel the commit, close the window. To sign off on the commit,
 ## press {key}-S.
@@ -136,21 +138,15 @@ class gs_commit(WindowCommand, GitCommand):
     def initialize_view(self, view, amend):
         # type: (sublime.View, bool) -> None
         merge_msg_path = os.path.join(self.git_dir, "MERGE_MSG")
-
-        help_text = (
-            COMMIT_HELP_TEXT_ALT
-            if self.savvy_settings.get("commit_on_close")
-            else COMMIT_HELP_TEXT
-        )
-
+        initial_text = ""
         if amend:
             last_commit_message = self.git("log", "-1", "--pretty=%B").strip()
-            initial_text = last_commit_message + help_text
+            initial_text += last_commit_message
         elif os.path.exists(merge_msg_path):
             with util.file.safe_open(merge_msg_path, "r") as f:
-                initial_text = f.read() + help_text
-        else:
-            initial_text = help_text
+                initial_text += f.read()
+
+        initial_text += "\n\n" + generate_help_text(view)
 
         commit_help_extra_file = self.savvy_settings.get("commit_help_extra_file") or ".commit_help"
         commit_help_extra_path = os.path.join(self.repo_path, commit_help_extra_file)
@@ -160,6 +156,20 @@ class gs_commit(WindowCommand, GitCommand):
 
         replace_view_content(view, initial_text)
         view.run_command("gs_prepare_commit_refresh_diff")
+
+
+def generate_help_text(view):
+    # type: (sublime.View) -> str
+    settings = view.settings()
+    commit_on_close = settings.get("git_savvy.commit_on_close")
+    help_text = (
+        COMMIT_HELP_TEXT_ALT
+        if commit_on_close
+        else COMMIT_HELP_TEXT
+    )
+    if settings.get("git_savvy.diff_view.in_cached_mode"):
+        help_text += HELP_WHEN_UNSTAGING_IS_POSSIBLE
+    return help_text
 
 
 class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
@@ -218,18 +228,19 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
             diff_text += "\n-- Partially decoded output follows; � denotes decoding errors --\n\n"""
             diff_text += raw_diff_text.decode("utf-8", "replace")
 
+        final_text = generate_help_text(view)
         if diff_text:
-            final_text = ("\n" + diff_text) if show_patch or show_stat else ""
+            final_text += ("\n" + diff_text) if show_patch or show_stat else ""
         elif (show_patch or show_stat) and not include_unstaged:
             settings.set("git_savvy.commit_view.include_unstaged", True)
             settings.set("git_savvy.diff_view.in_cached_mode", False)
             view.run_command("gs_prepare_commit_refresh_diff")
             return
         else:
-            final_text = "\nNothing to commit.\n"
+            final_text += "\nNothing to commit.\n"
 
         try:
-            region = view.find_by_selector("git-savvy.diff")[0]
+            region = view.find_by_selector("meta.dropped.git.commit")[0]
         except IndexError:
             region = sublime.Region(view.size())
 
