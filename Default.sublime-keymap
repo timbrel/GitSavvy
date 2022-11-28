@@ -634,6 +634,26 @@
             { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
         ]
     },
+    {
+        "keys": ["d"],
+        "command": "gs_diff_stage_or_reset_hunk",
+        "args": { "reset": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
+        ]
+    },
+    {
+        "keys": ["D"],
+        "command": "gs_diff_stage_or_reset_hunk",
+        "args": { "reset": true, "whole_file": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
+        ]
+    },
 
 
     ///////////////
