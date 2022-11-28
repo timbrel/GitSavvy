@@ -923,7 +923,10 @@ class gs_diff_undo(TextCommand, GitCommand):
         self.view.settings().set("git_savvy.diff_view.history", history)
         self.view.settings().set("git_savvy.diff_view.just_hunked", stdin)
 
-        self.view.run_command("gs_diff_refresh")
+        if self.view.settings().get("git_savvy.commit_view"):
+            self.view.run_command("gs_prepare_commit_refresh_diff")
+        else:
+            self.view.run_command("gs_diff_refresh")
 
         # The cursor is only applicable if we're still in the same cache/stage mode
         if self.view.settings().get("git_savvy.diff_view.in_cached_mode") == in_cached_mode:
