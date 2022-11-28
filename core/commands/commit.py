@@ -50,6 +50,9 @@ HELP_WHEN_UNSTAGING_IS_POSSIBLE = """\
 HELP_WHEN_DISCARDING_IS_POSSIBLE = """\
 ## [d]/[D]       to discard changes
 """
+HELP_WHEN_UNDOING_IS_POSSIBLE = """\
+## [{key}+z]{space}     to undo
+""".format(key=util.super_key, space=" " * (5 - len(util.super_key)))
 
 COMMIT_HELP_TEXT_ALT = """\
 ## To make a commit, type your commit message and close the window.
@@ -178,6 +181,8 @@ def generate_help_text(view, with_patch_commands=False):
             help_text += HELP_WHEN_UNSTAGING_IS_POSSIBLE
         else:
             help_text += HELP_WHEN_DISCARDING_IS_POSSIBLE
+        if settings.get("git_savvy.diff_view.history"):
+            help_text += HELP_WHEN_UNDOING_IS_POSSIBLE
     return help_text
 
 
