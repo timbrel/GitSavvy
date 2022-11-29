@@ -36,13 +36,13 @@ class ActiveBranchMixin(mixin_base):
 
         return stdout or "No commits yet."
 
-    def get_latest_commits(self, n=5):
+    def get_latest_commits(self, max_items=5):
         # type: (int) -> List[str]
         lines = [
             line.split("%00")
             for line in self.git(
                 "log",
-                "-n", str(n),
+                "-n", "100",
                 (
                     "--format="
                     "%h%00"
@@ -60,11 +60,14 @@ class ActiveBranchMixin(mixin_base):
             store.update_state(self.repo_path, {"short_hash_length": len(short_hash)})
 
         def _postprocess(lines):
-            for (h, d, s) in lines:
-                if not d or "HEAD" in d:
-                    yield "{} {}".format(h, s)
-                else:
+            for idx, (h, d, s) in enumerate(lines):
+                if d and "HEAD" not in d:
+                    if idx > max_items:
+                        yield "\u200B ⋮"
                     yield "{} \u200B{}".format(h, d.lstrip())
                     break
+
+                elif idx < max_items:
+                    yield "{} {}".format(h, s)
 
         return list(_postprocess(lines)) or ["No commits yet."]
