@@ -398,6 +398,15 @@
         ]
     },
     {
+        "keys": ["o"],
+        "command": "gs_status_stash",
+        "args": { "action": "show" },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "selector", "operand": "git-savvy.status meta.git-savvy.section.body.row.stash" }
+        ]
+    },
+    {
         "keys": ["t", "s"],
         "command": "gs_status_stash",
         "args": { "action": "show" },
@@ -406,6 +415,7 @@
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
         ]
     },
+
 
     //////////////////////////////
     // STATUS VIEW - NAVIGATION //
