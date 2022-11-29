@@ -59,7 +59,11 @@ class ActiveBranchMixin(mixin_base):
         else:
             store.update_state(self.repo_path, {"short_hash_length": len(short_hash)})
 
-        return list(format_and_limit(lines, max_items)) or ["No commits yet."]
+        rv = list(format_and_limit(lines, max_items)) or ["No commits yet."]
+        store.update_state(self.repo_path, {
+            "recent_commits": rv,
+        })
+        return rv
 
 
 def format_and_limit(lines, max_items):

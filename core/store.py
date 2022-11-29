@@ -27,6 +27,7 @@ if MYPY:
             "last_reset_mode_used": Optional[str],
             "short_hash_length": int,
             "stashes": List[Stash],
+            "recent_commits": List[str],
         },
         total=False
     )
