@@ -59,15 +59,17 @@ class ActiveBranchMixin(mixin_base):
         else:
             store.update_state(self.repo_path, {"short_hash_length": len(short_hash)})
 
-        def _postprocess(lines):
-            for idx, (h, d, s) in enumerate(lines):
-                if d and "HEAD" not in d:
-                    if idx > max_items:
-                        yield "\u200B ⋮"
-                    yield "{} \u200B{}".format(h, d.lstrip())
-                    break
+        return list(format_and_limit(lines, max_items)) or ["No commits yet."]
 
-                elif idx < max_items:
-                    yield "{} {}".format(h, s)
 
-        return list(_postprocess(lines)) or ["No commits yet."]
+def format_and_limit(lines, max_items):
+    for idx, (h, d, s) in enumerate(lines):
+        # Generally, stop at the first decorated commit (that is not the HEAD)
+        if d and idx > 0:
+            if idx > max_items:
+                yield "\u200B ⋮"
+            yield "{} \u200B{}".format(h, d.lstrip())
+            break
+
+        elif idx < max_items:
+            yield "{} {}".format(h, s)
