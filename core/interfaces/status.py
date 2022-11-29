@@ -2,6 +2,7 @@ from functools import partial, wraps
 from contextlib import contextmanager
 import os
 import threading
+from weakref import WeakKeyDictionary
 
 import sublime
 from sublime_plugin import WindowCommand
@@ -89,16 +90,14 @@ EXTRACT_FILENAME_RE = (
 
 def distinct_until_state_changed(just_render_fn):
     """Custom `lru_cache`-look-alike to minimize redraws."""
-    previous_state = {}  # type: StatusViewState
+    previous_states = WeakKeyDictionary()  # type: WeakKeyDictionary[StatusInterface, StatusViewState]
 
     @wraps(just_render_fn)
     def wrapper(self, *args, **kwargs):
-        nonlocal previous_state
-
         current_state = self.state
-        if current_state != previous_state:
+        if current_state != previous_states.get(self):
             just_render_fn(self, *args, **kwargs)
-            previous_state = current_state.copy()
+            previous_states[self] = current_state.copy()
 
     return wrapper
 
