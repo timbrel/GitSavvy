@@ -24,6 +24,15 @@
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.git-savvy.summary-header.head-summary
 # ^^^^^ comment.git-savvy.summary-header.title.head
 #          ^^^^^^^ constant.other
+           70740e43 ​commit message
+#          ^^^^^^^^ constant.other.git-savvy.sha1
+           ​ ⋮
+#            ^ punctuation.other.dropped-commits.git-savvy
+#           ! shift to the right because of the invisible whitespace markers !
+           70740e43 ​(iter-stashes)
+#          ^^^^^^^^ constant.other.git-savvy.sha1
+#                    ^^^^^^^^^^^^^^ constant.other.git.branch.git-savvy
+#                   ! shift to the right because of the invisible whitespace markers !
 
   ** Press [e] to toggle display of remote branches. **
 # <- - meta.git-savvy.status

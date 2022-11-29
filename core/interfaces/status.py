@@ -55,7 +55,7 @@ if MYPY:
             "long_status": str,
             "git_root": str,
             "show_help": bool,
-            "head": str,
+            "recent_commits": List[str],
             "stashes": List[Stash],
         },
         total=False
@@ -232,7 +232,7 @@ class StatusInterface(ui.Interface, GitCommand):
             'long_status': '',
             'git_root': '',
             'show_help': True,
-            'head': '',
+            'recent_commits': [],
             'stashes': []
         }  # type: StatusViewState
         super().__init__(*args, **kwargs)
@@ -249,7 +249,7 @@ class StatusInterface(ui.Interface, GitCommand):
         with the real world.
         """
         for thunk in (
-            lambda: {'head': self.get_latest_commit_msg_for_head()},
+            lambda: {'recent_commits': self.get_latest_commits(5)},
             lambda: {'stashes': self.get_stashes()},
         ):
             sublime.set_timeout_async(
@@ -339,7 +339,7 @@ class StatusInterface(ui.Interface, GitCommand):
 
     @ui.section("head")
     def render_head(self):
-        return self.state['head']
+        return "\n           ".join(self.state['recent_commits'])
 
     @ui.section("staged_files")
     def render_staged_files(self):

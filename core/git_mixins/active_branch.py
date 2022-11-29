@@ -2,6 +2,11 @@ from GitSavvy.core.git_command import mixin_base
 from .. import store
 
 
+MYPY = False
+if MYPY:
+    from typing import List
+
+
 class ActiveBranchMixin(mixin_base):
 
     def get_commit_hash_for_head(self):
@@ -30,3 +35,36 @@ class ActiveBranchMixin(mixin_base):
                 store.update_state(self.repo_path, {"short_hash_length": len(short_hash)})
 
         return stdout or "No commits yet."
+
+    def get_latest_commits(self, n=5):
+        # type: (int) -> List[str]
+        lines = [
+            line.split("%00")
+            for line in self.git(
+                "log",
+                "-n", str(n),
+                (
+                    "--format="
+                    "%h%00"
+                    "%d%00"
+                    "%s"
+                ),
+                throw_on_error=False
+            ).strip().splitlines()
+        ]
+        try:
+            short_hash = lines[0][0]
+        except IndexError:
+            pass
+        else:
+            store.update_state(self.repo_path, {"short_hash_length": len(short_hash)})
+
+        def _postprocess(lines):
+            for (h, d, s) in lines:
+                if not d or "HEAD" in d:
+                    yield "{} {}".format(h, s)
+                else:
+                    yield "{} \u200B{}".format(h, d.lstrip())
+                    break
+
+        return list(_postprocess(lines)) or ["No commits yet."]
