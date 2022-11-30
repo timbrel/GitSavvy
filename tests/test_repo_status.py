@@ -431,6 +431,17 @@ class TestRecentCommitsFormat(DeferrableTestCase):
             ]
         ),
 
+        (
+            "special format additional decoration on the HEAD commit",
+            [
+                ["abc", " (HEAD -> feature-branch, another-feat)", "message"],
+                ["def", "", "dropped"],
+            ],
+            [
+                "abc message",
+                "└──  \u200B(another-feat)"
+            ]
+        ),
 
     ])
     def test_formatting_and_limiting(self, _, lines, expected):

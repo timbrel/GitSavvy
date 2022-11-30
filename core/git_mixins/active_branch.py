@@ -68,12 +68,23 @@ class ActiveBranchMixin(mixin_base):
 
 def format_and_limit(lines, max_items):
     for idx, (h, d, s) in enumerate(lines):
-        # Generally, stop at the first decorated commit (that is not the HEAD)
-        if d and idx > 0:
-            if idx > max_items:
-                yield "\u200B ⋮"
-            yield "{} \u200B{}".format(h, d.lstrip())
+        decorations = [
+            part for part in d.lstrip()[1:-1].split(", ")
+            if part and part != "HEAD" and "HEAD ->" not in part
+        ]
+        if decorations:
+            if idx == 0:
+                yield "{} {}".format(h, s)
+                yield "{}└──  \u200B{}".format(" " * (len(h) - 4), format_decorations(decorations))
+            else:
+                if idx > max_items:
+                    yield "\u200B ⋮"
+                yield "{} \u200B{}".format(h, format_decorations(decorations))
             break
 
         elif idx < max_items:
             yield "{} {}".format(h, s)
+
+
+def format_decorations(decorations):
+    return "({})".format(", ".join(decorations))
