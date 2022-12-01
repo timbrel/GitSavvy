@@ -1,10 +1,20 @@
+from collections import namedtuple
+
 from GitSavvy.core.git_command import mixin_base
 from .. import store
 
 
 MYPY = False
 if MYPY:
-    from typing import List
+    from typing import Iterator, List, NamedTuple, Optional
+    Commit = NamedTuple("Commit", [
+        ("hash", str),
+        ("decoration", str),
+        ("message", str),
+    ])
+
+else:
+    Commit = namedtuple("Commit", "hash decoration message")
 
 
 class ActiveBranchMixin(mixin_base):
@@ -36,10 +46,10 @@ class ActiveBranchMixin(mixin_base):
 
         return stdout or "No commits yet."
 
-    def get_latest_commits(self, max_items=5):
-        # type: (int) -> List[str]
-        lines = [
-            line.split("%00")
+    def get_latest_commits(self):
+        # type: () -> List[Commit]
+        commits = [
+            Commit(*line.split("%00"))
             for line in self.git(
                 "log",
                 "-n", "100",
@@ -52,27 +62,25 @@ class ActiveBranchMixin(mixin_base):
                 throw_on_error=False
             ).strip().splitlines()
         ]
-        try:
-            short_hash = lines[0][0]
-        except IndexError:
-            pass
-        else:
-            store.update_state(self.repo_path, {"short_hash_length": len(short_hash)})
+        if commits:
+            short_hash_length = len(commits[0].hash)
+            store.update_state(self.repo_path, {"short_hash_length": short_hash_length})
 
-        rv = list(format_and_limit(lines, max_items)) or ["No commits yet."]
         store.update_state(self.repo_path, {
-            "recent_commits": rv,
+            "recent_commits": commits,
         })
-        return rv
+        return commits
 
 
-def format_and_limit(lines, max_items):
-    for idx, (h, d, s) in enumerate(lines):
+def format_and_limit(commits, max_items, current_upstream=None):
+    # type: (List[Commit], int, Optional[str]) -> Iterator[str]
+    for idx, (h, d, s) in enumerate(commits):
         decorations = [
             part for part in d.lstrip()[1:-1].split(", ")
             if part and part != "HEAD" and "HEAD ->" not in part
         ]
-        if decorations:
+        decoration_that_breaks = set(decorations) - {current_upstream}
+        if decoration_that_breaks:
             if idx == 0:
                 yield from commit(h, s, decorations)
             else:

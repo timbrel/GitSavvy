@@ -8,6 +8,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_mixins.status import FileStatus
+from ..git_mixins.active_branch import format_and_limit
 from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
@@ -44,7 +45,10 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import Iterable, List, Optional, TypedDict
+    from ..git_mixins.active_branch import Commit
     from ..git_mixins.stash import Stash
+    from ..git_mixins.status import HeadState
+
     StatusViewState = TypedDict(
         "StatusViewState",
         {
@@ -56,7 +60,8 @@ if MYPY:
             "long_status": str,
             "git_root": str,
             "show_help": bool,
-            "recent_commits": List[str],
+            "head": Optional[HeadState],
+            "recent_commits": List[Commit],
             "stashes": List[Stash],
         },
         total=False
@@ -86,6 +91,7 @@ EXTRACT_FILENAME_RE = (
     # Note: A filename cannot start with a space (which is luckily true anyway)
     # otherwise our naive `.*` could consume only whitespace.
 )
+ITEMS_IN_THE_RECENT_LIST = 5
 
 
 def distinct_until_state_changed(just_render_fn):
@@ -231,6 +237,7 @@ class StatusInterface(ui.Interface, GitCommand):
             'long_status': '',
             'git_root': '',
             'show_help': True,
+            'head': None,
             'recent_commits': [],
             'stashes': []
         }  # type: StatusViewState
@@ -248,7 +255,7 @@ class StatusInterface(ui.Interface, GitCommand):
         with the real world.
         """
         for thunk in (
-            lambda: {'recent_commits': self.get_latest_commits(5)},
+            lambda: {'recent_commits': self.get_latest_commits()},
             lambda: {'stashes': self.get_stashes()},
         ):
             sublime.set_timeout_async(
@@ -265,6 +272,7 @@ class StatusInterface(ui.Interface, GitCommand):
             'git_root': self.short_repo_path,
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
             'stashes': state.get("stashes", []),
+            'head': state.get("head", None),
             'recent_commits': state.get("recent_commits", []),
         })
 
@@ -308,7 +316,12 @@ class StatusInterface(ui.Interface, GitCommand):
             self.view.run_command("gs_status_navigate_goto")
 
     def on_status_update(self, _repo_path, state):
-        self.update_state(state["status"]._asdict(), then=self.just_render)
+        try:
+            new_state = state["status"]._asdict()
+        except KeyError:
+            new_state = {}
+        new_state["head"] = state.get("head")
+        self.update_state(new_state, then=self.just_render)
 
     def refresh_repo_status_and_render(self):
         """Refresh `git status` state and render.
@@ -324,7 +337,9 @@ class StatusInterface(ui.Interface, GitCommand):
         view.settings().set("result_base_dir", self.repo_path)
 
     def on_create(self):
-        self._unsubscribe = store.subscribe(self.repo_path, {"status"}, self.on_status_update)
+        self._unsubscribe = store.subscribe(
+            self.repo_path, {"status", "head"}, self.on_status_update
+        )
 
     def on_close(self):
         self._unsubscribe()
@@ -339,7 +354,16 @@ class StatusInterface(ui.Interface, GitCommand):
 
     @ui.section("head")
     def render_head(self):
-        return "\n           ".join(self.state['recent_commits'])
+        # type: () -> str
+        recent_commits = self.state['recent_commits']
+        if not recent_commits:
+            return "No commits yet."
+
+        head = self.state['head']
+        current_upstream = head.remote if head else None
+        return "\n           ".join(
+            format_and_limit(recent_commits, ITEMS_IN_THE_RECENT_LIST, current_upstream)
+        )
 
     @ui.section("staged_files")
     def render_staged_files(self):

@@ -443,7 +443,34 @@ class TestRecentCommitsFormat(DeferrableTestCase):
             ]
         ),
 
+        (
+            "do not stop after the upstream branch decoration (on HEAD)",
+            [
+                ["abc", " (HEAD -> master, origin/master)", "message"],
+                ["abc", "", "message"],
+            ],
+            [
+                "abc message",
+                "└──  \u200B(origin/master)",
+                "abc message",
+            ]
+        ),
+        (
+            "do not stop after the upstream branch decoration (on a later commit)",
+            [
+                ["abc", " (HEAD -> master)", "message"],
+                ["bcd", " (origin/master)", "message"],
+                ["abc", "", "message"],
+            ],
+            [
+                "abc message",
+                "bcd message",
+                "└──  \u200B(origin/master)",
+                "abc message",
+            ]
+        ),
+
     ])
     def test_formatting_and_limiting(self, _, lines, expected):
-        actual = list(active_branch.format_and_limit(lines, 5))
+        actual = list(active_branch.format_and_limit(lines, 5, "origin/master"))
         self.assertEqual(actual, expected)
