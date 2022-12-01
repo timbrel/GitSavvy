@@ -74,16 +74,35 @@ def format_and_limit(lines, max_items):
         ]
         if decorations:
             if idx == 0:
-                yield "{} {}".format(h, s)
-                yield "{}└──  \u200B{}".format(" " * (len(h) - 4), format_decorations(decorations))
+                yield from commit(h, s, decorations)
             else:
                 if idx > max_items:
-                    yield "\u200B ⋮"
-                yield "{} \u200B{}".format(h, format_decorations(decorations))
+                    yield KONTINUATION
+                yield stand_alone_decoration_line(h, decorations)
             break
-
         elif idx < max_items:
-            yield "{} {}".format(h, s)
+            yield from commit(h, s, decorations)
+
+
+KONTINUATION = "\u200B ⋮"
+
+
+def commit(h, s, decorations):
+    yield commit_line(h, s)
+    if decorations:
+        yield additional_decoration_line(h, decorations)
+
+
+def commit_line(h, s):
+    return "{} {}".format(h, s)
+
+
+def additional_decoration_line(h, decorations):
+    return "{}└──  \u200B{}".format(" " * (len(h) - 4), format_decorations(decorations))
+
+
+def stand_alone_decoration_line(h, decorations):
+    return "{} \u200B{}".format(h, format_decorations(decorations))
 
 
 def format_decorations(decorations):
