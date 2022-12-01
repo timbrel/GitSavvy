@@ -35,18 +35,23 @@ contexts:
           comment: ahead or behind
           scope: keyword.other.git-savvy.summary-header.ahead-behind
 
+        - match: (?:(onto) ([0-9a-f]{7,40}))? (\((\d+)/(\d+)\))
+          captures:
+            2: constant.other.git-savvy.sha1
+            3: keyword.other.git-savvy.todo-progress
+            4: keyword.other.git-savvy.numerator
+            5: keyword.other.git-savvy.denominator
+
+        - match: ^\s{11}(`+)\s?(.*)
+          captures:
+            2: string.other.git-savvy.todo-item
+
         - match: ^  (HEAD:)(?:\s+([0-9a-f]{7,40}) .+)?
           comment: head summary
           scope: comment.git-savvy.summary-header.head-summary
           captures:
             1: comment.git-savvy.summary-header.title.head
             2: constant.other.git-savvy.sha1
-
-        - match: ^\s+(Stopped at[:])(?:\s+([0-9a-f]{7,40}) .+)?
-          captures:
-            1: keyword.git-savvy.summary-header.rebase.current
-            2: constant.other.git-savvy.sha1
-
 
     - match: "^  (#{3,})"
       comment: Key-bindings menu

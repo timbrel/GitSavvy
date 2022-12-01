@@ -268,15 +268,15 @@ class StatusMixin(mixin_base):
             onto = self._read_rebase_file("onto")
             rebase_progress = self._rebase_progress()
             secondary.append(
-                "Rebasing {}{}{}.".format(
+                "Rebasing `{}`{}{}.".format(
                     self.rebase_branch_name(),
-                    " onto `{}`".format(self.get_short_hash(onto)) if onto else "",
+                    " onto {}".format(self.get_short_hash(onto)) if onto else "",
                     " ({})".format(rebase_progress) if rebase_progress else ""
                 )
             )
             rebase_stopped_at = self.rebase_stopped_at()
             if rebase_stopped_at:
-                secondary.append("Stopped at: {}.".format(rebase_stopped_at))
+                secondary.append("`{}".format(rebase_stopped_at))
 
         if self.in_cherry_pick():
             secondary.append("Cherry-picking {}.".format(self.cherry_pick_head()))
@@ -383,10 +383,7 @@ class StatusMixin(mixin_base):
         parts = item.split()
         if parts[0] in {"pick", "fixup", "squash", "reword", "edit"}:
             parts[1] = self.get_short_hash(parts[1])
-            if parts[0] in {"reword", "edit"}:
-                return " ".join(parts)
-            else:
-                return " ".join(parts[1:])
+            return " ".join(parts)
         else:
             return item
 
