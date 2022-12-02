@@ -294,13 +294,9 @@ class gs_new_content_and_regions(TextCommand):
 
 
 class gs_update_region(TextCommand):
-
     def run(self, edit, key, content):
-        is_read_only = self.view.is_read_only()
-        self.view.set_read_only(False)
         for region in self.view.get_regions(key):
-            self.view.replace(edit, region, content)
-        self.view.set_read_only(is_read_only)
+            replace_view_content(self.view, content, region)
 
 
 class InterfaceCommand(GsTextCommand):
