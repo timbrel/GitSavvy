@@ -27,7 +27,7 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import (
-        Callable, Dict, Iterable, Iterator, List, Protocol, Set, Tuple, Type, TypeVar, Union
+        AbstractSet, Callable, Dict, Iterable, Iterator, List, Protocol, Tuple, Type, TypeVar, Union
     )
     T = TypeVar("T")
     SectionRegions = Dict[str, sublime.Region]
@@ -275,16 +275,48 @@ def indent_by_2(text):
 
 
 class gs_new_content_and_regions(TextCommand):
-    current_region_names = set()  # type: Set[str]
+    current_region_names = set()  # type: AbstractSet[str]
 
     def run(self, edit, content, regions):
-        replace_view_content(self.view, content)
+        # type: (object, str, Dict[str, Tuple[int, int]]) -> None
+        def region_key(key):
+            return "git_savvy_interface." + key
+
+        def new_content_for_key(key) -> str:
+            try:
+                a, b = regions[key]
+            except KeyError:
+                return ""
+            else:
+                return content[a:b]
+
+        if regions.keys() - self.current_region_names:
+            replace_view_content(self.view, content)
+        else:
+            current_regions = [
+                (region, key)
+                for key in self.current_region_names | regions.keys()
+                for region in self.view.get_regions(region_key(key))
+            ]
+            for region, key in sorted(current_regions, reverse=True):
+                # For nested regions the actual content does not matter
+                # as the outermost region/key has-it-all.
+                # Skip these, as we would also need to read the updated
+                # region via `get_regions` again.  (E.g. the outer region
+                # shrinks with or when an inner region shrinks.)
+                if any(r_.contains(region) for r_, _ in current_regions if r_ != region):
+                    continue
+
+                txt = new_content_for_key(key)
+                # comparing the lengths is an optimization
+                if len(region) != len(txt) or txt != self.view.substr(region):
+                    replace_view_content(self.view, txt, region)
 
         for key, region_range in regions.items():
-            self.view.add_regions("git_savvy_interface." + key, [region_from_tuple(region_range)])
+            self.view.add_regions(region_key(key), [region_from_tuple(region_range)])
 
         for key in self.current_region_names - regions.keys():
-            self.view.erase_regions("git_savvy_interface." + key)
+            self.view.erase_regions(region_key(key))
 
         self.current_region_names = regions.keys()
 
