@@ -1,4 +1,5 @@
 from functools import partial, wraps
+from contextlib import contextmanager
 import os
 import threading
 
@@ -100,6 +101,13 @@ def distinct_until_state_changed(just_render_fn):
             previous_state = current_state.copy()
 
     return wrapper
+
+
+def cursor_is_on_something(view, what):
+    return any(
+        view.match_selector(s.begin(), what)
+        for s in view.sel()
+    )
 
 
 class gs_show_status(WindowCommand, GitCommand):
@@ -283,16 +291,18 @@ class StatusInterface(ui.Interface, GitCommand):
     @distinct_until_state_changed
     def just_render(self):
         content, regions = self._render_template()
-        self.draw(self.title(), content, regions)
+        with self.keep_cursor_on_something():
+            self.draw(self.title(), content, regions)
 
-        on_special_symbol = any(
-            self.view.match_selector(
-                s.begin(),
-                'meta.git-savvy.section.body.row'
-            )
-            for s in self.view.sel()
-        )
-        if not on_special_symbol:
+    @contextmanager
+    def keep_cursor_on_something(self):
+        on_something = partial(cursor_is_on_something, self.view)
+        on_a_file = partial(on_something, 'meta.git-savvy.entity.filename')
+        on_special_symbol = partial(on_something, 'meta.git-savvy.section.body.row')
+
+        was_on_a_file = on_a_file()
+        yield
+        if was_on_a_file and not on_a_file() or not on_special_symbol():
             self.view.run_command("gs_status_navigate_goto")
 
     def on_status_update(self, _repo_path, state):
