@@ -80,13 +80,10 @@ def format_and_limit(commits, max_items, current_upstream=None):
             if part and part != "HEAD" and "HEAD ->" not in part
         ]
         decoration_that_breaks = set(decorations) - {current_upstream}
-        if decoration_that_breaks:
-            if idx == 0:
-                yield from commit(h, s, decorations)
-            else:
-                if idx > max_items:
-                    yield KONTINUATION
-                yield stand_alone_decoration_line(h, decorations)
+        if decoration_that_breaks and idx > 0:
+            if idx > max_items:
+                yield KONTINUATION
+            yield stand_alone_decoration_line(h, decorations)
             break
         elif idx < max_items:
             yield from commit(h, s, decorations)

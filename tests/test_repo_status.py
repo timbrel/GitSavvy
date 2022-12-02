@@ -432,14 +432,15 @@ class TestRecentCommitsFormat(DeferrableTestCase):
         ),
 
         (
-            "special format additional decoration on the HEAD commit",
+            "do not stop when the HEAD commit is decorated",
             [
                 ["abc", " (HEAD -> feature-branch, another-feat)", "message"],
-                ["def", "", "dropped"],
+                ["not", "", "dropped"],
             ],
             [
                 "abc message",
-                "└──  \u200B(another-feat)"
+                "└──  \u200B(another-feat)",
+                "not dropped",
             ]
         ),
 
