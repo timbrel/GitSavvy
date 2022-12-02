@@ -1745,8 +1745,24 @@ def line_start_of_region(view, region):
 
 def colorize_dots(view):
     # type: (sublime.View) -> None
-    dots = tuple(find_dots(view))
+    dots = find_graph_art_at_cursor(view) or tuple(find_dots(view))
     _colorize_dots(view.id(), dots)
+
+
+def find_graph_art_at_cursor(view):
+    # type: (sublime.View) -> Tuple[colorizer.Char, ...]
+    if len(view.sel()) != 1:
+        return ()
+    cursor = view.sel()[0].b
+    if not view.match_selector(cursor, "meta.graph.branch-art"):
+        return ()
+
+    c = colorizer.Char(view, cursor)
+    for get_char in (lambda: c, lambda: c.w):
+        c_ = get_char()
+        if c_ != " ":
+            return (c_,)
+    return ()
 
 
 def find_dots(view):
