@@ -22,6 +22,7 @@ class GsNavigate(TextCommand, GitCommand):
     _just_jumped = 0
 
     def run(self, edit, forward=True):
+        self.forward = forward
         sel = self.view.sel()
         current_position = sel[0].a
 
@@ -30,9 +31,9 @@ class GsNavigate(TextCommand, GitCommand):
             return
 
         wanted_section = (
-            self.forward(current_position, available_regions)
+            self.next_region(current_position, available_regions)
             if forward
-            else self.backward(current_position, available_regions)
+            else self.previous_region(current_position, available_regions)
         )
         if wanted_section is None:
             if self._just_jumped == 1:
@@ -63,7 +64,7 @@ class GsNavigate(TextCommand, GitCommand):
         # type: () -> Sequence[sublime.Region]
         raise NotImplementedError()
 
-    def forward(self, current_position, regions):
+    def next_region(self, current_position, regions):
         # type: (sublime.Point, Sequence[sublime.Region]) -> Optional[sublime.Region]
         for region in regions:
             if region.a > current_position:
@@ -71,7 +72,7 @@ class GsNavigate(TextCommand, GitCommand):
 
         return regions[0] if self._wrap_around_now() else None
 
-    def backward(self, current_position, regions):
+    def previous_region(self, current_position, regions):
         # type: (sublime.Point, Sequence[sublime.Region]) -> Optional[sublime.Region]
         for region in reversed(regions):
             if region.a < current_position:
