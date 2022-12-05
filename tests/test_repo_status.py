@@ -439,7 +439,7 @@ class TestRecentCommitsFormat(DeferrableTestCase):
             ],
             [
                 "abc message",
-                "└──  \u200B(another-feat)",
+                "` \u200B(another-feat)",
                 "not dropped",
             ]
         ),
@@ -452,7 +452,7 @@ class TestRecentCommitsFormat(DeferrableTestCase):
             ],
             [
                 "abc message",
-                "└──  \u200B(origin/master)",
+                "` \u200B(origin/master)",
                 "abc message",
             ]
         ),
@@ -466,7 +466,7 @@ class TestRecentCommitsFormat(DeferrableTestCase):
             [
                 "abc message",
                 "bcd message",
-                "└──  \u200B(origin/master)",
+                "` \u200B(origin/master)",
                 "abc message",
             ]
         ),

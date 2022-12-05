@@ -59,7 +59,7 @@ contexts:
           captures:
             1: punctuation.other.dropped-commits.git-savvy
 
-        - match: ^\s{4,11}([ └─]+)\x{200b}(.*)
+        - match: ^\s{4,11}([ `]+)\x{200b}(.*)
           comment: line tagging the commit hash of the previous line
           scope: meta.git-savvy.summary-header.head-summary
           captures:

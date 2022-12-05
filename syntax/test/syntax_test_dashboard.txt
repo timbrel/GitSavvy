@@ -24,9 +24,9 @@
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.git-savvy.summary-header.head-summary
 # ^^^^^ comment.git-savvy.summary-header.title.head
 #          ^^^^^^^ constant.other
-              └──  ​(tag: 4.20.0, origin/master)
+              `  ​(tag: 4.20.0, origin/master)
 #             ^^^ punctuation.other.commit-decoration.git-savvy
-#                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant.other.git.branch.git-savvy
+#                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ constant.other.git.branch.git-savvy
 #                  ! shift to the right because of the invisible whitespace markers !
            70740e43 ​commit message
 #          ^^^^^^^^ constant.other.git-savvy.sha1

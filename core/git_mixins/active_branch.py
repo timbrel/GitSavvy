@@ -103,7 +103,7 @@ def commit_line(h, s):
 
 
 def additional_decoration_line(h, decorations):
-    return "{}└──  \u200B{}".format(" " * (len(h) - 4), format_decorations(decorations))
+    return "{}` \u200B{}".format(" " * (len(h) - 4), format_decorations(decorations))
 
 
 def stand_alone_decoration_line(h, decorations):
