@@ -40,6 +40,13 @@ class gs_line_history(TextCommand, GitCommand):
         if not window:
             return
 
+        settings = view.settings()
+        if settings.get("git_savvy.show_file_at_commit_view"):
+            self.from_historical_file(view, window)
+        else:
+            self.from_ordinary_view(view, window)
+
+    def from_ordinary_view(self, view, window):
         repo_path = self.repo_path
         file_path = view.file_name()
         if not file_path:
@@ -70,6 +77,26 @@ class gs_line_history(TextCommand, GitCommand):
             "repo_path": repo_path,
             "file_path": file_path,
             "ranges": ranges,
+        })
+
+    def from_historical_file(self, view, window):
+        settings = view.settings()
+        repo_path = settings.get("git_savvy.repo_path")
+        file_path = settings.get("git_savvy.file_path")
+        commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
+        ranges = [
+            (line_on_point(view, s.begin()), line_on_point(view, s.end()))
+            for s in view.sel()
+        ]
+        if not ranges:
+            flash(view, "No cursor to compute a line range from.")
+            return
+
+        window.run_command("gs_open_line_history", {
+            "repo_path": repo_path,
+            "file_path": file_path,
+            "ranges": ranges,
+            "commit": commit_hash,
         })
 
 
