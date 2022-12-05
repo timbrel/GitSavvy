@@ -1,3 +1,4 @@
+from functools import partial
 from itertools import chain
 import os
 
@@ -11,7 +12,7 @@ from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff
 from ..runtime import enqueue_on_worker
 from ..utils import flash
-from ..view import replace_view_content
+from ..view import clamp, replace_view_content
 from ...common import util
 
 
@@ -43,6 +44,12 @@ class gs_line_history(TextCommand, GitCommand):
         settings = view.settings()
         if settings.get("git_savvy.show_file_at_commit_view"):
             self.from_historical_file(view, window)
+            return
+
+        frozen_sel = [r for r in view.sel()]
+        cursor = frozen_sel[0].b if len(frozen_sel) == 1 else None
+        if cursor and view.match_selector(cursor, "git-savvy.diff"):
+            self.from_diff(view, window, frozen_sel[0])
         else:
             self.from_ordinary_view(view, window)
 
@@ -77,6 +84,68 @@ class gs_line_history(TextCommand, GitCommand):
             "repo_path": repo_path,
             "file_path": file_path,
             "ranges": ranges,
+        })
+
+    def from_diff(self, view, window, first_sel):
+        # type: (sublime.View, sublime.Window, sublime.Region) -> None
+        settings = view.settings()
+        repo_path = settings.get("git_savvy.repo_path")
+
+        d = SplittedDiff.from_view(view)
+        hunk = d.hunk_for_pt(first_sel.begin())
+        if not hunk:
+            flash(view, "Not on a hunk.")
+            return
+        header = d.head_for_hunk(hunk)
+        file_path = header.from_filename()
+        if not file_path:
+            flash(view, "Can't extract a file path.")
+            return
+        commit_hash = (
+            d.commit_hash_before_pt(first_sel.begin())
+            or settings.get("git_savvy.diff_view.target_commit")
+        )
+
+        if first_sel.empty():
+            # Assume the changed lines are selected which gives slightly
+            # better results than selecting the whole hunk.
+            changed_lines = [line for line in hunk.content().lines() if not line.is_context()]
+            first_sel = sublime.Region(changed_lines[0].a, changed_lines[-1].b)
+
+        if d.hunk_for_pt(first_sel.end()) != hunk:
+            flash(view, "Not across multiple hunks.")
+            return
+
+        hunk_with_linenos = list(diff.recount_lines(hunk))
+        rel_begin, _ = diff.row_offset_and_col_in_hunk(view, hunk, first_sel.begin())
+        rel_end, _ = diff.row_offset_and_col_in_hunk(view, hunk, first_sel.end())
+        # The hunk includes the `@@` line but `hunk_with_linenos` does not!
+        # So generally shift by `- 1`.
+        # Also generally `clamp` in case the user is on the `@@` line
+        # or at EOF position.
+        clamp_ = partial(clamp, 0, len(hunk_with_linenos) - 1)  # type: partial[int]
+        rel_begin = clamp_(rel_begin - 1)
+        rel_end = clamp_(rel_end - 1)
+
+        # Choose between a and b.  For non-historical diffs use
+        # the "a" metadata as on the "b" side is the uncommitted
+        # version of the file.
+        if not commit_hash:
+            ranges = [(
+                hunk_with_linenos[rel_begin][1].a,
+                hunk_with_linenos[rel_end][1].a
+            )]
+        else:
+            ranges = [(
+                hunk_with_linenos[rel_begin][1].b,
+                hunk_with_linenos[rel_end][1].b
+            )]
+
+        window.run_command("gs_open_line_history", {
+            "repo_path": repo_path,
+            "file_path": os.path.join(repo_path, file_path),
+            "ranges": ranges,
+            "commit": commit_hash,
         })
 
     def from_historical_file(self, view, window):

@@ -9,8 +9,9 @@ from .runtime import text_command
 
 MYPY = False
 if MYPY:
-    from typing import Callable, ContextManager, Iterator, List, NamedTuple, Optional
+    from typing import Callable, ContextManager, Iterator, List, NamedTuple, Optional, TypeVar
     WrapperFn = Callable[[sublime.View], ContextManager[None]]
+    T_float = TypeVar("T_float", int, float)
 
     from .types import Row, Col
     Position = NamedTuple("Position", [("row", Row), ("col", Col), ("offset", Optional[float])])
@@ -87,7 +88,7 @@ def flip_region(r):
 
 
 def clamp(lo, hi, v):
-    # type: (float, float, float) -> float
+    # type: (T_float, T_float, T_float) -> T_float
     return max(lo, min(hi, v))
 
 
