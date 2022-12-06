@@ -747,12 +747,7 @@ def jump_position_to_file(view, diff, pt):
 
     header, hunk = head_and_hunk
 
-    linecol = real_linecol_in_hunk(hunk, *row_offset_and_col_in_hunk(view, hunk, pt))
-    if not linecol:
-        return None
-
-    line, col = linecol
-
+    line, col = real_linecol_in_hunk(hunk, *row_offset_and_col_in_hunk(view, hunk, pt))
     filename = header.from_filename()
     if not filename:
         return None
@@ -780,7 +775,7 @@ def row_offset_and_col_in_hunk(view, hunk, pt):
 
 
 def real_linecol_in_hunk(hunk, row_offset, col):
-    # type: (Hunk, int, ColNo) -> Optional[LineCol]
+    # type: (Hunk, int, ColNo) -> LineCol
     """Translate relative to absolute line, col pair"""
     hunk_lines = list(recount_lines_for_jump_to_file(hunk))
 
