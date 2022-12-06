@@ -938,7 +938,7 @@ class gs_inline_diff_open_file(TextCommand, GitCommand):
         )
 
 
-def translate_pos_from_diff_view_to_file(view, line_no, col_no):
+def translate_pos_from_diff_view_to_file(view, line_no, col_no=1):
     # type: (sublime.View, LineNo, ColNo) -> Tuple[LineNo, ColNo]
     hunks = diff_view_hunks[view.id()]
     hunk_ref = closest_hunk_ref_before_line(hunks, line_no)

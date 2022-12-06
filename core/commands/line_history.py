@@ -6,6 +6,7 @@ import sublime
 from sublime_plugin import TextCommand, WindowCommand
 
 from . import diff
+from . import inline_diff
 from .navigate import GsNavigate
 from ..fns import filter_, pairwise
 from ..git_command import GitCommand
@@ -44,6 +45,9 @@ class gs_line_history(TextCommand, GitCommand):
         settings = view.settings()
         if settings.get("git_savvy.show_file_at_commit_view"):
             self.from_historical_file(view, window)
+            return
+        if settings.get("git_savvy.inline_diff_view"):
+            self.from_inline_diff_view(view, window)
             return
 
         frozen_sel = [r for r in view.sel()]
@@ -84,6 +88,38 @@ class gs_line_history(TextCommand, GitCommand):
             "repo_path": repo_path,
             "file_path": file_path,
             "ranges": ranges,
+        })
+
+    def from_inline_diff_view(self, view, window):
+        # type: (sublime.View, sublime.Window) -> None
+        settings = view.settings()
+        repo_path = settings.get("git_savvy.repo_path")
+        file_path = settings.get("git_savvy.file_path")
+        commit_hash = settings.get("git_savvy.inline_diff_view.target_commit")
+
+        def compute_lineno(pt):
+            # type: (int) -> LineNo
+            line = line_on_point(view, pt)
+            actual_line, _ = inline_diff.translate_pos_from_diff_view_to_file(view, line)
+            if inline_diff.is_historical_diff(view):
+                return actual_line
+            hunks = [hunk_ref.hunk for hunk_ref in inline_diff.diff_view_hunks[view.id()]]
+            new_row = self.reverse_adjust_line_according_to_hunks(hunks, actual_line)
+            return new_row
+
+        ranges = [
+            (compute_lineno(s.begin()), compute_lineno(s.end()))
+            for s in view.sel()
+        ]
+        if not ranges:
+            flash(view, "No cursor to compute a line range from.")
+            return
+
+        window.run_command("gs_open_line_history", {
+            "repo_path": repo_path,
+            "file_path": file_path,
+            "ranges": ranges,
+            "commit": commit_hash,
         })
 
     def from_diff(self, view, window, first_sel):
