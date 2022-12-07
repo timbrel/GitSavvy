@@ -11,5 +11,8 @@ contexts:
 
   header:
     - meta_scope: comment.header.git_savvy
+    - match: '  STAGED CHANGES \(Will commit\)'
+      scope: markup.deleted.diff
+    - match: '  UNSTAGED CHANGES'
     - match: '^--$\n'
       set: 'scope:git-savvy.diff'
