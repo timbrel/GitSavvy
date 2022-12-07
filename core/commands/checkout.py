@@ -25,6 +25,9 @@ __all__ = (
 )
 
 
+DIRTY_WORKTREE_MESSAGE = "Please commit your changes or stash them before you switch branches"
+
+
 class gs_checkout_branch(WindowCommand, GitCommand):
 
     """
@@ -51,10 +54,7 @@ class gs_checkout_branch(WindowCommand, GitCommand):
                 branch
             )
         except GitSavvyError as e:
-            if (
-                "Please commit your changes or stash them before you switch branches" in e.stderr
-                and not merge
-            ):
+            if DIRTY_WORKTREE_MESSAGE in e.stderr and not merge:
                 show_actions_panel(self.window, [
                     noop("Abort, local changes would be overwritten by checkout."),
                     (
@@ -81,14 +81,35 @@ class gs_checkout_new_branch(GsWindowCommand):
         ),
     }
 
-    def run(self, branch_name, start_point=None, force=False):
-        # type: (str, str, bool) -> None
-        self.git(
-            "checkout",
-            "-B" if force else "-b",
-            branch_name,
-            start_point
-        )
+    def run(self, branch_name, start_point=None, force=False, merge=False):
+        # type: (str, str, bool, bool) -> None
+        try:
+            self.git_throwing_silently(
+                "checkout",
+                "-B" if force else "-b",
+                branch_name,
+                start_point,
+                "--merge" if merge else None,
+            )
+        except GitSavvyError as e:
+            if force and DIRTY_WORKTREE_MESSAGE in e.stderr and not merge:
+                show_actions_panel(self.window, [
+                    noop("Abort, local changes would be overwritten by checkout."),
+                    (
+                        "Try merging the changes.",
+                        lambda: self.window.run_command("gs_checkout_new_branch", {
+                            "branch_name": branch_name,
+                            "start_point": start_point,
+                            "force": force,
+                            "merge": True
+                        })
+                    )
+                ])
+                return
+            else:
+                e.show_error_panel()
+                raise
+
         self.window.status_message("Created and checked out `{}` branch.".format(branch_name))
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
