@@ -2345,6 +2345,10 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             ]
 
         actions += [
+            (
+                "Create branch at '{}'".format(good_commit_name),
+                partial(self.create_branch, commit_hash)
+            ),
             ("Create tag", partial(self.create_tag, commit_hash))
         ]
         actions += [
@@ -2469,6 +2473,9 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
     def show_commit(self, commit_hash):
         self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
+
+    def create_branch(self, commit_hash):
+        self.window.run_command("gs_create_branch", {"start_point": commit_hash})
 
     def create_tag(self, commit_hash):
         self.window.run_command("gs_tag_create", {"target_commit": commit_hash})

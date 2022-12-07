@@ -11,10 +11,17 @@ from GitSavvy.core.utils import noop, show_actions_panel, uprint
 
 
 __all__ = (
+    "gs_create_branch",
     "gs_rename_branch",
     "gs_unset_tracking_information",
     "gs_delete_branch",
 )
+
+
+MYPY = False
+if MYPY:
+    from typing import Callable, TypeVar
+    T = TypeVar("T")
 
 
 DELETE_UNDO_MESSAGE = """\
@@ -26,7 +33,12 @@ NOT_MERGED_WARNING = re.compile(r"The branch.*is not fully merged\.")
 CANT_DELETE_CURRENT_BRANCH = re.compile(r"Cannot delete branch .+ checked out at ")
 
 
-def ask_for_name(caption, initial_text):
+def just(value):
+    # type: (T) -> Callable[..., T]
+    return lambda *args, **kwargs: value
+
+
+def ask_for_name(caption, initial_text=just("")):
     def handler(cmd, args, done, initial_text_=None):
         # type: (GsWindowCommand, push.Args, push.Kont, str) -> None
         def done_(branch_name):
@@ -45,6 +57,23 @@ def ask_for_name(caption, initial_text):
             done_
         )
     return handler
+
+
+class gs_create_branch(GsWindowCommand):
+    defaults = {
+        "branch_name": ask_for_name(
+            caption=just(checkout.NEW_BRANCH_PROMPT),
+        ),
+    }
+
+    def run(self, branch_name, start_point=None):
+        # type: (str, str) -> None
+        self.git("branch", branch_name, start_point)
+        self.window.status_message("Created {}{}".format(
+            branch_name,
+            " at {}".format(start_point) if start_point else "")
+        )
+        util.view.refresh_gitsavvy_interfaces(self.window)
 
 
 class gs_rename_branch(GsWindowCommand):
