@@ -2358,18 +2358,32 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
         head_info = describe_head(view, branches)
         head_is_on_a_branch = head_info and head_info["HEAD"] != head_info["commit"]
+        cursor_is_not_on_head = head_info and head_info["commit"] != info["commit"]
 
         def get_list(info, key):
             # type: (LineInfo, ListItems) -> List[str]
             return info.get(key, [])  # type: ignore
 
-        if not head_info or head_info["commit"] != info["commit"]:
+        if head_info and head_is_on_a_branch and cursor_is_not_on_head:
+            get = partial(get_list, info)  # type: Callable[[ListItems], List[str]]
+            good_move_target = next(
+                chain(get("local_branches"), get("branches")),
+                good_commit_name
+            )
+            actions += [
+                (
+                    "Move '{}' to '{}'".format(head_info["HEAD"], good_move_target),
+                    partial(self.checkout_b, head_info["HEAD"], good_commit_name)
+                ),
+            ]
+
+        if not head_info or cursor_is_not_on_head:
             good_head_name = (
                 "'{}'".format(head_info["HEAD"])  # type: ignore
                 if head_is_on_a_branch
                 else "HEAD"
             )
-            get = partial(get_list, info)  # type: Callable[[ListItems], List[str]]
+            get = partial(get_list, info)  # type: Callable[[ListItems], List[str]]  # type: ignore[no-redef]
             good_reset_target = next(
                 chain(get("local_branches"), get("branches")),
                 good_commit_name
@@ -2381,19 +2395,18 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 )
             ]
 
-        if head_info and head_info["commit"] != info["commit"]:
+        if head_info and not head_is_on_a_branch and cursor_is_not_on_head:
             get = partial(get_list, head_info)  # type: Callable[[ListItems], List[str]]  # type: ignore[no-redef]
-            good_move_target = (
-                head_info["HEAD"]
-                if head_is_on_a_branch
-                else next(
-                    chain(get("local_branches"), get("branches"), get("tags")),
-                    head_info["commit"]
-                )
+            good_move_target = next(
+                (
+                    "'{}'".format(name)
+                    for name in chain(get("local_branches"), get("branches"), get("tags"))
+                ),
+                "HEAD"
             )
             actions += [
                 (
-                    "Move '{}' to '{}'".format(branch_name, good_move_target),
+                    "Move '{}' to {}".format(branch_name, good_move_target),
                     partial(self.checkout_b, branch_name)
                 )
                 for branch_name in info.get("local_branches", [])
