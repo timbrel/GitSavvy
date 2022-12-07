@@ -2460,9 +2460,12 @@ class gs_log_graph_action(WindowCommand, GitCommand):
     def checkout(self, commit_hash):
         self.window.run_command("gs_checkout_branch", {"branch": commit_hash})
 
-    def checkout_b(self, branch_name):
-        self.git("checkout", "-B", branch_name)
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+    def checkout_b(self, branch_name, start_point=None):
+        self.window.run_command("gs_checkout_new_branch", {
+            "branch_name": branch_name,
+            "start_point": start_point,
+            "force": True,
+        })
 
     def move_branch(self, branch_name, target):
         self.git("branch", "-f", branch_name, target)
