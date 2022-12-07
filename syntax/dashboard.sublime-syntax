@@ -8,6 +8,13 @@ hidden: true
 scope: git-savvy.dashboard
 contexts:
   main:
+    - match: ^  (ROOT:)(.+[\\/])([^\\/]+)$
+      comment: root summary
+      scope: comment.git-savvy.summary-header.root-summary
+      captures:
+        1: comment.git-savvy.summary-header.title.root
+        2: comment.git-savvy.summary-header.root.info
+        3: comment.git-savvy.summary-header.root.info.tail
     - match: "^  BRANCH:"
       comment: Summary Header
       scope: comment.git-savvy.summary-header.title.branch
@@ -15,13 +22,6 @@ contexts:
         - meta_scope: meta.git-savvy.summary-header
         - match: ^$
           pop: true
-
-        - match: ^  (ROOT:)(.+)
-          comment: root summary
-          scope: comment.git-savvy.summary-header.root-summary
-          captures:
-            1: comment.git-savvy.summary-header.title.root
-            2: comment.git-savvy.summary-header.root.info
 
         - match: "(`)([^`]+)(`)"
           comment: branch names

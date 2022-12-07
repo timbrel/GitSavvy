@@ -66,8 +66,9 @@ class BranchInterface(ui.Interface, GitCommand):
 
     template = """\
 
-      BRANCH:  {branch_status}
       ROOT:    {git_root}
+
+      BRANCH:  {branch_status}
       HEAD:    {head}
 
       LOCAL:

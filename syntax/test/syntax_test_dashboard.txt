@@ -1,5 +1,9 @@
 # SYNTAX TEST "Packages/GitSavvy/syntax/dashboard.sublime-syntax"
 
+  ROOT:    ~/.config/sublime-text-3/Packages/GitSavvy
+#  ^ comment
+#              ^ comment.git-savvy.summary-header.root.info
+#  ^ comment.git-savvy.summary-header.title.root
   BRANCH:  On branch `master` tracking `origin/master`.
 #  <- meta.git-savvy.summary-header
 #  ^ comment
@@ -15,10 +19,6 @@
 #                 ^^^^^ keyword.other.git-savvy.summary-header.ahead-behind
            You're behind by 3.
 #                 ^^^^^^ keyword.other.git-savvy.summary-header.ahead-behind
-  ROOT:    ~/.config/sublime-text-3/Packages/GitSavvy
-#  ^ comment
-#              ^ comment.git-savvy.summary-header.root.info
-#  ^ comment.git-savvy.summary-header.title.root
   HEAD:    aaf90ba improve blame syntax
 # <- comment.git-savvy.summary-header.head-summary
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.git-savvy.summary-header.head-summary
