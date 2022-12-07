@@ -4,6 +4,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from . import intra_line_colorizer
+from . import branch
 from .log import LogMixin
 from ..git_command import GitCommand, GitSavvyError
 from ..ui_mixins.quick_panel import show_branch_panel
@@ -21,10 +22,6 @@ __all__ = (
     "gs_checkout_current_file_at_commit",
     "gs_show_file_diff",
 )
-
-
-NEW_BRANCH_PROMPT = "Branch name:"
-NEW_BRANCH_INVALID = "`{}` is a invalid branch name.\nRead more on $(man git-check-ref-format)"
 
 
 class gs_checkout_branch(WindowCommand, GitCommand):
@@ -127,13 +124,13 @@ class gs_checkout_remote_branch(WindowCommand, GitCommand):
         if not local_name:
             local_name = remote_branch.split("/", 1)[1]
         show_single_line_input_panel(
-            NEW_BRANCH_PROMPT,
+            branch.NEW_BRANCH_PROMPT,
             local_name,
             self.on_enter_local_name)
 
     def on_enter_local_name(self, branch_name):
         if not self.validate_branch_name(branch_name):
-            sublime.error_message(NEW_BRANCH_INVALID.format(branch_name))
+            sublime.error_message(branch.NEW_BRANCH_INVALID.format(branch_name))
             sublime.set_timeout_async(
                 lambda: self.on_branch_selection(self.remote_branch, branch_name), 100)
             return None

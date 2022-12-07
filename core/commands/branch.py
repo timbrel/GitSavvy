@@ -1,7 +1,6 @@
 import re
 import sublime
 
-from . import checkout
 from . import push
 from ..git_command import GitSavvyError
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -24,6 +23,8 @@ if MYPY:
     T = TypeVar("T")
 
 
+NEW_BRANCH_PROMPT = "Branch name:"
+NEW_BRANCH_INVALID = "`{}` is a invalid branch name.\nRead more on $(man git-check-ref-format)"
 DELETE_UNDO_MESSAGE = """\
 GitSavvy: Deleted branch ({0}), in case you want to undo, run:
   $ git branch {0} {1}
@@ -46,7 +47,7 @@ def ask_for_name(caption, initial_text=just("")):
             if not branch_name:
                 return None
             if not cmd.validate_branch_name(branch_name):
-                sublime.error_message(checkout.NEW_BRANCH_INVALID.format(branch_name))
+                sublime.error_message(NEW_BRANCH_INVALID.format(branch_name))
                 handler(cmd, args, done, initial_text_=branch_name)
                 return None
             done(branch_name)
@@ -62,7 +63,7 @@ def ask_for_name(caption, initial_text=just("")):
 class gs_create_branch(GsWindowCommand):
     defaults = {
         "branch_name": ask_for_name(
-            caption=just(checkout.NEW_BRANCH_PROMPT),
+            caption=just(NEW_BRANCH_PROMPT),
         ),
     }
 
