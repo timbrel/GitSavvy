@@ -20,6 +20,7 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import Callable, TypeVar
+    from GitSavvy.core.base_commands import Args, Kont
     T = TypeVar("T")
 
 
@@ -41,7 +42,7 @@ def just(value):
 
 def ask_for_name(caption=just(NEW_BRANCH_PROMPT), initial_text=just("")):
     def handler(cmd, args, done, initial_text_=None):
-        # type: (GsWindowCommand, push.Args, push.Kont, str) -> None
+        # type: (GsWindowCommand, Args, Kont, str) -> None
         def done_(branch_name):
             branch_name = branch_name.strip().replace(" ", "-")
             if not branch_name:
