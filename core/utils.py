@@ -14,6 +14,8 @@ import traceback
 
 import sublime
 
+from .runtime import throttled
+
 
 MYPY = False
 if MYPY:
@@ -91,6 +93,27 @@ def flash(view, message):
     window = view.window()
     if window:
         window.status_message(message)
+
+
+HIGHLIGHT_REGION_KEY = "GS.flashs.{}"
+DURATION = 0.4
+STYLE = {"scope": "git_savvy.graph.dot", "flags": 0}
+
+
+def flash_regions(view, regions, key="default"):
+    # type: (sublime.View, Sequence[sublime.Region], str) -> None
+    region_key = HIGHLIGHT_REGION_KEY.format(key)
+    view.add_regions(region_key, regions, **STYLE)  # type: ignore[arg-type]
+
+    sublime.set_timeout(
+        throttled(erase_regions, view, region_key),
+        int(DURATION * 1000)
+    )
+
+
+def erase_regions(view, region_key):
+    # type: (sublime.View, str) -> None
+    view.erase_regions(region_key)
 
 
 IDS = partial(next, count())  # type: Callable[[], int]  # type: ignore[assignment]

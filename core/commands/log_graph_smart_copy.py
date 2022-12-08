@@ -4,8 +4,7 @@ import sublime_plugin
 from . import log_graph
 from ..fns import pairwise, peek
 from ..parse_diff import Region, TextRange
-from ..runtime import throttled
-from ..utils import flash
+from ..utils import flash, flash_regions
 from ..view import find_by_selector
 
 
@@ -17,11 +16,6 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import Dict, Iterator, List, Optional, Tuple, Union
-
-
-HIGHLIGHT_REGION_KEY = "GS.flashs.{}"
-DURATION = 0.4
-STYLE = {"scope": "git_savvy.graph.dot", "flags": 0}
 
 
 class CopyIntercepterForGraph(sublime_plugin.EventListener):
@@ -81,7 +75,7 @@ class CopyIntercepterForGraph(sublime_plugin.EventListener):
 def set_clipboard_and_flash(view, text, regions):
     # type: (sublime.View, str, List[Region]) -> None
     sublime.set_clipboard(text)
-    flash_copied_regions(view, regions)
+    flash_regions(view, regions)
     flash(view, "Copied '{}' to the clipboard".format(text))
 
 
@@ -110,19 +104,3 @@ def read_commit_message(view, line_span):
             return TextRange(view.substr(r), r.a, r.b)
     else:
         return None
-
-
-def flash_copied_regions(view, regions):
-    # type: (sublime.View, List[Region]) -> None
-    region_key = HIGHLIGHT_REGION_KEY.format("flash_copied_regions")
-    view.add_regions(region_key, regions, **STYLE)  # type: ignore[arg-type]
-
-    sublime.set_timeout(
-        throttled(erase_regions, view, region_key),
-        int(DURATION * 1000)
-    )
-
-
-def erase_regions(view, region_key):
-    # type: (sublime.View, str) -> None
-    view.erase_regions(region_key)
