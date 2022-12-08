@@ -4,7 +4,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from . import intra_line_colorizer
-from . import branch
+from .branch import ask_for_name
 from .log import LogMixin
 from ..git_command import GitCommand, GitSavvyError
 from ..ui_mixins.quick_panel import show_branch_panel
@@ -75,7 +75,7 @@ class gs_checkout_new_branch(GsWindowCommand):
     Prompt the user for a new branch name, create it, and check it out.
     """
     defaults = {
-        "branch_name": branch.ask_for_name(),
+        "branch_name": ask_for_name(),
     }
 
     def run(self, branch_name, start_point=None, force=False, merge=False):
@@ -119,7 +119,7 @@ class gs_checkout_remote_branch(GsWindowCommand):
     """
     defaults = {
         "remote_branch": ask_for_branch(remote_branches_only=True),
-        "branch_name": branch.ask_for_name(
+        "branch_name": ask_for_name(
             initial_text=lambda args: args["remote_branch"].split("/", 1)[1],
         ),
     }
