@@ -75,9 +75,7 @@ class gs_checkout_new_branch(GsWindowCommand):
     Prompt the user for a new branch name, create it, and check it out.
     """
     defaults = {
-        "branch_name": branch.ask_for_name(
-            caption=branch.just(branch.NEW_BRANCH_PROMPT),
-        ),
+        "branch_name": branch.ask_for_name(),
     }
 
     def run(self, branch_name, start_point=None, force=False, merge=False):
@@ -122,7 +120,6 @@ class gs_checkout_remote_branch(GsWindowCommand):
     defaults = {
         "remote_branch": ask_for_branch(remote_branches_only=True),
         "branch_name": branch.ask_for_name(
-            caption=branch.just(branch.NEW_BRANCH_PROMPT),
             initial_text=lambda args: args["remote_branch"].split("/", 1)[1],
         ),
     }

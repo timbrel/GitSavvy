@@ -39,7 +39,7 @@ def just(value):
     return lambda *args, **kwargs: value
 
 
-def ask_for_name(caption, initial_text=just("")):
+def ask_for_name(caption=just(NEW_BRANCH_PROMPT), initial_text=just("")):
     def handler(cmd, args, done, initial_text_=None):
         # type: (GsWindowCommand, push.Args, push.Kont, str) -> None
         def done_(branch_name):
@@ -62,9 +62,7 @@ def ask_for_name(caption, initial_text=just("")):
 
 class gs_create_branch(GsWindowCommand):
     defaults = {
-        "branch_name": ask_for_name(
-            caption=just(NEW_BRANCH_PROMPT),
-        ),
+        "branch_name": ask_for_name(),
     }
 
     def run(self, branch_name, start_point=None):
