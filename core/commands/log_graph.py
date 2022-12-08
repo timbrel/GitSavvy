@@ -277,9 +277,8 @@ def augment_color_scheme(view):
     themeGenerator.apply_new_theme("log_graph_view", view)
 
 
-DATE_FORMAT = 'human'
+GIT_SUPPORTS_HUMAN_DATE_FORMAT = (2, 21, 0)
 FALLBACK_DATE_FORMAT = 'format:%Y-%m-%d %H:%M'
-DATE_FORMAT_STATE = 'trying'
 
 
 MYPY = False
@@ -845,46 +844,26 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
     def read_graph(self, got_proc=None):
         # type: (Callable[[subprocess.Popen], None]) -> Iterator[str]
-        global DATE_FORMAT, DATE_FORMAT_STATE
-
         args = self.build_git_command()
-        if DATE_FORMAT_STATE == 'trying':
-            try:
-                yield from self.git_stdout(
-                    *args,
-                    throw_on_error=True,
-                    show_panel_on_error=False,
-                    got_proc=got_proc
-                )
-            except GitSavvyError as e:
-                if e.stderr and DATE_FORMAT in e.stderr:
-                    DATE_FORMAT = FALLBACK_DATE_FORMAT
-                    DATE_FORMAT_STATE = 'final'
-                    enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
-                    return iter('')
-                else:
-                    e.show_error_panel()
-                    raise
-            else:
-                DATE_FORMAT_STATE = 'final'
-
-        else:
-            yield from self.git_stdout(*args, got_proc=got_proc)
+        yield from self.git_stdout(*args, got_proc=got_proc)
 
     def build_git_command(self):
-        global DATE_FORMAT
-
         settings = self.view.settings()
         follow = self.savvy_settings.get("log_follow_rename")
         author = settings.get("git_savvy.log_graph_view.filter_by_author")
         all_branches = settings.get("git_savvy.log_graph_view.all_branches")
         paths = settings.get("git_savvy.log_graph_view.paths", [])  # type: List[str]
         apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
+        date_format = (
+            "human"
+            if self.git_version >= GIT_SUPPORTS_HUMAN_DATE_FORMAT
+            else FALLBACK_DATE_FORMAT
+        )
         args = [
             'log',
             '--graph',
             '--decorate',  # set explicitly for "decorate-refs-exclude" to work
-            '--date={}'.format(DATE_FORMAT),
+            '--date={}'.format(date_format),
             '--format=%h%d %<|(82,trunc)%s \u200B %ad, %an',
             # Git can only follow exactly one path.  Luckily, this can
             # be a file or a directory.
