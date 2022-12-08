@@ -303,7 +303,7 @@ class gs_branches_create_new(BranchInterfaceCommand):
         if branch.is_remote:
             self.window.run_command("gs_checkout_remote_branch", {"remote_branch": branch.canonical_name})
         else:
-            self.window.run_command("gs_checkout_new_branch", {"base_branch": branch.name})
+            self.window.run_command("gs_checkout_new_branch", {"start_point": branch.name})
 
 
 class gs_branches_delete(BranchInterfaceCommand):

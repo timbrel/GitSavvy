@@ -12,6 +12,7 @@ from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..view import replace_view_content
 from ...common import util
 from GitSavvy.core import store
+from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.utils import noop, show_actions_panel
 
 
@@ -70,32 +71,24 @@ class gs_checkout_branch(WindowCommand, GitCommand):
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
-class gs_checkout_new_branch(WindowCommand, GitCommand):
-
+class gs_checkout_new_branch(GsWindowCommand):
     """
     Prompt the user for a new branch name, create it, and check it out.
     """
+    defaults = {
+        "branch_name": branch.ask_for_name(
+            caption=branch.just(branch.NEW_BRANCH_PROMPT),
+        ),
+    }
 
-    def run(self, base_branch=None):
-        sublime.set_timeout_async(lambda: self.run_async(base_branch))
-
-    def run_async(self, base_branch=None, new_branch=None):
-        self.base_branch = base_branch
-        show_single_line_input_panel(
-            NEW_BRANCH_PROMPT, new_branch or base_branch or "", self.on_done)
-
-    def on_done(self, branch_name):
-        branch_name = branch_name.strip().replace(" ", "-")
-        if not self.validate_branch_name(branch_name):
-            sublime.error_message(NEW_BRANCH_INVALID.format(branch_name))
-            sublime.set_timeout_async(
-                lambda: self.run_async(base_branch=self.base_branch, new_branch=branch_name), 100)
-            return None
-
+    def run(self, branch_name, start_point=None, force=False):
+        # type: (str, str, bool) -> None
         self.git(
-            "checkout", "-b",
+            "checkout",
+            "-B" if force else "-b",
             branch_name,
-            self.base_branch if self.base_branch else None)
+            start_point
+        )
         self.window.status_message("Created and checked out `{}` branch.".format(branch_name))
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
