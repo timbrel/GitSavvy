@@ -8,11 +8,10 @@ from . import branch
 from .log import LogMixin
 from ..git_command import GitCommand, GitSavvyError
 from ..ui_mixins.quick_panel import show_branch_panel
-from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..view import replace_view_content
 from ...common import util
 from GitSavvy.core import store
-from GitSavvy.core.base_commands import GsWindowCommand
+from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
 from GitSavvy.core.utils import noop, show_actions_panel
 
 
@@ -114,44 +113,24 @@ class gs_checkout_new_branch(GsWindowCommand):
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
-class gs_checkout_remote_branch(WindowCommand, GitCommand):
-
+class gs_checkout_remote_branch(GsWindowCommand):
     """
     Display a panel of all remote branches.  When the user makes a selection,
     create a corresponding local branch, and set it to the HEAD of the
     selected branch.
     """
+    defaults = {
+        "remote_branch": ask_for_branch(remote_branches_only=True),
+        "branch_name": branch.ask_for_name(
+            caption=branch.just(branch.NEW_BRANCH_PROMPT),
+            initial_text=lambda args: args["remote_branch"].split("/", 1)[1],
+        ),
+    }
 
-    def run(self, remote_branch=None):
-        sublime.set_timeout_async(lambda: self.run_async(remote_branch))
-
-    def run_async(self, remote_branch):
-        if remote_branch:
-            self.on_branch_selection(remote_branch)
-        else:
-            show_branch_panel(
-                self.on_branch_selection,
-                remote_branches_only=True)
-
-    def on_branch_selection(self, remote_branch, local_name=None):
-        self.remote_branch = remote_branch
-        if not local_name:
-            local_name = remote_branch.split("/", 1)[1]
-        show_single_line_input_panel(
-            branch.NEW_BRANCH_PROMPT,
-            local_name,
-            self.on_enter_local_name)
-
-    def on_enter_local_name(self, branch_name):
-        if not self.validate_branch_name(branch_name):
-            sublime.error_message(branch.NEW_BRANCH_INVALID.format(branch_name))
-            sublime.set_timeout_async(
-                lambda: self.on_branch_selection(self.remote_branch, branch_name), 100)
-            return None
-
-        self.git("checkout", "-b", branch_name, "--track", self.remote_branch)
+    def run(self, remote_branch, local_name):
+        self.git("checkout", "-b", local_name, "--track", remote_branch)
         self.window.status_message(
-            "Checked out `{}` as local branch `{}`.".format(self.remote_branch, branch_name))
+            "Checked out `{}` as local branch `{}`.".format(remote_branch, local_name))
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
