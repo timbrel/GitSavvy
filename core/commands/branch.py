@@ -1,3 +1,5 @@
+from functools import lru_cache
+import inspect
 import re
 import sublime
 
@@ -37,7 +39,18 @@ CANT_DELETE_CURRENT_BRANCH = re.compile(r"Cannot delete branch .+ checked out at
 
 def just(value):
     # type: (T) -> Callable[..., T]
-    return lambda *args, **kwargs: value
+    return lambda: value
+
+
+def call_with_wanted_args(fn, args):
+    # type: (Callable[..., T], Args) -> T
+    fs = _signature(fn)
+    return fn(**{k: args[k] for k in fs.parameters.keys() if k in args})
+
+
+@lru_cache()
+def _signature(fn):
+    return inspect.signature(fn)
 
 
 def ask_for_name(caption=just(NEW_BRANCH_PROMPT), initial_text=just("")):
@@ -54,8 +67,8 @@ def ask_for_name(caption=just(NEW_BRANCH_PROMPT), initial_text=just("")):
             done(branch_name)
 
         show_single_line_input_panel(
-            caption(args),
-            initial_text_ or initial_text(args),
+            call_with_wanted_args(caption, args),
+            initial_text_ or call_with_wanted_args(initial_text, args),
             done_
         )
     return handler
@@ -80,8 +93,8 @@ class gs_rename_branch(GsWindowCommand):
     defaults = {
         "branch": push.take_current_branch_name,
         "new_name": ask_for_name(
-            caption=lambda args: "Enter new branch name (for {}):".format(args["branch"]),
-            initial_text=lambda args: args["branch"],
+            caption=lambda branch: "Enter new branch name (for {}):".format(branch),
+            initial_text=lambda branch: branch,
         ),
     }
 
