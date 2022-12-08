@@ -273,7 +273,7 @@ def focus_view(view):
 
 
 if int(sublime.version()) < 4000:
-    from Default import history_list  # type: ignore[import]
+    from Default import history_list  # type: ignore[attr-defined]
 
     def add_selection_to_jump_history(view):
         history_list.get_jump_history_for_view(view).push_selection(view)
