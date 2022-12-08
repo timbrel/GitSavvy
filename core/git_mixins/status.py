@@ -82,11 +82,14 @@ class WorkingDirState(_WorkingDirState):
 MERGE_CONFLICT_PORCELAIN_STATUSES = (
     ("A", "A"),  # unmerged, both added
     ("U", "U"),  # unmerged, both modified
+    ("D", "U"),  # unmerged, deleted by us
+    ("U", "D"),  # unmerged, deleted by them
+
+    # The following combinations are unlikely to be seen in the wild
+    # https://public-inbox.org/git/xmqq4n2czq6n.fsf@gitster.dls.corp.google.com
     ("D", "D"),  # unmerged, both deleted
     ("A", "U"),  # unmerged, added by us
     ("U", "A"),  # unmerged, added by them
-    ("D", "U"),  # unmerged, deleted by us
-    ("U", "D"),  # unmerged, deleted by them
 )
 
 
