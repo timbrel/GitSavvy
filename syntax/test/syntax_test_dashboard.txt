@@ -35,8 +35,6 @@
 #           ! shift to the right because of the invisible whitespace markers !
            70740e43 ​(iter-stashes)
 #          ^^^^^^^^ constant.other.git-savvy.sha1
-#                    ^^^^^^^^^^^^^^ constant.other.git.branch.git-savvy
-#                   ! shift to the right because of the invisible whitespace markers !
 
   ** Press [e] to toggle display of remote branches. **
 # <- - meta.git-savvy.status
