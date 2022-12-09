@@ -278,6 +278,12 @@ class gs_diff_refresh(TextCommand, GitCommand):
             diff += "\n-- Partially decoded output follows; � denotes decoding errors --\n\n"""
             diff += raw_diff.decode("utf-8", "replace")
 
+        if not diff and settings.get("git_savvy.diff_view.just_hunked"):
+            history = self.view.settings().get("git_savvy.diff_view.history") or [[[]]]
+            if history[-1][0][1:3] != ["-R", None]:  # not when discarding
+                view.run_command("gs_diff_toggle_cached_mode")
+                return
+
         if settings.get("git_savvy.just_committed"):
             if diff:
                 settings.set("git_savvy.just_committed", False)
@@ -365,15 +371,17 @@ class gs_diff_toggle_cached_mode(TextCommand):
         settings.set(setting_str, next_mode)
         flash(self.view, "Showing {} changes".format("staged" if next_mode else "unstaged"))
 
+        # `gs_diff_refresh` may call us (`gs_diff_toggle_cached_mode`) if
+        # `just_hunked` is set read and clear first.
+        just_hunked = self.view.settings().get("git_savvy.diff_view.just_hunked")
+        self.view.settings().set("git_savvy.diff_view.just_hunked", "")
         self.view.run_command("gs_diff_refresh")
 
-        just_hunked = self.view.settings().get("git_savvy.diff_view.just_hunked")
         # Check for `last_cursors` as well bc it is only falsy on the *first*
         # switch. T.i. if the user hunked and then switches to see what will be
         # actually committed, the view starts at the top. Later, the view will
         # show the last added hunk.
         if just_hunked and last_cursors:
-            self.view.settings().set("git_savvy.diff_view.just_hunked", "")
             region = find_hunk_in_view(self.view, just_hunked)
             if region:
                 set_and_show_cursor(self.view, region.a)
