@@ -68,9 +68,9 @@ def enqueue_on_savvy(fn, *args, **kwargs):
     savvy_executor.submit(fn, *args, **kwargs)
 
 
-def run_on_new_thread(fn, *args, **kwargs):
-    # type: (Callable, Any, Any) -> None
-    threading.Thread(target=fn, args=args, kwargs=kwargs).start()
+def run_on_new_thread(fn, *args, __daemon=None, **kwargs):
+    # type: (Callable, Any, Optional[bool], Any) -> None
+    threading.Thread(target=fn, args=args, kwargs=kwargs, daemon=__daemon).start()
 
 
 def on_worker(fn):

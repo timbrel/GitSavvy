@@ -1,5 +1,4 @@
 import sublime
-import threading
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
@@ -7,6 +6,7 @@ from ..runtime import enqueue_on_worker
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..view import replace_view_content
 from ...common import util
+from GitSavvy.core.runtime import run_on_new_thread
 
 
 __all__ = (
@@ -75,6 +75,6 @@ class gs_custom(WindowCommand, GitCommand):
             util.view.refresh_gitsavvy_interfaces(self.window)
 
         if run_in_thread:
-            threading.Thread(target=program, daemon=True).start()
+            run_on_new_thread(program, __daemon=True)
         else:
             enqueue_on_worker(program)
