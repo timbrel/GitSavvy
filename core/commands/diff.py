@@ -645,13 +645,13 @@ def compute_patch_for_sel(diff, line_starts, reverse):
 
 def form_patch(lines):
     # type: (List[HunkLineWithLineNumbers]) -> stage_hunk.Hunk
-    line, a_b = lines[0]
-    a_start, b_start = a_b
-    if lines[0][0].is_from_line() and lines[-1][0].is_to_line():
-        b_start = next(a_b.b for line, a_b in lines if line.is_to_line())
-    alen = sum(1 for line, a_b in lines if not line.is_to_line())
-    blen = sum(1 for line, a_b in lines if not line.is_from_line())
-    content = "".join(line.text for line, a_b in lines)
+    first_line, (a_start, b_start) = lines[0]
+    last_line, _ = lines[-1]
+    if first_line.is_from_line() and last_line.is_to_line():
+        b_start = next(b for line, (a, b) in lines if line.is_to_line())
+    alen = sum(1 for line, _ in lines if not line.is_to_line())
+    blen = sum(1 for line, _ in lines if not line.is_from_line())
+    content = "".join(line.text for line, _ in lines)
     return stage_hunk.Hunk(a_start, alen, b_start, blen, content)
 
 
@@ -747,12 +747,7 @@ def jump_position_to_file(view, diff, pt):
 
     header, hunk = head_and_hunk
 
-    linecol = real_linecol_in_hunk(hunk, *row_offset_and_col_in_hunk(view, hunk, pt))
-    if not linecol:
-        return None
-
-    line, col = linecol
-
+    line, col = real_linecol_in_hunk(hunk, *row_offset_and_col_in_hunk(view, hunk, pt))
     filename = header.from_filename()
     if not filename:
         return None
@@ -780,7 +775,7 @@ def row_offset_and_col_in_hunk(view, hunk, pt):
 
 
 def real_linecol_in_hunk(hunk, row_offset, col):
-    # type: (Hunk, int, ColNo) -> Optional[LineCol]
+    # type: (Hunk, int, ColNo) -> LineCol
     """Translate relative to absolute line, col pair"""
     hunk_lines = list(recount_lines_for_jump_to_file(hunk))
 
