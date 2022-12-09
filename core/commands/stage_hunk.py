@@ -99,10 +99,14 @@ def hunk_containing_line(hunks, line):
     for hunk in hunks:
         if line < hunk.b_start:
             break
-        # Assume a length of "1" for removal only hunks so the
-        # user can actually grab them exactly on the line above the
-        # removal gutter mark.
-        b_end = hunk.b_start + max(hunk.b_length, 1)
+        # Assume a length of "2" for removal only hunks so the
+        # user can actually grab them exactly on the line above
+        # *or* below the removal gutter mark which is a triangle
+        # between two lines.
+        if hunk_of_removals_only(hunk):
+            b_end = hunk.b_start + 2
+        else:
+            b_end = hunk.b_start + max(hunk.b_length, 1)
         if hunk_with_no_newline_marker(hunk):
             # Make the hit area one line longer so that the user
             # can stage being on the last line of the view (if the
