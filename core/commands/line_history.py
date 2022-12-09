@@ -1,10 +1,12 @@
+from itertools import chain
 import os
 
 import sublime
 from sublime_plugin import TextCommand, WindowCommand
 
 from . import diff
-from ..fns import filter_
+from .navigate import GsNavigate
+from ..fns import filter_, pairwise
 from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff
 from ..runtime import enqueue_on_worker
@@ -18,6 +20,7 @@ __all__ = (
     "gs_open_line_history",
     "gs_line_history_open_commit",
     "gs_line_history_open_graph_context",
+    "gs_line_history_navigate",
 )
 
 
@@ -149,3 +152,40 @@ class gs_line_history_open_graph_context(TextCommand, GitCommand):
                 "all": True,
                 "follow": self.get_short_hash(commit_hash)
             })
+
+
+class gs_line_history_navigate(GsNavigate):
+    offset = 0
+    wrap_with_force = True
+
+    def get_available_regions(self):
+        commit_starts = self.view.find_by_selector("meta.commit-info.header")
+        commits = [
+            sublime.Region(a.a, b.a - 1)
+            for a, b in pairwise(
+                chain(
+                    commit_starts,
+                    [sublime.Region(self.view.size())]
+                )
+            )
+        ]
+        if not self.forward:
+            return commits
+
+        hunk_starts = self.view.find_by_selector("meta.diff.range.unified")
+        # This is slightly more complicated compared to the above `commits`
+        # as the hunk ends either at the next hunk *or* next commit.
+        hunks = [
+            sublime.Region(a.a, b.a - 1)
+            for (a, type_), (b, _) in pairwise(
+                chain(
+                    sorted(chain(
+                        ((r, "hunk") for r in hunk_starts),
+                        ((r, "commit") for r in commit_starts),
+                    )),
+                    [(sublime.Region(self.view.size()), "end")]
+                )
+            )
+            if type_ == "hunk"
+        ]
+        return sorted(hunks + commits)
