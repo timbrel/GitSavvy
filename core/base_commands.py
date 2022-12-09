@@ -8,13 +8,15 @@ import sublime_plugin
 
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
+from GitSavvy.core import store
 
 
 MYPY = False
 if MYPY:
-    from typing import Any, Callable, Dict, Iterator, List, Protocol, TypeVar
+    from typing import Any, Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
     CommandT = TypeVar("CommandT", bound=sublime_plugin.Command)
     Args = Dict[str, Any]
+    KnownKeys = Union[Literal["last_local_branch_for_rebase"]]
 
     class Kont(Protocol):
         def __call__(self, val: object, **kw: object) -> None:
@@ -158,11 +160,21 @@ if MYPY:
 # COMMON INPUT HANDLERS
 
 
-def ask_for_branch(**kw):
-    # type: (...) -> ArgProvider
+def ask_for_branch(memorize_key=None, **kw):
+    # type: (KnownKeys, object) -> ArgProvider
     def handler(self, args, done):
         # type: (GsCommand, Args, Kont) -> None
-        show_branch_panel(done, **kw)
+        def on_done(branch):
+            if memorize_key:
+                store.update_state(self.repo_path, {memorize_key: branch})
+            done(branch)
+
+        selected_branch = (
+            store.current_state(self.repo_path).get(memorize_key)
+            if memorize_key else
+            None
+        )
+        show_branch_panel(on_done, selected_branch=selected_branch, **kw)
 
     return handler
 

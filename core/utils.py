@@ -19,7 +19,7 @@ from .runtime import throttled
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Dict, Iterator, Tuple, Type
+    from typing import Callable, Dict, Iterator, Optional, Tuple, Type
 
 
 @contextmanager
@@ -282,6 +282,19 @@ def show_noop_panel(window, message):
 def noop(description):
     # type: (str) -> ActionType
     return Action(description, lambda: None)
+
+
+SEPARATOR = noop("_" * 74)
+
+
+def yes_no_switch(name, value):
+    # type: (str, Optional[bool]) -> Optional[str]
+    assert name.startswith("--")
+    if value is None:
+        return None
+    if value:
+        return name
+    return "--no-{}".format(name[2:])
 
 
 def focus_view(view):

@@ -1,7 +1,7 @@
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import lru_cache, partial
-from itertools import chain, takewhile
+from itertools import chain
 import os
 import re
 import shlex
@@ -10,15 +10,13 @@ import sublime
 import sublime_plugin
 
 from GitSavvy.common import util
-from GitSavvy.core import store
-from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
+from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand, ask_for_branch
 from GitSavvy.core.commands import log_graph
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.parse_diff import TextRange
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
-from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
-from GitSavvy.core.utils import flash, noop, show_actions_panel
+from GitSavvy.core.utils import flash, noop, show_actions_panel, yes_no_switch, SEPARATOR
 from GitSavvy.core.view import replace_view_content
 
 
@@ -47,24 +45,23 @@ if MYPY:
         Iterator,
         NamedTuple,
         Optional,
-        Tuple
+        Tuple,
+        TypeVar,
     )
     from GitSavvy.core.base_commands import GsCommand, Args, Kont
+    _T = TypeVar("_T")
 
-    RebaseItem = NamedTuple("RebaseItem", [
-        ("action", str),
-        ("commit_hash", str),
-        ("commit_message", str)
-    ])
     Commit = NamedTuple("Commit", [
         ("commit_hash", str),
         ("commit_message", str)
     ])
-    QuickAction = Callable[[List[RebaseItem]], List[RebaseItem]]
+    QuickAction = Callable[[str], str]
 
 else:
-    RebaseItem = namedtuple("RebaseItem", "action commit_hash commit_message")
     Commit = namedtuple("Commit", "commit_hash commit_message")
+
+
+VERSION_WITH_UPDATE_REFS = (2, 38, 0)
 
 
 def commitish_from_info(info):
@@ -137,9 +134,6 @@ def get_view_for_command(cmd):
         return sublime.active_window().active_view()
 
 
-SEPARATOR = ("-" * 75, lambda: None)
-
-
 class gs_rebase_action(GsWindowCommand):
     selected_index = 0
 
@@ -197,7 +191,6 @@ class gs_rebase_action(GsWindowCommand):
                 "Make fixup commit for {}".format(commit_hash),
                 partial(self.create_fixup_commit, commit_hash)
             ),
-            SEPARATOR,
         ]
 
         head_info = log_graph.describe_head(view, {})
@@ -216,7 +209,15 @@ class gs_rebase_action(GsWindowCommand):
                 ),
             ]
 
+        on_off = lambda setting: "x" if setting else " "
+        rebase_merges = _get_setting(self, "git_savvy.log_graph_view.rebase_merges", DEFAULT_VALUE)
+        update_refs = _get_setting(self, "git_savvy.log_graph_view.update_refs", DEFAULT_VALUE)
         actions += [
+            (
+                "———————————————————————————       [{}] --rebase-merges,   [{}] --update-refs"
+                .format(on_off(rebase_merges), on_off(update_refs)),
+                partial(self.switch_through_options, view, rebase_merges, update_refs)
+            ),
             (
                 "[R]ebase from {} on interactive".format(parent_commitish),
                 partial(self.rebase_interactive, view, parent_commitish)
@@ -237,6 +238,10 @@ class gs_rebase_action(GsWindowCommand):
             else None
         )
         if current_branch:
+            actions += [
+                SEPARATOR,
+            ]
+
             settings = view.settings()
             applying_filters = settings.get("git_savvy.log_graph_view.apply_filters")
             filters = (
@@ -245,7 +250,14 @@ class gs_rebase_action(GsWindowCommand):
                 else ""
             )
             previous_tip = "{}@{{1}}".format(current_branch)
-            if previous_tip not in filters:
+            if previous_tip in filters:
+                actions += [
+                    (
+                        "Hide {} in the graph".format(previous_tip),
+                        partial(self.remove_previous_tip, view, previous_tip)
+                    )
+                ]
+            else:
                 actions += [
                     (
                         "Show previous tip of {} in the graph".format(current_branch),
@@ -267,6 +279,22 @@ class gs_rebase_action(GsWindowCommand):
             flags=sublime.MONOSPACE_FONT,
             selected_index=self.selected_index,
         )
+
+    def switch_through_options(self, view, rebase_merges, update_refs):
+        current = (rebase_merges, update_refs)
+        possible = [
+            (True, True),
+            (False, True),
+            (False, False),
+            (True, False),
+        ]
+        rebase_merges, update_refs = possible[(possible.index(current) + 1) % len(possible)]
+        if update_refs:
+            self.window.status_message("--update-refs requires git v2.38 or greater")
+
+        view.settings().set("git_savvy.log_graph_view.rebase_merges", rebase_merges)
+        view.settings().set("git_savvy.log_graph_view.update_refs", update_refs)
+        self.window.run_command("gs_rebase_action")
 
     def create_fixup_commit(self, commit_hash):
         commit_message = self.git("log", "-1", "--pretty=format:%s", commit_hash).strip()
@@ -332,6 +360,13 @@ class gs_rebase_action(GsWindowCommand):
             settings.set("git_savvy.log_graph_view.paths", [])
             settings.set("git_savvy.log_graph_view.filter_by_author", "")
 
+        view.run_command("gs_log_graph_refresh")
+
+    def remove_previous_tip(self, view, previous_tip):
+        settings = view.settings()
+        filters = settings.get("git_savvy.log_graph_view.filters", "")
+        new_filters = ' '.join(s for s in shlex.split(filters) if s != previous_tip)
+        settings.set("git_savvy.log_graph_view.filters", new_filters)
         view.run_command("gs_log_graph_refresh")
 
 
@@ -453,6 +488,16 @@ class RebaseCommand(GitCommand):
                 window.status_message(ok_message)
             util.view.refresh_gitsavvy_interfaces(window, refresh_sidebar=True)
 
+    def _merge_commits_within_reach(self, commit_hash):
+        # type: (str) -> str
+        return self.git(
+            "log",
+            "-1",
+            "--merges",
+            "--format=%H",
+            "{}..".format(commit_hash),
+        ).strip()
+
 
 def auto_close_panel(window, after=800):
     # type: (sublime.Window, int) -> None
@@ -507,39 +552,19 @@ class AwaitTodoListView(sublime_plugin.EventListener):
         if os.path.basename(filename) == "git-rebase-todo":
             AWAITING = None
 
-            todo_items = extract_rebase_items_from_view(view)
-            replace_view_content(view, format_rebase_items(action(todo_items)))
+            buffer_content = view.substr(sublime.Region(0, view.size()))
+            modified_content = action(buffer_content)
+            replace_view_content(view, modified_content)
+
             view.run_command("save")
             view.close()
-
-
-def extract_rebase_items_from_view(view):
-    # type: (sublime.View) -> List[RebaseItem]
-    buffer_content = view.substr(sublime.Region(0, view.size()))
-    return [
-        RebaseItem(*line.split(" ", 2))
-        for line in takewhile(
-            lambda line: bool(line.strip()),
-            buffer_content.splitlines(keepends=True)
-        )
-    ]
-
-
-def ensure_newline(text):
-    # type: (str) -> str
-    return text if text.endswith("\n") else "{}\n".format(text)
-
-
-def format_rebase_items(items):
-    # type: (List[RebaseItem]) -> str
-    return "".join(
-        ensure_newline(" ".join(item)) for item in items
-    )
 
 
 class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
     action = None  # type: QuickAction
     autosquash = False
+    rebase_merges = True
+    update_refs = True
     defaults = {
         "commit_hash": extract_commit_hash_from_graph,
     }
@@ -555,55 +580,80 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
             return
 
         def program():
-            with await_todo_list(action):
+            with await_todo_list(partial(action, commit_hash)):
+                start_commit = "{}^".format(commit_hash)
                 self.rebase(
                     '--interactive',
+                    (
+                        yes_no_switch("--rebase-merges", self.rebase_merges)
+                        if (
+                            self.rebase_merges
+                            and self._merge_commits_within_reach(start_commit)
+                        ) else
+                        None
+                    ),
                     "--autostash",
-                    "--autosquash" if self.autosquash else "--no-autosquash",
-                    "{}^".format(commit_hash),
+                    yes_no_switch("--autosquash", self.autosquash),
+                    (
+                        yes_no_switch("--update-refs", self.update_refs)
+                        if self.git_version >= VERSION_WITH_UPDATE_REFS else
+                        None
+                    ),
+                    start_commit,
                 )
 
         run_on_new_thread(program)
 
 
-def change_first_action(new_action, items):
-    # type: (str, List[RebaseItem]) -> List[RebaseItem]
-    return [items[0]._replace(action=new_action)] + items[1:]
+def change_first_action(new_action, base_commit, buffer_content):
+    # type: (str, str, str) -> str
+    needle = "pick {} ".format(base_commit)
+    return "".join(
+        new_action + line[4:]  # replace "pick" with `new_action`; len("pick") == 4
+        if line.startswith(needle)
+        else line
+        for line in buffer_content.splitlines(keepends=True)
+        if not line.startswith("#")
+    )
 
 
-def fixup_commits(fixup_commits, items):
-    # type: (List[Commit], List[RebaseItem]) -> List[RebaseItem]
-    fixup_commit_hashes = {commit.commit_hash for commit in fixup_commits}
-    return [items[0]] + [
-        RebaseItem(
-            "fixup" if is_fixup(commit) else "squash",
-            *commit
-        )
-        for commit in reversed(fixup_commits)
-    ] + [
-        item for item in items[1:]
-        if item.commit_hash not in fixup_commit_hashes
-    ]
+def fixup_commits(fixup_commits, base_commit, buffer_content):
+    # type: (List[Commit], str, str) -> str
+    def inner():
+        # type: () -> Iterator[str]
+        # The algorithm assumes that all commit hashes provided
+        # have the same length, short or long
+        needle = "pick {} ".format(base_commit)
+        fixup_prefixes = {"pick {} ".format(commit.commit_hash) for commit in fixup_commits}
+        prefix_len = len(fixup_commits[0].commit_hash) + 6  # len("pick  ") == 6
+        for line in buffer_content.splitlines(keepends=True):
+            if line.startswith("#") or line[:prefix_len] in fixup_prefixes:
+                continue
+
+            yield line
+            if line.startswith(needle):
+                for commit in reversed(fixup_commits):
+                    yield "{} {} {}\n".format(
+                        "fixup" if is_fixup(commit) else "squash",
+                        *commit
+                    )
+    return "".join(inner())
 
 
 class gs_rebase_edit_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "edit")
-    autosquash = False
 
 
 class gs_rebase_drop_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "drop")
-    autosquash = False
 
 
 class gs_rebase_reword_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "reword")
-    autosquash = False
 
 
 class gs_rebase_apply_fixup(gs_rebase_quick_action):
     action = partial(fixup_commits)
-    autosquash = False
 
     def run(self, edit, base_commit, fixes):
         self.action = partial(self.action, [Commit(*fix) for fix in fixes])
@@ -626,7 +676,13 @@ class gs_rebase_just_autosquash(GsTextCommand, RebaseCommand):
                 '--interactive',
                 "--autostash",
                 "--autosquash",
-                "{}".format(commitish),
+                "--rebase-merges" if self._merge_commits_within_reach(commitish) else None,
+                (
+                    "--update-refs"
+                    if self.git_version >= VERSION_WITH_UPDATE_REFS else
+                    None
+                ),
+                commitish,
                 custom_environ={"GIT_SEQUENCE_EDITOR": ":"}
             )
 
@@ -651,48 +707,89 @@ class gs_rebase_skip(sublime_plugin.WindowCommand, RebaseCommand):
         self.rebase('--skip')
 
 
+ask_for_local_branch = ask_for_branch(
+    local_branches_only=True,
+    ignore_current_branch=True,
+    memorize_key="last_local_branch_for_rebase"
+)
+
+
+def _get_setting(self, setting, default_value):
+    # type: (GsCommand, str, _T) -> _T
+    view = self._current_view()
+    if not view:
+        return default_value
+    return view.settings().get(setting, default_value)
+
+
+# `True` because both features actually _reduce_ the intrusiveness
+# of the rebase.
+DEFAULT_VALUE = True
+
+
+def provide_rebase_merges(self, args, done):
+    # type: (GsCommand, Args, Kont) -> None
+    done(_get_setting(self, "git_savvy.log_graph_view.rebase_merges", DEFAULT_VALUE))
+
+
+def provide_update_refs(self, args, done):
+    # type: (GsCommand, Args, Kont) -> None
+    done(
+        _get_setting(self, "git_savvy.log_graph_view.update_refs", DEFAULT_VALUE)
+        if self.git_version >= VERSION_WITH_UPDATE_REFS else
+        None
+    )
+
+
 class gs_rebase_interactive(GsTextCommand, RebaseCommand):
     defaults = {
         "commitish": extract_parent_symbol_from_graph,
+        "rebase_merges": provide_rebase_merges,
+        "update_refs": provide_update_refs,
     }
 
     @on_new_thread
-    def run(self, edit, commitish):
-        # type: (sublime.Edit, str) -> None
+    def run(self, edit, commitish, rebase_merges, update_refs):
+        # type: (sublime.Edit, str, Optional[bool], Optional[bool]) -> None
         self.rebase(
             '--interactive',
-            "{}".format(commitish),
+            (
+                yes_no_switch("--rebase-merges", rebase_merges)
+                if (
+                    rebase_merges
+                    and self._merge_commits_within_reach(commitish)
+                ) else
+                None
+            ),
+            yes_no_switch("--update-refs", update_refs),
+            commitish,
             offer_autostash=True,
         )
-
-
-def ask_for_local_branch(self, args, done):
-    # type: (GsCommand, Args, Kont) -> None
-    def on_done(branch):
-        store.update_state(self.repo_path, {"last_local_branch_for_rebase": branch})
-        done(branch)
-
-    selected_branch = store.current_state(self.repo_path).get("last_local_branch_for_rebase")
-    show_branch_panel(
-        on_done,
-        local_branches_only=True,
-        ignore_current_branch=True,
-        selected_branch=selected_branch
-    )
 
 
 class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
     defaults = {
         "commitish": extract_parent_symbol_from_graph,
-        "onto": ask_for_local_branch
+        "onto": ask_for_local_branch,
+        "rebase_merges": provide_rebase_merges,
+        "update_refs": provide_update_refs,
     }
 
     @on_new_thread
-    def run(self, edit, commitish, onto):
-        # type: (sublime.Edit, str, str) -> None
+    def run(self, edit, commitish, onto, rebase_merges, update_refs):
+        # type: (sublime.Edit, str, str, Optional[bool], Optional[bool]) -> None
         self.rebase(
             '--interactive',
-            "{}".format(commitish),
+            (
+                yes_no_switch("--rebase-merges", rebase_merges)
+                if (
+                    rebase_merges
+                    and self._merge_commits_within_reach(commitish)
+                ) else
+                None
+            ),
+            yes_no_switch("--update-refs", update_refs),
+            commitish,
             "--onto",
             onto,
             offer_autostash=True,
@@ -702,9 +799,23 @@ class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
 class gs_rebase_on_branch(GsTextCommand, RebaseCommand):
     defaults = {
         "on": ask_for_local_branch,
+        "rebase_merges": provide_rebase_merges,
+        "update_refs": provide_update_refs,
     }
 
     @on_new_thread
-    def run(self, edit, on):
-        # type: (sublime.Edit, str) -> None
-        self.rebase(on, offer_autostash=True)
+    def run(self, edit, on, rebase_merges, update_refs):
+        # type: (sublime.Edit, str, Optional[bool], Optional[bool]) -> None
+        self.rebase(
+            (
+                yes_no_switch("--rebase-merges", rebase_merges)
+                if (
+                    rebase_merges
+                    and self._merge_commits_within_reach(on)
+                ) else
+                None
+            ),
+            yes_no_switch("--update-refs", update_refs),
+            on,
+            offer_autostash=True,
+        )
