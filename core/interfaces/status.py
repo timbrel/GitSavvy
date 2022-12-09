@@ -282,11 +282,7 @@ class StatusInterface(ui.Interface, GitCommand):
 
     @distinct_until_state_changed
     def just_render(self):
-        # TODO: Rewrite to "pureness" so that we don't need a lock here
-        # Note: It is forbidden to `update_state` during render, e.g. in
-        # any `ui.section`.
-        with self._lock:
-            content, regions = self._render_template()
+        content, regions = self._render_template()
         self.draw(self.title(), content, regions)
 
         on_special_symbol = any(
