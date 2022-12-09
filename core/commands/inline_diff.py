@@ -345,7 +345,7 @@ class gs_inline_diff_open(WindowCommand, GitCommand):
                 with disabled_on_activated():
                     focus_view(diff_view)
                 if active_view:
-                    place_view(self.window, view, after=active_view)
+                    place_view(self.window, diff_view, after=active_view)
                 break
 
         else:
