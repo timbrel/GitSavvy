@@ -11,6 +11,7 @@ from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..utils import flash, hprint, uprint
 from ..view import replace_view_content
 from ...common import util
+from GitSavvy.core import store
 
 
 MYPY = False
@@ -192,12 +193,22 @@ class GsStashShowCommand(WindowCommand, GitCommand):
         repo_path = self.repo_path
         stash_view = util.view.get_scratch_view(self, "stash", read_only=True)
         title = "stash@{{{}}}".format(stash_id)
+        description = self.description_of_stash(str(stash_id))
+        if description:
+            title += " - " + description
         stash_view.set_name(title)
         stash_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
         stash_view.settings().set("git_savvy.repo_path", repo_path)
         stash_view.settings().set("git_savvy.stash_view.stash_id", stash_id)
         stash_view.settings().set("git_savvy.stash_view.status", "valid")
         return stash_view
+
+    def description_of_stash(self, stash_id):
+        # type: (str) -> str
+        for stash in store.current_state(self.repo_path).get("stashes", []):
+            if stash.id == stash_id:
+                return stash.description
+        return ""
 
 
 class GsStashSaveCommand(WindowCommand, GitCommand):

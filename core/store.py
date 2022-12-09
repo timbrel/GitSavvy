@@ -8,7 +8,10 @@ from .utils import eat_but_log_errors
 
 MYPY = False
 if MYPY:
-    from typing import AbstractSet, Callable, DefaultDict, Deque, Dict, Optional, Tuple, TypedDict
+    from typing import (
+        AbstractSet, Callable, DefaultDict, Deque, Dict, List, Optional, Tuple, TypedDict
+    )
+    from GitSavvy.core.git_mixins.stash import Stash
     from GitSavvy.core.git_mixins.status import WorkingDirState
 
     RepoPath = str
@@ -23,6 +26,7 @@ if MYPY:
             "last_remote_used_with_option_all": Optional[str],
             "last_reset_mode_used": Optional[str],
             "short_hash_length": int,
+            "stashes": List[Stash],
         },
         total=False
     )

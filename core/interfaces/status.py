@@ -165,7 +165,7 @@ class StatusInterface(ui.Interface, GitCommand):
 
       [c] commit                            [t][a] apply stash
       [C] commit, including unstaged        [t][p] pop stash
-      [m] amend previous commit             [t][s] show stash
+      [m] amend previous commit             [o]    open stash
       [p] push current branch               [t][c] create stash
                                             [t][u] create stash including untracked files
       [i] ignore file                       [t][g] create stash of staged changes only
@@ -261,9 +261,11 @@ class StatusInterface(ui.Interface, GitCommand):
         status = store.current_state(self.repo_path).get("status")
         if status:
             self.update_state(status._asdict())
+        stashes = store.current_state(self.repo_path).get("stashes", [])
         self.update_state({
             'git_root': self.short_repo_path,
-            'show_help': not self.view.settings().get("git_savvy.help_hidden")
+            'show_help': not self.view.settings().get("git_savvy.help_hidden"),
+            'stashes': stashes,
         })
 
     def update_state(self, data, then=None):
