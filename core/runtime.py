@@ -70,7 +70,14 @@ def enqueue_on_savvy(fn, *args, **kwargs):
 
 def run_on_new_thread(fn, *args, __daemon=None, **kwargs):
     # type: (Callable, Any, Optional[bool], Any) -> None
-    threading.Thread(target=fn, args=args, kwargs=kwargs, daemon=__daemon).start()
+    threading.Thread(target=_set_timout(fn), args=args, kwargs=kwargs, daemon=__daemon).start()
+
+
+def _set_timout(fn):
+    def wrapped(*args, **kwargs):
+        git_command.auto_timeout.value = None
+        return fn(*args, **kwargs)
+    return wrapped
 
 
 def on_worker(fn):
@@ -258,3 +265,7 @@ def cooperative_thread_hopper(fn):
             tick(gen)
 
     return decorated
+
+
+# Late import to work-around cyclic import
+from . import git_command  # noqa: E402

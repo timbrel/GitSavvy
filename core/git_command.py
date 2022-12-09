@@ -18,6 +18,7 @@ import stat
 import subprocess
 import sys
 import time
+import threading
 import traceback
 
 import sublime
@@ -217,6 +218,10 @@ def is_subpath(topfolder, path):
     return os.path.commonprefix([topfolder, path]) == topfolder
 
 
+auto_timeout = threading.local()
+DEFAULT_TIMEOUT = 120.0
+
+
 class _GitCommand(SettingsMixin):
 
     """
@@ -236,7 +241,7 @@ class _GitCommand(SettingsMixin):
         stdin_encoding="utf-8",
         custom_environ=None,
         just_the_proc=False,
-        timeout=120.0
+        timeout=NOT_SET
     ):
         """
         Run the git command specified in `*args` and return the output
@@ -247,6 +252,11 @@ class _GitCommand(SettingsMixin):
         current working directory for the git process; otherwise,
         the `repo_path` value will be used.
         """
+        if timeout == NOT_SET:
+            try:
+                timeout = auto_timeout.value
+            except AttributeError:
+                timeout = DEFAULT_TIMEOUT
         window = self.some_window()
         final_args = self._add_global_flags(git_cmd, list(args))
         command = [self.git_binary_path] + list(filter_(final_args))
