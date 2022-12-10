@@ -163,7 +163,7 @@ class gs_diff(WindowCommand, GitCommand):
                 break
 
         else:
-            diff_view = util.view.get_scratch_view(self, "diff", read_only=True)
+            diff_view = util.view.get_scratch_view(self, "diff")
 
             show_diffstat = self.savvy_settings.get("show_diffstat", True)
             settings = diff_view.settings()

@@ -345,11 +345,11 @@ class gs_inline_diff_open(WindowCommand, GitCommand):
                 with disabled_on_activated():
                     focus_view(diff_view)
                 if active_view:
-                    place_view(self.window, view, after=active_view)
+                    place_view(self.window, diff_view, after=active_view)
                 break
 
         else:
-            diff_view = util.view.get_scratch_view(self, "inline_diff", read_only=True)
+            diff_view = util.view.get_scratch_view(self, "inline_diff")
 
             settings = diff_view.settings()
             settings.set("git_savvy.repo_path", repo_path)

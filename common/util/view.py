@@ -2,6 +2,7 @@ import bisect
 
 import sublime
 from ...core.settings import GitSavvySettings
+from ...core.view import place_view
 
 
 MYPY = False
@@ -41,12 +42,17 @@ def single_cursor_coords(run):
 # NEW-VIEW HELPER FUNCTIONS #
 #############################
 
-def get_scratch_view(context, name, read_only=True):
+def get_scratch_view(context, name, read_only=True, _place_view=True):
     """
     Create and return a read-only view.
+
+    `_place_view` implements a fix for https://github.com/sublimehq/sublime_text/issues/5772
     """
     window = context.window if hasattr(context, "window") else context.view.window()
+    active_view = context.view if hasattr(context, "view") else window.active_view()
     view = window.new_file()
+    if _place_view and active_view:
+        place_view(window, view, after=active_view)
     view.settings().set("git_savvy.{}_view".format(name), True)
     view.set_scratch(True)
     view.set_read_only(read_only)
