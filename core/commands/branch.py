@@ -1,7 +1,8 @@
+from functools import lru_cache
+import inspect
 import re
 import sublime
 
-from . import checkout
 from . import push
 from ..git_command import GitSavvyError
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -11,12 +12,22 @@ from GitSavvy.core.utils import noop, show_actions_panel, uprint
 
 
 __all__ = (
+    "gs_create_branch",
     "gs_rename_branch",
     "gs_unset_tracking_information",
     "gs_delete_branch",
 )
 
 
+MYPY = False
+if MYPY:
+    from typing import Callable, TypeVar
+    from GitSavvy.core.base_commands import Args, Kont
+    T = TypeVar("T")
+
+
+NEW_BRANCH_PROMPT = "Branch name:"
+NEW_BRANCH_INVALID = "`{}` is a invalid branch name.\nRead more on $(man git-check-ref-format)"
 DELETE_UNDO_MESSAGE = """\
 GitSavvy: Deleted branch ({0}), in case you want to undo, run:
   $ git branch {0} {1}
@@ -26,33 +37,64 @@ NOT_MERGED_WARNING = re.compile(r"The branch.*is not fully merged\.")
 CANT_DELETE_CURRENT_BRANCH = re.compile(r"Cannot delete branch .+ checked out at ")
 
 
-def ask_for_name(caption, initial_text):
+def just(value):
+    # type: (T) -> Callable[..., T]
+    return lambda: value
+
+
+def call_with_wanted_args(fn, args):
+    # type: (Callable[..., T], Args) -> T
+    fs = _signature(fn)
+    return fn(**{k: args[k] for k in fs.parameters.keys() if k in args})
+
+
+@lru_cache()
+def _signature(fn):
+    return inspect.signature(fn)
+
+
+def ask_for_name(caption=just(NEW_BRANCH_PROMPT), initial_text=just("")):
     def handler(cmd, args, done, initial_text_=None):
-        # type: (GsWindowCommand, push.Args, push.Kont, str) -> None
+        # type: (GsWindowCommand, Args, Kont, str) -> None
         def done_(branch_name):
             branch_name = branch_name.strip().replace(" ", "-")
             if not branch_name:
                 return None
             if not cmd.validate_branch_name(branch_name):
-                sublime.error_message(checkout.NEW_BRANCH_INVALID.format(branch_name))
+                sublime.error_message(NEW_BRANCH_INVALID.format(branch_name))
                 handler(cmd, args, done, initial_text_=branch_name)
                 return None
             done(branch_name)
 
         show_single_line_input_panel(
-            caption(args),
-            initial_text_ or initial_text(args),
+            call_with_wanted_args(caption, args),
+            initial_text_ or call_with_wanted_args(initial_text, args),
             done_
         )
     return handler
+
+
+class gs_create_branch(GsWindowCommand):
+    defaults = {
+        "branch_name": ask_for_name(),
+    }
+
+    def run(self, branch_name, start_point=None):
+        # type: (str, str) -> None
+        self.git("branch", branch_name, start_point)
+        self.window.status_message("Created {}{}".format(
+            branch_name,
+            " at {}".format(start_point) if start_point else "")
+        )
+        util.view.refresh_gitsavvy_interfaces(self.window)
 
 
 class gs_rename_branch(GsWindowCommand):
     defaults = {
         "branch": push.take_current_branch_name,
         "new_name": ask_for_name(
-            caption=lambda args: "Enter new branch name (for {}):".format(args["branch"]),
-            initial_text=lambda args: args["branch"],
+            caption=lambda branch: "Enter new branch name (for {}):".format(branch),
+            initial_text=lambda branch: branch,
         ),
     }
 
