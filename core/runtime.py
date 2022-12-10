@@ -19,6 +19,7 @@ if MYPY:
 
 UI_THREAD_NAME = None  # type: Optional[str]
 savvy_executor = ThreadPoolExecutor(max_workers=1)
+auto_timeout = threading.local()
 
 
 def determine_thread_names():
@@ -75,7 +76,7 @@ def run_on_new_thread(fn, *args, __daemon=None, **kwargs):
 
 def _set_timout(fn):
     def wrapped(*args, **kwargs):
-        git_command.auto_timeout.value = None
+        auto_timeout.value = None
         return fn(*args, **kwargs)
     return wrapped
 
@@ -265,7 +266,3 @@ def cooperative_thread_hopper(fn):
             tick(gen)
 
     return decorated
-
-
-# Late import to work-around cyclic import
-from . import git_command  # noqa: E402

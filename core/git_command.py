@@ -18,7 +18,6 @@ import stat
 import subprocess
 import sys
 import time
-import threading
 import traceback
 
 import sublime
@@ -26,7 +25,7 @@ import sublime
 from ..common import util
 from .settings import SettingsMixin
 from GitSavvy.core.fns import filter_
-from GitSavvy.core.runtime import enqueue_on_worker, run_as_future
+from GitSavvy.core.runtime import auto_timeout, enqueue_on_worker, run_as_future
 from GitSavvy.core.utils import kill_proc, paths_upwards, resolve_path
 
 
@@ -218,7 +217,6 @@ def is_subpath(topfolder, path):
     return os.path.commonprefix([topfolder, path]) == topfolder
 
 
-auto_timeout = threading.local()
 DEFAULT_TIMEOUT = 120.0
 
 
