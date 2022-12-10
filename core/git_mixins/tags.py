@@ -42,6 +42,7 @@ class TagsMixin(mixin_base):
             "ls-remote",
             "--tags",
             remote,
+            timeout=20.0,
         )
         porcelain_entries = stdout.splitlines()
         entries = [
