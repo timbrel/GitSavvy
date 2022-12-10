@@ -1,23 +1,40 @@
 # SYNTAX TEST "Packages/GitSavvy/syntax/dashboard.sublime-syntax"
 
-  BRANCH:  On branch `develop`.
-#  <- meta.git-savvy.summary-header
-#  ^ comment
-#           ^ -comment
-#                       ^ constant.other
-#                    ^ punctuation.definition.git-savvy.branch.start
-#                            ^ punctuation.definition.git-savvy.branch.end
   ROOT:    ~/.config/sublime-text-3/Packages/GitSavvy
 #  ^ comment
 #              ^ comment.git-savvy.summary-header.root.info
 #  ^ comment.git-savvy.summary-header.title.root
+  BRANCH:  On branch `master` tracking `origin/master`.
+#  <- meta.git-savvy.summary-header
+#  ^ comment
+#           ^ -comment
+#                    ^ punctuation.definition.git-savvy.branch.start
+#                     ^^^^^^ constant.other.git-savvy.summary-header.branch-name
+#                           ^ punctuation.definition.git-savvy.branch.end
+#                                      ^ punctuation.definition.git-savvy.branch.start
+#                                       ^^^^^^^^^^^^^ constant.other.git-savvy.summary-header.branch-name
+#                                                    ^ punctuation.definition.git-savvy.branch.end
+#
+           You're ahead by 3.
+#                 ^^^^^ keyword.other.git-savvy.summary-header.ahead-behind
+           You're behind by 3.
+#                 ^^^^^^ keyword.other.git-savvy.summary-header.ahead-behind
   HEAD:    aaf90ba improve blame syntax
-#  ^ comment
-#            ^ constant.other
-#  ^ comment.git-savvy.summary-header.title.head
-  HEAD:
-#  ^ comment
+# <- comment.git-savvy.summary-header.head-summary
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.git-savvy.summary-header.head-summary
 # ^^^^^ comment.git-savvy.summary-header.title.head
+#          ^^^^^^^ constant.other
+              `  ​(tag: 4.20.0, origin/master)
+#             ^^^ punctuation.other.commit-decoration.git-savvy
+#                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ constant.other.git.branch.git-savvy
+#                  ! shift to the right because of the invisible whitespace markers !
+           70740e43 ​commit message
+#          ^^^^^^^^ constant.other.git-savvy.sha1
+           ​ ⋮
+#            ^ punctuation.other.dropped-commits.git-savvy
+#           ! shift to the right because of the invisible whitespace markers !
+           70740e43 ​(iter-stashes)
+#          ^^^^^^^^ constant.other.git-savvy.sha1
 
   ** Press [e] to toggle display of remote branches. **
 # <- - meta.git-savvy.status

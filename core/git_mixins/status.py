@@ -132,6 +132,7 @@ class StatusMixin(mixin_base):
             last_branches.append(current_branch)
         store.update_state(self.repo_path, {
             "status": rv,
+            "head": branch_status,
             "last_branches": last_branches
         })
         return rv

@@ -8,6 +8,13 @@ hidden: true
 scope: git-savvy.dashboard
 contexts:
   main:
+    - match: ^  (ROOT:)(.+[\\/])([^\\/]+)$
+      comment: root summary
+      scope: comment.git-savvy.summary-header.root-summary
+      captures:
+        1: comment.git-savvy.summary-header.title.root
+        2: comment.git-savvy.summary-header.root.info
+        3: comment.git-savvy.summary-header.root.info.tail
     - match: "^  BRANCH:"
       comment: Summary Header
       scope: comment.git-savvy.summary-header.title.branch
@@ -15,13 +22,6 @@ contexts:
         - meta_scope: meta.git-savvy.summary-header
         - match: ^$
           pop: true
-
-        - match: ^  (ROOT:)(.+)
-          comment: root summary
-          scope: comment.git-savvy.summary-header.root-summary
-          captures:
-            1: comment.git-savvy.summary-header.title.root
-            2: comment.git-savvy.summary-header.root.info
 
         - match: "(`)([^`]+)(`)"
           comment: branch names
@@ -52,6 +52,31 @@ contexts:
           captures:
             1: comment.git-savvy.summary-header.title.head
             2: constant.other.git-savvy.sha1
+
+        - match: ^\s{4,11}\x{200b} +(⋮)
+          comment: line denoting we dropped some commits
+          scope: meta.git-savvy.summary-header.head-summary
+          captures:
+            1: punctuation.other.dropped-commits.git-savvy
+
+        - match: ^\s{4,11}([ `]+)\x{200b}(.*)
+          comment: line tagging the commit hash of the previous line
+          scope: meta.git-savvy.summary-header.head-summary
+          captures:
+            1: punctuation.other.commit-decoration.git-savvy
+            2: comment.git-savvy.summary-header.head-summary constant.other.git.branch.git-savvy
+
+        - match: ^\s{4,11}([0-9a-f]{7,40}) \x{200b}(.+)
+          comment: stand-alone decoration line
+          scope: comment.git-savvy.summary-header.head-summary
+          captures:
+            1: constant.other.git-savvy.sha1
+
+        - match: ^\s{4,11}(?:([0-9a-f]{7,40}) .+)?
+          comment: stand-alone commit line
+          scope: comment.git-savvy.summary-header.head-summary
+          captures:
+            1: constant.other.git-savvy.sha1
 
     - match: "^  (#{3,})"
       comment: Key-bindings menu

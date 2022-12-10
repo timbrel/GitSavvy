@@ -11,14 +11,16 @@ if MYPY:
     from typing import (
         AbstractSet, Callable, DefaultDict, Deque, Dict, List, Optional, Tuple, TypedDict
     )
+    from GitSavvy.core.git_mixins.active_branch import Commit
     from GitSavvy.core.git_mixins.stash import Stash
-    from GitSavvy.core.git_mixins.status import WorkingDirState
+    from GitSavvy.core.git_mixins.status import HeadState, WorkingDirState
 
     RepoPath = str
     RepoStore = TypedDict(
         'RepoStore',
         {
             "status": WorkingDirState,
+            "head": HeadState,
             "last_branches": Deque[Optional[str]],
             "last_local_branch_for_rebase": Optional[str],
             "last_remote_used": Optional[str],
@@ -27,6 +29,7 @@ if MYPY:
             "last_reset_mode_used": Optional[str],
             "short_hash_length": int,
             "stashes": List[Stash],
+            "recent_commits": List[Commit],
         },
         total=False
     )

@@ -5,6 +5,8 @@ from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core.git_command import GitCommand
+from GitSavvy.core.git_mixins import active_branch
+
 
 TestShortBranchStatusTestcases = [
     (
@@ -274,3 +276,202 @@ class TestLongBranchStatus(DeferrableTestCase):
  M core/interfaces/status.py
 ?? tests/test_repo_status.py
 """
+
+
+class TestRecentCommitsFormat(DeferrableTestCase):
+    @p.expand([
+        (
+            "empty lists do not throw",
+            [],
+            []
+        ),
+
+        (
+            "format one normal commit",
+            [["abc", "", "message"]],
+            ["abc message"]
+        ),
+        (
+            "format up to max_items commits",
+            [
+                ["abc", "", "message"],
+                ["abc", "", "message"],
+                ["abc", "", "message"],
+                ["abc", "", "message"],
+                ["end", "", "message"],
+            ],
+            [
+                "abc message",
+                "abc message",
+                "abc message",
+                "abc message",
+                "end message",
+            ]
+        ),
+        (
+            "drop sixth (max_items+1) element",
+            [
+                ["abc", "", "message"],
+                ["abc", "", "message"],
+                ["abc", "", "message"],
+                ["abc", "", "message"],
+                ["end", "", "message"],
+                ["def", "", "dropped"],
+            ],
+            [
+                "abc message",
+                "abc message",
+                "abc message",
+                "abc message",
+                "end message",
+            ]
+        ),
+
+        (
+            "ignore HEAD decoration on first commit (detached variant)",
+            [
+                ["abc", " (HEAD)", "message"],
+                ["abc", "", "message"],
+            ],
+            [
+                "abc message",
+                "abc message",
+            ]
+        ),
+        (
+            "ignore HEAD decoration on first commit (on branch variant)",
+            [
+                ["abc", " (HEAD -> feature-branch)", "message"],
+                ["abc", "", "message"],
+            ],
+            [
+                "abc message",
+                "abc message",
+            ]
+        ),
+
+        (
+            "special format decorated commit: "
+            "ensure lstrip() is called on decoration and "
+            "the invisible space is added",
+            [
+                ["abc", " (HEAD)", "message"],
+                ["abc", " (tag: 1.0.0)", "message"],
+            ],
+            [
+                "abc message",
+                "abc \u200B(tag: 1.0.0)",
+            ]
+        ),
+
+        (
+            "stop after first decoration (drop normal commit)",
+            [
+                ["abc", " (HEAD)", "message"],
+                ["abc", " (tag: 1.0.0)", "message"],
+                ["def", "", "dropped"],
+            ],
+            [
+                "abc message",
+                "abc \u200B(tag: 1.0.0)",
+            ]
+        ),
+        (
+            "stop after first decoration (drop another decorated line)",
+            [
+                ["abc", " (HEAD)", "message"],
+                ["abc", " (tag: 1.0.0)", "message"],
+                ["def", " (tag: dropped)", "dropped"],
+            ],
+            [
+                "abc message",
+                "abc \u200B(tag: 1.0.0)",
+            ]
+        ),
+
+        (
+            "do not drop decoration if on 6th (max_items+1) position",
+            [
+                ["abc", " (HEAD)", "message"],
+                ["abc", "", "message"],
+                ["abc", "", "message"],
+                ["abc", "", "message"],
+                ["abc", "", "message"],
+                ["abc", " (tag: 1.0.0)", "message"],
+            ],
+            [
+                "abc message",
+                "abc message",
+                "abc message",
+                "abc message",
+                "abc message",
+                "abc \u200B(tag: 1.0.0)",
+            ]
+        ),
+        (
+            "drop 6th commit and "
+            "show continuation line because a decoration follows",
+            [
+                ["abc", " (HEAD)", "message"],
+                ["abc", "", "message"],
+                ["abc", "", "message"],
+                ["abc", "", "message"],
+                ["abc", "", "message"],
+                ["def", "", "dropped"],
+                ["abc", " (tag: 1.0.0)", "message"],
+            ],
+            [
+                "abc message",
+                "abc message",
+                "abc message",
+                "abc message",
+                "abc message",
+                "\u200B ⋮",
+                "abc \u200B(tag: 1.0.0)",
+            ]
+        ),
+
+        (
+            "do not stop when the HEAD commit is decorated",
+            [
+                ["abc", " (HEAD -> feature-branch, another-feat)", "message"],
+                ["not", "", "dropped"],
+            ],
+            [
+                "abc message",
+                "` \u200B(another-feat)",
+                "not dropped",
+            ]
+        ),
+
+        (
+            "do not stop after the upstream branch decoration (on HEAD)",
+            [
+                ["abc", " (HEAD -> master, origin/master)", "message"],
+                ["abc", "", "message"],
+            ],
+            [
+                "abc message",
+                "` \u200B(origin/master)",
+                "abc message",
+            ]
+        ),
+        (
+            "do not stop after the upstream branch decoration (on a later commit)",
+            [
+                ["abc", " (HEAD -> master)", "message"],
+                ["bcd", " (origin/master)", "message"],
+                ["abc", "", "message"],
+            ],
+            [
+                "abc message",
+                "bcd message",
+                "` \u200B(origin/master)",
+                "abc message",
+            ]
+        ),
+
+    ])
+    def test_formatting_and_limiting(self, _, lines, expected):
+        actual = list(active_branch.format_and_limit(lines, 5, "origin/master"))
+        self.assertEqual(actual, expected)
