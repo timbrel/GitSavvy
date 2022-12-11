@@ -1,0 +1,88 @@
+GitSavvy 2.38.0
+===============
+
+
+-  The status dashboard has a slightly different design and better cursor
+   management.  Generally switching between the dashboards should be snappier.
+
+- `Repo History`s rebase menu (`[r]`) learned `--rebase-merges` and
+  `--update-refs` tricks.  Note that the latter requires git v2.38.0[*].
+
+  With that we have sad news: the stand-alone "rebase" dashboard has been
+  deprecated.  Yep.
+
+  The standard menu (`[enter]`) though has learned "Create branch <here>" and
+  "Move active branch to <here>".
+
+- In the commit message view, you can directly unstage or discard hunks or
+  lines from the diff shown there.  The former is very needed when amending
+  or splitting commits while rebasing.  You just start a "commit --amend" and
+  deselect what you don't want to commit yet.  Discarding is useful if you have
+  these "oh, there's still a console.log in there"; just reset those lines
+  quickly.
+
+- You can now open the `Line History` from basically everywhere you see a
+  patch/diff and it will read the commit and correct line numbers from it.
+
+E.g. you're in the normal diff view with a small fixup.  `[S]`tage that, the
+diff will switch to the staged mode automatically after the last hunk.  Now
+initiate `Line History` from the command palette to bring up a new view
+showing the history of the hunk.  Search for the right commit and hit `[f]`
+to make a fixup commit.
+
+- Hunk-to-hunk navigation has been improved in all views showing diffs/patches.
+
+- Staging deletion-only hunks has been made easier for the `gs_stage_hunk`
+  command.
+
+
+🎄🧑‍🎄
+
+
+Quick workflow reminders.  As GitSavvy generally does not come with *global*
+key-bindings, you have to make your own ones in your `Key Bindings` file.
+
+Just start a commit from everywhere.  If nothing is staged yet, "commit --all"
+is assumed:
+
+```
+  { "keys": ["ctrl+shift+c"], "command": "gs_commit"},
+```
+
+Stage something quickly, directly in the edited buffer:
+
+```
+  { "keys": ["alt+s"], "command": "gs_stage_hunk"},
+```
+
+Set `"git_diff_target": "index",` in your Sublime Text's preferences too, so
+that the gutter shows the correct information, namely changed unstaged lines.
+
+Navigate from hunk to hunk in your normal view:
+
+```
+  { "keys": ["ctrl+."], "command": "gs_next_hunk" },
+  { "keys": ["ctrl+,"], "command": "gs_prev_hunk" },
+```
+
+To open a diff for the current file is still very useful:
+
+```
+  {
+      "keys": ["ctrl+shift+."], "command": "gs_diff",
+      "args": { "current_file": true }
+  },
+```
+
+Acts btw as a toggle, t.i. when viewing a diff closes the diff, otherwise opens
+it.  Opens a "diff all files" when used from e.g. the `Repo History`!
+
+Quickly open a Line History:
+
+```
+  { "keys": ["ctrl+shift+l"], "command": "gs_line_history"},
+```
+
+
+
+[*] Yeah GitSavvy and git have the same version number currently
