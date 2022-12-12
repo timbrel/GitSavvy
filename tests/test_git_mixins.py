@@ -67,7 +67,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
             [" ", "refs/heads/master", "refs/remotes/origin/master", "origin", ""]
             + sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
-        actual = list(repo.get_branches())
+        when(repo).get_repo_path().thenReturn("yeah/sure")
+        actual = repo.get_branches()
         self.assertEqual(actual, [
             git_mixins.branches.Branch(
                 "master",
@@ -89,7 +90,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
             ["*", "refs/heads/master", "refs/remotes/origin/master", "origin", ""]
             + sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
-        actual = list(repo.get_branches())
+        when(repo).get_repo_path().thenReturn("yeah/sure")
+        actual = repo.get_branches()
         self.assertEqual(actual, [
             git_mixins.branches.Branch(
                 "master",
@@ -111,7 +113,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
             [" ", "refs/remotes/origin/dev", "", "", ""]
             + sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
-        actual = list(repo.get_branches())
+        when(repo).get_repo_path().thenReturn("yeah/sure")
+        actual = repo.get_branches()
         self.assertEqual(actual, [
             git_mixins.branches.Branch(
                 "dev",
@@ -131,7 +134,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
             [" ", "refs/heads/master", "refs/remotes/orig/in/master", "orig/in", ""]
             + sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
-        actual = list(repo.get_branches())
+        when(repo).get_repo_path().thenReturn("yeah/sure")
+        actual = repo.get_branches()
         self.assertEqual(actual, [
             git_mixins.branches.Branch(
                 "master",
@@ -153,7 +157,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
             [" ", "refs/heads/master", "refs/remotes/origin/master", "origin", "gone"]
             + sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
-        actual = list(repo.get_branches())
+        when(repo).get_repo_path().thenReturn("yeah/sure")
+        actual = repo.get_branches()
         self.assertEqual(actual, [
             git_mixins.branches.Branch(
                 "master",
@@ -175,7 +180,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
             [" ", "refs/heads/test", "refs/heads/update-branch-from-upstream", ".", ""]
             + sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
-        actual = list(repo.get_branches())
+        when(repo).get_repo_path().thenReturn("yeah/sure")
+        actual = repo.get_branches()
         self.assertEqual(actual, [
             git_mixins.branches.Branch(
                 "test",
@@ -243,7 +249,7 @@ class TestBranchParsing(EndToEndTestCase):
     def test_active_local_branch(self):
         repo = self.init_repo()
         commit_hash = repo.get_commit_hash_for_head()
-        actual = list(repo.get_branches())
+        actual = repo.get_branches()
         self.assertEqual(actual, [
             git_mixins.branches.Branch(
                 "master",

@@ -12,6 +12,7 @@ if MYPY:
         AbstractSet, Callable, DefaultDict, Deque, Dict, List, Optional, Tuple, TypedDict
     )
     from GitSavvy.core.git_mixins.active_branch import Commit
+    from GitSavvy.core.git_mixins.branches import Branch
     from GitSavvy.core.git_mixins.stash import Stash
     from GitSavvy.core.git_mixins.status import HeadState, WorkingDirState
 
@@ -21,6 +22,7 @@ if MYPY:
         {
             "status": WorkingDirState,
             "head": HeadState,
+            "branches": List[Branch],
             "last_branches": Deque[Optional[str]],
             "last_local_branch_for_rebase": Optional[str],
             "last_remote_used": Optional[str],

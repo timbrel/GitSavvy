@@ -1,13 +1,14 @@
 from collections import namedtuple
 import re
 
+from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.fns import filter_
 
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, NamedTuple, Optional, Sequence
+    from typing import Dict, List, NamedTuple, Optional, Sequence
     Upstream = NamedTuple("Upstream", [
         ("remote", str),
         ("branch", str),
@@ -85,7 +86,7 @@ class BranchesMixin(mixin_base):
         return None
 
     def get_local_branches(self):
-        # type: () -> Iterable[Branch]
+        # type: () -> List[Branch]
         return self.get_branches(refs=["refs/heads"])
 
     def get_branches(
@@ -93,7 +94,7 @@ class BranchesMixin(mixin_base):
         sort_by_recent=False,
         refs=["refs/heads", "refs/remotes"]
     ):
-        # type: (bool, Sequence[str]) -> Iterable[Branch]
+        # type: (bool, Sequence[str]) -> List[Branch]
         """
         Return a list of all local and remote branches.
         """
@@ -112,14 +113,15 @@ class BranchesMixin(mixin_base):
             "--sort=-committerdate" if sort_by_recent else None,
             *refs
         )  # type: str
-        branches = (
+        branches = [
             branch
             for branch in (
                 self._parse_branch_line(line)
                 for line in filter_(stdout.splitlines())
             )
             if branch.name != "HEAD"
-        )
+        ]
+        store.update_state(self.repo_path, {"branches": branches})
         return branches
 
     def fetch_branch_description_subjects(self):

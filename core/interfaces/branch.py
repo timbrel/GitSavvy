@@ -110,9 +110,7 @@ class BranchInterface(ui.Interface, GitCommand):
 
     def pre_render(self):
         sort_by_recent = self.savvy_settings.get("sort_by_recent_in_branch_dashboard")
-        self._branches = tuple(self.get_branches(
-            sort_by_recent=sort_by_recent,
-        ))
+        self._branches = self.get_branches(sort_by_recent=sort_by_recent)
         self.descriptions = self.fetch_branch_description_subjects()
         if self.show_remotes is None:
             self.show_remotes = self.savvy_settings.get("show_remotes_in_branch_dashboard")
