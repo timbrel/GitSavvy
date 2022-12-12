@@ -220,9 +220,9 @@ class BranchInterface(ui.Interface, GitCommand):
             new_state = state["status"]._asdict()
         except KeyError:
             new_state = {}
-        new_state["branches"] = state.get("branches")
-        new_state["recent_commits"] = state.get("recent_commits")
-        new_state["descriptions"] = state.get("descriptions")
+        new_state["branches"] = state.get("branches", [])
+        new_state["recent_commits"] = state.get("recent_commits", [])
+        new_state["descriptions"] = state.get("descriptions", {})
         self.update_state(new_state, then=self.just_render)
 
     def on_create(self):
