@@ -83,11 +83,7 @@ def format_and_limit(commits, max_items, current_upstream=None, branches=[]):
     }
     for idx, (h, d, s) in enumerate(commits):
         decorations_ = d.strip("( )").split(", ") if d else []
-        refs_ = [
-            p[8:] if p.startswith("HEAD ->") else p
-            for p in decorations_
-            if p != "HEAD" and not p.startswith("tag: ")
-        ]
+        refs_ = only_refs(decorations_)
         decorations = [
             part for part in decorations_
             if (
@@ -113,6 +109,18 @@ def format_and_limit(commits, max_items, current_upstream=None, branches=[]):
 KONTINUATION = "\u200B ⋮"
 
 
+def only_refs(decorations):
+    return [
+        p[8:] if p.startswith("HEAD ->") else p
+        for p in decorations
+        if p != "HEAD" and not p.startswith("tag: ")
+    ]
+
+
+def only_tags(decorations):
+    return [d[5:] for d in decorations if d.startswith("tag: ")]
+
+
 def commit(h, s, decorations):
     yield commit_line(h, s)
     if decorations:
@@ -136,8 +144,4 @@ def format_decorations(decorations):
 
 
 def decorations_include_semver_tag(decorations):
-    return decorations and any(
-        is_semver_tag(d[5:])
-        for d in decorations
-        if d.startswith("tag: ")
-    )
+    return decorations and any(map(is_semver_tag, only_tags(decorations)))
