@@ -82,7 +82,7 @@ def format_and_limit(commits, max_items, current_upstream=None, branches=[]):
         if not b.is_remote and b.upstream
     }
     for idx, (h, d, s) in enumerate(commits):
-        decorations_ = d.strip("( )").split(", ")
+        decorations_ = d.strip("( )").split(", ") if d else []
         refs_ = [
             p[8:] if p.startswith("HEAD ->") else p
             for p in decorations_
@@ -91,8 +91,7 @@ def format_and_limit(commits, max_items, current_upstream=None, branches=[]):
         decorations = [
             part for part in decorations_
             if (
-                part
-                and part != "HEAD"
+                part != "HEAD"
                 and not part.startswith("HEAD ->")
                 and not part.endswith("/HEAD")
                 and remote_to_local_names.get(part) not in refs_
