@@ -77,7 +77,12 @@ def format_and_limit(commits, max_items, current_upstream=None):
     for idx, (h, d, s) in enumerate(commits):
         decorations = [
             part for part in d.lstrip()[1:-1].split(", ")
-            if part and part != "HEAD" and "HEAD ->" not in part
+            if (
+                part
+                and part != "HEAD"
+                and not part.startswith("HEAD ->")
+                and not part.endswith("/HEAD")
+            )
         ]
         decoration_that_breaks = set(decorations) - {current_upstream}
         if decoration_that_breaks and idx > 0:

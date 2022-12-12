@@ -349,6 +349,16 @@ class TestRecentCommitsFormat(DeferrableTestCase):
                 "abc message",
             ]
         ),
+        (
+            "ignore `*/HEAD` refs",
+            [
+                ["abc", " (HEAD -> feature-branch, origin/HEAD)", "message"],
+            ],
+            [
+                "abc message",
+            ]
+
+        ),
 
         (
             "special format decorated commit: "
