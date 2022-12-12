@@ -77,7 +77,6 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 False,
                 False,
-                "",
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
                 )
@@ -100,7 +99,6 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 True,
                 False,
-                "",
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
                 )
@@ -123,7 +121,6 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 False,
                 True,
-                "",
                 None
             )
         ])
@@ -144,7 +141,6 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 False,
                 False,
-                "",
                 git_mixins.branches.Upstream(
                     "orig/in", "master", "orig/in/master", ""
                 )
@@ -167,7 +163,6 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 False,
                 False,
-                "",
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", "gone"
                 )
@@ -190,7 +185,6 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 False,
                 False,
-                "",
                 git_mixins.branches.Upstream(
                     ".", "update-branch-from-upstream", "update-branch-from-upstream", ""
                 )
@@ -259,7 +253,6 @@ class TestBranchParsing(EndToEndTestCase):
                 "Initial commit",
                 True,
                 False,
-                "",
                 None
             )
         ])
@@ -279,7 +272,6 @@ class TestBranchParsing(EndToEndTestCase):
                 "Initial commit",
                 True,
                 False,
-                "",
                 git_mixins.branches.Upstream(
                     ".", "master", "master", ""
                 )

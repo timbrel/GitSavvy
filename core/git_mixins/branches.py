@@ -25,7 +25,6 @@ if MYPY:
         ("commit_msg", str),
         ("active", bool),
         ("is_remote", bool),
-        ("description", str),
         ("upstream", Optional[Upstream]),
     ])
 else:
@@ -38,7 +37,6 @@ else:
         "commit_msg",
         "active",
         "is_remote",
-        "description",
         "upstream",
     ))
 
@@ -93,10 +91,9 @@ class BranchesMixin(mixin_base):
     def get_branches(
         self, *,
         sort_by_recent=False,
-        fetch_descriptions=False,
         refs=["refs/heads", "refs/remotes"]
     ):
-        # type: (bool, bool, Sequence[str]) -> Iterable[Branch]
+        # type: (bool, Sequence[str]) -> Iterable[Branch]
         """
         Return a list of all local and remote branches.
         """
@@ -123,14 +120,7 @@ class BranchesMixin(mixin_base):
             )
             if branch.name != "HEAD"
         )
-        if not fetch_descriptions:
-            return branches
-
-        descriptions = self.fetch_branch_description_subjects()
-        return (
-            branch._replace(description=descriptions.get(branch.canonical_name, ""))
-            for branch in branches
-        )
+        return branches
 
     def fetch_branch_description_subjects(self):
         # type: () -> Dict[str, str]
@@ -183,7 +173,6 @@ class BranchesMixin(mixin_base):
             commit_msg,
             active,
             is_remote,
-            description="",
             upstream=ups
         )
 
