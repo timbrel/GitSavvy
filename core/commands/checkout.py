@@ -119,7 +119,7 @@ class gs_checkout_remote_branch(GsWindowCommand):
     """
     defaults = {
         "remote_branch": ask_for_branch(remote_branches_only=True),
-        "branch_name": ask_for_name(
+        "local_name": ask_for_name(
             initial_text=lambda remote_branch: remote_branch.split("/", 1)[1],
         ),
     }
