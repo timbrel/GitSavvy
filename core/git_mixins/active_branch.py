@@ -82,7 +82,7 @@ def format_and_limit(commits, max_items, current_upstream=None, branches=[]):
         if not b.is_remote and b.upstream
     }
     for idx, (h, d, s) in enumerate(commits):
-        decorations_ = d.lstrip()[1:-1].split(", ")
+        decorations_ = d.strip("( )").split(", ")
         refs_ = [
             p[8:] if p.startswith("HEAD ->") else p
             for p in decorations_
