@@ -135,9 +135,6 @@ class BranchInterface(ui.Interface, GitCommand):
     def on_new_dashboard(self):
         self.view.run_command("gs_branches_navigate_to_active_branch")
 
-    def reset_cursor(self):
-        self.view.run_command("gs_branches_navigate_to_active_branch")
-
     @ui.section("branch_status")
     def render_branch_status(self):
         return self.get_working_dir_status().long_status

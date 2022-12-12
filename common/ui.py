@@ -183,9 +183,6 @@ class Interface(metaclass=_PrepareInterface):
     def pre_render(self):
         pass
 
-    def reset_cursor(self):
-        pass
-
     def render(self):
         self.pre_render()
         content, regions = self._render_template()
