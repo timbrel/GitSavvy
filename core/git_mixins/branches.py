@@ -139,6 +139,7 @@ class BranchesMixin(mixin_base):
 
             branch_name, description = match.group(1), match.group(2)
             rv[branch_name] = description
+        store.update_state(self.repo_path, {"descriptions": rv})
         return rv
 
     def _parse_branch_line(self, line):

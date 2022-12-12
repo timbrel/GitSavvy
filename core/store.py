@@ -32,6 +32,7 @@ if MYPY:
             "short_hash_length": int,
             "stashes": List[Stash],
             "recent_commits": List[Commit],
+            "descriptions": Dict[str, str],
         },
         total=False
     )

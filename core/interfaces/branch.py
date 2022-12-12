@@ -166,6 +166,7 @@ class BranchInterface(ui.Interface, GitCommand):
             'git_root': self.short_repo_path,
             'branches': state.get("branches", []),
             'recent_commits': state.get("recent_commits", []),
+            'descriptions': state.get("descriptions", {}),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })
 
@@ -221,11 +222,14 @@ class BranchInterface(ui.Interface, GitCommand):
             new_state = {}
         new_state["branches"] = state.get("branches")
         new_state["recent_commits"] = state.get("recent_commits")
+        new_state["descriptions"] = state.get("descriptions")
         self.update_state(new_state, then=self.just_render)
 
     def on_create(self):
         self._unsubscribe = store.subscribe(
-            self.repo_path, {"status", "branches", "recent_commits"}, self.on_status_update
+            self.repo_path,
+            {"status", "branches", "recent_commits", "descriptions"},
+            self.on_status_update
         )
 
     def on_close(self):

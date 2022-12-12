@@ -4,7 +4,7 @@ from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import when
 from GitSavvy.tests.parameterized import parameterized as p
 
-from GitSavvy.core.git_mixins.branches import BranchesMixin
+from GitSavvy.core.git_command import GitCommand
 
 
 examples = [
@@ -32,6 +32,7 @@ examples = [
 class TestFetchBranchDescriptions(DeferrableTestCase):
     @p.expand(examples)
     def test_description_subjects(self, git_output, expected):
-        test = BranchesMixin()
+        test = GitCommand()
+        when(test).get_repo_path().thenReturn("probably/here")
         when(test, strict=False).git("config", ...).thenReturn(git_output)
         self.assertEqual(expected, test.fetch_branch_description_subjects())
