@@ -4,6 +4,7 @@ from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p
 
+from GitSavvy.core import git_mixins
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.git_mixins import active_branch
 
@@ -455,6 +456,17 @@ class TestRecentCommitsFormat(DeferrableTestCase):
         ),
 
         (
+            "suppress upstream on HEAD",
+            # because the header already starts with:
+            # On branch `master` tracking `origin/master`
+            [
+                ["abc", " (HEAD -> master, origin/master)", "message"],
+            ],
+            [
+                "abc message",
+            ]
+        ),
+        (
             "do not stop after the upstream branch decoration (on HEAD)",
             [
                 ["abc", " (HEAD -> master, origin/master)", "message"],
@@ -462,7 +474,6 @@ class TestRecentCommitsFormat(DeferrableTestCase):
             ],
             [
                 "abc message",
-                "` \u200B(origin/master)",
                 "abc message",
             ]
         ),
@@ -483,5 +494,19 @@ class TestRecentCommitsFormat(DeferrableTestCase):
 
     ])
     def test_formatting_and_limiting(self, _, lines, expected):
-        actual = list(active_branch.format_and_limit(lines, 5, "origin/master"))
+        branches = [
+            git_mixins.branches.Branch(
+                "master",
+                None,
+                "master",
+                "89b79cd737465ed308ecc00289d00a6f923f2da5",
+                "The Subject",
+                False,
+                False,
+                git_mixins.branches.Upstream(
+                    "origin", "master", "origin/master", ""
+                )
+            )
+        ]
+        actual = list(active_branch.format_and_limit(lines, 5, "origin/master", branches))
         self.assertEqual(actual, expected)

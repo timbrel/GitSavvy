@@ -6,7 +6,8 @@ from .. import store
 
 MYPY = False
 if MYPY:
-    from typing import Iterator, List, NamedTuple, Optional
+    from typing import Iterable, Iterator, List, NamedTuple, Optional
+    from .branches import Branch
     Commit = NamedTuple("Commit", [
         ("hash", str),
         ("decoration", str),
@@ -72,16 +73,28 @@ class ActiveBranchMixin(mixin_base):
         return commits
 
 
-def format_and_limit(commits, max_items, current_upstream=None):
-    # type: (List[Commit], int, Optional[str]) -> Iterator[str]
+def format_and_limit(commits, max_items, current_upstream=None, branches=[]):
+    # type: (List[Commit], int, Optional[str], Iterable[Branch]) -> Iterator[str]
+    remote_to_local_names = {
+        b.upstream.canonical_name: b.canonical_name
+        for b in branches
+        if not b.is_remote and b.upstream
+    }
     for idx, (h, d, s) in enumerate(commits):
+        decorations_ = d.lstrip()[1:-1].split(", ")
+        refs_ = [
+            p[8:] if p.startswith("HEAD ->") else p
+            for p in decorations_
+            if p != "HEAD" and not p.startswith("tag: ")
+        ]
         decorations = [
-            part for part in d.lstrip()[1:-1].split(", ")
+            part for part in decorations_
             if (
                 part
                 and part != "HEAD"
                 and not part.startswith("HEAD ->")
                 and not part.endswith("/HEAD")
+                and remote_to_local_names.get(part) not in refs_
             )
         ]
         decoration_that_breaks = set(decorations) - {current_upstream}
