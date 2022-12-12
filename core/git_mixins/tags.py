@@ -12,6 +12,9 @@ if MYPY:
     from typing import List, Optional, Tuple
 
 
+SEMVER_TEST = re.compile(r'\d+\.\d+\.?\d*')
+
+
 class TagsMixin(mixin_base):
 
     def get_local_tags(self):
@@ -65,12 +68,9 @@ class TagsMixin(mixin_base):
         """
         Sorts tags using LooseVersion if there's a tag matching the semver format.
         """
-
-        semver_test = re.compile(r'\d+\.\d+\.?\d*')
-
         semver_entries, regular_entries = [], []
         for entry in entries:
-            if semver_test.search(entry.tag):
+            if SEMVER_TEST.search(entry.tag):
                 semver_entries.append(entry)
             else:
                 regular_entries.append(entry)
@@ -89,9 +89,14 @@ class TagsMixin(mixin_base):
                 semver_entries = sorted(
                     semver_entries,
                     key=lambda entry: LooseVersion(
-                        semver_test.search(entry.tag).group()  # type: ignore[union-attr]
+                        SEMVER_TEST.search(entry.tag).group()  # type: ignore[union-attr]
                     ),
                     reverse=True
                 )
 
         return (regular_entries, semver_entries)
+
+
+def is_semver_tag(tag):
+    # type: (str) -> bool
+    return bool(SEMVER_TEST.search(tag))

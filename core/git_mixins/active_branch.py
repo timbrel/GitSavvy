@@ -2,6 +2,7 @@ from collections import namedtuple
 
 from GitSavvy.core.git_command import mixin_base
 from .. import store
+from GitSavvy.core.git_mixins.tags import is_semver_tag
 
 
 MYPY = False
@@ -98,6 +99,7 @@ def format_and_limit(commits, max_items, current_upstream=None, branches=[]):
             )
         ]
         decoration_that_breaks = set(decorations) - {current_upstream}
+
         if decoration_that_breaks and idx > 0:
             if idx > max_items:
                 yield KONTINUATION
@@ -105,6 +107,8 @@ def format_and_limit(commits, max_items, current_upstream=None, branches=[]):
             break
         elif idx < max_items:
             yield from commit(h, s, decorations)
+            if decorations_include_semver_tag(decorations):
+                break
 
 
 KONTINUATION = "\u200B ⋮"
@@ -130,3 +134,11 @@ def stand_alone_decoration_line(h, decorations):
 
 def format_decorations(decorations):
     return "({})".format(", ".join(decorations))
+
+
+def decorations_include_semver_tag(decorations):
+    return decorations and any(
+        is_semver_tag(d[5:])
+        for d in decorations
+        if d.startswith("tag: ")
+    )
