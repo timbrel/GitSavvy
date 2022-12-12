@@ -97,9 +97,9 @@ def format_and_limit(commits, max_items, current_upstream=None, branches=[]):
                 and remote_to_local_names.get(part) not in refs_
             )
         ]
-        decoration_that_breaks = set(decorations) - {current_upstream}
+        decorations_that_break = set(decorations) - {current_upstream}
 
-        if decoration_that_breaks and idx > 0:
+        if decorations_that_break and idx > 0:
             if idx > max_items:
                 yield KONTINUATION
             yield stand_alone_decoration_line(h, decorations)
