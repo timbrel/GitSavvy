@@ -75,7 +75,7 @@ class GsNavigate(TextCommand, GitCommand):
     def previous_region(self, current_position, regions):
         # type: (sublime.Point, Sequence[sublime.Region]) -> Optional[sublime.Region]
         for region in reversed(regions):
-            if region.a < current_position:
+            if min(region.a + self.offset, region.b) < current_position:
                 return region
 
         return regions[-1] if self._wrap_around_now() else None
