@@ -1,8 +1,6 @@
-from functools import partial, wraps
+from functools import partial
 from contextlib import contextmanager
 import os
-import threading
-from weakref import WeakKeyDictionary
 
 import sublime
 from sublime_plugin import WindowCommand
@@ -96,20 +94,6 @@ EXTRACT_FILENAME_RE = (
 ITEMS_IN_THE_RECENT_LIST = 5
 
 
-def distinct_until_state_changed(just_render_fn):
-    """Custom `lru_cache`-look-alike to minimize redraws."""
-    previous_states = WeakKeyDictionary()  # type: WeakKeyDictionary[StatusInterface, StatusViewState]
-
-    @wraps(just_render_fn)
-    def wrapper(self, *args, **kwargs):
-        current_state = self.state
-        if current_state != previous_states.get(self):
-            just_render_fn(self, *args, **kwargs)
-            previous_states[self] = current_state.copy()
-
-    return wrapper
-
-
 def cursor_is_on_something(view, what):
     return any(
         view.match_selector(s.begin(), what)
@@ -127,7 +111,7 @@ class gs_show_status(WindowCommand, GitCommand):
         ui.show_interface(self.window, self.repo_path, "status")
 
 
-class StatusInterface(ui.Interface, GitCommand):
+class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     """
     Status dashboard.
@@ -229,8 +213,9 @@ class StatusInterface(ui.Interface, GitCommand):
     {}
     """
 
+    subscribe_to = {"status", "head", "branches"}
+
     def __init__(self, *args, **kwargs):
-        self._lock = threading.Lock()
         self.state = {
             'staged_files': [],
             'unstaged_files': [],
@@ -282,34 +267,6 @@ class StatusInterface(ui.Interface, GitCommand):
             'recent_commits': state.get("recent_commits", []),
         })
 
-    def update_state(self, data, then=None):
-        """Update internal view state and maybe invoke a callback.
-
-        `data` can be a mapping or a callable ("thunk") which returns
-        a mapping.
-
-        Note: We invoke the "sink" without any arguments. TBC.
-        """
-        if callable(data):
-            data = data()
-
-        with self._lock:
-            self.state.update(data)
-
-        if callable(then):
-            then()
-
-    def render(self):
-        """Refresh view state and render."""
-        self.refresh_view_state()
-        self.just_render()
-
-    @distinct_until_state_changed
-    def just_render(self):
-        content, regions = self._render_template()
-        with self.keep_cursor_on_something():
-            self.draw(self.title(), content, regions)
-
     @contextmanager
     def keep_cursor_on_something(self):
         on_something = partial(cursor_is_on_something, self.view)
@@ -320,15 +277,6 @@ class StatusInterface(ui.Interface, GitCommand):
         yield
         if was_on_a_file and not on_a_file() or not on_special_symbol():
             self.view.run_command("gs_status_navigate_goto")
-
-    def on_status_update(self, _repo_path, state):
-        try:
-            new_state = state["status"]._asdict()
-        except KeyError:
-            new_state = {}
-        new_state["head"] = state.get("head")
-        new_state["branches"] = state.get("branches")
-        self.update_state(new_state, then=self.just_render)
 
     def refresh_repo_status_and_render(self):
         """Refresh `git status` state and render.
@@ -342,14 +290,6 @@ class StatusInterface(ui.Interface, GitCommand):
     def after_view_creation(self, view):
         view.settings().set("result_file_regex", EXTRACT_FILENAME_RE)
         view.settings().set("result_base_dir", self.repo_path)
-
-    def on_create(self):
-        self._unsubscribe = store.subscribe(
-            self.repo_path, {"status", "head", "branches"}, self.on_status_update
-        )
-
-    def on_close(self):
-        self._unsubscribe()
 
     @ui.section("branch_status")
     def render_branch_status(self):

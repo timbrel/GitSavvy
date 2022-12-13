@@ -1,12 +1,10 @@
 from contextlib import contextmanager
 from functools import partial
 import os
-import threading
 
 import sublime
 from sublime_plugin import WindowCommand
 
-from .status import distinct_until_state_changed
 from ...common import ui, util
 from ..commands import GsNavigate
 from ..commands.log import LogMixin
@@ -75,7 +73,7 @@ class gs_show_branch(WindowCommand, GitCommand):
         ui.show_interface(self.window, self.repo_path, "branch")
 
 
-class BranchInterface(ui.Interface, GitCommand):
+class BranchInterface(ui.ReactiveInterface, GitCommand):
 
     """
     Branch dashboard.
@@ -125,8 +123,9 @@ class BranchInterface(ui.Interface, GitCommand):
       REMOTE ({remote_name}):
     {remote_branch_list}"""
 
+    subscribe_to = {"status", "branches", "recent_commits", "descriptions"}
+
     def __init__(self, *args, **kwargs):
-        self._lock = threading.Lock()
         self.state = {
             'git_root': '',
             'long_status': '',
@@ -170,34 +169,6 @@ class BranchInterface(ui.Interface, GitCommand):
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })
 
-    def update_state(self, data, then=None):
-        """Update internal view state and maybe invoke a callback.
-
-        `data` can be a mapping or a callable ("thunk") which returns
-        a mapping.
-
-        Note: We invoke the "sink" without any arguments. TBC.
-        """
-        if callable(data):
-            data = data()
-
-        with self._lock:
-            self.state.update(data)
-
-        if callable(then):
-            then()
-
-    def render(self):
-        """Refresh view state and render."""
-        self.refresh_view_state()
-        self.just_render()
-
-    @distinct_until_state_changed
-    def just_render(self):
-        content, regions = self._render_template()
-        with self.keep_cursor_on_something():
-            self.draw(self.title(), content, regions)
-
     @contextmanager
     def keep_cursor_on_something(self):
         def cursor_is_on_active_branch():
@@ -214,26 +185,6 @@ class BranchInterface(ui.Interface, GitCommand):
         yield
         if cursor_was_on_active_branch and not cursor_is_on_active_branch():
             self.view.run_command("gs_branches_navigate_to_active_branch")
-
-    def on_status_update(self, _repo_path, state):
-        try:
-            new_state = state["status"]._asdict()
-        except KeyError:
-            new_state = {}
-        new_state["branches"] = state.get("branches", [])
-        new_state["recent_commits"] = state.get("recent_commits", [])
-        new_state["descriptions"] = state.get("descriptions", {})
-        self.update_state(new_state, then=self.just_render)
-
-    def on_create(self):
-        self._unsubscribe = store.subscribe(
-            self.repo_path,
-            {"status", "branches", "recent_commits", "descriptions"},
-            self.on_status_update
-        )
-
-    def on_close(self):
-        self._unsubscribe()
 
     def on_new_dashboard(self):
         self.view.run_command("gs_branches_navigate_to_active_branch")

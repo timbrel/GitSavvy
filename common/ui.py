@@ -1,5 +1,9 @@
-from textwrap import dedent
+from contextlib import contextmanager
+from functools import wraps
 import re
+from textwrap import dedent
+import threading
+from weakref import WeakKeyDictionary
 
 import sublime
 from sublime_plugin import TextCommand
@@ -8,8 +12,10 @@ from . import util
 from ..core.runtime import enqueue_on_worker, on_worker
 from ..core.settings import GitSavvySettings
 from ..core.utils import focus_view
+from GitSavvy.core import store
 from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.fns import flatten
+from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.view import replace_view_content
 
 
@@ -27,9 +33,11 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import (
-        AbstractSet, Callable, Dict, Iterable, Iterator, List, Protocol, Tuple, Type, TypeVar, Union
+        AbstractSet, Callable, Dict, Generic, Iterable, Iterator, List, MutableMapping,
+        Protocol, Set, Tuple, Type, TypeVar, Union,
     )
     T = TypeVar("T")
+    T_state = TypeVar("T_state", bound=MutableMapping)
     SectionRegions = Dict[str, sublime.Region]
 
     class SectionFn(Protocol):
@@ -257,6 +265,95 @@ class Interface(metaclass=_PrepareInterface):
             "key": "git_savvy_interface." + key,
             "content": content
         })
+
+
+def distinct_until_state_changed(just_render_fn):
+    """Custom `lru_cache`-look-alike to minimize redraws."""
+    previous_states = WeakKeyDictionary()  # type: WeakKeyDictionary
+
+    @wraps(just_render_fn)
+    def wrapper(self, *args, **kwargs):
+        current_state = self.state
+        if current_state != previous_states.get(self):
+            just_render_fn(self, *args, **kwargs)
+            previous_states[self] = current_state.copy()
+
+    return wrapper
+
+
+if MYPY:
+    class _base(Generic[T_state]):
+        state = None  # type: T_state
+        ...
+else:
+    class _base:
+        ...
+
+
+class ReactiveInterface(Interface, _base, GitCommand):
+    subscribe_to = set()  # type: Set[str]
+
+    def __init__(self, *args, **kwargs):
+        self._lock = threading.Lock()
+        super().__init__(*args, **kwargs)
+
+    def refresh_view_state(self) -> None:
+        raise NotImplementedError
+
+    def update_state(self, data, then=None):
+        """Update internal view state and maybe invoke a callback.
+
+        `data` can be a mapping or a callable ("thunk") which returns
+        a mapping.
+
+        Note: We invoke the "sink" without any arguments. TBC.
+        """
+        if callable(data):
+            data = data()
+
+        with self._lock:
+            self.state.update(data)
+
+        if callable(then):
+            then()
+
+    def render(self):
+        """Refresh view state and render."""
+        self.refresh_view_state()
+        self.just_render()
+
+    @distinct_until_state_changed
+    def just_render(self):
+        content, regions = self._render_template()
+        with self.keep_cursor_on_something():
+            self.draw(self.title(), content, regions)
+
+    @contextmanager
+    def keep_cursor_on_something(self):
+        yield
+
+    def on_create(self):
+        self._unsubscribe = store.subscribe(
+            self.repo_path,
+            self.subscribe_to,
+            self.on_status_update
+        )
+
+    def on_close(self):
+        self._unsubscribe()
+
+    def on_status_update(self, _repo_path, state):
+        new_state = {}
+        for topic in self.subscribe_to:
+            try:
+                if topic == "status":
+                    new_state.update(state["status"]._asdict())
+                else:
+                    new_state[topic] = state[topic]
+            except KeyError:
+                pass
+
+        self.update_state(new_state, then=self.just_render)
 
 
 def section(key):
