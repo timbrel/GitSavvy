@@ -196,7 +196,8 @@ class Interface(metaclass=_PrepareInterface):
         self.pre_render()
         self.just_render()
 
-    def just_render(self) -> None:
+    def just_render(self):
+        # type: () -> None
         content, regions = self._render_template()
         with self.keep_cursor_on_something():
             self.draw(self.title(), content, regions)
@@ -315,10 +316,12 @@ class ReactiveInterface(Interface, _base, GitCommand):
         self._lock = threading.Lock()
         super().__init__(*args, **kwargs)
 
-    def refresh_view_state(self) -> None:
+    def refresh_view_state(self):
+        # type: () -> None
         raise NotImplementedError
 
     def update_state(self, data, then=None):
+        # type: (...) -> None
         """Update internal view state and maybe invoke a callback.
 
         `data` can be a mapping or a callable ("thunk") which returns
@@ -336,17 +339,20 @@ class ReactiveInterface(Interface, _base, GitCommand):
             then()
 
     def render(self):
+        # type: () -> None
         """Refresh view state and render."""
         self.refresh_view_state()
         self.just_render()
 
     @distinct_until_state_changed
     def just_render(self):
+        # type: () -> None
         content, regions = self._render_template()
         with self.keep_cursor_on_something():
             self.draw(self.title(), content, regions)
 
     def on_create(self):
+        # type: () -> None
         self._unsubscribe = store.subscribe(
             self.repo_path,
             self.subscribe_to,
@@ -354,9 +360,11 @@ class ReactiveInterface(Interface, _base, GitCommand):
         )
 
     def on_close(self):
+        # type: () -> None
         self._unsubscribe()
 
     def on_status_update(self, _repo_path, state):
+        # type: (...) -> None
         new_state = {}
         for topic in self.subscribe_to:
             try:
