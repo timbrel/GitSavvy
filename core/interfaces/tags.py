@@ -124,7 +124,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
       REMOTE ({remote_name}):
     {remote_tags_list}"""
 
-    subscribe_to = {"local_tags", "recent_commits", "remotes", "status"}
+    subscribe_to = {"local_tags", "long_status", "recent_commits", "remotes"}
 
     def __init__(self, *args, **kwargs):
         self.state = {
@@ -154,13 +154,11 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
             )
 
         self.view.run_command("gs_update_status")
-        # These are cheap to compute, so we just do it!
+
         state = store.current_state(self.repo_path)
-        status = state.get("status")
-        if status:
-            self.update_state(status._asdict())
         self.update_state({
             'git_root': self.short_repo_path,
+            'long_status': state.get("long_status", ''),
             'local_tags': state.get("local_tags", TagList([], [])),
             'remotes': state.get("remotes", {}),
             'recent_commits': state.get("recent_commits", []),

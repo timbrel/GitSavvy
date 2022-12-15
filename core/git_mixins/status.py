@@ -118,13 +118,15 @@ class StatusMixin(mixin_base):
             unstaged_files,
             untracked_files,
             merge_conflicts) = self._group_status_entries(files)
+        short_status = self._format_branch_status_short(branch_status)
+        long_status = self._format_branch_status(branch_status)
         rv = WorkingDirState(
             staged_files=staged_files,
             unstaged_files=unstaged_files,
             untracked_files=untracked_files,
             merge_conflicts=merge_conflicts,
-            short_status=self._format_branch_status_short(branch_status),
-            long_status=self._format_branch_status(branch_status)
+            short_status=short_status,
+            long_status=long_status
         )
         current_branch = branch_status.branch
         last_branches = store.current_state(self.repo_path)["last_branches"]
@@ -133,7 +135,9 @@ class StatusMixin(mixin_base):
         store.update_state(self.repo_path, {
             "status": rv,
             "head": branch_status,
-            "last_branches": last_branches
+            "last_branches": last_branches,
+            "long_status": long_status,
+            "short_status": short_status,
         })
         return rv
 

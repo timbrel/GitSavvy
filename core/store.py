@@ -23,6 +23,8 @@ if MYPY:
         {
             "status": WorkingDirState,
             "head": HeadState,
+            "long_status": str,
+            "short_status": str,
             "branches": List[Branch],
             "remotes": Dict[str, str],
             "local_tags": TagList,
