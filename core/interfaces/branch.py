@@ -641,14 +641,10 @@ class gs_branches_navigate_branch(GsNavigate):
     """
     Move cursor to the next (or previous) selectable branch in the dashboard.
     """
+    offset = 0
 
     def get_available_regions(self):
-        return [
-            branch_region
-            for region in self.view.find_by_selector(
-                "meta.git-savvy.branches.branch"
-            )
-            for branch_region in self.view.lines(region)]
+        return self.view.find_by_selector("meta.git-savvy.branches.branch.sha1")
 
 
 class gs_branches_navigate_to_active_branch(GsNavigate):
@@ -656,14 +652,11 @@ class gs_branches_navigate_to_active_branch(GsNavigate):
     """
     Move cursor to the active branch.
     """
+    offset = 0
 
     def get_available_regions(self):
-        return [
-            branch_region
-            for region in self.view.find_by_selector(
-                "meta.git-savvy.branches.branch.active-branch meta.git-savvy.branches.branch.sha1"
-            )
-            for branch_region in self.view.lines(region)]
+        return self.view.find_by_selector(
+            "meta.git-savvy.branches.branch.active-branch meta.git-savvy.branches.branch.sha1")
 
 
 class gs_branches_log(LogMixin, BranchInterfaceCommand):
