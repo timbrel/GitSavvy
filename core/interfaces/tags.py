@@ -9,7 +9,7 @@ from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
 from ..git_mixins.active_branch import NullRecentCommits
-from ..git_mixins.tags import TagList
+from ..git_mixins.tags import NullTagList, TagList
 from ...common import util
 from GitSavvy.core import store
 from GitSavvy.core.fns import filter_
@@ -146,7 +146,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         state = store.current_state(self.repo_path)
         self.update_state({
             'git_root': self.short_repo_path,
-            'local_tags': state.get("local_tags", TagList([], [])),
+            'local_tags': state.get("local_tags", NullTagList),
             'long_status': state.get("long_status", ''),
             'recent_commits': state.get("recent_commits", NullRecentCommits),
             'remotes': state.get("remotes", {}),
@@ -183,6 +183,8 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
     @ui.section("local_tags")
     def render_local_tags(self):
         local_tags = self.state["local_tags"]
+        if local_tags is NullTagList:
+            return ""
         if not any(local_tags.all):
             return NO_LOCAL_TAGS_MESSAGE
 
