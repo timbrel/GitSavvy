@@ -50,7 +50,7 @@ class gs_draw_status_bar(TextCommand, GitCommand):
             return
 
         try:
-            short_status = store.current_state(repo_path)["status"].short_status
+            short_status = store.current_state(repo_path)["short_status"]
         except Exception:
             ...
         else:
@@ -63,4 +63,4 @@ def on_status_update(repo_path, state):
         view.run_command("gs_draw_status_bar", {"repo_path": repo_path})
 
 
-store.subscribe("*", {"status"}, on_status_update)
+store.subscribe("*", {"short_status"}, on_status_update)
