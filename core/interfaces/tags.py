@@ -485,8 +485,7 @@ class gs_tags_navigate_tag(GsNavigate):
     """
     Move cursor to the next (or previous) selectable file in the dashboard.
     """
+    offset = 0
 
     def get_available_regions(self):
-        return [file_region
-                for region in self.view.find_by_selector("meta.git-savvy.tag.name")
-                for file_region in self.view.lines(region)]
+        return self.view.find_by_selector("constant.other.git-savvy.tags.sha1")
