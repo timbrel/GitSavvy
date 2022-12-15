@@ -180,14 +180,12 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                     "meta.git-savvy.branches.branch.active-branch"
                 )
             )
+        on_special_symbol = partial(self.cursor_is_on_something, "meta.git-savvy.branches.branch")
 
         cursor_was_on_active_branch = cursor_is_on_active_branch()
         yield
-        if cursor_was_on_active_branch and not cursor_is_on_active_branch():
+        if cursor_was_on_active_branch and not cursor_is_on_active_branch() or not on_special_symbol():
             self.view.run_command("gs_branches_navigate_to_active_branch")
-
-    def on_new_dashboard(self):
-        self.view.run_command("gs_branches_navigate_to_active_branch")
 
     @ui.section("branch_status")
     def render_branch_status(self):
