@@ -1,13 +1,17 @@
+from contextlib import contextmanager
+from functools import partial
 from itertools import chain
 import os
 import re
 
+import sublime
 from sublime_plugin import WindowCommand
 
 from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
 from ...common import util
+from GitSavvy.core import store
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker, run_on_new_thread
 from GitSavvy.core.utils import flash, uprint
@@ -28,7 +32,35 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import List
+    from typing import Dict, List, Literal, Optional, Union, Tuple, TypedDict
+    from ..git_mixins.active_branch import Commit
+    from ..git_mixins.tags import TagDetails
+
+    Loading = TypedDict("Loading", {"state": Literal["loading"]})
+    Erred = TypedDict("Erred", {"state": Literal["erred"], "message": str})
+    Succeeded = TypedDict("Succeeded", {
+        "state": Literal["succeeded"],
+        "tags": List[TagDetails]
+    })
+    FetchStateMachine = Union[
+        Loading, Erred, Succeeded
+    ]
+
+    TagsViewState = TypedDict(
+        "TagsViewState",
+        {
+            "git_root": str,
+            "long_status": str,
+            "local_tags": Tuple[List[TagDetails], List[TagDetails]],
+            "remotes": Dict[str, str],
+            "remote_tags": Dict[str, FetchStateMachine],
+            "recent_commits": List[Commit],
+            "max_items": Optional[int],
+            "show_remotes": bool,
+            "show_help": bool,
+        },
+        total=False
+    )
 
 
 NO_LOCAL_TAGS_MESSAGE = "    Your repository has no tags."
@@ -52,7 +84,7 @@ class gs_show_tags(WindowCommand, GitCommand):
         ui.show_interface(self.window, self.repo_path, "tags")
 
 
-class TagsInterface(ui.Interface, GitCommand):
+class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     """
     Tags dashboard.
@@ -61,12 +93,9 @@ class TagsInterface(ui.Interface, GitCommand):
     interface_type = "tags"
     syntax_file = "Packages/GitSavvy/syntax/tags.sublime-syntax"
 
-    show_remotes = None
-    remotes = None
-
     template = """\
 
-      ROOT:    {repo_root}
+      ROOT:    {git_root}
 
       BRANCH:  {branch_status}
       HEAD:    {head}
@@ -95,42 +124,80 @@ class TagsInterface(ui.Interface, GitCommand):
       REMOTE ({remote_name}):
     {remote_tags_list}"""
 
+    subscribe_to = {"status", "recent_commits"}
+
+    def __init__(self, *args, **kwargs):
+        self.state = {
+            'git_root': '',
+            'long_status': '',
+            'local_tags': ([], []),
+            'remotes': {},
+            'remote_tags': {},
+            'recent_commits': [],
+            'max_items': self.savvy_settings.get("max_items_in_tags_dashboard", None),
+            'show_remotes': self.savvy_settings.get("show_remotes_in_branch_dashboard"),
+            'show_help': True,
+        }  # type: TagsViewState
+        super().__init__(*args, **kwargs)
+
     def title(self):
         return "TAGS: {}".format(os.path.basename(self.repo_path))
 
-    def pre_render(self):
-        if self.show_remotes is None:
-            self.show_remotes = self.savvy_settings.get("show_remotes_in_tags_dashboard")
+    def refresh_view_state(self):
+        for thunk in (
+            lambda: {'local_tags': self.get_local_tags()},
+            lambda: {'recent_commits': self.get_latest_commits()},
+            lambda: {'remotes': self.get_remotes()},
+        ):
+            sublime.set_timeout_async(
+                partial(self.update_state, thunk, then=self.just_render)
+            )
 
-        self.max_items = self.savvy_settings.get("max_items_in_tags_dashboard", None)
-        self.local_tags = self.get_local_tags()
-        if self.remotes is None:
-            self.remotes = {
-                name: {"uri": uri}
-                for name, uri in self.get_remotes().items()
-            }
+        self.view.run_command("gs_update_status")
+        # These are cheap to compute, so we just do it!
+        state = store.current_state(self.repo_path)
+        status = state.get("status")
+        if status:
+            self.update_state(status._asdict())
+        self.update_state({
+            'git_root': self.short_repo_path,
+            'recent_commits': state.get("recent_commits", []),
+            'max_items': self.savvy_settings.get("max_items_in_tags_dashboard", None),
+            'show_help': not self.view.settings().get("git_savvy.help_hidden"),
+        })
 
-    def on_new_dashboard(self):
-        self.view.run_command("gs_tags_navigate_tag")
+    @contextmanager
+    def keep_cursor_on_something(self):
+        on_special_symbol = partial(self.cursor_is_on_something, "meta.git-savvy.tags.tag")
+
+        yield
+        if not on_special_symbol():
+            self.view.run_command("gs_tags_navigate_tag")
 
     @ui.section("branch_status")
     def render_branch_status(self):
-        return self.get_working_dir_status().long_status
+        return self.state['long_status']
 
-    @ui.section("repo_root")
-    def render_repo_root(self):
-        return self.short_repo_path
+    @ui.section("git_root")
+    def render_git_root(self):
+        return self.state['git_root']
 
     @ui.section("head")
     def render_head(self):
-        return self.get_latest_commit_msg_for_head()
+        recent_commits = self.state['recent_commits']
+        if not recent_commits:
+            return "No commits yet."
+
+        return "{0.hash} {0.message}".format(recent_commits[0])
 
     @ui.section("local_tags")
     def render_local_tags(self):
-        if not any(chain(*self.local_tags)):
+        local_tags = self.state["local_tags"]
+        if not any(chain(*local_tags)):
             return NO_LOCAL_TAGS_MESSAGE
 
-        regular_tags, versions = self.local_tags
+        regular_tags, versions = local_tags
+        max_items = self.state["max_items"]
         return "\n{}\n".format(" " * 60).join(  # need some spaces on the separator line otherwise
                                                 # the syntax expects the remote section begins
             filter_((
@@ -139,7 +206,7 @@ class TagsInterface(ui.Interface, GitCommand):
                         self.get_short_hash(tag.sha),
                         tag.tag,
                     )
-                    for tag in regular_tags[:self.max_items]
+                    for tag in regular_tags[:max_items]
                 ),
                 "\n".join(
                     "    {} {:<10} {}{}".format(
@@ -148,29 +215,29 @@ class TagsInterface(ui.Interface, GitCommand):
                         tag.human_date,
                         " ({})".format(tag.relative_date) if tag.relative_date != tag.human_date else ""
                     )
-                    for tag in versions[:self.max_items]
+                    for tag in versions[:max_items]
                 )
             ))
         )
 
     @ui.section("remote_tags")
     def render_remote_tags(self):
-        if not self.remotes:
+        if not self.state["remotes"]:
             return "\n"
 
-        if not self.show_remotes:
+        if not self.state["show_remotes"]:
             return self.render_remote_tags_off()
 
         output_tmpl = "\n"
         render_fns = []
 
-        for remote_name, remote in self.remotes.items():
+        for remote_name in self.state["remotes"]:
             tmpl_key = "remote_tags_list_" + remote_name
             output_tmpl += "{" + tmpl_key + "}\n"
 
             @ui.section(tmpl_key)
-            def render_remote(remote=remote, remote_name=remote_name):
-                return self.get_remote_tags_list(remote, remote_name)
+            def render_remote(remote_name=remote_name) -> str:
+                return self.get_remote_tags_list(remote_name)
 
             render_fns.append(render_remote)
 
@@ -178,16 +245,37 @@ class TagsInterface(ui.Interface, GitCommand):
 
     @ui.section("help")
     def render_help(self):
-        help_hidden = self.view.settings().get("git_savvy.help_hidden")
-        if help_hidden:
+        show_help = self.state['show_help']
+        if not show_help:
             return ""
-        else:
-            return self.template_help
+        return self.template_help
 
-    def get_remote_tags_list(self, remote, remote_name):
-        if "tags" in remote:
+    def get_remote_tags_list(self, remote_name):
+        # type: (str) -> str
+        remote = self.state["remote_tags"].get(remote_name)
+        if remote is None:
+            def do_tags_fetch(remote_name=remote_name):
+                try:
+                    self.state["remote_tags"][remote_name] = {
+                        "state": "succeeded",
+                        "tags": list(chain(*self.get_remote_tags(remote_name)))
+                    }
+                except GitSavvyError as e:
+                    self.state["remote_tags"][remote_name] = {
+                        "state": "erred",
+                        "message": "    {}".format(e.stderr.rstrip())
+                    }
+                enqueue_on_worker(self.just_render)  # fan-in
+
+            run_on_new_thread(do_tags_fetch)    # fan-out
+            self.state["remote_tags"][remote_name] = {
+                "state": "loading"
+            }
+            msg = LOADING_TAGS_MESSAGE
+
+        elif remote["state"] == "succeeded":
             if remote["tags"]:
-                seen = {tag.sha: tag.tag for tag in chain(*self.local_tags)}
+                seen = {tag.sha: tag.tag for tag in chain(*self.state["local_tags"])}
                 tags_list = [
                     tag
                     for tag in remote["tags"]
@@ -195,28 +283,16 @@ class TagsInterface(ui.Interface, GitCommand):
                 ]
                 msg = "\n".join(
                     "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
-                    for tag in tags_list[:self.max_items]
+                    for tag in tags_list[:self.state["max_items"]]
                 ) or NO_MORE_TAGS_MESSAGE
 
             else:
                 msg = NO_REMOTE_TAGS_MESSAGE
 
-        elif "erred" in remote:
-            msg = remote["erred"]
+        elif remote["state"] == "erred":
+            msg = remote["message"]
 
-        elif "loading" in remote:
-            msg = LOADING_TAGS_MESSAGE
-
-        else:
-            def do_tags_fetch(remote=remote, remote_name=remote_name):
-                try:
-                    remote["tags"] = list(chain(*self.get_remote_tags(remote_name)))
-                except GitSavvyError as e:
-                    remote["erred"] = "    {}".format(e.stderr.rstrip())
-                enqueue_on_worker(self.render)  # fan-in
-
-            run_on_new_thread(do_tags_fetch)    # fan-out
-            remote["loading"] = True
+        elif remote["state"] == "loading":
             msg = LOADING_TAGS_MESSAGE
 
         return self.template_remote.format(
@@ -269,11 +345,11 @@ class gs_tags_toggle_remotes(TagsInterfaceCommand):
 
     def run(self, edit, show=None):
         interface = self.interface
-        interface.remotes = None
+        interface.state["remote_tags"] = {}
         if show is None:
-            interface.show_remotes = not interface.show_remotes
+            interface.state["show_remotes"] = not interface.state["show_remotes"]
         else:
-            interface.show_remotes = show
+            interface.state["show_remotes"] = show
         interface.render()
 
 
@@ -286,7 +362,7 @@ class gs_tags_refresh(TagsInterfaceCommand):
     def run(self, edit, reset_remotes=False):
         interface = self.interface
         if reset_remotes:
-            interface.remotes = None
+            interface.state["remote_tags"] = {}
 
         util.view.refresh_gitsavvy(self.view)
 
@@ -365,7 +441,7 @@ class gs_tags_push(TagsInterfaceCommand):
         flash(self.view, END_PUSH_MESSAGE)
 
         interface = self.interface
-        interface.remotes = None
+        interface.state["remote_tags"] = {}
         util.view.refresh_gitsavvy(self.view)
 
 
@@ -380,9 +456,8 @@ class gs_tags_show_commit(TagsInterfaceCommand):
         interface = self.interface
         commit_hashes = self.selected_local_commits()
 
-        if interface.remotes:
-            for remote_name in interface.remotes:
-                commit_hashes += self.selected_remote_commits(remote_name)
+        for remote_name in interface.state["remotes"]:
+            commit_hashes += self.selected_remote_commits(remote_name)
 
         for commit_hash in commit_hashes:
             self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
