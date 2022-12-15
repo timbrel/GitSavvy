@@ -56,6 +56,7 @@ if MYPY:
             "descriptions": Dict[str, str],
             "remotes": Dict[str, str],
             "recent_commits": List[Commit],
+            "sort_by_recent": bool,
             "show_remotes": bool,
             "show_help": bool,
         },
@@ -142,11 +143,10 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         return "BRANCHES: {}".format(os.path.basename(self.repo_path))
 
     def refresh_view_state(self):
-        sort_by_recent = self.savvy_settings.get("sort_by_recent_in_branch_dashboard")
         for thunk in (
             lambda: {'recent_commits': self.get_latest_commits()},
             lambda: {
-                'branches': self.get_branches(sort_by_recent=sort_by_recent),
+                'branches': self.get_branches(),
                 'descriptions': self.fetch_branch_description_subjects(),
             },
             lambda: {'remotes': self.get_remotes()},
@@ -165,6 +165,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             'remotes': state.get("remotes", {}),
             'recent_commits': state.get("recent_commits", []),
             'descriptions': state.get("descriptions", {}),
+            'sort_by_recent': self.savvy_settings.get("sort_by_recent_in_branch_dashboard"),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })
 
@@ -206,6 +207,8 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
     def render_branch_list(self):
         # type: () -> str
         branches = [branch for branch in self.state["branches"] if not branch.is_remote]
+        if self.state["sort_by_recent"]:
+            branches = sorted(branches, key=lambda branch: -branch.committerdate)
         return self._render_branch_list(None, branches)
 
     def _render_branch_list(self, remote_name, branches):
@@ -244,6 +247,8 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         output_tmpl = "\n"
         render_fns = []
         remote_branches = [b for b in self.state["branches"] if b.is_remote]
+        if self.state["sort_by_recent"]:
+            remote_branches = sorted(remote_branches, key=lambda branch: -branch.committerdate)
 
         for remote_name in self.state["remotes"]:
             key = "branch_list_" + remote_name

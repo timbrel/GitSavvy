@@ -26,6 +26,7 @@ if MYPY:
         ("commit_msg", str),
         ("active", bool),
         ("is_remote", bool),
+        ("committerdate", int),
         ("upstream", Optional[Upstream]),
     ])
 else:
@@ -38,6 +39,7 @@ else:
         "commit_msg",
         "active",
         "is_remote",
+        "committerdate",
         "upstream",
     ))
 
@@ -89,12 +91,8 @@ class BranchesMixin(mixin_base):
         # type: () -> List[Branch]
         return self.get_branches(refs=["refs/heads"])
 
-    def get_branches(
-        self, *,
-        sort_by_recent=False,
-        refs=["refs/heads", "refs/remotes"]
-    ):
-        # type: (bool, Sequence[str]) -> List[Branch]
+    def get_branches(self, *, refs=["refs/heads", "refs/remotes"]):
+        # type: (Sequence[str]) -> List[Branch]
         """
         Return a list of all local and remote branches.
         """
@@ -107,10 +105,10 @@ class BranchesMixin(mixin_base):
                 "%(upstream)%00"
                 "%(upstream:remotename)%00"
                 "%(upstream:track,nobracket)%00"
+                "%(committerdate:unix)%00"
                 "%(objectname)%00"
                 "%(contents:subject)"
             ),
-            "--sort=-committerdate" if sort_by_recent else None,
             *refs
         )  # type: str
         branches = [
@@ -144,7 +142,8 @@ class BranchesMixin(mixin_base):
 
     def _parse_branch_line(self, line):
         # type: (str) -> Branch
-        head, ref, upstream, upstream_remote, upstream_status, commit_hash, commit_msg = line.split("\x00")
+        (head, ref, upstream, upstream_remote, upstream_status,
+         committerdate, commit_hash, commit_msg) = line.split("\x00")
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
@@ -176,6 +175,7 @@ class BranchesMixin(mixin_base):
             commit_msg,
             active,
             is_remote,
+            int(committerdate),
             upstream=ups
         )
 

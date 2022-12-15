@@ -503,6 +503,7 @@ class TestRecentCommitsFormat(DeferrableTestCase):
                 "The Subject",
                 False,
                 False,
+                0,
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
                 )
