@@ -202,7 +202,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     {}
     """
 
-    subscribe_to = {"branches", "head", "long_status", "status"}
+    subscribe_to = {"branches", "head", "long_status", "recent_commits", "stashes", "status"}
     state = {}  # type: StatusViewState
 
     def title(self):
@@ -216,27 +216,21 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         data which implies that the view is only _eventual_ consistent
         with the real world.
         """
-        for thunk in (
-            lambda: {'recent_commits': self.get_latest_commits()},
-            lambda: {'branches': self.get_branches()},
-            lambda: {'stashes': self.get_stashes()},
-        ):
-            sublime.set_timeout_async(
-                partial(self.update_state, thunk, then=self.just_render)
-            )
-
+        enqueue_on_worker(self.get_latest_commits)
+        enqueue_on_worker(self.get_branches)
+        enqueue_on_worker(self.get_stashes)
         self.view.run_command("gs_update_status")
 
         state = store.current_state(self.repo_path)
         self.update_state({
             'git_root': self.short_repo_path,
+            'branches': state.get("branches", []),
+            'head': state.get("head", None),
             'long_status': state.get("long_status", ''),
+            'recent_commits': state.get("recent_commits", []),
+            'stashes': state.get("stashes", []),
             'status': state.get("status", WorkingDirState([], [], [], [])),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
-            'stashes': state.get("stashes", []),
-            'head': state.get("head", None),
-            'branches': state.get("branches", []),
-            'recent_commits': state.get("recent_commits", []),
         })
 
     @contextmanager

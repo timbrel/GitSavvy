@@ -2,7 +2,6 @@ from contextlib import contextmanager
 from functools import partial
 import os
 
-import sublime
 from sublime_plugin import WindowCommand
 
 from ...common import ui, util
@@ -14,7 +13,7 @@ from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core import store
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.utils import flash
-from GitSavvy.core.runtime import on_worker
+from GitSavvy.core.runtime import enqueue_on_worker, on_worker
 
 
 __all__ = (
@@ -137,28 +136,20 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         return "BRANCHES: {}".format(os.path.basename(self.repo_path))
 
     def refresh_view_state(self):
-        for thunk in (
-            lambda: {'recent_commits': self.get_latest_commits()},
-            lambda: {
-                'branches': self.get_branches(),
-                'descriptions': self.fetch_branch_description_subjects(),
-            },
-            lambda: {'remotes': self.get_remotes()},
-        ):
-            sublime.set_timeout_async(
-                partial(self.update_state, thunk, then=self.just_render)
-            )
-
+        enqueue_on_worker(self.get_branches)
+        enqueue_on_worker(self.fetch_branch_description_subjects)
+        enqueue_on_worker(self.get_latest_commits)
+        enqueue_on_worker(self.get_remotes)
         self.view.run_command("gs_update_status")
 
         state = store.current_state(self.repo_path)
         self.update_state({
             'git_root': self.short_repo_path,
-            'long_status': state.get("long_status", ''),
             'branches': state.get("branches", []),
-            'remotes': state.get("remotes", {}),
-            'recent_commits': state.get("recent_commits", []),
             'descriptions': state.get("descriptions", {}),
+            'long_status': state.get("long_status", ''),
+            'recent_commits': state.get("recent_commits", []),
+            'remotes': state.get("remotes", {}),
             'sort_by_recent': self.savvy_settings.get("sort_by_recent_in_branch_dashboard"),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })

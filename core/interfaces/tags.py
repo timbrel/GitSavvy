@@ -3,7 +3,6 @@ from functools import partial
 import os
 import re
 
-import sublime
 from sublime_plugin import WindowCommand
 
 from ..commands import GsNavigate
@@ -138,24 +137,18 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         return "TAGS: {}".format(os.path.basename(self.repo_path))
 
     def refresh_view_state(self):
-        for thunk in (
-            lambda: {'local_tags': self.get_local_tags()},
-            lambda: {'recent_commits': self.get_latest_commits()},
-            lambda: {'remotes': self.get_remotes()},
-        ):
-            sublime.set_timeout_async(
-                partial(self.update_state, thunk, then=self.just_render)
-            )
-
+        enqueue_on_worker(self.get_local_tags)
+        enqueue_on_worker(self.get_latest_commits)
+        enqueue_on_worker(self.get_remotes)
         self.view.run_command("gs_update_status")
 
         state = store.current_state(self.repo_path)
         self.update_state({
             'git_root': self.short_repo_path,
-            'long_status': state.get("long_status", ''),
             'local_tags': state.get("local_tags", TagList([], [])),
-            'remotes': state.get("remotes", {}),
+            'long_status': state.get("long_status", ''),
             'recent_commits': state.get("recent_commits", []),
+            'remotes': state.get("remotes", {}),
             'max_items': self.savvy_settings.get("max_items_in_tags_dashboard", None),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })
