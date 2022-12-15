@@ -24,6 +24,7 @@ if MYPY:
             "status": WorkingDirState,
             "head": HeadState,
             "branches": List[Branch],
+            "remotes": Dict[str, str],
             "local_tags": TagList,
             "last_branches": Deque[Optional[str]],
             "last_local_branch_for_rebase": Optional[str],

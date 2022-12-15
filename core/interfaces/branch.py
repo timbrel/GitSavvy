@@ -123,7 +123,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
       REMOTE ({remote_name}):
     {remote_branch_list}"""
 
-    subscribe_to = {"status", "branches", "recent_commits", "descriptions"}
+    subscribe_to = {"branches", "descriptions", "recent_commits", "remotes", "status"}
 
     def __init__(self, *args, **kwargs):
         self.state = {
@@ -164,6 +164,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         self.update_state({
             'git_root': self.short_repo_path,
             'branches': state.get("branches", []),
+            'remotes': state.get("remotes", {}),
             'recent_commits': state.get("recent_commits", []),
             'descriptions': state.get("descriptions", {}),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),

@@ -1,6 +1,7 @@
 import re
 from collections import OrderedDict
 
+from GitSavvy.core import store
 from GitSavvy.core.fns import filter_
 
 
@@ -32,7 +33,11 @@ class RemotesMixin(mixin_base):
         url/resource.
         """
         entries = self.git("remote", "-v").splitlines()
-        return OrderedDict(entry.split()[:2] for entry in entries)
+        rv = OrderedDict(entry.split()[:2] for entry in entries)
+        store.update_state(self.repo_path, {
+            "remotes": rv,
+        })
+        return rv
 
     def fetch(self, remote=None, refspec=None, prune=True, local_branch=None, remote_branch=None):
         # type: (str, str, bool, str, str) -> None
