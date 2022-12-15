@@ -75,6 +75,7 @@ class WorkingDirState(_WorkingDirState):
         )
 
 
+NullHeadState = HeadState(True, None, None, True, None, None, False)
 NullWorkingDirState = WorkingDirState([], [], [], [])
 MERGE_CONFLICT_PORCELAIN_STATUSES = (
     ("A", "A"),  # unmerged, both added

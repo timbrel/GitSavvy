@@ -358,6 +358,9 @@ class ReactiveInterface(Interface, _base, GitCommand):
             self.subscribe_to,
             self.on_status_update
         )
+        state = store.current_state(self.repo_path)
+        new_state = self._pick_subscribed_topics_from_store(state)
+        self.update_state(new_state)
 
     def on_close(self):
         # type: () -> None
@@ -365,14 +368,17 @@ class ReactiveInterface(Interface, _base, GitCommand):
 
     def on_status_update(self, _repo_path, state):
         # type: (...) -> None
+        new_state = self._pick_subscribed_topics_from_store(state)
+        self.update_state(new_state, then=self.just_render)
+
+    def _pick_subscribed_topics_from_store(self, state):
         new_state = {}
         for topic in self.subscribe_to:
             try:
                 new_state[topic] = state[topic]
             except KeyError:
                 pass
-
-        self.update_state(new_state, then=self.just_render)
+        return new_state
 
 
 def section(key):

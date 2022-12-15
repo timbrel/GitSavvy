@@ -11,7 +11,6 @@ from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
-from GitSavvy.core import store
 from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import noop, show_actions_panel
 
@@ -55,7 +54,7 @@ if MYPY:
             "long_status": str,
             "git_root": str,
             "show_help": bool,
-            "head": Optional[HeadState],
+            "head": HeadState,
             "branches": List[Branch],
             "recent_commits": List[Commit],
             "stashes": List[Stash],
@@ -221,15 +220,8 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         enqueue_on_worker(self.get_stashes)
         self.view.run_command("gs_update_status")
 
-        state = store.current_state(self.repo_path)
         self.update_state({
             'git_root': self.short_repo_path,
-            'branches': state.get("branches", []),
-            'head': state.get("head", None),
-            'long_status': state.get("long_status", ''),
-            'recent_commits': state.get("recent_commits", NullRecentCommits),
-            'stashes': state.get("stashes", []),
-            'status': state.get("status", NullWorkingDirState),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })
 
@@ -273,8 +265,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         if not recent_commits:
             return "No commits yet."
 
-        head = self.state['head']
-        current_upstream = head.remote if head else None
+        current_upstream = self.state['head'].remote
         branches = self.state['branches']
         return "\n           ".join(
             format_and_limit(recent_commits, ITEMS_IN_THE_RECENT_LIST, current_upstream, branches)

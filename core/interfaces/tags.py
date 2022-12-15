@@ -11,7 +11,6 @@ from ..git_command import GitCommand, GitSavvyError
 from ..git_mixins.active_branch import NullRecentCommits
 from ..git_mixins.tags import NullTagList, TagList
 from ...common import util
-from GitSavvy.core import store
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker, run_on_new_thread
 from GitSavvy.core.utils import flash, uprint
@@ -143,13 +142,8 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         enqueue_on_worker(self.get_remotes)
         self.view.run_command("gs_update_status")
 
-        state = store.current_state(self.repo_path)
         self.update_state({
             'git_root': self.short_repo_path,
-            'local_tags': state.get("local_tags", NullTagList),
-            'long_status': state.get("long_status", ''),
-            'recent_commits': state.get("recent_commits", NullRecentCommits),
-            'remotes': state.get("remotes", {}),
             'max_items': self.savvy_settings.get("max_items_in_tags_dashboard", None),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })

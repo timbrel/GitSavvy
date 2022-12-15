@@ -11,7 +11,6 @@ from ..git_command import GitCommand
 from ..git_mixins.active_branch import NullRecentCommits
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
-from GitSavvy.core import store
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.utils import flash
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker
@@ -143,14 +142,8 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         enqueue_on_worker(self.get_remotes)
         self.view.run_command("gs_update_status")
 
-        state = store.current_state(self.repo_path)
         self.update_state({
             'git_root': self.short_repo_path,
-            'branches': state.get("branches", []),
-            'descriptions': state.get("descriptions", {}),
-            'long_status': state.get("long_status", ''),
-            'recent_commits': state.get("recent_commits", NullRecentCommits),
-            'remotes': state.get("remotes", {}),
             'sort_by_recent': self.savvy_settings.get("sort_by_recent_in_branch_dashboard"),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })

@@ -47,7 +47,21 @@ if MYPY:
 
 def initial_state():
     # type: () -> RepoStore
-    return {"last_branches": deque([None] * 2, 2)}
+    from GitSavvy.core.git_mixins.active_branch import NullRecentCommits
+    from GitSavvy.core.git_mixins.status import NullHeadState, NullWorkingDirState
+    from GitSavvy.core.git_mixins.tags import NullTagList
+    return {
+        "branches": [],
+        "descriptions": {},
+        "head": NullHeadState,
+        "last_branches": deque([None] * 2, 2),
+        "local_tags": NullTagList,
+        "long_status": "",
+        "recent_commits": NullRecentCommits,
+        "remotes": {},
+        "stashes": [],
+        "status": NullWorkingDirState,
+    }
 
 
 state = defaultdict(initial_state)  # type: DefaultDict[RepoPath, RepoStore]
