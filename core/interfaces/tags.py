@@ -1,6 +1,5 @@
 from contextlib import contextmanager
 from functools import partial
-from itertools import chain
 import os
 import re
 
@@ -10,6 +9,7 @@ from sublime_plugin import WindowCommand
 from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
+from ..git_mixins.tags import TagList
 from ...common import util
 from GitSavvy.core import store
 from GitSavvy.core.fns import filter_
@@ -32,7 +32,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, List, Literal, Optional, Union, Tuple, TypedDict
+    from typing import Dict, List, Literal, Optional, Union, TypedDict
     from ..git_mixins.active_branch import Commit
     from ..git_mixins.tags import TagDetails
 
@@ -51,7 +51,7 @@ if MYPY:
         {
             "git_root": str,
             "long_status": str,
-            "local_tags": Tuple[List[TagDetails], List[TagDetails]],
+            "local_tags": TagList,
             "remotes": Dict[str, str],
             "remote_tags": Dict[str, FetchStateMachine],
             "recent_commits": List[Commit],
@@ -130,7 +130,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         self.state = {
             'git_root': '',
             'long_status': '',
-            'local_tags': ([], []),
+            'local_tags': TagList([], []),
             'remotes': {},
             'remote_tags': {},
             'recent_commits': [],
@@ -193,7 +193,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
     @ui.section("local_tags")
     def render_local_tags(self):
         local_tags = self.state["local_tags"]
-        if not any(chain(*local_tags)):
+        if not any(local_tags.all):
             return NO_LOCAL_TAGS_MESSAGE
 
         regular_tags, versions = local_tags
@@ -258,7 +258,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                 try:
                     self.state["remote_tags"][remote_name] = {
                         "state": "succeeded",
-                        "tags": list(chain(*self.get_remote_tags(remote_name)))
+                        "tags": list(self.get_remote_tags(remote_name).all)
                     }
                 except GitSavvyError as e:
                     self.state["remote_tags"][remote_name] = {
@@ -275,7 +275,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
         elif remote["state"] == "succeeded":
             if remote["tags"]:
-                seen = {tag.sha: tag.tag for tag in chain(*self.state["local_tags"])}
+                seen = {tag.sha: tag.tag for tag in self.state["local_tags"].all}
                 tags_list = [
                     tag
                     for tag in remote["tags"]
