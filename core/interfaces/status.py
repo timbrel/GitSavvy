@@ -5,7 +5,7 @@ import os
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..git_mixins.status import FileStatus
+from ..git_mixins.status import FileStatus, WorkingDirState
 from ..git_mixins.active_branch import format_and_limit
 from ..commands import GsNavigate
 from ...common import ui
@@ -51,11 +51,7 @@ if MYPY:
     StatusViewState = TypedDict(
         "StatusViewState",
         {
-            "staged_files": List[FileStatus],
-            "unstaged_files": List[FileStatus],
-            "untracked_files": List[FileStatus],
-            "merge_conflicts": List[FileStatus],
-            "clean": bool,
+            "status": WorkingDirState,
             "long_status": str,
             "git_root": str,
             "show_help": bool,
@@ -210,11 +206,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     def __init__(self, *args, **kwargs):
         self.state = {
-            'staged_files': [],
-            'unstaged_files': [],
-            'untracked_files': [],
-            'merge_conflicts': [],
-            'clean': True,
+            'status': WorkingDirState([], [], [], []),
             'long_status': '',
             'git_root': '',
             'show_help': True,
@@ -246,14 +238,12 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
             )
 
         self.view.run_command("gs_update_status")
-        # These are cheap to compute, so we just do it!
+
         state = store.current_state(self.repo_path)
-        status = state.get("status")
-        if status:
-            self.update_state(status._asdict())
         self.update_state({
             'git_root': self.short_repo_path,
             'long_status': state.get("long_status", ''),
+            'status': state.get("status", WorkingDirState([], [], [], [])),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
             'stashes': state.get("stashes", []),
             'head': state.get("head", None),
@@ -308,7 +298,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("staged_files")
     def render_staged_files(self):
-        staged_files = self.state['staged_files']
+        staged_files = self.state['status'].staged_files
         if not staged_files:
             return ""
 
@@ -325,7 +315,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("unstaged_files")
     def render_unstaged_files(self):
-        unstaged_files = self.state['unstaged_files']
+        unstaged_files = self.state['status'].unstaged_files
         if not unstaged_files:
             return ""
 
@@ -336,7 +326,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("untracked_files")
     def render_untracked_files(self):
-        untracked_files = self.state['untracked_files']
+        untracked_files = self.state['status'].untracked_files
         if not untracked_files:
             return ""
 
@@ -345,7 +335,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("merge_conflicts")
     def render_merge_conflicts(self):
-        merge_conflicts = self.state['merge_conflicts']
+        merge_conflicts = self.state['status'].merge_conflicts
         if not merge_conflicts:
             return ""
         return self.template_merge_conflicts.format(
@@ -353,13 +343,13 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("conflicts_bindings")
     def render_conflicts_bindings(self):
-        return self.conflicts_keybindings if self.state['merge_conflicts'] else ""
+        return self.conflicts_keybindings if self.state['status'].merge_conflicts else ""
 
     @ui.section("no_status_message")
     def render_no_status_message(self):
         return (
             "\n    Your working directory is clean.\n"
-            if self.state['clean']
+            if self.state['status'].clean
             else ""
         )
 
@@ -745,7 +735,7 @@ class gs_status_use_commit_version(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        conflicts = self.interface.state['merge_conflicts']
+        conflicts = self.interface.state['status'].merge_conflicts
         file_paths = self.get_selected_subjects('merge-conflicts')
 
         for fpath in file_paths:
@@ -769,7 +759,7 @@ class gs_status_use_base_version(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        conflicts = self.interface.state['merge_conflicts']
+        conflicts = self.interface.state['status'].merge_conflicts
         file_paths = self.get_selected_subjects('merge-conflicts')
 
         for fpath in file_paths:

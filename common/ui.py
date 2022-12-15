@@ -368,10 +368,7 @@ class ReactiveInterface(Interface, _base, GitCommand):
         new_state = {}
         for topic in self.subscribe_to:
             try:
-                if topic == "status":
-                    new_state.update(state["status"]._asdict())
-                else:
-                    new_state[topic] = state[topic]
+                new_state[topic] = state[topic]
             except KeyError:
                 pass
 
