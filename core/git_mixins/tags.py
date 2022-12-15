@@ -3,6 +3,7 @@ from distutils.version import LooseVersion
 from itertools import chain
 import re
 
+from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base
 
 
@@ -56,7 +57,11 @@ class TagsMixin(mixin_base):
             for line in stdout.splitlines()
             if line
         )
-        return self.handle_semver_tags(entries)
+        rv = self.handle_semver_tags(entries)
+        store.update_state(self.repo_path, {
+            "local_tags": rv,
+        })
+        return rv
 
     def get_remote_tags(self, remote):
         # type: (str) -> TagList

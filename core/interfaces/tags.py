@@ -124,7 +124,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
       REMOTE ({remote_name}):
     {remote_tags_list}"""
 
-    subscribe_to = {"status", "recent_commits"}
+    subscribe_to = {"status", "local_tags", "recent_commits"}
 
     def __init__(self, *args, **kwargs):
         self.state = {
@@ -161,6 +161,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
             self.update_state(status._asdict())
         self.update_state({
             'git_root': self.short_repo_path,
+            'local_tags': state.get("local_tags", TagList([], [])),
             'recent_commits': state.get("recent_commits", []),
             'max_items': self.savvy_settings.get("max_items_in_tags_dashboard", None),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),

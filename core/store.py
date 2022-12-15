@@ -15,6 +15,7 @@ if MYPY:
     from GitSavvy.core.git_mixins.branches import Branch
     from GitSavvy.core.git_mixins.stash import Stash
     from GitSavvy.core.git_mixins.status import HeadState, WorkingDirState
+    from GitSavvy.core.git_mixins.tags import TagList
 
     RepoPath = str
     RepoStore = TypedDict(
@@ -23,6 +24,7 @@ if MYPY:
             "status": WorkingDirState,
             "head": HeadState,
             "branches": List[Branch],
+            "local_tags": TagList,
             "last_branches": Deque[Optional[str]],
             "last_local_branch_for_rebase": Optional[str],
             "last_remote_used": Optional[str],
