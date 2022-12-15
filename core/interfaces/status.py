@@ -203,19 +203,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     """
 
     subscribe_to = {"branches", "head", "long_status", "status"}
-
-    def __init__(self, *args, **kwargs):
-        self.state = {
-            'status': WorkingDirState([], [], [], []),
-            'long_status': '',
-            'git_root': '',
-            'show_help': True,
-            'head': None,
-            'branches': [],
-            'recent_commits': [],
-            'stashes': []
-        }  # type: StatusViewState
-        super().__init__(*args, **kwargs)
+    state = {}  # type: StatusViewState
 
     def title(self):
         return "STATUS: {}".format(os.path.basename(self.repo_path))
