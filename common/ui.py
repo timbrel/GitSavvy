@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from copy import deepcopy
 from functools import wraps
 import re
 from textwrap import dedent
@@ -276,7 +277,7 @@ def distinct_until_state_changed(just_render_fn):
         current_state = self.state
         if current_state != previous_states.get(self):
             just_render_fn(self, *args, **kwargs)
-            previous_states[self] = current_state.copy()
+            previous_states[self] = deepcopy(current_state)
 
     return wrapper
 
