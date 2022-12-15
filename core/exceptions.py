@@ -32,3 +32,7 @@ class FailedGithubRequest(GitSavvyError):
 
 class FailedGitLabRequest(GitSavvyError):
     pass
+
+
+class DetachedView(RuntimeError):
+    pass

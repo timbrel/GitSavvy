@@ -271,9 +271,10 @@ class _GitCommand(SettingsMixin):
         if not working_dir:
             try:
                 working_dir = self.repo_path
-            except RuntimeError as e:
+            except DetachedView as e:
                 # do not show panel when the window does not exist
-                raise GitSavvyError(str(e), show_panel=False, window=window)
+                GitSavvyError(str(e), show_panel=False, window=window)  # just for logging
+                raise
             except Exception as e:
                 raise GitSavvyError(str(e), show_panel=show_panel_on_error, window=window)
 
@@ -555,7 +556,7 @@ class _GitCommand(SettingsMixin):
 
         window = self._current_window()
         if not window:
-            raise RuntimeError("View already closed.")
+            raise DetachedView("View already closed.")
 
         if window.folders():
             enqueue_on_worker(window.run_command, "gs_offer_init")
@@ -658,7 +659,7 @@ from .git_mixins.tags import TagsMixin  # noqa: E402
 from .git_mixins.history import HistoryMixin  # noqa: E402
 from .git_mixins.rewrite import RewriteMixin  # noqa: E402
 from .git_mixins.merge import MergeMixin  # noqa: E402
-from .exceptions import GitSavvyError  # noqa: E402
+from .exceptions import DetachedView, GitSavvyError  # noqa: E402
 
 
 class GitCommand(
