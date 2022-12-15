@@ -8,6 +8,7 @@ from ...common import ui, util
 from ..commands import GsNavigate
 from ..commands.log import LogMixin
 from ..git_command import GitCommand
+from ..git_mixins.active_branch import NullRecentCommits
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core import store
@@ -148,7 +149,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             'branches': state.get("branches", []),
             'descriptions': state.get("descriptions", {}),
             'long_status': state.get("long_status", ''),
-            'recent_commits': state.get("recent_commits", []),
+            'recent_commits': state.get("recent_commits", NullRecentCommits),
             'remotes': state.get("remotes", {}),
             'sort_by_recent': self.savvy_settings.get("sort_by_recent_in_branch_dashboard"),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
@@ -183,6 +184,8 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
     @ui.section("head")
     def render_head(self):
         recent_commits = self.state['recent_commits']
+        if recent_commits is NullRecentCommits:
+            return ""
         if not recent_commits:
             return "No commits yet."
 

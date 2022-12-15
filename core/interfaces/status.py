@@ -5,8 +5,8 @@ import os
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..git_mixins.status import FileStatus, WorkingDirState
-from ..git_mixins.active_branch import format_and_limit
+from ..git_mixins.status import FileStatus, NullWorkingDirState
+from ..git_mixins.active_branch import format_and_limit, NullRecentCommits
 from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
@@ -46,7 +46,7 @@ if MYPY:
     from ..git_mixins.active_branch import Commit
     from ..git_mixins.branches import Branch
     from ..git_mixins.stash import Stash
-    from ..git_mixins.status import HeadState
+    from ..git_mixins.status import HeadState, WorkingDirState
 
     StatusViewState = TypedDict(
         "StatusViewState",
@@ -227,9 +227,9 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
             'branches': state.get("branches", []),
             'head': state.get("head", None),
             'long_status': state.get("long_status", ''),
-            'recent_commits': state.get("recent_commits", []),
+            'recent_commits': state.get("recent_commits", NullRecentCommits),
             'stashes': state.get("stashes", []),
-            'status': state.get("status", WorkingDirState([], [], [], [])),
+            'status': state.get("status", NullWorkingDirState),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })
 
@@ -268,6 +268,8 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     def render_head(self):
         # type: () -> str
         recent_commits = self.state['recent_commits']
+        if recent_commits is NullRecentCommits:
+            return ""
         if not recent_commits:
             return "No commits yet."
 
@@ -329,9 +331,10 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("no_status_message")
     def render_no_status_message(self):
+        status = self.state['status']
         return (
             "\n    Your working directory is clean.\n"
-            if self.state['status'].clean
+            if status is not NullWorkingDirState and status.clean
             else ""
         )
 
