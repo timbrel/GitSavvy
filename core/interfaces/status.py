@@ -94,13 +94,6 @@ EXTRACT_FILENAME_RE = (
 ITEMS_IN_THE_RECENT_LIST = 5
 
 
-def cursor_is_on_something(view, what):
-    return any(
-        view.match_selector(s.begin(), what)
-        for s in view.sel()
-    )
-
-
 class gs_show_status(WindowCommand, GitCommand):
 
     """
@@ -269,9 +262,8 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @contextmanager
     def keep_cursor_on_something(self):
-        on_something = partial(cursor_is_on_something, self.view)
-        on_a_file = partial(on_something, 'meta.git-savvy.entity.filename')
-        on_special_symbol = partial(on_something, 'meta.git-savvy.section.body.row')
+        on_a_file = partial(self.cursor_is_on_something, 'meta.git-savvy.entity.filename')
+        on_special_symbol = partial(self.cursor_is_on_something, 'meta.git-savvy.section.body.row')
 
         was_on_a_file = on_a_file()
         yield

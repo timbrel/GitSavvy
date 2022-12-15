@@ -194,8 +194,25 @@ class Interface(metaclass=_PrepareInterface):
 
     def render(self):
         self.pre_render()
+        self.just_render()
+
+    def just_render(self) -> None:
         content, regions = self._render_template()
-        self.draw(self.title(), content, regions)
+        with self.keep_cursor_on_something():
+            self.draw(self.title(), content, regions)
+
+    @contextmanager
+    def keep_cursor_on_something(self):
+        # type: () -> Iterator[None]
+        yield
+
+    def cursor_is_on_something(self, what):
+        # type: (str) -> bool
+        view = self.view
+        return any(
+            view.match_selector(s.begin(), what)
+            for s in view.sel()
+        )
 
     def draw(self, title, content, regions):
         # type: (str, str, SectionRegions) -> None
@@ -328,10 +345,6 @@ class ReactiveInterface(Interface, _base, GitCommand):
         content, regions = self._render_template()
         with self.keep_cursor_on_something():
             self.draw(self.title(), content, regions)
-
-    @contextmanager
-    def keep_cursor_on_something(self):
-        yield
 
     def on_create(self):
         self._unsubscribe = store.subscribe(
