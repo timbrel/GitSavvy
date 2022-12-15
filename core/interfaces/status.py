@@ -206,7 +206,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     {}
     """
 
-    subscribe_to = {"status", "head", "branches"}
+    subscribe_to = {"branches", "head", "long_status", "status"}
 
     def __init__(self, *args, **kwargs):
         self.state = {
@@ -253,6 +253,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
             self.update_state(status._asdict())
         self.update_state({
             'git_root': self.short_repo_path,
+            'long_status': state.get("long_status", ''),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
             'stashes': state.get("stashes", []),
             'head': state.get("head", None),

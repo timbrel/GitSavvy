@@ -48,17 +48,13 @@ if MYPY:
         ("unstaged_files", List[FileStatus]),
         ("untracked_files", List[FileStatus]),
         ("merge_conflicts", List[FileStatus]),
-        ("short_status", str),
-        ("long_status", str),
     ])
 
 else:
     HeadState = namedtuple("HeadState", "detached branch remote clean ahead behind gone")
     FileStatus = namedtuple("FileStatus", "path path_alt index_status working_status")
     _WorkingDirState = namedtuple(
-        "_WorkingDirState",
-        "staged_files unstaged_files untracked_files merge_conflicts "
-        "short_status long_status"
+        "_WorkingDirState", "staged_files unstaged_files untracked_files merge_conflicts "
     )
 
 
@@ -125,8 +121,6 @@ class StatusMixin(mixin_base):
             unstaged_files=unstaged_files,
             untracked_files=untracked_files,
             merge_conflicts=merge_conflicts,
-            short_status=short_status,
-            long_status=long_status
         )
         current_branch = branch_status.branch
         last_branches = store.current_state(self.repo_path)["last_branches"]
