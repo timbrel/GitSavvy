@@ -264,11 +264,12 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
             return ""
         return self.template_help
 
-    def get_remote_tags_list(self, remote_name, remote_info):
-        # type: (str, FetchStateMachine) -> str
+    @ui.inject_state()
+    def get_remote_tags_list(self, remote_name, remote_info, local_tags, max_items):
+        # type: (str, FetchStateMachine, TagList, int) -> str
         if remote_info["state"] == "succeeded":
             if remote_info["tags"]:
-                seen = {tag.sha: tag.tag for tag in self.state["local_tags"].all}
+                seen = {tag.sha: tag.tag for tag in local_tags.all}
                 tags_list = [
                     tag
                     for tag in remote_info["tags"]
@@ -276,7 +277,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                 ]
                 msg = "\n".join(
                     "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
-                    for tag in tags_list[:self.state["max_items"]]
+                    for tag in tags_list[:max_items]
                 ) or NO_MORE_TAGS_MESSAGE
 
             else:
