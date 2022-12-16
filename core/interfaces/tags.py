@@ -138,6 +138,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     def refresh_view_state(self):
         # type: () -> None
+        self.maybe_populate_remote_tags()
         enqueue_on_worker(self.get_local_tags)
         enqueue_on_worker(self.get_latest_commits)
         enqueue_on_worker(self.get_remotes)
@@ -148,6 +149,29 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
             'max_items': self.savvy_settings.get("max_items_in_tags_dashboard", None),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })
+
+    @ui.inject_state()
+    def maybe_populate_remote_tags(self, remotes, show_remotes, remote_tags):
+        # type: (Dict[str, str], bool, Dict[str, FetchStateMachine]) -> None
+        def do_tags_fetch(remote_name):
+            try:
+                remote_tags[remote_name] = {
+                    "state": "succeeded",
+                    "tags": list(self.get_remote_tags(remote_name).all)
+                }
+            except GitSavvyError as e:
+                remote_tags[remote_name] = {
+                    "state": "erred",
+                    "message": "    {}".format(e.stderr.rstrip())
+                }
+            enqueue_on_worker(self.just_render)  # fan-in
+
+        if remotes and show_remotes and not remote_tags:
+            for remote_name in remotes:
+                run_on_new_thread(do_tags_fetch, remote_name)    # fan-out
+                remote_tags[remote_name] = {
+                    "state": "loading"
+                }
 
     @contextmanager
     def keep_cursor_on_something(self):
@@ -206,8 +230,8 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         )
 
     @ui.section("remote_tags")
-    def render_remote_tags(self, remotes, show_remotes):
-        # type: (Dict[str, str], bool) -> ui.RenderFnReturnType
+    def render_remote_tags(self, remotes, show_remotes, remote_tags):
+        # type: (Dict[str, str], bool, Dict[str, FetchStateMachine]) -> ui.RenderFnReturnType
         if not remotes:
             return "\n"
 
@@ -218,12 +242,16 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         render_fns = []
 
         for remote_name in remotes:
+            remote_info = remote_tags.get(remote_name)
+            if not remote_info:
+                continue
+
             tmpl_key = "remote_tags_list_" + remote_name
             output_tmpl += "{" + tmpl_key + "}\n"
 
             @ui.section(tmpl_key)
-            def render_remote(remote_name=remote_name) -> str:
-                return self.get_remote_tags_list(remote_name)
+            def render_remote(remote_name=remote_name, remote_info=remote_info) -> str:
+                return self.get_remote_tags_list(remote_name, remote_info)
 
             render_fns.append(render_remote)
 
@@ -236,35 +264,14 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
             return ""
         return self.template_help
 
-    def get_remote_tags_list(self, remote_name):
-        # type: (str) -> str
-        remote = self.state["remote_tags"].get(remote_name)
-        if remote is None:
-            def do_tags_fetch(remote_name=remote_name):
-                try:
-                    self.state["remote_tags"][remote_name] = {
-                        "state": "succeeded",
-                        "tags": list(self.get_remote_tags(remote_name).all)
-                    }
-                except GitSavvyError as e:
-                    self.state["remote_tags"][remote_name] = {
-                        "state": "erred",
-                        "message": "    {}".format(e.stderr.rstrip())
-                    }
-                enqueue_on_worker(self.just_render)  # fan-in
-
-            run_on_new_thread(do_tags_fetch)    # fan-out
-            self.state["remote_tags"][remote_name] = {
-                "state": "loading"
-            }
-            msg = LOADING_TAGS_MESSAGE
-
-        elif remote["state"] == "succeeded":
-            if remote["tags"]:
+    def get_remote_tags_list(self, remote_name, remote_info):
+        # type: (str, FetchStateMachine) -> str
+        if remote_info["state"] == "succeeded":
+            if remote_info["tags"]:
                 seen = {tag.sha: tag.tag for tag in self.state["local_tags"].all}
                 tags_list = [
                     tag
-                    for tag in remote["tags"]
+                    for tag in remote_info["tags"]
                     if tag.tag[-3:] != "^{}" and tag.sha not in seen
                 ]
                 msg = "\n".join(
@@ -275,10 +282,10 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
             else:
                 msg = NO_REMOTE_TAGS_MESSAGE
 
-        elif remote["state"] == "erred":
-            msg = remote["message"]
+        elif remote_info["state"] == "erred":
+            msg = remote_info["message"]
 
-        elif remote["state"] == "loading":
+        elif remote_info["state"] == "loading":
             msg = LOADING_TAGS_MESSAGE
 
         return self.template_remote.format(
