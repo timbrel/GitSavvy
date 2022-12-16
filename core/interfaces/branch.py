@@ -187,11 +187,13 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         return "{0.hash} {0.message}".format(recent_commits[0])
 
     @ui.section("branch_list")
-    def render_branch_list(self, branches, sort_by_recent, descriptions):
-        # type: (List[Branch], bool, Dict[str, str]) -> str
+    def render_branch_list(self, branches, sort_by_recent):
+        # type: (List[Branch], bool) -> str
         local_branches = [branch for branch in branches if not branch.is_remote]
         if sort_by_recent:
             local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
+        # Manually get `descriptions` to not delay the first render.
+        descriptions = self.state.get("descriptions", {})
         return self._render_branch_list(None, local_branches, descriptions)
 
     def _render_branch_list(self, remote_name, branches, descriptions):
