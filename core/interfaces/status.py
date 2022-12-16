@@ -41,7 +41,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Iterable, List, Optional, TypedDict
+    from typing import Iterable, Iterator, List, Optional, TypedDict
     from ..git_mixins.active_branch import Commit
     from ..git_mixins.branches import Branch
     from ..git_mixins.stash import Stash
@@ -205,9 +205,11 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     state = {}  # type: StatusViewState
 
     def title(self):
+        # type: () -> str
         return "STATUS: {}".format(os.path.basename(self.repo_path))
 
     def refresh_view_state(self):
+        # type: () -> None
         """Update all view state.
 
         Note: For every possible long running process, we enqueue a task
@@ -227,6 +229,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @contextmanager
     def keep_cursor_on_something(self):
+        # type: () -> Iterator[None]
         on_a_file = partial(self.cursor_is_on_something, 'meta.git-savvy.entity.filename')
         on_special_symbol = partial(self.cursor_is_on_something, 'meta.git-savvy.section.body.row')
 
@@ -236,6 +239,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
             self.view.run_command("gs_status_navigate_goto")
 
     def refresh_repo_status_and_render(self):
+        # type: () -> None
         """Refresh `git status` state and render.
 
         Most actions in the status dashboard only affect the `git status`.
@@ -245,15 +249,18 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         self.update_working_dir_status()
 
     def after_view_creation(self, view):
+        # type: (sublime.View) -> None
         view.settings().set("result_file_regex", EXTRACT_FILENAME_RE)
         view.settings().set("result_base_dir", self.repo_path)
 
     @ui.section("branch_status")
     def render_branch_status(self, long_status):
+        # type: (str) -> str
         return long_status
 
     @ui.section("git_root")
     def render_git_root(self, git_root):
+        # type: (str) -> str
         return git_root
 
     @ui.section("head")
@@ -270,6 +277,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("staged_files")
     def render_staged_files(self, status):
+        # type: (WorkingDirState) -> str
         staged_files = status.staged_files
         if not staged_files:
             return ""
@@ -287,6 +295,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("unstaged_files")
     def render_unstaged_files(self, status):
+        # type: (WorkingDirState) -> str
         unstaged_files = status.unstaged_files
         if not unstaged_files:
             return ""
@@ -298,6 +307,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("untracked_files")
     def render_untracked_files(self, status):
+        # type: (WorkingDirState) -> str
         untracked_files = status.untracked_files
         if not untracked_files:
             return ""
@@ -307,6 +317,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("merge_conflicts")
     def render_merge_conflicts(self, status):
+        # type: (WorkingDirState) -> str
         merge_conflicts = status.merge_conflicts
         if not merge_conflicts:
             return ""
@@ -315,10 +326,12 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("conflicts_bindings")
     def render_conflicts_bindings(self, status):
+        # type: (WorkingDirState) -> str
         return self.conflicts_keybindings if status.merge_conflicts else ""
 
     @ui.section("no_status_message")
     def render_no_status_message(self, status):
+        # type: (WorkingDirState) -> str
         return (
             "\n    Your working directory is clean.\n"
             if status.clean
@@ -327,6 +340,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("stashes")
     def render_stashes(self, stashes):
+        # type: (List[Stash]) -> str
         if not stashes:
             return ""
 
@@ -335,6 +349,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("help")
     def render_help(self, show_help):
+        # type: (bool) -> str
         if not show_help:
             return ""
 

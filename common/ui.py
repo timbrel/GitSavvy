@@ -36,18 +36,25 @@ MYPY = False
 if MYPY:
     from typing import (
         AbstractSet, Callable, Dict, Generic, Iterable, Iterator, List, MutableMapping,
-        Protocol, Set, Tuple, Type, TypeVar, Union,
+        Protocol, Set, Tuple, Type, TypeVar, Union, cast
     )
     T = TypeVar("T")
+    T_fn = TypeVar("T_fn", bound=Callable)
     T_state = TypeVar("T_state", bound=MutableMapping)
     SectionRegions = Dict[str, sublime.Region]
     RenderFnReturnType = Union[str, Tuple[str, List["SectionFn"]]]
 
-    class SectionFn(Protocol):
+    class RenderFn(Protocol):
+        def __call__(self, *args, **kwargs) -> RenderFnReturnType:
+            pass
+
+    class SectionFn(RenderFn):
         key = ''  # type: str
 
-        def __call__(self) -> RenderFnReturnType:
-            pass
+else:
+    def cast(t, v):
+        return v
+    SectionFn = T_fn = None
 
 
 interfaces = {}  # type: Dict[sublime.ViewId, Interface]
@@ -384,22 +391,26 @@ class ReactiveInterface(Interface, _base, GitCommand):
 
 
 def section(key):
-    # type: (str) -> Callable[[Callable[..., RenderFnReturnType]], SectionFn]
+    # type: (str) -> Callable[[RenderFn], SectionFn]
     def decorator(fn):
-        fn.key = key
-        return inject_state()(fn)
+        # type: (RenderFn) -> SectionFn
+        fn.key = key  # type: ignore[attr-defined]
+        return cast(SectionFn, inject_state()(fn))
     return decorator
 
 
 def inject_state():
+    # type: () -> Callable[[Callable], Callable]
     def decorator(fn):
+        # type: (T_fn) -> T_fn
         sig = inspect.signature(fn)
         keys = ordered_positional_args(sig)
         if "self" not in keys:
             return fn
 
-        @wraps(fn)
+        @wraps(fn)  # <- copies our key too! 🙏
         def decorated(self, *args, **kwargs):
+            # # type: (...) -> RenderFnReturnType
             b = sig.bind_partial(self, *args, **kwargs)
             given_args = b.arguments.keys()
             try:
@@ -410,7 +421,7 @@ def inject_state():
                 kwargs.update(b.arguments)
                 kwargs.update(values)
                 return fn(**kwargs)
-        return decorated
+        return cast(T_fn, decorated)
     return decorator
 
 

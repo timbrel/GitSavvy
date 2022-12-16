@@ -41,7 +41,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, List, Optional, TypedDict
+    from typing import Dict, Iterator, List, Optional, TypedDict
     from ..git_mixins.active_branch import Commit
     from ..git_mixins.branches import Branch
 
@@ -132,9 +132,11 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         super().__init__(*args, **kwargs)
 
     def title(self):
+        # type: () -> str
         return "BRANCHES: {}".format(os.path.basename(self.repo_path))
 
     def refresh_view_state(self):
+        # type: () -> None
         enqueue_on_worker(self.get_branches)
         enqueue_on_worker(self.fetch_branch_description_subjects)
         enqueue_on_worker(self.get_latest_commits)
@@ -149,6 +151,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
     @contextmanager
     def keep_cursor_on_something(self):
+        # type: () -> Iterator[None]
         def cursor_is_on_active_branch():
             sel = self.view.sel()
             return (
@@ -167,14 +170,17 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("branch_status")
     def render_branch_status(self, long_status):
+        # type: (str) -> str
         return long_status
 
     @ui.section("git_root")
     def render_git_root(self, git_root):
+        # type: (str) -> str
         return git_root
 
     @ui.section("head")
     def render_head(self, recent_commits):
+        # type: (List[Commit]) -> str
         if not recent_commits:
             return "No commits yet."
 
@@ -206,21 +212,25 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("remotes")
     def render_remotes(self, show_remotes):
+        # type: (bool) -> ui.RenderFnReturnType
         return (self.render_remotes_on()
                 if show_remotes else
                 self.render_remotes_off())
 
     @ui.section("help")
     def render_help(self, show_help):
+        # type: (bool) -> str
         if not show_help:
             return ""
         return self.template_help
 
     def render_remotes_off(self):
+        # type: () -> str
         return "\n\n  ** Press [e] to toggle display of remote branches. **\n"
 
     @ui.inject_state()
     def render_remotes_on(self, branches, sort_by_recent, remotes):
+        # type: (List[Branch], bool, Dict[str, str]) -> ui.RenderFnReturnType
         output_tmpl = "\n"
         render_fns = []
         remote_branches = [b for b in branches if b.is_remote]
@@ -233,7 +243,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             branches = [b for b in remote_branches if b.canonical_name.startswith(remote_name + "/")]
 
             @ui.section(key)
-            def render(remote_name=remote_name, branches=branches):
+            def render(remote_name=remote_name, branches=branches) -> str:
                 return self.template_remote.format(
                     remote_name=remote_name,
                     remote_branch_list=self._render_branch_list(remote_name, branches, {})

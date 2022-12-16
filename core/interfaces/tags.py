@@ -30,7 +30,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, List, Literal, Optional, Union, TypedDict
+    from typing import Dict, Iterator, List, Literal, Optional, Union, TypedDict
     from ..git_mixins.active_branch import Commit
     from ..git_mixins.tags import TagDetails
 
@@ -133,9 +133,11 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         super().__init__(*args, **kwargs)
 
     def title(self):
+        # type: () -> str
         return "TAGS: {}".format(os.path.basename(self.repo_path))
 
     def refresh_view_state(self):
+        # type: () -> None
         enqueue_on_worker(self.get_local_tags)
         enqueue_on_worker(self.get_latest_commits)
         enqueue_on_worker(self.get_remotes)
@@ -149,6 +151,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     @contextmanager
     def keep_cursor_on_something(self):
+        # type: () -> Iterator[None]
         on_special_symbol = partial(self.cursor_is_on_something, "meta.git-savvy.tags.tag")
 
         yield
@@ -157,14 +160,17 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("branch_status")
     def render_branch_status(self, long_status):
+        # type: (str) -> ui.RenderFnReturnType
         return long_status
 
     @ui.section("git_root")
     def render_git_root(self, git_root):
+        # type: (str) -> ui.RenderFnReturnType
         return git_root
 
     @ui.section("head")
     def render_head(self, recent_commits):
+        # type: (List[Commit]) -> ui.RenderFnReturnType
         if not recent_commits:
             return "No commits yet."
 
@@ -172,6 +178,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("local_tags")
     def render_local_tags(self, local_tags, max_items):
+        # type: (TagList, int) -> ui.RenderFnReturnType
         if not any(local_tags.all):
             return NO_LOCAL_TAGS_MESSAGE
 
@@ -200,6 +207,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("remote_tags")
     def render_remote_tags(self, remotes, show_remotes):
+        # type: (Dict[str, str], bool) -> ui.RenderFnReturnType
         if not remotes:
             return "\n"
 
@@ -223,6 +231,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("help")
     def render_help(self, show_help):
+        # type: (bool) -> ui.RenderFnReturnType
         if not show_help:
             return ""
         return self.template_help
@@ -278,6 +287,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         )
 
     def render_remote_tags_off(self):
+        # type: () -> str
         return "\n\n  ** Press [e] to toggle display of remote branches. **\n"
 
 
