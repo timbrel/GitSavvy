@@ -270,11 +270,11 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         # type: (str, FetchStateMachine, TagList, int) -> str
         if remote_info["state"] == "succeeded":
             if remote_info["tags"]:
-                seen = {tag.sha: tag.tag for tag in local_tags.all}
+                seen = {(tag.sha, tag.tag) for tag in local_tags.all}
                 tags_list = [
                     tag
                     for tag in remote_info["tags"]
-                    if tag.tag[-3:] != "^{}" and tag.sha not in seen
+                    if tag.tag[-3:] != "^{}" and (tag.sha, tag.tag) not in seen
                 ]
                 msg = "\n".join(
                     "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
