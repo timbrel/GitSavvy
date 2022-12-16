@@ -99,7 +99,8 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
       HEAD:    {head}
 
       LOCAL:
-    {local_tags}{remote_tags}
+    {local_tags}
+    {remote_tags}
     {< help}
     """
     template_help = """
@@ -238,7 +239,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         if not show_remotes:
             return self.render_remote_tags_off()
 
-        output_tmpl = "\n"
+        output_tmpl = ""
         render_fns = []
 
         for remote_name in remotes:
@@ -296,7 +297,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     def render_remote_tags_off(self):
         # type: () -> str
-        return "\n\n  ** Press [e] to toggle display of remote branches. **\n"
+        return "\n  ** Press [e] to toggle display of remote branches. **\n"
 
 
 TAGS_SELECTOR = "meta.git-savvy.tag.name"
