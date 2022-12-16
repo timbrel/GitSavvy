@@ -167,16 +167,15 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             self.view.run_command("gs_branches_navigate_to_active_branch")
 
     @ui.section("branch_status")
-    def render_branch_status(self):
-        return self.state['long_status']
+    def render_branch_status(self, long_status):
+        return long_status
 
     @ui.section("git_root")
-    def render_git_root(self):
-        return self.state['git_root']
+    def render_git_root(self, git_root):
+        return git_root
 
     @ui.section("head")
-    def render_head(self):
-        recent_commits = self.state['recent_commits']
+    def render_head(self, recent_commits):
         if recent_commits is NullRecentCommits:
             return ""
         if not recent_commits:
@@ -185,22 +184,22 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         return "{0.hash} {0.message}".format(recent_commits[0])
 
     @ui.section("branch_list")
-    def render_branch_list(self):
-        # type: () -> str
-        branches = [branch for branch in self.state["branches"] if not branch.is_remote]
-        if self.state["sort_by_recent"]:
-            branches = sorted(branches, key=lambda branch: -branch.committerdate)
-        return self._render_branch_list(None, branches)
+    def render_branch_list(self, branches, sort_by_recent, descriptions):
+        # type: (List[Branch], bool, Dict[str, str]) -> str
+        local_branches = [branch for branch in branches if not branch.is_remote]
+        if sort_by_recent:
+            local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
+        return self._render_branch_list(None, local_branches, descriptions)
 
-    def _render_branch_list(self, remote_name, branches):
-        # type: (Optional[str], List[Branch]) -> str
-        remote_name_l = len(remote_name + "/") if remote_name else 0
+    def _render_branch_list(self, remote_name, branches, descriptions):
+        # type: (Optional[str], List[Branch], Dict[str, str]) -> str
+        remote_name_length = len(remote_name + "/") if remote_name else 0
         return "\n".join(
             "  {indicator} {hash:.7} {name}{tracking}{description}".format(
                 indicator="▸" if branch.active else " ",
                 hash=branch.commit_hash,
-                name=branch.canonical_name[remote_name_l:],
-                description=(" " + self.state["descriptions"].get(branch.canonical_name, "")).rstrip(),
+                name=branch.canonical_name[remote_name_length:],
+                description=(" " + descriptions.get(branch.canonical_name, "")).rstrip(),
                 tracking=(" ({branch}{status})".format(
                     branch=branch.upstream.canonical_name,
                     status=", " + branch.upstream.status if branch.upstream.status else ""
@@ -209,14 +208,13 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         )
 
     @ui.section("remotes")
-    def render_remotes(self):
+    def render_remotes(self, show_remotes):
         return (self.render_remotes_on()
-                if self.state["show_remotes"] else
+                if show_remotes else
                 self.render_remotes_off())
 
     @ui.section("help")
-    def render_help(self):
-        show_help = self.state['show_help']
+    def render_help(self, show_help):
         if not show_help:
             return ""
         return self.template_help
@@ -224,14 +222,15 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
     def render_remotes_off(self):
         return "\n\n  ** Press [e] to toggle display of remote branches. **\n"
 
-    def render_remotes_on(self):
+    @ui.inject_state()
+    def render_remotes_on(self, branches, sort_by_recent, remotes):
         output_tmpl = "\n"
         render_fns = []
-        remote_branches = [b for b in self.state["branches"] if b.is_remote]
-        if self.state["sort_by_recent"]:
+        remote_branches = [b for b in branches if b.is_remote]
+        if sort_by_recent:
             remote_branches = sorted(remote_branches, key=lambda branch: -branch.committerdate)
 
-        for remote_name in self.state["remotes"]:
+        for remote_name in remotes:
             key = "branch_list_" + remote_name
             output_tmpl += "{" + key + "}\n"
             branches = [b for b in remote_branches if b.canonical_name.startswith(remote_name + "/")]
@@ -240,7 +239,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             def render(remote_name=remote_name, branches=branches):
                 return self.template_remote.format(
                     remote_name=remote_name,
-                    remote_branch_list=self._render_branch_list(remote_name, branches)
+                    remote_branch_list=self._render_branch_list(remote_name, branches, {})
                 )
 
             render_fns.append(render)

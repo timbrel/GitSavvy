@@ -249,31 +249,30 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         view.settings().set("result_base_dir", self.repo_path)
 
     @ui.section("branch_status")
-    def render_branch_status(self):
-        return self.state['long_status']
+    def render_branch_status(self, long_status):
+        return long_status
 
     @ui.section("git_root")
-    def render_git_root(self):
-        return self.state['git_root']
+    def render_git_root(self, git_root):
+        return git_root
 
     @ui.section("head")
-    def render_head(self):
-        # type: () -> str
-        recent_commits = self.state['recent_commits']
+    def render_head(self, recent_commits, head, branches):
+        # type: (List[Commit], HeadState, List[Branch]) -> str
         if recent_commits is NullRecentCommits:
             return ""
         if not recent_commits:
             return "No commits yet."
 
-        current_upstream = self.state['head'].remote
-        branches = self.state['branches']
+        current_upstream = head.remote
+        branches = branches
         return "\n           ".join(
             format_and_limit(recent_commits, ITEMS_IN_THE_RECENT_LIST, current_upstream, branches)
         )
 
     @ui.section("staged_files")
-    def render_staged_files(self):
-        staged_files = self.state['status'].staged_files
+    def render_staged_files(self, status):
+        staged_files = status.staged_files
         if not staged_files:
             return ""
 
@@ -289,8 +288,8 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         ))
 
     @ui.section("unstaged_files")
-    def render_unstaged_files(self):
-        unstaged_files = self.state['status'].unstaged_files
+    def render_unstaged_files(self, status):
+        unstaged_files = status.unstaged_files
         if not unstaged_files:
             return ""
 
@@ -300,8 +299,8 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         ))
 
     @ui.section("untracked_files")
-    def render_untracked_files(self):
-        untracked_files = self.state['status'].untracked_files
+    def render_untracked_files(self, status):
+        untracked_files = status.untracked_files
         if not untracked_files:
             return ""
 
@@ -309,20 +308,19 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
             "\n".join("    " + f.path for f in untracked_files))
 
     @ui.section("merge_conflicts")
-    def render_merge_conflicts(self):
-        merge_conflicts = self.state['status'].merge_conflicts
+    def render_merge_conflicts(self, status):
+        merge_conflicts = status.merge_conflicts
         if not merge_conflicts:
             return ""
         return self.template_merge_conflicts.format(
             "\n".join("    " + f.path for f in merge_conflicts))
 
     @ui.section("conflicts_bindings")
-    def render_conflicts_bindings(self):
-        return self.conflicts_keybindings if self.state['status'].merge_conflicts else ""
+    def render_conflicts_bindings(self, status):
+        return self.conflicts_keybindings if status.merge_conflicts else ""
 
     @ui.section("no_status_message")
-    def render_no_status_message(self):
-        status = self.state['status']
+    def render_no_status_message(self, status):
         return (
             "\n    Your working directory is clean.\n"
             if status is not NullWorkingDirState and status.clean
@@ -330,17 +328,15 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         )
 
     @ui.section("stashes")
-    def render_stashes(self):
-        stash_list = self.state['stashes']
-        if not stash_list:
+    def render_stashes(self, stashes):
+        if not stashes:
             return ""
 
         return self.template_stashes.format("\n".join(
-            "    ({}) {}".format(stash.id, stash.description) for stash in stash_list))
+            "    ({}) {}".format(stash.id, stash.description) for stash in stashes))
 
     @ui.section("help")
-    def render_help(self):
-        show_help = self.state['show_help']
+    def render_help(self, show_help):
         if not show_help:
             return ""
 

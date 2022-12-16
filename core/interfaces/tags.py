@@ -157,16 +157,15 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
             self.view.run_command("gs_tags_navigate_tag")
 
     @ui.section("branch_status")
-    def render_branch_status(self):
-        return self.state['long_status']
+    def render_branch_status(self, long_status):
+        return long_status
 
     @ui.section("git_root")
-    def render_git_root(self):
-        return self.state['git_root']
+    def render_git_root(self, git_root):
+        return git_root
 
     @ui.section("head")
-    def render_head(self):
-        recent_commits = self.state['recent_commits']
+    def render_head(self, recent_commits):
         if recent_commits is NullRecentCommits:
             return ""
         if not recent_commits:
@@ -175,15 +174,13 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         return "{0.hash} {0.message}".format(recent_commits[0])
 
     @ui.section("local_tags")
-    def render_local_tags(self):
-        local_tags = self.state["local_tags"]
+    def render_local_tags(self, local_tags, max_items):
         if local_tags is NullTagList:
             return ""
         if not any(local_tags.all):
             return NO_LOCAL_TAGS_MESSAGE
 
         regular_tags, versions = local_tags
-        max_items = self.state["max_items"]
         return "\n{}\n".format(" " * 60).join(  # need some spaces on the separator line otherwise
                                                 # the syntax expects the remote section begins
             filter_((
@@ -207,17 +204,17 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         )
 
     @ui.section("remote_tags")
-    def render_remote_tags(self):
-        if not self.state["remotes"]:
+    def render_remote_tags(self, remotes, show_remotes):
+        if not remotes:
             return "\n"
 
-        if not self.state["show_remotes"]:
+        if not show_remotes:
             return self.render_remote_tags_off()
 
         output_tmpl = "\n"
         render_fns = []
 
-        for remote_name in self.state["remotes"]:
+        for remote_name in remotes:
             tmpl_key = "remote_tags_list_" + remote_name
             output_tmpl += "{" + tmpl_key + "}\n"
 
@@ -230,8 +227,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         return output_tmpl, render_fns
 
     @ui.section("help")
-    def render_help(self):
-        show_help = self.state['show_help']
+    def render_help(self, show_help):
         if not show_help:
             return ""
         return self.template_help

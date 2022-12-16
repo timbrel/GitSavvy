@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from copy import deepcopy
 from functools import wraps
+import inspect
 import re
 from textwrap import dedent
 import threading
@@ -40,11 +41,12 @@ if MYPY:
     T = TypeVar("T")
     T_state = TypeVar("T_state", bound=MutableMapping)
     SectionRegions = Dict[str, sublime.Region]
+    RenderFnReturnType = Union[str, Tuple[str, List["SectionFn"]]]
 
     class SectionFn(Protocol):
         key = ''  # type: str
 
-        def __call__(self) -> 'Union[str, Tuple[str, List[SectionFn]]]':
+        def __call__(self) -> RenderFnReturnType:
             pass
 
 
@@ -382,11 +384,43 @@ class ReactiveInterface(Interface, _base, GitCommand):
 
 
 def section(key):
-    # type: (str) -> Callable[[Callable[..., Union[str, Tuple[str, List[SectionFn]]]]], SectionFn]
+    # type: (str) -> Callable[[Callable[..., RenderFnReturnType]], SectionFn]
     def decorator(fn):
         fn.key = key
-        return fn
+        return inject_state()(fn)
     return decorator
+
+
+def inject_state():
+    def decorator(fn):
+        sig = inspect.signature(fn)
+        keys = ordered_positional_args(sig)
+        if "self" not in keys:
+            return fn
+
+        @wraps(fn)
+        def decorated(self, *args, **kwargs):
+            b = sig.bind_partial(self, *args, **kwargs)
+            given_args = b.arguments.keys()
+            try:
+                values = {key: self.state[key] for key in keys if key not in given_args}
+            except KeyError:
+                return ""
+            else:
+                kwargs.update(b.arguments)
+                kwargs.update(values)
+                return fn(**kwargs)
+        return decorated
+    return decorator
+
+
+def ordered_positional_args(sig):
+    # type: (inspect.Signature) -> List[str]
+    return [
+        name
+        for name, parameter in sig.parameters.items()
+        if parameter.default is inspect.Parameter.empty
+    ]
 
 
 def indent_by_2(text):
