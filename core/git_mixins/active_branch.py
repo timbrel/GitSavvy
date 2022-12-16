@@ -18,8 +18,6 @@ if MYPY:
 else:
     Commit = namedtuple("Commit", "hash decoration message")
 
-NullRecentCommits = []  # type: List
-
 
 class ActiveBranchMixin(mixin_base):
 

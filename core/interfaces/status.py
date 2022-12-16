@@ -5,8 +5,8 @@ import os
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..git_mixins.status import FileStatus, NullWorkingDirState
-from ..git_mixins.active_branch import format_and_limit, NullRecentCommits
+from ..git_mixins.status import FileStatus
+from ..git_mixins.active_branch import format_and_limit
 from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
@@ -259,8 +259,6 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     @ui.section("head")
     def render_head(self, recent_commits, head, branches):
         # type: (List[Commit], HeadState, List[Branch]) -> str
-        if recent_commits is NullRecentCommits:
-            return ""
         if not recent_commits:
             return "No commits yet."
 
@@ -323,7 +321,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     def render_no_status_message(self, status):
         return (
             "\n    Your working directory is clean.\n"
-            if status is not NullWorkingDirState and status.clean
+            if status.clean
             else ""
         )
 

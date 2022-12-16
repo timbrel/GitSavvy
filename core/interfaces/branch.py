@@ -8,7 +8,6 @@ from ...common import ui, util
 from ..commands import GsNavigate
 from ..commands.log import LogMixin
 from ..git_command import GitCommand
-from ..git_mixins.active_branch import NullRecentCommits
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.fns import filter_
@@ -176,8 +175,6 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("head")
     def render_head(self, recent_commits):
-        if recent_commits is NullRecentCommits:
-            return ""
         if not recent_commits:
             return "No commits yet."
 

@@ -8,8 +8,7 @@ from sublime_plugin import WindowCommand
 from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
-from ..git_mixins.active_branch import NullRecentCommits
-from ..git_mixins.tags import NullTagList, TagList
+from ..git_mixins.tags import TagList
 from ...common import util
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker, run_on_new_thread
@@ -166,8 +165,6 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("head")
     def render_head(self, recent_commits):
-        if recent_commits is NullRecentCommits:
-            return ""
         if not recent_commits:
             return "No commits yet."
 
@@ -175,8 +172,6 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("local_tags")
     def render_local_tags(self, local_tags, max_items):
-        if local_tags is NullTagList:
-            return ""
         if not any(local_tags.all):
             return NO_LOCAL_TAGS_MESSAGE
 

@@ -32,7 +32,6 @@ class TagList(_TagList):
         return chain(*self)
 
 
-NullTagList = TagList([], [])
 SEMVER_TEST = re.compile(r'\d+\.\d+\.?\d*')
 
 
