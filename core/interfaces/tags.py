@@ -139,10 +139,14 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     def refresh_view_state(self):
         # type: () -> None
-        self.maybe_populate_remote_tags()
         enqueue_on_worker(self.get_local_tags)
         enqueue_on_worker(self.get_latest_commits)
         enqueue_on_worker(self.get_remotes)
+        if self.state.get("remotes") is None:
+            # run after the `self.get_remotes` above!
+            enqueue_on_worker(self.maybe_populate_remote_tags)
+        else:
+            self.maybe_populate_remote_tags()
         self.view.run_command("gs_update_status")
 
         self.update_state({
