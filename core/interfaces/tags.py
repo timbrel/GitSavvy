@@ -160,16 +160,20 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         # type: (Dict[str, str], bool, Dict[str, FetchStateMachine]) -> None
         def do_tags_fetch(remote_name):
             try:
-                remote_tags[remote_name] = {
+                new_state = {
                     "state": "succeeded",
                     "tags": list(self.get_remote_tags(remote_name).all)
-                }
+                }  # type: FetchStateMachine
             except GitSavvyError as e:
-                remote_tags[remote_name] = {
+                new_state = {
                     "state": "erred",
                     "message": "    {}".format(e.stderr.rstrip())
                 }
-            enqueue_on_worker(self.just_render)  # fan-in
+
+            def sink():
+                remote_tags[remote_name] = new_state
+                self.just_render()
+            enqueue_on_worker(sink)  # fan-in
 
         if remotes and not remote_tags:
             for remote_name in remotes:
