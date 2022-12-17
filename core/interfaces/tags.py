@@ -341,11 +341,11 @@ class gs_tags_toggle_remotes(TagsInterfaceCommand):
 
     def run(self, edit, show=None):
         interface = self.interface
-        interface.state["remote_tags"] = {}
-        if show is None:
-            interface.state["show_remotes"] = not interface.state["show_remotes"]
-        else:
-            interface.state["show_remotes"] = show
+        current_state = interface.state["show_remotes"]
+        next_state = not current_state if show is None else show
+        interface.state["show_remotes"] = next_state
+        if next_state:
+            interface.state["remote_tags"] = {}
         interface.render()
 
 
