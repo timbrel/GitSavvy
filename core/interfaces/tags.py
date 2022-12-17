@@ -216,11 +216,14 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
             return NO_LOCAL_TAGS_MESSAGE
 
         remote_tags, remote_tag_names = set(), set()
-        for info in self.state["remote_tags"].values():
-            if info["state"] == "succeeded":
-                for tag in info["tags"]:
-                    remote_tags.add((tag.sha, tag.tag))
-                    remote_tag_names.add(tag.tag)
+        # wait until all settled to prohibit intermediate state to be drawn
+        # what we draw explcitily relies on *all* known remote tags
+        if all(info["state"] != "loading" for info in self.state["remote_tags"].values()):
+            for info in self.state["remote_tags"].values():
+                if info["state"] == "succeeded":
+                    for tag in info["tags"]:
+                        remote_tags.add((tag.sha, tag.tag))
+                        remote_tag_names.add(tag.tag)
 
         def maybe_mark(tag):
             if remote_tag_names and tag.tag not in remote_tag_names:
