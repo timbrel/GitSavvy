@@ -171,7 +171,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                 }
             enqueue_on_worker(self.just_render)  # fan-in
 
-        if remotes and show_remotes and not remote_tags:
+        if remotes and not remote_tags:
             for remote_name in remotes:
                 run_on_new_thread(do_tags_fetch, remote_name)    # fan-out
                 remote_tags[remote_name] = {
@@ -211,7 +211,20 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         if not any(local_tags.all):
             return NO_LOCAL_TAGS_MESSAGE
 
-        regular_tags, versions = local_tags
+        remote_tags, remote_tag_names = set(), set()
+        for info in self.state["remote_tags"].values():
+            if info["state"] == "succeeded":
+                for tag in info["tags"]:
+                    remote_tags.add((tag.sha, tag.tag))
+                    remote_tag_names.add(tag.tag)
+
+        def maybe_mark(tag):
+            if remote_tag_names and tag.tag not in remote_tag_names:
+                return "*"  # denote new semver
+            if remote_tags and (tag.sha, tag.tag) not in remote_tags:
+                return "!"  # denote known semver on a different hash
+            return " "
+
         return "\n{}\n".format(" " * 60).join(  # need some spaces on the separator line otherwise
                                                 # the syntax expects the remote section begins
             filter_((
@@ -220,16 +233,17 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                         self.get_short_hash(tag.sha),
                         tag.tag,
                     )
-                    for tag in regular_tags[:max_items]
+                    for tag in local_tags.regular[:max_items]
                 ),
                 "\n".join(
-                    "    {} {:<10} {}{}".format(
+                    "   {}{} {:<10} {}{}".format(
+                        maybe_mark(tag),
                         self.get_short_hash(tag.sha),
                         tag.tag,
                         tag.human_date,
                         " ({})".format(tag.relative_date) if tag.relative_date != tag.human_date else ""
                     )
-                    for tag in versions[:max_items]
+                    for tag in local_tags.versions[:max_items]
                 )
             ))
         )
