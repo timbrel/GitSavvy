@@ -486,18 +486,19 @@ class gs_tags_show_commit(TagsInterfaceCommand):
 
 class gs_tags_show_graph(TagsInterfaceCommand):
     def run(self, edit) -> None:
-        # NOTE: We take the commit sha's here (instead of the tag names)
-        #       because in the graph a tag ref takes the form e.g.
-        #       `tag: 2.14.5`.  T.i we avoid prepending "tag: " here.
-        commits = self.selected_local_commits()
-        if not commits:
+        # NOTE: We take the tag name because the sha can be point to
+        #       a real commit or a tag in case it's an annotated tag.
+        #       Because in the graph a tag ref takes the form e.g.
+        #       `tag: 2.14.5` we need to format it like that here.
+        tags = self.selected_local_tags()
+        if not tags:
             return
-        if len(commits) > 1:
+        if len(tags) > 1:
             flash(self.view, "Can only follow one tag. Taking the first one")
 
         self.window.run_command('gs_graph', {
             'all': True,
-            'follow': commits[0]
+            'follow': "tag: {}".format(tags[0])
         })
 
 
