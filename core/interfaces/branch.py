@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+from functools import partial
 import os
 
 from sublime_plugin import WindowCommand
@@ -10,7 +12,7 @@ from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.utils import flash
-from GitSavvy.core.runtime import on_worker
+from GitSavvy.core.runtime import enqueue_on_worker, on_worker
 
 
 __all__ = (
@@ -39,8 +41,25 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import List, Optional
-    from GitSavvy.core.git_mixins.branches import Branch
+    from typing import Dict, Iterator, List, Optional, TypedDict
+    from ..git_mixins.active_branch import Commit
+    from ..git_mixins.branches import Branch
+
+    BranchViewState = TypedDict(
+        "BranchViewState",
+        {
+            "git_root": str,
+            "long_status": str,
+            "branches": List[Branch],
+            "descriptions": Dict[str, str],
+            "remotes": Dict[str, str],
+            "recent_commits": List[Commit],
+            "sort_by_recent": bool,
+            "show_remotes": bool,
+            "show_help": bool,
+        },
+        total=False
+    )
 
 
 class gs_show_branch(WindowCommand, GitCommand):
@@ -53,7 +72,7 @@ class gs_show_branch(WindowCommand, GitCommand):
         ui.show_interface(self.window, self.repo_path, "branch")
 
 
-class BranchInterface(ui.Interface, GitCommand):
+class BranchInterface(ui.ReactiveInterface, GitCommand):
 
     """
     Branch dashboard.
@@ -61,8 +80,6 @@ class BranchInterface(ui.Interface, GitCommand):
 
     interface_type = "branch"
     syntax_file = "Packages/GitSavvy/syntax/branch.sublime-syntax"
-
-    show_remotes = None
 
     template = """\
 
@@ -105,18 +122,36 @@ class BranchInterface(ui.Interface, GitCommand):
       REMOTE ({remote_name}):
     {remote_branch_list}"""
 
+    subscribe_to = {"branches", "descriptions", "long_status", "recent_commits", "remotes"}
+    state = {}  # type: BranchViewState
+
+    def __init__(self, *args, **kwargs):
+        self.state = {
+            'show_remotes': self.savvy_settings.get("show_remotes_in_branch_dashboard"),
+        }
+        super().__init__(*args, **kwargs)
+
     def title(self):
+        # type: () -> str
         return "BRANCHES: {}".format(os.path.basename(self.repo_path))
 
-    def pre_render(self):
-        sort_by_recent = self.savvy_settings.get("sort_by_recent_in_branch_dashboard")
-        self._branches = self.get_branches(sort_by_recent=sort_by_recent)
-        self.descriptions = self.fetch_branch_description_subjects()
-        if self.show_remotes is None:
-            self.show_remotes = self.savvy_settings.get("show_remotes_in_branch_dashboard")
-        self.remotes = self.get_remotes() if self.show_remotes else {}
+    def refresh_view_state(self):
+        # type: () -> None
+        enqueue_on_worker(self.get_branches)
+        enqueue_on_worker(self.fetch_branch_description_subjects)
+        enqueue_on_worker(self.get_latest_commits)
+        enqueue_on_worker(self.get_remotes)
+        self.view.run_command("gs_update_status")
 
-    def render(self):
+        self.update_state({
+            'git_root': self.short_repo_path,
+            'sort_by_recent': self.savvy_settings.get("sort_by_recent_in_branch_dashboard"),
+            'show_help': not self.view.settings().get("git_savvy.help_hidden"),
+        })
+
+    @contextmanager
+    def keep_cursor_on_something(self):
+        # type: () -> Iterator[None]
         def cursor_is_on_active_branch():
             sel = self.view.sel()
             return (
@@ -126,45 +161,50 @@ class BranchInterface(ui.Interface, GitCommand):
                     "meta.git-savvy.branches.branch.active-branch"
                 )
             )
+        on_special_symbol = partial(self.cursor_is_on_something, "meta.git-savvy.branches.branch")
 
         cursor_was_on_active_branch = cursor_is_on_active_branch()
-        super().render()
-        if cursor_was_on_active_branch and not cursor_is_on_active_branch():
+        yield
+        if cursor_was_on_active_branch and not cursor_is_on_active_branch() or not on_special_symbol():
             self.view.run_command("gs_branches_navigate_to_active_branch")
 
-    def on_new_dashboard(self):
-        self.view.run_command("gs_branches_navigate_to_active_branch")
-
-    def reset_cursor(self):
-        self.view.run_command("gs_branches_navigate_to_active_branch")
-
     @ui.section("branch_status")
-    def render_branch_status(self):
-        return self.get_working_dir_status().long_status
+    def render_branch_status(self, long_status):
+        # type: (str) -> str
+        return long_status
 
     @ui.section("git_root")
-    def render_git_root(self):
-        return self.short_repo_path
+    def render_git_root(self, git_root):
+        # type: (str) -> str
+        return git_root
 
     @ui.section("head")
-    def render_head(self):
-        return self.get_latest_commit_msg_for_head()
+    def render_head(self, recent_commits):
+        # type: (List[Commit]) -> str
+        if not recent_commits:
+            return "No commits yet."
+
+        return "{0.hash} {0.message}".format(recent_commits[0])
 
     @ui.section("branch_list")
-    def render_branch_list(self):
-        # type: () -> str
-        branches = [branch for branch in self._branches if not branch.is_remote]
-        return self._render_branch_list(None, branches)
+    def render_branch_list(self, branches, sort_by_recent):
+        # type: (List[Branch], bool) -> str
+        local_branches = [branch for branch in branches if not branch.is_remote]
+        if sort_by_recent:
+            local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
+        # Manually get `descriptions` to not delay the first render.
+        descriptions = self.state.get("descriptions", {})
+        return self._render_branch_list(None, local_branches, descriptions)
 
-    def _render_branch_list(self, remote_name, branches):
-        # type: (Optional[str], List[Branch]) -> str
-        remote_name_l = len(remote_name + "/") if remote_name else 0
+    def _render_branch_list(self, remote_name, branches, descriptions):
+        # type: (Optional[str], List[Branch], Dict[str, str]) -> str
+        remote_name_length = len(remote_name + "/") if remote_name else 0
         return "\n".join(
             "  {indicator} {hash:.7} {name}{tracking}{description}".format(
                 indicator="▸" if branch.active else " ",
                 hash=branch.commit_hash,
-                name=branch.canonical_name[remote_name_l:],
-                description=(" " + self.descriptions.get(branch.canonical_name, "")).rstrip(),
+                name=branch.canonical_name[remote_name_length:],
+                description=(" " + descriptions.get(branch.canonical_name, "")).rstrip(),
                 tracking=(" ({branch}{status})".format(
                     branch=branch.upstream.canonical_name,
                     status=", " + branch.upstream.status if branch.upstream.status else ""
@@ -173,37 +213,42 @@ class BranchInterface(ui.Interface, GitCommand):
         )
 
     @ui.section("remotes")
-    def render_remotes(self):
+    def render_remotes(self, show_remotes):
+        # type: (bool) -> ui.RenderFnReturnType
         return (self.render_remotes_on()
-                if self.show_remotes else
+                if show_remotes else
                 self.render_remotes_off())
 
     @ui.section("help")
-    def render_help(self):
-        help_hidden = self.view.settings().get("git_savvy.help_hidden")
-        if help_hidden:
+    def render_help(self, show_help):
+        # type: (bool) -> str
+        if not show_help:
             return ""
-        else:
-            return self.template_help
+        return self.template_help
 
     def render_remotes_off(self):
+        # type: () -> str
         return "\n\n  ** Press [e] to toggle display of remote branches. **\n"
 
-    def render_remotes_on(self):
+    @ui.inject_state()
+    def render_remotes_on(self, branches, sort_by_recent, remotes):
+        # type: (List[Branch], bool, Dict[str, str]) -> ui.RenderFnReturnType
         output_tmpl = "\n"
         render_fns = []
-        remote_branches = [b for b in self._branches if b.is_remote]
+        remote_branches = [b for b in branches if b.is_remote]
+        if sort_by_recent:
+            remote_branches = sorted(remote_branches, key=lambda branch: -branch.committerdate)
 
-        for remote_name in self.remotes:
+        for remote_name in remotes:
             key = "branch_list_" + remote_name
             output_tmpl += "{" + key + "}\n"
             branches = [b for b in remote_branches if b.canonical_name.startswith(remote_name + "/")]
 
             @ui.section(key)
-            def render(remote_name=remote_name, branches=branches):
+            def render(remote_name=remote_name, branches=branches) -> str:
                 return self.template_remote.format(
                     remote_name=remote_name,
-                    remote_branch_list=self._render_branch_list(remote_name, branches)
+                    remote_branch_list=self._render_branch_list(remote_name, branches, {})
                 )
 
             render_fns.append(render)
@@ -231,7 +276,7 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
         def select_branch(remote_name, branch_name):
             # type: (str, str) -> Branch
             canonical_name = "/".join(filter_((remote_name, branch_name)))
-            for branch in self.interface._branches:
+            for branch in self.interface.state["branches"]:
                 if branch.canonical_name == canonical_name:
                     return (
                         branch._replace(
@@ -263,7 +308,7 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
             )
         ] + [
             select_branch(remote_name, branch_name)
-            for remote_name in self.interface.remotes
+            for remote_name in self.interface.state["remotes"]
             for branch_name in ui.extract_by_selector(
                 self.view,
                 "meta.git-savvy.branches.branch.name",
@@ -528,9 +573,9 @@ class gs_branches_toggle_remotes(BranchInterfaceCommand):
 
     def run(self, edit, show=None):
         if show is None:
-            self.interface.show_remotes = not self.interface.show_remotes
+            self.interface.update_state({"show_remotes": not self.interface.state["show_remotes"]})
         else:
-            self.interface.show_remotes = show
+            self.interface.update_state({"show_remotes": show})
         self.interface.render()
 
 
@@ -589,14 +634,10 @@ class gs_branches_navigate_branch(GsNavigate):
     """
     Move cursor to the next (or previous) selectable branch in the dashboard.
     """
+    offset = 0
 
     def get_available_regions(self):
-        return [
-            branch_region
-            for region in self.view.find_by_selector(
-                "meta.git-savvy.branches.branch"
-            )
-            for branch_region in self.view.lines(region)]
+        return self.view.find_by_selector("meta.git-savvy.branches.branch.sha1")
 
 
 class gs_branches_navigate_to_active_branch(GsNavigate):
@@ -604,14 +645,11 @@ class gs_branches_navigate_to_active_branch(GsNavigate):
     """
     Move cursor to the active branch.
     """
+    offset = 0
 
     def get_available_regions(self):
-        return [
-            branch_region
-            for region in self.view.find_by_selector(
-                "meta.git-savvy.branches.branch.active-branch meta.git-savvy.branches.branch.sha1"
-            )
-            for branch_region in self.view.lines(region)]
+        return self.view.find_by_selector(
+            "meta.git-savvy.branches.branch.active-branch meta.git-savvy.branches.branch.sha1")
 
 
 class gs_branches_log(LogMixin, BranchInterfaceCommand):

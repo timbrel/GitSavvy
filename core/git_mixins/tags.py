@@ -1,15 +1,35 @@
-import re
 from collections import namedtuple
 from distutils.version import LooseVersion
+from itertools import chain
+import re
 
+from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base
-
-TagDetails = namedtuple("TagDetails", ("sha", "tag", "human_date", "relative_date"))
 
 
 MYPY = False
 if MYPY:
-    from typing import List, Optional, Tuple
+    from typing import Iterable, List, NamedTuple, Optional
+    TagDetails = NamedTuple("TagDetails", [
+        ("sha", str),
+        ("tag", str),
+        ("human_date", str),
+        ("relative_date", str)
+    ])
+    _TagList = NamedTuple("_TagList", [
+        ("regular", List[TagDetails]),
+        ("versions", List[TagDetails])],
+    )
+
+else:
+    TagDetails = namedtuple("TagDetails", ("sha", "tag", "human_date", "relative_date"))
+    _TagList = namedtuple("_TagList", ("regular", "versions"))
+
+
+class TagList(_TagList):
+    @property
+    def all(self):
+        return chain(*self)
 
 
 SEMVER_TEST = re.compile(r'\d+\.\d+\.?\d*')
@@ -18,7 +38,7 @@ SEMVER_TEST = re.compile(r'\d+\.\d+\.?\d*')
 class TagsMixin(mixin_base):
 
     def get_local_tags(self):
-        # type: () -> Tuple[List[TagDetails], List[TagDetails]]
+        # type: () -> TagList
         stdout = self.git(
             "for-each-ref",
             "--sort=-creatordate",
@@ -32,15 +52,19 @@ class TagsMixin(mixin_base):
             ),
             "refs/tags"
         )
-        entries = [
+        entries = (
             TagDetails(*line.split("\x00"))
             for line in stdout.splitlines()
             if line
-        ]
-        return self.handle_semver_tags(entries)
+        )
+        rv = self.handle_semver_tags(entries)
+        store.update_state(self.repo_path, {
+            "local_tags": rv,
+        })
+        return rv
 
     def get_remote_tags(self, remote):
-        # type: (str) -> Tuple[List[TagDetails], List[TagDetails]]
+        # type: (str) -> TagList
         stdout = self.git_throwing_silently(
             "ls-remote",
             "--tags",
@@ -48,11 +72,11 @@ class TagsMixin(mixin_base):
             timeout=20.0,
         )
         porcelain_entries = stdout.splitlines()
-        entries = [
+        entries = (
             TagDetails(entry[:40], entry[51:], "", "")
             for entry in reversed(porcelain_entries)
             if entry
-        ]
+        )
         return self.handle_semver_tags(entries)
 
     def get_last_local_semver_tag(self):
@@ -64,7 +88,7 @@ class TagsMixin(mixin_base):
         return tags[0].tag if tags else None
 
     def handle_semver_tags(self, entries):
-        # type: (List[TagDetails]) -> Tuple[List[TagDetails], List[TagDetails]]
+        # type: (Iterable[TagDetails]) -> TagList
         """
         Sorts tags using LooseVersion if there's a tag matching the semver format.
         """
@@ -94,7 +118,7 @@ class TagsMixin(mixin_base):
                     reverse=True
                 )
 
-        return (regular_entries, semver_entries)
+        return TagList(regular_entries, semver_entries)
 
 
 def is_semver_tag(tag):

@@ -1,8 +1,6 @@
-from functools import partial, wraps
+from functools import partial
 from contextlib import contextmanager
 import os
-import threading
-from weakref import WeakKeyDictionary
 
 import sublime
 from sublime_plugin import WindowCommand
@@ -13,7 +11,6 @@ from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand
 from ...common import util
-from GitSavvy.core import store
 from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import noop, show_actions_panel
 
@@ -44,24 +41,20 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Iterable, List, Optional, TypedDict
+    from typing import Iterable, Iterator, List, Optional, TypedDict
     from ..git_mixins.active_branch import Commit
     from ..git_mixins.branches import Branch
     from ..git_mixins.stash import Stash
-    from ..git_mixins.status import HeadState
+    from ..git_mixins.status import HeadState, WorkingDirState
 
     StatusViewState = TypedDict(
         "StatusViewState",
         {
-            "staged_files": List[FileStatus],
-            "unstaged_files": List[FileStatus],
-            "untracked_files": List[FileStatus],
-            "merge_conflicts": List[FileStatus],
-            "clean": bool,
+            "status": WorkingDirState,
             "long_status": str,
             "git_root": str,
             "show_help": bool,
-            "head": Optional[HeadState],
+            "head": HeadState,
             "branches": List[Branch],
             "recent_commits": List[Commit],
             "stashes": List[Stash],
@@ -96,27 +89,6 @@ EXTRACT_FILENAME_RE = (
 ITEMS_IN_THE_RECENT_LIST = 5
 
 
-def distinct_until_state_changed(just_render_fn):
-    """Custom `lru_cache`-look-alike to minimize redraws."""
-    previous_states = WeakKeyDictionary()  # type: WeakKeyDictionary[StatusInterface, StatusViewState]
-
-    @wraps(just_render_fn)
-    def wrapper(self, *args, **kwargs):
-        current_state = self.state
-        if current_state != previous_states.get(self):
-            just_render_fn(self, *args, **kwargs)
-            previous_states[self] = current_state.copy()
-
-    return wrapper
-
-
-def cursor_is_on_something(view, what):
-    return any(
-        view.match_selector(s.begin(), what)
-        for s in view.sel()
-    )
-
-
 class gs_show_status(WindowCommand, GitCommand):
 
     """
@@ -127,7 +99,7 @@ class gs_show_status(WindowCommand, GitCommand):
         ui.show_interface(self.window, self.repo_path, "status")
 
 
-class StatusInterface(ui.Interface, GitCommand):
+class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     """
     Status dashboard.
@@ -229,28 +201,15 @@ class StatusInterface(ui.Interface, GitCommand):
     {}
     """
 
-    def __init__(self, *args, **kwargs):
-        self._lock = threading.Lock()
-        self.state = {
-            'staged_files': [],
-            'unstaged_files': [],
-            'untracked_files': [],
-            'merge_conflicts': [],
-            'clean': True,
-            'long_status': '',
-            'git_root': '',
-            'show_help': True,
-            'head': None,
-            'branches': [],
-            'recent_commits': [],
-            'stashes': []
-        }  # type: StatusViewState
-        super().__init__(*args, **kwargs)
+    subscribe_to = {"branches", "head", "long_status", "recent_commits", "stashes", "status"}
+    state = {}  # type: StatusViewState
 
     def title(self):
+        # type: () -> str
         return "STATUS: {}".format(os.path.basename(self.repo_path))
 
     def refresh_view_state(self):
+        # type: () -> None
         """Update all view state.
 
         Note: For every possible long running process, we enqueue a task
@@ -258,79 +217,29 @@ class StatusInterface(ui.Interface, GitCommand):
         data which implies that the view is only _eventual_ consistent
         with the real world.
         """
-        for thunk in (
-            lambda: {'recent_commits': self.get_latest_commits()},
-            lambda: {'branches': self.get_branches()},
-            lambda: {'stashes': self.get_stashes()},
-        ):
-            sublime.set_timeout_async(
-                partial(self.update_state, thunk, then=self.just_render)
-            )
-
+        enqueue_on_worker(self.get_latest_commits)
+        enqueue_on_worker(self.get_branches)
+        enqueue_on_worker(self.get_stashes)
         self.view.run_command("gs_update_status")
-        # These are cheap to compute, so we just do it!
-        state = store.current_state(self.repo_path)
-        status = state.get("status")
-        if status:
-            self.update_state(status._asdict())
+
         self.update_state({
             'git_root': self.short_repo_path,
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
-            'stashes': state.get("stashes", []),
-            'head': state.get("head", None),
-            'branches': state.get("branches", []),
-            'recent_commits': state.get("recent_commits", []),
         })
-
-    def update_state(self, data, then=None):
-        """Update internal view state and maybe invoke a callback.
-
-        `data` can be a mapping or a callable ("thunk") which returns
-        a mapping.
-
-        Note: We invoke the "sink" without any arguments. TBC.
-        """
-        if callable(data):
-            data = data()
-
-        with self._lock:
-            self.state.update(data)
-
-        if callable(then):
-            then()
-
-    def render(self):
-        """Refresh view state and render."""
-        self.refresh_view_state()
-        self.just_render()
-
-    @distinct_until_state_changed
-    def just_render(self):
-        content, regions = self._render_template()
-        with self.keep_cursor_on_something():
-            self.draw(self.title(), content, regions)
 
     @contextmanager
     def keep_cursor_on_something(self):
-        on_something = partial(cursor_is_on_something, self.view)
-        on_a_file = partial(on_something, 'meta.git-savvy.entity.filename')
-        on_special_symbol = partial(on_something, 'meta.git-savvy.section.body.row')
+        # type: () -> Iterator[None]
+        on_a_file = partial(self.cursor_is_on_something, 'meta.git-savvy.entity.filename')
+        on_special_symbol = partial(self.cursor_is_on_something, 'meta.git-savvy.section.body.row')
 
         was_on_a_file = on_a_file()
         yield
         if was_on_a_file and not on_a_file() or not on_special_symbol():
             self.view.run_command("gs_status_navigate_goto")
 
-    def on_status_update(self, _repo_path, state):
-        try:
-            new_state = state["status"]._asdict()
-        except KeyError:
-            new_state = {}
-        new_state["head"] = state.get("head")
-        new_state["branches"] = state.get("branches")
-        self.update_state(new_state, then=self.just_render)
-
     def refresh_repo_status_and_render(self):
+        # type: () -> None
         """Refresh `git status` state and render.
 
         Most actions in the status dashboard only affect the `git status`.
@@ -340,42 +249,36 @@ class StatusInterface(ui.Interface, GitCommand):
         self.update_working_dir_status()
 
     def after_view_creation(self, view):
+        # type: (sublime.View) -> None
         view.settings().set("result_file_regex", EXTRACT_FILENAME_RE)
         view.settings().set("result_base_dir", self.repo_path)
 
-    def on_create(self):
-        self._unsubscribe = store.subscribe(
-            self.repo_path, {"status", "head", "branches"}, self.on_status_update
-        )
-
-    def on_close(self):
-        self._unsubscribe()
-
     @ui.section("branch_status")
-    def render_branch_status(self):
-        return self.state['long_status']
+    def render_branch_status(self, long_status):
+        # type: (str) -> str
+        return long_status
 
     @ui.section("git_root")
-    def render_git_root(self):
-        return self.state['git_root']
+    def render_git_root(self, git_root):
+        # type: (str) -> str
+        return git_root
 
     @ui.section("head")
-    def render_head(self):
-        # type: () -> str
-        recent_commits = self.state['recent_commits']
+    def render_head(self, recent_commits, head, branches):
+        # type: (List[Commit], HeadState, List[Branch]) -> str
         if not recent_commits:
             return "No commits yet."
 
-        head = self.state['head']
-        current_upstream = head.remote if head else None
-        branches = self.state['branches']
+        current_upstream = head.remote
+        branches = branches
         return "\n           ".join(
             format_and_limit(recent_commits, ITEMS_IN_THE_RECENT_LIST, current_upstream, branches)
         )
 
     @ui.section("staged_files")
-    def render_staged_files(self):
-        staged_files = self.state['staged_files']
+    def render_staged_files(self, status):
+        # type: (WorkingDirState) -> str
+        staged_files = status.staged_files
         if not staged_files:
             return ""
 
@@ -391,8 +294,9 @@ class StatusInterface(ui.Interface, GitCommand):
         ))
 
     @ui.section("unstaged_files")
-    def render_unstaged_files(self):
-        unstaged_files = self.state['unstaged_files']
+    def render_unstaged_files(self, status):
+        # type: (WorkingDirState) -> str
+        unstaged_files = status.unstaged_files
         if not unstaged_files:
             return ""
 
@@ -402,8 +306,9 @@ class StatusInterface(ui.Interface, GitCommand):
         ))
 
     @ui.section("untracked_files")
-    def render_untracked_files(self):
-        untracked_files = self.state['untracked_files']
+    def render_untracked_files(self, status):
+        # type: (WorkingDirState) -> str
+        untracked_files = status.untracked_files
         if not untracked_files:
             return ""
 
@@ -411,37 +316,40 @@ class StatusInterface(ui.Interface, GitCommand):
             "\n".join("    " + f.path for f in untracked_files))
 
     @ui.section("merge_conflicts")
-    def render_merge_conflicts(self):
-        merge_conflicts = self.state['merge_conflicts']
+    def render_merge_conflicts(self, status):
+        # type: (WorkingDirState) -> str
+        merge_conflicts = status.merge_conflicts
         if not merge_conflicts:
             return ""
         return self.template_merge_conflicts.format(
             "\n".join("    " + f.path for f in merge_conflicts))
 
     @ui.section("conflicts_bindings")
-    def render_conflicts_bindings(self):
-        return self.conflicts_keybindings if self.state['merge_conflicts'] else ""
+    def render_conflicts_bindings(self, status):
+        # type: (WorkingDirState) -> str
+        return self.conflicts_keybindings if status.merge_conflicts else ""
 
     @ui.section("no_status_message")
-    def render_no_status_message(self):
+    def render_no_status_message(self, status):
+        # type: (WorkingDirState) -> str
         return (
             "\n    Your working directory is clean.\n"
-            if self.state['clean']
+            if status.clean
             else ""
         )
 
     @ui.section("stashes")
-    def render_stashes(self):
-        stash_list = self.state['stashes']
-        if not stash_list:
+    def render_stashes(self, stashes):
+        # type: (List[Stash]) -> str
+        if not stashes:
             return ""
 
         return self.template_stashes.format("\n".join(
-            "    ({}) {}".format(stash.id, stash.description) for stash in stash_list))
+            "    ({}) {}".format(stash.id, stash.description) for stash in stashes))
 
     @ui.section("help")
-    def render_help(self):
-        show_help = self.state['show_help']
+    def render_help(self, show_help):
+        # type: (bool) -> str
         if not show_help:
             return ""
 
@@ -812,7 +720,7 @@ class gs_status_use_commit_version(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        conflicts = self.interface.state['merge_conflicts']
+        conflicts = self.interface.state['status'].merge_conflicts
         file_paths = self.get_selected_subjects('merge-conflicts')
 
         for fpath in file_paths:
@@ -836,7 +744,7 @@ class gs_status_use_base_version(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        conflicts = self.interface.state['merge_conflicts']
+        conflicts = self.interface.state['status'].merge_conflicts
         file_paths = self.get_selected_subjects('merge-conflicts')
 
         for fpath in file_paths:

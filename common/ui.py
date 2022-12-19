@@ -1,5 +1,11 @@
-from textwrap import dedent
+from contextlib import contextmanager
+from copy import deepcopy
+from functools import wraps
+import inspect
 import re
+from textwrap import dedent
+import threading
+from weakref import WeakKeyDictionary
 
 import sublime
 from sublime_plugin import TextCommand
@@ -8,8 +14,10 @@ from . import util
 from ..core.runtime import enqueue_on_worker, on_worker
 from ..core.settings import GitSavvySettings
 from ..core.utils import focus_view
+from GitSavvy.core import store
 from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.fns import flatten
+from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.view import replace_view_content
 
 
@@ -27,16 +35,26 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import (
-        AbstractSet, Callable, Dict, Iterable, Iterator, List, Protocol, Tuple, Type, TypeVar, Union
+        AbstractSet, Callable, Dict, Generic, Iterable, Iterator, List, MutableMapping,
+        Protocol, Set, Tuple, Type, TypeVar, Union, cast
     )
     T = TypeVar("T")
+    T_fn = TypeVar("T_fn", bound=Callable)
+    T_state = TypeVar("T_state", bound=MutableMapping)
     SectionRegions = Dict[str, sublime.Region]
+    RenderFnReturnType = Union[str, Tuple[str, List["SectionFn"]]]
 
-    class SectionFn(Protocol):
+    class RenderFn(Protocol):
+        def __call__(self, *args, **kwargs) -> RenderFnReturnType:
+            pass
+
+    class SectionFn(RenderFn):
         key = ''  # type: str
 
-        def __call__(self) -> 'Union[str, Tuple[str, List[SectionFn]]]':
-            pass
+else:
+    def cast(t, v):
+        return v
+    SectionFn = T_fn = None
 
 
 interfaces = {}  # type: Dict[sublime.ViewId, Interface]
@@ -183,13 +201,28 @@ class Interface(metaclass=_PrepareInterface):
     def pre_render(self):
         pass
 
-    def reset_cursor(self):
-        pass
-
     def render(self):
         self.pre_render()
+        self.just_render()
+
+    def just_render(self):
+        # type: () -> None
         content, regions = self._render_template()
-        self.draw(self.title(), content, regions)
+        with self.keep_cursor_on_something():
+            self.draw(self.title(), content, regions)
+
+    @contextmanager
+    def keep_cursor_on_something(self):
+        # type: () -> Iterator[None]
+        yield
+
+    def cursor_is_on_something(self, what):
+        # type: (str) -> bool
+        view = self.view
+        return any(
+            view.match_selector(s.begin(), what)
+            for s in view.sel()
+        )
 
     def draw(self, title, content, regions):
         # type: (str, str, SectionRegions) -> None
@@ -262,12 +295,143 @@ class Interface(metaclass=_PrepareInterface):
         })
 
 
+def distinct_until_state_changed(just_render_fn):
+    """Custom `lru_cache`-look-alike to minimize redraws."""
+    previous_states = WeakKeyDictionary()  # type: WeakKeyDictionary
+
+    @wraps(just_render_fn)
+    def wrapper(self, *args, **kwargs):
+        current_state = self.state
+        if current_state != previous_states.get(self):
+            just_render_fn(self, *args, **kwargs)
+            previous_states[self] = deepcopy(current_state)
+
+    return wrapper
+
+
+if MYPY:
+    class _base(Generic[T_state]):
+        state = None  # type: T_state
+        ...
+else:
+    class _base:
+        ...
+
+
+class ReactiveInterface(Interface, _base, GitCommand):
+    subscribe_to = set()  # type: Set[str]
+
+    def __init__(self, *args, **kwargs):
+        self._lock = threading.Lock()
+        super().__init__(*args, **kwargs)
+
+    def refresh_view_state(self):
+        # type: () -> None
+        raise NotImplementedError
+
+    def update_state(self, data, then=None):
+        # type: (...) -> None
+        """Update internal view state and maybe invoke a callback.
+
+        `data` can be a mapping or a callable ("thunk") which returns
+        a mapping.
+
+        Note: We invoke the "sink" without any arguments. TBC.
+        """
+        if callable(data):
+            data = data()
+
+        with self._lock:
+            self.state.update(data)
+
+        if callable(then):
+            then()
+
+    def render(self):
+        # type: () -> None
+        """Refresh view state and render."""
+        self.refresh_view_state()
+        self.just_render()
+
+    @distinct_until_state_changed
+    def just_render(self):
+        # type: () -> None
+        content, regions = self._render_template()
+        with self.keep_cursor_on_something():
+            self.draw(self.title(), content, regions)
+
+    def on_create(self):
+        # type: () -> None
+        self._unsubscribe = store.subscribe(
+            self.repo_path,
+            self.subscribe_to,
+            self.on_status_update
+        )
+        state = store.current_state(self.repo_path)
+        new_state = self._pick_subscribed_topics_from_store(state)
+        self.update_state(new_state)
+
+    def on_close(self):
+        # type: () -> None
+        self._unsubscribe()
+
+    def on_status_update(self, _repo_path, state):
+        # type: (...) -> None
+        new_state = self._pick_subscribed_topics_from_store(state)
+        self.update_state(new_state, then=self.just_render)
+
+    def _pick_subscribed_topics_from_store(self, state):
+        new_state = {}
+        for topic in self.subscribe_to:
+            try:
+                new_state[topic] = state[topic]
+            except KeyError:
+                pass
+        return new_state
+
+
 def section(key):
-    # type: (str) -> Callable[[Callable[..., Union[str, Tuple[str, List[SectionFn]]]]], SectionFn]
+    # type: (str) -> Callable[[RenderFn], SectionFn]
     def decorator(fn):
-        fn.key = key
-        return fn
+        # type: (RenderFn) -> SectionFn
+        fn.key = key  # type: ignore[attr-defined]
+        return cast(SectionFn, inject_state()(fn))
     return decorator
+
+
+def inject_state():
+    # type: () -> Callable[[Callable], Callable]
+    def decorator(fn):
+        # type: (T_fn) -> T_fn
+        sig = inspect.signature(fn)
+        keys = ordered_positional_args(sig)
+        if "self" not in keys:
+            return fn
+
+        @wraps(fn)  # <- copies our key too! 🙏
+        def decorated(self, *args, **kwargs):
+            # # type: (...) -> RenderFnReturnType
+            b = sig.bind_partial(self, *args, **kwargs)
+            given_args = b.arguments.keys()
+            try:
+                values = {key: self.state[key] for key in keys if key not in given_args}
+            except KeyError:
+                return ""
+            else:
+                kwargs.update(b.arguments)
+                kwargs.update(values)
+                return fn(**kwargs)
+        return cast(T_fn, decorated)
+    return decorator
+
+
+def ordered_positional_args(sig):
+    # type: (inspect.Signature) -> List[str]
+    return [
+        name
+        for name, parameter in sig.parameters.items()
+        if parameter.default is inspect.Parameter.empty
+    ]
 
 
 def indent_by_2(text):

@@ -1,7 +1,11 @@
 from concurrent.futures import Future, ThreadPoolExecutor
+from contextlib import contextmanager
 from functools import lru_cache, partial, wraps
 import inspect
+import os
+import sys
 import threading
+import traceback
 import uuid
 
 import sublime
@@ -27,6 +31,19 @@ def determine_thread_names():
         global UI_THREAD_NAME
         UI_THREAD_NAME = threading.current_thread().name
     sublime.set_timeout(callback)
+
+
+@contextmanager
+def user_friendly_traceback(*exceptions):
+    try:
+        yield
+    except exceptions as e:
+        tb = sys.last_traceback
+        last_frame = traceback.extract_tb(tb)[-1]
+        filename, lineno = last_frame[0], last_frame[1]
+        filename = filename.split("{0}{1}{0}".format(os.sep, "GitSavvy"))[-1]
+        loc = "{}:{}".format(filename, lineno)
+        print("Abort: {}  [ {} ]".format(e, loc))
 
 
 def it_runs_on_ui():
@@ -61,7 +78,8 @@ def enqueue_on_ui(fn, *args, **kwargs):
 
 def enqueue_on_worker(fn, *args, **kwargs):
     # type: (Callable, Any, Any) -> None
-    sublime.set_timeout_async(partial(fn, *args, **kwargs))
+    fn_ = user_friendly_traceback(RuntimeError)(fn)
+    sublime.set_timeout_async(partial(fn_, *args, **kwargs))
 
 
 def enqueue_on_savvy(fn, *args, **kwargs):

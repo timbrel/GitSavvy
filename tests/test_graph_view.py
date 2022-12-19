@@ -34,7 +34,7 @@ else:
 THIS_DIRNAME = os.path.dirname(os.path.realpath(__file__))
 COMMIT_1 = 'This is commit fec0aca'
 COMMIT_2 = 'This is commit f461ea1'
-CLEAN_WORKING_DIR = WorkingDirState([], [], [], [], '', '')
+CLEAN_WORKING_DIR = WorkingDirState([], [], [], [])
 
 
 def fixture(name):

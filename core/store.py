@@ -15,6 +15,7 @@ if MYPY:
     from GitSavvy.core.git_mixins.branches import Branch
     from GitSavvy.core.git_mixins.stash import Stash
     from GitSavvy.core.git_mixins.status import HeadState, WorkingDirState
+    from GitSavvy.core.git_mixins.tags import TagList
 
     RepoPath = str
     RepoStore = TypedDict(
@@ -22,7 +23,11 @@ if MYPY:
         {
             "status": WorkingDirState,
             "head": HeadState,
+            "long_status": str,
+            "short_status": str,
             "branches": List[Branch],
+            "remotes": Dict[str, str],
+            "local_tags": TagList,
             "last_branches": Deque[Optional[str]],
             "last_local_branch_for_rebase": Optional[str],
             "last_remote_used": Optional[str],
@@ -32,6 +37,7 @@ if MYPY:
             "short_hash_length": int,
             "stashes": List[Stash],
             "recent_commits": List[Commit],
+            "descriptions": Dict[str, str],
         },
         total=False
     )
@@ -41,7 +47,9 @@ if MYPY:
 
 def initial_state():
     # type: () -> RepoStore
-    return {"last_branches": deque([None] * 2, 2)}
+    return {
+        "last_branches": deque([None] * 2, 2),
+    }
 
 
 state = defaultdict(initial_state)  # type: DefaultDict[RepoPath, RepoStore]

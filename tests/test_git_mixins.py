@@ -56,7 +56,7 @@ class TestFetchInterface(TestGitMixinsUsage):
         self.assertRaises(TypeError, lambda: repo.fetch(*parameters.args, **parameters.kwargs))
 
 
-sha_and_subject = ["89b79cd737465ed308ecc00289d00a6f923f2da5", "The Subject"]
+date_sha_and_subject = ["0", "89b79cd737465ed308ecc00289d00a6f923f2da5", "The Subject"]
 join0 = lambda x: "\x00".join(x)
 
 
@@ -65,7 +65,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         repo = GitCommand()
         git_output = join0(
             [" ", "refs/heads/master", "refs/remotes/origin/master", "origin", ""]
-            + sha_and_subject)
+            + date_sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -78,6 +78,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 False,
                 False,
+                0,
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
                 )
@@ -88,7 +89,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         repo = GitCommand()
         git_output = join0(
             ["*", "refs/heads/master", "refs/remotes/origin/master", "origin", ""]
-            + sha_and_subject)
+            + date_sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -101,6 +102,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 True,
                 False,
+                0,
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
                 )
@@ -111,7 +113,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         repo = GitCommand()
         git_output = join0(
             [" ", "refs/remotes/origin/dev", "", "", ""]
-            + sha_and_subject)
+            + date_sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -124,6 +126,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 False,
                 True,
+                0,
                 None
             )
         ])
@@ -132,7 +135,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         repo = GitCommand()
         git_output = join0(
             [" ", "refs/heads/master", "refs/remotes/orig/in/master", "orig/in", ""]
-            + sha_and_subject)
+            + date_sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -145,6 +148,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 False,
                 False,
+                0,
                 git_mixins.branches.Upstream(
                     "orig/in", "master", "orig/in/master", ""
                 )
@@ -155,7 +159,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         repo = GitCommand()
         git_output = join0(
             [" ", "refs/heads/master", "refs/remotes/origin/master", "origin", "gone"]
-            + sha_and_subject)
+            + date_sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -168,6 +172,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 False,
                 False,
+                0,
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", "gone"
                 )
@@ -178,7 +183,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         repo = GitCommand()
         git_output = join0(
             [" ", "refs/heads/test", "refs/heads/update-branch-from-upstream", ".", ""]
-            + sha_and_subject)
+            + date_sha_and_subject)
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -191,6 +196,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "The Subject",
                 False,
                 False,
+                0,
                 git_mixins.branches.Upstream(
                     ".", "update-branch-from-upstream", "update-branch-from-upstream", ""
                 )
@@ -214,11 +220,16 @@ class EndToEndTestCase(DeferrableTestCase):
         window.set_project_data(project_data)
         yield lambda: any(d for d in window.folders() if d == tmp_dir)
 
-    def init_repo(self) -> GitCommand:
+    def init_repo(self, comitterdate=None) -> GitCommand:
         repo = GitCommand()
         repo.window = self.window  # type: ignore[attr-defined]
         repo.git("init", working_dir=self.tmp_dir)
-        repo.git("commit", "-m", "Initial commit", "--allow-empty")
+        repo.git(
+            "commit",
+            "-m", "Initial commit",
+            "--allow-empty",
+            custom_environ={"GIT_COMMITTER_DATE": comitterdate} if comitterdate else {}
+        )
         return repo
 
     def new_window(self):
@@ -247,7 +258,7 @@ class TestBranchParsing(EndToEndTestCase):
         self.assertEqual(branch, "master")
 
     def test_active_local_branch(self):
-        repo = self.init_repo()
+        repo = self.init_repo(comitterdate="1671490333 +0000")
         commit_hash = repo.get_commit_hash_for_head()
         actual = repo.get_branches()
         self.assertEqual(actual, [
@@ -259,12 +270,13 @@ class TestBranchParsing(EndToEndTestCase):
                 "Initial commit",
                 True,
                 False,
+                1671490333,
                 None
             )
         ])
 
     def test_tracking_local_branch(self):
-        repo = self.init_repo()
+        repo = self.init_repo(comitterdate="1671490333 +0000")
         commit_hash = repo.get_commit_hash_for_head()
         repo.git("checkout", "--track", "-b", "feature-branch")
 
@@ -278,6 +290,7 @@ class TestBranchParsing(EndToEndTestCase):
                 "Initial commit",
                 True,
                 False,
+                1671490333,
                 git_mixins.branches.Upstream(
                     ".", "master", "master", ""
                 )

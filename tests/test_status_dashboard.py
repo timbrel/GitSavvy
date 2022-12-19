@@ -54,6 +54,7 @@ class TestStatusDashboard(DeferrableTestCase):
         # by a `when` to just fake the specific check for REPO_PATH.
         spy2('os.path.exists')
         when(os.path).exists(repo_path).thenReturn(True)
+        when(GitCommand).get_repo_path().thenReturn(repo_path)
         when(GitCommand).in_merge().thenReturn(False)
         when(GitCommand).in_cherry_pick().thenReturn(False)
         when(GitCommand).git('status', ...).thenReturn(file_status)
@@ -176,7 +177,7 @@ class TestStatusDashboard(DeferrableTestCase):
     def test_extract_subjects(self, SELECTED_FILE, SECTION, EXPECTED):
         interface, view = yield from self.await_std_interface()
 
-        region = view.find(SELECTED_FILE, 0, sublime.LITERAL)
+        region = yield lambda: view.find(SELECTED_FILE, 0, sublime.LITERAL)
         view.sel().clear()
         view.sel().add(region.begin())
         self.assertEqual(StatusInterfaceCommand(view).get_selected_subjects(SECTION), EXPECTED)
