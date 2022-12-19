@@ -290,8 +290,13 @@ class gs_new_content_and_regions(TextCommand):
             else:
                 return content[a:b]
 
-        if regions.keys() - self.current_region_names:
+        if (
+            not regions
+            or not self.current_region_names
+            or regions.keys() - self.current_region_names
+        ):
             replace_view_content(self.view, content)
+
         else:
             current_regions = [
                 (region, key)
