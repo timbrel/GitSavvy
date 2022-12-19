@@ -342,7 +342,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
                     default=(upstream and upstream.canonical_name) or "master")
                 util.debug.add_to_log('Found base ref {}'.format(base_ref))
 
-            branches = list(self.get_branches())
+            branches = self.get_branches()
 
             # Check that the base_ref we return is a valid branch
             if base_ref not in [branch.canonical_name for branch in branches]:

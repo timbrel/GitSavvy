@@ -1,13 +1,14 @@
 from collections import namedtuple
 import re
 
+from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.fns import filter_
 
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, NamedTuple, Optional, Sequence
+    from typing import Dict, List, NamedTuple, Optional, Sequence
     Upstream = NamedTuple("Upstream", [
         ("remote", str),
         ("branch", str),
@@ -25,7 +26,6 @@ if MYPY:
         ("commit_msg", str),
         ("active", bool),
         ("is_remote", bool),
-        ("description", str),
         ("upstream", Optional[Upstream]),
     ])
 else:
@@ -38,7 +38,6 @@ else:
         "commit_msg",
         "active",
         "is_remote",
-        "description",
         "upstream",
     ))
 
@@ -87,16 +86,15 @@ class BranchesMixin(mixin_base):
         return None
 
     def get_local_branches(self):
-        # type: () -> Iterable[Branch]
+        # type: () -> List[Branch]
         return self.get_branches(refs=["refs/heads"])
 
     def get_branches(
         self, *,
         sort_by_recent=False,
-        fetch_descriptions=False,
         refs=["refs/heads", "refs/remotes"]
     ):
-        # type: (bool, bool, Sequence[str]) -> Iterable[Branch]
+        # type: (bool, Sequence[str]) -> List[Branch]
         """
         Return a list of all local and remote branches.
         """
@@ -115,22 +113,16 @@ class BranchesMixin(mixin_base):
             "--sort=-committerdate" if sort_by_recent else None,
             *refs
         )  # type: str
-        branches = (
+        branches = [
             branch
             for branch in (
                 self._parse_branch_line(line)
                 for line in filter_(stdout.splitlines())
             )
             if branch.name != "HEAD"
-        )
-        if not fetch_descriptions:
-            return branches
-
-        descriptions = self.fetch_branch_description_subjects()
-        return (
-            branch._replace(description=descriptions.get(branch.canonical_name, ""))
-            for branch in branches
-        )
+        ]
+        store.update_state(self.repo_path, {"branches": branches})
+        return branches
 
     def fetch_branch_description_subjects(self):
         # type: () -> Dict[str, str]
@@ -183,7 +175,6 @@ class BranchesMixin(mixin_base):
             commit_msg,
             active,
             is_remote,
-            description="",
             upstream=ups
         )
 

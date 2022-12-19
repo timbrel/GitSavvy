@@ -57,8 +57,10 @@ class TestStatusDashboard(DeferrableTestCase):
         when(GitCommand).in_merge().thenReturn(False)
         when(GitCommand).in_cherry_pick().thenReturn(False)
         when(GitCommand).git('status', ...).thenReturn(file_status)
-        when(GitCommand).git('log', ...).thenReturn(last_commit)
+        when(GitCommand).git('log', ...).thenReturn(
+            "{0}%00%00{1}".format(*last_commit.split(" ", 1)))
         when(GitCommand).git('stash', 'list').thenReturn(stash_list)
+        when(GitCommand).git('for-each-ref', ...).thenReturn("")
 
         interface = ui.create_interface(self.window, repo_path, "status")
         view = interface.view

@@ -110,10 +110,8 @@ class BranchInterface(ui.Interface, GitCommand):
 
     def pre_render(self):
         sort_by_recent = self.savvy_settings.get("sort_by_recent_in_branch_dashboard")
-        self._branches = tuple(self.get_branches(
-            sort_by_recent=sort_by_recent,
-            fetch_descriptions=True
-        ))
+        self._branches = self.get_branches(sort_by_recent=sort_by_recent)
+        self.descriptions = self.fetch_branch_description_subjects()
         if self.show_remotes is None:
             self.show_remotes = self.savvy_settings.get("show_remotes_in_branch_dashboard")
         self.remotes = self.get_remotes() if self.show_remotes else {}
@@ -166,7 +164,7 @@ class BranchInterface(ui.Interface, GitCommand):
                 indicator="▸" if branch.active else " ",
                 hash=branch.commit_hash,
                 name=branch.canonical_name[remote_name_l:],
-                description=" " + branch.description if branch.description else "",
+                description=(" " + self.descriptions.get(branch.canonical_name, "")).rstrip(),
                 tracking=(" ({branch}{status})".format(
                     branch=branch.upstream.canonical_name,
                     status=", " + branch.upstream.status if branch.upstream.status else ""

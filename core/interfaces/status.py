@@ -46,6 +46,7 @@ MYPY = False
 if MYPY:
     from typing import Iterable, List, Optional, TypedDict
     from ..git_mixins.active_branch import Commit
+    from ..git_mixins.branches import Branch
     from ..git_mixins.stash import Stash
     from ..git_mixins.status import HeadState
 
@@ -61,6 +62,7 @@ if MYPY:
             "git_root": str,
             "show_help": bool,
             "head": Optional[HeadState],
+            "branches": List[Branch],
             "recent_commits": List[Commit],
             "stashes": List[Stash],
         },
@@ -239,6 +241,7 @@ class StatusInterface(ui.Interface, GitCommand):
             'git_root': '',
             'show_help': True,
             'head': None,
+            'branches': [],
             'recent_commits': [],
             'stashes': []
         }  # type: StatusViewState
@@ -257,6 +260,7 @@ class StatusInterface(ui.Interface, GitCommand):
         """
         for thunk in (
             lambda: {'recent_commits': self.get_latest_commits()},
+            lambda: {'branches': self.get_branches()},
             lambda: {'stashes': self.get_stashes()},
         ):
             sublime.set_timeout_async(
@@ -274,6 +278,7 @@ class StatusInterface(ui.Interface, GitCommand):
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
             'stashes': state.get("stashes", []),
             'head': state.get("head", None),
+            'branches': state.get("branches", []),
             'recent_commits': state.get("recent_commits", []),
         })
 
@@ -322,6 +327,7 @@ class StatusInterface(ui.Interface, GitCommand):
         except KeyError:
             new_state = {}
         new_state["head"] = state.get("head")
+        new_state["branches"] = state.get("branches")
         self.update_state(new_state, then=self.just_render)
 
     def refresh_repo_status_and_render(self):
@@ -339,7 +345,7 @@ class StatusInterface(ui.Interface, GitCommand):
 
     def on_create(self):
         self._unsubscribe = store.subscribe(
-            self.repo_path, {"status", "head"}, self.on_status_update
+            self.repo_path, {"status", "head", "branches"}, self.on_status_update
         )
 
     def on_close(self):
@@ -362,8 +368,9 @@ class StatusInterface(ui.Interface, GitCommand):
 
         head = self.state['head']
         current_upstream = head.remote if head else None
+        branches = self.state['branches']
         return "\n           ".join(
-            format_and_limit(recent_commits, ITEMS_IN_THE_RECENT_LIST, current_upstream)
+            format_and_limit(recent_commits, ITEMS_IN_THE_RECENT_LIST, current_upstream, branches)
         )
 
     @ui.section("staged_files")
