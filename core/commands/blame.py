@@ -11,6 +11,7 @@ from ...common import util
 from .log import LogMixin
 from ..ui_mixins.quick_panel import PanelActionMixin
 from GitSavvy.core.base_commands import GsTextCommand
+from GitSavvy.core.view import replace_view_content
 
 
 __all__ = (
@@ -202,10 +203,7 @@ class gs_blame_refresh(BlameMixin):
         else:
             yoffset = 0
 
-        self.view.run_command("gs_new_content_and_regions", {
-            "content": content,
-            "regions": {}
-        })
+        replace_view_content(self.view, content)
 
         if settings.get("git_savvy.lineno", None) is not None:
             self.select_line(settings.get("git_savvy.lineno"))
