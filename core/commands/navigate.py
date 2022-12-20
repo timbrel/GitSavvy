@@ -19,6 +19,10 @@ class GsNavigate(TextCommand, GitCommand):
     show_at_center = False
     wrap = True
     wrap_with_force = False
+    # For the first entry, try to show the beginning of the buffer.
+    # (Usually we have some info/help text there.)
+    first_region_may_expand_to_bof = True
+
     _just_jumped = 0
 
     def run(self, edit, forward=True):
@@ -52,9 +56,7 @@ class GsNavigate(TextCommand, GitCommand):
         if self.show_at_center:
             self.view.show_at_center(new_cursor_position)
         else:
-            # For the first entry, try to show the beginning of the buffer.
-            # (Usually we have some info/help text there.)
-            if wanted_section == available_regions[0]:
+            if self.first_region_may_expand_to_bof and wanted_section == available_regions[0]:
                 wanted_section = sublime.Region(0, wanted_section.a)
                 show_region(self.view, wanted_section, context=2, prefer_end=True)
             else:

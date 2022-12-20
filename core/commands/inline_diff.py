@@ -978,6 +978,7 @@ class gs_inline_diff_navigate_hunk(GsNavigate):
     position.
     """
     offset = 0
+    first_region_may_expand_to_bof = False
 
     def get_available_regions(self):
         return [
