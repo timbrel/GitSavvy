@@ -7,6 +7,7 @@ from sublime_plugin import WindowCommand, TextCommand
 
 from . import diff
 from . import intra_line_colorizer
+from . import show_file_at_commit
 from ..fns import filter_, unique
 from ..git_command import GitCommand
 from ..utils import flash, focus_view
@@ -25,6 +26,8 @@ __all__ = (
     "gs_show_commit_refresh",
     "gs_show_commit_open_on_github",
     "gs_show_commit_toggle_setting",
+    "gs_show_commit_open_previous_commit",
+    "gs_show_commit_open_next_commit",
     "gs_show_commit_open_file_at_hunk",
     "gs_show_commit_show_hunk_on_working_dir",
     "gs_show_commit_open_graph_context",
@@ -88,17 +91,20 @@ class gs_show_commit(WindowCommand, GitCommand):
 class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
 
     def run(self, edit):
-        settings = self.view.settings()
+        view = self.view
+        settings = view.settings()
         commit_hash = settings.get("git_savvy.show_commit_view.commit")
         ignore_whitespace = settings.get("git_savvy.show_commit_view.ignore_whitespace")
         show_diffstat = settings.get("git_savvy.show_commit_view.show_diffstat")
+        title = SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash))
         content = self.read_commit(
             commit_hash,
             show_diffstat=show_diffstat,
             ignore_whitespace=ignore_whitespace
         )
-        replace_view_content(self.view, content)
-        intra_line_colorizer.annotate_intra_line_differences(self.view)
+        view.set_name(title)
+        replace_view_content(view, content)
+        intra_line_colorizer.annotate_intra_line_differences(view)
         if SUBLIME_SUPPORTS_REGION_ANNOTATIONS:
             enqueue_on_worker(self.annotate_with_github_link, commit_hash)
 
@@ -199,6 +205,48 @@ class gs_show_commit_toggle_setting(TextCommand):
         settings.set(setting_str, not settings.get(setting_str))
         flash(self.view, "{} is now {}".format(setting, settings.get(setting_str)))
         self.view.run_command("gs_show_commit_refresh")
+
+
+class gs_show_commit_open_previous_commit(TextCommand, GitCommand):
+    def run(self, edit):
+        # type: (...) -> None
+        view = self.view
+        settings = view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        commit_hash = settings.get("git_savvy.show_commit_view.commit")
+
+        previous_commit = self.previous_commit(commit_hash, file_path)
+        if not previous_commit:
+            flash(view, "No older commit found.")
+            return
+
+        show_file_at_commit.remember_next_commit_for(view, {previous_commit: commit_hash})
+        settings.set("git_savvy.show_commit_view.commit", previous_commit)
+
+        view.run_command("gs_show_commit_refresh")
+        flash(view, "On commit {}".format(previous_commit))
+
+
+class gs_show_commit_open_next_commit(TextCommand, GitCommand):
+    def run(self, edit):
+        # type: (...) -> None
+        view = self.view
+        settings = view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        commit_hash = settings.get("git_savvy.show_commit_view.commit")
+
+        next_commit = (
+            show_file_at_commit.recall_next_commit_for(view, commit_hash)
+            or self.next_commit(commit_hash, file_path)
+        )
+        if not next_commit:
+            flash(view, "No newer commit found.")
+            return
+
+        settings.set("git_savvy.show_commit_view.commit", next_commit)
+
+        view.run_command("gs_show_commit_refresh")
+        flash(view, "On commit {}".format(next_commit))
 
 
 class gs_show_commit_open_file_at_hunk(diff.gs_diff_open_file_at_hunk):
