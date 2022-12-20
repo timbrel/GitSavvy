@@ -28,6 +28,7 @@ __all__ = (
     "gs_inline_diff_next_commit",
     "gs_inline_diff_open_file",
     "gs_inline_diff_open_file_at_hunk",
+    "gs_inline_diff_open_graph_context",
     "gs_inline_diff_navigate_hunk",
     "gs_inline_diff_undo",
     "GsInlineDiffFocusEventListener",
@@ -1048,6 +1049,21 @@ class gs_inline_diff_open_file_at_hunk(TextCommand, GitCommand):
             "filepath": file_path,
             "position": pos,
             "lang": view.settings().get('syntax')
+        })
+
+
+class gs_inline_diff_open_graph_context(TextCommand, GitCommand):
+    def run(self, edit):
+        view = self.view
+        window = view.window()
+        if not window:
+            return
+
+        settings = view.settings()
+        target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
+        window.run_command("gs_graph", {
+            "all": True,
+            "follow": self.get_short_hash(target_commit) if target_commit else "HEAD",
         })
 
 
