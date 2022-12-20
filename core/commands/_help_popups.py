@@ -124,6 +124,7 @@ class gs_inline_diff_help_tooltip(GsAbstractHelpPopup):
 
     ### Navigation ####
     [o]            open file at hunk
+    [n]/[p]        show next/previous revision of this file
     [,]/[.]        go to next/previous hunk (also: [j]/[k] in vintageous mode)
 
 

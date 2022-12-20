@@ -7,6 +7,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import diff
+from . import show_file_at_commit
 from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
@@ -23,6 +24,8 @@ __all__ = (
     "gs_inline_diff_toggle_cached_mode",
     "gs_inline_diff_stage_or_reset_line",
     "gs_inline_diff_stage_or_reset_hunk",
+    "gs_inline_diff_previous_commit",
+    "gs_inline_diff_next_commit",
     "gs_inline_diff_open_file",
     "gs_inline_diff_navigate_hunk",
     "gs_inline_diff_undo",
@@ -896,6 +899,86 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
         )
 
         return "".join([stand_alone_header] + hunk_ref.hunk.raw_lines[1:])
+
+
+class gs_inline_diff_previous_commit(TextCommand, GitCommand):
+    def run(self, edit):
+        # type: (...) -> None
+        view = self.view
+        settings = view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        if is_interactive_diff(view):
+            base_commit = self.previous_commit(None, file_path)
+            if not base_commit:
+                flash(view, "No historical version of that file found.")
+                return
+
+        else:
+            base_commit = settings.get("git_savvy.inline_diff_view.base_commit")
+
+        target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
+        new_target_commit = base_commit
+        new_base_commit = self.previous_commit(base_commit, file_path)
+        if not new_base_commit:
+            flash(view, "No older commit found.")
+            return
+
+        show_file_at_commit.remember_next_commit_for(view, {new_base_commit: base_commit})
+        settings.set("git_savvy.inline_diff_view.base_commit", new_base_commit)
+        settings.set("git_savvy.inline_diff_view.target_commit", new_target_commit)
+
+        pos = capture_cur_position(view)
+        if pos:
+            row, col, offset = pos
+            line_no, col_no = translate_pos_from_diff_view_to_file(view, row + 1, col + 1)
+            line_no = self.find_matching_lineno(target_commit, new_target_commit, line_no, file_path)
+            pos = Position(line_no - 1, col_no - 1, offset)
+
+        self.view.run_command("gs_inline_diff_refresh", {
+            "match_position": pos,
+            "sync": True
+        })
+        flash(view, "On commit {}".format(new_target_commit))
+
+
+class gs_inline_diff_next_commit(TextCommand, GitCommand):
+    def run(self, edit):
+        view = self.view
+        settings = view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        if is_interactive_diff(view):
+            flash(view, "Already on the working dir version.")
+            return
+
+        target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
+        new_base_commit = target_commit
+        new_target_commit = (
+            show_file_at_commit.recall_next_commit_for(view, target_commit)
+            or self.next_commit(target_commit, file_path)
+        )
+        if not new_target_commit:
+            new_base_commit = None
+
+        settings.set("git_savvy.inline_diff_view.base_commit", new_base_commit)
+        settings.set("git_savvy.inline_diff_view.target_commit", new_target_commit)
+
+        pos = capture_cur_position(view)
+        if pos:
+            row, col, offset = pos
+            line_no, col_no = translate_pos_from_diff_view_to_file(view, row + 1, col + 1)
+            line_no = self.reverse_find_matching_lineno(
+                new_target_commit, target_commit, line_no, file_path
+            )
+            pos = Position(line_no - 1, col_no - 1, offset)
+
+        self.view.run_command("gs_inline_diff_refresh", {
+            "match_position": pos,
+            "sync": True
+        })
+        if new_target_commit:
+            flash(view, "On commit {}".format(new_target_commit))
+        else:
+            flash(view, "On working dir version")
 
 
 class gs_inline_diff_open_file(TextCommand, GitCommand):
