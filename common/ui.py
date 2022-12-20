@@ -438,6 +438,11 @@ def indent_by_2(text):
     return "\n".join(line[2:] for line in text.split("\n"))
 
 
+def should_do_a_full_render(current, previous):
+    # type: (AbstractSet[str], AbstractSet[str]) -> bool
+    return bool(current - previous) or not previous
+
+
 class gs_new_content_and_regions(TextCommand):
     current_region_names = set()  # type: AbstractSet[str]
 
@@ -454,11 +459,7 @@ class gs_new_content_and_regions(TextCommand):
             else:
                 return content[a:b]
 
-        if (
-            not regions
-            or not self.current_region_names
-            or regions.keys() - self.current_region_names
-        ):
+        if should_do_a_full_render(regions.keys(), self.current_region_names):
             replace_view_content(self.view, content)
 
         else:
