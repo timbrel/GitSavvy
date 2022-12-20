@@ -234,6 +234,14 @@ class gs_show_commit_open_previous_commit(TextCommand, GitCommand):
     def run(self, edit):
         # type: (...) -> None
         view = self.view
+        window = view.window()
+        if window:
+            active_view = window.active_view()
+            if active_view:
+                if active_view.settings().get("git_savvy.log_graph_view"):
+                    active_view.run_command("gs_log_graph_navigate", {"forward": False})
+                    return
+
         settings = view.settings()
         file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.show_commit_view.commit")
@@ -254,6 +262,14 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
     def run(self, edit):
         # type: (...) -> None
         view = self.view
+        window = view.window()
+        if window:
+            active_view = window.active_view()
+            if active_view:
+                if active_view.settings().get("git_savvy.log_graph_view"):
+                    active_view.run_command("gs_log_graph_navigate", {"forward": True})
+                    return
+
         settings = view.settings()
         file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.show_commit_view.commit")
