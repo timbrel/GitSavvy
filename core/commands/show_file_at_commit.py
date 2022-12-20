@@ -57,15 +57,9 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
                     run_as_text_command(move_cursor_to_line_col, view, position)
                 break
         else:
-            enqueue_on_worker(
-                self.run_impl,
-                commit_hash,
-                filepath,
-                position,
-                lang,
-            )
+            self.create_view(commit_hash, filepath, position, lang)
 
-    def run_impl(self, commit_hash, file_path, position, lang):
+    def create_view(self, commit_hash, file_path, position, lang):
         # type: (str, str, Optional[Position], Optional[str]) -> None
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
