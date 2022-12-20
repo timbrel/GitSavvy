@@ -222,15 +222,15 @@ class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
 def remember_next_commit_for(view, mapping):
     # type: (sublime.View, Dict[str, str]) -> None
     settings = view.settings()
-    store = settings.get("git_savvy.show_file_at_commit.next_commits", {})  # type: Dict[str, str]
+    store = settings.get("git_savvy.next_commits", {})  # type: Dict[str, str]
     store.update(mapping)
-    settings.set("git_savvy.show_file_at_commit.next_commits", store)
+    settings.set("git_savvy.next_commits", store)
 
 
 def recall_next_commit_for(view, commit_hash):
     # type: (sublime.View, str) -> Optional[str]
     settings = view.settings()
-    store = settings.get("git_savvy.show_file_at_commit.next_commits", {})  # type: Dict[str, str]
+    store = settings.get("git_savvy.next_commits", {})  # type: Dict[str, str]
     return store.get(commit_hash)
 
 
