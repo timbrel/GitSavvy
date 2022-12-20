@@ -10,7 +10,7 @@ from . import intra_line_colorizer
 from . import show_file_at_commit
 from ..fns import filter_, unique
 from ..git_command import GitCommand
-from ..utils import flash, focus_view
+from ..utils import flash, focus_view, Cache
 from ..parse_diff import SplittedDiff
 from ..runtime import enqueue_on_worker
 from ..view import replace_view_content, Position
@@ -36,7 +36,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Optional, Tuple
+    from typing import Dict, Optional, Tuple
     from ..types import LineNo, ColNo
 
 SHOW_COMMIT_TITLE = "SHOW-COMMIT: {}"
@@ -88,6 +88,9 @@ class gs_show_commit(WindowCommand, GitCommand):
             view.run_command("gs_handle_vintageous")
 
 
+url_cache = Cache()  # type: Dict[str, str]
+
+
 class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
 
     def run(self, edit):
@@ -106,6 +109,8 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
         replace_view_content(view, content)
         intra_line_colorizer.annotate_intra_line_differences(view)
         if SUBLIME_SUPPORTS_REGION_ANNOTATIONS:
+            url = url_cache.get(commit_hash)
+            self.update_annotation_link(url)
             enqueue_on_worker(self.annotate_with_github_link, commit_hash)
 
     def annotate_with_github_link(self, commit):
@@ -123,15 +128,29 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
             return
 
         if 200 <= response.status < 300:
+            url_cache[commit] = url
+            self.update_annotation_link(url)
+        else:
+            url_cache.pop(commit, None)
+            self.update_annotation_link(None)
+
+    def update_annotation_link(self, url):
+        # type: (Optional[str]) -> None
+        key = "link_to_github"
+        if url:
             self.view.add_regions(
-                "link_to_github",
+                key,
                 [sublime.Region(0)],
                 annotations=[
-                    '<span class="shortcut-key">[h]</span>&nbsp;<a href="{}">Open on GitHub</a>'
+                    '<span class="shortcut-key">[h]</span>'
+                    '&nbsp;'
+                    '<a href="{}">Open on GitHub</a>'
                     .format(url)
                 ],
                 annotation_color="#aaa0"
             )
+        else:
+            self.view.erase_regions(key)
 
 
 class gs_show_commit_open_on_github(TextCommand, GithubRemotesMixin, GitCommand):
