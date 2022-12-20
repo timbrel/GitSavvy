@@ -135,6 +135,14 @@
         ]
     },
     {
+        "keys": ["O"],
+        "command": "gs_inline_diff_open_file_at_hunk",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["tab"],
         "command": "gs_inline_diff_toggle_cached_mode",
         "context": [

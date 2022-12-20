@@ -27,6 +27,7 @@ __all__ = (
     "gs_inline_diff_previous_commit",
     "gs_inline_diff_next_commit",
     "gs_inline_diff_open_file",
+    "gs_inline_diff_open_file_at_hunk",
     "gs_inline_diff_navigate_hunk",
     "gs_inline_diff_undo",
     "GsInlineDiffFocusEventListener",
@@ -1020,6 +1021,34 @@ class gs_inline_diff_open_file(TextCommand, GitCommand):
             ),
             sublime.ENCODED_POSITION
         )
+
+
+class gs_inline_diff_open_file_at_hunk(TextCommand, GitCommand):
+    def run(self, edit):
+        view = self.view
+        if is_interactive_diff(view):
+            view.run_command("gs_inline_diff_open_file")
+            return
+
+        window = view.window()
+        if not window:
+            return
+        settings = view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
+
+        pos = capture_cur_position(view)
+        if pos:
+            row, col, offset = pos
+            line_no, col_no = translate_pos_from_diff_view_to_file(view, row + 1, col + 1)
+            pos = Position(line_no - 1, col_no - 1, offset)
+
+        window.run_command("gs_show_file_at_commit", {
+            "commit_hash": target_commit,
+            "filepath": file_path,
+            "position": pos,
+            "lang": view.settings().get('syntax')
+        })
 
 
 def translate_pos_from_diff_view_to_file(view, line_no, col_no=1):
