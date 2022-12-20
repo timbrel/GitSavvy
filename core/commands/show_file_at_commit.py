@@ -63,6 +63,7 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
         # type: (str, str, Optional[Position], Optional[str]) -> None
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
+        active_view = self.window.active_view()
         view = util.view.get_scratch_view(self, "show_file_at_commit")
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)
@@ -74,6 +75,7 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
             "translate_tabs_to_spaces": False,
         }.items():
             settings.set(key, value)
+        pass_next_commits_info_along(active_view, to=view)
 
         if not lang:
             lang = util.file.guess_syntax_for_file(self.window, file_path)
@@ -226,6 +228,18 @@ def recall_next_commit_for(view, commit_hash):
     settings = view.settings()
     store = settings.get("git_savvy.next_commits", {})  # type: Dict[str, str]
     return store.get(commit_hash)
+
+
+def pass_next_commits_info_along(view, to):
+    # type: (Optional[sublime.View], sublime.View) -> None
+    if not view:
+        return
+    from_settings, to_settings = view.settings(), to.settings()
+    if from_settings.get("git_savvy.file_path") != to_settings.get("git_savvy.file_path"):
+        return
+    store = from_settings.get("git_savvy.next_commits", {})  # type: Dict[str, str]
+    if store:
+        to_settings.set("git_savvy.next_commits", store)
 
 
 class gs_show_current_file(LogMixin, WindowCommand, GitCommand):
