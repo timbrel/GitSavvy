@@ -467,7 +467,10 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         title += os.path.basename(file_path)
         if target_commit:
             title += (
-                "  ({} <-{})".format(target_commit, base_commit)
+                "  ({} <-{})".format(
+                    self.get_short_hash(target_commit),
+                    self.get_short_hash(base_commit)
+                )
                 if base_commit
                 else "  (initial version)"
             )
