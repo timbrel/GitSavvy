@@ -139,10 +139,14 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     def refresh_view_state(self):
         # type: () -> None
-        self.maybe_populate_remote_tags()
         enqueue_on_worker(self.get_local_tags)
         enqueue_on_worker(self.get_latest_commits)
         enqueue_on_worker(self.get_remotes)
+        if self.state.get("remotes") is None:
+            # run after the `self.get_remotes` above!
+            enqueue_on_worker(self.maybe_populate_remote_tags)
+        else:
+            self.maybe_populate_remote_tags()
         self.view.run_command("gs_update_status")
 
         self.update_state({
@@ -156,18 +160,22 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         # type: (Dict[str, str], bool, Dict[str, FetchStateMachine]) -> None
         def do_tags_fetch(remote_name):
             try:
-                remote_tags[remote_name] = {
+                new_state = {
                     "state": "succeeded",
                     "tags": list(self.get_remote_tags(remote_name).all)
-                }
+                }  # type: FetchStateMachine
             except GitSavvyError as e:
-                remote_tags[remote_name] = {
+                new_state = {
                     "state": "erred",
                     "message": "    {}".format(e.stderr.rstrip())
                 }
-            enqueue_on_worker(self.just_render)  # fan-in
 
-        if remotes and show_remotes and not remote_tags:
+            def sink():
+                remote_tags[remote_name] = new_state
+                self.just_render()
+            enqueue_on_worker(sink)  # fan-in
+
+        if remotes and not remote_tags:
             for remote_name in remotes:
                 run_on_new_thread(do_tags_fetch, remote_name)    # fan-out
                 remote_tags[remote_name] = {
@@ -207,7 +215,23 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         if not any(local_tags.all):
             return NO_LOCAL_TAGS_MESSAGE
 
-        regular_tags, versions = local_tags
+        remote_tags, remote_tag_names = set(), set()
+        # wait until all settled to prohibit intermediate state to be drawn
+        # what we draw explcitily relies on *all* known remote tags
+        if all(info["state"] != "loading" for info in self.state["remote_tags"].values()):
+            for info in self.state["remote_tags"].values():
+                if info["state"] == "succeeded":
+                    for tag in info["tags"]:
+                        remote_tags.add((tag.sha, tag.tag))
+                        remote_tag_names.add(tag.tag)
+
+        def maybe_mark(tag):
+            if remote_tag_names and tag.tag not in remote_tag_names:
+                return "*"  # denote new semver
+            if remote_tags and (tag.sha, tag.tag) not in remote_tags:
+                return "!"  # denote known semver on a different hash
+            return " "
+
         return "\n{}\n".format(" " * 60).join(  # need some spaces on the separator line otherwise
                                                 # the syntax expects the remote section begins
             filter_((
@@ -216,16 +240,17 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                         self.get_short_hash(tag.sha),
                         tag.tag,
                     )
-                    for tag in regular_tags[:max_items]
+                    for tag in local_tags.regular[:max_items]
                 ),
                 "\n".join(
-                    "    {} {:<10} {}{}".format(
+                    "   {}{} {:<10} {}{}".format(
+                        maybe_mark(tag),
                         self.get_short_hash(tag.sha),
                         tag.tag,
                         tag.human_date,
                         " ({})".format(tag.relative_date) if tag.relative_date != tag.human_date else ""
                     )
-                    for tag in versions[:max_items]
+                    for tag in local_tags.versions[:max_items]
                 )
             ))
         )
@@ -270,11 +295,11 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         # type: (str, FetchStateMachine, TagList, int) -> str
         if remote_info["state"] == "succeeded":
             if remote_info["tags"]:
-                seen = {tag.sha: tag.tag for tag in local_tags.all}
+                seen = {(tag.sha, tag.tag) for tag in local_tags.all}
                 tags_list = [
                     tag
                     for tag in remote_info["tags"]
-                    if tag.tag[-3:] != "^{}" and tag.sha not in seen
+                    if tag.tag[-3:] != "^{}" and (tag.sha, tag.tag) not in seen
                 ]
                 msg = "\n".join(
                     "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
@@ -341,11 +366,11 @@ class gs_tags_toggle_remotes(TagsInterfaceCommand):
 
     def run(self, edit, show=None):
         interface = self.interface
-        interface.state["remote_tags"] = {}
-        if show is None:
-            interface.state["show_remotes"] = not interface.state["show_remotes"]
-        else:
-            interface.state["show_remotes"] = show
+        current_state = interface.state["show_remotes"]
+        next_state = not current_state if show is None else show
+        interface.state["show_remotes"] = next_state
+        if next_state:
+            interface.state["remote_tags"] = {}
         interface.render()
 
 
@@ -461,18 +486,19 @@ class gs_tags_show_commit(TagsInterfaceCommand):
 
 class gs_tags_show_graph(TagsInterfaceCommand):
     def run(self, edit) -> None:
-        # NOTE: We take the commit sha's here (instead of the tag names)
-        #       because in the graph a tag ref takes the form e.g.
-        #       `tag: 2.14.5`.  T.i we avoid prepending "tag: " here.
-        commits = self.selected_local_commits()
-        if not commits:
+        # NOTE: We take the tag name because the sha can be point to
+        #       a real commit or a tag in case it's an annotated tag.
+        #       Because in the graph a tag ref takes the form e.g.
+        #       `tag: 2.14.5` we need to format it like that here.
+        tags = self.selected_local_tags()
+        if not tags:
             return
-        if len(commits) > 1:
+        if len(tags) > 1:
             flash(self.view, "Can only follow one tag. Taking the first one")
 
         self.window.run_command('gs_graph', {
             'all': True,
-            'follow': commits[0]
+            'follow': "tag: {}".format(tags[0])
         })
 
 
