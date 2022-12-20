@@ -12,7 +12,7 @@ from ..fns import filter_, unique
 from ..git_command import GitCommand
 from ..utils import flash, focus_view, Cache
 from ..parse_diff import SplittedDiff
-from ..runtime import enqueue_on_worker
+from ..runtime import ensure_on_ui, enqueue_on_worker
 from ..view import replace_view_content, Position
 
 from GitSavvy.github import github
@@ -127,12 +127,16 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
         except Exception:
             return
 
+        def sink(url):
+            if self.view.settings().get("git_savvy.show_commit_view.commit") == commit:
+                self.update_annotation_link(url)
+
         if 200 <= response.status < 300:
             url_cache[commit] = url
-            self.update_annotation_link(url)
+            ensure_on_ui(sink, url)
         else:
             url_cache.pop(commit, None)
-            self.update_annotation_link(None)
+            ensure_on_ui(sink, None)
 
     def update_annotation_link(self, url):
         # type: (Optional[str]) -> None
