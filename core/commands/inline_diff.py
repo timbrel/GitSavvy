@@ -915,14 +915,14 @@ class gs_inline_diff_previous_commit(TextCommand, GitCommand):
 
         else:
             base_commit = settings.get("git_savvy.inline_diff_view.base_commit")
+            if not base_commit:
+                flash(view, "Already on the initial revision.")
+                return
 
         new_target_commit = base_commit
         new_base_commit = self.previous_commit(base_commit, file_path)
-        if not new_base_commit:
-            flash(view, "No older commit found.")
-            return
-
-        show_file_at_commit.remember_next_commit_for(view, {new_base_commit: base_commit})
+        if new_base_commit:
+            show_file_at_commit.remember_next_commit_for(view, {new_base_commit: base_commit})
         settings.set("git_savvy.inline_diff_view.base_commit", new_base_commit)
         settings.set("git_savvy.inline_diff_view.target_commit", new_target_commit)
 
