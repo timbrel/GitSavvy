@@ -916,7 +916,6 @@ class gs_inline_diff_previous_commit(TextCommand, GitCommand):
         else:
             base_commit = settings.get("git_savvy.inline_diff_view.base_commit")
 
-        target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
         new_target_commit = base_commit
         new_base_commit = self.previous_commit(base_commit, file_path)
         if not new_base_commit:
@@ -931,7 +930,8 @@ class gs_inline_diff_previous_commit(TextCommand, GitCommand):
         if pos:
             row, col, offset = pos
             line_no, col_no = translate_pos_from_diff_view_to_file(view, row + 1, col + 1)
-            line_no = self.find_matching_lineno(target_commit, new_target_commit, line_no, file_path)
+            hunks = [hunk_ref.hunk for hunk_ref in diff_view_hunks[self.view.id()]]
+            line_no = self.reverse_adjust_line_according_to_hunks(hunks, line_no)
             pos = Position(line_no - 1, col_no - 1, offset)
 
         self.view.run_command("gs_inline_diff_refresh", {
@@ -963,17 +963,18 @@ class gs_inline_diff_next_commit(TextCommand, GitCommand):
         settings.set("git_savvy.inline_diff_view.target_commit", new_target_commit)
 
         pos = capture_cur_position(view)
+        diff = None
         if pos:
             row, col, offset = pos
             line_no, col_no = translate_pos_from_diff_view_to_file(view, row + 1, col + 1)
-            line_no = self.reverse_find_matching_lineno(
-                new_target_commit, target_commit, line_no, file_path
-            )
+            diff = self.no_context_diff(target_commit, new_target_commit, file_path)
+            line_no = self.adjust_line_according_to_diff(diff, line_no)
             pos = Position(line_no - 1, col_no - 1, offset)
 
         self.view.run_command("gs_inline_diff_refresh", {
             "match_position": pos,
-            "sync": True
+            "sync": True,
+            "raw_diff": diff
         })
         if new_target_commit:
             flash(view, "On commit {}".format(new_target_commit))
