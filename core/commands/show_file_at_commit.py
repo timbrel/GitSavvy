@@ -28,7 +28,7 @@ if MYPY:
     from typing import Dict, Optional, Tuple
 
 
-SHOW_COMMIT_TITLE = "FILE: {} --{}"
+SHOW_COMMIT_TITLE = "FILE: {}, {}"
 
 
 def compute_identifier_for_view(view):
