@@ -146,8 +146,7 @@ def show_toast(view, message, timeout=DEFAULT_TIMEOUT, style=DEFAULT_STYLE):
     key = IDS()
 
     def on_hide(vid, key):
-        if HIDE_POPUP_TIMERS.get(vid) == key:
-            HIDE_POPUP_TIMERS.pop(vid, None)
+        HIDE_POPUP_TIMERS.pop(vid, None)
 
     def __hide_popup(vid, key, sink):
         if HIDE_POPUP_TIMERS.get(vid) == key:
@@ -177,8 +176,7 @@ def show_popup(view, content, max_width, location, on_hide=None):
         view.update_popup(content)
     else:
         def __on_hide(vid, key):
-            if POPUPS.get(vid) == key:
-                POPUPS.pop(vid, None)
+            POPUPS.pop(vid, None)
             if on_hide:
                 on_hide()
 
