@@ -126,21 +126,38 @@ DEFAULT_STYLE = {
 }
 
 
-def show_toast(view, message, timeout=DEFAULT_TIMEOUT, style=DEFAULT_STYLE):
-    # type: (sublime.View, str, int, Dict[str, str]) -> Callable[[], None]
-    """Show a toast popup at the bottom of the view.
+def show_toast(
+    view,
+    message,
+    timeout=DEFAULT_TIMEOUT,
+    style=DEFAULT_STYLE,
+    max_width=2 / 3,
+    location=1.0,
+):
+    # type: (sublime.View, str, int, Dict[str, str], float, float) -> Callable[[], None]
+    """Show a toast popup by default at the bottom of the view.
 
-    A timeout of -1 makes a "sticky" toast.
+    A `timeout` of -1 makes a "sticky" toast.
+    `max_width` and `location` can take floats between 0 and zero.
+    For `location` 0.0 means top of the viewport, 1.0 bottom; e.g. 0.5 is
+    the middle of the screen.
+    Same for `max_width`, 1.0 denoting the whole viewport.
     """
     messages_by_line = escape_text(message).splitlines()
     content = style_message("<br />".join(messages_by_line), style)
 
     # Order can matter here.  If we calc width *after* visible_region we get
     # different results!
-    width, _ = view.viewport_extent()
-    visible_region = view.visible_region()
-    last_row, _ = view.rowcol(visible_region.end())
-    line_start = view.text_point(last_row - 4 - len(messages_by_line), 0)
+    if isinstance(max_width, float) and 0 <= max_width <= 1:
+        width, _ = view.viewport_extent()
+        max_width = width * max_width
+
+    if isinstance(max_width, float) and 0 <= location <= 1:
+        visible_region = view.visible_region()
+        r0, _ = view.rowcol(visible_region.a)
+        r1, _ = view.rowcol(visible_region.b)
+        r_ = r0 + int(((r1 - r0) * location)) - 4 - len(messages_by_line)
+        location = view.text_point(max(r0, r_), 0)
 
     vid = view.id()
     key = IDS()
@@ -156,8 +173,8 @@ def show_toast(view, message, timeout=DEFAULT_TIMEOUT, style=DEFAULT_STYLE):
     inner_hide_popup = show_popup(
         view,
         content,
-        max_width=width * 2 / 3,
-        location=line_start,
+        max_width=max_width,
+        location=int(location),
         on_hide=partial(on_hide, vid, key)
     )
     HIDE_POPUP_TIMERS[vid] = key
