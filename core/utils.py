@@ -169,6 +169,7 @@ def show_toast(view, message, timeout=DEFAULT_TIMEOUT, style=DEFAULT_STYLE):
 
 
 def show_popup(view, content, max_width, location, on_hide=None):
+    # type: (sublime.View, str, float, int, Callable[[], None]) -> Callable[[], None]
     vid = view.id()
     inner_hide_popup = view.hide_popup
     actual_key = (int(max_width), location)
