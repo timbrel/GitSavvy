@@ -24,6 +24,8 @@
 
     /*
         Set custom environment variables for git command execution.
+        Expanding by environment variables and project variables also works. e.g.:
+        "PATH": "${project_path}/venv/bin:${PATH}"
     */
     "env": {
     },
