@@ -279,9 +279,19 @@ class _GitCommand(SettingsMixin):
                 raise GitSavvyError(str(e), show_panel=show_panel_on_error, window=window)
 
         stdout, stderr = None, None
+        vars_for_replace = ChainMap(
+            custom_environ or {},
+            window.extract_variables(),
+            os.environ
+        )
+        savvy_env = self.savvy_settings.get("env") or {}
+        savvy_env_expanded = {
+            k: sublime.expand_variables(v, vars_for_replace)
+            for k, v in savvy_env.items()
+        }
         environ = ChainMap(
             custom_environ or {},
-            self.savvy_settings.get("env") or {},
+            savvy_env_expanded or {},
             os.environ
         )
         try:
