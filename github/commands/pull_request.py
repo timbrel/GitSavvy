@@ -130,6 +130,8 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
         if owner == self.base_remote.owner:
             owner = self.base_remote_name
             ask_set_upstream = False
+        elif owner in self.remotes.keys():
+            ask_set_upstream = False
 
         remote_ref = "{}/{}".format(owner, ref)
         if ask_set_upstream:
