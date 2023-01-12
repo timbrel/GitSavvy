@@ -186,7 +186,7 @@ class gs_graph(WindowCommand, GitCommand):
                     view.run_command("gs_log_graph_refresh")
                 break
         else:
-            view = util.view.get_scratch_view(self, "log_graph")
+            view = util.view.get_scratch_view(self.window, "log_graph")
             view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
             view.run_command("gs_handle_vintageous")
             view.run_command("gs_handle_arrow_keys")

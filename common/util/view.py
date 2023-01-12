@@ -46,13 +46,13 @@ def single_cursor_coords(run):
 SUBLIME_HAS_NEW_VIEW_PLACEMENT_BUG = int(sublime.version()) < 4144
 
 
-def get_scratch_view(context, name, read_only=True):
+def get_scratch_view(window, name, read_only=True):
+    # type: (sublime.Window, str, bool) -> sublime.View
     """
     Create and return a read-only view.
     """
-    window = context.window if hasattr(context, "window") else context.view.window()
     if SUBLIME_HAS_NEW_VIEW_PLACEMENT_BUG:
-        active_view = context.view if hasattr(context, "view") else window.active_view()
+        active_view = window.active_view()
         view = window.new_file()
         if active_view:
             place_view(window, view, after=active_view)

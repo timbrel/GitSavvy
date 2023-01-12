@@ -65,7 +65,7 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
         # need to get repo_path before the new view is created.
         repo_path = self.repo_path
         active_view = self.window.active_view()
-        view = util.view.get_scratch_view(self, "show_file_at_commit")
+        view = util.view.get_scratch_view(self.window, "show_file_at_commit")
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)
         settings.set("git_savvy.file_path", file_path)

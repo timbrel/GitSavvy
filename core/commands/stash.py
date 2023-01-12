@@ -191,7 +191,7 @@ class GsStashShowCommand(WindowCommand, GitCommand):
 
     def create_stash_view(self, stash_id):
         repo_path = self.repo_path
-        stash_view = util.view.get_scratch_view(self, "stash")
+        stash_view = util.view.get_scratch_view(self.window, "stash")
         title = "stash@{{{}}}".format(stash_id)
         description = self.description_of_stash(str(stash_id))
         if description:
