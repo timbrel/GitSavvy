@@ -132,8 +132,13 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
             ask_set_upstream = False
 
         remote_ref = "{}/{}".format(owner, ref)
-        set_upstream = sublime.ok_cancel_dialog(
-            "Set upstream to '{}'?".format(remote_ref)) if ask_set_upstream else True
+        if ask_set_upstream:
+            answer = sublime.yes_no_cancel_dialog("Set upstream to '{}'?".format(remote_ref))
+            if answer == sublime.DIALOG_CANCEL:
+                return
+            set_upstream = answer == sublime.DIALOG_YES
+        else:
+            set_upstream = True
 
         self.window.status_message("Creating local branch for PR...")
         if set_upstream:
