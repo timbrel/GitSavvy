@@ -159,9 +159,10 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
     def view_diff_for_pr(self):
         response = interwebs.get_url(self.pr["diff_url"])
 
-        diff_view = util.view.create_scratch_view(self.window, "pr_diff")
-        diff_view.set_name("PR #{}".format(self.pr["number"]))
-        diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
+        diff_view = util.view.create_scratch_view(self.window, "pr_diff", {
+            "title": "PR #{}".format(self.pr["number"]),
+            "syntax": "Packages/GitSavvy/syntax/diff.sublime-syntax",
+        })
         replace_view_content(diff_view, response.payload.decode("utf-8"))
 
     def open_pr_in_browser(self):

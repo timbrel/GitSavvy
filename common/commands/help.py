@@ -58,14 +58,13 @@ class GsHelp(WindowCommand):
         current_view = self.window.active_view()
         page, anchor = get_page_and_anchor(current_view)
 
-        view = util.view.create_scratch_view(self.window, "help")
-        view.set_name("GITSAVVY HELP")
-
         syntax_file = util.file.get_syntax_for_file(
             "*.md", default="Packages/Markdown/Markdown.sublime-syntax"
         )
-        view.set_syntax_file(syntax_file)
-
+        view = util.view.create_scratch_view(self.window, "help", {
+            "title": "GITSAVVY HELP",
+            "syntax": syntax_file,
+        })
         view.run_command("gs_help_browse", {"page": page, "anchor": anchor})
 
 

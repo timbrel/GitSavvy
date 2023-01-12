@@ -190,17 +190,17 @@ class GsStashShowCommand(WindowCommand, GitCommand):
         replace_view_content(stash_view, content)
 
     def create_stash_view(self, stash_id):
-        repo_path = self.repo_path
-        stash_view = util.view.create_scratch_view(self.window, "stash")
         title = "stash@{{{}}}".format(stash_id)
         description = self.description_of_stash(str(stash_id))
         if description:
             title += " - " + description
-        stash_view.set_name(title)
-        stash_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
-        stash_view.settings().set("git_savvy.repo_path", repo_path)
-        stash_view.settings().set("git_savvy.stash_view.stash_id", stash_id)
-        stash_view.settings().set("git_savvy.stash_view.status", "valid")
+        stash_view = util.view.create_scratch_view(self.window, "stash", {
+            "title": title,
+            "syntax": "Packages/GitSavvy/syntax/diff.sublime-syntax",
+            "git_savvy.repo_path": self.repo_path,
+            "git_savvy.stash_view.stash_id": stash_id,
+            "git_savvy.stash_view.status": "valid",
+        })
         return stash_view
 
     def description_of_stash(self, stash_id):
