@@ -58,7 +58,7 @@ class GsHelp(WindowCommand):
         current_view = self.window.active_view()
         page, anchor = get_page_and_anchor(current_view)
 
-        view = util.view.get_scratch_view(self.window, "help")
+        view = util.view.create_scratch_view(self.window, "help")
         view.set_name("GITSAVVY HELP")
 
         syntax_file = util.file.get_syntax_for_file(

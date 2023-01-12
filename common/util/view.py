@@ -46,7 +46,7 @@ def single_cursor_coords(run):
 SUBLIME_HAS_NEW_VIEW_PLACEMENT_BUG = int(sublime.version()) < 4144
 
 
-def get_scratch_view(window, name, read_only=True):
+def create_scratch_view(window, name, read_only=True):
     # type: (sublime.Window, str, bool) -> sublime.View
     """
     Create and return a read-only view.

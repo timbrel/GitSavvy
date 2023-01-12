@@ -214,7 +214,7 @@ def line_on_point(view, pt):
 class gs_open_line_history(WindowCommand, GitCommand):
     def run(self, repo_path, file_path, ranges, commit=None):
         # type: (str, str, List[LineRange], str) -> None
-        view = util.view.get_scratch_view(self.window, "line_history")
+        view = util.view.create_scratch_view(self.window, "line_history")
         settings = view.settings()
         settings.set("git_savvy.repo_path", repo_path)
         settings.set("git_savvy.file_path", file_path)

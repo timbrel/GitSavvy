@@ -24,7 +24,7 @@ class GsStageDiffCommand(WindowCommand, GitCommand):
 
     def run(self):
         repo_path = self.repo_path
-        stage_diff_view = util.view.get_scratch_view(self.window, "git_stage_diff", read_only=False)
+        stage_diff_view = util.view.create_scratch_view(self.window, "git_stage_diff", read_only=False)
         stage_diff_view.set_name(TITLE.format(os.path.basename(repo_path)))
         stage_diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime_syntax")
         stage_diff_view.settings().set("git_savvy.repo_path", repo_path)

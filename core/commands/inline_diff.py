@@ -354,7 +354,7 @@ class gs_inline_diff_open(WindowCommand, GitCommand):
                 break
 
         else:
-            diff_view = util.view.get_scratch_view(self.window, "inline_diff")
+            diff_view = util.view.create_scratch_view(self.window, "inline_diff")
 
             settings = diff_view.settings()
             settings.set("git_savvy.repo_path", repo_path)
