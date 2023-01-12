@@ -46,7 +46,7 @@ def single_cursor_coords(run):
 SUBLIME_HAS_NEW_VIEW_PLACEMENT_BUG = int(sublime.version()) < 4144
 
 
-def create_scratch_view(window, name, read_only=True):
+def create_scratch_view(window, typ, read_only=True):
     # type: (sublime.Window, str, bool) -> sublime.View
     """
     Create and return a read-only view.
@@ -58,7 +58,7 @@ def create_scratch_view(window, name, read_only=True):
             place_view(window, view, after=active_view)
     else:
         view = window.new_file()
-    view.settings().set("git_savvy.{}_view".format(name), True)
+    view.settings().set("git_savvy.{}_view".format(typ), True)
     view.set_scratch(True)
     view.set_read_only(read_only)
     return view
