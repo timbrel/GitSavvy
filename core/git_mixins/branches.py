@@ -24,6 +24,7 @@ if MYPY:
         ("canonical_name", str),    # e.g. "origin/master"
         ("commit_hash", str),
         ("commit_msg", str),
+        ("worktree_path", str),
         ("active", bool),
         ("is_remote", bool),
         ("committerdate", int),
@@ -37,6 +38,7 @@ else:
         "canonical_name",
         "commit_hash",
         "commit_msg",
+        "worktree_path",
         "active",
         "is_remote",
         "committerdate",
@@ -106,6 +108,7 @@ class BranchesMixin(mixin_base):
                 "%(upstream:remotename)%00"
                 "%(upstream:track,nobracket)%00"
                 "%(committerdate:unix)%00"
+                "%(worktreepath)%00"
                 "%(objectname)%00"
                 "%(contents:subject)"
             ),
@@ -143,7 +146,7 @@ class BranchesMixin(mixin_base):
     def _parse_branch_line(self, line):
         # type: (str) -> Branch
         (head, ref, upstream, upstream_remote, upstream_status,
-         committerdate, commit_hash, commit_msg) = line.split("\x00")
+         committerdate, worktree_path, commit_hash, commit_msg) = line.split("\x00")
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
@@ -173,6 +176,7 @@ class BranchesMixin(mixin_base):
             canonical_name,
             commit_hash,
             commit_msg,
+            worktree_path,
             active,
             is_remote,
             int(committerdate),

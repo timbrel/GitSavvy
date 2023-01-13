@@ -199,8 +199,9 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
     def _render_branch_list(self, remote_name, branches, descriptions):
         # type: (Optional[str], List[Branch], Dict[str, str]) -> str
         remote_name_length = len(remote_name + "/") if remote_name else 0
+        current_worktree = next((b.worktree_path for b in branches if b.active), None)
         return "\n".join(
-            "  {indicator} {hash:.7} {name}{tracking}{description}".format(
+            "  {indicator} {hash:.7} {name}{tracking}{description}{worktreepath}".format(
                 indicator="▸" if branch.active else " ",
                 hash=branch.commit_hash,
                 name=branch.canonical_name[remote_name_length:],
@@ -208,7 +209,12 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                 tracking=(" ({branch}{status})".format(
                     branch=branch.upstream.canonical_name,
                     status=", " + branch.upstream.status if branch.upstream.status else ""
-                ) if branch.upstream else "")
+                ) if branch.upstream else ""),
+                worktreepath=(
+                    " ({})".format(branch.worktree_path)
+                    if branch.worktree_path and branch.worktree_path != current_worktree
+                    else ""
+                )
             ) for branch in branches
         )
 
