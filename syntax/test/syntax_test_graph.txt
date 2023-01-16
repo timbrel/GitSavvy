@@ -50,7 +50,13 @@
 # <- meta.graph.branch-art punctuation.other.git-savvy.graph.graph-line
 #^^^^^ meta.graph.branch-art punctuation.other.git-savvy.graph.graph-line
 
-| | ● | ffc45b7 (origin/iterate-commit-view) Adjust commit message help text     | Thu 21:54, herr kaste
+| | ● | ffc45b7 (origin/#125-iterate-commit-view) Adjust commit message help text     | Thu 21:54, herr kaste
+#                       ^^^^ meta.git-savvy.issue-reference
+#                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant.other.git.branch.git-savvy gitsavvy.gotosymbol
+| | ● | ffc45b7 (origin/125-iterate-commit-view) Adjust commit message help text     | Thu 21:54, herr kaste
+#                       ^^^ meta.git-savvy.issue-reference
+| | ● | ffc45b7 (125-iterate-commit-view) Adjust commit message help text     | Thu 21:54, herr kaste
+#                ^^^ meta.git-savvy.issue-reference
 * c39b5de (divmain/master) Fix: plugin_host would crash when navigating past end of graph view
 * 1bca3e0 Fix: When amending, prepopulated commit message would include two extra spaces.
 * 76ceacf Fix: When amending with show_commit_diff enabled, unstaged changes were displayed.

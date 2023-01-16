@@ -89,8 +89,11 @@ contexts:
           scope: punctuation.separator.key-value.branch.git-savvy
         - match: HEAD
           scope: constant.other.git.head.git-savvy gitsavvy.gotosymbol
-        - match: ([^ ,)]+)
+        - match: (\d+)?([^ ,#/)]*)?/?(#?\d+)?([^ ,)]+)
           scope: constant.other.git.branch.git-savvy gitsavvy.gotosymbol
+          captures:
+            1: meta.git-savvy.issue-reference
+            3: meta.git-savvy.issue-reference
 
   message:
     - meta_scope: meta.graph.message.git-savvy
