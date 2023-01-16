@@ -188,6 +188,6 @@ class TestStatusDashboard(DeferrableTestCase):
 
         view.run_command('gs_status_stage_file')
 
-        verify(GitCommand).stage_file('new_file', 'modified_file', 'conflicting_file', ...)
+        verify(GitCommand).stage_file('modified_file', 'new_file', 'conflicting_file', ...)
         verify(interface).refresh_repo_status_and_render()
         verify(view.window()).status_message("Staged files successfully.")
