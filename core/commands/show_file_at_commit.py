@@ -1,3 +1,4 @@
+import email.utils
 import os
 
 import sublime
@@ -28,7 +29,7 @@ if MYPY:
     from typing import Dict, Optional, Tuple
 
 
-SHOW_COMMIT_TITLE = "FILE: {} --{}"
+SHOW_COMMIT_TITLE = "FILE: {}, {}"
 
 
 def compute_identifier_for_view(view):
@@ -104,8 +105,55 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         render(view, text, position)
         view.reset_reference_document()
         self.update_title(commit_hash, file_path)
-
+        self.update_status_bar(commit_hash)
         enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
+
+    def update_status_bar(self, commit_hash):
+        # type: (str) -> None
+        short_hash = self.get_short_hash(commit_hash)
+        subject, date = self.commit_subject_and_date(commit_hash)
+        message = "On commit {}{}{}".format(short_hash, subject, date)
+
+        view = self.view
+        settings = view.settings()
+        window = view.window()
+        if not window:
+            return
+
+        # Status messages are only temporary shown and in this case
+        # the roundabout 4 seconds just aren't enough. Loop here to
+        # extend Sublime Text's hardcoded duration.
+        def sink(n=0):
+            if (
+                view != window.active_view()  # type: ignore[union-attr]
+                or commit_hash != settings.get("git_savvy.show_file_at_commit_view.commit")
+            ):
+                return
+
+            flash(self.view, message)
+            if n < 4:
+                sublime.set_timeout_async(lambda: sink(n + 1), 3000)
+
+        sink()
+
+    def commit_subject_and_date(self, commit_hash):
+        # type: (str) -> Tuple[str, str]
+        # call with the same settings as gs_show_commit to either use or
+        # warm up the cache
+        show_diffstat = self.savvy_settings.get("show_diffstat")
+        patch = self.read_commit(commit_hash, show_diffstat=show_diffstat)
+
+        date, subject = "", ""
+        for line in patch.splitlines():
+            # CommitDate: Tue Dec 20 18:21:40 2022 +0100
+            if line.startswith("CommitDate: "):
+                date_ = "-".join(map(str, email.utils.parsedate(line[12:])[:3]))
+                date = " ({})".format(date_)
+            elif line.startswith("    "):
+                subject_ = line.lstrip()
+                subject = ": {}".format(subject_)
+                break
+        return subject, date
 
     def update_reference_document(self, commit_hash, file_path):
         # type: (str, str) -> None
@@ -180,7 +228,6 @@ class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
         view.run_command("gs_show_file_at_commit_refresh", {
             "position": position
         })
-        flash(view, "On commit {}".format(previous_commit))
 
 
 class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
@@ -212,7 +259,6 @@ class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
         view.run_command("gs_show_file_at_commit_refresh", {
             "position": position
         })
-        flash(view, "On commit {}".format(next_commit))
 
 
 def remember_next_commit_for(view, mapping):
