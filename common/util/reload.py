@@ -65,7 +65,9 @@ def get_package_modules(pkg_name):
     )
 
     def module_in_package(module):
-        file = getattr(module, '__file__', '')
+        # Other (extracted) ST plugins using python 3.8 have this set to
+        # `None` surprisingly.
+        file = getattr(module, '__file__', None) or ''
         paths = getattr(module, '__path__', ())
         return (
             in_installed_path(file) or any(map(in_installed_path, paths)) or
