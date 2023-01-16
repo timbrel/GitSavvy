@@ -14,7 +14,7 @@ from .gitlab.commands import *
 def plugin_loaded():
 
     try:
-        import package_control
+        import package_control.events
     except ImportError:
         pass
     else:
