@@ -1,0 +1,28 @@
+GitSavvy 2.39.0
+===============
+
+
+| Likely the last version working with Sublime Text 3.  If you're still using that |
+| freeze your GitSavvy install.                                                    |
+
+
+- This version implements `[n]`ext/`[p]`revious navigation for the inline diff and
+the commit views including the commit panel at the bottom of the graph views.
+
+E.g., you could open the inline diff for a given file, then `[p][O]` to see
+the last revision of that exact file.
+
+- @zebyja implemented variable expansion especially for the custom env/PATH setting.
+E.g. in your GitSavvy settings:
+
+```
+{
+    "env": {
+        "PATH":"venv/bin:${PATH}"
+    },
+}
+```
+
+to *prepend* `venv/bin`.  (#1724)
+
+
