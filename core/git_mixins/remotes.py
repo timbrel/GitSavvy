@@ -1,30 +1,18 @@
 import re
 
-from GitSavvy.core import store
+from GitSavvy.core.git_command import BranchesMixin, _GitCommand
 from GitSavvy.core.fns import filter_
+from GitSavvy.core import store
 
 
 MYPY = False
 if MYPY:
     from typing import Dict
-    from GitSavvy.core.git_command import (
-        BranchesMixin,
-        _GitCommand,
-    )
     name = str
     url = str
 
-    class mixin_base(
-        BranchesMixin,
-        _GitCommand,
-    ):
-        pass
 
-else:
-    mixin_base = object
-
-
-class RemotesMixin(mixin_base):
+class RemotesMixin(BranchesMixin, _GitCommand):
 
     def get_remotes(self):
         # type: () -> Dict[name, url]
