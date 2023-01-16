@@ -43,12 +43,14 @@ if MYPY:
     T_state = TypeVar("T_state", bound=MutableMapping)
     SectionRegions = Dict[str, sublime.Region]
     RenderFnReturnType = Union[str, Tuple[str, List["SectionFn"]]]
+    T_R = TypeVar("T_R", bound=RenderFnReturnType, covariant=True)
+    FunctionReturning = Callable[..., T]
 
-    class RenderFn(Protocol):
-        def __call__(self, *args, **kwargs) -> RenderFnReturnType:
+    class RenderFn(Protocol[T_R]):
+        def __call__(self, *args, **kwargs) -> T_R:
             pass
 
-    class SectionFn(RenderFn):
+    class SectionFn(RenderFn[T_R]):
         key = ''  # type: str
 
 else:
@@ -391,7 +393,7 @@ class ReactiveInterface(Interface, _base, GitCommand):
 
 
 def section(key):
-    # type: (str) -> Callable[[RenderFn], SectionFn]
+    # type: (str) -> Callable[[RenderFn[T_R]], SectionFn[T_R]]
     def decorator(fn):
         # type: (RenderFn) -> SectionFn
         fn.key = key  # type: ignore[attr-defined]
@@ -400,9 +402,9 @@ def section(key):
 
 
 def inject_state():
-    # type: () -> Callable[[Callable], Callable]
+    # type: () -> Callable[[FunctionReturning[T]], FunctionReturning[Union[T, str]]]
     def decorator(fn):
-        # type: (T_fn) -> T_fn
+        # type: (FunctionReturning[T]) -> FunctionReturning[Union[T, str]]
         sig = inspect.signature(fn)
         keys = ordered_positional_args(sig)
         if "self" not in keys:
@@ -410,7 +412,7 @@ def inject_state():
 
         @wraps(fn)  # <- copies our key too! 🙏
         def decorated(self, *args, **kwargs):
-            # # type: (...) -> RenderFnReturnType
+            # type: (...) -> Union[T, str]
             b = sig.bind_partial(self, *args, **kwargs)
             given_args = b.arguments.keys()
             try:
@@ -421,7 +423,7 @@ def inject_state():
                 kwargs.update(b.arguments)
                 kwargs.update(values)
                 return fn(**kwargs)
-        return cast(T_fn, decorated)
+        return decorated
     return decorator
 
 
