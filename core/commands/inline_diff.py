@@ -354,21 +354,18 @@ class gs_inline_diff_open(WindowCommand, GitCommand):
                 break
 
         else:
-            diff_view = util.view.get_scratch_view(self, "inline_diff")
-
-            settings = diff_view.settings()
-            settings.set("git_savvy.repo_path", repo_path)
-            settings.set("git_savvy.file_path", file_path)
-            settings.set("git_savvy.inline_diff_view.in_cached_mode", cached)
-            settings.set("git_savvy.inline_diff_view.base_commit", base_commit)
-            settings.set("git_savvy.inline_diff_view.target_commit", target_commit)
-            show_file_at_commit.pass_next_commits_info_along(active_view, to=diff_view)
-
             title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
-            diff_view.set_name(title + os.path.basename(file_path))
-
-            diff_view.set_syntax_file(syntax)
-
+            title += os.path.basename(file_path)
+            diff_view = util.view.create_scratch_view(self.window, "inline_diff", {
+                "title": title,
+                "syntax": syntax,
+                "git_savvy.repo_path": repo_path,
+                "git_savvy.file_path": file_path,
+                "git_savvy.inline_diff_view.in_cached_mode": cached,
+                "git_savvy.inline_diff_view.base_commit": base_commit,
+                "git_savvy.inline_diff_view.target_commit": target_commit,
+            })
+            show_file_at_commit.pass_next_commits_info_along(active_view, to=diff_view)
             diff_view.run_command("gs_handle_vintageous")
 
         diff_view.run_command("gs_inline_diff_refresh", {

@@ -60,33 +60,24 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
         else:
             self.create_view(commit_hash, filepath, position, lang)
 
-    def create_view(self, commit_hash, file_path, position, lang):
+    def create_view(self, commit_hash, file_path, position, syntax):
         # type: (str, str, Optional[Position], Optional[str]) -> None
-        # need to get repo_path before the new view is created.
-        repo_path = self.repo_path
         active_view = self.window.active_view()
-        view = util.view.get_scratch_view(self, "show_file_at_commit")
-        settings = view.settings()
-        settings.set("git_savvy.repo_path", repo_path)
-        settings.set("git_savvy.file_path", file_path)
-        settings.set("git_savvy.show_file_at_commit_view.commit", commit_hash)
-        for key, value in {
-            "auto_indent": False,
-            "detect_indentation": False,
-            "translate_tabs_to_spaces": False,
-        }.items():
-            settings.set(key, value)
-        pass_next_commits_info_along(active_view, to=view)
-
-        if not lang:
-            lang = util.file.guess_syntax_for_file(self.window, file_path)
         title = SHOW_COMMIT_TITLE.format(
             os.path.basename(file_path),
             self.get_short_hash(commit_hash),
         )
-
-        view.set_syntax_file(lang)
-        view.set_name(title)
+        view = util.view.create_scratch_view(self.window, "show_file_at_commit", {
+            "title": title,
+            "syntax": syntax or util.file.guess_syntax_for_file(self.window, file_path),
+            "git_savvy.repo_path": self.repo_path,
+            "git_savvy.file_path": file_path,
+            "git_savvy.show_file_at_commit_view.commit": commit_hash,
+            "auto_indent": False,
+            "detect_indentation": False,
+            "translate_tabs_to_spaces": False,
+        })
+        pass_next_commits_info_along(active_view, to=view)
 
         view.run_command("gs_show_file_at_commit_refresh", {
             "position": position

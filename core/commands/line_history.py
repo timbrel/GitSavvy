@@ -214,15 +214,6 @@ def line_on_point(view, pt):
 class gs_open_line_history(WindowCommand, GitCommand):
     def run(self, repo_path, file_path, ranges, commit=None):
         # type: (str, str, List[LineRange], str) -> None
-        view = util.view.get_scratch_view(self, "line_history")
-        settings = view.settings()
-        settings.set("git_savvy.repo_path", repo_path)
-        settings.set("git_savvy.file_path", file_path)
-
-        settings.set("result_file_regex", diff.FILE_RE)
-        settings.set("result_line_regex", diff.LINE_RE)
-        settings.set("result_base_dir", repo_path)
-
         rel_file_path = os.path.relpath(file_path, repo_path)
         title = ''.join(
             [
@@ -233,8 +224,19 @@ class gs_open_line_history(WindowCommand, GitCommand):
             ]
             + [' L{}-{}'.format(lr[0], lr[1]) for lr in ranges]
         )
-        view.set_name(title)
-        view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
+        view = util.view.create_scratch_view(
+            self.window,
+            "line_history",
+            {
+                "syntax": "Packages/GitSavvy/syntax/show_commit.sublime-syntax",
+                "title": title,
+                "git_savvy.repo_path": repo_path,
+                "git_savvy.file_path": file_path,
+                "result_file_regex": diff.FILE_RE,
+                "result_line_regex": diff.LINE_RE,
+                "result_base_dir": repo_path,
+            }
+        )
 
         def render():
             normalized_short_filename = rel_file_path.replace('\\', '/')

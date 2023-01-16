@@ -186,30 +186,26 @@ class gs_graph(WindowCommand, GitCommand):
                     view.run_command("gs_log_graph_refresh")
                 break
         else:
-            view = util.view.get_scratch_view(self, "log_graph")
-            view.set_syntax_file("Packages/GitSavvy/syntax/graph.sublime-syntax")
+            if follow is None:
+                follow = "HEAD"
+            show_commit_info_panel = bool(self.savvy_settings.get("graph_show_more_commit_info"))
+            view = util.view.create_scratch_view(self.window, "log_graph", {
+                "title": title,
+                "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
+                "git_savvy.repo_path": repo_path,
+                "git_savvy.log_graph_view.paths": paths,
+                "git_savvy.log_graph_view.all_branches": all,
+                "git_savvy.log_graph_view.filter_by_author": author,
+                "git_savvy.log_graph_view.branches": branches,
+                "git_savvy.log_graph_view.follow": follow,
+                "git_savvy.log_graph_view.decoration": decoration,
+                "git_savvy.log_graph_view.filters": filters,
+                "git_savvy.log_graph_view.apply_filters": apply_filters,
+                "git_savvy.log_graph_view.show_commit_info_panel": show_commit_info_panel,
+            })
             view.run_command("gs_handle_vintageous")
             view.run_command("gs_handle_arrow_keys")
             run_on_new_thread(augment_color_scheme, view)
-
-            if follow is None:
-                follow = "HEAD"
-            settings = view.settings()
-            settings.set("git_savvy.repo_path", repo_path)
-            settings.set("git_savvy.log_graph_view.paths", paths)
-            settings.set("git_savvy.log_graph_view.all_branches", all)
-            settings.set("git_savvy.log_graph_view.filter_by_author", author)
-            settings.set("git_savvy.log_graph_view.branches", branches)
-            settings.set('git_savvy.log_graph_view.follow', follow)
-            settings.set('git_savvy.log_graph_view.decoration', decoration)
-            settings.set('git_savvy.log_graph_view.filters', filters)
-            settings.set('git_savvy.log_graph_view.apply_filters', apply_filters)
-            show_commit_info_panel = bool(self.savvy_settings.get("graph_show_more_commit_info"))
-            settings.set(
-                "git_savvy.log_graph_view.show_commit_info_panel",
-                show_commit_info_panel
-            )
-            view.set_name(title)
 
             # We need to ensure the panel has been created, so it appears
             # e.g. in the menu. Otherwise Sublime will not handle `show_panel`

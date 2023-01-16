@@ -115,9 +115,10 @@ class gs_gitlab_merge_request(GsWindowCommand, git_mixins.GitLabRemotesMixin):
         mr_changes = gitlab.get_merge_request_changes(
             self.base_remote, {'mr_id': self.mr['iid']})
 
-        diff_view = util.view.get_scratch_view(self, "mr_diff")
-        diff_view.set_name("MR #{}".format(self.mr["iid"]))
-        diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff.sublime-syntax")
+        diff_view = util.view.create_scratch_view(self.window, "mr_diff", {
+            "title": "MR #{}".format(self.mr["iid"]),
+            "syntax": "Packages/GitSavvy/syntax/diff.sublime-syntax",
+        })
 
         diff_text = '\n'.join(change['diff'] for change in mr_changes['changes'])
         replace_view_content(diff_view, diff_text)

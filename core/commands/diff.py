@@ -163,33 +163,29 @@ class gs_diff(WindowCommand, GitCommand):
                 break
 
         else:
-            diff_view = util.view.get_scratch_view(self, "diff")
-
-            show_diffstat = self.savvy_settings.get("show_diffstat", True)
-            settings = diff_view.settings()
-            settings.set("git_savvy.repo_path", repo_path)
-            settings.set("git_savvy.file_path", file_path)
-            settings.set("git_savvy.diff_view.in_cached_mode", bool(in_cached_mode))
-            settings.set("git_savvy.diff_view.ignore_whitespace", ignore_whitespace)
-            settings.set("git_savvy.diff_view.context_lines", context_lines)
-            settings.set("git_savvy.diff_view.base_commit", base_commit)
-            settings.set("git_savvy.diff_view.target_commit", target_commit)
-            settings.set("git_savvy.diff_view.show_diffstat", show_diffstat)
-            settings.set("git_savvy.diff_view.disable_stage", disable_stage)
-            settings.set("git_savvy.diff_view.history", [])
-            settings.set("git_savvy.diff_view.just_hunked", "")
-
-            settings.set("result_file_regex", FILE_RE)
-            settings.set("result_line_regex", LINE_RE)
-            settings.set("result_base_dir", repo_path)
-
             if not title:
                 title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(
                     os.path.basename(file_path) if file_path else os.path.basename(repo_path)
                 )
-            diff_view.set_name(title)
-            diff_view.set_syntax_file("Packages/GitSavvy/syntax/diff_view.sublime-syntax")
-
+            show_diffstat = self.savvy_settings.get("show_diffstat", True)
+            diff_view = util.view.create_scratch_view(self.window, "diff", {
+                "title": title,
+                "syntax": "Packages/GitSavvy/syntax/diff_view.sublime-syntax",
+                "git_savvy.repo_path": repo_path,
+                "git_savvy.file_path": file_path,
+                "git_savvy.diff_view.in_cached_mode": bool(in_cached_mode),
+                "git_savvy.diff_view.ignore_whitespace": ignore_whitespace,
+                "git_savvy.diff_view.context_lines": context_lines,
+                "git_savvy.diff_view.base_commit": base_commit,
+                "git_savvy.diff_view.target_commit": target_commit,
+                "git_savvy.diff_view.show_diffstat": show_diffstat,
+                "git_savvy.diff_view.disable_stage": disable_stage,
+                "git_savvy.diff_view.history": [],
+                "git_savvy.diff_view.just_hunked": "",
+                "result_file_regex": FILE_RE,
+                "result_line_regex": LINE_RE,
+                "result_base_dir": repo_path,
+            })
             diff_view.run_command("gs_handle_vintageous")
             # Assume diffing a single file is very fast and do it
             # sync because it looks better.
