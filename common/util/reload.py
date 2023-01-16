@@ -19,17 +19,6 @@ if MYPY:
     from types import ModuleType
 
 
-try:
-    from package_control.package_manager import PackageManager
-
-    def is_dependency(pkg_name):
-        return PackageManager()._is_dependency(pkg_name)
-
-except ImportError:
-    def is_dependency(pkg_name):
-        return False
-
-
 def reload_plugin(verbose=True, then=None):
     threading.Thread(
         target=functools.partial(reload_package, 'GitSavvy', verbose=verbose, then=then)
@@ -94,22 +83,14 @@ def reload_package(pkg_name, dummy=True, verbose=True, then=None):
         dprint("error:", pkg_name, "is not loaded.")
         return
 
-    if is_dependency(pkg_name):
-        dependencies, packages = resolve_dependencies(pkg_name)
-    else:
-        dependencies = set()
-        packages = {pkg_name}
-
     if verbose:
         dprint("begin", fill='=')
 
     all_modules = {
         module_name: module
-        for pkg_name in dependencies | packages
         for module_name, module in get_package_modules(pkg_name).items()
     }
-
-    plugins = [plugin for pkg_name in packages for plugin in package_plugins(pkg_name)]
+    plugins = [plugin for plugin in package_plugins(pkg_name)]
 
     # Tell Sublime to unload plugins
     for plugin in plugins:
@@ -152,41 +133,6 @@ def reload_package(pkg_name, dummy=True, verbose=True, then=None):
         then()
 
     sublime.active_window().status_message('GitSavvy has 🙌 reloaded.')
-
-
-def resolve_dependencies(root_name):
-    """Given the name of a dependency, return all dependencies and packages
-    that require that dependency, directly or indirectly.
-    """
-    manager = PackageManager()
-
-    all_packages = manager.list_packages()
-    all_dependencies = manager.list_dependencies()
-
-    recursive_dependencies = set()
-    dependent_packages = set()
-
-    dependency_relationships = {
-        name: manager.get_dependencies(name)
-        for name in all_packages + all_dependencies
-    }
-
-    def rec(name):
-        if name in recursive_dependencies:
-            return
-
-        recursive_dependencies.add(name)
-
-        for dep_name in all_dependencies:
-            if name in dependency_relationships[dep_name]:
-                rec(dep_name)
-
-        for pkg_name in all_packages:
-            if name in dependency_relationships[pkg_name]:
-                dependent_packages.add(pkg_name)
-
-    rec(root_name)
-    return (recursive_dependencies, dependent_packages)
 
 
 def load_dummy(verbose):
