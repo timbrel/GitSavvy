@@ -123,7 +123,10 @@ class gs_inline_diff_help_tooltip(GsAbstractHelpPopup):
     [f]            make fixup commit
 
     ### Navigation ####
-    [o]            open file at hunk
+    [o]            open file position in working dir
+    [O]            open file revision at hunk
+    [g]            show context in graph
+    [n]/[p]        show next/previous revision of this file
     [,]/[.]        go to next/previous hunk (also: [j]/[k] in vintageous mode)
 
 

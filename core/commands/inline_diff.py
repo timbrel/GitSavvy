@@ -7,6 +7,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import diff
+from . import show_file_at_commit
 from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
@@ -23,7 +24,11 @@ __all__ = (
     "gs_inline_diff_toggle_cached_mode",
     "gs_inline_diff_stage_or_reset_line",
     "gs_inline_diff_stage_or_reset_hunk",
+    "gs_inline_diff_previous_commit",
+    "gs_inline_diff_next_commit",
     "gs_inline_diff_open_file",
+    "gs_inline_diff_open_file_at_hunk",
+    "gs_inline_diff_open_graph_context",
     "gs_inline_diff_navigate_hunk",
     "gs_inline_diff_undo",
     "GsInlineDiffFocusEventListener",
@@ -357,6 +362,7 @@ class gs_inline_diff_open(WindowCommand, GitCommand):
             settings.set("git_savvy.inline_diff_view.in_cached_mode", cached)
             settings.set("git_savvy.inline_diff_view.base_commit", base_commit)
             settings.set("git_savvy.inline_diff_view.target_commit", target_commit)
+            show_file_at_commit.pass_next_commits_info_along(active_view, to=diff_view)
 
             title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
             diff_view.set_name(title + os.path.basename(file_path))
@@ -461,7 +467,10 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         title += os.path.basename(file_path)
         if target_commit:
             title += (
-                "  ({} <-{})".format(target_commit, base_commit)
+                "  ({} <-{})".format(
+                    self.get_short_hash(target_commit),
+                    self.get_short_hash(base_commit)
+                )
                 if base_commit
                 else "  (initial version)"
             )
@@ -898,6 +907,87 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
         return "".join([stand_alone_header] + hunk_ref.hunk.raw_lines[1:])
 
 
+class gs_inline_diff_previous_commit(TextCommand, GitCommand):
+    def run(self, edit):
+        # type: (...) -> None
+        view = self.view
+        settings = view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        if is_interactive_diff(view):
+            base_commit = self.previous_commit(None, file_path)
+            if not base_commit:
+                flash(view, "No historical version of that file found.")
+                return
+
+        else:
+            base_commit = settings.get("git_savvy.inline_diff_view.base_commit")
+            if not base_commit:
+                flash(view, "Already on the initial revision.")
+                return
+
+        new_target_commit = base_commit
+        new_base_commit = self.previous_commit(base_commit, file_path)
+        if new_base_commit:
+            show_file_at_commit.remember_next_commit_for(view, {new_base_commit: base_commit})
+        settings.set("git_savvy.inline_diff_view.base_commit", new_base_commit)
+        settings.set("git_savvy.inline_diff_view.target_commit", new_target_commit)
+
+        pos = capture_cur_position(view)
+        if pos:
+            row, col, offset = pos
+            line_no, col_no = translate_pos_from_diff_view_to_file(view, row + 1, col + 1)
+            hunks = [hunk_ref.hunk for hunk_ref in diff_view_hunks[self.view.id()]]
+            line_no = self.reverse_adjust_line_according_to_hunks(hunks, line_no)
+            pos = Position(line_no - 1, col_no - 1, offset)
+
+        self.view.run_command("gs_inline_diff_refresh", {
+            "match_position": pos,
+            "sync": True
+        })
+        flash(view, "On commit {}".format(new_target_commit))
+
+
+class gs_inline_diff_next_commit(TextCommand, GitCommand):
+    def run(self, edit):
+        view = self.view
+        settings = view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        if is_interactive_diff(view):
+            flash(view, "Already on the working dir version.")
+            return
+
+        target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
+        new_base_commit = target_commit
+        new_target_commit = (
+            show_file_at_commit.recall_next_commit_for(view, target_commit)
+            or self.next_commit(target_commit, file_path)
+        )
+        if not new_target_commit:
+            new_base_commit = None
+
+        settings.set("git_savvy.inline_diff_view.base_commit", new_base_commit)
+        settings.set("git_savvy.inline_diff_view.target_commit", new_target_commit)
+
+        pos = capture_cur_position(view)
+        diff = None
+        if pos:
+            row, col, offset = pos
+            line_no, col_no = translate_pos_from_diff_view_to_file(view, row + 1, col + 1)
+            diff = self.no_context_diff(target_commit, new_target_commit, file_path)
+            line_no = self.adjust_line_according_to_diff(diff, line_no)
+            pos = Position(line_no - 1, col_no - 1, offset)
+
+        self.view.run_command("gs_inline_diff_refresh", {
+            "match_position": pos,
+            "sync": True,
+            "raw_diff": diff
+        })
+        if new_target_commit:
+            flash(view, "On commit {}".format(new_target_commit))
+        else:
+            flash(view, "On working dir version")
+
+
 class gs_inline_diff_open_file(TextCommand, GitCommand):
 
     """
@@ -936,6 +1026,49 @@ class gs_inline_diff_open_file(TextCommand, GitCommand):
             ),
             sublime.ENCODED_POSITION
         )
+
+
+class gs_inline_diff_open_file_at_hunk(TextCommand, GitCommand):
+    def run(self, edit):
+        view = self.view
+        if is_interactive_diff(view):
+            view.run_command("gs_inline_diff_open_file")
+            return
+
+        window = view.window()
+        if not window:
+            return
+        settings = view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
+
+        pos = capture_cur_position(view)
+        if pos:
+            row, col, offset = pos
+            line_no, col_no = translate_pos_from_diff_view_to_file(view, row + 1, col + 1)
+            pos = Position(line_no - 1, col_no - 1, offset)
+
+        window.run_command("gs_show_file_at_commit", {
+            "commit_hash": target_commit,
+            "filepath": file_path,
+            "position": pos,
+            "lang": view.settings().get('syntax')
+        })
+
+
+class gs_inline_diff_open_graph_context(TextCommand, GitCommand):
+    def run(self, edit):
+        view = self.view
+        window = view.window()
+        if not window:
+            return
+
+        settings = view.settings()
+        target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
+        window.run_command("gs_graph", {
+            "all": True,
+            "follow": self.get_short_hash(target_commit) if target_commit else "HEAD",
+        })
 
 
 def translate_pos_from_diff_view_to_file(view, line_no, col_no=1):
