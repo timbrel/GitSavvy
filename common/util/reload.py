@@ -197,8 +197,9 @@ def load_dummy(verbose):
     """
     if verbose:
         dprint("installing dummy package")
-    dummy = "_dummy_package"
-    dummy_py = os.path.join(sublime.packages_path(), "%s.py" % dummy)
+
+    dummy = "User._dummy"
+    dummy_py = os.path.join(sublime.packages_path(), "User", "_dummy.py")
     with open(dummy_py, "w"):
         pass
 
