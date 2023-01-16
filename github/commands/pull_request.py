@@ -116,8 +116,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
         url = self.best_remote_url_for_pr()
         ref = self.pr["head"]["ref"]
         self.git("fetch", url, ref)
-        self.checkout_ref("FETCH_HEAD")
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        self.window.run_command("gs_checkout_branch", {"branch": "FETCH_HEAD"})
 
     def create_branch_for_pr(self, branch_name, checkout=False, ask_set_upstream=True):
         if not branch_name:
@@ -130,10 +129,17 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
         if owner == self.base_remote.owner:
             owner = self.base_remote_name
             ask_set_upstream = False
+        elif owner in self.remotes.keys():
+            ask_set_upstream = False
 
         remote_ref = "{}/{}".format(owner, ref)
-        set_upstream = sublime.ok_cancel_dialog(
-            "Set upstream to '{}'?".format(remote_ref)) if ask_set_upstream else True
+        if ask_set_upstream:
+            answer = sublime.yes_no_cancel_dialog("Set upstream to '{}'?".format(remote_ref))
+            if answer == sublime.DIALOG_CANCEL:
+                return
+            set_upstream = answer == sublime.DIALOG_YES
+        else:
+            set_upstream = True
 
         self.window.status_message("Creating local branch for PR...")
         if set_upstream:
@@ -147,9 +153,9 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
             self.git("branch", branch_name, "FETCH_HEAD")
 
         if checkout:
-            self.checkout_ref(branch_name)
-
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+            self.window.run_command("gs_checkout_branch", {"branch": branch_name})
+        else:
+            util.view.refresh_gitsavvy_interfaces(self.window)
 
     def best_remote_url_for_pr(self):
         clone_url = self.pr["head"]["repo"]["clone_url"]
