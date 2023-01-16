@@ -165,6 +165,7 @@ class gs_show_commit_help_tooltip(GsAbstractHelpPopup):
     ### Navigation ###
     [o]            open file revision at hunk; on `#issues`, open a browser
     [O]            open working dir file
+    [n]/[p]        show next/previous commit
     [h]            open commit on GitHub (if available)
     [f]            initiate fixup commit
     [g]            show in graph

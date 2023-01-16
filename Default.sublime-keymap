@@ -954,6 +954,22 @@
         ]
     },
     {
+        "keys": ["n"],
+        "command": "gs_show_commit_open_next_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["p"],
+        "command": "gs_show_commit_open_previous_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["o"],
         "command": "gs_show_commit_open_file_at_hunk",
         "context": [
