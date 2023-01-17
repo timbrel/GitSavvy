@@ -14,7 +14,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        st-version: [3, 4]
         os: ["ubuntu-latest", "windows-latest"]
     runs-on: ${{ matrix.os }}
     steps:
@@ -23,8 +22,6 @@ jobs:
           git config --global user.name GitSavvy
           git config --global user.email gitsavvy@gitsavvy.com
       - uses: SublimeText/UnitTesting/actions/setup@v1
-        with:
-          sublime-text-version: ${{ matrix.st-version }}
       - uses: SublimeText/UnitTesting/actions/run-tests@v1
 
   run-syntax-tests:
