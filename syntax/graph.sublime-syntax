@@ -69,10 +69,12 @@ contexts:
       scope: constant.numeric.graph.commit-hash.git-savvy
 
   decoration:
-    - match: \(
+    - match: \((?=.*\))
       comment: branch-name
       scope: punctuation.expression.begin.git-savvy
       push:
+        - match: (?=[^)]*\w \w)
+          pop: true
         - meta_scope: meta.graph.branch.git-savvy
         - match: \)
           scope: punctuation.expression.end.git-savvy
