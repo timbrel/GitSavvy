@@ -15,6 +15,12 @@
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.graph.graph-line.head.git-savvy
 #          ^^^^ constant.other.git.head
 #        ^^^^^^^^ - meta.graph.message
+* 7b3c5089 (Really sorry, I didn't not.. ​ Dec 9 2014, calculuswhiz
+#          ^^^^^^^^^^^^^^ - meta.graph.branch constant.other.git.branch
+#                                                 ^^^^^^^^^^^^ meta.git-savvy.grph.info
+* 7b3c5089 (Really sorry) I didn't not.. ​ Dec 9 2014, calculuswhiz
+#          ^^^^^^^^^^^^^^ - meta.graph.branch constant.other.git.branch
+#                                                 ^^^^^^^^^^^^ meta.git-savvy.grph.info
 
 * 6929182 update (HEAD) make_commit syntax format
 #         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ git-savvy.graph meta.graph.message.git-savvy
