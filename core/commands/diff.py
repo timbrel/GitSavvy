@@ -859,8 +859,13 @@ def recount_lines(hunk):
 def __recount_lines(hunk_lines, a_start, b_start):
     # type: (Iterable[HunkLine], int, int) -> Iterator[HunkLineWithLineNumbers]
     it = iter(hunk_lines)
-    line = next(it)
-    yield line, LineId(a_start, b_start)
+    try:
+        line = next(it)
+    except StopIteration:
+        return
+    else:
+        yield line, LineId(a_start, b_start)
+
     for line in it:
         if line.is_context():
             a_start += 1

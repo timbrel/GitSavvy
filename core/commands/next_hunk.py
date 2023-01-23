@@ -86,16 +86,20 @@ def modifications_per_hunk(view, forwards=True):
     jump_positions = pairwise(chain(
         [cur_pos(view)], all_modifications(view, forwards)
     ))
-    yield next(
-        b for a, b in jump_positions
-        if line_distance(view, a, b) >= LINE_DISTANCE_BETWEEN_EDITS
-    )
-    yield from (
-        b for a, b in takewhile(
-            lambda a_b: line_distance(view, *a_b) < LINE_DISTANCE_BETWEEN_EDITS,
-            jump_positions
+    try:
+        yield next(
+            b for a, b in jump_positions
+            if line_distance(view, a, b) >= LINE_DISTANCE_BETWEEN_EDITS
         )
-    )
+    except StopIteration:
+        return
+    else:
+        yield from (
+            b for a, b in takewhile(
+                lambda a_b: line_distance(view, *a_b) < LINE_DISTANCE_BETWEEN_EDITS,
+                jump_positions
+            )
+        )
 
 
 def all_modifications(view, forwards=True):
