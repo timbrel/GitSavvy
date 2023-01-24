@@ -152,7 +152,9 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
             when(gs_show_commit_info).read_commit(sha1, ...).thenReturn(info)
 
     def create_graph_view_async(self, repo_path, log, wait_for):
-        when(gs_log_graph_refresh).read_graph(...).thenReturn(log.splitlines(keepends=True))
+        when(gs_log_graph_refresh).read_graph(...).thenReturn(
+            line.replace("|", "%00") for line in log.splitlines(keepends=True)
+        )
         # `GitCommand.get_repo_path` "validates" a given repo using
         # `os.path.exists`.
         spy2('os.path.exists')
@@ -177,8 +179,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         })
 
         log_view = yield from self.create_graph_view_async(
-            REPO_PATH, LOG,
-            wait_for='0c2dd28 Guard updating state using a lock'
+            REPO_PATH, LOG, wait_for='57b00b1'
         )
         if show_commit_info_setting:
             yield from self.await_active_panel_to_be('output.show_commit_info')

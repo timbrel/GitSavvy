@@ -8,6 +8,7 @@ import shlex
 import subprocess
 import time
 import threading
+from typing import NamedTuple
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -279,7 +280,6 @@ FALLBACK_DATE_FORMAT = 'format:%Y-%m-%d %H:%M'
 
 MYPY = False
 if MYPY:
-    from typing import NamedTuple
     Ins = NamedTuple('Ins', [('idx', int), ('line', str)])
     Del = NamedTuple('Del', [('start', int), ('end', int)])
     Replace = NamedTuple('Replace', [('start', int), ('end', int), ('text', List[str])])
@@ -499,6 +499,13 @@ else:
                 return val
 
 
+class GraphLine(NamedTuple):
+    hash: str
+    decoration: str
+    subject: str
+    info: str
+
+
 def try_kill_proc(proc):
     if proc:
         utils.kill_proc(proc)
@@ -634,14 +641,6 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             navigate_after_draw
         )
 
-    def format_line(self, line):
-        return re.sub(
-            r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
-            r'\1' + COMMIT_NODE_CHAR,
-            line,
-            flags=re.MULTILINE
-        )
-
     def run_impl(self, initial_draw, prelude_text, should_abort, navigate_after_draw=False):
         # type: (bool, str, ShouldAbort, bool) -> None
         try:
@@ -670,9 +669,36 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                     return fn(*args, **kwargs)
             return decorated
 
+        def split_up_line(line):
+            # type: (str) -> Union[str, GraphLine]
+            try:
+                return GraphLine(*line.split("%00"))
+            except TypeError:
+                return line
+
+        def trunc(text, width=82):
+            # type: (str, int) -> str
+            return f"{text[:width - 2]}.." if len(text) > width else f"{text:{width}}"
+
+        def format_line(line):
+            # type: (Union[str, GraphLine]) -> str
+            if isinstance(line, str):
+                return line
+
+            hash, decoration, subject, info = line
+            hash = hash.replace("*", COMMIT_NODE_CHAR, 1)
+            if decoration:
+                left = f"{hash} ({decoration}) {subject}"
+            else:
+                left = f"{hash} {subject}"
+            return f"{trunc(left)} \u200b {info}"
+
         def reader():
             next_graph_splitted = chain(
-                map(self.format_line, self.read_graph(got_proc=remember_proc)),
+                map(
+                    format_line,
+                    map(split_up_line, self.read_graph(got_proc=remember_proc))
+                ),
                 ['\n']
             )
             tokens = normalize_tokens(simplify(
@@ -861,7 +887,11 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             '--graph',
             '--decorate',  # set explicitly for "decorate-refs-exclude" to work
             '--date={}'.format(date_format),
-            '--format=%h%d %<|(82,trunc)%s \u200B %ad, %an',
+            '--format={}'.format(
+                "%00".join(
+                    ("%h", "%D", "%s", "%ad, %an")
+                )
+            ),
             # Git can only follow exactly one path.  Luckily, this can
             # be a file or a directory.
             '--follow' if len(paths) == 1 and follow and apply_filters else None,
