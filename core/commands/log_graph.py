@@ -558,6 +558,7 @@ class PaintingStateMachine:
 caret_styles = {}  # type: Dict[sublime.ViewId, str]
 overwrite_statuses = {}  # type: Dict[sublime.ViewId, bool]
 LEFT_COLUMN_WIDTH = 82
+GRAPH_HEIGHT = 5000
 
 
 def set_caret_style(view, caret_style="smooth"):
@@ -706,7 +707,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             you dynamically filter the graph or change which branches it shows, draw
             as many lines as before (`default_number_of_commits_to_show`).
             """
-            FOLLOW_UP = 1000
+            FOLLOW_UP = GRAPH_HEIGHT
             current_number_of_commits = (
                 self.view.rowcol(self.view.size())[0]
                 - prelude_text.count("\n")
@@ -1696,7 +1697,19 @@ def set_symbol_to_follow(view):
     # type: (sublime.View) -> None
     symbol = extract_symbol_to_follow(view)
     if symbol:
-        view.settings().set('git_savvy.log_graph_view.follow', symbol)
+        previous_value = view.settings().get('git_savvy.log_graph_view.follow')
+        if previous_value != symbol:
+            view.settings().set('git_savvy.log_graph_view.follow', symbol)
+            try:
+                cursor = [s.b for s in view.sel()][-1]
+            except IndexError:
+                return
+            continuation_line = view.find("...\n", cursor, sublime.LITERAL)
+            if continuation_line:
+                max_row, _ = view.rowcol(continuation_line.a)
+                cur_row, _ = view.rowcol(cursor)
+                if not (GRAPH_HEIGHT * 0.5 < max_row - cur_row < GRAPH_HEIGHT * 2):
+                    view.run_command("gs_log_graph_refresh")
 
 
 def extract_symbol_to_follow(view):
