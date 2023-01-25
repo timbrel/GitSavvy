@@ -559,6 +559,7 @@ caret_styles = {}  # type: Dict[sublime.ViewId, str]
 overwrite_statuses = {}  # type: Dict[sublime.ViewId, bool]
 LEFT_COLUMN_WIDTH = 82
 GRAPH_HEIGHT = 5000
+SHOW_ALL_DECORATED_COMMITS = False
 
 
 def set_caret_style(view, caret_style="smooth"):
@@ -744,10 +745,23 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 else:
                     if idx < stop_after_idx:
                         yield line
+                    elif SHOW_ALL_DECORATED_COMMITS:
+                        if not isinstance(line, str) and line.decoration:
+                            yield "...\n"
+                            yield line
                     else:
                         try_kill_proc(current_proc)
                         yield "..."
                         break
+
+            if SHOW_ALL_DECORATED_COMMITS:
+                try:
+                    line
+                except NameError:  # `lines` was empty
+                    pass
+                else:
+                    if isinstance(line, str) or not line.decoration:
+                        yield "...\n"
 
         def trunc(text, width):
             # type: (str, int) -> str
