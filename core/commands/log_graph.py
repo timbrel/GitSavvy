@@ -870,7 +870,10 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             '--all' if all_branches else None,
         ]
 
-        if not paths and settings.get('git_savvy.log_graph_view.decoration') == 'sparse':
+        if (
+            (not paths or not apply_filters)
+            and settings.get('git_savvy.log_graph_view.decoration') == 'sparse'
+        ):
             args += ['--simplify-by-decoration', '--sparse']
 
         branches = settings.get("git_savvy.log_graph_view.branches")
