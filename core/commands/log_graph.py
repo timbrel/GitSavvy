@@ -681,27 +681,42 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             # type: (str, int) -> str
             return f"{text[:width - 2]}.." if len(text) > width else f"{text:{width}}"
 
+        ASCII_ART_LENGHT_LIMIT = 48
+        SHORTENED_ASCII_ART = ".. / \n"
+
         def format_line(line):
             # type: (Union[str, GraphLine]) -> str
             if isinstance(line, str):
+                if len(line) > ASCII_ART_LENGHT_LIMIT:
+                    return SHORTENED_ASCII_ART
                 return line
 
             hash, decoration, subject, info = line
             hash = hash.replace("*", COMMIT_NODE_CHAR, 1)
+            if len(hash) > ASCII_ART_LENGHT_LIMIT:
+                commit_hash = hash.rsplit(" ", 1)[1]
+                hash = f".. {COMMIT_NODE_CHAR} {commit_hash}"
             if decoration:
                 left = f"{hash} ({decoration})"
             else:
                 left = f"{hash}"
             return f"{left} {trunc(subject, max(2, LEFT_COLUMN_WIDTH - len(left)))} \u200b {info}"
 
+        def filter_consecutive_continuation_lines(lines):
+            # type: (Iterator[str]) -> Iterator[str]
+            for left, right in pairwise(chain([""], lines)):
+                if right == SHORTENED_ASCII_ART and left == right:
+                    continue
+                yield right
+
         def reader():
-            next_graph_splitted = chain(
+            next_graph_splitted = filter_consecutive_continuation_lines(chain(
                 map(
                     format_line,
                     map(split_up_line, self.read_graph(got_proc=remember_proc))
                 ),
                 ['\n']
-            )
+            ))
             tokens = normalize_tokens(simplify(
                 diff(current_graph_splitted, next_graph_splitted),
                 max_size=100
