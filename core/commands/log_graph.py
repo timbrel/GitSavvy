@@ -557,6 +557,7 @@ class PaintingStateMachine:
 
 caret_styles = {}  # type: Dict[sublime.ViewId, str]
 overwrite_statuses = {}  # type: Dict[sublime.ViewId, bool]
+LEFT_COLUMN_WIDTH = 82
 
 
 def set_caret_style(view, caret_style="smooth"):
@@ -676,7 +677,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             except TypeError:
                 return line
 
-        def trunc(text, width=82):
+        def trunc(text, width):
             # type: (str, int) -> str
             return f"{text[:width - 2]}.." if len(text) > width else f"{text:{width}}"
 
@@ -688,10 +689,10 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             hash, decoration, subject, info = line
             hash = hash.replace("*", COMMIT_NODE_CHAR, 1)
             if decoration:
-                left = f"{hash} ({decoration}) {subject}"
+                left = f"{hash} ({decoration})"
             else:
-                left = f"{hash} {subject}"
-            return f"{trunc(left)} \u200b {info}"
+                left = f"{hash}"
+            return f"{left} {trunc(subject, max(2, LEFT_COLUMN_WIDTH - len(left)))} \u200b {info}"
 
         def reader():
             next_graph_splitted = chain(
