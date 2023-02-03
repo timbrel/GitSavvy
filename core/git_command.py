@@ -7,7 +7,6 @@ Define a base command class that:
 """
 
 from collections import deque, ChainMap
-import io
 from itertools import chain, repeat
 from functools import lru_cache, partial
 import locale
@@ -31,7 +30,7 @@ from GitSavvy.core.utils import kill_proc, paths_upwards, resolve_path
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Deque, Dict, Iterator, List, Optional, Sequence, Tuple, Union
+    from typing import Callable, Deque, Dict, IO, Iterator, List, Optional, Sequence, Tuple, Union
 
 
 #: A mapping from a git binary to its version
@@ -88,18 +87,20 @@ class Err(bytes): pass  # noqa: E701
 
 
 def read_linewise(fh, kont):
-    # type: (io.BufferedReader, Callable[[bytes], None]) -> None
+    # type: (IO[bytes], Callable[[bytes], None]) -> None
     for line in iter(fh.readline, b''):
         kont(line)
 
 
 def stream_stdout_and_err(proc, timeout):
-    # type: (subprocess.Popen, Optional[float]) -> Iterator[bytes]
+    # type: (subprocess.Popen[bytes], Optional[float]) -> Iterator[bytes]
     if timeout:
         start_time = time.perf_counter()
 
     container = deque()  # type: Deque[bytes]
     append = container.append
+    assert proc.stdout
+    assert proc.stderr
     out_f = run_as_future(read_linewise, proc.stdout, lambda line: append(Out(line)))
     err_f = run_as_future(read_linewise, proc.stderr, lambda line: append(Err(line)))
     delay = chain([1, 2, 4, 8, 15, 30], repeat(50))
