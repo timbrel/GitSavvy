@@ -782,6 +782,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                         view.show(view.sel(), True)
             reset_overwrite_status(view)
             reset_caret_style(view)
+            enqueue_on_worker(view.clear_undo_stack)
 
         def apply_token(view, token, offset):
             # type: (sublime.View, Replace, int) -> sublime.Region
