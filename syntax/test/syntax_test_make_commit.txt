@@ -16,6 +16,9 @@ This is for @aziz and close #76 aziz/git#123 aziz/good
 #                              ^ - meta.git-savvy.issue-reference
 #                               ^^^^^^^^^^^^ constant.other.issue-ref.git-savvy.make-commit
 #                               ^^^^^^^^^^^^ meta.git-savvy.issue-reference
+Closes code-spell/mode-sell#76
+#      ^^^^^^^^^^^^^^^^^^^^^^^ constant.other.issue-ref.git-savvy.make-commit
+#      ^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.issue-reference
 User @bett-miller has a proper username.
 #     ^^^^^^^^^^^ constant.other.github-username.git-savvy.make-commit
 @betty can be referenced on the first column!  Yeah!

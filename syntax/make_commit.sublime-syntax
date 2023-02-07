@@ -19,7 +19,7 @@ contexts:
       captures:
         1: constant.other.github-username.git-savvy.make-commit
 
-    - match: '(\w+/\w+)?#[0-9]+'
+    - match: '([\w-]+/[\w-]+)?#[0-9]+'
       comment: issue
       scope: constant.other.issue-ref.git-savvy.make-commit meta.git-savvy.issue-reference
 
