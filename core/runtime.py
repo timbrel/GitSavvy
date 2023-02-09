@@ -14,13 +14,20 @@ import sublime_plugin
 
 MYPY = False
 if MYPY:
-    from typing import Any, Callable, Dict, Iterator, Literal, Optional, Tuple, TypeVar
-    from typing_extensions import ParamSpec
+    from typing import (
+        Any, Callable, Dict, Iterator, Literal, Optional, Tuple, TypeVar, Union, overload)
+    from typing_extensions import Concatenate as Con, ParamSpec
     P = ParamSpec('P')
     T = TypeVar('T')
     F = TypeVar('F', bound=Callable[..., Any])
     Callback = Tuple[Callable, Tuple[Any, ...], Dict[str, Any]]
     ReturnValue = Any
+
+    View = sublime.View
+    Edit = sublime.Edit
+
+else:
+    overload = lambda x: x
 
 
 UI_THREAD_NAME = None  # type: Optional[str]
@@ -169,8 +176,20 @@ COMMANDS = {}  # type: Dict[str, Callback]
 RESULTS = {}  # type: Dict[str, ReturnValue]
 
 
+@overload
 def run_as_text_command(fn, view, *args, **kwargs):
-    # type: (Callable[..., T], sublime.View, Any, Any) -> Optional[T]
+    # type: (Callable[Con[View, P], T], View, P.args, P.kwargs) -> Optional[T]
+    ...
+
+
+@overload
+def run_as_text_command(fn, view, *args, **kwargs):  # noqa: F811
+    # type: (Callable[Con[View, Edit, P], T], View, P.args, P.kwargs) -> Optional[T]
+    ...
+
+
+def run_as_text_command(fn, view, *args, **kwargs):  # noqa: F811
+    # type: (Union[Callable[Con[View, P], T], Callable[Con[View, Edit, P], T]], View, P.args, P.kwargs) -> Optional[T]
     token = uuid.uuid4().hex
     with lock:
         COMMANDS[token] = (fn, (view, ) + args, kwargs)
@@ -184,13 +203,25 @@ def run_as_text_command(fn, view, *args, **kwargs):
     return rv
 
 
+@overload
 def text_command(fn):
-    # type: (F) -> F
+    # type: (Callable[Con[View, Edit, P], T]) -> Callable[Con[View, P], Optional[T]]
+    ...
+
+
+@overload
+def text_command(fn):  # noqa: F811
+    # type: (Callable[Con[View, P], T]) -> Callable[Con[View, P], Optional[T]]
+    ...
+
+
+def text_command(fn):  # noqa: F811
+    # type: (Union[Callable[Con[View, P], T], Callable[Con[View, Edit, P], T]]) -> Callable[Con[View, P], Optional[T]]
     @wraps(fn)
     def decorated(view, *args, **kwargs):
-        # type: (sublime.View, Any, Any) -> Optional[T]
+        # type: (sublime.View, P.args, P.kwargs) -> Optional[T]
         return run_as_text_command(fn, view, *args, **kwargs)
-    return decorated  # type: ignore[return-value]
+    return decorated
 
 
 @lru_cache()
