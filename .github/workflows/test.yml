@@ -6,9 +6,6 @@ on:
       - master
   pull_request:
 
-env:
-  TRAVIS_OS_NAME: linux
-
 jobs:
   run-tests:
     strategy:

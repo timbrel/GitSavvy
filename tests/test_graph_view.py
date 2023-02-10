@@ -17,8 +17,8 @@ from GitSavvy.core.git_mixins.status import WorkingDirState
 from GitSavvy.core.settings import GitSavvySettings
 
 
-RUNNING_ON_LINUX_TRAVIS = os.environ.get('TRAVIS_OS_NAME') == 'linux'
-expectedFailureOnLinuxTravis = expectedFailure if RUNNING_ON_LINUX_TRAVIS else lambda f: f
+RUNNING_ON_LINUX = os.environ.get('RUNNER_OS') == 'Linux'
+expectedFailureOnGithubLinux = expectedFailure if RUNNING_ON_LINUX else lambda f: f
 
 
 if os.name == 'nt':
@@ -320,7 +320,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
         self.assertTrue(actual)
 
-    @expectedFailureOnLinuxTravis
+    @expectedFailureOnGithubLinux
     def test_auto_close_panel_if_user_moves_away(self):
         view = self.create_new_view(self.window)
         yield from self.setup_graph_view_async()
@@ -329,7 +329,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
         self.assertTrue(self.window.active_panel() is None)
 
-    @expectedFailureOnLinuxTravis
+    @expectedFailureOnGithubLinux
     def test_auto_show_panel_if_log_view_gains_focus_again(self):
         view = self.create_new_view(self.window)
         log_view = yield from self.setup_graph_view_async()
@@ -339,7 +339,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
         self.assertEqual(self.window.active_panel(), 'output.show_commit_info')
 
-    @expectedFailureOnLinuxTravis
+    @expectedFailureOnGithubLinux
     def test_do_not_hide_panel_if_it_gains_focus(self):
         yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
