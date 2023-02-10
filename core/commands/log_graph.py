@@ -1112,8 +1112,12 @@ def follow_first_parent(dot, forward=True):
     # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
     """Follow left (first-parent) dot to dot omitting the path chars in between."""
     while True:
-        dot = next(dots_after_dot(dot, forward))
-        yield dot
+        try:
+            dot = next(dots_after_dot(dot, forward))
+        except StopIteration:
+            return
+        else:
+            yield dot
 
 
 def follow_dots(dot, forward=True):

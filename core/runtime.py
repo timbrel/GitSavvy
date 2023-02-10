@@ -38,7 +38,7 @@ def user_friendly_traceback(*exceptions):
     try:
         yield
     except exceptions as e:
-        tb = sys.last_traceback
+        _, _, tb = sys.exc_info()
         last_frame = traceback.extract_tb(tb)[-1]
         filename, lineno = last_frame[0], last_frame[1]
         filename = filename.split("{0}{1}{0}".format(os.sep, "GitSavvy"))[-1]

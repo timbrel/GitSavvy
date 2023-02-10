@@ -3,7 +3,7 @@ import re
 
 import sublime
 
-from unittesting import expectedFailure, DeferrableTestCase, AWAIT_WORKER
+from unittesting import DeferrableTestCase, AWAIT_WORKER
 from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
@@ -12,8 +12,6 @@ from GitSavvy.core.commands.diff import gs_diff, gs_diff_refresh
 
 
 THIS_DIRNAME = os.path.dirname(os.path.realpath(__file__))
-RUNNING_ON_LINUX_TRAVIS = os.environ.get('TRAVIS_OS_NAME') == 'linux'
-expectedFailureOnLinuxTravis = expectedFailure if RUNNING_ON_LINUX_TRAVIS else lambda f: f
 
 
 def fixture(name):
@@ -609,7 +607,6 @@ class TestDiffView(DeferrableTestCase):
         actual = diff_view.settings().get('git_savvy.repo_path')
         self.assertEqual(actual, REPO_PATH)
 
-    @expectedFailureOnLinuxTravis
     def test_extract_clickable_lines(self):
         REPO_PATH = '/not/there'
         DIFF = fixture('diff_1.txt')
@@ -635,7 +632,6 @@ class TestDiffView(DeferrableTestCase):
 
         self.assertEqual(actual, expected)
 
-    @expectedFailureOnLinuxTravis
     def test_result_file_regex(self):
         REPO_PATH = '/not/there'
         DIFF = fixture('diff_1.txt')

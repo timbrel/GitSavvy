@@ -402,7 +402,12 @@ class Cache(OrderedDict):
 
     def __getitem__(self, key):
         value = super().__getitem__(key)
-        self.move_to_end(key)
+        # py>3.8 is optimized such that `pop` and `popitem`
+        # call `__getitem__` but `move_to_end` already throws.
+        try:
+            self.move_to_end(key)
+        except KeyError:
+            pass
         return value
 
     def __setitem__(self, key, value):

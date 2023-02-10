@@ -1,6 +1,3 @@
-import sys
-from unittest.case import _ExpectedFailure, _UnexpectedSuccess
-
 from unittesting import DeferrableTestCase
 from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.core.fns import accumulate, unzip
@@ -271,9 +268,9 @@ class TestDiffPatchGeneration(DeferrableTestCase):
         expected = header + patch
         if _.startswith("_"):
             if expected == actual:
-                raise _UnexpectedSuccess
+                raise AssertionError("unexpected success")
             else:
-                raise _ExpectedFailure(sys.exc_info())
+                return  # Ok, expected failure
 
         self.assertEqual(expected, actual)
 

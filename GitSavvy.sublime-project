@@ -26,6 +26,7 @@
 		"GitSavvy":
 		{
 		},
+		"SublimeLinter.linters.mypy.excludes": ["*/tests/*"],
 		"rulers":
 		[
 			100,
