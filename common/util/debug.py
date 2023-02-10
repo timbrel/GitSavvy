@@ -13,7 +13,7 @@ if MYPY:
 
 # Preserve state of `enabled` during hot-reloads
 try:
-    enabled  # type: ignore[has-type]
+    enabled  # type: ignore[used-before-def]
 except NameError:
     enabled = False
 
