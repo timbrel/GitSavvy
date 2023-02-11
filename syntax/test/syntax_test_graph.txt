@@ -15,6 +15,12 @@
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.graph.graph-line.head.git-savvy
 #          ^^^^ constant.other.git.head
 #        ^^^^^^^^ - meta.graph.message
+* 7b3c5089 (Really sorry, I didn't not.. ​ Dec 9 2014, calculuswhiz
+#          ^^^^^^^^^^^^^^ - meta.graph.branch constant.other.git.branch
+#                                                 ^^^^^^^^^^^^ meta.git-savvy.grph.info
+* 7b3c5089 (Really sorry) I didn't not.. ​ Dec 9 2014, calculuswhiz
+#          ^^^^^^^^^^^^^^ - meta.graph.branch constant.other.git.branch
+#                                                 ^^^^^^^^^^^^ meta.git-savvy.grph.info
 
 * 6929182 update (HEAD) make_commit syntax format
 #         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ git-savvy.graph meta.graph.message.git-savvy
@@ -38,6 +44,9 @@
 #                                                                                ^ meta.git-savvy.grph.info punctuation.separator.git-savvy
 #                                                                                  ^^^^^^^^^ meta.git-savvy.grph.info storage.type.time.git-savvy
 #                                                                                             ^^^^^^^^^^ entity.name.tag.author.git-savvy
+● 995f6170c7 gh-88863: Clear asyncio.open_connect.. | Nov 23 2022, Dong Uk, Kang
+#                                                     ^^^^^^^^^^^ meta.git-savvy.grph.info storage.type.time.git-savvy
+#                                                                  ^^^^^^^^^^^^^^ entity.name.tag.author.git-savvy
 
 | ● |   ea2fe1c Merge branches 'graph-f-help' and 'iterate-commit-view' into.. | Fri 17:06, herr kaste
 #                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.grph.info
@@ -50,7 +59,13 @@
 # <- meta.graph.branch-art punctuation.other.git-savvy.graph.graph-line
 #^^^^^ meta.graph.branch-art punctuation.other.git-savvy.graph.graph-line
 
-| | ● | ffc45b7 (origin/iterate-commit-view) Adjust commit message help text     | Thu 21:54, herr kaste
+| | ● | ffc45b7 (origin/#125-iterate-commit-view) Adjust commit message help text     | Thu 21:54, herr kaste
+#                       ^^^^ meta.git-savvy.issue-reference
+#                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant.other.git.branch.git-savvy gitsavvy.gotosymbol
+| | ● | ffc45b7 (origin/125-iterate-commit-view) Adjust commit message help text     | Thu 21:54, herr kaste
+#                       ^^^ meta.git-savvy.issue-reference
+| | ● | ffc45b7 (125-iterate-commit-view) Adjust commit message help text     | Thu 21:54, herr kaste
+#                ^^^ meta.git-savvy.issue-reference
 * c39b5de (divmain/master) Fix: plugin_host would crash when navigating past end of graph view
 * 1bca3e0 Fix: When amending, prepopulated commit message would include two extra spaces.
 * 76ceacf Fix: When amending with show_commit_diff enabled, unstaged changes were displayed.

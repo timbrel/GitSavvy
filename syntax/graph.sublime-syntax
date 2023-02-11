@@ -69,10 +69,12 @@ contexts:
       scope: constant.numeric.graph.commit-hash.git-savvy
 
   decoration:
-    - match: \(
+    - match: \((?=.*\))
       comment: branch-name
       scope: punctuation.expression.begin.git-savvy
       push:
+        - match: (?=[^)]*\w \w)
+          pop: true
         - meta_scope: meta.graph.branch.git-savvy
         - match: \)
           scope: punctuation.expression.end.git-savvy
@@ -89,8 +91,11 @@ contexts:
           scope: punctuation.separator.key-value.branch.git-savvy
         - match: HEAD
           scope: constant.other.git.head.git-savvy gitsavvy.gotosymbol
-        - match: ([^ ,)]+)
+        - match: (\d+)?([^ ,#/)]*)?/?(#?\d+)?([^ ,)]+)
           scope: constant.other.git.branch.git-savvy gitsavvy.gotosymbol
+          captures:
+            1: meta.git-savvy.issue-reference
+            3: meta.git-savvy.issue-reference
 
   message:
     - meta_scope: meta.graph.message.git-savvy
@@ -144,14 +149,14 @@ contexts:
       scope: punctuation.separator.key-value.git-savvy
 
 
-    - match: '(?=\s*(\||\x{200b}) ([^|]+), ([^|]+)$\n?)'
+    - match: '(?=\s*(\||\x{200b}) ([^,]+), ([^|]+)$\n?)'
       set: date-author-info
 
     - match: $
       pop: true
 
   date-author-info:
-    - match: '\s*(\||\x{200b}) ([^|]+), ([^|]+)$\n?'
+    - match: '\s*(\||\x{200b}) ([^,]+), ([^|]+)$\n?'
       scope: meta.git-savvy.grph.info
       captures:
         1: punctuation.separator.git-savvy
