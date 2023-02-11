@@ -71,6 +71,7 @@ contexts:
           scope: comment.git-savvy.summary-header.head-summary
           captures:
             1: constant.other.git-savvy.sha1
+            2: constant.other.git.branch.git-savvy
 
         - match: ^\s{4,11}(?:([0-9a-f]{7,40}) .+)?
           comment: stand-alone commit line
