@@ -1,39 +1,36 @@
 import re
-from collections import OrderedDict
 
-from GitSavvy.core import store
+from GitSavvy.core.git_command import BranchesMixin, _GitCommand
 from GitSavvy.core.fns import filter_
+from GitSavvy.core import store
 
 
 MYPY = False
 if MYPY:
-    from GitSavvy.core.git_command import (
-        BranchesMixin,
-        _GitCommand,
-    )
+    from typing import Dict
     name = str
     url = str
 
-    class mixin_base(
-        BranchesMixin,
-        _GitCommand,
-    ):
-        pass
 
-else:
-    mixin_base = object
-
-
-class RemotesMixin(mixin_base):
+class RemotesMixin(BranchesMixin, _GitCommand):
 
     def get_remotes(self):
-        # type: () -> OrderedDict[name, url]
+        # type: () -> Dict[name, url]
         """
         Get a list of remotes, provided as tuples of remote name and remote
         url/resource.
         """
-        entries = self.git("remote", "-v").splitlines()
-        rv = OrderedDict(entry.split()[:2] for entry in entries)
+        rv = {
+            key[7:-4]: url
+            for key, url in (
+                entry.split(maxsplit=1)
+                for entry in self.git(
+                    "config",
+                    "--get-regexp",
+                    r"^remote\..*\.url",
+                    throw_on_error=False).strip().splitlines()
+            )
+        }
         store.update_state(self.repo_path, {
             "remotes": rv,
         })
