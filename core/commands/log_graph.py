@@ -1,6 +1,6 @@
 from collections import deque
 from functools import lru_cache, partial
-from itertools import chain, count
+from itertools import chain, count, islice
 import os
 from queue import Empty
 import re
@@ -677,6 +677,77 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             except TypeError:
                 return line
 
+        def line_matches(needle, line):
+            # type: (str, Union[str, GraphLine]) -> bool
+            if isinstance(line, str):
+                return False
+            if needle == "HEAD":
+                return (
+                    needle == line.decoration
+                    or line.decoration.startswith(f"{needle} ->")
+                )
+            return (
+                needle in line.hash
+                or needle == line.decoration
+                or f" {needle}" in line.decoration
+                or f"{needle}," in line.decoration
+            )
+
+        def process_graph(lines):
+            # type: (Iterable[Union[str, GraphLine]]) -> Iterator[Union[str, GraphLine]]
+            """
+            Generally limit number of commits we show.
+
+            Typically `follow` is set and where the cursor either lands or already is.
+            Draw every line until we find the symbol we "follow", and then some more,
+            defined in `FOLLOW_UP`.
+
+            If `follow` cannot be found in the graph, that happens rather often, e.g. when
+            you dynamically filter the graph or change which branches it shows, draw
+            as many lines as before (`default_number_of_commits_to_show`).
+            """
+            FOLLOW_UP = 1000
+            current_number_of_commits = (
+                self.view.rowcol(self.view.size())[0]
+                - prelude_text.count("\n")
+                - 1  # trailing newline
+            )
+            default_number_of_commits_to_show = max(FOLLOW_UP, current_number_of_commits)
+            follow = self.view.settings().get('git_savvy.log_graph_view.follow')
+            if not follow:
+                return islice(lines, default_number_of_commits_to_show)
+
+            stop_after_idx = None  # type: Optional[int]
+            """The `Optional` in `stop_after_idx` holds our state-machine.
+            `None` denotes we're still searching for `follow`, `not None`
+            that we have found it.  The `int` type then tells us at which line
+            we stop the graph.
+            """
+            queued_lines = []  # type: List[Union[str, GraphLine]]
+            """Holds all lines we cannot immediately draw because they're after
+            `default_number_of_commits_to_show`.  We need to remember them
+            in case we still find `follow`.
+            """
+
+            for idx, line in enumerate(lines):
+                if stop_after_idx is None:
+                    if line_matches(follow, line):
+                        stop_after_idx = idx + FOLLOW_UP
+                        yield from queued_lines
+                        yield line
+                    else:
+                        if idx < default_number_of_commits_to_show:
+                            yield line
+                        else:
+                            queued_lines.append(line)
+                else:
+                    if idx < stop_after_idx:
+                        yield line
+                    else:
+                        try_kill_proc(current_proc)
+                        yield "..."
+                        break
+
         def trunc(text, width):
             # type: (str, int) -> str
             return f"{text[:width - 2]}.." if len(text) > width else f"{text:{width}}"
@@ -713,7 +784,9 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             next_graph_splitted = filter_consecutive_continuation_lines(chain(
                 map(
                     format_line,
-                    map(split_up_line, self.read_graph(got_proc=remember_proc))
+                    process_graph(
+                        map(split_up_line, self.read_graph(got_proc=remember_proc))
+                    )
                 ),
                 ['\n']
             ))
