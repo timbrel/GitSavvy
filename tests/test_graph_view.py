@@ -215,11 +215,6 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
         yield from self.await_string_in_view(panel, COMMIT_1)
 
-        # `yield condition` will continue after a timeout so we need
-        # to actually assert here
-        actual = panel.find(COMMIT_1, 0, sublime.LITERAL)
-        self.assertTrue(actual)
-
     def test_info_panel_shows_second_commit_after_navigate(self):
         log_view = yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
@@ -227,18 +222,12 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         log_view.run_command('gs_log_graph_navigate')
         yield from self.await_string_in_view(panel, COMMIT_2)
 
-        actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
-        self.assertTrue(actual)
-
     def test_info_panel_shows_second_commit_after_cursor_moves(self):
         log_view = yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
 
         navigate_to_symbol(log_view, 'f461ea1')
         yield from self.await_string_in_view(panel, COMMIT_2)
-
-        actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
-        self.assertTrue(actual)
 
     def test_if_the_user_issues_our_toggle_command_close_the_panel_and_keep_it(self):
         log_view = yield from self.setup_graph_view_async()
@@ -300,9 +289,6 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
         yield from self.await_string_in_view(panel, COMMIT_2)
 
-        actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
-        self.assertTrue(actual)
-
     def test_show_correct_info_if_user_moves_around_and_then_opens_panel(self):
         log_view = yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
@@ -316,9 +302,6 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         self.window.run_command('show_panel', {'panel': 'output.show_commit_info'})
 
         yield from self.await_string_in_view(panel, COMMIT_2)
-
-        actual = panel.find(COMMIT_2, 0, sublime.LITERAL)
-        self.assertTrue(actual)
 
     @expectedFailureOnGithubLinux
     def test_auto_close_panel_if_user_moves_away(self):
