@@ -1,6 +1,6 @@
 from collections import deque
 from functools import lru_cache, partial
-from itertools import chain, count
+from itertools import chain, count, islice
 import os
 from queue import Empty
 import re
@@ -8,6 +8,7 @@ import shlex
 import subprocess
 import time
 import threading
+from typing import NamedTuple
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -279,7 +280,6 @@ FALLBACK_DATE_FORMAT = 'format:%Y-%m-%d %H:%M'
 
 MYPY = False
 if MYPY:
-    from typing import NamedTuple
     Ins = NamedTuple('Ins', [('idx', int), ('line', str)])
     Del = NamedTuple('Del', [('start', int), ('end', int)])
     Replace = NamedTuple('Replace', [('start', int), ('end', int), ('text', List[str])])
@@ -499,6 +499,13 @@ else:
                 return val
 
 
+class GraphLine(NamedTuple):
+    hash: str
+    decoration: str
+    subject: str
+    info: str
+
+
 def try_kill_proc(proc):
     if proc:
         utils.kill_proc(proc)
@@ -550,6 +557,9 @@ class PaintingStateMachine:
 
 caret_styles = {}  # type: Dict[sublime.ViewId, str]
 overwrite_statuses = {}  # type: Dict[sublime.ViewId, bool]
+LEFT_COLUMN_WIDTH = 82
+GRAPH_HEIGHT = 5000
+SHOW_ALL_DECORATED_COMMITS = False
 
 
 def set_caret_style(view, caret_style="smooth"):
@@ -634,14 +644,6 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             navigate_after_draw
         )
 
-    def format_line(self, line):
-        return re.sub(
-            r'(^[{}]*)\*'.format(GRAPH_CHAR_OPTIONS),
-            r'\1' + COMMIT_NODE_CHAR,
-            line,
-            flags=re.MULTILINE
-        )
-
     def run_impl(self, initial_draw, prelude_text, should_abort, navigate_after_draw=False):
         # type: (bool, str, ShouldAbort, bool) -> None
         try:
@@ -670,11 +672,139 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                     return fn(*args, **kwargs)
             return decorated
 
-        def reader():
-            next_graph_splitted = chain(
-                map(self.format_line, self.read_graph(got_proc=remember_proc)),
-                ['\n']
+        def split_up_line(line):
+            # type: (str) -> Union[str, GraphLine]
+            try:
+                return GraphLine(*line.split("%00"))
+            except TypeError:
+                return line
+
+        def line_matches(needle, line):
+            # type: (str, Union[str, GraphLine]) -> bool
+            if isinstance(line, str):
+                return False
+            if needle == "HEAD":
+                return (
+                    needle == line.decoration
+                    or line.decoration.startswith(f"{needle} ->")
+                )
+            return (
+                needle in line.hash
+                or needle == line.decoration
+                or f" {needle}" in line.decoration
+                or f"{needle}," in line.decoration
             )
+
+        def process_graph(lines):
+            # type: (Iterable[Union[str, GraphLine]]) -> Iterator[Union[str, GraphLine]]
+            """
+            Generally limit number of commits we show.
+
+            Typically `follow` is set and where the cursor either lands or already is.
+            Draw every line until we find the symbol we "follow", and then some more,
+            defined in `FOLLOW_UP`.
+
+            If `follow` cannot be found in the graph, that happens rather often, e.g. when
+            you dynamically filter the graph or change which branches it shows, draw
+            as many lines as before (`default_number_of_commits_to_show`).
+            """
+            FOLLOW_UP = GRAPH_HEIGHT
+            current_number_of_commits = (
+                self.view.rowcol(self.view.size())[0]
+                - prelude_text.count("\n")
+                - 1  # trailing newline
+            )
+            default_number_of_commits_to_show = max(FOLLOW_UP, current_number_of_commits)
+            follow = self.view.settings().get('git_savvy.log_graph_view.follow')
+            if not follow:
+                return islice(lines, default_number_of_commits_to_show)
+
+            stop_after_idx = None  # type: Optional[int]
+            """The `Optional` in `stop_after_idx` holds our state-machine.
+            `None` denotes we're still searching for `follow`, `not None`
+            that we have found it.  The `int` type then tells us at which line
+            we stop the graph.
+            """
+            queued_lines = []  # type: List[Union[str, GraphLine]]
+            """Holds all lines we cannot immediately draw because they're after
+            `default_number_of_commits_to_show`.  We need to remember them
+            in case we still find `follow`.
+            """
+
+            for idx, line in enumerate(lines):
+                if stop_after_idx is None:
+                    if line_matches(follow, line):
+                        stop_after_idx = idx + FOLLOW_UP
+                        yield from queued_lines
+                        yield line
+                    else:
+                        if idx < default_number_of_commits_to_show:
+                            yield line
+                        else:
+                            queued_lines.append(line)
+                else:
+                    if idx < stop_after_idx:
+                        yield line
+                    elif SHOW_ALL_DECORATED_COMMITS:
+                        if not isinstance(line, str) and line.decoration:
+                            yield "...\n"
+                            yield line
+                    else:
+                        try_kill_proc(current_proc)
+                        yield "..."
+                        break
+
+            if SHOW_ALL_DECORATED_COMMITS:
+                try:
+                    line
+                except NameError:  # `lines` was empty
+                    pass
+                else:
+                    if isinstance(line, str) or not line.decoration:
+                        yield "...\n"
+
+        def trunc(text, width):
+            # type: (str, int) -> str
+            return f"{text[:width - 2]}.." if len(text) > width else f"{text:{width}}"
+
+        ASCII_ART_LENGHT_LIMIT = 48
+        SHORTENED_ASCII_ART = ".. / \n"
+
+        def format_line(line):
+            # type: (Union[str, GraphLine]) -> str
+            if isinstance(line, str):
+                if len(line) > ASCII_ART_LENGHT_LIMIT:
+                    return SHORTENED_ASCII_ART
+                return line
+
+            hash, decoration, subject, info = line
+            hash = hash.replace("*", COMMIT_NODE_CHAR, 1)
+            if len(hash) > ASCII_ART_LENGHT_LIMIT:
+                commit_hash = hash.rsplit(" ", 1)[1]
+                hash = f".. {COMMIT_NODE_CHAR} {commit_hash}"
+            if decoration:
+                left = f"{hash} ({decoration})"
+            else:
+                left = f"{hash}"
+            return f"{left} {trunc(subject, max(2, LEFT_COLUMN_WIDTH - len(left)))} \u200b {info}"
+
+        def filter_consecutive_continuation_lines(lines):
+            # type: (Iterator[str]) -> Iterator[str]
+            for left, right in pairwise(chain([""], lines)):
+                if right == SHORTENED_ASCII_ART and left == right:
+                    continue
+                yield right
+
+        def reader():
+            next_graph_splitted = filter_consecutive_continuation_lines(chain(
+                map(
+                    format_line,
+                    process_graph(
+                        map(split_up_line, self.read_graph(got_proc=remember_proc))
+                    )
+                ),
+                ['\n']
+            ))
             tokens = normalize_tokens(simplify(
                 diff(current_graph_splitted, next_graph_splitted),
                 max_size=100
@@ -861,7 +991,11 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             '--graph',
             '--decorate',  # set explicitly for "decorate-refs-exclude" to work
             '--date={}'.format(date_format),
-            '--format=%h%d %<|(82,trunc)%s \u200B %ad, %an',
+            '--format={}'.format(
+                "%00".join(
+                    ("%h", "%D", "%s", "%ad, %an")
+                )
+            ),
             # Git can only follow exactly one path.  Luckily, this can
             # be a file or a directory.
             '--follow' if len(paths) == 1 and follow and apply_filters else None,
@@ -871,7 +1005,10 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             '--all' if all_branches else None,
         ]
 
-        if not paths and settings.get('git_savvy.log_graph_view.decoration') == 'sparse':
+        if (
+            (not paths or not apply_filters)
+            and settings.get('git_savvy.log_graph_view.decoration') == 'sparse'
+        ):
             args += ['--simplify-by-decoration', '--sparse']
 
         branches = settings.get("git_savvy.log_graph_view.branches")
@@ -1574,7 +1711,19 @@ def set_symbol_to_follow(view):
     # type: (sublime.View) -> None
     symbol = extract_symbol_to_follow(view)
     if symbol:
-        view.settings().set('git_savvy.log_graph_view.follow', symbol)
+        previous_value = view.settings().get('git_savvy.log_graph_view.follow')
+        if previous_value != symbol:
+            view.settings().set('git_savvy.log_graph_view.follow', symbol)
+            try:
+                cursor = [s.b for s in view.sel()][-1]
+            except IndexError:
+                return
+            continuation_line = view.find("...\n", cursor, sublime.LITERAL)
+            if continuation_line:
+                max_row, _ = view.rowcol(continuation_line.a)
+                cur_row, _ = view.rowcol(cursor)
+                if not (GRAPH_HEIGHT * 0.5 < max_row - cur_row < GRAPH_HEIGHT * 2):
+                    view.run_command("gs_log_graph_refresh")
 
 
 def extract_symbol_to_follow(view):
