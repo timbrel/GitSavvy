@@ -148,7 +148,7 @@ def replace_view_content(view, text, region=None, wrappers=[]):
     If no region is given the whole content will get replaced. Otherwise
     only the selected region.
     """
-    _replace_region(view, text, region, wrappers)  # type: ignore[arg-type]
+    _replace_region(view, text, region, wrappers)
 
 
 @text_command

@@ -14,11 +14,20 @@ import sublime_plugin
 
 MYPY = False
 if MYPY:
-    from typing import Any, Callable, Dict, Iterator, Literal, Optional, Tuple, TypeVar
+    from typing import (
+        Any, Callable, Dict, Iterator, Literal, Optional, Tuple, TypeVar, Union, overload)
+    from typing_extensions import Concatenate as Con, ParamSpec
+    P = ParamSpec('P')
     T = TypeVar('T')
     F = TypeVar('F', bound=Callable[..., Any])
     Callback = Tuple[Callable, Tuple[Any, ...], Dict[str, Any]]
     ReturnValue = Any
+
+    View = sublime.View
+    Edit = sublime.Edit
+
+else:
+    overload = lambda x: x
 
 
 UI_THREAD_NAME = None  # type: Optional[str]
@@ -52,7 +61,7 @@ def it_runs_on_ui():
 
 
 def ensure_on_ui(fn, *args, **kwargs):
-    # type: (Callable, Any, Any) -> None
+    # type: (Callable[P, T], P.args, P.kwargs) -> None
     if it_runs_on_ui():
         fn(*args, **kwargs)
     else:
@@ -72,23 +81,23 @@ def ensure_on_ui(fn, *args, **kwargs):
 
 
 def enqueue_on_ui(fn, *args, **kwargs):
-    # type: (Callable, Any, Any) -> None
+    # type: (Callable[P, T], P.args, P.kwargs) -> None
     sublime.set_timeout(partial(fn, *args, **kwargs))
 
 
 def enqueue_on_worker(fn, *args, **kwargs):
-    # type: (Callable, Any, Any) -> None
+    # type: (Callable[P, T], P.args, P.kwargs) -> None
     fn_ = user_friendly_traceback(RuntimeError)(fn)
     sublime.set_timeout_async(partial(fn_, *args, **kwargs))
 
 
 def enqueue_on_savvy(fn, *args, **kwargs):
-    # type: (Callable, Any, Any) -> None
+    # type: (Callable[P, T], P.args, P.kwargs) -> None
     savvy_executor.submit(fn, *args, **kwargs)
 
 
 def run_on_new_thread(fn, *args, __daemon=None, **kwargs):
-    # type: (Callable, Any, Optional[bool], Any) -> None
+    # type: (Callable[P, T], P.args, Optional[bool], P.kwargs) -> None
     threading.Thread(target=_set_timout(fn), args=args, kwargs=kwargs, daemon=__daemon).start()
 
 
@@ -100,24 +109,29 @@ def _set_timout(fn):
 
 
 def on_worker(fn):
+    # type: (Callable[P, T]) -> Callable[P, None]
     @wraps(fn)
     def wrapped(*a, **kw):
+        # type: (P.args, P.kwargs) -> None
         enqueue_on_worker(fn, *a, **kw)
     return wrapped
 
 
 def on_new_thread(fn):
+    # type: (Callable[P, T]) -> Callable[P, None]
     @wraps(fn)
     def wrapped(*a, **kw):
+        # type: (P.args, P.kwargs) -> None
         run_on_new_thread(fn, *a, **kw)
     return wrapped
 
 
 def run_as_future(fn, *args, **kwargs):
-    # type: (Callable[..., T], object, object) -> Future[T]
+    # type: (Callable[P, T], P.args, P.kwargs) -> Future[T]
     fut = Future()  # type: Future[T]
 
     def task():
+        # type: () -> None
         fut.set_running_or_notify_cancel()
         try:
             rv = fn(*args, **kwargs)
@@ -130,11 +144,13 @@ def run_as_future(fn, *args, **kwargs):
 
 
 def run_or_timeout(fn, timeout):
+    # type: (Callable[P, T], float) -> T
     cond = threading.Condition()
-    result = None
-    exc = None
+    result: T
+    exc: Exception
 
     def program():
+        # type: () -> None
         nonlocal cond, exc, result
         try:
             result = fn()
@@ -149,9 +165,9 @@ def run_or_timeout(fn, timeout):
         if not cond.wait(timeout):
             raise TimeoutError()
 
-    if exc:
+    try:
         raise exc
-    else:
+    except UnboundLocalError:
         return result
 
 
@@ -160,8 +176,20 @@ COMMANDS = {}  # type: Dict[str, Callback]
 RESULTS = {}  # type: Dict[str, ReturnValue]
 
 
+@overload
 def run_as_text_command(fn, view, *args, **kwargs):
-    # type: (Callable[..., T], sublime.View, Any, Any) -> Optional[T]
+    # type: (Callable[Con[View, P], T], View, P.args, P.kwargs) -> Optional[T]
+    ...
+
+
+@overload
+def run_as_text_command(fn, view, *args, **kwargs):  # noqa: F811
+    # type: (Callable[Con[View, Edit, P], T], View, P.args, P.kwargs) -> Optional[T]
+    ...
+
+
+def run_as_text_command(fn, view, *args, **kwargs):  # noqa: F811
+    # type: (Union[Callable[Con[View, P], T], Callable[Con[View, Edit, P], T]], View, P.args, P.kwargs) -> Optional[T]
     token = uuid.uuid4().hex
     with lock:
         COMMANDS[token] = (fn, (view, ) + args, kwargs)
@@ -175,17 +203,30 @@ def run_as_text_command(fn, view, *args, **kwargs):
     return rv
 
 
+@overload
 def text_command(fn):
-    # type: (F) -> F
+    # type: (Callable[Con[View, Edit, P], T]) -> Callable[Con[View, P], Optional[T]]
+    ...
+
+
+@overload
+def text_command(fn):  # noqa: F811
+    # type: (Callable[Con[View, P], T]) -> Callable[Con[View, P], Optional[T]]
+    ...
+
+
+def text_command(fn):  # noqa: F811
+    # type: (Union[Callable[Con[View, P], T], Callable[Con[View, Edit, P], T]]) -> Callable[Con[View, P], Optional[T]]
     @wraps(fn)
     def decorated(view, *args, **kwargs):
-        # type: (sublime.View, Any, Any) -> Optional[T]
+        # type: (sublime.View, P.args, P.kwargs) -> Optional[T]
         return run_as_text_command(fn, view, *args, **kwargs)
-    return decorated  # type: ignore[return-value]
+    return decorated
 
 
 @lru_cache()
 def wants_edit_object(fn):
+    # type: (Callable) -> bool
     sig = inspect.signature(fn)
     return 'edit' in sig.parameters
 
@@ -221,7 +262,7 @@ THROTTLED_LOCK = threading.Lock()
 
 
 def throttled(fn, *args, **kwargs):
-    # type: (...) -> Callable[[], None]
+    # type: (Callable[P, T], P.args, P.kwargs) -> Callable[[], None]
     token = (fn,)
     action = partial(fn, *args, **kwargs)
     with THROTTLED_LOCK:
@@ -240,11 +281,10 @@ AWAIT_UI_THREAD = 'AWAIT_UI_THREAD'  # type: Literal["AWAIT_UI_THREAD"]
 AWAIT_WORKER = 'AWAIT_WORKER'  # type: Literal["AWAIT_WORKER"]
 if MYPY:
     HopperR = Iterator[Literal["AWAIT_UI_THREAD", "AWAIT_WORKER"]]
-    HopperFn = Callable[..., HopperR]
 
 
 def cooperative_thread_hopper(fn):
-    # type: (HopperFn) -> Callable[..., None]
+    # type: (Callable[P, HopperR]) -> Callable[P, None]
     """Mark given function as cooperative.
 
     `fn` must return `HopperR` t.i. it must yield AWAIT_UI_THREAD
@@ -279,6 +319,7 @@ def cooperative_thread_hopper(fn):
             enqueue_on_worker(tick, gen)
 
     def decorated(*args, **kwargs):
+        # type: (P.args, P.kwargs) -> None
         gen = fn(*args, **kwargs)
         if inspect.isgenerator(gen):
             tick(gen)
