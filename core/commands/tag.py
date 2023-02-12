@@ -27,6 +27,7 @@ if MYPY:
 
 
 RELEASE_REGEXP = re.compile(r"^([0-9A-Za-z-]*[A-Za-z-])?([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-\.]*?)?([0-9]+))?$")
+MAYBE_SEMVER = re.compile(r"\d+\.\d+(\.\d+)?")
 
 TAG_CREATE_PROMPT = "Enter tag:"
 TAG_CREATE_MESSAGE = "Tag \"{}\" created."
@@ -112,13 +113,17 @@ class gs_tag_create(GsTextCommand):
             return None
 
         self.tag_name = stdout.strip()[10:]
-        show_single_line_input_panel(
-            TAG_CREATE_MESSAGE_PROMPT,
-            self.savvy_settings.get("default_tag_message").format(tag_name=tag_name),
-            self.on_entered_message
-        )
 
-    def on_entered_message(self, message):
+        if MAYBE_SEMVER.search(tag_name) and self.savvy_settings.get("only_ask_to_annotate_versions"):
+            show_single_line_input_panel(
+                TAG_CREATE_MESSAGE_PROMPT,
+                self.savvy_settings.get("default_tag_message").format(tag_name=tag_name),
+                self.on_entered_message
+            )
+        else:
+            self.on_entered_message()
+
+    def on_entered_message(self, message=None):
         # type: (str) -> None
         """
         Create a tag with the specified tag name and message.

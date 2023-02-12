@@ -129,9 +129,17 @@
     "default_tag_message": "Tag {tag_name}",
 
     /*
+        Ask for a tag message to annotate the tag only if the tag looks like
+        a version, e.g. "v2.31.2" or "2022.11.23".  All other tags are considered
+        private and don't need to get annotated as we never push them.
+        Set to `false` if you always want to get asked for a tag message.
+     */
+    "only_ask_to_annotate_versions": true,
+
+    /*
         The filename for extra customized info to be displayed after the default
         COMMIT_HELP_TEXT, such as commit message rules/tips/conventions.
-        Place this file at the root of the repo, and it should be commited to the
+        Place this file at the root of the repo, and it should be committed to the
         repo as well.
         The file name defaults to `.commit_help`.
         If this file is not presented, the functionality is totally ignored.
