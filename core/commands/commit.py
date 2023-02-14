@@ -118,6 +118,7 @@ class gs_commit(WindowCommand, GitCommand):
             settings.set("git_savvy.repo_path", repo_path)
             settings.set("git_savvy.commit_view", True)
             settings.set("git_savvy.commit_view.include_unstaged", include_unstaged)
+            settings.set("git_savvy.commit_view.automatically_switched_to_all", False)
             settings.set("git_savvy.diff_view.in_cached_mode", not include_unstaged)
             settings.set("git_savvy.commit_view.amend", amend)
             commit_on_close = self.savvy_settings.get("commit_on_close")
@@ -190,15 +191,17 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
     def run(self, edit, sync=True):
         # type: (sublime.Edit, bool) -> None
         if sync:
-            self.run_impl()
+            self.run_impl(sync)
         else:
-            enqueue_on_worker(self.run_impl)
+            enqueue_on_worker(self.run_impl, sync)
 
-    def run_impl(self):
-        # type: () -> None
+    def run_impl(self, sync):
+        # type: (bool) -> None
         view = self.view
         settings = view.settings()
         include_unstaged = settings.get("git_savvy.commit_view.include_unstaged")
+        automatically_switched_to_all = settings.get(
+            "git_savvy.commit_view.automatically_switched_to_all")
         amend = settings.get("git_savvy.commit_view.amend")
         show_commit_diff = self.savvy_settings.get("show_commit_diff")
         # for backward compatibility, check also if show_commit_diff is True
@@ -207,6 +210,15 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
             show_commit_diff == "stat"
             or (show_commit_diff == "full" and self.savvy_settings.get("show_diffstat"))
         )
+
+        if include_unstaged and automatically_switched_to_all:
+            try:
+                self.git_throwing_silently("diff", "--cached", "--quiet")
+            except GitSavvyError:
+                settings.set("git_savvy.commit_view.include_unstaged", False)
+                settings.set("git_savvy.diff_view.in_cached_mode", True)
+                view.run_command("gs_prepare_commit_refresh_diff", {"sync": False})
+                return
 
         try:
             raw_diff_text = self.git_throwing_silently(
@@ -235,6 +247,13 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
                 e.show_error_panel()
                 raise
 
+        if not raw_diff_text and (show_patch or show_stat) and not include_unstaged:
+            settings.set("git_savvy.commit_view.include_unstaged", True)
+            settings.set("git_savvy.commit_view.automatically_switched_to_all", True)
+            settings.set("git_savvy.diff_view.in_cached_mode", False)
+            view.run_command("gs_prepare_commit_refresh_diff", {"sync": sync})
+            return
+
         try:
             diff_text = self.strict_decode(raw_diff_text)
         except UnicodeDecodeError:
@@ -245,11 +264,6 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
         final_text = generate_help_text(view, with_patch_commands=show_patch and bool(diff_text))
         if diff_text:
             final_text += ("\n" + diff_text) if show_patch or show_stat else ""
-        elif (show_patch or show_stat) and not include_unstaged:
-            settings.set("git_savvy.commit_view.include_unstaged", True)
-            settings.set("git_savvy.diff_view.in_cached_mode", False)
-            view.run_command("gs_prepare_commit_refresh_diff")
-            return
         else:
             final_text += "\nNothing to commit.\n"
 
