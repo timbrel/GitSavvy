@@ -18,7 +18,7 @@ from .navigate import GsNavigate
 from ..fns import filter_, flatten, pairwise, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
-from ..runtime import enqueue_on_ui, enqueue_on_worker
+from ..runtime import ensure_on_ui, enqueue_on_worker
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import flash, focus_view, line_indentation
 from ..view import replace_view_content, place_view, y_offset, Position
@@ -313,17 +313,7 @@ class gs_diff_refresh(TextCommand, GitCommand):
                 return
 
         has_content = view.find_by_selector("git-savvy.diff_view git-savvy.diff")
-        draw = lambda: _draw(
-            view,
-            ' '.join(title),
-            prelude,
-            diff,
-            navigate=not has_content
-        )
-        if runs_on_ui_thread:
-            draw()
-        else:
-            enqueue_on_ui(draw)
+        ensure_on_ui(_draw, view, ' '.join(title), prelude, diff, navigate=not has_content)
 
 
 def _draw(view, title, prelude, diff_text, navigate):
