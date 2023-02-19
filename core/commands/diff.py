@@ -537,7 +537,7 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         cursor_pts = [s.a for s in frozen_sel]
         diff = SplittedDiff.from_view(self.view)
         if diff.is_combined_diff():
-            headers = unique(filter_(map(diff.head_for_pt, cursor_pts)))
+            headers = list(unique(filter_(map(diff.head_for_pt, cursor_pts))))
             files = list(filter_(head.from_filename() for head in headers))
             if not files:
                 flash(self.view, "Not within a hunk")
