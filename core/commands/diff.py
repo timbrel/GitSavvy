@@ -536,6 +536,15 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         frozen_sel = [s for s in self.view.sel()]
         cursor_pts = [s.a for s in frozen_sel]
         diff = SplittedDiff.from_view(self.view)
+        if not diff.headers:
+            flash(
+                self.view,
+                "The {} is clean.".format(
+                    "file" if self.view.settings().get("git_savvy.file_path") else "repo"
+                )
+            )
+            return
+
         if diff.is_combined_diff():
             headers = list(unique(filter_(map(diff.head_for_pt, cursor_pts))))
             files = list(filter_(head.from_filename() for head in headers))
