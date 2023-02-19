@@ -6,7 +6,7 @@ current diff.
 from collections import defaultdict, namedtuple
 from contextlib import contextmanager
 from functools import partial
-from itertools import chain, count, cycle, dropwhile, groupby, takewhile
+from itertools import chain, count, dropwhile, groupby, takewhile
 import os
 
 import sublime
@@ -590,10 +590,10 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             hunk_to_focus = next(
                 dropwhile(
                     lambda hunk: hunk in patches,
-                    unique(dropwhile(
+                    dropwhile(
                         lambda hunk: hunk != last_selected_hunk,
-                        cycle(diff.hunks)
-                    ))
+                        diff.hunks
+                    )
                 ),
                 None
             )
