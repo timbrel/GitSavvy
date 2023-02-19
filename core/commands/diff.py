@@ -571,14 +571,20 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         move_fn = None
         if whole_file or all(s.empty() for s in frozen_sel):
             if whole_file:
-                headers = unique(filter_(map(diff.head_for_pt, cursor_pts)))
+                headers = (
+                    list(unique(filter_(map(diff.head_for_pt, cursor_pts))))
+                    or [diff.headers[0]]
+                )
                 patches = list(flatten(
                     chain([head], diff.hunks_for_head(head))
                     for head in headers
                 ))
 
             else:
-                patches = list(unique(flatten(filter_(diff.head_and_hunk_for_pt(pt) for pt in cursor_pts))))
+                patches = (
+                    list(unique(flatten(filter_(diff.head_and_hunk_for_pt(pt) for pt in cursor_pts))))
+                    or [diff.headers[0], diff.hunks[0]]
+                )
 
             last_selected_hunk = patches[-1]
             try:
