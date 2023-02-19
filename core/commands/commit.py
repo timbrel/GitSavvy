@@ -9,16 +9,17 @@ from .diff import DECODE_ERROR_MESSAGE
 from . import intra_line_colorizer
 from ..git_command import GitCommand, GitSavvyError
 from ..runtime import enqueue_on_worker
+from ..settings import SettingsMixin
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import focus_view
 from ..view import replace_view_content
 from ...common import util
-from ...core.settings import SettingsMixin
 
 
 __all__ = (
     "gs_commit",
     "gs_prepare_commit_refresh_diff",
+    "gs_commit_view_unstage_in_all_mode",
     "gs_commit_view_do_commit",
     "gs_commit_view_sign",
     "gs_commit_view_close",
@@ -178,9 +179,8 @@ def generate_help_text(view, with_patch_commands=False):
     )
     if with_patch_commands:
         help_text += HELP_WHEN_PATCH_IS_VISIBLE
-        if settings.get("git_savvy.diff_view.in_cached_mode"):
-            help_text += HELP_WHEN_UNSTAGING_IS_POSSIBLE
-        else:
+        help_text += HELP_WHEN_UNSTAGING_IS_POSSIBLE
+        if not settings.get("git_savvy.diff_view.in_cached_mode"):
             help_text += HELP_WHEN_DISCARDING_IS_POSSIBLE
         if settings.get("git_savvy.diff_view.history"):
             help_text += HELP_WHEN_UNDOING_IS_POSSIBLE
@@ -285,6 +285,23 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
         if not THE_EMPTY_SHA:
             THE_EMPTY_SHA = self.git('mktree', stdin='').strip()
         return THE_EMPTY_SHA
+
+
+class gs_commit_view_unstage_in_all_mode(TextCommand, GitCommand):
+    def run(self, edit, whole_file=False):
+        # type: (sublime.Edit, bool) -> None
+        view = self.view
+        self.add_all_tracked_files()
+        settings = view.settings()
+        settings.set("git_savvy.commit_view.include_unstaged", False)
+        settings.set("git_savvy.diff_view.in_cached_mode", True)
+        view.run_command("gs_diff_stage_or_reset_hunk")
+
+        history = settings.get("git_savvy.diff_view.history") or []
+        if history:
+            args, patch, cursor_pts, in_cached_mode = history.pop()
+            history.append((["add", "-u"], patch, cursor_pts, in_cached_mode))
+            settings.set("git_savvy.diff_view.history", history)
 
 
 class GsPrepareCommitFocusEventListener(ViewEventListener):
