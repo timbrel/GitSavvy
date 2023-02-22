@@ -12,6 +12,9 @@ import sublime
 import sublime_plugin
 
 
+from . import utils
+
+
 MYPY = False
 if MYPY:
     from typing import (
@@ -33,6 +36,7 @@ else:
 UI_THREAD_NAME = None  # type: Optional[str]
 savvy_executor = ThreadPoolExecutor(max_workers=1)
 auto_timeout = threading.local()
+_enqueued_tasks = utils.Counter()
 
 
 def determine_thread_names():
@@ -85,15 +89,39 @@ def enqueue_on_ui(fn, *args, **kwargs):
     sublime.set_timeout(partial(fn, *args, **kwargs))
 
 
-def enqueue_on_worker(fn, *args, **kwargs):
-    # type: (Callable[P, T], P.args, P.kwargs) -> None
-    fn_ = user_friendly_traceback(RuntimeError)(fn)
-    sublime.set_timeout_async(partial(fn_, *args, **kwargs))
-
-
 def enqueue_on_savvy(fn, *args, **kwargs):
     # type: (Callable[P, T], P.args, P.kwargs) -> None
     savvy_executor.submit(fn, *args, **kwargs)
+
+
+def enqueue_on_worker(fn, *args, **kwargs):
+    # type: (Callable[P, T], P.args, P.kwargs) -> None
+    action = partial(fn, *args, **kwargs)
+
+    def task():
+        _enqueued_tasks.dec()
+        action()
+
+    _enqueue_on_worker(task)
+    _enqueued_tasks.inc()
+
+
+def run_when_worker_is_idle(fn, *args, **kwargs):
+    action = partial(fn, *args, **kwargs)
+
+    def task():
+        if _enqueued_tasks.count() == 0:
+            action()
+        else:
+            sublime.set_timeout_async(task)
+
+    _enqueue_on_worker(task)
+
+
+def _enqueue_on_worker(fn):
+    # type: (Callable[[], T]) -> None
+    fn_ = user_friendly_traceback(RuntimeError)(fn)
+    sublime.set_timeout_async(fn_)
 
 
 def run_on_new_thread(fn, *args, __daemon=None, **kwargs):
