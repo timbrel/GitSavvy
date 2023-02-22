@@ -188,15 +188,15 @@ def generate_help_text(view, with_patch_commands=False):
 
 
 class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
-    def run(self, edit, sync=True):
-        # type: (sublime.Edit, bool) -> None
+    def run(self, edit, sync=True, just_switched=False):
+        # type: (sublime.Edit, bool, bool) -> None
         if sync:
-            self.run_impl(sync)
+            self.run_impl(sync, just_switched)
         else:
-            enqueue_on_worker(self.run_impl, sync)
+            enqueue_on_worker(self.run_impl, sync, just_switched)
 
-    def run_impl(self, sync):
-        # type: (bool) -> None
+    def run_impl(self, sync, just_switched):
+        # type: (bool, bool) -> None
         view = self.view
         settings = view.settings()
         include_unstaged = settings.get("git_savvy.commit_view.include_unstaged")
@@ -210,15 +210,6 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
             show_commit_diff == "stat"
             or (show_commit_diff == "full" and self.savvy_settings.get("show_diffstat"))
         )
-
-        if include_unstaged and automatically_switched_to_all:
-            try:
-                self.git_throwing_silently("diff", "--cached", "--quiet")
-            except GitSavvyError:
-                settings.set("git_savvy.commit_view.include_unstaged", False)
-                settings.set("git_savvy.diff_view.in_cached_mode", True)
-                view.run_command("gs_prepare_commit_refresh_diff", {"sync": False})
-                return
 
         try:
             raw_diff_text = self.git_throwing_silently(
@@ -251,7 +242,7 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
             settings.set("git_savvy.commit_view.include_unstaged", True)
             settings.set("git_savvy.commit_view.automatically_switched_to_all", True)
             settings.set("git_savvy.diff_view.in_cached_mode", False)
-            view.run_command("gs_prepare_commit_refresh_diff", {"sync": sync})
+            view.run_command("gs_prepare_commit_refresh_diff", {"sync": sync, "just_switched": True})
             return
 
         try:
@@ -272,12 +263,23 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
         except IndexError:
             region = sublime.Region(view.size())
 
-        if view.substr(region) == final_text:
-            return
+        if view.substr(region) != final_text:
+            replace_view_content(view, final_text, region)
+            if show_patch:
+                intra_line_colorizer.annotate_intra_line_differences(view, final_text, region.begin())
 
-        replace_view_content(view, final_text, region)
-        if show_patch:
-            intra_line_colorizer.annotate_intra_line_differences(view, final_text, region.begin())
+        if include_unstaged and automatically_switched_to_all and not just_switched:
+            enqueue_on_worker(self.maybe_switch_back)
+
+    def maybe_switch_back(self) -> None:
+        view = self.view
+        settings = view.settings()
+        try:
+            self.git_throwing_silently("diff", "--cached", "--quiet")
+        except GitSavvyError:
+            settings.set("git_savvy.commit_view.include_unstaged", False)
+            settings.set("git_savvy.diff_view.in_cached_mode", True)
+            view.run_command("gs_prepare_commit_refresh_diff", {"sync": False, "just_switched": True})
 
     def the_empty_sha(self):
         # type: () -> str
