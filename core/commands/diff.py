@@ -96,6 +96,7 @@ FILE_RE = (
 # @@ -69,6 +69,7 @@ class GsHandleVintageousCommand(TextCommand):
 #           ^^ we want the second (current) line offset of the diff
 LINE_RE = r"^@@ [^+]*\+(\d+)"
+active_on_activated = True
 
 
 def compute_identifier_for_view(view):
@@ -112,6 +113,16 @@ def compute_identifier_for_view(view):
 def is_diff_view(view):
     # type: (sublime.View) -> bool
     return view.settings().get('git_savvy.diff_view')
+
+
+@contextmanager
+def disabled_on_activated():
+    global active_on_activated
+    active_on_activated = False
+    try:
+        yield
+    finally:
+        active_on_activated = True
 
 
 class gs_diff(WindowCommand, GitCommand):
@@ -162,11 +173,13 @@ class gs_diff(WindowCommand, GitCommand):
         )
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
+                diff_view = view
                 if in_cached_mode is not None:
-                    view.settings().set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
+                    diff_view.settings().set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
 
-                focus_view(view)
-                place_view(self.window, view, after=active_view)
+                with disabled_on_activated():
+                    focus_view(diff_view)
+                place_view(self.window, diff_view, after=active_view)
                 break
 
         else:
@@ -194,9 +207,10 @@ class gs_diff(WindowCommand, GitCommand):
                 "result_base_dir": repo_path,
             })
             diff_view.run_command("gs_handle_vintageous")
-            # Assume diffing a single file is very fast and do it
-            # sync because it looks better.
-            diff_view.run_command("gs_diff_refresh", {"sync": bool(file_path)})
+
+        # Assume diffing a single file is very fast and do it
+        # sync because it looks better.
+        diff_view.run_command("gs_diff_refresh", {"sync": bool(file_path)})
 
 
 class gs_diff_refresh(TextCommand, GitCommand):
@@ -512,7 +526,9 @@ class GsDiffFocusEventListener(EventListener):
         settings = view.settings()
         if settings.get("git_savvy.ignore_next_activated_event"):
             settings.set("git_savvy.ignore_next_activated_event", False)
-        elif settings.get("git_savvy.diff_view"):
+            return
+
+        if active_on_activated and is_diff_view(view):
             view.run_command("gs_diff_refresh", {"sync": False})
 
 
