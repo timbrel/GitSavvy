@@ -109,6 +109,11 @@ def compute_identifier_for_view(view):
     ) if settings.get('git_savvy.diff_view') else None
 
 
+def is_diff_view(view):
+    # type: (sublime.View) -> bool
+    return view.settings().get('git_savvy.diff_view')
+
+
 class gs_diff(WindowCommand, GitCommand):
 
     """
@@ -142,6 +147,13 @@ class gs_diff(WindowCommand, GitCommand):
         active_view = self.window.active_view()
         assert active_view
 
+        if is_diff_view(active_view) and (
+            in_cached_mode is None
+            or active_view.settings().get('git_savvy.diff_view.in_cached_mode') == in_cached_mode
+        ):
+            active_view.close()
+            return
+
         this_id = (
             repo_path,
             file_path,
@@ -151,13 +163,6 @@ class gs_diff(WindowCommand, GitCommand):
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
                 settings = view.settings()
-                if view == active_view and (
-                    in_cached_mode is None
-                    or settings.get("git_savvy.diff_view.in_cached_mode") == in_cached_mode
-                ):
-                    view.close()
-                    return
-
                 if in_cached_mode is not None:
                     settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
                 focus_view(view)
