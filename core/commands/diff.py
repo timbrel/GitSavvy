@@ -312,16 +312,17 @@ class gs_diff_refresh(TextCommand, GitCommand):
                     view.close()
                 return
 
-        has_content = view.find_by_selector("git-savvy.diff_view git-savvy.diff")
-        ensure_on_ui(_draw, view, ' '.join(title), prelude, diff, navigate=not has_content)
+        ensure_on_ui(_draw, view, ' '.join(title), prelude, diff)
 
 
-def _draw(view, title, prelude, diff_text, navigate):
-    # type: (sublime.View, str, str, str, bool) -> None
-    view.set_name(title)
+def _draw(view, title, prelude, diff_text):
+    # type: (sublime.View, str, str, str) -> None
+    was_empty = not view.find_by_selector("git-savvy.diff_view git-savvy.diff")
     text = prelude + diff_text
+
+    view.set_name(title)
     replace_view_content(view, text)
-    if navigate:
+    if was_empty:
         view.run_command("gs_diff_navigate")
 
     intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(prelude))
