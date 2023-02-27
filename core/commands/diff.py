@@ -140,6 +140,8 @@ class gs_diff(WindowCommand, GitCommand):
             file_path = self.file_path or file_path
 
         active_view = self.window.active_view()
+        assert active_view
+
         this_id = (
             repo_path,
             file_path,
@@ -159,8 +161,7 @@ class gs_diff(WindowCommand, GitCommand):
                 if in_cached_mode is not None:
                     settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
                 focus_view(view)
-                if active_view:
-                    place_view(self.window, view, after=active_view)
+                place_view(self.window, view, after=active_view)
                 break
 
         else:
