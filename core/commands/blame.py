@@ -6,7 +6,7 @@ import unicodedata
 import sublime
 
 from .navigate import GsNavigate
-from ..view import Position
+from ..view import scroll_to_pt, y_offset, Position
 from ...common import util
 from .log import LogMixin
 from ..ui_mixins.quick_panel import PanelActionMixin
@@ -197,9 +197,7 @@ class gs_blame_refresh(BlameMixin):
         was_empty = self.view.size() == 0
         # store viewport for later restoration
         if len(self.view.sel()) > 0:
-            old_viewport = self.view.viewport_position()
-            cursor_layout = self.view.text_to_layout(self.view.sel()[0].begin())
-            yoffset = cursor_layout[1] - old_viewport[1]
+            yoffset = y_offset(self.view, self.view.sel()[0].begin())
         else:
             yoffset = 0
 
@@ -214,8 +212,7 @@ class gs_blame_refresh(BlameMixin):
                 # if it was opened as a new file
                 self.view.show_at_center(self.view.line(self.view.sel()[0].begin()).begin())
             else:
-                cursor_layout = self.view.text_to_layout(self.view.sel()[0].begin())
-                self.view.set_viewport_position((0, cursor_layout[1] - yoffset), animate=False)
+                scroll_to_pt(self.view, self.view.sel()[0].begin(), yoffset)
 
     def get_content(self, file_path, ignore_whitespace=False, detect_options=None, commit_hash=None):
         if commit_hash and self.savvy_settings.get("blame_follow_rename"):

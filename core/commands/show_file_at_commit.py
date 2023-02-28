@@ -7,7 +7,7 @@ from sublime_plugin import TextCommand, WindowCommand
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_worker, run_as_text_command, text_command
 from ..utils import flash, focus_view
-from ..view import capture_cur_position, replace_view_content, Position
+from ..view import capture_cur_position, replace_view_content, scroll_to_pt, Position
 from ...common import util
 
 from .log import LogMixin
@@ -187,10 +187,7 @@ def move_cursor_to_line_col(view, position):
     if row_offset is None:
         view.show(pt)
     else:
-        _, cy = view.text_to_layout(pt)
-        vy = cy - row_offset
-        vx, _ = view.viewport_position()
-        view.set_viewport_position((vx, vy), animate=False)
+        scroll_to_pt(view, pt, row_offset)
 
 
 class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):

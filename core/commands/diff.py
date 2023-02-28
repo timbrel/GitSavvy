@@ -21,7 +21,7 @@ from ..git_command import GitCommand
 from ..runtime import ensure_on_ui, enqueue_on_worker
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import flash, focus_view, line_indentation
-from ..view import replace_view_content, place_view, y_offset, Position
+from ..view import replace_view_content, scroll_to_pt, place_view, y_offset, Position
 from ...common import util
 
 
@@ -470,10 +470,7 @@ class gs_diff_zoom(TextCommand):
         self.view.sel().add_all(list(cursors))
 
         cursor, offset = min(scroll_offsets, key=lambda cursor_offset: abs(cursor_offset[1]))
-        _, cy = self.view.text_to_layout(cursor)
-        vy = cy - offset
-        vx, _ = self.view.viewport_position()
-        self.view.set_viewport_position((vx, vy), animate=False)
+        scroll_to_pt(self.view, cursor, offset)
 
 
 if MYPY:

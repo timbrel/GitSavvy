@@ -130,6 +130,14 @@ def y_offset(view, cursor):
     return cy - vy
 
 
+def scroll_to_pt(view, pt, offset):
+    # type: (sublime.View, int, float) -> None
+    _, cy = view.text_to_layout(pt)
+    vy = cy - offset
+    vx, _ = view.viewport_position()
+    view.set_viewport_position((vx, vy), animate=False)
+
+
 def place_view(window, view, after):
     # type: (sublime.Window, sublime.View, sublime.View) -> None
     view_group, current_index = window.get_view_index(view)

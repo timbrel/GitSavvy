@@ -13,7 +13,7 @@ from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view
-from ..view import capture_cur_position, place_view, replace_view_content, y_offset, Position
+from ..view import capture_cur_position, place_view, replace_view_content, scroll_to_pt, y_offset, Position
 from ...common import util
 
 
@@ -79,10 +79,7 @@ def place_cursor_and_show(view, row, col, row_offset):
     pt = view.text_point(row, col)
     view.sel().add(sublime.Region(pt, pt))
 
-    _, cy = view.text_to_layout(pt)
-    vy = cy - row_offset
-    vx, _ = view.viewport_position()
-    view.set_viewport_position((vx, vy), animate=False)
+    scroll_to_pt(view, pt, row_offset)
 
 
 def translate_row_to_inline_diff(diff_view, row):
