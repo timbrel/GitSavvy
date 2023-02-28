@@ -13,7 +13,7 @@ from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view
-from ..view import capture_cur_position, place_view, replace_view_content, scroll_to_pt, y_offset, Position
+from ..view import apply_position, capture_cur_position, place_view, replace_view_content, y_offset, Position
 from ...common import util
 
 
@@ -38,7 +38,7 @@ __all__ = (
 MYPY = False
 if MYPY:
     from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
-    from ..types import LineNo, ColNo, Row, Col
+    from ..types import LineNo, ColNo, Row
     from GitSavvy.common.util.parse_diff import Hunk as InlineDiff_Hunk
 
     HunkReference = NamedTuple("HunkReference", [
@@ -71,15 +71,6 @@ DIFF_HEADER = """diff --git a/{path} b/{path}
 
 diff_view_hunks = {}  # type: Dict[sublime.ViewId, List[HunkReference]]
 active_on_activated = True
-
-
-def place_cursor_and_show(view, row, col, row_offset):
-    # type: (sublime.View, Row, Col, float) -> None
-    view.sel().clear()
-    pt = view.text_point(row, col)
-    view.sel().add(sublime.Region(pt, pt))
-
-    scroll_to_pt(view, pt, row_offset)
 
 
 def translate_row_to_inline_diff(diff_view, row):
@@ -486,7 +477,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         if match_position:
             row, col, row_offset = match_position
             new_row = translate_row_to_inline_diff(view, row)
-            place_cursor_and_show(view, new_row, col, row_offset)
+            apply_position(view, new_row, col, row_offset)
         elif navigate_to_first_hunk:
             view.run_command("gs_inline_diff_navigate_hunk")
 
