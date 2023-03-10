@@ -1,3 +1,12 @@
+import sys
+
+prefix = __package__ + '.'  # don't clear the base package
+for module_name in [
+        module_name for module_name in sys.modules
+        if module_name.startswith(prefix) and module_name != __name__]:
+    del sys.modules[module_name]
+prefix = None
+
 import sublime
 
 from .common.commands import *
@@ -12,30 +21,7 @@ from .gitlab.commands import *
 
 
 def plugin_loaded():
-
-    try:
-        import package_control.events
-    except ImportError:
-        pass
-    else:
-        if (
-            package_control.events.install('GitSavvy') or
-            package_control.events.post_upgrade('GitSavvy')
-        ):
-            # The "event" (flag) is set for 5 seconds. To not get into a
-            # reloader excess we wait for that time, so that the next time
-            # this exact `plugin_loaded` handler runs, the flag is already
-            # unset.
-            sublime.set_timeout_async(reload_plugin, 5000)
-            return
-
     prepare_gitsavvy()
-
-
-def reload_plugin():
-    from .common import util
-    print("GitSavvy: Reloading plugin after install.")
-    util.reload.reload_plugin(verbose=False, then=prepare_gitsavvy)
 
 
 def prepare_gitsavvy():
