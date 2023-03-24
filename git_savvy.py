@@ -1,23 +1,23 @@
 import sys
-
 prefix = __package__ + '.'  # don't clear the base package
 for module_name in [
         module_name for module_name in sys.modules
         if module_name.startswith(prefix) and module_name != __name__]:
     del sys.modules[module_name]
-prefix = None
+del prefix
 
-import sublime
 
-from .common.commands import *
-from .common.ui import *
-from .common.global_events import *
-from .core.commands import *
-from .core.settings import *
-from .core.interfaces import *
-from .core.runtime import *
-from .github.commands import *
-from .gitlab.commands import *
+import sublime  # noqa: E402
+
+from .common.commands import *  # noqa: E402
+from .common.ui import *  # noqa: E402
+from .common.global_events import *  # noqa: E402
+from .core.commands import *  # noqa: E402
+from .core.settings import *  # noqa: E402
+from .core.interfaces import *  # noqa: E402
+from .core.runtime import *  # noqa: E402
+from .github.commands import *  # noqa: E402
+from .gitlab.commands import *  # noqa: E402
 
 
 def plugin_loaded():
