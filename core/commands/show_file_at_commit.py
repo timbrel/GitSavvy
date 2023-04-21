@@ -92,12 +92,10 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
 
-        if commit_hash and self.savvy_settings.get("blame_follow_rename"):
-            filename_at_commit = self.filename_at_commit(file_path, commit_hash)
-        else:
-            filename_at_commit = file_path
+        if commit_hash and self.savvy_settings.get("log_follow_rename"):
+            file_path = self.filename_at_commit(file_path, commit_hash)
 
-        text = self.get_file_content_at_commit(filename_at_commit, commit_hash)
+        text = self.get_file_content_at_commit(file_path, commit_hash)
         render(view, text, position)
         view.reset_reference_document()
         self.update_title(commit_hash, file_path)
