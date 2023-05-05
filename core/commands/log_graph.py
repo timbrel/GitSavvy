@@ -908,7 +908,9 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 # gone, or happens to be after the fold of fresh
                 # content.
                 if not follow or not try_navigate_to_symbol():
-                    if visible_selection:
+                    if navigate_after_draw:
+                        view.run_command("gs_log_graph_navigate")
+                    elif visible_selection:
                         view.show(view.sel(), True)
             reset_overwrite_status(view)
             reset_caret_style(view)
