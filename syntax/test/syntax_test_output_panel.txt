@@ -61,3 +61,11 @@ From https://github.com/SublimeLinter/SublimeLinter
 
 Traceback (most recent call last):
 # ^^^^^^ - constant.numeric.graph.commit-hash.git-savvy
+
+hint: You have divergent branches
+# <- string.other.hint.git-savvy
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ string.other.hint.git-savvy
+
+fatal: Need to specify
+# <- markup.deleted.fatal.git-savvy
+#^^^^^^^^^^^^^^^^^^^^^ markup.deleted.fatal.git-savvy

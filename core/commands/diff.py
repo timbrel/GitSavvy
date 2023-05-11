@@ -5,6 +5,7 @@ current diff.
 
 from collections import defaultdict, namedtuple
 from contextlib import contextmanager
+from functools import partial
 from itertools import chain, count, groupby, takewhile
 import os
 
@@ -536,8 +537,17 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         frozen_sel = [s for s in self.view.sel()]
         cursor_pts = [s.a for s in frozen_sel]
         diff = SplittedDiff.from_view(self.view)
+        if not diff.headers:
+            flash(
+                self.view,
+                "The {} is clean.".format(
+                    "file" if self.view.settings().get("git_savvy.file_path") else "repo"
+                )
+            )
+            return
+
         if diff.is_combined_diff():
-            headers = unique(filter_(map(diff.head_for_pt, cursor_pts)))
+            headers = list(unique(filter_(map(diff.head_for_pt, cursor_pts))))
             files = list(filter_(head.from_filename() for head in headers))
             if not files:
                 flash(self.view, "Not within a hunk")
@@ -558,17 +568,36 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
                 self.view.run_command("gs_diff_refresh")
             return
 
+        move_fn = None
         if whole_file or all(s.empty() for s in frozen_sel):
             if whole_file:
-                headers = unique(filter_(map(diff.head_for_pt, cursor_pts)))
-                patches = flatten(
+                headers = (
+                    list(unique(filter_(map(diff.head_for_pt, cursor_pts))))
+                    or [diff.headers[0]]
+                )
+                patches = list(flatten(
                     chain([head], diff.hunks_for_head(head))
                     for head in headers
-                )
+                ))
+
             else:
-                patches = unique(flatten(filter_(diff.head_and_hunk_for_pt(pt) for pt in cursor_pts)))
+                patches = (
+                    list(unique(flatten(filter_(diff.head_and_hunk_for_pt(pt) for pt in cursor_pts))))
+                    or [diff.headers[0], diff.hunks[0]]
+                )
+
+            last_selected_hunk = patches[-1]
+            try:
+                hunk_to_focus = diff.hunks[diff.hunks.index(last_selected_hunk) + 1]
+            except IndexError:
+                pass
+            else:
+                hunk_idx = [hunk for hunk in diff.hunks if hunk not in patches].index(hunk_to_focus)
+                move_fn = partial(move_to_hunk, self.view, hunk_idx)
+
             patch = ''.join(part.text for part in patches)
             zero_diff = self.view.settings().get('git_savvy.diff_view.context_lines') == 0
+
         else:
             line_starts = selected_line_starts(self.view, frozen_sel)
             patch = compute_patch_for_sel(diff, line_starts, reset or in_cached_mode)
@@ -576,9 +605,13 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
 
         if patch:
             self.apply_patch(patch, cursor_pts, reset, zero_diff)
-            first_cursor = self.view.sel()[0].begin()
-            self.view.sel().clear()
-            self.view.sel().add(first_cursor)
+            if move_fn:
+                move_fn()
+            else:
+                # just shrink multiple cursors into the first one
+                first_cursor = self.view.sel()[0].begin()
+                self.view.sel().clear()
+                self.view.sel().add(first_cursor)
         else:
             flash(self.view, "Not within a hunk")
 
@@ -610,6 +643,13 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             self.view.run_command("gs_prepare_commit_refresh_diff")
         else:
             self.view.run_command("gs_diff_refresh")
+
+
+def move_to_hunk(view: sublime.View, hunk_idx: int) -> None:
+    diff = SplittedDiff.from_view(view)
+    hunk_to_focus = diff.hunks[hunk_idx]
+    next_cursor = hunk_to_focus.a
+    set_and_show_cursor(view, next_cursor)
 
 
 def selected_line_starts(view, sel):

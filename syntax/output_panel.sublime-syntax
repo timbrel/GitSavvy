@@ -26,3 +26,9 @@ contexts:
     - match: \s(https?:\S+)
       captures:
         1: markup.underline.link
+
+    - match: ^hint:.*
+      scope: string.other.hint.git-savvy
+
+    - match: ^fatal:.*
+      scope: markup.deleted.fatal.git-savvy

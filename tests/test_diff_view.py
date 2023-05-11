@@ -445,25 +445,10 @@ diff --git a/fooz b/barz
         expected = ['apply', None, '--cached', '--unidiff-zero', '-']
         self.assertEqual(actual, expected)
 
-    def test_status_message_if_not_in_hunk(self):
+    def test_status_message_if_clean(self):
         VIEW_CONTENT = """\
 prelude
 --
-diff --git a/fooz b/barz
---- a/fooz
-+++ b/barz
-@@ -16,1 +16,1 @@ Hi
- one
- two
-@@ -20,1 +20,1 @@ Ho
- three
- four
-diff --git a/foxx b/boxx
---- a/foox
-+++ b/boox
-@@ -16,1 +16,1 @@ Hello
- one
- two
 """
         view = self.window.new_file()
         self.addCleanup(view.close)
@@ -481,7 +466,7 @@ diff --git a/foxx b/boxx
         cmd = module.gs_diff_stage_or_reset_hunk(view)
         cmd.run('_unused_edit')
 
-        verify(window, times=1).status_message('Not within a hunk')
+        verify(window, times=1).status_message('The repo is clean.')
 
 
 class TestZooming(DeferrableTestCase):
