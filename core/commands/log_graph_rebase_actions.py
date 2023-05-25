@@ -41,6 +41,7 @@ MYPY = False
 if MYPY:
     from typing import (
         Callable,
+        Dict,
         List,
         Iterator,
         NamedTuple,
@@ -600,9 +601,24 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
                         None
                     ),
                     start_commit,
+                    custom_environ=make_git_config_env({
+                        "rebase.abbreviateCommands": "false"
+                    })
                 )
 
         run_on_new_thread(program)
+
+
+def make_git_config_env(config):
+    # type: (Dict[str, str]) -> Dict[str, str]
+    rv = {
+        "GIT_CONFIG_COUNT": str(len(config))
+    }
+    for n, (key, value) in enumerate(config.items()):
+        rv[f"GIT_CONFIG_KEY_{n}"] = key
+        rv[f"GIT_CONFIG_VALUE_{n}"] = value
+
+    return rv
 
 
 def change_first_action(new_action, base_commit, buffer_content):
