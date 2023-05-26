@@ -775,6 +775,22 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         SHORTENED_ASCII_ART = ".. / \n"
         in_overview_mode = self.view.settings().get("git_savvy.log_graph_view.overview")
 
+        def simplify_decoration(decoration):
+            # type: (str) -> str
+            """Simplify decoration by omitting remote branches if they match
+            local branches.
+            """
+            decoration_parts = decoration.split(", ")
+            decoration_parts_ = [
+                d[8:] if d.startswith("HEAD -> ") else
+                d[9:] if d.startswith("HEAD* -> ") else
+                d for d in decoration_parts
+            ]
+            return ", ".join(
+                d for d in decoration_parts
+                if "/" not in d or d[d.index("/") + 1:] not in decoration_parts_
+            )
+
         def format_line(line):
             # type: (Union[str, GraphLine]) -> str
             if isinstance(line, str):
@@ -791,6 +807,8 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 commit_hash = hash.rsplit(" ", 1)[1]
                 hash = hash.ljust(len(commit_hash) + 6)
             if decoration:
+                if in_overview_mode:
+                    decoration = simplify_decoration(decoration)
                 left = f"{hash} ({decoration})"
             else:
                 left = f"{hash}"
