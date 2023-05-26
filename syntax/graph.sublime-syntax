@@ -89,8 +89,10 @@ contexts:
           scope: punctuation.separator.other.git-savvy
         - match: '->'
           scope: punctuation.separator.key-value.branch.git-savvy
-        - match: HEAD
-          scope: constant.other.git.head.git-savvy gitsavvy.gotosymbol
+        - match: (HEAD)(\*)?
+          captures:
+            1: constant.other.git.head.git-savvy gitsavvy.gotosymbol
+            2: punctuation.expression.dirty.git-savvy
         - match: (master|main|dev|trunk)\b
           scope: constant.other.git.branch.special.git-savvy gitsavvy.gotosymbol
         - match: (\d+)?([^ ,#/)]*)?/?(#?\d+)?([^ ,)]+)

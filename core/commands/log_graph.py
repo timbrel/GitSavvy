@@ -21,6 +21,7 @@ from ..fns import filter_, flatten, pairwise, partition, take, unique
 from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region, TextRange
 from ..settings import GitSavvySettings
+from .. import store
 from ..runtime import (
     cooperative_thread_hopper,
     enqueue_on_ui,
@@ -774,6 +775,9 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         ASCII_ART_LENGHT_LIMIT = 48
         SHORTENED_ASCII_ART = ".. / \n"
         in_overview_mode = self.view.settings().get("git_savvy.log_graph_view.overview")
+        head_state = store.current_state(self.repo_path).get("head")
+        repo_is_dirty = head_state and not head_state.clean
+        awaiting_head_commit = True
 
         def simplify_decoration(decoration):
             # type: (str) -> str
@@ -793,6 +797,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
         def format_line(line):
             # type: (Union[str, GraphLine]) -> str
+            nonlocal awaiting_head_commit
             if isinstance(line, str):
                 if len(line) > ASCII_ART_LENGHT_LIMIT:
                     return SHORTENED_ASCII_ART
@@ -807,6 +812,9 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 commit_hash = hash.rsplit(" ", 1)[1]
                 hash = hash.ljust(len(commit_hash) + 6)
             if decoration:
+                if awaiting_head_commit and repo_is_dirty and "HEAD" in decoration:
+                    decoration = decoration.replace("HEAD", "HEAD*", 1)
+                    awaiting_head_commit = False
                 if in_overview_mode:
                     decoration = simplify_decoration(decoration)
                 left = f"{hash} ({decoration})"
@@ -2296,10 +2304,10 @@ def describe_graph_line(line, known_branches):
         names = decoration.split(", ")
         if names[0].startswith("HEAD"):
             head, *names = names
-            if head == "HEAD":
+            if head == "HEAD" or head == "HEAD*":
                 rv["HEAD"] = commit_hash
             else:
-                branch = head[len("HEAD -> "):]
+                branch = head[head.index("-> ") + 3:]
                 rv["HEAD"] = branch
                 names = [branch] + names
         branches, local_branches, tags = [], [], []
