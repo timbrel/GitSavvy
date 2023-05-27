@@ -18,10 +18,12 @@ from .navigate import GsNavigate
 from ..fns import filter_, flatten, pairwise, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
-from ..runtime import enqueue_on_ui, enqueue_on_worker
+from ..runtime import ensure_on_ui, enqueue_on_worker
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import flash, focus_view, line_indentation
-from ..view import replace_view_content, place_view, y_offset, Position
+from ..view import (
+    capture_cur_position, replace_view_content, scroll_to_pt,
+    place_view, place_cursor_and_show, y_offset, Position)
 from ...common import util
 
 
@@ -54,6 +56,7 @@ if MYPY:
     Point = int
     LineCol = Tuple[LineNo, ColNo]
     HunkLineWithB = NamedTuple('HunkLineWithB', [('line', 'HunkLine'), ('b', LineNo)])
+    _Position = Tuple[Position, str]
 else:
     HunkLineWithB = namedtuple('HunkLineWithB', 'line b')
 
@@ -96,6 +99,7 @@ FILE_RE = (
 # @@ -69,6 +69,7 @@ class GsHandleVintageousCommand(TextCommand):
 #           ^^ we want the second (current) line offset of the diff
 LINE_RE = r"^@@ [^+]*\+(\d+)"
+active_on_activated = True
 
 
 def compute_identifier_for_view(view):
@@ -107,6 +111,21 @@ def compute_identifier_for_view(view):
         settings.get('git_savvy.diff_view.base_commit'),
         settings.get('git_savvy.diff_view.target_commit')
     ) if settings.get('git_savvy.diff_view') else None
+
+
+def is_diff_view(view):
+    # type: (sublime.View) -> bool
+    return view.settings().get('git_savvy.diff_view')
+
+
+@contextmanager
+def disabled_on_activated():
+    global active_on_activated
+    active_on_activated = False
+    try:
+        yield
+    finally:
+        active_on_activated = True
 
 
 class gs_diff(WindowCommand, GitCommand):
@@ -140,6 +159,27 @@ class gs_diff(WindowCommand, GitCommand):
             file_path = self.file_path or file_path
 
         active_view = self.window.active_view()
+        assert active_view
+
+        if is_diff_view(active_view) and (
+            in_cached_mode is None
+            or active_view.settings().get('git_savvy.diff_view.in_cached_mode') == in_cached_mode
+        ):
+            active_view.close()
+            return
+
+        av_fname = active_view.file_name()
+        cur_pos = None
+        if av_fname:
+            if _cur_pos := capture_cur_position(active_view):
+                rel_file_path = self.get_rel_path(av_fname)
+                if in_cached_mode:
+                    row, col, offset = _cur_pos
+                    new_row = self.find_matching_lineno(None, None, row + 1, file_path) - 1
+                    cur_pos = Position(new_row, col, offset), rel_file_path
+                else:
+                    cur_pos = _cur_pos, rel_file_path
+
         this_id = (
             repo_path,
             file_path,
@@ -148,19 +188,13 @@ class gs_diff(WindowCommand, GitCommand):
         )
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
-                settings = view.settings()
-                if view == active_view and (
-                    in_cached_mode is None
-                    or settings.get("git_savvy.diff_view.in_cached_mode") == in_cached_mode
-                ):
-                    view.close()
-                    return
-
+                diff_view = view
                 if in_cached_mode is not None:
-                    settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
-                focus_view(view)
-                if active_view:
-                    place_view(self.window, view, after=active_view)
+                    diff_view.settings().set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
+
+                with disabled_on_activated():
+                    focus_view(diff_view)
+                place_view(self.window, diff_view, after=active_view)
                 break
 
         else:
@@ -188,21 +222,25 @@ class gs_diff(WindowCommand, GitCommand):
                 "result_base_dir": repo_path,
             })
             diff_view.run_command("gs_handle_vintageous")
-            # Assume diffing a single file is very fast and do it
-            # sync because it looks better.
-            diff_view.run_command("gs_diff_refresh", {"sync": bool(file_path)})
+
+        # Assume diffing a single file is very fast and do it
+        # sync because it looks better.
+        diff_view.run_command("gs_diff_refresh", {
+            "sync": bool(file_path),
+            "match_position": cur_pos
+        })
 
 
 class gs_diff_refresh(TextCommand, GitCommand):
     """Refresh the diff view with the latest repo state."""
 
-    def run(self, edit, sync=True):
+    def run(self, edit, sync=True, match_position=None):
         if sync:
-            self.run_impl(sync)
+            self.run_impl(sync, match_position)
         else:
-            enqueue_on_worker(self.run_impl, sync)
+            enqueue_on_worker(self.run_impl, sync, match_position)
 
-    def run_impl(self, runs_on_ui_thread):
+    def run_impl(self, runs_on_ui_thread, match_position):
         view = self.view
         if not runs_on_ui_thread and not view.is_valid():
             return
@@ -292,29 +330,59 @@ class gs_diff_refresh(TextCommand, GitCommand):
                     view.close()
                 return
 
-        has_content = view.find_by_selector("git-savvy.diff_view git-savvy.diff")
-        draw = lambda: _draw(
-            view,
-            ' '.join(title),
-            prelude,
-            diff,
-            navigate=not has_content
-        )
-        if runs_on_ui_thread:
-            draw()
-        else:
-            enqueue_on_ui(draw)
+        ensure_on_ui(_draw, view, ' '.join(title), prelude, diff, match_position)
 
 
-def _draw(view, title, prelude, diff_text, navigate):
-    # type: (sublime.View, str, str, str, bool) -> None
-    view.set_name(title)
+def _draw(view, title, prelude, diff_text, match_position):
+    # type: (sublime.View, str, str, str, Optional[_Position]) -> None
+    was_empty = not view.find_by_selector("git-savvy.diff_view git-savvy.diff")
+    navigated = False
     text = prelude + diff_text
+
+    view.set_name(title)
     replace_view_content(view, text)
-    if navigate:
+
+    if match_position:
+        cur_pos, wanted_filename = match_position
+        diff = SplittedDiff.from_view(view)
+        if header := find_header_for_filename(diff.headers, wanted_filename):
+            row, col, row_offset = cur_pos
+            lineno = row + 1
+            if hunk := find_hunk_for_line(diff.hunks_for_head(header), lineno):
+                for line, b in recount_lines_for_jump_to_file(hunk):
+                    # We're switching from a real file to the diff.  `lineno`
+                    # comes from the `b` ("to") side.  We must filter using
+                    # `not is_from_line()` as `recount_lines_for_jump_to_file`
+                    # yields all lines in the hunk.
+                    if not line.is_from_line() and b == lineno:
+                        pt = line.a + col + line.mode_len
+                        place_cursor_and_show(view, pt, row_offset)
+                        navigated = True
+                        break
+
+    if was_empty and not navigated:
         view.run_command("gs_diff_navigate")
 
     intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(prelude))
+
+
+def find_header_for_filename(headers, filename):
+    # type: (Iterable[FileHeader], str) -> Optional[FileHeader]
+    for header in headers:
+        if header.from_filename() == filename:
+            return header
+    else:
+        return None
+
+
+def find_hunk_for_line(hunks, row):
+    # type: (Iterable[Hunk], int) -> Optional[Hunk]
+    for hunk in hunks:
+        start, length = hunk.header().safely_parse_metadata()[-1]
+        if start <= row <= start + length:
+            return hunk
+    else:
+        return None
 
 
 class gs_diff_toggle_setting(TextCommand):
@@ -459,10 +527,7 @@ class gs_diff_zoom(TextCommand):
         self.view.sel().add_all(list(cursors))
 
         cursor, offset = min(scroll_offsets, key=lambda cursor_offset: abs(cursor_offset[1]))
-        _, cy = self.view.text_to_layout(cursor)
-        vy = cy - offset
-        vx, _ = self.view.viewport_position()
-        self.view.set_viewport_position((vx, vy), animate=False)
+        scroll_to_pt(self.view, cursor, offset)
 
 
 if MYPY:
@@ -506,7 +571,9 @@ class GsDiffFocusEventListener(EventListener):
         settings = view.settings()
         if settings.get("git_savvy.ignore_next_activated_event"):
             settings.set("git_savvy.ignore_next_activated_event", False)
-        elif settings.get("git_savvy.diff_view"):
+            return
+
+        if active_on_activated and is_diff_view(view):
             view.run_command("gs_diff_refresh", {"sync": False})
 
 
