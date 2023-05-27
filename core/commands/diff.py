@@ -955,7 +955,10 @@ class gs_diff_undo(TextCommand, GitCommand):
 
         args, stdin, cursors, in_cached_mode = history.pop()
         if args[0] == "add":
-            self.unstage_file(*args[1])
+            if args[1] == "-u":
+                self.unstage_all_files()
+            else:
+                self.unstage_file(*args[1])
         else:
             # Toggle the `--reverse` flag.
             args[1] = "-R" if not args[1] else None
@@ -970,7 +973,10 @@ class gs_diff_undo(TextCommand, GitCommand):
             self.view.run_command("gs_diff_refresh")
 
         # The cursor is only applicable if we're still in the same cache/stage mode
-        if self.view.settings().get("git_savvy.diff_view.in_cached_mode") == in_cached_mode:
+        if (
+            self.view.settings().get("git_savvy.diff_view.in_cached_mode") == in_cached_mode
+            or self.view.settings().get("git_savvy.commit_view")
+        ):
             set_and_show_cursor(self.view, cursors)
 
 
