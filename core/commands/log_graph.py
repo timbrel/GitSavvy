@@ -1540,11 +1540,41 @@ class gs_log_graph_reset_filters(TextCommand):
 
 class gs_log_graph_toggle_overview(TextCommand):
     def run(self, edit):
-        settings = self.view.settings()
+        view = self.view
+        settings = view.settings()
         current = settings.get("git_savvy.log_graph_view.overview")
         next_state = not current
+        if next_state:
+            follow = settings.get("git_savvy.log_graph_view.follow")
+            symbols = view.symbols()
+            symbols_ = {s for _, s in symbols}
+            if follow not in symbols_:
+                dots = find_dots(view)
+                if len(dots) == 1:
+                    dot = dots.pop()
+                    s = next_symbol_upwards(view, symbols, dot)
+                    settings.set("git_savvy.log_graph_view.follow", s)
+
         settings.set("git_savvy.log_graph_view.overview", next_state)
         self.view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": True})
+
+
+def next_symbol_upwards(view, symbols, dot):
+    # type: (sublime.View, List[Tuple[sublime.Region, str]], colorizer.Char) -> Optional[str]
+    previous_dots = follow_dots(dot, forward=False)
+    for dot in take(50, previous_dots):
+        line_span = view.line(dot.pt)
+        # Capture all symbols from the line, ...
+        symbols_on_line = []
+        for r, s in symbols:
+            if line_span.a <= r.a <= line_span.b:
+                symbols_on_line.append(s)
+            if r.a > line_span.b:
+                break
+        # ... and choose the last one as git puts remote branches first.
+        if symbols_on_line:
+            return symbols_on_line[-1]
+    return None
 
 
 class gs_log_graph_edit_files(TextCommand, GitCommand):
