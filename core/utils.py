@@ -14,7 +14,7 @@ import traceback
 
 import sublime
 
-from .runtime import throttled
+from . import runtime
 
 
 MYPY = False
@@ -106,7 +106,7 @@ def flash_regions(view, regions, key="default"):
     view.add_regions(region_key, regions, **STYLE)  # type: ignore[arg-type]
 
     sublime.set_timeout(
-        throttled(erase_regions, view, region_key),
+        runtime.throttled(erase_regions, view, region_key),
         int(DURATION * 1000)
     )
 
@@ -466,3 +466,23 @@ def _bind_arguments(sig, args, kwargs):
         for name, p in sig.parameters.items()
         if name != "self"
     }
+
+
+class Counter:
+    """Thread-safe, lockless counter.
+
+    Implementation idea from @grantjenks
+    https://github.com/jd/fastcounter/issues/2#issue-548504668
+    """
+    def __init__(self):
+        self._incs = count()
+        self._decs = count()
+
+    def inc(self):
+        next(self._incs)
+
+    def dec(self):
+        next(self._decs)
+
+    def count(self) -> int:
+        return next(self._incs) - next(self._decs)

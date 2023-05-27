@@ -2,7 +2,7 @@ import sublime
 from sublime_plugin import TextCommand, EventListener
 
 from ..git_command import GitCommand
-from ..runtime import enqueue_on_worker, throttled
+from ..runtime import run_when_worker_is_idle, throttled
 from GitSavvy.core import store
 
 
@@ -16,7 +16,7 @@ class GsStatusBarEventListener(EventListener):
 
 class gs_update_status(TextCommand, GitCommand):
     def run(self, edit):
-        enqueue_on_worker(throttled(self.run_impl, self.view))
+        run_when_worker_is_idle(throttled(self.run_impl, self.view))
 
     def run_impl(self, view):
         repo_path = self.find_repo_path()
