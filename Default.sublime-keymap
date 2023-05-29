@@ -1726,6 +1726,14 @@
         ]
     },
     {
+        "keys": ["s"],
+        "command": "gs_log_graph_toggle_overview",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["up"],
         "command": "gs_input_handler_go_history",
         "args": { "forward": false },
