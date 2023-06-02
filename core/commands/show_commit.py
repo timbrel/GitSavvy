@@ -141,20 +141,22 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
     def update_annotation_link(self, url):
         # type: (Optional[str]) -> None
         key = "link_to_github"
+        regions = [sublime.Region(0)]
+        annotations = [
+            '<span class="shortcut-key">[n/p]</span>'
+            '&nbsp;'
+            '<a href="subl:gs_show_commit_open_next_commit">next</a>/'
+            '<a href="subl:gs_show_commit_open_previous_commit">previous</a> commit',
+        ]
         if url:
-            self.view.add_regions(
-                key,
-                [sublime.Region(0)],
-                annotations=[
-                    '<span class="shortcut-key">[h]</span>'
-                    '&nbsp;'
-                    '<a href="{}">Open on GitHub</a>'
-                    .format(url)
-                ],
-                annotation_color="#aaa0"
-            )
-        else:
-            self.view.erase_regions(key)
+            regions += [sublime.Region(self.view.text_point(1, 0))]
+            annotations += [
+                '<span class="shortcut-key">[h]</span>'
+                '&nbsp;'
+                '<a href="{}">Open on GitHub</a>'
+                .format(url)
+            ]
+        self.view.add_regions(key, regions, annotations=annotations, annotation_color="#aaa0")
 
 
 class gs_show_commit_open_on_github(TextCommand, GithubRemotesMixin, GitCommand):
