@@ -356,7 +356,10 @@ def _draw(view, title, prelude, diff_text, match_position):
                     # yields all lines in the hunk.
                     if not line.is_from_line() and b == lineno:
                         pt = line.a + col + line.mode_len
-                        place_cursor_and_show(view, pt, row_offset)
+                        visible_region = view.visible_region()
+                        # Do not scroll if the diff fits on one screen
+                        should_scroll = view.size() > len(visible_region)
+                        place_cursor_and_show(view, pt, row_offset if should_scroll else None)
                         navigated = True
                         break
 
