@@ -22,7 +22,7 @@ Most views display keyboard bindings at the bottom, but in some cases, particula
 
 ### Usability Note 1
 
-GitSavvy comes with a lot of keyboard bindings, but it doesn't include any global shortcuts. This is because adding global shortcuts can conflict with other packages or built-in functionality. However, you can easily add your own global shortcuts by opening Sublime's key bindings file (`Preferences: Key Bindings`).
+GitSavvy comes with a lot of keyboard bindings, but it doesn't include any *global* shortcuts. This is because adding global shortcuts can conflict with other packages or built-in functionality. However, you can easily add your own global shortcuts by opening Sublime's key bindings file (`Preferences: Key Bindings`).
 
 For example, you can add a global shortcut to open the status view from anywhere by adding the following to your key bindings file:
 
@@ -47,7 +47,7 @@ This will open up the commit view in GitSavvy. If nothing is staged yet, it will
 
 Sometimes you may want to find out which commands to use, along with their optional arguments. You can use Sublime's console, which is a Python REPL, to help you with this.
 
-To open the console in Sublime, press `Ctrl + `` on Windows or Linux, or `Cmd + `` on a Mac. This will open a panel at the bottom of the window where you can enter commands.
+To open the console in Sublime, press ``Ctrl + ` `` on Windows or Linux, or ``Cmd + ` `` on a Mac. This will open a panel at the bottom of the window where you can enter commands.
 
 To enable logging of commands, enter the following command in the console:
 
