@@ -1,0 +1,45 @@
+GitSavvy 2.41.0
+===============
+
+Minor, quality-of-life improvements
+
+- Improved cursor placement after staging, unstaging, etc., in the diff view for better orientation.
+- When transitioning from a normal view (buffer) to the diff view, the just edited hunk is now
+  placed and shown automatically (if applicable).  We had this for the inline diff view like
+  forever and now also for the standard diff view.  This is even more interesting if you added a
+  key binding
+
+```
+  {
+      "keys": ["ctrl+shift+."],
+      "command": "gs_diff",
+      "args": { "current_file": true }
+  },
+```
+
+
+
+Less minor
+
+In the commit message view, you can now unstage directly even in the `-a` (all) mode, completing this feature set.
+
+In the Repo History (graph) views,
+
+- an overview mode has been added, triggered by pressing `[s]`. This mode hides all commits and
+  only displays branch tips and reachable tags. (In this mode, pressing `[a]` will also hide the
+  tags!)
+- an asterisk (`*`) after `HEAD` now indicates that the repository is currently dirty. For example,
+  it will print `(HEAD* -> master)` now.  😐😏
+- Special branches in a repository are now marked with a special syntax scope, allowing you to
+  assign a different color to them. The branch names that are considered special are:
+  `(master|main|dev|trunk)\b`, and the scope is named
+  `constant.other.git.branch.special.git-savvy`.
+  Note that you need to adjust your color scheme to see any change; GitSavvy will not modify it
+  automatically.
+
+
+Sincerely,
+😘
+
+You can send some virtual coffee too: https://paypal.me/herrkaste
+
