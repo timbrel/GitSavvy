@@ -127,6 +127,58 @@ The `Repo History` view has two main menus. Pressing `[enter]` will open the sta
 
 You can access a second menu by pressing `[r]`, which is specifically designed for rebasing. This menu allows you to reword commit messages (`[W]`), edit (`[E]`) or drop commits, apply fixups, and generally rebase anything onto anything. For example, you can extract a series of commits onto your main branch to make two feature branches out of a convoluted one.
 
+<table>
+    <tr>
+        <td width="50%">
+            <a href="https://github.com/timbrel/GitSavvy/assets/8558/76597ee4-7796-41de-adc2-0a864e6020b8">
+                <img src="https://github.com/timbrel/GitSavvy/assets/8558/76597ee4-7796-41de-adc2-0a864e6020b8" width="100%">
+            </a>
+        </td>
+        <td width="50%">
+            <a href="https://github.com/timbrel/GitSavvy/assets/8558/4d27e03c-9eb6-4d89-8289-cca96d02ff0b">
+                <img src="https://github.com/timbrel/GitSavvy/assets/8558/4d27e03c-9eb6-4d89-8289-cca96d02ff0b" width="100%">
+            </a>
+        </td>
+    </tr>
+    <tr>
+        <td width="50%">Note the visual connection between fixup commits and the commits they are associated with.</td>
+        <td width="50%">When the cursor is positioned on a fixup (or squash) commit, the `[r]`ebase menu will provide a specific action to apply that fixup.</td>
+    </tr>
+</table>
+
+You can review any rebase afterwards.  E.g.
+
+<table>
+    <tr>
+        <td width="33%">
+            <a href="https://github.com/timbrel/GitSavvy/assets/8558/308c2679-83f6-4a9f-a987-13e8a9451986">
+                <img src="https://github.com/timbrel/GitSavvy/assets/8558/308c2679-83f6-4a9f-a987-13e8a9451986" width="100%">
+            </a>
+        </td>
+        <td width="33%">
+            <a href="https://github.com/timbrel/GitSavvy/assets/8558/8f53ab86-0290-4378-97b4-7acaf07ff174">
+                <img src="https://github.com/timbrel/GitSavvy/assets/8558/8f53ab86-0290-4378-97b4-7acaf07ff174" width="100%">
+            </a>
+        </td>
+        <td width="33%">
+            <a href="https://github.com/timbrel/GitSavvy/assets/8558/aea97562-e7ef-4f40-9166-490d19b806cb">
+                <img src="https://github.com/timbrel/GitSavvy/assets/8558/aea97562-e7ef-4f40-9166-490d19b806cb" width="100%">
+            </a>
+        </td>
+    </tr>
+    <tr>
+        <td width="33%">Open the `[r]`ebase menu again.  (The currently checked out branch is named "which" here.)</td>
+        <td width="33%">Show the previous tip of the currently checked out branch side by side.</td>
+        <td width="33%">Showing the main menu, maybe show a diff between both variants or undo by selecting "Move ...".</td>
+    </tr>
+</table>
+
+If you encounter merge conflicts that need to be resolved manually, displaying the diff can help ensure that you haven't introduced 
+any unintended changes or made mistakes.  (In most cases, the diff will be empty, indicating that both tips are identical in terms 
+of code.)  From the main menu you can also choose to "Move" or to "Reset" the branch back to the previous tip, effectively undoing
+the rebase.  "Move" will simply move the branch label, while "Reset" performs your typical reset operation that can also modify 
+Git's staging area and discard uncommitted changes, depending on the mode you choose.  Usually choose "Move" here to undo a rebase.  
+
 
 ## Line History
 
