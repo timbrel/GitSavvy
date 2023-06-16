@@ -1105,18 +1105,18 @@ def prelude(view):
     repo_path = settings.get("git_savvy.repo_path")
     overview = settings.get("git_savvy.log_graph_view.overview")
 
-    paths = [] if overview else settings.get("git_savvy.log_graph_view.paths")
+    paths = settings.get("git_savvy.log_graph_view.paths") or []
     apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
 
     prelude = "\n"
-    if apply_filters and paths:
+    if paths and apply_filters and not overview:
         prelude += "  FILE: {}\n".format(" ".join(paths))
     elif repo_path:
         prelude += "  REPO: {}\n".format(repo_path)
 
     all_branches = settings.get("git_savvy.log_graph_view.all_branches") or False
-    branches = [] if overview else settings.get("git_savvy.log_graph_view.branches") or []
-    filters = apply_filters and settings.get("git_savvy.log_graph_view.filters") or ""
+    branches = settings.get("git_savvy.log_graph_view.branches") or []
+    filters = settings.get("git_savvy.log_graph_view.filters") or ""
     prelude += (
         "  "
         + "  ".join(filter_((
@@ -1125,8 +1125,8 @@ def prelude(view):
                 if overview
                 else '[a]ll: true' if all_branches else '[a]ll: false'
             ),
-            " ".join(branches) if not all_branches else None,
-            filters
+            " ".join(branches) if not all_branches and not overview else None,
+            filters if apply_filters else None
         )))
     )
     return prelude + "\n\n"
