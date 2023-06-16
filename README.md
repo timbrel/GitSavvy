@@ -284,7 +284,6 @@ Feature documentation can be found [here](docs/README.md).  It can also be acces
 <table>
     <tr>
         <th>Github integration</th>
-        <th>Rebase dashboard</th>
     </tr>
     <tr>
         <td width="50%">
@@ -292,15 +291,9 @@ Feature documentation can be found [here](docs/README.md).  It can also be acces
                 <img src="https://cloud.githubusercontent.com/assets/5016978/6704029/8fcaddbe-cd00-11e4-83b6-32276a2c2b65.gif" width="100%">
             </a>
         </td>
-        <td width="50%">
-            <a href="https://cloud.githubusercontent.com/assets/5016978/7017776/5ca9ceca-dcb1-11e4-8fcb-552551f7743a.gif">
-                <img src="https://cloud.githubusercontent.com/assets/5016978/7017776/5ca9ceca-dcb1-11e4-8fcb-552551f7743a.gif" width="100%">
-            </a>
-        </td>
     </tr>
     <tr>
         <td width="50%">Reference issues and collaborators in commits.  Open files on GitHub in the browser, with lines pre-selected.</td>
-        <td width="50%"> Squash, edit, move, rebase, undo, redo.</td>
     </tr>
 </table>
 
