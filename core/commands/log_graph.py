@@ -1114,7 +1114,7 @@ def prelude(view):
     elif repo_path:
         prelude += "  REPO: {}\n".format(repo_path)
 
-    all_ = settings.get("git_savvy.log_graph_view.all_branches") or False
+    all_branches = settings.get("git_savvy.log_graph_view.all_branches") or False
     branches = [] if overview else settings.get("git_savvy.log_graph_view.branches") or []
     filters = apply_filters and settings.get("git_savvy.log_graph_view.filters") or ""
     prelude += (
@@ -1123,9 +1123,9 @@ def prelude(view):
             (
                 'OVERVIEW'
                 if overview
-                else '[a]ll: true' if all_ else '[a]ll: false'
+                else '[a]ll: true' if all_branches else '[a]ll: false'
             ),
-            " ".join(branches) if not all_ else None,
+            " ".join(branches) if not all_branches else None,
             filters
         )))
     )
