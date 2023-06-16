@@ -130,13 +130,13 @@ You can access a second menu by pressing `[r]`, which is specifically designed f
 <table>
     <tr>
         <td width="50%">
-            <a href="https://github.com/timbrel/GitSavvy/assets/8558/76597ee4-7796-41de-adc2-0a864e6020b8">
-                <img src="https://github.com/timbrel/GitSavvy/assets/8558/76597ee4-7796-41de-adc2-0a864e6020b8" width="100%">
+            <a href="https://user-images.githubusercontent.com/8558/246386732-78eda8f2-c308-411f-ba57-c1294f97b32b.png">
+                <img src="https://user-images.githubusercontent.com/8558/246386732-78eda8f2-c308-411f-ba57-c1294f97b32b.png" width="100%">
             </a>
         </td>
         <td width="50%">
-            <a href="https://github.com/timbrel/GitSavvy/assets/8558/4d27e03c-9eb6-4d89-8289-cca96d02ff0b">
-                <img src="https://github.com/timbrel/GitSavvy/assets/8558/4d27e03c-9eb6-4d89-8289-cca96d02ff0b" width="100%">
+            <a href="https://user-images.githubusercontent.com/8558/246387053-4c9d372d-017d-400a-a783-346905c86d37.png">
+                <img src="https://user-images.githubusercontent.com/8558/246387053-4c9d372d-017d-400a-a783-346905c86d37.png" width="100%">
             </a>
         </td>
     </tr>
@@ -151,18 +151,18 @@ You can review any rebase afterwards.  E.g.
 <table>
     <tr>
         <td width="33%">
-            <a href="https://github.com/timbrel/GitSavvy/assets/8558/308c2679-83f6-4a9f-a987-13e8a9451986">
-                <img src="https://github.com/timbrel/GitSavvy/assets/8558/308c2679-83f6-4a9f-a987-13e8a9451986" width="100%">
+            <a href="https://user-images.githubusercontent.com/8558/246387264-b442cf0f-ab77-4694-a1ea-08d8e20a441a.png">
+                <img src="https://user-images.githubusercontent.com/8558/246387264-b442cf0f-ab77-4694-a1ea-08d8e20a441a.png" width="100%">
             </a>
         </td>
         <td width="33%">
-            <a href="https://github.com/timbrel/GitSavvy/assets/8558/8f53ab86-0290-4378-97b4-7acaf07ff174">
-                <img src="https://github.com/timbrel/GitSavvy/assets/8558/8f53ab86-0290-4378-97b4-7acaf07ff174" width="100%">
+            <a href="https://user-images.githubusercontent.com/8558/246387423-a2f6b82f-cf65-4566-af23-78fbc47f1382.png">
+                <img src="https://user-images.githubusercontent.com/8558/246387423-a2f6b82f-cf65-4566-af23-78fbc47f1382.png" width="100%">
             </a>
         </td>
         <td width="33%">
-            <a href="https://github.com/timbrel/GitSavvy/assets/8558/aea97562-e7ef-4f40-9166-490d19b806cb">
-                <img src="https://github.com/timbrel/GitSavvy/assets/8558/aea97562-e7ef-4f40-9166-490d19b806cb" width="100%">
+            <a href="https://user-images.githubusercontent.com/8558/246387583-9779f505-cdad-435a-8b65-3737845506eb.png">
+                <img src="https://user-images.githubusercontent.com/8558/246387583-9779f505-cdad-435a-8b65-3737845506eb.png" width="100%">
             </a>
         </td>
     </tr>
