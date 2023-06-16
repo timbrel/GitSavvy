@@ -1107,9 +1107,6 @@ def prelude(view):
 
     paths = [] if overview else settings.get("git_savvy.log_graph_view.paths")
     apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
-    all_ = settings.get("git_savvy.log_graph_view.all_branches") or False
-    branches = settings.get("git_savvy.log_graph_view.branches") or []
-    filters = apply_filters and settings.get("git_savvy.log_graph_view.filters") or ""
 
     prelude = "\n"
     if apply_filters and paths:
