@@ -237,70 +237,58 @@ Feature documentation can be found [here](docs/README.md).  It can also be acces
 
 <table>
     <tr>
-        <th>Inline-diff</th>
         <th>Status dashboard</th>
-    </tr>
-    <tr>
-        <td width="50%">
-            <a href="https://cloud.githubusercontent.com/assets/5016978/6471628/886430f8-c1a1-11e4-99e9-883837dba86f.gif">
-                <img src="https://cloud.githubusercontent.com/assets/5016978/6471628/886430f8-c1a1-11e4-99e9-883837dba86f.gif" width="100%">
-            </a>
-        </td>
-        <td width="50%">
-            <a href="https://cloud.githubusercontent.com/assets/5016978/6704171/2f236466-cd02-11e4-9b7d-22cc880b5e9d.png">
-                <img src="https://cloud.githubusercontent.com/assets/5016978/6704171/2f236466-cd02-11e4-9b7d-22cc880b5e9d.png" width="100%">
-            </a>
-        </td>
-    </tr>
-    <tr>
-        <td width="50%">(Un)stage and revert individual lines and hunks.</td>
-        <td width="50%">Display and overview and offer actions to manipulate your project state.</td>
-    </tr>
-</table>
-
-<table>
-    <tr>
-        <th>Branch dashboard</th>
         <th>Tags dashboard</th>
     </tr>
     <tr>
         <td width="50%">
-            <a href="https://cloud.githubusercontent.com/assets/5016978/6704168/2b2e7b84-cd02-11e4-90f4-8dd96b21edeb.png">
-                <img src="https://cloud.githubusercontent.com/assets/5016978/6704168/2b2e7b84-cd02-11e4-90f4-8dd96b21edeb.png" width="100%">
+            <a href="https://user-images.githubusercontent.com/8558/246819874-283e25d6-510a-4f33-ae24-1f57d533462d.png">
+                <img src="https://user-images.githubusercontent.com/8558/246819874-283e25d6-510a-4f33-ae24-1f57d533462d.png" width="100%">
             </a>
         </td>
         <td width="50%">
-            <a href="https://cloud.githubusercontent.com/assets/5016978/6704169/2c80beac-cd02-11e4-8940-986ea0f0d6bb.png">
-                <img src="https://cloud.githubusercontent.com/assets/5016978/6704169/2c80beac-cd02-11e4-8940-986ea0f0d6bb.png" width="100%">
+            <a href="https://user-images.githubusercontent.com/8558/246406488-1b7013b0-36c0-4e8d-90bf-7814d5c8e180.png">
+                <img src="https://user-images.githubusercontent.com/8558/246406488-1b7013b0-36c0-4e8d-90bf-7814d5c8e180.png" width="100%">
             </a>
         </td>
     </tr>
     <tr>
-        <td width="50%">View and manipulate local and remote branches.</td>
+        <td width="50%">Display and overview and offer actions to manipulate your project state.</td>
         <td width="50%">View and manipulate local and remote tags.</td>
     </tr>
 </table>
 
 <table>
     <tr>
+        <th>Diff</th>
+    </tr>
+    <tr>
+        <td width="50%">
+            <a href="https://user-images.githubusercontent.com/8558/246410602-d6104f79-157e-44ff-9831-eb311dd9ede0.mp4">
+                <video src="https://user-images.githubusercontent.com/8558/246410602-d6104f79-157e-44ff-9831-eb311dd9ede0.mp4" data-canonical-src="https://user-images.githubusercontent.com/8558/246410602-d6104f79-157e-44ff-9831-eb311dd9ede0.mp4" controls="controls" muted="muted" class="d-block rounded-bottom-2 border-top width-fit" style="max-height:640px; min-height: 200px">
+
+                </video>
+            </a>
+        </td>
+    </tr>
+    <tr>
+        <td width="50%">Stage, unstage or discard hunks, files or individual lines.</td>
+    </tr>
+</table>
+
+<table>
+    <tr>
         <th>Github integration</th>
-        <th>Rebase dashboard</th>
     </tr>
     <tr>
         <td width="50%">
-            <a href="https://cloud.githubusercontent.com/assets/5016978/6704029/8fcaddbe-cd00-11e4-83b6-32276a2c2b65.gif">
-                <img src="https://cloud.githubusercontent.com/assets/5016978/6704029/8fcaddbe-cd00-11e4-83b6-32276a2c2b65.gif" width="100%">
-            </a>
-        </td>
-        <td width="50%">
-            <a href="https://cloud.githubusercontent.com/assets/5016978/7017776/5ca9ceca-dcb1-11e4-8fcb-552551f7743a.gif">
-                <img src="https://cloud.githubusercontent.com/assets/5016978/7017776/5ca9ceca-dcb1-11e4-8fcb-552551f7743a.gif" width="100%">
+            <a href="https://user-images.githubusercontent.com/8558/246403219-313ca580-d4ea-4125-a10d-5f72ef6571ec.png">
+                <img src="https://user-images.githubusercontent.com/8558/246403219-313ca580-d4ea-4125-a10d-5f72ef6571ec.png" width="100%">
             </a>
         </td>
     </tr>
     <tr>
-        <td width="50%">Reference issues and collaborators in commits.  Open files on GitHub in the browser, with lines pre-selected.</td>
-        <td width="50%"> Squash, edit, move, rebase, undo, redo.</td>
+        <td width="50%">Reference issues and collaborators in commits.  Open files on GitHub in the browser, with lines pre-selected.  Create pull requests.  Fork a repository.</td>
     </tr>
 </table>
 
