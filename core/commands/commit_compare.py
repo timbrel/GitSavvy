@@ -1,4 +1,3 @@
-import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
@@ -45,9 +44,6 @@ class gs_compare_against_reference(WindowCommand, GitCommand):
         self._file_path = file_path
         self._base_commit = base_commit
         self._target_commit = target_commit
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
         show_single_line_input_panel("Ref:", "", self.show_diff, None, self.on_cancel)
 
     def show_diff(self, ref):
@@ -70,9 +66,6 @@ class gs_compare_against_branch(WindowCommand, GitCommand):
         self._file_path = file_path
         self._base_commit = base_commit
         self._target_commit = target_commit
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
         show_branch_panel(self.on_branch_selection, on_cancel=self.recurse)
 
     def on_branch_selection(self, branch):
