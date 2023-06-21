@@ -615,17 +615,18 @@ class LogHelperMixin(GitCommand):
                 "commit_hash": entry.short_hash
             })
 
+        def format_item(entry: LogEntry) -> str:
+            return "  ".join(filter_((
+                entry.short_hash,
+                short_ref(entry.ref) if not entry.ref.startswith("HEAD ->") else "",
+                entry.summary
+            )))
+
         preselected_idx = next(
             (idx for idx, item in enumerate(items) if item.summary == preselected_commit_message),
             -1
         ) if preselected_commit_message else -1
-        format_item = lambda entry: "  ".join(filter_(
-            (
-                entry.short_hash,
-                short_ref(entry.ref) if not entry.ref.startswith("HEAD ->") else "",
-                entry.summary
-            )
-        ))
+
         show_panel(
             window,
             map(format_item, items),
