@@ -532,7 +532,7 @@ class PaginatedPanel:
 def show_log_panel(entries, on_done, **kwargs):
     """
     Display log entries in quick panel with pagination, and execute on_done(commit)
-    when item is selected. `entries` can be either a list or a generator of LogEnty.
+    when item is selected. `entries` can be either a list or a generator of LogEntry.
 
     """
     _kwargs = {}
