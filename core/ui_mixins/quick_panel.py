@@ -607,7 +607,7 @@ class LogHelperMixin(GitCommand):
             action(entry)
 
         def on_cancel():
-            window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
+            window.run_command("hide_panel", {"panel": "output.show_commit_info"})
 
         def on_highlight(idx):
             entry = items[idx]

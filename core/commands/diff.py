@@ -781,7 +781,7 @@ class gs_initiate_fixup_commit(TextCommand, LogHelperMixin):
         def action(entry):
             # type: (LogEntry) -> None
             commit_message = entry.summary
-            window.run_command("gs_commit", {  # type: ignore[union-attr]
+            window.run_command("gs_commit", {
                 "initial_text": "fixup! {}".format(commit_message)
             })
 
