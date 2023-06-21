@@ -601,8 +601,10 @@ class LogHelperMixin(GitCommand):
         if not window:
             return
 
+        items = self.log(limit=100)
+
         def on_done(idx):
-            window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
+            window.run_command("hide_panel", {"panel": "output.show_commit_info"})
             entry = items[idx]
             action(entry)
 
@@ -611,11 +613,10 @@ class LogHelperMixin(GitCommand):
 
         def on_highlight(idx):
             entry = items[idx]
-            window.run_command("gs_show_commit_info", {  # type: ignore[union-attr]  # mypy bug
+            window.run_command("gs_show_commit_info", {
                 "commit_hash": entry.short_hash
             })
 
-        items = self.log(limit=100)
         preselected_idx = next(
             (idx for idx, item in enumerate(items) if item.summary == preselected_commit_message),
             -1
