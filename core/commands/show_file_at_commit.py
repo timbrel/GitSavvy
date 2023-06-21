@@ -116,7 +116,7 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         # extend Sublime Text's hardcoded duration.
         def sink(n=0):
             if (
-                view != window.active_view()  # type: ignore[union-attr]
+                view != window.active_view()
                 or commit_hash != settings.get("git_savvy.show_file_at_commit_view.commit")
             ):
                 return
