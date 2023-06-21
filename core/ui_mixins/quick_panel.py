@@ -601,15 +601,15 @@ class LogHelperMixin(GitCommand):
 
         items = self.log(limit=100)
 
-        def on_done(idx):
+        def on_done(idx: int) -> None:
             window.run_command("hide_panel", {"panel": "output.show_commit_info"})
             entry = items[idx]
             action(entry)
 
-        def on_cancel():
+        def on_cancel() -> None:
             window.run_command("hide_panel", {"panel": "output.show_commit_info"})
 
-        def on_highlight(idx):
+        def on_highlight(idx: int) -> None:
             entry = items[idx]
             window.run_command("gs_show_commit_info", {
                 "commit_hash": entry.short_hash
