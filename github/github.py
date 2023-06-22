@@ -117,9 +117,9 @@ def open_issues(remote):
 
 def get_api_fqdn(github_repo):
     """
-    Determine if the provided GitHub repo object refers to a GitHub-
-    Enterprise instance or to publically hosted GitHub.com, and
-    indicate what base FQDN to use for API requests.
+    Determine if the provided GitHub repo object refers to a GitHub
+    Enterprise instance or publicly hosted GitHub.com, and indicate
+    the base FQDN to use for API requests.
     """
     if github_repo.fqdn[-10:] == "github.com":
         return False, "api.github.com"
