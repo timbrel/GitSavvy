@@ -31,8 +31,7 @@ class GitHubRepo(NamedTuple):
     token: str
 
 
-def remote_to_url(remote_url):
-    # type: (str) -> str
+def remote_to_url(remote_url: str) -> str:
     """
     Parse out a Github HTTP URL from a remote URI:
 
@@ -59,8 +58,7 @@ def remote_to_url(remote_url):
         raise ValueError('Cannot parse remote "{}" and transform to url'.format(remote_url))
 
 
-def parse_remote(remote_url):
-    # type: (str) -> GitHubRepo
+def parse_remote(remote_url: str) -> GitHubRepo:
     """
     Given a line of output from `git remote -v`, parse the string and return
     an object with original url, FQDN, owner, repo, and the token to use for
