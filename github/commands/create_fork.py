@@ -1,10 +1,9 @@
 import sublime
-from sublime_plugin import WindowCommand
 
 from ...common import util
-from ...core.git_command import GitCommand
 from .. import github, git_mixins
-from GitSavvy.core.runtime import enqueue_on_worker
+from GitSavvy.core.base_commands import GsWindowCommand
+from GitSavvy.core.runtime import on_worker
 
 
 START_CREATE_MESSAGE = "Forking {repo} ..."
@@ -14,16 +13,10 @@ END_CREATE_MESSAGE = "Fork created successfully."
 __all__ = ['gs_github_create_fork']
 
 
-class gs_github_create_fork(
-    WindowCommand,
-    git_mixins.GithubRemotesMixin,
-    GitCommand,
-):
+class gs_github_create_fork(GsWindowCommand, git_mixins.GithubRemotesMixin):
 
+    @on_worker
     def run(self):
-        enqueue_on_worker(self.run_async)
-
-    def run_async(self):
         remotes = self.get_remotes()
         base_remote_name = self.get_integrated_remote_name(remotes)
         base_remote_url = remotes[base_remote_name]
