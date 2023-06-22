@@ -224,4 +224,9 @@ def post_to_github(api_url_template, github_repo, payload=None):
     return response.payload
 
 
-create_fork = partial(post_to_github, "/repos/{owner}/{repo}/forks")
+def create_fork(github_repo: GitHubRepo, default_branch_only: bool = False):
+    return post_to_github(
+        "/repos/{owner}/{repo}/forks",
+        github_repo,
+        {"default_branch_only": default_branch_only}
+    )
