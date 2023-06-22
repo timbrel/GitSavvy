@@ -3,9 +3,9 @@ GitHub methods that are functionally separate from anything Sublime-related.
 """
 
 import re
-from collections import namedtuple
 from webbrowser import open as open_in_browser
 from functools import partial
+from typing import NamedTuple
 
 from ..common import interwebs
 from ..core.exceptions import FailedGithubRequest
@@ -23,15 +23,17 @@ https://github.com/timbrel/GitSavvy/blob/master/docs/github.md#setup
 """
 
 
+class GitHubRepo(NamedTuple):
+    url: str
+    fqdn: str
+    owner: str
+    repo: str
+    token: str
+
+
 MYPY = False
 if MYPY:
-    from typing import NamedTuple
-    GitHubRepo = NamedTuple("GitHubRepo", [
-        ("url", str), ("fqdn", str), ("owner", str), ("repo", str), ("token", str)
-    ])
     remote_url = str
-else:
-    GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo", "token"))
 
 
 def remote_to_url(remote):
