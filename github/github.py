@@ -3,9 +3,9 @@ GitHub methods that are functionally separate from anything Sublime-related.
 """
 
 import re
-from collections import namedtuple
 from webbrowser import open as open_in_browser
 from functools import partial
+from typing import NamedTuple
 
 from ..common import interwebs
 from ..core.exceptions import FailedGithubRequest
@@ -23,19 +23,15 @@ https://github.com/timbrel/GitSavvy/blob/master/docs/github.md#setup
 """
 
 
-MYPY = False
-if MYPY:
-    from typing import NamedTuple
-    GitHubRepo = NamedTuple("GitHubRepo", [
-        ("url", str), ("fqdn", str), ("owner", str), ("repo", str), ("token", str)
-    ])
-    remote_url = str
-else:
-    GitHubRepo = namedtuple("GitHubRepo", ("url", "fqdn", "owner", "repo", "token"))
+class GitHubRepo(NamedTuple):
+    url: str
+    fqdn: str
+    owner: str
+    repo: str
+    token: str
 
 
-def remote_to_url(remote):
-    # type: (remote_url) -> str
+def remote_to_url(remote_url: str) -> str:
     """
     Parse out a Github HTTP URL from a remote URI:
 
@@ -49,27 +45,26 @@ def remote_to_url(remote):
     assert r3 == "https://github.com/timbrel/GitSavvy"
     """
 
-    if remote.endswith(".git"):
-        remote = remote[:-4]
+    if remote_url.endswith(".git"):
+        remote_url = remote_url[:-4]
 
-    if remote.startswith("git@"):
-        return remote.replace(":", "/").replace("git@", "https://")
-    elif remote.startswith("git://"):
-        return remote.replace("git://", "https://")
-    elif remote.startswith("http"):
-        return remote
+    if remote_url.startswith("git@"):
+        return remote_url.replace(":", "/").replace("git@", "https://")
+    elif remote_url.startswith("git://"):
+        return remote_url.replace("git://", "https://")
+    elif remote_url.startswith("http"):
+        return remote_url
     else:
-        raise ValueError('Cannot parse remote "{}" and transform to url'.format(remote))
+        raise ValueError('Cannot parse remote "{}" and transform to url'.format(remote_url))
 
 
-def parse_remote(remote):
-    # type: (remote_url) -> GitHubRepo
+def parse_remote(remote_url: str) -> GitHubRepo:
     """
     Given a line of output from `git remote -v`, parse the string and return
     an object with original url, FQDN, owner, repo, and the token to use for
     this particular FQDN (if available).
     """
-    url = remote_to_url(remote)
+    url = remote_to_url(remote_url)
 
     match = re.match(r"https?://([a-zA-Z-\.0-9]+)/([a-zA-Z-\._0-9]+)/([a-zA-Z-\._0-9]+)/?", url)
     if not match:
@@ -80,11 +75,11 @@ def parse_remote(remote):
     return GitHubRepo(url, fqdn, owner, repo, token)
 
 
-def open_file_in_browser(rel_path, remote, commit_hash, start_line=None, end_line=None):
+def open_file_in_browser(rel_path, remote_url, commit_hash, start_line=None, end_line=None):
     """
-    Open the URL corresponding to the provided `rel_path` on `remote`.
+    Open the URL corresponding to the provided `rel_path` on `remote_url`.
     """
-    github_repo = parse_remote(remote)
+    github_repo = parse_remote(remote_url)
     line_numbers = "#L{}-L{}".format(start_line, end_line) if start_line is not None else ""
 
     url = "{repo_url}/blob/{commit_hash}/{path}{lines}".format(
@@ -97,27 +92,27 @@ def open_file_in_browser(rel_path, remote, commit_hash, start_line=None, end_lin
     open_in_browser(url)
 
 
-def open_repo(remote):
+def open_repo(remote_url):
     """
-    Open the GitHub repo in a new browser window, given the specified remote.
+    Open the GitHub repo in a new browser window, given the specified remote url.
     """
-    github_repo = parse_remote(remote)
+    github_repo = parse_remote(remote_url)
     open_in_browser(github_repo.url)
 
 
-def open_issues(remote):
+def open_issues(remote_url):
     """
-    Open the GitHub issues in a new browser window, given the specified remote.
+    Open the GitHub issues in a new browser window, given the specified remote url.
     """
-    github_repo = parse_remote(remote)
+    github_repo = parse_remote(remote_url)
     open_in_browser("{}/issues".format(github_repo.url))
 
 
 def get_api_fqdn(github_repo):
     """
-    Determine if the provided GitHub repo object refers to a GitHub-
-    Enterprise instance or to publically hosted GitHub.com, and
-    indicate what base FQDN to use for API requests.
+    Determine if the provided GitHub repo object refers to a GitHub
+    Enterprise instance or publicly hosted GitHub.com, and indicate
+    the base FQDN to use for API requests.
     """
     if github_repo.fqdn[-10:] == "github.com":
         return False, "api.github.com"
