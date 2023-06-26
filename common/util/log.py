@@ -1,6 +1,7 @@
 import re
 import sublime
 
+from GitSavvy.core.view import replace_view_content
 
 from typing import Optional
 
@@ -53,11 +54,18 @@ def show_panel(window):
 
 def append_to_panel(panel, message):
     # type: (sublime.View, str) -> None
+    # We support standard progress bars with "\r" line endings!
+    # If we see such a line ending, we remember where we started
+    # our write as `virtual_cursor` as this is where the next
+    # write must begin.
+    has_trailing_carriage_return = message.endswith("\r")
     message = normalize(message)
-    panel.set_read_only(False)
-    panel.run_command('append', {
-        'characters': message,
-        'force': True,
-        'scroll_to_end': True
-    })
-    panel.set_read_only(True)
+
+    eof = panel.size()
+    cursor = panel.settings().get("virtual_cursor") or eof
+    region = sublime.Region(cursor, eof)
+    replace_view_content(panel, message, region=region)
+    panel.settings().set("virtual_cursor", cursor if has_trailing_carriage_return else None)
+
+    eof_after_append = panel.size()
+    panel.show(eof_after_append)
