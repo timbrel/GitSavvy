@@ -2,9 +2,7 @@ import re
 import sublime
 
 
-MYPY = False
-if MYPY:
-    from typing import Optional
+from typing import Optional
 
 
 PANEL_NAME = "GitSavvy"
