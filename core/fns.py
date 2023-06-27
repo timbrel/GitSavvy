@@ -1,3 +1,4 @@
+from collections import deque
 from functools import partial
 from itertools import accumulate as accumulate_, chain, islice, tee
 
@@ -8,6 +9,10 @@ U = TypeVar('U')
 
 filter_ = partial(filter, None)  # type: Callable[[Iterable[Optional[T]]], Iterator[T]]  # type: ignore[assignment]
 flatten = chain.from_iterable
+
+
+def consume(it: Iterable) -> None:
+    deque(it, 0)
 
 
 def maybe(fn):

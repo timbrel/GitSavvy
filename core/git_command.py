@@ -23,13 +23,20 @@ import sublime
 
 from ..common import util
 from .settings import SettingsMixin
-from GitSavvy.core.fns import filter_, pairwise
+from GitSavvy.core.fns import consume, filter_, pairwise
 from GitSavvy.core.runtime import auto_timeout, enqueue_on_worker, run_as_future
 from GitSavvy.core.utils import kill_proc, paths_upwards, resolve_path
 
 
-from typing import Callable, Deque, Dict, IO, Iterator, List, Optional, Sequence, Tuple, Union
+from typing import (
+    Callable, Deque, Dict, IO, Iterable, Iterator, List, Optional, Sequence,
+    Tuple, TypeVar, Union)
+T = TypeVar("T")
 MYPY = False
+
+
+def map_(it: Iterable[T], k: Callable[[T], object]):
+    consume(map(k, it))
 
 
 #: A mapping from a git binary to its version
@@ -115,13 +122,24 @@ def communicate_and_log(proc, stdin, log, timeout=None):
 
 def stream_stdout_and_err(proc, timeout):
     # type: (subprocess.Popen[bytes], Optional[float]) -> Iterator[bytes]
-    timeout_manager = timer(timeout)
-    container = deque()  # type: Deque[bytes]
-    append = container.append
     assert proc.stdout
     assert proc.stderr
-    out_f = run_as_future(read_linewise, proc.stdout, lambda line: append(Out(line)), timeout_manager.ping)
-    err_f = run_as_future(read_bytewise, proc.stderr, lambda line: append(Err(line)), timeout_manager.ping)
+
+    timeout_manager = timer(timeout)
+    container = deque()  # type: Deque[bytes]
+
+    def on_line(line: bytes,
+                tag: Callable[[bytes], bytes] = bytes,
+                ping=timeout_manager.ping,
+                append=container.append) -> None:
+        ping()
+        append(tag(line))
+
+    on_stdout = partial(on_line, tag=Out)
+    on_stderr = partial(on_line, tag=Err)
+
+    out_f = run_as_future(map_, read_linewise(proc.stdout), on_stdout)  # type: ignore[arg-type]
+    err_f = run_as_future(map_, read_bytewise(proc.stderr), on_stderr)  # type: ignore[arg-type]
     delay = chain([1, 2, 4, 8, 15, 30], repeat(50))
 
     with proc:
@@ -141,18 +159,12 @@ def stream_stdout_and_err(proc, timeout):
     yield from container
 
 
-def read_linewise(fh, kont, ping):
-    # type: (IO[bytes], Callable[[bytes], None], Callable[[], None]) -> None
-    for line in iter(fh.readline, b''):
-        ping()
-        kont(line)
+def read_linewise(fh: IO[bytes]) -> Iterator[bytes]:
+    return iter(fh.readline, b'')
 
 
-def read_bytewise(fh, kont, ping):
-    # type: (IO[bytes], Callable[[bytes], None], Callable[[], None]) -> None
-    for line in _group_bytes_to_lines(_read_bytewise(fh)):
-        ping()
-        kont(line)
+def read_bytewise(fh: IO[bytes]) -> Iterator[bytes]:
+    return _group_bytes_to_lines(_read_bytewise(fh))
 
 
 def _read_bytewise(fh: IO[bytes]) -> Iterator[bytes]:
