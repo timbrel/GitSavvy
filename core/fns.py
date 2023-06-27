@@ -1,11 +1,9 @@
 from functools import partial
 from itertools import accumulate as accumulate_, chain, islice, tee
 
-MYPY = False
-if MYPY:
-    from typing import Callable, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar
-    T = TypeVar('T')
-    U = TypeVar('U')
+from typing import Callable, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar
+T = TypeVar('T')
+U = TypeVar('U')
 
 
 filter_ = partial(filter, None)  # type: Callable[[Iterable[Optional[T]]], Iterator[T]]  # type: ignore[assignment]
