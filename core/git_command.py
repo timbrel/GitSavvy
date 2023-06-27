@@ -53,6 +53,8 @@ MIN_GIT_VERSION = (2, 18, 0)
 GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d} or above."
 
 NOT_SET = "<NOT_SET>"
+class Out(bytes): pass  # noqa: E701
+class Err(bytes): pass  # noqa: E701
 
 
 class TimeoutManager:
@@ -111,8 +113,32 @@ def communicate_and_log(proc, stdin, log, timeout=None):
     return stdout, stderr
 
 
-class Out(bytes): pass  # noqa: E701
-class Err(bytes): pass  # noqa: E701
+def stream_stdout_and_err(proc, timeout):
+    # type: (subprocess.Popen[bytes], Optional[float]) -> Iterator[bytes]
+    timeout_manager = timer(timeout)
+    container = deque()  # type: Deque[bytes]
+    append = container.append
+    assert proc.stdout
+    assert proc.stderr
+    out_f = run_as_future(read_linewise, proc.stdout, lambda line: append(Out(line)), timeout_manager.ping)
+    err_f = run_as_future(read_linewise, proc.stderr, lambda line: append(Err(line)), timeout_manager.ping)
+    delay = chain([1, 2, 4, 8, 15, 30], repeat(50))
+
+    with proc:
+        while out_f.running() or err_f.running():
+            try:
+                yield container.popleft()
+            except IndexError:
+                time.sleep(next(delay) / 1000)
+                if timeout_manager.has_timed_out():
+                    kill_proc(proc)
+                    raise TimeoutError("timed out after {} seconds".format(timeout))
+
+    # Check and raise exceptions if any
+    out_f.result()
+    err_f.result()
+
+    yield from container
 
 
 def read_linewise(fh, kont, ping):
@@ -145,34 +171,6 @@ def _group_bytes_to_lines(bytewise: Iterator[bytes]) -> Iterator[bytes]:
 
     if line:
         yield line
-
-
-def stream_stdout_and_err(proc, timeout):
-    # type: (subprocess.Popen[bytes], Optional[float]) -> Iterator[bytes]
-    timeout_manager = timer(timeout)
-    container = deque()  # type: Deque[bytes]
-    append = container.append
-    assert proc.stdout
-    assert proc.stderr
-    out_f = run_as_future(read_linewise, proc.stdout, lambda line: append(Out(line)), timeout_manager.ping)
-    err_f = run_as_future(read_linewise, proc.stderr, lambda line: append(Err(line)), timeout_manager.ping)
-    delay = chain([1, 2, 4, 8, 15, 30], repeat(50))
-
-    with proc:
-        while out_f.running() or err_f.running():
-            try:
-                yield container.popleft()
-            except IndexError:
-                time.sleep(next(delay) / 1000)
-                if timeout_manager.has_timed_out():
-                    kill_proc(proc)
-                    raise TimeoutError("timed out after {} seconds".format(timeout))
-
-    # Check and raise exceptions if any
-    out_f.result()
-    err_f.result()
-
-    yield from container
 
 
 STARTUPINFO = None
