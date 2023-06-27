@@ -143,16 +143,16 @@ def stream_stdout_and_err(proc, timeout):
 
 def read_linewise(fh, kont, ping):
     # type: (IO[bytes], Callable[[bytes], None], Callable[[], None]) -> None
-    for line in _group_bytes_to_lines(_read_bytewise(fh, ping)):
+    for line in _group_bytes_to_lines(_read_bytewise(fh)):
+        ping()
         kont(line)
 
 
-def _read_bytewise(fh: IO[bytes], ping: Callable[[], None]) -> Iterator[bytes]:
+def _read_bytewise(fh: IO[bytes]) -> Iterator[bytes]:
     while True:
         byte = fh.read(1)
         if not byte:
             break
-        ping()
         yield byte
 
 
