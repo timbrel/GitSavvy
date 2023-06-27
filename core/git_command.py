@@ -121,7 +121,7 @@ def stream_stdout_and_err(proc, timeout):
     assert proc.stdout
     assert proc.stderr
     out_f = run_as_future(read_linewise, proc.stdout, lambda line: append(Out(line)), timeout_manager.ping)
-    err_f = run_as_future(read_linewise, proc.stderr, lambda line: append(Err(line)), timeout_manager.ping)
+    err_f = run_as_future(read_bytewise, proc.stderr, lambda line: append(Err(line)), timeout_manager.ping)
     delay = chain([1, 2, 4, 8, 15, 30], repeat(50))
 
     with proc:
@@ -142,6 +142,13 @@ def stream_stdout_and_err(proc, timeout):
 
 
 def read_linewise(fh, kont, ping):
+    # type: (IO[bytes], Callable[[bytes], None], Callable[[], None]) -> None
+    for line in iter(fh.readline, b''):
+        ping()
+        kont(line)
+
+
+def read_bytewise(fh, kont, ping):
     # type: (IO[bytes], Callable[[bytes], None], Callable[[], None]) -> None
     for line in _group_bytes_to_lines(_read_bytewise(fh)):
         ping()
