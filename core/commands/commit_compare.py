@@ -89,8 +89,8 @@ class gs_compare_against_branch(WindowCommand, GitCommand):
 
 class gs_compare_against(PanelActionMixin, WindowCommand):
     default_actions = [
-        ["compare_against_branch", "Branch"],
-        ["compare_against_reference", "Reference"],
+        ["compare_against_branch", "Select branch..."],
+        ["compare_against_reference", "Enter reference..."],
     ]
 
     def run(self, base_commit=None, target_commit=None, file_path=None, current_file=False, target_hints=None):
