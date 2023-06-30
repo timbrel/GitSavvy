@@ -2705,6 +2705,8 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 )
             ]
         else:
+            interesting_candidates = branches.keys() & ["main", "master", "dev"]
+            target_hints = sorted(interesting_candidates, key=lambda branch: -branches[branch].committerdate)
             actions += [
                 (
                     "Compare {}against ...".format("file " if file_path else ""),
@@ -2712,6 +2714,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                         self.compare_against,
                         info["HEAD"] if on_checked_out_branch else commit_hash,
                         file_path=file_path,
+                        target_hints=target_hints
                     )
                 ),
             ]
@@ -2805,10 +2808,16 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             "file_path": file_path
         })
 
-    def compare_against(self, base_commit, file_path=None):
+    def compare_against(self, base_commit, file_path=None, target_hints=None):
+        nearest_tag = self.git("describe", "--abbrev=0").strip()
+        if nearest_tag:
+            if target_hints is None:
+                target_hints = []
+            target_hints += [nearest_tag]
         self.window.run_command("gs_compare_against", {
             "base_commit": base_commit,
             "file_path": file_path,
+            "target_hints": target_hints
         })
 
     def copy_sha(self, commit_hash):
