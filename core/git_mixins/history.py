@@ -328,6 +328,7 @@ class HistoryMixin(mixin_base):
             return self.git(
                 "log",
                 "--format=%H",
+                "--topo-order",
                 "--follow" if follow else None,
                 "-2",
                 current_commit,
@@ -343,6 +344,7 @@ class HistoryMixin(mixin_base):
             return self.git(
                 "log",
                 "--format=%H",
+                "--topo-order",
                 "--follow" if follow else None,
                 "{}..".format(current_commit),
                 "--",
