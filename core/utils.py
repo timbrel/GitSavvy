@@ -34,6 +34,7 @@ def print_runtime(message):
 
 
 def measure_runtime():
+def print_runtime_marks():
     # type: () -> Callable[[str], None]
     start_time = time.perf_counter()
 
