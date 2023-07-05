@@ -7,10 +7,8 @@ from GitSavvy.core.fns import filter_, maybe
 from GitSavvy.core.utils import show_panel
 
 
-MYPY = False
-if MYPY:
-    from typing import Callable, List, Optional, Union
-    from ..git_mixins.history import LogEntry
+from typing import Callable, List, Optional, Union
+from ..git_mixins.history import LogEntry
 
 
 NO_REMOTES_MESSAGE = "You have not configured any remotes."
