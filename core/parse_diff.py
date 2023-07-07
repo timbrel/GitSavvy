@@ -182,7 +182,7 @@ class CommitHeader(TextRange):
 
 
 class FileHeader(TextRange):
-    def from_filename(self):
+    def to_filename(self):
         # type: () -> Optional[str]
         match = HEADER_TO_FILE_RE.search(self.text)
         if not match:

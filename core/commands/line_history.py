@@ -133,7 +133,7 @@ class gs_line_history(TextCommand, GitCommand):
             flash(view, "Not on a hunk.")
             return
         header = d.head_for_hunk(hunk)
-        file_path = header.from_filename()
+        file_path = header.to_filename()
         if not file_path:
             flash(view, "Can't extract a file path.")
             return
