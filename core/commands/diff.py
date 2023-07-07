@@ -372,7 +372,7 @@ def _draw(view, title, prelude, diff_text, match_position):
 def find_header_for_filename(headers, filename):
     # type: (Iterable[FileHeader], str) -> Optional[FileHeader]
     for header in headers:
-        if header.from_filename() == filename:
+        if header.to_filename() == filename:
             return header
     else:
         return None
@@ -618,7 +618,7 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
 
         if diff.is_combined_diff():
             headers = list(unique(filter_(map(diff.head_for_pt, cursor_pts))))
-            files = list(filter_(head.from_filename() for head in headers))
+            files = list(filter_(head.to_filename() for head in headers))
             if not files:
                 flash(self.view, "Not within a hunk")
                 return
@@ -865,7 +865,7 @@ def jump_position_to_file(view, diff, pt):
     header, hunk = head_and_hunk
 
     line, col = real_linecol_in_hunk(hunk, *row_offset_and_col_in_hunk(view, hunk, pt))
-    filename = header.from_filename()
+    filename = header.to_filename()
     if not filename:
         return None
 
