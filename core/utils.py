@@ -11,6 +11,7 @@ import sys
 import time
 import threading
 import traceback
+from types import SimpleNamespace
 
 import sublime
 
@@ -33,7 +34,17 @@ def print_runtime(message):
     print('{} took {}ms [{}]'.format(message, duration, thread_name))
 
 
+@contextmanager
 def measure_runtime():
+    start_time = time.perf_counter()
+    ms = SimpleNamespace()
+    yield ms
+    end_time = time.perf_counter()
+    duration = round((end_time - start_time) * 1000)
+    ms.get = lambda: duration
+
+
+def print_runtime_marks():
     # type: () -> Callable[[str], None]
     start_time = time.perf_counter()
 
