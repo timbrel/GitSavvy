@@ -377,8 +377,13 @@ class gs_show_commit_open_graph_context(TextCommand, GitCommand):
             return
 
         settings = self.view.settings()
-        commit_hash = settings.get("git_savvy.show_commit_view.commit")
+        if settings.get("git_savvy.show_commit_view.belongs_to_a_graph"):
+            av = window.active_view()
+            if av:
+                window.focus_view(av)
+            return
 
+        commit_hash = settings.get("git_savvy.show_commit_view.commit")
         window.run_command("gs_graph", {
             "all": True,
             "follow": self.get_short_hash(commit_hash)
