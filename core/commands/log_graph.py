@@ -1102,34 +1102,30 @@ def lax_decoder(encodings):
 def prelude(view):
     # type: (sublime.View) -> str
     settings = view.settings()
-    repo_path = settings.get("git_savvy.repo_path")
-    overview = settings.get("git_savvy.log_graph_view.overview")
-
-    paths = [] if overview else settings.get("git_savvy.log_graph_view.paths")
+    all_branches = settings.get("git_savvy.log_graph_view.all_branches") or False
     apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
-    all_ = settings.get("git_savvy.log_graph_view.all_branches") or False
     branches = settings.get("git_savvy.log_graph_view.branches") or []
-    filters = apply_filters and settings.get("git_savvy.log_graph_view.filters") or ""
+    filters = settings.get("git_savvy.log_graph_view.filters") or ""
+    overview = settings.get("git_savvy.log_graph_view.overview")
+    paths = settings.get("git_savvy.log_graph_view.paths") or []
+    repo_path = settings.get("git_savvy.repo_path")
 
     prelude = "\n"
-    if apply_filters and paths:
+    if paths and apply_filters and not overview:
         prelude += "  FILE: {}\n".format(" ".join(paths))
     elif repo_path:
         prelude += "  REPO: {}\n".format(repo_path)
 
-    all_ = settings.get("git_savvy.log_graph_view.all_branches") or False
-    branches = [] if overview else settings.get("git_savvy.log_graph_view.branches") or []
-    filters = apply_filters and settings.get("git_savvy.log_graph_view.filters") or ""
     prelude += (
         "  "
         + "  ".join(filter_((
             (
                 'OVERVIEW'
                 if overview
-                else '[a]ll: true' if all_ else '[a]ll: false'
+                else '[a]ll: true' if all_branches else '[a]ll: false'
             ),
-            " ".join(branches) if not all_ else None,
-            filters
+            " ".join(branches) if not all_branches and not overview else None,
+            filters if apply_filters else None
         )))
     )
     return prelude + "\n\n"
