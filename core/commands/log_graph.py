@@ -2776,7 +2776,8 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         self.window.run_command("gs_compare_against", {
             "base_commit": base_commit,
             "target_commit": target_commit,
-            "file_path": file_path
+            "file_path": file_path,
+            "target_hints": ["HEAD"],
         })
 
     def copy_sha(self, commit_hash):

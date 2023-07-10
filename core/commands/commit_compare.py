@@ -40,10 +40,11 @@ class gs_compare_commit(WindowCommand, GitCommand):
 
 
 class gs_compare_against_reference(WindowCommand, GitCommand):
-    def run(self, base_commit=None, target_commit=None, file_path=None):
+    def run(self, base_commit=None, target_commit=None, file_path=None, target_hints=None):
         self._file_path = file_path
         self._base_commit = base_commit
         self._target_commit = target_commit
+        self._target_hints = target_hints
         show_single_line_input_panel("Ref:", "", self.show_diff, None, self.on_cancel)
 
     def show_diff(self, ref):
@@ -57,15 +58,17 @@ class gs_compare_against_reference(WindowCommand, GitCommand):
         self.window.run_command("gs_compare_against", {
             "base_commit": self._base_commit,
             "target_commit": self._target_commit,
-            "file_path": self._file_path
+            "file_path": self._file_path,
+            "target_hints": self._target_hints,
         })
 
 
 class gs_compare_against_branch(WindowCommand, GitCommand):
-    def run(self, base_commit=None, target_commit=None, file_path=None):
+    def run(self, base_commit=None, target_commit=None, file_path=None, target_hints=None):
         self._file_path = file_path
         self._base_commit = base_commit
         self._target_commit = target_commit
+        self._target_hints = target_hints
         show_branch_panel(self.on_branch_selection, on_cancel=self.recurse)
 
     def on_branch_selection(self, branch):
@@ -79,7 +82,8 @@ class gs_compare_against_branch(WindowCommand, GitCommand):
         self.window.run_command("gs_compare_against", {
             "base_commit": self._base_commit,
             "target_commit": self._target_commit,
-            "file_path": self._file_path
+            "file_path": self._file_path,
+            "target_hints": self._target_hints,
         })
 
 
@@ -89,10 +93,11 @@ class gs_compare_against(PanelActionMixin, WindowCommand):
         ["compare_against_reference", "Reference"],
     ]
 
-    def run(self, base_commit=None, target_commit=None, file_path=None, current_file=False):
+    def run(self, base_commit=None, target_commit=None, file_path=None, current_file=False, target_hints=None):
         self._file_path = self.file_path if current_file else file_path
         self._base_commit = base_commit
         self._target_commit = target_commit
+        self._target_hints = target_hints or []
         if base_commit and target_commit:
             self.window.run_command("gs_compare_commit", {
                 "base_commit": self._base_commit,
@@ -104,26 +109,30 @@ class gs_compare_against(PanelActionMixin, WindowCommand):
 
     def update_actions(self):
         super().update_actions()
-        if self._target_commit != "HEAD":
-            self.actions = [["compare_against_head", "HEAD"]] + self.actions
+        self.actions = [
+            ["compare_against_target", target, (target,)]
+            for target in self._target_hints
+        ] + self.actions
 
     def compare_against_branch(self):
         self.window.run_command("gs_compare_against_branch", {
             "base_commit": self._base_commit,
             "target_commit": self._target_commit,
-            "file_path": self._file_path
+            "file_path": self._file_path,
+            "target_hints": self._target_hints,
         })
 
     def compare_against_reference(self):
         self.window.run_command("gs_compare_against_reference", {
             "base_commit": self._base_commit,
             "target_commit": self._target_commit,
-            "file_path": self._file_path
+            "file_path": self._file_path,
+            "target_hints": self._target_hints,
         })
 
-    def compare_against_head(self):
+    def compare_against_target(self, target):
         self.window.run_command("gs_compare_commit", {
             "base_commit": self._base_commit,
-            "target_commit": self._target_commit,
+            "target_commit": target,
             "file_path": self._file_path
         })

@@ -203,7 +203,8 @@ class GsLogActionCommand(PanelActionMixin, WindowCommand):
     def compare_against(self):
         self.window.run_command("gs_compare_against", {
             "base_commit": self._commit_hash,
-            "file_path": self._file_path
+            "file_path": self._file_path,
+            "target_hints": ["HEAD"],
         })
 
     def copy_sha(self):
