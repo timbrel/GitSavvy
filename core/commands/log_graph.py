@@ -1102,11 +1102,13 @@ def lax_decoder(encodings):
 def prelude(view):
     # type: (sublime.View) -> str
     settings = view.settings()
-    repo_path = settings.get("git_savvy.repo_path")
-    overview = settings.get("git_savvy.log_graph_view.overview")
-
-    paths = settings.get("git_savvy.log_graph_view.paths") or []
+    all_branches = settings.get("git_savvy.log_graph_view.all_branches") or False
     apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
+    branches = settings.get("git_savvy.log_graph_view.branches") or []
+    filters = settings.get("git_savvy.log_graph_view.filters") or ""
+    overview = settings.get("git_savvy.log_graph_view.overview")
+    paths = settings.get("git_savvy.log_graph_view.paths") or []
+    repo_path = settings.get("git_savvy.repo_path")
 
     prelude = "\n"
     if paths and apply_filters and not overview:
@@ -1114,9 +1116,6 @@ def prelude(view):
     elif repo_path:
         prelude += "  REPO: {}\n".format(repo_path)
 
-    all_branches = settings.get("git_savvy.log_graph_view.all_branches") or False
-    branches = settings.get("git_savvy.log_graph_view.branches") or []
-    filters = settings.get("git_savvy.log_graph_view.filters") or ""
     prelude += (
         "  "
         + "  ".join(filter_((
