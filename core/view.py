@@ -119,8 +119,9 @@ def capture_cur_position(view):
     except Exception:
         return None
 
-    row, col = view.rowcol(sel.begin())
-    return Position(row, col, y_offset(view, sel.begin()))
+    cursor = sel.b
+    row, col = view.rowcol(cursor)
+    return Position(row, col, y_offset(view, cursor))
 
 
 def y_offset(view, cursor):
