@@ -1074,7 +1074,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         ):
             args += ['--simplify-by-decoration', '--sparse']
 
-        if branches:
+        if branches and not all_branches:
             args += branches
 
         if filters and apply_filters:
