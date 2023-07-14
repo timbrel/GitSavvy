@@ -12,7 +12,7 @@ from GitSavvy.core import store
 
 from typing import Any, Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
 
-CommandT = TypeVar("CommandT", bound=sublime_plugin.Command)
+CommandT = TypeVar("CommandT", bound="GsCommand")
 Args = Dict[str, Any]
 KnownKeys = Union[Literal["last_local_branch_for_rebase"]]
 
@@ -141,7 +141,7 @@ class GsTextCommand(
     WithInputHandlers,
     sublime_plugin.TextCommand,
 ):
-    defaults = {}  # type: Dict[str, Callable[[GsTextCommand, Args, Kont], None]]
+    ...
 
 
 class GsWindowCommand(
@@ -149,7 +149,7 @@ class GsWindowCommand(
     WithInputHandlers,
     sublime_plugin.WindowCommand,
 ):
-    defaults = {}  # type: Dict[str, Callable[[GsWindowCommand, Args, Kont], None]]
+    ...
 
 
 GsCommand = Union[GsTextCommand, GsWindowCommand]
