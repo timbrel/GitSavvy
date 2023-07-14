@@ -12,16 +12,14 @@ from GitSavvy.core import store
 
 from typing import Any, Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
 
-CommandT = TypeVar("CommandT", bound="GsCommand")
-Args = Dict[str, Any]
-KnownKeys = Union[Literal["last_local_branch_for_rebase"]]
-
 
 class Kont(Protocol):
     def __call__(self, val: object, **kw: object) -> None:
         pass
 
 
+CommandT = TypeVar("CommandT", bound="GsCommand")
+Args = Dict[str, Any]
 ArgProvider = Callable[[CommandT, Args, Kont], None]
 
 
@@ -156,6 +154,8 @@ GsCommand = Union[GsTextCommand, GsWindowCommand]
 
 
 # COMMON INPUT HANDLERS
+
+KnownKeys = Union[Literal["last_local_branch_for_rebase"]]
 
 
 def ask_for_branch(memorize_key=None, **kw):
