@@ -25,7 +25,7 @@ class Kont(Protocol):
 ArgProvider = Callable[[CommandT, Args, Kont], None]
 
 
-class WithProvideWindow:
+class WithProvideWindow(sublime_plugin.TextCommand):
     window = None  # type: sublime.Window
 
     def run_(self, edit_token, args):
@@ -45,30 +45,30 @@ class WithProvideWindow:
             self.window = window
             return super().run_(edit_token, args)
         else:
-            cloned = self.__class__(self.view)  # type: ignore[attr-defined, call-arg]
+            cloned = self.__class__(self.view)
             return cloned.run_(edit_token, args)
 
 
-class WithInputHandlers:
+class WithInputHandlers(sublime_plugin.Command):
     defaults = {}  # type: Dict[str, ArgProvider]
 
     def run_(self, edit_token, args):
         if not self.defaults:
-            return super().run_(edit_token, args)  # type: ignore[misc]
+            return super().run_(edit_token, args)
 
-        args = self.filter_args(args)  # type: ignore[attr-defined]
+        args = self.filter_args(args)
         if args is None:
             args = {}
 
         present = args.keys()
-        for name in ordered_positional_args(self.run):  # type: ignore[attr-defined]
+        for name in ordered_positional_args(self.run):
             if name not in present and name in self.defaults:
                 sync_mode = Flag()
                 done = make_on_done_fn(
                     lambda: (
                         None
                         if sync_mode
-                        else run_command(self, args)  # type: ignore[arg-type]
+                        else run_command(self, args)
                     ),
                     args,
                     name
@@ -78,7 +78,7 @@ class WithInputHandlers:
                 if not done.called:
                     break
         else:
-            return super().run_(edit_token, args)  # type: ignore[misc]
+            return super().run_(edit_token, args)
 
 
 @lru_cache()
