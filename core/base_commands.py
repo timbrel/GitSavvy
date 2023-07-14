@@ -10,19 +10,19 @@ from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
 from GitSavvy.core import store
 
+from typing import Any, Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
 
-MYPY = False
-if MYPY:
-    from typing import Any, Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
-    CommandT = TypeVar("CommandT", bound=sublime_plugin.Command)
-    Args = Dict[str, Any]
-    KnownKeys = Union[Literal["last_local_branch_for_rebase"]]
+CommandT = TypeVar("CommandT", bound=sublime_plugin.Command)
+Args = Dict[str, Any]
+KnownKeys = Union[Literal["last_local_branch_for_rebase"]]
 
-    class Kont(Protocol):
-        def __call__(self, val: object, **kw: object) -> None:
-            pass
 
-    ArgProvider = Callable[[CommandT, Args, Kont], None]
+class Kont(Protocol):
+    def __call__(self, val: object, **kw: object) -> None:
+        pass
+
+
+ArgProvider = Callable[[CommandT, Args, Kont], None]
 
 
 class WithProvideWindow:
@@ -152,9 +152,7 @@ class GsWindowCommand(
     defaults = {}  # type: Dict[str, Callable[[GsWindowCommand, Args, Kont], None]]
 
 
-if MYPY:
-    from typing import Union
-    GsCommand = Union[GsTextCommand, GsWindowCommand]
+GsCommand = Union[GsTextCommand, GsWindowCommand]
 
 
 # COMMON INPUT HANDLERS
