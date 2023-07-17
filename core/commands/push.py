@@ -211,7 +211,7 @@ class gs_push_to_branch_name(PushMixin):
     """
     defaults = {
         "local_branch_name": take_current_branch_name,
-        "remote": ask_for_remote,  # type: ignore[dict-item]
+        "remote": ask_for_remote,
         "branch_name": ask_for_branch_name(
             caption=lambda args: "Push to {}/".format(args["remote"]),
             initial_text=lambda args: args["local_branch_name"]
