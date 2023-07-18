@@ -46,6 +46,22 @@
     },
 
     /*
+        Only supported on GitHub.
+        When creating a fork, do only copy the main branch.  Especially do
+        *not* copy the tags from the original repo to your repo.
+        Instead of changing the default, you can also add a command, for
+        example to your `User.sublime-commands` file, e.g.:
+            {
+                "caption": "git: create fork (non-sparse)",
+                "command": "gs_github_create_fork",
+                "args": { "default_branch_only": false}
+            },
+
+        See: https://github.blog/changelog/2022-07-27-you-can-now-fork-a-repo-and-copy-only-the-default-branch/
+    */
+    "sparse_fork": true,
+
+    /*
     maximum number of items per page when requesting from github
     */
     "github_per_page_max" : 100,

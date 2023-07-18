@@ -7,7 +7,7 @@ from sublime_plugin import TextCommand, WindowCommand
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_worker, run_as_text_command, text_command
 from ..utils import flash, focus_view
-from ..view import capture_cur_position, replace_view_content, Position
+from ..view import apply_position, capture_cur_position, replace_view_content, Position
 from ...common import util
 
 from .log import LogMixin
@@ -55,7 +55,7 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
             if compute_identifier_for_view(view) == this_id:
                 focus_view(view)
                 if position:
-                    run_as_text_command(move_cursor_to_line_col, view, position)
+                    run_as_text_command(apply_position, view, *position)
                 break
         else:
             self.create_view(commit_hash, filepath, position, lang)
@@ -119,7 +119,7 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         # extend Sublime Text's hardcoded duration.
         def sink(n=0):
             if (
-                view != window.active_view()  # type: ignore[union-attr]
+                view != window.active_view()
                 or commit_hash != settings.get("git_savvy.show_file_at_commit_view.commit")
             ):
                 return
@@ -177,23 +177,7 @@ def render(view, text, position):
     # type: (sublime.View, str, Optional[Position]) -> None
     replace_view_content(view, text)
     if position:
-        move_cursor_to_line_col(view, position)
-
-
-def move_cursor_to_line_col(view, position):
-    # type: (sublime.View, Position) -> None
-    row, col, row_offset = position
-    pt = view.text_point(row, col)
-    view.sel().clear()
-    view.sel().add(sublime.Region(pt))
-
-    if row_offset is None:
-        view.show(pt)
-    else:
-        _, cy = view.text_to_layout(pt)
-        vy = cy - row_offset
-        vx, _ = view.viewport_position()
-        view.set_viewport_position((vx, vy), animate=False)
+        apply_position(view, *position)
 
 
 class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):

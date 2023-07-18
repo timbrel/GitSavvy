@@ -10,22 +10,20 @@ from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
 from GitSavvy.core import store
 
-
-MYPY = False
-if MYPY:
-    from typing import Any, Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
-    CommandT = TypeVar("CommandT", bound=sublime_plugin.Command)
-    Args = Dict[str, Any]
-    KnownKeys = Union[Literal["last_local_branch_for_rebase"]]
-
-    class Kont(Protocol):
-        def __call__(self, val: object, **kw: object) -> None:
-            pass
-
-    ArgProvider = Callable[[CommandT, Args, Kont], None]
+from typing import Any, Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
 
 
-class WithProvideWindow:
+class Kont(Protocol):
+    def __call__(self, val: object, **kw: object) -> None:
+        pass
+
+
+CommandT = TypeVar("CommandT", bound="GsCommand")
+Args = Dict[str, Any]
+ArgProvider = Callable[[CommandT, Args, Kont], None]
+
+
+class WithProvideWindow(sublime_plugin.TextCommand):
     window = None  # type: sublime.Window
 
     def run_(self, edit_token, args):
@@ -45,30 +43,30 @@ class WithProvideWindow:
             self.window = window
             return super().run_(edit_token, args)
         else:
-            cloned = self.__class__(self.view)  # type: ignore[attr-defined, call-arg]
+            cloned = self.__class__(self.view)
             return cloned.run_(edit_token, args)
 
 
-class WithInputHandlers:
+class WithInputHandlers(sublime_plugin.Command):
     defaults = {}  # type: Dict[str, ArgProvider]
 
     def run_(self, edit_token, args):
         if not self.defaults:
-            return super().run_(edit_token, args)  # type: ignore[misc]
+            return super().run_(edit_token, args)
 
-        args = self.filter_args(args)  # type: ignore[attr-defined]
+        args = self.filter_args(args)
         if args is None:
             args = {}
 
         present = args.keys()
-        for name in ordered_positional_args(self.run):  # type: ignore[attr-defined]
+        for name in ordered_positional_args(self.run):
             if name not in present and name in self.defaults:
                 sync_mode = Flag()
                 done = make_on_done_fn(
                     lambda: (
                         None
                         if sync_mode
-                        else run_command(self, args)  # type: ignore[arg-type]
+                        else run_command(self, args)
                     ),
                     args,
                     name
@@ -78,7 +76,7 @@ class WithInputHandlers:
                 if not done.called:
                     break
         else:
-            return super().run_(edit_token, args)  # type: ignore[misc]
+            return super().run_(edit_token, args)
 
 
 @lru_cache()
@@ -141,7 +139,7 @@ class GsTextCommand(
     WithInputHandlers,
     sublime_plugin.TextCommand,
 ):
-    defaults = {}  # type: Dict[str, Callable[[GsTextCommand, Args, Kont], None]]
+    ...
 
 
 class GsWindowCommand(
@@ -149,15 +147,15 @@ class GsWindowCommand(
     WithInputHandlers,
     sublime_plugin.WindowCommand,
 ):
-    defaults = {}  # type: Dict[str, Callable[[GsWindowCommand, Args, Kont], None]]
+    ...
 
 
-if MYPY:
-    from typing import Union
-    GsCommand = Union[GsTextCommand, GsWindowCommand]
+GsCommand = Union[GsTextCommand, GsWindowCommand]
 
 
 # COMMON INPUT HANDLERS
+
+KnownKeys = Union[Literal["last_local_branch_for_rebase"]]
 
 
 def ask_for_branch(memorize_key=None, **kw):

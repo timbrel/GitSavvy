@@ -23,14 +23,20 @@ import sublime
 
 from ..common import util
 from .settings import SettingsMixin
-from GitSavvy.core.fns import filter_
+from GitSavvy.core.fns import consume, filter_, pairwise
 from GitSavvy.core.runtime import auto_timeout, enqueue_on_worker, run_as_future
 from GitSavvy.core.utils import kill_proc, paths_upwards, resolve_path
 
 
+from typing import (
+    Callable, Deque, Dict, IO, Iterable, Iterator, List, Optional, Sequence,
+    Tuple, TypeVar, Union)
+T = TypeVar("T")
 MYPY = False
-if MYPY:
-    from typing import Callable, Deque, Dict, IO, Iterator, List, Optional, Sequence, Tuple, Union
+
+
+def map_(it: Iterable[T], k: Callable[[T], object]):
+    consume(map(k, it))
 
 
 #: A mapping from a git binary to its version
@@ -54,6 +60,38 @@ MIN_GIT_VERSION = (2, 18, 0)
 GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d} or above."
 
 NOT_SET = "<NOT_SET>"
+class Out(bytes): pass  # noqa: E701
+class Err(bytes): pass  # noqa: E701
+
+
+class TimeoutManager:
+    def __init__(self, timeout: float) -> None:
+        self._start_time = time.perf_counter()
+        self._timeout = timeout
+
+    def ping(self) -> None:
+        self._start_time = time.perf_counter()
+
+    def has_timed_out(self) -> bool:
+        return time.perf_counter() - self._start_time > self._timeout
+
+
+class _NullTimeoutManager(TimeoutManager):
+    def __init__(self) -> None:
+        pass
+
+    def ping(self) -> None:
+        pass
+
+    def has_timed_out(self):
+        return False
+
+
+NeverTimeout = _NullTimeoutManager()
+
+
+def timer(timeout: Optional[float]) -> TimeoutManager:
+    return TimeoutManager(timeout) if timeout else NeverTimeout
 
 
 def communicate_and_log(proc, stdin, log, timeout=None):
@@ -82,27 +120,26 @@ def communicate_and_log(proc, stdin, log, timeout=None):
     return stdout, stderr
 
 
-class Out(bytes): pass  # noqa: E701
-class Err(bytes): pass  # noqa: E701
-
-
-def read_linewise(fh, kont):
-    # type: (IO[bytes], Callable[[bytes], None]) -> None
-    for line in iter(fh.readline, b''):
-        kont(line)
-
-
 def stream_stdout_and_err(proc, timeout):
     # type: (subprocess.Popen[bytes], Optional[float]) -> Iterator[bytes]
-    if timeout:
-        start_time = time.perf_counter()
-
-    container = deque()  # type: Deque[bytes]
-    append = container.append
     assert proc.stdout
     assert proc.stderr
-    out_f = run_as_future(read_linewise, proc.stdout, lambda line: append(Out(line)))
-    err_f = run_as_future(read_linewise, proc.stderr, lambda line: append(Err(line)))
+
+    timeout_manager = timer(timeout)
+    container = deque()  # type: Deque[bytes]
+
+    def on_line(line: bytes,
+                tag: Callable[[bytes], bytes] = bytes,
+                ping=timeout_manager.ping,
+                append=container.append) -> None:
+        ping()
+        append(tag(line))
+
+    on_stdout = partial(on_line, tag=Out)
+    on_stderr = partial(on_line, tag=Err)
+
+    out_f = run_as_future(map_, read_linewise(proc.stdout), on_stdout)  # type: ignore[arg-type]
+    err_f = run_as_future(map_, read_bytewise(proc.stderr), on_stderr)  # type: ignore[arg-type]
     delay = chain([1, 2, 4, 8, 15, 30], repeat(50))
 
     with proc:
@@ -111,7 +148,7 @@ def stream_stdout_and_err(proc, timeout):
                 yield container.popleft()
             except IndexError:
                 time.sleep(next(delay) / 1000)
-                if timeout and time.perf_counter() - start_time > timeout:
+                if timeout_manager.has_timed_out():
                     kill_proc(proc)
                     raise TimeoutError("timed out after {} seconds".format(timeout))
 
@@ -120,6 +157,39 @@ def stream_stdout_and_err(proc, timeout):
     err_f.result()
 
     yield from container
+
+
+def read_linewise(fh: IO[bytes]) -> Iterator[bytes]:
+    return iter(fh.readline, b'')
+
+
+def read_bytewise(fh: IO[bytes]) -> Iterator[bytes]:
+    return _group_bytes_to_lines(_read_bytewise(fh))
+
+
+def _read_bytewise(fh: IO[bytes]) -> Iterator[bytes]:
+    while True:
+        byte = fh.read(1)
+        if not byte:
+            break
+        yield byte
+
+
+def _group_bytes_to_lines(bytewise: Iterator[bytes]) -> Iterator[bytes]:
+    line = b""
+    for left, right in pairwise(chain(bytewise, [None])):
+        if left == b"\r" and right == b"\n":
+            # skip to convert "\r\n" to "\n"
+            continue
+
+        assert left is not None  # mypy is confused because of the `[None]`
+        line += left
+        if left == b"\n" or left == b"\r":
+            yield line
+            line = b""
+
+    if line:
+        yield line
 
 
 STARTUPINFO = None

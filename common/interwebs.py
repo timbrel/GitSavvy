@@ -9,6 +9,9 @@ from base64 import b64encode
 from functools import partial
 from collections import namedtuple
 
+from GitSavvy.common.util.debug import dprint
+from GitSavvy.core.utils import measure_runtime
+
 Response = namedtuple("Response", ("payload", "headers", "status", "is_json"))
 
 
@@ -37,12 +40,22 @@ def request(verb, host, port, path, payload=None, https=False, headers=None, aut
         username_password = "{}:{}".format(*auth).encode("ascii")
         headers["Authorization"] = "Basic {}".format(b64encode(username_password).decode("ascii"))
 
-    connection = (http.client.HTTPSConnection(host, port)
-                  if https
-                  else http.client.HTTPConnection(host, port))
-    connection.request(verb, path, body=payload, headers=headers)
+    if payload and not isinstance(payload, str):
+        payload = json.dumps(payload)
 
-    response = connection.getresponse()
+    with measure_runtime() as ms:
+        connection = (http.client.HTTPSConnection(host, port)
+                      if https
+                      else http.client.HTTPConnection(host, port))
+        connection.request(verb, path, body=payload, headers=headers)
+
+        response = connection.getresponse()
+
+    scheme = "https" if https else "http"
+    dprint(f" >-> {verb:<7} > {scheme}://{host}:{port}{path} [{ms.get()}ms]")
+    if payload:
+        dprint("    ", payload)
+
     response_payload = response.read()
     response_headers = Headers(response)
     status = response.status

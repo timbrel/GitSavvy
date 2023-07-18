@@ -141,20 +141,22 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
     def update_annotation_link(self, url):
         # type: (Optional[str]) -> None
         key = "link_to_github"
+        regions = [sublime.Region(0)]
+        annotations = [
+            '<span class="shortcut-key">[n/p]</span>'
+            '&nbsp;'
+            '<a href="subl:gs_show_commit_open_next_commit">next</a>/'
+            '<a href="subl:gs_show_commit_open_previous_commit">previous</a> commit',
+        ]
         if url:
-            self.view.add_regions(
-                key,
-                [sublime.Region(0)],
-                annotations=[
-                    '<span class="shortcut-key">[h]</span>'
-                    '&nbsp;'
-                    '<a href="{}">Open on GitHub</a>'
-                    .format(url)
-                ],
-                annotation_color="#aaa0"
-            )
-        else:
-            self.view.erase_regions(key)
+            regions += [sublime.Region(self.view.text_point(1, 0))]
+            annotations += [
+                '<span class="shortcut-key">[h]</span>'
+                '&nbsp;'
+                '<a href="{}">Open on GitHub</a>'
+                .format(url)
+            ]
+        self.view.add_regions(key, regions, annotations=annotations, annotation_color="#aaa0")
 
 
 class gs_show_commit_open_on_github(TextCommand, GithubRemotesMixin, GitCommand):
@@ -375,8 +377,13 @@ class gs_show_commit_open_graph_context(TextCommand, GitCommand):
             return
 
         settings = self.view.settings()
-        commit_hash = settings.get("git_savvy.show_commit_view.commit")
+        if settings.get("git_savvy.show_commit_view.belongs_to_a_graph"):
+            av = window.active_view()
+            if av:
+                window.focus_view(av)
+            return
 
+        commit_hash = settings.get("git_savvy.show_commit_view.commit")
         window.run_command("gs_graph", {
             "all": True,
             "follow": self.get_short_hash(commit_hash)

@@ -7,10 +7,8 @@ from GitSavvy.core.fns import filter_, maybe
 from GitSavvy.core.utils import show_panel
 
 
-MYPY = False
-if MYPY:
-    from typing import Callable, List, Optional, Union
-    from ..git_mixins.history import LogEntry
+from typing import Callable, List, Optional, Union
+from ..git_mixins.history import LogEntry
 
 
 NO_REMOTES_MESSAGE = "You have not configured any remotes."
@@ -532,7 +530,7 @@ class PaginatedPanel:
 def show_log_panel(entries, on_done, **kwargs):
     """
     Display log entries in quick panel with pagination, and execute on_done(commit)
-    when item is selected. `entries` can be either a list or a generator of LogEnty.
+    when item is selected. `entries` can be either a list or a generator of LogEntry.
 
     """
     _kwargs = {}
@@ -601,32 +599,34 @@ class LogHelperMixin(GitCommand):
         if not window:
             return
 
-        def on_done(idx):
-            window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
+        items = self.log(limit=100)
+
+        def on_done(idx: int) -> None:
+            window.run_command("hide_panel", {"panel": "output.show_commit_info"})
             entry = items[idx]
             action(entry)
 
-        def on_cancel():
-            window.run_command("hide_panel", {"panel": "output.show_commit_info"})  # type: ignore[union-attr]
+        def on_cancel() -> None:
+            window.run_command("hide_panel", {"panel": "output.show_commit_info"})
 
-        def on_highlight(idx):
+        def on_highlight(idx: int) -> None:
             entry = items[idx]
-            window.run_command("gs_show_commit_info", {  # type: ignore[union-attr]  # mypy bug
+            window.run_command("gs_show_commit_info", {
                 "commit_hash": entry.short_hash
             })
 
-        items = self.log(limit=100)
+        def format_item(entry: LogEntry) -> str:
+            return "  ".join(filter_((
+                entry.short_hash,
+                short_ref(entry.ref) if not entry.ref.startswith("HEAD ->") else "",
+                entry.summary
+            )))
+
         preselected_idx = next(
             (idx for idx, item in enumerate(items) if item.summary == preselected_commit_message),
             -1
         ) if preselected_commit_message else -1
-        format_item = lambda entry: "  ".join(filter_(
-            (
-                entry.short_hash,
-                short_ref(entry.ref) if not entry.ref.startswith("HEAD ->") else "",
-                entry.summary
-            )
-        ))
+
         show_panel(
             window,
             map(format_item, items),

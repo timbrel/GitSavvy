@@ -30,13 +30,8 @@ class gs_github_open_issue_at_cursor(TextCommand, git_mixins.GithubRemotesMixin,
         def on_navigate(href: str):
             open_in_browser(href)
 
-        complete_str = view.substr(view.extract_scope(point))
-        if complete_str[0] != "#":
-            flash(view, "Only implemented for simple references.  (E.g. '#23')")
-            return
-
-        issue_nr = complete_str[1:]
-        url = self.url_for_issue(issue_nr)
+        issue_str = view.substr(view.extract_scope(point))
+        url = self.url_for_issue(issue_str)
 
         if open_popup:
             view.show_popup(
@@ -49,12 +44,20 @@ class gs_github_open_issue_at_cursor(TextCommand, git_mixins.GithubRemotesMixin,
         else:
             open_in_browser(url)
 
-    def url_for_issue(self, issue_nr: str) -> str:
+    def url_for_issue(self, issue_str: str) -> str:
         remotes = self.get_remotes()
         base_remote_name = self.get_integrated_remote_name(remotes)
         base_remote_url = remotes[base_remote_name]
         base_remote = github.parse_remote(base_remote_url)
-        return "{}/issues/{}".format(base_remote.url, issue_nr)
+
+        prefix, issue_nr = issue_str.split('#')
+        url = f"{base_remote.url}/issues/{issue_nr}"
+        if prefix:
+            return url.replace(
+                f"/{base_remote.owner}/{base_remote.repo}/",
+                f"/{prefix}/"
+            )
+        return url
 
 
 class gs_github_hover_on_issues_controller(EventListener):

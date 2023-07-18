@@ -11,10 +11,11 @@ import sys
 import time
 import threading
 import traceback
+from types import SimpleNamespace
 
 import sublime
 
-from .runtime import throttled
+from . import runtime
 
 
 MYPY = False
@@ -33,7 +34,17 @@ def print_runtime(message):
     print('{} took {}ms [{}]'.format(message, duration, thread_name))
 
 
+@contextmanager
 def measure_runtime():
+    start_time = time.perf_counter()
+    ms = SimpleNamespace()
+    yield ms
+    end_time = time.perf_counter()
+    duration = round((end_time - start_time) * 1000)
+    ms.get = lambda: duration
+
+
+def print_runtime_marks():
     # type: () -> Callable[[str], None]
     start_time = time.perf_counter()
 
@@ -106,7 +117,7 @@ def flash_regions(view, regions, key="default"):
     view.add_regions(region_key, regions, **STYLE)  # type: ignore[arg-type]
 
     sublime.set_timeout(
-        throttled(erase_regions, view, region_key),
+        runtime.throttled(erase_regions, view, region_key),
         int(DURATION * 1000)
     )
 
@@ -466,3 +477,23 @@ def _bind_arguments(sig, args, kwargs):
         for name, p in sig.parameters.items()
         if name != "self"
     }
+
+
+class Counter:
+    """Thread-safe, lockless counter.
+
+    Implementation idea from @grantjenks
+    https://github.com/jd/fastcounter/issues/2#issue-548504668
+    """
+    def __init__(self):
+        self._incs = count()
+        self._decs = count()
+
+    def inc(self):
+        next(self._incs)
+
+    def dec(self):
+        next(self._decs)
+
+    def count(self) -> int:
+        return next(self._incs) - next(self._decs)

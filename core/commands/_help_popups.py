@@ -199,7 +199,8 @@ class gs_log_graph_help_tooltip(GsAbstractHelpPopup):
     [m]            toggle commit details panel on the bottom
     [{cr}+C]       copy commit's hash, subject or a combination to the clipboard
 
-    [a]            toggle --all
+    [s]            toggle to overview mode
+    [a]            toggle --all / in overview mode: toggle tags
     [f]            edit filters verbatim
     [l]            list paths to add or remove
     [F]            toggle filters

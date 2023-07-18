@@ -133,7 +133,7 @@ class gs_line_history(TextCommand, GitCommand):
             flash(view, "Not on a hunk.")
             return
         header = d.head_for_hunk(hunk)
-        file_path = header.from_filename()
+        file_path = header.to_filename()
         if not file_path:
             flash(view, "Can't extract a file path.")
             return
@@ -172,9 +172,13 @@ class gs_line_history(TextCommand, GitCommand):
                 hunk_with_linenos[rel_end][1].a
             )]
         else:
+            end_line = hunk_with_linenos[rel_end]
             ranges = [(
                 hunk_with_linenos[rel_begin][1].b,
-                hunk_with_linenos[rel_end][1].b
+                (
+                    end_line[1].b
+                    + (1 if end_line[0].is_from_line() else 0)
+                )
             )]
 
         window.run_command("gs_open_line_history", {

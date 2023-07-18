@@ -677,6 +677,27 @@
         ]
     },
     {
+        "keys": ["u"],
+        "command": "gs_commit_view_unstage_in_all_mode",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.diff_view.in_cached_mode", "operator": "equal", "operand": false },
+            { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
+        ]
+    },
+    {
+        "keys": ["U"],
+        "command": "gs_commit_view_unstage_in_all_mode",
+        "args": { "whole_file": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.diff_view.in_cached_mode", "operator": "equal", "operand": false },
+            { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
+        ]
+    },
+    {
         "keys": ["d"],
         "command": "gs_diff_stage_or_reset_hunk",
         "args": { "reset": true },
@@ -1699,6 +1720,14 @@
     {
         "keys": ["F"],
         "command": "gs_log_graph_reset_filters",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["s"],
+        "command": "gs_log_graph_toggle_overview",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
