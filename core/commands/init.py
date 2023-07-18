@@ -206,6 +206,7 @@ class gs_clone(WindowCommand, GitCommand):
         window.status_message("Start cloning {}".format(self.git_url))
         self.git(
             "clone",
+            "--progress",
             "--recursive" if self.recursive else None,
             self.git_url,
             self.target_dir,
