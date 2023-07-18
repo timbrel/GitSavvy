@@ -40,6 +40,9 @@ def request(verb, host, port, path, payload=None, https=False, headers=None, aut
         username_password = "{}:{}".format(*auth).encode("ascii")
         headers["Authorization"] = "Basic {}".format(b64encode(username_password).decode("ascii"))
 
+    if payload and not isinstance(payload, str):
+        payload = json.dumps(payload)
+
     with measure_runtime() as ms:
         connection = (http.client.HTTPSConnection(host, port)
                       if https

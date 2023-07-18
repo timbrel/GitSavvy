@@ -209,7 +209,7 @@ get_forks = partial(iteratively_query_github, "/repos/{owner}/{repo}/forks")
 get_pull_requests = partial(iteratively_query_github, "/repos/{owner}/{repo}/pulls")
 
 
-def post_to_github(api_url_template, github_repo):
+def post_to_github(api_url_template, github_repo, payload=None):
     """
     Takes a URL template that takes `owner` and `repo` template variables
     and as a GitHub repo object.  Do a POST for the provided URL and return
@@ -218,10 +218,15 @@ def post_to_github(api_url_template, github_repo):
     fqdn, path = github_api_url(api_url_template, github_repo)
     auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
 
-    response = interwebs.post(fqdn, 443, path, https=True, auth=auth)
+    response = interwebs.post(fqdn, 443, path, https=True, auth=auth, payload=payload)
     validate_response(response, method="POST")
 
     return response.payload
 
 
-create_fork = partial(post_to_github, "/repos/{owner}/{repo}/forks")
+def create_fork(github_repo: GitHubRepo, default_branch_only: bool = False):
+    return post_to_github(
+        "/repos/{owner}/{repo}/forks",
+        github_repo,
+        {"default_branch_only": default_branch_only}
+    )
