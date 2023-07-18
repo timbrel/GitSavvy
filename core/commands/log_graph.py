@@ -2480,7 +2480,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                     "Compare {}'{}' and '{}'".format(
                         "file between " if file_path else "", base_commit, target_commit
                     ),
-                    partial(self.compare_against, base_commit, target_commit, file_path)
+                    partial(self.compare_commits, base_commit, target_commit, file_path)
                 ),
                 (
                     "Show file history from {}..{}".format(base_commit, target_commit)
@@ -2681,15 +2681,44 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
         actions += [
             ("Revert commit", partial(self.revert_commit, commit_hash)),
-            (
-                "Compare {}against ...".format("file " if file_path else ""),
-                partial(
-                    self.compare_against,
-                    info["HEAD"] if on_checked_out_branch else commit_hash,
-                    file_path=file_path
-                )
-            ),
         ]
+        if not head_info or cursor_is_not_on_head:
+            good_head_name = (
+                "'{}'".format(head_info["HEAD"])  # type: ignore[index]
+                if head_is_on_a_branch
+                else "HEAD"
+            )
+            get = partial(get_list, info)  # type: Callable[[ListItems], List[str]]  # type: ignore[no-redef]
+            good_target_name = next(
+                chain(get("local_branches"), get("branches")),
+                good_commit_name
+            )
+            actions += [
+                (
+                    "Compare '{}' with {}".format(good_target_name, good_head_name),
+                    partial(
+                        self.compare_commits,
+                        head_info["HEAD"] if head_is_on_a_branch else commit_hash,  # type: ignore[index]
+                        good_target_name,
+                        file_path=file_path,
+                    )
+                )
+            ]
+        else:
+            interesting_candidates = branches.keys() & ["main", "master", "dev"]
+            target_hints = sorted(interesting_candidates, key=lambda branch: -branches[branch].committerdate)
+            actions += [
+                (
+                    "Compare {}against ...".format("file " if file_path else ""),
+                    partial(
+                        self.compare_against,
+                        info["HEAD"] if on_checked_out_branch else commit_hash,
+                        file_path=file_path,
+                        target_hints=target_hints
+                    )
+                ),
+            ]
+
         if file_path:
             actions += [
                 (
@@ -2772,11 +2801,23 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         finally:
             util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
-    def compare_against(self, base_commit, target_commit=None, file_path=None):
-        self.window.run_command("gs_compare_against", {
+    def compare_commits(self, base_commit, target_commit, file_path=None):
+        self.window.run_command("gs_compare_commit", {
             "base_commit": base_commit,
             "target_commit": target_commit,
             "file_path": file_path
+        })
+
+    def compare_against(self, base_commit, file_path=None, target_hints=None):
+        nearest_tag = self.git("describe", "--abbrev=0").strip()
+        if nearest_tag:
+            if target_hints is None:
+                target_hints = []
+            target_hints += [nearest_tag]
+        self.window.run_command("gs_compare_against", {
+            "base_commit": base_commit,
+            "file_path": file_path,
+            "target_hints": target_hints
         })
 
     def copy_sha(self, commit_hash):
