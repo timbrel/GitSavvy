@@ -119,8 +119,9 @@ def capture_cur_position(view):
     except Exception:
         return None
 
-    row, col = view.rowcol(sel.begin())
-    return Position(row, col, y_offset(view, sel.begin()))
+    cursor = sel.b
+    row, col = view.rowcol(cursor)
+    return Position(row, col, y_offset(view, cursor))
 
 
 def y_offset(view, cursor):
@@ -130,28 +131,34 @@ def y_offset(view, cursor):
     return cy - vy
 
 
-def scroll_to_pt(view, pt, offset):
-    # type: (sublime.View, int, float) -> None
+def scroll_to_pt(view, pt, offset, no_overscroll=False):
+    # type: (sublime.View, int, float, bool) -> None
+    if no_overscroll:
+        _, vh = view.viewport_extent()
+        if not (0 < offset < vh):
+            view.show(pt)
+            return
+
     _, cy = view.text_to_layout(pt)
     vy = cy - offset
     vx, _ = view.viewport_position()
     view.set_viewport_position((vx, vy), animate=False)
 
 
-def place_cursor_and_show(view, pt, row_offset):
-    # type: (sublime.View, int, Optional[float]) -> None
+def place_cursor_and_show(view, pt, row_offset, no_overscroll=False):
+    # type: (sublime.View, int, Optional[float], bool) -> None
     view.sel().clear()
     view.sel().add(pt)
     if row_offset is None:
         view.show(pt)
     else:
-        scroll_to_pt(view, pt, row_offset)
+        scroll_to_pt(view, pt, row_offset, no_overscroll)
 
 
-def apply_position(view, row, col, row_offset):
-    # type: (sublime.View, Row, Col, Optional[float]) -> None
+def apply_position(view, row, col, row_offset, no_overscroll=False):
+    # type: (sublime.View, Row, Col, Optional[float], bool) -> None
     pt = view.text_point(row, col)
-    place_cursor_and_show(view, pt, row_offset)
+    place_cursor_and_show(view, pt, row_offset, no_overscroll)
 
 
 def place_view(window, view, after):
