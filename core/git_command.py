@@ -138,8 +138,8 @@ def stream_stdout_and_err(proc, timeout):
     on_stdout = partial(on_line, tag=Out)
     on_stderr = partial(on_line, tag=Err)
 
-    out_f = run_as_future(map_, read_linewise(proc.stdout), on_stdout)  # type: ignore[arg-type]
-    err_f = run_as_future(map_, read_bytewise(proc.stderr), on_stderr)  # type: ignore[arg-type]
+    out_f = run_as_future(map_, read_linewise(proc.stdout), on_stdout)
+    err_f = run_as_future(map_, read_bytewise(proc.stderr), on_stderr)
     delay = chain([1, 2, 4, 8, 15, 30], repeat(50))
 
     with proc:
