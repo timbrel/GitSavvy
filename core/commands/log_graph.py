@@ -866,14 +866,14 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         def draw():
             set_overwrite_status(self.view)
             sel = get_simple_selection(self.view)
-            if sel is None:
+            current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
+            if sel is None or (sel in current_prelude_region and not initial_draw):
                 follow, col_range = None, None
             else:
                 follow = self.view.settings().get('git_savvy.log_graph_view.follow')
                 col_range = get_column_range(self.view, sel)
             visible_selection = is_sel_in_viewport(self.view)
 
-            current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
             replace_view_content(self.view, prelude_text, current_prelude_region)
             drain_and_draw_queue(self.view, PaintingStateMachine(), follow, col_range, visible_selection)
 
