@@ -1,0 +1,24 @@
+GitSavvy 2.42.0
+===============
+
+This release mostly consists of bug- and glitch-fixes you might not even noticed.
+
+Few notable changes:
+
+- GitSavvy's output panel now supports progress information.  This was trickier than I thought it
+  would get, and especially makes "cloning" or "rebasing" much nicer to look at.
+
+- In the commit view, "select all" (e.g. `ctrl+a`) now selects just your commit message and not the
+  help text and diff below anymore.  That only applies when the cursor is within the message of
+  course.  `ctrl+a` twice will still select the whole buffer.
+
+- Forking a GitHub repository will now by default only copy the default branch.  This is
+  explained on their blog (https://github.blog/changelog/2022-07-27-you-can-now-fork-a-repo-and-copy-only-the-default-branch/).
+  However, this is also pluggable, please refer to GitSavvy's settings (https://github.com/timbrel/GitSavvy/commit/aa555a22#diff-96ea80b9a1df2392ccf6a341d0375dd230076a620a236c127f7980c15c2ab5f8).
+
+
+💕ly greetings
+
+
+
+
