@@ -75,9 +75,7 @@ class gs_checkout_new_branch(GsWindowCommand):
     Prompt the user for a new branch name, create it, and check it out.
     """
     defaults = {
-        "branch_name": ask_for_name(
-            initial_text=lambda start_point: start_point,
-        ),
+        "branch_name": ask_for_name(),
     }
 
     def run(self, branch_name, start_point=None, force=False, merge=False):
