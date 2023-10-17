@@ -79,14 +79,19 @@ class WithInputHandlers(sublime_plugin.Command):
             return super().run_(edit_token, args)
 
 
-@lru_cache()
 def ordered_positional_args(fn):
     # type: (Callable) -> List[str]
     return [
         name
-        for name, parameter in inspect.signature(fn).parameters.items()
+        for name, parameter in _signature(fn).parameters.items()
         if parameter.default is inspect.Parameter.empty
     ]
+
+
+@lru_cache()
+def _signature(fn):
+    # type: (Callable) -> inspect.Signature
+    return inspect.signature(fn)
 
 
 class Flag:
