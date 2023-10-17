@@ -59,6 +59,7 @@ class WithInputHandlers(sublime_plugin.Command):
             args = {}
 
         present = args.keys()
+        args_with_defaults = {**default_args(self.run), **args}
         for name in ordered_positional_args(self.run):
             if name not in present and name in self.defaults:
                 sync_mode = Flag()
@@ -66,17 +67,17 @@ class WithInputHandlers(sublime_plugin.Command):
                     lambda: (
                         None
                         if sync_mode
-                        else run_command(self, args)
+                        else run_command(self, args_with_defaults)
                     ),
-                    args,
+                    args_with_defaults,
                     name
                 )
                 with sync_mode.set():
-                    self.defaults[name](self, args, done)
+                    self.defaults[name](self, args_with_defaults, done)
                 if not done.called:
                     break
         else:
-            return super().run_(edit_token, args)
+            return super().run_(edit_token, args_with_defaults)
 
 
 def ordered_positional_args(fn):
@@ -86,6 +87,15 @@ def ordered_positional_args(fn):
         for name, parameter in _signature(fn).parameters.items()
         if parameter.default is inspect.Parameter.empty
     ]
+
+
+def default_args(fn):
+    # type: (Callable) -> Dict[str, object]
+    return {
+        name: parameter.default
+        for name, parameter in _signature(fn).parameters.items()
+        if parameter.default is not inspect.Parameter.empty
+    }
 
 
 @lru_cache()
