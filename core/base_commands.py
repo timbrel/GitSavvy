@@ -10,7 +10,7 @@ from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
 from GitSavvy.core import store
 
-from typing import Any, Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
+from typing import Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
 
 
 class Kont(Protocol):
@@ -19,7 +19,7 @@ class Kont(Protocol):
 
 
 CommandT = TypeVar("CommandT", bound="GsCommand")
-Args = Dict[str, Any]
+Args = Dict[str, object]
 ArgProvider = Callable[[CommandT, Args, Kont], None]
 
 
