@@ -805,12 +805,16 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
             hash, decoration, subject, info = line
             hash = hash.replace("*", COMMIT_NODE_CHAR, 1)
-            if len(hash) > ASCII_ART_LENGHT_LIMIT:
+            if (
+                len(hash) > ASCII_ART_LENGHT_LIMIT
+                or in_overview_mode
+            ):
                 commit_hash = hash.rsplit(" ", 1)[1]
-                hash = f".. {COMMIT_NODE_CHAR} {commit_hash}"
-            elif in_overview_mode:
-                commit_hash = hash.rsplit(" ", 1)[1]
-                hash = hash.ljust(len(commit_hash) + 6)
+                if len(hash) > ASCII_ART_LENGHT_LIMIT:
+                    hash = f".. {COMMIT_NODE_CHAR} {commit_hash}"
+                elif in_overview_mode:
+                    hash = hash.ljust(len(commit_hash) + 6)
+
             if decoration:
                 if awaiting_head_commit and repo_is_dirty and "HEAD" in decoration:
                     decoration = decoration.replace("HEAD", "HEAD*", 1)
