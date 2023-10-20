@@ -15,7 +15,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import intra_line_colorizer
 from . import stage_hunk
 from .navigate import GsNavigate
-from ..fns import filter_, flatten, pairwise, unique
+from ..fns import head, filter_, flatten, pairwise, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
 from ..runtime import ensure_on_ui, enqueue_on_worker
@@ -794,7 +794,20 @@ class gs_initiate_fixup_commit(TextCommand, LogHelperMixin):
                 "initial_text": "fixup! {}".format(commit_message)
             })
 
-        self.show_log_panel(action)
+        def preselected_commit(items):
+            # type: (List[LogEntry]) -> int
+            return next(chain(
+                head(
+                    idx for idx, item in enumerate(items)
+                    if (
+                        not item.summary.startswith("fixup! ")
+                        and not item.summary.startswith("squash! ")
+                    )
+                ),
+                [-1]
+            ))
+
+        self.show_log_panel(action, preselected_commit=preselected_commit)
 
 
 MYPY = False
