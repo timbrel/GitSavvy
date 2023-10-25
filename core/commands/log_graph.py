@@ -2589,10 +2589,15 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
         on_checked_out_branch = "HEAD" in info and info["HEAD"] in info.get("local_branches", [])
         if on_checked_out_branch:
+            current_branch = info["HEAD"]
+            b = branches[current_branch]
+            if b.upstream:
+                actions += [
+                    ("Fetch", partial(self.fetch, current_branch)),
+                    ("Pull", self.pull),
+                ]
             actions += [
-                ("Fetch", partial(self.fetch, info["HEAD"])),
-                ("Pull", self.pull),
-                ("Push", partial(self.push, info["HEAD"])),
+                ("Push", partial(self.push, current_branch)),
                 SEPARATOR,
             ]
 
