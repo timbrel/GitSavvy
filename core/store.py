@@ -29,6 +29,7 @@ if MYPY:
             "remotes": Dict[str, str],
             "local_tags": TagList,
             "last_branches": Deque[Optional[str]],
+            "last_branch_used_to_pull_from": Optional[str],
             "last_local_branch_for_rebase": Optional[str],
             "last_remote_used": Optional[str],
             "last_remote_used_for_push": Optional[str],
