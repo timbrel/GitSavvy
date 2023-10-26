@@ -4,6 +4,7 @@ from sublime_plugin import WindowCommand
 from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
+from GitSavvy.core.runtime import on_worker
 
 from typing import Optional
 
@@ -33,12 +34,8 @@ class gs_pull(GsPullBase):
     Pull from remote tracking branch if it is found. Otherwise, use GsPullFromBranchCommand.
     """
 
+    @on_worker
     def run(self, rebase=None):
-        self.rebase = rebase
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
-        rebase = self.rebase
         upstream = self.get_upstream_for_active_branch()
         if upstream:
             self.do_pull(upstream.remote, upstream.branch, rebase)
