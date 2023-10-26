@@ -5,6 +5,8 @@ from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
 
+from typing import Optional
+
 
 __all__ = (
     "gs_pull",
@@ -14,11 +16,12 @@ __all__ = (
 
 class GsPullBase(WindowCommand, GitCommand):
     def do_pull(self, remote, remote_branch, rebase):
+        # type: (str, str, Optional[bool]) -> None
         """
         Perform `git pull remote branch`.
         """
         self.window.status_message("Starting pull...")
-        output = self.pull(remote=remote, remote_branch=remote_branch, rebase=rebase).strip()
+        output = self.pull(remote, remote_branch, rebase).strip()
         self.window.status_message(
             output if output == "Already up to date." else "Pull complete."
         )
@@ -30,20 +33,15 @@ class gs_pull(GsPullBase):
     Pull from remote tracking branch if it is found. Otherwise, use GsPullFromBranchCommand.
     """
 
-    def run(self, rebase=False):
+    def run(self, rebase=None):
         self.rebase = rebase
         sublime.set_timeout_async(self.run_async)
 
     def run_async(self):
         rebase = self.rebase
-        if not rebase:
-            # honor the `pull.rebase` config implicitly
-            pull_rebase = self.git("config", "pull.rebase", throw_on_error=False)
-            if pull_rebase and pull_rebase.strip() == "true":
-                rebase = True
         upstream = self.get_upstream_for_active_branch()
         if upstream:
-            self.do_pull(remote=upstream.remote, remote_branch=upstream.branch, rebase=rebase)
+            self.do_pull(upstream.remote, upstream.branch, rebase)
         else:
             self.window.run_command("gs_pull_from_branch", {"rebase": rebase})
 
