@@ -1023,6 +1023,22 @@
         ]
     },
     {
+        "keys": ["W"],
+        "command": "gs_show_commit_reword_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["E"],
+        "command": "gs_show_commit_edit_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["g"],
         "command": "gs_show_commit_open_graph_context",
         "context": [
@@ -1946,6 +1962,22 @@
     {
         "keys": ["f"],
         "command": "gs_show_commit_initiate_fixup_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.line_history_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["W"],
+        "command": "gs_show_commit_reword_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.line_history_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["E"],
+        "command": "gs_show_commit_edit_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.line_history_view", "operator": "equal", "operand": true }
