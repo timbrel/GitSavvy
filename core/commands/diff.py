@@ -450,10 +450,15 @@ class gs_diff_toggle_cached_mode(TextCommand):
         # switch. T.i. if the user hunked and then switches to see what will be
         # actually committed, the view starts at the top. Later, the view will
         # show the last added hunk.
-        if just_hunked and last_cursors:
-            region = find_hunk_in_view(self.view, just_hunked)
-            if region:
-                set_and_show_cursor(self.view, region.a)
+        if just_hunked:
+            if last_cursors:
+                region = find_hunk_in_view(self.view, just_hunked)
+                if region:
+                    set_and_show_cursor(self.view, region.a)
+                    return
+            else:
+                set_and_show_cursor(self.view, 0)
+                self.view.run_command("gs_diff_navigate")
                 return
 
         if last_cursors:
