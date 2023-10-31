@@ -118,9 +118,6 @@ BufferId = NewType('BufferId', int)
 ViewId = NewType('ViewId', int)
 _T = TypeVar('_T')
 
-# Point = NewType('Point', int)
-# Pixel = NewType('Pixel', float)
-# Vector = NewType('Vector', Tuple[float, float])
 Point = int
 Pixel = float
 Vector = Tuple[Pixel, Pixel]
