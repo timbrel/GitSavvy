@@ -651,6 +651,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
     def run_impl(self, initial_draw, prelude_text, should_abort, navigate_after_draw=False):
         # type: (bool, str, ShouldAbort, bool) -> None
+        settings = self.view.settings()
         try:
             current_graph = self.view.substr(
                 self.view.find_by_selector('meta.content.git_savvy.graph')[0]
@@ -720,7 +721,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                 - 1  # trailing newline
             )
             default_number_of_commits_to_show = max(FOLLOW_UP, current_number_of_commits)
-            follow = self.view.settings().get('git_savvy.log_graph_view.follow')
+            follow = settings.get('git_savvy.log_graph_view.follow')
             if not follow:
                 return islice(lines, default_number_of_commits_to_show)
 
@@ -776,7 +777,6 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             # type: () -> Dict[str, str]
             # git does not decorate refs from the reflogs, e.g. "branch@{2}", so we resolve
             # them manually.
-            settings = self.view.settings()
             all_branches = settings.get("git_savvy.log_graph_view.all_branches")
             applying_filters = settings.get("git_savvy.log_graph_view.apply_filters")
             additional_args = " ".join((
@@ -810,7 +810,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
         ASCII_ART_LENGHT_LIMIT = 48
         SHORTENED_ASCII_ART = ".. / \n"
-        in_overview_mode = self.view.settings().get("git_savvy.log_graph_view.overview")
+        in_overview_mode = settings.get("git_savvy.log_graph_view.overview")
         head_state = store.current_state(self.repo_path).get("head")
         repo_is_dirty = head_state and not head_state.clean
         awaiting_head_commit = True
@@ -891,7 +891,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             ))
             if (
                 initial_draw
-                and self.view.settings().get('git_savvy.log_graph_view.decoration') == 'sparse'
+                and settings.get('git_savvy.log_graph_view.decoration') == 'sparse'
             ):
                 # On large repos (e.g. the "git" repo) "--sparse" can be excessive to compute
                 # upfront t.i. before the first byte. For now, just race with a timeout and
@@ -900,7 +900,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                     tokens = run_or_timeout(lambda: wait_for_first_item(tokens), timeout=1.0)
                 except TimeoutError:
                     try_kill_proc(current_proc)
-                    self.view.settings().set('git_savvy.log_graph_view.decoration', None)
+                    settings.set('git_savvy.log_graph_view.decoration', None)
                     enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
                     return
             else:
@@ -916,7 +916,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             if sel is None or (sel in current_prelude_region and not initial_draw):
                 follow, col_range = None, None
             else:
-                follow = self.view.settings().get('git_savvy.log_graph_view.follow')
+                follow = settings.get('git_savvy.log_graph_view.follow')
                 col_range = get_column_range(self.view, sel)
             visible_selection = is_sel_in_viewport(self.view)
 
