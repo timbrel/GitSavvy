@@ -562,6 +562,8 @@ class PaintingStateMachine:
 
 caret_styles = {}  # type: Dict[sublime.ViewId, str]
 overwrite_statuses = {}  # type: Dict[sublime.ViewId, bool]
+drawn_graph_statuses = {}  # type: Dict[sublime.View, bool]
+head_commit_seen = {}  # type: Dict[sublime.View, bool]
 LEFT_COLUMN_WIDTH = 82
 GRAPH_HEIGHT = 5000
 SHOW_ALL_DECORATED_COMMITS = False
@@ -611,6 +613,53 @@ def is_repo_dirty(state):
     return not head_state.clean if head_state else None
 
 
+def remember_drawn_repo_status(view, repo_is_dirty):
+    # type: (sublime.View, bool) -> None
+    global drawn_graph_statuses
+    drawn_graph_statuses[view] = repo_is_dirty
+
+
+def we_have_seen_the_head_commit(view, seen):
+    # type: (sublime.View, bool) -> None
+    global head_commit_seen
+    head_commit_seen[view] = seen
+
+
+def on_status_update(repo_path, state):
+    # type: (str, store.RepoStore) -> None
+    repo_is_dirty = is_repo_dirty(state)
+    on_status_update_(repo_path, repo_is_dirty)
+
+
+@lru_cache(1)
+def on_status_update_(repo_path, repo_is_dirty):
+    # type: (str, Optional[bool]) -> None
+    global drawn_graph_statuses, head_commit_seen
+    visible_views = filter_(
+        window.active_view_in_group(group)
+        for window in sublime.windows()
+        for group in range(window.num_groups())
+    )
+    for view in visible_views:
+        if not head_commit_seen.get(view):
+            # `gs_log_graph_refresh` is running and has not yet processed HEAD,
+            # no need to start all over again.
+            continue
+        if drawn_graph_statuses.get(view) in (None, repo_is_dirty):
+            # The HEAD commit has been drawn with the correct dirty state flag.
+            continue
+
+        settings = view.settings()
+        if (
+            settings.get("git_savvy.log_graph_view")
+            and settings.get("git_savvy.repo_path") == repo_path
+        ):
+            view.run_command("gs_log_graph_refresh")
+
+
+store.subscribe("*", {"head"}, on_status_update)
+
+
 class gs_log_graph_refresh(TextCommand, GitCommand):
 
     """
@@ -647,6 +696,9 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             replace_view_content(self.view, prelude_text, prelude_region)
 
         should_abort = make_aborter(self.view)
+        # Set flag that we started the refresh process.  This must be in sync with the later
+        # `awaiting_head_commit` *local* variable.
+        we_have_seen_the_head_commit(self.view, False)
         enqueue_on_worker(
             self.run_impl,
             initial_draw,
@@ -817,8 +869,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         ASCII_ART_LENGHT_LIMIT = 48
         SHORTENED_ASCII_ART = ".. / \n"
         in_overview_mode = settings.get("git_savvy.log_graph_view.overview")
-        repo_is_dirty = is_repo_dirty(store.current_state(self.repo_path))
-        awaiting_head_commit = True if repo_is_dirty else False
+        awaiting_head_commit = True
         additional_decorations = resolve_refs_from_the_logs()
 
         def simplify_decoration(decoration):
@@ -868,8 +919,12 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                     or decoration.startswith("HEAD ->")
                     or decoration.startswith("HEAD, ")
                 ):
-                    decoration = decoration.replace("HEAD", "HEAD*", 1)
                     awaiting_head_commit = False
+                    we_have_seen_the_head_commit(self.view, True)
+                    repo_is_dirty = is_repo_dirty(store.current_state(self.repo_path))
+                    if repo_is_dirty:
+                        decoration = decoration.replace("HEAD", "HEAD*", 1)
+                    remember_drawn_repo_status(self.view, bool(repo_is_dirty))
                 if in_overview_mode:
                     decoration = simplify_decoration(decoration)
                 left = f"{hash} ({decoration})"
