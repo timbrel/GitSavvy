@@ -818,7 +818,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         SHORTENED_ASCII_ART = ".. / \n"
         in_overview_mode = settings.get("git_savvy.log_graph_view.overview")
         repo_is_dirty = is_repo_dirty(store.current_state(self.repo_path))
-        awaiting_head_commit = True
+        awaiting_head_commit = True if repo_is_dirty else False
         additional_decorations = resolve_refs_from_the_logs()
 
         def simplify_decoration(decoration):
@@ -863,7 +863,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                     decoration = ", ".join(filter_((decoration, ref)))
 
             if decoration:
-                if awaiting_head_commit and repo_is_dirty and "HEAD" in decoration:
+                if awaiting_head_commit and "HEAD" in decoration:
                     decoration = decoration.replace("HEAD", "HEAD*", 1)
                     awaiting_head_commit = False
                 if in_overview_mode:
