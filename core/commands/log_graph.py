@@ -605,6 +605,12 @@ def reset_overwrite_status(view):
         view.set_overwrite_status(overwrite_status)
 
 
+def is_repo_dirty(state):
+    # type: (store.RepoStore) -> Optional[bool]
+    head_state = state.get("head")
+    return not head_state.clean if head_state else None
+
+
 class gs_log_graph_refresh(TextCommand, GitCommand):
 
     """
@@ -811,8 +817,7 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         ASCII_ART_LENGHT_LIMIT = 48
         SHORTENED_ASCII_ART = ".. / \n"
         in_overview_mode = settings.get("git_savvy.log_graph_view.overview")
-        head_state = store.current_state(self.repo_path).get("head")
-        repo_is_dirty = head_state and not head_state.clean
+        repo_is_dirty = is_repo_dirty(store.current_state(self.repo_path))
         awaiting_head_commit = True
         additional_decorations = resolve_refs_from_the_logs()
 
