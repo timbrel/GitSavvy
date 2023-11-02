@@ -863,7 +863,11 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
                     decoration = ", ".join(filter_((decoration, ref)))
 
             if decoration:
-                if awaiting_head_commit and "HEAD" in decoration:
+                if awaiting_head_commit and (
+                    decoration == "HEAD"
+                    or decoration.startswith("HEAD ->")
+                    or decoration.startswith("HEAD, ")
+                ):
                     decoration = decoration.replace("HEAD", "HEAD*", 1)
                     awaiting_head_commit = False
                 if in_overview_mode:
