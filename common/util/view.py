@@ -8,7 +8,7 @@ from ...core.view import place_view
 
 MYPY = False
 if MYPY:
-    from typing import Mapping, Optional
+    from typing import Callable, Mapping, Optional
 
 
 ##############
@@ -91,12 +91,11 @@ def update_view(view, options):
         "title": view.set_name,
         "scratch": view.set_scratch,
         "read_only": view.set_read_only,
-    }
-
+    }  # type: Mapping[str, Callable]
     settings = view.settings()
     for k, v in options.items():
         if k in special_setters:
-            special_setters[k](v)  # type: ignore[operator]
+            special_setters[k](v)
         else:
             settings.set(k, v)
 
