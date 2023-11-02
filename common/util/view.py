@@ -77,6 +77,10 @@ def create_scratch_view(window, typ, options={}):
         "read_only": True
     }
     update_view(view, ChainMap(options, defaults))  # type: ignore[arg-type]  # mypy expects a MutableMapping here
+    # Call `focus_view` so that `result_file_regex` et.al. settings get applied.
+    # This does *not* in turn sends `on_activated` as the view gets activated
+    # directly after its creation.
+    window.focus_view(view)
     return view
 
 
