@@ -181,10 +181,7 @@ class gs_rebase_action(GsWindowCommand):
                     base_commit = commit_hash
                     dots = log_graph.find_fixups_upwards(base_dot, commit_message)
                     fixups = [
-                        Commit(
-                            log_graph.extract_commit_hash(log_graph.line_from_pt(view, dot.pt).text),
-                            message
-                        )
+                        Commit(commit_hash_from_dot(view, dot), message)
                         for dot, message in dots
                     ]
                     if fixups:
@@ -437,6 +434,12 @@ def commit_message_from_line(view, line):
             return line.text[(r.a - line_span.a):(r.b - line_span.a)]
     else:
         return None
+
+
+def commit_hash_from_dot(view, dot):
+    # type: (sublime.View, log_graph.colorizer.Char) -> str
+    line = log_graph.line_from_pt(view, dot.pt)
+    return log_graph.extract_commit_hash(line.text)
 
 
 def find_base_commit_for_fixup(view, commit_line, commit_message):
