@@ -185,7 +185,7 @@ class gs_rebase_action(GsWindowCommand):
                             log_graph.extract_commit_hash(log_graph.line_from_pt(view, dot.pt).text),
                             message
                         )
-                        for dot, message in log_graph._with_message(dots)
+                        for dot, message in dots
                     ]
                     if fixups:
                         formatted_commit_hashes = log_graph.format_revision_list(

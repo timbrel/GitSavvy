@@ -2207,7 +2207,7 @@ def __find_matching_dots(vid, dot):
         original_message = strip_fixup_or_squash_prefix(commit_message)
         return take(1, find_matching_commit(dot, original_message))
     else:
-        return list(find_fixups_upwards(dot, commit_message))
+        return list(dot for dot, _ in find_fixups_upwards(dot, commit_message))
 
 
 def extract_message_regions(view):
@@ -2264,7 +2264,7 @@ def find_matching_commit(dot, message, forward=True):
 
 
 def find_fixups_upwards(dot, message):
-    # type: (colorizer.Char, str) -> Iterator[colorizer.Char]
+    # type: (colorizer.Char, str) -> Iterator[Tuple[colorizer.Char, str]]
     messages = add_fixup_or_squash_prefixes(message.rstrip(".").strip())
 
     previous_dots = follow_dots(dot, forward=False)
@@ -2274,7 +2274,7 @@ def find_fixups_upwards(dot, message):
             for message in messages:
                 shorter, longer = sorted((message, this_message), key=len)
                 if longer.startswith(shorter):
-                    yield dot
+                    yield dot, this_message
 
 
 def _with_message(dots):
