@@ -162,18 +162,50 @@ class gs_rebase_action(GsWindowCommand):
         on_head = "HEAD" in info
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
 
-        if commit_message and log_graph.is_fixup_or_squash_message(commit_message):
-            base_commit = find_base_commit_for_fixup(view, line, commit_message)
-            if base_commit:
-                fixup_commit = Commit(commit_hash, commit_message)
-                actions += [
-                    (
-                        "Apply fix to '{}'".format(base_commit)
-                        if is_fixup(fixup_commit)
-                        else "Squash with '{}'".format(base_commit),
-                        partial(self.apply_fixup, view, base_commit, [fixup_commit])
-                    )
-                ]
+        if commit_message:
+            if log_graph.is_fixup_or_squash_message(commit_message):
+                base_commit = find_base_commit_for_fixup(view, line, commit_message)
+                if base_commit:
+                    fixup_commit = Commit(commit_hash, commit_message)
+                    actions += [
+                        (
+                            "Apply fix to '{}'".format(base_commit)
+                            if is_fixup(fixup_commit)
+                            else "Squash with '{}'".format(base_commit),
+                            partial(self.apply_fixup, view, base_commit, [fixup_commit])
+                        )
+                    ]
+            else:
+                base_dot = log_graph.dot_from_line(view, line)
+                if base_dot:
+                    base_commit = commit_hash
+                    dots = log_graph.find_fixups_upwards(base_dot, commit_message)
+                    fixups = [
+                        Commit(
+                            log_graph.extract_commit_hash(log_graph.line_from_pt(view, dot.pt).text),
+                            message
+                        )
+                        for dot, message in log_graph._with_message(dots)
+                    ]
+                    if fixups:
+                        formatted_commit_hashes = log_graph.format_revision_list(
+                            [fixup.commit_hash for fixup in fixups]
+                        )
+                        if len(fixups) == 1:
+                            formatted_commit_hashes = f"'{formatted_commit_hashes}'"
+
+                        actions += [
+                            (
+                                "Apply fixup{} {} to {}".format(
+                                    "" if len(fixups) == 1 else "s",
+                                    formatted_commit_hashes,
+                                    base_commit
+                                )
+                                if any(is_fixup(fixup) for fixup in fixups)
+                                else f"Squash with {formatted_commit_hashes}",
+                                partial(self.apply_fixup, view, base_commit, fixups)
+                            )
+                        ]
 
         actions += [
             (
@@ -674,7 +706,7 @@ def fixup_commits(fixup_commits, base_commit, buffer_content):
 
             yield line
             if line.startswith(needle):
-                for commit in reversed(fixup_commits):
+                for commit in fixup_commits:
                     yield "{} {} {}\n".format(
                         "fixup" if is_fixup(commit) else "squash",
                         *commit
