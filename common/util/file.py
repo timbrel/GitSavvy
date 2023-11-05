@@ -26,10 +26,7 @@ def guess_syntax_for_file(window, filename):
 
 def remember_syntax_choice(filename, syntax):
     # type: (str, str) -> None
-    registered_syntaxes = (
-        syntax_file_map.get(filename, [])
-        or syntax_file_map.get(get_file_extension(filename), [])
-    )
+    registered_syntaxes = syntax_file_map[get_file_extension(filename) or filename]
     if syntax in registered_syntaxes:
         registered_syntaxes.remove(syntax)
     registered_syntaxes.append(syntax)
@@ -38,8 +35,8 @@ def remember_syntax_choice(filename, syntax):
 def get_syntax_for_file(filename, default="Packages/Text/Plain text.tmLanguage"):
     # type: (str, str) -> str
     syntaxes = (
-        syntax_file_map.get(filename, [])
-        or syntax_file_map.get(get_file_extension(filename), [])
+        syntax_file_map.get(filename)
+        or syntax_file_map.get(get_file_extension(filename))
         or maybe(lambda: [sublime.find_syntax_for_file(filename).path])  # type: ignore[union-attr]
         or [default]
     )
