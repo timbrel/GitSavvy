@@ -1,17 +1,13 @@
-from collections import defaultdict
 from contextlib import contextmanager
 import os
 
 import sublime
 
 from GitSavvy.core.fns import maybe
+from typing import Dict
 
 
-from typing import DefaultDict, List
-
-
-if 'syntax_file_map' not in globals():
-    syntax_file_map = defaultdict(list)  # type: DefaultDict[str, List[str]]
+syntax_file_map = {}  # type: Dict[str, str]
 
 
 def guess_syntax_for_file(window, filename):
@@ -26,21 +22,17 @@ def guess_syntax_for_file(window, filename):
 
 def remember_syntax_choice(filename, syntax):
     # type: (str, str) -> None
-    registered_syntaxes = syntax_file_map[get_file_extension(filename) or filename]
-    if syntax in registered_syntaxes:
-        registered_syntaxes.remove(syntax)
-    registered_syntaxes.append(syntax)
+    syntax_file_map[get_file_extension(filename) or filename] = syntax
 
 
 def get_syntax_for_file(filename, default="Packages/Text/Plain text.tmLanguage"):
     # type: (str, str) -> str
-    syntaxes = (
+    return (
         syntax_file_map.get(filename)
         or syntax_file_map.get(get_file_extension(filename))
-        or maybe(lambda: [sublime.find_syntax_for_file(filename).path])  # type: ignore[union-attr]
-        or [default]
+        or maybe(lambda: sublime.find_syntax_for_file(filename).path)  # type: ignore[union-attr]
+        or default
     )
-    return syntaxes[-1]
 
 
 def get_file_extension(filename):
