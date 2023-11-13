@@ -8,12 +8,12 @@ from .branch import ask_for_name
 from .log import LogMixin
 from ..git_command import GitCommand, GitSavvyError
 from ..ui_mixins.quick_panel import show_branch_panel
+from ..utils import uprint
 from ..view import replace_view_content
 from ...common import util
 from GitSavvy.core import store
 from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
 from GitSavvy.core.utils import noop, show_actions_panel
-
 
 __all__ = (
     "gs_checkout_branch",
@@ -25,6 +25,11 @@ __all__ = (
 
 
 DIRTY_WORKTREE_MESSAGE = "Please commit your changes or stash them before you switch branches"
+BRANCH_ALREADY_EXISTS_MESSAGE = "a branch named '{0}' already exists"
+RECREATE_BRANCH_UNDO_MESSAGE = """\
+GitSavvy: Re-created branch '{0}', in case you want to undo, run:
+  $ git checkout -B {0} {1}
+"""
 
 
 class gs_checkout_branch(WindowCommand, GitCommand):
@@ -105,6 +110,28 @@ class gs_checkout_new_branch(GsWindowCommand):
                     )
                 ])
                 return
+
+            elif BRANCH_ALREADY_EXISTS_MESSAGE.format(branch_name) in e.stderr and not force:
+                def overwrite_action():
+                    old_hash = self.git("rev-parse", branch_name).strip()
+                    uprint(RECREATE_BRANCH_UNDO_MESSAGE.format(branch_name, old_hash))
+
+                    self.window.run_command("gs_checkout_new_branch", {
+                        "branch_name": branch_name,
+                        "start_point": start_point,
+                        "force": True,
+                        "merge": merge
+                    })
+
+                show_actions_panel(self.window, [
+                    noop(f"Abort, a branch named '{branch_name}' already exists."),
+                    (
+                        f'Re-create the branch at {start_point or "HEAD"}.',
+                        overwrite_action
+                    )
+                ])
+                return
+
             else:
                 e.show_error_panel()
                 raise
