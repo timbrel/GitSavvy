@@ -115,7 +115,7 @@ class KeyboardSettingsListener(EventListener):
                 data = window.project_data()
                 if view and "GitSavvy" not in data.get("settings", {}):
                     sublime.set_timeout_async(
-                        lambda: view.show_popup(PROJECT_MSG, max_width=550)  # type: ignore
+                        lambda: view.show_popup(PROJECT_MSG, max_width=550)
                     )
             else:
                 w = sublime.active_window()
