@@ -2219,7 +2219,7 @@ def find_matching_commit(dot, message, forward=True):
 
 def _find_fixups_upwards(dot, message):
     # type: (colorizer.Char, str) -> Iterator[colorizer.Char]
-    messages = add_fixup_or_squash_prefixes(message)
+    messages = add_fixup_or_squash_prefixes(message.rstrip(".").strip())
 
     previous_dots = follow_dots(dot, forward=False)
     for dot, this_message in _with_message(take(50, previous_dots)):
