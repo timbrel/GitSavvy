@@ -10,7 +10,7 @@ from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
 from GitSavvy.core import store
 
-from typing import Any, Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
+from typing import Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
 
 
 class Kont(Protocol):
@@ -19,7 +19,7 @@ class Kont(Protocol):
 
 
 CommandT = TypeVar("CommandT", bound="GsCommand")
-Args = Dict[str, Any]
+Args = Dict[str, object]
 ArgProvider = Callable[[CommandT, Args, Kont], None]
 
 
@@ -59,6 +59,7 @@ class WithInputHandlers(sublime_plugin.Command):
             args = {}
 
         present = args.keys()
+        args_with_defaults = {**default_args(self.run), **args}
         for name in ordered_positional_args(self.run):
             if name not in present and name in self.defaults:
                 sync_mode = Flag()
@@ -66,27 +67,41 @@ class WithInputHandlers(sublime_plugin.Command):
                     lambda: (
                         None
                         if sync_mode
-                        else run_command(self, args)
+                        else run_command(self, args_with_defaults)
                     ),
-                    args,
+                    args_with_defaults,
                     name
                 )
                 with sync_mode.set():
-                    self.defaults[name](self, args, done)
+                    self.defaults[name](self, args_with_defaults, done)
                 if not done.called:
                     break
         else:
-            return super().run_(edit_token, args)
+            return super().run_(edit_token, args_with_defaults)
 
 
-@lru_cache()
 def ordered_positional_args(fn):
     # type: (Callable) -> List[str]
     return [
         name
-        for name, parameter in inspect.signature(fn).parameters.items()
+        for name, parameter in _signature(fn).parameters.items()
         if parameter.default is inspect.Parameter.empty
     ]
+
+
+def default_args(fn):
+    # type: (Callable) -> Dict[str, object]
+    return {
+        name: parameter.default
+        for name, parameter in _signature(fn).parameters.items()
+        if parameter.default is not inspect.Parameter.empty
+    }
+
+
+@lru_cache()
+def _signature(fn):
+    # type: (Callable) -> inspect.Signature
+    return inspect.signature(fn)
 
 
 class Flag:
