@@ -403,9 +403,8 @@ class gs_tags_delete(TagsInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        interface = self.interface
         self.delete_local()
-        self.delete_remote(interface)
+        self.delete_remote()
         util.view.refresh_gitsavvy(self.view)
 
     def delete_local(self):
@@ -422,13 +421,9 @@ class gs_tags_delete(TagsInterfaceCommand):
 
         flash(self.view, TAG_DELETE_MESSAGE)
 
-    def delete_remote(self, interface):
-        if not interface.remotes:
-            return
-
-        for remote_name, remote in interface.remotes.items():
+    def delete_remote(self):
+        for remote_name in self.interface.state["remotes"]:
             tags_to_delete = self.selected_remote_tags(remote_name)
-
             if tags_to_delete:
                 self.git(
                     "push",
@@ -438,7 +433,7 @@ class gs_tags_delete(TagsInterfaceCommand):
                 )
 
         flash(self.view, TAG_DELETE_MESSAGE)
-        interface.remotes = None
+        self.interface.state["remote_tags"] = {}
 
 
 class gs_tags_push(TagsInterfaceCommand):
