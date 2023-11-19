@@ -217,7 +217,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
         remote_tags, remote_tag_names = set(), set()
         # wait until all settled to prohibit intermediate state to be drawn
-        # what we draw explcitily relies on *all* known remote tags
+        # what we draw explicitly relies on *all* known remote tags
         if all(info["state"] != "loading" for info in self.state["remote_tags"].values()):
             for info in self.state["remote_tags"].values():
                 if info["state"] == "succeeded":
