@@ -7,7 +7,7 @@ T = TypeVar('T')
 U = TypeVar('U')
 
 
-filter_ = partial(filter, None)  # type: Callable[[Iterable[Optional[T]]], Iterator[T]]  # type: ignore[assignment]
+filter_ = partial(filter, None)  # type: Callable[[Iterable[Optional[T]]], Iterator[T]]
 flatten = chain.from_iterable
 
 

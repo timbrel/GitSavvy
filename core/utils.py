@@ -127,7 +127,7 @@ def erase_regions(view, region_key):
     view.erase_regions(region_key)
 
 
-IDS = partial(next, count())  # type: Callable[[], int]  # type: ignore[assignment]
+IDS = partial(next, count())  # type: Callable[[], int]
 HIDE_POPUP_TIMERS = {}  # type: Dict[sublime.ViewId, int]
 POPUPS = {}  # type: Dict[sublime.ViewId, Tuple]
 DEFAULT_TIMEOUT = 2500  # [ms]

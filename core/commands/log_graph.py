@@ -2619,7 +2619,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
         def get_list(info, key):
             # type: (LineInfo, ListItems) -> List[str]
-            return info.get(key, [])  # type: ignore
+            return info.get(key, [])
 
         if head_info and head_is_on_a_branch and cursor_is_not_on_head:
             get = partial(get_list, info)  # type: Callable[[ListItems], List[str]]
