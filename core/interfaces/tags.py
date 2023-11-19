@@ -3,6 +3,7 @@ from functools import partial
 import os
 import re
 
+import sublime
 from sublime_plugin import WindowCommand
 
 from ..commands import GsNavigate
@@ -217,7 +218,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
         remote_tags, remote_tag_names = set(), set()
         # wait until all settled to prohibit intermediate state to be drawn
-        # what we draw explcitily relies on *all* known remote tags
+        # what we draw explicitly relies on *all* known remote tags
         if all(info["state"] != "loading" for info in self.state["remote_tags"].values()):
             for info in self.state["remote_tags"].values():
                 if info["state"] == "succeeded":
@@ -403,16 +404,18 @@ class gs_tags_delete(TagsInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        interface = self.interface
-        self.delete_local(interface)
-        self.delete_remote(interface)
-        util.view.refresh_gitsavvy(self.view)
+        # type: (sublime.Edit) -> None
+        local_tags = self.delete_local()
+        remote_tags = self.delete_remote()
+        if local_tags or remote_tags:
+            flash(self.view, TAG_DELETE_MESSAGE)
+            if remote_tags:
+                self.interface.state["remote_tags"] = {}
+            util.view.refresh_gitsavvy(self.view)
 
-    def delete_local(self, interface):
+    def delete_local(self):
+        # type: () -> List[str]
         tags_to_delete = self.selected_local_tags()
-        if not tags_to_delete:
-            return
-
         for tag in tags_to_delete:
             rv = self.git("tag", "-d", tag)
             match = EXTRACT_COMMIT.search(rv.strip())
@@ -420,16 +423,14 @@ class gs_tags_delete(TagsInterfaceCommand):
                 commit = match.group(1)
                 uprint(DELETE_UNDO_MESSAGE.format(tag, commit))
 
-        flash(self.view, TAG_DELETE_MESSAGE)
-        util.view.refresh_gitsavvy(self.view)
+        return tags_to_delete
 
-    def delete_remote(self, interface):
-        if not interface.remotes:
-            return
-
-        for remote_name, remote in interface.remotes.items():
+    def delete_remote(self):
+        # type: () -> List[str]
+        all_deleted_tags = []
+        for remote_name in self.interface.state["remotes"]:
             tags_to_delete = self.selected_remote_tags(remote_name)
-
+            all_deleted_tags += tags_to_delete
             if tags_to_delete:
                 self.git(
                     "push",
@@ -437,10 +438,7 @@ class gs_tags_delete(TagsInterfaceCommand):
                     "--delete",
                     *("refs/tags/" + tag for tag in tags_to_delete)
                 )
-
-        flash(self.view, TAG_DELETE_MESSAGE)
-        interface.remotes = None
-        util.view.refresh_gitsavvy(self.view)
+        return all_deleted_tags
 
 
 class gs_tags_push(TagsInterfaceCommand):
