@@ -151,6 +151,24 @@
         ]
     },
     {
+        "keys": ["a"],
+        "command": "gs_inline_diff_toggle_side",
+        "args": {"side": "a"},
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["b"],
+        "command": "gs_inline_diff_toggle_side",
+        "args": {"side": "b"},
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.inline_diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["tab"],
         "command": "gs_inline_diff_toggle_cached_mode",
         "context": [
