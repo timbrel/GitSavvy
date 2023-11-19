@@ -42,7 +42,6 @@ def prepare_gitsavvy():
     from .common import util
     from .core import runtime
     runtime.determine_thread_names()
-    sublime.set_timeout_async(util.file.determine_syntax_files)
 
     # Ensure all interfaces are ready.
     sublime.set_timeout_async(
