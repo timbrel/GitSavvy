@@ -404,11 +404,11 @@ class gs_tags_delete(TagsInterfaceCommand):
     @on_worker
     def run(self, edit):
         interface = self.interface
-        self.delete_local(interface)
+        self.delete_local()
         self.delete_remote(interface)
         util.view.refresh_gitsavvy(self.view)
 
-    def delete_local(self, interface):
+    def delete_local(self):
         tags_to_delete = self.selected_local_tags()
         if not tags_to_delete:
             return
