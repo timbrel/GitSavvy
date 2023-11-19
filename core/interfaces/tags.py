@@ -421,7 +421,6 @@ class gs_tags_delete(TagsInterfaceCommand):
                 uprint(DELETE_UNDO_MESSAGE.format(tag, commit))
 
         flash(self.view, TAG_DELETE_MESSAGE)
-        util.view.refresh_gitsavvy(self.view)
 
     def delete_remote(self, interface):
         if not interface.remotes:
@@ -440,7 +439,6 @@ class gs_tags_delete(TagsInterfaceCommand):
 
         flash(self.view, TAG_DELETE_MESSAGE)
         interface.remotes = None
-        util.view.refresh_gitsavvy(self.view)
 
 
 class gs_tags_push(TagsInterfaceCommand):
