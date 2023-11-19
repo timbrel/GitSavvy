@@ -3,6 +3,7 @@ from functools import partial
 import os
 import re
 
+import sublime
 from sublime_plugin import WindowCommand
 
 from ..commands import GsNavigate
@@ -403,6 +404,7 @@ class gs_tags_delete(TagsInterfaceCommand):
 
     @on_worker
     def run(self, edit):
+        # type: (sublime.Edit) -> None
         local_tags = self.delete_local()
         remote_tags = self.delete_remote()
         if local_tags or remote_tags:
