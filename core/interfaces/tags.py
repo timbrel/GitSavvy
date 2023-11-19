@@ -403,15 +403,17 @@ class gs_tags_delete(TagsInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        self.delete_local()
-        self.delete_remote()
-        util.view.refresh_gitsavvy(self.view)
+        local_tags = self.delete_local()
+        remote_tags = self.delete_remote()
+        if local_tags or remote_tags:
+            flash(self.view, TAG_DELETE_MESSAGE)
+            if remote_tags:
+                self.interface.state["remote_tags"] = {}
+            util.view.refresh_gitsavvy(self.view)
 
     def delete_local(self):
+        # type: () -> List[str]
         tags_to_delete = self.selected_local_tags()
-        if not tags_to_delete:
-            return
-
         for tag in tags_to_delete:
             rv = self.git("tag", "-d", tag)
             match = EXTRACT_COMMIT.search(rv.strip())
@@ -419,11 +421,14 @@ class gs_tags_delete(TagsInterfaceCommand):
                 commit = match.group(1)
                 uprint(DELETE_UNDO_MESSAGE.format(tag, commit))
 
-        flash(self.view, TAG_DELETE_MESSAGE)
+        return tags_to_delete
 
     def delete_remote(self):
+        # type: () -> List[str]
+        all_deleted_tags = []
         for remote_name in self.interface.state["remotes"]:
             tags_to_delete = self.selected_remote_tags(remote_name)
+            all_deleted_tags += tags_to_delete
             if tags_to_delete:
                 self.git(
                     "push",
@@ -431,9 +436,7 @@ class gs_tags_delete(TagsInterfaceCommand):
                     "--delete",
                     *("refs/tags/" + tag for tag in tags_to_delete)
                 )
-
-        flash(self.view, TAG_DELETE_MESSAGE)
-        self.interface.state["remote_tags"] = {}
+        return all_deleted_tags
 
 
 class gs_tags_push(TagsInterfaceCommand):
