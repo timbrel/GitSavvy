@@ -132,6 +132,9 @@ def refresh_gitsavvy_interfaces(
 
     for group in range(window.num_groups()):
         view = window.active_view_in_group(group)
+        if view is None:
+            continue
+
         if view.settings().get("git_savvy.interface") is not None:
             view.run_command("gs_interface_refresh")
 
