@@ -4,7 +4,7 @@ import re
 from webbrowser import open as open_in_browser
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import EventListener, TextCommand, WindowCommand
 
 from . import diff
 from . import intra_line_colorizer
@@ -13,8 +13,8 @@ from . import show_commit_info
 from . import show_file_at_commit
 from ..fns import filter_, flatten, unique
 from ..git_command import GitCommand
-from ..utils import flash, focus_view, Cache
-from ..parse_diff import SplittedDiff
+from ..utils import flash, flash_regions, focus_view, Cache
+from ..parse_diff import SplittedDiff, TextRange
 from ..runtime import ensure_on_ui, enqueue_on_worker
 from ..view import replace_view_content, Position
 
@@ -38,11 +38,12 @@ __all__ = (
     "gs_show_commit_reword_commit",
     "gs_line_history_reword_commit",
     "gs_show_commit_edit_commit",
+    "GsShowCommitCopyCommitMessageHelper",
 )
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Optional, Tuple
+    from typing import Dict, Optional, Sequence, Tuple, Union
     from ..types import LineNo, ColNo
     from GitSavvy.core.base_commands import GsCommand, Args, Kont
 
@@ -453,3 +454,43 @@ class gs_show_commit_open_graph_context(TextCommand, GitCommand):
             "all": True,
             "follow": self.get_short_hash(commit_hash)
         })
+
+
+class GsShowCommitCopyCommitMessageHelper(EventListener):
+    def on_text_command(self, view, command_name, args):
+        # type: (sublime.View, str, Dict) -> Union[None, str]
+        if command_name != "copy":
+            return None
+
+        frozen_sel = [r for r in view.sel()]
+        if len(frozen_sel) != 1:
+            return None
+
+        sel = frozen_sel[0]
+        if sel.empty():
+            return None
+
+        if not view.match_selector(sel.begin(), "git-savvy.commit meta.commit_message"):
+            return None
+
+        selected_text = TextRange(view.substr(sel), *sel)
+        by_line = [
+            line[4:] if line.text.startswith("    ") else line
+            for line in selected_text.lines()
+        ]
+        string_for_clipboard = "".join(line.text for line in by_line)
+        clip_content = sublime.get_clipboard(2048)
+
+        if string_for_clipboard == clip_content:
+            set_clipboard_and_flash(view, selected_text.text, [selected_text.region()])
+            return "noop"
+
+        regions = [line.region()[:-1] for line in by_line]
+        set_clipboard_and_flash(view, string_for_clipboard, regions)
+        return "noop"
+
+
+def set_clipboard_and_flash(view, text, regions):
+    # type: (sublime.View, str, Sequence[sublime.Region]) -> None
+    sublime.set_clipboard(text)
+    flash_regions(view, regions)
