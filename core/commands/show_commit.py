@@ -9,6 +9,7 @@ from sublime_plugin import WindowCommand, TextCommand
 from . import diff
 from . import intra_line_colorizer
 from . import log_graph_rebase_actions
+from . import show_commit_info
 from . import show_file_at_commit
 from ..fns import filter_, flatten, unique
 from ..git_command import GitCommand
@@ -113,6 +114,7 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
         )
         view.set_name(title)
         replace_view_content(view, content)
+        show_commit_info.restore_view_state(view, commit_hash)
         intra_line_colorizer.annotate_intra_line_differences(view)
         if SUBLIME_SUPPORTS_REGION_ANNOTATIONS:
             url = url_cache.get(commit_hash)
@@ -315,6 +317,7 @@ class gs_show_commit_open_previous_commit(TextCommand, GitCommand):
             return
 
         show_file_at_commit.remember_next_commit_for(view, {previous_commit: commit_hash})
+        show_commit_info.remember_view_state(view)
         settings.set("git_savvy.show_commit_view.commit", previous_commit)
 
         view.run_command("gs_show_commit_refresh")
@@ -345,6 +348,7 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
             flash(view, "No newer commit found.")
             return
 
+        show_commit_info.remember_view_state(view)
         settings.set("git_savvy.show_commit_view.commit", next_commit)
 
         view.run_command("gs_show_commit_refresh")
