@@ -30,7 +30,7 @@ class GsNavigate(TextCommand, GitCommand):
     def run(self, edit, forward=True):
         self.forward = forward
         sel = self.view.sel()
-        current_position = sel[0].a
+        current_position = sel[0].b
 
         available_regions = self.get_available_regions()
         if not available_regions:
