@@ -19,6 +19,7 @@ class GsNavigate(TextCommand, GitCommand):
     show_at_center = False
     wrap = True
     wrap_with_force = False
+    log_position = False
     # For the first entry, try to show the beginning of the buffer.
     # (Usually we have some info/help text there.)
     first_region_may_expand_to_bof = True
@@ -46,6 +47,12 @@ class GsNavigate(TextCommand, GitCommand):
                     window.status_message("press again to wrap around ...")
             self._just_jumped -= 1
             return
+
+        if self.log_position:
+            window = self.view.window()
+            if window:
+                idx = available_regions.index(wanted_section)
+                window.status_message(f"[{idx + 1}/{len(available_regions)}]")
 
         self._just_jumped = 2
         sel.clear()
