@@ -15,7 +15,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import intra_line_colorizer
 from . import stage_hunk
 from .navigate import GsNavigate
-from ..fns import head, filter_, flatten, pairwise, unique
+from ..fns import head, filter_, flatten, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
 from ..runtime import ensure_on_ui, enqueue_on_worker
@@ -1017,19 +1017,23 @@ class gs_diff_navigate(GsNavigate):
 
     offset = 0
     log_position = True
+    shrink_to_cursor = False
 
     def get_available_regions(self):
-        return [
-            sublime.Region(a.a, b.a - 1)
-            for a, b in pairwise(
-                chain(
-                    self.view.find_by_selector(
-                        "meta.diff.range.unified, meta.commit-info.header"
-                    ),
-                    [sublime.Region(self.view.size())]
-                )
-            )
-        ]
+        def _gen():
+            # type: () -> Iterator[sublime.Region]
+            diff = SplittedDiff.from_view(self.view)
+            for hunk in diff.hunks:
+                yield sublime.Region(hunk.region().a)
+                chunks = list(chunkby(hunk.content().lines(), lambda line: not line.is_context()))
+                if len(chunks) > 1:
+                    for chunk in chunks:
+                        yield sublime.Region(chunk[0].region().a, chunk[-1].region().b)
+
+        return sorted(
+            list(_gen())
+            + self.view.find_by_selector("meta.commit-info.header")
+        )
 
 
 class gs_diff_undo(TextCommand, GitCommand):
