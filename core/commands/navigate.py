@@ -2,6 +2,7 @@ import sublime
 from sublime_plugin import TextCommand
 
 from ..git_command import GitCommand
+from ..utils import flash
 from GitSavvy.core.view import show_region
 
 
@@ -42,17 +43,13 @@ class GsNavigate(TextCommand, GitCommand):
         )
         if wanted_section is None:
             if self._just_jumped == 1:
-                window = self.view.window()
-                if window:
-                    window.status_message("press again to wrap around ...")
+                flash(self.view, "press again to wrap around ...")
             self._just_jumped -= 1
             return
 
         if self.log_position:
-            window = self.view.window()
-            if window:
-                idx = available_regions.index(wanted_section)
-                window.status_message(f"[{idx + 1}/{len(available_regions)}]")
+            idx = available_regions.index(wanted_section)
+            flash(self.view, f"[{idx + 1}/{len(available_regions)}]")
 
         self._just_jumped = 2
         sel.clear()
