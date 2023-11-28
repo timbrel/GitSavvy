@@ -637,7 +637,7 @@ class gs_branches_navigate_branch(GsNavigate):
     offset = 0
 
     def get_available_regions(self):
-        return self.view.find_by_selector("meta.git-savvy.branches.branch.sha1")
+        return self.view.find_by_selector("constant.other.git-savvy.branches.branch.sha1")
 
 
 class gs_branches_navigate_to_active_branch(GsNavigate):
@@ -649,7 +649,7 @@ class gs_branches_navigate_to_active_branch(GsNavigate):
 
     def get_available_regions(self):
         return self.view.find_by_selector(
-            "meta.git-savvy.branches.branch.active-branch meta.git-savvy.branches.branch.sha1")
+            "meta.git-savvy.branches.branch.active-branch constant.other.git-savvy.branches.branch.sha1")
 
 
 class gs_branches_log(LogMixin, BranchInterfaceCommand):

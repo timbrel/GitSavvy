@@ -4,19 +4,14 @@
 #  <- meta.git-savvy.status -meta.git-savvy.status-summary
 #  ^ keyword.other
   ▸ aaf90ba develop
-# ^ string.other
-#    ^ string.other
-#           ^ string.other
+# ^ punctuation.symbol.active-branch.git-savvy
+#   ^^^^^^^ constant.other.git-savvy.branches.branch.sha1
+#           ^^^^^^^ meta.git-savvy.branches.branch.name
+#           ^^^^^^^ gitsavvy.gotosymbol
   ▸ aaf90ba develop (origin/develop)
-# ^ string.other
-#    ^ string.other
-#           ^ string.other
-#                   ^ comment -string
-    2b17192 master
-#    ^ -string.other
-#           ^ -string.other
+#^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.branches.branch.active-branch
+# <- meta.git-savvy.branches.branch.active-branch
     f21e6a8 old (origin/develop, ahead 13, behind 40)
-#    ^ -string.other -comment
-#           ^ -string.other -comment
-#                  ^ comment -string
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ - meta.git-savvy.branches.branch.active-branch
+#               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.extra-info
 
