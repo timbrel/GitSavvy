@@ -192,22 +192,31 @@ To make it more seamless, I recommend, again, to make a shortcut. For example, y
   { "keys": ["ctrl+shift+l"], "command": "gs_line_history"},
 ```
 
-Once you have that, you can use `ctrl+l` to select some lines, followed by `ctrl+shift+l` to follow those lines. Just Like That.
+Once you have that, you can use `ctrl+l` to select some lines, followed by `ctrl+shift+l` to follow
+those lines.
 
-GitSavvy will then show you snippets of commits/patches to show you the evolution of those lines.  `[o]` on such an excerpt will open the complete commit.  `[O]` will display the version of the file as it existed at that specific point in time. And `[f]` for example will initiate a fixup commit for the commit under the cursor.   (Either with the stage, or with all changes if nothing is staged yet, as usual.)
+GitSavvy will then show you snippets of commits/patches to show you the evolution of those lines.
+`[o]` on such an excerpt will open the complete commit.  `[O]` will display the version of the file
+as it existed at that specific point in time. And `[f]` for example will initiate a fixup commit
+for the commit under the cursor.   (Either with the stage, or with all changes if nothing is staged
+yet, as usual.)
 
-*Tip*: When you're on a diff and haven't selected any lines, it will select the current hunk for you, giving you the *"hunk-history"*, so to speak.
+*Tip*: The Line History is also available from any view where we show a diff or patch.  (It is thus
+ available from within the Line History views.)  On such a view you don't necessarily have to
+ select any lines, as it will select the current hunk for you by default, giving you
+ the *"hunk-history"*, so to speak.
 
-*Even deeper*: After `[o]` or `[O]` you can navigate around in time with `[n]` (next) and `[p]` (previous).  You can show the commit's context using `[g]`, and the hunks context by opening the inline diff.
-
-Maybe:
+*Even deeper*: After `[o]` or `[O]` you can navigate around in time with `[n]` (next) and `[p]`
+ (previous).  You can show the commit's context using `[g]`, and the hunks context by opening the
+ inline diff.  That's easier with more keybindings:
 
 ```
-  { "keys": ["ctrl+shift+."], "command": "gs_diff", "args": {"current_file": true} },
   { "keys": ["ctrl+shift+,"], "command": "gs_inline_diff" },
+  { "keys": ["ctrl+shift+."], "command": "gs_diff", "args": {"current_file": true} },
 ```
 
-That's pretty crazy, right?  All views are connected, and you can really navigate around the history.
+That's pretty crazy, right?  All views are connected, and you can really navigate around the
+history.
 
 
 ## Git Diff View
