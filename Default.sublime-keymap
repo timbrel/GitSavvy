@@ -1969,7 +1969,7 @@
     },
     {
         "keys": ["W"],
-        "command": "gs_show_commit_reword_commit",
+        "command": "gs_line_history_reword_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.line_history_view", "operator": "equal", "operand": true }

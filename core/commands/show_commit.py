@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import os
+import re
 from webbrowser import open as open_in_browser
 
 import sublime
@@ -34,6 +35,7 @@ __all__ = (
     "gs_show_commit_open_graph_context",
     "gs_show_commit_initiate_fixup_commit",
     "gs_show_commit_reword_commit",
+    "gs_line_history_reword_commit",
     "gs_show_commit_edit_commit",
 )
 
@@ -246,6 +248,26 @@ def extract_commit_hash(self, args, done):
 
 
 class gs_show_commit_reword_commit(log_graph_rebase_actions.gs_rebase_reword_commit):
+    defaults = {
+        "commit_hash": extract_commit_hash,
+    }
+
+    def rebase(self, *args, **kwargs):
+        rv = super().rebase(*args, **kwargs)
+        match = re.search(r"^\[detached HEAD (\w+)]", rv, re.M)
+        if match is not None:
+            view = self.view
+            settings = view.settings()
+            new_commit_hash = match.group(1)
+
+            settings.set("git_savvy.show_commit_view.commit", new_commit_hash)
+            view.run_command("gs_show_commit_refresh")
+            flash(view, "Now on commit {}".format(new_commit_hash))
+
+        return rv
+
+
+class gs_line_history_reword_commit(log_graph_rebase_actions.gs_rebase_reword_commit):
     defaults = {
         "commit_hash": extract_commit_hash,
     }
