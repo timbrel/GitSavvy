@@ -2,6 +2,7 @@ import re
 
 from GitSavvy.core.git_command import BranchesMixin, _GitCommand
 from GitSavvy.core.fns import filter_
+from GitSavvy.core.utils import yes_no_switch
 from GitSavvy.core import store
 
 
@@ -65,14 +66,14 @@ class RemotesMixin(BranchesMixin, _GitCommand):
             refspec or None,
         )
 
-    def pull(self, remote=None, remote_branch=None, rebase=False):
+    def pull(self, remote=None, remote_branch=None, rebase=None):
         """
         Pull from the specified remote and branch if provided, otherwise
         perform default `git pull`.
         """
         return self.git(
             "pull",
-            "--rebase" if rebase else None,
+            yes_no_switch("--rebase", rebase),
             remote if remote else None,
             remote_branch if remote and remote_branch else None
         )
