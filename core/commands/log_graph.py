@@ -84,7 +84,7 @@ COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
 GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
 COMMIT_LINE = re.compile(
-    r"^[{graph_chars}]*[{node_chars}][{graph_chars}]* "
+    r"^[{graph_chars}]*(?P<dot>[{node_chars}])[{graph_chars}]* "
     r"(?P<commit_hash>[a-f0-9]{{5,40}}) +"
     r"(\((?P<decoration>.+?)\))?"
     .format(graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS)
