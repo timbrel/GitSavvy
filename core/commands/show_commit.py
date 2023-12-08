@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import os
+import re
 from webbrowser import open as open_in_browser
 
 import sublime
@@ -7,8 +8,9 @@ from sublime_plugin import WindowCommand, TextCommand
 
 from . import diff
 from . import intra_line_colorizer
+from . import log_graph_rebase_actions
 from . import show_file_at_commit
-from ..fns import filter_, unique
+from ..fns import filter_, flatten, unique
 from ..git_command import GitCommand
 from ..utils import flash, focus_view, Cache
 from ..parse_diff import SplittedDiff
@@ -32,12 +34,16 @@ __all__ = (
     "gs_show_commit_show_hunk_on_working_dir",
     "gs_show_commit_open_graph_context",
     "gs_show_commit_initiate_fixup_commit",
+    "gs_show_commit_reword_commit",
+    "gs_line_history_reword_commit",
+    "gs_show_commit_edit_commit",
 )
 
 MYPY = False
 if MYPY:
     from typing import Dict, Optional, Tuple
     from ..types import LineNo, ColNo
+    from GitSavvy.core.base_commands import GsCommand, Args, Kont
 
 SHOW_COMMIT_TITLE = "SHOW-COMMIT: {}"
 
@@ -216,6 +222,61 @@ class gs_show_commit_initiate_fixup_commit(TextCommand):
                 break
         else:
             flash(view, "Could not extract commit message subject")
+
+
+def extract_commit_hash(self, args, done):
+    # type: (GsCommand, Args, Kont) -> None
+    view = log_graph_rebase_actions.get_view_for_command(self)
+    if not view:
+        return
+
+    diff = SplittedDiff.from_view(view)
+    commit_hashes = set(filter_(
+        diff.commit_hash_before_pt(pt)
+        for pt in unique(flatten(view.sel()))
+    ))
+
+    if not commit_hashes:
+        flash(view, "No commit header found around the cursor.")
+        return
+    elif len(commit_hashes) > 1:
+        flash(view, "Multiple commits are selected.")
+        return
+
+    commit_hash = self.get_short_hash(commit_hashes.pop())
+    done(commit_hash)
+
+
+class gs_show_commit_reword_commit(log_graph_rebase_actions.gs_rebase_reword_commit):
+    defaults = {
+        "commit_hash": extract_commit_hash,
+    }
+
+    def rebase(self, *args, **kwargs):
+        rv = super().rebase(*args, **kwargs)
+        match = re.search(r"^\[detached HEAD (\w+)]", rv, re.M)
+        if match is not None:
+            view = self.view
+            settings = view.settings()
+            new_commit_hash = match.group(1)
+
+            settings.set("git_savvy.show_commit_view.commit", new_commit_hash)
+            view.run_command("gs_show_commit_refresh")
+            flash(view, "Now on commit {}".format(new_commit_hash))
+
+        return rv
+
+
+class gs_line_history_reword_commit(log_graph_rebase_actions.gs_rebase_reword_commit):
+    defaults = {
+        "commit_hash": extract_commit_hash,
+    }
+
+
+class gs_show_commit_edit_commit(log_graph_rebase_actions.gs_rebase_edit_commit):
+    defaults = {
+        "commit_hash": extract_commit_hash,
+    }
 
 
 class gs_show_commit_toggle_setting(TextCommand):

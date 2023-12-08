@@ -168,6 +168,8 @@ class gs_show_commit_help_tooltip(GsAbstractHelpPopup):
     [n]/[p]        show next/previous commit
     [h]            open commit on GitHub (if available)
     [f]            initiate fixup commit
+    [W]            reWord commit message
+    [E]            Edit commit
     [g]            show in graph
     [,]/[.]        go to next/previous hunk (also: [j]/[k] in vintageous mode)
 
@@ -232,6 +234,8 @@ class gs_line_history_help_tooltip(GsAbstractHelpPopup):
     [O]            open file revision at hunk
     [g]            show in graph
     [f]            make fixup commit
+    [W]            reWord commit message
+    [E]            Edit commit
     [,]/[.]        go to next/previous hunk (also: [j]/[k] in vintageous mode)
 
     ### Other ###
