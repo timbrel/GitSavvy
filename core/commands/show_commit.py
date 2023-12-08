@@ -21,7 +21,6 @@ from ..view import replace_view_content, Position
 from GitSavvy.github import github
 from GitSavvy.github.git_mixins import GithubRemotesMixin
 from GitSavvy.common import interwebs
-SUBLIME_SUPPORTS_REGION_ANNOTATIONS = int(sublime.version()) >= 4050
 
 
 __all__ = (
@@ -41,12 +40,13 @@ __all__ = (
     "GsShowCommitCopyCommitMessageHelper",
 )
 
-MYPY = False
-if MYPY:
-    from typing import Dict, Optional, Sequence, Tuple, Union
-    from ..types import LineNo, ColNo
-    from GitSavvy.core.base_commands import GsCommand, Args, Kont
 
+from typing import Dict, Optional, Sequence, Tuple, Union
+from GitSavvy.core.base_commands import GsCommand, Args, Kont
+from GitSavvy.core.types import LineNo, ColNo
+
+
+SUBLIME_SUPPORTS_REGION_ANNOTATIONS = int(sublime.version()) >= 4050
 SHOW_COMMIT_TITLE = "SHOW-COMMIT: {}"
 
 
@@ -309,8 +309,8 @@ class gs_show_commit_open_previous_commit(TextCommand, GitCommand):
                     return
 
         settings = view.settings()
-        file_path = settings.get("git_savvy.file_path")
-        commit_hash = settings.get("git_savvy.show_commit_view.commit")
+        file_path: Optional[str] = settings.get("git_savvy.file_path")
+        commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
 
         previous_commit = self.previous_commit(commit_hash, file_path)
         if not previous_commit:
@@ -338,9 +338,8 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
                     return
 
         settings = view.settings()
-        file_path = settings.get("git_savvy.file_path")
-        commit_hash = settings.get("git_savvy.show_commit_view.commit")
-
+        file_path: Optional[str] = settings.get("git_savvy.file_path")
+        commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
         next_commit = (
             show_file_at_commit.recall_next_commit_for(view, commit_hash)
             or self.next_commit(commit_hash, file_path)

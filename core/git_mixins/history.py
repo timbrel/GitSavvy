@@ -322,8 +322,8 @@ class HistoryMixin(mixin_base):
         return rv
 
     @cached(not_if={"current_commit": is_dynamic_ref})
-    def previous_commit(self, current_commit, file_path, follow=False):
-        # type: (Optional[str], str, bool) -> Optional[str]
+    def previous_commit(self, current_commit, file_path=None, follow=False):
+        # type: (Optional[str], Optional[str], bool) -> Optional[str]
         try:
             return self.git(
                 "log",
@@ -338,8 +338,8 @@ class HistoryMixin(mixin_base):
         except IndexError:
             return None
 
-    def next_commit(self, current_commit, file_path, follow=False):
-        # type: (str, str, bool) -> Optional[str]
+    def next_commit(self, current_commit, file_path=None, follow=False):
+        # type: (str, Optional[str], bool) -> Optional[str]
         try:
             return self.git(
                 "log",
