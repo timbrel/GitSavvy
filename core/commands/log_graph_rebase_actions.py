@@ -266,6 +266,18 @@ class gs_rebase_action(GsWindowCommand):
                     )
                 ]
 
+            actions += [
+                (
+                    "Compare with previous tip",
+                    partial(self.compare_commits, current_branch, previous_tip)
+                ),
+                (
+                    "Diff against previous tip",
+                    partial(self.diff_commit, previous_tip, current_branch)
+                ),
+
+            ]
+
         def on_action_selection(index):
             if index == -1:
                 return
@@ -369,6 +381,20 @@ class gs_rebase_action(GsWindowCommand):
         new_filters = ' '.join(s for s in shlex.split(filters) if s != previous_tip)
         settings.set("git_savvy.log_graph_view.filters", new_filters)
         view.run_command("gs_log_graph_refresh")
+
+    def compare_commits(self, base_commit, target_commit):
+        self.window.run_command("gs_compare_commit", {
+            "base_commit": base_commit,
+            "target_commit": target_commit,
+        })
+
+    def diff_commit(self, base_commit, target_commit):
+        self.window.run_command("gs_diff", {
+            "in_cached_mode": False,
+            "base_commit": base_commit,
+            "target_commit": target_commit,
+            "disable_stage": True
+        })
 
 
 def commit_message_from_line(view, line):
