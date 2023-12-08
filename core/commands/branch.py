@@ -32,6 +32,12 @@ DELETE_UNDO_MESSAGE = """\
 GitSavvy: Deleted branch ({0}), in case you want to undo, run:
   $ git branch {0} {1}
 """
+BRANCH_ALREADY_EXISTS_MESSAGE = "a branch named '{0}' already exists"
+RECREATE_BRANCH_UNDO_MESSAGE = """\
+GitSavvy: Re-created branch '{0}', in case you want to undo, run:
+  $ git branch --force {0} {1}
+"""
+
 EXTRACT_COMMIT = re.compile(r"\(was (.+)\)")
 NOT_MERGED_WARNING = re.compile(r"The branch.*is not fully merged\.")
 CANT_DELETE_CURRENT_BRANCH = re.compile(r"Cannot delete branch .+ checked out at ")
@@ -79,9 +85,40 @@ class gs_create_branch(GsWindowCommand):
         "branch_name": ask_for_name(),
     }
 
-    def run(self, branch_name, start_point=None):
-        # type: (str, str) -> None
-        self.git("branch", branch_name, start_point)
+    def run(self, branch_name, start_point=None, force=False):
+        # type: (str, str, bool) -> None
+        try:
+            self.git_throwing_silently(
+                "branch",
+                "--force" if force else None,
+                branch_name,
+                start_point
+            )
+        except GitSavvyError as e:
+            if BRANCH_ALREADY_EXISTS_MESSAGE.format(branch_name) in e.stderr and not force:
+                def overwrite_action():
+                    old_hash = self.git("rev-parse", branch_name).strip()
+                    uprint(RECREATE_BRANCH_UNDO_MESSAGE.format(branch_name, old_hash))
+
+                    self.window.run_command("gs_create_branch", {
+                        "branch_name": branch_name,
+                        "start_point": start_point,
+                        "force": True,
+                    })
+
+                show_actions_panel(self.window, [
+                    noop(f"Abort, a branch named '{branch_name}' already exists."),
+                    (
+                        f'Re-create the branch at {start_point or "HEAD"}.',
+                        overwrite_action
+                    )
+                ])
+                return
+
+            else:
+                e.show_error_panel()
+                raise
+
         self.window.status_message("Created {}{}".format(
             branch_name,
             " at {}".format(start_point) if start_point else "")
