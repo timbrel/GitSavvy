@@ -112,6 +112,7 @@ class gs_inline_diff_help_tooltip(GsAbstractHelpPopup):
     key_bindings = dedent("""\
     ### Actions ###
     [tab]          switch between staged/unstaged area
+    [a]/[b]        show/hide the a and b (red or green) sides of the diff
     [l]            stage line, unstage in cached mode
     [h]            stage hunk, unstage in cached mode
     [L]            reset line

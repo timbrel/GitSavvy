@@ -21,6 +21,7 @@ __all__ = (
     "gs_inline_diff",
     "gs_inline_diff_open",
     "gs_inline_diff_refresh",
+    "gs_inline_diff_toggle_side",
     "gs_inline_diff_toggle_cached_mode",
     "gs_inline_diff_stage_or_reset_line",
     "gs_inline_diff_stage_or_reset_hunk",
@@ -37,7 +38,7 @@ __all__ = (
 
 MYPY = False
 if MYPY:
-    from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
+    from typing import Dict, Iterable, List, Literal, NamedTuple, Optional, Tuple
     from ..types import LineNo, ColNo, Row
     from GitSavvy.common.util.parse_diff import Hunk as InlineDiff_Hunk
 
@@ -471,17 +472,18 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             and self.savvy_settings.get("inline_diff_auto_scroll", True)
         )
 
-        replace_view_content(view, inline_diff_contents)
-        self.view.set_name(title)
+        with reapply_possible_fold(view):
+            replace_view_content(view, inline_diff_contents)
+            view.set_name(title)
 
-        if match_position:
-            row, col, row_offset = match_position
-            new_row = translate_row_to_inline_diff(view, row)
-            apply_position(view, new_row, col, row_offset)
-        elif navigate_to_first_hunk:
-            view.run_command("gs_inline_diff_navigate_hunk")
+            if match_position:
+                row, col, row_offset = match_position
+                new_row = translate_row_to_inline_diff(view, row)
+                apply_position(view, new_row, col, row_offset)
+            elif navigate_to_first_hunk:
+                view.run_command("gs_inline_diff_navigate_hunk")
 
-        self.highlight_regions(hunks)
+            self.highlight_regions(hunks)
 
     def get_inline_diff_contents(self, original_contents, diff):
         # type: (str, List[InlineDiff_Hunk]) -> Tuple[str, List[HunkReference]]
@@ -606,6 +608,57 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             remove_bold_regions,
             scope="diff.deleted.char.git-savvy.inline-diff"
         )
+
+
+@contextmanager
+def reapply_possible_fold(view):
+    current_fold_mode = fold_mode(view)
+    if current_fold_mode == "ab":
+        yield
+    else:
+        view.run_command("unfold_all")
+        yield
+        view.run_command("gs_inline_diff_toggle_side", {"side": current_fold_mode})
+
+
+def fold_mode(view):
+    # type: (sublime.View) -> Literal["a", "b", "ab"]
+    currently_folded = view.folded_regions()
+    if not currently_folded:
+        return "ab"
+    if currently_folded == regions(view, "b"):
+        return "a"
+    if currently_folded == regions(view, "a"):
+        return "b"
+    return "ab"
+
+
+def regions(view, side):
+    # type: (sublime.View, Literal["a", "b"]) -> List[sublime.Region]
+    selector = "git-savvy-removed-lines" if side == "a" else "git-savvy-added-lines"
+    return [sublime.Region(r.a, r.b - 1) for r in view.get_regions(selector)]
+
+
+class gs_inline_diff_toggle_side(TextCommand, GitCommand):
+    def run(self, edit, side):
+        # type: (sublime.Edit, Literal["a", "b"]) -> None
+        view = self.view
+        currently_folded = view.folded_regions()
+
+        if side == "a":
+            b_regions = regions(view, "b")
+            if currently_folded:
+                view.run_command("unfold_all")
+            if currently_folded == b_regions:
+                return
+            view.fold(b_regions)
+        else:
+            a_regions = regions(view, "a")
+            if currently_folded:
+                view.run_command("unfold_all")
+            if currently_folded == a_regions:
+                return
+            view.fold(a_regions)
 
 
 class gs_inline_diff_toggle_cached_mode(TextCommand, GitCommand):
