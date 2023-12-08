@@ -9,7 +9,8 @@ from .fns import accumulate, flatten, pairwise, tail
 
 MYPY = False
 if MYPY:
-    from typing import Final, Iterator, List, NamedTuple, Optional, Tuple, Type
+    from typing import Final, Iterator, List, NamedTuple, Optional, Tuple, Type, Union
+    from typing_extensions import Self
     from .types import LineNo
 
 
@@ -157,6 +158,10 @@ class TextRange:
         if isinstance(other, TextRange):
             return self._as_tuple() == other._as_tuple()
         return False
+
+    def __getitem__(self, i):
+        # type: (Union[int, slice]) -> Self
+        return self.__class__(self.text[i], *self.region()[i])
 
     def region(self):
         # type: () -> Region
@@ -323,6 +328,13 @@ class Region(sublime.Region):
     def __sub__(self, other):
         # type: (int) -> Region
         return self.transpose(-other)
+
+    def __getitem__(self, i):
+        # type: (Union[int, slice]) -> Self
+        if isinstance(i, int):
+            i = slice(i, i + 1)
+        new_range = range(self.a, self.b)[i]
+        return self.__class__(new_range.start, new_range.stop)
 
     def transpose(self, n):
         # type: (int) -> Region
