@@ -2446,8 +2446,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         file_path = self._get_file_path(view)
         actions = []  # type: List[Tuple[str, Callable[[], None]]]
 
-        sel = view.sel()
-        if all(s.empty() for s in sel) and len(sel) == 2:
+        if len(infos) == 2:
             def display_name(info):
                 # type: (LineInfo) -> str
                 if info.get("local_branches"):
