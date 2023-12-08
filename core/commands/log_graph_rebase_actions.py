@@ -474,6 +474,7 @@ class RebaseCommand(GitCommand):
         custom_environ=None,
         ok_message="rebase finished",
         offer_autostash=False,
+        after_rebase=None,
         **kwargs
     ):
         window = self.window  # type: ignore[attr-defined]
@@ -513,6 +514,7 @@ class RebaseCommand(GitCommand):
                             custom_environ=custom_environ,
                             ok_message=ok_message,
                             offer_autostash=False,
+                            after_rebase=after_rebase,
                             **kwargs
                         )
                     )
@@ -537,6 +539,7 @@ class RebaseCommand(GitCommand):
                             custom_environ=custom_environ,
                             ok_message=ok_message,
                             offer_autostash=offer_autostash,
+                            after_rebase=after_rebase,
                             **kwargs
                         )
                         return
@@ -544,6 +547,8 @@ class RebaseCommand(GitCommand):
         else:
             if show_panel and not self.in_rebase():
                 auto_close_panel(window)
+            if after_rebase:
+                after_rebase()
             return rv
 
         finally:
@@ -668,7 +673,8 @@ class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
                     start_commit,
                     custom_environ=make_git_config_env({
                         "rebase.abbreviateCommands": "false"
-                    })
+                    }),
+                    after_rebase=follow_new_commit(self, start_commit),
                 )
 
         run_on_new_thread(program)
@@ -764,7 +770,8 @@ class gs_rebase_just_autosquash(GsTextCommand, RebaseCommand):
                     None
                 ),
                 commitish,
-                custom_environ={"GIT_SEQUENCE_EDITOR": ":"}
+                custom_environ={"GIT_SEQUENCE_EDITOR": ":"},
+                after_rebase=follow_new_commit(self, commitish),
             )
 
         run_on_new_thread(program)
@@ -822,6 +829,41 @@ def provide_update_refs(self, args, done):
     )
 
 
+def follow_new_commit(self, commitish):
+    # type: (GsTextCommand, str) -> Callable[[], None]
+    """Set `follow` to the commit that got rewritten.
+
+    Note that `commitish` is the start commit of the rebase, thus typically the
+    parent of the interesting commit under the cursor.
+    """
+    settings = self.view.settings()
+    if not settings.get("git_savvy.log_graph_view"):
+        return lambda: None
+
+    def sideeffect() -> None:
+        if self.in_rebase():
+            # On some commands, e.g. "edit", or generally on a merge conflict
+            # the initial rebase command ends but the rebase is still ongoing.
+            # In that case we must resolve somewhen later, currently in
+            # `gs_log_graph_refresh`.
+            settings.set("git_savvy.resolve_after_rebase", commitish)
+
+        else:
+            log_graph.resolve_commit_to_follow_after_rebase(self, commitish)
+    return sideeffect
+
+
+def follow_head(self):
+    # type: (GsTextCommand) -> Callable[[], None]
+    settings = self.view.settings()
+    if not settings.get("git_savvy.log_graph_view"):
+        return lambda: None
+
+    def sideeffect() -> None:
+        settings.set("git_savvy.log_graph_view.follow", "HEAD")
+    return sideeffect
+
+
 class gs_rebase_interactive(GsTextCommand, RebaseCommand):
     defaults = {
         "commitish": extract_parent_symbol_from_graph,
@@ -845,6 +887,7 @@ class gs_rebase_interactive(GsTextCommand, RebaseCommand):
             yes_no_switch("--update-refs", update_refs),
             commitish,
             offer_autostash=True,
+            after_rebase=follow_new_commit(self, commitish),
         )
 
 
@@ -874,6 +917,7 @@ class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
             "--onto",
             onto,
             offer_autostash=True,
+            after_rebase=follow_head(self)
         )
 
 
