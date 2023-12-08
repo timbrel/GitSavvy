@@ -61,6 +61,11 @@ def drop(n, iterable):
     return islice(iterable, n, None)
 
 
+def head(iterable):
+    # type: (Iterable[T]) -> List[T]
+    return take(1, iterable)
+
+
 def tail(iterable):
     # type: (Iterable[T]) -> Iterator[T]
     return drop(1, iterable)

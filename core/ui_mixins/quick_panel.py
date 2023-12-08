@@ -593,8 +593,8 @@ class LogPanel(PaginatedPanel):
 
 
 class LogHelperMixin(GitCommand):
-    def show_log_panel(self, action, preselected_commit_message=None):
-        # type: (Callable[[LogEntry], None], str) -> None
+    def show_log_panel(self, action, preselected_commit=lambda items: -1):
+        # type: (Callable[[LogEntry], None], Callable[[List[LogEntry]], int]) -> None
         window = self._current_window()
         if not window:
             return
@@ -622,11 +622,7 @@ class LogHelperMixin(GitCommand):
                 entry.summary
             )))
 
-        preselected_idx = next(
-            (idx for idx, item in enumerate(items) if item.summary == preselected_commit_message),
-            -1
-        ) if preselected_commit_message else -1
-
+        preselected_idx = preselected_commit(items)
         show_panel(
             window,
             map(format_item, items),
