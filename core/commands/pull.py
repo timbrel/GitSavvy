@@ -1,6 +1,5 @@
 from ...common import util
-from ..ui_mixins.quick_panel import show_branch_panel
-from GitSavvy.core.base_commands import Args, GsCommand, GsWindowCommand, Kont
+from GitSavvy.core.base_commands import GsWindowCommand, ask_for_branch
 from GitSavvy.core.fns import flatten, unique
 from GitSavvy.core.runtime import on_worker
 from GitSavvy.core import store
@@ -43,20 +42,11 @@ class gs_pull(GsPullBase):
             self.window.run_command("gs_pull_from_branch", {"rebase": rebase})
 
 
-def ask_for_branch(self, args, done):
-    # type: (GsCommand, Args, Kont) -> None
-    last_used_branch = store.current_state(self.repo_path).get("last_branch_used_to_pull_from")
-
-    def _done(branch):
-        store.update_state(self.repo_path, {"last_branch_used_to_pull_from": branch})
-        done(branch)
-
-    show_branch_panel(
-        _done,
-        ask_remote_first=False,
-        ignore_current_branch=True,
-        selected_branch=last_used_branch
-    )
+ask_for_branch_ = ask_for_branch(
+    ask_remote_first=False,
+    ignore_current_branch=True,
+    memorize_key="last_branch_used_to_pull_from"
+)
 
 
 class gs_pull_from_branch(GsPullBase):
@@ -64,14 +54,14 @@ class gs_pull_from_branch(GsPullBase):
     Through a series of panels, allow the user to pull from a branch.
     """
     defaults = {
-        "branch": ask_for_branch
+        "branch": ask_for_branch_
     }
 
     @on_worker
     def run(self, branch, rebase=None):
         # type: (str, bool) -> None
         sources: Sequence[Callable[[], List[Branch]]] = (
-            # Typically, `ask_for_branch`s `show_branch_panel` has just called
+            # Typically, `ask_for_branch_`s `show_branch_panel` has just called
             # `get_branches` so the cached value in the store should be fresh
             # and good to go.
             lambda: store.current_state(self.repo_path).get("branches", []),
