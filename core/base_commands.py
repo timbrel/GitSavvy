@@ -170,7 +170,7 @@ GsCommand = Union[GsTextCommand, GsWindowCommand]
 
 # COMMON INPUT HANDLERS
 
-KnownKeys = Union[Literal["last_local_branch_for_rebase"]]
+KnownKeys = Literal["last_local_branch_for_rebase", "last_branch_used_to_pull_from"]
 
 
 def ask_for_branch(memorize_key=None, **kw):
@@ -179,7 +179,7 @@ def ask_for_branch(memorize_key=None, **kw):
         # type: (GsCommand, Args, Kont) -> None
         def on_done(branch):
             if memorize_key:
-                store.update_state(self.repo_path, {memorize_key: branch})
+                store.update_state(self.repo_path, {memorize_key: branch})  # type: ignore[misc]
             done(branch)
 
         selected_branch = (
