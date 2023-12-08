@@ -784,10 +784,10 @@ class gs_rebase_skip(sublime_plugin.WindowCommand, RebaseCommand):
         self.rebase('--skip')
 
 
-ask_for_local_branch = ask_for_branch(
-    local_branches_only=True,
+ask_for_branch_ = ask_for_branch(
+    ask_remote_first=False,
     ignore_current_branch=True,
-    memorize_key="last_local_branch_for_rebase"
+    memorize_key="last_branch_used_to_rebase_from"
 )
 
 
@@ -847,7 +847,7 @@ class gs_rebase_interactive(GsTextCommand, RebaseCommand):
 class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
     defaults = {
         "commitish": extract_parent_symbol_from_graph,
-        "onto": ask_for_local_branch,
+        "onto": ask_for_branch_,
         "rebase_merges": provide_rebase_merges,
         "update_refs": provide_update_refs,
     }
@@ -875,7 +875,7 @@ class gs_rebase_interactive_onto_branch(GsTextCommand, RebaseCommand):
 
 class gs_rebase_on_branch(GsTextCommand, RebaseCommand):
     defaults = {
-        "on": ask_for_local_branch,
+        "on": ask_for_branch_,
         "rebase_merges": provide_rebase_merges,
         "update_refs": provide_update_refs,
     }
