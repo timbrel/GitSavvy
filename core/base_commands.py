@@ -170,7 +170,7 @@ GsCommand = Union[GsTextCommand, GsWindowCommand]
 
 # COMMON INPUT HANDLERS
 
-KnownKeys = Literal["last_local_branch_for_rebase", "last_branch_used_to_pull_from"]
+KnownKeys = Literal["last_branch_used_to_pull_from", "last_branch_used_to_rebase_from"]
 
 
 def ask_for_branch(memorize_key=None, **kw):
