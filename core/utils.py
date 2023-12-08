@@ -20,7 +20,10 @@ from . import runtime
 
 MYPY = False
 if MYPY:
-    from typing import Callable, Dict, Iterator, Optional, Tuple, Type
+    from typing import Any, Callable, Dict, Iterator, Optional, Tuple, Type, TypeVar
+    from typing_extensions import ParamSpec
+    P = ParamSpec('P')
+    T = TypeVar('T')
 
 
 @contextmanager
@@ -429,12 +432,13 @@ class Cache(OrderedDict):
             self.popitem(last=False)
 
 
-general_purpose_cache = Cache(maxsize=512)  # type: Dict[Tuple, object]
+general_purpose_cache = Cache(maxsize=512)  # type: Dict[Tuple, Any]
 
 
 def cached(not_if, cache=general_purpose_cache):
-    # type: (Dict, Dict[Tuple, object]) -> Callable
+    # type: (Dict[str, Callable], Dict[Tuple, Any]) -> Callable[[Callable[P, T]], Callable[P, T]]
     def decorator(fn):
+        # type: (Callable[P, T]) -> Callable[P, T]
         fn_s = inspect.signature(fn)
 
         def should_skip(arguments):
@@ -445,6 +449,7 @@ def cached(not_if, cache=general_purpose_cache):
 
         @wraps(fn)
         def decorated(*args, **kwargs):
+            # type: (P.args, P.kwargs) -> T
             arguments = _bind_arguments(fn_s, args, kwargs)
             if should_skip(arguments):
                 return fn(*args, **kwargs)

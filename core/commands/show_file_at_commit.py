@@ -131,8 +131,8 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         date, subject = "", ""
         for line in patch.splitlines():
             # CommitDate: Tue Dec 20 18:21:40 2022 +0100
-            if line.startswith("CommitDate: "):
-                date_ = "-".join(map(str, email.utils.parsedate(line[12:])[:3]))
+            if line.startswith("CommitDate: ") and (parsed_date := email.utils.parsedate(line[12:])):
+                date_ = "-".join(map(str, parsed_date[:3]))
                 date = " ({})".format(date_)
             elif line.startswith("    "):
                 subject_ = line.lstrip()
