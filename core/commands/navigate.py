@@ -20,6 +20,7 @@ class GsNavigate(TextCommand, GitCommand):
     show_at_center = False
     wrap = True
     wrap_with_force = False
+    shrink_to_cursor = True
     log_position = False
     # For the first entry, try to show the beginning of the buffer.
     # (Usually we have some info/help text there.)
@@ -53,9 +54,11 @@ class GsNavigate(TextCommand, GitCommand):
 
         self._just_jumped = 2
         sel.clear()
-        # Position the cursor at the beginning of the section...
-        new_cursor_position = wanted_section.begin() + self.offset
-        sel.add(sublime.Region(new_cursor_position))
+        if self.shrink_to_cursor or self.offset:
+            new_cursor_position = sublime.Region(wanted_section.begin() + self.offset)
+        else:
+            new_cursor_position = sublime.Region(wanted_section.b, wanted_section.a)
+        sel.add(new_cursor_position)
 
         if self.show_at_center:
             self.view.show_at_center(new_cursor_position)
