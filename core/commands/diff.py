@@ -357,9 +357,11 @@ def _draw(view, title, prelude, diff_text, match_position):
                     # yields all lines in the hunk.
                     if not line.is_from_line() and b == lineno:
                         pt = line.a + col + line.mode_len
-                        visible_region = view.visible_region()
-                        # Do not scroll if the diff fits on one screen
-                        should_scroll = view.size() > len(visible_region)
+                        # Do not scroll if the cursor fits on the first "page",
+                        # always show the prelude if possible.
+                        _, cy = view.text_to_layout(pt)
+                        _, vh = view.viewport_extent()
+                        should_scroll = cy >= vh
                         place_cursor_and_show(
                             view, pt, row_offset if should_scroll else None, no_overscroll=True)
                         navigated = True
