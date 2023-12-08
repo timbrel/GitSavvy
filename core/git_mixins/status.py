@@ -402,9 +402,9 @@ class StatusMixin(mixin_base):
         except Exception:
             return ""
 
-    def _read_git_file(self, fname):
+    def _read_git_file(self, *fname):
         # type: (str) -> str
-        path = os.path.join(self.git_dir, fname)
+        path = os.path.join(self.git_dir, *fname)
         try:
             with open(path, "r") as f:
                 return f.read().strip()

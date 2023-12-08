@@ -1,6 +1,6 @@
 from collections import deque
 from functools import lru_cache, partial
-from itertools import chain, count, islice
+from itertools import chain, count, groupby, islice
 import os
 from queue import Empty
 import re
@@ -772,12 +772,49 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
             # type: (str, int) -> str
             return f"{text[:width - 2]}.." if len(text) > width else f"{text:{width}}"
 
+        def resolve_refs_from_the_logs():
+            # type: () -> Dict[str, str]
+            # git does not decorate refs from the reflogs, e.g. "branch@{2}", so we resolve
+            # them manually.
+            settings = self.view.settings()
+            all_branches = settings.get("git_savvy.log_graph_view.all_branches")
+            applying_filters = settings.get("git_savvy.log_graph_view.apply_filters")
+            additional_args = " ".join((
+                (
+                    settings.get("git_savvy.log_graph_view.filters", "")
+                    if applying_filters
+                    else ""
+                ),
+                " ".join(
+                    []
+                    if all_branches
+                    else settings.get("git_savvy.log_graph_view.branches", [])
+                )
+            ))
+            requested_refs = re.findall(r"\S+@{\d+}", additional_args)
+            return {
+                commit_hash: ref
+
+                for branch_name, refs in groupby(
+                    sorted(requested_refs),
+                    key=lambda ref: ref.split("@")[0]
+                )
+                if (wanted_refs := list(refs))
+
+                for n, commit_hash in enumerate(reversed([
+                    self.get_short_hash(line.split(maxsplit=2)[1])
+                    for line in self._read_git_file("logs", "refs", "heads", branch_name).splitlines()
+                ]))
+                if (ref := f"{branch_name}@{{{n}}}") in wanted_refs
+            }
+
         ASCII_ART_LENGHT_LIMIT = 48
         SHORTENED_ASCII_ART = ".. / \n"
         in_overview_mode = self.view.settings().get("git_savvy.log_graph_view.overview")
         head_state = store.current_state(self.repo_path).get("head")
         repo_is_dirty = head_state and not head_state.clean
         awaiting_head_commit = True
+        additional_decorations = resolve_refs_from_the_logs()
 
         def simplify_decoration(decoration):
             # type: (str) -> str
@@ -805,12 +842,21 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
 
             hash, decoration, subject, info = line
             hash = hash.replace("*", COMMIT_NODE_CHAR, 1)
-            if len(hash) > ASCII_ART_LENGHT_LIMIT:
+            if (
+                len(hash) > ASCII_ART_LENGHT_LIMIT
+                or in_overview_mode
+                or additional_decorations
+            ):
                 commit_hash = hash.rsplit(" ", 1)[1]
-                hash = f".. {COMMIT_NODE_CHAR} {commit_hash}"
-            elif in_overview_mode:
-                commit_hash = hash.rsplit(" ", 1)[1]
-                hash = hash.ljust(len(commit_hash) + 6)
+                if len(hash) > ASCII_ART_LENGHT_LIMIT:
+                    hash = f".. {COMMIT_NODE_CHAR} {commit_hash}"
+                elif in_overview_mode:
+                    hash = hash.ljust(len(commit_hash) + 6)
+
+                if commit_hash in additional_decorations:
+                    ref = additional_decorations.pop(commit_hash)
+                    decoration = ", ".join(filter_((decoration, ref)))
+
             if decoration:
                 if awaiting_head_commit and repo_is_dirty and "HEAD" in decoration:
                     decoration = decoration.replace("HEAD", "HEAD*", 1)
