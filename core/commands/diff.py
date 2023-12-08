@@ -1003,7 +1003,7 @@ class gs_diff_navigate(GsNavigate):
     """
 
     offset = 0
-    wrap_with_force = True
+    log_position = True
 
     def get_available_regions(self):
         return [
