@@ -194,7 +194,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
     @ui.section("branch_list")
     def render_branch_list(self, branches, sort_by_recent):
         # type: (List[Branch], bool) -> str
-        local_branches = [branch for branch in branches if not branch.is_remote]
+        local_branches = [branch for branch in branches if branch.is_local]
         if sort_by_recent:
             local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
         # Manually get `descriptions` to not delay the first render.

@@ -122,7 +122,7 @@ class BranchesMixin(mixin_base):
 
         elif refs == ["refs/remotes"]:
             stored_state = store.current_state(self.repo_path).get("branches", [])
-            next_state = [b for b in stored_state if not b.is_remote] + branches
+            next_state = [b for b in stored_state if b.is_local] + branches
 
         else:
             return None

@@ -347,7 +347,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
             # Check that the base_ref we return is a valid branch
             if base_ref not in [branch.canonical_name for branch in branches]:
                 # base_ref isn't a valid branch, so we'll try to pick a sensible alternative
-                local_branches = [branch for branch in branches if not branch.is_remote]
+                local_branches = [branch for branch in branches if branch.is_local]
                 inactive_local_branches = [branch for branch in local_branches if not branch.active]
 
                 if inactive_local_branches:

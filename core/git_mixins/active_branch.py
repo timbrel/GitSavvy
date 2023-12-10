@@ -79,7 +79,7 @@ def format_and_limit(commits, max_items, current_upstream=None, branches=[]):
     remote_to_local_names = {
         b.upstream.canonical_name: b.canonical_name
         for b in branches
-        if not b.is_remote and b.upstream
+        if b.is_local and b.upstream
     }
     for idx, (h, d, s) in enumerate(commits):
         decorations_ = d.strip("( )").split(", ") if d else []

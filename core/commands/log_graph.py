@@ -2474,7 +2474,7 @@ def describe_graph_line(line, known_branches):
             else:
                 branches.append(name)
                 branch = known_branches.get(name)
-                if branch and not branch.is_remote:
+                if branch and branch.is_local:
                     local_branches.append(name)
         if branches:
             rv["branches"] = branches
