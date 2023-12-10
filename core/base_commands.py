@@ -10,7 +10,7 @@ from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
 from GitSavvy.core import store
 
-from typing import Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
+from typing import Any, Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
 
 
 class Kont(Protocol):
@@ -174,7 +174,7 @@ KnownKeys = Literal["last_branch_used_to_pull_from", "last_branch_used_to_rebase
 
 
 def ask_for_branch(memorize_key=None, **kw):
-    # type: (KnownKeys, object) -> ArgProvider
+    # type: (KnownKeys, Any) -> ArgProvider
     def handler(self, args, done):
         # type: (GsCommand, Args, Kont) -> None
         def on_done(branch):

@@ -228,14 +228,14 @@ class RemotePanel(GitCommand):
 
 
 def show_branch_panel(
-        on_done,
+        on_done: Callable[[str], None],
         *,
-        on_cancel=lambda: None,
-        local_branches_only=False,
-        remote_branches_only=False,
-        ignore_current_branch=False,
-        ask_remote_first=False,
-        selected_branch=None
+        on_cancel: Callable[[], None] = lambda: None,
+        local_branches_only: bool = False,
+        remote_branches_only: bool = False,
+        ignore_current_branch: bool = False,
+        ask_remote_first: bool = False,
+        selected_branch: Optional[str] = None,
 ):
     """
     Show a quick panel with branches. The callback `on_done(branch)` will
@@ -265,13 +265,13 @@ class BranchPanel(GitCommand):
 
     def __init__(
             self,
-            on_done,
-            on_cancel,
-            local_branches_only=False,
-            remote_branches_only=False,
-            ignore_current_branch=False,
-            ask_remote_first=False,
-            selected_branch=None
+            on_done: Callable[[str], None],
+            on_cancel: Callable[[], None] = lambda: None,
+            local_branches_only: bool = False,
+            remote_branches_only: bool = False,
+            ignore_current_branch: bool = False,
+            ask_remote_first: bool = False,
+            selected_branch: Optional[str] = None,
     ):
         self.window = sublime.active_window()
         self.on_done = on_done
