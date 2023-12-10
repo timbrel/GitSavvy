@@ -30,6 +30,10 @@ class Branch(NamedTuple):
     committerdate: int
     upstream: Optional[Upstream]
 
+    @property
+    def is_local(self) -> bool:
+        return not self.is_remote
+
 
 class BranchesMixin(mixin_base):
 
