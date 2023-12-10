@@ -19,7 +19,7 @@ class gs_merge(GsWindowCommand):
     """
 
     defaults = {
-        "branch": ask_for_branch(ignore_current_branch=True),
+        "branch": ask_for_branch(ignore_current_branch=True, merged=False),
     }
 
     @on_worker
