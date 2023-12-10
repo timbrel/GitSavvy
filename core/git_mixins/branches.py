@@ -87,16 +87,17 @@ class BranchesMixin(mixin_base):
         """
         stdout = self.git(
             "for-each-ref",
-            (
-                "--format="
-                "%(HEAD)%00"
-                "%(refname)%00"
-                "%(upstream)%00"
-                "%(upstream:remotename)%00"
-                "%(upstream:track,nobracket)%00"
-                "%(committerdate:unix)%00"
-                "%(objectname)%00"
-                "%(contents:subject)"
+            "--format={}".format(
+                "%00".join((
+                    "%(HEAD)",
+                    "%(refname)",
+                    "%(upstream)",
+                    "%(upstream:remotename)",
+                    "%(upstream:track,nobracket)",
+                    "%(committerdate:unix)",
+                    "%(objectname)",
+                    "%(contents:subject)",
+                ))
             ),
             *refs
         )  # type: str
