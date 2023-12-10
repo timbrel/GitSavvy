@@ -1,5 +1,7 @@
 from contextlib import contextmanager
+import datetime
 from functools import partial
+from itertools import groupby
 import os
 
 from sublime_plugin import WindowCommand
@@ -52,6 +54,7 @@ class BranchViewState(TypedDict, total=False):
     remotes: Dict[str, str]
     recent_commits: List[Commit]
     sort_by_recent: bool
+    group_by_distance_to_head: bool
     show_remotes: bool
     show_help: bool
 
@@ -140,6 +143,8 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         self.update_state({
             'git_root': self.short_repo_path,
             'sort_by_recent': self.savvy_settings.get("sort_by_recent_in_branch_dashboard"),
+            'group_by_distance_to_head':
+                self.savvy_settings.get("group_by_distance_to_head_in_branch_dashboard"),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })
 
@@ -186,14 +191,56 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         return "{0.hash} {0.message}".format(recent_commits[0])
 
     @ui.section("branch_list")
-    def render_branch_list(self, branches, sort_by_recent):
-        # type: (List[Branch], bool) -> str
-        local_branches = [branch for branch in branches if branch.is_local]
-        if sort_by_recent:
-            local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
+    def render_branch_list(self, branches, sort_by_recent, group_by_distance_to_head):
+        # type: (List[Branch], bool, bool) -> str
         # Manually get `descriptions` to not delay the first render.
         descriptions = self.state.get("descriptions", {})
-        return self._render_branch_list(None, local_branches, descriptions)
+        local_branches = [branch for branch in branches if branch.is_local]
+
+        has_distance_to_head_information = any(b.distance_to_head for b in local_branches)
+        if has_distance_to_head_information and group_by_distance_to_head:
+            def younger_than(
+                timedelta: datetime.timedelta,
+                now: datetime.datetime,
+                timestamp: int
+            ) -> bool:
+                dt = datetime.datetime.utcfromtimestamp(timestamp)
+                return (now - dt) < timedelta
+
+            roughly_nine_months = datetime.timedelta(days=9 * 30)
+            now = datetime.datetime.utcnow()
+            is_fresh = partial(younger_than, roughly_nine_months, now)
+
+            def sort_key(branch):
+                return (
+                    (0, -branch.committerdate) if is_fresh(branch.committerdate) else
+                    (1, branch.name)
+                )
+            if sort_by_recent:
+                local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
+            else:
+                local_branches = sorted(local_branches, key=sort_key)
+
+            def sectionizer(branch):
+                ahead, behind = branch.distance_to_head
+                return (
+                    (1, 0) if ahead > 0 and behind == 0 else
+                    (2, 0) if branch.active else
+                    (3, 0) if ahead == 0 and behind > 0 else
+                    (4, 0) if is_fresh(branch.committerdate) else
+                    (5, 0)
+                )
+
+            local_branches = sorted(local_branches, key=sectionizer)
+            return "\n{}\n".format(" " * 60).join(
+                self._render_branch_list(None, list(branches), descriptions)
+                for _, branches in groupby(local_branches, sectionizer)
+            )
+
+        else:
+            if sort_by_recent:
+                local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
+            return self._render_branch_list(None, local_branches, descriptions)
 
     def _render_branch_list(self, remote_name, branches, descriptions):
         # type: (Optional[str], List[Branch], Dict[str, str]) -> str
