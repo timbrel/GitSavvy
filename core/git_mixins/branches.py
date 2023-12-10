@@ -3,6 +3,7 @@ import re
 from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.fns import filter_
+from GitSavvy.core.utils import yes_no_switch
 
 from typing import Dict, List, NamedTuple, Optional, Sequence
 
@@ -80,10 +81,10 @@ class BranchesMixin(mixin_base):
         # type: () -> List[Branch]
         return self.get_branches(refs=["refs/heads"])
 
-    def get_branches(self, *, refs=["refs/heads", "refs/remotes"]):
-        # type: (Sequence[str]) -> List[Branch]
+    def get_branches(self, *, refs=["refs/heads", "refs/remotes"], merged=None):
+        # type: (Sequence[str], Optional[bool]) -> List[Branch]
         """
-        Return a list of all local and remote branches.
+        Return a list of local and/or remote branches.
         """
         stdout = self.git(
             "for-each-ref",
@@ -99,7 +100,8 @@ class BranchesMixin(mixin_base):
                     "%(contents:subject)",
                 ))
             ),
-            *refs
+            *refs,
+            yes_no_switch("--merged", merged),
         )  # type: str
         branches = [
             branch
@@ -109,7 +111,8 @@ class BranchesMixin(mixin_base):
             )
             if branch.name != "HEAD"
         ]
-        self._cache_branches(branches, refs)
+        if merged is None:
+            self._cache_branches(branches, refs)
         return branches
 
     def _cache_branches(self, branches, refs):
