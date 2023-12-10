@@ -9,6 +9,7 @@ from typing import Dict, List, NamedTuple, Optional, Sequence
 
 
 BRANCH_DESCRIPTION_RE = re.compile(r"^branch\.(.*?)\.description (.*)$")
+FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND = (2, 41, 0)
 
 
 class Upstream(NamedTuple):
@@ -16,6 +17,11 @@ class Upstream(NamedTuple):
     branch: str
     canonical_name: str
     status: str
+
+
+class AheadBehind(NamedTuple):
+    ahead: int
+    behind: int
 
 
 class Branch(NamedTuple):
@@ -30,6 +36,7 @@ class Branch(NamedTuple):
     is_remote: bool
     committerdate: int
     upstream: Optional[Upstream]
+    distance_to_head: Optional[AheadBehind]
 
     @property
     def is_local(self) -> bool:
@@ -98,6 +105,11 @@ class BranchesMixin(mixin_base):
                     "%(committerdate:unix)",
                     "%(objectname)",
                     "%(contents:subject)",
+                    (
+                        "%(ahead-behind:HEAD)"
+                        if self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND else
+                        ""
+                    )
                 ))
             ),
             *refs,
@@ -154,7 +166,7 @@ class BranchesMixin(mixin_base):
     def _parse_branch_line(self, line):
         # type: (str) -> Branch
         (head, ref, upstream, upstream_remote, upstream_status,
-         committerdate, commit_hash, commit_msg) = line.split("\x00")
+         committerdate, commit_hash, commit_msg, ahead_behind) = line.split("\x00")
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
@@ -178,6 +190,8 @@ class BranchesMixin(mixin_base):
         else:
             ups = None
 
+        ahead_behind_ = AheadBehind(*map(int, ahead_behind.split(" "))) if ahead_behind else None
+
         return Branch(
             branch_name,
             remote,
@@ -187,7 +201,8 @@ class BranchesMixin(mixin_base):
             active,
             is_remote,
             int(committerdate),
-            upstream=ups
+            upstream=ups,
+            distance_to_head=ahead_behind_
         )
 
     def merge(self, branch_names):
