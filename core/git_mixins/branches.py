@@ -119,8 +119,26 @@ class BranchesMixin(mixin_base):
             )
             if branch.name != "HEAD"
         ]
-        store.update_state(self.repo_path, {"branches": branches})
+        self._cache_branches(branches, refs)
         return branches
+
+    def _cache_branches(self, branches, refs):
+        # type: (List[Branch], Sequence[str]) -> None
+        if refs == ["refs/heads", "refs/remotes"]:
+            next_state = branches
+
+        elif refs == ["refs/heads"]:
+            stored_state = store.current_state(self.repo_path).get("branches", [])
+            next_state = branches + [b for b in stored_state if b.is_remote]
+
+        elif refs == ["refs/remotes"]:
+            stored_state = store.current_state(self.repo_path).get("branches", [])
+            next_state = [b for b in stored_state if not b.is_remote] + branches
+
+        else:
+            return None
+
+        store.update_state(self.repo_path, {"branches": next_state})
 
     def fetch_branch_description_subjects(self):
         # type: () -> Dict[str, str]
