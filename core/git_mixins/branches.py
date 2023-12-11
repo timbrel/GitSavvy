@@ -93,6 +93,7 @@ class BranchesMixin(mixin_base):
         """
         Return a list of local and/or remote branches.
         """
+        git_supports_ahead_behind = self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND
         stdout = self.git(
             "for-each-ref",
             "--format={}".format(
@@ -105,15 +106,13 @@ class BranchesMixin(mixin_base):
                     "%(committerdate:unix)",
                     "%(objectname)",
                     "%(contents:subject)",
-                    (
-                        "%(ahead-behind:HEAD)"
-                        if self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND else
-                        ""
-                    )
+                    "%(ahead-behind:HEAD)" if git_supports_ahead_behind else ""
                 ))
             ),
             *refs,
-            yes_no_switch("--merged", merged),
+            # If `git_supports_ahead_behind` we don't use the `--[no-]merged` argument
+            # and instead filter here in Python land.
+            yes_no_switch("--merged", merged) if not git_supports_ahead_behind else None,
         )  # type: str
         branches = [
             branch
@@ -123,8 +122,18 @@ class BranchesMixin(mixin_base):
             )
             if branch.name != "HEAD"
         ]
-        if merged is None:
+        if git_supports_ahead_behind:
+            # Cache git's full output but return a filtered result if requested.
             self._cache_branches(branches, refs)
+            if merged is True:
+                branches = [b for b in branches if b.distance_to_head.ahead == 0]  # type: ignore[union-attr]
+            elif merged is False:
+                branches = [b for b in branches if b.distance_to_head.ahead > 0]  # type: ignore[union-attr]
+
+        elif merged is None:
+            # For older git versions cache git's output only if it was not filtered by `merged`.
+            self._cache_branches(branches, refs)
+
         return branches
 
     def _cache_branches(self, branches, refs):
