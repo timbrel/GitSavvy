@@ -493,6 +493,13 @@ class gs_branches_fetch_and_merge(BranchInterfaceCommand):
             util.view.refresh_gitsavvy(self.view)
 
 
+def active_branch_name(interface: BranchInterface) -> Optional[str]:
+    try:
+        return next(b for b in interface.state.get("branches", []) if b.active).name
+    except StopIteration:
+        return None
+
+
 class gs_branches_diff_branch(CommandForSingleBranch):
 
     """
@@ -501,10 +508,9 @@ class gs_branches_diff_branch(CommandForSingleBranch):
 
     def run(self, edit):
         # type: (object) -> None
-        active_branch_name = self.get_current_branch_name()
         self.window.run_command("gs_diff", {
             "base_commit": self.selected_branch.canonical_name,
-            "target_commit": active_branch_name,
+            "target_commit": active_branch_name(self.interface) or "",
             "disable_stage": True,
         })
 
@@ -517,10 +523,9 @@ class gs_branches_diff_commit_history(CommandForSingleBranch):
 
     def run(self, edit):
         # type: (object) -> None
-        target_commit = self.get_current_branch_name()
         self.window.run_command("gs_compare_commit", {
             "base_commit": self.selected_branch.canonical_name,
-            "target_commit": target_commit
+            "target_commit": active_branch_name(self.interface) or ""
         })
 
 
