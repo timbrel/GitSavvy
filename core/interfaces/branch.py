@@ -39,27 +39,21 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Dict, Iterator, List, Optional, TypedDict
-    from ..git_mixins.active_branch import Commit
-    from ..git_mixins.branches import Branch
+from typing import Dict, Iterator, List, Optional, TypedDict
+from ..git_mixins.active_branch import Commit
+from ..git_mixins.branches import Branch
 
-    BranchViewState = TypedDict(
-        "BranchViewState",
-        {
-            "git_root": str,
-            "long_status": str,
-            "branches": List[Branch],
-            "descriptions": Dict[str, str],
-            "remotes": Dict[str, str],
-            "recent_commits": List[Commit],
-            "sort_by_recent": bool,
-            "show_remotes": bool,
-            "show_help": bool,
-        },
-        total=False
-    )
+
+class BranchViewState(TypedDict, total=False):
+    git_root: str
+    long_status: str
+    branches: List[Branch]
+    descriptions: Dict[str, str]
+    remotes: Dict[str, str]
+    recent_commits: List[Commit]
+    sort_by_recent: bool
+    show_remotes: bool
+    show_help: bool
 
 
 class gs_show_branch(WindowCommand, GitCommand):
