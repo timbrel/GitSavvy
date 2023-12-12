@@ -12,7 +12,7 @@ from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.utils import flash
-from GitSavvy.core.runtime import enqueue_on_worker, on_worker
+from GitSavvy.core.runtime import enqueue_on_worker, on_new_thread, on_worker
 
 
 __all__ = (
@@ -322,7 +322,6 @@ class gs_branches_checkout(BranchInterfaceCommand):
     Checkout the selected branch.
     """
 
-    @on_worker
     def run(self, edit):
         branch = self.get_selected_branch()
         if not branch:
@@ -337,7 +336,6 @@ class gs_branches_create_new(BranchInterfaceCommand):
     Create a new branch from selected branch and checkout.
     """
 
-    @on_worker
     def run(self, edit):
         branch = self.get_selected_branch()
         if not branch:
@@ -355,7 +353,6 @@ class gs_branches_delete(BranchInterfaceCommand):
     Delete selected branch.
     """
 
-    @on_worker
     def run(self, edit, force=False):
         self.force = force
         branch = self.get_selected_branch()
@@ -368,6 +365,7 @@ class gs_branches_delete(BranchInterfaceCommand):
             self.window.run_command("gs_delete_branch", {"branch": branch.name, "force": self.force})
 
     @util.actions.destructive(description="delete a remote branch")
+    @on_worker
     def delete_remote_branch(self, remote, branch_name, window):
         window.status_message("Deleting remote branch...")
         self.git(
@@ -386,7 +384,6 @@ class gs_branches_rename(BranchInterfaceCommand):
     Rename selected branch.
     """
 
-    @on_worker
     def run(self, edit):
         branch = self.get_selected_branch()
         if not branch:
@@ -404,7 +401,6 @@ class gs_branches_configure_tracking(BranchInterfaceCommand):
     Configure remote branch to track against for selected branch.
     """
 
-    @on_worker
     def run(self, edit):
         branch = self.get_selected_branch()
         if not branch:
@@ -432,7 +428,6 @@ class gs_branches_push_selected(BranchInterfaceCommand):
     Push selected branch to remote.
     """
 
-    @on_worker
     def run(self, edit):
         branch = self.get_selected_branch()
         if not branch:
@@ -450,10 +445,10 @@ class gs_branches_push_all(BranchInterfaceCommand):
     Push all branches to remote.
     """
 
-    @on_worker
     def run(self, edit):
         show_remote_panel(self.on_remote_selection, allow_direct=True)
 
+    @on_worker
     def on_remote_selection(self, remote):
         self.window.status_message("Pushing all branches to `{}`...".format(remote))
         self.git("push", remote, "--all")
@@ -467,12 +462,14 @@ class gs_branches_merge_selected(BranchInterfaceCommand):
     Merge selected branch into active branch.
     """
 
-    @on_worker
     def run(self, edit):
         branches = self.get_selected_branches(ignore_current_branch=True)
-        branches_strings = [branch.canonical_name for branch in branches]
+        self.action([branch.canonical_name for branch in branches])
+
+    @on_new_thread  # <- A merge could halt to edit the commit message
+    def action(self, branches: List[str]):
         try:
-            self.merge(branches_strings)
+            self.merge(branches)
             self.window.status_message("Merge complete.")
         finally:
             util.view.refresh_gitsavvy(self.view)
@@ -484,10 +481,12 @@ class gs_branches_fetch_and_merge(BranchInterfaceCommand):
     Fetch from remote and merge fetched branch into active branch.
     """
 
-    @on_worker
     def run(self, edit):
         branches = self.get_selected_branches(ignore_current_branch=True)
+        self.action(branches)
 
+    @on_new_thread  # <- A merge could halt to edit the commit message
+    def action(self, branches: List[Branch]):
         for branch in branches:
             if branch.is_remote:
                 self.fetch(branch.remote, branch.name)
@@ -512,7 +511,6 @@ class gs_branches_diff_branch(BranchInterfaceCommand):
     Show a diff comparing the selected branch to the active branch.
     """
 
-    @on_worker
     def run(self, edit):
         # type: (object) -> None
         branch = self.get_selected_branch()
@@ -537,7 +535,6 @@ class gs_branches_diff_commit_history(BranchInterfaceCommand):
     Show a view of all commits diff between branches.
     """
 
-    @on_worker
     def run(self, edit):
         # type: (object) -> None
         branch = self.get_selected_branch()
@@ -594,7 +591,6 @@ class gs_branches_edit_branch_description(BranchInterfaceCommand):
     Save a description for the selected branch
     """
 
-    @on_worker
     def run(self, edit):
         branch = self.get_selected_branch()
         if not branch:
