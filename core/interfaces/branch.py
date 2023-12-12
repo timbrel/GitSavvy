@@ -271,7 +271,7 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
         Get a single selected branch. If more then one branch are selected, return (None, None).
         """
         selected_branches = self.get_selected_branches()
-        if selected_branches and len(selected_branches) == 1:
+        if len(selected_branches) == 1:
             return selected_branches[0]
         else:
             return None
