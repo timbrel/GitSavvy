@@ -419,7 +419,6 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
 
 
 class RebaseInterfaceCommand(ui.InterfaceCommand):
-    interface_type = RebaseInterface
     interface = None  # type: RebaseInterface
 
     def get_selected_short_hash(self):
