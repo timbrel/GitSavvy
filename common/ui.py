@@ -32,31 +32,27 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import (
-        AbstractSet, Callable, Dict, Generic, Iterable, Iterator, List, MutableMapping,
-        Protocol, Set, Tuple, Type, TypeVar, Union, cast
-    )
-    T = TypeVar("T")
-    T_fn = TypeVar("T_fn", bound=Callable)
-    T_state = TypeVar("T_state", bound=MutableMapping)
-    SectionRegions = Dict[str, sublime.Region]
-    RenderFnReturnType = Union[str, Tuple[str, List["SectionFn"]]]
-    T_R = TypeVar("T_R", bound=RenderFnReturnType, covariant=True)
-    FunctionReturning = Callable[..., T]
+from typing import (
+    AbstractSet, Callable, Dict, Generic, Iterable, Iterator, List, MutableMapping,
+    Protocol, Set, Tuple, Type, TypeVar, Union, cast
+)
+T = TypeVar("T")
+T_fn = TypeVar("T_fn", bound=Callable)
+T_state = TypeVar("T_state", bound=MutableMapping)
 
-    class RenderFn(Protocol[T_R]):
-        def __call__(self, *args, **kwargs) -> T_R:
-            pass
+SectionRegions = Dict[str, sublime.Region]
+RenderFnReturnType = Union[str, Tuple[str, List["SectionFn"]]]
+T_R = TypeVar("T_R", bound=RenderFnReturnType, covariant=True)
+FunctionReturning = Callable[..., T]
 
-    class SectionFn(RenderFn[T_R]):
-        key = ''  # type: str
 
-else:
-    def cast(t, v):
-        return v
-    SectionFn = T_fn = None
+class RenderFn(Protocol[T_R]):
+    def __call__(self, *args, **kwargs) -> T_R:
+        pass
+
+
+class SectionFn(RenderFn[T_R]):
+    key = ''  # type: str
 
 
 interfaces = {}  # type: Dict[sublime.ViewId, Interface]
@@ -311,17 +307,9 @@ def distinct_until_state_changed(just_render_fn):
     return wrapper
 
 
-if MYPY:
-    class _base(Generic[T_state]):
-        state = None  # type: T_state
-        ...
-else:
-    class _base:
-        ...
-
-
-class ReactiveInterface(Interface, _base, GitCommand):
-    subscribe_to = set()  # type: Set[str]
+class ReactiveInterface(Interface, GitCommand, Generic[T_state]):
+    state: T_state
+    subscribe_to: Set[str] = set()
 
     def __init__(self, *args, **kwargs):
         self._lock = threading.Lock()
