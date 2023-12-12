@@ -315,127 +315,116 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
         ]
 
 
-class gs_branches_checkout(BranchInterfaceCommand):
+class CommandForSingleBranch(BranchInterfaceCommand):
+    selected_branch: Branch
+
+    def pre_run(self):
+        selected_branches = self.get_selected_branches()
+        if len(selected_branches) == 1:
+            self.selected_branch = selected_branches[0]
+        elif len(selected_branches) == 0:
+            raise RuntimeError("No branch selected.")
+        else:
+            raise RuntimeError("Only one branch must be selected.")
+
+
+class gs_branches_checkout(CommandForSingleBranch):
 
     """
     Checkout the selected branch.
     """
 
     def run(self, edit):
-        branch = self.get_selected_branch()
-        if not branch:
-            return
-
-        self.window.run_command("gs_checkout_branch", {"branch": branch.canonical_name})
+        self.window.run_command("gs_checkout_branch", {"branch": self.selected_branch.canonical_name})
 
 
-class gs_branches_create_new(BranchInterfaceCommand):
+class gs_branches_create_new(CommandForSingleBranch):
 
     """
     Create a new branch from selected branch and checkout.
     """
 
     def run(self, edit):
-        branch = self.get_selected_branch()
-        if not branch:
-            return
-
-        if branch.is_remote:
-            self.window.run_command("gs_checkout_remote_branch", {"remote_branch": branch.canonical_name})
+        if self.selected_branch.is_remote:
+            self.window.run_command("gs_checkout_remote_branch", {"remote_branch": self.selected_branch.canonical_name})
         else:
-            self.window.run_command("gs_checkout_new_branch", {"start_point": branch.name})
+            self.window.run_command("gs_checkout_new_branch", {"start_point": self.selected_branch.name})
 
 
-class gs_branches_delete(BranchInterfaceCommand):
+class gs_branches_delete(CommandForSingleBranch):
 
     """
     Delete selected branch.
     """
 
     def run(self, edit, force=False):
-        self.force = force
-        branch = self.get_selected_branch()
-        if not branch:
-            return
-
-        if branch.is_remote:
-            self.delete_remote_branch(branch.remote, branch.name, self.window)
+        if self.selected_branch.is_remote:
+            self.delete_remote_branch(self.selected_branch.remote, self.selected_branch.name, force)
         else:
-            self.window.run_command("gs_delete_branch", {"branch": branch.name, "force": self.force})
+            self.window.run_command("gs_delete_branch", {"branch": self.selected_branch.name, "force": force})
 
     @util.actions.destructive(description="delete a remote branch")
     @on_worker
-    def delete_remote_branch(self, remote, branch_name, window):
-        window.status_message("Deleting remote branch...")
+    def delete_remote_branch(self, remote, branch_name, force):
+        self.window.status_message("Deleting remote branch...")
         self.git(
             "push",
-            "--force" if self.force else None,
+            "--force" if force else None,
             remote,
             ":" + branch_name
         )
-        window.status_message("Deleted remote branch.")
+        self.window.status_message("Deleted remote branch.")
         util.view.refresh_gitsavvy(self.view)
 
 
-class gs_branches_rename(BranchInterfaceCommand):
+class gs_branches_rename(CommandForSingleBranch):
 
     """
     Rename selected branch.
     """
 
     def run(self, edit):
-        branch = self.get_selected_branch()
-        if not branch:
-            return
-        if branch.is_remote:
+        if self.selected_branch.is_remote:
             flash(self.view, "Cannot rename remote branches.")
             return
 
-        self.window.run_command("gs_rename_branch", {"branch": branch.name})
+        self.window.run_command("gs_rename_branch", {"branch": self.selected_branch.name})
 
 
-class gs_branches_configure_tracking(BranchInterfaceCommand):
+class gs_branches_configure_tracking(CommandForSingleBranch):
 
     """
     Configure remote branch to track against for selected branch.
     """
 
     def run(self, edit):
-        branch = self.get_selected_branch()
-        if not branch:
-            return
-        if branch.is_remote:
+        if self.selected_branch.is_remote:
             flash(self.view, "Cannot configure remote branches.")
             return
 
-        self.local_branch = branch.name
-
         show_branch_panel(
-            self.on_branch_selection,
+            partial(self.on_branch_selection, self.selected_branch.name),
             ask_remote_first=True,
-            selected_branch=branch.name
+            selected_branch=self.selected_branch.name
         )
 
-    def on_branch_selection(self, branch):
-        self.git("branch", "-u", branch, self.local_branch)
+    def on_branch_selection(self, local_branch, remote_branch):
+        self.git("branch", "-u", remote_branch, local_branch)
         util.view.refresh_gitsavvy(self.view)
 
 
-class gs_branches_push_selected(BranchInterfaceCommand):
+class gs_branches_push_selected(CommandForSingleBranch):
 
     """
     Push selected branch to remote.
     """
 
     def run(self, edit):
-        branch = self.get_selected_branch()
-        if not branch:
-            return
-        if branch.is_remote:
+        if self.selected_branch.is_remote:
             flash(self.view, "Cannot push remote branches.")
             return
 
-        self.window.run_command("gs_push", {"local_branch_name": branch.name})
+        self.window.run_command("gs_push", {"local_branch_name": self.selected_branch.name})
 
 
 class gs_branches_push_all(BranchInterfaceCommand):
@@ -504,7 +493,7 @@ class gs_branches_fetch_and_merge(BranchInterfaceCommand):
             util.view.refresh_gitsavvy(self.view)
 
 
-class gs_branches_diff_branch(BranchInterfaceCommand):
+class gs_branches_diff_branch(CommandForSingleBranch):
 
     """
     Show a diff comparing the selected branch to the active branch.
@@ -512,23 +501,15 @@ class gs_branches_diff_branch(BranchInterfaceCommand):
 
     def run(self, edit):
         # type: (object) -> None
-        branch = self.get_selected_branch()
-        if not branch:
-            return
-        self.show_diff(branch.canonical_name)
-
-    def show_diff(self, comparison_branch_name):
-        # type: (str) -> None
         active_branch_name = self.get_current_branch_name()
         self.window.run_command("gs_diff", {
-            "base_commit": comparison_branch_name,
+            "base_commit": self.selected_branch.canonical_name,
             "target_commit": active_branch_name,
             "disable_stage": True,
-            "title": "DIFF: {}..{}".format(comparison_branch_name, active_branch_name)
         })
 
 
-class gs_branches_diff_commit_history(BranchInterfaceCommand):
+class gs_branches_diff_commit_history(CommandForSingleBranch):
 
     """
     Show a view of all commits diff between branches.
@@ -536,16 +517,9 @@ class gs_branches_diff_commit_history(BranchInterfaceCommand):
 
     def run(self, edit):
         # type: (object) -> None
-        branch = self.get_selected_branch()
-        if not branch:
-            return
-        self.show_commits(branch.canonical_name)
-
-    def show_commits(self, base_commit):
-        # type: (str) -> None
         target_commit = self.get_current_branch_name()
         self.window.run_command("gs_compare_commit", {
-            "base_commit": base_commit,
+            "base_commit": self.selected_branch.canonical_name,
             "target_commit": target_commit
         })
 
@@ -584,40 +558,33 @@ class gs_branches_fetch(BranchInterfaceCommand):
         self.window.run_command("gs_fetch")
 
 
-class gs_branches_edit_branch_description(BranchInterfaceCommand):
+class gs_branches_edit_branch_description(CommandForSingleBranch):
 
     """
     Save a description for the selected branch
     """
 
     def run(self, edit):
-        branch = self.get_selected_branch()
-        if not branch:
-            return
-        if branch.is_remote:
+        if self.selected_branch.is_remote:
             flash(self.view, "Cannot edit descriptions for remote branches.")
-
-        self.branch_name = branch.name
 
         current_description = self.git(
             "config",
-            "branch.{}.description".format(self.branch_name),
+            "branch.{}.description".format(self.selected_branch.name),
             throw_on_error=False
         ).strip(" \n")
 
         show_single_line_input_panel(
-            "Enter new description (for {}):".format(self.branch_name),
+            "Enter new description (for {}):".format(self.selected_branch.name),
             current_description,
-            self.on_entered_description
+            partial(self.on_entered_description, self.selected_branch.name)
         )
 
-    def on_entered_description(self, new_description):
-        unset = None if new_description else "--unset"
-
+    def on_entered_description(self, branch_name: str, new_description: str):
         self.git(
             "config",
-            unset,
-            "branch.{}.description".format(self.branch_name),
+            "--unset" if not new_description else None,
+            "branch.{}.description".format(branch_name),
             new_description.strip("\n")
         )
         util.view.refresh_gitsavvy(self.view)
@@ -646,33 +613,25 @@ class gs_branches_navigate_to_active_branch(GsNavigate):
             "meta.git-savvy.branches.branch.active-branch constant.other.git-savvy.branches.branch.sha1")
 
 
-class gs_branches_log(LogMixin, BranchInterfaceCommand):
+class gs_branches_log(LogMixin, CommandForSingleBranch):
 
     """
     Show log for the selected branch.
     """
 
     def run_async(self, **kwargs):
-        branch = self.get_selected_branch()
-        if not branch:
-            return
-
-        super().run_async(branch=branch.canonical_name)
+        super().run_async(branch=self.selected_branch.canonical_name)
 
 
-class gs_branches_log_graph(BranchInterfaceCommand):
+class gs_branches_log_graph(CommandForSingleBranch):
 
     """
     Show log graph for the selected branch.
     """
 
     def run(self, edit):
-        branch = self.get_selected_branch()
-        if not branch:
-            return
-
         self.window.run_command('gs_graph', {
             'all': True,
-            'branches': [branch.canonical_name],
-            'follow': branch.canonical_name
+            'branches': [self.selected_branch.canonical_name],
+            'follow': self.selected_branch.canonical_name
         })
