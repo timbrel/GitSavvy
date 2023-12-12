@@ -504,7 +504,7 @@ class gs_update_region(TextCommand):
 
 
 class InterfaceCommand(GsTextCommand):
-    interface = None  # type: Interface
+    interface: Interface
 
     def run_(self, edit_token, args):
         self.interface = ensure_interface_object(self.view)

@@ -332,7 +332,7 @@ SHA_SELECTOR = "constant.other.git-savvy.tags.sha1"
 
 
 class TagsInterfaceCommand(ui.InterfaceCommand):
-    interface = None  # type: TagsInterface
+    interface: TagsInterface
 
     def selected_local_tags(self):
         # type: () -> List[str]

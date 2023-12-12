@@ -256,7 +256,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
 
 class BranchInterfaceCommand(ui.InterfaceCommand):
-    interface = None  # type: BranchInterface
+    interface: BranchInterface
 
     def get_selected_branch(self):
         # type: () -> Optional[Branch]
