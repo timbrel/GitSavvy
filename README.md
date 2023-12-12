@@ -273,13 +273,13 @@ Feature documentation can be found [here](docs/README.md).  It can also be acces
     </tr>
     <tr>
         <td width="50%">
-            <a href="https://user-images.githubusercontent.com/8558/246410602-d6104f79-157e-44ff-9831-eb311dd9ede0.mp4">
-                <img src="https://user-images.githubusercontent.com/8558/247564204-9842dad0-bf69-47e1-863f-2c9abc0e38b4.gif" width="100%">
+            <a href="https://user-images.githubusercontent.com/8558/290011169-1af9e0e4-aadd-4539-b7ac-d4979b9d0910.mp4">
+                <img src="https://user-images.githubusercontent.com/8558/290011195-35d53963-fe57-4c46-b418-e8ed3bf02f54.gif" width="100%">
             </a>
         </td>
     </tr>
     <tr>
-        <td width="50%">Stage, unstage or discard hunks, files or individual lines. <a href="https://user-images.githubusercontent.com/8558/246410602-d6104f79-157e-44ff-9831-eb311dd9ede0.mp4">(video)</a></td>
+        <td width="50%">Stage, unstage or discard hunks, files or individual lines. <a href="https://user-images.githubusercontent.com/8558/290011169-1af9e0e4-aadd-4539-b7ac-d4979b9d0910.mp4">(video)</a></td>
     </tr>
 </table>
 
