@@ -568,7 +568,8 @@ def auto_close_panel(window, after=800):
 
 def _close_panel(window):
     # type: (sublime.Window) -> None
-    window.run_command("hide_panel", {"panel": "output.GitSavvy"})
+    if window.active_panel() == "output.GitSavvy":
+        window.run_command("hide_panel", {"panel": "output.GitSavvy"})
 
 
 @lru_cache(1)
