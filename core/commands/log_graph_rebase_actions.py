@@ -223,6 +223,17 @@ class gs_rebase_action(GsWindowCommand):
             ),
         ]
 
+        on_off = lambda setting: "x" if setting else " "
+        rebase_merges = _get_setting(self, "git_savvy.log_graph_view.rebase_merges", DEFAULT_VALUE)
+        update_refs = _get_setting(self, "git_savvy.log_graph_view.update_refs", DEFAULT_VALUE)
+        actions += [
+            (
+                "———————————————————————————       [{}] --rebase-merges,   [{}] --update-refs"
+                .format(on_off(rebase_merges), on_off(update_refs)),
+                partial(self.switch_through_options, view, rebase_merges, update_refs)
+            ),
+        ]
+
         head_info = log_graph.describe_head(view, {})
         # `HEAD^..HEAD` only selects one commit which is not enough
         # for autosquashing.
@@ -239,17 +250,9 @@ class gs_rebase_action(GsWindowCommand):
                 ),
             ]
 
-        on_off = lambda setting: "x" if setting else " "
-        rebase_merges = _get_setting(self, "git_savvy.log_graph_view.rebase_merges", DEFAULT_VALUE)
-        update_refs = _get_setting(self, "git_savvy.log_graph_view.update_refs", DEFAULT_VALUE)
         actions += [
             (
-                "———————————————————————————       [{}] --rebase-merges,   [{}] --update-refs"
-                .format(on_off(rebase_merges), on_off(update_refs)),
-                partial(self.switch_through_options, view, rebase_merges, update_refs)
-            ),
-            (
-                "[R]ebase from {} on interactive".format(parent_commitish),
+                "[R]ebase interactive from {} on".format(parent_commitish),
                 partial(self.rebase_interactive, view, parent_commitish)
             ),
             (
