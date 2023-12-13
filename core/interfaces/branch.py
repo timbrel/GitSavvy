@@ -165,8 +165,13 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
         cursor_was_on_active_branch = cursor_is_on_active_branch()
         yield
-        if cursor_was_on_active_branch and not cursor_is_on_active_branch() or not on_special_symbol():
-            self.view.run_command("gs_branches_navigate_to_active_branch")
+        active_branch_available = any(b for b in self.state.get("branches", []) if b.active)
+        if active_branch_available:
+            if cursor_was_on_active_branch and not cursor_is_on_active_branch() or not on_special_symbol():
+                self.view.run_command("gs_branches_navigate_to_active_branch")
+        else:
+            if not on_special_symbol():
+                self.view.run_command("gs_branches_navigate_branch")
 
     @ui.section("branch_status")
     def render_branch_status(self, long_status):
