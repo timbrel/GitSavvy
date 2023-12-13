@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from functools import partial
 import os
 import re
+from textwrap import indent
 
 import sublime
 from sublime_plugin import WindowCommand
@@ -168,7 +169,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
             except GitSavvyError as e:
                 new_state = {
                     "state": "erred",
-                    "message": "    {}".format(e.stderr.rstrip())
+                    "message": e.stderr.strip()
                 }
 
             def sink():
@@ -311,7 +312,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                 msg = NO_REMOTE_TAGS_MESSAGE
 
         elif remote_info["state"] == "erred":
-            msg = remote_info["message"]
+            msg = indent(remote_info["message"], "    ", lambda line: True)
 
         elif remote_info["state"] == "loading":
             msg = LOADING_TAGS_MESSAGE
