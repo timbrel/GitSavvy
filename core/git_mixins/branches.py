@@ -36,6 +36,8 @@ class Branch(NamedTuple):
     active: bool
     is_remote: bool
     committerdate: int
+    human_committerdate: str
+    relative_committerdate: str
     upstream: Optional[Upstream]
     distance_to_head: Optional[AheadBehind]
 
@@ -109,6 +111,8 @@ class BranchesMixin(mixin_base):
                             "%(upstream:remotename)",
                             "%(upstream:track,nobracket)",
                             "%(committerdate:unix)",
+                            "%(committerdate:human)",
+                            "%(committerdate:relative)",
                             "%(objectname)",
                             "%(contents:subject)",
                             "%(ahead-behind:HEAD)" if supports_ahead_behind else ""
@@ -189,7 +193,8 @@ class BranchesMixin(mixin_base):
     def _parse_branch_line(self, line):
         # type: (str) -> Branch
         (head, ref, upstream, upstream_remote, upstream_status,
-         committerdate, commit_hash, commit_msg, ahead_behind) = line.split("\x00")
+         committerdate, human_committerdate, relative_committerdate,
+         commit_hash, commit_msg, ahead_behind) = line.split("\x00")
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
@@ -224,6 +229,8 @@ class BranchesMixin(mixin_base):
             active,
             is_remote,
             int(committerdate),
+            human_committerdate,
+            relative_committerdate,
             upstream=ups,
             distance_to_head=ahead_behind_
         )

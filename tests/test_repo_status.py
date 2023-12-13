@@ -504,6 +504,8 @@ class TestRecentCommitsFormat(DeferrableTestCase):
                 False,
                 False,
                 0,
+                "now",
+                "now",
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
                 ),
