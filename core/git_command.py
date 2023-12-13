@@ -365,8 +365,8 @@ class _GitCommand(SettingsMixin):
             savvy_env_expanded or {},
             os.environ
         )
+        start = time.time()
         try:
-            start = time.time()
             p = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,
