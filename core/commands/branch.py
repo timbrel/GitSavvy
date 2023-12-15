@@ -40,7 +40,7 @@ GitSavvy: Re-created branch '{0}', in case you want to undo, run:
 
 EXTRACT_COMMIT = re.compile(r"\(was (.+)\)")
 NOT_MERGED_WARNING = re.compile(r"the branch.*is not fully merged\.", re.I)
-CANT_DELETE_CURRENT_BRANCH = re.compile(r"Cannot delete branch .+ checked out at ")
+CANT_DELETE_USED_BRANCH = re.compile(r"cannot delete branch .+ (checked out|used by worktree) at ", re.I)
 
 
 def just(value):
@@ -172,7 +172,10 @@ class gs_delete_branch(GsWindowCommand):
                 if NOT_MERGED_WARNING.search(e.stderr):
                     self.offer_force_deletion(branch)
                     return
-                if CANT_DELETE_CURRENT_BRANCH.search(e.stderr):
+                if (
+                    CANT_DELETE_USED_BRANCH.search(e.stderr)
+                    and branch == self.get_current_branch_name()
+                ):
                     self.offer_detaching_head(branch)
                     return
                 e.show_error_panel()
