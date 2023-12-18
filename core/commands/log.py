@@ -1,5 +1,6 @@
 from copy import deepcopy
 from functools import lru_cache, partial
+from itertools import islice
 import re
 
 from sublime_plugin import WindowCommand
@@ -10,6 +11,9 @@ from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin
 from ..ui_mixins.quick_panel import show_log_panel, show_branch_panel
 from ..view import capture_cur_position, Position
 from ...common import util
+from GitSavvy.core.fns import chain
+
+from typing import Callable, Union
 
 
 __all__ = (
@@ -33,7 +37,7 @@ class LogMixin(GitCommand):
     but the subclass must also inherit from GitCommand (for the `git()` method)
     """
 
-    selected_index = 0
+    selected_index: Union[int, Callable[[str], bool]] = 0
 
     def run(self, *args, commit_hash=None, file_path=None, **kwargs):
         if commit_hash:
@@ -43,17 +47,39 @@ class LogMixin(GitCommand):
 
     def run_async(self, file_path=None, **kwargs):
         follow = self.savvy_settings.get("log_follow_rename") if file_path else False
-        show_log_panel(
-            self.log_generator(file_path=file_path, follow=follow, **kwargs),
+        entries = self.log_generator(file_path=file_path, follow=follow, **kwargs)
+        # `on_highlight` gets called on `on_done` as well with the same
+        # commit.  Limit the side-effect here.  Especially prevent that
+        # `on_done` wants to hide the panel and `on_highlight` wants to
+        # show it.  (Unfortunately `on_highlight` wins because it lazily
+        # updates the panel wherby `on_done` closes it immediately.)
+        on_highlight = lru_cache(1)(lambda commit: self.on_highlight(commit, file_path=file_path))
+
+        # Show the panel before the quick panel so that Sublime Text has a chance
+        # to compute the quick panel's size correctly.
+        if isinstance(self.selected_index, int):
+            leading = list(islice(entries, self.selected_index + 1))
+            try:
+                selected_entry = leading[self.selected_index]
+            except IndexError:
+                pass
+            else:
+                on_highlight(selected_entry.long_hash)
+        else:
+            leading = []
+            for entry in entries:
+                leading.append(entry)
+                if self.selected_index(entry.long_hash):
+                    on_highlight(entry.long_hash)
+                    break
+
+        sublime.set_timeout(partial(
+            show_log_panel,
+            chain(leading, entries),
             lambda commit: self.on_done(commit, file_path=file_path, **kwargs),
             selected_index=self.selected_index,
-            # `on_highlight` gets called on `on_done` as well with the same
-            # commit.  Limit the side-effect here.  Especially prevent that
-            # `on_done` wants to hide the panel and `on_highlight` wants to
-            # show it.  (Unfortunately `on_highlight` wins because it lazily
-            # updates the panel wherby `on_done` closes it immediately.)
-            on_highlight=lru_cache(1)(lambda commit: self.on_highlight(commit, file_path=file_path))
-        )
+            on_highlight=on_highlight
+        ))
 
     def on_done(self, commit, **kwargs):
         window = self._current_window()
