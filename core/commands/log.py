@@ -1,5 +1,5 @@
 from copy import deepcopy
-from functools import lru_cache
+from functools import lru_cache, partial
 import re
 
 from sublime_plugin import WindowCommand
@@ -77,10 +77,13 @@ class LogMixin(GitCommand):
     def do_action(self, commit_hash, **kwargs):
         window = self._current_window()
         if window:
-            window.run_command("gs_log_action", {
+            # Delay `gs_log_action` so that Sublime computes the quick panel
+            # size correctly.
+            # Work-around for https://github.com/sublimehq/sublime_text/issues/6237
+            sublime.set_timeout(partial(window.run_command, "gs_log_action", {
                 "commit_hash": commit_hash,
                 "file_path": kwargs.get("file_path")
-            })
+            }))
 
 
 class gs_log_current_branch(LogMixin, WindowCommand, GitCommand):
