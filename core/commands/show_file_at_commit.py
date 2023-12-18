@@ -1,4 +1,3 @@
-import email.utils
 import os
 
 import sublime
@@ -10,6 +9,7 @@ from ..runtime import enqueue_on_worker, run_as_text_command, text_command
 from ..utils import flash, focus_view
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
 from ...common import util
+from GitSavvy.core.git_mixins.history import CommitInfo
 
 from .log import LogMixin
 
@@ -26,14 +26,7 @@ __all__ = (
 )
 
 
-from typing import Dict, NamedTuple, Optional, Tuple
-
-
-class CommitInfo(NamedTuple):
-    commit_hash: str
-    short_hash: str
-    subject: str
-    date: str
+from typing import Dict, Optional, Tuple
 
 
 SHOW_COMMIT_TITLE = "FILE: {}, {}"
@@ -100,15 +93,10 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         text = self.get_file_content_at_commit(file_path, commit_hash)
         render(view, text, position)
         view.reset_reference_document()
-        commit_details = self.fetch_commit_details(commit_hash)
+        commit_details = self.commit_subject_and_date(commit_hash)
         self.update_title(commit_details, file_path)
         self.update_status_bar(commit_details)
         enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
-
-    def fetch_commit_details(self, commit_hash: str) -> CommitInfo:
-        short_hash = self.get_short_hash(commit_hash)
-        subject, date = self.commit_subject_and_date(commit_hash)
-        return CommitInfo(commit_hash, short_hash, subject, date)
 
     def update_status_bar(self, commit_details: CommitInfo) -> None:
         view = self.view
@@ -136,22 +124,6 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
                 sublime.set_timeout_async(lambda: sink(n + 1), 3000)
 
         sink()
-
-    def commit_subject_and_date(self, commit_hash: str) -> Tuple[str, str]:
-        # call with the same settings as gs_show_commit to either use or
-        # warm up the cache
-        show_diffstat = self.savvy_settings.get("show_diffstat")
-        patch = self.read_commit(commit_hash, show_diffstat=show_diffstat)
-
-        date, subject = "", ""
-        for line in patch.splitlines():
-            # CommitDate: Tue Dec 20 18:21:40 2022 +0100
-            if line.startswith("CommitDate: ") and (parsed_date := email.utils.parsedate(line[12:])):
-                date = "-".join(map(str, parsed_date[:3]))
-            elif line.startswith("    "):
-                subject = line.lstrip()
-                break
-        return subject, date
 
     def update_reference_document(self, commit_hash: str, file_path: str) -> None:
         self.view.set_reference_document(self.previous_file_version(commit_hash, file_path))
