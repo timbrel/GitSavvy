@@ -15,7 +15,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer, show_commit_info
 from .intra_line_colorizer import block_time_passed_factory
-from .log import GsLogCommand
+from .log import gs_log
 from .. import utils
 from ..base_commands import GsTextCommand
 from ..fns import filter_, flatten, pairwise, partition, take, unique
@@ -1301,7 +1301,7 @@ def prelude(view):
     return prelude + "\n\n"
 
 
-class gs_log_graph(GsLogCommand):
+class gs_log_graph(gs_log):
     """
     Defines the main menu if you invoke `git: graph` or `git: graph current file`.
 

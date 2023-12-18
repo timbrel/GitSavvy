@@ -1,12 +1,12 @@
 import sublime
 import re
-from .log import GsLogCurrentBranchCommand
+from .log import gs_log_current_branch
 from ...common import util
 
 fixup_command = re.compile("^fixup! (.*)")
 
 
-class GsFixupFromStageCommand(GsLogCurrentBranchCommand):
+class GsFixupFromStageCommand(gs_log_current_branch):
     def run(self):
         status = self.get_working_dir_status()
         if status.unstaged_files or status.merge_conflicts:

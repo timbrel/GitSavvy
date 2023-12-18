@@ -1,6 +1,6 @@
 import sublime
 
-from .log import GsLogByBranchCommand
+from .log import gs_log_by_branch
 from ...common import util
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_worker
@@ -14,7 +14,7 @@ __all__ = (
 )
 
 
-class gs_cherry_pick(GsLogByBranchCommand):
+class gs_cherry_pick(gs_log_by_branch):
 
     def log(self, **kwargs):
         kwargs["cherry"] = True

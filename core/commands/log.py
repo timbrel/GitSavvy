@@ -12,6 +12,16 @@ from ..view import capture_cur_position, Position
 from ...common import util
 
 
+__all__ = (
+    "gs_log_current_branch",
+    "gs_log_all_branches",
+    "gs_log_by_author",
+    "gs_log_by_branch",
+    "gs_log",
+    "gs_log_action",
+)
+
+
 class LogMixin(GitCommand):
     """
     Display git log in a quick panel for given file and branch. Upon selection
@@ -73,17 +83,17 @@ class LogMixin(GitCommand):
             })
 
 
-class GsLogCurrentBranchCommand(LogMixin, WindowCommand, GitCommand):
+class gs_log_current_branch(LogMixin, WindowCommand, GitCommand):
     pass
 
 
-class GsLogAllBranchesCommand(LogMixin, WindowCommand, GitCommand):
+class gs_log_all_branches(LogMixin, WindowCommand, GitCommand):
 
     def log(self, **kwargs):
         return super().log(all_branches=True, **kwargs)
 
 
-class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
+class gs_log_by_author(LogMixin, WindowCommand, GitCommand):
 
     """
     Open a quick panel containing all committers for the active
@@ -127,7 +137,7 @@ class GsLogByAuthorCommand(LogMixin, WindowCommand, GitCommand):
         return super().log(author=self._selected_author, **kwargs)
 
 
-class GsLogByBranchCommand(LogMixin, WindowCommand, GitCommand):
+class gs_log_by_branch(LogMixin, WindowCommand, GitCommand):
     _selected_branch = None
 
     def run_async(self, **kwargs):
@@ -141,7 +151,7 @@ class GsLogByBranchCommand(LogMixin, WindowCommand, GitCommand):
         super().run_async(branch=branch, **kwargs)
 
 
-class GsLogCommand(PanelCommandMixin, WindowCommand, GitCommand):
+class gs_log(PanelCommandMixin, WindowCommand, GitCommand):
     default_actions = [
         ["gs_log_current_branch", "For current branch"],
         ["gs_log_all_branches", "For all branches"],
@@ -161,7 +171,7 @@ class GsLogCommand(PanelCommandMixin, WindowCommand, GitCommand):
             action.append(({"file_path": self._file_path}, ))
 
 
-class GsLogActionCommand(PanelActionMixin, WindowCommand):
+class gs_log_action(PanelActionMixin, WindowCommand):
     default_actions = [
         ["show_commit", "Show commit"],
         ["checkout_commit", "Checkout commit"],
