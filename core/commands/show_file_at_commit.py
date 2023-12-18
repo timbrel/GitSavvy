@@ -25,7 +25,15 @@ __all__ = (
 )
 
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, NamedTuple, Optional, Tuple
+
+
+class CommitInfo(NamedTuple):
+    commit_hash: str
+    short_hash: str
+    subject: str
+    date: str
+
 
 SHOW_COMMIT_TITLE = "FILE: {}, {}"
 
@@ -92,19 +100,25 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         render(view, text, position)
         view.reset_reference_document()
         self.update_title(commit_hash, file_path)
-        self.update_status_bar(commit_hash)
+        commit_details = self.fetch_commit_details(commit_hash)
+        self.update_status_bar(commit_details)
         enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
 
-    def update_status_bar(self, commit_hash: str) -> None:
+    def fetch_commit_details(self, commit_hash: str) -> CommitInfo:
         short_hash = self.get_short_hash(commit_hash)
         subject, date = self.commit_subject_and_date(commit_hash)
-        message = "On commit {}{}{}".format(short_hash, subject, date)
+        return CommitInfo(commit_hash, short_hash, subject, date)
 
+    def update_status_bar(self, commit_details: CommitInfo) -> None:
         view = self.view
         settings = view.settings()
         window = view.window()
         if not window:
             return
+        message = "On commit {}{}{}".format(
+            commit_details.short_hash,
+            f": {commit_details.subject}" if commit_details.subject else "",
+            f" ({commit_details.date})" if commit_details.date else "")
 
         # Status messages are only temporary shown and in this case
         # the roundabout 4 seconds just aren't enough. Loop here to
@@ -112,7 +126,7 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         def sink(n=0):
             if (
                 view != window.active_view()
-                or commit_hash != settings.get("git_savvy.show_file_at_commit_view.commit")
+                or commit_details.commit_hash != settings.get("git_savvy.show_file_at_commit_view.commit")
             ):
                 return
 
@@ -132,11 +146,9 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         for line in patch.splitlines():
             # CommitDate: Tue Dec 20 18:21:40 2022 +0100
             if line.startswith("CommitDate: ") and (parsed_date := email.utils.parsedate(line[12:])):
-                date_ = "-".join(map(str, parsed_date[:3]))
-                date = " ({})".format(date_)
+                date = "-".join(map(str, parsed_date[:3]))
             elif line.startswith("    "):
-                subject_ = line.lstrip()
-                subject = ": {}".format(subject_)
+                subject = line.lstrip()
                 break
         return subject, date
 
