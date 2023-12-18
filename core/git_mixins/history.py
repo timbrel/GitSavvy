@@ -1,4 +1,3 @@
-from collections import namedtuple
 from .. import store
 from ..exceptions import GitSavvyError
 from ...common import util
@@ -7,31 +6,28 @@ from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.utils import cached
 
 
-MYPY = False
-if MYPY:
-    from typing import Optional
-
-LogEntry = namedtuple("LogEntry", (
-    "short_hash",
-    "long_hash",
-    "ref",
-    "summary",
-    "raw_body",
-    "author",
-    "email",
-    "datetime"
-))
+from typing import Iterator, List, NamedTuple, Optional
 
 
-RefLogEntry = namedtuple("RefLogEntry", (
-    "short_hash",
-    "long_hash",
-    "summary",
-    "reflog_name",
-    "reflog_selector",
-    "author",
-    "datetime"
-))
+class LogEntry(NamedTuple):
+    short_hash: str
+    long_hash: str
+    ref: str
+    summary: str
+    raw_body: str
+    author: str
+    email: str
+    datetime: str
+
+
+class RefLogEntry(NamedTuple):
+    short_hash: str
+    long_hash: str
+    summary: str
+    reflog_name: str
+    reflog_selector: str
+    author: str
+    datetime: str
 
 
 def is_dynamic_ref(ref):
@@ -49,7 +45,7 @@ class HistoryMixin(mixin_base):
     def log(self, author=None, branch=None, file_path=None, start_end=None, cherry=None,
             limit=6000, skip=None, reverse=False, all_branches=False, msg_regexp=None,
             diff_regexp=None, first_parent=False, merges=False, no_merges=False, topo_order=False,
-            follow=False):
+            follow=False) -> List[LogEntry]:
 
         log_output = self.git(
             "log",
@@ -86,7 +82,7 @@ class HistoryMixin(mixin_base):
 
         return entries
 
-    def log_generator(self, limit=6000, **kwargs):
+    def log_generator(self, limit=6000, **kwargs) -> Iterator[LogEntry]:
         # Generator for show_log_panel
         skip = 0
         while True:
