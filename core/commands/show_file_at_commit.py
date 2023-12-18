@@ -5,6 +5,7 @@ import sublime
 from sublime_plugin import TextCommand, WindowCommand
 
 from ..git_command import GitCommand
+from ..fns import filter_
 from ..runtime import enqueue_on_worker, run_as_text_command, text_command
 from ..utils import flash, focus_view
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
@@ -99,8 +100,8 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         text = self.get_file_content_at_commit(file_path, commit_hash)
         render(view, text, position)
         view.reset_reference_document()
-        self.update_title(commit_hash, file_path)
         commit_details = self.fetch_commit_details(commit_hash)
+        self.update_title(commit_details, file_path)
         self.update_status_bar(commit_details)
         enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
 
@@ -155,10 +156,15 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
     def update_reference_document(self, commit_hash: str, file_path: str) -> None:
         self.view.set_reference_document(self.previous_file_version(commit_hash, file_path))
 
-    def update_title(self, commit_hash: str, file_path: str) -> None:
+    def update_title(self, commit_details: CommitInfo, file_path: str) -> None:
+        details = ", ".join(filter_((commit_details.subject, commit_details.date)))
+        message = "{}{}".format(
+            commit_details.short_hash,
+            f" {details}" if details else ""
+        )
         title = SHOW_COMMIT_TITLE.format(
             os.path.basename(file_path),
-            self.get_short_hash(commit_hash),
+            message
         )
         self.view.set_name(title)
 
