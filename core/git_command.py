@@ -334,6 +334,7 @@ class _GitCommand(SettingsMixin):
         if show_panel is None:
             show_panel = git_cmd in self.savvy_settings.get("show_panel_for")
 
+        log = None
         if show_panel:
             panel = util.log.init_panel(window)
             log = partial(util.log.append_to_panel, panel)
@@ -365,8 +366,8 @@ class _GitCommand(SettingsMixin):
             savvy_env_expanded or {},
             os.environ
         )
+        start = time.time()
         try:
-            start = time.time()
             p = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,
@@ -383,7 +384,7 @@ class _GitCommand(SettingsMixin):
             if isinstance(stdin, str):
                 stdin = stdin.encode(encoding=stdin_encoding)
 
-            if show_panel:
+            if log:
                 log_b = lambda line: log(line.decode("utf-8", "replace"))
                 stdout, stderr = communicate_and_log(p, stdin, log_b, timeout=timeout)
             else:
@@ -416,7 +417,7 @@ class _GitCommand(SettingsMixin):
             if not just_the_proc:
                 end = time.time()
                 util.debug.log_git(final_args, working_dir, stdin, stdout, stderr, end - start)
-                if show_panel:
+                if log:
                     log("\n[Done in {:.2f}s]".format(end - start))
 
         if decode:
