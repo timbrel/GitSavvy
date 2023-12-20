@@ -2662,6 +2662,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 ]
             actions += [
                 ("Push", partial(self.push, current_branch)),
+                ("Rebase on...", partial(self.rebase_on)),
                 SEPARATOR,
             ]
 
@@ -2862,6 +2863,9 @@ class gs_log_graph_action(WindowCommand, GitCommand):
     def fetch(self, current_branch):
         remote = self.get_remote_for_branch(current_branch)
         self.window.run_command("gs_fetch", {"remote": remote} if remote else None)
+
+    def rebase_on(self):
+        self.window.run_command("gs_rebase_on_branch")
 
     def update_from_tracking(self, remote, remote_name, local_name):
         # type: (str, str, str) -> None
