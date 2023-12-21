@@ -3,11 +3,13 @@ import re
 from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.fns import filter_
+from GitSavvy.core.utils import yes_no_switch
 
 from typing import Dict, List, NamedTuple, Optional, Sequence
 
 
 BRANCH_DESCRIPTION_RE = re.compile(r"^branch\.(.*?)\.description (.*)$")
+FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND = (2, 41, 0)
 
 
 class Upstream(NamedTuple):
@@ -15,6 +17,11 @@ class Upstream(NamedTuple):
     branch: str
     canonical_name: str
     status: str
+
+
+class AheadBehind(NamedTuple):
+    ahead: int
+    behind: int
 
 
 class Branch(NamedTuple):
@@ -29,6 +36,7 @@ class Branch(NamedTuple):
     is_remote: bool
     committerdate: int
     upstream: Optional[Upstream]
+    distance_to_head: Optional[AheadBehind]
 
     @property
     def is_local(self) -> bool:
@@ -80,25 +88,31 @@ class BranchesMixin(mixin_base):
         # type: () -> List[Branch]
         return self.get_branches(refs=["refs/heads"])
 
-    def get_branches(self, *, refs=["refs/heads", "refs/remotes"]):
-        # type: (Sequence[str]) -> List[Branch]
+    def get_branches(self, *, refs=["refs/heads", "refs/remotes"], merged=None):
+        # type: (Sequence[str], Optional[bool]) -> List[Branch]
         """
-        Return a list of all local and remote branches.
+        Return a list of local and/or remote branches.
         """
+        git_supports_ahead_behind = self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND
         stdout = self.git(
             "for-each-ref",
-            (
-                "--format="
-                "%(HEAD)%00"
-                "%(refname)%00"
-                "%(upstream)%00"
-                "%(upstream:remotename)%00"
-                "%(upstream:track,nobracket)%00"
-                "%(committerdate:unix)%00"
-                "%(objectname)%00"
-                "%(contents:subject)"
+            "--format={}".format(
+                "%00".join((
+                    "%(HEAD)",
+                    "%(refname)",
+                    "%(upstream)",
+                    "%(upstream:remotename)",
+                    "%(upstream:track,nobracket)",
+                    "%(committerdate:unix)",
+                    "%(objectname)",
+                    "%(contents:subject)",
+                    "%(ahead-behind:HEAD)" if git_supports_ahead_behind else ""
+                ))
             ),
-            *refs
+            *refs,
+            # If `git_supports_ahead_behind` we don't use the `--[no-]merged` argument
+            # and instead filter here in Python land.
+            yes_no_switch("--merged", merged) if not git_supports_ahead_behind else None,
         )  # type: str
         branches = [
             branch
@@ -108,7 +122,18 @@ class BranchesMixin(mixin_base):
             )
             if branch.name != "HEAD"
         ]
-        self._cache_branches(branches, refs)
+        if git_supports_ahead_behind:
+            # Cache git's full output but return a filtered result if requested.
+            self._cache_branches(branches, refs)
+            if merged is True:
+                branches = [b for b in branches if b.distance_to_head.ahead == 0]  # type: ignore[union-attr]
+            elif merged is False:
+                branches = [b for b in branches if b.distance_to_head.ahead > 0]  # type: ignore[union-attr]
+
+        elif merged is None:
+            # For older git versions cache git's output only if it was not filtered by `merged`.
+            self._cache_branches(branches, refs)
+
         return branches
 
     def _cache_branches(self, branches, refs):
@@ -150,7 +175,7 @@ class BranchesMixin(mixin_base):
     def _parse_branch_line(self, line):
         # type: (str) -> Branch
         (head, ref, upstream, upstream_remote, upstream_status,
-         committerdate, commit_hash, commit_msg) = line.split("\x00")
+         committerdate, commit_hash, commit_msg, ahead_behind) = line.split("\x00")
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
@@ -174,6 +199,8 @@ class BranchesMixin(mixin_base):
         else:
             ups = None
 
+        ahead_behind_ = AheadBehind(*map(int, ahead_behind.split(" "))) if ahead_behind else None
+
         return Branch(
             branch_name,
             remote,
@@ -183,7 +210,8 @@ class BranchesMixin(mixin_base):
             active,
             is_remote,
             int(committerdate),
-            upstream=ups
+            upstream=ups,
+            distance_to_head=ahead_behind_
         )
 
     def merge(self, branch_names):

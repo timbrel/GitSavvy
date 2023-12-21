@@ -65,7 +65,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         repo = GitCommand()
         git_output = join0(
             [" ", "refs/heads/master", "refs/remotes/origin/master", "origin", ""]
-            + date_sha_and_subject)
+            + date_sha_and_subject
+            + ["0 0"])
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -81,7 +82,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 0,
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
-                )
+                ),
+                git_mixins.branches.AheadBehind(ahead=0, behind=0)
             )
         ])
 
@@ -89,7 +91,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         repo = GitCommand()
         git_output = join0(
             ["*", "refs/heads/master", "refs/remotes/origin/master", "origin", ""]
-            + date_sha_and_subject)
+            + date_sha_and_subject
+            + ["2 4"])
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -105,7 +108,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 0,
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
-                )
+                ),
+                git_mixins.branches.AheadBehind(ahead=2, behind=4)
             )
         ])
 
@@ -113,7 +117,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         repo = GitCommand()
         git_output = join0(
             [" ", "refs/remotes/origin/dev", "", "", ""]
-            + date_sha_and_subject)
+            + date_sha_and_subject
+            + ["0 0"])
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -127,7 +132,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 False,
                 True,
                 0,
-                None
+                None,
+                git_mixins.branches.AheadBehind(ahead=0, behind=0)
             )
         ])
 
@@ -135,7 +141,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         repo = GitCommand()
         git_output = join0(
             [" ", "refs/heads/master", "refs/remotes/orig/in/master", "orig/in", ""]
-            + date_sha_and_subject)
+            + date_sha_and_subject
+            + ["0 0"])
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -151,7 +158,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 0,
                 git_mixins.branches.Upstream(
                     "orig/in", "master", "orig/in/master", ""
-                )
+                ),
+                git_mixins.branches.AheadBehind(ahead=0, behind=0)
             )
         ])
 
@@ -159,7 +167,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         repo = GitCommand()
         git_output = join0(
             [" ", "refs/heads/master", "refs/remotes/origin/master", "origin", "gone"]
-            + date_sha_and_subject)
+            + date_sha_and_subject
+            + ["0 0"])
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -175,7 +184,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 0,
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", "gone"
-                )
+                ),
+                git_mixins.branches.AheadBehind(ahead=0, behind=0)
             )
         ])
 
@@ -183,7 +193,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         repo = GitCommand()
         git_output = join0(
             [" ", "refs/heads/test", "refs/heads/update-branch-from-upstream", ".", ""]
-            + date_sha_and_subject)
+            + date_sha_and_subject
+            + ["0 0"])
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -199,7 +210,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 0,
                 git_mixins.branches.Upstream(
                     ".", "update-branch-from-upstream", "update-branch-from-upstream", ""
-                )
+                ),
+                git_mixins.branches.AheadBehind(ahead=0, behind=0)
             )
         ])
 
@@ -271,7 +283,8 @@ class TestBranchParsing(EndToEndTestCase):
                 True,
                 False,
                 1671490333,
-                None
+                None,
+                git_mixins.branches.AheadBehind(ahead=0, behind=0)
             )
         ])
 
@@ -293,6 +306,7 @@ class TestBranchParsing(EndToEndTestCase):
                 1671490333,
                 git_mixins.branches.Upstream(
                     ".", "master", "master", ""
-                )
+                ),
+                git_mixins.branches.AheadBehind(ahead=0, behind=0)
             )
         ])

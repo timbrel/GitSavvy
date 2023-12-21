@@ -228,14 +228,15 @@ class RemotePanel(GitCommand):
 
 
 def show_branch_panel(
-        on_done,
+        on_done: Callable[[str], None],
         *,
-        on_cancel=lambda: None,
-        local_branches_only=False,
-        remote_branches_only=False,
-        ignore_current_branch=False,
-        ask_remote_first=False,
-        selected_branch=None
+        on_cancel: Callable[[], None] = lambda: None,
+        local_branches_only: bool = False,
+        remote_branches_only: bool = False,
+        ignore_current_branch: bool = False,
+        ask_remote_first: bool = False,
+        selected_branch: Optional[str] = None,
+        merged: Optional[bool] = None,
 ):
     """
     Show a quick panel with branches. The callback `on_done(branch)` will
@@ -255,7 +256,8 @@ def show_branch_panel(
         remote_branches_only,
         ignore_current_branch,
         ask_remote_first,
-        selected_branch
+        selected_branch,
+        merged,
     )
     bp.show()
     return bp
@@ -265,13 +267,14 @@ class BranchPanel(GitCommand):
 
     def __init__(
             self,
-            on_done,
-            on_cancel,
-            local_branches_only=False,
-            remote_branches_only=False,
-            ignore_current_branch=False,
-            ask_remote_first=False,
-            selected_branch=None
+            on_done: Callable[[str], None],
+            on_cancel: Callable[[], None] = lambda: None,
+            local_branches_only: bool = False,
+            remote_branches_only: bool = False,
+            ignore_current_branch: bool = False,
+            ask_remote_first: bool = False,
+            selected_branch: Optional[str] = None,
+            merged: Optional[bool] = None,
     ):
         self.window = sublime.active_window()
         self.on_done = on_done
@@ -281,6 +284,7 @@ class BranchPanel(GitCommand):
         self.ignore_current_branch = ignore_current_branch
         self.ask_remote_first = ask_remote_first
         self.selected_branch = selected_branch
+        self.merged = merged
 
     def show(self):
         if self.ask_remote_first:
@@ -289,7 +293,7 @@ class BranchPanel(GitCommand):
             self.select_branch(remote=None)
 
     def select_branch(self, remote=None):
-        branches = self.get_branches()
+        branches = self.get_branches(merged=self.merged)
         if self.local_branches_only:
             self.all_branches = [b.canonical_name for b in branches if b.is_local]
         elif self.remote_branches_only:
