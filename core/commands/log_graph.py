@@ -17,6 +17,7 @@ from . import log_graph_colorizer as colorizer, show_commit_info
 from .intra_line_colorizer import block_time_passed_factory
 from .log import GsLogCommand
 from .. import utils
+from ..base_commands import GsTextCommand
 from ..fns import filter_, flatten, pairwise, partition, take, unique
 from ..git_command import GitCommand, GitSavvyError
 from ..parse_diff import Region, TextRange
@@ -660,7 +661,22 @@ def on_status_update_(repo_path, repo_is_dirty):
 store.subscribe("*", {"head"}, on_status_update)
 
 
-class gs_log_graph_refresh(TextCommand, GitCommand):
+def resolve_commit_to_follow_after_rebase(self, commitish):
+    # type: (GsTextCommand, str) -> None
+    """Resolve a commit after a rebase changed its hash and set to `follow`"""
+    # Typically the "commitish" a rebase begins with refers a parent commit
+    # and its first child is the actual commit the user is interested in.
+    # A typical form is then `abcdef^` if it is not a branch name.
+    to_follow = (
+        self.next_commit(commitish)
+        or self.git("rev-parse", commitish).strip()
+    )
+    if to_follow:
+        settings = self.view.settings()
+        settings.set("git_savvy.log_graph_view.follow", self.get_short_hash(to_follow))
+
+
+class gs_log_graph_refresh(GsTextCommand):
 
     """
     Refresh the current graph view with the latest commits.
@@ -672,6 +688,11 @@ class gs_log_graph_refresh(TextCommand, GitCommand):
         # loading and hence not ready for refresh calls.
         if self.view.is_loading():
             return
+
+        parent_commitish = self.view.settings().get("git_savvy.resolve_after_rebase")
+        if parent_commitish and not self.in_rebase():
+            self.view.settings().erase("git_savvy.resolve_after_rebase")
+            resolve_commit_to_follow_after_rebase(self, parent_commitish)
 
         if assume_complete_redraw:
             try:
