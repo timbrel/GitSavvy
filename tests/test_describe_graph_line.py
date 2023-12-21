@@ -14,8 +14,8 @@ examples = [
     (
         "● a3062b2 (HEAD -> optimize-graph-render, origin/optimize-graph-render) Abort .. | Thu 21:07, herr kaste",
         {
-            "optimize-graph-render": mock({"is_remote": False}),
-            "origin/optimize-graph-render": mock({"is_remote": True})
+            "optimize-graph-render": mock({"is_local": True}),
+            "origin/optimize-graph-render": mock({"is_local": False})
         },
         {
             "commit": "a3062b2",
@@ -26,7 +26,7 @@ examples = [
     ),
     (
         "● a3062b2 (HEAD, origin/optimize-graph-render) Abort re.. | Thu 21:07, herr kaste",
-        {"origin/optimize-graph-render": mock({"is_remote": True})},
+        {"origin/optimize-graph-render": mock({"is_local": False})},
         {
             "commit": "a3062b2",
             "HEAD": "a3062b2",
@@ -37,7 +37,7 @@ examples = [
         # Unknown refs are in `branches` (sic!) but *not* under `local_branches`.
         "● a3062b2 (HEAD -> optimize-graph-render, refs/bisect/bad) Abort .. | Thu 21:07, herr kaste",
         {
-            "optimize-graph-render": mock({"is_remote": False}),
+            "optimize-graph-render": mock({"is_local": True}),
         },
         {
             "commit": "a3062b2",

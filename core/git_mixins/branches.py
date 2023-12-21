@@ -1,49 +1,38 @@
-from collections import namedtuple
 import re
 
 from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.fns import filter_
 
+from typing import Dict, List, NamedTuple, Optional, Sequence
 
-MYPY = False
-if MYPY:
-    from typing import Dict, List, NamedTuple, Optional, Sequence
-    Upstream = NamedTuple("Upstream", [
-        ("remote", str),
-        ("branch", str),
-        ("canonical_name", str),
-        ("status", str),
-    ])
-
-    # For local branches, `remote` is empty and `canonical_name == name`.
-    # For remote branches:
-    Branch = NamedTuple("Branch", [
-        ("name", str),              # e.g. "master"
-        ("remote", Optional[str]),  # e.g. "origin"
-        ("canonical_name", str),    # e.g. "origin/master"
-        ("commit_hash", str),
-        ("commit_msg", str),
-        ("active", bool),
-        ("is_remote", bool),
-        ("committerdate", int),
-        ("upstream", Optional[Upstream]),
-    ])
-else:
-    Upstream = namedtuple("Upstream", "remote branch canonical_name status")
-    Branch = namedtuple("Branch", (
-        "name",
-        "remote",
-        "canonical_name",
-        "commit_hash",
-        "commit_msg",
-        "active",
-        "is_remote",
-        "committerdate",
-        "upstream",
-    ))
 
 BRANCH_DESCRIPTION_RE = re.compile(r"^branch\.(.*?)\.description (.*)$")
+
+
+class Upstream(NamedTuple):
+    remote: str
+    branch: str
+    canonical_name: str
+    status: str
+
+
+class Branch(NamedTuple):
+    # For local branches, `remote` is empty and `canonical_name == name`.
+    #                        For remote branches:
+    name: str              # e.g. "master"
+    remote: Optional[str]  # e.g. "origin"
+    canonical_name: str    # e.g. "origin/master"
+    commit_hash: str
+    commit_msg: str
+    active: bool
+    is_remote: bool
+    committerdate: int
+    upstream: Optional[Upstream]
+
+    @property
+    def is_local(self) -> bool:
+        return not self.is_remote
 
 
 class BranchesMixin(mixin_base):
@@ -133,7 +122,7 @@ class BranchesMixin(mixin_base):
 
         elif refs == ["refs/remotes"]:
             stored_state = store.current_state(self.repo_path).get("branches", [])
-            next_state = [b for b in stored_state if not b.is_remote] + branches
+            next_state = [b for b in stored_state if b.is_local] + branches
 
         else:
             return None
