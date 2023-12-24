@@ -15,7 +15,7 @@ import sublime_plugin
 from . import utils
 
 from typing import (
-    Any, Callable, Dict, Iterator, Literal, Optional, Tuple, TypeVar, Union,
+    Any, Callable, Dict, Iterator, Literal, Optional, Sequence, Tuple, TypeVar, Union,
     overload, TYPE_CHECKING)
 
 if TYPE_CHECKING:
@@ -194,6 +194,26 @@ def run_or_timeout(fn, timeout):
         raise exc
     except UnboundLocalError:
         return result
+
+
+def run_and_check_timeout(fn, timeout, callback):
+    # type: (Callable[P, T], float, Union[Callable[[], None], Sequence[Callable[[], None]]]) -> T
+    cond = threading.Condition()
+    callbacks = callback if isinstance(callback, list) else [callback]
+
+    def checker():
+        # type: () -> None
+        with cond:
+            if not cond.wait(timeout):
+                for callback in callbacks:
+                    callback()
+
+    run_on_new_thread(checker)
+    try:
+        return fn()
+    finally:
+        with cond:
+            cond.notify_all()
 
 
 lock = threading.Lock()

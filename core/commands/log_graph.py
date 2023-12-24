@@ -27,6 +27,7 @@ from ..runtime import (
     cooperative_thread_hopper,
     enqueue_on_ui,
     enqueue_on_worker,
+    run_and_check_timeout,
     run_or_timeout,
     run_on_new_thread,
     text_command
@@ -692,18 +693,6 @@ class gs_log_graph_refresh(GsTextCommand):
             self.view.settings().erase("git_savvy.resolve_after_rebase")
             resolve_commit_to_follow_after_rebase(self, parent_commitish)
 
-        if assume_complete_redraw:
-            try:
-                content_region = self.view.find_by_selector("meta.content.git_savvy.graph")[0]
-            except IndexError:
-                pass
-            else:
-                replace_view_content(self.view, "", content_region)
-                self.view.set_viewport_position((0, 0))
-
-                set_overwrite_status(self.view)
-                set_caret_style(self.view)
-
         initial_draw = self.view.size() == 0
         prelude_text = prelude(self.view)
         if initial_draw or assume_complete_redraw:
@@ -738,9 +727,12 @@ class gs_log_graph_refresh(GsTextCommand):
         # type: (bool, bool, str, ShouldAbort, bool) -> None
         settings = self.view.settings()
         try:
+            # In case of `assume_complete_redraw` we later clear the graph content
+            # so we assume `""` for that case.
+            # See usage of `clear_graph()`.
             current_graph = self.view.substr(
                 self.view.find_by_selector('meta.content.git_savvy.graph')[0]
-            )
+            ) if not assume_complete_redraw else ""
         except IndexError:
             current_graph_splitted = []
         else:
@@ -966,6 +958,22 @@ class gs_log_graph_refresh(GsTextCommand):
                     continue
                 yield right
 
+        def clear_graph():
+            if should_abort():
+                return
+
+            try:
+                content_region = self.view.find_by_selector("meta.content.git_savvy.graph")[0]
+            except IndexError:
+                pass
+            else:
+                replace_view_content(self.view, "", content_region)
+                self.view.set_viewport_position((0, 0))
+                set_overwrite_status(self.view)
+
+        def indicate_slow_progress():
+            set_caret_style(self.view)
+
         def reader():
             next_graph_splitted = filter_consecutive_continuation_lines(chain(
                 map(
@@ -995,7 +1003,15 @@ class gs_log_graph_refresh(GsTextCommand):
                     enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
                     return
             else:
-                tokens = wait_for_first_item(tokens)
+                tokens = run_and_check_timeout(
+                    lambda: wait_for_first_item(tokens),
+                    timeout=0.1,
+                    callback=(
+                        [clear_graph, indicate_slow_progress]
+                        if assume_complete_redraw
+                        else indicate_slow_progress
+                    )
+                )
             enqueue_on_ui(draw)
             token_queue.consume(tokens)
 
@@ -1029,6 +1045,8 @@ class gs_log_graph_refresh(GsTextCommand):
             visible_selection = is_sel_in_viewport(self.view)
 
             replace_view_content(self.view, prelude_text, current_prelude_region)
+            if assume_complete_redraw:
+                clear_graph()
             drain_and_draw_queue(self.view, PaintingStateMachine(), follow, col_range, visible_selection)
 
         # Sublime will not run any event handlers until the (outermost) TextCommand exits.
