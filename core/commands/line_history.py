@@ -144,10 +144,16 @@ class gs_line_history(TextCommand, GitCommand):
         )
 
         if first_sel.empty():
-            # Assume the changed lines are selected which gives slightly
-            # better results than selecting the whole hunk.
             changed_lines = [line for line in hunk.content().lines() if not line.is_context()]
-            first_sel = sublime.Region(changed_lines[0].a, changed_lines[-1].b)
+            if all(line.is_to_line() for line in changed_lines):
+                # For addition only hunks, select the whole hunk as the added
+                # lines don't have any history in the repo by definition.
+                first_sel = hunk.content().region()
+
+            else:
+                # Assume the changed lines are selected which gives slightly
+                # better results than selecting the whole hunk.
+                first_sel = sublime.Region(changed_lines[0].a, changed_lines[-1].b)
 
         hunk_with_linenos = list(diff.recount_lines(hunk))
         rel_begin, _ = diff.row_offset_and_col_in_hunk(view, hunk, first_sel.begin())
