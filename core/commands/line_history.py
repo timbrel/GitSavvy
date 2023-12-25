@@ -129,6 +129,10 @@ class gs_line_history(TextCommand, GitCommand):
         if not hunk:
             flash(view, "Not on a hunk.")
             return
+        if d.hunk_for_pt(first_sel.end()) != hunk:
+            flash(view, "Not across multiple hunks.")
+            return
+
         header = d.head_for_hunk(hunk)
         file_path = header.to_filename()
         if not file_path:
@@ -144,10 +148,6 @@ class gs_line_history(TextCommand, GitCommand):
             # better results than selecting the whole hunk.
             changed_lines = [line for line in hunk.content().lines() if not line.is_context()]
             first_sel = sublime.Region(changed_lines[0].a, changed_lines[-1].b)
-
-        if d.hunk_for_pt(first_sel.end()) != hunk:
-            flash(view, "Not across multiple hunks.")
-            return
 
         hunk_with_linenos = list(diff.recount_lines(hunk))
         rel_begin, _ = diff.row_offset_and_col_in_hunk(view, hunk, first_sel.begin())
