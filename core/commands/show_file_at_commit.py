@@ -3,8 +3,9 @@ import os
 import sublime
 from sublime_plugin import TextCommand, WindowCommand
 
-from ..git_command import GitCommand
+from ..base_commands import GsTextCommand
 from ..fns import filter_
+from ..git_command import GitCommand
 from ..runtime import enqueue_on_worker, run_as_text_command, text_command
 from ..utils import flash, focus_view
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
@@ -83,7 +84,7 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
         })
 
 
-class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
+class gs_show_file_at_commit_refresh(GsTextCommand):
     def run(self, edit: sublime.Edit, position: Position = None) -> None:
         view = self.view
         settings = view.settings()
@@ -157,7 +158,7 @@ def render(view: sublime.View, text: str, position: Optional[Position]) -> None:
         apply_position(view, *position)
 
 
-class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
+class gs_show_file_at_commit_open_previous_commit(GsTextCommand):
     def run(self, edit) -> None:
         view = self.view
 
@@ -184,7 +185,7 @@ class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
         })
 
 
-class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
+class gs_show_file_at_commit_open_next_commit(GsTextCommand):
     def run(self, edit) -> None:
         view = self.view
 
@@ -280,7 +281,7 @@ class gs_show_file_at_commit_open_commit(TextCommand):
         window.run_command("gs_show_commit", {"commit_hash": commit_hash})
 
 
-class gs_show_file_at_commit_open_file_on_working_dir(TextCommand, GitCommand):
+class gs_show_file_at_commit_open_file_on_working_dir(GsTextCommand):
     def run(self, edit) -> None:
         window = self.view.window()
         if not window:
@@ -301,7 +302,7 @@ class gs_show_file_at_commit_open_file_on_working_dir(TextCommand, GitCommand):
         )
 
 
-class gs_show_file_at_commit_open_graph_context(TextCommand, GitCommand):
+class gs_show_file_at_commit_open_graph_context(GsTextCommand):
     def run(self, edit) -> None:
         window = self.view.window()
         if not window:
