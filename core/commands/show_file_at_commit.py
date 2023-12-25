@@ -3,7 +3,7 @@ import os
 import sublime
 from sublime_plugin import TextCommand, WindowCommand
 
-from ..base_commands import GsTextCommand
+from ..base_commands import GsTextCommand, GsWindowCommand
 from ..fns import filter_
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_worker, run_as_text_command, text_command
@@ -42,7 +42,7 @@ def compute_identifier_for_view(view: sublime.View) -> Optional[Tuple]:
     ) if settings.get('git_savvy.show_file_at_commit_view') else None
 
 
-class gs_show_file_at_commit(WindowCommand, GitCommand):
+class gs_show_file_at_commit(GsWindowCommand):
 
     def run(self, commit_hash: str, filepath: str,
             position: Optional[Position] = None, lang: Optional[str] = None) -> None:
