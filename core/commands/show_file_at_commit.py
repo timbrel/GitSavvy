@@ -1,11 +1,10 @@
 import os
 
 import sublime
-from sublime_plugin import TextCommand, WindowCommand
+from sublime_plugin import TextCommand
 
 from ..base_commands import GsTextCommand, GsWindowCommand
 from ..fns import filter_
-from ..git_command import GitCommand
 from ..runtime import enqueue_on_worker, run_as_text_command, text_command
 from ..utils import flash, focus_view
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
@@ -239,21 +238,17 @@ def pass_next_commits_info_along(view: Optional[sublime.View], to: sublime.View)
         to_settings.set("git_savvy.next_commits", store)
 
 
-class gs_show_current_file(LogMixin, WindowCommand, GitCommand):
+class gs_show_current_file(LogMixin, GsTextCommand):
     """
     Show a panel of commits of current file on current branch and
     then open the file at the selected commit.
     """
 
-    def run(self):
+    def run(self, edit: sublime.Edit) -> None:  # type: ignore[override]
         super().run(file_path=self.file_path)
 
     def do_action(self, commit_hash, **kwargs):
-        view = self.window.active_view()
-        if not view:
-            print("RuntimeError: Window has no active view")
-            return
-
+        view = self.view
         position = capture_cur_position(view)
         if position is not None:
             row, col, offset = position
