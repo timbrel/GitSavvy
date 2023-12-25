@@ -245,6 +245,12 @@ class gs_show_current_file(LogMixin, GsTextCommand):
     """
 
     def run(self, edit: sublime.Edit) -> None:  # type: ignore[override]
+        if not self.file_path:
+            if not self.view.is_read_only() and not self.view.file_name():
+                flash(self.view, "Not for unsaved/unnamed files.")
+            else:
+                flash(self.view, "The view does not refer any file name.")
+            return
         super().run(file_path=self.file_path)
 
     def do_action(self, commit_hash, **kwargs):
