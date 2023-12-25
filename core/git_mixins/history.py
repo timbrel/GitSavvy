@@ -91,13 +91,10 @@ class HistoryMixin(mixin_base):
         skip = 0
         while True:
             logs = self.log(limit=limit, skip=skip, **kwargs)
-            if not logs:
-                break
-            for entry in logs:
-                yield entry
+            yield from logs
             if len(logs) < limit:
                 break
-            skip = skip + limit
+            skip += limit
 
     def reflog(self, limit=6000, skip=None, all_branches=False):
         log_output = self.git(
