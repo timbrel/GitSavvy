@@ -309,13 +309,12 @@ class gs_show_current_file(LogMixin, GsTextCommand):
         })
 
     def selected_index(self, commit_hash):
-        view = self.view
-        settings = view.settings()
-        _commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
-        if not _commit_hash:
+        if not self.overlay_for_show_file_at_commit:
             return True
 
-        return _commit_hash == commit_hash
+        view = self.view
+        shown_hash = view.settings().get("git_savvy.show_file_at_commit_view.commit")
+        return commit_hash == shown_hash
 
 
 class gs_show_file_at_commit_open_commit(TextCommand):
