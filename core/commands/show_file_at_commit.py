@@ -6,7 +6,7 @@ from sublime_plugin import TextCommand
 
 from ..base_commands import GsTextCommand, GsWindowCommand
 from ..fns import filter_
-from ..runtime import enqueue_on_worker, run_as_text_command, text_command
+from ..runtime import enqueue_on_worker, run_as_text_command, text_command, throttled
 from ..utils import flash, focus_view, escape_text, style_message, DEFAULT_STYLE
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
 from ...common import util
@@ -116,19 +116,25 @@ class gs_show_file_at_commit(GsWindowCommand):
 
 
 class gs_show_file_at_commit_refresh(GsTextCommand):
-    def run(self, edit: sublime.Edit, position: Position = None) -> None:
+    def run(self, edit: sublime.Edit, position: Position = None, sync: bool = True) -> None:
         view = self.view
         settings = view.settings()
         file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
 
-        text = self.get_file_content_at_commit(file_path, commit_hash)
-        render(view, text, position)
-        view.reset_reference_document()
-        commit_details = self.commit_subject_and_date(commit_hash)
-        self.update_title(commit_details, file_path)
-        self.update_status_bar(commit_details)
-        enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
+        def program():
+            text = self.get_file_content_at_commit(file_path, commit_hash)
+            render(view, text, position)
+            view.reset_reference_document()
+            commit_details = self.commit_subject_and_date(commit_hash)
+            self.update_title(commit_details, file_path)
+            self.update_status_bar(commit_details)
+            enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
+
+        if sync:
+            program()
+        else:
+            enqueue_on_worker(program)
 
     def update_status_bar(self, commit_details: CommitInfo) -> None:
         view = self.view
@@ -310,6 +316,9 @@ class gs_show_current_file(LogMixin, GsTextCommand):
         if not commit:
             return
 
+        sublime.set_timeout_async(throttled(self._on_highlight, commit), 10)
+
+    def _on_highlight(self, commit):
         view = self.view
         previous_commit = view.settings().get("git_savvy.show_file_at_commit_view.commit")
         view.settings().set("git_savvy.show_file_at_commit_view.commit", commit)
@@ -320,7 +329,8 @@ class gs_show_current_file(LogMixin, GsTextCommand):
             position = Position(line - 1, col, offset)
 
         view.run_command("gs_show_file_at_commit_refresh", {
-            "position": position
+            "position": position,
+            "sync": False,
         })
 
     def do_action(self, commit_hash, **kwargs):
