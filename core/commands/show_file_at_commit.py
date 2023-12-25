@@ -253,7 +253,45 @@ class gs_show_current_file(LogMixin, GsTextCommand):
             else:
                 flash(self.view, "The view does not refer any file name.")
             return
+        self.overlay_for_show_file_at_commit = bool(self.view.settings().get("git_savvy.show_file_at_commit_view"))
+        self.initial_commit = self.view.settings().get("git_savvy.show_file_at_commit_view.commit")
+        self.initial_position = capture_cur_position(self.view)
         super().run(file_path=self.file_path)
+
+    def on_done(self, commit, **kwargs):
+        if not self.overlay_for_show_file_at_commit:
+            return super().on_done(commit, **kwargs)
+
+        if commit:
+            return  # nothing further to do as we already updated `on_highlight`
+
+        view = self.view
+        view.settings().set("git_savvy.show_file_at_commit_view.commit", self.initial_commit)
+        position = self.initial_position
+        view.run_command("gs_show_file_at_commit_refresh", {
+            "position": position
+        })
+
+    def on_highlight(self, commit, file_path=None):
+        if not self.overlay_for_show_file_at_commit:
+            super().on_highlight(commit, file_path)
+            return
+
+        if not commit:
+            return
+
+        view = self.view
+        previous_commit = view.settings().get("git_savvy.show_file_at_commit_view.commit")
+        view.settings().set("git_savvy.show_file_at_commit_view.commit", commit)
+        position = capture_cur_position(view)
+        if position is not None:
+            row, col, offset = position
+            line = self.find_matching_lineno(previous_commit, commit, row + 1)
+            position = Position(line - 1, col, offset)
+
+        view.run_command("gs_show_file_at_commit_refresh", {
+            "position": position
+        })
 
     def do_action(self, commit_hash, **kwargs):
         view = self.view
