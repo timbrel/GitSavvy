@@ -228,7 +228,7 @@ class gs_graph(WindowCommand, GitCommand):
             ):
                 self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
-            view.run_command("gs_log_graph_refresh", {"navigate_after_draw": True})
+            view.run_command("gs_log_graph_refresh")
 
 
 class gs_graph_current_file(WindowCommand, GitCommand):
@@ -681,8 +681,8 @@ class gs_log_graph_refresh(GsTextCommand):
     Refresh the current graph view with the latest commits.
     """
 
-    def run(self, edit, navigate_after_draw=False, assume_complete_redraw=False):
-        # type: (object, bool, bool) -> None
+    def run(self, edit, assume_complete_redraw=False):
+        # type: (object, bool) -> None
         # Edge case: If you restore a workspace/project, the view might still be
         # loading and hence not ready for refresh calls.
         if self.view.is_loading():
@@ -713,7 +713,6 @@ class gs_log_graph_refresh(GsTextCommand):
             assume_complete_redraw,
             prelude_text,
             should_abort,
-            navigate_after_draw
         )
 
     def run_impl(
@@ -722,9 +721,8 @@ class gs_log_graph_refresh(GsTextCommand):
         assume_complete_redraw,
         prelude_text,
         should_abort,
-        navigate_after_draw=False
     ):
-        # type: (bool, bool, str, ShouldAbort, bool) -> None
+        # type: (bool, bool, str, ShouldAbort) -> None
         settings = self.view.settings()
         try:
             # In case of `assume_complete_redraw` we later clear the graph content
@@ -1094,7 +1092,7 @@ class gs_log_graph_refresh(GsTextCommand):
                     if follow:
                         if try_navigate_to_symbol(if_before=region):
                             painter_state.set('navigated')
-                    elif navigate_after_draw:  # on init
+                    elif initial_draw:
                         view.run_command("gs_log_graph_navigate")
                         painter_state.set('navigated')
                     elif selection_is_before_region(view, region):
@@ -1114,7 +1112,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 # gone, or happens to be after the fold of fresh
                 # content.
                 if not follow or not try_navigate_to_symbol():
-                    if navigate_after_draw:
+                    if initial_draw:
                         view.run_command("gs_log_graph_navigate")
                     elif visible_selection:
                         view.show(view.sel(), True)
