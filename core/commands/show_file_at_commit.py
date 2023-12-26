@@ -217,9 +217,12 @@ class gs_show_file_at_commit_open_previous_commit(GsTextCommand):
             line = self.find_matching_lineno(commit_hash, previous_commit, row + 1, file_path)
             position = Position(line - 1, col, offset)
 
+        popup_was_visible = settings.get("git_savvy.show_file_at_commit.info_popup_visible")
         view.run_command("gs_show_file_at_commit_refresh", {
             "position": position
         })
+        if popup_was_visible:
+            view.run_command("gs_show_file_at_commit_open_info_popup")
 
 
 class gs_show_file_at_commit_open_next_commit(GsTextCommand):
@@ -247,9 +250,12 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
             )
             position = Position(line - 1, col, offset)
 
+        popup_was_visible = settings.get("git_savvy.show_file_at_commit.info_popup_visible")
         view.run_command("gs_show_file_at_commit_refresh", {
             "position": position
         })
+        if popup_was_visible:
+            view.run_command("gs_show_file_at_commit_open_info_popup")
 
 
 def remember_next_commit_for(view: sublime.View, mapping: Dict[str, str]) -> None:
