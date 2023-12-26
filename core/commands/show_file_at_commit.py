@@ -7,7 +7,7 @@ from sublime_plugin import TextCommand
 from ..base_commands import GsTextCommand, GsWindowCommand
 from ..fns import filter_
 from ..runtime import enqueue_on_worker, run_as_text_command, text_command, throttled
-from ..utils import flash, focus_view, escape_text, style_message, DEFAULT_STYLE
+from ..utils import flash, focus_view
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
 from ...common import util
 from GitSavvy.core.git_mixins.history import CommitInfo
@@ -416,14 +416,11 @@ class gs_show_file_at_commit_open_info_popup(GsTextCommand):
         show_diffstat = self.savvy_settings.get("show_diffstat")
         text = self.read_commit(commit_hash, None, show_diffstat, show_patch)
 
-        message = (
-            line
-            for line in re.split(r"^diff", text, 1, re.M)[0].splitlines()
-            if not line.startswith("AuthorDate:") and not line.startswith("Commit:")
-        )
-        content = style_message("<br />".join(map(escape_text, message)), style=DEFAULT_STYLE)
+        prelude = re.split(r"^diff", text, 1, re.M)[0].rstrip()
+        content = format_as_html(prelude)
         width, _ = self.view.viewport_extent()
         visible_region = self.view.visible_region()
+
         self.view.show_popup(
             content,
             max_width=width,
@@ -432,3 +429,17 @@ class gs_show_file_at_commit_open_info_popup(GsTextCommand):
             on_hide=lambda: settings.set("git_savvy.show_file_at_commit.info_popup_visible", False)
         )
         settings.set("git_savvy.show_file_at_commit.info_popup_visible", True)
+
+
+def format_as_html(
+    content: str,
+    *,
+    syntax: str = "show_commit",
+    panel_name: str = "gs_format_helper",
+) -> str:
+    panel = sublime.active_window().create_output_panel(panel_name, unlisted=True)
+    if not syntax.endswith(".sublime-syntax"):
+        syntax = f"Packages/GitSavvy/syntax/{syntax}.sublime-syntax"
+    panel.set_syntax_file(syntax)
+    replace_view_content(panel, content)
+    return panel.export_to_html(minihtml=True)
