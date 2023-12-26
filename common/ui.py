@@ -13,7 +13,7 @@ from sublime_plugin import TextCommand
 from . import util
 from ..core.runtime import enqueue_on_worker, on_worker
 from ..core.settings import GitSavvySettings
-from ..core.utils import focus_view
+from ..core.utils import flash, focus_view
 from GitSavvy.core import store
 from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.fns import flatten
@@ -503,12 +503,37 @@ class gs_update_region(TextCommand):
             replace_view_content(self.view, content, region)
 
 
-class InterfaceCommand(GsTextCommand):
+class collect_pre_run_handlers(type):
+    def __init__(cls, cls_name, bases, attrs):  # type: ignore[misc]
+        # type: (Type[InterfaceCommand], str, Tuple[object, ...], Dict[str, object]) -> None
+        pre_run_handler = attrs.pop("pre_run", None)
+        if pre_run_handler:
+            cls._pre_run_handlers = [*cls._pre_run_handlers, pre_run_handler]  # type: ignore[has-type]
+
+
+class InterfaceCommand(GsTextCommand, metaclass=collect_pre_run_handlers):
     interface: Interface
+    _pre_run_handlers: List = []
 
     def run_(self, edit_token, args):
-        self.interface = ensure_interface_object(self.view)
+        try:
+            for handler in self._pre_run_handlers:
+                handler(self)
+        except RuntimeError as e:
+            flash(self.view, e.args[0])
+            return
         return super().run_(edit_token, args)
+
+    def pre_run(self) -> None:
+        """Hook called before each `run`
+
+        Raise a `RuntimeError` to abort the `run`.  Its message is
+        presented in the status bar to the user.
+        No traceback is logged for that exception to the console.
+
+        Do not call `super().pre_run()` as this is handled automatically.
+        """
+        self.interface = ensure_interface_object(self.view)
 
     def region_name_for(self, section):
         # type: (str) -> str
