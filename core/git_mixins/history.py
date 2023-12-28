@@ -345,32 +345,47 @@ class HistoryMixin(mixin_base):
 
     @cached(not_if={"current_commit": is_dynamic_ref})
     def previous_commit(self, current_commit, file_path=None, follow=False):
-        # type: (Optional[str], Optional[str], bool) -> Optional[str]
+        # type: (str, Optional[str], bool) -> Optional[str]
         try:
-            return self.git(
-                "log",
-                "--format=%H",
-                "--topo-order",
-                "--follow" if follow else None,
-                "-2",
-                current_commit,
-                "--",
-                file_path
-            ).strip().splitlines()[1 if current_commit else 0]
+            return self._log_commits(
+                current_commit, file_path, follow, limit=2
+            )[1]
+        except IndexError:
+            return None
+
+    @cached(not_if={"current_commit": is_dynamic_ref})
+    def recent_commit(self, current_commit, file_path=None, follow=False):
+        # type: (str, Optional[str], bool) -> Optional[str]
+        try:
+            return self._log_commits(
+                current_commit, file_path, follow, limit=1
+            )[0]
         except IndexError:
             return None
 
     def next_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
         try:
-            return self.git(
-                "log",
-                "--format=%H",
-                "--topo-order",
-                "--follow" if follow else None,
-                "{}..".format(current_commit),
-                "--",
-                file_path
-            ).strip().splitlines()[-1]
+            return self._log_commits(
+                f"{current_commit}..", file_path, follow
+            )[-1]
         except IndexError:
             return None
+
+    def _log_commits(
+        self,
+        commitish: Optional[str],
+        file_path: Optional[str],
+        follow: bool,
+        limit: Optional[int] = None
+    ) -> List[str]:
+        return self.git(
+            "log",
+            "--format=%H",
+            "--topo-order",
+            "--follow" if follow else None,
+            None if limit is None else f"-{limit}",
+            commitish,
+            "--",
+            file_path
+        ).strip().splitlines()

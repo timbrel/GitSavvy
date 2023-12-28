@@ -66,7 +66,7 @@ class gs_show_file_at_commit(GsWindowCommand):
                 lang = view.settings().get('syntax')
 
         if not commit_hash:
-            commit_hash = self.previous_commit(None, filepath)
+            commit_hash = self.recent_commit("HEAD", filepath)
             if not commit_hash:
                 self.window.status_message("No older revision of this file found.")
                 return
