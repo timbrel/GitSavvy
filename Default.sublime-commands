@@ -340,6 +340,11 @@
         "command": "gs_show_file_at_commit"
     },
     {
+        "caption": "git: show recent commit",
+        "command": "gs_show_commit",
+        "args": { "commit_hash": "HEAD" }
+    },
+    {
         "caption": "git: show current file at commit",
         "command": "gs_show_current_file"
     },
