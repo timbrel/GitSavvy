@@ -3,6 +3,7 @@ import re
 from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.fns import filter_
+from GitSavvy.core.exceptions import GitSavvyError
 from GitSavvy.core.utils import yes_no_switch
 
 from typing import Dict, List, NamedTuple, Optional, Sequence
@@ -93,27 +94,40 @@ class BranchesMixin(mixin_base):
         """
         Return a list of local and/or remote branches.
         """
-        git_supports_ahead_behind = self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND
-        stdout = self.git(
-            "for-each-ref",
-            "--format={}".format(
-                "%00".join((
-                    "%(HEAD)",
-                    "%(refname)",
-                    "%(upstream)",
-                    "%(upstream:remotename)",
-                    "%(upstream:track,nobracket)",
-                    "%(committerdate:unix)",
-                    "%(objectname)",
-                    "%(contents:subject)",
-                    "%(ahead-behind:HEAD)" if git_supports_ahead_behind else ""
-                ))
-            ),
-            *refs,
-            # If `git_supports_ahead_behind` we don't use the `--[no-]merged` argument
-            # and instead filter here in Python land.
-            yes_no_switch("--merged", merged) if not git_supports_ahead_behind else None,
-        )  # type: str
+        supports_ahead_behind = self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND
+
+        def getter() -> str:
+            nonlocal supports_ahead_behind
+            try:
+                return self.git_throwing_silently(
+                    "for-each-ref",
+                    "--format={}".format(
+                        "%00".join((
+                            "%(HEAD)",
+                            "%(refname)",
+                            "%(upstream)",
+                            "%(upstream:remotename)",
+                            "%(upstream:track,nobracket)",
+                            "%(committerdate:unix)",
+                            "%(objectname)",
+                            "%(contents:subject)",
+                            "%(ahead-behind:HEAD)" if supports_ahead_behind else ""
+                        ))
+                    ),
+                    *refs,
+                    # If `supports_ahead_behind` we don't use the `--[no-]merged` argument
+                    # and instead filter here in Python land.
+                    yes_no_switch("--merged", merged) if not supports_ahead_behind else None,
+                )
+            except GitSavvyError as e:
+                if "fatal: failed to find 'HEAD'" in e.stderr and supports_ahead_behind:
+                    supports_ahead_behind = False
+                    return getter()
+                else:
+                    e.show_error_panel()
+                    raise
+
+        stdout = getter()
         branches = [
             branch
             for branch in (
@@ -122,7 +136,7 @@ class BranchesMixin(mixin_base):
             )
             if branch.name != "HEAD"
         ]
-        if git_supports_ahead_behind:
+        if supports_ahead_behind:
             # Cache git's full output but return a filtered result if requested.
             self._cache_branches(branches, refs)
             if merged is True:
