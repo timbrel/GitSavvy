@@ -327,13 +327,16 @@ class HistoryMixin(mixin_base):
         # warm up the cache
         show_diffstat = self.savvy_settings.get("show_diffstat")
         patch = self.read_commit(commit_hash, show_diffstat=show_diffstat)
-        return self.commit_subject_and_date_from_patch(commit_hash, patch)
+        return self.commit_subject_and_date_from_patch(patch)
 
-    def commit_subject_and_date_from_patch(self, commit_hash: str, patch: str) -> CommitInfo:
-        date, subject = "", ""
+    def commit_subject_and_date_from_patch(self, patch: str) -> CommitInfo:
+        commit_hash, date, subject = "", "", ""
         for line in patch.splitlines():
+            if line.startswith("commit "):
+                # The commit line can include decorations we must split off!
+                commit_hash = line[7:].split(" ", 1)[0]
             # CommitDate: Tue Dec 20 18:21:40 2022 +0100
-            if line.startswith("CommitDate: ") and (parsed_date := email.utils.parsedate(line[12:])):
+            elif line.startswith("CommitDate: ") and (parsed_date := email.utils.parsedate(line[12:])):
                 date = "-".join(map(str, parsed_date[:3]))
             elif line.startswith("    "):
                 subject = line.lstrip()

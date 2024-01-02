@@ -113,7 +113,7 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
             ignore_whitespace=ignore_whitespace
         )
         replace_view_content(view, content)
-        commit_details = self.commit_subject_and_date_from_patch(commit_hash, content)
+        commit_details = self.commit_subject_and_date_from_patch(content)
         self.update_title(commit_details)
         show_commit_info.restore_view_state(view, commit_hash)
         intra_line_colorizer.annotate_intra_line_differences(view)
