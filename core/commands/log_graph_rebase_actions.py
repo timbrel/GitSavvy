@@ -294,12 +294,12 @@ class gs_rebase_action(GsWindowCommand):
 
             actions += [
                 (
-                    "Compare with previous tip",
-                    partial(self.compare_commits, current_branch, previous_tip)
-                ),
-                (
                     "Diff against previous tip",
                     partial(self.diff_commit, previous_tip, current_branch)
+                ),
+                (
+                    "Compare with previous tip",
+                    partial(self.compare_commits, current_branch, previous_tip)
                 ),
 
             ]
