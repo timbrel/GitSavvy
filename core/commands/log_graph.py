@@ -723,13 +723,21 @@ class gs_log_graph_refresh(GsTextCommand):
         enqueue_on_worker(
             self.run_impl,
             initial_draw,
+            assume_complete_redraw,
             prelude_text,
             should_abort,
             navigate_after_draw
         )
 
-    def run_impl(self, initial_draw, prelude_text, should_abort, navigate_after_draw=False):
-        # type: (bool, str, ShouldAbort, bool) -> None
+    def run_impl(
+        self,
+        initial_draw,
+        assume_complete_redraw,
+        prelude_text,
+        should_abort,
+        navigate_after_draw=False
+    ):
+        # type: (bool, bool, str, ShouldAbort, bool) -> None
         settings = self.view.settings()
         try:
             current_graph = self.view.substr(
@@ -998,11 +1006,28 @@ class gs_log_graph_refresh(GsTextCommand):
             set_overwrite_status(self.view)
             sel = get_simple_selection(self.view)
             current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
-            if sel is None or (sel in current_prelude_region and not initial_draw):
+
+            # Usually the cursor is set to the symbol at `follow`.  The cursor "follows" this
+            # symbol so to speak.
+            if (
+                # If the user has a "complex", e.g. multi-line or multi-cursor, selection, we
+                # temporarily do *not* follow as it would destroy their selection.
+                sel is None
+
+                # Do not move the cursor as well for simple selections
+                or (
+                    # *if* they're in the prelude
+                    sel in current_prelude_region
+                    # except if `initial_draw` or `assume_complete_redraw` is set because then
+                    # the cursor is in the prelude just because nothing else is drawn yet.
+                    and not (initial_draw or assume_complete_redraw)
+                )
+            ):
                 follow, col_range = None, None
             else:
                 follow = settings.get('git_savvy.log_graph_view.follow')
                 col_range = get_column_range(self.view, sel)
+
             visible_selection = is_sel_in_viewport(self.view)
 
             replace_view_content(self.view, prelude_text, current_prelude_region)
