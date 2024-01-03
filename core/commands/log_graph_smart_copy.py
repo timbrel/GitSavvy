@@ -90,7 +90,7 @@ def read_commit_hash(view, line_span):
 
 def read_commit_decoration(view, line_span):
     # type: (sublime.View, sublime.Region) -> Iterator[TextRange]
-    for r in find_by_selector(view, "constant.other.git.branch.git-savvy"):
+    for r in find_by_selector(view, "constant.other.git.branch, entity.name.tag.branch-name"):
         if r.a > line_span.b:
             break
         if line_span.contains(r):
