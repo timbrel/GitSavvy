@@ -59,11 +59,6 @@ else:
 
 
 class WorkingDirState(_WorkingDirState):
-    def _asdict(self):  # broken in old Python versions
-        rv = dict(zip(self._fields, self))
-        rv["clean"] = self.clean  # type: ignore[assignment]
-        return rv
-
     @property
     def clean(self):
         # type: () -> bool
