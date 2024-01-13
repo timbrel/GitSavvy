@@ -334,7 +334,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         # type: (WorkingDirState) -> str
         return (
             "\n    Your working directory is clean.\n"
-            if status.clean
+            if status.is_clean
             else ""
         )
 

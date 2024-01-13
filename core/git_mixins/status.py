@@ -34,7 +34,7 @@ class WorkingDirState(NamedTuple):
     merge_conflicts: List[FileStatus]
 
     @property
-    def clean(self):
+    def is_clean(self):
         # type: () -> bool
         return not (
             self.staged_files
