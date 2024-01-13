@@ -70,15 +70,14 @@ __all__ = (
     "GsLogGraphCursorListener",
 )
 
-MYPY = False
-if MYPY:
-    from typing import (
-        Callable, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple,
-        TypeVar, Union
-    )
-    from GitSavvy.core.runtime import HopperR
-    from ..git_mixins.branches import Branch
-    T = TypeVar('T')
+
+from typing import (
+    Callable, Dict, Generic, Iterable, Iterator, List, Literal, Optional, Set, Sequence, Tuple,
+    TypedDict, TypeVar, Union
+)
+from GitSavvy.core.runtime import HopperR
+from ..git_mixins.branches import Branch
+T = TypeVar('T')
 
 
 COMMIT_NODE_CHAR = "●"
@@ -2460,16 +2459,15 @@ class gs_log_graph_toggle_more_info(WindowCommand, GitCommand):
             self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
 
-if MYPY:
-    from typing import Literal, TypedDict
-    LineInfo = TypedDict('LineInfo', {
-        'commit': str,
-        'HEAD': str,
-        'branches': List[str],
-        'local_branches': List[str],
-        'tags': List[str],
-    }, total=False)
-    ListItems = Literal["branches", "local_branches", "tags"]
+class LineInfo(TypedDict, total=False):
+    commit: str
+    HEAD: str
+    branches: List[str]
+    local_branches: List[str]
+    tags: List[str]
+
+
+ListItems = Literal["branches", "local_branches", "tags"]
 
 
 def describe_graph_line(line, known_branches):
