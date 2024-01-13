@@ -30,37 +30,40 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Dict, Iterator, List, Literal, Optional, Union, TypedDict
-    from ..git_mixins.active_branch import Commit
-    from ..git_mixins.tags import TagDetails
+from typing import Dict, Iterator, List, Literal, Optional, Union, TypedDict
+from ..git_mixins.active_branch import Commit
+from ..git_mixins.tags import TagDetails
 
-    Loading = TypedDict("Loading", {"state": Literal["loading"]})
-    Erred = TypedDict("Erred", {"state": Literal["erred"], "message": str})
-    Succeeded = TypedDict("Succeeded", {
-        "state": Literal["succeeded"],
-        "tags": List[TagDetails]
-    })
-    FetchStateMachine = Union[
-        Loading, Erred, Succeeded
-    ]
 
-    TagsViewState = TypedDict(
-        "TagsViewState",
-        {
-            "git_root": str,
-            "long_status": str,
-            "local_tags": TagList,
-            "remotes": Dict[str, str],
-            "remote_tags": Dict[str, FetchStateMachine],
-            "recent_commits": List[Commit],
-            "max_items": Optional[int],
-            "show_remotes": bool,
-            "show_help": bool,
-        },
-        total=False
-    )
+class Loading(TypedDict):
+    state: Literal["loading"]
+
+
+class Erred(TypedDict):
+    state: Literal["erred"]
+    message: str
+
+
+class Succeeded(TypedDict):
+    state: Literal["succeeded"]
+    tags: List[TagDetails]
+
+
+FetchStateMachine = Union[
+    Loading, Erred, Succeeded
+]
+
+
+class TagsViewState(TypedDict, total=False):
+    git_root: str
+    long_status: str
+    local_tags: TagList
+    remotes: Dict[str, str]
+    remote_tags: Dict[str, FetchStateMachine]
+    recent_commits: List[Commit]
+    max_items: Optional[int]
+    show_remotes: bool
+    show_help: bool
 
 
 NO_LOCAL_TAGS_MESSAGE = "    Your repository has no tags."
