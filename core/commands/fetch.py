@@ -10,9 +10,7 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from GitSavvy.core.base_commands import Args, GsCommand, Kont
+from GitSavvy.core.base_commands import Args, GsCommand, Kont
 
 
 def ask_for_remote(cmd, args, done):

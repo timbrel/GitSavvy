@@ -13,10 +13,8 @@ from contextlib import contextmanager
 from .debug import StackMeter
 
 
-MYPY = False
-if MYPY:
-    from typing import Dict
-    from types import ModuleType
+from typing import Dict
+from types import ModuleType
 
 
 def reload_plugin(verbose=True, then=None):
@@ -219,13 +217,7 @@ def importing_fromlist_aggressively(modules):
         builtins.__import__ = orig___import__
 
 
-if MYPY:
-    _base = importlib.abc.MetaPathFinder
-else:
-    _base = object
-
-
-class FilterFinder(_base):
+class FilterFinder(importlib.abc.MetaPathFinder):
     def __init__(self, modules, verbose):
         self._modules = modules
         self._stack_meter = StackMeter()

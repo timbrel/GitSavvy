@@ -22,9 +22,7 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from GitSavvy.core.git_mixins.branches import Upstream
+from GitSavvy.core.git_mixins.branches import Upstream
 
 
 class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):

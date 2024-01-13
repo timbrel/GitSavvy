@@ -13,9 +13,7 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Dict, Iterator, List, Optional, Tuple, Union
+from typing import Dict, Iterator, List, Optional, Tuple, Union
 
 
 class CopyIntercepterForGraph(sublime_plugin.EventListener):

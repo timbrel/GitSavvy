@@ -6,9 +6,7 @@ from ...core.settings import GitSavvySettings
 from ...core.view import place_view
 
 
-MYPY = False
-if MYPY:
-    from typing import Callable, Mapping, Optional
+from typing import Callable, Mapping, Optional
 
 
 ##############

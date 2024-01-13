@@ -17,10 +17,8 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Iterable, Iterator, List, Optional, TypeVar
-    T = TypeVar("T")
+from typing import Iterable, Iterator, List, Optional, TypeVar
+T = TypeVar("T")
 
 
 LINE_DISTANCE_BETWEEN_EDITS = 2
