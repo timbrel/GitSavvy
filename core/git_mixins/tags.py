@@ -1,4 +1,3 @@
-from collections import namedtuple
 from distutils.version import LooseVersion
 from itertools import chain
 import re
@@ -7,26 +6,20 @@ from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base
 
 
-MYPY = False
-if MYPY:
-    from typing import Iterable, List, NamedTuple, Optional
-    TagDetails = NamedTuple("TagDetails", [
-        ("sha", str),
-        ("tag", str),
-        ("human_date", str),
-        ("relative_date", str)
-    ])
-    _TagList = NamedTuple("_TagList", [
-        ("regular", List[TagDetails]),
-        ("versions", List[TagDetails])],
-    )
-
-else:
-    TagDetails = namedtuple("TagDetails", ("sha", "tag", "human_date", "relative_date"))
-    _TagList = namedtuple("_TagList", ("regular", "versions"))
+from typing import Iterable, List, NamedTuple, Optional
 
 
-class TagList(_TagList):
+class TagDetails(NamedTuple):
+    sha: str
+    tag: str
+    human_date: str
+    relative_date: str
+
+
+class TagList(NamedTuple):
+    regular: List[TagDetails]
+    versions: List[TagDetails]
+
     @property
     def all(self):
         return chain(*self)

@@ -1,6 +1,5 @@
 from itertools import groupby, takewhile
 import os
-from collections import namedtuple
 from contextlib import contextmanager
 
 import sublime
@@ -36,22 +35,17 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Dict, Iterable, List, Literal, NamedTuple, Optional, Tuple
-    from ..types import LineNo, ColNo, Row
-    from GitSavvy.common.util.parse_diff import Hunk as InlineDiff_Hunk
+from typing import Dict, Iterable, List, Literal, NamedTuple, Optional, Tuple
+from ..types import LineNo, ColNo, Row
+from GitSavvy.common.util.parse_diff import Hunk as InlineDiff_Hunk
 
-    HunkReference = NamedTuple("HunkReference", [
-        ("section_start", Row),
-        ("section_end", Row),
-        ("hunk", InlineDiff_Hunk),
-        ("line_types", List[str]),
-        ("lines", List[str])  # sic! => "line_contents"
-    ])
 
-else:
-    HunkReference = namedtuple("HunkReference", "section_start section_end hunk line_types lines")
+class HunkReference(NamedTuple):
+    section_start: Row
+    section_end: Row
+    hunk: InlineDiff_Hunk
+    line_types: List[str]
+    lines: List[str]  # sic! => "line_contents"
 
 
 DECODE_ERROR_MESSAGE = (

@@ -72,8 +72,8 @@ __all__ = (
 
 
 from typing import (
-    Callable, Dict, Generic, Iterable, Iterator, List, Literal, Optional, Set, Sequence, Tuple,
-    TypedDict, TypeVar, Union
+    Callable, Deque, Dict, Generic, Iterable, Iterator, List, Literal, Optional, Set, Sequence, Tuple,
+    TypedDict, TypeVar, Union, TYPE_CHECKING
 )
 from GitSavvy.core.runtime import HopperR
 from ..git_mixins.branches import Branch
@@ -283,20 +283,24 @@ GIT_SUPPORTS_HUMAN_DATE_FORMAT = (2, 21, 0)
 FALLBACK_DATE_FORMAT = 'format:%Y-%m-%d %H:%M'
 
 
-MYPY = False
-if MYPY:
-    Ins = NamedTuple('Ins', [('idx', int), ('line', str)])
-    Del = NamedTuple('Del', [('start', int), ('end', int)])
-    Replace = NamedTuple('Replace', [('start', int), ('end', int), ('text', List[str])])
-else:
-    from collections import namedtuple
-    Ins = namedtuple('Ins', 'idx line')
-    Del = namedtuple('Del', 'start end')
-    Replace = namedtuple('Replace', 'start end text')
+class Ins(NamedTuple):
+    idx: int
+    line: str
+
+
+class Del(NamedTuple):
+    start: int
+    end: int
+
+
+class Replace(NamedTuple):
+    start: int
+    end: int
+    text: List[str]
 
 
 MAX_LOOK_AHEAD = 10000
-if MYPY:
+if TYPE_CHECKING:
     from enum import Enum
 
     class FlushT(Enum):
@@ -414,9 +418,8 @@ def apply_diff(a, diff):
     return a
 
 
-if MYPY:
-    ShouldAbort = Callable[[], bool]
-    Runners = Dict[sublime.BufferId, ShouldAbort]
+ShouldAbort = Callable[[], bool]
+Runners = Dict["sublime.BufferId", ShouldAbort]
 runners_lock = threading.Lock()
 REFRESH_RUNNERS = {}  # type: Runners
 
@@ -470,38 +473,33 @@ class Done(Exception):
     pass
 
 
-if MYPY:
-    class SimpleFiniteQueue(Generic[T]):
-        def consume(self, it: Iterable[T]) -> None: ...  # noqa: E704
-        def _put(self, item: T) -> None: ...  # noqa: E704
-        def get(self, block=True, timeout=float) -> T: ...  # noqa: E704
-else:
-    TheEnd = object()
+_TheEnd = object()
 
-    class SimpleFiniteQueue:
-        def __init__(self):
-            self._queue = deque()
-            self._count = threading.Semaphore(0)
 
-        def consume(self, it):
-            try:
-                for item in it:
-                    self._put(item)
-            finally:
-                self._put(TheEnd)
+class SimpleFiniteQueue(Generic[T]):
+    def __init__(self):
+        self._queue: Deque[T] = deque()
+        self._count = threading.Semaphore(0)
 
-        def _put(self, item):
-            self._queue.append(item)
-            self._count.release()
+    def consume(self, it: Iterable[T]) -> None:
+        try:
+            for item in it:
+                self._put(item)
+        finally:
+            self._put(_TheEnd)  # type: ignore[arg-type]
 
-        def get(self, block=True, timeout=None):
-            if not self._count.acquire(block, timeout):
-                raise Empty
-            val = self._queue.popleft()
-            if val is TheEnd:
-                raise Done
-            else:
-                return val
+    def _put(self, item: T) -> None:
+        self._queue.append(item)
+        self._count.release()
+
+    def get(self, block: bool = True, timeout: float = None) -> T:
+        if not self._count.acquire(block, timeout):
+            raise Empty
+        val = self._queue.popleft()
+        if val is _TheEnd:
+            raise Done
+        else:
+            return val
 
 
 class GraphLine(NamedTuple):

@@ -1,4 +1,3 @@
-from collections import namedtuple
 from functools import partial
 from itertools import chain, dropwhile, takewhile
 import re
@@ -7,26 +6,18 @@ import sublime
 from .fns import accumulate, flatten, pairwise, tail
 
 
-MYPY = False
-if MYPY:
-    from typing import Final, Iterator, List, NamedTuple, Optional, Tuple, Type, Union
+from typing import Final, Iterator, List, NamedTuple, Optional, Tuple, Type, Union, TYPE_CHECKING
+from .types import LineNo
+
+if TYPE_CHECKING:
     from typing_extensions import Self
-    from .types import LineNo
 
 
-if MYPY:
-    SplittedDiffBase = NamedTuple(
-        'SplittedDiffBase', [
-            ('commits', Tuple['CommitHeader', ...]),
-            ('headers', Tuple['FileHeader', ...]),
-            ('hunks', Tuple['Hunk', ...])
-        ]
-    )
-else:
-    SplittedDiffBase = namedtuple('SplittedDiff', 'commits headers hunks')
+class SplittedDiff(NamedTuple):
+    commits: Tuple['CommitHeader', ...]
+    headers: Tuple['FileHeader', ...]
+    hunks: Tuple['Hunk', ...]
 
-
-class SplittedDiff(SplittedDiffBase):
     @classmethod
     def from_string(cls, text, offset=0):
         # type: (str, int) -> SplittedDiff

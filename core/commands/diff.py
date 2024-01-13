@@ -3,7 +3,7 @@ Implements a special view to visualize and stage pieces of a project's
 current diff.
 """
 
-from collections import defaultdict, namedtuple
+from collections import defaultdict
 from contextlib import contextmanager
 from functools import partial
 from itertools import chain, count, groupby, takewhile
@@ -42,23 +42,23 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import (
-        Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set,
-        Tuple, TypeVar
-    )
-    from ..parse_diff import FileHeader, Hunk, HunkLine, TextRange
-    from ..types import LineNo, ColNo
-    from ..git_mixins.history import LogEntry
+from typing import (
+    Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set,
+    Tuple, TypeVar
+)
+from ..parse_diff import FileHeader, Hunk, HunkLine, TextRange
+from ..types import LineNo, ColNo
+from ..git_mixins.history import LogEntry
+T = TypeVar('T')
+Point = int
+LineCol = Tuple[LineNo, ColNo]
+_FileName = str
+Position_ = Tuple[Position, _FileName]
 
-    T = TypeVar('T')
-    Point = int
-    LineCol = Tuple[LineNo, ColNo]
-    HunkLineWithB = NamedTuple('HunkLineWithB', [('line', 'HunkLine'), ('b', LineNo)])
-    _Position = Tuple[Position, str]
-else:
-    HunkLineWithB = namedtuple('HunkLineWithB', 'line b')
+
+class HunkLineWithB(NamedTuple):
+    line: HunkLine
+    b: LineNo
 
 
 DIFF_TITLE = "DIFF: {}"
@@ -335,7 +335,7 @@ class gs_diff_refresh(TextCommand, GitCommand):
 
 
 def _draw(view, title, prelude, diff_text, match_position):
-    # type: (sublime.View, str, str, str, Optional[_Position]) -> None
+    # type: (sublime.View, str, str, str, Optional[Position_]) -> None
     was_empty = not view.find_by_selector("git-savvy.diff_view git-savvy.diff")
     navigated = False
     text = prelude + diff_text
@@ -542,12 +542,13 @@ class gs_diff_zoom(TextCommand):
         scroll_to_pt(self.view, cursor, offset)
 
 
-if MYPY:
-    LineId = NamedTuple("LineId", [("a", LineNo), ("b", LineNo)])
-    HunkLineWithLineNumbers = Tuple[HunkLine, LineId]
-    HunkLineWithLineId = Tuple[TextRange, LineId]
-else:
-    LineId = namedtuple("LineId", "a b")
+class LineId(NamedTuple):
+    a: LineNo
+    b: LineNo
+
+
+HunkLineWithLineNumbers = Tuple[HunkLine, LineId]
+HunkLineWithLineId = Tuple[TextRange, LineId]
 
 
 def compute_line_ids_for_hunk(hunk):
@@ -810,18 +811,11 @@ class gs_initiate_fixup_commit(TextCommand, LogHelperMixin):
         self.show_log_panel(action, preselected_commit=preselected_commit)
 
 
-MYPY = False
-if MYPY:
-    from typing import NamedTuple
-    JumpTo = NamedTuple('JumpTo', [
-        ('commit_hash', Optional[str]),
-        ('filename', str),
-        ('line', LineNo),
-        ('col', ColNo)
-    ])
-else:
-    from collections import namedtuple
-    JumpTo = namedtuple('JumpTo', 'commit_hash filename line col')
+class JumpTo(NamedTuple):
+    commit_hash: Optional[str]
+    filename: str
+    line: LineNo
+    col: ColNo
 
 
 class gs_diff_open_file_at_hunk(TextCommand, GitCommand):

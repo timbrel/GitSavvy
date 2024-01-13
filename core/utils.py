@@ -18,9 +18,11 @@ import sublime
 from . import runtime
 
 
-MYPY = False
-if MYPY:
-    from typing import Any, Callable, Dict, Iterator, Optional, Tuple, Type, TypeVar
+from typing import (
+    Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Sequence,
+    Tuple, Type, TypeVar, TYPE_CHECKING)
+
+if TYPE_CHECKING:
     from typing_extensions import ParamSpec
     P = ParamSpec('P')
     T = TypeVar('T')
@@ -244,16 +246,13 @@ def escape_text(text):
     return html.escape(text, quote=False).replace(" ", "&nbsp;")
 
 
-MYPY = False
-if MYPY:
-    from typing import Iterable, Sequence, NamedTuple
-    Action = NamedTuple("Action", [("description", str), ("action", Callable[[], None])])
-    ActionType = Tuple[str, Callable[[], None]]
-    QuickPanelItems = Iterable[str]
+class Action(NamedTuple):
+    description: str
+    action: Callable[[], None]
 
-else:
-    from collections import namedtuple
-    Action = namedtuple("Action", "description action")
+
+ActionType = Tuple[str, Callable[[], None]]
+QuickPanelItems = Iterable[str]
 
 
 def show_panel(

@@ -2,34 +2,27 @@
 Parse and process output from `git diff` command.
 """
 
-from collections import namedtuple
-
 from GitSavvy.core.parse_diff import HunkLine, SplittedDiff
 
-MYPY = False
-if MYPY:
-    from typing import Iterator, List, NamedTuple
-    from GitSavvy.core.types import LineNo
+from typing import Iterator, List, NamedTuple
+from GitSavvy.core.types import LineNo
 
-    Change = NamedTuple("Change", [
-        ("raw", str),
-        ("type", str),
-        ("head_pos", LineNo),
-        ("saved_pos", LineNo),
-        ("text", str)
-    ])
-    Hunk = NamedTuple("Hunk", [
-        ("raw_lines", List[str]),
-        ("changes", List[Change]),
-        ("head_start", LineNo),
-        ("head_length", int),
-        ("saved_start", LineNo),
-        ("saved_length", int)
-    ])
 
-else:
-    Hunk = namedtuple("Hunk", "raw_lines changes head_start head_length saved_start saved_length")
-    Change = namedtuple("Change", "raw type head_pos saved_pos text")
+class Change(NamedTuple):
+    raw: str
+    type: str
+    head_pos: LineNo
+    saved_pos: LineNo
+    text: str
+
+
+class Hunk(NamedTuple):
+    raw_lines: List[str]
+    changes: List[Change]
+    head_start: LineNo
+    head_length: int
+    saved_start: LineNo
+    saved_length: int
 
 
 def parse_diff(diff_str):
