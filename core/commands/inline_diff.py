@@ -34,6 +34,7 @@ __all__ = (
     "gs_inline_diff_navigate_hunk",
     "gs_inline_diff_undo",
     "GsInlineDiffFocusEventListener",
+    "SelectInlineDiffCommitCommand",
 )
 
 
@@ -131,7 +132,8 @@ class gs_inline_diff(WindowCommand, GitCommand):
     hunks or individual lines, and to navigate between hunks.
     """
 
-    def run(self, cached=None, match_current_position="<SENTINEL>"):
+    def run(self, cached=None, match_current_position="<SENTINEL>",
+            base_commit=None, target_commit=None):
         # type: (Optional[bool], object) -> None
         if match_current_position != "<SENTINEL>":
             print(
@@ -182,7 +184,9 @@ class gs_inline_diff(WindowCommand, GitCommand):
                 "file_path": file_path,
                 "syntax": syntax_file,
                 "cached": bool(cached),
-                "match_position": cur_pos
+                "match_position": cur_pos,
+                "base_commit": base_commit,
+                "target_commit": target_commit,
             })
 
     def open_from_diff_view(self, view):
@@ -1212,3 +1216,76 @@ class gs_inline_diff_undo(TextCommand, GitCommand):
             "match_position": cur_pos,
             "sync": True
         })
+
+class SelectInlineDiffCommitCommand(WindowCommand):
+    def _on_commits(self):
+        commit_text_list = self.git('log', '--format="%h %s"', '-n', str(self._last_n_commits)).strip().splitlines()
+        if not commit_text_list:
+            return self._on_cancel()
+        self._commit_desc_list = []
+        for txt in commit_text_list:
+            txt = txt.strip('"')
+            commit_desc = txt.split(' ', 1)
+            self._commit_desc_list.append(commit_desc)
+        self.window.show_quick_panel(self._commit_desc_list, self._on_select_commits)
+
+    def _on_select_commits(self, _id):
+        if _id == -1:
+            return self._on_cancel()
+        commit_desc = self._commit_desc_list[_id]
+        commit_id = commit_desc[0]
+        self._on_done(commit_id)
+
+    def _on_branches(self):
+        branches_text_list = self.git("branches").strip().splitlines()
+        if not branches_text_list:
+            return self._on_cancel()
+        self._branch_list = []
+        for txt in branches_text_list:
+            branch = txt.strip(' *')
+            self._branch_list.append(branch)
+        self.window.show_quick_panel(self._branch_list, self._on_select_branches)
+
+    def _on_select_branches(self, _id):
+        if _id == -1:
+            return self._on_cancel()
+        branch = self._branch_list[_id]
+        commit_id = self.git("rev-parse", "--short", branch).strip().splitlines()[0]
+        if not commit_id:
+            return self._on_cancel()
+        self._on_done(commit_id)
+
+    def _on_done(self, commit_id):
+        if not commit_id:
+            return self._on_cancel()
+        settings = self.view.settings()
+        base_commit = settings.get("git_savvy.inline_diff_view.base_commit")
+        self.window.run_command("gs_inline_diff", {
+            "cached": self._cached,
+            "base_commit": base_commit,
+            "target_commit": commit_id,
+        })
+
+    def _on_change(self, *args, **kwargs):
+        pass
+
+    def _on_cancel(self, *args, **kwargs):
+        pass
+
+    def _on_select_mode(self, _id):
+        if _id == -1:
+            return self.on_cancel()
+        elif _id == 0:
+            self.window.show_input_panel('commit id', '', self._on_done, self._on_change, self._on_cancel)
+            return
+        mode = self._modes[_id]
+        if mode == 'commits':
+            self._on_commits()
+        else: # mode == 'branches'
+            self._on_branches()
+
+    def run(self, cached=None, last_n_commits=20):
+        self._cached = cached
+        self._last_n_commits = last_n_commits
+        self._modes = ['[commit id]', 'branches', 'commits']
+        self.window.show_quick_panel(self._modes, self._on_select_mode)
