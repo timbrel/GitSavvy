@@ -1,11 +1,12 @@
 import os
+import re
 
 import sublime
-from sublime_plugin import TextCommand, WindowCommand
+from sublime_plugin import TextCommand
 
-from ..git_command import GitCommand
+from ..base_commands import GsTextCommand, GsWindowCommand
 from ..fns import filter_
-from ..runtime import enqueue_on_worker, run_as_text_command, text_command
+from ..runtime import enqueue_on_worker, run_as_text_command, text_command, throttled
 from ..utils import flash, focus_view
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
 from ...common import util
@@ -23,6 +24,7 @@ __all__ = (
     "gs_show_file_at_commit_open_commit",
     "gs_show_file_at_commit_open_file_on_working_dir",
     "gs_show_file_at_commit_open_graph_context",
+    "gs_show_file_at_commit_open_info_popup",
 )
 
 
@@ -41,10 +43,40 @@ def compute_identifier_for_view(view: sublime.View) -> Optional[Tuple]:
     ) if settings.get('git_savvy.show_file_at_commit_view') else None
 
 
-class gs_show_file_at_commit(WindowCommand, GitCommand):
+class gs_show_file_at_commit(GsWindowCommand):
 
-    def run(self, commit_hash: str, filepath: str,
+    def run(self, commit_hash: str = None, filepath: str = None,
             position: Optional[Position] = None, lang: Optional[str] = None) -> None:
+        fix_position = False
+        if not filepath:
+            view = self._current_view()
+            if not view:
+                raise RuntimeError("can't grab an active view.")
+
+            filepath = view.file_name()
+            if not filepath:
+                self.window.status_message("Not available for unsaved/unnamed files.")
+                return
+
+            if position is None:
+                position = capture_cur_position(view)
+                fix_position = position is not None
+
+            if lang is None:
+                lang = view.settings().get('syntax')
+
+        if not commit_hash:
+            commit_hash = self.recent_commit("HEAD", filepath)
+            if not commit_hash:
+                self.window.status_message("No older revision of this file found.")
+                return
+
+            if fix_position:
+                assert position
+                row, col, offset = position
+                line = self.find_matching_lineno(None, commit_hash, row + 1, filepath)
+                position = Position(line - 1, col, offset)
+
         this_id = (
             self.repo_path,
             filepath,
@@ -83,20 +115,26 @@ class gs_show_file_at_commit(WindowCommand, GitCommand):
         })
 
 
-class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
-    def run(self, edit: sublime.Edit, position: Position = None) -> None:
+class gs_show_file_at_commit_refresh(GsTextCommand):
+    def run(self, edit: sublime.Edit, position: Position = None, sync: bool = True) -> None:
         view = self.view
         settings = view.settings()
         file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
 
-        text = self.get_file_content_at_commit(file_path, commit_hash)
-        render(view, text, position)
-        view.reset_reference_document()
-        commit_details = self.commit_subject_and_date(commit_hash)
-        self.update_title(commit_details, file_path)
-        self.update_status_bar(commit_details)
-        enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
+        def program():
+            text = self.get_file_content_at_commit(file_path, commit_hash)
+            render(view, text, position)
+            view.reset_reference_document()
+            commit_details = self.commit_subject_and_date(commit_hash)
+            self.update_title(commit_details, file_path)
+            self.update_status_bar(commit_details)
+            enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
+
+        if sync:
+            program()
+        else:
+            enqueue_on_worker(program)
 
     def update_status_bar(self, commit_details: CommitInfo) -> None:
         view = self.view
@@ -157,7 +195,7 @@ def render(view: sublime.View, text: str, position: Optional[Position]) -> None:
         apply_position(view, *position)
 
 
-class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
+class gs_show_file_at_commit_open_previous_commit(GsTextCommand):
     def run(self, edit) -> None:
         view = self.view
 
@@ -179,12 +217,15 @@ class gs_show_file_at_commit_open_previous_commit(TextCommand, GitCommand):
             line = self.find_matching_lineno(commit_hash, previous_commit, row + 1, file_path)
             position = Position(line - 1, col, offset)
 
+        popup_was_visible = settings.get("git_savvy.show_file_at_commit.info_popup_visible")
         view.run_command("gs_show_file_at_commit_refresh", {
             "position": position
         })
+        if popup_was_visible:
+            view.run_command("gs_show_file_at_commit_open_info_popup")
 
 
-class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
+class gs_show_file_at_commit_open_next_commit(GsTextCommand):
     def run(self, edit) -> None:
         view = self.view
 
@@ -209,9 +250,12 @@ class gs_show_file_at_commit_open_next_commit(TextCommand, GitCommand):
             )
             position = Position(line - 1, col, offset)
 
+        popup_was_visible = settings.get("git_savvy.show_file_at_commit.info_popup_visible")
         view.run_command("gs_show_file_at_commit_refresh", {
             "position": position
         })
+        if popup_was_visible:
+            view.run_command("gs_show_file_at_commit_open_info_popup")
 
 
 def remember_next_commit_for(view: sublime.View, mapping: Dict[str, str]) -> None:
@@ -238,21 +282,65 @@ def pass_next_commits_info_along(view: Optional[sublime.View], to: sublime.View)
         to_settings.set("git_savvy.next_commits", store)
 
 
-class gs_show_current_file(LogMixin, WindowCommand, GitCommand):
+class gs_show_current_file(LogMixin, GsTextCommand):
     """
     Show a panel of commits of current file on current branch and
     then open the file at the selected commit.
     """
 
-    def run(self):
+    def run(self, edit: sublime.Edit) -> None:  # type: ignore[override]
+        if not self.file_path:
+            if not self.view.is_read_only() and not self.view.file_name():
+                flash(self.view, "Not for unsaved/unnamed files.")
+            else:
+                flash(self.view, "The view does not refer any file name.")
+            return
+        self.overlay_for_show_file_at_commit = bool(self.view.settings().get("git_savvy.show_file_at_commit_view"))
+        self.initial_commit = self.view.settings().get("git_savvy.show_file_at_commit_view.commit")
+        self.initial_position = capture_cur_position(self.view)
         super().run(file_path=self.file_path)
 
-    def do_action(self, commit_hash, **kwargs):
-        view = self.window.active_view()
-        if not view:
-            print("RuntimeError: Window has no active view")
+    def on_done(self, commit, **kwargs):
+        if not self.overlay_for_show_file_at_commit:
+            return super().on_done(commit, **kwargs)
+
+        if commit:
+            return  # nothing further to do as we already updated `on_highlight`
+
+        view = self.view
+        view.settings().set("git_savvy.show_file_at_commit_view.commit", self.initial_commit)
+        position = self.initial_position
+        view.run_command("gs_show_file_at_commit_refresh", {
+            "position": position
+        })
+
+    def on_highlight(self, commit, file_path=None):
+        if not self.overlay_for_show_file_at_commit:
+            super().on_highlight(commit, file_path)
             return
 
+        if not commit:
+            return
+
+        sublime.set_timeout_async(throttled(self._on_highlight, commit), 10)
+
+    def _on_highlight(self, commit):
+        view = self.view
+        previous_commit = view.settings().get("git_savvy.show_file_at_commit_view.commit")
+        view.settings().set("git_savvy.show_file_at_commit_view.commit", commit)
+        position = capture_cur_position(view)
+        if position is not None:
+            row, col, offset = position
+            line = self.find_matching_lineno(previous_commit, commit, row + 1)
+            position = Position(line - 1, col, offset)
+
+        view.run_command("gs_show_file_at_commit_refresh", {
+            "position": position,
+            "sync": False,
+        })
+
+    def do_action(self, commit_hash, **kwargs):
+        view = self.view
         position = capture_cur_position(view)
         if position is not None:
             row, col, offset = position
@@ -265,6 +353,14 @@ class gs_show_current_file(LogMixin, WindowCommand, GitCommand):
             "position": position,
             "lang": view.settings().get('syntax')
         })
+
+    def selected_index(self, commit_hash):
+        if not self.overlay_for_show_file_at_commit:
+            return True
+
+        view = self.view
+        shown_hash = view.settings().get("git_savvy.show_file_at_commit_view.commit")
+        return commit_hash == shown_hash
 
 
 class gs_show_file_at_commit_open_commit(TextCommand):
@@ -280,7 +376,7 @@ class gs_show_file_at_commit_open_commit(TextCommand):
         window.run_command("gs_show_commit", {"commit_hash": commit_hash})
 
 
-class gs_show_file_at_commit_open_file_on_working_dir(TextCommand, GitCommand):
+class gs_show_file_at_commit_open_file_on_working_dir(GsTextCommand):
     def run(self, edit) -> None:
         window = self.view.window()
         if not window:
@@ -301,7 +397,7 @@ class gs_show_file_at_commit_open_file_on_working_dir(TextCommand, GitCommand):
         )
 
 
-class gs_show_file_at_commit_open_graph_context(TextCommand, GitCommand):
+class gs_show_file_at_commit_open_graph_context(GsTextCommand):
     def run(self, edit) -> None:
         window = self.view.window()
         if not window:
@@ -315,3 +411,41 @@ class gs_show_file_at_commit_open_graph_context(TextCommand, GitCommand):
             "all": True,
             "follow": self.get_short_hash(commit_hash),
         })
+
+
+class gs_show_file_at_commit_open_info_popup(GsTextCommand):
+    def run(self, edit):
+        # type: (...) -> None
+        settings = self.view.settings()
+        commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
+        show_patch = self.savvy_settings.get("show_full_commit_info")
+        show_diffstat = self.savvy_settings.get("show_diffstat")
+        text = self.read_commit(commit_hash, None, show_diffstat, show_patch)
+
+        prelude = re.split(r"^diff", text, 1, re.M)[0].rstrip()
+        content = format_as_html(prelude)
+        width, _ = self.view.viewport_extent()
+        visible_region = self.view.visible_region()
+
+        self.view.show_popup(
+            content,
+            max_width=width,
+            max_height=450,
+            location=visible_region.begin(),
+            on_hide=lambda: settings.set("git_savvy.show_file_at_commit.info_popup_visible", False)
+        )
+        settings.set("git_savvy.show_file_at_commit.info_popup_visible", True)
+
+
+def format_as_html(
+    content: str,
+    *,
+    syntax: str = "show_commit",
+    panel_name: str = "gs_format_helper",
+) -> str:
+    panel = sublime.active_window().create_output_panel(panel_name, unlisted=True)
+    if not syntax.endswith(".sublime-syntax"):
+        syntax = f"Packages/GitSavvy/syntax/{syntax}.sublime-syntax"
+    panel.set_syntax_file(syntax)
+    replace_view_content(panel, content)
+    return panel.export_to_html(minihtml=True)

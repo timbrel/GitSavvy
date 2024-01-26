@@ -946,7 +946,7 @@ class gs_inline_diff_previous_commit(TextCommand, GitCommand):
         settings = view.settings()
         file_path = settings.get("git_savvy.file_path")
         if is_interactive_diff(view):
-            base_commit = self.previous_commit(None, file_path)
+            base_commit = self.recent_commit("HEAD", file_path)
             if not base_commit:
                 flash(view, "No historical version of that file found.")
                 return

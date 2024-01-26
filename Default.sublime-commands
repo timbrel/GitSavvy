@@ -336,6 +336,10 @@
         "command": "gs_revert_skip"
     },
     {
+        "caption": "git: show recent revision of current file",
+        "command": "gs_show_file_at_commit"
+    },
+    {
         "caption": "git: show current file at commit",
         "command": "gs_show_current_file"
     },

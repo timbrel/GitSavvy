@@ -1143,6 +1143,31 @@
         ]
     },
     {
+        "keys": ["i"],
+        "command": "gs_show_file_at_commit_open_info_popup",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_file_at_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["i"],
+        "command": "hide_popup",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_file_at_commit_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.show_file_at_commit.info_popup_visible" }
+        ]
+    },
+    {
+        "keys": ["l"],
+        "command": "gs_show_current_file",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_file_at_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["?"],
         "command": "gs_show_file_at_commit_help_tooltip",
         "context": [
