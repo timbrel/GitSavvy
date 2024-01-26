@@ -19,11 +19,9 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Callable, TypeVar
-    from GitSavvy.core.base_commands import Args, Kont
-    T = TypeVar("T")
+from typing import Callable, TypeVar
+from GitSavvy.core.base_commands import Args, Kont
+T = TypeVar("T")
 
 
 NEW_BRANCH_PROMPT = "Branch name:"

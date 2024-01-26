@@ -5,9 +5,7 @@ from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_new_thread
 
 
-MYPY = False
-if MYPY:
-    from typing import List
+from typing import List
 
 
 INIT_REQUIRED_MSG = "Please run `git: flow init` first."

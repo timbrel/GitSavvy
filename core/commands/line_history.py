@@ -26,12 +26,9 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import List, Tuple
-    from ..types import LineNo
-
-    LineRange = Tuple[LineNo, LineNo]
+from typing import List, Tuple
+from ..types import LineNo
+LineRange = Tuple[LineNo, LineNo]
 
 
 class gs_line_history(TextCommand, GitCommand):

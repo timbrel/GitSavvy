@@ -12,9 +12,7 @@ import sublime
 from . import util
 
 
-MYPY = False
-if MYPY:
-    from typing import Sequence
+from typing import Sequence
 
 
 STYLES_HEADER = """

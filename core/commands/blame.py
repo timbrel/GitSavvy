@@ -26,9 +26,7 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import DefaultDict, List, Iterator, Optional
+from typing import DefaultDict, List, Iterator, Optional
 
 
 BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))

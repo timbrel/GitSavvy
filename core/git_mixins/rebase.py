@@ -4,9 +4,7 @@ from GitSavvy.core.fns import filter_
 from GitSavvy.core.git_command import mixin_base
 
 
-MYPY = False
-if MYPY:
-    from typing import List, Optional
+from typing import List, Optional
 
 
 EXTRACT_BRANCH_NAME = re.compile(r'^[^[]+\[(.*?)(?:[\^\~]+[\d]*)*\]')

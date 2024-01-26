@@ -1,18 +1,16 @@
-from collections import namedtuple
 import re
 
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core import store
 
 
-MYPY = False
-if MYPY:
-    from typing import List, NamedTuple, Union
-    Stash = NamedTuple("Stash", [("id", str), ("description", str)])
-    StashId = Union[str, int]
+from typing import List, NamedTuple, Union
+StashId = Union[str, int]
 
-else:
-    Stash = namedtuple("Stash", ("id", "description"))
+
+class Stash(NamedTuple):
+    id: str
+    description: str
 
 
 class StashMixin(mixin_base):

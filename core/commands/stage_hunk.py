@@ -1,4 +1,3 @@
-from collections import namedtuple
 from itertools import chain
 
 import sublime
@@ -15,23 +14,17 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Iterator, List, NamedTuple, Optional
-    from ..parse_diff import Hunk as HunkText
-    from ..types import LineNo
+from typing import Iterator, List, NamedTuple, Optional
+from ..parse_diff import Hunk as HunkText
+from ..types import LineNo
 
 
-if MYPY:
-    Hunk = NamedTuple("Hunk", [
-        ("a_start", LineNo),
-        ("a_length", int),
-        ("b_start", LineNo),
-        ("b_length", int),
-        ("content", str)
-    ])
-else:
-    Hunk = namedtuple("Hunk", "a_start a_length b_start b_length content")
+class Hunk(NamedTuple):
+    a_start: LineNo
+    a_length: int
+    b_start: LineNo
+    b_length: int
+    content: str
 
 
 class gs_stage_hunk(TextCommand, GitCommand):

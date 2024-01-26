@@ -6,9 +6,7 @@ from ..utils import flash
 from GitSavvy.core.view import show_region
 
 
-MYPY = False
-if MYPY:
-    from typing import Optional, Sequence
+from typing import Optional, Sequence
 
 
 class GsNavigate(TextCommand, GitCommand):

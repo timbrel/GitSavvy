@@ -30,10 +30,8 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Dict, List, Optional, Tuple, Union
-    from ..git_mixins.history import LogEntry
+from typing import Dict, List, Optional, Tuple, Union
+from ..git_mixins.history import LogEntry
 
 
 COMMIT_HELP_TEXT_EXTRA = """##

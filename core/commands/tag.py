@@ -13,17 +13,15 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Literal, Optional
-    ReleaseTypes = Literal[
-        "patch",
-        "minor",
-        "major",
-        "prerelease",
-        "prepatch",
-        "preminor",
-        "premajor"]
+from typing import Literal, Optional
+ReleaseTypes = Literal[
+    "patch",
+    "minor",
+    "major",
+    "prerelease",
+    "prepatch",
+    "preminor",
+    "premajor"]
 
 
 RELEASE_REGEXP = re.compile(r"^([0-9A-Za-z-]*[A-Za-z-])?([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-\.]*?)?([0-9]+))?$")

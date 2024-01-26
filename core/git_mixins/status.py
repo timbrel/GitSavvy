@@ -1,4 +1,3 @@
-from collections import namedtuple
 from itertools import dropwhile
 import os
 import re
@@ -8,64 +7,34 @@ from GitSavvy.core import store
 from GitSavvy.core.fns import tail
 
 
-MYPY = False
-if MYPY:
-    from typing import Set
-    from GitSavvy.core.git_command import (
-        HistoryMixin,
-        _GitCommand,
-    )
-
-    class mixin_base(
-        HistoryMixin,
-        _GitCommand,
-    ):
-        pass
-
-else:
-    mixin_base = object
+from typing import List, NamedTuple, Optional, Set, Tuple, TYPE_CHECKING
 
 
-if MYPY:
-    from typing import List, NamedTuple, Optional, Tuple
-    HeadState = NamedTuple("HeadState", [
-        ("detached", bool),
-        ("branch", Optional[str]),
-        ("remote", Optional[str]),
-        ("clean", bool),
-        ("ahead", Optional[str]),
-        ("behind", Optional[str]),
-        ("gone", bool),
-    ])
-    FileStatus = NamedTuple("FileStatus", [
-        ("path", str),
-        ("path_alt", Optional[str]),
-        ("index_status", str),
-        ("working_status", Optional[str]),
-    ])
-    _WorkingDirState = NamedTuple("_WorkingDirState", [
-        ("staged_files", List[FileStatus]),
-        ("unstaged_files", List[FileStatus]),
-        ("untracked_files", List[FileStatus]),
-        ("merge_conflicts", List[FileStatus]),
-    ])
-
-else:
-    HeadState = namedtuple("HeadState", "detached branch remote clean ahead behind gone")
-    FileStatus = namedtuple("FileStatus", "path path_alt index_status working_status")
-    _WorkingDirState = namedtuple(
-        "_WorkingDirState", "staged_files unstaged_files untracked_files merge_conflicts "
-    )
+class HeadState(NamedTuple):
+    detached: bool
+    branch: Optional[str]
+    remote: Optional[str]
+    clean: bool
+    ahead: Optional[str]
+    behind: Optional[str]
+    gone: bool
 
 
-class WorkingDirState(_WorkingDirState):
-    def _asdict(self):  # broken in old Python versions
-        rv = dict(zip(self._fields, self))
-        rv["clean"] = self.clean  # type: ignore[assignment]
-        return rv
+class FileStatus(NamedTuple):
+    path: str
+    path_alt: Optional[str]
+    index_status: str
+    working_status: Optional[str]
+
+
+class WorkingDirState(NamedTuple):
+    staged_files: List[FileStatus]
+    unstaged_files: List[FileStatus]
+    untracked_files: List[FileStatus]
+    merge_conflicts: List[FileStatus]
 
     @property
-    def clean(self):
+    def is_clean(self):
         # type: () -> bool
         return not (
             self.staged_files
@@ -87,6 +56,13 @@ MERGE_CONFLICT_PORCELAIN_STATUSES = (
     ("A", "U"),  # unmerged, added by us
     ("U", "A"),  # unmerged, added by them
 )
+
+
+if TYPE_CHECKING:
+    from GitSavvy.core.git_command import (HistoryMixin, _GitCommand)
+    class mixin_base(HistoryMixin, _GitCommand): pass  # noqa: E701
+else:
+    mixin_base = object
 
 
 class StatusMixin(mixin_base):

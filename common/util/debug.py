@@ -5,10 +5,8 @@ import threading
 from GitSavvy.core.fns import filter_
 
 
-MYPY = False
-if MYPY:
-    from typing import Dict, List, Optional, Sequence, Union
-    LogEntry = Dict
+from typing import Dict, List, Optional, Sequence, Union
+LogEntry = Dict
 
 
 # Preserve state of `enabled` during hot-reloads

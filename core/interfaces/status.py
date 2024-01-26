@@ -39,28 +39,22 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Iterable, Iterator, List, Optional, TypedDict
-    from ..git_mixins.active_branch import Commit
-    from ..git_mixins.branches import Branch
-    from ..git_mixins.stash import Stash
-    from ..git_mixins.status import HeadState, WorkingDirState
+from typing import Iterable, Iterator, List, Optional, TypedDict
+from ..git_mixins.active_branch import Commit
+from ..git_mixins.branches import Branch
+from ..git_mixins.stash import Stash
+from ..git_mixins.status import HeadState, WorkingDirState
 
-    StatusViewState = TypedDict(
-        "StatusViewState",
-        {
-            "status": WorkingDirState,
-            "long_status": str,
-            "git_root": str,
-            "show_help": bool,
-            "head": HeadState,
-            "branches": List[Branch],
-            "recent_commits": List[Commit],
-            "stashes": List[Stash],
-        },
-        total=False
-    )
+
+class StatusViewState(TypedDict, total=False):
+    status: WorkingDirState
+    long_status: str
+    git_root: str
+    show_help: bool
+    head: HeadState
+    branches: List[Branch]
+    recent_commits: List[Commit]
+    stashes: List[Stash]
 
 
 # Expected
@@ -334,7 +328,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         # type: (WorkingDirState) -> str
         return (
             "\n    Your working directory is clean.\n"
-            if status.clean
+            if status.is_clean
             else ""
         )
 

@@ -6,11 +6,9 @@ from GitSavvy.core.utils import yes_no_switch
 from GitSavvy.core import store
 
 
-MYPY = False
-if MYPY:
-    from typing import Dict
-    name = str
-    url = str
+from typing import Dict
+name = str
+url = str
 
 
 class RemotesMixin(BranchesMixin, _GitCommand):

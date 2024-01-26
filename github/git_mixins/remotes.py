@@ -1,12 +1,11 @@
 from GitSavvy.core.git_mixins.branches import Upstream
 
-MYPY = False
-if MYPY:
-    from typing import Dict, Optional
-    from GitSavvy.core.git_command import GitCommand
-    name = str
-    url = str
+from typing import Dict, Optional, TYPE_CHECKING
+name = str
+url = str
 
+if TYPE_CHECKING:
+    from GitSavvy.core.git_command import GitCommand
     base = GitCommand
 else:
     base = object

@@ -11,13 +11,10 @@ from ..utils import eat_but_log_errors, line_indentation
 from ..runtime import cooperative_thread_hopper, AWAIT_WORKER
 
 
-MYPY = False
-if MYPY:
-    from typing import Callable, List, Tuple, Sequence
-    from ..parse_diff import HunkLine
-    from ..runtime import HopperR
-
-    Chunk = List[HunkLine]
+from typing import Callable, List, Tuple, Sequence
+from ..parse_diff import HunkLine
+from ..runtime import HopperR
+Chunk = List[HunkLine]
 
 
 MAX_BLOCK_TIME = 17

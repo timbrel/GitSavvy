@@ -6,42 +6,38 @@ import uuid
 from .utils import eat_but_log_errors
 
 
-MYPY = False
-if MYPY:
-    from typing import (
-        AbstractSet, Callable, DefaultDict, Deque, Dict, List, Optional, Tuple, TypedDict
-    )
+from typing import (
+    AbstractSet, Callable, DefaultDict, Deque, Dict, List, Optional, Tuple, TypedDict,
+    TYPE_CHECKING
+)
+
+if TYPE_CHECKING:
     from GitSavvy.core.git_mixins.active_branch import Commit
     from GitSavvy.core.git_mixins.branches import Branch
     from GitSavvy.core.git_mixins.stash import Stash
-    from GitSavvy.core.git_mixins.status import HeadState, WorkingDirState
     from GitSavvy.core.git_mixins.tags import TagList
+    from GitSavvy.core.git_mixins.status import HeadState, WorkingDirState
 
+    class RepoStore(TypedDict, total=False):
+        status: WorkingDirState
+        head: HeadState
+        long_status: str
+        short_status: str
+        branches: List[Branch]
+        remotes: Dict[str, str]
+        local_tags: TagList
+        last_branches: Deque[Optional[str]]
+        last_branch_used_to_pull_from: Optional[str]
+        last_branch_used_to_rebase_from: Optional[str]
+        last_remote_used: Optional[str]
+        last_remote_used_for_push: Optional[str]
+        last_remote_used_with_option_all: Optional[str]
+        last_reset_mode_used: Optional[str]
+        short_hash_length: int
+        stashes: List[Stash]
+        recent_commits: List[Commit]
+        descriptions: Dict[str, str]
     RepoPath = str
-    RepoStore = TypedDict(
-        'RepoStore',
-        {
-            "status": WorkingDirState,
-            "head": HeadState,
-            "long_status": str,
-            "short_status": str,
-            "branches": List[Branch],
-            "remotes": Dict[str, str],
-            "local_tags": TagList,
-            "last_branches": Deque[Optional[str]],
-            "last_branch_used_to_pull_from": Optional[str],
-            "last_branch_used_to_rebase_from": Optional[str],
-            "last_remote_used": Optional[str],
-            "last_remote_used_for_push": Optional[str],
-            "last_remote_used_with_option_all": Optional[str],
-            "last_reset_mode_used": Optional[str],
-            "short_hash_length": int,
-            "stashes": List[Stash],
-            "recent_commits": List[Commit],
-            "descriptions": Dict[str, str],
-        },
-        total=False
-    )
     SubscriberKey = str
     Keys = AbstractSet[str]
 

@@ -1,4 +1,3 @@
-from collections import namedtuple
 from contextlib import contextmanager, ExitStack
 from functools import lru_cache
 
@@ -7,17 +6,16 @@ import sublime
 from .runtime import text_command
 
 
-MYPY = False
-if MYPY:
-    from typing import Callable, ContextManager, Iterator, List, NamedTuple, Optional, TypeVar
-    WrapperFn = Callable[[sublime.View], ContextManager[None]]
-    T_float = TypeVar("T_float", int, float)
+from typing import Callable, ContextManager, Iterator, List, NamedTuple, Optional, TypeVar
+from .types import Row, Col
+WrapperFn = Callable[[sublime.View], ContextManager[None]]
+T_float = TypeVar("T_float", int, float)
 
-    from .types import Row, Col
-    Position = NamedTuple("Position", [("row", Row), ("col", Col), ("offset", Optional[float])])
 
-else:
-    Position = namedtuple("Position", "row col offset")
+class Position(NamedTuple):
+    row: Row
+    col: Col
+    offset: Optional[float]
 
 
 def find_by_selector(view, selector):

@@ -32,7 +32,6 @@ from typing import (
     Callable, Deque, Dict, IO, Iterable, Iterator, List, Optional, Sequence,
     Tuple, TypeVar, Union)
 T = TypeVar("T")
-MYPY = False
 
 
 def map_(it: Iterable[T], k: Callable[[T], object]):
@@ -723,10 +722,7 @@ class _GitCommand(SettingsMixin):
         return global_pre_flags + [git_cmd] + global_flags + args
 
 
-if MYPY:
-    mixin_base = _GitCommand
-else:
-    mixin_base = object
+mixin_base = _GitCommand
 
 
 from .git_mixins.status import StatusMixin  # noqa: E402

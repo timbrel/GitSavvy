@@ -15,11 +15,9 @@ __all__ = (
     "gs_show_commit_info",
 )
 
-MYPY = False
-if MYPY:
-    from typing import DefaultDict, Dict, Iterator, List, Tuple
-    ViewportPosition = Tuple[float, float]
-    Selection = List[sublime.Region]
+from typing import DefaultDict, Dict, Iterator, List, Tuple
+ViewportPosition = Tuple[float, float]
+Selection = List[sublime.Region]
 
 
 storage = defaultdict(dict)  # type: DefaultDict[sublime.View, Dict[str, Tuple[ViewportPosition, Selection]]]

@@ -5,9 +5,7 @@ from ..view import replace_view_content
 from GitSavvy.core.base_commands import GsWindowCommand
 
 
-MYPY = False
-if MYPY:
-    from typing import Iterable, List
+from typing import Iterable, List
 
 
 REF_PROMPT = "Ref or commit hash:"

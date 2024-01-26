@@ -1,4 +1,3 @@
-from collections import namedtuple
 from contextlib import contextmanager
 from functools import lru_cache, partial
 from itertools import chain
@@ -37,31 +36,26 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import (
-        Callable,
-        Dict,
-        List,
-        Iterator,
-        NamedTuple,
-        Optional,
-        Tuple,
-        TypeVar,
-    )
-    from GitSavvy.core.base_commands import GsCommand, Args, Kont
-    _T = TypeVar("_T")
-
-    Commit = NamedTuple("Commit", [
-        ("commit_hash", str),
-        ("commit_message", str)
-    ])
-    QuickAction = Callable[[str], str]
-
-else:
-    Commit = namedtuple("Commit", "commit_hash commit_message")
+from typing import (
+    Callable,
+    Dict,
+    List,
+    Iterator,
+    NamedTuple,
+    Optional,
+    Tuple,
+    TypeVar,
+)
+from GitSavvy.core.base_commands import GsCommand, Args, Kont
+_T = TypeVar("_T")
 
 
+class Commit(NamedTuple):
+    commit_hash: str
+    commit_message: str
+
+
+QuickAction = Callable[[str], str]
 VERSION_WITH_UPDATE_REFS = (2, 38, 0)
 
 

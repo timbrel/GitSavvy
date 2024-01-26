@@ -4,28 +4,25 @@ import sublime
 
 from GitSavvy.core.utils import Cache
 
-MYPY = False
-if MYPY:
-    from typing import (
-        Callable,
-        Dict,
-        Final,
-        Iterator,
-        List,
-        Literal,
-        MutableMapping,
-        Tuple,
-        TypeVar
-    )
+from typing import (
+    Callable,
+    Dict,
+    Final,
+    Iterator,
+    List,
+    Literal,
+    MutableMapping,
+    Tuple,
+    TypeVar
+)
 
-    T = TypeVar('T')
-
-    Point = int
-    RowCol = Tuple[int, int]
-    View = sublime.View
-    Region = sublime.Region
-    NextFn = Callable[['Char'], Iterator['Char']]
-    Direction = Literal["down", "up"]
+T = TypeVar('T')
+Point = int
+RowCol = Tuple[int, int]
+View = sublime.View
+Region = sublime.Region
+NextFn = Callable[['Char'], Iterator['Char']]
+Direction = Literal["down", "up"]
 
 
 COMMIT_NODE_CHAR = '●'

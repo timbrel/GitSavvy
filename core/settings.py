@@ -10,9 +10,7 @@ __all__ = (
     "ProjectFileChanges",
 )
 
-MYPY = False
-if MYPY:
-    from typing import Dict
+from typing import Dict
 
 
 class GitSavvySettings:
