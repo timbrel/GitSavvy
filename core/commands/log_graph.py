@@ -80,6 +80,7 @@ from ..git_mixins.branches import Branch
 T = TypeVar('T')
 
 
+QUICK_PANEL_SUPPORTS_WANT_EVENT = int(sublime.version()) >= 4096
 COMMIT_NODE_CHAR = "●"
 COMMIT_NODE_CHAR_OPTIONS = "●*"
 GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
@@ -1727,7 +1728,7 @@ def next_symbol_upwards(view, symbols, dot):
 
 
 class gs_log_graph_edit_files(TextCommand, GitCommand):
-    def run(self, edit):
+    def run(self, edit, selected_index=-1):
         view = self.view
         settings = view.settings()
         window = view.window()
@@ -1753,7 +1754,7 @@ class gs_log_graph_edit_files(TextCommand, GitCommand):
             )
         )
 
-        def on_done(idx):
+        def on_done(idx, event={}):
             if idx < 0:
                 return
 
@@ -1771,11 +1772,18 @@ class gs_log_graph_edit_files(TextCommand, GitCommand):
                 settings.set("git_savvy.log_graph_view.filters", "")
                 settings.set("git_savvy.log_graph_view.filter_by_author", "")
             view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": bool(next_paths)})
+            if event.get("modifier_keys", {}).get("primary"):
+                view.run_command("gs_log_graph_edit_files", {
+                    "selected_index": max(0, idx - 1) if unselect else next_paths.index(path)
+                })
 
         window.show_quick_panel(
             items,
             on_done,
-            flags=sublime.MONOSPACE_FONT,
+            flags=sublime.MONOSPACE_FONT | (
+                sublime.WANT_EVENT if QUICK_PANEL_SUPPORTS_WANT_EVENT else 0
+            ),
+            selected_index=selected_index
         )
 
     @lru_cache(1)
