@@ -1,14 +1,15 @@
-import email.utils
 import os
 
 import sublime
 from sublime_plugin import TextCommand, WindowCommand
 
 from ..git_command import GitCommand
+from ..fns import filter_
 from ..runtime import enqueue_on_worker, run_as_text_command, text_command
 from ..utils import flash, focus_view
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
 from ...common import util
+from GitSavvy.core.git_mixins.history import CommitInfo
 
 from .log import LogMixin
 
@@ -26,6 +27,7 @@ __all__ = (
 
 
 from typing import Dict, Optional, Tuple
+
 
 SHOW_COMMIT_TITLE = "FILE: {}, {}"
 
@@ -91,20 +93,21 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         text = self.get_file_content_at_commit(file_path, commit_hash)
         render(view, text, position)
         view.reset_reference_document()
-        self.update_title(commit_hash, file_path)
-        self.update_status_bar(commit_hash)
+        commit_details = self.commit_subject_and_date(commit_hash)
+        self.update_title(commit_details, file_path)
+        self.update_status_bar(commit_details)
         enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
 
-    def update_status_bar(self, commit_hash: str) -> None:
-        short_hash = self.get_short_hash(commit_hash)
-        subject, date = self.commit_subject_and_date(commit_hash)
-        message = "On commit {}{}{}".format(short_hash, subject, date)
-
+    def update_status_bar(self, commit_details: CommitInfo) -> None:
         view = self.view
         settings = view.settings()
         window = view.window()
         if not window:
             return
+        message = "On commit {}{}{}".format(
+            commit_details.short_hash,
+            f": {commit_details.subject}" if commit_details.subject else "",
+            f" ({commit_details.date})" if commit_details.date else "")
 
         # Status messages are only temporary shown and in this case
         # the roundabout 4 seconds just aren't enough. Loop here to
@@ -112,7 +115,7 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
         def sink(n=0):
             if (
                 view != window.active_view()
-                or commit_hash != settings.get("git_savvy.show_file_at_commit_view.commit")
+                or commit_details.commit_hash != settings.get("git_savvy.show_file_at_commit_view.commit")
             ):
                 return
 
@@ -122,31 +125,18 @@ class gs_show_file_at_commit_refresh(TextCommand, GitCommand):
 
         sink()
 
-    def commit_subject_and_date(self, commit_hash: str) -> Tuple[str, str]:
-        # call with the same settings as gs_show_commit to either use or
-        # warm up the cache
-        show_diffstat = self.savvy_settings.get("show_diffstat")
-        patch = self.read_commit(commit_hash, show_diffstat=show_diffstat)
-
-        date, subject = "", ""
-        for line in patch.splitlines():
-            # CommitDate: Tue Dec 20 18:21:40 2022 +0100
-            if line.startswith("CommitDate: ") and (parsed_date := email.utils.parsedate(line[12:])):
-                date_ = "-".join(map(str, parsed_date[:3]))
-                date = " ({})".format(date_)
-            elif line.startswith("    "):
-                subject_ = line.lstrip()
-                subject = ": {}".format(subject_)
-                break
-        return subject, date
-
     def update_reference_document(self, commit_hash: str, file_path: str) -> None:
         self.view.set_reference_document(self.previous_file_version(commit_hash, file_path))
 
-    def update_title(self, commit_hash: str, file_path: str) -> None:
+    def update_title(self, commit_details: CommitInfo, file_path: str) -> None:
+        details = ", ".join(filter_((commit_details.subject, commit_details.date)))
+        message = "{}{}".format(
+            commit_details.short_hash,
+            f" {details}" if details else ""
+        )
         title = SHOW_COMMIT_TITLE.format(
             os.path.basename(file_path),
-            self.get_short_hash(commit_hash),
+            message
         )
         self.view.set_name(title)
 

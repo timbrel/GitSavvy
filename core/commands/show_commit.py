@@ -107,20 +107,29 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
         commit_hash = settings.get("git_savvy.show_commit_view.commit")
         ignore_whitespace = settings.get("git_savvy.show_commit_view.ignore_whitespace")
         show_diffstat = settings.get("git_savvy.show_commit_view.show_diffstat")
-        title = SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash))
         content = self.read_commit(
             commit_hash,
             show_diffstat=show_diffstat,
             ignore_whitespace=ignore_whitespace
         )
-        view.set_name(title)
         replace_view_content(view, content)
+        commit_details = self.commit_subject_and_date_from_patch(content)
+        self.update_title(commit_details)
         show_commit_info.restore_view_state(view, commit_hash)
         intra_line_colorizer.annotate_intra_line_differences(view)
         if SUBLIME_SUPPORTS_REGION_ANNOTATIONS:
             url = url_cache.get(commit_hash)
             self.update_annotation_link(url)
             enqueue_on_worker(self.annotate_with_github_link, commit_hash)
+
+    def update_title(self, commit_details) -> None:
+        details = ", ".join(filter_((commit_details.subject, commit_details.date)))
+        message = "{}{}".format(
+            commit_details.short_hash,
+            f" {details}" if details else ""
+        )
+        title = SHOW_COMMIT_TITLE.format(message)
+        self.view.set_name(title)
 
     def annotate_with_github_link(self, commit):
         # type: (str) -> None

@@ -1,7 +1,8 @@
+import email.utils
+
 from .. import store
 from ..exceptions import GitSavvyError
 from ...common import util
-
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.utils import cached
 
@@ -28,6 +29,13 @@ class RefLogEntry(NamedTuple):
     reflog_selector: str
     author: str
     datetime: str
+
+
+class CommitInfo(NamedTuple):
+    commit_hash: str
+    short_hash: str
+    subject: str
+    date: str
 
 
 def is_dynamic_ref(ref):
@@ -313,6 +321,27 @@ class HistoryMixin(mixin_base):
             rv = "-- Partially decoded output; � denotes decoding errors --\n"
             rv += stdout.decode("utf-8", "replace")
         return rv
+
+    def commit_subject_and_date(self, commit_hash: str) -> CommitInfo:
+        # call with the same settings as gs_show_commit to either use or
+        # warm up the cache
+        show_diffstat = self.savvy_settings.get("show_diffstat")
+        patch = self.read_commit(commit_hash, show_diffstat=show_diffstat)
+        return self.commit_subject_and_date_from_patch(patch)
+
+    def commit_subject_and_date_from_patch(self, patch: str) -> CommitInfo:
+        commit_hash, date, subject = "", "", ""
+        for line in patch.splitlines():
+            if line.startswith("commit "):
+                # The commit line can include decorations we must split off!
+                commit_hash = line[7:].split(" ", 1)[0]
+            # CommitDate: Tue Dec 20 18:21:40 2022 +0100
+            elif line.startswith("CommitDate: ") and (parsed_date := email.utils.parsedate(line[12:])):
+                date = "-".join(map(str, parsed_date[:3]))
+            elif line.startswith("    "):
+                subject = line.lstrip()
+                break
+        return CommitInfo(commit_hash, self.get_short_hash(commit_hash), subject, date)
 
     @cached(not_if={"current_commit": is_dynamic_ref})
     def previous_commit(self, current_commit, file_path=None, follow=False):
