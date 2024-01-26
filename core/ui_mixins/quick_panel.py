@@ -550,7 +550,7 @@ def show_log_panel(entries, on_done, **kwargs):
 def short_ref(ref):
     def simplify(r):
         if r.startswith('HEAD -> '):
-            return '{}*'.format(r[8:])
+            return r[8:]
 
         if r.startswith('tag: '):
             return r[5:]
