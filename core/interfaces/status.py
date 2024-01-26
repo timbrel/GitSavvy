@@ -357,8 +357,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
 
 class StatusInterfaceCommand(ui.InterfaceCommand):
-    interface_type = StatusInterface
-    interface = None  # type: StatusInterface
+    interface: StatusInterface
 
     def _get_subjects_selector(self, sections):
         # type: (Iterable[str]) -> str
