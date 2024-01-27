@@ -1217,7 +1217,7 @@ class gs_inline_diff_undo(TextCommand, GitCommand):
             "sync": True
         })
 
-class SelectInlineDiffCommitCommand(WindowCommand):
+class SelectInlineDiffCommitCommand(WindowCommand, GitCommand):
     def _on_commits(self):
         commit_text_list = self.git('log', '--format="%h %s"', '-n', str(self._last_n_commits)).strip().splitlines()
         if not commit_text_list:
@@ -1237,7 +1237,7 @@ class SelectInlineDiffCommitCommand(WindowCommand):
         self._on_done(commit_id)
 
     def _on_branches(self):
-        branches_text_list = self.git("branches").strip().splitlines()
+        branches_text_list = self.git("branch").strip().splitlines()
         if not branches_text_list:
             return self._on_cancel()
         self._branch_list = []
@@ -1258,8 +1258,9 @@ class SelectInlineDiffCommitCommand(WindowCommand):
     def _on_done(self, commit_id):
         if not commit_id:
             return self._on_cancel()
-        settings = self.view.settings()
-        base_commit = settings.get("git_savvy.inline_diff_view.base_commit")
+        view = self.window.active_view()
+        settings = view.settings()
+        base_commit = self.git("rev-parse", "--short", "HEAD").strip().splitlines()[0]
         self.window.run_command("gs_inline_diff", {
             "cached": self._cached,
             "base_commit": base_commit,
