@@ -58,8 +58,8 @@ DECODE_ERROR_MESSAGE = (
     "Note, however, that diffs with *mixed* encodings are not supported."
 )
 
-INLINE_DIFF_TITLE = "DIFF: "
-INLINE_DIFF_CACHED_TITLE = "DIFF (staged): "
+INLINE_DIFF_TITLE = "INLINE: {}"
+INLINE_DIFF_CACHED_TITLE = "INLINE: {}, STAGE"
 
 DIFF_HEADER = """diff --git a/{path} b/{path}
 --- a/{path}
@@ -334,8 +334,8 @@ class gs_inline_diff_open(WindowCommand, GitCommand):
                 break
 
         else:
-            title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
-            title += os.path.basename(file_path)
+            _title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
+            title = _title.format(os.path.basename(file_path))
             diff_view = util.view.create_scratch_view(self.window, "inline_diff", {
                 "title": title,
                 "syntax": syntax,
@@ -440,8 +440,8 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             original_content = self.get_file_content_at_commit(file_path, base_commit)
         inline_diff_contents, hunks = self.get_inline_diff_contents(original_content, diff)
 
-        title = INLINE_DIFF_CACHED_TITLE if in_cached_mode else INLINE_DIFF_TITLE
-        title += os.path.basename(file_path)
+        _title = INLINE_DIFF_CACHED_TITLE if in_cached_mode else INLINE_DIFF_TITLE
+        title = _title.format(os.path.basename(file_path))
         if target_commit:
             title += (
                 ", ({}..{})".format(
