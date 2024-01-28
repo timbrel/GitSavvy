@@ -444,13 +444,15 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         title += os.path.basename(file_path)
         if target_commit:
             title += (
-                "  ({} <-{})".format(
+                ", ({}..{})".format(
+                    self.get_short_hash(base_commit),
                     self.get_short_hash(target_commit),
-                    self.get_short_hash(base_commit)
                 )
                 if base_commit
-                else "  (initial version)"
+                else ", (initial version)"
             )
+        elif base_commit:
+            title += ", ({}..WORKING DIR)".format(self.get_short_hash(base_commit))
         if runs_on_ui_thread:
             self.draw(self.view, title, match_position, inline_diff_contents, hunks)
         else:
