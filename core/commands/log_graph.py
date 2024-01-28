@@ -2904,7 +2904,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             actions += [
                 (
                     "Diff file against workdir",
-                    partial(self.diff_commit, commit_hash)
+                    partial(self.diff_commit, commit_hash, file_path=file_path)
                 ),
             ]
         elif "HEAD" in info:
