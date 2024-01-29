@@ -98,7 +98,7 @@ class gs_line_history(TextCommand, GitCommand):
             # type: (int) -> LineNo
             line = line_on_point(view, pt)
             actual_line, _ = inline_diff.translate_pos_from_diff_view_to_file(view, line)
-            if inline_diff.is_historical_diff(view):
+            if commit_hash:
                 return actual_line
             hunks = [hunk_ref.hunk for hunk_ref in inline_diff.diff_view_hunks[view.id()]]
             new_row = self.reverse_adjust_line_according_to_hunks(hunks, actual_line)
