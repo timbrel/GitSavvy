@@ -693,8 +693,12 @@ class GsInlineDiffFocusEventListener(EventListener):
     latest file status when the view regains focus.
     """
 
-    def on_activated(self, view):
-        if active_on_activated and is_inline_diff_view(view) and is_interactive_diff(view):
+    def on_activated(self, view: sublime.View) -> None:
+        if (
+            active_on_activated
+            and is_inline_diff_view(view)
+            and not view.settings().get("git_savvy.inline_diff_view.target_commit")
+        ):
             view.run_command("gs_inline_diff_refresh", {"sync": False})
 
 
