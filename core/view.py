@@ -168,6 +168,24 @@ def place_view(window, view, after):
         window.set_view_index(view, group, wanted_index)
 
 
+def other_visible_views(view: sublime.View) -> Iterator[sublime.View]:
+    """Yield all visible views of the active window except the given view itself."""
+    window = view.window()
+    if not window:
+        return
+
+    for view_ in visible_views(window):
+        if view_ != view:
+            yield view_
+
+
+def visible_views(window: sublime.Window) -> Iterator[sublime.View]:
+    num_groups = window.num_groups()
+    for group_id in range(num_groups):
+        if (view := window.active_view_in_group(group_id)):
+            yield view
+
+
 # `replace_view_content` is a wrapper for `_replace_region` to get some
 # typing support from mypy.
 def replace_view_content(view, text, region=None, wrappers=[]):

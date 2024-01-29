@@ -12,7 +12,9 @@ from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view
-from ..view import apply_position, capture_cur_position, place_view, replace_view_content, y_offset, Position
+from ..view import (
+    apply_position, capture_cur_position, other_visible_views, place_view,
+    replace_view_content, y_offset, Position)
 from ...common import util
 
 
@@ -700,6 +702,14 @@ class GsInlineDiffFocusEventListener(EventListener):
             and not view.settings().get("git_savvy.inline_diff_view.target_commit")
         ):
             view.run_command("gs_inline_diff_refresh", {"sync": False})
+
+    def on_post_save(self, view: sublime.View) -> None:
+        for other_view in other_visible_views(view):
+            if (
+                is_inline_diff_view(other_view)
+                and other_view.settings().get("git_savvy.file_path") == view.file_name()
+            ):
+                other_view.run_command("gs_inline_diff_refresh", {"sync": False})
 
 
 class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
