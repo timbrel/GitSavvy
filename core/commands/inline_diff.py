@@ -112,18 +112,13 @@ def is_inline_diff_view(view):
     return view.settings().get('git_savvy.inline_diff_view')
 
 
-def is_historical_diff(view):
+def is_interactive_diff(view):
     # type: (sublime.View) -> bool
     settings = view.settings()
     return (
-        settings.get("git_savvy.inline_diff_view.base_commit")
-        or settings.get("git_savvy.inline_diff_view.target_commit")
+        not settings.get("git_savvy.inline_diff_view.base_commit")
+        and not settings.get("git_savvy.inline_diff_view.target_commit")
     )
-
-
-def is_interactive_diff(view):
-    # type: (sublime.View) -> bool
-    return not is_historical_diff(view)
 
 
 class gs_inline_diff(WindowCommand, GitCommand):
