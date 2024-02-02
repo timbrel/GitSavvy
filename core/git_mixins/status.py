@@ -7,7 +7,7 @@ from GitSavvy.core import store
 from GitSavvy.core.fns import tail
 
 
-from typing import List, NamedTuple, Optional, Set, Tuple, TYPE_CHECKING
+from typing import List, NamedTuple, Optional, Set, TYPE_CHECKING
 
 
 class HeadState(NamedTuple):
@@ -84,32 +84,22 @@ class StatusMixin(mixin_base):
     def get_working_dir_status(self):
         # type: () -> WorkingDirState
         lines = self._get_status()
-        branch_status = self._get_branch_status_components(lines)
         files = self._parse_status_for_file_statuses(lines)
-        (staged_files,
-            unstaged_files,
-            untracked_files,
-            merge_conflicts) = self._group_status_entries(files)
-        short_status = self._format_branch_status_short(branch_status)
-        long_status = self._format_branch_status(branch_status)
-        rv = WorkingDirState(
-            staged_files=staged_files,
-            unstaged_files=unstaged_files,
-            untracked_files=untracked_files,
-            merge_conflicts=merge_conflicts,
-        )
+        working_dir_status = self._group_status_entries(files)
+
+        branch_status = self._get_branch_status_components(lines)
         current_branch = branch_status.branch
         last_branches = store.current_state(self.repo_path)["last_branches"]
         if current_branch and current_branch != last_branches[-1]:
             last_branches.append(current_branch)
         store.update_state(self.repo_path, {
-            "status": rv,
+            "status": working_dir_status,
             "head": branch_status,
             "last_branches": last_branches,
-            "long_status": long_status,
-            "short_status": short_status,
+            "long_status": self._format_branch_status(branch_status),
+            "short_status": self._format_branch_status_short(branch_status),
         })
-        return rv
+        return working_dir_status
 
     def _parse_status_for_file_statuses(self, lines):
         # type: (List[str]) -> List[FileStatus]
@@ -128,7 +118,7 @@ class StatusMixin(mixin_base):
         return entries
 
     def _group_status_entries(self, file_status_list):
-        # type: (List[FileStatus]) -> Tuple[List[FileStatus], ...]
+        # type: (List[FileStatus]) -> WorkingDirState
         """
         Take entries from `git status` and sort them into groups.
         """
@@ -146,7 +136,12 @@ class StatusMixin(mixin_base):
             if f.index_status != " ":
                 staged.append(f)
 
-        return (staged, unstaged, untracked, conflicts)
+        return WorkingDirState(
+            staged_files=staged,
+            unstaged_files=unstaged,
+            untracked_files=untracked,
+            merge_conflicts=conflicts,
+        )
 
     def get_branch_status(self, *, delim="\n           "):
         # type: (str) -> str
