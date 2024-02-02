@@ -485,7 +485,7 @@ class gs_status_diff(StatusInterfaceCommand):
     def load_diff_windows(self, window, non_cached_files, cached_files, untracked_files):
         # type: (sublime.Window, List[str], List[str], List[str]) -> None
         if untracked_files:
-            self.git("add", "--intent-to-add", "--", *untracked_files)
+            self.intent_to_add(*untracked_files)
 
         for fpath in non_cached_files + untracked_files:
             window.run_command("gs_diff", {
@@ -579,7 +579,7 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
         # type: () -> Optional[List[str]]
         file_paths = self.get_selected_subjects('added')
         if file_paths:
-            self.git("reset", "--mixed", "--", *file_paths)
+            self.undo_intent_to_add(*file_paths)
             return file_paths
         return None
 

@@ -415,7 +415,7 @@ class gs_diff_intent_to_add(TextCommand, GitCommand):
             flash(self.view, "The file is already tracked.")
             return
 
-        self.git("add", "--intent-to-add", "--", file_path)
+        self.intent_to_add(file_path)
 
         history = settings.get("git_savvy.diff_view.history") or []
         frozen_sel = [s for s in self.view.sel()]
@@ -1115,7 +1115,7 @@ class gs_diff_undo(TextCommand, GitCommand):
             if args[1] == "-u":
                 self.unstage_all_files()
             elif args[1] == "--intent-to-add":
-                self.git("reset", "--mixed", "--", args[2])
+                self.undo_intent_to_add(args[2])
             else:
                 self.unstage_file(*args[1])
         else:
