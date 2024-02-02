@@ -1,12 +1,34 @@
 import os
 from ...common import util
 
+from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base
+
+from typing import List
+
 
 linesep = None
 
 
 class IgnoreMixin(mixin_base):
+    def get_skipped_files(self) -> List[str]:
+        """Return all files for which skip-worktree is set."""
+        skipped_files = [
+            file_path
+            for line in self.git("ls-files", "-v").splitlines()
+            if line.startswith("S")
+            if (file_path := line[2:])
+        ]
+        store.update_state(self.repo_path, {
+            "skipped_files": skipped_files,
+        })
+        return skipped_files
+
+    def set_skip_worktree(self, *file_paths: str) -> None:
+        self.git("update-index", "--skip-worktree", *file_paths)
+
+    def unset_skip_worktree(self, *file_paths: str) -> None:
+        self.git("update-index", "--no-skip-worktree", *file_paths)
 
     def add_ignore(self, path_or_pattern):
         """

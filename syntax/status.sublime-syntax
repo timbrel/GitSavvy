@@ -53,6 +53,15 @@ contexts:
         - meta_content_scope: meta.git-savvy.section.body
         - include: section
 
+    - match: ^  (SKIPPED:)$\n
+      captures:
+        0: meta.git-savvy.section.header
+        1: keyword.other.git-savvy.section.header.skipped
+      push:
+        - meta_scope: meta.git-savvy.status.section.skipped
+        - meta_content_scope: meta.git-savvy.section.body
+        - include: section
+
     - match: ^  (STASHES:)$\n
       captures:
         0: meta.git-savvy.section.header
