@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from itertools import dropwhile
 import os
 import re
@@ -27,7 +28,8 @@ class FileStatus(NamedTuple):
     working_status: Optional[str]
 
 
-class WorkingDirState(NamedTuple):
+@dataclass(frozen=True)
+class WorkingDirState:
     staged_files: List[FileStatus]
     unstaged_files: List[FileStatus]
     untracked_files: List[FileStatus]
