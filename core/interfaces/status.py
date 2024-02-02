@@ -111,6 +111,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     {< unstaged_files}
     {< untracked_files}
+    {< added_files}
     {< staged_files}
     {< merge_conflicts}
     {< no_status_message}
@@ -177,6 +178,11 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     template_unstaged = """
       UNSTAGED:
+    {}
+    """
+
+    template_added = """
+      ADDED:
     {}
     """
 
@@ -290,7 +296,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     @ui.section("unstaged_files")
     def render_unstaged_files(self, status):
         # type: (WorkingDirState) -> str
-        unstaged_files = status.unstaged_files
+        unstaged_files = [f for f in status.unstaged_files if f.working_status != "A"]
         if not unstaged_files:
             return ""
 
@@ -304,6 +310,16 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
             "  {} {}".format("-" if f.working_status == "D" else " ", get_path(f))
             for f in unstaged_files
         ))
+
+    @ui.section("added_files")
+    def render_added_files(self, status):
+        # type: (WorkingDirState) -> str
+        added_files = [f for f in status.unstaged_files if f.working_status == "A"]
+        if not added_files:
+            return ""
+
+        return self.template_added.format(
+            "\n".join("    " + f.path for f in added_files))
 
     @ui.section("untracked_files")
     def render_untracked_files(self, status):
@@ -373,7 +389,7 @@ class StatusInterfaceCommand(ui.InterfaceCommand):
     def get_selected_files(self, base_path, *sections):
         # type: (str, str) -> List[str]
         if not sections:
-            sections = ('staged', 'unstaged', 'untracked', 'merge-conflicts')
+            sections = ('staged', 'unstaged', 'untracked', 'added', 'merge-conflicts')
 
         make_abs_path = partial(os.path.join, base_path)
         return [
@@ -457,17 +473,21 @@ class gs_status_diff(StatusInterfaceCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         repo_path = self.repo_path
+        untracked_files = self.get_selected_files(repo_path, 'untracked')
         non_cached_files = self.get_selected_files(
-            repo_path, 'unstaged', 'untracked', 'merge-conflicts')
+            repo_path, 'unstaged', 'added', 'merge-conflicts')
         cached_files = self.get_selected_files(repo_path, 'staged')
 
         enqueue_on_worker(
-            self.load_diff_windows, self.window, non_cached_files, cached_files
+            self.load_diff_windows, self.window, non_cached_files, cached_files, untracked_files
         )
 
-    def load_diff_windows(self, window, non_cached_files, cached_files):
-        # type: (sublime.Window, List[str], List[str]) -> None
-        for fpath in non_cached_files:
+    def load_diff_windows(self, window, non_cached_files, cached_files, untracked_files):
+        # type: (sublime.Window, List[str], List[str], List[str]) -> None
+        if untracked_files:
+            self.git("add", "--intent-to-add", "--", *untracked_files)
+
+        for fpath in non_cached_files + untracked_files:
             window.run_command("gs_diff", {
                 "file_path": fpath,
                 "in_cached_mode": False,
@@ -509,7 +529,7 @@ class gs_status_stage_file(StatusInterfaceCommand):
                 return
 
         file_paths = (
-            self.get_selected_subjects('unstaged', 'untracked')
+            self.get_selected_subjects('unstaged', 'untracked', 'added')
             + files_with_merge_conflicts
         )
         if file_paths:
@@ -543,13 +563,25 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
+        added_files = self.discard_added()
         untracked_files = self.discard_untracked()
         unstaged_files = self.discard_unstaged()
-        if untracked_files or unstaged_files:
-            self.window.status_message("Successfully discarded changes.")
+        if added_files or untracked_files or unstaged_files:
+            if added_files and not (untracked_files or unstaged_files):
+                self.window.status_message("Successfully reset file statuses.")
+            else:
+                self.window.status_message("Successfully discarded changes.")
             self.interface.refresh_repo_status_and_render()
         if self.get_selected_subjects('staged'):
             self.window.status_message("Staged files cannot be discarded.  Unstage them first.")
+
+    def discard_added(self):
+        # type: () -> Optional[List[str]]
+        file_paths = self.get_selected_subjects('added')
+        if file_paths:
+            self.git("reset", "--mixed", "--", *file_paths)
+            return file_paths
+        return None
 
     def discard_untracked(self):
         # type: () -> Optional[List[str]]
@@ -638,7 +670,7 @@ class gs_status_ignore_file(StatusInterfaceCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         file_paths = self.get_selected_subjects(
-            'staged', 'unstaged', 'untracked', 'merge-conflicts')
+            'staged', 'unstaged', 'untracked', 'added', 'merge-conflicts')
         if file_paths:
             for fpath in file_paths:
                 self.add_ignore(os.path.join("/", fpath))
@@ -657,7 +689,7 @@ class gs_status_ignore_pattern(StatusInterfaceCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         file_paths = self.get_selected_subjects(
-            'staged', 'unstaged', 'untracked', 'merge-conflicts')
+            'staged', 'unstaged', 'untracked', 'added', 'merge-conflicts')
         if file_paths:
             self.window.run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
 
@@ -706,7 +738,7 @@ class gs_status_launch_merge_tool(StatusInterfaceCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         file_paths = self.get_selected_subjects(
-            'staged', 'unstaged', 'untracked', 'merge-conflicts')
+            'staged', 'unstaged', 'untracked', 'added', 'merge-conflicts')
         if len(file_paths) > 1:
             sublime.error_message("You can only launch merge tool for a single file at a time.")
             return
