@@ -836,9 +836,16 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
                     seen.add(item.filename)
                     yield item
 
-        diff = SplittedDiff.from_view(self.view)
+        diff_regions = self.view.find_by_selector("git-savvy.commit, git-savvy.diff")
+        if not diff_regions:
+            flash(self.view, "Could not extract a diff.")
+            return
+
         jump_positions = list(first_per_file(filter_(
             jump_position_to_file(self.view, diff, s.begin())
+            for region in diff_regions
+            if (content := self.view.substr(region))
+            if (diff := SplittedDiff.from_string(content, region.a))
             for s in self.view.sel()
         )))
         if not jump_positions:
