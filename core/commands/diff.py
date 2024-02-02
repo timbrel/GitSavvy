@@ -19,7 +19,6 @@ from ..fns import head, filter_, flatten, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
 from ..runtime import ensure_on_ui, enqueue_on_worker
-from .. import store
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import flash, focus_view, line_indentation
 from ..view import (
@@ -307,12 +306,10 @@ class gs_diff_refresh(TextCommand, GitCommand):
         if file_path:
             rel_file_path = os.path.relpath(file_path, repo_path)
             if (
+                not diff
                 # Only check the cached value in `store` to not get expensive
                 # for the normal case of just checking a clean file.
-                not diff
-                and (status := store.current_state(self.repo_path).get("status"))
-                and (normed_git_path := rel_file_path.replace("\\", "/"))
-                and any(file.path == normed_git_path for file in status.untracked_files)
+                and self.is_probably_untracked_file(file_path)
             ):
                 untracked_file = True
 

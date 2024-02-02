@@ -11,7 +11,6 @@ from .navigate import GsNavigate
 from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker
-from .. import store
 from ..utils import flash, focus_view
 from ..view import (
     apply_position, capture_cur_position, other_visible_views, place_view,
@@ -422,15 +421,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             self.view.close()
             return
 
-        if (
-            # Only check the cached value in `store` to not get expensive
-            # for the normal case of just checking a clean file.
-            not diff
-            and (status := store.current_state(self.repo_path).get("status"))
-            and (rel_file_path := os.path.relpath(file_path, self.repo_path))
-            and (normed_git_path := rel_file_path.replace("\\", "/"))
-            and any(file.path == normed_git_path for file in status.untracked_files)
-        ):
+        if not diff and self.is_probably_untracked_file(file_path):
             flash(self.view, "Inline-diff cannot be displayed for untracked files.")
             self.view.close()
             return

@@ -459,3 +459,12 @@ class StatusMixin(mixin_base):
             ).splitlines()
             if "leftover conflict marker" in line
         }
+
+    def is_probably_untracked_file(self, file_path: str) -> bool:
+        """Check in the store if `file_path` is untracked."""
+        return bool(
+            (status := store.current_state(self.repo_path).get("status"))
+            and (rel_file_path := os.path.relpath(file_path, self.repo_path))
+            and (normed_git_path := rel_file_path.replace("\\", "/"))
+            and any(file.path == normed_git_path for file in status.untracked_files)
+        )
