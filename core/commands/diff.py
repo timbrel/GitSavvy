@@ -19,6 +19,7 @@ from ..fns import head, filter_, flatten, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
 from ..runtime import ensure_on_ui, enqueue_on_worker
+from .. import store
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import flash, focus_view, line_indentation
 from ..view import (
@@ -258,40 +259,6 @@ class gs_diff_refresh(TextCommand, GitCommand):
         disable_stage = settings.get("git_savvy.diff_view.disable_stage")
         context_lines = settings.get('git_savvy.diff_view.context_lines')
 
-        prelude = "\n"
-        title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(
-            os.path.basename(file_path) if file_path else os.path.basename(repo_path)
-        )
-
-        if file_path:
-            rel_file_path = os.path.relpath(file_path, repo_path)
-            prelude += "  FILE: {}\n".format(rel_file_path)
-
-        if disable_stage:
-            if in_cached_mode:
-                prelude += "  {}..INDEX\n".format(base_commit or target_commit)
-                title += ", {}..INDEX".format(base_commit or target_commit)
-            else:
-                if base_commit and target_commit:
-                    prelude += "  {}..{}\n".format(base_commit, target_commit)
-                    title += ", {}..{}".format(base_commit, target_commit)
-                elif base_commit and "..." in base_commit:
-                    prelude += "  {}\n".format(base_commit)
-                    title += ", {}".format(base_commit)
-                else:
-                    prelude += "  {}..WORKING DIR\n".format(base_commit or target_commit)
-                    title += ", {}..WORKING DIR".format(base_commit or target_commit)
-        else:
-            if in_cached_mode:
-                prelude += "  STAGED CHANGES (Will commit)\n"
-            else:
-                prelude += "  UNSTAGED CHANGES\n"
-
-        if ignore_whitespace:
-            prelude += "  IGNORING WHITESPACE\n"
-
-        prelude += "\n--\n"
-
         raw_diff = self.git(
             "diff",
             "--ignore-all-space" if ignore_whitespace else None,
@@ -330,6 +297,53 @@ class gs_diff_refresh(TextCommand, GitCommand):
                 else:
                     view.close()
                 return
+
+        prelude = "\n"
+        title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(
+            os.path.basename(file_path) if file_path else os.path.basename(repo_path)
+        )
+
+        untracked_file = False
+        if file_path:
+            rel_file_path = os.path.relpath(file_path, repo_path)
+            if (
+                # Only check the cached value in `store` to not get expensive
+                # for the normal case of just checking a clean file.
+                not diff
+                and (status := store.current_state(self.repo_path).get("status"))
+                and (normed_git_path := rel_file_path.replace("\\", "/"))
+                and any(file.path == normed_git_path for file in status.untracked_files)
+            ):
+                untracked_file = True
+
+            prelude += "  FILE: {}{}\n".format(rel_file_path, "  (UNTRACKED)" if untracked_file else "")
+
+        if disable_stage:
+            if in_cached_mode:
+                prelude += "  {}..INDEX\n".format(base_commit or target_commit)
+                title += ", {}..INDEX".format(base_commit or target_commit)
+            else:
+                if base_commit and target_commit:
+                    prelude += "  {}..{}\n".format(base_commit, target_commit)
+                    title += ", {}..{}".format(base_commit, target_commit)
+                elif base_commit and "..." in base_commit:
+                    prelude += "  {}\n".format(base_commit)
+                    title += ", {}".format(base_commit)
+                else:
+                    prelude += "  {}..WORKING DIR\n".format(base_commit or target_commit)
+                    title += ", {}..WORKING DIR".format(base_commit or target_commit)
+        else:
+            if untracked_file:
+                ...
+            elif in_cached_mode:
+                prelude += "  STAGED CHANGES (Will commit)\n"
+            else:
+                prelude += "  UNSTAGED CHANGES\n"
+
+        if ignore_whitespace:
+            prelude += "  IGNORING WHITESPACE\n"
+
+        prelude += "\n--\n"
 
         ensure_on_ui(_draw, view, title, prelude, diff, match_position)
 
