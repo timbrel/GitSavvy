@@ -30,6 +30,7 @@ from ...common import util
 __all__ = (
     "gs_diff",
     "gs_diff_refresh",
+    "gs_diff_intent_to_add",
     "gs_diff_toggle_setting",
     "gs_diff_toggle_cached_mode",
     "gs_diff_zoom",
@@ -389,6 +390,30 @@ def find_hunk_for_line(hunks, row):
             return hunk
     else:
         return None
+
+
+class gs_diff_intent_to_add(TextCommand, GitCommand):
+    def run(self, edit):
+        settings = self.view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        untracked_file = self.git("ls-files", "--", file_path).strip() == ""
+        if not untracked_file:
+            flash(self.view, "The file is already tracked.")
+            return
+
+        self.git("add", "--intent-to-add", "--", file_path)
+
+        history = settings.get("git_savvy.diff_view.history") or []
+        frozen_sel = [s for s in self.view.sel()]
+        patch = ""
+        pts = [s.a for s in frozen_sel]
+        in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
+        history.append((["add", "--intent-to-add", file_path], patch, pts, in_cached_mode))
+        settings.set("git_savvy.diff_view.history", history)
+        settings.set("git_savvy.diff_view.just_hunked", patch)
+
+        flash(self.view, "set --intent-to-add")
+        self.view.run_command("gs_diff_refresh")
 
 
 class gs_diff_toggle_setting(TextCommand):
@@ -1075,6 +1100,8 @@ class gs_diff_undo(TextCommand, GitCommand):
         if args[0] == "add":
             if args[1] == "-u":
                 self.unstage_all_files()
+            elif args[1] == "--intent-to-add":
+                self.git("reset", "--mixed", "--", args[2])
             else:
                 self.unstage_file(*args[1])
         else:

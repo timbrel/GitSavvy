@@ -914,6 +914,14 @@
         ]
     },
     {
+        "keys": ["a"],
+        "command": "gs_diff_intent_to_add",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["w"],
         "command": "gs_diff_toggle_setting",
         "args": { "setting": "ignore_whitespace" },
