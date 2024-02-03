@@ -238,22 +238,25 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
     def _render_branch_list(self, remote_name, branches, descriptions, human_dates=True):
         # type: (Optional[str], List[Branch], Dict[str, str], bool) -> str
-        remote_name_length = len(remote_name + "/") if remote_name else 0
 
-        def mangle_date(branch: Branch, previous: Optional[Branch]):
-            def get_date(branch):
-                if not human_dates:
-                    d = branch.relative_committerdate
-                    if d == "12 months ago":
-                        d = "1 year ago"
-                    return re.sub(r", \d+ months? ago", " ago", d)
+        def get_date(branch):
+            if human_dates:
                 return branch.human_committerdate
 
+            d = branch.relative_committerdate
+            if d == "12 months ago":
+                d = "1 year ago"
+            # Shorten relative dates with months e.g. "1 year, 1 month ago"
+            # to just "1 year ago".
+            return re.sub(r", \d+ months? ago", " ago", d)
+
+        def mangle_date(branch: Branch, previous: Optional[Branch]):
             date = get_date(branch)
             if human_dates and previous and get_date(previous) == date:
                 return ""
             return date
 
+        remote_name_length = len(remote_name + "/") if remote_name else 0
         paired_with_previous: Iterable[Tuple[Optional[Branch], Branch]] = \
             pairwise(chain([None], branches))  # type: ignore[list-item]
         return "\n".join(
