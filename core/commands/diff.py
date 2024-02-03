@@ -22,7 +22,7 @@ from ..runtime import ensure_on_ui, enqueue_on_worker
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import flash, focus_view, line_indentation
 from ..view import (
-    capture_cur_position, replace_view_content, scroll_to_pt,
+    capture_cur_position, clamp, replace_view_content, scroll_to_pt,
     place_view, place_cursor_and_show, y_offset, Position)
 from ...common import util
 
@@ -889,20 +889,10 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
 
 def jump_position_to_file(view, diff, pt):
     # type: (sublime.View, SplittedDiff, int) -> Optional[JumpTo]
-    head_and_hunk = diff.head_and_hunk_for_pt(pt)
-    if not head_and_hunk:
+    hunk = diff.hunk_for_pt(pt)
+    if not hunk:
         return None
-
-    header, hunk = head_and_hunk
-
-    line, col = real_linecol_in_hunk(hunk, *row_offset_and_col_in_hunk(view, hunk, pt))
-    filename = header.to_filename()
-    if not filename:
-        return None
-
-    commit_header = diff.commit_for_hunk(hunk)
-    commit_hash = commit_header.commit_hash() if commit_header else None
-    return JumpTo(commit_hash, filename, line, col)
+    return _jump_position_from_hunk(view, diff, hunk, pt)
 
 
 def first_jump_position_in_view(view, diff, pt):
@@ -910,8 +900,13 @@ def first_jump_position_in_view(view, diff, pt):
     hunk = diff.first_hunk_after_pt(pt)
     if not hunk:
         return None
+    return _jump_position_from_hunk(view, diff, hunk, pt)
+
+
+def _jump_position_from_hunk(view, diff, hunk, pt):
+    # type: (sublime.View, SplittedDiff, Hunk, int) -> Optional[JumpTo]
     header = diff.head_for_hunk(hunk)
-    line, col = real_linecol_in_hunk(hunk, 0, 1)
+    line, col = real_linecol_in_hunk(hunk, *row_offset_and_col_in_hunk(view, hunk, pt))
     filename = header.to_filename()
     if not filename:
         return None
@@ -942,7 +937,7 @@ def real_linecol_in_hunk(hunk, row_offset, col):
     # type: (Hunk, int, ColNo) -> LineCol
     """Translate relative to absolute line, col pair"""
     hunk_lines = list(recount_lines_for_jump_to_file(hunk))
-    row_offset = min(row_offset, len(hunk_lines))
+    row_offset = clamp(0, len(hunk_lines), row_offset)
 
     # If the user is on the header line ('@@ ..') pretend to be on the
     # first visible line with some content instead.
