@@ -226,22 +226,23 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
             local_branches = sorted(local_branches, key=sectionizer)
             return "\n{}\n".format(" " * 60).join(
-                self._render_branch_list(None, list(branches), descriptions, section_key)
+                self._render_branch_list(
+                    None, list(branches), descriptions, human_dates=section_key != (5, 0))
                 for section_key, branches in groupby(local_branches, sectionizer)
             )
 
         else:
             if sort_by_recent:
                 local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
-            return self._render_branch_list(None, local_branches, descriptions, (1, 0))
+            return self._render_branch_list(None, local_branches, descriptions)
 
-    def _render_branch_list(self, remote_name, branches, descriptions, section_key):
-        # type: (Optional[str], List[Branch], Dict[str, str], Tuple) -> str
+    def _render_branch_list(self, remote_name, branches, descriptions, human_dates=True):
+        # type: (Optional[str], List[Branch], Dict[str, str], bool) -> str
         remote_name_length = len(remote_name + "/") if remote_name else 0
 
         def mangle_date(branch: Branch, previous: Optional[Branch]):
             def get_date(branch):
-                if section_key == (5, 0):
+                if not human_dates:
                     d = branch.relative_committerdate
                     if d == "12 months ago":
                         d = "1 year ago"
@@ -249,7 +250,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                 return branch.human_committerdate
 
             date = get_date(branch)
-            if section_key != (5, 0) and previous and get_date(previous) == date:
+            if human_dates and previous and get_date(previous) == date:
                 return ""
             return date
 
@@ -315,7 +316,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             def render(remote_name=remote_name, branches=branches) -> str:
                 return self.template_remote.format(
                     remote_name=remote_name,
-                    remote_branch_list=self._render_branch_list(remote_name, branches, {}, (1, 0))
+                    remote_branch_list=self._render_branch_list(remote_name, branches, {})
                 )
 
             render_fns.append(render)
