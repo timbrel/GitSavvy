@@ -256,9 +256,9 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         paired_with_previous: Iterable[Tuple[Optional[Branch], Branch]] = \
             pairwise(chain([None], branches))  # type: ignore[list-item]
         return "\n".join(
-            "  {indicator} {hash:.7} {name_with_extras}{description}".format(
+            "  {indicator} {hash} {name_with_extras}{description}".format(
                 indicator="▸" if branch.active else " ",
-                hash=branch.commit_hash,
+                hash=self.get_short_hash(branch.commit_hash),
                 name_with_extras=" ".join(filter_((
                     branch.canonical_name[remote_name_length:],
                     ", ".join(filter_((
