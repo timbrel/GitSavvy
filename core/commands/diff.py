@@ -942,6 +942,7 @@ def real_linecol_in_hunk(hunk, row_offset, col):
     # type: (Hunk, int, ColNo) -> LineCol
     """Translate relative to absolute line, col pair"""
     hunk_lines = list(recount_lines_for_jump_to_file(hunk))
+    row_offset = min(row_offset, len(hunk_lines))
 
     # If the user is on the header line ('@@ ..') pretend to be on the
     # first visible line with some content instead.
