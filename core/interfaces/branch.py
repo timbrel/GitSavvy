@@ -14,7 +14,7 @@ from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.fns import chain, filter_, pairwise
-from GitSavvy.core.utils import flash
+from GitSavvy.core.utils import flash, is_younger_than
 from GitSavvy.core.runtime import enqueue_on_worker, on_new_thread, on_worker
 
 
@@ -200,17 +200,9 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
         has_distance_to_head_information = any(b.distance_to_head for b in local_branches)
         if has_distance_to_head_information and group_by_distance_to_head:
-            def younger_than(
-                timedelta: datetime.timedelta,
-                now: datetime.datetime,
-                timestamp: int
-            ) -> bool:
-                dt = datetime.datetime.utcfromtimestamp(timestamp)
-                return (now - dt) < timedelta
-
             roughly_nine_months = datetime.timedelta(days=9 * 30)
             now = datetime.datetime.utcnow()
-            is_fresh = partial(younger_than, roughly_nine_months, now)
+            is_fresh = partial(is_younger_than, roughly_nine_months, now)
 
             def sort_key(branch):
                 return (
