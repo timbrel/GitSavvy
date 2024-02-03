@@ -384,7 +384,7 @@ class gs_show_commit_open_file_at_hunk(diff.gs_diff_open_file_at_hunk):
         Otherwise, open the file directly.
         """
         if not commit_hash:
-            print("Could not parse commit for its commit hash")
+            flash(self.view, "Could not parse commit for its commit hash")
             return
         window = self.view.window()
         if not window:
@@ -402,7 +402,7 @@ class gs_show_commit_show_hunk_on_working_dir(diff.gs_diff_open_file_at_hunk):
     def load_file_at_line(self, commit_hash, filename, line, col):
         # type: (Optional[str], str, LineNo, ColNo) -> None
         if not commit_hash:
-            print("Could not parse commit for its commit hash")
+            flash(self.view, "Could not parse commit for its commit hash")
             return
         window = self.view.window()
         if not window:
