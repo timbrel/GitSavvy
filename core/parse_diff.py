@@ -67,6 +67,14 @@ class SplittedDiff(NamedTuple):
         else:
             return None
 
+    def first_hunk_after_pt(self, pt):
+        # type: (int) -> Optional[Hunk]
+        for hunk in self.hunks:
+            if hunk.a > pt:
+                return hunk
+        else:
+            return None
+
     def head_for_pt(self, pt):
         # type: (int) -> Optional[FileHeader]
         for header in reversed(self.headers):

@@ -846,12 +846,17 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
             flash(self.view, "Could not extract a diff.")
             return
 
-        jump_positions = list(first_per_file(filter_(
-            jump_position_to_file(self.view, diff, s.begin())
-            for diff in diffs
-            for s in self.view.sel()
-        )))
-        if not jump_positions:
+        frozen_sel = list(self.view.sel())
+        try:
+            jump_positions = next(filter_(
+                list(first_per_file(filter_(
+                    fn(self.view, diff, s.begin())
+                    for diff in diffs
+                    for s in frozen_sel
+                )))
+                for fn in (jump_position_to_file, first_jump_position_in_view)
+            ))
+        except StopIteration:
             flash(self.view, "Not within a hunk")
         else:
             for jp in jump_positions:
@@ -891,6 +896,22 @@ def jump_position_to_file(view, diff, pt):
     header, hunk = head_and_hunk
 
     line, col = real_linecol_in_hunk(hunk, *row_offset_and_col_in_hunk(view, hunk, pt))
+    filename = header.to_filename()
+    if not filename:
+        return None
+
+    commit_header = diff.commit_for_hunk(hunk)
+    commit_hash = commit_header.commit_hash() if commit_header else None
+    return JumpTo(commit_hash, filename, line, col)
+
+
+def first_jump_position_in_view(view, diff, pt):
+    # type: (sublime.View, SplittedDiff, int) -> Optional[JumpTo]
+    hunk = diff.first_hunk_after_pt(pt)
+    if not hunk:
+        return None
+    header = diff.head_for_hunk(hunk)
+    line, col = real_linecol_in_hunk(hunk, 0, 1)
     filename = header.to_filename()
     if not filename:
         return None
