@@ -246,7 +246,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                     d = branch.relative_committerdate
                     if d == "12 months ago":
                         d = "1 year ago"
-                    return re.sub(r", \d+ months ago", " ago", d)
+                    return re.sub(r", \d+ months? ago", " ago", d)
                 return branch.human_committerdate
 
             date = get_date(branch)
