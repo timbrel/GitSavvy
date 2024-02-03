@@ -829,7 +829,7 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
         # type: (sublime.Edit) -> None
 
         def first_per_file(items):
-            # type: (Iterator[JumpTo]) -> Iterator[JumpTo]
+            # type: (Iterable[JumpTo]) -> Iterator[JumpTo]
             seen = set()  # type: Set[str]
             for item in items:
                 if item.filename not in seen:
