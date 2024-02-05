@@ -898,6 +898,48 @@
         ]
     },
     {
+        "keys": ["l"],
+        "command": "gs_diff_switch_files",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["N"],
+        "command": "gs_diff_switch_files",
+        "args": { "forward": true, "auto_close": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["N"],
+        "command": "gs_diff_switch_files",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.gs_diff_files_selector", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["P"],
+        "command": "gs_diff_switch_files",
+        "args": { "forward": false, "auto_close": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["P"],
+        "command": "gs_diff_switch_files",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.gs_diff_files_selector", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["o"],
         "command": "gs_diff_open_file_at_hunk",
         "context": [
@@ -918,7 +960,8 @@
         "command": "gs_diff_intent_to_add",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
         ]
     },
     {

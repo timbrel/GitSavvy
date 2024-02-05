@@ -311,6 +311,7 @@ diff --git a/foxx b/boxx
         cmd = module.gs_diff_stage_or_reset_hunk(view)
         when(cmd).git(...)
         when(cmd.view).run_command("gs_diff_refresh")
+        when(cmd.view).run_command("gs_update_status")
 
         view.sel().clear()
         view.sel().add(CURSOR)
@@ -394,6 +395,7 @@ diff --git a/foxx b/boxx
         cmd = module.gs_diff_stage_or_reset_hunk(view)
         when(cmd).git(...)
         when(cmd.view).run_command("gs_diff_refresh")
+        when(cmd.view).run_command("gs_update_status")
         # when(module.gs_diff_stage_or_reset_hunk).git(...)
         # when(module).refresh(view)
 
@@ -434,6 +436,7 @@ diff --git a/fooz b/barz
         cmd = module.gs_diff_stage_or_reset_hunk(view)
         when(cmd).git(...)
         when(cmd.view).run_command("gs_diff_refresh")
+        when(cmd.view).run_command("gs_update_status")
 
         view.sel().clear()
         view.sel().add(CURSOR)

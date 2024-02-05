@@ -17,10 +17,11 @@ from . import stage_hunk
 from .navigate import GsNavigate
 from ..fns import head, filter_, flatten, unique
 from ..parse_diff import SplittedDiff
+from .. import store
 from ..git_command import GitCommand
-from ..runtime import ensure_on_ui, enqueue_on_worker
+from ..runtime import ensure_on_ui, enqueue_on_worker, throttled
 from ..ui_mixins.quick_panel import LogHelperMixin
-from ..utils import flash, focus_view, line_indentation
+from ..utils import flash, focus_view, hprint, line_indentation, show_panel
 from ..view import (
     capture_cur_position, clamp, replace_view_content, scroll_to_pt,
     place_view, place_cursor_and_show, y_offset, Position)
@@ -33,6 +34,8 @@ __all__ = (
     "gs_diff_intent_to_add",
     "gs_diff_toggle_setting",
     "gs_diff_toggle_cached_mode",
+    "gs_diff_switch_files",
+    "gs_diff_grab_quick_panel_view",
     "gs_diff_zoom",
     "gs_diff_stage_or_reset_hunk",
     "gs_initiate_fixup_commit",
@@ -506,6 +509,155 @@ class gs_diff_toggle_cached_mode(TextCommand):
                 set_and_show_cursor(self.view, unpickle_sel(last_cursors))
 
 
+class gs_diff_switch_files(TextCommand, GitCommand):
+    def run(self, edit, recursed=False, auto_close=False, forward=None):
+        # type: (sublime.Edit, bool, bool, Optional[bool]) -> None
+        view = self.view
+        window = view.window()
+        if not window:
+            return
+        if view.element() == "quick_panel:input":
+            if av := window.active_view():
+                av.settings().set("gs_diff.intentional_hide", True)
+                window.run_command("hide_overlay")
+                av.run_command("gs_diff_switch_files", {"recursed": True, "auto_close": auto_close, "forward": forward})
+            return
+
+        SEP = "                      ———— UNTRACKED FILES ————"
+        settings = view.settings()
+
+        if base_commit := settings.get("git_savvy.diff_view.base_commit"):
+            target_commit = settings.get("git_savvy.diff_view.target_commit")
+            available = self.list_touched_filenames(base_commit, target_commit)
+        else:
+            status = store.current_state(self.repo_path).get("status")
+            in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
+            if status:
+                if in_cached_mode:
+                    available = [f.path for f in status.staged_files]
+                else:
+                    available = [f.path for f in status.unstaged_files]
+                    if status.untracked_files:
+                        available += [SEP] + [f.path for f in status.untracked_files]
+            else:
+                available = self.list_touched_filenames(None, None, cached=in_cached_mode)
+
+        file_path = settings.get("git_savvy.file_path")
+        if not available:
+            selected_index = 0
+        elif file_path:
+            normalized_relative_path = self.get_rel_path(file_path)
+            try:
+                idx = available.index(normalized_relative_path)
+            except ValueError:
+                selected_index = 0
+            else:
+                delta = 1 if forward is True else -1 if forward is False else 0
+                idx = (idx + delta) % len(available)
+                if available[idx] == SEP:
+                    idx = (idx + delta) % len(available)
+                selected_index = idx + 1  # skip the "--all" entry
+        else:
+            selected_index = 1 if forward is True else len(available) if forward is False else 0
+
+        items = ["--all"] + available
+        if not recursed:
+            original_view_state = (file_path, view.viewport_position(), [(s.a, s.b) for s in view.sel()], )
+            settings.set("git_savvy.original_view_state", original_view_state)
+
+        disable_auto_close_handler = True
+
+        def on_done(idx):
+            nonlocal disable_auto_close_handler
+            disable_auto_close_handler = True
+            settings.erase("git_savvy.original_view_state")
+            ...  # already everything done in `on_highlight`
+
+        def on_highlight(idx):
+            nonlocal disable_auto_close_handler
+            disable_auto_close_handler = True
+            item = items[idx]
+            if item == SEP:
+                return
+            enqueue_on_worker(throttled(on_highlight_, item))
+
+        def on_highlight_(item: str) -> None:
+            if item == "--all":
+                if not settings.get("git_savvy.file_path"):
+                    return
+                settings.erase("git_savvy.file_path")
+            else:
+                next_file_path = os.path.normpath(os.path.join(self.repo_path, item))
+                if next_file_path == settings.get("git_savvy.file_path"):
+                    return
+                settings.set("git_savvy.file_path", next_file_path)
+            view.run_command("gs_diff_refresh", {"sync": True})
+            view.set_viewport_position((0, 0))
+            view.sel().clear()
+            view.sel().add(sublime.Region(0))
+            view.run_command("gs_diff_navigate")
+
+        def on_cancel():
+            nonlocal disable_auto_close_handler
+            disable_auto_close_handler = True
+            if settings.get("gs_diff.intentional_hide"):
+                settings.erase("gs_diff.intentional_hide")
+                return
+            original_view_state = settings.get("git_savvy.original_view_state")
+            settings.erase("git_savvy.original_view_state")
+            if original_view_state:
+                file_path, viewport_position, sel = original_view_state
+                if file_path:
+                    if file_path == settings.get("git_savvy.file_path"):
+                        return
+                    settings.set("git_savvy.file_path", file_path)
+                else:
+                    if not settings.get("git_savvy.file_path"):
+                        return
+                    settings.erase("git_savvy.file_path")
+                view.run_command("gs_diff_refresh", {"sync": True})
+                view.set_viewport_position(viewport_position)
+                view.sel().clear()
+                view.sel().add_all([sublime.Region(*s) for s in sel])
+
+        # Skip the `on_activated` event e.g. when the quick panel closes, because
+        # we update and refresh the underlying view manually in the callbacks.
+        settings.set("git_savvy.ignore_next_activated_event", True)
+        show_panel(
+            window,
+            items,
+            on_done,
+            on_cancel=on_cancel,
+            on_highlight=on_highlight,
+            selected_index=selected_index,
+            flags=sublime.MONOSPACE_FONT
+        )
+        window.run_command("gs_diff_grab_quick_panel_view")
+
+        if auto_close:
+            disable_auto_close_handler = False
+
+            def auto_close_panel():
+                nonlocal disable_auto_close_handler
+                if disable_auto_close_handler:
+                    return
+                settings.set("gs_diff.intentional_hide", True)
+                window.run_command("hide_overlay")
+            sublime.set_timeout_async(auto_close_panel, 1000)
+
+
+class gs_diff_grab_quick_panel_view(TextCommand):
+    def run(self, edit):
+        view = self.view
+        if view.element() != "quick_panel:input":
+            hprint(
+                "Can't mark quick_panel for switching files. "
+                "[N]/[P] bindings are disabled."
+            )
+            return
+        view.settings().set("gs_diff_files_selector", True)
+
+
 class gs_diff_zoom(TextCommand):
     """
     Update the number of context lines the diff shows by given `amount`
@@ -758,6 +910,9 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             self.view.run_command("gs_prepare_commit_refresh_diff")
         else:
             self.view.run_command("gs_diff_refresh")
+        # Ideally we would compute the next WorkingDirState but that's not
+        # trivial, so we just ask for it:
+        self.view.run_command("gs_update_status")
 
 
 def move_to_hunk(view: sublime.View, hunk_idx: int) -> None:
