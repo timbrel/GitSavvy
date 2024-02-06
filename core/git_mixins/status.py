@@ -25,7 +25,7 @@ class FileStatus(NamedTuple):
     path: str
     path_alt: Optional[str]
     index_status: str
-    working_status: Optional[str]
+    working_status: str
 
 
 @dataclass(frozen=True)
@@ -111,8 +111,8 @@ class StatusMixin(mixin_base):
         for entry in porcelain_entries:
             if not entry:
                 continue
-            index_status = entry[0]
-            working_status = entry[1].strip() or None
+            index_status = entry[0].strip()
+            working_status = entry[1].strip()
             path = entry[3:]
             path_alt = next(porcelain_entries) if index_status in ["R", "C"] else None
             entries.append(FileStatus(path, path_alt, index_status, working_status))
@@ -133,9 +133,9 @@ class StatusMixin(mixin_base):
             if f.index_status == "?":
                 untracked.append(f)
                 continue
-            elif f.working_status in ("M", "D", "T", "A"):
+            if f.working_status:
                 unstaged.append(f)
-            if f.index_status != " ":
+            if f.index_status:
                 staged.append(f)
 
         return WorkingDirState(
