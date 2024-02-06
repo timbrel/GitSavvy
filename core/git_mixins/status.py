@@ -114,7 +114,10 @@ class StatusMixin(mixin_base):
             index_status = entry[0].strip()
             working_status = entry[1].strip()
             path = entry[3:]
-            path_alt = next(porcelain_entries) if index_status in ["R", "C"] else None
+            path_alt = (
+                next(porcelain_entries)
+                if index_status in ["R", "C"] or working_status in ["R", "C"]
+                else None)
             entries.append(FileStatus(path, path_alt, index_status, working_status))
 
         return entries

@@ -294,8 +294,14 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         if not unstaged_files:
             return ""
 
+        def get_path(file_status):
+            """ Display full file_status path, including path_alt if exists """
+            if file_status.path_alt:
+                return '{} -> {}'.format(file_status.path_alt, file_status.path)
+            return file_status.path
+
         return self.template_unstaged.format("\n".join(
-            "  {} {}".format("-" if f.working_status == "D" else " ", f.path)
+            "  {} {}".format("-" if f.working_status == "D" else " ", get_path(f))
             for f in unstaged_files
         ))
 
