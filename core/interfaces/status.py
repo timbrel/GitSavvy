@@ -598,15 +598,30 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
 
     def discard_unstaged(self):
         # type: () -> Optional[List[str]]
-        file_paths = self.get_selected_subjects('unstaged', 'merge-conflicts')
 
         @util.actions.destructive(description="discard one or more unstaged files")
-        def do_discard():
+        def do_discard(file_paths: List[str]):
             self.checkout_file(*file_paths)
-            return file_paths
 
+        file_paths = self.get_selected_subjects('unstaged', 'merge-conflicts')
         if file_paths:
-            return do_discard()
+            selected_unstaged_files = [
+                f for f in self.interface.state["status"].unstaged_files
+                if f.path in file_paths
+            ]
+            # "R"-enamed files in the unstaged section are not your standard rename!
+            # See: https://stackoverflow.com/questions/77950918/how-to-produce-the-file-status-r-in-git
+            # We "un-intent" basically to split the " R" up.  After that we should have
+            # two files in the status: " D" <path_alt> and "??" <path>.  The intention
+            # is to not have any data loss.  (At the cost of possibly having more clicks
+            # to make.)
+            files_to_unintent = [
+                f.path for f in selected_unstaged_files
+                if f.working_status == "R"
+            ]
+            self.undo_intent_to_add(*files_to_unintent)
+            do_discard([f for f in file_paths if f not in files_to_unintent])
+            return file_paths
         return None
 
 
