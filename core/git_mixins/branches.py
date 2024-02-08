@@ -1,10 +1,11 @@
 import re
 
 from GitSavvy.core import store
-from GitSavvy.core.git_command import mixin_base
+from GitSavvy.core.git_command import mixin_base, NOT_SET
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.exceptions import GitSavvyError
-from GitSavvy.core.utils import yes_no_switch
+from GitSavvy.core.utils import hprint, measure_runtime, yes_no_switch
+from GitSavvy.core.runtime import run_on_new_thread
 
 from typing import Dict, List, NamedTuple, Optional, Sequence
 
@@ -96,12 +97,11 @@ class BranchesMixin(mixin_base):
         """
         Return a list of local and/or remote branches.
         """
-        supports_ahead_behind = self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND
 
-        def getter() -> str:
-            nonlocal supports_ahead_behind
+        def get_branches__(probe_speed: bool, supports_ahead_behind: bool) -> List[Branch]:
+            WAIT_TIME = 200  # [ms]
             try:
-                return self.git_throwing_silently(
+                stdout: str = self.git_throwing_silently(
                     "for-each-ref",
                     "--format={}".format(
                         "%00".join((
@@ -122,37 +122,75 @@ class BranchesMixin(mixin_base):
                     # If `supports_ahead_behind` we don't use the `--[no-]merged` argument
                     # and instead filter here in Python land.
                     yes_no_switch("--merged", merged) if not supports_ahead_behind else None,
+                    timeout=WAIT_TIME / 1000 if probe_speed else NOT_SET
                 )
             except GitSavvyError as e:
+                if probe_speed and "timed out after" in e.stderr:
+
+                    def run_commit_graph_write():
+                        hprint(
+                            f"`git for-each-ref` took more than {WAIT_TIME}ms which is slow "
+                            "for our purpose. We now run `git commit-graph write` to see if "
+                            "it gets better."
+                        )
+                        try:
+                            self.git_throwing_silently("commit-graph", "write")
+                        except GitSavvyError as err:
+                            hprint(f"`git commit-graph write` raised: {err}")
+                            store.update_state(self.repo_path, {"slow_repo": True})
+                            return
+
+                        with measure_runtime() as ms:
+                            get_branches__(False, supports_ahead_behind)
+                        elapsed = ms.get()
+                        ok = elapsed < WAIT_TIME
+                        hprint(
+                            f"After `git commit-graph write` the `git for-each-ref` call "
+                            f"{'' if ok else 'still '}takes {elapsed}ms"
+                        )
+                        if not ok:
+                            hprint("Disabling sections in the branches dashboard.")
+
+                        store.update_state(self.repo_path, {"slow_repo": True if not ok else False})
+
+                    run_on_new_thread(run_commit_graph_write)
+                    return get_branches__(False, False)
+
                 if "fatal: failed to find 'HEAD'" in e.stderr and supports_ahead_behind:
-                    supports_ahead_behind = False
-                    return getter()
-                else:
-                    e.show_error_panel()
-                    raise
+                    return get_branches__(False, False)
 
-        stdout = getter()
-        branches = [
-            branch
-            for branch in (
-                self._parse_branch_line(line)
-                for line in filter_(stdout.splitlines())
-            )
-            if branch.name != "HEAD"
-        ]
-        if supports_ahead_behind:
-            # Cache git's full output but return a filtered result if requested.
-            self._cache_branches(branches, refs)
-            if merged is True:
-                branches = [b for b in branches if b.distance_to_head.ahead == 0]  # type: ignore[union-attr]
-            elif merged is False:
-                branches = [b for b in branches if b.distance_to_head.ahead > 0]  # type: ignore[union-attr]
+                e.show_error_panel()
+                raise
 
-        elif merged is None:
-            # For older git versions cache git's output only if it was not filtered by `merged`.
-            self._cache_branches(branches, refs)
+            branches = [
+                branch
+                for branch in (
+                    self._parse_branch_line(line)
+                    for line in filter_(stdout.splitlines())
+                )
+                if branch.name != "HEAD"
+            ]
+            if supports_ahead_behind:
+                # Cache git's full output but return a filtered result if requested.
+                self._cache_branches(branches, refs)
+                if merged is True:
+                    branches = [b for b in branches if b.distance_to_head.ahead == 0]  # type: ignore[union-attr]
+                elif merged is False:
+                    branches = [b for b in branches if b.distance_to_head.ahead > 0]  # type: ignore[union-attr]
 
-        return branches
+            elif merged is None:
+                # For older git versions cache git's output only if it was not filtered by `merged`.
+                self._cache_branches(branches, refs)
+
+            return branches
+
+        slow_repo = store.current_state(self.repo_path).get("slow_repo", None)
+        supports_ahead_behind = (
+            self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND
+            and slow_repo is not False
+        )
+        probe_speed = slow_repo is None and supports_ahead_behind
+        return get_branches__(probe_speed, supports_ahead_behind)
 
     def _cache_branches(self, branches, refs):
         # type: (List[Branch], Sequence[str]) -> None

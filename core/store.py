@@ -35,6 +35,7 @@ if TYPE_CHECKING:
         last_reset_mode_used: Optional[str]
         short_hash_length: int
         skipped_files: List[str]
+        slow_repo: bool
         stashes: List[Stash]
         recent_commits: List[Commit]
         descriptions: Dict[str, str]
