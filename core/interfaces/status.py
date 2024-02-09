@@ -9,7 +9,7 @@ from ..git_mixins.status import FileStatus
 from ..git_mixins.active_branch import format_and_limit
 from ..commands import GsNavigate
 from ...common import ui
-from ..git_command import GitCommand
+from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import noop, show_actions_panel
@@ -601,7 +601,14 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
 
         @util.actions.destructive(description="discard one or more unstaged files")
         def do_discard(file_paths: List[str]):
-            self.checkout_file(*file_paths)
+            try:
+                self.checkout_file(*file_paths)
+            except GitSavvyError as err:
+                # For the error message see the lengthy comment below.
+                if "did not match any file(s) known to git" in err.stderr:
+                    pass
+                else:
+                    raise
 
         file_paths = self.get_selected_subjects('unstaged', 'merge-conflicts')
         if file_paths:
@@ -615,6 +622,21 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
             # two files in the status: " D" <path_alt> and "??" <path>.  The intention
             # is to not have any data loss.  (At the cost of possibly having more clicks
             # to make.)
+            # We also `undo_intent_to_add` for " A" but we do this in `discard_added`
+            # because we show these entries in a separate section.
+            # NOTE: For " D" we typically want to restore the file, aka undelete behavior.
+            #       This is what `do_discard` here does.
+            #       However, it could be that the file is unknown and git throws:
+            #       "error: pathspec '<path>' did not match any file(s) known to git"
+            #       Then `reset -- <path>` like in `undo_intent_to_add` would have been
+            #       the better operation because it handles these cases without throwing.
+            #       But we cannot tell before we try!  And git does everything well enough
+            #       even if it raises the error.
+            #       Keep in mind that we literally cannot undelete in those case as the content
+            #       of these files is untracked and not in the index.  (`--intent-to-add` just
+            #       adds an empty file in the index!) So cleaning the index is the best we can do.
+            #       The user can also just stage, as in: acknowledge, such an entry and it will just
+            #       disappear (because there is no further content to track).
             files_to_unintent = [
                 f.path for f in selected_unstaged_files
                 if f.working_status == "R"
