@@ -47,7 +47,7 @@ __all__ = (
 
 
 from typing import (
-    Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set,
+    Callable, Dict, Iterable, Iterator, Literal, List, NamedTuple, Optional, Set,
     Tuple, TypeVar
 )
 from ..parse_diff import FileHeader, Hunk, HunkLine, TextRange
@@ -523,15 +523,11 @@ class gs_diff_switch_files(TextCommand, GitCommand):
                 av.run_command("gs_diff_switch_files", {"recursed": True, "auto_close": auto_close, "forward": forward})
             return
 
+        AUTO_CLOSE_AFTER = 1000  # [ms]
         SEP = "                      ———— UNTRACKED FILES ————"
         settings = view.settings()
-        disable_auto_close_handler = False
-        """
-        Internal state for the `auto_close` feature.  Whenever the user interacts
-        with the quickpanel we set this to `True` via the callbacks below.
-        The auto_close handler checks this state to decide if it should actually close
-        the panel on its behalf or not.
-        """
+        auto_close_state: Literal["MUST_INSTALL", "ACTIVE", "DEAD"]
+        auto_close_state = "MUST_INSTALL" if auto_close else "DEAD"
 
         if base_commit := settings.get("git_savvy.diff_view.base_commit"):
             target_commit = settings.get("git_savvy.diff_view.target_commit")
@@ -573,21 +569,25 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             settings.set("git_savvy.original_view_state", original_view_state)
 
         def auto_close_panel():
-            nonlocal disable_auto_close_handler
-            if disable_auto_close_handler:
-                return
-            settings.set("gs_diff.intentional_hide", True)
-            window.run_command("hide_overlay")
+            nonlocal auto_close_state
+            if auto_close_state == "ACTIVE":
+                settings.set("gs_diff.intentional_hide", True)
+                window.run_command("hide_overlay")
 
         def on_done(idx):
-            nonlocal disable_auto_close_handler
-            disable_auto_close_handler = True
+            nonlocal auto_close_state
+            auto_close_state = "DEAD"
             settings.erase("git_savvy.original_view_state")
             ...  # already everything done in `on_highlight`
 
         def on_highlight(idx):
-            nonlocal disable_auto_close_handler
-            disable_auto_close_handler = True
+            nonlocal auto_close_state
+            if auto_close_state == "MUST_INSTALL":
+                auto_close_state = "ACTIVE"
+                sublime.set_timeout_async(auto_close_panel, AUTO_CLOSE_AFTER)
+            elif auto_close_state == "ACTIVE":
+                auto_close_state = "DEAD"
+
             item = items[idx]
             if item == SEP:
                 return
@@ -610,8 +610,8 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             view.run_command("gs_diff_navigate")
 
         def on_cancel():
-            nonlocal disable_auto_close_handler
-            disable_auto_close_handler = True
+            nonlocal auto_close_state
+            auto_close_state = "DEAD"
             if settings.get("gs_diff.intentional_hide"):
                 settings.erase("gs_diff.intentional_hide")
                 return
@@ -645,13 +645,6 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             flags=sublime.MONOSPACE_FONT
         )
         window.run_command("gs_diff_grab_quick_panel_view")
-
-        if auto_close:
-            # Set `disable_auto_close_handler` here again after `show_panel`
-            # because the `highlight` handler has run already for the initial
-            # draw.
-            disable_auto_close_handler = False
-            sublime.set_timeout_async(auto_close_panel, 1000)
 
 
 class gs_diff_grab_quick_panel_view(TextCommand):
