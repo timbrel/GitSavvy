@@ -525,6 +525,13 @@ class gs_diff_switch_files(TextCommand, GitCommand):
 
         SEP = "                      ———— UNTRACKED FILES ————"
         settings = view.settings()
+        disable_auto_close_handler = False
+        """
+        Internal state for the `auto_close` feature.  Whenever the user interacts
+        with the quickpanel we set this to `True` via the callbacks below.
+        The auto_close handler checks this state to decide if it should actually close
+        the panel on its behalf or not.
+        """
 
         if base_commit := settings.get("git_savvy.diff_view.base_commit"):
             target_commit = settings.get("git_savvy.diff_view.target_commit")
@@ -565,7 +572,12 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             original_view_state = (file_path, view.viewport_position(), [(s.a, s.b) for s in view.sel()], )
             settings.set("git_savvy.original_view_state", original_view_state)
 
-        disable_auto_close_handler = True
+        def auto_close_panel():
+            nonlocal disable_auto_close_handler
+            if disable_auto_close_handler:
+                return
+            settings.set("gs_diff.intentional_hide", True)
+            window.run_command("hide_overlay")
 
         def on_done(idx):
             nonlocal disable_auto_close_handler
@@ -635,14 +647,10 @@ class gs_diff_switch_files(TextCommand, GitCommand):
         window.run_command("gs_diff_grab_quick_panel_view")
 
         if auto_close:
+            # Set `disable_auto_close_handler` here again after `show_panel`
+            # because the `highlight` handler has run already for the initial
+            # draw.
             disable_auto_close_handler = False
-
-            def auto_close_panel():
-                nonlocal disable_auto_close_handler
-                if disable_auto_close_handler:
-                    return
-                settings.set("gs_diff.intentional_hide", True)
-                window.run_command("hide_overlay")
             sublime.set_timeout_async(auto_close_panel, 1000)
 
 
