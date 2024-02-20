@@ -772,8 +772,7 @@ class RebaseCommand(GitCommand):
                     if line.lower().startswith("author "):
                         # The commit does not have a parent as `author`
                         # comes *after* `parent` in a patch (`-p`).
-                        run_on_new_thread(
-                            self.rebase,
+                        return self.rebase(
                             "--root",  # <-- rebase from the root!
                             *[arg for arg in args if arg != commitish],
                             show_panel=show_panel,
@@ -783,7 +782,6 @@ class RebaseCommand(GitCommand):
                             after_rebase=after_rebase,
                             **kwargs
                         )
-                        return
 
         else:
             if show_panel and not self.in_rebase():
