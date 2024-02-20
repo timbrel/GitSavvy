@@ -799,13 +799,29 @@ class RebaseCommand(GitCommand):
 
     def _merge_commits_within_reach(self, commit_hash):
         # type: (str) -> str
-        return self.git(
-            "log",
-            "-1",
-            "--merges",
-            "--format=%H",
-            "{}..".format(commit_hash),
-        ).strip()
+        try:
+            return self.git_throwing_silently(
+                "log",
+                "-1",
+                "--merges",
+                "--format=%H",
+                "{}..".format(commit_hash),
+            ).strip()
+        except GitSavvyError as err:
+            # Typically `commit_hash` refers a parent commit, e.g. "aedbea^",
+            # and then throwing means we want to rewrite from a root commit.
+            # Just try again without the "^" as the root commit can't be a
+            # merge commit anyway.
+            if (
+                commit_hash.endswith("^") and
+                f"fatal: ambiguous argument '{commit_hash}..': "
+                f"unknown revision or path not in the working tree."
+                in err.stderr
+            ):
+                return self._merge_commits_within_reach(commit_hash[:-1])
+
+            err.show_error_panel()
+            raise
 
 
 def auto_close_panel(window, after=800):
