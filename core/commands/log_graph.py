@@ -83,13 +83,12 @@ T = TypeVar('T')
 
 QUICK_PANEL_SUPPORTS_WANT_EVENT = int(sublime.version()) >= 4096
 COMMIT_NODE_CHAR = "●"
-COMMIT_NODE_CHAR_OPTIONS = "●*"
 GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
 COMMIT_LINE = re.compile(
     r"^[{graph_chars}]*(?P<dot>[{node_chars}])[{graph_chars}]* "
     r"(?P<commit_hash>[a-f0-9]{{5,40}}) +"
     r"(\((?P<decoration>.+?)\))?"
-    .format(graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS)
+    .format(graph_chars=GRAPH_CHAR_OPTIONS, node_chars=colorizer.COMMIT_NODE_CHARS)
 )
 
 DOT_SCOPE = 'git_savvy.graph.dot'
@@ -1525,7 +1524,7 @@ def dots_after_dot(dot, forward=True):
     # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
     """Return exact next dots (commits) after `dot`."""
     fn = colorizer.follow_path_down if forward else colorizer.follow_path_up
-    return filter(lambda ch: ch.char() in COMMIT_NODE_CHAR_OPTIONS, fn(dot))
+    return filter(lambda ch: ch.char() in colorizer.COMMIT_NODE_CHARS, fn(dot))
 
 
 class gs_log_graph_navigate_to_head(TextCommand):
@@ -2143,7 +2142,7 @@ def extract_comit_hash_span(view, line_span):
 
 
 FIND_COMMIT_HASH = "^[{graph_chars}]*[{node_chars}][{graph_chars}]* ".format(
-    graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS
+    graph_chars=GRAPH_CHAR_OPTIONS, node_chars=colorizer.COMMIT_NODE_CHARS
 )
 
 
@@ -2233,7 +2232,7 @@ def line_from_pt(view, pt):
 
 def dot_from_line(view, line):
     # type: (sublime.View, TextRange) -> Optional[colorizer.Char]
-    for ch in COMMIT_NODE_CHAR_OPTIONS:
+    for ch in colorizer.COMMIT_NODE_CHARS:
         idx = line.text.find(ch)
         if idx > -1:
             return colorizer.Char(view, line.region().begin() + idx)
@@ -2312,7 +2311,7 @@ def __paint(view, paths_down, paths_up):
         lambda path: len(path) > 1,  # type: ignore[arg-type]  # https://github.com/python/mypy/issues/9176
         paths_up
     ))
-    path_up, dot_up = partition(lambda ch: ch.char() in COMMIT_NODE_CHAR_OPTIONS, chars_up)
+    path_up, dot_up = partition(lambda ch: ch.char() in colorizer.COMMIT_NODE_CHARS, chars_up)
     view.add_regions('gs_log_graph.path_below', list(map(to_region, path_down)), scope=PATH_SCOPE)
     view.add_regions('gs_log_graph.path_above', list(map(to_region, path_up)), scope=PATH_ABOVE_SCOPE)
     view.add_regions('gs_log_graph.dot.above', list(map(to_region, dot_up)), scope=DOT_ABOVE_SCOPE)
