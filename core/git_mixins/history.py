@@ -379,7 +379,7 @@ class HistoryMixin(mixin_base):
         follow: bool,
         limit: Optional[int] = None
     ) -> List[str]:
-        return self.git(
+        return self.git_throwing_silently(
             "log",
             "--format=%H",
             "--topo-order",
