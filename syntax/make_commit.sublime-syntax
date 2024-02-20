@@ -23,7 +23,11 @@ contexts:
       comment: issue
       scope: constant.other.issue-ref.git-savvy.make-commit meta.git-savvy.issue-reference
 
-    - match: (?:\W|\w\@)(\h{7,})\b
+    - match: '(?:[\s\[\(@])(\h{7,})\b'
+      comment: sha reference
+      captures:
+        1: constant.other.commit-sha.git-savvy.make-commit
+    - match: '(?:")(\h{7,})(?!\B|\")'
       comment: sha reference
       captures:
         1: constant.other.commit-sha.git-savvy.make-commit
