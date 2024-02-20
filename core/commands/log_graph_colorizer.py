@@ -162,14 +162,15 @@ PATH_CACHE = Cache()  # type: MutableMapping[Tuple[Char, Direction], List[Char]]
 # code is straight forward, and you basically have to look at some
 # graphs (turn block cursor on in Sublime!) and peek around.
 
-def follow(ch, direction):
+def follow(chars, direction):
     # type: (str, Direction) -> Callable[[NextFn], NextFn]
     def decorator(fn):
         # type: (NextFn) -> NextFn
-        registry = down_handlers if direction == "down" else up_handlers
-        if ch in registry:
-            raise RuntimeError('{} already has a handler registered'.format(ch))
-        registry[ch] = fn
+        for ch in chars:
+            registry = down_handlers if direction == "down" else up_handlers
+            if ch in registry:
+                raise RuntimeError('{} already has a handler registered'.format(ch))
+            registry[ch] = fn
         return fn
 
     return decorator
@@ -213,7 +214,7 @@ def __follow_path(dot, direction):
     while stack:
         c = stack.popleft()
         yield c
-        if c != COMMIT_NODE_CHAR:
+        if c.char() not in COMMIT_NODE_CHAR:
             stack.extendleft(reversed(list(follow_char(c, direction))))
 
 

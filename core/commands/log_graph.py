@@ -1525,7 +1525,7 @@ def dots_after_dot(dot, forward=True):
     # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
     """Return exact next dots (commits) after `dot`."""
     fn = colorizer.follow_path_down if forward else colorizer.follow_path_up
-    return filter(lambda ch: ch == COMMIT_NODE_CHAR, fn(dot))
+    return filter(lambda ch: ch.char() in COMMIT_NODE_CHAR_OPTIONS, fn(dot))
 
 
 class gs_log_graph_navigate_to_head(TextCommand):
@@ -2233,9 +2233,10 @@ def line_from_pt(view, pt):
 
 def dot_from_line(view, line):
     # type: (sublime.View, TextRange) -> Optional[colorizer.Char]
-    idx = line.text.find(COMMIT_NODE_CHAR)
-    if idx > -1:
-        return colorizer.Char(view, line.region().begin() + idx)
+    for ch in COMMIT_NODE_CHAR_OPTIONS:
+        idx = line.text.find(ch)
+        if idx > -1:
+            return colorizer.Char(view, line.region().begin() + idx)
     return None
 
 
@@ -2311,7 +2312,7 @@ def __paint(view, paths_down, paths_up):
         lambda path: len(path) > 1,  # type: ignore[arg-type]  # https://github.com/python/mypy/issues/9176
         paths_up
     ))
-    path_up, dot_up = partition(lambda ch: ch == COMMIT_NODE_CHAR, chars_up)
+    path_up, dot_up = partition(lambda ch: ch.char() in COMMIT_NODE_CHAR_OPTIONS, chars_up)
     view.add_regions('gs_log_graph.path_below', list(map(to_region, path_down)), scope=PATH_SCOPE)
     view.add_regions('gs_log_graph.path_above', list(map(to_region, path_up)), scope=PATH_ABOVE_SCOPE)
     view.add_regions('gs_log_graph.dot.above', list(map(to_region, dot_up)), scope=DOT_ABOVE_SCOPE)
