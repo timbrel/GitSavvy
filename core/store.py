@@ -37,6 +37,7 @@ if TYPE_CHECKING:
         stashes: List[Stash]
         recent_commits: List[Commit]
         descriptions: Dict[str, str]
+        default_graph_options: Dict[str, str]
     RepoPath = str
     SubscriberKey = str
     Keys = AbstractSet[str]

@@ -1965,8 +1965,7 @@
     },
     {
         "keys": ["tab"],
-        "command": "gs_tab_cycle",
-        "args": { "source": "graph" },
+        "command": "gs_log_graph_tab_out",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
@@ -1974,8 +1973,8 @@
     },
     {
         "keys": ["shift+tab"],
-        "command": "gs_tab_cycle",
-        "args": { "source": "graph", "reverse": true },
+        "command": "gs_log_graph_tab_out",
+        "args": { "reverse": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }

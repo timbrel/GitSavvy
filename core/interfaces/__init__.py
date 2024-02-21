@@ -14,7 +14,7 @@ class gs_tab_cycle(TextCommand, GitCommand):
         "branch": "gs_show_branch",
         "rebase": "gs_show_rebase",
         "tags": "gs_show_tags",
-        "graph": "gs_log_graph_current_branch"
+        "graph": "gs_log_graph_tab_in"
     }
 
     def run(self, edit, source=None, target=None, reverse=False):
