@@ -236,7 +236,7 @@ class gs_graph_current_file(WindowCommand, GitCommand):
     def run(self, **kwargs):
         file_path = self.file_path
         if file_path:
-            self.window.run_command('gs_graph', dict(file_path=file_path, **kwargs))
+            self.window.run_command("gs_graph", {"file_path": file_path, **kwargs})
         else:
             self.window.status_message("View has no filename to track.")
 
