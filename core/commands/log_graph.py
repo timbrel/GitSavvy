@@ -765,7 +765,7 @@ class gs_log_graph_refresh(GsTextCommand):
         def split_up_line(line):
             # type: (str) -> Union[str, GraphLine]
             try:
-                return GraphLine(*line.split("%00"))
+                return GraphLine(*line.rstrip().split("%00"))
             except TypeError:
                 return line
 
@@ -957,7 +957,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 left = f"{hash} ({decoration})"
             else:
                 left = f"{hash}"
-            return f"{left} {trunc(subject, max(2, LEFT_COLUMN_WIDTH - len(left)))} \u200b {info}"
+            return f"{left} {trunc(subject, max(2, LEFT_COLUMN_WIDTH - len(left)))} \u200b {info}\n"
 
         def filter_consecutive_continuation_lines(lines):
             # type: (Iterator[str]) -> Iterator[str]
