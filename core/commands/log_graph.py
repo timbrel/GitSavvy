@@ -2413,7 +2413,12 @@ def _colorize_dots(vid, dots):
     view = sublime.View(vid)
     to_region = lambda ch: ch.region()  # type: Callable[[colorizer.Char], sublime.Region]
 
-    view.add_regions('gs_log_graph.dot', list(map(to_region, dots)), scope=DOT_SCOPE)
+    view.add_regions(
+        'gs_log_graph.dot',
+        list(map(to_region, dots)),
+        scope=DOT_SCOPE,
+        flags=sublime.RegionFlags.NO_UNDO
+    )
 
     ACTIVE_COMPUTATION[vid] = dots
     __colorize_dots(vid, dots)
@@ -2476,9 +2481,24 @@ def __paint(view, paths_down, paths_up):
         paths_up
     ))
     path_up, dot_up = partition(lambda ch: ch.char() in colorizer.COMMIT_NODE_CHARS, chars_up)
-    view.add_regions('gs_log_graph.path_below', list(map(to_region, path_down)), scope=PATH_SCOPE)
-    view.add_regions('gs_log_graph.path_above', list(map(to_region, path_up)), scope=PATH_ABOVE_SCOPE)
-    view.add_regions('gs_log_graph.dot.above', list(map(to_region, dot_up)), scope=DOT_ABOVE_SCOPE)
+    view.add_regions(
+        'gs_log_graph.path_below',
+        list(map(to_region, path_down)),
+        scope=PATH_SCOPE,
+        flags=sublime.RegionFlags.NO_UNDO
+    )
+    view.add_regions(
+        'gs_log_graph.path_above',
+        list(map(to_region, path_up)),
+        scope=PATH_ABOVE_SCOPE,
+        flags=sublime.RegionFlags.NO_UNDO
+    )
+    view.add_regions(
+        'gs_log_graph.dot.above',
+        list(map(to_region, dot_up)),
+        scope=DOT_ABOVE_SCOPE,
+        flags=sublime.RegionFlags.NO_UNDO
+    )
 
 
 def colorize_fixups(view):
@@ -2496,7 +2516,8 @@ def _colorize_fixups(vid, dots):
     view.add_regions(
         'gs_log_graph_follow_fixups',
         [dot.region() for dot in matching_dots],
-        scope=MATCHING_COMMIT_SCOPE
+        scope=MATCHING_COMMIT_SCOPE,
+        flags=sublime.RegionFlags.NO_UNDO
     )
 
 
