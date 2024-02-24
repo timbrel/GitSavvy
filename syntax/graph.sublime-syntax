@@ -8,7 +8,7 @@ scope: git-savvy.graph
 variables:
   sha: '[0-9a-f]{6,40}'
   ascii_art: (?:[| \\/_.])+
-  dot: '[*●]'
+  dot: '[●*⌂]'
 
 contexts:
   main:

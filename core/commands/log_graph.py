@@ -82,7 +82,8 @@ T = TypeVar('T')
 
 
 QUICK_PANEL_SUPPORTS_WANT_EVENT = int(sublime.version()) >= 4096
-COMMIT_NODE_CHAR = "●"
+DEFAULT_NODE_CHAR = "●"
+ROOT_NODE_CHAR = "⌂"
 GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
 COMMIT_LINE = re.compile(
     r"^[{graph_chars}]*(?P<dot>[{node_chars}])[{graph_chars}]* "
@@ -509,6 +510,7 @@ class GraphLine(NamedTuple):
     decoration: str
     subject: str
     info: str
+    parents: str
 
 
 def try_kill_proc(proc):
@@ -923,8 +925,11 @@ class gs_log_graph_refresh(GsTextCommand):
                     return SHORTENED_ASCII_ART
                 return line
 
-            hash, decoration, subject, info = line
-            hash = hash.replace("*", COMMIT_NODE_CHAR, 1)
+            hash, decoration, subject, info, parents = line
+            if parents:
+                hash = hash.replace("*", DEFAULT_NODE_CHAR, 1)
+            else:
+                hash = hash.replace("*", ROOT_NODE_CHAR, 1)
             if (
                 len(hash) > ASCII_ART_LENGHT_LIMIT
                 or in_overview_mode
@@ -932,7 +937,7 @@ class gs_log_graph_refresh(GsTextCommand):
             ):
                 commit_hash = hash.rsplit(" ", 1)[1]
                 if len(hash) > ASCII_ART_LENGHT_LIMIT:
-                    hash = f".. {COMMIT_NODE_CHAR} {commit_hash}"
+                    hash = f".. {DEFAULT_NODE_CHAR} {commit_hash}"
                 elif in_overview_mode:
                     hash = hash.ljust(len(commit_hash) + 6)
 
@@ -964,6 +969,15 @@ class gs_log_graph_refresh(GsTextCommand):
             for left, right in pairwise(chain([""], lines)):
                 if right == SHORTENED_ASCII_ART and left == right:
                     continue
+                if (
+                    left.startswith(ROOT_NODE_CHAR)
+                    and right.strip()
+                    # Check if we already had clear continuations in the graph
+                    # art, e.g. "⌂ | | 024cfad"
+                    and (match := COMMIT_LINE.search(left))
+                    and match.span("commit_hash")[0] < 4
+                ):
+                    yield "-\n"
                 yield right
 
         def clear_graph():
@@ -1206,7 +1220,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 '--date=format:%b %e %Y',
                 '--format={}'.format(
                     "%00".join(
-                        ("%h", "%D", "", "%ad, %an")
+                        ("%h", "%D", "", "%ad, %an", "%p")
                     )
                 ),
                 '--date-order',
@@ -1236,7 +1250,7 @@ class gs_log_graph_refresh(GsTextCommand):
             '--date={}'.format(date_format),
             '--format={}'.format(
                 "%00".join(
-                    ("%h", "%D", "%s", "%ad, %an")
+                    ("%h", "%D", "%s", "%ad, %an", "%p")
                 )
             ),
             # Git can only follow exactly one path.  Luckily, this can
