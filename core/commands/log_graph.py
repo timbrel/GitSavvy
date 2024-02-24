@@ -1025,7 +1025,11 @@ class gs_log_graph_refresh(GsTextCommand):
                 except TimeoutError:
                     try_kill_proc(current_proc)
                     settings.set('git_savvy.log_graph_view.decoration', None)
-                    enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
+                    enqueue_on_worker(
+                        self.view.run_command,
+                        "gs_log_graph_refresh",
+                        {"assume_complete_redraw": True}
+                    )
                     return
             else:
                 tokens = run_and_check_timeout(
