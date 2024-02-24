@@ -135,7 +135,7 @@ class gs_graph(WindowCommand, GitCommand):
         author='',
         title='GRAPH',
         follow=None,
-        decoration='sparse',
+        decoration=None,
         filters='',
     ):
         if repo_path is None:
@@ -168,7 +168,8 @@ class gs_graph(WindowCommand, GitCommand):
                 settings.set("git_savvy.log_graph_view.all_branches", all)
                 settings.set("git_savvy.log_graph_view.show_tags", show_tags)
                 settings.set("git_savvy.log_graph_view.branches", branches)
-                settings.set('git_savvy.log_graph_view.decoration', decoration)
+                if decoration is not None:
+                    settings.set('git_savvy.log_graph_view.decoration', decoration)
                 settings.set('git_savvy.log_graph_view.apply_filters', apply_filters)
                 if apply_filters:
                     settings.set('git_savvy.log_graph_view.paths', paths)
@@ -196,6 +197,8 @@ class gs_graph(WindowCommand, GitCommand):
         else:
             if follow is None:
                 follow = "HEAD"
+            if decoration is None:
+                decoration = "sparse"
             show_commit_info_panel = bool(self.savvy_settings.get("graph_show_more_commit_info"))
             view = util.view.create_scratch_view(self.window, "log_graph", {
                 "title": title,
