@@ -2023,21 +2023,47 @@ def remember_commit_panel_state(view, state):
 
 def set_symbol_to_follow(view):
     # type: (sublime.View) -> None
-    symbol = extract_symbol_to_follow(view)
-    if symbol:
-        previous_value = view.settings().get('git_savvy.log_graph_view.follow')
-        if previous_value != symbol:
-            view.settings().set('git_savvy.log_graph_view.follow', symbol)
-            try:
-                cursor = [s.b for s in view.sel()][-1]
-            except IndexError:
-                return
-            continuation_line = view.find("...\n", cursor, sublime.LITERAL)
-            if continuation_line:
-                max_row, _ = view.rowcol(continuation_line.a)
-                cur_row, _ = view.rowcol(cursor)
-                if not (GRAPH_HEIGHT * 0.5 < max_row - cur_row < GRAPH_HEIGHT * 2):
-                    view.run_command("gs_log_graph_refresh")
+
+    # `on_selection_modified` is called *often* while we render, just as
+    # its by-product and without any intent of the user.
+    # This is especially problematic if the cursor is on a line we don't
+    # `follow` as we might overwrite `follow` and call `gs_log_graph_refresh`
+    # again.
+    # Filter early by checking the current `line.text`.  This is obviously
+    # also okay and efficient when the user moves the cursor just left and right.
+    # Note that we don't block *all* events here during "render" as that would
+    # filter out intentional changes as well.  But we want that an intentional
+    # move aborts the current render and restarts.  This is an important feature
+    # for very long graphs.
+
+    try:
+        cursor = [s.b for s in view.sel()][-1]
+    except IndexError:
+        return
+
+    line = line_from_pt(view, cursor)
+    _set_symbol_to_follow(view, line.text)
+
+
+@lru_cache(1)
+def _set_symbol_to_follow(view: sublime.View, line_text: str) -> None:
+    symbol = _extract_symbol_to_follow(view, line_text)
+    if not symbol:
+        return
+    previous_value = view.settings().get('git_savvy.log_graph_view.follow')
+    if symbol != previous_value:
+        view.settings().set('git_savvy.log_graph_view.follow', symbol)
+
+        try:
+            cursor = [s.b for s in view.sel()][-1]
+        except IndexError:
+            return
+        continuation_line = view.find("...\n", cursor, sublime.LITERAL)
+        if continuation_line:
+            max_row, _ = view.rowcol(continuation_line.a)
+            cur_row, _ = view.rowcol(cursor)
+            if not (GRAPH_HEIGHT * 0.5 < max_row - cur_row < GRAPH_HEIGHT * 2):
+                view.run_command("gs_log_graph_refresh")
 
 
 def extract_symbol_to_follow(view):
