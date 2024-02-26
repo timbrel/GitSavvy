@@ -2053,13 +2053,12 @@ def extract_symbol_to_follow(view):
 
     line_span = view.line(cursor)
     line_text = view.substr(line_span)
-    return _extract_symbol_to_follow(view.id(), line_text)
+    return _extract_symbol_to_follow(view, line_text)
 
 
 @lru_cache(maxsize=512)
-def _extract_symbol_to_follow(vid, _line_text):
-    # type: (sublime.ViewId, str) -> Optional[str]
-    view = sublime.View(vid)
+def _extract_symbol_to_follow(view, _line_text):
+    # type: (sublime.View, str) -> Optional[str]
     try:
         # Intentional `b` (not `end()`!) because b is where the
         # cursor is. (If you select upwards b becomes < a.)
