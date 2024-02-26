@@ -162,6 +162,9 @@ class TextRange:
         # type: (Union[int, slice]) -> Self
         return self.__class__(self.text[i], *self.region()[i])
 
+    def __len__(self):
+        return len(self.text)
+
     def region(self):
         # type: () -> Region
         return Region(self.a, self.b)

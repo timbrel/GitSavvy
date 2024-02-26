@@ -1445,18 +1445,18 @@ class gs_log_graph_navigate(TextCommand):
         row, col = view.rowcol(current_position)
         rows = count(row + 1, 1) if forwards else count(row - 1, -1)
         for row_ in rows:
-            line_span = view.line(view.text_point(row_, 0))
-            if len(line_span) == 0:
+            line = line_from_pt(view, view.text_point(row_, 0))
+            if len(line) == 0:
                 break
 
-            commit_hash_region = extract_comit_hash_span(view, line_span)
+            commit_hash_region = extract_comit_hash_span(view, line)
             if not commit_hash_region:
                 continue
 
             if not natural_movement:
                 return commit_hash_region
 
-            col_ = commit_hash_region.b - line_span.a
+            col_ = commit_hash_region.b - line.a
             if col <= col_:
                 return commit_hash_region
             else:
@@ -1499,8 +1499,8 @@ class gs_log_graph_navigate_wide(TextCommand):
                 except UnboundLocalError:
                     pass
 
-        line_span = view.line(next_dot.region())
-        r = extract_comit_hash_span(view, line_span)
+        line = line_from_pt(view, next_dot.region())
+        r = extract_comit_hash_span(view, line)
         if r:
             add_selection_to_jump_history(view)
             sel = view.sel()
@@ -1865,9 +1865,8 @@ class gs_log_graph_open_commit(TextCommand):
         sel = get_simple_selection(self.view)
         if sel is None:
             return
-        line_span = self.view.line(sel)
-        line_text = self.view.substr(line_span)
-        commit_hash = extract_commit_hash(line_text)
+        line = line_from_pt(self.view, sel)
+        commit_hash = extract_commit_hash(line.text)
         if not commit_hash:
             return
 
@@ -2051,9 +2050,8 @@ def extract_symbol_to_follow(view):
     except IndexError:
         return None
 
-    line_span = view.line(cursor)
-    line_text = view.substr(line_span)
-    return _extract_symbol_to_follow(view, line_text)
+    line = line_from_pt(view, cursor)
+    return _extract_symbol_to_follow(view, line.text)
 
 
 @lru_cache(maxsize=512)
@@ -2140,23 +2138,22 @@ def _find_symbol(view, symbol):
 
     for r, symbol_ in view.symbols():
         if symbol_ == symbol:
-            line_of_symbol = view.line(r)
-            return extract_comit_hash_span(view, line_of_symbol)
+            line = line_from_pt(view, r)
+            return extract_comit_hash_span(view, line)
 
     r = view.find(FIND_COMMIT_HASH + re.escape(symbol), 0)
     if not r.empty():
-        line_of_symbol = view.line(r)
-        return extract_comit_hash_span(view, line_of_symbol)
+        line = line_from_pt(view, r)
+        return extract_comit_hash_span(view, line)
     return None
 
 
-def extract_comit_hash_span(view, line_span):
-    # type: (sublime.View, sublime.Region) -> Optional[sublime.Region]
-    line_text = view.substr(line_span)
-    match = COMMIT_LINE.search(line_text)
+def extract_comit_hash_span(view, line):
+    # type: (sublime.View, TextRange) -> Optional[sublime.Region]
+    match = COMMIT_LINE.search(line.text)
     if match:
         a, b = match.span('commit_hash')
-        return sublime.Region(a + line_span.a, b + line_span.a)
+        return sublime.Region(a + line.a, b + line.a)
     return None
 
 
@@ -2243,7 +2240,7 @@ def _find_dots(view):
 
 
 def line_from_pt(view, pt):
-    # type: (sublime.View, int) -> TextRange
+    # type: (sublime.View, Union[sublime.Point, sublime.Region]) -> TextRange
     line_span = view.line(pt)
     line_text = view.substr(line_span)
     return TextRange(line_text, line_span.a, line_span.b)
@@ -2460,11 +2457,8 @@ def draw_info_panel(view):
     except IndexError:
         return
 
-    line_span = view.line(cursor)
-    line_text = view.substr(line_span)
-
-    # Defer to a second fn to reduce side-effects
-    draw_info_panel_for_line(view.id(), line_text)
+    line = line_from_pt(view, cursor)
+    draw_info_panel_for_line(view.id(), line.text)
 
 
 @lru_cache(maxsize=1)
@@ -2571,9 +2565,8 @@ def describe_head(view, branches):
         return None
 
     cursor = region.b
-    line_span = view.line(cursor)
-    line_text = view.substr(line_span)
-    return describe_graph_line(line_text, branches)
+    line = line_from_pt(view, cursor)
+    return describe_graph_line(line.text, branches)
 
 
 def format_revision_list(revisions):
