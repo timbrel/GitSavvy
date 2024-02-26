@@ -2057,7 +2057,7 @@ def extract_symbol_to_follow(view):
 
 
 @lru_cache(maxsize=512)
-def _extract_symbol_to_follow(view, _line_text):
+def _extract_symbol_to_follow(view, line_text):
     # type: (sublime.View, str) -> Optional[str]
     try:
         # Intentional `b` (not `end()`!) because b is where the
@@ -2080,7 +2080,6 @@ def _extract_symbol_to_follow(view, _line_text):
         # the last one which is (then) a local branch.
         return symbols_on_line[-1]
 
-    line_text = view.substr(line_span)
     return extract_commit_hash(line_text)
 
 
