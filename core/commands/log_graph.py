@@ -2066,10 +2066,10 @@ def _extract_symbol_to_follow(view, line_text):
     except IndexError:
         return None
 
-    line_span = view.line(cursor)
     if view.match_selector(cursor, 'meta.graph.graph-line.head.git-savvy'):
         return 'HEAD'
 
+    line_span = view.line(cursor)
     symbols_on_line = [
         symbol
         for r, symbol in view.symbols()
