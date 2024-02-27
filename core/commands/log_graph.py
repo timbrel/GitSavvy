@@ -1003,19 +1003,7 @@ class gs_log_graph_refresh(GsTextCommand):
             set_caret_style(self.view)
 
         def reader():
-            next_graph_splitted = filter_consecutive_continuation_lines(chain(
-                map(
-                    format_line,
-                    process_graph(
-                        map(split_up_line, self.read_graph(got_proc=remember_proc))
-                    )
-                ),
-                ['\n']
-            ))
-            tokens = normalize_tokens(simplify(
-                diff(current_graph_splitted, next_graph_splitted),
-                max_size=100
-            ))
+            graph = self.read_graph(got_proc=remember_proc)
             if (
                 initial_draw
                 and settings.get('git_savvy.log_graph_view.decoration') == 'sparse'
@@ -1024,7 +1012,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 # upfront t.i. before the first byte. For now, just race with a timeout and
                 # maybe fallback.
                 try:
-                    tokens = run_or_timeout(lambda: wait_for_first_item(tokens), timeout=1.0)
+                    lines = run_or_timeout(lambda: wait_for_first_item(graph), timeout=1.0)
                 except TimeoutError:
                     try_kill_proc(current_proc)
                     settings.set('git_savvy.log_graph_view.decoration', None)
@@ -1035,8 +1023,8 @@ class gs_log_graph_refresh(GsTextCommand):
                     )
                     return
             else:
-                tokens = run_and_check_timeout(
-                    lambda: wait_for_first_item(tokens),
+                lines = run_and_check_timeout(
+                    lambda: wait_for_first_item(graph),
                     timeout=0.1,
                     callback=(
                         [clear_graph, indicate_slow_progress]
@@ -1044,6 +1032,24 @@ class gs_log_graph_refresh(GsTextCommand):
                         else indicate_slow_progress
                     )
                 )
+            next_graph_splitted = filter_consecutive_continuation_lines(chain(
+                map(
+                    format_line,
+                    process_graph(
+                        map(split_up_line, lines)
+                    )
+                ),
+                ['\n']
+            ))
+            tokens = normalize_tokens(simplify(
+                diff(current_graph_splitted, next_graph_splitted),
+                max_size=100
+            ))
+
+            # Do not switch to the UI thread before we have a token ready for
+            # render.  Maybe the graph is even up-to-date and there ain't no
+            # tokens to draw.
+            tokens = wait_for_first_item(tokens)
             enqueue_on_ui(draw)
             token_queue.consume(tokens)
 
