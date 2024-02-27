@@ -518,7 +518,10 @@ class GraphLine(NamedTuple):
 
 def try_kill_proc(proc):
     if proc:
-        utils.kill_proc(proc)
+        try:
+            utils.kill_proc(proc)
+        except ProcessLookupError:
+            pass
         proc.got_killed = True
 
 
