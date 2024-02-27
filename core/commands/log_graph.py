@@ -569,7 +569,7 @@ class PaintingStateMachine:
 
 
 caret_styles = {}  # type: Dict[sublime.View, str]
-overwrite_statuses = {}  # type: Dict[sublime.View, bool]
+block_caret_statuses = {}  # type: Dict[sublime.View, bool]
 drawn_graph_statuses = {}  # type: Dict[sublime.View, bool]
 head_commit_seen = {}  # type: Dict[sublime.View, bool]
 LEFT_COLUMN_WIDTH = 82
@@ -594,21 +594,21 @@ def reset_caret_style(view):
         view.settings().set("caret_style", original_setting)
 
 
-def set_overwrite_status(view):
+def set_block_caret(view):
     # type: (sublime.View) -> None
-    if view not in overwrite_statuses:
-        overwrite_statuses[view] = view.overwrite_status()
-    view.set_overwrite_status(True)
+    if view not in block_caret_statuses:
+        block_caret_statuses[view] = view.settings().get("block_caret")
+    view.settings().set("block_caret", True)
 
 
-def reset_overwrite_status(view):
+def reset_block_caret(view):
     # type: (sublime.View) -> None
     try:
-        overwrite_status = overwrite_statuses[view]
+        original_setting = block_caret_statuses[view]
     except KeyError:
         pass
     else:
-        view.set_overwrite_status(overwrite_status)
+        view.settings().set("block_caret", original_setting)
 
 
 def is_repo_dirty(state):
@@ -993,7 +993,7 @@ class gs_log_graph_refresh(GsTextCommand):
             else:
                 replace_view_content(self.view, "", content_region)
                 self.view.set_viewport_position((0, 0))
-                set_overwrite_status(self.view)
+                set_block_caret(self.view)
 
         def indicate_slow_progress():
             set_caret_style(self.view)
@@ -1051,7 +1051,7 @@ class gs_log_graph_refresh(GsTextCommand):
 
         @ensure_not_aborted
         def draw():
-            set_overwrite_status(self.view)
+            set_block_caret(self.view)
             sel = get_simple_selection(self.view)
             current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
 
@@ -1137,7 +1137,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 if painter_state == 'navigated':
                     if region.end() >= view.visible_region().end():
                         painter_state.set('viewport_readied')
-                    reset_overwrite_status(view)
+                    reset_block_caret(view)
 
                 if block_time.passed(13 if painter_state == 'viewport_readied' else 1000):
                     enqueue_on_worker(call_again)
@@ -1152,7 +1152,7 @@ class gs_log_graph_refresh(GsTextCommand):
                         view.run_command("gs_log_graph_navigate")
                     elif visible_selection:
                         view.show(view.sel(), True)
-            reset_overwrite_status(view)
+            reset_block_caret(view)
             reset_caret_style(view)
             enqueue_on_worker(view.clear_undo_stack)
 
