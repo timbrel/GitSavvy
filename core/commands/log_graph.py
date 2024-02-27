@@ -568,8 +568,8 @@ class PaintingStateMachine:
         self._current_state = other
 
 
-caret_styles = {}  # type: Dict[sublime.ViewId, str]
-overwrite_statuses = {}  # type: Dict[sublime.ViewId, bool]
+caret_styles = {}  # type: Dict[sublime.View, str]
+overwrite_statuses = {}  # type: Dict[sublime.View, bool]
 drawn_graph_statuses = {}  # type: Dict[sublime.View, bool]
 head_commit_seen = {}  # type: Dict[sublime.View, bool]
 LEFT_COLUMN_WIDTH = 82
@@ -579,36 +579,32 @@ SHOW_ALL_DECORATED_COMMITS = False
 
 def set_caret_style(view, caret_style="smooth"):
     # type: (sublime.View, str) -> None
-    vid = view.id()
-    if vid not in caret_styles:
-        caret_styles[vid] = view.settings().get("caret_style")
+    if view not in caret_styles:
+        caret_styles[view] = view.settings().get("caret_style")
     view.settings().set("caret_style", caret_style)
 
 
 def reset_caret_style(view):
     # type: (sublime.View) -> None
-    vid = view.id()
     try:
-        caret_style = caret_styles[vid]
+        original_setting = caret_styles[view]
     except KeyError:
         pass
     else:
-        view.settings().set("caret_style", caret_style)
+        view.settings().set("caret_style", original_setting)
 
 
 def set_overwrite_status(view):
     # type: (sublime.View) -> None
-    vid = view.id()
-    if vid not in overwrite_statuses:
-        overwrite_statuses[vid] = view.overwrite_status()
+    if view not in overwrite_statuses:
+        overwrite_statuses[view] = view.overwrite_status()
     view.set_overwrite_status(True)
 
 
 def reset_overwrite_status(view):
     # type: (sublime.View) -> None
-    vid = view.id()
     try:
-        overwrite_status = overwrite_statuses[vid]
+        overwrite_status = overwrite_statuses[view]
     except KeyError:
         pass
     else:
