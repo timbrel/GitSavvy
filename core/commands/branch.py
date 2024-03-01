@@ -37,7 +37,7 @@ GitSavvy: Re-created branch '{0}', in case you want to undo, run:
 """
 
 EXTRACT_COMMIT = re.compile(r"\(was (.+)\)")
-NOT_MERGED_WARNING = re.compile(r"the branch.*is not fully merged\.", re.I)
+NOT_MERGED_WARNING = re.compile(r"the branch.*is not fully merged", re.I)
 CANT_DELETE_USED_BRANCH = re.compile(r"cannot delete branch .+ (checked out|used by worktree) at ", re.I)
 
 
