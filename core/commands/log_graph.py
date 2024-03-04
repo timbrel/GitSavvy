@@ -1,4 +1,5 @@
 from collections import deque
+from dataclasses import dataclass
 from functools import lru_cache, partial
 from itertools import chain, count, groupby, islice
 import os
@@ -579,6 +580,7 @@ SHOW_ALL_DECORATED_COMMITS = False
 
 def set_caret_style(view, caret_style="smooth"):
     # type: (sublime.View, str) -> None
+    start_busy_indicator(view)
     if view not in caret_styles:
         caret_styles[view] = view.settings().get("caret_style")
     view.settings().set("caret_style", caret_style)
@@ -596,6 +598,7 @@ def reset_caret_style(view):
 
 def set_block_caret(view):
     # type: (sublime.View) -> None
+    start_busy_indicator(view)
     if view not in block_caret_statuses:
         block_caret_statuses[view] = view.settings().get("block_caret")
     view.settings().set("block_caret", True)
@@ -603,12 +606,80 @@ def set_block_caret(view):
 
 def reset_block_caret(view):
     # type: (sublime.View) -> None
+    stop_busy_indicator(view)
     try:
         original_setting = block_caret_statuses[view]
     except KeyError:
         pass
     else:
         view.settings().set("block_caret", original_setting)
+
+
+class BusyIndicators:
+    ROLLING = ["◐", "◓", "◑", "◒"]
+    STARS = ["◇", "◈", "◆"]
+    BRAILLE = "⣷⣯⣟⡿⢿⣻⣽⣾"
+
+
+@dataclass
+class BusyIndicatorConfig:
+    start_after: float
+    timeout_after: float
+    cycle_time: int
+    indicators: Sequence[str]
+
+
+STATUS_BUSY_KEY = "gitsavvy-x-repo-status"
+running_busy_indicators: Dict[Tuple[sublime.View, str], BusyIndicatorConfig] = {}
+
+
+def start_busy_indicator(
+    view: sublime.View,
+    status_key: str = STATUS_BUSY_KEY,
+    *,
+    start_after: float = 2.0,  # [seconds]
+    timeout_after: float = 120.0,  # [seconds]
+    cycle_time: int = 200,  # [milliseconds]
+    indicators: Sequence[str] = BusyIndicators.ROLLING
+) -> None:
+    key = (view, status_key)
+    is_running = key in running_busy_indicators
+    config = BusyIndicatorConfig(start_after, timeout_after, cycle_time, indicators)
+    running_busy_indicators[key] = config
+    if not is_running:
+        _busy_indicator(view, status_key, time.time())
+
+
+def stop_busy_indicator(view: sublime.View, status_key: str = STATUS_BUSY_KEY) -> None:
+    try:
+        running_busy_indicators.pop((view, status_key))
+    except KeyError:
+        pass
+
+
+def _busy_indicator(view: sublime.View, status_key: str, start_time: float) -> None:
+    try:
+        config = running_busy_indicators[(view, status_key)]
+    except KeyError:
+        view.erase_status(status_key)
+        return
+
+    now = time.time()
+    elapsed = now - start_time
+    if config.start_after <= elapsed < config.timeout_after:
+        num = len(config.indicators)
+        text = config.indicators[int(elapsed * 1000 / config.cycle_time) % num]
+        view.set_status(status_key, text)
+    else:
+        view.erase_status(status_key)
+
+    if elapsed < config.timeout_after:
+        sublime.set_timeout(
+            lambda: _busy_indicator(view, status_key, start_time),
+            config.cycle_time
+        )
+    else:
+        stop_busy_indicator(view, status_key)
 
 
 def is_repo_dirty(state):
