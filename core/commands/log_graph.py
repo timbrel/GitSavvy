@@ -2773,6 +2773,20 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                         ),
                     ]
 
+                actions += [
+                    (
+                        "Push '{}' to '{}'".format(branch_name, b.upstream.canonical_name),
+                        partial(self.push, branch_name)
+                    ),
+                ]
+            else:
+                actions += [
+                    (
+                        "Push '{}'".format(branch_name),
+                        partial(self.push, branch_name)
+                    ),
+                ]
+
         if file_path:
             actions += [
                 ("Show file at commit", partial(self.show_file_at_commit, commit_hash, file_path)),
