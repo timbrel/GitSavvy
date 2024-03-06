@@ -33,7 +33,7 @@ __all__ = (
     "gs_rebase_drop_commit",
     "gs_rebase_reword_commit",
     "gs_rebase_apply_fixup",
-    "gs_rebase_copy_commits",
+    "gs_rebase_extract_commits",
     "AwaitTodoListView"
 )
 
@@ -227,6 +227,10 @@ class gs_rebase_action(GsWindowCommand):
                         "Copy {} to a <new branch> onto <branch>".format(formatted_commit_hashes),
                         partial(self.copy_commits, view, commit_hashes)
                     ),
+                    (
+                        "Extract {} to a <new branch> onto <branch>".format(formatted_commit_hashes),
+                        partial(self.extract_commits, view, commit_hashes)
+                    ),
                 ]
             return actions
 
@@ -298,6 +302,10 @@ class gs_rebase_action(GsWindowCommand):
                 (
                     "Copy commit to a <new branch> onto <branch>",
                     partial(self.copy_commits, view, [commit_hash])
+                ),
+                (
+                    "Extract commit to a <new branch> onto <branch>",
+                    partial(self.extract_commits, view, [commit_hash])
                 ),
                 (
                     "Make fixup commit for {}".format(commit_hash),
@@ -446,6 +454,11 @@ class gs_rebase_action(GsWindowCommand):
         view.run_command("gs_rebase_apply_fixup", {
             "base_commit": base_commit,
             "fixes": fixup_commits
+        })
+
+    def extract_commits(self, view, commits):
+        view.run_command("gs_rebase_extract_commits", {
+            "commits": commits,
         })
 
     def copy_commits(self, view, commits):
@@ -859,16 +872,37 @@ def copy_commits(ref: str, commits: List[str], buffer_content: str) -> str:
     return "\n".join(inner())
 
 
-class gs_rebase_copy_commits(GsTextCommand, RebaseCommand):
+def extract_commits(ref: str, commits: List[str], buffer_content: str) -> str:
+    def inner():
+        yield "label onto"
+        for commit in commits:
+            yield f"pick {commit}"
+        yield f"u {ref}"
+        yield "reset onto"
+        yield ""
+
+        prefixes = {"pick {} ".format(commit) for commit in commits}
+        prefix_len = 6 + len(commits[0])  # 6 == len("pick  ")
+        for line in buffer_content.splitlines():
+            if line[:prefix_len] in prefixes:
+                yield "drop" + line[4:]
+            else:
+                yield line
+
+        yield ""  # cosmetic trailing newline
+    return "\n".join(inner())
+
+
+class gs_rebase_extract_commits(GsTextCommand, RebaseCommand):
     defaults = {
         "ref": ask_for_ref,
         "onto": ask_for_branch_,
     }
 
-    def run(self, edit, ref, commits, onto):
-        # type: (sublime.Edit, str, List[str], str) -> None
+    def run(self, edit, ref, commits, onto, copy=False):
+        # type: (sublime.Edit, str, List[str], str, bool) -> None
         def program():
-            with await_todo_list(partial(copy_commits, ref, commits)):
+            with await_todo_list(partial(copy_commits if copy else extract_commits, ref, commits)):
                 self.rebase(
                     '--interactive',
                     (
