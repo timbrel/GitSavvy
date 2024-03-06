@@ -128,6 +128,46 @@ ask_for_branch_ = ask_for_branch(
 )
 
 
+def ask_for_ref(self, args, done, initial_text=""):
+    # type: (GsTextCommand, Args, Kont, str) -> None
+    def on_done(ref):
+        ref = ref.strip().replace(" ", "-")
+        if not ref:
+            return
+
+        if not ref.startswith("refs/"):
+            branch_name = ref
+            ref = f"refs/heads/{ref}"
+            for branch in self.get_local_branches():
+                if branch.name == branch_name:
+                    if branch.active:
+                        show_actions_panel(self.window, [
+                            (
+                                f"Abort, {branch_name} is your current branch which can't be overwritten.",
+                                lambda: ask_for_ref(self, args, done, initial_text=branch_name)
+                            )
+                        ])
+                    else:
+                        show_actions_panel(self.window, [
+                            (
+                                f"Abort, {branch_name} would be overwritten.",
+                                lambda: ask_for_ref(self, args, done, initial_text=branch_name)
+                            ),
+                            (
+                                "Go ahead!",
+                                lambda: done(ref)
+                            )
+                        ])
+                    return
+        done(ref)
+
+    show_single_line_input_panel(
+        "Branch name or ref:",
+        initial_text,
+        on_done,
+    )
+
+
 def get_view_for_command(cmd):
     # type: (sublime_plugin.Command) -> Optional[sublime.View]
     if isinstance(cmd, sublime_plugin.TextCommand):
@@ -394,33 +434,11 @@ class gs_rebase_action(GsWindowCommand):
             "fixes": fixup_commits
         })
 
-    def copy_commits(self, view, commits, initial_text=""):
-        def on_done(branch_name):
-            branch_name = branch_name.strip().replace(" ", "-")
-            if not branch_name:
-                return
-
-            if not branch_name.startswith("refs/"):
-                for branch in self.get_local_branches():
-                    if branch.name == branch_name:
-                        self.window.show_quick_panel(
-                            [f"Abort, {branch_name} would be overwritten."],
-                            lambda _: self.copy_commits(view, commits, branch_name)
-                        )
-                        return
-                branch_name = f"refs/heads/{branch_name}"
-
-            view.run_command("gs_rebase_copy_commits", {
-                "commits": commits,
-                "ref": branch_name,
-            })
-
-        show_single_line_input_panel(
-            "Branch name or ref:",
-            initial_text,
-            on_done,
-            select_text=False
-        )
+    def copy_commits(self, view, commits):
+        view.run_command("gs_rebase_extract_commits", {
+            "commits": commits,
+            "copy": True,
+        })
 
     def reword(self, view, commit_hash):
         view.run_command("gs_rebase_reword_commit", {"commit_hash": commit_hash})
@@ -829,10 +847,11 @@ def copy_commits(ref: str, commits: List[str], buffer_content: str) -> str:
 
 class gs_rebase_copy_commits(GsTextCommand, RebaseCommand):
     defaults = {
+        "ref": ask_for_ref,
         "onto": ask_for_branch_,
     }
 
-    def run(self, edit, onto, commits, ref):
+    def run(self, edit, ref, commits, onto):
         # type: (sublime.Edit, str, List[str], str) -> None
         def program():
             with await_todo_list(partial(copy_commits, ref, commits)):
