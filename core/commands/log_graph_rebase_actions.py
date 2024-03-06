@@ -747,10 +747,8 @@ class gs_rebase_reword_commit(gs_rebase_quick_action):
 
 
 class gs_rebase_apply_fixup(gs_rebase_quick_action):
-    action = partial(fixup_commits)
-
     def run(self, edit, base_commit, fixes):
-        self.action = partial(self.action, [Commit(*fix) for fix in fixes])
+        self.action = partial(fixup_commits, [Commit(*fix) for fix in fixes])
         super().run(edit, base_commit)
 
 
