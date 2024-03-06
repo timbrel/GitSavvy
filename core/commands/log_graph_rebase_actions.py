@@ -381,13 +381,27 @@ class gs_rebase_action(GsWindowCommand):
                     else ""
                 )
                 previous_tip = "{}@{{1}}".format(current_branch)
-                if previous_tip in filters:
-                    actions += [
-                        (
-                            "Hide {} in the graph".format(previous_tip),
-                            partial(self.remove_previous_tip, view, previous_tip)
-                        )
-                    ]
+                # General matcher:
+                # (?P<branch_name>\S+)@{(?P<revision>\d+)}
+                reflog_matcher = re.compile(
+                    r"{}@{{(?P<revision>\d+)}}".format(re.escape(current_branch))
+                )
+                if previous_revisions := reflog_matcher.findall(filters):
+                    if len(previous_revisions) > 1:
+                        actions += [
+                            (
+                                "Hide previous tips of {} in the graph".format(current_branch),
+                                partial(self.filter_filters, view, reflog_matcher)
+                            )
+                        ]
+                    else:
+                        actions += [
+                            (
+                                "Hide {}@{{{}}} in the graph"
+                                .format(current_branch, previous_revisions[0]),
+                                partial(self.filter_filters, view, reflog_matcher)
+                            )
+                        ]
                 else:
                     actions += [
                         (
@@ -535,10 +549,13 @@ class gs_rebase_action(GsWindowCommand):
 
         view.run_command("gs_log_graph_refresh")
 
-    def remove_previous_tip(self, view, previous_tip):
+    def filter_filters(self, view, matcher: re.Pattern):
         settings = view.settings()
         filters = settings.get("git_savvy.log_graph_view.filters", "")
-        new_filters = ' '.join(s for s in shlex.split(filters) if s != previous_tip)
+        new_filters = ' '.join(
+            s for s in shlex.split(filters)
+            if not matcher.search(s)
+        )
         settings.set("git_savvy.log_graph_view.filters", new_filters)
         view.run_command("gs_log_graph_refresh")
 
