@@ -11,10 +11,11 @@ import sublime_plugin
 from GitSavvy.common import util
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand, ask_for_branch
 from GitSavvy.core.commands import log_graph
-from GitSavvy.core.fns import filter_
+from GitSavvy.core.fns import filter_, unique
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.parse_diff import TextRange
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
+from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.utils import flash, noop, show_actions_panel, yes_no_switch, SEPARATOR
 from GitSavvy.core.view import replace_view_content
 
@@ -32,6 +33,7 @@ __all__ = (
     "gs_rebase_drop_commit",
     "gs_rebase_reword_commit",
     "gs_rebase_apply_fixup",
+    "gs_rebase_copy_commits",
     "AwaitTodoListView"
 )
 
@@ -145,171 +147,203 @@ class gs_rebase_action(GsWindowCommand):
         if not view:
             return
 
-        sel = log_graph.get_simple_selection(view)
-        if sel is None:
-            flash(view, "Only single cursors are supported.")
-            return
-
-        line = log_graph.line_from_pt(view, sel.b)
-        info = log_graph.describe_graph_line(line.text, known_branches={})
-        if info is None:
+        infos = list(filter_(
+            log_graph.describe_graph_line(line, known_branches={})
+            for line in unique(
+                view.substr(line)
+                for s in view.sel()
+                for line in view.lines(s)
+            )
+        ))
+        if not infos:
             flash(view, "Not on a line with a commit.")
             return
 
-        commit_hash = info["commit"]
-        commitish = commitish_from_info(info)
-        parent_commitish = "{}^".format(commitish)
-        commit_message = commit_message_from_line(view, line)
-        on_head = "HEAD" in info
-        actions = []  # type: List[Tuple[str, Callable[[], None]]]
+        def multi_commits_actions():
+            actions = []  # type: List[Tuple[str, Callable[[], None]]]
 
-        if commit_message:
-            if log_graph.is_fixup_or_squash_message(commit_message):
-                base_commit = find_base_commit_for_fixup(view, line, commit_message)
-                if base_commit:
-                    fixup_commit = Commit(commit_hash, commit_message)
-                    actions += [
-                        (
-                            "Apply fix to '{}'".format(base_commit)
-                            if is_fixup(fixup_commit)
-                            else "Squash with '{}'".format(base_commit),
-                            partial(self.apply_fixup, view, base_commit, [fixup_commit])
-                        )
-                    ]
-            else:
-                base_dot = log_graph.dot_from_line(view, line)
-                if base_dot:
-                    base_commit = commit_hash
-                    dots = log_graph.find_fixups_upwards(base_dot, commit_message)
-                    fixups = [
-                        Commit(commit_hash_from_dot(view, dot), message)
-                        for dot, message in dots
-                    ]
-                    if fixups:
-                        formatted_commit_hashes = log_graph.format_revision_list(
-                            [fixup.commit_hash for fixup in fixups]
-                        )
-                        if len(fixups) == 1:
-                            formatted_commit_hashes = f"'{formatted_commit_hashes}'"
+            commit_hashes = list(reversed([
+                info["commit"]
+                for info in infos
+            ]))
+            if self.git_version >= VERSION_WITH_UPDATE_REFS:
+                formatted_commit_hashes = log_graph.format_revision_list(commit_hashes)
+                actions += [
+                    (
+                        "Copy {} to a <new branch> onto <branch>".format(formatted_commit_hashes),
+                        partial(self.copy_commits, view, commit_hashes)
+                    ),
+                ]
+            return actions
 
+        def single_commit_actions():
+            line = log_graph.line_from_pt(view, view.sel()[0].b)
+            info = infos[0]
+            commit_hash = info["commit"]
+            commitish = commitish_from_info(info)
+            parent_commitish = "{}^".format(commitish)
+            commit_message = commit_message_from_line(view, line)
+            on_head = "HEAD" in info
+            actions = []  # type: List[Tuple[str, Callable[[], None]]]
+
+            if commit_message:
+                if log_graph.is_fixup_or_squash_message(commit_message):
+                    base_commit = find_base_commit_for_fixup(view, line, commit_message)
+                    if base_commit:
+                        fixup_commit = Commit(commit_hash, commit_message)
                         actions += [
                             (
-                                "Apply fixup{} {} to {}".format(
-                                    "" if len(fixups) == 1 else "s",
-                                    formatted_commit_hashes,
-                                    base_commit
-                                )
-                                if any(is_fixup(fixup) for fixup in fixups)
-                                else f"Squash with {formatted_commit_hashes}",
-                                partial(self.apply_fixup, view, base_commit, fixups)
+                                "Apply fix to '{}'".format(base_commit)
+                                if is_fixup(fixup_commit)
+                                else "Squash with '{}'".format(base_commit),
+                                partial(self.apply_fixup, view, base_commit, [fixup_commit])
                             )
                         ]
+                else:
+                    base_dot = log_graph.dot_from_line(view, line)
+                    if base_dot:
+                        base_commit = commit_hash
+                        dots = log_graph.find_fixups_upwards(base_dot, commit_message)
+                        fixups = [
+                            Commit(commit_hash_from_dot(view, dot), message)
+                            for dot, message in dots
+                        ]
+                        if fixups:
+                            formatted_commit_hashes = log_graph.format_revision_list(
+                                [fixup.commit_hash for fixup in fixups]
+                            )
+                            if len(fixups) == 1:
+                                formatted_commit_hashes = f"'{formatted_commit_hashes}'"
 
-        actions += [
-            (
-                "Re[W]ord commit message",
-                partial(self.reword, view, commit_hash)
-            ),
-            (
-                "[E]dit commit",
-                partial(self.edit, view, commit_hash)
-            ),
-            (
-                "Drop commit",
-                partial(self.drop, view, commit_hash)
-            ),
-            (
-                "Make fixup commit for {}".format(commit_hash),
-                partial(self.create_fixup_commit, commit_hash)
-            ),
-        ]
+                            actions += [
+                                (
+                                    "Apply fixup{} {} to {}".format(
+                                        "" if len(fixups) == 1 else "s",
+                                        formatted_commit_hashes,
+                                        base_commit
+                                    )
+                                    if any(is_fixup(fixup) for fixup in fixups)
+                                    else f"Squash with {formatted_commit_hashes}",
+                                    partial(self.apply_fixup, view, base_commit, fixups)
+                                )
+                            ]
 
-        on_off = lambda setting: "x" if setting else " "
-        rebase_merges = _get_setting(self, "git_savvy.log_graph_view.rebase_merges", DEFAULT_VALUE)
-        update_refs = _get_setting(self, "git_savvy.log_graph_view.update_refs", DEFAULT_VALUE)
-        actions += [
-            (
-                "———————————————————————————       [{}] --rebase-merges,   [{}] --update-refs"
-                .format(on_off(rebase_merges), on_off(update_refs)),
-                partial(self.switch_through_options, view, rebase_merges, update_refs)
-            ),
-        ]
-
-        head_info = log_graph.describe_head(view, {})
-        # `HEAD^..HEAD` only selects one commit which is not enough
-        # for autosquashing.
-        if not on_head:
-            good_head_name = (
-                "HEAD"
-                if not head_info or head_info["HEAD"] == head_info["commit"]
-                else head_info["HEAD"]
-            )
             actions += [
                 (
-                    "Apply fixes and squashes {}..{}".format(parent_commitish, good_head_name),
-                    partial(self.autosquash, view, parent_commitish),
+                    "Re[W]ord commit message",
+                    partial(self.reword, view, commit_hash)
+                ),
+                (
+                    "[E]dit commit",
+                    partial(self.edit, view, commit_hash)
+                ),
+                (
+                    "Drop commit",
+                    partial(self.drop, view, commit_hash)
+                ),
+                (
+                    "Copy commit to a <new branch> onto <branch>",
+                    partial(self.copy_commits, view, [commit_hash])
+                ),
+                (
+                    "Make fixup commit for {}".format(commit_hash),
+                    partial(self.create_fixup_commit, commit_hash)
                 ),
             ]
 
-        actions += [
-            (
-                "[R]ebase interactive from {} on".format(parent_commitish),
-                partial(self.rebase_interactive, view, parent_commitish)
-            ),
-            (
-                "Rebase {} --onto <branch>".format(parent_commitish),
-                partial(self.rebase_onto, view, parent_commitish)
-            ),
-            (
-                "Rebase on <branch>",
-                partial(self.rebase_on, view)
-            ),
-        ]
-
-        current_branch = (
-            head_info["HEAD"]
-            if head_info and head_info["HEAD"] != head_info["commit"]
-            else None
-        )
-        if current_branch:
+            on_off = lambda setting: "x" if setting else " "
+            rebase_merges = _get_setting(self, "git_savvy.log_graph_view.rebase_merges", DEFAULT_VALUE)
+            update_refs = _get_setting(self, "git_savvy.log_graph_view.update_refs", DEFAULT_VALUE)
             actions += [
-                SEPARATOR,
+                (
+                    "———————————————————————————       [{}] --rebase-merges,   [{}] --update-refs"
+                    .format(on_off(rebase_merges), on_off(update_refs)),
+                    partial(self.switch_through_options, view, rebase_merges, update_refs)
+                ),
             ]
 
-            settings = view.settings()
-            applying_filters = settings.get("git_savvy.log_graph_view.apply_filters")
-            filters = (
-                settings.get("git_savvy.log_graph_view.filters", "")
-                if applying_filters
-                else ""
-            )
-            previous_tip = "{}@{{1}}".format(current_branch)
-            if previous_tip in filters:
+            head_info = log_graph.describe_head(view, {})
+            # `HEAD^..HEAD` only selects one commit which is not enough
+            # for autosquashing.
+            if not on_head:
+                good_head_name = (
+                    "HEAD"
+                    if not head_info or head_info["HEAD"] == head_info["commit"]
+                    else head_info["HEAD"]
+                )
                 actions += [
                     (
-                        "Hide {} in the graph".format(previous_tip),
-                        partial(self.remove_previous_tip, view, previous_tip)
-                    )
-                ]
-            else:
-                actions += [
-                    (
-                        "Show previous tip of {} in the graph".format(current_branch),
-                        partial(self.add_previous_tip, view, previous_tip)
-                    )
+                        "Apply fixes and squashes {}..{}".format(parent_commitish, good_head_name),
+                        partial(self.autosquash, view, parent_commitish),
+                    ),
                 ]
 
             actions += [
                 (
-                    "Diff against previous tip",
-                    partial(self.diff_commit, previous_tip, current_branch)
+                    "[R]ebase interactive from {} on".format(parent_commitish),
+                    partial(self.rebase_interactive, view, parent_commitish)
                 ),
                 (
-                    "Compare with previous tip",
-                    partial(self.compare_commits, current_branch, previous_tip)
+                    "Rebase {} --onto <branch>".format(parent_commitish),
+                    partial(self.rebase_onto, view, parent_commitish)
                 ),
-
+                (
+                    "Rebase on <branch>",
+                    partial(self.rebase_on, view)
+                ),
             ]
+
+            current_branch = (
+                head_info["HEAD"]
+                if head_info and head_info["HEAD"] != head_info["commit"]
+                else None
+            )
+            if current_branch:
+                actions += [
+                    SEPARATOR,
+                ]
+
+                settings = view.settings()
+                applying_filters = settings.get("git_savvy.log_graph_view.apply_filters")
+                filters = (
+                    settings.get("git_savvy.log_graph_view.filters", "")
+                    if applying_filters
+                    else ""
+                )
+                previous_tip = "{}@{{1}}".format(current_branch)
+                if previous_tip in filters:
+                    actions += [
+                        (
+                            "Hide {} in the graph".format(previous_tip),
+                            partial(self.remove_previous_tip, view, previous_tip)
+                        )
+                    ]
+                else:
+                    actions += [
+                        (
+                            "Show previous tip of {} in the graph".format(current_branch),
+                            partial(self.add_previous_tip, view, previous_tip)
+                        )
+                    ]
+
+                actions += [
+                    (
+                        "Diff against previous tip",
+                        partial(self.diff_commit, previous_tip, current_branch)
+                    ),
+                    (
+                        "Compare with previous tip",
+                        partial(self.compare_commits, current_branch, previous_tip)
+                    ),
+
+                ]
+
+            return actions
+
+        if len(infos) == 1:
+            actions = single_commit_actions()
+        else:
+            actions = multi_commits_actions()
 
         def on_action_selection(index):
             if index == -1:
@@ -359,6 +393,34 @@ class gs_rebase_action(GsWindowCommand):
             "base_commit": base_commit,
             "fixes": fixup_commits
         })
+
+    def copy_commits(self, view, commits, initial_text=""):
+        def on_done(branch_name):
+            branch_name = branch_name.strip().replace(" ", "-")
+            if not branch_name:
+                return
+
+            if not branch_name.startswith("refs/"):
+                for branch in self.get_local_branches():
+                    if branch.name == branch_name:
+                        self.window.show_quick_panel(
+                            [f"Abort, {branch_name} would be overwritten."],
+                            lambda _: self.copy_commits(view, commits, branch_name)
+                        )
+                        return
+                branch_name = f"refs/heads/{branch_name}"
+
+            view.run_command("gs_rebase_copy_commits", {
+                "commits": commits,
+                "ref": branch_name,
+            })
+
+        show_single_line_input_panel(
+            "Branch name or ref:",
+            initial_text,
+            on_done,
+            select_text=False
+        )
 
     def reword(self, view, commit_hash):
         view.run_command("gs_rebase_reword_commit", {"commit_hash": commit_hash})
@@ -750,6 +812,47 @@ class gs_rebase_apply_fixup(gs_rebase_quick_action):
     def run(self, edit, base_commit, fixes):
         self.action = partial(fixup_commits, [Commit(*fix) for fix in fixes])
         super().run(edit, base_commit)
+
+
+def copy_commits(ref: str, commits: List[str], buffer_content: str) -> str:
+    def inner():
+        yield "label onto"
+        for commit in commits:
+            yield f"pick {commit}"
+        yield f"u {ref}"
+        yield "reset onto"
+        yield ""
+        yield from buffer_content.splitlines()
+        yield ""  # cosmetic trailing newline
+    return "\n".join(inner())
+
+
+class gs_rebase_copy_commits(GsTextCommand, RebaseCommand):
+    defaults = {
+        "onto": ask_for_branch_,
+    }
+
+    def run(self, edit, onto, commits, ref):
+        # type: (sublime.Edit, str, List[str], str) -> None
+        def program():
+            with await_todo_list(partial(copy_commits, ref, commits)):
+                self.rebase(
+                    '--interactive',
+                    (
+                        "--rebase-merges"
+                        if self._merge_commits_within_reach(onto)
+                        else None
+                    ),
+                    "--autostash",
+                    "--update-refs",
+                    onto,
+                    custom_environ=make_git_config_env({
+                        "rebase.abbreviateCommands": "false"
+                    }),
+                    after_rebase=follow_new_commit(self, commits[0]),
+                )
+
+        run_on_new_thread(program)
 
 
 class gs_rebase_just_autosquash(GsTextCommand, RebaseCommand):
