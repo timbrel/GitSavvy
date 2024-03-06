@@ -33,6 +33,7 @@ __all__ = (
     "gs_rebase_drop_commit",
     "gs_rebase_reword_commit",
     "gs_rebase_apply_fixup",
+    "gs_rebase_squash_commits",
     "gs_rebase_extract_commits",
     "AwaitTodoListView"
 )
@@ -220,8 +221,15 @@ class gs_rebase_action(GsWindowCommand):
                 info["commit"]
                 for info in infos
             ]))
+            formatted_commit_hashes = log_graph.format_revision_list(commit_hashes)
+
+            actions += [
+                (
+                    f"Squash {formatted_commit_hashes}",
+                    partial(self.squash_commits, view, commit_hashes)
+                )
+            ]
             if self.git_version >= VERSION_WITH_UPDATE_REFS:
-                formatted_commit_hashes = log_graph.format_revision_list(commit_hashes)
                 actions += [
                     (
                         "Copy {} to a <new branch> onto <branch>".format(formatted_commit_hashes),
@@ -454,6 +462,12 @@ class gs_rebase_action(GsWindowCommand):
         view.run_command("gs_rebase_apply_fixup", {
             "base_commit": base_commit,
             "fixes": fixup_commits
+        })
+
+    def squash_commits(self, view, commits):
+        view.run_command("gs_rebase_squash_commits", {
+            "base_commit": commits[0],
+            "commits": commits[1:]
         })
 
     def extract_commits(self, view, commits):
@@ -841,6 +855,25 @@ def fixup_commits(fixup_commits, base_commit, buffer_content):
     return "".join(inner())
 
 
+def squash_commits(commits: List[str], base_commit: str, buffer_content: str) -> str:
+    def inner():
+        # type: () -> Iterator[str]
+        needle = "pick {} ".format(base_commit)
+        to_squash = {"pick {} ".format(commit) for commit in commits}
+        prefix_len = 6 + len(commits[0])  # 6 == len("pick  ")
+        for line in buffer_content.splitlines():
+            if line[:prefix_len] in to_squash:
+                continue
+
+            yield line
+            if line.startswith(needle):
+                for commit in commits:
+                    yield f"squash {commit}"
+        yield ""  # cosmetic trailing newline
+
+    return "\n".join(inner())
+
+
 class gs_rebase_edit_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "edit")
 
@@ -856,6 +889,12 @@ class gs_rebase_reword_commit(gs_rebase_quick_action):
 class gs_rebase_apply_fixup(gs_rebase_quick_action):
     def run(self, edit, base_commit, fixes):
         self.action = partial(fixup_commits, [Commit(*fix) for fix in fixes])
+        super().run(edit, base_commit)
+
+
+class gs_rebase_squash_commits(gs_rebase_quick_action):
+    def run(self, edit, base_commit, commits):
+        self.action = partial(squash_commits, commits)
         super().run(edit, base_commit)
 
 
