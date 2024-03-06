@@ -119,6 +119,13 @@ def extract_commit_hash_from_graph(self, args, done):
     done(commit_hash)
 
 
+ask_for_branch_ = ask_for_branch(
+    ask_remote_first=False,
+    ignore_current_branch=True,
+    memorize_key="last_branch_used_to_rebase_from"
+)
+
+
 def get_view_for_command(cmd):
     # type: (sublime_plugin.Command) -> Optional[sublime.View]
     if isinstance(cmd, sublime_plugin.TextCommand):
@@ -793,13 +800,6 @@ class gs_rebase_skip(sublime_plugin.WindowCommand, RebaseCommand):
     @on_new_thread
     def run(self):
         self.rebase('--skip')
-
-
-ask_for_branch_ = ask_for_branch(
-    ask_remote_first=False,
-    ignore_current_branch=True,
-    memorize_key="last_branch_used_to_rebase_from"
-)
 
 
 def _get_setting(self, setting, default_value):
