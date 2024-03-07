@@ -161,6 +161,20 @@ def ask_for_ref(self, args, done, initial_text=""):
                     return
         done(ref)
 
+    view = self.view
+    if (
+        not initial_text
+        and view.settings().get("git_savvy.log_graph_view")
+        and (frozen_sel := list(view.sel()))
+        and (line := log_graph.line_from_pt(view, frozen_sel[0].begin()))
+        and (info := log_graph.describe_graph_line(line.text, known_branches={}))
+        # As we don't feed in `known_branches`, every branch lands in `branches`.
+        # We're actually only interested in `local_branches` but this is also
+        # only the initial text, so we probably don't need to be more accurate here.
+        and (branches := info.get("branches", []))
+    ):
+        initial_text = branches[-1]
+
     show_single_line_input_panel(
         "Branch name or ref:",
         initial_text,
