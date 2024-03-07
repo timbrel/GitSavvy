@@ -867,8 +867,15 @@ def copy_commits(ref: str, commits: List[str], buffer_content: str) -> str:
         yield f"u {ref}"
         yield "reset onto"
         yield ""
-        yield from buffer_content.splitlines()
+
+        for line in buffer_content.splitlines():
+            if line == f"update-ref {ref}":
+                yield f"{line}--old"
+            else:
+                yield line
+
         yield ""  # cosmetic trailing newline
+
     return "\n".join(inner())
 
 
@@ -884,12 +891,15 @@ def extract_commits(ref: str, commits: List[str], buffer_content: str) -> str:
         prefixes = {"pick {} ".format(commit) for commit in commits}
         prefix_len = 6 + len(commits[0])  # 6 == len("pick  ")
         for line in buffer_content.splitlines():
-            if line[:prefix_len] in prefixes:
+            if line == f"update-ref {ref}":
+                continue
+            elif line[:prefix_len] in prefixes:
                 yield "drop" + line[4:]
             else:
                 yield line
 
         yield ""  # cosmetic trailing newline
+
     return "\n".join(inner())
 
 

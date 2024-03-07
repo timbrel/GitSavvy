@@ -127,6 +127,31 @@ class TestRebaseActions(DeferrableTestCase):
 
             # Rebase 2bcb7211..0b0409f8 onto 2bcb7211 (3 commands)
             """),
+        ),
+        (
+            "refs/pols/fooz",
+            ["fee0447b"],
+            dedent("""\
+            pick 142972fd Mark first arg of continuation function "positional only"
+            pick fee0447b Simplify `ask_for_local_branch`
+            update-ref refs/pols/fooz
+            pick 0b0409f8 Let `QuickAction` be a function `str -> str` for flexibility
+
+            # Rebase 2bcb7211..0b0409f8 onto 2bcb7211 (3 commands)
+            """),
+            dedent("""\
+            label onto
+            pick fee0447b
+            u refs/pols/fooz
+            reset onto
+
+            pick 142972fd Mark first arg of continuation function "positional only"
+            pick fee0447b Simplify `ask_for_local_branch`
+            update-ref refs/pols/fooz--old
+            pick 0b0409f8 Let `QuickAction` be a function `str -> str` for flexibility
+
+            # Rebase 2bcb7211..0b0409f8 onto 2bcb7211 (3 commands)
+            """),
         )
     ])
     def test_copy_commits(self, ref, commits, input, expected):
@@ -142,6 +167,7 @@ class TestRebaseActions(DeferrableTestCase):
             dedent("""\
             pick 142972fd Mark first arg of continuation function "positional only"
             pick fee0447b Simplify `ask_for_local_branch`
+            update-ref refs/pols/fooz
             pick 0b0409f8 Let `QuickAction` be a function `str -> str` for flexibility
 
             # Rebase 2bcb7211..0b0409f8 onto 2bcb7211 (3 commands)
