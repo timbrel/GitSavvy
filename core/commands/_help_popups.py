@@ -208,6 +208,7 @@ class gs_log_graph_help_tooltip(GsAbstractHelpPopup):
     [a]            toggle --all / in overview mode: toggle tags
     [f]            edit filters verbatim
     [l]            list paths to add or remove
+    [P]/[N]        Show previous tips of the current branch
     [F]            toggle filters
 
     ### Rebasing ###
