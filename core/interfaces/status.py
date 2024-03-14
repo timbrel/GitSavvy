@@ -547,10 +547,19 @@ class gs_status_unstage_file(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        file_paths = self.get_selected_subjects('staged', 'merge-conflicts')
-        if file_paths:
-            self.unstage_file(*file_paths)
-            self.window.status_message("Unstaged files successfully.")
+        files_to_unstage = self.get_selected_subjects('staged', 'merge-conflicts')
+        if files_to_unstage:
+            self.unstage_file(*files_to_unstage)
+
+        files_to_unadd = self.get_selected_subjects('added')
+        if files_to_unadd:
+            self.undo_intent_to_add(*files_to_unadd)
+
+        if files_to_unstage or files_to_unadd:
+            if not files_to_unadd:
+                self.window.status_message("Unstaged files successfully.")
+            else:
+                self.window.status_message("Reset files successfully.")
             self.interface.refresh_repo_status_and_render()
 
 
@@ -563,25 +572,14 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        added_files = self.discard_added()
         untracked_files = self.discard_untracked()
         unstaged_files = self.discard_unstaged()
-        if added_files or untracked_files or unstaged_files:
-            if added_files and not (untracked_files or unstaged_files):
-                self.window.status_message("Successfully reset file statuses.")
-            else:
-                self.window.status_message("Successfully discarded changes.")
+        if untracked_files or unstaged_files:
+            self.window.status_message("Successfully discarded changes.")
             self.interface.refresh_repo_status_and_render()
+
         if self.get_selected_subjects('staged'):
             self.window.status_message("Staged files cannot be discarded.  Unstage them first.")
-
-    def discard_added(self):
-        # type: () -> Optional[List[str]]
-        file_paths = self.get_selected_subjects('added')
-        if file_paths:
-            self.undo_intent_to_add(*file_paths)
-            return file_paths
-        return None
 
     def discard_untracked(self):
         # type: () -> Optional[List[str]]
@@ -622,8 +620,9 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
             # two files in the status: " D" <path_alt> and "??" <path>.  The intention
             # is to not have any data loss.  (At the cost of possibly having more clicks
             # to make.)
-            # We also `undo_intent_to_add` for " A" but we do this in `discard_added`
-            # because we show these entries in a separate section.
+            # NOTE: We also `undo_intent_to_add` for " A" but we do this in `gs_status_unstage_file`
+            #       because we show these entries in a separate section and discarding sounds too
+            #       destructive for that action.
             # NOTE: For " D" we typically want to restore the file, aka undelete behavior.
             #       This is what `do_discard` here does.
             #       However, it could be that the file is unknown and git throws:
