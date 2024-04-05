@@ -200,9 +200,6 @@ class gs_clone(WindowCommand, GitCommand):
             # HACK: `git()` uses `self.window`, we can't pass anything down
             self.window = window
 
-        window.set_project_data({
-            "folders": [dict(follow_symlinks=True, path=self.target_dir)]
-        })
         window.status_message("Start cloning {}".format(self.git_url))
         self.git(
             "clone",
@@ -213,6 +210,10 @@ class gs_clone(WindowCommand, GitCommand):
             working_dir='.',
             show_panel=True
         )
+        # Set this late to ensure `target_dir` actually exists
+        window.set_project_data({
+            "folders": [dict(follow_symlinks=True, path=self.target_dir)]
+        })
         window.status_message("Cloned repo successfully.")
         if not window.is_sidebar_visible():
             self.window.run_command("toggle_side_bar")
