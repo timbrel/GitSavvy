@@ -7,6 +7,7 @@ from GitSavvy.core.runtime import on_worker
 __all__ = (
     "gs_merge",
     "gs_merge_abort",
+    "gs_merge_continue",
     "gs_restart_merge_for_file",
 )
 
@@ -39,6 +40,19 @@ class gs_merge_abort(GsWindowCommand):
     @on_worker
     def run(self):
         self.git("merge", "--abort")
+        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+
+
+class gs_merge_continue(GsWindowCommand):
+
+    """
+    Continue an ongoing merge.  Here for completeness as a user could just commit
+    as well.
+    """
+
+    @on_worker
+    def run(self):
+        self.git("merge", "--continue")
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
