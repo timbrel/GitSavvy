@@ -2787,10 +2787,13 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 "Create branch at '{}'".format(good_commit_name),
                 partial(self.create_branch, commit_hash)
             ),
-            ("Create tag", partial(self.create_tag, commit_hash))
+            (
+                "Create tag at '{}'".format(commit_hash),
+                partial(self.create_tag, commit_hash)
+            )
         ]
         actions += [
-            ("Delete '{}'".format(tag_name), partial(self.delete_tag, tag_name))
+            ("Delete tag '{}'".format(tag_name), partial(self.delete_tag, tag_name))
             for tag_name in info.get("tags", [])
         ]
 
