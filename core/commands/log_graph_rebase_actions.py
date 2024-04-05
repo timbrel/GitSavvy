@@ -22,6 +22,8 @@ from GitSavvy.core.view import replace_view_content
 
 __all__ = (
     "gs_rebase_action",
+    "gs_log_graph_add_previous_tip",
+    "gs_log_graph_remove_previous_tip",
     "gs_rebase_interactive",
     "gs_rebase_interactive_onto_branch",
     "gs_rebase_on_branch",
@@ -181,6 +183,15 @@ def ask_for_ref(self, args, done, initial_text=""):
         initial_text,
         on_done,
     )
+
+
+def take_current_branch_name(cmd, args, done):
+    # type: (GsTextCommand, Args, Kont) -> None
+    current_branch_name = cmd.get_current_branch_name()
+    if current_branch_name:
+        done(current_branch_name)
+    else:
+        cmd.window.status_message("Not in detached state.")
 
 
 def get_view_for_command(cmd):
@@ -380,22 +391,36 @@ class gs_rebase_action(GsWindowCommand):
                     if applying_filters
                     else ""
                 )
-                previous_tip = "{}@{{1}}".format(current_branch)
-                if previous_tip in filters:
-                    actions += [
-                        (
-                            "Hide {} in the graph".format(previous_tip),
-                            partial(self.remove_previous_tip, view, previous_tip)
-                        )
-                    ]
+                # General matcher:
+                # (?P<branch_name>\S+)@{(?P<revision>\d+)}
+                reflog_matcher = re.compile(
+                    r"{}@{{(?P<revision>\d+)}}".format(re.escape(current_branch))
+                )
+                if previous_revisions := reflog_matcher.findall(filters):
+                    if len(previous_revisions) > 1:
+                        actions += [
+                            (
+                                "Hide previous tips of {} in the graph".format(current_branch),
+                                partial(self.filter_filters, view, reflog_matcher)
+                            )
+                        ]
+                    else:
+                        actions += [
+                            (
+                                "Hide {}@{{{}}} in the graph"
+                                .format(current_branch, previous_revisions[0]),
+                                partial(self.filter_filters, view, reflog_matcher)
+                            )
+                        ]
                 else:
                     actions += [
                         (
                             "Show previous tip of {} in the graph".format(current_branch),
-                            partial(self.add_previous_tip, view, previous_tip)
+                            partial(self.add_previous_tip, view, current_branch)
                         )
                     ]
 
+                previous_tip = "{}@{{1}}".format(current_branch)
                 actions += [
                     (
                         "Diff against previous tip",
@@ -502,43 +527,16 @@ class gs_rebase_action(GsWindowCommand):
     def rebase_on(self, view):
         view.run_command("gs_rebase_on_branch")
 
-    def add_previous_tip(self, view, previous_tip):
-        settings = view.settings()
-        try:
-            commit_hash = self.git_throwing_silently(
-                "rev-parse", "--short", previous_tip
-            ).strip()
-        except GitSavvyError as e:
-            branch_name = previous_tip.split("@")[0]
-            if "log for '{}'".format(branch_name) in e.stderr:
-                flash(view, "The branch '{}' has no previous tip.".format(branch_name))
-                return
-            else:
-                e.show_error_panel()
-                raise
+    def add_previous_tip(self, view, branch_name):
+        view.run_command("gs_log_graph_add_previous_tip", {"branch_name": branch_name})
 
-        else:
-            settings.set("git_savvy.log_graph_view.follow", commit_hash)
-
-        applying_filters = settings.get("git_savvy.log_graph_view.apply_filters")
-        filters = (
-            settings.get("git_savvy.log_graph_view.filters", "")
-            if applying_filters
-            else ""
-        )
-        new_filters = ' '.join(filter_((filters, previous_tip)))
-        settings.set("git_savvy.log_graph_view.apply_filters", True)
-        settings.set("git_savvy.log_graph_view.filters", new_filters)
-        if not applying_filters:
-            settings.set("git_savvy.log_graph_view.paths", [])
-            settings.set("git_savvy.log_graph_view.filter_by_author", "")
-
-        view.run_command("gs_log_graph_refresh")
-
-    def remove_previous_tip(self, view, previous_tip):
+    def filter_filters(self, view, matcher: re.Pattern):
         settings = view.settings()
         filters = settings.get("git_savvy.log_graph_view.filters", "")
-        new_filters = ' '.join(s for s in shlex.split(filters) if s != previous_tip)
+        new_filters = ' '.join(
+            s for s in shlex.split(filters)
+            if not matcher.search(s)
+        )
         settings.set("git_savvy.log_graph_view.filters", new_filters)
         view.run_command("gs_log_graph_refresh")
 
@@ -555,6 +553,121 @@ class gs_rebase_action(GsWindowCommand):
             "target_commit": target_commit,
             "disable_stage": True
         })
+
+
+def get_filters(view: sublime.View) -> str:
+    settings = view.settings()
+    return (
+        settings.get("git_savvy.log_graph_view.filters", "")
+        if settings.get("git_savvy.log_graph_view.apply_filters")
+        else ""
+    )
+
+
+def set_filters(view: sublime.View, new_filters: str) -> None:
+    settings = view.settings()
+    settings.set("git_savvy.log_graph_view.filters", new_filters)
+    if not settings.get("git_savvy.log_graph_view.apply_filters"):
+        settings.set("git_savvy.log_graph_view.apply_filters", True)
+        settings.set("git_savvy.log_graph_view.paths", [])
+        settings.set("git_savvy.log_graph_view.filter_by_author", "")
+
+
+class gs_log_graph_add_previous_tip(GsTextCommand):
+    defaults = {
+        "branch_name": take_current_branch_name,
+    }
+
+    def run(self, edit, branch_name: str):
+        view = self.view
+        settings = view.settings()
+
+        def probe_tip(ref: str) -> bool:
+            try:
+                commit_hash = self.git_throwing_silently(
+                    "rev-parse", "--short", ref
+                ).strip()
+            except GitSavvyError as e:
+                if "log for '{}'".format(branch_name) in e.stderr:
+                    flash(view, "The branch '{}' has no older tip.".format(branch_name))
+                else:
+                    e.show_error_panel()
+                    raise
+                return False
+            else:
+                settings.set("git_savvy.log_graph_view.follow", commit_hash)
+                return True
+
+        filters = get_filters(view)
+        reflog_matcher = re.compile(
+            r"{}@{{(?P<revision>\d+)}}".format(re.escape(branch_name))
+        )
+        filters_splitted = shlex.split(filters)
+        matches = [
+            (idx, match) for idx, part in enumerate(filters_splitted)
+            if (match := reflog_matcher.search(part))
+        ]
+        if matches:
+            idx, last_ref = matches[-1]
+            previous_tip = "{}@{{{}}}".format(branch_name, int(last_ref.group(1)) + 1)
+            if not probe_tip(previous_tip):
+                return
+
+            new_filters = " ".join(
+                previous_tip if idx == idx_ else part
+                for idx_, part in enumerate(filters_splitted)
+            )
+
+        else:
+            previous_tip = "{}@{{1}}".format(branch_name)
+            if not probe_tip(previous_tip):
+                return
+
+            new_filters = ' '.join(filter_((filters, previous_tip)))
+
+        set_filters(view, new_filters)
+        view.run_command("gs_log_graph_refresh")
+
+
+class gs_log_graph_remove_previous_tip(GsTextCommand):
+    defaults = {
+        "branch_name": take_current_branch_name,
+    }
+
+    def run(self, edit, branch_name: str):
+        view = self.view
+        settings = view.settings()
+        filters = get_filters(view)
+
+        reflog_matcher = re.compile(
+            r"{}@{{(?P<revision>\d+)}}".format(re.escape(branch_name))
+        )
+        filters_splitted = shlex.split(filters)
+        matches = [
+            (idx, match) for idx, part in enumerate(filters_splitted)
+            if (match := reflog_matcher.search(part))
+        ]
+        if matches:
+            idx, last_ref = matches[-1]
+            next_nr = int(last_ref.group(1)) - 1
+            if next_nr > 0:
+                previous_tip = "{}@{{{}}}".format(branch_name, next_nr)
+                commit_hash = self.git("rev-parse", "--short", previous_tip).strip()
+                settings.set("git_savvy.log_graph_view.follow", commit_hash)
+            else:
+                previous_tip = ""
+
+            new_filters = " ".join(filter_(
+                previous_tip if idx == idx_ else part
+                for idx_, part in enumerate(filters_splitted)
+            ))
+
+        else:
+            flash(self.view, f"There is no newer tip for `{branch_name}`.")
+            return
+
+        set_filters(view, new_filters)
+        view.run_command("gs_log_graph_refresh")
 
 
 def commit_message_from_line(view, line):

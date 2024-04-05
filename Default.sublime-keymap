@@ -1785,6 +1785,22 @@
         ]
     },
     {
+        "keys": ["N"],
+        "command": "gs_log_graph_add_previous_tip",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["P"],
+        "command": "gs_log_graph_remove_previous_tip",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["s"],
         "command": "gs_log_graph_toggle_overview",
         "context": [
