@@ -667,10 +667,19 @@ def resolve_commit_to_follow_after_rebase(self, commitish):
     # Typically the "commitish" a rebase begins with refers a parent commit
     # and its first child is the actual commit the user is interested in.
     # A typical form is then `abcdef^` if it is not a branch name.
-    to_follow = (
-        self.next_commit(commitish)
-        or self.git("rev-parse", commitish).strip()
-    )
+    try:
+        to_follow = (
+            self.next_commit(commitish)
+            or self.git("rev-parse", commitish).strip()
+        )
+    except GitSavvyError as err:
+        # Root commits don't have a parent and so the "^" suffix refers
+        # not a valid revision.  Assume "HEAD" is a good position.
+        if "fatal: bad revision " in err.stderr:
+            to_follow = "HEAD"
+        else:
+            raise
+
     if to_follow:
         settings = self.view.settings()
         settings.set("git_savvy.log_graph_view.follow", self.get_short_hash(to_follow))
