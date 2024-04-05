@@ -799,7 +799,8 @@ class gs_log_graph_refresh(GsTextCommand):
             default_number_of_commits_to_show = max(FOLLOW_UP, current_number_of_commits)
             follow = settings.get('git_savvy.log_graph_view.follow')
             if not follow:
-                return islice(lines, default_number_of_commits_to_show)
+                yield from islice(lines, default_number_of_commits_to_show)
+                return
 
             stop_after_idx = None  # type: Optional[int]
             """The `Optional` in `stop_after_idx` holds our state-machine.
