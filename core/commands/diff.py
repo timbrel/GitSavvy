@@ -22,7 +22,7 @@ from ..runtime import ensure_on_ui, enqueue_on_worker
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import flash, focus_view, line_indentation
 from ..view import (
-    capture_cur_position, replace_view_content, scroll_to_pt,
+    capture_cur_position, clamp, replace_view_content, scroll_to_pt,
     place_view, place_cursor_and_show, y_offset, Position)
 from ...common import util
 
@@ -829,19 +829,34 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
         # type: (sublime.Edit) -> None
 
         def first_per_file(items):
-            # type: (Iterator[JumpTo]) -> Iterator[JumpTo]
+            # type: (Iterable[JumpTo]) -> Iterator[JumpTo]
             seen = set()  # type: Set[str]
             for item in items:
                 if item.filename not in seen:
                     seen.add(item.filename)
                     yield item
 
-        diff = SplittedDiff.from_view(self.view)
-        jump_positions = list(first_per_file(filter_(
-            jump_position_to_file(self.view, diff, s.begin())
-            for s in self.view.sel()
-        )))
-        if not jump_positions:
+        diff_regions = self.view.find_by_selector("git-savvy.commit, git-savvy.diff")
+        diffs = [
+            SplittedDiff.from_string(content, region.a)
+            for region in diff_regions
+            if (content := self.view.substr(region))
+        ]
+        if not diffs:
+            flash(self.view, "Could not extract a diff.")
+            return
+
+        frozen_sel = list(self.view.sel())
+        try:
+            jump_positions = next(filter_(
+                list(first_per_file(filter_(
+                    fn(self.view, diff, s.begin())
+                    for diff in diffs
+                    for s in frozen_sel
+                )))
+                for fn in (jump_position_to_file, first_jump_position_in_view)
+            ))
+        except StopIteration:
             flash(self.view, "Not within a hunk")
         else:
             for jp in jump_positions:
@@ -866,6 +881,8 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
                 "position": Position(line - 1, col - 1, None),
             })
         else:
+            if self.view.settings().get("git_savvy.diff_view.in_cached_mode"):
+                line = self.find_matching_lineno("HEAD", None, line=line, file_path=full_path)
             window.open_file(
                 "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
                 sublime.ENCODED_POSITION
@@ -874,12 +891,23 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
 
 def jump_position_to_file(view, diff, pt):
     # type: (sublime.View, SplittedDiff, int) -> Optional[JumpTo]
-    head_and_hunk = diff.head_and_hunk_for_pt(pt)
-    if not head_and_hunk:
+    hunk = diff.hunk_for_pt(pt)
+    if not hunk:
         return None
+    return _jump_position_from_hunk(view, diff, hunk, pt)
 
-    header, hunk = head_and_hunk
 
+def first_jump_position_in_view(view, diff, pt):
+    # type: (sublime.View, SplittedDiff, int) -> Optional[JumpTo]
+    hunk = diff.first_hunk_after_pt(pt)
+    if not hunk:
+        return None
+    return _jump_position_from_hunk(view, diff, hunk, pt)
+
+
+def _jump_position_from_hunk(view, diff, hunk, pt):
+    # type: (sublime.View, SplittedDiff, Hunk, int) -> Optional[JumpTo]
+    header = diff.head_for_hunk(hunk)
     line, col = real_linecol_in_hunk(hunk, *row_offset_and_col_in_hunk(view, hunk, pt))
     filename = header.to_filename()
     if not filename:
@@ -911,6 +939,7 @@ def real_linecol_in_hunk(hunk, row_offset, col):
     # type: (Hunk, int, ColNo) -> LineCol
     """Translate relative to absolute line, col pair"""
     hunk_lines = list(recount_lines_for_jump_to_file(hunk))
+    row_offset = clamp(0, len(hunk_lines), row_offset)
 
     # If the user is on the header line ('@@ ..') pretend to be on the
     # first visible line with some content instead.
