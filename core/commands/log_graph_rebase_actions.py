@@ -312,11 +312,17 @@ class gs_rebase_action(GsWindowCommand):
             description, action = actions[index]
             action()
 
+        selected_index = self.selected_index
+        if 0 <= selected_index < len(actions) - 1:
+            selected_action = actions[selected_index]
+            if selected_action == SEPARATOR:
+                selected_index += 1
+
         self.window.show_quick_panel(
             [a[0] for a in actions],
             on_action_selection,
             flags=sublime.MONOSPACE_FONT,
-            selected_index=self.selected_index,
+            selected_index=selected_index,
         )
 
     def switch_through_options(self, view, rebase_merges, update_refs):
