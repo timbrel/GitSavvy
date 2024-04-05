@@ -164,6 +164,7 @@ class gs_graph(WindowCommand, GitCommand):
             )
             if other_id in [this_id] + standard_graph_views:
                 settings = view.settings()
+                settings.set("git_savvy.log_graph_view.overview", False)
                 settings.set("git_savvy.log_graph_view.all_branches", all)
                 settings.set("git_savvy.log_graph_view.show_tags", show_tags)
                 settings.set("git_savvy.log_graph_view.branches", branches)
