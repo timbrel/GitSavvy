@@ -57,6 +57,7 @@ class LogMixin(GitCommand):
 
         # Show the panel before the quick panel so that Sublime Text has a chance
         # to compute the quick panel's size correctly.
+        # Ref: https://github.com/sublimehq/sublime_text/issues/6237
         if isinstance(self.selected_index, int):
             leading = list(islice(entries, self.selected_index + 1))
             try:
