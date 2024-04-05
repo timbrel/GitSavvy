@@ -121,9 +121,14 @@ def _enqueue_on_worker(fn):
     sublime.set_timeout_async(fn_)
 
 
-def run_on_new_thread(fn, *args, __daemon=None, **kwargs):
-    # type: (Callable[P, T], P.args, Optional[bool], P.kwargs) -> None
-    threading.Thread(target=_set_timout(fn), args=args, kwargs=kwargs, daemon=__daemon).start()
+def run_on_new_thread(fn, *args, **kwargs):
+    # type: (Callable[P, T], P.args, P.kwargs) -> None
+    threading.Thread(target=_set_timout(fn), args=args, kwargs=kwargs).start()
+
+
+def run_new_daemon_thread(fn, *args, **kwargs):
+    # type: (Callable[P, T], P.args, P.kwargs) -> None
+    threading.Thread(target=_set_timout(fn), args=args, kwargs=kwargs, daemon=True).start()
 
 
 def _set_timout(fn):
