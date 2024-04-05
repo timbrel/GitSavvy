@@ -1324,7 +1324,6 @@ class gs_log_graph_current_branch(WindowCommand, GitCommand):
         self.window.run_command('gs_graph', {
             'file_path': file_path,
             'all': True,
-            'follow': 'HEAD',
         })
 
 
