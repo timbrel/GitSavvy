@@ -357,6 +357,10 @@
         "command": "gs_merge_abort"
     },
     {
+        "caption": "git: merge --continue",
+        "command": "gs_merge_continue"
+    },
+    {
         "caption": "git: restart merge for file...",
         "command": "gs_restart_merge_for_file"
     },
