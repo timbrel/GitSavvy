@@ -195,6 +195,11 @@
     "sort_by_recent_in_branch_dashboard": false,
 
     /*
+        Group branches by their distance to HEAD.  Requires git 2.41.0.
+    */
+    "group_by_distance_to_head_in_branch_dashboard": true,
+
+    /*
         Set this to `true` to display remotes in the branch dashboard by default.
      */
     "show_remotes_in_branch_dashboard": false,

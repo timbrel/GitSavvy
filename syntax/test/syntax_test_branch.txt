@@ -13,5 +13,5 @@
 # <- meta.git-savvy.branches.branch.active-branch
     f21e6a8 old (origin/develop, ahead 13, behind 40)
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ - meta.git-savvy.branches.branch.active-branch
-#               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.extra-info
+#               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.tracking-info
 

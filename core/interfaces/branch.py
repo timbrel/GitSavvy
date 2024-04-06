@@ -1,6 +1,9 @@
 from contextlib import contextmanager
+import datetime
 from functools import partial
+from itertools import groupby
 import os
+import re
 
 from sublime_plugin import WindowCommand
 
@@ -10,8 +13,8 @@ from ..commands.log import LogMixin
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
-from GitSavvy.core.fns import filter_
-from GitSavvy.core.utils import flash
+from GitSavvy.core.fns import chain, filter_, pairwise
+from GitSavvy.core.utils import flash, is_younger_than
 from GitSavvy.core.runtime import enqueue_on_worker, on_new_thread, on_worker
 
 
@@ -39,7 +42,7 @@ __all__ = (
 )
 
 
-from typing import Dict, Iterator, List, Optional, TypedDict
+from typing import Dict, Iterable, Iterator, List, Optional, Tuple, TypedDict
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.branches import Branch
 
@@ -52,6 +55,7 @@ class BranchViewState(TypedDict, total=False):
     remotes: Dict[str, str]
     recent_commits: List[Commit]
     sort_by_recent: bool
+    group_by_distance_to_head: bool
     show_remotes: bool
     show_help: bool
 
@@ -140,6 +144,8 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         self.update_state({
             'git_root': self.short_repo_path,
             'sort_by_recent': self.savvy_settings.get("sort_by_recent_in_branch_dashboard"),
+            'group_by_distance_to_head':
+                self.savvy_settings.get("group_by_distance_to_head_in_branch_dashboard"),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })
 
@@ -186,29 +192,95 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         return "{0.hash} {0.message}".format(recent_commits[0])
 
     @ui.section("branch_list")
-    def render_branch_list(self, branches, sort_by_recent):
-        # type: (List[Branch], bool) -> str
-        local_branches = [branch for branch in branches if branch.is_local]
-        if sort_by_recent:
-            local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
+    def render_branch_list(self, branches, sort_by_recent, group_by_distance_to_head):
+        # type: (List[Branch], bool, bool) -> str
         # Manually get `descriptions` to not delay the first render.
         descriptions = self.state.get("descriptions", {})
-        return self._render_branch_list(None, local_branches, descriptions)
+        local_branches = [branch for branch in branches if branch.is_local]
 
-    def _render_branch_list(self, remote_name, branches, descriptions):
-        # type: (Optional[str], List[Branch], Dict[str, str]) -> str
+        has_distance_to_head_information = any(b.distance_to_head for b in local_branches)
+        if has_distance_to_head_information and group_by_distance_to_head:
+            roughly_nine_months = datetime.timedelta(days=9 * 30)
+            now = datetime.datetime.utcnow()
+            is_fresh = partial(is_younger_than, roughly_nine_months, now)
+
+            def sort_key(branch):
+                return (
+                    (0, -branch.committerdate) if is_fresh(branch.committerdate) else
+                    (1, branch.name)
+                )
+            if sort_by_recent:
+                local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
+            else:
+                local_branches = sorted(local_branches, key=sort_key)
+
+            def sectionizer(branch):
+                ahead, behind = branch.distance_to_head
+                return (
+                    (1, 0) if ahead > 0 and behind == 0 else
+                    (2, 0) if branch.active else
+                    (3, 0) if ahead == 0 and behind > 0 else
+                    (4, 0) if is_fresh(branch.committerdate) else
+                    (5, 0)
+                )
+
+            local_branches = sorted(local_branches, key=sectionizer)
+            return "\n{}\n".format(" " * 60).join(
+                self._render_branch_list(
+                    None, list(branches), descriptions, human_dates=section_key != (5, 0))
+                for section_key, branches in groupby(local_branches, sectionizer)
+            )
+
+        else:
+            if sort_by_recent:
+                local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
+            return self._render_branch_list(None, local_branches, descriptions)
+
+    def _render_branch_list(self, remote_name, branches, descriptions, human_dates=True):
+        # type: (Optional[str], List[Branch], Dict[str, str], bool) -> str
+
+        def get_date(branch):
+            if human_dates:
+                return branch.human_committerdate
+
+            d = branch.relative_committerdate
+            if d == "12 months ago":
+                d = "1 year ago"
+            # Shorten relative dates with months e.g. "1 year, 1 month ago"
+            # to just "1 year ago".
+            return re.sub(r", \d+ months? ago", " ago", d)
+
+        def mangle_date(branch: Branch, previous: Optional[Branch]):
+            date = get_date(branch)
+            if human_dates and previous and get_date(previous) == date:
+                return ""
+            return date
+
         remote_name_length = len(remote_name + "/") if remote_name else 0
+        paired_with_previous: Iterable[Tuple[Optional[Branch], Branch]] = \
+            pairwise(chain([None], branches))  # type: ignore[list-item]
         return "\n".join(
-            "  {indicator} {hash:.7} {name}{tracking}{description}".format(
+            "  {indicator} {hash} {name_with_extras}{description}".format(
                 indicator="▸" if branch.active else " ",
-                hash=branch.commit_hash,
-                name=branch.canonical_name[remote_name_length:],
-                description=(" " + descriptions.get(branch.canonical_name, "")).rstrip(),
-                tracking=(" ({branch}{status})".format(
-                    branch=branch.upstream.canonical_name,
-                    status=", " + branch.upstream.status if branch.upstream.status else ""
-                ) if branch.upstream else "")
-            ) for branch in branches
+                hash=self.get_short_hash(branch.commit_hash),
+                name_with_extras=" ".join(filter_((
+                    branch.canonical_name[remote_name_length:],
+                    ", ".join(filter_((
+                        mangle_date(branch, previous),
+                        (
+                            "({branch}{status})".format(
+                                branch=branch.upstream.canonical_name,
+                                status=", {}".format(branch.upstream.status) if branch.upstream.status else ""
+                            ) if branch.upstream else ""
+                        ),
+                    ))),
+                ))),
+                description=(
+                    " - {}".format(descriptions[branch.canonical_name].rstrip())
+                    if descriptions.get(branch.canonical_name)
+                    else ""
+                ),
+            ) for previous, branch in paired_with_previous
         )
 
     @ui.section("remotes")

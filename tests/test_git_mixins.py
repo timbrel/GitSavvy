@@ -56,7 +56,7 @@ class TestFetchInterface(TestGitMixinsUsage):
         self.assertRaises(TypeError, lambda: repo.fetch(*parameters.args, **parameters.kwargs))
 
 
-date_sha_and_subject = ["0", "89b79cd737465ed308ecc00289d00a6f923f2da5", "The Subject"]
+date_sha_and_subject = ["0", "now", "now", "89b79cd737465ed308ecc00289d00a6f923f2da5", "The Subject"]
 join0 = lambda x: "\x00".join(x)
 
 
@@ -80,6 +80,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 False,
                 False,
                 0,
+                "now",
+                "now",
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
                 ),
@@ -106,6 +108,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 True,
                 False,
                 0,
+                "now",
+                "now",
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
                 ),
@@ -132,6 +136,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 False,
                 True,
                 0,
+                "now",
+                "now",
                 None,
                 git_mixins.branches.AheadBehind(ahead=0, behind=0)
             )
@@ -156,6 +162,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 False,
                 False,
                 0,
+                "now",
+                "now",
                 git_mixins.branches.Upstream(
                     "orig/in", "master", "orig/in/master", ""
                 ),
@@ -182,6 +190,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 False,
                 False,
                 0,
+                "now",
+                "now",
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", "gone"
                 ),
@@ -208,6 +218,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 False,
                 False,
                 0,
+                "now",
+                "now",
                 git_mixins.branches.Upstream(
                     ".", "update-branch-from-upstream", "update-branch-from-upstream", ""
                 ),
@@ -273,20 +285,25 @@ class TestBranchParsing(EndToEndTestCase):
         repo = self.init_repo(comitterdate="1671490333 +0000")
         commit_hash = repo.get_commit_hash_for_head()
         actual = repo.get_branches()
-        self.assertEqual(actual, [
-            git_mixins.branches.Branch(
-                "master",
-                None,
-                "master",
-                commit_hash,
-                "Initial commit",
-                True,
-                False,
-                1671490333,
-                None,
-                git_mixins.branches.AheadBehind(ahead=0, behind=0)
-            )
-        ])
+        self.assertEqual(
+            list(map(lambda b: b._replace(relative_committerdate="long ago"), actual)),
+            [
+                git_mixins.branches.Branch(
+                    "master",
+                    None,
+                    "master",
+                    commit_hash,
+                    "Initial commit",
+                    True,
+                    False,
+                    1671490333,
+                    "Dec 19 2022",
+                    "long ago",
+                    None,
+                    git_mixins.branches.AheadBehind(ahead=0, behind=0)
+                )
+            ]
+        )
 
     def test_tracking_local_branch(self):
         repo = self.init_repo(comitterdate="1671490333 +0000")
@@ -294,19 +311,24 @@ class TestBranchParsing(EndToEndTestCase):
         repo.git("checkout", "--track", "-b", "feature-branch")
 
         actual = list(b for b in repo.get_branches() if b.name != "master")
-        self.assertEqual(actual, [
-            git_mixins.branches.Branch(
-                "feature-branch",
-                None,
-                "feature-branch",
-                commit_hash,
-                "Initial commit",
-                True,
-                False,
-                1671490333,
-                git_mixins.branches.Upstream(
-                    ".", "master", "master", ""
-                ),
-                git_mixins.branches.AheadBehind(ahead=0, behind=0)
-            )
-        ])
+        self.assertEqual(
+            list(map(lambda b: b._replace(relative_committerdate="long ago"), actual)),
+            [
+                git_mixins.branches.Branch(
+                    "feature-branch",
+                    None,
+                    "feature-branch",
+                    commit_hash,
+                    "Initial commit",
+                    True,
+                    False,
+                    1671490333,
+                    "Dec 19 2022",
+                    "long ago",
+                    git_mixins.branches.Upstream(
+                        ".", "master", "master", ""
+                    ),
+                    git_mixins.branches.AheadBehind(ahead=0, behind=0)
+                )
+            ]
+        )

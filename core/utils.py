@@ -1,6 +1,7 @@
 from functools import lru_cache, partial, wraps
 from collections import OrderedDict
 from contextlib import contextmanager
+import datetime
 import html
 import inspect
 from itertools import count
@@ -72,6 +73,11 @@ class timer:
         cur_time = time.perf_counter()
         duration = (cur_time - self._start_time) * 1000
         return duration > ms
+
+
+def is_younger_than(timedelta: datetime.timedelta, now: datetime.datetime, timestamp: int) -> bool:
+    dt = datetime.datetime.utcfromtimestamp(timestamp)
+    return (now - dt) < timedelta
 
 
 @contextmanager
