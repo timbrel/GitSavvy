@@ -62,7 +62,7 @@ class HunkLineWithB(NamedTuple):
 
 
 DIFF_TITLE = "DIFF: {}"
-DIFF_CACHED_TITLE = "DIFF: {} (staged)"
+DIFF_CACHED_TITLE = "DIFF: {}, STAGE"
 DECODE_ERROR_MESSAGE = """
 -- Can't decode diff output. --
 
@@ -258,32 +258,31 @@ class gs_diff_refresh(TextCommand, GitCommand):
         context_lines = settings.get('git_savvy.diff_view.context_lines')
 
         prelude = "\n"
-        title = ["DIFF:"]
+        title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(
+            os.path.basename(file_path) if file_path else os.path.basename(repo_path)
+        )
+
         if file_path:
             rel_file_path = os.path.relpath(file_path, repo_path)
             prelude += "  FILE: {}\n".format(rel_file_path)
-            title += [os.path.basename(file_path)]
-        elif not disable_stage:
-            title += [os.path.basename(repo_path)]
 
         if disable_stage:
             if in_cached_mode:
                 prelude += "  {}..INDEX\n".format(base_commit or target_commit)
-                title += ["{}..INDEX".format(base_commit or target_commit)]
+                title += ", {}..INDEX".format(base_commit or target_commit)
             else:
                 if base_commit and target_commit:
                     prelude += "  {}..{}\n".format(base_commit, target_commit)
-                    title += ["{}..{}".format(base_commit, target_commit)]
+                    title += ", {}..{}".format(base_commit, target_commit)
                 elif base_commit and "..." in base_commit:
                     prelude += "  {}\n".format(base_commit)
-                    title += [base_commit]
+                    title += ", {}".format(base_commit)
                 else:
                     prelude += "  {}..WORKING DIR\n".format(base_commit or target_commit)
-                    title += ["{}..WORKING DIR".format(base_commit or target_commit)]
+                    title += ", {}..WORKING DIR".format(base_commit or target_commit)
         else:
             if in_cached_mode:
                 prelude += "  STAGED CHANGES (Will commit)\n"
-                title += ["(staged)"]
             else:
                 prelude += "  UNSTAGED CHANGES\n"
 
@@ -331,7 +330,7 @@ class gs_diff_refresh(TextCommand, GitCommand):
                     view.close()
                 return
 
-        ensure_on_ui(_draw, view, ' '.join(title), prelude, diff, match_position)
+        ensure_on_ui(_draw, view, title, prelude, diff, match_position)
 
 
 def _draw(view, title, prelude, diff_text, match_position):

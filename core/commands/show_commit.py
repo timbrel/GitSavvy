@@ -123,11 +123,11 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
             enqueue_on_worker(self.annotate_with_github_link, commit_hash)
 
     def update_title(self, commit_details) -> None:
-        details = ", ".join(filter_((commit_details.subject, commit_details.date)))
-        message = "{}{}".format(
+        message = ", ".join(filter_((
             commit_details.short_hash,
-            f" {details}" if details else ""
-        )
+            commit_details.subject,
+            commit_details.date
+        )))
         title = SHOW_COMMIT_TITLE.format(message)
         self.view.set_name(title)
 
