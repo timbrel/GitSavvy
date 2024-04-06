@@ -52,6 +52,8 @@ __all__ = (
     "gs_graph_current_file",
     "gs_log_graph_refresh",
     "gs_log_graph",
+    "gs_log_graph_tab_out",
+    "gs_log_graph_tab_in",
     "gs_log_graph_current_branch",
     "gs_log_graph_all_branches",
     "gs_log_graph_by_author",
@@ -1406,6 +1408,50 @@ def prelude(view):
         )))
     )
     return prelude + "\n\n"
+
+
+class gs_log_graph_tab_out(GsTextCommand):
+    def run(self, edit, reverse=False):
+        options = store.current_state(self.repo_path).get("default_graph_options", {})
+        options.update({
+            "all": self.view.settings().get("git_savvy.log_graph_view.all_branches")
+        })
+        store.update_state(self.repo_path, {
+            "default_graph_options": options
+        })
+        self.view.settings().set("git_savvy.log_graph_view.default_graph", True)
+        for view_ in self.window.views():
+            if (
+                view_ != self.view
+                and (settings := view_.settings())
+                and settings.get("git_savvy.log_graph_view.default_graph")
+                and settings.get("git_savvy.repo_path") == self.repo_path
+            ):
+                settings.erase("git_savvy.log_graph_view.default_graph")
+
+        self.view.run_command("gs_tab_cycle", {"source": "graph", "reverse": reverse})
+
+
+class gs_log_graph_tab_in(WindowCommand, GitCommand):
+    def run(self, file_path=None):
+        for view in self.window.views():
+            settings = view.settings()
+            if (
+                settings.get("git_savvy.log_graph_view.default_graph")
+                and settings.get("git_savvy.repo_path") == self.repo_path
+            ):
+                focus_view(view)
+                return
+
+        all_branches = (
+            store.current_state(self.repo_path)
+            .get("default_graph_options", {})
+            .get("all", True)
+        )
+        self.window.run_command('gs_graph', {
+            'file_path': file_path,
+            'all': all_branches,
+        })
 
 
 class gs_log_graph(gs_log):
