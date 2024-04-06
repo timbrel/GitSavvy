@@ -205,6 +205,17 @@ class HistoryMixin(mixin_base):
         except IndexError:
             return filename
 
+    @cached(not_if={"base_commit": is_dynamic_ref, "target_commit": is_dynamic_ref})
+    def list_touched_filenames(self, base_commit, target_commit, cached=None):
+        # type: (Optional[str], Optional[str], Optional[bool]) -> List[str]
+        return self.git(
+            "diff",
+            "--name-only",
+            "--cached" if cached else None,
+            base_commit,
+            target_commit
+        ).strip().splitlines()
+
     @cached(not_if={"commit_hash": is_dynamic_ref})
     def get_file_content_at_commit(self, filename, commit_hash):
         # type: (str, Optional[str]) -> str
