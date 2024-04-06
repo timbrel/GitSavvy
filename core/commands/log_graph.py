@@ -82,14 +82,14 @@ T = TypeVar('T')
 
 
 QUICK_PANEL_SUPPORTS_WANT_EVENT = int(sublime.version()) >= 4096
-COMMIT_NODE_CHAR = "●"
-COMMIT_NODE_CHAR_OPTIONS = "●*"
+DEFAULT_NODE_CHAR = "●"
+ROOT_NODE_CHAR = "⌂"
 GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
 COMMIT_LINE = re.compile(
     r"^[{graph_chars}]*(?P<dot>[{node_chars}])[{graph_chars}]* "
     r"(?P<commit_hash>[a-f0-9]{{5,40}}) +"
     r"(\((?P<decoration>.+?)\))?"
-    .format(graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS)
+    .format(graph_chars=GRAPH_CHAR_OPTIONS, node_chars=colorizer.COMMIT_NODE_CHARS)
 )
 
 DOT_SCOPE = 'git_savvy.graph.dot'
@@ -510,6 +510,7 @@ class GraphLine(NamedTuple):
     decoration: str
     subject: str
     info: str
+    parents: str
 
 
 def try_kill_proc(proc):
@@ -766,7 +767,7 @@ class gs_log_graph_refresh(GsTextCommand):
         def split_up_line(line):
             # type: (str) -> Union[str, GraphLine]
             try:
-                return GraphLine(*line.split("%00"))
+                return GraphLine(*line.rstrip().split("%00"))
             except TypeError:
                 return line
 
@@ -924,8 +925,11 @@ class gs_log_graph_refresh(GsTextCommand):
                     return SHORTENED_ASCII_ART
                 return line
 
-            hash, decoration, subject, info = line
-            hash = hash.replace("*", COMMIT_NODE_CHAR, 1)
+            hash, decoration, subject, info, parents = line
+            if parents:
+                hash = hash.replace("*", DEFAULT_NODE_CHAR, 1)
+            else:
+                hash = hash.replace("*", ROOT_NODE_CHAR, 1)
             if (
                 len(hash) > ASCII_ART_LENGHT_LIMIT
                 or in_overview_mode
@@ -933,7 +937,7 @@ class gs_log_graph_refresh(GsTextCommand):
             ):
                 commit_hash = hash.rsplit(" ", 1)[1]
                 if len(hash) > ASCII_ART_LENGHT_LIMIT:
-                    hash = f".. {COMMIT_NODE_CHAR} {commit_hash}"
+                    hash = f".. {DEFAULT_NODE_CHAR} {commit_hash}"
                 elif in_overview_mode:
                     hash = hash.ljust(len(commit_hash) + 6)
 
@@ -958,13 +962,22 @@ class gs_log_graph_refresh(GsTextCommand):
                 left = f"{hash} ({decoration})"
             else:
                 left = f"{hash}"
-            return f"{left} {trunc(subject, max(2, LEFT_COLUMN_WIDTH - len(left)))} \u200b {info}"
+            return f"{left} {trunc(subject, max(2, LEFT_COLUMN_WIDTH - len(left)))} \u200b {info}\n"
 
         def filter_consecutive_continuation_lines(lines):
             # type: (Iterator[str]) -> Iterator[str]
             for left, right in pairwise(chain([""], lines)):
                 if right == SHORTENED_ASCII_ART and left == right:
                     continue
+                if (
+                    left.startswith(ROOT_NODE_CHAR)
+                    and right.strip()
+                    # Check if we already had clear continuations in the graph
+                    # art, e.g. "⌂ | | 024cfad"
+                    and (match := COMMIT_LINE.search(left))
+                    and match.span("commit_hash")[0] < 4
+                ):
+                    yield "-\n"
                 yield right
 
         def clear_graph():
@@ -1207,7 +1220,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 '--date=format:%b %e %Y',
                 '--format={}'.format(
                     "%00".join(
-                        ("%h", "%D", "", "%ad, %an")
+                        ("%h", "%D", "", "%ad, %an", "%p")
                     )
                 ),
                 '--date-order',
@@ -1237,7 +1250,7 @@ class gs_log_graph_refresh(GsTextCommand):
             '--date={}'.format(date_format),
             '--format={}'.format(
                 "%00".join(
-                    ("%h", "%D", "%s", "%ad, %an")
+                    ("%h", "%D", "%s", "%ad, %an", "%p")
                 )
             ),
             # Git can only follow exactly one path.  Luckily, this can
@@ -1525,7 +1538,7 @@ def dots_after_dot(dot, forward=True):
     # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
     """Return exact next dots (commits) after `dot`."""
     fn = colorizer.follow_path_down if forward else colorizer.follow_path_up
-    return filter(lambda ch: ch == COMMIT_NODE_CHAR, fn(dot))
+    return filter(lambda ch: ch.char() in colorizer.COMMIT_NODE_CHARS, fn(dot))
 
 
 class gs_log_graph_navigate_to_head(TextCommand):
@@ -2143,7 +2156,7 @@ def extract_comit_hash_span(view, line_span):
 
 
 FIND_COMMIT_HASH = "^[{graph_chars}]*[{node_chars}][{graph_chars}]* ".format(
-    graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHAR_OPTIONS
+    graph_chars=GRAPH_CHAR_OPTIONS, node_chars=colorizer.COMMIT_NODE_CHARS
 )
 
 
@@ -2233,9 +2246,10 @@ def line_from_pt(view, pt):
 
 def dot_from_line(view, line):
     # type: (sublime.View, TextRange) -> Optional[colorizer.Char]
-    idx = line.text.find(COMMIT_NODE_CHAR)
-    if idx > -1:
-        return colorizer.Char(view, line.region().begin() + idx)
+    for ch in colorizer.COMMIT_NODE_CHARS:
+        idx = line.text.find(ch)
+        if idx > -1:
+            return colorizer.Char(view, line.region().begin() + idx)
     return None
 
 
@@ -2311,7 +2325,7 @@ def __paint(view, paths_down, paths_up):
         lambda path: len(path) > 1,  # type: ignore[arg-type]  # https://github.com/python/mypy/issues/9176
         paths_up
     ))
-    path_up, dot_up = partition(lambda ch: ch == COMMIT_NODE_CHAR, chars_up)
+    path_up, dot_up = partition(lambda ch: ch.char() in colorizer.COMMIT_NODE_CHARS, chars_up)
     view.add_regions('gs_log_graph.path_below', list(map(to_region, path_down)), scope=PATH_SCOPE)
     view.add_regions('gs_log_graph.path_above', list(map(to_region, path_up)), scope=PATH_ABOVE_SCOPE)
     view.add_regions('gs_log_graph.dot.above', list(map(to_region, dot_up)), scope=DOT_ABOVE_SCOPE)
