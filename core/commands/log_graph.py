@@ -1,4 +1,5 @@
 from collections import deque
+from dataclasses import dataclass
 from functools import lru_cache, partial
 from itertools import chain, count, groupby, islice
 import os
@@ -135,7 +136,7 @@ class gs_graph(WindowCommand, GitCommand):
         author='',
         title='GRAPH',
         follow=None,
-        decoration='sparse',
+        decoration=None,
         filters='',
     ):
         if repo_path is None:
@@ -168,7 +169,8 @@ class gs_graph(WindowCommand, GitCommand):
                 settings.set("git_savvy.log_graph_view.all_branches", all)
                 settings.set("git_savvy.log_graph_view.show_tags", show_tags)
                 settings.set("git_savvy.log_graph_view.branches", branches)
-                settings.set('git_savvy.log_graph_view.decoration', decoration)
+                if decoration is not None:
+                    settings.set('git_savvy.log_graph_view.decoration', decoration)
                 settings.set('git_savvy.log_graph_view.apply_filters', apply_filters)
                 if apply_filters:
                     settings.set('git_savvy.log_graph_view.paths', paths)
@@ -196,6 +198,8 @@ class gs_graph(WindowCommand, GitCommand):
         else:
             if follow is None:
                 follow = "HEAD"
+            if decoration is None:
+                decoration = "sparse"
             show_commit_info_panel = bool(self.savvy_settings.get("graph_show_more_commit_info"))
             view = util.view.create_scratch_view(self.window, "log_graph", {
                 "title": title,
@@ -236,7 +240,7 @@ class gs_graph_current_file(WindowCommand, GitCommand):
     def run(self, **kwargs):
         file_path = self.file_path
         if file_path:
-            self.window.run_command('gs_graph', dict(file_path=file_path, **kwargs))
+            self.window.run_command("gs_graph", {"file_path": file_path, **kwargs})
         else:
             self.window.status_message("View has no filename to track.")
 
@@ -515,7 +519,10 @@ class GraphLine(NamedTuple):
 
 def try_kill_proc(proc):
     if proc:
-        utils.kill_proc(proc)
+        try:
+            utils.kill_proc(proc)
+        except ProcessLookupError:
+            pass
         proc.got_killed = True
 
 
@@ -562,8 +569,8 @@ class PaintingStateMachine:
         self._current_state = other
 
 
-caret_styles = {}  # type: Dict[sublime.ViewId, str]
-overwrite_statuses = {}  # type: Dict[sublime.ViewId, bool]
+caret_styles = {}  # type: Dict[sublime.View, str]
+block_caret_statuses = {}  # type: Dict[sublime.View, bool]
 drawn_graph_statuses = {}  # type: Dict[sublime.View, bool]
 head_commit_seen = {}  # type: Dict[sublime.View, bool]
 LEFT_COLUMN_WIDTH = 82
@@ -573,40 +580,106 @@ SHOW_ALL_DECORATED_COMMITS = False
 
 def set_caret_style(view, caret_style="smooth"):
     # type: (sublime.View, str) -> None
-    vid = view.id()
-    if vid not in caret_styles:
-        caret_styles[vid] = view.settings().get("caret_style")
+    start_busy_indicator(view)
+    if view not in caret_styles:
+        caret_styles[view] = view.settings().get("caret_style")
     view.settings().set("caret_style", caret_style)
 
 
 def reset_caret_style(view):
     # type: (sublime.View) -> None
-    vid = view.id()
     try:
-        caret_style = caret_styles[vid]
+        original_setting = caret_styles[view]
     except KeyError:
         pass
     else:
-        view.settings().set("caret_style", caret_style)
+        view.settings().set("caret_style", original_setting)
 
 
-def set_overwrite_status(view):
+def set_block_caret(view):
     # type: (sublime.View) -> None
-    vid = view.id()
-    if vid not in overwrite_statuses:
-        overwrite_statuses[vid] = view.overwrite_status()
-    view.set_overwrite_status(True)
+    start_busy_indicator(view)
+    if view not in block_caret_statuses:
+        block_caret_statuses[view] = view.settings().get("block_caret")
+    view.settings().set("block_caret", True)
 
 
-def reset_overwrite_status(view):
+def reset_block_caret(view):
     # type: (sublime.View) -> None
-    vid = view.id()
+    stop_busy_indicator(view)
     try:
-        overwrite_status = overwrite_statuses[vid]
+        original_setting = block_caret_statuses[view]
     except KeyError:
         pass
     else:
-        view.set_overwrite_status(overwrite_status)
+        view.settings().set("block_caret", original_setting)
+
+
+class BusyIndicators:
+    ROLLING = ["◐", "◓", "◑", "◒"]
+    STARS = ["◇", "◈", "◆"]
+    BRAILLE = "⣷⣯⣟⡿⢿⣻⣽⣾"
+
+
+@dataclass
+class BusyIndicatorConfig:
+    start_after: float
+    timeout_after: float
+    cycle_time: int
+    indicators: Sequence[str]
+
+
+STATUS_BUSY_KEY = "gitsavvy-x-repo-status"
+running_busy_indicators: Dict[Tuple[sublime.View, str], BusyIndicatorConfig] = {}
+
+
+def start_busy_indicator(
+    view: sublime.View,
+    status_key: str = STATUS_BUSY_KEY,
+    *,
+    start_after: float = 2.0,  # [seconds]
+    timeout_after: float = 120.0,  # [seconds]
+    cycle_time: int = 200,  # [milliseconds]
+    indicators: Sequence[str] = BusyIndicators.ROLLING
+) -> None:
+    key = (view, status_key)
+    is_running = key in running_busy_indicators
+    config = BusyIndicatorConfig(start_after, timeout_after, cycle_time, indicators)
+    running_busy_indicators[key] = config
+    if not is_running:
+        _busy_indicator(view, status_key, time.time())
+
+
+def stop_busy_indicator(view: sublime.View, status_key: str = STATUS_BUSY_KEY) -> None:
+    try:
+        running_busy_indicators.pop((view, status_key))
+    except KeyError:
+        pass
+
+
+def _busy_indicator(view: sublime.View, status_key: str, start_time: float) -> None:
+    try:
+        config = running_busy_indicators[(view, status_key)]
+    except KeyError:
+        view.erase_status(status_key)
+        return
+
+    now = time.time()
+    elapsed = now - start_time
+    if config.start_after <= elapsed < config.timeout_after:
+        num = len(config.indicators)
+        text = config.indicators[int(elapsed * 1000 / config.cycle_time) % num]
+        view.set_status(status_key, text)
+    else:
+        view.erase_status(status_key)
+
+    if elapsed < config.timeout_after:
+        sublime.set_timeout(
+            lambda: _busy_indicator(view, status_key, start_time),
+            config.cycle_time
+        )
+    else:
+        stop_busy_indicator(view, status_key)
 
 
 def is_repo_dirty(state):
@@ -991,25 +1064,13 @@ class gs_log_graph_refresh(GsTextCommand):
             else:
                 replace_view_content(self.view, "", content_region)
                 self.view.set_viewport_position((0, 0))
-                set_overwrite_status(self.view)
+                set_block_caret(self.view)
 
         def indicate_slow_progress():
             set_caret_style(self.view)
 
         def reader():
-            next_graph_splitted = filter_consecutive_continuation_lines(chain(
-                map(
-                    format_line,
-                    process_graph(
-                        map(split_up_line, self.read_graph(got_proc=remember_proc))
-                    )
-                ),
-                ['\n']
-            ))
-            tokens = normalize_tokens(simplify(
-                diff(current_graph_splitted, next_graph_splitted),
-                max_size=100
-            ))
+            graph = self.read_graph(got_proc=remember_proc)
             if (
                 initial_draw
                 and settings.get('git_savvy.log_graph_view.decoration') == 'sparse'
@@ -1018,15 +1079,19 @@ class gs_log_graph_refresh(GsTextCommand):
                 # upfront t.i. before the first byte. For now, just race with a timeout and
                 # maybe fallback.
                 try:
-                    tokens = run_or_timeout(lambda: wait_for_first_item(tokens), timeout=1.0)
+                    lines = run_or_timeout(lambda: wait_for_first_item(graph), timeout=1.0)
                 except TimeoutError:
                     try_kill_proc(current_proc)
                     settings.set('git_savvy.log_graph_view.decoration', None)
-                    enqueue_on_worker(self.view.run_command, "gs_log_graph_refresh")
+                    enqueue_on_worker(
+                        self.view.run_command,
+                        "gs_log_graph_refresh",
+                        {"assume_complete_redraw": True}
+                    )
                     return
             else:
-                tokens = run_and_check_timeout(
-                    lambda: wait_for_first_item(tokens),
+                lines = run_and_check_timeout(
+                    lambda: wait_for_first_item(graph),
                     timeout=0.1,
                     callback=(
                         [clear_graph, indicate_slow_progress]
@@ -1034,12 +1099,30 @@ class gs_log_graph_refresh(GsTextCommand):
                         else indicate_slow_progress
                     )
                 )
+            next_graph_splitted = filter_consecutive_continuation_lines(chain(
+                map(
+                    format_line,
+                    process_graph(
+                        map(split_up_line, lines)
+                    )
+                ),
+                ['\n']
+            ))
+            tokens = normalize_tokens(simplify(
+                diff(current_graph_splitted, next_graph_splitted),
+                max_size=100
+            ))
+
+            # Do not switch to the UI thread before we have a token ready for
+            # render.  Maybe the graph is even up-to-date and there ain't no
+            # tokens to draw.
+            tokens = wait_for_first_item(tokens)
             enqueue_on_ui(draw)
             token_queue.consume(tokens)
 
         @ensure_not_aborted
         def draw():
-            set_overwrite_status(self.view)
+            set_block_caret(self.view)
             sel = get_simple_selection(self.view)
             current_prelude_region = self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
 
@@ -1125,7 +1208,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 if painter_state == 'navigated':
                     if region.end() >= view.visible_region().end():
                         painter_state.set('viewport_readied')
-                    reset_overwrite_status(view)
+                    reset_block_caret(view)
 
                 if block_time.passed(13 if painter_state == 'viewport_readied' else 1000):
                     enqueue_on_worker(call_again)
@@ -1140,7 +1223,7 @@ class gs_log_graph_refresh(GsTextCommand):
                         view.run_command("gs_log_graph_navigate")
                     elif visible_selection:
                         view.show(view.sel(), True)
-            reset_overwrite_status(view)
+            reset_block_caret(view)
             reset_caret_style(view)
             enqueue_on_worker(view.clear_undo_stack)
 
@@ -1438,18 +1521,18 @@ class gs_log_graph_navigate(TextCommand):
         row, col = view.rowcol(current_position)
         rows = count(row + 1, 1) if forwards else count(row - 1, -1)
         for row_ in rows:
-            line_span = view.line(view.text_point(row_, 0))
-            if len(line_span) == 0:
+            line = line_from_pt(view, view.text_point(row_, 0))
+            if len(line) == 0:
                 break
 
-            commit_hash_region = extract_comit_hash_span(view, line_span)
+            commit_hash_region = extract_comit_hash_span(view, line)
             if not commit_hash_region:
                 continue
 
             if not natural_movement:
                 return commit_hash_region
 
-            col_ = commit_hash_region.b - line_span.a
+            col_ = commit_hash_region.b - line.a
             if col <= col_:
                 return commit_hash_region
             else:
@@ -1492,8 +1575,8 @@ class gs_log_graph_navigate_wide(TextCommand):
                 except UnboundLocalError:
                     pass
 
-        line_span = view.line(next_dot.region())
-        r = extract_comit_hash_span(view, line_span)
+        line = line_from_pt(view, next_dot.region())
+        r = extract_comit_hash_span(view, line)
         if r:
             add_selection_to_jump_history(view)
             sel = view.sel()
@@ -1858,9 +1941,8 @@ class gs_log_graph_open_commit(TextCommand):
         sel = get_simple_selection(self.view)
         if sel is None:
             return
-        line_span = self.view.line(sel)
-        line_text = self.view.substr(line_span)
-        commit_hash = extract_commit_hash(line_text)
+        line = line_from_pt(self.view, sel)
+        commit_hash = extract_commit_hash(line.text)
         if not commit_hash:
             return
 
@@ -2017,21 +2099,47 @@ def remember_commit_panel_state(view, state):
 
 def set_symbol_to_follow(view):
     # type: (sublime.View) -> None
-    symbol = extract_symbol_to_follow(view)
-    if symbol:
-        previous_value = view.settings().get('git_savvy.log_graph_view.follow')
-        if previous_value != symbol:
-            view.settings().set('git_savvy.log_graph_view.follow', symbol)
-            try:
-                cursor = [s.b for s in view.sel()][-1]
-            except IndexError:
-                return
-            continuation_line = view.find("...\n", cursor, sublime.LITERAL)
-            if continuation_line:
-                max_row, _ = view.rowcol(continuation_line.a)
-                cur_row, _ = view.rowcol(cursor)
-                if not (GRAPH_HEIGHT * 0.5 < max_row - cur_row < GRAPH_HEIGHT * 2):
-                    view.run_command("gs_log_graph_refresh")
+
+    # `on_selection_modified` is called *often* while we render, just as
+    # its by-product and without any intent of the user.
+    # This is especially problematic if the cursor is on a line we don't
+    # `follow` as we might overwrite `follow` and call `gs_log_graph_refresh`
+    # again.
+    # Filter early by checking the current `line.text`.  This is obviously
+    # also okay and efficient when the user moves the cursor just left and right.
+    # Note that we don't block *all* events here during "render" as that would
+    # filter out intentional changes as well.  But we want that an intentional
+    # move aborts the current render and restarts.  This is an important feature
+    # for very long graphs.
+
+    try:
+        cursor = [s.b for s in view.sel()][-1]
+    except IndexError:
+        return
+
+    line = line_from_pt(view, cursor)
+    _set_symbol_to_follow(view, line.text)
+
+
+@lru_cache(1)
+def _set_symbol_to_follow(view: sublime.View, line_text: str) -> None:
+    symbol = _extract_symbol_to_follow(view, line_text)
+    if not symbol:
+        return
+    previous_value = view.settings().get('git_savvy.log_graph_view.follow')
+    if symbol != previous_value:
+        view.settings().set('git_savvy.log_graph_view.follow', symbol)
+
+        try:
+            cursor = [s.b for s in view.sel()][-1]
+        except IndexError:
+            return
+        continuation_line = view.find("...\n", cursor, sublime.LITERAL)
+        if continuation_line:
+            max_row, _ = view.rowcol(continuation_line.a)
+            cur_row, _ = view.rowcol(cursor)
+            if not (GRAPH_HEIGHT * 0.5 < max_row - cur_row < GRAPH_HEIGHT * 2):
+                view.run_command("gs_log_graph_refresh")
 
 
 def extract_symbol_to_follow(view):
@@ -2044,15 +2152,13 @@ def extract_symbol_to_follow(view):
     except IndexError:
         return None
 
-    line_span = view.line(cursor)
-    line_text = view.substr(line_span)
-    return _extract_symbol_to_follow(view.id(), line_text)
+    line = line_from_pt(view, cursor)
+    return _extract_symbol_to_follow(view, line.text)
 
 
 @lru_cache(maxsize=512)
-def _extract_symbol_to_follow(vid, _line_text):
-    # type: (sublime.ViewId, str) -> Optional[str]
-    view = sublime.View(vid)
+def _extract_symbol_to_follow(view, line_text):
+    # type: (sublime.View, str) -> Optional[str]
     try:
         # Intentional `b` (not `end()`!) because b is where the
         # cursor is. (If you select upwards b becomes < a.)
@@ -2060,10 +2166,10 @@ def _extract_symbol_to_follow(vid, _line_text):
     except IndexError:
         return None
 
-    line_span = view.line(cursor)
     if view.match_selector(cursor, 'meta.graph.graph-line.head.git-savvy'):
         return 'HEAD'
 
+    line_span = view.line(cursor)
     symbols_on_line = [
         symbol
         for r, symbol in view.symbols()
@@ -2074,7 +2180,6 @@ def _extract_symbol_to_follow(vid, _line_text):
         # the last one which is (then) a local branch.
         return symbols_on_line[-1]
 
-    line_text = view.substr(line_span)
     return extract_commit_hash(line_text)
 
 
@@ -2135,23 +2240,22 @@ def _find_symbol(view, symbol):
 
     for r, symbol_ in view.symbols():
         if symbol_ == symbol:
-            line_of_symbol = view.line(r)
-            return extract_comit_hash_span(view, line_of_symbol)
+            line = line_from_pt(view, r)
+            return extract_comit_hash_span(view, line)
 
     r = view.find(FIND_COMMIT_HASH + re.escape(symbol), 0)
     if not r.empty():
-        line_of_symbol = view.line(r)
-        return extract_comit_hash_span(view, line_of_symbol)
+        line = line_from_pt(view, r)
+        return extract_comit_hash_span(view, line)
     return None
 
 
-def extract_comit_hash_span(view, line_span):
-    # type: (sublime.View, sublime.Region) -> Optional[sublime.Region]
-    line_text = view.substr(line_span)
-    match = COMMIT_LINE.search(line_text)
+def extract_comit_hash_span(view, line):
+    # type: (sublime.View, TextRange) -> Optional[sublime.Region]
+    match = COMMIT_LINE.search(line.text)
     if match:
         a, b = match.span('commit_hash')
-        return sublime.Region(a + line_span.a, b + line_span.a)
+        return sublime.Region(a + line.a, b + line.a)
     return None
 
 
@@ -2238,7 +2342,7 @@ def _find_dots(view):
 
 
 def line_from_pt(view, pt):
-    # type: (sublime.View, int) -> TextRange
+    # type: (sublime.View, Union[sublime.Point, sublime.Region]) -> TextRange
     line_span = view.line(pt)
     line_text = view.substr(line_span)
     return TextRange(line_text, line_span.a, line_span.b)
@@ -2455,11 +2559,8 @@ def draw_info_panel(view):
     except IndexError:
         return
 
-    line_span = view.line(cursor)
-    line_text = view.substr(line_span)
-
-    # Defer to a second fn to reduce side-effects
-    draw_info_panel_for_line(view.id(), line_text)
+    line = line_from_pt(view, cursor)
+    draw_info_panel_for_line(view.id(), line.text)
 
 
 @lru_cache(maxsize=1)
@@ -2566,9 +2667,8 @@ def describe_head(view, branches):
         return None
 
     cursor = region.b
-    line_span = view.line(cursor)
-    line_text = view.substr(line_span)
-    return describe_graph_line(line_text, branches)
+    line = line_from_pt(view, cursor)
+    return describe_graph_line(line.text, branches)
 
 
 def format_revision_list(revisions):
