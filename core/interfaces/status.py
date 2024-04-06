@@ -11,6 +11,7 @@ from ..commands import GsNavigate
 from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
 from ...common import util
+from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import noop, show_actions_panel
 
@@ -55,6 +56,7 @@ class StatusViewState(TypedDict, total=False):
     branches: List[Branch]
     recent_commits: List[Commit]
     stashes: List[Stash]
+    skipped_files: List[str]
 
 
 # Expected
@@ -116,6 +118,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     {< merge_conflicts}
     {< no_status_message}
     {< stashes}
+    {< skipped_files}
     {< help}
     """
 
@@ -128,8 +131,8 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
       [s] stage file                        [A] stage all unstaged and untracked files
       [u] unstage file                      [U] unstage all staged files
       [d] discard changes to file           [D] discard all unstaged changes
-      [h] open file on remote
-      [M] launch external merge tool
+      [i] skip/unskip file
+      [h] open file in browser
 
       [l] diff file inline                  [f] diff all files
       [e] diff file                         [F] diff all cached files
@@ -143,9 +146,10 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
       [m] amend previous commit             [o]    open stash
       [p] push current branch               [t][c] create stash
                                             [t][u] create stash including untracked files
-      [i] ignore file                       [t][g] create stash of staged changes only
-      [I] ignore pattern                    [t][d] drop stash
+                                            [t][g] create stash of staged changes only
+      [I] add .gitignore pattern            [t][d] drop stash
 
+      [M] launch external merge tool
       [B] abort merge
 
       ###########
@@ -196,12 +200,19 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     {}
     """
 
+    template_skipped = """
+      SKIPPED:
+    {}
+    """
+
     template_stashes = """
       STASHES:
     {}
     """
 
-    subscribe_to = {"branches", "head", "long_status", "recent_commits", "stashes", "status"}
+    subscribe_to = {
+        "branches", "head", "long_status", "recent_commits", "skipped_files", "stashes", "status"
+    }
     state = {}  # type: StatusViewState
 
     def title(self):
@@ -220,6 +231,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         enqueue_on_worker(self.get_latest_commits)
         enqueue_on_worker(self.get_branches)
         enqueue_on_worker(self.get_stashes)
+        enqueue_on_worker(self.get_skipped_files)
         self.view.run_command("gs_update_status")
 
         self.update_state({
@@ -340,6 +352,14 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         return self.template_merge_conflicts.format(
             "\n".join("    " + f.path for f in merge_conflicts))
 
+    @ui.section("skipped_files")
+    def render_skipped_files(self, skipped_files):
+        # type: (List[str]) -> str
+        if not skipped_files:
+            return ""
+        return self.template_skipped.format(
+            "\n".join("    " + f for f in skipped_files))
+
     @ui.section("conflicts_bindings")
     def render_conflicts_bindings(self, status):
         # type: (WorkingDirState) -> str
@@ -389,7 +409,7 @@ class StatusInterfaceCommand(ui.InterfaceCommand):
     def get_selected_files(self, base_path, *sections):
         # type: (str, str) -> List[str]
         if not sections:
-            sections = ('staged', 'unstaged', 'untracked', 'added', 'merge-conflicts')
+            sections = ('staged', 'unstaged', 'untracked', 'added', 'merge-conflicts', 'skipped')
 
         make_abs_path = partial(os.path.join, base_path)
         return [
@@ -699,18 +719,30 @@ class gs_status_discard_all_changes(StatusInterfaceCommand):
 class gs_status_ignore_file(StatusInterfaceCommand):
 
     """
-    For each file that is selected or under a cursor, add an
-    entry to the git root's `.gitignore` file.
+    For each file that is selected or under a cursor, set `--skip-worktree`.
+    For each file already skipped, unset `--skip-worktree`.
     """
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        file_paths = self.get_selected_subjects(
+        file_paths_to_skip = self.get_selected_subjects(
             'staged', 'unstaged', 'untracked', 'added', 'merge-conflicts')
-        if file_paths:
-            for fpath in file_paths:
-                self.add_ignore(os.path.join("/", fpath))
-            self.window.status_message("Successfully ignored files.")
+        file_paths_to_restore = self.get_selected_subjects('skipped')
+        if file_paths_to_skip:
+            self.set_skip_worktree(*file_paths_to_skip)
+        if file_paths_to_restore:
+            self.unset_skip_worktree(*file_paths_to_restore)
+
+        if file_paths_to_skip or file_paths_to_restore:
+            self.window.status_message(
+                "Successfully {} `--skip-worktree`.".format(
+                    " and ".join(filter_((
+                        "set" if file_paths_to_skip else None,
+                        "unset" if file_paths_to_restore else None
+                    )))
+                )
+            )
+            enqueue_on_worker(self.get_skipped_files)
             self.interface.refresh_repo_status_and_render()
 
 
@@ -853,6 +885,6 @@ class gs_status_navigate_goto(GsNavigate):
 
     def get_available_regions(self):
         return (
-            self.view.find_by_selector("gitsavvy.gotosymbol")
+            self.view.find_by_selector("gitsavvy.gotosymbol - meta.git-savvy.status.section.skipped")
             + self.view.find_all("Your working directory is clean", sublime.LITERAL)
         )
