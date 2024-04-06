@@ -421,6 +421,11 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             self.view.close()
             return
 
+        if not diff and self.is_probably_untracked_file(file_path):
+            flash(self.view, "Inline-diff cannot be displayed for untracked files.")
+            self.view.close()
+            return
+
         if is_interactive_diff(self.view):
             hunks_count = len(diff)
             flash(self.view, "File has {} {} {}".format(

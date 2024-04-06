@@ -30,6 +30,7 @@ from ...common import util
 __all__ = (
     "gs_diff",
     "gs_diff_refresh",
+    "gs_diff_intent_to_add",
     "gs_diff_toggle_setting",
     "gs_diff_toggle_cached_mode",
     "gs_diff_zoom",
@@ -257,40 +258,6 @@ class gs_diff_refresh(TextCommand, GitCommand):
         disable_stage = settings.get("git_savvy.diff_view.disable_stage")
         context_lines = settings.get('git_savvy.diff_view.context_lines')
 
-        prelude = "\n"
-        title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(
-            os.path.basename(file_path) if file_path else os.path.basename(repo_path)
-        )
-
-        if file_path:
-            rel_file_path = os.path.relpath(file_path, repo_path)
-            prelude += "  FILE: {}\n".format(rel_file_path)
-
-        if disable_stage:
-            if in_cached_mode:
-                prelude += "  {}..INDEX\n".format(base_commit or target_commit)
-                title += ", {}..INDEX".format(base_commit or target_commit)
-            else:
-                if base_commit and target_commit:
-                    prelude += "  {}..{}\n".format(base_commit, target_commit)
-                    title += ", {}..{}".format(base_commit, target_commit)
-                elif base_commit and "..." in base_commit:
-                    prelude += "  {}\n".format(base_commit)
-                    title += ", {}".format(base_commit)
-                else:
-                    prelude += "  {}..WORKING DIR\n".format(base_commit or target_commit)
-                    title += ", {}..WORKING DIR".format(base_commit or target_commit)
-        else:
-            if in_cached_mode:
-                prelude += "  STAGED CHANGES (Will commit)\n"
-            else:
-                prelude += "  UNSTAGED CHANGES\n"
-
-        if ignore_whitespace:
-            prelude += "  IGNORING WHITESPACE\n"
-
-        prelude += "\n--\n"
-
         raw_diff = self.git(
             "diff",
             "--ignore-all-space" if ignore_whitespace else None,
@@ -329,6 +296,51 @@ class gs_diff_refresh(TextCommand, GitCommand):
                 else:
                     view.close()
                 return
+
+        prelude = "\n"
+        title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(
+            os.path.basename(file_path) if file_path else os.path.basename(repo_path)
+        )
+
+        untracked_file = False
+        if file_path:
+            rel_file_path = os.path.relpath(file_path, repo_path)
+            if (
+                not diff
+                # Only check the cached value in `store` to not get expensive
+                # for the normal case of just checking a clean file.
+                and self.is_probably_untracked_file(file_path)
+            ):
+                untracked_file = True
+
+            prelude += "  FILE: {}{}\n".format(rel_file_path, "  (UNTRACKED)" if untracked_file else "")
+
+        if disable_stage:
+            if in_cached_mode:
+                prelude += "  {}..INDEX\n".format(base_commit or target_commit)
+                title += ", {}..INDEX".format(base_commit or target_commit)
+            else:
+                if base_commit and target_commit:
+                    prelude += "  {}..{}\n".format(base_commit, target_commit)
+                    title += ", {}..{}".format(base_commit, target_commit)
+                elif base_commit and "..." in base_commit:
+                    prelude += "  {}\n".format(base_commit)
+                    title += ", {}".format(base_commit)
+                else:
+                    prelude += "  {}..WORKING DIR\n".format(base_commit or target_commit)
+                    title += ", {}..WORKING DIR".format(base_commit or target_commit)
+        else:
+            if untracked_file:
+                ...
+            elif in_cached_mode:
+                prelude += "  STAGED CHANGES (Will commit)\n"
+            else:
+                prelude += "  UNSTAGED CHANGES\n"
+
+        if ignore_whitespace:
+            prelude += "  IGNORING WHITESPACE\n"
+
+        prelude += "\n--\n"
 
         ensure_on_ui(_draw, view, title, prelude, diff, match_position)
 
@@ -389,6 +401,30 @@ def find_hunk_for_line(hunks, row):
             return hunk
     else:
         return None
+
+
+class gs_diff_intent_to_add(TextCommand, GitCommand):
+    def run(self, edit):
+        settings = self.view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        untracked_file = self.git("ls-files", "--", file_path).strip() == ""
+        if not untracked_file:
+            flash(self.view, "The file is already tracked.")
+            return
+
+        self.intent_to_add(file_path)
+
+        history = settings.get("git_savvy.diff_view.history") or []
+        frozen_sel = [s for s in self.view.sel()]
+        patch = ""
+        pts = [s.a for s in frozen_sel]
+        in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
+        history.append((["add", "--intent-to-add", file_path], patch, pts, in_cached_mode))
+        settings.set("git_savvy.diff_view.history", history)
+        settings.set("git_savvy.diff_view.just_hunked", patch)
+
+        flash(self.view, "set --intent-to-add")
+        self.view.run_command("gs_diff_refresh")
 
 
 class gs_diff_toggle_setting(TextCommand):
@@ -1075,6 +1111,8 @@ class gs_diff_undo(TextCommand, GitCommand):
         if args[0] == "add":
             if args[1] == "-u":
                 self.unstage_all_files()
+            elif args[1] == "--intent-to-add":
+                self.undo_intent_to_add(args[2])
             else:
                 self.unstage_file(*args[1])
         else:

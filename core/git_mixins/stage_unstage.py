@@ -44,3 +44,9 @@ class StageUnstageMixin(mixin_base):
         Remove all staged files from the index.
         """
         return self.git("reset")
+
+    def intent_to_add(self, *file_paths: str) -> None:
+        self.git("add", "--intent-to-add", "--", *file_paths)
+
+    def undo_intent_to_add(self, *file_paths: str) -> None:
+        self.git("reset", "--", *file_paths)

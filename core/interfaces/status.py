@@ -9,7 +9,7 @@ from ..git_mixins.status import FileStatus
 from ..git_mixins.active_branch import format_and_limit
 from ..commands import GsNavigate
 from ...common import ui
-from ..git_command import GitCommand
+from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import noop, show_actions_panel
@@ -111,6 +111,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     {< unstaged_files}
     {< untracked_files}
+    {< added_files}
     {< staged_files}
     {< merge_conflicts}
     {< no_status_message}
@@ -177,6 +178,11 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     template_unstaged = """
       UNSTAGED:
+    {}
+    """
+
+    template_added = """
+      ADDED:
     {}
     """
 
@@ -290,14 +296,30 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     @ui.section("unstaged_files")
     def render_unstaged_files(self, status):
         # type: (WorkingDirState) -> str
-        unstaged_files = status.unstaged_files
+        unstaged_files = [f for f in status.unstaged_files if f.working_status != "A"]
         if not unstaged_files:
             return ""
 
+        def get_path(file_status):
+            """ Display full file_status path, including path_alt if exists """
+            if file_status.path_alt:
+                return '{} -> {}'.format(file_status.path_alt, file_status.path)
+            return file_status.path
+
         return self.template_unstaged.format("\n".join(
-            "  {} {}".format("-" if f.working_status == "D" else " ", f.path)
+            "  {} {}".format("-" if f.working_status == "D" else " ", get_path(f))
             for f in unstaged_files
         ))
+
+    @ui.section("added_files")
+    def render_added_files(self, status):
+        # type: (WorkingDirState) -> str
+        added_files = [f for f in status.unstaged_files if f.working_status == "A"]
+        if not added_files:
+            return ""
+
+        return self.template_added.format(
+            "\n".join("    " + f.path for f in added_files))
 
     @ui.section("untracked_files")
     def render_untracked_files(self, status):
@@ -367,7 +389,7 @@ class StatusInterfaceCommand(ui.InterfaceCommand):
     def get_selected_files(self, base_path, *sections):
         # type: (str, str) -> List[str]
         if not sections:
-            sections = ('staged', 'unstaged', 'untracked', 'merge-conflicts')
+            sections = ('staged', 'unstaged', 'untracked', 'added', 'merge-conflicts')
 
         make_abs_path = partial(os.path.join, base_path)
         return [
@@ -451,17 +473,21 @@ class gs_status_diff(StatusInterfaceCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         repo_path = self.repo_path
+        untracked_files = self.get_selected_files(repo_path, 'untracked')
         non_cached_files = self.get_selected_files(
-            repo_path, 'unstaged', 'untracked', 'merge-conflicts')
+            repo_path, 'unstaged', 'added', 'merge-conflicts')
         cached_files = self.get_selected_files(repo_path, 'staged')
 
         enqueue_on_worker(
-            self.load_diff_windows, self.window, non_cached_files, cached_files
+            self.load_diff_windows, self.window, non_cached_files, cached_files, untracked_files
         )
 
-    def load_diff_windows(self, window, non_cached_files, cached_files):
-        # type: (sublime.Window, List[str], List[str]) -> None
-        for fpath in non_cached_files:
+    def load_diff_windows(self, window, non_cached_files, cached_files, untracked_files):
+        # type: (sublime.Window, List[str], List[str], List[str]) -> None
+        if untracked_files:
+            self.intent_to_add(*untracked_files)
+
+        for fpath in non_cached_files + untracked_files:
             window.run_command("gs_diff", {
                 "file_path": fpath,
                 "in_cached_mode": False,
@@ -503,7 +529,7 @@ class gs_status_stage_file(StatusInterfaceCommand):
                 return
 
         file_paths = (
-            self.get_selected_subjects('unstaged', 'untracked')
+            self.get_selected_subjects('unstaged', 'untracked', 'added')
             + files_with_merge_conflicts
         )
         if file_paths:
@@ -521,10 +547,19 @@ class gs_status_unstage_file(StatusInterfaceCommand):
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        file_paths = self.get_selected_subjects('staged', 'merge-conflicts')
-        if file_paths:
-            self.unstage_file(*file_paths)
-            self.window.status_message("Unstaged files successfully.")
+        files_to_unstage = self.get_selected_subjects('staged', 'merge-conflicts')
+        if files_to_unstage:
+            self.unstage_file(*files_to_unstage)
+
+        files_to_unadd = self.get_selected_subjects('added')
+        if files_to_unadd:
+            self.undo_intent_to_add(*files_to_unadd)
+
+        if files_to_unstage or files_to_unadd:
+            if not files_to_unadd:
+                self.window.status_message("Unstaged files successfully.")
+            else:
+                self.window.status_message("Reset files successfully.")
             self.interface.refresh_repo_status_and_render()
 
 
@@ -542,6 +577,7 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
         if untracked_files or unstaged_files:
             self.window.status_message("Successfully discarded changes.")
             self.interface.refresh_repo_status_and_render()
+
         if self.get_selected_subjects('staged'):
             self.window.status_message("Staged files cannot be discarded.  Unstage them first.")
 
@@ -560,15 +596,53 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
 
     def discard_unstaged(self):
         # type: () -> Optional[List[str]]
-        file_paths = self.get_selected_subjects('unstaged', 'merge-conflicts')
 
         @util.actions.destructive(description="discard one or more unstaged files")
-        def do_discard():
-            self.checkout_file(*file_paths)
-            return file_paths
+        def do_discard(file_paths: List[str]):
+            try:
+                self.checkout_file(*file_paths)
+            except GitSavvyError as err:
+                # For the error message see the lengthy comment below.
+                if "did not match any file(s) known to git" in err.stderr:
+                    pass
+                else:
+                    raise
 
+        file_paths = self.get_selected_subjects('unstaged', 'merge-conflicts')
         if file_paths:
-            return do_discard()
+            selected_unstaged_files = [
+                f for f in self.interface.state["status"].unstaged_files
+                if f.path in file_paths
+            ]
+            # "R"-enamed files in the unstaged section are not your standard rename!
+            # See: https://stackoverflow.com/questions/77950918/how-to-produce-the-file-status-r-in-git
+            # We "un-intent" basically to split the " R" up.  After that we should have
+            # two files in the status: " D" <path_alt> and "??" <path>.  The intention
+            # is to not have any data loss.  (At the cost of possibly having more clicks
+            # to make.)
+            # NOTE: We also `undo_intent_to_add` for " A" but we do this in `gs_status_unstage_file`
+            #       because we show these entries in a separate section and discarding sounds too
+            #       destructive for that action.
+            # NOTE: For " D" we typically want to restore the file, aka undelete behavior.
+            #       This is what `do_discard` here does.
+            #       However, it could be that the file is unknown and git throws:
+            #       "error: pathspec '<path>' did not match any file(s) known to git"
+            #       Then `reset -- <path>` like in `undo_intent_to_add` would have been
+            #       the better operation because it handles these cases without throwing.
+            #       But we cannot tell before we try!  And git does everything well enough
+            #       even if it raises the error.
+            #       Keep in mind that we literally cannot undelete in those case as the content
+            #       of these files is untracked and not in the index.  (`--intent-to-add` just
+            #       adds an empty file in the index!) So cleaning the index is the best we can do.
+            #       The user can also just stage, as in: acknowledge, such an entry and it will just
+            #       disappear (because there is no further content to track).
+            files_to_unintent = [
+                f.path for f in selected_unstaged_files
+                if f.working_status == "R"
+            ]
+            self.undo_intent_to_add(*files_to_unintent)
+            do_discard([f for f in file_paths if f not in files_to_unintent])
+            return file_paths
         return None
 
 
@@ -632,7 +706,7 @@ class gs_status_ignore_file(StatusInterfaceCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         file_paths = self.get_selected_subjects(
-            'staged', 'unstaged', 'untracked', 'merge-conflicts')
+            'staged', 'unstaged', 'untracked', 'added', 'merge-conflicts')
         if file_paths:
             for fpath in file_paths:
                 self.add_ignore(os.path.join("/", fpath))
@@ -651,7 +725,7 @@ class gs_status_ignore_pattern(StatusInterfaceCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         file_paths = self.get_selected_subjects(
-            'staged', 'unstaged', 'untracked', 'merge-conflicts')
+            'staged', 'unstaged', 'untracked', 'added', 'merge-conflicts')
         if file_paths:
             self.window.run_command("gs_ignore_pattern", {"pre_filled": file_paths[0]})
 
@@ -700,7 +774,7 @@ class gs_status_launch_merge_tool(StatusInterfaceCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         file_paths = self.get_selected_subjects(
-            'staged', 'unstaged', 'untracked', 'merge-conflicts')
+            'staged', 'unstaged', 'untracked', 'added', 'merge-conflicts')
         if len(file_paths) > 1:
             sublime.error_message("You can only launch merge tool for a single file at a time.")
             return

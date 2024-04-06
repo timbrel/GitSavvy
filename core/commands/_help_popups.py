@@ -148,6 +148,7 @@ class gs_diff_help_tooltip(GsAbstractHelpPopup):
     [c]/[C]        commit ([C] to include unstaged)
     [m]            amend previous commit
     [f]            make fixup commit
+    [a]            set intent-to-add (only if the file is untracked)
 
     ### Navigation ###
     [o]            open file at hunk
