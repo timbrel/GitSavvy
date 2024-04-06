@@ -473,7 +473,11 @@ class gs_new_content_and_regions(TextCommand):
                     replace_view_content(self.view, txt, region)
 
         for key, region_range in regions.items():
-            self.view.add_regions(region_key(key), [region_from_tuple(region_range)])
+            self.view.add_regions(
+                region_key(key),
+                [region_from_tuple(region_range)],
+                flags=sublime.RegionFlags.NO_UNDO
+            )
 
         for key in self.current_region_names - regions.keys():
             self.view.erase_regions(region_key(key))

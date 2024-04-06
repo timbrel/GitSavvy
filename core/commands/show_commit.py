@@ -174,7 +174,13 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
                 '<a href="{}">Open on GitHub</a>'
                 .format(url)
             ]
-        self.view.add_regions(key, regions, annotations=annotations, annotation_color="#aaa0")
+        self.view.add_regions(
+            key,
+            regions,
+            annotations=annotations,
+            annotation_color="#aaa0",
+            flags=sublime.RegionFlags.NO_UNDO
+        )
 
 
 class gs_show_commit_open_on_github(TextCommand, GithubRemotesMixin, GitCommand):

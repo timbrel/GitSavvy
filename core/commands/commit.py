@@ -395,11 +395,17 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
 
         warning, illegal = self.find_too_long_lines()
         self.view.add_regions(
-            'make_commit_warning', warning,
-            scope='invalid.deprecated.line-too-long.git-commit', flags=sublime.DRAW_NO_FILL)
+            'make_commit_warning',
+            warning,
+            scope='invalid.deprecated.line-too-long.git-commit',
+            flags=sublime.RegionFlags.DRAW_NO_FILL | sublime.RegionFlags.NO_UNDO
+        )
         self.view.add_regions(
-            'make_commit_illegal', illegal,
-            scope='invalid.deprecated.line-too-long.git-commit')
+            'make_commit_illegal',
+            illegal,
+            scope='invalid.deprecated.line-too-long.git-commit',
+            flags=sublime.RegionFlags.NO_UNDO
+        )
 
     def find_rulers(self):
         on_first_line = False

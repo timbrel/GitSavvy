@@ -113,7 +113,7 @@ def flash(view, message):
 
 HIGHLIGHT_REGION_KEY = "GS.flashs.{}"
 DURATION = 0.4
-STYLE = {"scope": "git_savvy.graph.dot", "flags": 0}
+STYLE = {"scope": "git_savvy.graph.dot", "flags": sublime.RegionFlags.NO_UNDO}
 
 
 def flash_regions(view, regions, key="default"):

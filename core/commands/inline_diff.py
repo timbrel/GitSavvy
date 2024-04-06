@@ -582,22 +582,26 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         self.view.add_regions(
             "git-savvy-added-lines",
             add_regions,
-            scope="diff.inserted.git-savvy.inline-diff"
+            scope="diff.inserted.git-savvy.inline-diff",
+            flags=sublime.RegionFlags.NO_UNDO
         )
         self.view.add_regions(
             "git-savvy-removed-lines",
             remove_regions,
-            scope="diff.deleted.git-savvy.inline-diff"
+            scope="diff.deleted.git-savvy.inline-diff",
+            flags=sublime.RegionFlags.NO_UNDO
         )
         self.view.add_regions(
             "git-savvy-added-bold",
             add_bold_regions,
-            scope="diff.inserted.char.git-savvy.inline-diff"
+            scope="diff.inserted.char.git-savvy.inline-diff",
+            flags=sublime.RegionFlags.NO_UNDO
         )
         self.view.add_regions(
             "git-savvy-removed-bold",
             remove_bold_regions,
-            scope="diff.deleted.char.git-savvy.inline-diff"
+            scope="diff.deleted.char.git-savvy.inline-diff",
+            flags=sublime.RegionFlags.NO_UNDO
         )
 
 
