@@ -135,7 +135,10 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
     def refresh_view_state(self):
         # type: () -> None
-        enqueue_on_worker(self.get_branches)
+        if self.view.settings().get("git_savvy.update_view_in_a_blocking_manner"):
+            self.get_branches()
+        else:
+            enqueue_on_worker(self.get_branches)
         enqueue_on_worker(self.fetch_branch_description_subjects)
         enqueue_on_worker(self.get_latest_commits)
         enqueue_on_worker(self.get_remotes)
@@ -433,6 +436,7 @@ class gs_branches_delete(CommandForSingleBranch):
         if self.selected_branch.is_remote:
             self.delete_remote_branch(self.selected_branch.remote, self.selected_branch.name, force)
         else:
+            self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
             self.window.run_command("gs_delete_branch", {"branch": self.selected_branch.name, "force": force})
 
     @util.actions.destructive(description="delete a remote branch")

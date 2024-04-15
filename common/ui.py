@@ -11,7 +11,7 @@ import sublime
 from sublime_plugin import TextCommand
 
 from . import util
-from ..core.runtime import enqueue_on_worker, on_worker
+from ..core.runtime import enqueue_on_worker
 from ..core.settings import GitSavvySettings
 from ..core.utils import flash, focus_view
 from GitSavvy.core import store
@@ -591,11 +591,17 @@ class gs_interface_refresh(TextCommand):
     Re-render GitSavvy interface view.
     """
 
-    @on_worker
     def run(self, edit):
         # type: (object) -> None
         interface = ensure_interface_object(self.view)
-        interface.render()
+        if self.view.settings().get("git_savvy.update_view_in_a_blocking_manner"):
+            try:
+                interface.render()
+            finally:
+                self.view.settings().erase("git_savvy.update_view_in_a_blocking_manner")
+
+        else:
+            enqueue_on_worker(interface.render)
 
 
 class gs_interface_toggle_help(TextCommand):
