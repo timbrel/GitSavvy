@@ -535,7 +535,7 @@ class gs_tags_show_graph(TagsInterfaceCommand):
 class gs_tags_navigate_tag(GsNavigate):
 
     """
-    Move cursor to the next (or previous) selectable file in the dashboard.
+    Move cursor to the next (or previous) selectable tag in the dashboard.
     """
     offset = 0
 
