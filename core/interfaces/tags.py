@@ -204,7 +204,11 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
     @contextmanager
     def keep_cursor_on_something(self):
         # type: () -> Iterator[None]
-        on_special_symbol = partial(self.cursor_is_on_something, "meta.git-savvy.tags.tag")
+        on_special_symbol = partial(
+            self.cursor_is_on_something,
+            "meta.git-savvy.tags.tag"
+            ", constant.other.git-savvy.sha1"
+        )
 
         yield
         if not on_special_symbol():

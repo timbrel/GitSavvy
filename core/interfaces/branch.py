@@ -163,7 +163,11 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                     "meta.git-savvy.branches.branch.active-branch"
                 )
             )
-        on_special_symbol = partial(self.cursor_is_on_something, "meta.git-savvy.branches.branch")
+        on_special_symbol = partial(
+            self.cursor_is_on_something,
+            "meta.git-savvy.branches.branch"
+            ", constant.other.git-savvy.sha1"
+        )
 
         cursor_was_on_active_branch = cursor_is_on_active_branch()
         yield

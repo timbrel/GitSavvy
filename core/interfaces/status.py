@@ -243,7 +243,11 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     def keep_cursor_on_something(self):
         # type: () -> Iterator[None]
         on_a_file = partial(self.cursor_is_on_something, 'meta.git-savvy.entity.filename')
-        on_special_symbol = partial(self.cursor_is_on_something, 'meta.git-savvy.section.body.row')
+        on_special_symbol = partial(
+            self.cursor_is_on_something,
+            'meta.git-savvy.section.body.row'
+            ', constant.other.git-savvy.sha1'
+        )
 
         was_on_a_file = on_a_file()
         yield
