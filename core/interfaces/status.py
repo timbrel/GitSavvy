@@ -880,6 +880,7 @@ class gs_status_navigate_file(GsNavigate):
     def get_available_regions(self):
         return self.view.find_by_selector(
             "meta.git-savvy.entity - meta.git-savvy.entity.filename.renamed.to"
+            ", meta.git-savvy.summary-header constant.other.git-savvy.sha1"
         )
 
 

@@ -540,4 +540,7 @@ class gs_tags_navigate_tag(GsNavigate):
     offset = 0
 
     def get_available_regions(self):
-        return self.view.find_by_selector("constant.other.git-savvy.tags.sha1")
+        return self.view.find_by_selector(
+            "constant.other.git-savvy.tags.sha1"
+            ", meta.git-savvy.summary-header constant.other.git-savvy.sha1"
+        )
