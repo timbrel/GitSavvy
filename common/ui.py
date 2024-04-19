@@ -309,6 +309,12 @@ def distinct_until_state_changed(just_render_fn):
     return wrapper
 
 
+@contextmanager
+def noop_context():
+    # type: () -> Iterator[None]
+    yield
+
+
 class ReactiveInterface(Interface, GitCommand, Generic[T_state]):
     state: T_state
     subscribe_to: Set[str]
@@ -348,13 +354,14 @@ class ReactiveInterface(Interface, GitCommand, Generic[T_state]):
     # We check twice if a re-render is actually necessary because the state has grown
     # and invalidates when formatted relative dates change, t.i., too often.
     @distinct_until_state_changed                                             # <== 1st check data/state
-    def just_render(self):
-        # type: () -> None
+    def just_render(self, keep_cursor_on_something=True):
+        # type: (bool) -> None
         content, regions = self._render_template()
         if content == self.view.substr(sublime.Region(0, self.view.size())):  # <== 2nd check actual view content
             return
 
-        with self.keep_cursor_on_something():
+        ctx = self.keep_cursor_on_something() if keep_cursor_on_something else noop_context()
+        with ctx:
             self.draw(self.title(), content, regions)
 
     def initial_state(self):

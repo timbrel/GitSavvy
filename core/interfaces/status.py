@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import os
 
 import sublime
-from sublime_plugin import WindowCommand
+from sublime_plugin import EventListener, WindowCommand
 
 from ..git_mixins.status import FileStatus
 from ..git_mixins.active_branch import format_and_limit
@@ -18,6 +18,7 @@ from GitSavvy.core.utils import noop, show_actions_panel
 
 __all__ = (
     "gs_show_status",
+    "StatusViewContextSensitiveHelpEventListener",
     "gs_status_open_file",
     "gs_status_open_file_on_remote",
     "gs_status_diff_inline",
@@ -52,6 +53,7 @@ class StatusViewState(TypedDict, total=False):
     long_status: str
     git_root: str
     show_help: bool
+    help_context: Optional[str]
     head: HeadState
     branches: List[Branch]
     recent_commits: List[Commit]
@@ -95,6 +97,24 @@ class gs_show_status(WindowCommand, GitCommand):
         ui.show_interface(self.window, self.repo_path, "status")
 
 
+class StatusViewContextSensitiveHelpEventListener(EventListener):
+    def on_selection_modified_async(self, view):
+        interface = ui.interfaces.get(view.id())
+        if not isinstance(interface, StatusInterface):
+            return
+
+        frozen_sel = list(view.sel())
+        if all(view.match_selector(s.a, "constant.other.git-savvy.sha1") for s in frozen_sel):
+            next_state = "on_commit"
+        else:
+            next_state = None
+
+        current_state = interface.state.get("help_context")
+        if next_state != current_state:
+            interface.state["help_context"] = next_state
+            interface.just_render(keep_cursor_on_something=False)
+
+
 class StatusInterface(ui.ReactiveInterface, GitCommand):
 
     """
@@ -122,21 +142,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     {< help}
     """
 
-    template_help = """
-      ###################                   ###############
-      ## SELECTED FILE ##                   ## ALL FILES ##
-      ###################                   ###############
-
-      [o] open file                         [a] stage all unstaged files
-      [s] stage file                        [A] stage all unstaged and untracked files
-      [u] unstage file                      [U] unstage all staged files
-      [d] discard changes to file           [D] discard all unstaged changes
-      [i] skip/unskip file
-      [h] open file in browser
-
-      [l] diff file inline                  [f] diff all files
-      [e] diff file                         [F] diff all cached files
-
+    _template_help = """
       #############                         #############
       ## ACTIONS ##                         ## STASHES ##
       #############                         #############
@@ -165,6 +171,38 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     {conflicts_bindings}
     -
     """
+
+    template_help = """
+      ###################                   ###############
+      ## SELECTED FILE ##                   ## ALL FILES ##
+      ###################                   ###############
+
+      [o] open file                         [a] stage all unstaged files
+      [s] stage file                        [A] stage all unstaged and untracked files
+      [u] unstage file                      [U] unstage all staged files
+      [d] discard changes to file           [D] discard all unstaged changes
+      [i] skip/unskip file
+      [h] open file in browser
+
+      [l] diff file inline                  [f] diff all files
+      [e] diff file                         [F] diff all cached files
+    """ + _template_help
+
+    template_help_on_commit = """
+      #####################                 ###############
+      ## SELECTED COMMIT ##                 ## ALL FILES ##
+      #####################                 ###############
+
+      [o] show commit                       [a] stage all unstaged files
+                                            [A] stage all unstaged and untracked files
+                                            [U] unstage all staged files
+                                            [D] discard all unstaged changes
+
+
+
+                                            [f] diff all files
+                                            [F] diff all cached files
+    """ + _template_help
 
     conflicts_keybindings = ui.indent_by_2("""
     ###############
@@ -214,6 +252,11 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
         "branches", "head", "long_status", "recent_commits", "skipped_files", "stashes", "status"
     }
     state: StatusViewState
+
+    def initial_state(self):
+        return {
+            'help_context': None,
+        }
 
     def title(self):
         # type: () -> str
@@ -388,11 +431,13 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
             "    ({}) {}".format(stash.id, stash.description) for stash in stashes))
 
     @ui.section("help")
-    def render_help(self, show_help):
-        # type: (bool) -> str
+    def render_help(self, show_help, help_context):
+        # type: (bool, Optional[str]) -> str
         if not show_help:
             return ""
 
+        if help_context == "on_commit":
+            return self.template_help_on_commit.format(conflicts_bindings=self.render_conflicts_bindings())
         return self.template_help.format(conflicts_bindings=self.render_conflicts_bindings())
 
 
