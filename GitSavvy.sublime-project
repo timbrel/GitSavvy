@@ -3,11 +3,11 @@
 	[
 		{
 			"name": "Reload GitSavvy",
-			"target": "gs_reload_modules_debug"
+			"target": "gs_reload_modules_debug",
 		},
 		{
 			"name": "Test GitSavvy",
-			"target": "unit_testing_current_package"
+			"target": "unit_testing_current_package",
 		}
 	],
 	"folders":
@@ -18,7 +18,7 @@
 				".git",
 				"__pycache__"
 			],
-			"path": "."
+			"path": ".",
 		}
 	],
 	"settings":
@@ -33,6 +33,7 @@
 			120
 		],
 		"tab_size": 4,
-		"translate_tabs_to_spaces": true
-	}
+		"translate_tabs_to_spaces": true,
+		"SublimeLinter.linters.ruff.disable": true,
+	},
 }
