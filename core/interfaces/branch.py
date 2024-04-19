@@ -121,13 +121,12 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
     {remote_branch_list}"""
 
     subscribe_to = {"branches", "descriptions", "long_status", "recent_commits", "remotes"}
-    state = {}  # type: BranchViewState
+    state: BranchViewState
 
-    def __init__(self, *args, **kwargs):
-        self.state = {
+    def initial_state(self):
+        return {
             'show_remotes': self.savvy_settings.get("show_remotes_in_branch_dashboard"),
         }
-        super().__init__(*args, **kwargs)
 
     def title(self):
         # type: () -> str

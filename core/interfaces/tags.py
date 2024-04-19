@@ -129,14 +129,13 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
     {remote_tags_list}"""
 
     subscribe_to = {"local_tags", "long_status", "recent_commits", "remotes"}
-    state = {}  # type: TagsViewState
+    state: TagsViewState
 
-    def __init__(self, *args, **kwargs):
-        self.state = {
+    def initial_state(self):
+        return {
             'show_remotes': self.savvy_settings.get("show_remotes_in_branch_dashboard"),
             'remote_tags': {}
         }
-        super().__init__(*args, **kwargs)
 
     def title(self):
         # type: () -> str
