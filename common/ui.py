@@ -309,7 +309,7 @@ def distinct_until_state_changed(just_render_fn):
 
 class ReactiveInterface(Interface, GitCommand, Generic[T_state]):
     state: T_state
-    subscribe_to: Set[str] = set()
+    subscribe_to: Set[str]
 
     def __init__(self, *args, **kwargs):
         self._lock = threading.Lock()
