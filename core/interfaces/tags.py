@@ -161,8 +161,8 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         })
 
     @ui.inject_state()
-    def maybe_populate_remote_tags(self, remotes, show_remotes, remote_tags_info):
-        # type: (Dict[str, str], bool, RemoteTagsInfo) -> None
+    def maybe_populate_remote_tags(self, remotes, remote_tags_info):
+        # type: (Dict[str, str], RemoteTagsInfo) -> None
         def do_tags_fetch(remote_name):
             try:
                 new_state = {
