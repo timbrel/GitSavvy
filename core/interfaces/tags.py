@@ -222,17 +222,17 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         # wait until all settled to prohibit intermediate state to be drawn
         # what we draw explicitly relies on *all* known remote tags
         if remote_tags_info and all(info["state"] != "loading" for info in remote_tags_info.values()):
-            all_remote_tags, all_remote_tag_names = set(), set()
+            remote_tags, remote_tag_names = set(), set()
             for info in remote_tags_info.values():
                 if info["state"] == "succeeded":
                     for tag in info["tags"]:
-                        all_remote_tags.add((tag.sha, tag.tag))
-                        all_remote_tag_names.add(tag.tag)
+                        remote_tags.add((tag.sha, tag.tag))
+                        remote_tag_names.add(tag.tag)
 
             def maybe_mark(tag):
-                if tag.tag not in all_remote_tag_names:
+                if tag.tag not in remote_tag_names:
                     return "*"  # denote new semver
-                if (tag.sha, tag.tag) not in all_remote_tags:
+                if (tag.sha, tag.tag) not in remote_tags:
                     return "!"  # denote known semver on a different hash
                 return " "
 
