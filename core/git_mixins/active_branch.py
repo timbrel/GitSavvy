@@ -1,6 +1,6 @@
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.git_mixins.tags import is_semver_tag
-
+from GitSavvy.core.utils import cache_in_store_as
 
 from typing import Iterable, Iterator, List, NamedTuple, Optional
 from .branches import Branch
@@ -41,6 +41,7 @@ class ActiveBranchMixin(mixin_base):
 
         return stdout or "No commits yet."
 
+    @cache_in_store_as("recent_commits")
     def get_latest_commits(self):
         # type: () -> List[Commit]
         commits = [
@@ -61,7 +62,6 @@ class ActiveBranchMixin(mixin_base):
             short_hash_length = len(commits[0].hash)
             self.update_store({"short_hash_length": short_hash_length})
 
-        self.update_store({"recent_commits": commits})
         return commits
 
 

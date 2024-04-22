@@ -3,7 +3,7 @@ from itertools import chain
 import re
 
 from GitSavvy.core.git_command import mixin_base
-
+from GitSavvy.core.utils import cache_in_store_as
 
 from typing import Iterable, List, NamedTuple, Optional, Set
 
@@ -30,6 +30,7 @@ REMOTE_TAGOPT_RE = re.compile(r"^remote\.(?P<branch_name>.+?)\.tagopt (?P<option
 
 class TagsMixin(mixin_base):
 
+    @cache_in_store_as("local_tags")
     def get_local_tags(self):
         # type: () -> TagList
         stdout = self.git(
@@ -50,9 +51,7 @@ class TagsMixin(mixin_base):
             for line in stdout.splitlines()
             if line
         )
-        rv = self.handle_semver_tags(entries)
-        self.update_store({"local_tags": rv})
-        return rv
+        return self.handle_semver_tags(entries)
 
     def get_remote_tags(self, remote):
         # type: (str) -> TagList
@@ -70,9 +69,10 @@ class TagsMixin(mixin_base):
         )
         return self.handle_semver_tags(entries)
 
+    @cache_in_store_as("remotes_with_no_tags_set")
     def get_remotes_for_which_to_skip_tags(self):
         # type: () -> Set[str]
-        rv = {
+        return {
             match.group("branch_name")
             for line in self.git(
                 "config",
@@ -83,8 +83,6 @@ class TagsMixin(mixin_base):
             if (match := REMOTE_TAGOPT_RE.match(line))
             if "--no-tags" in match.group("options")
         }
-        self.update_store({"remotes_with_no_tags_set": rv})
-        return rv
 
     def get_last_local_semver_tag(self):
         # type: () -> Optional[str]

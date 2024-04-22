@@ -2,7 +2,7 @@ import re
 
 from GitSavvy.core.git_command import BranchesMixin, _GitCommand
 from GitSavvy.core.fns import filter_
-from GitSavvy.core.utils import yes_no_switch
+from GitSavvy.core.utils import cache_in_store_as, yes_no_switch
 
 
 from typing import Dict
@@ -12,13 +12,14 @@ url = str
 
 class RemotesMixin(BranchesMixin, _GitCommand):
 
+    @cache_in_store_as("remotes")
     def get_remotes(self):
         # type: () -> Dict[name, url]
         """
         Get a list of remotes, provided as tuples of remote name and remote
         url/resource.
         """
-        rv = {
+        return {
             key[7:-4]: url
             for key, url in (
                 entry.split(maxsplit=1)
@@ -29,8 +30,6 @@ class RemotesMixin(BranchesMixin, _GitCommand):
                     throw_on_error=False).strip().splitlines()
             )
         }
-        self.update_store({"remotes": rv})
-        return rv
 
     def fetch(self, remote=None, refspec=None, prune=True, local_branch=None, remote_branch=None):
         # type: (str, str, bool, str, str) -> None

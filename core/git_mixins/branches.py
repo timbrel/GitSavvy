@@ -3,7 +3,7 @@ import re
 from GitSavvy.core.git_command import mixin_base, NOT_SET
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.exceptions import GitSavvyError
-from GitSavvy.core.utils import hprint, measure_runtime, yes_no_switch
+from GitSavvy.core.utils import cache_in_store_as, hprint, measure_runtime, yes_no_switch
 from GitSavvy.core.runtime import run_on_new_thread
 
 from typing import Dict, List, NamedTuple, Optional, Sequence
@@ -209,6 +209,7 @@ class BranchesMixin(mixin_base):
 
         self.update_store({"branches": next_state})
 
+    @cache_in_store_as("descriptions")
     def fetch_branch_description_subjects(self):
         # type: () -> Dict[str, str]
         rv = {}
@@ -224,7 +225,6 @@ class BranchesMixin(mixin_base):
 
             branch_name, description = match.group(1), match.group(2)
             rv[branch_name] = description
-        self.update_store({"descriptions": rv})
         return rv
 
     def _parse_branch_line(self, line):
