@@ -2,7 +2,6 @@ from ...common import util
 from GitSavvy.core.base_commands import GsWindowCommand, ask_for_branch
 from GitSavvy.core.fns import flatten, unique
 from GitSavvy.core.runtime import on_worker
-from GitSavvy.core import store
 
 from typing import Callable, List, Optional, Sequence
 from ..git_mixins.branches import Branch
@@ -64,7 +63,7 @@ class gs_pull_from_branch(GsPullBase):
             # Typically, `ask_for_branch_`s `show_branch_panel` has just called
             # `get_branches` so the cached value in the store should be fresh
             # and good to go.
-            lambda: store.current_state(self.repo_path).get("branches", []),
+            lambda: self.current_state().get("branches", []),
             self.get_branches,
         )
         branches = unique(flatten(getter() for getter in sources))

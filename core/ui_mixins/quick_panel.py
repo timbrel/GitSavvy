@@ -2,7 +2,6 @@ import itertools
 import sublime
 from ...common import util
 from ..git_command import GitCommand
-from GitSavvy.core import store
 from GitSavvy.core.fns import filter_, maybe
 from GitSavvy.core.utils import show_panel
 
@@ -200,7 +199,7 @@ class RemotePanel(GitCommand):
             self.remotes.insert(0, "All remotes.")
 
         last_remote_used = (
-            store.current_state(self.repo_path).get(self.storage_key, "origin")  # type: ignore[assignment]
+            self.current_state().get(self.storage_key, "origin")  # type: ignore[assignment]
         )  # type: str
         if last_remote_used in self.remotes:
             pre_selected_index = self.remotes.index(last_remote_used)

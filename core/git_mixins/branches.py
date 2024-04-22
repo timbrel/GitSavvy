@@ -1,6 +1,5 @@
 import re
 
-from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base, NOT_SET
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.exceptions import GitSavvyError
@@ -184,7 +183,7 @@ class BranchesMixin(mixin_base):
 
             return branches
 
-        slow_repo = store.current_state(self.repo_path).get("slow_repo", None)
+        slow_repo = self.current_state().get("slow_repo", None)
         supports_ahead_behind = (
             self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND
             and slow_repo is not False
@@ -198,11 +197,11 @@ class BranchesMixin(mixin_base):
             next_state = branches
 
         elif refs == ["refs/heads"]:
-            stored_state = store.current_state(self.repo_path).get("branches", [])
+            stored_state = self.current_state().get("branches", [])
             next_state = branches + [b for b in stored_state if b.is_remote]
 
         elif refs == ["refs/remotes"]:
-            stored_state = store.current_state(self.repo_path).get("branches", [])
+            stored_state = self.current_state().get("branches", [])
             next_state = [b for b in stored_state if b.is_local] + branches
 
         else:

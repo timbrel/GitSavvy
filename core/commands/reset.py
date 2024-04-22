@@ -3,7 +3,6 @@ from .log import LogMixin
 from .reflog import RefLogMixin
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
-from GitSavvy.core import store
 from GitSavvy.core.base_commands import GsWindowCommand
 
 
@@ -34,10 +33,8 @@ class ResetMixin(GsWindowCommand):
         self._selected_hash = commit_hash
 
         use_reset_mode = self.savvy_settings.get("use_reset_mode")
-        last_reset_mode_used = (
-            store.current_state(self.repo_path)
-                 .get("last_reset_mode_used", use_reset_mode)
-        )
+        last_reset_mode_used = \
+            self.current_state().get("last_reset_mode_used", use_reset_mode)
         reset_modes = (
             GIT_RESET_MODES
             + (

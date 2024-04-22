@@ -8,7 +8,6 @@ from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import enqueue_on_worker, run_on_new_thread
 from GitSavvy.core.utils import show_actions_panel, noop
-from GitSavvy.core import store
 
 
 __all__ = (
@@ -36,7 +35,7 @@ class PushMixin(GsWindowCommand):
         if len(available_remotes) == 1:
             return next(iter(available_remotes))
 
-        last_remote_used = store.current_state(self.repo_path).get("last_remote_used_for_push")
+        last_remote_used = self.current_state().get("last_remote_used_for_push")
         if last_remote_used in available_remotes:
             return last_remote_used  # type: ignore[return-value]
 

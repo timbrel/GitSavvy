@@ -4,7 +4,6 @@ import os
 import re
 import string
 
-from GitSavvy.core import store
 from GitSavvy.core.fns import tail
 
 
@@ -91,7 +90,7 @@ class StatusMixin(mixin_base):
 
         branch_status = self._get_branch_status_components(lines)
         current_branch = branch_status.branch
-        last_branches = store.current_state(self.repo_path)["last_branches"]
+        last_branches = self.current_state()["last_branches"]
         if current_branch and current_branch != last_branches[-1]:
             last_branches.append(current_branch)
         self.update_store({
@@ -463,7 +462,7 @@ class StatusMixin(mixin_base):
     def is_probably_untracked_file(self, file_path: str) -> bool:
         """Check in the store if `file_path` is untracked."""
         return bool(
-            (status := store.current_state(self.repo_path).get("status"))
+            (status := self.current_state().get("status"))
             and (rel_file_path := os.path.relpath(file_path, self.repo_path))
             and (normed_git_path := rel_file_path.replace("\\", "/"))
             and any(file.path == normed_git_path for file in status.untracked_files)

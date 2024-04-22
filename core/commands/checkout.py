@@ -11,7 +11,6 @@ from ..ui_mixins.quick_panel import show_branch_panel
 from ..utils import uprint
 from ..view import replace_view_content
 from ...common import util
-from GitSavvy.core import store
 from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
 from GitSavvy.core.utils import noop, show_actions_panel
 
@@ -47,7 +46,7 @@ class gs_checkout_branch(WindowCommand, GitCommand):
                 self.on_branch_selection,
                 local_branches_only=True,
                 ignore_current_branch=True,
-                selected_branch=store.current_state(self.repo_path)["last_branches"][-2]
+                selected_branch=self.current_state()["last_branches"][-2]
             )
 
     def on_branch_selection(self, branch, merge=False):

@@ -363,7 +363,7 @@ class ReactiveInterface(Interface, GitCommand, Generic[T_state]):
             self.subscribe_to,
             self.on_status_update
         )
-        state = store.current_state(self.repo_path)
+        state = self.current_state()
         new_state = self._pick_subscribed_topics_from_store(state)
         self.update_state(new_state)
 

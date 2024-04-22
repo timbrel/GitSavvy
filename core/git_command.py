@@ -665,6 +665,10 @@ class _GitCommand(SettingsMixin):
         # type: (store.RepoStore) -> None
         store.update_state(self.repo_path, partial_state)
 
+    def current_state(self):
+        # type: () -> store.RepoStore
+        return store.current_state(self.repo_path)
+
     @property
     def git_dir(self):
         # type: () -> str
