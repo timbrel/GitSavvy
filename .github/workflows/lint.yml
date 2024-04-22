@@ -38,5 +38,5 @@ jobs:
         pip install mypy
     - name: Check with mypy
       run: |
-        mypy git_savvy.py --platform=${{ matrix.platform }}
+        mypy -p GitSavvy --platform=${{ matrix.platform }}
 
