@@ -27,6 +27,7 @@ __all__ = (
     "gs_tags_show_commit",
     "gs_tags_show_graph",
     "gs_tags_navigate_tag",
+    "gs_tags_navigate_to_next_tag",
 )
 
 
@@ -212,7 +213,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
         yield
         if not on_special_symbol():
-            self.view.run_command("gs_tags_navigate_tag")
+            self.view.run_command("gs_tags_navigate_to_next_tag")
 
     @ui.section("branch_status")
     def render_branch_status(self, long_status):
@@ -544,3 +545,14 @@ class gs_tags_navigate_tag(GsNavigate):
             "constant.other.git-savvy.tags.sha1"
             ", meta.git-savvy.summary-header constant.other.git-savvy.sha1"
         )
+
+
+class gs_tags_navigate_to_next_tag(GsNavigate):
+
+    """
+    Move cursor to the next (or previous) selectable tag in the dashboard.
+    """
+    offset = 0
+
+    def get_available_regions(self):
+        return self.view.find_by_selector("constant.other.git-savvy.tags.sha1")
