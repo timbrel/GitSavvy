@@ -459,7 +459,7 @@ class gs_tags_push(TagsInterfaceCommand):
         tags_to_push = self.selected_local_tags()
 
         flash(self.view, START_PUSH_MESSAGE)
-        self.git("push", remote, *("refs/tags/" + tag for tag in tags_to_push))
+        self.git("push", "--no-follow-tags", remote, *("refs/tags/" + tag for tag in tags_to_push))
         flash(self.view, END_PUSH_MESSAGE)
 
         interface = self.interface
