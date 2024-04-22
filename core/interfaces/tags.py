@@ -214,27 +214,31 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         return "{0.hash} {0.message}".format(recent_commits[0])
 
     @ui.section("local_tags")
-    def render_local_tags(self, local_tags, max_items):
-        # type: (TagList, int) -> ui.RenderFnReturnType
+    def render_local_tags(self, local_tags, max_items, remote_tags):
+        # type: (TagList, int, Dict[str, FetchStateMachine]) -> ui.RenderFnReturnType
         if not any(local_tags.all):
             return NO_LOCAL_TAGS_MESSAGE
 
-        remote_tags, remote_tag_names = set(), set()
         # wait until all settled to prohibit intermediate state to be drawn
         # what we draw explicitly relies on *all* known remote tags
-        if all(info["state"] != "loading" for info in self.state["remote_tags"].values()):
-            for info in self.state["remote_tags"].values():
+        if remote_tags and all(info["state"] != "loading" for info in remote_tags.values()):
+            all_remote_tags, all_remote_tag_names = set(), set()
+            for info in remote_tags.values():
                 if info["state"] == "succeeded":
                     for tag in info["tags"]:
-                        remote_tags.add((tag.sha, tag.tag))
-                        remote_tag_names.add(tag.tag)
+                        all_remote_tags.add((tag.sha, tag.tag))
+                        all_remote_tag_names.add(tag.tag)
 
-        def maybe_mark(tag):
-            if remote_tag_names and tag.tag not in remote_tag_names:
-                return "*"  # denote new semver
-            if remote_tags and (tag.sha, tag.tag) not in remote_tags:
-                return "!"  # denote known semver on a different hash
-            return " "
+            def maybe_mark(tag):
+                if tag.tag not in all_remote_tag_names:
+                    return "*"  # denote new semver
+                if (tag.sha, tag.tag) not in all_remote_tags:
+                    return "!"  # denote known semver on a different hash
+                return " "
+
+        else:
+            def maybe_mark(tag):
+                return " "
 
         return "\n{}\n".format(" " * 60).join(  # need some spaces on the separator line otherwise
                                                 # the syntax expects the remote section begins
