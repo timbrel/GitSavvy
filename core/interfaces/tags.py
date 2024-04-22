@@ -30,7 +30,7 @@ __all__ = (
 )
 
 
-from typing import Dict, Iterator, List, Literal, Optional, Union, TypedDict
+from typing import Dict, Iterator, List, Literal, Optional, Set, Union, TypedDict
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.tags import TagDetails
 
@@ -60,6 +60,7 @@ class TagsViewState(TypedDict, total=False):
     long_status: str
     local_tags: TagList
     remotes: Dict[str, str]
+    remotes_with_no_tags_set: Set[str]
     remote_tags_info: RemoteTagsInfo
     recent_commits: List[Commit]
     max_items: Optional[int]
@@ -129,7 +130,9 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
       REMOTE ({remote_name}):
     {remote_tags_list}"""
 
-    subscribe_to = {"local_tags", "long_status", "recent_commits", "remotes"}
+    subscribe_to = {
+        "local_tags", "long_status", "recent_commits", "remotes", "remotes_with_no_tags_set"
+    }
     state: TagsViewState
 
     def initial_state(self):
@@ -147,8 +150,12 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         enqueue_on_worker(self.get_local_tags)
         enqueue_on_worker(self.get_latest_commits)
         enqueue_on_worker(self.get_remotes)
-        if self.state.get("remotes") is None:
-            # run after the `self.get_remotes` above!
+        enqueue_on_worker(self.get_remotes_for_which_to_skip_tags)
+        if (
+            self.state.get("remotes") is None
+            or self.state.get("remotes_with_no_tags_set") is None
+        ):
+            # run after "remotes" and "remotes_with_no_tags_set" is initially set
             enqueue_on_worker(self.maybe_populate_remote_tags)
         else:
             self.maybe_populate_remote_tags()
@@ -161,8 +168,8 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         })
 
     @ui.inject_state()
-    def maybe_populate_remote_tags(self, remotes, remote_tags_info):
-        # type: (Dict[str, str], RemoteTagsInfo) -> None
+    def maybe_populate_remote_tags(self, remotes, remotes_with_no_tags_set, remote_tags_info):
+        # type: (Dict[str, str], Set[str], RemoteTagsInfo) -> None
         def do_tags_fetch(remote_name):
             try:
                 new_state = {
@@ -180,8 +187,8 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                 self.just_render()
             enqueue_on_worker(sink)  # fan-in
 
-        if remotes and not remote_tags_info:
-            for remote_name in remotes:
+        if not remote_tags_info:
+            for remote_name in remotes.keys() - remotes_with_no_tags_set:
                 run_on_new_thread(do_tags_fetch, remote_name)    # fan-out
                 remote_tags_info[remote_name] = {
                     "state": "loading"
