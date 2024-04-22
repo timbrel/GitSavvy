@@ -59,7 +59,7 @@ class TagsViewState(TypedDict, total=False):
     long_status: str
     local_tags: TagList
     remotes: Dict[str, str]
-    remote_tags: Dict[str, FetchStateMachine]
+    remote_tags_info: Dict[str, FetchStateMachine]
     recent_commits: List[Commit]
     max_items: Optional[int]
     show_remotes: bool
@@ -134,7 +134,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
     def initial_state(self):
         return {
             'show_remotes': self.savvy_settings.get("show_remotes_in_branch_dashboard"),
-            'remote_tags': {}
+            'remote_tags_info': {}
         }
 
     def title(self):
@@ -160,7 +160,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         })
 
     @ui.inject_state()
-    def maybe_populate_remote_tags(self, remotes, show_remotes, remote_tags):
+    def maybe_populate_remote_tags(self, remotes, show_remotes, remote_tags_info):
         # type: (Dict[str, str], bool, Dict[str, FetchStateMachine]) -> None
         def do_tags_fetch(remote_name):
             try:
@@ -175,14 +175,14 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                 }
 
             def sink():
-                remote_tags[remote_name] = new_state
+                remote_tags_info[remote_name] = new_state
                 self.just_render()
             enqueue_on_worker(sink)  # fan-in
 
-        if remotes and not remote_tags:
+        if remotes and not remote_tags_info:
             for remote_name in remotes:
                 run_on_new_thread(do_tags_fetch, remote_name)    # fan-out
-                remote_tags[remote_name] = {
+                remote_tags_info[remote_name] = {
                     "state": "loading"
                 }
 
@@ -214,16 +214,16 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         return "{0.hash} {0.message}".format(recent_commits[0])
 
     @ui.section("local_tags")
-    def render_local_tags(self, local_tags, max_items, remote_tags):
+    def render_local_tags(self, local_tags, max_items, remote_tags_info):
         # type: (TagList, int, Dict[str, FetchStateMachine]) -> ui.RenderFnReturnType
         if not any(local_tags.all):
             return NO_LOCAL_TAGS_MESSAGE
 
         # wait until all settled to prohibit intermediate state to be drawn
         # what we draw explicitly relies on *all* known remote tags
-        if remote_tags and all(info["state"] != "loading" for info in remote_tags.values()):
+        if remote_tags_info and all(info["state"] != "loading" for info in remote_tags_info.values()):
             all_remote_tags, all_remote_tag_names = set(), set()
-            for info in remote_tags.values():
+            for info in remote_tags_info.values():
                 if info["state"] == "succeeded":
                     for tag in info["tags"]:
                         all_remote_tags.add((tag.sha, tag.tag))
@@ -264,7 +264,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         )
 
     @ui.section("remote_tags")
-    def render_remote_tags(self, remotes, show_remotes, remote_tags):
+    def render_remote_tags(self, remotes, show_remotes, remote_tags_info):
         # type: (Dict[str, str], bool, Dict[str, FetchStateMachine]) -> ui.RenderFnReturnType
         if not remotes:
             return "\n"
@@ -276,7 +276,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         render_fns = []
 
         for remote_name in remotes:
-            remote_info = remote_tags.get(remote_name)
+            remote_info = remote_tags_info.get(remote_name)
             if not remote_info:
                 continue
 
@@ -377,7 +377,7 @@ class gs_tags_toggle_remotes(TagsInterfaceCommand):
         next_state = not current_state if show is None else show
         interface.state["show_remotes"] = next_state
         if next_state:
-            interface.state["remote_tags"] = {}
+            interface.state["remote_tags_info"] = {}
         interface.render()
 
 
@@ -390,7 +390,7 @@ class gs_tags_refresh(TagsInterfaceCommand):
     def run(self, edit, reset_remotes=False):
         interface = self.interface
         if reset_remotes:
-            interface.state["remote_tags"] = {}
+            interface.state["remote_tags_info"] = {}
 
         util.view.refresh_gitsavvy(self.view)
 
@@ -416,7 +416,7 @@ class gs_tags_delete(TagsInterfaceCommand):
         if local_tags or remote_tags:
             flash(self.view, TAG_DELETE_MESSAGE)
             if remote_tags:
-                self.interface.state["remote_tags"] = {}
+                self.interface.state["remote_tags_info"] = {}
             util.view.refresh_gitsavvy(self.view)
 
     def delete_local(self):
@@ -466,7 +466,7 @@ class gs_tags_push(TagsInterfaceCommand):
         flash(self.view, END_PUSH_MESSAGE)
 
         interface = self.interface
-        interface.state["remote_tags"] = {}
+        interface.state["remote_tags_info"] = {}
         util.view.refresh_gitsavvy(self.view)
 
 
