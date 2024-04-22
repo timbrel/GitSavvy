@@ -179,7 +179,7 @@ def ask_for_branch(memorize_key=None, **kw):
         # type: (GsCommand, Args, Kont) -> None
         def on_done(branch):
             if memorize_key:
-                store.update_state(self.repo_path, {memorize_key: branch})  # type: ignore[misc]
+                self.update_store({memorize_key: branch})  # type: ignore[misc]
             done(branch)
 
         selected_branch = (

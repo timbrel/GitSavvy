@@ -23,6 +23,7 @@ import sublime
 
 from ..common import util
 from .settings import SettingsMixin
+from GitSavvy.core import store
 from GitSavvy.core.fns import consume, filter_, pairwise
 from GitSavvy.core.runtime import auto_timeout, enqueue_on_worker, run_as_future
 from GitSavvy.core.utils import kill_proc, paths_upwards, resolve_path
@@ -659,6 +660,10 @@ class _GitCommand(SettingsMixin):
             return self.repo_path.replace(os.environ["HOME"], "~")
         else:
             return self.repo_path
+
+    def update_store(self, partial_state):
+        # type: (store.RepoStore) -> None
+        store.update_state(self.repo_path, partial_state)
 
     @property
     def git_dir(self):

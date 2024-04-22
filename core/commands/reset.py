@@ -71,7 +71,7 @@ class ResetMixin(GsWindowCommand):
         args = reset_mode.split() + [self._selected_hash]
 
         def do_reset():
-            store.update_state(self.repo_path, {"last_reset_mode_used": reset_mode})
+            self.update_store({"last_reset_mode_used": reset_mode})
             self.git("reset", *args)
             util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 

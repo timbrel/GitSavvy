@@ -94,7 +94,7 @@ class StatusMixin(mixin_base):
         last_branches = store.current_state(self.repo_path)["last_branches"]
         if current_branch and current_branch != last_branches[-1]:
             last_branches.append(current_branch)
-        store.update_state(self.repo_path, {
+        self.update_store({
             "status": working_dir_status,
             "head": branch_status,
             "last_branches": last_branches,

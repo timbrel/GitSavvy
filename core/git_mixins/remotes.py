@@ -3,7 +3,6 @@ import re
 from GitSavvy.core.git_command import BranchesMixin, _GitCommand
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.utils import yes_no_switch
-from GitSavvy.core import store
 
 
 from typing import Dict
@@ -30,9 +29,7 @@ class RemotesMixin(BranchesMixin, _GitCommand):
                     throw_on_error=False).strip().splitlines()
             )
         }
-        store.update_state(self.repo_path, {
-            "remotes": rv,
-        })
+        self.update_store({"remotes": rv})
         return rv
 
     def fetch(self, remote=None, refspec=None, prune=True, local_branch=None, remote_branch=None):

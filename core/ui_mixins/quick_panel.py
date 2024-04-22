@@ -223,11 +223,11 @@ class RemotePanel(GitCommand):
         if index == -1:
             self.on_cancel()
         elif self.show_option_all and len(self.remotes) > 1 and index == 0:
-            store.update_state(self.repo_path, {self.storage_key: "<ALL>"})  # type: ignore[misc]
+            self.update_store({self.storage_key: "<ALL>"})  # type: ignore[misc]
             self.on_done("<ALL>")
         else:
             remote = self.remotes[index]
-            store.update_state(self.repo_path, {self.storage_key: remote})  # type: ignore[misc]
+            self.update_store({self.storage_key: remote})  # type: ignore[misc]
             self.on_done(remote)
 
 

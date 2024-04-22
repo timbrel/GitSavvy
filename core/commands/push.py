@@ -229,7 +229,7 @@ class gs_push_to_branch_name(PushMixin):
         # type: (str, str, str, bool, bool, bool, bool) -> None
         if remember_used_remote:
             run_on_new_thread(self.git, "config", "--local", "gitsavvy.pushdefault", remote)
-            store.update_state(self.repo_path, {"last_remote_used_for_push": remote})
+            self.update_store({"last_remote_used_for_push": remote})
 
         enqueue_on_worker(
             self.do_push,

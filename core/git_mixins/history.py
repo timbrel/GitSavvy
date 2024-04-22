@@ -186,7 +186,7 @@ class HistoryMixin(mixin_base):
             return commit_hash[:short_hash_length]
 
         short_hash = self.git("rev-parse", "--short", commit_hash).strip()
-        store.update_state(self.repo_path, {"short_hash_length": len(short_hash)})
+        self.update_store({"short_hash_length": len(short_hash)})
         return short_hash
 
     def filename_at_commit(self, filename, commit_hash):

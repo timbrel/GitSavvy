@@ -1,7 +1,6 @@
 import os
 from ...common import util
 
-from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base
 
 from typing import List
@@ -19,9 +18,7 @@ class IgnoreMixin(mixin_base):
             if line.startswith("S")
             if (file_path := line[2:])
         ]
-        store.update_state(self.repo_path, {
-            "skipped_files": skipped_files,
-        })
+        self.update_store({"skipped_files": skipped_files})
         return skipped_files
 
     def set_skip_worktree(self, *file_paths: str) -> None:

@@ -5,7 +5,6 @@ from ...common import util
 from ..ui_mixins.quick_panel import show_remote_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.runtime import run_on_new_thread
-from GitSavvy.core import store
 from GitSavvy.core.base_commands import GsWindowCommand
 
 
@@ -42,7 +41,7 @@ class gs_remote_add(GsWindowCommand):
         self.git("remote", "add", remote_name, self.url)
         if self.set_as_push_default:
             run_on_new_thread(self.git, "config", "--local", "gitsavvy.pushdefault", remote_name)
-            store.update_state(self.repo_path, {"last_remote_used_for_push": remote_name})
+            self.update_store({"last_remote_used_for_push": remote_name})
 
         if sublime.ok_cancel_dialog(
             "Your remote was added successfully.  "

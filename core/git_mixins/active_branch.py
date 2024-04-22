@@ -1,5 +1,4 @@
 from GitSavvy.core.git_command import mixin_base
-from .. import store
 from GitSavvy.core.git_mixins.tags import is_semver_tag
 
 
@@ -38,7 +37,7 @@ class ActiveBranchMixin(mixin_base):
             except IndexError:
                 pass
             else:
-                store.update_state(self.repo_path, {"short_hash_length": len(short_hash)})
+                self.update_store({"short_hash_length": len(short_hash)})
 
         return stdout or "No commits yet."
 
@@ -60,11 +59,9 @@ class ActiveBranchMixin(mixin_base):
         ]
         if commits:
             short_hash_length = len(commits[0].hash)
-            store.update_state(self.repo_path, {"short_hash_length": short_hash_length})
+            self.update_store({"short_hash_length": short_hash_length})
 
-        store.update_state(self.repo_path, {
-            "recent_commits": commits,
-        })
+        self.update_store({"recent_commits": commits})
         return commits
 
 

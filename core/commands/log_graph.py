@@ -1416,9 +1416,7 @@ class gs_log_graph_tab_out(GsTextCommand):
         options.update({
             "all": self.view.settings().get("git_savvy.log_graph_view.all_branches")
         })
-        store.update_state(self.repo_path, {
-            "default_graph_options": options
-        })
+        self.update_store({"default_graph_options": options})
         self.view.settings().set("git_savvy.log_graph_view.default_graph", True)
         for view_ in self.window.views():
             if (

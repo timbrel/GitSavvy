@@ -2,7 +2,6 @@ from distutils.version import LooseVersion
 from itertools import chain
 import re
 
-from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base
 
 
@@ -52,9 +51,7 @@ class TagsMixin(mixin_base):
             if line
         )
         rv = self.handle_semver_tags(entries)
-        store.update_state(self.repo_path, {
-            "local_tags": rv,
-        })
+        self.update_store({"local_tags": rv})
         return rv
 
     def get_remote_tags(self, remote):
@@ -86,9 +83,7 @@ class TagsMixin(mixin_base):
             if (match := REMOTE_TAGOPT_RE.match(line))
             if "--no-tags" in match.group("options")
         }
-        store.update_state(self.repo_path, {
-            "remotes_with_no_tags_set": rv
-        })
+        self.update_store({"remotes_with_no_tags_set": rv})
         return rv
 
     def get_last_local_semver_tag(self):

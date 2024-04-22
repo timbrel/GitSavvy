@@ -137,7 +137,7 @@ class BranchesMixin(mixin_base):
                             self.git_throwing_silently("commit-graph", "write")
                         except GitSavvyError as err:
                             hprint(f"`git commit-graph write` raised: {err}")
-                            store.update_state(self.repo_path, {"slow_repo": True})
+                            self.update_store({"slow_repo": True})
                             return
 
                         with measure_runtime() as ms:
@@ -151,7 +151,7 @@ class BranchesMixin(mixin_base):
                         if not ok:
                             hprint("Disabling sections in the branches dashboard.")
 
-                        store.update_state(self.repo_path, {"slow_repo": True if not ok else False})
+                        self.update_store({"slow_repo": True if not ok else False})
 
                     run_on_new_thread(run_commit_graph_write)
                     return get_branches__(False, False)
@@ -208,7 +208,7 @@ class BranchesMixin(mixin_base):
         else:
             return None
 
-        store.update_state(self.repo_path, {"branches": next_state})
+        self.update_store({"branches": next_state})
 
     def fetch_branch_description_subjects(self):
         # type: () -> Dict[str, str]
@@ -225,7 +225,7 @@ class BranchesMixin(mixin_base):
 
             branch_name, description = match.group(1), match.group(2)
             rv[branch_name] = description
-        store.update_state(self.repo_path, {"descriptions": rv})
+        self.update_store({"descriptions": rv})
         return rv
 
     def _parse_branch_line(self, line):
