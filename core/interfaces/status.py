@@ -213,7 +213,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
     subscribe_to = {
         "branches", "head", "long_status", "recent_commits", "skipped_files", "stashes", "status"
     }
-    state = {}  # type: StatusViewState
+    state: StatusViewState
 
     def title(self):
         # type: () -> str

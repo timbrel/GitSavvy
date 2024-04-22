@@ -38,7 +38,7 @@ from typing import (
 )
 T = TypeVar("T")
 T_fn = TypeVar("T_fn", bound=Callable)
-T_state = TypeVar("T_state", bound=MutableMapping)
+T_state = TypeVar("T_state", Dict, MutableMapping)
 
 SectionRegions = Dict[str, sublime.Region]
 RenderFnReturnType = Union[str, Tuple[str, List["SectionFn"]]]
@@ -309,7 +309,7 @@ def distinct_until_state_changed(just_render_fn):
 
 class ReactiveInterface(Interface, GitCommand, Generic[T_state]):
     state: T_state
-    subscribe_to: Set[str] = set()
+    subscribe_to: Set[str]
 
     def __init__(self, *args, **kwargs):
         self._lock = threading.Lock()
@@ -350,8 +350,14 @@ class ReactiveInterface(Interface, GitCommand, Generic[T_state]):
         with self.keep_cursor_on_something():
             self.draw(self.title(), content, regions)
 
+    def initial_state(self):
+        # type: () -> Dict
+        """Return the initial state of the view."""
+        return {}
+
     def on_create(self):
         # type: () -> None
+        self.state = self.initial_state()
         self._unsubscribe = store.subscribe(
             self.repo_path,
             self.subscribe_to,
