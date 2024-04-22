@@ -151,13 +151,12 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         enqueue_on_worker(self.get_latest_commits)
         enqueue_on_worker(self.get_remotes)
         enqueue_on_worker(self.get_remotes_for_which_to_skip_tags)
+        enqueue_on_worker(self.maybe_populate_remote_tags)
         if (
-            self.state.get("remotes") is None
-            or self.state.get("remotes_with_no_tags_set") is None
+            self.state.get("remotes") is not None
+            and self.state.get("remotes_with_no_tags_set") is not None
         ):
-            # run after "remotes" and "remotes_with_no_tags_set" is initially set
-            enqueue_on_worker(self.maybe_populate_remote_tags)
-        else:
+            # update `remote_tags_info` immediately from the cache
             self.maybe_populate_remote_tags()
         self.view.run_command("gs_update_status")
 
@@ -187,12 +186,20 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                 self.just_render()
             enqueue_on_worker(sink)  # fan-in
 
-        if not remote_tags_info:
-            for remote_name in remotes.keys() - remotes_with_no_tags_set:
-                run_on_new_thread(do_tags_fetch, remote_name)    # fan-out
-                remote_tags_info[remote_name] = {
-                    "state": "loading"
-                }
+        actual_remotes_to_fetch = remotes.keys() - remotes_with_no_tags_set
+        additions = actual_remotes_to_fetch - remote_tags_info.keys()
+        deletions = remote_tags_info.keys() - actual_remotes_to_fetch
+
+        for remote_name in deletions:
+            remote_tags_info.pop(remote_name)
+        if deletions:
+            self.just_render()
+
+        for remote_name in additions:
+            run_on_new_thread(do_tags_fetch, remote_name)    # fan-out
+            remote_tags_info[remote_name] = {
+                "state": "loading"
+            }
 
     @contextmanager
     def keep_cursor_on_something(self):
