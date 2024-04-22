@@ -52,6 +52,7 @@ class Succeeded(TypedDict):
 FetchStateMachine = Union[
     Loading, Erred, Succeeded
 ]
+RemoteTagsInfo = Dict[str, FetchStateMachine]
 
 
 class TagsViewState(TypedDict, total=False):
@@ -59,7 +60,7 @@ class TagsViewState(TypedDict, total=False):
     long_status: str
     local_tags: TagList
     remotes: Dict[str, str]
-    remote_tags_info: Dict[str, FetchStateMachine]
+    remote_tags_info: RemoteTagsInfo
     recent_commits: List[Commit]
     max_items: Optional[int]
     show_remotes: bool
@@ -161,7 +162,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.inject_state()
     def maybe_populate_remote_tags(self, remotes, show_remotes, remote_tags_info):
-        # type: (Dict[str, str], bool, Dict[str, FetchStateMachine]) -> None
+        # type: (Dict[str, str], bool, RemoteTagsInfo) -> None
         def do_tags_fetch(remote_name):
             try:
                 new_state = {
@@ -215,7 +216,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("local_tags")
     def render_local_tags(self, local_tags, max_items, remote_tags_info):
-        # type: (TagList, int, Dict[str, FetchStateMachine]) -> ui.RenderFnReturnType
+        # type: (TagList, int, RemoteTagsInfo) -> ui.RenderFnReturnType
         if not any(local_tags.all):
             return NO_LOCAL_TAGS_MESSAGE
 
@@ -265,7 +266,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
     @ui.section("remote_tags")
     def render_remote_tags(self, remotes, show_remotes, remote_tags_info):
-        # type: (Dict[str, str], bool, Dict[str, FetchStateMachine]) -> ui.RenderFnReturnType
+        # type: (Dict[str, str], bool, RemoteTagsInfo) -> ui.RenderFnReturnType
         if not remotes:
             return "\n"
 
