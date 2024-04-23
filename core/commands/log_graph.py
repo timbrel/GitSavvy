@@ -519,19 +519,6 @@ class GraphLine(NamedTuple):
     parents: str
 
 
-def try_kill_proc(proc):
-    if proc:
-        try:
-            utils.kill_proc(proc)
-        except ProcessLookupError:
-            pass
-        proc.got_killed = True
-
-
-def proc_has_been_killed(proc):
-    return getattr(proc, "got_killed", False)
-
-
 def selection_is_before_region(view, region):
     # type: (sublime.View, sublime.Region) -> bool
     try:
@@ -834,7 +821,7 @@ class gs_log_graph_refresh(GsTextCommand):
         def ensure_not_aborted(fn):
             def decorated(*args, **kwargs):
                 if should_abort():
-                    try_kill_proc(current_proc)
+                    utils.try_kill_proc(current_proc)
                 else:
                     return fn(*args, **kwargs)
             return decorated
@@ -918,7 +905,7 @@ class gs_log_graph_refresh(GsTextCommand):
                             yield "...\n"
                             yield line
                     else:
-                        try_kill_proc(current_proc)
+                        utils.try_kill_proc(current_proc)
                         yield "..."
                         break
 
@@ -1083,7 +1070,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 try:
                     lines = run_or_timeout(lambda: wait_for_first_item(graph), timeout=1.0)
                 except TimeoutError:
-                    try_kill_proc(current_proc)
+                    utils.try_kill_proc(current_proc)
                     settings.set('git_savvy.log_graph_view.decoration', None)
                     enqueue_on_worker(
                         self.view.run_command,
@@ -1270,7 +1257,7 @@ class gs_log_graph_refresh(GsTextCommand):
 
             stderr = ''.join(map(decode, proc.stderr.readlines()))
 
-        if throw_on_error and not proc.returncode == 0 and not proc_has_been_killed(proc):
+        if throw_on_error and not proc.returncode == 0 and not utils.proc_has_been_killed(proc):
             stdout = "<STDOUT SNIPPED>\n" if received_some_stdout else ""
             raise GitSavvyError(
                 "$ {}\n\n{}".format(

@@ -375,6 +375,19 @@ def kill_proc(proc):
         proc.terminate()
 
 
+def try_kill_proc(proc):
+    if proc:
+        try:
+            kill_proc(proc)
+        except ProcessLookupError:
+            pass
+        proc.got_killed = True
+
+
+def proc_has_been_killed(proc):
+    return getattr(proc, "got_killed", False)
+
+
 # `realpath` also supports `bytes` and we don't, hence the indirection
 def _resolve_path(path):
     # type: (str) -> str
