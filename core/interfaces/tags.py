@@ -469,8 +469,15 @@ class gs_tags_push(TagsInterfaceCommand):
     selected or all tag(s) to the selected remote.
     """
 
-    def run(self, edit):
-        show_remote_panel(self.push_selected, allow_direct=True)
+    def run(self, edit) -> None:
+        remotes = self.interface.state["remotes"]
+        actual_remotes_to_fetch = remotes.keys() - self.interface.state["remotes_with_no_tags_set"]
+        remote_candidates = {
+            name: url
+            for name, url in remotes.items()
+            if name in actual_remotes_to_fetch
+        }
+        show_remote_panel(self.push_selected, remotes=remote_candidates, allow_direct=True)
 
     @on_worker
     def push_selected(self, remote):
