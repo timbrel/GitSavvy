@@ -26,7 +26,7 @@ from .settings import SettingsMixin
 from GitSavvy.core import store
 from GitSavvy.core.fns import consume, filter_, pairwise
 from GitSavvy.core.runtime import auto_timeout, enqueue_on_worker, run_as_future
-from GitSavvy.core.utils import kill_proc, paths_upwards, resolve_path
+from GitSavvy.core.utils import try_kill_proc, paths_upwards, resolve_path
 
 
 from typing import (
@@ -149,7 +149,7 @@ def stream_stdout_and_err(proc, timeout):
             except IndexError:
                 time.sleep(next(delay) / 1000)
                 if timeout_manager.has_timed_out():
-                    kill_proc(proc)
+                    try_kill_proc(proc)
                     raise TimeoutError("timed out after {} seconds".format(timeout))
 
     # Check and raise exceptions if any
