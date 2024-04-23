@@ -498,10 +498,16 @@ class _GitCommand(SettingsMixin):
 
     def lax_decode(self, input):
         # type: (bytes) -> str
-        try:
-            return self.strict_decode(input)
-        except UnicodeDecodeError:
-            return input.decode("utf-8", "replace")
+        return self.lax_decode_(self.get_encoding_candidates(), input)
+
+    def lax_decode_(self, encodings, input):
+        # type: (Sequence[str], bytes) -> str
+        for encoding in encodings:
+            try:
+                return input.decode(encoding)
+            except UnicodeDecodeError:
+                pass
+        return input.decode('utf8', errors='replace')
 
     def try_decode(self, input, encodings):
         # type: (bytes, Sequence[str]) -> Tuple[str, str]
