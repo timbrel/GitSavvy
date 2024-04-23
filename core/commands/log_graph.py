@@ -459,25 +459,6 @@ def wait_for_first_item(it):
     return chain(head, iterable)
 
 
-def log_git_command(fn):
-    # type: (Callable[..., Iterator[T]]) -> Callable[..., Iterator[T]]
-    def decorated(self, *args, **kwargs):
-        start_time = time.perf_counter()
-        stderr = ''
-        saved_exception = None
-        try:
-            yield from fn(self, *args, **kwargs)
-        except GitSavvyError as e:
-            stderr = e.stderr
-            saved_exception = e
-        finally:
-            end_time = time.perf_counter()
-            util.debug.log_git(args, self.repo_path, None, "<SNIP>", stderr, end_time - start_time)
-            if saved_exception:
-                raise saved_exception from None
-    return decorated
-
-
 class Done(Exception):
     pass
 
@@ -1238,43 +1219,10 @@ class gs_log_graph_refresh(GsTextCommand):
 
         run_on_new_thread(reader)
 
-    @log_git_command
-    def git_stdout(self, *args, show_panel_on_error=True, throw_on_error=True, got_proc=None, **kwargs):
-        # type: (...) -> Iterator[str]
-        # Note: Can't use `self.lax_decode` because it internally uses
-        # `self.get_encoding_candidates()` which blocks the main thread as it
-        # needs to access the settings!
-        decode = lax_decoder(self.get_encoding_candidates())
-        proc = self.git(*args, just_the_proc=True, **kwargs)
-        if got_proc:
-            got_proc(proc)
-        received_some_stdout = False
-        with proc:
-            for line in iter(proc.stdout.readline, b''):
-                yield decode(line)
-                if not received_some_stdout:
-                    received_some_stdout = True
-
-            stderr = ''.join(map(decode, proc.stderr.readlines()))
-
-        if throw_on_error and not proc.returncode == 0 and not utils.proc_has_been_killed(proc):
-            stdout = "<STDOUT SNIPPED>\n" if received_some_stdout else ""
-            raise GitSavvyError(
-                "$ {}\n\n{}".format(
-                    util.debug.pretty_git_command(args),
-                    ''.join([stdout, stderr])
-                ),
-                cmd=proc.args,
-                stdout=stdout,
-                stderr=stderr,
-                show_panel=show_panel_on_error,
-                window=self.view.window(),
-            )
-
     def read_graph(self, got_proc=None):
         # type: (Callable[[subprocess.Popen], None]) -> Iterator[str]
         args = self.build_git_command()
-        yield from self.git_stdout(*args, got_proc=got_proc)
+        yield from self.git_streaming(*args, got_proc=got_proc)
 
     def build_git_command(self):
         settings = self.view.settings()
@@ -1350,19 +1298,6 @@ class gs_log_graph_refresh(GsTextCommand):
             args += ["--"] + paths
 
         return args
-
-
-def lax_decoder(encodings):
-    # type: (Sequence[str]) -> Callable[[bytes], str]
-    def decode(bytes):
-        # type: (bytes) -> str
-        for encoding in encodings:
-            try:
-                return bytes.decode(encoding)
-            except UnicodeDecodeError:
-                pass
-        return bytes.decode('utf8', errors='replace')
-    return decode
 
 
 def prelude(view):
