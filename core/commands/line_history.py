@@ -11,7 +11,7 @@ from .navigate import GsNavigate
 from ..fns import filter_, pairwise
 from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff
-from ..runtime import enqueue_on_worker
+from ..runtime import run_on_new_thread
 from ..utils import flash
 from ..view import clamp, replace_view_content
 from ...common import util
@@ -263,10 +263,10 @@ class gs_open_line_history(WindowCommand, GitCommand):
                 ]
                 + [commit]
             )
-            output = self.git(*cmd)
-            replace_view_content(view, output)
+            for line in self.git_streaming(*cmd):
+                replace_view_content(view, line, sublime.Region(view.size()))
 
-        enqueue_on_worker(render)
+        run_on_new_thread(render)
 
 
 class gs_line_history_open_commit(TextCommand, GitCommand):
