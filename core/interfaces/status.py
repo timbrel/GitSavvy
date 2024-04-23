@@ -660,8 +660,11 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
                 f.path for f in selected_unstaged_files
                 if f.working_status == "R"
             ]
-            self.undo_intent_to_add(*files_to_unintent)
-            do_discard([f for f in file_paths if f not in files_to_unintent])
+            if files_to_unintent:
+                self.undo_intent_to_add(*files_to_unintent)
+            files_to_discard = [f for f in file_paths if f not in files_to_unintent]
+            if files_to_discard:
+                do_discard(files_to_discard)
             return file_paths
         return None
 
