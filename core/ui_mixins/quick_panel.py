@@ -6,7 +6,7 @@ from GitSavvy.core.fns import filter_, maybe
 from GitSavvy.core.utils import show_panel
 
 
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Literal, Optional, Union
 from ..git_mixins.history import LogEntry
 
 
@@ -175,7 +175,7 @@ class RemotePanel(GitCommand):
         self.show_option_all = show_option_all
         self.allow_direct = allow_direct
         self.show_url = show_url
-        self.storage_key = (
+        self.storage_key: Literal["last_remote_used", "last_remote_used_with_option_all"] = (
             "last_remote_used_with_option_all"
             if self.show_option_all
             else "last_remote_used"
@@ -198,9 +198,7 @@ class RemotePanel(GitCommand):
         if self.show_option_all and len(self.remotes) > 1:
             self.remotes.insert(0, "All remotes.")
 
-        last_remote_used = (
-            self.current_state().get(self.storage_key, "origin")  # type: ignore[assignment]
-        )  # type: str
+        last_remote_used = self.current_state().get(self.storage_key, "origin")
         if last_remote_used in self.remotes:
             pre_selected_index = self.remotes.index(last_remote_used)
         else:
