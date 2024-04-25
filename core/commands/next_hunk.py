@@ -17,10 +17,8 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Iterable, Iterator, List, Optional, TypeVar
-    T = TypeVar("T")
+from typing import Iterable, Iterator, List, Optional, TypeVar
+T = TypeVar("T")
 
 
 LINE_DISTANCE_BETWEEN_EDITS = 2
@@ -93,13 +91,13 @@ def modifications_per_hunk(view, forwards=True):
         )
     except StopIteration:
         return
-    else:
-        yield from (
-            b for a, b in takewhile(
-                lambda a_b: line_distance(view, *a_b) < LINE_DISTANCE_BETWEEN_EDITS,
-                jump_positions
-            )
+
+    yield from (
+        b for a, b in takewhile(
+            lambda a_b: line_distance(view, *a_b) < LINE_DISTANCE_BETWEEN_EDITS,
+            jump_positions
         )
+    )
 
 
 def all_modifications(view, forwards=True):

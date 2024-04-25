@@ -6,7 +6,7 @@ from ..runtime import enqueue_on_worker
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..view import replace_view_content
 from ...common import util
-from GitSavvy.core.runtime import run_on_new_thread
+from GitSavvy.core.runtime import run_new_daemon_thread
 
 
 __all__ = (
@@ -75,6 +75,6 @@ class gs_custom(WindowCommand, GitCommand):
             util.view.refresh_gitsavvy_interfaces(self.window)
 
         if run_in_thread:
-            run_on_new_thread(program, __daemon=True)
+            run_new_daemon_thread(program)
         else:
             enqueue_on_worker(program)

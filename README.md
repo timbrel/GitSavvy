@@ -1,8 +1,7 @@
 # GitSavvy
 
 [![tests](https://github.com/timbrel/GitSavvy/actions/workflows/lint.yml/badge.svg)](https://github.com/timbrel/GitSavvy/actions/workflows/lint.yml)
-![License](https://camo.githubusercontent.com/890acbdcb87868b382af9a4b1fac507b9659d9bf/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f6c6963656e73652d4d49542d626c75652e737667)
-
+[![License: MIT](https://img.shields.io/badge/-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 GitSavvy is a powerful and mature plugin for Sublime Text that brings most of Git's functionalities directly into the text editor.
 
@@ -192,22 +191,31 @@ To make it more seamless, I recommend, again, to make a shortcut. For example, y
   { "keys": ["ctrl+shift+l"], "command": "gs_line_history"},
 ```
 
-Once you have that, you can use `ctrl+l` to select some lines, followed by `ctrl+shift+l` to follow those lines. Just Like That.
+Once you have that, you can use `ctrl+l` to select some lines, followed by `ctrl+shift+l` to follow
+those lines.
 
-GitSavvy will then show you snippets of commits/patches to show you the evolution of those lines.  `[o]` on such an excerpt will open the complete commit.  `[O]` will display the version of the file as it existed at that specific point in time. And `[f]` for example will initiate a fixup commit for the commit under the cursor.   (Either with the stage, or with all changes if nothing is staged yet, as usual.)
+GitSavvy will then show you snippets of commits/patches to show you the evolution of those lines.
+`[o]` on such an excerpt will open the complete commit.  `[O]` will display the version of the file
+as it existed at that specific point in time. And `[f]` for example will initiate a fixup commit
+for the commit under the cursor.   (Either with the stage, or with all changes if nothing is staged
+yet, as usual.)
 
-*Tip*: When you're on a diff and haven't selected any lines, it will select the current hunk for you, giving you the *"hunk-history"*, so to speak.
+*Tip*: The Line History is also available from any view where we show a diff or patch.  (It is thus
+ available from within the Line History views.)  On such a view you don't necessarily have to
+ select any lines, as it will select the current hunk for you by default, giving you
+ the *"hunk-history"*, so to speak.
 
-*Even deeper*: After `[o]` or `[O]` you can navigate around in time with `[n]` (next) and `[p]` (previous).  You can show the commit's context using `[g]`, and the hunks context by opening the inline diff.
-
-Maybe:
+*Even deeper*: After `[o]` or `[O]` you can navigate around in time with `[n]` (next) and `[p]`
+ (previous).  You can show the commit's context using `[g]`, and the hunks context by opening the
+ inline diff.  That's easier with more keybindings:
 
 ```
-  { "keys": ["ctrl+shift+."], "command": "gs_diff", "args": {"current_file": true} },
   { "keys": ["ctrl+shift+,"], "command": "gs_inline_diff" },
+  { "keys": ["ctrl+shift+."], "command": "gs_diff", "args": {"current_file": true} },
 ```
 
-That's pretty crazy, right?  All views are connected, and you can really navigate around the history.
+That's pretty crazy, right?  All views are connected, and you can really navigate around the
+history.
 
 
 ## Git Diff View
@@ -264,13 +272,13 @@ Feature documentation can be found [here](docs/README.md).  It can also be acces
     </tr>
     <tr>
         <td width="50%">
-            <a href="https://user-images.githubusercontent.com/8558/246410602-d6104f79-157e-44ff-9831-eb311dd9ede0.mp4">
-                <img src="https://user-images.githubusercontent.com/8558/247564204-9842dad0-bf69-47e1-863f-2c9abc0e38b4.gif" width="100%">
+            <a href="https://user-images.githubusercontent.com/8558/290011169-1af9e0e4-aadd-4539-b7ac-d4979b9d0910.mp4">
+                <img src="https://user-images.githubusercontent.com/8558/290011195-35d53963-fe57-4c46-b418-e8ed3bf02f54.gif" width="100%">
             </a>
         </td>
     </tr>
     <tr>
-        <td width="50%">Stage, unstage or discard hunks, files or individual lines. <a href="https://user-images.githubusercontent.com/8558/246410602-d6104f79-157e-44ff-9831-eb311dd9ede0.mp4">(video)</a></td>
+        <td width="50%">Stage, unstage or discard hunks, files or individual lines. <a href="https://user-images.githubusercontent.com/8558/290011169-1af9e0e4-aadd-4539-b7ac-d4979b9d0910.mp4">(video)</a></td>
     </tr>
 </table>
 

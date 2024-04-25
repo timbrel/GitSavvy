@@ -1,6 +1,5 @@
 from itertools import groupby, takewhile
 import os
-from collections import namedtuple
 from contextlib import contextmanager
 
 import sublime
@@ -13,7 +12,9 @@ from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker
 from ..utils import flash, focus_view
-from ..view import apply_position, capture_cur_position, place_view, replace_view_content, y_offset, Position
+from ..view import (
+    apply_position, capture_cur_position, other_visible_views, place_view,
+    replace_view_content, y_offset, Position)
 from ...common import util
 
 
@@ -21,6 +22,7 @@ __all__ = (
     "gs_inline_diff",
     "gs_inline_diff_open",
     "gs_inline_diff_refresh",
+    "gs_inline_diff_toggle_side",
     "gs_inline_diff_toggle_cached_mode",
     "gs_inline_diff_stage_or_reset_line",
     "gs_inline_diff_stage_or_reset_hunk",
@@ -35,22 +37,17 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
-    from ..types import LineNo, ColNo, Row
-    from GitSavvy.common.util.parse_diff import Hunk as InlineDiff_Hunk
+from typing import Dict, Iterable, List, Literal, NamedTuple, Optional, Tuple
+from ..types import LineNo, ColNo, Row
+from GitSavvy.common.util.parse_diff import Hunk as InlineDiff_Hunk
 
-    HunkReference = NamedTuple("HunkReference", [
-        ("section_start", Row),
-        ("section_end", Row),
-        ("hunk", InlineDiff_Hunk),
-        ("line_types", List[str]),
-        ("lines", List[str])  # sic! => "line_contents"
-    ])
 
-else:
-    HunkReference = namedtuple("HunkReference", "section_start section_end hunk line_types lines")
+class HunkReference(NamedTuple):
+    section_start: Row
+    section_end: Row
+    hunk: InlineDiff_Hunk
+    line_types: List[str]
+    lines: List[str]  # sic! => "line_contents"
 
 
 DECODE_ERROR_MESSAGE = (
@@ -61,8 +58,8 @@ DECODE_ERROR_MESSAGE = (
     "Note, however, that diffs with *mixed* encodings are not supported."
 )
 
-INLINE_DIFF_TITLE = "DIFF: "
-INLINE_DIFF_CACHED_TITLE = "DIFF (staged): "
+INLINE_DIFF_TITLE = "INLINE: {}"
+INLINE_DIFF_CACHED_TITLE = "INLINE: {}, STAGE"
 
 DIFF_HEADER = """diff --git a/{path} b/{path}
 --- a/{path}
@@ -117,18 +114,13 @@ def is_inline_diff_view(view):
     return view.settings().get('git_savvy.inline_diff_view')
 
 
-def is_historical_diff(view):
+def is_interactive_diff(view):
     # type: (sublime.View) -> bool
     settings = view.settings()
     return (
-        settings.get("git_savvy.inline_diff_view.base_commit")
-        or settings.get("git_savvy.inline_diff_view.target_commit")
+        not settings.get("git_savvy.inline_diff_view.base_commit")
+        and not settings.get("git_savvy.inline_diff_view.target_commit")
     )
-
-
-def is_interactive_diff(view):
-    # type: (sublime.View) -> bool
-    return not is_historical_diff(view)
 
 
 class gs_inline_diff(WindowCommand, GitCommand):
@@ -342,8 +334,8 @@ class gs_inline_diff_open(WindowCommand, GitCommand):
                 break
 
         else:
-            title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
-            title += os.path.basename(file_path)
+            _title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
+            title = _title.format(os.path.basename(file_path))
             diff_view = util.view.create_scratch_view(self.window, "inline_diff", {
                 "title": title,
                 "syntax": syntax,
@@ -429,6 +421,11 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             self.view.close()
             return
 
+        if not diff and self.is_probably_untracked_file(file_path):
+            flash(self.view, "Inline-diff cannot be displayed for untracked files.")
+            self.view.close()
+            return
+
         if is_interactive_diff(self.view):
             hunks_count = len(diff)
             flash(self.view, "File has {} {} {}".format(
@@ -448,17 +445,19 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             original_content = self.get_file_content_at_commit(file_path, base_commit)
         inline_diff_contents, hunks = self.get_inline_diff_contents(original_content, diff)
 
-        title = INLINE_DIFF_CACHED_TITLE if in_cached_mode else INLINE_DIFF_TITLE
-        title += os.path.basename(file_path)
+        _title = INLINE_DIFF_CACHED_TITLE if in_cached_mode else INLINE_DIFF_TITLE
+        title = _title.format(os.path.basename(file_path))
         if target_commit:
             title += (
-                "  ({} <-{})".format(
+                ", ({}..{})".format(
+                    self.get_short_hash(base_commit),
                     self.get_short_hash(target_commit),
-                    self.get_short_hash(base_commit)
                 )
                 if base_commit
-                else "  (initial version)"
+                else ", (initial version)"
             )
+        elif base_commit:
+            title += ", ({}..WORKING DIR)".format(self.get_short_hash(base_commit))
         if runs_on_ui_thread:
             self.draw(self.view, title, match_position, inline_diff_contents, hunks)
         else:
@@ -471,17 +470,18 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
             and self.savvy_settings.get("inline_diff_auto_scroll", True)
         )
 
-        replace_view_content(view, inline_diff_contents)
-        self.view.set_name(title)
+        with reapply_possible_fold(view):
+            replace_view_content(view, inline_diff_contents)
+            view.set_name(title)
 
-        if match_position:
-            row, col, row_offset = match_position
-            new_row = translate_row_to_inline_diff(view, row)
-            apply_position(view, new_row, col, row_offset)
-        elif navigate_to_first_hunk:
-            view.run_command("gs_inline_diff_navigate_hunk")
+            if match_position:
+                row, col, row_offset = match_position
+                new_row = translate_row_to_inline_diff(view, row)
+                apply_position(view, new_row, col, row_offset)
+            elif navigate_to_first_hunk:
+                view.run_command("gs_inline_diff_navigate_hunk")
 
-        self.highlight_regions(hunks)
+            self.highlight_regions(hunks)
 
     def get_inline_diff_contents(self, original_contents, diff):
         # type: (str, List[InlineDiff_Hunk]) -> Tuple[str, List[HunkReference]]
@@ -589,23 +589,78 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         self.view.add_regions(
             "git-savvy-added-lines",
             add_regions,
-            scope="diff.inserted.git-savvy.inline-diff"
+            scope="diff.inserted.git-savvy.inline-diff",
+            flags=sublime.RegionFlags.NO_UNDO
         )
         self.view.add_regions(
             "git-savvy-removed-lines",
             remove_regions,
-            scope="diff.deleted.git-savvy.inline-diff"
+            scope="diff.deleted.git-savvy.inline-diff",
+            flags=sublime.RegionFlags.NO_UNDO
         )
         self.view.add_regions(
             "git-savvy-added-bold",
             add_bold_regions,
-            scope="diff.inserted.char.git-savvy.inline-diff"
+            scope="diff.inserted.char.git-savvy.inline-diff",
+            flags=sublime.RegionFlags.NO_UNDO
         )
         self.view.add_regions(
             "git-savvy-removed-bold",
             remove_bold_regions,
-            scope="diff.deleted.char.git-savvy.inline-diff"
+            scope="diff.deleted.char.git-savvy.inline-diff",
+            flags=sublime.RegionFlags.NO_UNDO
         )
+
+
+@contextmanager
+def reapply_possible_fold(view):
+    current_fold_mode = fold_mode(view)
+    if current_fold_mode == "ab":
+        yield
+    else:
+        view.run_command("unfold_all")
+        yield
+        view.run_command("gs_inline_diff_toggle_side", {"side": current_fold_mode})
+
+
+def fold_mode(view):
+    # type: (sublime.View) -> Literal["a", "b", "ab"]
+    currently_folded = view.folded_regions()
+    if not currently_folded:
+        return "ab"
+    if currently_folded == regions(view, "b"):
+        return "a"
+    if currently_folded == regions(view, "a"):
+        return "b"
+    return "ab"
+
+
+def regions(view, side):
+    # type: (sublime.View, Literal["a", "b"]) -> List[sublime.Region]
+    selector = "git-savvy-removed-lines" if side == "a" else "git-savvy-added-lines"
+    return [sublime.Region(r.a, r.b - 1) for r in view.get_regions(selector)]
+
+
+class gs_inline_diff_toggle_side(TextCommand, GitCommand):
+    def run(self, edit, side):
+        # type: (sublime.Edit, Literal["a", "b"]) -> None
+        view = self.view
+        currently_folded = view.folded_regions()
+
+        if side == "a":
+            b_regions = regions(view, "b")
+            if currently_folded:
+                view.run_command("unfold_all")
+            if currently_folded == b_regions:
+                return
+            view.fold(b_regions)
+        else:
+            a_regions = regions(view, "a")
+            if currently_folded:
+                view.run_command("unfold_all")
+            if currently_folded == a_regions:
+                return
+            view.fold(a_regions)
 
 
 class gs_inline_diff_toggle_cached_mode(TextCommand, GitCommand):
@@ -651,9 +706,21 @@ class GsInlineDiffFocusEventListener(EventListener):
     latest file status when the view regains focus.
     """
 
-    def on_activated(self, view):
-        if active_on_activated and is_inline_diff_view(view) and is_interactive_diff(view):
+    def on_activated(self, view: sublime.View) -> None:
+        if (
+            active_on_activated
+            and is_inline_diff_view(view)
+            and not view.settings().get("git_savvy.inline_diff_view.target_commit")
+        ):
             view.run_command("gs_inline_diff_refresh", {"sync": False})
+
+    def on_post_save(self, view: sublime.View) -> None:
+        for other_view in other_visible_views(view):
+            if (
+                is_inline_diff_view(other_view)
+                and other_view.settings().get("git_savvy.file_path") == view.file_name()
+            ):
+                other_view.run_command("gs_inline_diff_refresh", {"sync": False})
 
 
 class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
@@ -899,7 +966,7 @@ class gs_inline_diff_previous_commit(TextCommand, GitCommand):
         settings = view.settings()
         file_path = settings.get("git_savvy.file_path")
         if is_interactive_diff(view):
-            base_commit = self.previous_commit(None, file_path)
+            base_commit = self.recent_commit("HEAD", file_path)
             if not base_commit:
                 flash(view, "No historical version of that file found.")
                 return
@@ -1096,6 +1163,7 @@ class gs_inline_diff_navigate_hunk(GsNavigate):
     position.
     """
     offset = 0
+    log_position = True
     first_region_may_expand_to_bof = False
 
     def get_available_regions(self):

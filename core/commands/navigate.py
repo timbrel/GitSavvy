@@ -2,12 +2,11 @@ import sublime
 from sublime_plugin import TextCommand
 
 from ..git_command import GitCommand
+from ..utils import flash
 from GitSavvy.core.view import show_region
 
 
-MYPY = False
-if MYPY:
-    from typing import Optional, Sequence
+from typing import Optional, Sequence
 
 
 class GsNavigate(TextCommand, GitCommand):
@@ -19,6 +18,8 @@ class GsNavigate(TextCommand, GitCommand):
     show_at_center = False
     wrap = True
     wrap_with_force = False
+    shrink_to_cursor = True
+    log_position = False
     # For the first entry, try to show the beginning of the buffer.
     # (Usually we have some info/help text there.)
     first_region_may_expand_to_bof = True
@@ -28,7 +29,7 @@ class GsNavigate(TextCommand, GitCommand):
     def run(self, edit, forward=True):
         self.forward = forward
         sel = self.view.sel()
-        current_position = sel[0].a
+        current_position = sel[0].b
 
         available_regions = self.get_available_regions()
         if not available_regions:
@@ -41,17 +42,21 @@ class GsNavigate(TextCommand, GitCommand):
         )
         if wanted_section is None:
             if self._just_jumped == 1:
-                window = self.view.window()
-                if window:
-                    window.status_message("press again to wrap around ...")
+                flash(self.view, "press again to wrap around ...")
             self._just_jumped -= 1
             return
 
+        if self.log_position:
+            idx = available_regions.index(wanted_section)
+            flash(self.view, f"[{idx + 1}/{len(available_regions)}]")
+
         self._just_jumped = 2
         sel.clear()
-        # Position the cursor at the beginning of the section...
-        new_cursor_position = wanted_section.begin() + self.offset
-        sel.add(sublime.Region(new_cursor_position))
+        if self.shrink_to_cursor or self.offset:
+            new_cursor_position = sublime.Region(wanted_section.begin() + self.offset)
+        else:
+            new_cursor_position = sublime.Region(wanted_section.b, wanted_section.a)
+        sel.add(new_cursor_position)
 
         if self.show_at_center:
             self.view.show_at_center(new_cursor_position)

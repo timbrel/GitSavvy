@@ -1,6 +1,7 @@
 from functools import lru_cache, partial, wraps
 from collections import OrderedDict
 from contextlib import contextmanager
+import datetime
 import html
 import inspect
 from itertools import count
@@ -18,9 +19,14 @@ import sublime
 from . import runtime
 
 
-MYPY = False
-if MYPY:
-    from typing import Callable, Dict, Iterator, Optional, Tuple, Type
+from typing import (
+    Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Sequence,
+    Tuple, Type, TypeVar, TYPE_CHECKING)
+
+if TYPE_CHECKING:
+    from typing_extensions import ParamSpec
+    P = ParamSpec('P')
+    T = TypeVar('T')
 
 
 @contextmanager
@@ -69,6 +75,11 @@ class timer:
         return duration > ms
 
 
+def is_younger_than(timedelta: datetime.timedelta, now: datetime.datetime, timestamp: int) -> bool:
+    dt = datetime.datetime.utcfromtimestamp(timestamp)
+    return (now - dt) < timedelta
+
+
 @contextmanager
 def eat_but_log_errors(exception=Exception):
     # type: (Type[Exception]) -> Iterator[None]
@@ -108,7 +119,7 @@ def flash(view, message):
 
 HIGHLIGHT_REGION_KEY = "GS.flashs.{}"
 DURATION = 0.4
-STYLE = {"scope": "git_savvy.graph.dot", "flags": 0}
+STYLE = {"scope": "git_savvy.graph.dot", "flags": sublime.RegionFlags.NO_UNDO}
 
 
 def flash_regions(view, regions, key="default"):
@@ -127,7 +138,7 @@ def erase_regions(view, region_key):
     view.erase_regions(region_key)
 
 
-IDS = partial(next, count())  # type: Callable[[], int]  # type: ignore[assignment]
+IDS = partial(next, count())  # type: Callable[[], int]
 HIDE_POPUP_TIMERS = {}  # type: Dict[sublime.ViewId, int]
 POPUPS = {}  # type: Dict[sublime.ViewId, Tuple]
 DEFAULT_TIMEOUT = 2500  # [ms]
@@ -241,16 +252,13 @@ def escape_text(text):
     return html.escape(text, quote=False).replace(" ", "&nbsp;")
 
 
-MYPY = False
-if MYPY:
-    from typing import Iterable, Sequence, NamedTuple
-    Action = NamedTuple("Action", [("description", str), ("action", Callable[[], None])])
-    ActionType = Tuple[str, Callable[[], None]]
-    QuickPanelItems = Iterable[str]
+class Action(NamedTuple):
+    description: str
+    action: Callable[[], None]
 
-else:
-    from collections import namedtuple
-    Action = namedtuple("Action", "description action")
+
+ActionType = Tuple[str, Callable[[], None]]
+QuickPanelItems = Iterable[str]
 
 
 def show_panel(
@@ -429,12 +437,13 @@ class Cache(OrderedDict):
             self.popitem(last=False)
 
 
-general_purpose_cache = Cache(maxsize=512)  # type: Dict[Tuple, object]
+general_purpose_cache = Cache(maxsize=512)  # type: Dict[Tuple, Any]
 
 
 def cached(not_if, cache=general_purpose_cache):
-    # type: (Dict, Dict[Tuple, object]) -> Callable
+    # type: (Dict[str, Callable], Dict[Tuple, Any]) -> Callable[[Callable[P, T]], Callable[P, T]]
     def decorator(fn):
+        # type: (Callable[P, T]) -> Callable[P, T]
         fn_s = inspect.signature(fn)
 
         def should_skip(arguments):
@@ -445,6 +454,7 @@ def cached(not_if, cache=general_purpose_cache):
 
         @wraps(fn)
         def decorated(*args, **kwargs):
+            # type: (P.args, P.kwargs) -> T
             arguments = _bind_arguments(fn_s, args, kwargs)
             if should_skip(arguments):
                 return fn(*args, **kwargs)

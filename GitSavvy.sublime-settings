@@ -188,12 +188,16 @@
     },
 
     /*
-    Prints branches sorted by recent commit (works with git 2.7.0+)
-    https://www.kernel.org/pub/software/scm/git/docs/git-branch.html
-    Change this to `true` to sort branches by recent.
-    Change this to `false` to sort branches by alphanumeric.
+        Sort branches by recency.
+        Change this to `true` to sort branches by "committerdate".
+        Change this to `false` to sort branches by their name.
      */
     "sort_by_recent_in_branch_dashboard": false,
+
+    /*
+        Group branches by their distance to HEAD.  Requires git 2.41.0.
+    */
+    "group_by_distance_to_head_in_branch_dashboard": true,
 
     /*
         Set this to `true` to display remotes in the branch dashboard by default.

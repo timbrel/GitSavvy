@@ -1,4 +1,4 @@
-from collections import namedtuple
+from dataclasses import dataclass
 from itertools import dropwhile
 import os
 import re
@@ -8,64 +8,35 @@ from GitSavvy.core import store
 from GitSavvy.core.fns import tail
 
 
-MYPY = False
-if MYPY:
-    from typing import Set
-    from GitSavvy.core.git_command import (
-        HistoryMixin,
-        _GitCommand,
-    )
-
-    class mixin_base(
-        HistoryMixin,
-        _GitCommand,
-    ):
-        pass
-
-else:
-    mixin_base = object
+from typing import List, NamedTuple, Optional, Set, TYPE_CHECKING
 
 
-if MYPY:
-    from typing import List, NamedTuple, Optional, Tuple
-    HeadState = NamedTuple("HeadState", [
-        ("detached", bool),
-        ("branch", Optional[str]),
-        ("remote", Optional[str]),
-        ("clean", bool),
-        ("ahead", Optional[str]),
-        ("behind", Optional[str]),
-        ("gone", bool),
-    ])
-    FileStatus = NamedTuple("FileStatus", [
-        ("path", str),
-        ("path_alt", Optional[str]),
-        ("index_status", str),
-        ("working_status", Optional[str]),
-    ])
-    _WorkingDirState = NamedTuple("_WorkingDirState", [
-        ("staged_files", List[FileStatus]),
-        ("unstaged_files", List[FileStatus]),
-        ("untracked_files", List[FileStatus]),
-        ("merge_conflicts", List[FileStatus]),
-    ])
-
-else:
-    HeadState = namedtuple("HeadState", "detached branch remote clean ahead behind gone")
-    FileStatus = namedtuple("FileStatus", "path path_alt index_status working_status")
-    _WorkingDirState = namedtuple(
-        "_WorkingDirState", "staged_files unstaged_files untracked_files merge_conflicts "
-    )
+class HeadState(NamedTuple):
+    detached: bool
+    branch: Optional[str]
+    remote: Optional[str]
+    clean: bool
+    ahead: Optional[str]
+    behind: Optional[str]
+    gone: bool
 
 
-class WorkingDirState(_WorkingDirState):
-    def _asdict(self):  # broken in old Python versions
-        rv = dict(zip(self._fields, self))
-        rv["clean"] = self.clean  # type: ignore[assignment]
-        return rv
+class FileStatus(NamedTuple):
+    path: str
+    path_alt: Optional[str]
+    index_status: str
+    working_status: str
+
+
+@dataclass(frozen=True)
+class WorkingDirState:
+    staged_files: List[FileStatus]
+    unstaged_files: List[FileStatus]
+    untracked_files: List[FileStatus]
+    merge_conflicts: List[FileStatus]
 
     @property
-    def clean(self):
+    def is_clean(self):
         # type: () -> bool
         return not (
             self.staged_files
@@ -89,6 +60,13 @@ MERGE_CONFLICT_PORCELAIN_STATUSES = (
 )
 
 
+if TYPE_CHECKING:
+    from GitSavvy.core.git_command import (HistoryMixin, _GitCommand)
+    class mixin_base(HistoryMixin, _GitCommand): pass  # noqa: E701
+else:
+    mixin_base = object
+
+
 class StatusMixin(mixin_base):
 
     def _get_status(self):
@@ -108,32 +86,22 @@ class StatusMixin(mixin_base):
     def get_working_dir_status(self):
         # type: () -> WorkingDirState
         lines = self._get_status()
-        branch_status = self._get_branch_status_components(lines)
         files = self._parse_status_for_file_statuses(lines)
-        (staged_files,
-            unstaged_files,
-            untracked_files,
-            merge_conflicts) = self._group_status_entries(files)
-        short_status = self._format_branch_status_short(branch_status)
-        long_status = self._format_branch_status(branch_status)
-        rv = WorkingDirState(
-            staged_files=staged_files,
-            unstaged_files=unstaged_files,
-            untracked_files=untracked_files,
-            merge_conflicts=merge_conflicts,
-        )
+        working_dir_status = self._group_status_entries(files)
+
+        branch_status = self._get_branch_status_components(lines)
         current_branch = branch_status.branch
         last_branches = store.current_state(self.repo_path)["last_branches"]
         if current_branch and current_branch != last_branches[-1]:
             last_branches.append(current_branch)
         store.update_state(self.repo_path, {
-            "status": rv,
+            "status": working_dir_status,
             "head": branch_status,
             "last_branches": last_branches,
-            "long_status": long_status,
-            "short_status": short_status,
+            "long_status": self._format_branch_status(branch_status),
+            "short_status": self._format_branch_status_short(branch_status),
         })
-        return rv
+        return working_dir_status
 
     def _parse_status_for_file_statuses(self, lines):
         # type: (List[str]) -> List[FileStatus]
@@ -143,16 +111,19 @@ class StatusMixin(mixin_base):
         for entry in porcelain_entries:
             if not entry:
                 continue
-            index_status = entry[0]
-            working_status = entry[1].strip() or None
+            index_status = entry[0].strip()
+            working_status = entry[1].strip()
             path = entry[3:]
-            path_alt = next(porcelain_entries) if index_status in ["R", "C"] else None
+            path_alt = (
+                next(porcelain_entries)
+                if index_status in ["R", "C"] or working_status in ["R", "C"]
+                else None)
             entries.append(FileStatus(path, path_alt, index_status, working_status))
 
         return entries
 
     def _group_status_entries(self, file_status_list):
-        # type: (List[FileStatus]) -> Tuple[List[FileStatus], ...]
+        # type: (List[FileStatus]) -> WorkingDirState
         """
         Take entries from `git status` and sort them into groups.
         """
@@ -165,12 +136,17 @@ class StatusMixin(mixin_base):
             if f.index_status == "?":
                 untracked.append(f)
                 continue
-            elif f.working_status in ("M", "D", "T", "A"):
+            if f.working_status:
                 unstaged.append(f)
-            if f.index_status != " ":
+            if f.index_status:
                 staged.append(f)
 
-        return (staged, unstaged, untracked, conflicts)
+        return WorkingDirState(
+            staged_files=staged,
+            unstaged_files=unstaged,
+            untracked_files=untracked,
+            merge_conflicts=conflicts,
+        )
 
     def get_branch_status(self, *, delim="\n           "):
         # type: (str) -> str
@@ -402,9 +378,9 @@ class StatusMixin(mixin_base):
         except Exception:
             return ""
 
-    def _read_git_file(self, fname):
+    def _read_git_file(self, *fname):
         # type: (str) -> str
-        path = os.path.join(self.git_dir, fname)
+        path = os.path.join(self.git_dir, *fname)
         try:
             with open(path, "r") as f:
                 return f.read().strip()
@@ -483,3 +459,12 @@ class StatusMixin(mixin_base):
             ).splitlines()
             if "leftover conflict marker" in line
         }
+
+    def is_probably_untracked_file(self, file_path: str) -> bool:
+        """Check in the store if `file_path` is untracked."""
+        return bool(
+            (status := store.current_state(self.repo_path).get("status"))
+            and (rel_file_path := os.path.relpath(file_path, self.repo_path))
+            and (normed_git_path := rel_file_path.replace("\\", "/"))
+            and any(file.path == normed_git_path for file in status.untracked_files)
+        )

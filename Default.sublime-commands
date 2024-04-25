@@ -336,6 +336,15 @@
         "command": "gs_revert_skip"
     },
     {
+        "caption": "git: show recent revision of current file",
+        "command": "gs_show_file_at_commit"
+    },
+    {
+        "caption": "git: show recent commit",
+        "command": "gs_show_commit",
+        "args": { "commit_hash": "HEAD" }
+    },
+    {
         "caption": "git: show current file at commit",
         "command": "gs_show_current_file"
     },
@@ -346,6 +355,10 @@
     {
         "caption": "git: merge --abort",
         "command": "gs_merge_abort"
+    },
+    {
+        "caption": "git: merge --continue",
+        "command": "gs_merge_continue"
     },
     {
         "caption": "git: restart merge for file...",

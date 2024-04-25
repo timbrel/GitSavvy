@@ -14,11 +14,11 @@ import sublime_plugin
 
 from . import utils
 
+from typing import (
+    Any, Callable, Dict, Iterator, Literal, Optional, Sequence, Tuple, TypeVar, Union,
+    overload, TYPE_CHECKING)
 
-MYPY = False
-if MYPY:
-    from typing import (
-        Any, Callable, Dict, Iterator, Literal, Optional, Tuple, TypeVar, Union, overload)
+if TYPE_CHECKING:
     from typing_extensions import Concatenate as Con, ParamSpec
     P = ParamSpec('P')
     T = TypeVar('T')
@@ -28,9 +28,6 @@ if MYPY:
 
     View = sublime.View
     Edit = sublime.Edit
-
-else:
-    overload = lambda x: x
 
 
 UI_THREAD_NAME = None  # type: Optional[str]
@@ -124,9 +121,14 @@ def _enqueue_on_worker(fn):
     sublime.set_timeout_async(fn_)
 
 
-def run_on_new_thread(fn, *args, __daemon=None, **kwargs):
-    # type: (Callable[P, T], P.args, Optional[bool], P.kwargs) -> None
-    threading.Thread(target=_set_timout(fn), args=args, kwargs=kwargs, daemon=__daemon).start()
+def run_on_new_thread(fn, *args, **kwargs):
+    # type: (Callable[P, T], P.args, P.kwargs) -> None
+    threading.Thread(target=_set_timout(fn), args=args, kwargs=kwargs).start()
+
+
+def run_new_daemon_thread(fn, *args, **kwargs):
+    # type: (Callable[P, T], P.args, P.kwargs) -> None
+    threading.Thread(target=_set_timout(fn), args=args, kwargs=kwargs, daemon=True).start()
 
 
 def _set_timout(fn):
@@ -197,6 +199,26 @@ def run_or_timeout(fn, timeout):
         raise exc
     except UnboundLocalError:
         return result
+
+
+def run_and_check_timeout(fn, timeout, callback):
+    # type: (Callable[P, T], float, Union[Callable[[], None], Sequence[Callable[[], None]]]) -> T
+    cond = threading.Condition()
+    callbacks = callback if isinstance(callback, list) else [callback]
+
+    def checker():
+        # type: () -> None
+        with cond:
+            if not cond.wait(timeout):
+                for callback in callbacks:
+                    callback()
+
+    run_on_new_thread(checker)
+    try:
+        return fn()
+    finally:
+        with cond:
+            cond.notify_all()
 
 
 lock = threading.Lock()
@@ -307,8 +329,7 @@ def throttled(fn, *args, **kwargs):
 
 AWAIT_UI_THREAD = 'AWAIT_UI_THREAD'  # type: Literal["AWAIT_UI_THREAD"]
 AWAIT_WORKER = 'AWAIT_WORKER'  # type: Literal["AWAIT_WORKER"]
-if MYPY:
-    HopperR = Iterator[Literal["AWAIT_UI_THREAD", "AWAIT_WORKER"]]
+HopperR = Iterator[Literal["AWAIT_UI_THREAD", "AWAIT_WORKER"]]
 
 
 def cooperative_thread_hopper(fn):

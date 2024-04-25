@@ -14,10 +14,8 @@ from ...common import util
 from GitSavvy.core import store
 
 
-MYPY = False
-if MYPY:
-    from typing import Optional, Union
-    StashId = Union[int, str]
+from typing import Optional, Union
+StashId = Union[int, str]
 
 
 class RevalidateStashView(EventListener):

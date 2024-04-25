@@ -3,8 +3,8 @@ import shutil
 from types import SimpleNamespace
 
 
-MYPY = False
-if MYPY:
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
     from GitSavvy.core.git_command import (
         ActiveBranchMixin,
         BranchesMixin,

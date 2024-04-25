@@ -1,3 +1,4 @@
+from collections import defaultdict
 from contextlib import contextmanager
 
 import sublime
@@ -14,14 +15,12 @@ __all__ = (
     "gs_show_commit_info",
 )
 
-MYPY = False
-if MYPY:
-    from typing import Dict, Iterator, List, Tuple
-    ViewportPosition = Tuple[float, float]
-    Selection = List[sublime.Region]
+from typing import DefaultDict, Dict, Iterator, List, Tuple
+ViewportPosition = Tuple[float, float]
+Selection = List[sublime.Region]
 
 
-storage = {}  # type: Dict[str, Tuple[ViewportPosition, Selection]]
+storage = defaultdict(dict)  # type: DefaultDict[sublime.View, Dict[str, Tuple[ViewportPosition, Selection]]]
 PANEL_NAME = "show_commit_info"
 
 
@@ -115,14 +114,22 @@ def _draw(window, view, text, commit, from_log_graph):
 @contextmanager
 def restore_viewport_position(view, next_commit):
     # type: (sublime.View, str) -> Iterator
+    remember_view_state(view)
+    view.settings().set("git_savvy.show_commit_view.commit", next_commit)
+    yield
+    restore_view_state(view, next_commit)
+
+
+def remember_view_state(view):
+    # type: (sublime.View) -> None
     prev_commit = view.settings().get("git_savvy.show_commit_view.commit")
     if prev_commit:
-        storage[prev_commit] = (view.viewport_position(), [r for r in view.sel()])
+        storage[view][prev_commit] = (view.viewport_position(), [r for r in view.sel()])
 
-    yield
 
-    view.settings().set("git_savvy.show_commit_view.commit", next_commit)
-    prev_position, prev_sel = storage.get(next_commit, ((0, 0), [sublime.Region(0)]))
+def restore_view_state(view, next_commit):
+    # type: (sublime.View, str) -> None
+    prev_position, prev_sel = storage[view].get(next_commit, ((0, 0), [sublime.Region(0)]))
     view.set_viewport_position(prev_position, animate=False)
     view.sel().clear()
     view.sel().add_all(prev_sel)

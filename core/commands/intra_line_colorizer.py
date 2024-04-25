@@ -11,13 +11,10 @@ from ..utils import eat_but_log_errors, line_indentation
 from ..runtime import cooperative_thread_hopper, AWAIT_WORKER
 
 
-MYPY = False
-if MYPY:
-    from typing import Callable, List, Tuple, Sequence
-    from ..parse_diff import HunkLine
-    from ..runtime import HopperR
-
-    Chunk = List[HunkLine]
+from typing import Callable, List, Tuple, Sequence
+from ..parse_diff import HunkLine
+from ..runtime import HopperR
+Chunk = List[HunkLine]
 
 
 MAX_BLOCK_TIME = 17
@@ -120,10 +117,16 @@ def compute_intra_line_diffs(view, diff):
 
 def _draw_intra_diff_regions(view, added_regions, removed_regions):
     view.add_regions(
-        "git-savvy-added-bold", added_regions, scope="diff.inserted.char.git-savvy.diff"
+        "git-savvy-added-bold",
+        added_regions,
+        scope="diff.inserted.char.git-savvy.diff",
+        flags=sublime.RegionFlags.NO_UNDO
     )
     view.add_regions(
-        "git-savvy-removed-bold", removed_regions, scope="diff.deleted.char.git-savvy.diff"
+        "git-savvy-removed-bold",
+        removed_regions,
+        scope="diff.deleted.char.git-savvy.diff",
+        flags=sublime.RegionFlags.NO_UNDO
     )
 
 

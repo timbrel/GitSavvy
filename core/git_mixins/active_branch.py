@@ -1,22 +1,16 @@
-from collections import namedtuple
-
 from GitSavvy.core.git_command import mixin_base
 from .. import store
 from GitSavvy.core.git_mixins.tags import is_semver_tag
 
 
-MYPY = False
-if MYPY:
-    from typing import Iterable, Iterator, List, NamedTuple, Optional
-    from .branches import Branch
-    Commit = NamedTuple("Commit", [
-        ("hash", str),
-        ("decoration", str),
-        ("message", str),
-    ])
+from typing import Iterable, Iterator, List, NamedTuple, Optional
+from .branches import Branch
 
-else:
-    Commit = namedtuple("Commit", "hash decoration message")
+
+class Commit(NamedTuple):
+    hash: str
+    decoration: str
+    message: str
 
 
 class ActiveBranchMixin(mixin_base):
@@ -79,7 +73,7 @@ def format_and_limit(commits, max_items, current_upstream=None, branches=[]):
     remote_to_local_names = {
         b.upstream.canonical_name: b.canonical_name
         for b in branches
-        if not b.is_remote and b.upstream
+        if b.is_local and b.upstream
     }
     for idx, (h, d, s) in enumerate(commits):
         decorations_ = d.strip("( )").split(", ") if d else []

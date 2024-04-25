@@ -32,7 +32,6 @@ from typing import (
     Callable, Deque, Dict, IO, Iterable, Iterator, List, Optional, Sequence,
     Tuple, TypeVar, Union)
 T = TypeVar("T")
-MYPY = False
 
 
 def map_(it: Iterable[T], k: Callable[[T], object]):
@@ -334,6 +333,7 @@ class _GitCommand(SettingsMixin):
         if show_panel is None:
             show_panel = git_cmd in self.savvy_settings.get("show_panel_for")
 
+        log = None
         if show_panel:
             panel = util.log.init_panel(window)
             log = partial(util.log.append_to_panel, panel)
@@ -365,8 +365,8 @@ class _GitCommand(SettingsMixin):
             savvy_env_expanded or {},
             os.environ
         )
+        start = time.time()
         try:
-            start = time.time()
             p = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,
@@ -383,7 +383,7 @@ class _GitCommand(SettingsMixin):
             if isinstance(stdin, str):
                 stdin = stdin.encode(encoding=stdin_encoding)
 
-            if show_panel:
+            if log:
                 log_b = lambda line: log(line.decode("utf-8", "replace"))
                 stdout, stderr = communicate_and_log(p, stdin, log_b, timeout=timeout)
             else:
@@ -416,7 +416,7 @@ class _GitCommand(SettingsMixin):
             if not just_the_proc:
                 end = time.time()
                 util.debug.log_git(final_args, working_dir, stdin, stdout, stderr, end - start)
-                if show_panel:
+                if log:
                     log("\n[Done in {:.2f}s]".format(end - start))
 
         if decode:
@@ -702,8 +702,11 @@ class _GitCommand(SettingsMixin):
         """
         fpath = self.file_path if abs_path is NOT_SET else abs_path
         assert fpath
+        repo_path = self.repo_path
+        repo_path_ = repo_path.rstrip(os.path.sep) + os.path.sep
         rel_path = (
-            os.path.relpath(resolve_path(fpath), start=resolve_path(self.repo_path))
+            fpath[len(repo_path_):] if fpath.startswith(repo_path_) else
+            os.path.relpath(resolve_path(fpath), start=resolve_path(repo_path))
             if os.path.isabs(fpath) else
             fpath
         )
@@ -722,10 +725,7 @@ class _GitCommand(SettingsMixin):
         return global_pre_flags + [git_cmd] + global_flags + args
 
 
-if MYPY:
-    mixin_base = _GitCommand
-else:
-    mixin_base = object
+mixin_base = _GitCommand
 
 
 from .git_mixins.status import StatusMixin  # noqa: E402

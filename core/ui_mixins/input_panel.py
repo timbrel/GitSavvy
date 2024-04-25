@@ -1,11 +1,9 @@
 import sublime
 
 
-MYPY = False
-if MYPY:
-    from typing import Callable, Optional
-    ValueCallback = Callable[[str], None]
-    CancelCallback = Callable[[], None]
+from typing import Callable, Optional
+ValueCallback = Callable[[str], None]
+CancelCallback = Callable[[], None]
 
 
 def show_single_line_input_panel(

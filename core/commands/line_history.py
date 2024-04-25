@@ -26,12 +26,9 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import List, Tuple
-    from ..types import LineNo
-
-    LineRange = Tuple[LineNo, LineNo]
+from typing import List, Tuple
+from ..types import LineNo
+LineRange = Tuple[LineNo, LineNo]
 
 
 class gs_line_history(TextCommand, GitCommand):
@@ -101,7 +98,7 @@ class gs_line_history(TextCommand, GitCommand):
             # type: (int) -> LineNo
             line = line_on_point(view, pt)
             actual_line, _ = inline_diff.translate_pos_from_diff_view_to_file(view, line)
-            if inline_diff.is_historical_diff(view):
+            if commit_hash:
                 return actual_line
             hunks = [hunk_ref.hunk for hunk_ref in inline_diff.diff_view_hunks[view.id()]]
             new_row = self.reverse_adjust_line_according_to_hunks(hunks, actual_line)
@@ -132,6 +129,10 @@ class gs_line_history(TextCommand, GitCommand):
         if not hunk:
             flash(view, "Not on a hunk.")
             return
+        if d.hunk_for_pt(first_sel.end()) != hunk:
+            flash(view, "Not across multiple hunks.")
+            return
+
         header = d.head_for_hunk(hunk)
         file_path = header.to_filename()
         if not file_path:
@@ -143,14 +144,16 @@ class gs_line_history(TextCommand, GitCommand):
         )
 
         if first_sel.empty():
-            # Assume the changed lines are selected which gives slightly
-            # better results than selecting the whole hunk.
             changed_lines = [line for line in hunk.content().lines() if not line.is_context()]
-            first_sel = sublime.Region(changed_lines[0].a, changed_lines[-1].b)
+            if all(line.is_to_line() for line in changed_lines):
+                # For addition only hunks, select the whole hunk as the added
+                # lines don't have any history in the repo by definition.
+                first_sel = hunk.content().region()
 
-        if d.hunk_for_pt(first_sel.end()) != hunk:
-            flash(view, "Not across multiple hunks.")
-            return
+            else:
+                # Assume the changed lines are selected which gives slightly
+                # better results than selecting the whole hunk.
+                first_sel = sublime.Region(changed_lines[0].a, changed_lines[-1].b)
 
         hunk_with_linenos = list(diff.recount_lines(hunk))
         rel_begin, _ = diff.row_offset_and_col_in_hunk(view, hunk, first_sel.begin())

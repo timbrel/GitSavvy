@@ -6,9 +6,7 @@ from ...core.settings import GitSavvySettings
 from ...core.view import place_view
 
 
-MYPY = False
-if MYPY:
-    from typing import Mapping, Optional
+from typing import Callable, Mapping, Optional
 
 
 ##############
@@ -77,6 +75,10 @@ def create_scratch_view(window, typ, options={}):
         "read_only": True
     }
     update_view(view, ChainMap(options, defaults))  # type: ignore[arg-type]  # mypy expects a MutableMapping here
+    # Call `focus_view` so that `result_file_regex` et.al. settings get applied.
+    # This does *not* in turn sends `on_activated` as the view gets activated
+    # directly after its creation.
+    window.focus_view(view)
     return view
 
 
@@ -87,12 +89,11 @@ def update_view(view, options):
         "title": view.set_name,
         "scratch": view.set_scratch,
         "read_only": view.set_read_only,
-    }
-
+    }  # type: Mapping[str, Callable]
     settings = view.settings()
     for k, v in options.items():
         if k in special_setters:
-            special_setters[k](v)  # type: ignore[operator]
+            special_setters[k](v)
         else:
             settings.set(k, v)
 
@@ -132,6 +133,9 @@ def refresh_gitsavvy_interfaces(
 
     for group in range(window.num_groups()):
         view = window.active_view_in_group(group)
+        if view is None:
+            continue
+
         if view.settings().get("git_savvy.interface") is not None:
             view.run_command("gs_interface_refresh")
 

@@ -18,11 +18,9 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Dict, Sequence, TypeVar
-    from GitSavvy.core.base_commands import Args, GsCommand, Kont
-    T = TypeVar("T")
+from typing import Dict, Sequence, TypeVar
+from GitSavvy.core.base_commands import Args, GsCommand, Kont
+T = TypeVar("T")
 
 
 END_PUSH_MESSAGE = "Push complete."

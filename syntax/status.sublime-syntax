@@ -35,12 +35,30 @@ contexts:
         - meta_content_scope: meta.git-savvy.section.body
         - include: section
 
+    - match: ^  (ADDED:)$\n
+      captures:
+        0: meta.git-savvy.section.header
+        1: keyword.other.git-savvy.section.header.added
+      push:
+        - meta_scope: meta.git-savvy.status.section.added
+        - meta_content_scope: meta.git-savvy.section.body
+        - include: section
+
     - match: ^  (MERGE CONFLICTS:)$\n
       captures:
         0: meta.git-savvy.section.header
         1: keyword.other.git-savvy.section.header.merge-conflicts
       push:
         - meta_scope: meta.git-savvy.status.section.merge-conflicts
+        - meta_content_scope: meta.git-savvy.section.body
+        - include: section
+
+    - match: ^  (SKIPPED:)$\n
+      captures:
+        0: meta.git-savvy.section.header
+        1: keyword.other.git-savvy.section.header.skipped
+      push:
+        - meta_scope: meta.git-savvy.status.section.skipped
         - meta_content_scope: meta.git-savvy.section.body
         - include: section
 

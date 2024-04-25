@@ -1,4 +1,3 @@
-from collections import namedtuple
 from contextlib import contextmanager, ExitStack
 from functools import lru_cache
 
@@ -7,17 +6,16 @@ import sublime
 from .runtime import text_command
 
 
-MYPY = False
-if MYPY:
-    from typing import Callable, ContextManager, Iterator, List, NamedTuple, Optional, TypeVar
-    WrapperFn = Callable[[sublime.View], ContextManager[None]]
-    T_float = TypeVar("T_float", int, float)
+from typing import Callable, ContextManager, Iterator, List, NamedTuple, Optional, TypeVar
+from .types import Row, Col
+WrapperFn = Callable[[sublime.View], ContextManager[None]]
+T_float = TypeVar("T_float", int, float)
 
-    from .types import Row, Col
-    Position = NamedTuple("Position", [("row", Row), ("col", Col), ("offset", Optional[float])])
 
-else:
-    Position = namedtuple("Position", "row col offset")
+class Position(NamedTuple):
+    row: Row
+    col: Col
+    offset: Optional[float]
 
 
 def find_by_selector(view, selector):
@@ -168,6 +166,24 @@ def place_view(window, view, after):
     if view_group == group:
         wanted_index = index + 1 if index < current_index else index
         window.set_view_index(view, group, wanted_index)
+
+
+def other_visible_views(view: sublime.View) -> Iterator[sublime.View]:
+    """Yield all visible views of the active window except the given view itself."""
+    window = view.window()
+    if not window:
+        return
+
+    for view_ in visible_views(window):
+        if view_ != view:
+            yield view_
+
+
+def visible_views(window: sublime.Window) -> Iterator[sublime.View]:
+    num_groups = window.num_groups()
+    for group_id in range(num_groups):
+        if (view := window.active_view_in_group(group_id)):
+            yield view
 
 
 # `replace_view_content` is a wrapper for `_replace_region` to get some

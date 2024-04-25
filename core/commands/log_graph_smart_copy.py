@@ -13,9 +13,7 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Dict, Iterator, List, Optional, Tuple, Union
+from typing import Dict, Iterator, List, Optional, Tuple, Union
 
 
 class CopyIntercepterForGraph(sublime_plugin.EventListener):
@@ -34,12 +32,13 @@ class CopyIntercepterForGraph(sublime_plugin.EventListener):
         if not frozen_sel[0].empty():
             return None
 
-        cursor = frozen_sel[0].a
-        line_span = view.line(cursor)
-
         def candidates():
             # type: () -> Iterator[Tuple[str, List[Region]]]
-            commit_hash = read_commit_hash(view, line_span)
+            cursor = frozen_sel[0].a
+            line = log_graph.line_from_pt(view, cursor)
+            line_span = line.region()
+
+            commit_hash = read_commit_hash(view, line)
             if commit_hash:
                 yield commit_hash.text, [commit_hash.region()]
             for d in read_commit_decoration(view, line_span):
@@ -79,9 +78,9 @@ def set_clipboard_and_flash(view, text, regions):
     flash(view, "Copied '{}' to the clipboard".format(text))
 
 
-def read_commit_hash(view, line_span):
-    # type: (sublime.View, sublime.Region) -> Optional[TextRange]
-    commit_region = log_graph.extract_comit_hash_span(view, line_span)
+def read_commit_hash(view, line):
+    # type: (sublime.View, TextRange) -> Optional[TextRange]
+    commit_region = log_graph.extract_comit_hash_span(view, line)
     if not commit_region:
         return None
 
@@ -90,7 +89,7 @@ def read_commit_hash(view, line_span):
 
 def read_commit_decoration(view, line_span):
     # type: (sublime.View, sublime.Region) -> Iterator[TextRange]
-    for r in find_by_selector(view, "constant.other.git.branch.git-savvy"):
+    for r in find_by_selector(view, "constant.other.git.branch, entity.name.tag.branch-name"):
         if r.a > line_span.b:
             break
         if line_span.contains(r):

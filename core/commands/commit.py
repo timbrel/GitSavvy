@@ -1,4 +1,4 @@
-from itertools import takewhile
+from itertools import chain, takewhile
 import os
 
 import sublime
@@ -8,6 +8,7 @@ from sublime_plugin import EventListener, ViewEventListener
 from .diff import DECODE_ERROR_MESSAGE
 from . import intra_line_colorizer
 from ..git_command import GitCommand, GitSavvyError
+from ..fns import head
 from ..runtime import enqueue_on_worker, text_command
 from ..settings import SettingsMixin
 from ..ui_mixins.quick_panel import LogHelperMixin
@@ -29,10 +30,8 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Dict, List, Optional, Tuple, Union
-    from ..git_mixins.history import LogEntry
+from typing import Dict, List, Optional, Tuple, Union
+from ..git_mixins.history import LogEntry
 
 
 COMMIT_HELP_TEXT_EXTRA = """##
@@ -396,11 +395,17 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
 
         warning, illegal = self.find_too_long_lines()
         self.view.add_regions(
-            'make_commit_warning', warning,
-            scope='invalid.deprecated.line-too-long.git-commit', flags=sublime.DRAW_NO_FILL)
+            'make_commit_warning',
+            warning,
+            scope='invalid.deprecated.line-too-long.git-commit',
+            flags=sublime.RegionFlags.DRAW_NO_FILL | sublime.RegionFlags.NO_UNDO
+        )
         self.view.add_regions(
-            'make_commit_illegal', illegal,
-            scope='invalid.deprecated.line-too-long.git-commit')
+            'make_commit_illegal',
+            illegal,
+            scope='invalid.deprecated.line-too-long.git-commit',
+            flags=sublime.RegionFlags.NO_UNDO
+        )
 
     def find_rulers(self):
         on_first_line = False
@@ -651,7 +656,21 @@ class gs_commit_log_helper(TextCommand, LogHelperMixin):
                 view.sel().clear()
                 view.sel().add(len(text))
 
-        self.show_log_panel(action, preselected_commit_message=clean_subject)
+        def preselected_commit(items):
+            # type: (List[LogEntry]) -> int
+            return next(chain(
+                head(idx for idx, item in enumerate(items) if item.summary == clean_subject),
+                head(
+                    idx for idx, item in enumerate(items)
+                    if (
+                        not item.summary.startswith("fixup! ")
+                        and not item.summary.startswith("squash! ")
+                    )
+                ) if prefix else [],
+                [-1]
+            ))
+
+        self.show_log_panel(action, preselected_commit=preselected_commit)
 
 
 def cleanup_subject(subject):

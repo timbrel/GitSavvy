@@ -1,37 +1,41 @@
-from collections import namedtuple
+import email.utils
+
 from .. import store
 from ..exceptions import GitSavvyError
 from ...common import util
-
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.utils import cached
 
 
-MYPY = False
-if MYPY:
-    from typing import Optional
-
-LogEntry = namedtuple("LogEntry", (
-    "short_hash",
-    "long_hash",
-    "ref",
-    "summary",
-    "raw_body",
-    "author",
-    "email",
-    "datetime"
-))
+from typing import Iterator, List, NamedTuple, Optional
 
 
-RefLogEntry = namedtuple("RefLogEntry", (
-    "short_hash",
-    "long_hash",
-    "summary",
-    "reflog_name",
-    "reflog_selector",
-    "author",
-    "datetime"
-))
+class LogEntry(NamedTuple):
+    short_hash: str
+    long_hash: str
+    ref: str
+    summary: str
+    raw_body: str
+    author: str
+    email: str
+    datetime: str
+
+
+class RefLogEntry(NamedTuple):
+    short_hash: str
+    long_hash: str
+    summary: str
+    reflog_name: str
+    reflog_selector: str
+    author: str
+    datetime: str
+
+
+class CommitInfo(NamedTuple):
+    commit_hash: str
+    short_hash: str
+    subject: str
+    date: str
 
 
 def is_dynamic_ref(ref):
@@ -49,7 +53,7 @@ class HistoryMixin(mixin_base):
     def log(self, author=None, branch=None, file_path=None, start_end=None, cherry=None,
             limit=6000, skip=None, reverse=False, all_branches=False, msg_regexp=None,
             diff_regexp=None, first_parent=False, merges=False, no_merges=False, topo_order=False,
-            follow=False):
+            follow=False) -> List[LogEntry]:
 
         log_output = self.git(
             "log",
@@ -86,18 +90,15 @@ class HistoryMixin(mixin_base):
 
         return entries
 
-    def log_generator(self, limit=6000, **kwargs):
+    def log_generator(self, limit=6000, **kwargs) -> Iterator[LogEntry]:
         # Generator for show_log_panel
         skip = 0
         while True:
             logs = self.log(limit=limit, skip=skip, **kwargs)
-            if not logs:
-                break
-            for entry in logs:
-                yield entry
+            yield from logs
             if len(logs) < limit:
                 break
-            skip = skip + limit
+            skip += limit
 
     def reflog(self, limit=6000, skip=None, all_branches=False):
         log_output = self.git(
@@ -203,6 +204,17 @@ class HistoryMixin(mixin_base):
             return lines[-1].split("\t")[1]
         except IndexError:
             return filename
+
+    @cached(not_if={"base_commit": is_dynamic_ref, "target_commit": is_dynamic_ref})
+    def list_touched_filenames(self, base_commit, target_commit, cached=None):
+        # type: (Optional[str], Optional[str], Optional[bool]) -> List[str]
+        return self.git(
+            "diff",
+            "--name-only",
+            "--cached" if cached else None,
+            base_commit,
+            target_commit
+        ).strip().splitlines()
 
     @cached(not_if={"commit_hash": is_dynamic_ref})
     def get_file_content_at_commit(self, filename, commit_hash):
@@ -321,34 +333,70 @@ class HistoryMixin(mixin_base):
             rv += stdout.decode("utf-8", "replace")
         return rv
 
+    def commit_subject_and_date(self, commit_hash: str) -> CommitInfo:
+        # call with the same settings as gs_show_commit to either use or
+        # warm up the cache
+        show_diffstat = self.savvy_settings.get("show_diffstat")
+        patch = self.read_commit(commit_hash, show_diffstat=show_diffstat)
+        return self.commit_subject_and_date_from_patch(patch)
+
+    def commit_subject_and_date_from_patch(self, patch: str) -> CommitInfo:
+        commit_hash, date, subject = "", "", ""
+        for line in patch.splitlines():
+            if line.startswith("commit "):
+                # The commit line can include decorations we must split off!
+                commit_hash = line[7:].split(" ", 1)[0]
+            # CommitDate: Tue Dec 20 18:21:40 2022 +0100
+            elif line.startswith("CommitDate: ") and (parsed_date := email.utils.parsedate(line[12:])):
+                date = "-".join(map(str, parsed_date[:3]))
+            elif line.startswith("    "):
+                subject = line.lstrip()
+                break
+        return CommitInfo(commit_hash, self.get_short_hash(commit_hash), subject, date)
+
     @cached(not_if={"current_commit": is_dynamic_ref})
-    def previous_commit(self, current_commit, file_path, follow=False):
-        # type: (Optional[str], str, bool) -> Optional[str]
+    def previous_commit(self, current_commit, file_path=None, follow=False):
+        # type: (str, Optional[str], bool) -> Optional[str]
         try:
-            return self.git(
-                "log",
-                "--format=%H",
-                "--topo-order",
-                "--follow" if follow else None,
-                "-2",
-                current_commit,
-                "--",
-                file_path
-            ).strip().splitlines()[1 if current_commit else 0]
+            return self._log_commits(
+                current_commit, file_path, follow, limit=2
+            )[1]
         except IndexError:
             return None
 
-    def next_commit(self, current_commit, file_path, follow=False):
-        # type: (str, str, bool) -> Optional[str]
+    @cached(not_if={"current_commit": is_dynamic_ref})
+    def recent_commit(self, current_commit, file_path=None, follow=False):
+        # type: (str, Optional[str], bool) -> Optional[str]
         try:
-            return self.git(
-                "log",
-                "--format=%H",
-                "--topo-order",
-                "--follow" if follow else None,
-                "{}..".format(current_commit),
-                "--",
-                file_path
-            ).strip().splitlines()[-1]
+            return self._log_commits(
+                current_commit, file_path, follow, limit=1
+            )[0]
         except IndexError:
             return None
+
+    def next_commit(self, current_commit, file_path=None, follow=False):
+        # type: (str, Optional[str], bool) -> Optional[str]
+        try:
+            return self._log_commits(
+                f"{current_commit}..", file_path, follow
+            )[-1]
+        except IndexError:
+            return None
+
+    def _log_commits(
+        self,
+        commitish: Optional[str],
+        file_path: Optional[str],
+        follow: bool,
+        limit: Optional[int] = None
+    ) -> List[str]:
+        return self.git_throwing_silently(
+            "log",
+            "--format=%H",
+            "--topo-order",
+            "--follow" if follow else None,
+            None if limit is None else f"-{limit}",
+            commitish,
+            "--",
+            file_path
+        ).strip().splitlines()

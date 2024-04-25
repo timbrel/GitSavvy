@@ -28,17 +28,53 @@ contexts:
     - match: ^$
       pop: true
 
-    - match: '^    ([0-9a-f]{7,40}) (\S+)\s?(.*)$'
+    - match: (?=^\s+▸)
+      push:
+        - meta_scope: meta.git-savvy.branches.branch.active-branch
+        - include: row
+        - match: $
+          pop: true
+
+    - match: ^
+      push:
+        - include: row
+        - match: $
+          pop: true
+
+  row:
+    - match: '^    \s+(\\ )?(checked out at: )(.+)$'
+      captures:
+        0: keyword
+        1: keyword
+        2: keyword
+        3: keyword.other.git-savvy.path
+
+
+    - match: '^\s+(<)([0-9a-f]{7,40}) ?(>-?)  (.*)$'
+      captures:
+        0: meta.git-savvy.branches.branch.as-worktree
+        1: punctuation.symbol.foreign-branch
+        2: constant.other.git-savvy.branches.branch.sha1 keyword
+        3: punctuation.symbol.foreign-branch
+        4: keyword
+
+    - match: '^\s+(<)([0-9a-f]{7,40})(>) (\S+)\s?(.*)$'
+      captures:
+
+        0: meta.git-savvy.branches.branch.as-worktree
+        1: punctuation.symbol.foreign-branch
+        2: constant.other.git-savvy.branches.branch.sha1 keyword
+        3: punctuation.symbol.foreign-branch
+        4: meta.git-savvy.branches.branch.name gitsavvy.gotosymbol
+        5: comment.git-savvy.branches.branch.extra-info
+
+    - match: '^  (▸)?\s+([0-9a-f]{7,40}) ([^\s]+)([^(-]+?)?(\(.+?(?:, (gone))?\))?( \- .+)?$'
       captures:
         0: meta.git-savvy.branches.branch
-        1: meta.git-savvy.branches.branch.sha1
-        2: meta.git-savvy.branches.branch.name gitsavvy.gotosymbol
-        3: comment.git-savvy.branches.branch.extra-info
-
-    - match: '^  (▸) ([0-9a-f]{7,40}) (\S+)\s?(.*)$'
-      captures:
-        0: meta.git-savvy.branches.branch.active-branch
-        1: string.other.git-savvy.branches.branch.symbol
-        2: meta.git-savvy.branches.branch.sha1 string.other.git-savvy.branches.branch.sha1
-        3: meta.git-savvy.branches.branch.name gitsavvy.gotosymbol string.other.git-savvy.branches.branch.name
-        4: comment.git-savvy.branches.branch.extra-info
+        1: punctuation.symbol.active-branch.git-savvy
+        2: constant.other.git-savvy.branches.branch.sha1
+        3: meta.git-savvy.branches.branch.name gitsavvy.gotosymbol
+        4: comment.git-savvy.branches.branch.date
+        5: comment.git-savvy.branches.branch.tracking-info
+        6: constant.git-savvy.upstream.gone
+        7: comment.git-savvy.branches.branch.description keyword

@@ -3,7 +3,7 @@ Implements a special view to visualize and stage pieces of a project's
 current diff.
 """
 
-from collections import defaultdict, namedtuple
+from collections import defaultdict
 from contextlib import contextmanager
 from functools import partial
 from itertools import chain, count, groupby, takewhile
@@ -15,14 +15,15 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import intra_line_colorizer
 from . import stage_hunk
 from .navigate import GsNavigate
-from ..fns import filter_, flatten, pairwise, unique
+from ..fns import head, filter_, flatten, unique
 from ..parse_diff import SplittedDiff
+from .. import store
 from ..git_command import GitCommand
-from ..runtime import ensure_on_ui, enqueue_on_worker
+from ..runtime import ensure_on_ui, enqueue_on_worker, throttled
 from ..ui_mixins.quick_panel import LogHelperMixin
-from ..utils import flash, focus_view, line_indentation
+from ..utils import flash, focus_view, hprint, line_indentation, show_panel
 from ..view import (
-    capture_cur_position, replace_view_content, scroll_to_pt,
+    capture_cur_position, clamp, replace_view_content, scroll_to_pt,
     place_view, place_cursor_and_show, y_offset, Position)
 from ...common import util
 
@@ -30,8 +31,11 @@ from ...common import util
 __all__ = (
     "gs_diff",
     "gs_diff_refresh",
+    "gs_diff_intent_to_add",
     "gs_diff_toggle_setting",
     "gs_diff_toggle_cached_mode",
+    "gs_diff_switch_files",
+    "gs_diff_grab_quick_panel_view",
     "gs_diff_zoom",
     "gs_diff_stage_or_reset_hunk",
     "gs_initiate_fixup_commit",
@@ -42,27 +46,27 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import (
-        Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set,
-        Tuple, TypeVar
-    )
-    from ..parse_diff import FileHeader, Hunk, HunkLine, TextRange
-    from ..types import LineNo, ColNo
-    from ..git_mixins.history import LogEntry
+from typing import (
+    Callable, Dict, Iterable, Iterator, Literal, List, NamedTuple, Optional, Set,
+    Tuple, TypeVar
+)
+from ..parse_diff import FileHeader, Hunk, HunkLine, TextRange
+from ..types import LineNo, ColNo
+from ..git_mixins.history import LogEntry
+T = TypeVar('T')
+Point = int
+LineCol = Tuple[LineNo, ColNo]
+_FileName = str
+Position_ = Tuple[Position, _FileName]
 
-    T = TypeVar('T')
-    Point = int
-    LineCol = Tuple[LineNo, ColNo]
-    HunkLineWithB = NamedTuple('HunkLineWithB', [('line', 'HunkLine'), ('b', LineNo)])
-    _Position = Tuple[Position, str]
-else:
-    HunkLineWithB = namedtuple('HunkLineWithB', 'line b')
+
+class HunkLineWithB(NamedTuple):
+    line: HunkLine
+    b: LineNo
 
 
 DIFF_TITLE = "DIFF: {}"
-DIFF_CACHED_TITLE = "DIFF: {} (staged)"
+DIFF_CACHED_TITLE = "DIFF: {}, STAGE"
 DECODE_ERROR_MESSAGE = """
 -- Can't decode diff output. --
 
@@ -161,7 +165,14 @@ class gs_diff(WindowCommand, GitCommand):
         active_view = self.window.active_view()
         assert active_view
 
-        if is_diff_view(active_view) and (
+        this_id = (
+            repo_path,
+            file_path,
+            base_commit,
+            target_commit
+        )
+
+        if compute_identifier_for_view(active_view) == this_id and (
             in_cached_mode is None
             or active_view.settings().get('git_savvy.diff_view.in_cached_mode') == in_cached_mode
         ):
@@ -180,12 +191,6 @@ class gs_diff(WindowCommand, GitCommand):
                 else:
                     cur_pos = _cur_pos, rel_file_path
 
-        this_id = (
-            repo_path,
-            file_path,
-            base_commit,
-            target_commit
-        )
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
                 diff_view = view
@@ -256,41 +261,6 @@ class gs_diff_refresh(TextCommand, GitCommand):
         disable_stage = settings.get("git_savvy.diff_view.disable_stage")
         context_lines = settings.get('git_savvy.diff_view.context_lines')
 
-        prelude = "\n"
-        title = ["DIFF:"]
-        if file_path:
-            rel_file_path = os.path.relpath(file_path, repo_path)
-            prelude += "  FILE: {}\n".format(rel_file_path)
-            title += [os.path.basename(file_path)]
-        elif not disable_stage:
-            title += [os.path.basename(repo_path)]
-
-        if disable_stage:
-            if in_cached_mode:
-                prelude += "  {}..INDEX\n".format(base_commit or target_commit)
-                title += ["{}..INDEX".format(base_commit or target_commit)]
-            else:
-                if base_commit and target_commit:
-                    prelude += "  {}..{}\n".format(base_commit, target_commit)
-                    title += ["{}..{}".format(base_commit, target_commit)]
-                elif base_commit and "..." in base_commit:
-                    prelude += "  {}\n".format(base_commit)
-                    title += [base_commit]
-                else:
-                    prelude += "  {}..WORKING DIR\n".format(base_commit or target_commit)
-                    title += ["{}..WORKING DIR".format(base_commit or target_commit)]
-        else:
-            if in_cached_mode:
-                prelude += "  STAGED CHANGES (Will commit)\n"
-                title += ["(staged)"]
-            else:
-                prelude += "  UNSTAGED CHANGES\n"
-
-        if ignore_whitespace:
-            prelude += "  IGNORING WHITESPACE\n"
-
-        prelude += "\n--\n"
-
         raw_diff = self.git(
             "diff",
             "--ignore-all-space" if ignore_whitespace else None,
@@ -330,11 +300,56 @@ class gs_diff_refresh(TextCommand, GitCommand):
                     view.close()
                 return
 
-        ensure_on_ui(_draw, view, ' '.join(title), prelude, diff, match_position)
+        prelude = "\n"
+        title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(
+            os.path.basename(file_path) if file_path else os.path.basename(repo_path)
+        )
+
+        untracked_file = False
+        if file_path:
+            rel_file_path = os.path.relpath(file_path, repo_path)
+            if (
+                not diff
+                # Only check the cached value in `store` to not get expensive
+                # for the normal case of just checking a clean file.
+                and self.is_probably_untracked_file(file_path)
+            ):
+                untracked_file = True
+
+            prelude += "  FILE: {}{}\n".format(rel_file_path, "  (UNTRACKED)" if untracked_file else "")
+
+        if disable_stage:
+            if in_cached_mode:
+                prelude += "  {}..INDEX\n".format(base_commit or target_commit)
+                title += ", {}..INDEX".format(base_commit or target_commit)
+            else:
+                if base_commit and target_commit:
+                    prelude += "  {}..{}\n".format(base_commit, target_commit)
+                    title += ", {}..{}".format(base_commit, target_commit)
+                elif base_commit and "..." in base_commit:
+                    prelude += "  {}\n".format(base_commit)
+                    title += ", {}".format(base_commit)
+                else:
+                    prelude += "  {}..WORKING DIR\n".format(base_commit or target_commit)
+                    title += ", {}..WORKING DIR".format(base_commit or target_commit)
+        else:
+            if untracked_file:
+                ...
+            elif in_cached_mode:
+                prelude += "  STAGED CHANGES (Will commit)\n"
+            else:
+                prelude += "  UNSTAGED CHANGES\n"
+
+        if ignore_whitespace:
+            prelude += "  IGNORING WHITESPACE\n"
+
+        prelude += "\n--\n"
+
+        ensure_on_ui(_draw, view, title, prelude, diff, match_position)
 
 
 def _draw(view, title, prelude, diff_text, match_position):
-    # type: (sublime.View, str, str, str, Optional[_Position]) -> None
+    # type: (sublime.View, str, str, str, Optional[Position_]) -> None
     was_empty = not view.find_by_selector("git-savvy.diff_view git-savvy.diff")
     navigated = False
     text = prelude + diff_text
@@ -356,9 +371,11 @@ def _draw(view, title, prelude, diff_text, match_position):
                     # yields all lines in the hunk.
                     if not line.is_from_line() and b == lineno:
                         pt = line.a + col + line.mode_len
-                        visible_region = view.visible_region()
-                        # Do not scroll if the diff fits on one screen
-                        should_scroll = view.size() > len(visible_region)
+                        # Do not scroll if the cursor fits on the first "page",
+                        # always show the prelude if possible.
+                        _, cy = view.text_to_layout(pt)
+                        _, vh = view.viewport_extent()
+                        should_scroll = cy >= vh
                         place_cursor_and_show(
                             view, pt, row_offset if should_scroll else None, no_overscroll=True)
                         navigated = True
@@ -387,6 +404,30 @@ def find_hunk_for_line(hunks, row):
             return hunk
     else:
         return None
+
+
+class gs_diff_intent_to_add(TextCommand, GitCommand):
+    def run(self, edit):
+        settings = self.view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        untracked_file = self.git("ls-files", "--", file_path).strip() == ""
+        if not untracked_file:
+            flash(self.view, "The file is already tracked.")
+            return
+
+        self.intent_to_add(file_path)
+
+        history = settings.get("git_savvy.diff_view.history") or []
+        frozen_sel = [s for s in self.view.sel()]
+        patch = ""
+        pts = [s.a for s in frozen_sel]
+        in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
+        history.append((["add", "--intent-to-add", file_path], patch, pts, in_cached_mode))
+        settings.set("git_savvy.diff_view.history", history)
+        settings.set("git_savvy.diff_view.just_hunked", patch)
+
+        flash(self.view, "set --intent-to-add")
+        self.view.run_command("gs_diff_refresh")
 
 
 class gs_diff_toggle_setting(TextCommand):
@@ -450,10 +491,15 @@ class gs_diff_toggle_cached_mode(TextCommand):
         # switch. T.i. if the user hunked and then switches to see what will be
         # actually committed, the view starts at the top. Later, the view will
         # show the last added hunk.
-        if just_hunked and last_cursors:
-            region = find_hunk_in_view(self.view, just_hunked)
-            if region:
-                set_and_show_cursor(self.view, region.a)
+        if just_hunked:
+            if last_cursors:
+                region = find_hunk_in_view(self.view, just_hunked)
+                if region:
+                    set_and_show_cursor(self.view, region.a)
+                    return
+            else:
+                set_and_show_cursor(self.view, 0)
+                self.view.run_command("gs_diff_navigate")
                 return
 
         if last_cursors:
@@ -461,6 +507,156 @@ class gs_diff_toggle_cached_mode(TextCommand):
             # without visual clutter.
             with no_animations():
                 set_and_show_cursor(self.view, unpickle_sel(last_cursors))
+
+
+class gs_diff_switch_files(TextCommand, GitCommand):
+    def run(self, edit, recursed=False, auto_close=False, forward=None):
+        # type: (sublime.Edit, bool, bool, Optional[bool]) -> None
+        view = self.view
+        window = view.window()
+        if not window:
+            return
+        if view.element() == "quick_panel:input":
+            if av := window.active_view():
+                av.settings().set("gs_diff.intentional_hide", True)
+                window.run_command("hide_overlay")
+                av.run_command("gs_diff_switch_files", {"recursed": True, "auto_close": auto_close, "forward": forward})
+            return
+
+        AUTO_CLOSE_AFTER = 1000  # [ms]
+        SEP = "                      ———— UNTRACKED FILES ————"
+        settings = view.settings()
+        auto_close_state: Literal["MUST_INSTALL", "ACTIVE", "DEAD"]
+        auto_close_state = "MUST_INSTALL" if auto_close else "DEAD"
+
+        if base_commit := settings.get("git_savvy.diff_view.base_commit"):
+            target_commit = settings.get("git_savvy.diff_view.target_commit")
+            available = self.list_touched_filenames(base_commit, target_commit)
+        else:
+            status = store.current_state(self.repo_path).get("status")
+            in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
+            if status:
+                if in_cached_mode:
+                    available = [f.path for f in status.staged_files]
+                else:
+                    available = [f.path for f in status.unstaged_files]
+                    if status.untracked_files:
+                        available += [SEP] + [f.path for f in status.untracked_files]
+            else:
+                available = self.list_touched_filenames(None, None, cached=in_cached_mode)
+
+        file_path = settings.get("git_savvy.file_path")
+        if not available:
+            selected_index = 0
+        elif file_path:
+            normalized_relative_path = self.get_rel_path(file_path)
+            try:
+                idx = available.index(normalized_relative_path)
+            except ValueError:
+                selected_index = 0
+            else:
+                delta = 1 if forward is True else -1 if forward is False else 0
+                idx = (idx + delta) % len(available)
+                if available[idx] == SEP:
+                    idx = (idx + delta) % len(available)
+                selected_index = idx + 1  # skip the "--all" entry
+        else:
+            selected_index = 1 if forward is True else len(available) if forward is False else 0
+
+        items = ["--all"] + available
+        if not recursed:
+            original_view_state = (file_path, view.viewport_position(), [(s.a, s.b) for s in view.sel()], )
+            settings.set("git_savvy.original_view_state", original_view_state)
+
+        def auto_close_panel():
+            nonlocal auto_close_state
+            if auto_close_state == "ACTIVE":
+                settings.set("gs_diff.intentional_hide", True)
+                window.run_command("hide_overlay")
+
+        def on_done(idx):
+            nonlocal auto_close_state
+            auto_close_state = "DEAD"
+            settings.erase("git_savvy.original_view_state")
+            ...  # already everything done in `on_highlight`
+
+        def on_highlight(idx):
+            nonlocal auto_close_state
+            if auto_close_state == "MUST_INSTALL":
+                auto_close_state = "ACTIVE"
+                sublime.set_timeout_async(auto_close_panel, AUTO_CLOSE_AFTER)
+            elif auto_close_state == "ACTIVE":
+                auto_close_state = "DEAD"
+
+            item = items[idx]
+            if item == SEP:
+                return
+            enqueue_on_worker(throttled(on_highlight_, item))
+
+        def on_highlight_(item: str) -> None:
+            if item == "--all":
+                if not settings.get("git_savvy.file_path"):
+                    return
+                settings.erase("git_savvy.file_path")
+            else:
+                next_file_path = os.path.normpath(os.path.join(self.repo_path, item))
+                if next_file_path == settings.get("git_savvy.file_path"):
+                    return
+                settings.set("git_savvy.file_path", next_file_path)
+            view.run_command("gs_diff_refresh", {"sync": True})
+            view.set_viewport_position((0, 0))
+            view.sel().clear()
+            view.sel().add(sublime.Region(0))
+            view.run_command("gs_diff_navigate")
+
+        def on_cancel():
+            nonlocal auto_close_state
+            auto_close_state = "DEAD"
+            if settings.get("gs_diff.intentional_hide"):
+                settings.erase("gs_diff.intentional_hide")
+                return
+            original_view_state = settings.get("git_savvy.original_view_state")
+            settings.erase("git_savvy.original_view_state")
+            if original_view_state:
+                file_path, viewport_position, sel = original_view_state
+                if file_path:
+                    if file_path == settings.get("git_savvy.file_path"):
+                        return
+                    settings.set("git_savvy.file_path", file_path)
+                else:
+                    if not settings.get("git_savvy.file_path"):
+                        return
+                    settings.erase("git_savvy.file_path")
+                view.run_command("gs_diff_refresh", {"sync": True})
+                view.set_viewport_position(viewport_position)
+                view.sel().clear()
+                view.sel().add_all([sublime.Region(*s) for s in sel])
+
+        # Skip the `on_activated` event e.g. when the quick panel closes, because
+        # we update and refresh the underlying view manually in the callbacks.
+        settings.set("git_savvy.ignore_next_activated_event", True)
+        show_panel(
+            window,
+            items,
+            on_done,
+            on_cancel=on_cancel,
+            on_highlight=on_highlight,
+            selected_index=selected_index,
+            flags=sublime.MONOSPACE_FONT
+        )
+        window.run_command("gs_diff_grab_quick_panel_view")
+
+
+class gs_diff_grab_quick_panel_view(TextCommand):
+    def run(self, edit):
+        view = self.view
+        if view.element() != "quick_panel:input":
+            hprint(
+                "Can't mark quick_panel for switching files. "
+                "[N]/[P] bindings are disabled."
+            )
+            return
+        view.settings().set("gs_diff_files_selector", True)
 
 
 class gs_diff_zoom(TextCommand):
@@ -534,12 +730,13 @@ class gs_diff_zoom(TextCommand):
         scroll_to_pt(self.view, cursor, offset)
 
 
-if MYPY:
-    LineId = NamedTuple("LineId", [("a", LineNo), ("b", LineNo)])
-    HunkLineWithLineNumbers = Tuple[HunkLine, LineId]
-    HunkLineWithLineId = Tuple[TextRange, LineId]
-else:
-    LineId = namedtuple("LineId", "a b")
+class LineId(NamedTuple):
+    a: LineNo
+    b: LineNo
+
+
+HunkLineWithLineNumbers = Tuple[HunkLine, LineId]
+HunkLineWithLineId = Tuple[TextRange, LineId]
 
 
 def compute_line_ids_for_hunk(hunk):
@@ -714,6 +911,9 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             self.view.run_command("gs_prepare_commit_refresh_diff")
         else:
             self.view.run_command("gs_diff_refresh")
+        # Ideally we would compute the next WorkingDirState but that's not
+        # trivial, so we just ask for it:
+        self.view.run_command("gs_update_status")
 
 
 def move_to_hunk(view: sublime.View, hunk_idx: int) -> None:
@@ -786,21 +986,27 @@ class gs_initiate_fixup_commit(TextCommand, LogHelperMixin):
                 "initial_text": "fixup! {}".format(commit_message)
             })
 
-        self.show_log_panel(action)
+        def preselected_commit(items):
+            # type: (List[LogEntry]) -> int
+            return next(chain(
+                head(
+                    idx for idx, item in enumerate(items)
+                    if (
+                        not item.summary.startswith("fixup! ")
+                        and not item.summary.startswith("squash! ")
+                    )
+                ),
+                [-1]
+            ))
+
+        self.show_log_panel(action, preselected_commit=preselected_commit)
 
 
-MYPY = False
-if MYPY:
-    from typing import NamedTuple
-    JumpTo = NamedTuple('JumpTo', [
-        ('commit_hash', Optional[str]),
-        ('filename', str),
-        ('line', LineNo),
-        ('col', ColNo)
-    ])
-else:
-    from collections import namedtuple
-    JumpTo = namedtuple('JumpTo', 'commit_hash filename line col')
+class JumpTo(NamedTuple):
+    commit_hash: Optional[str]
+    filename: str
+    line: LineNo
+    col: ColNo
 
 
 class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
@@ -814,19 +1020,34 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
         # type: (sublime.Edit) -> None
 
         def first_per_file(items):
-            # type: (Iterator[JumpTo]) -> Iterator[JumpTo]
+            # type: (Iterable[JumpTo]) -> Iterator[JumpTo]
             seen = set()  # type: Set[str]
             for item in items:
                 if item.filename not in seen:
                     seen.add(item.filename)
                     yield item
 
-        diff = SplittedDiff.from_view(self.view)
-        jump_positions = list(first_per_file(filter_(
-            jump_position_to_file(self.view, diff, s.begin())
-            for s in self.view.sel()
-        )))
-        if not jump_positions:
+        diff_regions = self.view.find_by_selector("git-savvy.commit, git-savvy.diff")
+        diffs = [
+            SplittedDiff.from_string(content, region.a)
+            for region in diff_regions
+            if (content := self.view.substr(region))
+        ]
+        if not diffs:
+            flash(self.view, "Could not extract a diff.")
+            return
+
+        frozen_sel = list(self.view.sel())
+        try:
+            jump_positions = next(filter_(
+                list(first_per_file(filter_(
+                    fn(self.view, diff, s.begin())
+                    for diff in diffs
+                    for s in frozen_sel
+                )))
+                for fn in (jump_position_to_file, first_jump_position_in_view)
+            ))
+        except StopIteration:
             flash(self.view, "Not within a hunk")
         else:
             for jp in jump_positions:
@@ -851,6 +1072,8 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
                 "position": Position(line - 1, col - 1, None),
             })
         else:
+            if self.view.settings().get("git_savvy.diff_view.in_cached_mode"):
+                line = self.find_matching_lineno("HEAD", None, line=line, file_path=full_path)
             window.open_file(
                 "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
                 sublime.ENCODED_POSITION
@@ -859,12 +1082,23 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
 
 def jump_position_to_file(view, diff, pt):
     # type: (sublime.View, SplittedDiff, int) -> Optional[JumpTo]
-    head_and_hunk = diff.head_and_hunk_for_pt(pt)
-    if not head_and_hunk:
+    hunk = diff.hunk_for_pt(pt)
+    if not hunk:
         return None
+    return _jump_position_from_hunk(view, diff, hunk, pt)
 
-    header, hunk = head_and_hunk
 
+def first_jump_position_in_view(view, diff, pt):
+    # type: (sublime.View, SplittedDiff, int) -> Optional[JumpTo]
+    hunk = diff.first_hunk_after_pt(pt)
+    if not hunk:
+        return None
+    return _jump_position_from_hunk(view, diff, hunk, pt)
+
+
+def _jump_position_from_hunk(view, diff, hunk, pt):
+    # type: (sublime.View, SplittedDiff, Hunk, int) -> Optional[JumpTo]
+    header = diff.head_for_hunk(hunk)
     line, col = real_linecol_in_hunk(hunk, *row_offset_and_col_in_hunk(view, hunk, pt))
     filename = header.to_filename()
     if not filename:
@@ -896,6 +1130,7 @@ def real_linecol_in_hunk(hunk, row_offset, col):
     # type: (Hunk, int, ColNo) -> LineCol
     """Translate relative to absolute line, col pair"""
     hunk_lines = list(recount_lines_for_jump_to_file(hunk))
+    row_offset = clamp(0, len(hunk_lines), row_offset)
 
     # If the user is on the header line ('@@ ..') pretend to be on the
     # first visible line with some content instead.
@@ -995,20 +1230,24 @@ class gs_diff_navigate(GsNavigate):
     """
 
     offset = 0
-    wrap_with_force = True
+    log_position = True
+    shrink_to_cursor = False
 
     def get_available_regions(self):
-        return [
-            sublime.Region(a.a, b.a - 1)
-            for a, b in pairwise(
-                chain(
-                    self.view.find_by_selector(
-                        "meta.diff.range.unified, meta.commit-info.header"
-                    ),
-                    [sublime.Region(self.view.size())]
-                )
-            )
-        ]
+        def _gen():
+            # type: () -> Iterator[sublime.Region]
+            diff = SplittedDiff.from_view(self.view)
+            for hunk in diff.hunks:
+                yield sublime.Region(hunk.region().a)
+                chunks = list(chunkby(hunk.content().lines(), lambda line: not line.is_context()))
+                if len(chunks) > 1:
+                    for chunk in chunks:
+                        yield sublime.Region(chunk[0].region().a, chunk[-1].region().b)
+
+        return sorted(
+            list(_gen())
+            + self.view.find_by_selector("meta.commit-info.header")
+        )
 
 
 class gs_diff_undo(TextCommand, GitCommand):
@@ -1028,6 +1267,8 @@ class gs_diff_undo(TextCommand, GitCommand):
         if args[0] == "add":
             if args[1] == "-u":
                 self.unstage_all_files()
+            elif args[1] == "--intent-to-add":
+                self.undo_intent_to_add(args[2])
             else:
                 self.unstage_file(*args[1])
         else:

@@ -7,7 +7,7 @@ T = TypeVar('T')
 U = TypeVar('U')
 
 
-filter_ = partial(filter, None)  # type: Callable[[Iterable[Optional[T]]], Iterator[T]]  # type: ignore[assignment]
+filter_ = partial(filter, None)  # type: Callable[[Iterable[Optional[T]]], Iterator[T]]
 flatten = chain.from_iterable
 
 
@@ -59,6 +59,11 @@ def peek(iterable):
 def drop(n, iterable):
     # type: (int, Iterable[T]) -> Iterator[T]
     return islice(iterable, n, None)
+
+
+def head(iterable):
+    # type: (Iterable[T]) -> List[T]
+    return take(1, iterable)
 
 
 def tail(iterable):

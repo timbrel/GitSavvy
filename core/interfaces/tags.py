@@ -2,7 +2,9 @@ from contextlib import contextmanager
 from functools import partial
 import os
 import re
+from textwrap import indent
 
+import sublime
 from sublime_plugin import WindowCommand
 
 from ..commands import GsNavigate
@@ -28,37 +30,41 @@ __all__ = (
 )
 
 
-MYPY = False
-if MYPY:
-    from typing import Dict, Iterator, List, Literal, Optional, Union, TypedDict
-    from ..git_mixins.active_branch import Commit
-    from ..git_mixins.tags import TagDetails
+from typing import Dict, Iterator, List, Literal, Optional, Union, TypedDict
+from ..git_mixins.active_branch import Commit
+from ..git_mixins.tags import TagDetails
 
-    Loading = TypedDict("Loading", {"state": Literal["loading"]})
-    Erred = TypedDict("Erred", {"state": Literal["erred"], "message": str})
-    Succeeded = TypedDict("Succeeded", {
-        "state": Literal["succeeded"],
-        "tags": List[TagDetails]
-    })
-    FetchStateMachine = Union[
-        Loading, Erred, Succeeded
-    ]
 
-    TagsViewState = TypedDict(
-        "TagsViewState",
-        {
-            "git_root": str,
-            "long_status": str,
-            "local_tags": TagList,
-            "remotes": Dict[str, str],
-            "remote_tags": Dict[str, FetchStateMachine],
-            "recent_commits": List[Commit],
-            "max_items": Optional[int],
-            "show_remotes": bool,
-            "show_help": bool,
-        },
-        total=False
-    )
+class Loading(TypedDict):
+    state: Literal["loading"]
+
+
+class Erred(TypedDict):
+    state: Literal["erred"]
+    message: str
+
+
+class Succeeded(TypedDict):
+    state: Literal["succeeded"]
+    tags: List[TagDetails]
+
+
+FetchStateMachine = Union[
+    Loading, Erred, Succeeded
+]
+RemoteTagsInfo = Dict[str, FetchStateMachine]
+
+
+class TagsViewState(TypedDict, total=False):
+    git_root: str
+    long_status: str
+    local_tags: TagList
+    remotes: Dict[str, str]
+    remote_tags_info: RemoteTagsInfo
+    recent_commits: List[Commit]
+    max_items: Optional[int]
+    show_remotes: bool
+    show_help: bool
 
 
 NO_LOCAL_TAGS_MESSAGE = "    Your repository has no tags."
@@ -124,14 +130,13 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
     {remote_tags_list}"""
 
     subscribe_to = {"local_tags", "long_status", "recent_commits", "remotes"}
-    state = {}  # type: TagsViewState
+    state: TagsViewState
 
-    def __init__(self, *args, **kwargs):
-        self.state = {
+    def initial_state(self):
+        return {
             'show_remotes': self.savvy_settings.get("show_remotes_in_branch_dashboard"),
-            'remote_tags': {}
+            'remote_tags_info': {}
         }
-        super().__init__(*args, **kwargs)
 
     def title(self):
         # type: () -> str
@@ -156,8 +161,8 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         })
 
     @ui.inject_state()
-    def maybe_populate_remote_tags(self, remotes, show_remotes, remote_tags):
-        # type: (Dict[str, str], bool, Dict[str, FetchStateMachine]) -> None
+    def maybe_populate_remote_tags(self, remotes, remote_tags_info):
+        # type: (Dict[str, str], RemoteTagsInfo) -> None
         def do_tags_fetch(remote_name):
             try:
                 new_state = {
@@ -167,18 +172,18 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
             except GitSavvyError as e:
                 new_state = {
                     "state": "erred",
-                    "message": "    {}".format(e.stderr.rstrip())
+                    "message": e.stderr.strip()
                 }
 
             def sink():
-                remote_tags[remote_name] = new_state
+                remote_tags_info[remote_name] = new_state
                 self.just_render()
             enqueue_on_worker(sink)  # fan-in
 
-        if remotes and not remote_tags:
+        if remotes and not remote_tags_info:
             for remote_name in remotes:
                 run_on_new_thread(do_tags_fetch, remote_name)    # fan-out
-                remote_tags[remote_name] = {
+                remote_tags_info[remote_name] = {
                     "state": "loading"
                 }
 
@@ -210,27 +215,31 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         return "{0.hash} {0.message}".format(recent_commits[0])
 
     @ui.section("local_tags")
-    def render_local_tags(self, local_tags, max_items):
-        # type: (TagList, int) -> ui.RenderFnReturnType
+    def render_local_tags(self, local_tags, max_items, remote_tags_info):
+        # type: (TagList, int, RemoteTagsInfo) -> ui.RenderFnReturnType
         if not any(local_tags.all):
             return NO_LOCAL_TAGS_MESSAGE
 
-        remote_tags, remote_tag_names = set(), set()
         # wait until all settled to prohibit intermediate state to be drawn
-        # what we draw explcitily relies on *all* known remote tags
-        if all(info["state"] != "loading" for info in self.state["remote_tags"].values()):
-            for info in self.state["remote_tags"].values():
+        # what we draw explicitly relies on *all* known remote tags
+        if remote_tags_info and all(info["state"] != "loading" for info in remote_tags_info.values()):
+            remote_tags, remote_tag_names = set(), set()
+            for info in remote_tags_info.values():
                 if info["state"] == "succeeded":
                     for tag in info["tags"]:
                         remote_tags.add((tag.sha, tag.tag))
                         remote_tag_names.add(tag.tag)
 
-        def maybe_mark(tag):
-            if remote_tag_names and tag.tag not in remote_tag_names:
-                return "*"  # denote new semver
-            if remote_tags and (tag.sha, tag.tag) not in remote_tags:
-                return "!"  # denote known semver on a different hash
-            return " "
+            def maybe_mark(tag):
+                if tag.tag not in remote_tag_names:
+                    return "*"  # denote new semver
+                if (tag.sha, tag.tag) not in remote_tags:
+                    return "!"  # denote known semver on a different hash
+                return " "
+
+        else:
+            def maybe_mark(tag):
+                return " "
 
         return "\n{}\n".format(" " * 60).join(  # need some spaces on the separator line otherwise
                                                 # the syntax expects the remote section begins
@@ -256,8 +265,8 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         )
 
     @ui.section("remote_tags")
-    def render_remote_tags(self, remotes, show_remotes, remote_tags):
-        # type: (Dict[str, str], bool, Dict[str, FetchStateMachine]) -> ui.RenderFnReturnType
+    def render_remote_tags(self, remotes, show_remotes, remote_tags_info):
+        # type: (Dict[str, str], bool, RemoteTagsInfo) -> ui.RenderFnReturnType
         if not remotes:
             return "\n"
 
@@ -268,7 +277,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         render_fns = []
 
         for remote_name in remotes:
-            remote_info = remote_tags.get(remote_name)
+            remote_info = remote_tags_info.get(remote_name)
             if not remote_info:
                 continue
 
@@ -310,7 +319,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                 msg = NO_REMOTE_TAGS_MESSAGE
 
         elif remote_info["state"] == "erred":
-            msg = remote_info["message"]
+            msg = indent(remote_info["message"], "    ", lambda line: True)
 
         elif remote_info["state"] == "loading":
             msg = LOADING_TAGS_MESSAGE
@@ -330,8 +339,7 @@ SHA_SELECTOR = "constant.other.git-savvy.tags.sha1"
 
 
 class TagsInterfaceCommand(ui.InterfaceCommand):
-    interface_type = TagsInterface
-    interface = None  # type: TagsInterface
+    interface: TagsInterface
 
     def selected_local_tags(self):
         # type: () -> List[str]
@@ -370,7 +378,7 @@ class gs_tags_toggle_remotes(TagsInterfaceCommand):
         next_state = not current_state if show is None else show
         interface.state["show_remotes"] = next_state
         if next_state:
-            interface.state["remote_tags"] = {}
+            interface.state["remote_tags_info"] = {}
         interface.render()
 
 
@@ -383,7 +391,7 @@ class gs_tags_refresh(TagsInterfaceCommand):
     def run(self, edit, reset_remotes=False):
         interface = self.interface
         if reset_remotes:
-            interface.state["remote_tags"] = {}
+            interface.state["remote_tags_info"] = {}
 
         util.view.refresh_gitsavvy(self.view)
 
@@ -403,16 +411,18 @@ class gs_tags_delete(TagsInterfaceCommand):
 
     @on_worker
     def run(self, edit):
-        interface = self.interface
-        self.delete_local(interface)
-        self.delete_remote(interface)
-        util.view.refresh_gitsavvy(self.view)
+        # type: (sublime.Edit) -> None
+        local_tags = self.delete_local()
+        remote_tags = self.delete_remote()
+        if local_tags or remote_tags:
+            flash(self.view, TAG_DELETE_MESSAGE)
+            if remote_tags:
+                self.interface.state["remote_tags_info"] = {}
+            util.view.refresh_gitsavvy(self.view)
 
-    def delete_local(self, interface):
+    def delete_local(self):
+        # type: () -> List[str]
         tags_to_delete = self.selected_local_tags()
-        if not tags_to_delete:
-            return
-
         for tag in tags_to_delete:
             rv = self.git("tag", "-d", tag)
             match = EXTRACT_COMMIT.search(rv.strip())
@@ -420,16 +430,14 @@ class gs_tags_delete(TagsInterfaceCommand):
                 commit = match.group(1)
                 uprint(DELETE_UNDO_MESSAGE.format(tag, commit))
 
-        flash(self.view, TAG_DELETE_MESSAGE)
-        util.view.refresh_gitsavvy(self.view)
+        return tags_to_delete
 
-    def delete_remote(self, interface):
-        if not interface.remotes:
-            return
-
-        for remote_name, remote in interface.remotes.items():
+    def delete_remote(self):
+        # type: () -> List[str]
+        all_deleted_tags = []
+        for remote_name in self.interface.state["remotes"]:
             tags_to_delete = self.selected_remote_tags(remote_name)
-
+            all_deleted_tags += tags_to_delete
             if tags_to_delete:
                 self.git(
                     "push",
@@ -437,10 +445,7 @@ class gs_tags_delete(TagsInterfaceCommand):
                     "--delete",
                     *("refs/tags/" + tag for tag in tags_to_delete)
                 )
-
-        flash(self.view, TAG_DELETE_MESSAGE)
-        interface.remotes = None
-        util.view.refresh_gitsavvy(self.view)
+        return all_deleted_tags
 
 
 class gs_tags_push(TagsInterfaceCommand):
@@ -458,11 +463,11 @@ class gs_tags_push(TagsInterfaceCommand):
         tags_to_push = self.selected_local_tags()
 
         flash(self.view, START_PUSH_MESSAGE)
-        self.git("push", remote, *("refs/tags/" + tag for tag in tags_to_push))
+        self.git("push", "--no-follow-tags", remote, *("refs/tags/" + tag for tag in tags_to_push))
         flash(self.view, END_PUSH_MESSAGE)
 
         interface = self.interface
-        interface.state["remote_tags"] = {}
+        interface.state["remote_tags_info"] = {}
         util.view.refresh_gitsavvy(self.view)
 
 

@@ -1,49 +1,50 @@
-from collections import namedtuple
 import re
 
 from GitSavvy.core import store
-from GitSavvy.core.git_command import mixin_base
+from GitSavvy.core.git_command import mixin_base, NOT_SET
 from GitSavvy.core.fns import filter_
+from GitSavvy.core.exceptions import GitSavvyError
+from GitSavvy.core.utils import hprint, measure_runtime, yes_no_switch
+from GitSavvy.core.runtime import run_on_new_thread
 
+from typing import Dict, List, NamedTuple, Optional, Sequence
 
-MYPY = False
-if MYPY:
-    from typing import Dict, List, NamedTuple, Optional, Sequence
-    Upstream = NamedTuple("Upstream", [
-        ("remote", str),
-        ("branch", str),
-        ("canonical_name", str),
-        ("status", str),
-    ])
-
-    # For local branches, `remote` is empty and `canonical_name == name`.
-    # For remote branches:
-    Branch = NamedTuple("Branch", [
-        ("name", str),              # e.g. "master"
-        ("remote", Optional[str]),  # e.g. "origin"
-        ("canonical_name", str),    # e.g. "origin/master"
-        ("commit_hash", str),
-        ("commit_msg", str),
-        ("active", bool),
-        ("is_remote", bool),
-        ("committerdate", int),
-        ("upstream", Optional[Upstream]),
-    ])
-else:
-    Upstream = namedtuple("Upstream", "remote branch canonical_name status")
-    Branch = namedtuple("Branch", (
-        "name",
-        "remote",
-        "canonical_name",
-        "commit_hash",
-        "commit_msg",
-        "active",
-        "is_remote",
-        "committerdate",
-        "upstream",
-    ))
 
 BRANCH_DESCRIPTION_RE = re.compile(r"^branch\.(.*?)\.description (.*)$")
+FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND = (2, 41, 0)
+
+
+class Upstream(NamedTuple):
+    remote: str
+    branch: str
+    canonical_name: str
+    status: str
+
+
+class AheadBehind(NamedTuple):
+    ahead: int
+    behind: int
+
+
+class Branch(NamedTuple):
+    # For local branches, `remote` is empty and `canonical_name == name`.
+    #                        For remote branches:
+    name: str              # e.g. "master"
+    remote: Optional[str]  # e.g. "origin"
+    canonical_name: str    # e.g. "origin/master"
+    commit_hash: str
+    commit_msg: str
+    active: bool
+    is_remote: bool
+    committerdate: int
+    human_committerdate: str
+    relative_committerdate: str
+    upstream: Optional[Upstream]
+    distance_to_head: Optional[AheadBehind]
+
+    @property
+    def is_local(self) -> bool:
+        return not self.is_remote
 
 
 class BranchesMixin(mixin_base):
@@ -91,36 +92,123 @@ class BranchesMixin(mixin_base):
         # type: () -> List[Branch]
         return self.get_branches(refs=["refs/heads"])
 
-    def get_branches(self, *, refs=["refs/heads", "refs/remotes"]):
-        # type: (Sequence[str]) -> List[Branch]
+    def get_branches(self, *, refs=["refs/heads", "refs/remotes"], merged=None):
+        # type: (Sequence[str], Optional[bool]) -> List[Branch]
         """
-        Return a list of all local and remote branches.
+        Return a list of local and/or remote branches.
         """
-        stdout = self.git(
-            "for-each-ref",
-            (
-                "--format="
-                "%(HEAD)%00"
-                "%(refname)%00"
-                "%(upstream)%00"
-                "%(upstream:remotename)%00"
-                "%(upstream:track,nobracket)%00"
-                "%(committerdate:unix)%00"
-                "%(objectname)%00"
-                "%(contents:subject)"
-            ),
-            *refs
-        )  # type: str
-        branches = [
-            branch
-            for branch in (
-                self._parse_branch_line(line)
-                for line in filter_(stdout.splitlines())
-            )
-            if branch.name != "HEAD"
-        ]
-        store.update_state(self.repo_path, {"branches": branches})
-        return branches
+
+        def get_branches__(probe_speed: bool, supports_ahead_behind: bool) -> List[Branch]:
+            WAIT_TIME = 200  # [ms]
+            try:
+                stdout: str = self.git_throwing_silently(
+                    "for-each-ref",
+                    "--format={}".format(
+                        "%00".join((
+                            "%(HEAD)",
+                            "%(refname)",
+                            "%(upstream)",
+                            "%(upstream:remotename)",
+                            "%(upstream:track,nobracket)",
+                            "%(committerdate:unix)",
+                            "%(committerdate:human)",
+                            "%(committerdate:relative)",
+                            "%(objectname)",
+                            "%(contents:subject)",
+                            "%(ahead-behind:HEAD)" if supports_ahead_behind else ""
+                        ))
+                    ),
+                    *refs,
+                    # If `supports_ahead_behind` we don't use the `--[no-]merged` argument
+                    # and instead filter here in Python land.
+                    yes_no_switch("--merged", merged) if not supports_ahead_behind else None,
+                    timeout=WAIT_TIME / 1000 if probe_speed else NOT_SET
+                )
+            except GitSavvyError as e:
+                if probe_speed and "timed out after" in e.stderr:
+
+                    def run_commit_graph_write():
+                        hprint(
+                            f"`git for-each-ref` took more than {WAIT_TIME}ms which is slow "
+                            "for our purpose. We now run `git commit-graph write` to see if "
+                            "it gets better."
+                        )
+                        try:
+                            self.git_throwing_silently("commit-graph", "write")
+                        except GitSavvyError as err:
+                            hprint(f"`git commit-graph write` raised: {err}")
+                            store.update_state(self.repo_path, {"slow_repo": True})
+                            return
+
+                        with measure_runtime() as ms:
+                            get_branches__(False, supports_ahead_behind)
+                        elapsed = ms.get()
+                        ok = elapsed < WAIT_TIME
+                        hprint(
+                            f"After `git commit-graph write` the `git for-each-ref` call "
+                            f"{'' if ok else 'still '}takes {elapsed}ms"
+                        )
+                        if not ok:
+                            hprint("Disabling sections in the branches dashboard.")
+
+                        store.update_state(self.repo_path, {"slow_repo": True if not ok else False})
+
+                    run_on_new_thread(run_commit_graph_write)
+                    return get_branches__(False, False)
+
+                if "fatal: failed to find 'HEAD'" in e.stderr and supports_ahead_behind:
+                    return get_branches__(False, False)
+
+                e.show_error_panel()
+                raise
+
+            branches = [
+                branch
+                for branch in (
+                    self._parse_branch_line(line)
+                    for line in filter_(stdout.splitlines())
+                )
+                if branch.name != "HEAD"
+            ]
+            if supports_ahead_behind:
+                # Cache git's full output but return a filtered result if requested.
+                self._cache_branches(branches, refs)
+                if merged is True:
+                    branches = [b for b in branches if b.distance_to_head.ahead == 0]  # type: ignore[union-attr]
+                elif merged is False:
+                    branches = [b for b in branches if b.distance_to_head.ahead > 0]  # type: ignore[union-attr]
+
+            elif merged is None:
+                # For older git versions cache git's output only if it was not filtered by `merged`.
+                self._cache_branches(branches, refs)
+
+            return branches
+
+        slow_repo = store.current_state(self.repo_path).get("slow_repo", None)
+        supports_ahead_behind = (
+            self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND
+            and slow_repo is not False
+        )
+        probe_speed = slow_repo is None and supports_ahead_behind
+        return get_branches__(probe_speed, supports_ahead_behind)
+
+    def _cache_branches(self, branches, refs):
+        # type: (List[Branch], Sequence[str]) -> None
+        if refs == ["refs/heads", "refs/remotes"]:
+            next_state = branches
+
+        elif refs == ["refs/heads"]:
+            stored_state = store.current_state(self.repo_path).get("branches", [])
+            next_state = branches + [b for b in stored_state if b.is_remote]
+
+        elif refs == ["refs/remotes"]:
+            stored_state = store.current_state(self.repo_path).get("branches", [])
+            next_state = [b for b in stored_state if b.is_local] + branches
+
+        else:
+            return None
+
+        store.update_state(self.repo_path, {"branches": next_state})
 
     def fetch_branch_description_subjects(self):
         # type: () -> Dict[str, str]
@@ -143,7 +231,8 @@ class BranchesMixin(mixin_base):
     def _parse_branch_line(self, line):
         # type: (str) -> Branch
         (head, ref, upstream, upstream_remote, upstream_status,
-         committerdate, commit_hash, commit_msg) = line.split("\x00")
+         committerdate, human_committerdate, relative_committerdate,
+         commit_hash, commit_msg, ahead_behind) = line.split("\x00")
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
@@ -167,6 +256,8 @@ class BranchesMixin(mixin_base):
         else:
             ups = None
 
+        ahead_behind_ = AheadBehind(*map(int, ahead_behind.split(" "))) if ahead_behind else None
+
         return Branch(
             branch_name,
             remote,
@@ -176,7 +267,10 @@ class BranchesMixin(mixin_base):
             active,
             is_remote,
             int(committerdate),
-            upstream=ups
+            human_committerdate,
+            relative_committerdate,
+            upstream=ups,
+            distance_to_head=ahead_behind_
         )
 
     def merge(self, branch_names):

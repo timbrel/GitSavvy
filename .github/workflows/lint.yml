@@ -11,13 +11,13 @@ jobs:
   check-messages:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: kaste/upgrade-messages-test-action@v1
 
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: pip install "flake8<6.0.0"
     - uses: TrueBrain/actions-flake8@v2
 
@@ -28,9 +28,9 @@ jobs:
         platform: ['linux', 'darwin', 'win32']
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
     - name: Install mypy
@@ -38,5 +38,5 @@ jobs:
         pip install mypy
     - name: Check with mypy
       run: |
-        mypy git_savvy.py --platform=${{ matrix.platform }}
+        mypy -p GitSavvy --platform=${{ matrix.platform }}
 

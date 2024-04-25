@@ -1,24 +1,26 @@
 from contextlib import contextmanager
 import os
+import re
 from webbrowser import open as open_in_browser
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import EventListener, TextCommand, WindowCommand
 
 from . import diff
 from . import intra_line_colorizer
+from . import log_graph_rebase_actions
+from . import show_commit_info
 from . import show_file_at_commit
-from ..fns import filter_, unique
+from ..fns import filter_, flatten, unique
 from ..git_command import GitCommand
-from ..utils import flash, focus_view, Cache
-from ..parse_diff import SplittedDiff
+from ..utils import flash, flash_regions, focus_view, Cache
+from ..parse_diff import SplittedDiff, TextRange
 from ..runtime import ensure_on_ui, enqueue_on_worker
 from ..view import replace_view_content, Position
 
 from GitSavvy.github import github
 from GitSavvy.github.git_mixins import GithubRemotesMixin
 from GitSavvy.common import interwebs
-SUBLIME_SUPPORTS_REGION_ANNOTATIONS = int(sublime.version()) >= 4050
 
 
 __all__ = (
@@ -32,13 +34,19 @@ __all__ = (
     "gs_show_commit_show_hunk_on_working_dir",
     "gs_show_commit_open_graph_context",
     "gs_show_commit_initiate_fixup_commit",
+    "gs_show_commit_reword_commit",
+    "gs_line_history_reword_commit",
+    "gs_show_commit_edit_commit",
+    "GsShowCommitCopyCommitMessageHelper",
 )
 
-MYPY = False
-if MYPY:
-    from typing import Dict, Optional, Tuple
-    from ..types import LineNo, ColNo
 
+from typing import Dict, Optional, Sequence, Tuple, Union
+from GitSavvy.core.base_commands import GsCommand, Args, Kont
+from GitSavvy.core.types import LineNo, ColNo
+
+
+SUBLIME_SUPPORTS_REGION_ANNOTATIONS = int(sublime.version()) >= 4050
 SHOW_COMMIT_TITLE = "SHOW-COMMIT: {}"
 
 
@@ -99,19 +107,29 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
         commit_hash = settings.get("git_savvy.show_commit_view.commit")
         ignore_whitespace = settings.get("git_savvy.show_commit_view.ignore_whitespace")
         show_diffstat = settings.get("git_savvy.show_commit_view.show_diffstat")
-        title = SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash))
         content = self.read_commit(
             commit_hash,
             show_diffstat=show_diffstat,
             ignore_whitespace=ignore_whitespace
         )
-        view.set_name(title)
         replace_view_content(view, content)
+        commit_details = self.commit_subject_and_date_from_patch(content)
+        self.update_title(commit_details)
+        show_commit_info.restore_view_state(view, commit_hash)
         intra_line_colorizer.annotate_intra_line_differences(view)
         if SUBLIME_SUPPORTS_REGION_ANNOTATIONS:
             url = url_cache.get(commit_hash)
             self.update_annotation_link(url)
             enqueue_on_worker(self.annotate_with_github_link, commit_hash)
+
+    def update_title(self, commit_details) -> None:
+        message = ", ".join(filter_((
+            commit_details.short_hash,
+            commit_details.subject,
+            commit_details.date
+        )))
+        title = SHOW_COMMIT_TITLE.format(message)
+        self.view.set_name(title)
 
     def annotate_with_github_link(self, commit):
         # type: (str) -> None
@@ -156,7 +174,13 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
                 '<a href="{}">Open on GitHub</a>'
                 .format(url)
             ]
-        self.view.add_regions(key, regions, annotations=annotations, annotation_color="#aaa0")
+        self.view.add_regions(
+            key,
+            regions,
+            annotations=annotations,
+            annotation_color="#aaa0",
+            flags=sublime.RegionFlags.NO_UNDO
+        )
 
 
 class gs_show_commit_open_on_github(TextCommand, GithubRemotesMixin, GitCommand):
@@ -218,6 +242,61 @@ class gs_show_commit_initiate_fixup_commit(TextCommand):
             flash(view, "Could not extract commit message subject")
 
 
+def extract_commit_hash(self, args, done):
+    # type: (GsCommand, Args, Kont) -> None
+    view = log_graph_rebase_actions.get_view_for_command(self)
+    if not view:
+        return
+
+    diff = SplittedDiff.from_view(view)
+    commit_hashes = set(filter_(
+        diff.commit_hash_before_pt(pt)
+        for pt in unique(flatten(view.sel()))
+    ))
+
+    if not commit_hashes:
+        flash(view, "No commit header found around the cursor.")
+        return
+    elif len(commit_hashes) > 1:
+        flash(view, "Multiple commits are selected.")
+        return
+
+    commit_hash = self.get_short_hash(commit_hashes.pop())
+    done(commit_hash)
+
+
+class gs_show_commit_reword_commit(log_graph_rebase_actions.gs_rebase_reword_commit):
+    defaults = {
+        "commit_hash": extract_commit_hash,
+    }
+
+    def rebase(self, *args, **kwargs):
+        rv = super().rebase(*args, **kwargs)
+        match = re.search(r"^\[detached HEAD (\w+)]", rv, re.M)
+        if match is not None:
+            view = self.view
+            settings = view.settings()
+            new_commit_hash = match.group(1)
+
+            settings.set("git_savvy.show_commit_view.commit", new_commit_hash)
+            view.run_command("gs_show_commit_refresh")
+            flash(view, "Now on commit {}".format(new_commit_hash))
+
+        return rv
+
+
+class gs_line_history_reword_commit(log_graph_rebase_actions.gs_rebase_reword_commit):
+    defaults = {
+        "commit_hash": extract_commit_hash,
+    }
+
+
+class gs_show_commit_edit_commit(log_graph_rebase_actions.gs_rebase_edit_commit):
+    defaults = {
+        "commit_hash": extract_commit_hash,
+    }
+
+
 class gs_show_commit_toggle_setting(TextCommand):
 
     """
@@ -245,8 +324,8 @@ class gs_show_commit_open_previous_commit(TextCommand, GitCommand):
                     return
 
         settings = view.settings()
-        file_path = settings.get("git_savvy.file_path")
-        commit_hash = settings.get("git_savvy.show_commit_view.commit")
+        file_path: Optional[str] = settings.get("git_savvy.file_path")
+        commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
 
         previous_commit = self.previous_commit(commit_hash, file_path)
         if not previous_commit:
@@ -254,6 +333,7 @@ class gs_show_commit_open_previous_commit(TextCommand, GitCommand):
             return
 
         show_file_at_commit.remember_next_commit_for(view, {previous_commit: commit_hash})
+        show_commit_info.remember_view_state(view)
         settings.set("git_savvy.show_commit_view.commit", previous_commit)
 
         view.run_command("gs_show_commit_refresh")
@@ -273,9 +353,8 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
                     return
 
         settings = view.settings()
-        file_path = settings.get("git_savvy.file_path")
-        commit_hash = settings.get("git_savvy.show_commit_view.commit")
-
+        file_path: Optional[str] = settings.get("git_savvy.file_path")
+        commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
         next_commit = (
             show_file_at_commit.recall_next_commit_for(view, commit_hash)
             or self.next_commit(commit_hash, file_path)
@@ -284,6 +363,7 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
             flash(view, "No newer commit found.")
             return
 
+        show_commit_info.remember_view_state(view)
         settings.set("git_savvy.show_commit_view.commit", next_commit)
 
         view.run_command("gs_show_commit_refresh")
@@ -304,7 +384,7 @@ class gs_show_commit_open_file_at_hunk(diff.gs_diff_open_file_at_hunk):
         Otherwise, open the file directly.
         """
         if not commit_hash:
-            print("Could not parse commit for its commit hash")
+            flash(self.view, "Could not parse commit for its commit hash")
             return
         window = self.view.window()
         if not window:
@@ -322,7 +402,7 @@ class gs_show_commit_show_hunk_on_working_dir(diff.gs_diff_open_file_at_hunk):
     def load_file_at_line(self, commit_hash, filename, line, col):
         # type: (Optional[str], str, LineNo, ColNo) -> None
         if not commit_hash:
-            print("Could not parse commit for its commit hash")
+            flash(self.view, "Could not parse commit for its commit hash")
             return
         window = self.view.window()
         if not window:
@@ -388,3 +468,43 @@ class gs_show_commit_open_graph_context(TextCommand, GitCommand):
             "all": True,
             "follow": self.get_short_hash(commit_hash)
         })
+
+
+class GsShowCommitCopyCommitMessageHelper(EventListener):
+    def on_text_command(self, view, command_name, args):
+        # type: (sublime.View, str, Dict) -> Union[None, str]
+        if command_name != "copy":
+            return None
+
+        frozen_sel = [r for r in view.sel()]
+        if len(frozen_sel) != 1:
+            return None
+
+        sel = frozen_sel[0]
+        if sel.empty():
+            return None
+
+        if not view.match_selector(sel.begin(), "git-savvy.commit meta.commit_message"):
+            return None
+
+        selected_text = TextRange(view.substr(sel), *sel)
+        by_line = [
+            line[4:] if line.text.startswith("    ") else line
+            for line in selected_text.lines()
+        ]
+        string_for_clipboard = "".join(line.text for line in by_line)
+        clip_content = sublime.get_clipboard(2048)
+
+        if string_for_clipboard == clip_content:
+            set_clipboard_and_flash(view, selected_text.text, [selected_text.region()])
+            return "noop"
+
+        regions = [line.region()[:-1] for line in by_line]
+        set_clipboard_and_flash(view, string_for_clipboard, regions)
+        return "noop"
+
+
+def set_clipboard_and_flash(view, text, regions):
+    # type: (sublime.View, str, Sequence[sublime.Region]) -> None
+    sublime.set_clipboard(text)
+    flash_regions(view, regions)

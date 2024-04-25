@@ -2,9 +2,7 @@ import sublime
 from ..common import util
 
 
-MYPY = False
-if MYPY:
-    from typing import Optional, Sequence
+from typing import Optional, Sequence
 
 
 class GitSavvyError(Exception):

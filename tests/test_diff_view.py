@@ -186,6 +186,7 @@ diff --git a/foxx b/boxx
 """
         view = self.window.new_file()
         self.addCleanup(view.close)
+        view.set_syntax_file("Packages/GitSavvy/syntax/diff_view.sublime-syntax")
         view.run_command('append', {'characters': VIEW_CONTENT})
         view.set_scratch(True)
 
@@ -218,8 +219,9 @@ diff --git a/fooz b/barz
 """.format(b_line=B_LINE)
         CURSOR = 79
         view = self.window.new_file()
-        view.settings().set("translate_tabs_to_spaces", False)
         self.addCleanup(view.close)
+        view.settings().set("translate_tabs_to_spaces", False)
+        view.set_syntax_file("Packages/GitSavvy/syntax/diff_view.sublime-syntax")
         view.run_command('append', {'characters': VIEW_CONTENT})
         view.set_scratch(True)
 
@@ -309,6 +311,7 @@ diff --git a/foxx b/boxx
         cmd = module.gs_diff_stage_or_reset_hunk(view)
         when(cmd).git(...)
         when(cmd.view).run_command("gs_diff_refresh")
+        when(cmd.view).run_command("gs_update_status")
 
         view.sel().clear()
         view.sel().add(CURSOR)
@@ -392,6 +395,7 @@ diff --git a/foxx b/boxx
         cmd = module.gs_diff_stage_or_reset_hunk(view)
         when(cmd).git(...)
         when(cmd.view).run_command("gs_diff_refresh")
+        when(cmd.view).run_command("gs_update_status")
         # when(module.gs_diff_stage_or_reset_hunk).git(...)
         # when(module).refresh(view)
 
@@ -432,6 +436,7 @@ diff --git a/fooz b/barz
         cmd = module.gs_diff_stage_or_reset_hunk(view)
         when(cmd).git(...)
         when(cmd.view).run_command("gs_diff_refresh")
+        when(cmd.view).run_command("gs_update_status")
 
         view.sel().clear()
         view.sel().add(CURSOR)

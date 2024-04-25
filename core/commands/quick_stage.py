@@ -98,7 +98,7 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
         a list of menu options for each file that is shown.
         """
         status = self.get_working_dir_status()
-        if status.clean:
+        if status.is_clean:
             return [MenuOption(False, CLEAN_WORKING_DIR, None, None)]
 
         menu_options = []

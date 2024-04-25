@@ -112,6 +112,7 @@ class gs_inline_diff_help_tooltip(GsAbstractHelpPopup):
     key_bindings = dedent("""\
     ### Actions ###
     [tab]          switch between staged/unstaged area
+    [a]/[b]        show/hide the a and b (red or green) sides of the diff
     [l]            stage line, unstage in cached mode
     [h]            stage hunk, unstage in cached mode
     [L]            reset line
@@ -147,6 +148,7 @@ class gs_diff_help_tooltip(GsAbstractHelpPopup):
     [c]/[C]        commit ([C] to include unstaged)
     [m]            amend previous commit
     [f]            make fixup commit
+    [a]            set intent-to-add (only if the file is untracked)
 
     ### Navigation ###
     [o]            open file at hunk
@@ -168,6 +170,8 @@ class gs_show_commit_help_tooltip(GsAbstractHelpPopup):
     [n]/[p]        show next/previous commit
     [h]            open commit on GitHub (if available)
     [f]            initiate fixup commit
+    [W]            reWord commit message
+    [E]            Edit commit
     [g]            show in graph
     [,]/[.]        go to next/previous hunk (also: [j]/[k] in vintageous mode)
 
@@ -185,9 +189,11 @@ class gs_show_file_at_commit_help_tooltip(GsAbstractHelpPopup):
     [O]            open working dir file
     [g]            show in graph
     [n]/[p]        show next/previous revision of this file
+    [l]            choose different revision of this file
     [,]/[.]        go to next/previous hunk
 
     ### Other ###
+    [i]            show commit info popup
     [?]            show this help popup
     """)
 
@@ -203,6 +209,7 @@ class gs_log_graph_help_tooltip(GsAbstractHelpPopup):
     [a]            toggle --all / in overview mode: toggle tags
     [f]            edit filters verbatim
     [l]            list paths to add or remove
+    [P]/[N]        Show previous tips of the current branch
     [F]            toggle filters
 
     ### Rebasing ###
@@ -232,6 +239,8 @@ class gs_line_history_help_tooltip(GsAbstractHelpPopup):
     [O]            open file revision at hunk
     [g]            show in graph
     [f]            make fixup commit
+    [W]            reWord commit message
+    [E]            Edit commit
     [,]/[.]        go to next/previous hunk (also: [j]/[k] in vintageous mode)
 
     ### Other ###
