@@ -7,6 +7,7 @@ from queue import Empty
 import re
 import shlex
 import subprocess
+import textwrap
 import time
 import threading
 from typing import NamedTuple
@@ -42,7 +43,7 @@ from ..view import (
 )
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
-from ..utils import add_selection_to_jump_history, focus_view, show_toast, Cache, SEPARATOR
+from ..utils import add_selection_to_jump_history, flash, focus_view, show_toast, Cache, SEPARATOR
 from ...common import util
 from ...common.theme_generator import ThemeGenerator
 
@@ -50,6 +51,7 @@ from ...common.theme_generator import ThemeGenerator
 __all__ = (
     "gs_graph",
     "gs_graph_current_file",
+    "gs_graph_pickaxe",
     "gs_log_graph_refresh",
     "gs_log_graph",
     "gs_log_graph_tab_out",
@@ -245,6 +247,28 @@ class gs_graph_current_file(WindowCommand, GitCommand):
             self.window.run_command("gs_graph", {"file_path": file_path, **kwargs})
         else:
             self.window.status_message("View has no filename to track.")
+
+
+class gs_graph_pickaxe(TextCommand, GitCommand):
+    def run(self, edit):
+        # type: (sublime.Edit) -> None
+        view = self.view
+        window = view.window()
+        if not window:
+            return
+        repo_path = self.repo_path
+        frozen_sel = list(view.sel())
+        filters = " ".join(
+            shlex.quote("-S{}".format(s))
+            for r in frozen_sel
+            if (s := view.substr(r))
+            if (s.strip())
+        )
+        if not filters:
+            flash(view, "Nothing selected.")
+            return
+
+        window.run_command("gs_graph", {"repo_path": repo_path, "filters": filters})
 
 
 def augment_color_scheme(view):
@@ -1317,6 +1341,30 @@ def prelude(view):
     elif repo_path:
         prelude += "  REPO: {}\n".format(repo_path)
 
+    if apply_filters:
+        pickaxes, normal_ones = [], []
+        for arg in shlex.split(filters):
+            if arg.startswith("-S") or arg.startswith("-G"):
+                if "\n" in arg:
+                    pickaxes.append(
+                        "\n  {}'''\n{}\n  '''".format(
+                            arg[:2],
+                            textwrap.indent(textwrap.dedent(arg[2:].rstrip()), "    ")
+                        )
+                    )
+                else:
+                    normal_ones.append(
+                        "{}'{}'".format(
+                            arg[:2],
+                            arg[3:-1] if (arg[2], arg[-1]) == ("'", "'") else arg[2:]
+                        )
+                    )
+            else:
+                normal_ones.append(arg)
+        formatted_filters = "\n".join(filter_((" ".join(normal_ones), "".join(pickaxes))))
+    else:
+        formatted_filters = None
+
     prelude += (
         "  "
         + "  ".join(filter_((
@@ -1326,7 +1374,7 @@ def prelude(view):
                 else '[a]ll: true' if all_branches else '[a]ll: false'
             ),
             " ".join(branches) if not all_branches and not overview else None,
-            filters if apply_filters else None
+            formatted_filters
         )))
     )
     return prelude + "\n\n"

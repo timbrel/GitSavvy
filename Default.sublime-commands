@@ -98,6 +98,10 @@
         "command": "gs_line_history"
     },
     {
+        "caption": "git: Pick-axe selection",
+        "command": "gs_graph_pickaxe"
+    },
+    {
         "caption": "github: open file on remote",
         "command": "gs_github_open_file_on_remote",
         "args": { "preselect": true }
