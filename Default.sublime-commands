@@ -94,6 +94,16 @@
         "args": { "all": false }
     },
     {
+        "caption": "git: graph current path",
+        "command": "gs_graph_current_path",
+        "args": { "all": false }
+    },
+    {
+        "caption": "git: Path History",
+        "command": "gs_graph_current_path",
+        "args": { "all": false }
+    },
+    {
         "caption": "git: Line History",
         "command": "gs_line_history"
     },
