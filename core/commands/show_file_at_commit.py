@@ -2,7 +2,7 @@ import os
 import re
 
 import sublime
-from sublime_plugin import TextCommand
+from sublime_plugin import TextCommand, ViewEventListener
 
 from ..base_commands import GsTextCommand, GsWindowCommand
 from ..fns import filter_
@@ -18,6 +18,7 @@ from .log import LogMixin
 __all__ = (
     "gs_show_file_at_commit",
     "gs_show_file_at_commit_refresh",
+    "gs_show_file_at_commit_just_refresh_reference_document",
     "gs_show_current_file",
     "gs_show_file_at_commit_open_previous_commit",
     "gs_show_file_at_commit_open_next_commit",
@@ -25,13 +26,33 @@ __all__ = (
     "gs_show_file_at_commit_open_file_on_working_dir",
     "gs_show_file_at_commit_open_graph_context",
     "gs_show_file_at_commit_open_info_popup",
+    "RenewReferenceDocument",
 )
 
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Set, Tuple
 
 
 SHOW_COMMIT_TITLE = "FILE: {}, {}"
+views_with_reference_document: Set[sublime.View] = set()
+
+
+# Reapply the reference document as Sublime forgets these on reload.
+class RenewReferenceDocument(ViewEventListener):
+    @classmethod
+    def is_applicable(cls, settings):
+        return settings.get("git_savvy.show_file_at_commit_view")
+
+    @classmethod
+    def applies_to_primary_view_only(cls):
+        return False
+
+    def on_activated(self):
+        if self.view not in views_with_reference_document:
+            self.view.run_command("gs_show_file_at_commit_just_refresh_reference_document")
+
+    def on_close(self):
+        views_with_reference_document.discard(self.view)
 
 
 def compute_identifier_for_view(view: sublime.View) -> Optional[Tuple]:
@@ -115,7 +136,32 @@ class gs_show_file_at_commit(GsWindowCommand):
         })
 
 
-class gs_show_file_at_commit_refresh(GsTextCommand):
+class _gs_show_file_at_commit_refresh_mixin(GsTextCommand):
+    def update_reference_document(self, commit_hash: str, file_path: str) -> None:
+        self.view.set_reference_document(self.previous_file_version(commit_hash, file_path))
+        views_with_reference_document.add(self.view)
+
+    def previous_file_version(self, current_commit: str, file_path: str) -> str:
+        previous_commit = self.previous_commit(current_commit, file_path)
+        if previous_commit:
+            return self.get_file_content_at_commit(file_path, previous_commit)
+        else:
+            # For initial revisions of a file, everything is new/added, and we
+            # just compare with the empty "".
+            return ""
+
+
+class gs_show_file_at_commit_just_refresh_reference_document(_gs_show_file_at_commit_refresh_mixin):
+    def run(self, edit: sublime.Edit, position: Position = None, sync: bool = True) -> None:
+        view = self.view
+        settings = view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
+        view.reset_reference_document()
+        enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
+
+
+class gs_show_file_at_commit_refresh(_gs_show_file_at_commit_refresh_mixin):
     def run(self, edit: sublime.Edit, position: Position = None, sync: bool = True) -> None:
         view = self.view
         settings = view.settings()
@@ -163,9 +209,6 @@ class gs_show_file_at_commit_refresh(GsTextCommand):
 
         sink()
 
-    def update_reference_document(self, commit_hash: str, file_path: str) -> None:
-        self.view.set_reference_document(self.previous_file_version(commit_hash, file_path))
-
     def update_title(self, commit_details: CommitInfo, file_path: str) -> None:
         details = ", ".join(filter_((commit_details.subject, commit_details.date)))
         message = "{}{}".format(
@@ -177,15 +220,6 @@ class gs_show_file_at_commit_refresh(GsTextCommand):
             message
         )
         self.view.set_name(title)
-
-    def previous_file_version(self, current_commit: str, file_path: str) -> str:
-        previous_commit = self.previous_commit(current_commit, file_path)
-        if previous_commit:
-            return self.get_file_content_at_commit(file_path, previous_commit)
-        else:
-            # For initial revisions of a file, everything is new/added, and we
-            # just compare with the empty "".
-            return ""
 
 
 @text_command
