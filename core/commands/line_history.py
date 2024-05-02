@@ -61,6 +61,10 @@ class gs_line_history(TextCommand, GitCommand):
             flash(view, "Not available for unsaved files.")
             return
 
+        if self.is_probably_untracked_file(file_path):
+            flash(view, "Not available for untracked files.")
+            return
+
         if view.is_dirty():
             flash(view, "Hint: For unsaved files the line selection is probably not correct.")
 
