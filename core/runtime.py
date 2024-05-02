@@ -1,3 +1,4 @@
+from __future__ import annotations
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
 from functools import lru_cache, partial, wraps
@@ -12,6 +13,7 @@ import sublime
 import sublime_plugin
 
 
+from .exceptions import GitSavvyError
 from . import utils
 
 from typing import (
@@ -43,17 +45,24 @@ def determine_thread_names():
     sublime.set_timeout(callback)
 
 
+GITSAVVY__ = "{0}GitSavvy{0}".format(os.sep)
+CORE_COMMANDS__ = "core{0}commands{0}".format(os.sep)
+
+
 @contextmanager
-def user_friendly_traceback(*exceptions):
+def user_friendly_traceback(exception_s: type[BaseException] | tuple[type[BaseException], ...]):
     try:
         yield
-    except exceptions as e:
+    except exception_s as e:
+        print(f"Abort: {e}  ")
         _, _, tb = sys.exc_info()
-        last_frame = traceback.extract_tb(tb)[-1]
-        filename, lineno = last_frame[0], last_frame[1]
-        filename = filename.split("{0}{1}{0}".format(os.sep, "GitSavvy"))[-1]
-        loc = "{}:{}".format(filename, lineno)
-        print("Abort: {}  [ {} ]".format(e, loc))
+        found_culprit = False
+        for frame in reversed(traceback.extract_tb(tb)):
+            relative_filename = frame.filename.split(GITSAVVY__)[-1]
+            print(f"|  {relative_filename}:{frame.lineno}")
+            if not found_culprit and relative_filename.startswith(CORE_COMMANDS__):
+                found_culprit = True
+                print(f"|>   {frame.line}")
 
 
 def it_runs_on_ui():
@@ -117,7 +126,7 @@ def run_when_worker_is_idle(fn, *args, **kwargs):
 
 def _enqueue_on_worker(fn):
     # type: (Callable[[], T]) -> None
-    fn_ = user_friendly_traceback(RuntimeError)(fn)
+    fn_ = user_friendly_traceback((RuntimeError, GitSavvyError))(fn)
     sublime.set_timeout_async(fn_)
 
 
