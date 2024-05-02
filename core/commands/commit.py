@@ -43,6 +43,7 @@ COMMIT_HELP_TEXT_EXTRA = """##
 
 HELP_WHEN_PATCH_IS_VISIBLE = """\
 ## In the diff below, [o] will open the file under the cursor.
+## [ctrl+r]      to navigate between files
 """
 HELP_WHEN_UNSTAGING_IS_POSSIBLE = """\
 ## [u]/[U]       to unstage
