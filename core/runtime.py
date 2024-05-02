@@ -267,7 +267,7 @@ def text_command(fn):  # noqa: F811
 
 def text_command(fn):  # noqa: F811
     # type: (Union[Callable[Con[View, P], T], Callable[Con[View, Edit, P], T]]) -> Callable[Con[View, P], Optional[T]]
-    @wraps(fn)
+    @wraps(fn)  # type: ignore[arg-type]
     def decorated(view, *args, **kwargs):
         # type: (sublime.View, P.args, P.kwargs) -> Optional[T]
         return run_as_text_command(fn, view, *args, **kwargs)
