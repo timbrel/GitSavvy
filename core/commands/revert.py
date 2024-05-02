@@ -19,7 +19,7 @@ class gs_revert_commit(LogMixin, WindowCommand, GitCommand):
     @on_worker
     def do_action(self, commit_hash, **kwargs):
         try:
-            self.git("revert", commit_hash)
+            self.git("revert", *(commit_hash if isinstance(commit_hash, list) else [commit_hash]))
         finally:
             util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
 
