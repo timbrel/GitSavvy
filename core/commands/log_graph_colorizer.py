@@ -25,7 +25,7 @@ NextFn = Callable[['Char'], Iterator['Char']]
 Direction = Literal["down", "up"]
 
 
-COMMIT_NODE_CHARS = "●*⌂"
+COMMIT_NODE_CHARS = "●⌂*"
 
 
 class Char:
