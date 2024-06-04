@@ -353,10 +353,12 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
         settings = view.settings()
         file_path: Optional[str] = settings.get("git_savvy.file_path")
         commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
-        next_commit = (
-            show_file_at_commit.recall_next_commit_for(view, commit_hash)
-            or self.next_commit(commit_hash, file_path)
-        )
+        try:
+            next_commit = show_file_at_commit.get_next_commit(self, view, commit_hash, file_path)
+        except ValueError:
+            flash(view, "Can't find a newer commit; it looks orphaned.")
+            return
+
         if not next_commit:
             flash(view, "No newer commit found.")
             return
