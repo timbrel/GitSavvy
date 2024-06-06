@@ -6,7 +6,7 @@ from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base
 
 
-from typing import Iterable, List, NamedTuple, Optional
+from typing import Iterable, List, NamedTuple, Optional, Set
 
 
 class TagDetails(NamedTuple):
@@ -26,6 +26,7 @@ class TagList(NamedTuple):
 
 
 SEMVER_TEST = re.compile(r'\d+\.\d+\.?\d*')
+REMOTE_TAGOPT_RE = re.compile(r"^remote\.(?P<branch_name>.+?)\.tagopt (?P<options>.+)$")
 
 
 class TagsMixin(mixin_base):
@@ -71,6 +72,24 @@ class TagsMixin(mixin_base):
             if entry
         )
         return self.handle_semver_tags(entries)
+
+    def get_remotes_for_which_to_skip_tags(self):
+        # type: () -> Set[str]
+        rv = {
+            match.group("branch_name")
+            for line in self.git(
+                "config",
+                "--get-regex",
+                r"remote\..*\.tagOpt",
+                throw_on_error=False
+            ).strip("\n").splitlines()
+            if (match := REMOTE_TAGOPT_RE.match(line))
+            if "--no-tags" in match.group("options")
+        }
+        store.update_state(self.repo_path, {
+            "remotes_with_no_tags_set": rv
+        })
+        return rv
 
     def get_last_local_semver_tag(self):
         # type: () -> Optional[str]
