@@ -16,34 +16,36 @@ __all__ = (
 
 
 class gs_revert_commit(LogMixin, WindowCommand, GitCommand):
-    def run_async(self, **kwargs):
-        if "commit_hash" in kwargs:
-            commit_hash = kwargs["commit_hash"]
-            self.do_action(commit_hash)
-        else:
-            super().run_async(**kwargs)
-
+    @on_worker
     def do_action(self, commit_hash, **kwargs):
-        self.git("revert", commit_hash)
-        util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
+        try:
+            self.git("revert", *(commit_hash if isinstance(commit_hash, list) else [commit_hash]))
+        finally:
+            util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
 
 
 class gs_revert_abort(GsWindowCommand):
     @on_worker
     def run(self):
-        self.git("revert", "--abort")
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        try:
+            self.git("revert", "--abort")
+        finally:
+            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_revert_continue(GsWindowCommand):
     @on_worker
     def run(self):
-        self.git("revert", "--continue")
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        try:
+            self.git("revert", "--continue")
+        finally:
+            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_revert_skip(GsWindowCommand):
     @on_worker
     def run(self):
-        self.git("revert", "--skip")
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        try:
+            self.git("revert", "--skip")
+        finally:
+            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)

@@ -3192,10 +3192,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def revert_commit(self, *commit_hash):
-        try:
-            self.git("revert", *commit_hash)
-        finally:
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        self.window.run_command("gs_revert_commit", {"commit_hash": commit_hash})
 
     def compare_commits(self, base_commit, target_commit, file_path=None):
         self.window.run_command("gs_compare_commit", {
