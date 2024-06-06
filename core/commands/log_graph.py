@@ -1028,7 +1028,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 ):
                     awaiting_head_commit = False
                     we_have_seen_the_head_commit(self.view, True)
-                    repo_is_dirty = is_repo_dirty(store.current_state(self.repo_path))
+                    repo_is_dirty = is_repo_dirty(self.current_state())
                     if repo_is_dirty:
                         decoration = decoration.replace("HEAD", "HEAD*", 1)
                     remember_drawn_repo_status(self.view, bool(repo_is_dirty))
@@ -1412,13 +1412,11 @@ def prelude(view):
 
 class gs_log_graph_tab_out(GsTextCommand):
     def run(self, edit, reverse=False):
-        options = store.current_state(self.repo_path).get("default_graph_options", {})
+        options = self.current_state().get("default_graph_options", {})
         options.update({
             "all": self.view.settings().get("git_savvy.log_graph_view.all_branches")
         })
-        store.update_state(self.repo_path, {
-            "default_graph_options": options
-        })
+        self.update_store({"default_graph_options": options})
         self.view.settings().set("git_savvy.log_graph_view.default_graph", True)
         for view_ in self.window.views():
             if (
@@ -1444,7 +1442,7 @@ class gs_log_graph_tab_in(WindowCommand, GitCommand):
                 return
 
         all_branches = (
-            store.current_state(self.repo_path)
+            self.current_state()
             .get("default_graph_options", {})
             .get("all", True)
         )

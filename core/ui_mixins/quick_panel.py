@@ -2,7 +2,6 @@ import itertools
 import sublime
 from ...common import util
 from ..git_command import GitCommand
-from GitSavvy.core import store
 from GitSavvy.core.fns import filter_, maybe
 from GitSavvy.core.utils import show_panel
 
@@ -200,7 +199,7 @@ class RemotePanel(GitCommand):
             self.remotes.insert(0, "All remotes.")
 
         last_remote_used = (
-            store.current_state(self.repo_path).get(self.storage_key, "origin")  # type: ignore[assignment]
+            self.current_state().get(self.storage_key, "origin")  # type: ignore[assignment]
         )  # type: str
         if last_remote_used in self.remotes:
             pre_selected_index = self.remotes.index(last_remote_used)
@@ -223,11 +222,11 @@ class RemotePanel(GitCommand):
         if index == -1:
             self.on_cancel()
         elif self.show_option_all and len(self.remotes) > 1 and index == 0:
-            store.update_state(self.repo_path, {self.storage_key: "<ALL>"})  # type: ignore[misc]
+            self.update_store({self.storage_key: "<ALL>"})  # type: ignore[misc]
             self.on_done("<ALL>")
         else:
             remote = self.remotes[index]
-            store.update_state(self.repo_path, {self.storage_key: remote})  # type: ignore[misc]
+            self.update_store({self.storage_key: remote})  # type: ignore[misc]
             self.on_done(remote)
 
 

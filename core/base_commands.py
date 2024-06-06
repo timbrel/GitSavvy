@@ -8,7 +8,6 @@ import sublime_plugin
 
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.ui_mixins.quick_panel import show_branch_panel
-from GitSavvy.core import store
 
 from typing import Any, Callable, Dict, Iterator, List, Literal, Protocol, TypeVar, Union
 
@@ -179,11 +178,11 @@ def ask_for_branch(memorize_key=None, **kw):
         # type: (GsCommand, Args, Kont) -> None
         def on_done(branch):
             if memorize_key:
-                store.update_state(self.repo_path, {memorize_key: branch})  # type: ignore[misc]
+                self.update_store({memorize_key: branch})  # type: ignore[misc]
             done(branch)
 
         selected_branch = (
-            store.current_state(self.repo_path).get(memorize_key)
+            self.current_state().get(memorize_key)
             if memorize_key else
             None
         )

@@ -10,7 +10,6 @@ from ...core.commands.push import gs_push_to_branch_name
 from ...core.ui_mixins.quick_panel import show_paginated_panel
 from ...core.ui_mixins.input_panel import show_single_line_input_panel
 from ...core.view import replace_view_content
-from GitSavvy.core import store
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_worker
 
@@ -145,7 +144,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
             if owner not in self.remotes.keys():
                 self.git("remote", "add", owner, url)
             self.git("fetch", owner, ref)
-            store.update_state(self.repo_path, {"last_remote_used": owner})
+            self.update_store({"last_remote_used": owner})
             self.git("branch", branch_name, "FETCH_HEAD")
             self.git("branch", "-u", remote_ref, branch_name)
         else:

@@ -17,7 +17,6 @@ from . import stage_hunk
 from .navigate import GsNavigate
 from ..fns import head, filter_, flatten, unique
 from ..parse_diff import SplittedDiff
-from .. import store
 from ..git_command import GitCommand
 from ..runtime import ensure_on_ui, enqueue_on_worker, throttled
 from ..ui_mixins.quick_panel import LogHelperMixin
@@ -533,7 +532,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             target_commit = settings.get("git_savvy.diff_view.target_commit")
             available = self.list_touched_filenames(base_commit, target_commit)
         else:
-            status = store.current_state(self.repo_path).get("status")
+            status = self.current_state().get("status")
             in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
             if status:
                 if in_cached_mode:

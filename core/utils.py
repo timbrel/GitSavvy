@@ -489,6 +489,23 @@ def _bind_arguments(sig, args, kwargs):
     }
 
 
+def cache_in_store_as(key):
+    # type: (str) -> Callable[[Callable[P, T]], Callable[P, T]]
+    """Store the return value of the decorated function in the store."""
+    def decorator(fn):
+        # type: (Callable[P, T]) -> Callable[P, T]
+        @wraps(fn)
+        def decorated(*args, **kwargs):
+            # type: (P.args, P.kwargs) -> T
+            rv = fn(*args, **kwargs)
+            self = args[0]
+            self.update_store({key: rv})  # type: ignore[attr-defined]
+            return rv
+
+        return decorated
+    return decorator
+
+
 class Counter:
     """Thread-safe, lockless counter.
 
