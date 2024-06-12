@@ -1,3 +1,4 @@
+from __future__ import annotations
 from contextlib import contextmanager
 from copy import deepcopy
 from functools import wraps
