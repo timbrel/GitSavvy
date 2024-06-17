@@ -106,6 +106,8 @@ class StatusViewContextSensitiveHelpEventListener(EventListener):
         frozen_sel = list(view.sel())
         if all(view.match_selector(s.a, "constant.other.git-savvy.sha1") for s in frozen_sel):
             next_state = "on_commit"
+        elif all(view.match_selector(s.a, "meta.git-savvy.status.section.added") for s in frozen_sel):
+            next_state = "on_added"
         else:
             next_state = None
 
@@ -187,6 +189,11 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
       [l] diff file inline                  [f] diff all files
       [e] diff file                         [F] diff all cached files
     """ + _template_help
+
+    template_help_on_added = template_help.replace(
+        "[u] unstage file ",
+        "[u] unadd file   "
+    )
 
     template_help_on_commit = """
       #####################                 ###############
@@ -438,6 +445,8 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
         if help_context == "on_commit":
             return self.template_help_on_commit.format(conflicts_bindings=self.render_conflicts_bindings())
+        if help_context == "on_added":
+            return self.template_help_on_added.format(conflicts_bindings=self.render_conflicts_bindings())
         return self.template_help.format(conflicts_bindings=self.render_conflicts_bindings())
 
 
