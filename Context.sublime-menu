@@ -1,0 +1,38 @@
+[
+    {
+        "caption": "GitSavvy: Line History",
+        "command": "gs_ctx_line_history"
+    },
+    {
+        "caption": "GitSavvy: Pick-axe",
+        "command": "gs_ctx_pick_axe"
+    },
+    {
+        "caption": "GitSavvy: Stage selected hunk",
+        "command": "gs_ctx_stage_hunk"
+    }
+    // {
+    //     "caption": "    ...",
+    //     "children": [
+    //         {
+    //             "caption": "Repo History",
+    //             "command": "gs_graph",
+    //             "args": { "all": true }
+    //         },
+    //         {
+    //             "caption": "Path History",
+    //             "command": "gs_graph_current_path"
+    //         },
+    //         {
+    //             "caption": "File History",
+    //             "command": "gs_graph_current_file",
+    //             "args": { "all": false }
+    //         },
+    //         { "caption": "-" },
+    //         {
+    //             "caption": "Show current file revision at HEAD",
+    //             "command": "gs_show_file_at_commit"
+    //         },
+    //     ]
+    // },
+]

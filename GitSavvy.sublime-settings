@@ -369,5 +369,11 @@
         When set to `true`, no views will receive the prompt asking to initialize
         Git in the current view's directory when not found.
      */
-    "disable_git_init_prompt": false
+    "disable_git_init_prompt": false,
+
+    /*
+        Disable adding any entries to the context menu available when right-clicking
+        in any view.
+    */
+    "disable_context_menus": false
 }
