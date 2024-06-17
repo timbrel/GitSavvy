@@ -51,6 +51,7 @@ from ...common.theme_generator import ThemeGenerator
 __all__ = (
     "gs_graph",
     "gs_graph_current_file",
+    "gs_graph_current_path",
     "gs_graph_pickaxe",
     "gs_log_graph_refresh",
     "gs_log_graph",
@@ -247,6 +248,17 @@ class gs_graph_current_file(WindowCommand, GitCommand):
             self.window.run_command("gs_graph", {"file_path": file_path, **kwargs})
         else:
             self.window.status_message("View has no filename to track.")
+
+
+class gs_graph_current_path(WindowCommand, GitCommand):
+    def run(self, **kwargs) -> None:
+        if (
+            (file_path := self.file_path)
+            and (path := os.path.dirname(file_path))
+        ):
+            self.window.run_command("gs_graph", {"file_path": path, **kwargs})
+        else:
+            self.window.status_message("View has no path to track.")
 
 
 class gs_graph_pickaxe(TextCommand, GitCommand):
