@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import re
 
@@ -10,6 +11,7 @@ from ..runtime import enqueue_on_worker, run_as_text_command, text_command, thro
 from ..utils import flash, focus_view
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
 from ...common import util
+from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.git_mixins.history import CommitInfo
 
 from .log import LogMixin
@@ -267,10 +269,12 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
         file_path: str = settings.get("git_savvy.file_path")
         commit_hash: str = settings.get("git_savvy.show_file_at_commit_view.commit")
 
-        next_commit = (
-            recall_next_commit_for(view, commit_hash)
-            or self.next_commit(commit_hash, file_path)
-        )
+        try:
+            next_commit = get_next_commit(self, view, commit_hash, file_path)
+        except ValueError:
+            flash(view, "Can't find a newer commit; it looks orphaned.")
+            return
+
         if not next_commit:
             flash(view, "No newer commit found.")
             return
@@ -290,6 +294,20 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
         })
         if popup_was_visible:
             view.run_command("gs_show_file_at_commit_open_info_popup")
+
+
+def get_next_commit(
+    cmd: GitCommand,
+    view: sublime.View,
+    commit_hash: str,
+    file_path: str | None = None
+) -> str | None:
+    if next_commit := recall_next_commit_for(view, commit_hash):
+        return next_commit
+
+    next_commits = cmd.next_commits(commit_hash, file_path)
+    remember_next_commit_for(view, next_commits)
+    return next_commits.get(commit_hash)
 
 
 def remember_next_commit_for(view: sublime.View, mapping: Dict[str, str]) -> None:

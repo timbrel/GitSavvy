@@ -1010,10 +1010,12 @@ class gs_inline_diff_next_commit(TextCommand, GitCommand):
 
         target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
         new_base_commit = target_commit
-        new_target_commit = (
-            show_file_at_commit.recall_next_commit_for(view, target_commit)
-            or self.next_commit(target_commit, file_path)
-        )
+        try:
+            new_target_commit = show_file_at_commit.get_next_commit(self, view, target_commit, file_path)
+        except ValueError:
+            flash(view, "Can't find a newer commit; it looks orphaned.")
+            return
+
         if not new_target_commit:
             new_base_commit = None
 
