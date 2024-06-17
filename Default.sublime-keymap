@@ -472,6 +472,14 @@
     //////////////////////////////
 
     {
+        "keys": ["o"],
+        "command": "gs_interface_show_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "selector", "operand": "meta.git-savvy.summary-header constant.other.git-savvy.sha1" }
+        ]
+    },
+    {
         "keys": ["?"],
         "command": "gs_interface_toggle_help",
         "context": [
