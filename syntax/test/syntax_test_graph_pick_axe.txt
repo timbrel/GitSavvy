@@ -1,0 +1,27 @@
+# SYNTAX TEST "Packages/GitSavvy/syntax/graph.sublime-syntax"
+
+  REPO: C:\Users\c-flo\AppData\Roaming\Sublime Text\Packages\GitSavvy
+  [a]ll: false
+  -S'''
+    class gs_revert_commit(LogMixin, WindowCommand, GitCommand):
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    git-savvy.graph meta.prelude.git_savvy.graph comment.prelude.git_savvy.graph
+        @on_worker
+# ^^^^^^^^^^^^^^^^    git-savvy.graph meta.prelude.git_savvy.graph comment.prelude.git_savvy.graph
+        def do_action(self, commit_hash, **kwargs):
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    git-savvy.graph meta.prelude.git_savvy.graph comment.prelude.git_savvy.graph
+            try:
+# ^^^^^^^^^^^^^^    git-savvy.graph meta.prelude.git_savvy.graph comment.prelude.git_savvy.graph
+                self.git("revert", *(commit_hash if isinstance(commit_hash, list) else [commit_hash]))
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    git-savvy.graph meta.prelude.git_savvy.graph comment.prelude.git_savvy.graph
+            finally:
+# ^^^^^^^^^^^^^^^^^^    git-savvy.graph meta.prelude.git_savvy.graph comment.prelude.git_savvy.graph
+                util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    git-savvy.graph meta.prelude.git_savvy.graph comment.prelude.git_savvy.graph
+  '''
+# ^^^    git-savvy.graph meta.prelude.git_savvy.graph comment.prelude.git_savvy.graph
+
+#<     git-savvy.graph meta.prelude.git_savvy.graph
+...
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    git-savvy.graph meta.content.git_savvy.graph
+● 96c5f826 Allow to revert multiple commits in one invocation                       ​ Thu May 2 21:44, herr kaste
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    git-savvy.graph meta.content.git_savvy.graph
