@@ -1,3 +1,4 @@
+from __future__ import annotations
 from contextlib import contextmanager
 from copy import deepcopy
 from functools import wraps
@@ -343,10 +344,15 @@ class ReactiveInterface(Interface, GitCommand, Generic[T_state]):
         self.refresh_view_state()
         self.just_render()
 
-    @distinct_until_state_changed
+    # We check twice if a re-render is actually necessary because the state has grown
+    # and invalidates when formatted relative dates change, t.i., too often.
+    @distinct_until_state_changed                                             # <== 1st check data/state
     def just_render(self):
         # type: () -> None
         content, regions = self._render_template()
+        if content == self.view.substr(sublime.Region(0, self.view.size())):  # <== 2nd check actual view content
+            return
+
         with self.keep_cursor_on_something():
             self.draw(self.title(), content, regions)
 
