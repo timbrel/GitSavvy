@@ -7,6 +7,7 @@ from queue import Empty
 import re
 import shlex
 import subprocess
+import textwrap
 import time
 import threading
 from typing import NamedTuple
@@ -42,7 +43,7 @@ from ..view import (
 )
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
-from ..utils import add_selection_to_jump_history, focus_view, show_toast, Cache, SEPARATOR
+from ..utils import add_selection_to_jump_history, flash, focus_view, show_toast, Cache, SEPARATOR
 from ...common import util
 from ...common.theme_generator import ThemeGenerator
 
@@ -50,6 +51,8 @@ from ...common.theme_generator import ThemeGenerator
 __all__ = (
     "gs_graph",
     "gs_graph_current_file",
+    "gs_graph_current_path",
+    "gs_graph_pickaxe",
     "gs_log_graph_refresh",
     "gs_log_graph",
     "gs_log_graph_tab_out",
@@ -245,6 +248,39 @@ class gs_graph_current_file(WindowCommand, GitCommand):
             self.window.run_command("gs_graph", {"file_path": file_path, **kwargs})
         else:
             self.window.status_message("View has no filename to track.")
+
+
+class gs_graph_current_path(WindowCommand, GitCommand):
+    def run(self, **kwargs) -> None:
+        if (
+            (file_path := self.file_path)
+            and (path := os.path.dirname(file_path))
+        ):
+            self.window.run_command("gs_graph", {"file_path": path, **kwargs})
+        else:
+            self.window.status_message("View has no path to track.")
+
+
+class gs_graph_pickaxe(TextCommand, GitCommand):
+    def run(self, edit):
+        # type: (sublime.Edit) -> None
+        view = self.view
+        window = view.window()
+        if not window:
+            return
+        repo_path = self.repo_path
+        frozen_sel = list(view.sel())
+        filters = " ".join(
+            shlex.quote("-S{}".format(s))
+            for r in frozen_sel
+            if (s := view.substr(r))
+            if (s.strip())
+        )
+        if not filters:
+            flash(view, "Nothing selected.")
+            return
+
+        window.run_command("gs_graph", {"repo_path": repo_path, "filters": filters})
 
 
 def augment_color_scheme(view):
@@ -459,25 +495,6 @@ def wait_for_first_item(it):
     return chain(head, iterable)
 
 
-def log_git_command(fn):
-    # type: (Callable[..., Iterator[T]]) -> Callable[..., Iterator[T]]
-    def decorated(self, *args, **kwargs):
-        start_time = time.perf_counter()
-        stderr = ''
-        saved_exception = None
-        try:
-            yield from fn(self, *args, **kwargs)
-        except GitSavvyError as e:
-            stderr = e.stderr
-            saved_exception = e
-        finally:
-            end_time = time.perf_counter()
-            util.debug.log_git(args, self.repo_path, None, "<SNIP>", stderr, end_time - start_time)
-            if saved_exception:
-                raise saved_exception from None
-    return decorated
-
-
 class Done(Exception):
     pass
 
@@ -517,19 +534,6 @@ class GraphLine(NamedTuple):
     subject: str
     info: str
     parents: str
-
-
-def try_kill_proc(proc):
-    if proc:
-        try:
-            utils.kill_proc(proc)
-        except ProcessLookupError:
-            pass
-        proc.got_killed = True
-
-
-def proc_has_been_killed(proc):
-    return getattr(proc, "got_killed", False)
 
 
 def selection_is_before_region(view, region):
@@ -834,7 +838,7 @@ class gs_log_graph_refresh(GsTextCommand):
         def ensure_not_aborted(fn):
             def decorated(*args, **kwargs):
                 if should_abort():
-                    try_kill_proc(current_proc)
+                    utils.try_kill_proc(current_proc)
                 else:
                     return fn(*args, **kwargs)
             return decorated
@@ -918,7 +922,7 @@ class gs_log_graph_refresh(GsTextCommand):
                             yield "...\n"
                             yield line
                     else:
-                        try_kill_proc(current_proc)
+                        utils.try_kill_proc(current_proc)
                         yield "..."
                         break
 
@@ -1028,7 +1032,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 ):
                     awaiting_head_commit = False
                     we_have_seen_the_head_commit(self.view, True)
-                    repo_is_dirty = is_repo_dirty(store.current_state(self.repo_path))
+                    repo_is_dirty = is_repo_dirty(self.current_state())
                     if repo_is_dirty:
                         decoration = decoration.replace("HEAD", "HEAD*", 1)
                     remember_drawn_repo_status(self.view, bool(repo_is_dirty))
@@ -1083,7 +1087,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 try:
                     lines = run_or_timeout(lambda: wait_for_first_item(graph), timeout=1.0)
                 except TimeoutError:
-                    try_kill_proc(current_proc)
+                    utils.try_kill_proc(current_proc)
                     settings.set('git_savvy.log_graph_view.decoration', None)
                     enqueue_on_worker(
                         self.view.run_command,
@@ -1251,43 +1255,10 @@ class gs_log_graph_refresh(GsTextCommand):
 
         run_on_new_thread(reader)
 
-    @log_git_command
-    def git_stdout(self, *args, show_panel_on_error=True, throw_on_error=True, got_proc=None, **kwargs):
-        # type: (...) -> Iterator[str]
-        # Note: Can't use `self.lax_decode` because it internally uses
-        # `self.get_encoding_candidates()` which blocks the main thread as it
-        # needs to access the settings!
-        decode = lax_decoder(self.get_encoding_candidates())
-        proc = self.git(*args, just_the_proc=True, **kwargs)
-        if got_proc:
-            got_proc(proc)
-        received_some_stdout = False
-        with proc:
-            for line in iter(proc.stdout.readline, b''):
-                yield decode(line)
-                if not received_some_stdout:
-                    received_some_stdout = True
-
-            stderr = ''.join(map(decode, proc.stderr.readlines()))
-
-        if throw_on_error and not proc.returncode == 0 and not proc_has_been_killed(proc):
-            stdout = "<STDOUT SNIPPED>\n" if received_some_stdout else ""
-            raise GitSavvyError(
-                "$ {}\n\n{}".format(
-                    util.debug.pretty_git_command(args),
-                    ''.join([stdout, stderr])
-                ),
-                cmd=proc.args,
-                stdout=stdout,
-                stderr=stderr,
-                show_panel=show_panel_on_error,
-                window=self.view.window(),
-            )
-
     def read_graph(self, got_proc=None):
         # type: (Callable[[subprocess.Popen], None]) -> Iterator[str]
         args = self.build_git_command()
-        yield from self.git_stdout(*args, got_proc=got_proc)
+        yield from self.git_streaming(*args, got_proc=got_proc)
 
     def build_git_command(self):
         settings = self.view.settings()
@@ -1365,19 +1336,6 @@ class gs_log_graph_refresh(GsTextCommand):
         return args
 
 
-def lax_decoder(encodings):
-    # type: (Sequence[str]) -> Callable[[bytes], str]
-    def decode(bytes):
-        # type: (bytes) -> str
-        for encoding in encodings:
-            try:
-                return bytes.decode(encoding)
-            except UnicodeDecodeError:
-                pass
-        return bytes.decode('utf8', errors='replace')
-    return decode
-
-
 def prelude(view):
     # type: (sublime.View) -> str
     settings = view.settings()
@@ -1395,6 +1353,30 @@ def prelude(view):
     elif repo_path:
         prelude += "  REPO: {}\n".format(repo_path)
 
+    if apply_filters:
+        pickaxes, normal_ones = [], []
+        for arg in shlex.split(filters):
+            if arg.startswith("-S") or arg.startswith("-G"):
+                if "\n" in arg:
+                    pickaxes.append(
+                        "\n  {}'''\n{}\n  '''".format(
+                            arg[:2],
+                            textwrap.indent(textwrap.dedent(arg[2:].rstrip()), "    ")
+                        )
+                    )
+                else:
+                    normal_ones.append(
+                        "{}'{}'".format(
+                            arg[:2],
+                            arg[3:-1] if (arg[2], arg[-1]) == ("'", "'") else arg[2:]
+                        )
+                    )
+            else:
+                normal_ones.append(arg)
+        formatted_filters = "\n".join(filter_((" ".join(normal_ones), "".join(pickaxes))))
+    else:
+        formatted_filters = None
+
     prelude += (
         "  "
         + "  ".join(filter_((
@@ -1404,7 +1386,7 @@ def prelude(view):
                 else '[a]ll: true' if all_branches else '[a]ll: false'
             ),
             " ".join(branches) if not all_branches and not overview else None,
-            filters if apply_filters else None
+            formatted_filters
         )))
     )
     return prelude + "\n\n"
@@ -1412,13 +1394,11 @@ def prelude(view):
 
 class gs_log_graph_tab_out(GsTextCommand):
     def run(self, edit, reverse=False):
-        options = store.current_state(self.repo_path).get("default_graph_options", {})
+        options = self.current_state().get("default_graph_options", {})
         options.update({
             "all": self.view.settings().get("git_savvy.log_graph_view.all_branches")
         })
-        store.update_state(self.repo_path, {
-            "default_graph_options": options
-        })
+        self.update_store({"default_graph_options": options})
         self.view.settings().set("git_savvy.log_graph_view.default_graph", True)
         for view_ in self.window.views():
             if (
@@ -1444,7 +1424,7 @@ class gs_log_graph_tab_in(WindowCommand, GitCommand):
                 return
 
         all_branches = (
-            store.current_state(self.repo_path)
+            self.current_state()
             .get("default_graph_options", {})
             .get("all", True)
         )
@@ -3194,10 +3174,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def revert_commit(self, *commit_hash):
-        try:
-            self.git("revert", *commit_hash)
-        finally:
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        self.window.run_command("gs_revert_commit", {"commit_hash": commit_hash})
 
     def compare_commits(self, base_commit, target_commit, file_path=None):
         self.window.run_command("gs_compare_commit", {

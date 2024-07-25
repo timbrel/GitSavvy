@@ -8,7 +8,7 @@ from sublime_plugin import EventListener, ViewEventListener
 from .diff import DECODE_ERROR_MESSAGE
 from . import intra_line_colorizer
 from ..git_command import GitCommand, GitSavvyError
-from ..fns import head
+from ..fns import flatten, head
 from ..runtime import enqueue_on_worker, text_command
 from ..settings import SettingsMixin
 from ..ui_mixins.quick_panel import LogHelperMixin
@@ -43,6 +43,7 @@ COMMIT_HELP_TEXT_EXTRA = """##
 
 HELP_WHEN_PATCH_IS_VISIBLE = """\
 ## In the diff below, [o] will open the file under the cursor.
+## [ctrl+r]      to navigate between files
 """
 HELP_WHEN_UNSTAGING_IS_POSSIBLE = """\
 ## [u]/[U]       to unstage
@@ -373,104 +374,79 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
     Set regions to warn for pedantic commits
     """
 
-    def on_selection_modified(self, view):
+    def on_selection_modified(self, view: sublime.View):
         if 'make_commit' not in view.settings().get('syntax', ''):
             return
 
         if not self.savvy_settings.get('pedantic_commit'):
             return
 
-        self.view = view
-        self.first_line_limit = self.savvy_settings.get('pedantic_commit_first_line_length')
-        self.body_line_limit = self.savvy_settings.get('pedantic_commit_message_line_length')
-        self.warning_length = self.savvy_settings.get('pedantic_commit_warning_length')
-
-        self.comment_start_region = self.view.find_by_selector("meta.dropped.git.commit")
-        self.first_comment_line = None
-        if self.comment_start_region:
-            self.first_comment_line = self.view.rowcol(self.comment_start_region[0].begin())[0]
+        subject_line_limit = self.savvy_settings.get('pedantic_commit_first_line_length')
+        body_line_limit = self.savvy_settings.get('pedantic_commit_message_line_length')
+        warning_length = self.savvy_settings.get('pedantic_commit_warning_length')
 
         if self.savvy_settings.get('pedantic_commit_ruler'):
-            self.view.settings().set("rulers", self.find_rulers())
+            rulers = self.find_rulers(view, subject_line_limit, body_line_limit)
+            view.settings().set("rulers", rulers)
 
-        warning, illegal = self.find_too_long_lines()
-        self.view.add_regions(
+        warning_lines, illegal_lines = self.find_too_long_lines(
+            view, subject_line_limit, body_line_limit, warning_length
+        )
+        view.add_regions(
             'make_commit_warning',
-            warning,
+            warning_lines,
             scope='invalid.deprecated.line-too-long.git-commit',
             flags=sublime.RegionFlags.DRAW_NO_FILL | sublime.RegionFlags.NO_UNDO
         )
-        self.view.add_regions(
+        view.add_regions(
             'make_commit_illegal',
-            illegal,
+            illegal_lines,
             scope='invalid.deprecated.line-too-long.git-commit',
             flags=sublime.RegionFlags.NO_UNDO
         )
 
-    def find_rulers(self):
-        on_first_line = False
-        on_message_body = False
+    def find_rulers(self, view, subject_line_limit, body_line_limit):
+        # type: (sublime.View, int, int) -> List[int]
+        ruler_rules = (
+            ("meta.commit.message.subject", subject_line_limit, 40),
+            ("meta.commit.message.body",    body_line_limit,     0),  # noqa: E241
+        )
+        return [
+            ruler
+            for pt in flatten(map(tuple, view.sel()))
+            for selector, ruler, min_line_length in ruler_rules
+            if view.match_selector(pt, selector)
+            if (
+                min_line_length == 0
+                or len((view.substr(view.line(pt))).rstrip()) >= min_line_length
+            )
+        ]
 
-        subject_near_limit = len(self.view.substr(self.view.line(sublime.Region(0))).rstrip()) >= 40
-
-        for region in self.view.sel():
-            first_line = self.view.rowcol(region.begin())[0]
-            last_line = self.view.rowcol(region.end())[0]
-
-            if first_line == 0 and subject_near_limit:
-                on_first_line = True
-
-            if self.first_comment_line:
-                if first_line in range(2, self.first_comment_line) or last_line in range(2, self.first_comment_line):
-                    on_message_body = True
-            else:
-                if first_line >= 2 or last_line >= 2:
-                    on_message_body = True
-
-        new_rulers = []
-        if on_first_line:
-            new_rulers.append(self.first_line_limit)
-
-        if on_message_body:
-            new_rulers.append(self.body_line_limit)
-
-        return new_rulers
-
-    def find_too_long_lines(self):
+    def find_too_long_lines(self, view, subject_line_limit, body_line_limit, warning_length):
+        # type: (sublime.View, int, int, int) -> Tuple[List[sublime.Region], List[sublime.Region]]
         warning_lines = []
         illegal_lines = []
+        row_rules = {
+            0: (subject_line_limit, subject_line_limit + warning_length),
+            1: (0,                  0),                                  # noqa: E241
+            2: (body_line_limit,    body_line_limit + warning_length),   # noqa: E241
+        }
 
-        first_line = self.view.line(sublime.Region(0, 0))
-        length = len(self.view.substr(first_line).rstrip())
-        if length > self.first_line_limit:
-            warning_lines.append(sublime.Region(
-                first_line.a + self.first_line_limit,
-                min(first_line.a + self.first_line_limit + self.warning_length, first_line.b)))
-
-        if length > self.first_line_limit + self.warning_length:
-            illegal_lines.append(
-                sublime.Region(first_line.a + self.first_line_limit + self.warning_length, first_line.b))
-
-        # Add second line to illegal
-        if self.first_comment_line is None or self.first_comment_line > 1:
-            illegal_lines.append(sublime.Region(self.view.text_point(1, 0), self.view.text_point(2, 0) - 1))
-
-        if self.first_comment_line:
-            body_region = sublime.Region(self.view.text_point(2, 0), self.comment_start_region[0].begin())
-        else:
-            body_region = sublime.Region(self.view.text_point(2, 0), self.view.size())
-
-        for line in self.view.lines(body_region):
-            length = line.b - line.a
-            if length > self.body_line_limit:
+        for line in flatten(map(view.lines, view.find_by_selector("meta.commit.message"))):
+            row, _ = view.rowcol(line.a)
+            length = len(view.substr(line).rstrip())
+            warn_threshold, error_threshold = row_rules[min(row, 2)]
+            if length > warn_threshold:
                 warning_lines.append(sublime.Region(
-                    line.a + self.body_line_limit,
-                    min(line.a + self.body_line_limit + self.warning_length, line.b)))
-
-            if self.body_line_limit + self.warning_length < length:
-                illegal_lines.append(sublime.Region(line.a + self.body_line_limit + self.warning_length, line.b))
-
-        return [warning_lines, illegal_lines]
+                    line.a + warn_threshold,
+                    min(line.a + error_threshold, line.b)
+                ))
+            if length > error_threshold:
+                illegal_lines.append(sublime.Region(
+                    line.a + error_threshold,
+                    line.b
+                ))
+        return warning_lines, illegal_lines
 
 
 def extract_commit_message(view):

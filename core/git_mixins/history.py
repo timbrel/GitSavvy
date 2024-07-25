@@ -1,8 +1,10 @@
+from __future__ import annotations
 import email.utils
+from itertools import chain
 
-from .. import store
 from ..exceptions import GitSavvyError
 from ...common import util
+from GitSavvy.core.fns import pairwise
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.utils import cached
 
@@ -181,12 +183,12 @@ class HistoryMixin(mixin_base):
 
     def get_short_hash(self, commit_hash):
         # type: (str) -> str
-        short_hash_length = store.current_state(self.repo_path).get("short_hash_length")
+        short_hash_length = self.current_state().get("short_hash_length")
         if short_hash_length:
             return commit_hash[:short_hash_length]
 
         short_hash = self.git("rev-parse", "--short", commit_hash).strip()
-        store.update_state(self.repo_path, {"short_hash_length": len(short_hash)})
+        self.update_store({"short_hash_length": len(short_hash)})
         return short_hash
 
     def filename_at_commit(self, filename, commit_hash):
@@ -382,6 +384,38 @@ class HistoryMixin(mixin_base):
             )[-1]
         except IndexError:
             return None
+
+    def next_commits(
+        self,
+        current_commit: str,
+        file_path: str | None = None,
+        follow: bool = False,
+        branch_hint: str | None = None,
+    ) -> dict[str, str]:
+        if branch_hint is None:
+            try:
+                branch_hint = next(iter(
+                    self.git_throwing_silently(
+                        "for-each-ref",
+                        "--format=%(refname)",
+                        "--contains",
+                        current_commit,
+                        "--sort=-committerdate"
+                    ).strip().splitlines()
+                ))
+            except (GitSavvyError, StopIteration):
+                if self.commit_is_ancestor_of_head(current_commit):
+                    branch_hint = ""
+                else:
+                    raise ValueError(f"{current_commit} seems orphaned")
+
+        return {
+            right: left
+            for left, right in pairwise(chain(
+                self._log_commits(f"{current_commit}..{branch_hint}", file_path, follow),
+                [current_commit]
+            ))
+        }
 
     def _log_commits(
         self,

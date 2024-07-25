@@ -1,10 +1,9 @@
 import re
 
-from GitSavvy.core import store
 from GitSavvy.core.git_command import mixin_base, NOT_SET
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.exceptions import GitSavvyError
-from GitSavvy.core.utils import hprint, measure_runtime, yes_no_switch
+from GitSavvy.core.utils import cache_in_store_as, hprint, measure_runtime, yes_no_switch
 from GitSavvy.core.runtime import run_on_new_thread
 
 from typing import Dict, List, NamedTuple, Optional, Sequence
@@ -137,7 +136,7 @@ class BranchesMixin(mixin_base):
                             self.git_throwing_silently("commit-graph", "write")
                         except GitSavvyError as err:
                             hprint(f"`git commit-graph write` raised: {err}")
-                            store.update_state(self.repo_path, {"slow_repo": True})
+                            self.update_store({"slow_repo": True})
                             return
 
                         with measure_runtime() as ms:
@@ -151,7 +150,7 @@ class BranchesMixin(mixin_base):
                         if not ok:
                             hprint("Disabling sections in the branches dashboard.")
 
-                        store.update_state(self.repo_path, {"slow_repo": True if not ok else False})
+                        self.update_store({"slow_repo": True if not ok else False})
 
                     run_on_new_thread(run_commit_graph_write)
                     return get_branches__(False, False)
@@ -184,7 +183,7 @@ class BranchesMixin(mixin_base):
 
             return branches
 
-        slow_repo = store.current_state(self.repo_path).get("slow_repo", None)
+        slow_repo = self.current_state().get("slow_repo", None)
         supports_ahead_behind = (
             self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND
             and slow_repo is not False
@@ -198,18 +197,19 @@ class BranchesMixin(mixin_base):
             next_state = branches
 
         elif refs == ["refs/heads"]:
-            stored_state = store.current_state(self.repo_path).get("branches", [])
+            stored_state = self.current_state().get("branches", [])
             next_state = branches + [b for b in stored_state if b.is_remote]
 
         elif refs == ["refs/remotes"]:
-            stored_state = store.current_state(self.repo_path).get("branches", [])
+            stored_state = self.current_state().get("branches", [])
             next_state = [b for b in stored_state if b.is_local] + branches
 
         else:
             return None
 
-        store.update_state(self.repo_path, {"branches": next_state})
+        self.update_store({"branches": next_state})
 
+    @cache_in_store_as("descriptions")
     def fetch_branch_description_subjects(self):
         # type: () -> Dict[str, str]
         rv = {}
@@ -225,7 +225,6 @@ class BranchesMixin(mixin_base):
 
             branch_name, description = match.group(1), match.group(2)
             rv[branch_name] = description
-        store.update_state(self.repo_path, {"descriptions": rv})
         return rv
 
     def _parse_branch_line(self, line):

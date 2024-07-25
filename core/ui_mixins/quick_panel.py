@@ -2,12 +2,11 @@ import itertools
 import sublime
 from ...common import util
 from ..git_command import GitCommand
-from GitSavvy.core import store
 from GitSavvy.core.fns import filter_, maybe
 from GitSavvy.core.utils import show_panel
 
 
-from typing import Callable, List, Optional, Union
+from typing import Callable, Dict, List, Literal, Optional, Union
 from ..git_mixins.history import LogEntry
 
 
@@ -129,7 +128,8 @@ def show_remote_panel(
     on_cancel=lambda: None,  # type: Callable[[], None]
     show_option_all=False,  # type: bool
     allow_direct=False,  # type: bool
-    show_url=False  # type: bool
+    show_url=False,  # type: bool
+    remotes=None,  # type: Dict[str, str]
 ):
     # type: (...) -> RemotePanel
     """
@@ -146,7 +146,8 @@ def show_remote_panel(
         on_cancel,
         show_option_all,
         allow_direct,
-        show_url
+        show_url,
+        remotes,
     )
     rp.show()
     return rp
@@ -160,7 +161,8 @@ class RemotePanel(GitCommand):
         on_cancel=lambda: None,  # type: Callable[[], None]
         show_option_all=False,  # type: bool
         allow_direct=False,  # type: bool
-        show_url=False  # type: bool
+        show_url=False,  # type: bool
+        remotes=None,  # type: Dict[str, str]
     ):
         # type: (...) -> None
         if show_option_all and show_url:
@@ -173,15 +175,16 @@ class RemotePanel(GitCommand):
         self.show_option_all = show_option_all
         self.allow_direct = allow_direct
         self.show_url = show_url
-        self.storage_key = (
+        self.storage_key: Literal["last_remote_used", "last_remote_used_with_option_all"] = (
             "last_remote_used_with_option_all"
             if self.show_option_all
             else "last_remote_used"
         )
+        self._remotes = remotes
 
     def show(self):
         # type: () -> None
-        _remotes = self.get_remotes()
+        _remotes = self.get_remotes() if self._remotes is None else self._remotes
         self.remotes = list(_remotes.keys())
 
         if not self.remotes:
@@ -195,9 +198,7 @@ class RemotePanel(GitCommand):
         if self.show_option_all and len(self.remotes) > 1:
             self.remotes.insert(0, "All remotes.")
 
-        last_remote_used = (
-            store.current_state(self.repo_path).get(self.storage_key, "origin")  # type: ignore[assignment]
-        )  # type: str
+        last_remote_used = self.current_state().get(self.storage_key, "origin")
         if last_remote_used in self.remotes:
             pre_selected_index = self.remotes.index(last_remote_used)
         else:
@@ -219,11 +220,11 @@ class RemotePanel(GitCommand):
         if index == -1:
             self.on_cancel()
         elif self.show_option_all and len(self.remotes) > 1 and index == 0:
-            store.update_state(self.repo_path, {self.storage_key: "<ALL>"})  # type: ignore[misc]
+            self.update_store({self.storage_key: "<ALL>"})  # type: ignore[misc]
             self.on_done("<ALL>")
         else:
             remote = self.remotes[index]
-            store.update_state(self.repo_path, {self.storage_key: remote})  # type: ignore[misc]
+            self.update_store({self.storage_key: remote})  # type: ignore[misc]
             self.on_done(remote)
 
 

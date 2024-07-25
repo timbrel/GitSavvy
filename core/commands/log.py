@@ -237,8 +237,7 @@ class gs_log_action(PanelActionMixin, WindowCommand):
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def revert_commit(self):
-        self.git("revert", self._commit_hash)
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        self.window.run_command("gs_revert_commit", {"commit_hash": self._commit_hash})
 
     def compare_against(self):
         self.window.run_command("gs_compare_against", {

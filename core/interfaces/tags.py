@@ -27,10 +27,11 @@ __all__ = (
     "gs_tags_show_commit",
     "gs_tags_show_graph",
     "gs_tags_navigate_tag",
+    "gs_tags_navigate_to_next_tag",
 )
 
 
-from typing import Dict, Iterator, List, Literal, Optional, Union, TypedDict
+from typing import Dict, Iterator, List, Literal, Optional, Set, Union, TypedDict
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.tags import TagDetails
 
@@ -60,6 +61,7 @@ class TagsViewState(TypedDict, total=False):
     long_status: str
     local_tags: TagList
     remotes: Dict[str, str]
+    remotes_with_no_tags_set: Set[str]
     remote_tags_info: RemoteTagsInfo
     recent_commits: List[Commit]
     max_items: Optional[int]
@@ -129,7 +131,9 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
       REMOTE ({remote_name}):
     {remote_tags_list}"""
 
-    subscribe_to = {"local_tags", "long_status", "recent_commits", "remotes"}
+    subscribe_to = {
+        "local_tags", "long_status", "recent_commits", "remotes", "remotes_with_no_tags_set"
+    }
     state: TagsViewState
 
     def initial_state(self):
@@ -147,10 +151,13 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         enqueue_on_worker(self.get_local_tags)
         enqueue_on_worker(self.get_latest_commits)
         enqueue_on_worker(self.get_remotes)
-        if self.state.get("remotes") is None:
-            # run after the `self.get_remotes` above!
-            enqueue_on_worker(self.maybe_populate_remote_tags)
-        else:
+        enqueue_on_worker(self.get_remotes_for_which_to_skip_tags)
+        enqueue_on_worker(self.maybe_populate_remote_tags)
+        if (
+            self.state.get("remotes") is not None
+            and self.state.get("remotes_with_no_tags_set") is not None
+        ):
+            # update `remote_tags_info` immediately from the cache
             self.maybe_populate_remote_tags()
         self.view.run_command("gs_update_status")
 
@@ -161,8 +168,8 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
         })
 
     @ui.inject_state()
-    def maybe_populate_remote_tags(self, remotes, remote_tags_info):
-        # type: (Dict[str, str], RemoteTagsInfo) -> None
+    def maybe_populate_remote_tags(self, remotes, remotes_with_no_tags_set, remote_tags_info):
+        # type: (Dict[str, str], Set[str], RemoteTagsInfo) -> None
         def do_tags_fetch(remote_name):
             try:
                 new_state = {
@@ -180,21 +187,33 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                 self.just_render()
             enqueue_on_worker(sink)  # fan-in
 
-        if remotes and not remote_tags_info:
-            for remote_name in remotes:
-                run_on_new_thread(do_tags_fetch, remote_name)    # fan-out
-                remote_tags_info[remote_name] = {
-                    "state": "loading"
-                }
+        actual_remotes_to_fetch = remotes.keys() - remotes_with_no_tags_set
+        additions = actual_remotes_to_fetch - remote_tags_info.keys()
+        deletions = remote_tags_info.keys() - actual_remotes_to_fetch
+
+        for remote_name in deletions:
+            remote_tags_info.pop(remote_name)
+        if deletions:
+            self.just_render()
+
+        for remote_name in additions:
+            run_on_new_thread(do_tags_fetch, remote_name)    # fan-out
+            remote_tags_info[remote_name] = {
+                "state": "loading"
+            }
 
     @contextmanager
     def keep_cursor_on_something(self):
         # type: () -> Iterator[None]
-        on_special_symbol = partial(self.cursor_is_on_something, "meta.git-savvy.tags.tag")
+        on_special_symbol = partial(
+            self.cursor_is_on_something,
+            "meta.git-savvy.tags.tag"
+            ", constant.other.git-savvy.sha1"
+        )
 
         yield
         if not on_special_symbol():
-            self.view.run_command("gs_tags_navigate_tag")
+            self.view.run_command("gs_tags_navigate_to_next_tag")
 
     @ui.section("branch_status")
     def render_branch_status(self, long_status):
@@ -455,8 +474,15 @@ class gs_tags_push(TagsInterfaceCommand):
     selected or all tag(s) to the selected remote.
     """
 
-    def run(self, edit):
-        show_remote_panel(self.push_selected, allow_direct=True)
+    def run(self, edit) -> None:
+        remotes = self.interface.state["remotes"]
+        actual_remotes_to_fetch = remotes.keys() - self.interface.state["remotes_with_no_tags_set"]
+        remote_candidates = {
+            name: url
+            for name, url in remotes.items()
+            if name in actual_remotes_to_fetch
+        }
+        show_remote_panel(self.push_selected, remotes=remote_candidates, allow_direct=True)
 
     @on_worker
     def push_selected(self, remote):
@@ -510,7 +536,21 @@ class gs_tags_show_graph(TagsInterfaceCommand):
 class gs_tags_navigate_tag(GsNavigate):
 
     """
-    Move cursor to the next (or previous) selectable file in the dashboard.
+    Move cursor to the next (or previous) selectable tag in the dashboard.
+    """
+    offset = 0
+
+    def get_available_regions(self):
+        return self.view.find_by_selector(
+            "constant.other.git-savvy.tags.sha1"
+            ", meta.git-savvy.summary-header constant.other.git-savvy.sha1"
+        )
+
+
+class gs_tags_navigate_to_next_tag(GsNavigate):
+
+    """
+    Move cursor to the next (or previous) selectable tag in the dashboard.
     """
     offset = 0
 

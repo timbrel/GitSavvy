@@ -17,6 +17,7 @@ from ..utils import flash, flash_regions, focus_view, Cache
 from ..parse_diff import SplittedDiff, TextRange
 from ..runtime import ensure_on_ui, enqueue_on_worker
 from ..view import replace_view_content, Position
+from ...common import util
 
 from GitSavvy.github import github
 from GitSavvy.github.git_mixins import GithubRemotesMixin
@@ -62,13 +63,12 @@ def compute_identifier_for_view(view):
 class gs_show_commit(WindowCommand, GitCommand):
 
     def run(self, commit_hash):
-        # need to get repo_path before the new view is created.
         repo_path = self.repo_path
         if commit_hash in {"", "HEAD"}:
             commit_hash = self.git("rev-parse", "--short", "HEAD").strip()
 
         this_id = (
-            self.repo_path,
+            repo_path,
             commit_hash
         )
         for view in self.window.views():
@@ -76,22 +76,20 @@ class gs_show_commit(WindowCommand, GitCommand):
                 focus_view(view)
                 break
         else:
-            view = self.window.new_file()
-            settings = view.settings()
-            settings.set("git_savvy.show_commit_view", True)
-            settings.set("git_savvy.show_commit_view.commit", commit_hash)
-            settings.set("git_savvy.repo_path", repo_path)
-            settings.set("git_savvy.show_commit_view.ignore_whitespace", False)
-            settings.set("git_savvy.show_commit_view.show_diffstat", self.savvy_settings.get("show_diffstat", True))
+            title = SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash))
+            view = util.view.create_scratch_view(self.window, "show_commit", {
+                "title": title,
+                "syntax": "Packages/GitSavvy/syntax/show_commit.sublime-syntax",
+                "git_savvy.repo_path": repo_path,
+                "git_savvy.show_commit_view.commit": commit_hash,
+                "git_savvy.show_commit_view.ignore_whitespace": False,
+                "git_savvy.show_commit_view.show_diffstat":
+                    self.savvy_settings.get("show_diffstat", True),
+                "result_file_regex": diff.FILE_RE,
+                "result_line_regex": diff.LINE_RE,
+                "result_base_dir": repo_path,
+            })
 
-            settings.set("result_file_regex", diff.FILE_RE)
-            settings.set("result_line_regex", diff.LINE_RE)
-            settings.set("result_base_dir", repo_path)
-
-            view.set_syntax_file("Packages/GitSavvy/syntax/show_commit.sublime-syntax")
-            view.set_name(SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash)))
-            view.set_scratch(True)
-            view.set_read_only(True)
             view.run_command("gs_show_commit_refresh")
             view.run_command("gs_handle_vintageous")
 
@@ -355,10 +353,12 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
         settings = view.settings()
         file_path: Optional[str] = settings.get("git_savvy.file_path")
         commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
-        next_commit = (
-            show_file_at_commit.recall_next_commit_for(view, commit_hash)
-            or self.next_commit(commit_hash, file_path)
-        )
+        try:
+            next_commit = show_file_at_commit.get_next_commit(self, view, commit_hash, file_path)
+        except ValueError:
+            flash(view, "Can't find a newer commit; it looks orphaned.")
+            return
+
         if not next_commit:
             flash(view, "No newer commit found.")
             return

@@ -11,7 +11,6 @@ from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..utils import flash, hprint, uprint
 from ..view import replace_view_content
 from ...common import util
-from GitSavvy.core import store
 
 
 from typing import Optional, Union
@@ -203,7 +202,7 @@ class GsStashShowCommand(WindowCommand, GitCommand):
 
     def description_of_stash(self, stash_id):
         # type: (str) -> str
-        for stash in store.current_state(self.repo_path).get("stashes", []):
+        for stash in self.current_state().get("stashes", []):
             if stash.id == stash_id:
                 return stash.description
         return ""

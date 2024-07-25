@@ -9,6 +9,11 @@ class StageUnstageMixin(mixin_base):
         Given an absolute path or path relative to the repo's root, stage
         the file.
         """
+        # Ensure we don't run "add --all" without any paths which
+        # would add everything
+        if not fpath:
+            return
+
         self.git(
             "add",
             "-f" if force else None,
@@ -23,6 +28,11 @@ class StageUnstageMixin(mixin_base):
         Given an absolute path or path relative to the repo's root, unstage
         the file.
         """
+        # Ensure we don't run "reset" without any paths which
+        # would unstage everything
+        if not fpath:
+            return
+
         self.git("reset", "HEAD", "--", *fpath)
 
     def add_all_tracked_files(self):
@@ -49,4 +59,9 @@ class StageUnstageMixin(mixin_base):
         self.git("add", "--intent-to-add", "--", *file_paths)
 
     def undo_intent_to_add(self, *file_paths: str) -> None:
+        # Ensure we don't run "reset" without any paths which
+        # would unstage everything
+        if not file_paths:
+            return
+
         self.git("reset", "--", *file_paths)

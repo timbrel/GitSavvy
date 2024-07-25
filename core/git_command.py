@@ -23,9 +23,10 @@ import sublime
 
 from ..common import util
 from .settings import SettingsMixin
+from GitSavvy.core import store
 from GitSavvy.core.fns import consume, filter_, pairwise
 from GitSavvy.core.runtime import auto_timeout, enqueue_on_worker, run_as_future
-from GitSavvy.core.utils import kill_proc, paths_upwards, resolve_path
+from GitSavvy.core.utils import try_kill_proc, paths_upwards, proc_has_been_killed, resolve_path
 
 
 from typing import (
@@ -148,7 +149,7 @@ def stream_stdout_and_err(proc, timeout):
             except IndexError:
                 time.sleep(next(delay) / 1000)
                 if timeout_manager.has_timed_out():
-                    kill_proc(proc)
+                    try_kill_proc(proc)
                     raise TimeoutError("timed out after {} seconds".format(timeout))
 
     # Check and raise exceptions if any
@@ -189,6 +190,26 @@ def _group_bytes_to_lines(bytewise: Iterator[bytes]) -> Iterator[bytes]:
 
     if line:
         yield line
+
+
+def log_git_runtime(fn):
+    # type: (Callable[..., Iterator[T]]) -> Callable[..., Iterator[T]]
+    """A specialized log decorator for `git_streaming`."""
+    def decorated(self, *args, **kwargs):
+        start_time = time.perf_counter()
+        stderr = ''
+        saved_exception = None
+        try:
+            yield from fn(self, *args, **kwargs)
+        except GitSavvyError as e:
+            stderr = e.stderr
+            saved_exception = e
+        finally:
+            end_time = time.perf_counter()
+            util.debug.log_git(args, self.repo_path, None, "<SNIP>", stderr, end_time - start_time)
+            if saved_exception:
+                raise saved_exception from None
+    return decorated
 
 
 STARTUPINFO = None
@@ -475,6 +496,36 @@ class _GitCommand(SettingsMixin):
             **kwargs
         )
 
+    @log_git_runtime
+    def git_streaming(self, *args, show_panel_on_error=True, throw_on_error=True, got_proc=None, **kwargs):
+        # type: (...) -> Iterator[str]
+        decode = partial(self.lax_decode_, self.get_encoding_candidates())
+        proc = self.git(*args, just_the_proc=True, **kwargs)
+        if got_proc:
+            got_proc(proc)
+        received_some_stdout = False
+        with proc:
+            for line in iter(proc.stdout.readline, b''):
+                yield decode(line)
+                if not received_some_stdout:
+                    received_some_stdout = True
+
+            stderr = ''.join(map(decode, proc.stderr.readlines()))
+
+        if throw_on_error and not proc.returncode == 0 and not proc_has_been_killed(proc):
+            stdout = "<STDOUT SNIPPED>\n" if received_some_stdout else ""
+            raise GitSavvyError(
+                "$ {}\n\n{}".format(
+                    util.debug.pretty_git_command(args),
+                    ''.join([stdout, stderr])
+                ),
+                cmd=proc.args,
+                stdout=stdout,
+                stderr=stderr,
+                show_panel=show_panel_on_error,
+                window=self.some_window(),
+            )
+
     def get_encoding_candidates(self):
         # type: () -> Sequence[str]
         return [
@@ -497,10 +548,16 @@ class _GitCommand(SettingsMixin):
 
     def lax_decode(self, input):
         # type: (bytes) -> str
-        try:
-            return self.strict_decode(input)
-        except UnicodeDecodeError:
-            return input.decode("utf-8", "replace")
+        return self.lax_decode_(self.get_encoding_candidates(), input)
+
+    def lax_decode_(self, encodings, input):
+        # type: (Sequence[str], bytes) -> str
+        for encoding in encodings:
+            try:
+                return input.decode(encoding)
+            except UnicodeDecodeError:
+                pass
+        return input.decode('utf8', errors='replace')
 
     def try_decode(self, input, encodings):
         # type: (bytes, Sequence[str]) -> Tuple[str, str]
@@ -659,6 +716,14 @@ class _GitCommand(SettingsMixin):
             return self.repo_path.replace(os.environ["HOME"], "~")
         else:
             return self.repo_path
+
+    def update_store(self, partial_state):
+        # type: (store.RepoStore) -> None
+        store.update_state(self.repo_path, partial_state)
+
+    def current_state(self):
+        # type: () -> store.RepoStore
+        return store.current_state(self.repo_path)
 
     @property
     def git_dir(self):

@@ -7,7 +7,7 @@ from .utils import eat_but_log_errors
 
 
 from typing import (
-    AbstractSet, Callable, DefaultDict, Deque, Dict, List, Optional, Tuple, TypedDict,
+    AbstractSet, Callable, DefaultDict, Deque, Dict, List, Optional, Set, Tuple, TypedDict,
     TYPE_CHECKING
 )
 
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
         short_status: str
         branches: List[Branch]
         remotes: Dict[str, str]
+        remotes_with_no_tags_set: Set[str]
         local_tags: TagList
         last_branches: Deque[Optional[str]]
         last_branch_used_to_pull_from: Optional[str]

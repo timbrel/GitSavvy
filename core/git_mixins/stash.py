@@ -1,8 +1,7 @@
 import re
 
 from GitSavvy.core.git_command import mixin_base
-from GitSavvy.core import store
-
+from GitSavvy.core.utils import cache_in_store_as
 
 from typing import List, NamedTuple, Union
 StashId = Union[str, int]
@@ -15,6 +14,7 @@ class Stash(NamedTuple):
 
 class StashMixin(mixin_base):
 
+    @cache_in_store_as("stashes")
     def get_stashes(self):
         # type: () -> List[Stash]
         """
@@ -30,9 +30,6 @@ class StashMixin(mixin_base):
             num, _, description = match.groups()
             stashes.append(Stash(num, description))
 
-        store.update_state(self.repo_path, {
-            "stashes": stashes,
-        })
         return stashes
 
     def show_stash(self, id):

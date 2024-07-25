@@ -375,6 +375,19 @@ def kill_proc(proc):
         proc.terminate()
 
 
+def try_kill_proc(proc):
+    if proc:
+        try:
+            kill_proc(proc)
+        except ProcessLookupError:
+            pass
+        proc.got_killed = True
+
+
+def proc_has_been_killed(proc):
+    return getattr(proc, "got_killed", False)
+
+
 # `realpath` also supports `bytes` and we don't, hence the indirection
 def _resolve_path(path):
     # type: (str) -> str
@@ -487,6 +500,23 @@ def _bind_arguments(sig, args, kwargs):
         for name, p in sig.parameters.items()
         if name != "self"
     }
+
+
+def cache_in_store_as(key):
+    # type: (str) -> Callable[[Callable[P, T]], Callable[P, T]]
+    """Store the return value of the decorated function in the store."""
+    def decorator(fn):
+        # type: (Callable[P, T]) -> Callable[P, T]
+        @wraps(fn)
+        def decorated(*args, **kwargs):
+            # type: (P.args, P.kwargs) -> T
+            rv = fn(*args, **kwargs)
+            self = args[0]
+            self.update_store({key: rv})  # type: ignore[attr-defined]
+            return rv
+
+        return decorated
+    return decorator
 
 
 class Counter:

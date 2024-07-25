@@ -1,3 +1,4 @@
+from __future__ import annotations
 from contextlib import contextmanager
 from copy import deepcopy
 from functools import wraps
@@ -27,6 +28,7 @@ __all__ = (
     "gs_interface_close",
     "gs_interface_refresh",
     "gs_interface_toggle_help",
+    "gs_interface_show_commit",
     "gs_edit_view_complete",
     "gs_edit_view_close",
 )
@@ -307,6 +309,12 @@ def distinct_until_state_changed(just_render_fn):
     return wrapper
 
 
+@contextmanager
+def noop_context():
+    # type: () -> Iterator[None]
+    yield
+
+
 class ReactiveInterface(Interface, GitCommand, Generic[T_state]):
     state: T_state
     subscribe_to: Set[str]
@@ -343,11 +351,17 @@ class ReactiveInterface(Interface, GitCommand, Generic[T_state]):
         self.refresh_view_state()
         self.just_render()
 
-    @distinct_until_state_changed
-    def just_render(self):
-        # type: () -> None
+    # We check twice if a re-render is actually necessary because the state has grown
+    # and invalidates when formatted relative dates change, t.i., too often.
+    @distinct_until_state_changed                                             # <== 1st check data/state
+    def just_render(self, keep_cursor_on_something=True):
+        # type: (bool) -> None
         content, regions = self._render_template()
-        with self.keep_cursor_on_something():
+        if content == self.view.substr(sublime.Region(0, self.view.size())):  # <== 2nd check actual view content
+            return
+
+        ctx = self.keep_cursor_on_something() if keep_cursor_on_something else noop_context()
+        with ctx:
             self.draw(self.title(), content, regions)
 
     def initial_state(self):
@@ -363,7 +377,7 @@ class ReactiveInterface(Interface, GitCommand, Generic[T_state]):
             self.subscribe_to,
             self.on_status_update
         )
-        state = store.current_state(self.repo_path)
+        state = self.current_state()
         new_state = self._pick_subscribed_topics_from_store(state)
         self.update_state(new_state)
 
@@ -620,6 +634,19 @@ class gs_interface_toggle_help(TextCommand):
         current_help = bool(self.view.settings().get("git_savvy.help_hidden"))
         self.view.settings().set("git_savvy.help_hidden", not current_help)
         self.view.run_command("gs_interface_refresh")
+
+
+class gs_interface_show_commit(TextCommand):
+    def run(self, edit: sublime.Edit) -> None:
+        view = self.view
+        frozen_sel = list(view.sel())
+        window = view.window()
+        assert window
+
+        for r in view.find_by_selector("constant.other.git-savvy.sha1"):
+            for s in frozen_sel:
+                if r.a <= s.a <= r.b:
+                    window.run_command("gs_show_commit", {"commit_hash": view.substr(r)})
 
 
 class EditView():
