@@ -184,12 +184,12 @@ class BranchesMixin(mixin_base):
             return branches
 
         slow_repo = self.current_state().get("slow_repo", None)
-        supports_ahead_behind = (
+        compute_ahead_behind = (
             self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND
-            and slow_repo is not False
+            and not slow_repo
         )
-        probe_speed = slow_repo is None and supports_ahead_behind
-        return get_branches__(probe_speed, supports_ahead_behind)
+        probe_speed = compute_ahead_behind and slow_repo is None
+        return get_branches__(probe_speed, compute_ahead_behind)
 
     def _cache_branches(self, branches, refs):
         # type: (List[Branch], Sequence[str]) -> None
