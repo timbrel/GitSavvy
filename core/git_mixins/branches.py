@@ -186,7 +186,7 @@ class BranchesMixin(mixin_base):
         slow_repo = self.current_state().get("slow_repo", None)
         supports_ahead_behind = (
             self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND
-            and slow_repo is not False
+            and slow_repo is not True
         )
         probe_speed = slow_repo is None and supports_ahead_behind
         return get_branches__(probe_speed, supports_ahead_behind)
