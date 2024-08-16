@@ -2,16 +2,16 @@
 # archive files. See http://git-scm.com/docs/gitattributes for details.
 
 # git
-.github/        	export-ignore
-*.git           	export-ignore
-*.gitignore     	export-ignore
-*.gitattributes 	export-ignore
+.github/            export-ignore
+*.git               export-ignore
+*.gitignore         export-ignore
+*.gitattributes     export-ignore
 
 # development
-/scripts			export-ignore
-/stubs				export-ignore
+/scripts            export-ignore
+/stubs              export-ignore
 /tests/             export-ignore
-/__init__.py		export-ignore
-mypy.ini			export-ignore
-setup.cfg			export-ignore
-unittesting.json	export-ignore
+/__init__.py        export-ignore
+mypy.ini            export-ignore
+setup.cfg           export-ignore
+unittesting.json    export-ignore
