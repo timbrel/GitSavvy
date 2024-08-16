@@ -68,7 +68,7 @@ contexts:
         4: meta.git-savvy.branches.branch.name gitsavvy.gotosymbol
         5: comment.git-savvy.branches.branch.extra-info
 
-    - match: '^  (▸)?\s+([0-9a-f]{7,40}) ([^\s]+)([^(-]+?)?(\(.+?(?:, (gone))?\))?( \- .+)?$'
+    - match: '^  (▸)?\s+([0-9a-f]{7,40}) ([^\s]+)\s([^(-].+?)?((?:, )?\(.+?(?:, (gone))?\))?( ?\- .+)?$'
       captures:
         0: meta.git-savvy.branches.branch
         1: punctuation.symbol.active-branch.git-savvy

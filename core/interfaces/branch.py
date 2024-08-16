@@ -247,7 +247,9 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
         def get_date(branch):
             if human_dates:
-                return branch.human_committerdate
+                # Remove possible timezone information, e.g. transform "Wed 14:28 -0700"
+                # to just "Wed 14:28".
+                return re.sub(r" [+-]\d{4}$", "", branch.human_committerdate)
 
             d = branch.relative_committerdate
             if d == "12 months ago":
