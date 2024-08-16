@@ -14,4 +14,34 @@
     f21e6a8 old (origin/develop, ahead 13, behind 40)
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ - meta.git-savvy.branches.branch.active-branch
 #               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.tracking-info
+    b20264b iter-branches-dashboard-code 12 minutes ago
+#   ^^^^^^^ constant.other.git-savvy.branches.branch.sha1
+#           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ meta.git-savvy.branches.branch.name gitsavvy.gotosymbol
+#                                        ^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.date
+    fb8240d status-bar-updater (fork/status-bar-updater, gone)
+#                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.tracking-info
+#                                                        ^^^^ constant.git-savvy.upstream.gone
+    fb8240d status-bar-updater (fork/status-bar-updater)
+#                              ^^^^^^^^^^^^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.tracking-info
+    369ff34 fix-environment 6 years ago, (origin/fix-environment)
+#                           ^^^^^^^^^^^ comment.git-savvy.branches.branch.date
+#                                        ^^^^^^^^^^^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.tracking-info
+  ▸ 7f561b6 master Wed 20:04 -0700, (origin/master) - desc
+#                  ^^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.date
+#                                    ^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.tracking-info
+#                                                   ^^^^^^ comment.git-savvy.branches.branch.description keyword
+  ▸ 7f561b6 master Wed 20:04 -0700 - desc
+#                  ^^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.date
+#                                  ^^^^^^ comment.git-savvy.branches.branch.description keyword
+    7f561b6 master (origin/master) - desc
+#                  ^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.tracking-info
+#                                 ^^^^^^^ comment.git-savvy.branches.branch.description keyword
+    7f561b6 master - desc
+#                  ^^^^^^ comment.git-savvy.branches.branch.description keyword
+    67df3f5 better-error-handling 12 months ago - desc
+#                                 ^^^^^^^^^^^^^ comment.git-savvy.branches.branch.date
+#                                               ^^^^^^ comment.git-savvy.branches.branch.description keyword
+
+
+
 
