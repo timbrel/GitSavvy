@@ -137,6 +137,10 @@
         "command": "gs_github_add_fork_as_remote"
     },
     {
+        "caption": "github: create repo",
+        "command": "gs_github_create_repo"
+    },
+    {
         "caption": "github: create fork",
         "command": "gs_github_create_fork"
     },

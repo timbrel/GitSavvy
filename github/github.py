@@ -2,6 +2,7 @@
 GitHub methods that are functionally separate from anything Sublime-related.
 """
 
+from __future__ import annotations
 import re
 from webbrowser import open as open_in_browser
 from functools import partial
@@ -230,3 +231,19 @@ def create_fork(github_repo: GitHubRepo, default_branch_only: bool = False):
         github_repo,
         {"default_branch_only": default_branch_only}
     )
+
+
+def create_user_repo(token: str, repo_name: str) -> dict:
+    return create_repo(token, None, repo_name)
+
+
+def create_repo(token: str, org: str | None, repo_name: str) -> dict:
+    host = "api.github.com"
+    path = f"/orgs/{org}/repos" if org else "/user/repos"
+    auth = (token, "x-oauth-basic")
+    payload = {"name": repo_name}
+
+    response = interwebs.post(host, 443, path, https=True, auth=auth, payload=payload)
+    validate_response(response, method="POST")
+
+    return response.payload
