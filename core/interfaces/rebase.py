@@ -596,7 +596,7 @@ class gs_rebase_squash(RewriteBase):
             self.do_action(self.interface.entries[squash_idx - 1].long_hash)
         else:
             reversed_logs = list(reversed(self.interface.entries[0:squash_idx]))
-            show_log_panel(reversed_logs, partial(enqueue_on_worker, self.do_action))
+            show_log_panel(reversed_logs, partial(enqueue_on_worker, self.do_action))  # type: ignore[call-arg]
 
     def do_action(self, target_commit):
         if not target_commit:
@@ -733,7 +733,7 @@ class gs_rebase_move_up(RewriteBase):
             self.do_action(self.interface.entries[move_idx - 1].long_hash)
         else:
             logs = list(reversed(self.interface.entries[:move_idx]))
-            show_log_panel(logs, partial(enqueue_on_worker, self.do_action))
+            show_log_panel(logs, partial(enqueue_on_worker, self.do_action))  # type: ignore[call-arg]
 
     def do_action(self, target_commit):
         if not target_commit:
@@ -785,7 +785,7 @@ class gs_rebase_move_down(RewriteBase):
             self.do_action(self.interface.entries[move_idx + 1].long_hash)
         else:
             logs = self.interface.entries[move_idx + 1:]
-            show_log_panel(logs, partial(enqueue_on_worker, self.do_action))
+            show_log_panel(logs, partial(enqueue_on_worker, self.do_action))  # type: ignore[call-arg]
 
     def do_action(self, target_commit):
         if not target_commit:

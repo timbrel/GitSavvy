@@ -7,7 +7,7 @@ fixup_command = re.compile("^fixup! (.*)")
 
 
 class GsFixupFromStageCommand(gs_log_current_branch):
-    def run(self):
+    def run(self):  # type: ignore[override]
         status = self.get_working_dir_status()
         if status.unstaged_files or status.merge_conflicts:
             sublime.message_dialog(
@@ -43,8 +43,8 @@ class GsFixupFromStageCommand(gs_log_current_branch):
 
         return commit_chain
 
-    def do_action(self, commit, **kwargs):
-        commit = self.git("rev-parse", commit).strip()
+    def do_action(self, commit_hash, **kwargs):
+        commit = self.git("rev-parse", commit_hash).strip()
         self.git("commit", "--fixup", commit)
         try:
             base_commit = self.git("rev-parse", "{}~1".format(commit)).strip()
@@ -61,6 +61,6 @@ class GsFixupFromStageCommand(gs_log_current_branch):
 
 
 class GsQuickStageCurrentFileAndFixupCommand(GsFixupFromStageCommand):
-    def run(self):
+    def run(self):  # type: ignore[override]
         self.git("add", "--", self.file_path)
         super().run()

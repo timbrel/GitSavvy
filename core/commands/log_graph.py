@@ -1176,13 +1176,19 @@ class gs_log_graph_refresh(GsTextCommand):
                 col_range,
                 visible_selection,
             )
-            try_navigate_to_symbol = partial(
-                navigate_to_symbol,
-                view,
-                follow,
-                col_range=col_range,
-                method=set_and_show_cursor if visible_selection else just_set_cursor
-            )
+
+            if not follow:
+                def try_navigate_to_symbol(*, if_before=None) -> bool:
+                    return False
+            else:
+                try_navigate_to_symbol = partial(
+                    navigate_to_symbol,
+                    view,
+                    follow,
+                    col_range=col_range,
+                    method=set_and_show_cursor if visible_selection else just_set_cursor
+                )
+
             block_time = utils.timer()
             while True:
                 # If only the head commits changed, and the cursor (and with it `follow`)
@@ -1224,7 +1230,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 # If we still did not navigate the symbol is either
                 # gone, or happens to be after the fold of fresh
                 # content.
-                if not follow or not try_navigate_to_symbol():
+                if not try_navigate_to_symbol():
                     if initial_draw:
                         view.run_command("gs_log_graph_navigate")
                     elif visible_selection:
@@ -3114,13 +3120,13 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             ]
         return actions
 
-    def pull(self):
+    def pull(self):  # type: ignore[override]
         self.window.run_command("gs_pull")
 
-    def push(self, current_branch):
+    def push(self, current_branch):  # type: ignore[override]
         self.window.run_command("gs_push", {"local_branch_name": current_branch})
 
-    def fetch(self, current_branch):
+    def fetch(self, current_branch):  # type: ignore[override]
         remote = self.get_remote_for_branch(current_branch)
         self.window.run_command("gs_fetch", {"remote": remote} if remote else None)
 
