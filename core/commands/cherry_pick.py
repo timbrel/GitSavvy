@@ -16,7 +16,7 @@ __all__ = (
 
 class gs_cherry_pick(gs_log_by_branch):
 
-    def log(self, **kwargs):
+    def log(self, **kwargs):  # type: ignore[override]
         kwargs["cherry"] = True
         kwargs["start_end"] = ("", kwargs["branch"])
         return super().log(**kwargs)

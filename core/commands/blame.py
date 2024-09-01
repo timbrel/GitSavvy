@@ -126,7 +126,7 @@ class gs_blame_current_file(LogMixin, GsTextCommand):
     _commit_hash = None
     _file_path = None
 
-    def run(self, edit, **kwargs):
+    def run(self, edit, **kwargs):  # type: ignore[override]
         # reset memorized commit hash when blaming a different file
         if self._file_path != self.file_path:
             self._commit_hash = None
@@ -145,10 +145,10 @@ class gs_blame_current_file(LogMixin, GsTextCommand):
             "commit_hash": commit_hash, "file_path": self._file_path
         })
 
-    def selected_index(self, commit_hash):
+    def selected_index(self, commit_hash):  # type: ignore[override]
         return self._commit_hash == commit_hash
 
-    def log(self, **kwargs):
+    def log(self, **kwargs):  # type: ignore[override]
         follow = self.savvy_settings.get("blame_follow_rename")
         kwargs["follow"] = follow
         return super().log(**kwargs)
