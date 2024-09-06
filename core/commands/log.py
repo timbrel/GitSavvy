@@ -290,5 +290,13 @@ class gs_log_action(PanelActionMixin, WindowCommand):
         })
 
     def checkout_file_at_commit(self):
-        self.checkout_ref(self._commit_hash, fpath=self._file_path)
+        commit_hash = self._commit_hash
+        file_path = self._file_path
+
+        if commit_hash and file_path and self.savvy_settings.get("log_follow_rename"):
+            filename_at_commit = self.filename_at_commit(file_path, commit_hash)
+        else:
+            filename_at_commit = file_path
+
+        self.checkout_ref(self._commit_hash, fpath=filename_at_commit)
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
