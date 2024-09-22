@@ -70,7 +70,7 @@ class BlameMixin(GsTextCommand):
 
 
 class gs_blame(BlameMixin):
-    def run(self, edit, file_path=None, repo_path=None, commit_hash=None):
+    def run(self, edit, file_path: str = None, repo_path: str = None, commit_hash: str = None):
         self._file_path = file_path or self.file_path
         self.__repo_path = repo_path or self.repo_path
         if commit_hash == "HEAD":
