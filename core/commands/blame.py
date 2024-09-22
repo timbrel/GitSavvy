@@ -11,6 +11,7 @@ from ...common import util
 from .log import LogMixin
 from ..ui_mixins.quick_panel import PanelActionMixin
 from GitSavvy.core.base_commands import GsTextCommand
+from GitSavvy.core.utils import flash
 from GitSavvy.core.view import replace_view_content
 
 
@@ -74,8 +75,12 @@ class BlameMixin(GsTextCommand):
 
 class gs_blame(BlameMixin):
     def run(self, edit, file_path: str = None, repo_path: str = None, commit_hash: str = None):
-        self._file_path = file_path or self.file_path
         self.__repo_path = repo_path or self.repo_path
+        self._file_path = file_path or self.file_path
+        if not self._file_path:
+            flash(self.view, "Can't extract a file name from the view.")
+            return
+
         if commit_hash == "HEAD":
             commit_hash = self.get_commit_hash_for_head()
         if commit_hash:
