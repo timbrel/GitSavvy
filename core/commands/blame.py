@@ -75,7 +75,10 @@ class gs_blame(BlameMixin):
         self.__repo_path = repo_path or self.repo_path
         if commit_hash == "HEAD":
             commit_hash = self.get_commit_hash_for_head()
+        if commit_hash:
+            commit_hash = self.get_short_hash(commit_hash)
         self._commit_hash = commit_hash
+
         sublime.set_timeout_async(self.blame)
 
     @util.view.single_cursor_coords
@@ -146,7 +149,7 @@ class gs_blame_current_file(LogMixin, GsTextCommand):
         })
 
     def selected_index(self, commit_hash):  # type: ignore[override]
-        return self._commit_hash == commit_hash
+        return self._commit_hash and commit_hash.startswith(self._commit_hash)
 
     def log(self, **kwargs):  # type: ignore[override]
         follow = self.savvy_settings.get("blame_follow_rename")
@@ -316,7 +319,7 @@ class gs_blame_refresh(BlameMixin):
         time_stamp = util.dates.fuzzy(commit["author-time"]) if commit["author-time"] else ""
 
         commit_hash = commit["short_hash"]
-        if commit["long_hash"] == current_commit_hash:
+        if current_commit_hash and commit["long_hash"].startswith(current_commit_hash):
             commit_hash += "  (CURRENT COMMIT)"
         return (summary, commit_hash, author_info, time_stamp)
 
