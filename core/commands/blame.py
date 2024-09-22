@@ -33,7 +33,7 @@ BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno",
 
 NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
 BLAME_TITLE = "BLAME: {}{}"
-COMMIT_HASH_LENGTH = 12
+DEFAULT_COMMIT_HASH_LENGTH = 8
 
 
 class BlameMixin(GsTextCommand):
@@ -64,9 +64,12 @@ class BlameMixin(GsTextCommand):
             hunk_start_row, _ = self.view.rowcol(hunk_start)
             short_hash_row = hunk_start_row + 2
 
-        short_hash_pos = self.view.text_point(short_hash_row, 0)
-        short_hash = self.view.substr(sublime.Region(short_hash_pos, short_hash_pos + COMMIT_HASH_LENGTH))
-        return short_hash.strip()
+        if short_hash_region := self.view.expand_to_scope(
+            self.view.text_point(short_hash_row, 0),
+            "constant.numeric.commit-hash.git-savvy"
+        ):
+            return self.view.substr(short_hash_region)
+        return None
 
 
 class gs_blame(BlameMixin):
@@ -274,7 +277,8 @@ class gs_blame_refresh(BlameMixin):
             match = re.match(r"([0-9a-f]{40}) (\d+) (\d+)( \d+)?", line)
             assert match
             commit_hash, orig_lineno, final_lineno, _ = match.groups()
-            commits[commit_hash]["short_hash"] = commit_hash[:COMMIT_HASH_LENGTH]
+            short_hash_length = self.current_state().get("short_hash_length", DEFAULT_COMMIT_HASH_LENGTH)
+            commits[commit_hash]["short_hash"] = commit_hash[:short_hash_length]
             commits[commit_hash]["long_hash"] = commit_hash
 
             next_line = next(lines_iter)
@@ -399,7 +403,7 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
 
         settings = self.view.settings()
         if selected:
-            commit_hash = self.find_selected_commit_hash().strip()
+            commit_hash = self.find_selected_commit_hash() or ""
         else:
             commit_hash = settings.get("git_savvy.commit_hash")
 
