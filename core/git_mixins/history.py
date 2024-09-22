@@ -400,7 +400,8 @@ class HistoryMixin(mixin_base):
                         "--format=%(refname)",
                         "--contains",
                         current_commit,
-                        "--sort=-committerdate"
+                        "--sort=-committerdate",
+                        "--sort=-HEAD"
                     ).strip().splitlines()
                 ))
             except (GitSavvyError, StopIteration):
