@@ -132,7 +132,7 @@ class gs_blame(BlameMixin):
         view.run_command("gs_handle_vintageous")
 
 
-class gs_blame_current_file(LogMixin, GsTextCommand):
+class gs_blame_current_file(LogMixin, BlameMixin):
 
     _commit_hash = None
     _file_path = None
@@ -144,7 +144,10 @@ class gs_blame_current_file(LogMixin, GsTextCommand):
 
         if self.view.settings().get("git_savvy.blame_view"):
             if not self._commit_hash:
-                self._commit_hash = self.view.settings().get("git_savvy.commit_hash")
+                self._commit_hash = (
+                    self.find_selected_commit_hash()
+                    or self.view.settings().get("git_savvy.commit_hash")
+                )
 
         self._file_path = self.file_path
         kwargs["file_path"] = self._file_path
