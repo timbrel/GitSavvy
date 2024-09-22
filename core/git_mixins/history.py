@@ -1,6 +1,6 @@
 from __future__ import annotations
 import email.utils
-from itertools import chain
+from itertools import chain, takewhile
 
 from ..exceptions import GitSavvyError
 from ...common import util
@@ -419,7 +419,10 @@ class HistoryMixin(mixin_base):
         return {
             right: left
             for left, right in pairwise(chain(
-                self._log_commits(f"{current_commit}..{branch_hint}", file_path, follow),
+                takewhile(
+                    lambda c: c != current_commit,
+                    self._log_commits(f"{branch_hint}", file_path, follow)
+                ),
                 [current_commit]
             ))
         }

@@ -983,9 +983,7 @@ class gs_inline_diff_previous_commit(TextCommand, GitCommand):
                 return
 
         new_target_commit = base_commit
-        new_base_commit = self.previous_commit(base_commit, file_path)
-        if new_base_commit:
-            show_file_at_commit.remember_next_commit_for(view, {new_base_commit: base_commit})
+        new_base_commit = show_file_at_commit.get_previous_commit(self, view, base_commit, file_path)
         settings.set("git_savvy.inline_diff_view.base_commit", new_base_commit)
         settings.set("git_savvy.inline_diff_view.target_commit", new_target_commit)
 

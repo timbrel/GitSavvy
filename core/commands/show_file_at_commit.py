@@ -241,12 +241,11 @@ class gs_show_file_at_commit_open_previous_commit(GsTextCommand):
         file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
 
-        previous_commit = self.previous_commit(commit_hash, file_path)
+        previous_commit = get_previous_commit(self, view, commit_hash, file_path)
         if not previous_commit:
             flash(view, "No older commit found.")
             return
 
-        remember_next_commit_for(view, {previous_commit: commit_hash})
         settings.set("git_savvy.show_file_at_commit_view.commit", previous_commit)
 
         position = capture_cur_position(view)
@@ -313,6 +312,21 @@ def get_next_commit(
     return next_commits.get(commit_hash)
 
 
+def get_previous_commit(
+    cmd: GitCommand,
+    view: sublime.View,
+    commit_hash: str,
+    file_path: str | None = None
+) -> Optional[str]:
+    commit_hash = cmd.get_short_hash(commit_hash)
+    if previous := recall_previous_commit_for(view, commit_hash):
+        return previous
+
+    if previous := cmd.previous_commit(commit_hash, file_path):
+        remember_next_commit_for(view, {previous: commit_hash})
+    return previous
+
+
 def remember_next_commit_for(view: sublime.View, mapping: Dict[str, str]) -> None:
     settings = view.settings()
     store: Dict[str, str] = settings.get("git_savvy.next_commits", {})
@@ -324,6 +338,15 @@ def recall_next_commit_for(view: sublime.View, commit_hash: str) -> Optional[str
     settings = view.settings()
     store: Dict[str, str] = settings.get("git_savvy.next_commits", {})
     return store.get(commit_hash)
+
+
+def recall_previous_commit_for(view: sublime.View, commit_hash: str) -> Optional[str]:
+    settings = view.settings()
+    store: Dict[str, str] = settings.get("git_savvy.next_commits", {})
+    try:
+        return next(previous for previous, next_commit in store.items() if next_commit == commit_hash)
+    except StopIteration:
+        return None
 
 
 def pass_next_commits_info_along(view: Optional[sublime.View], to: sublime.View) -> None:

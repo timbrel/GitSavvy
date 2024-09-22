@@ -327,12 +327,11 @@ class gs_show_commit_open_previous_commit(TextCommand, GitCommand):
         file_path: Optional[str] = settings.get("git_savvy.file_path")
         commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
 
-        previous_commit = self.previous_commit(commit_hash, file_path)
+        previous_commit = show_file_at_commit.get_previous_commit(self, view, commit_hash, file_path)
         if not previous_commit:
             flash(view, "No older commit found.")
             return
 
-        show_file_at_commit.remember_next_commit_for(view, {previous_commit: commit_hash})
         show_commit_info.remember_view_state(view)
         settings.set("git_savvy.show_commit_view.commit", previous_commit)
 
