@@ -2162,12 +2162,17 @@ def _set_symbol_to_follow(view: sublime.View, line_text: str) -> None:
     if symbol != previous_value:
         view.settings().set('git_savvy.log_graph_view.follow', symbol)
 
-        try:
-            cursor = [s.b for s in view.sel()][-1]
-        except IndexError:
-            return
-        continuation_line = view.find("...\n", cursor, sublime.LITERAL)
-        if continuation_line:
+        # Check if the view endswith our `continuation_marker` and decide if we
+        # need to expand or shrink the graph.
+        continuation_marker = "...\n"
+        view_size = view.size()
+        continuation_line = sublime.Region(view_size - len(continuation_marker), view_size)
+        if view.substr(continuation_line) == continuation_marker:
+            try:
+                cursor = [s.b for s in view.sel()][-1]
+            except IndexError:
+                return
+
             max_row, _ = view.rowcol(continuation_line.a)
             cur_row, _ = view.rowcol(cursor)
             if not (GRAPH_HEIGHT * 0.5 < max_row - cur_row < GRAPH_HEIGHT * 2):
