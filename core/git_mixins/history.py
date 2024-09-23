@@ -4,7 +4,7 @@ from itertools import chain, takewhile
 
 from ..exceptions import GitSavvyError
 from ...common import util
-from GitSavvy.core.fns import pairwise
+from GitSavvy.core.fns import last, pairwise
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.utils import cached
 
@@ -362,31 +362,25 @@ class HistoryMixin(mixin_base):
     @cached(not_if={"current_commit": is_dynamic_ref})
     def previous_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
-        try:
-            return self._log_commits(
-                current_commit, file_path, follow, limit=2
-            )[1]
-        except IndexError:
-            return None
+        return last(
+            self._log_commits(current_commit, file_path, follow, limit=2),
+            None
+        )
 
     @cached(not_if={"current_commit": is_dynamic_ref})
     def recent_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
-        try:
-            return self._log_commits(
-                current_commit, file_path, follow, limit=1
-            )[0]
-        except IndexError:
-            return None
+        return last(
+            self._log_commits(current_commit, file_path, follow, limit=1),
+            None
+        )
 
     def next_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
-        try:
-            return self._log_commits(
-                f"{current_commit}..", file_path, follow
-            )[-1]
-        except IndexError:
-            return None
+        return last(
+            self._log_commits(f"{current_commit}..", file_path, follow),
+            None
+        )
 
     def next_commits(
         self,
