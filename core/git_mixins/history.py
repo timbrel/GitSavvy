@@ -363,7 +363,7 @@ class HistoryMixin(mixin_base):
     def previous_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
         return last(
-            self._log_commits(current_commit, file_path, follow, limit=2),
+            self._log_commits_linewise(current_commit, file_path, follow, limit=2),
             None
         )
 
@@ -371,14 +371,14 @@ class HistoryMixin(mixin_base):
     def recent_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
         return last(
-            self._log_commits(current_commit, file_path, follow, limit=1),
+            self._log_commits_linewise(current_commit, file_path, follow, limit=1),
             None
         )
 
     def next_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
         return last(
-            self._log_commits(f"{current_commit}..", file_path, follow),
+            self._log_commits_linewise(f"{current_commit}..", file_path, follow),
             None
         )
 
@@ -415,26 +415,30 @@ class HistoryMixin(mixin_base):
             for left, right in pairwise(chain(
                 takewhile(
                     lambda c: c != current_commit,
-                    self._log_commits(f"{branch_hint}", file_path, follow)
+                    self._log_commits_linewise(f"{branch_hint}", file_path, follow)
                 ),
                 [current_commit]
             ))
         }
 
-    def _log_commits(
+    def _log_commits_linewise(
         self,
         commitish: Optional[str],
         file_path: Optional[str],
         follow: bool,
         limit: Optional[int] = None
-    ) -> List[str]:
-        return self.git_throwing_silently(
-            "log",
-            "--format=%h",
-            "--topo-order",
-            "--follow" if follow else None,
-            None if limit is None else f"-{limit}",
-            commitish,
-            "--",
-            file_path
-        ).strip().splitlines()
+    ) -> Iterator[str]:
+        return (
+            line.strip()
+            for line in self.git_streaming(
+                "log",
+                "--format=%h",
+                "--topo-order",
+                "--follow" if follow else None,
+                None if limit is None else f"-{limit}",
+                commitish,
+                "--",
+                file_path,
+                show_panel_on_error=False
+            )
+        )
