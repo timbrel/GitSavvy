@@ -171,7 +171,9 @@ def query_github(api_url_template: str, github_repo: GitHubRepo):
 get_repo_data = partial(query_github, "/repos/{owner}/{repo}")
 
 
-def iteratively_query_github(api_url_template: str, github_repo: GitHubRepo, query: dict = {}):
+def iteratively_query_github(
+    api_url_template: str, github_repo: GitHubRepo, query: dict = {}, yield_: str = None
+):
     """
     Like `query_github` but return a generator by repeatedly
     iterating until no link to next page.
@@ -201,8 +203,10 @@ def iteratively_query_github(api_url_template: str, github_repo: GitHubRepo, que
         validate_response(response)
 
         if response.payload:
-            for item in response.payload:
-                yield item
+            if yield_:
+                yield from response.payload[yield_]
+            else:
+                yield from response.payload
         else:
             break
 
