@@ -120,7 +120,9 @@ def get_api_fqdn(github_repo):
     return True, github_repo.fqdn
 
 
-def github_api_url(api_url_template, repository, **kwargs):
+def github_api_url(
+    api_url_template: str, repository: GitHubRepo, **kwargs: dict[str, str]
+) -> tuple[str, str]:
     """
     Construct a github URL to query using the given url template string,
     and a github.GitHubRepo instance, and optionally query parameters
@@ -151,7 +153,7 @@ def validate_response(response, method="GET"):
             action=action, payload=response.payload))
 
 
-def query_github(api_url_template, github_repo):
+def query_github(api_url_template: str, github_repo: GitHubRepo):
     """
     Takes a URL template that takes `owner` and `repo` template variables
     and as a GitHub repo object.  Do a GET for the provided URL and return
@@ -169,7 +171,7 @@ def query_github(api_url_template, github_repo):
 get_repo_data = partial(query_github, "/repos/{owner}/{repo}")
 
 
-def iteratively_query_github(api_url_template, github_repo):
+def iteratively_query_github(api_url_template: str, github_repo: GitHubRepo):
     """
     Like `query_github` but return a generator by repeatedly
     iterating until no link to next page.
