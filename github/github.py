@@ -217,6 +217,28 @@ get_forks = partial(iteratively_query_github, "/repos/{owner}/{repo}/forks")
 get_pull_requests = partial(iteratively_query_github, "/repos/{owner}/{repo}/pulls")
 
 
+def search_pull_requests(repository: GitHubRepo, q: str):
+    return iteratively_query_github("/search/issues", repository, query={"q": q}, yield_="items")
+
+
+def get_pull_request(nr: str | int, github_repo: GitHubRepo):
+    return get_from_github(f"/repos/{{owner}}/{{repo}}/pulls/{nr}", github_repo)
+
+
+def get_from_github(api_url_template: str, github_repo: GitHubRepo):
+    fqdn, path = github_api_url(api_url_template, github_repo)
+    auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
+
+    response = interwebs.get(
+        fqdn, 443, path, https=True, auth=auth,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+        })
+    validate_response(response)
+    return response.payload
+
+
 def post_to_github(api_url_template, github_repo, payload=None):
     """
     Takes a URL template that takes `owner` and `repo` template variables
