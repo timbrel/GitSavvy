@@ -171,13 +171,14 @@ def query_github(api_url_template: str, github_repo: GitHubRepo):
 get_repo_data = partial(query_github, "/repos/{owner}/{repo}")
 
 
-def iteratively_query_github(api_url_template: str, github_repo: GitHubRepo):
+def iteratively_query_github(api_url_template: str, github_repo: GitHubRepo, query: dict = {}):
     """
     Like `query_github` but return a generator by repeatedly
     iterating until no link to next page.
     """
-    fqdn, path = github_api_url(api_url_template, github_repo,
-                                per_page=GITHUB_PER_PAGE_MAX)
+    default_query = {"per_page": GITHUB_PER_PAGE_MAX}
+    query_ = {**default_query, **query}
+    fqdn, path = github_api_url(api_url_template, github_repo, **query_)
     auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
 
     response = None
