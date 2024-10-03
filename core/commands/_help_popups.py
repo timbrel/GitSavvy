@@ -87,6 +87,9 @@ class gs_blame_help_tooltip(GsAbstractHelpPopup):
     key_bindings = dedent("""\
     ### Actions ###
     [enter]        show all commands
+    [o]            open commit under cursor
+    [l]            show log of surrounding commits
+
     [w]            ignore white space
     [f]            detect moved or copied lines within same file
     [c]            detect moved or copied lines within same commit
