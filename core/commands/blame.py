@@ -432,7 +432,7 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
             return
 
         lineno = self.find_matching_lineno(
-            commit_hash, neighbor_hash, self.find_lineno())
+            settings.get("git_savvy.commit_hash"), neighbor_hash, self.find_lineno())
         settings.set("git_savvy.commit_hash", neighbor_hash)
         settings.set("git_savvy.lineno", lineno)
         self.view.run_command("gs_blame_refresh")
