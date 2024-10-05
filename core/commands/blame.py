@@ -431,11 +431,19 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
         if commit_hash == neighbor_hash:
             return
 
-        lineno = self.find_matching_lineno(
-            settings.get("git_savvy.commit_hash"), neighbor_hash, self.find_lineno())
-        settings.set("git_savvy.commit_hash", neighbor_hash)
-        settings.set("git_savvy.lineno", lineno)
-        self.view.run_command("gs_blame_refresh")
+        if selected:
+            # With "selected" it is a wide jump which can't be undone,
+            # hence open a new view.
+            self.window.run_command("gs_blame", {
+                "commit_hash": neighbor_hash,
+                "file_path": settings.get("git_savvy.file_path")
+            })
+        else:
+            lineno = self.find_matching_lineno(
+                commit_hash, neighbor_hash, self.find_lineno())
+            settings.set("git_savvy.commit_hash", neighbor_hash)
+            settings.set("git_savvy.lineno", lineno)
+            self.view.run_command("gs_blame_refresh")
 
     def show_file_at_commit(self, from_line=False):
         settings = self.view.settings()
