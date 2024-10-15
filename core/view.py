@@ -181,9 +181,12 @@ def other_visible_views(view: sublime.View) -> Iterator[sublime.View]:
 
 def visible_views(window: sublime.Window) -> Iterator[sublime.View]:
     num_groups = window.num_groups()
-    for group_id in range(num_groups):
-        if (view := window.active_view_in_group(group_id)):
-            yield view
+    yield from (
+        sheets_view
+        for group_id in range(num_groups)
+        for sheet in window.selected_sheets_in_group(group_id)
+        if (sheets_view := sheet.view())
+    )
 
 
 # `replace_view_content` is a wrapper for `_replace_region` to get some
