@@ -722,6 +722,7 @@ class GsInlineDiffFocusEventListener(EventListener):
             if (
                 is_inline_diff_view(other_view)
                 and other_view.settings().get("git_savvy.file_path") == view.file_name()
+                and not other_view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
             ):
                 other_view.run_command("gs_inline_diff_refresh", {"sync": False})
 
