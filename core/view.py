@@ -179,12 +179,12 @@ def other_visible_views(view: sublime.View) -> Iterator[sublime.View]:
             yield view_
 
 
-def visible_views(window: sublime.Window) -> Iterator[sublime.View]:
-    num_groups = window.num_groups()
+def visible_views(window: sublime.Window = None) -> Iterator[sublime.View]:
     yield from (
         sheets_view
-        for group_id in range(num_groups)
-        for sheet in window.selected_sheets_in_group(group_id)
+        for window_ in ([window] if window else sublime.windows())
+        for group_id in range(window_.num_groups())
+        for sheet in window_.selected_sheets_in_group(group_id)
         if (sheets_view := sheet.view())
     )
 
