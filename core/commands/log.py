@@ -39,7 +39,7 @@ class LogMixin(GitCommand):
 
     selected_index: Union[int, Callable[[str], bool]] = 0
 
-    def run(self, *, commit_hash=None, file_path=None, **kwargs):
+    def run(self, *_edit, commit_hash=None, file_path=None, **kwargs):
         if commit_hash:
             self.do_action(commit_hash, file_path=file_path, **kwargs)
         else:
