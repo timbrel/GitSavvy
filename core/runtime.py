@@ -183,7 +183,7 @@ def run_as_future(fn, *args, **kwargs):
 
 
 def run_or_timeout(fn, timeout):
-    # type: (Callable[P, T], float) -> T
+    # type: (Callable[[], T], float) -> T
     cond = threading.Condition()
     result: T
     exc: Exception
@@ -211,7 +211,7 @@ def run_or_timeout(fn, timeout):
 
 
 def run_and_check_timeout(fn, timeout, callback):
-    # type: (Callable[P, T], float, Union[Callable[[], None], Sequence[Callable[[], None]]]) -> T
+    # type: (Callable[[], T], float, Union[Callable[[], None], Sequence[Callable[[], None]]]) -> T
     cond = threading.Condition()
     callbacks = callback if isinstance(callback, list) else [callback]
 
