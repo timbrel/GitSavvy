@@ -206,7 +206,7 @@ class RemotePanel(GitCommand):
 
         self.window.show_quick_panel(
             (
-                [[remote, _remotes[remote]] for remote in self.remotes]  # type: ignore[arg-type]  # mypy bug
+                [[remote, _remotes[remote]] for remote in self.remotes]
                 if self.show_url else
                 self.remotes
             ),
