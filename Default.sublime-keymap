@@ -743,6 +743,15 @@
             { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
         ]
     },
+    {
+        "keys": ["s"],
+        "command": "gs_commit_view_open_transient_view",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
+        ]
+    },
 
 
     ///////////////
