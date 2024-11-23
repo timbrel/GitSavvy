@@ -710,7 +710,10 @@ class GsInlineDiffFocusEventListener(EventListener):
         if (
             active_on_activated
             and is_inline_diff_view(view)
-            and not view.settings().get("git_savvy.inline_diff_view.target_commit")
+            and (
+                not view.settings().get("git_savvy.inline_diff_view.target_commit")
+                or view.id() not in diff_view_hunks
+            )
         ):
             view.run_command("gs_inline_diff_refresh", {"sync": False})
 
