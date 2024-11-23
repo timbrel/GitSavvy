@@ -11,6 +11,7 @@ from ...common import util
 from .log import LogMixin
 from ..ui_mixins.quick_panel import PanelActionMixin
 from GitSavvy.core.base_commands import GsTextCommand
+from GitSavvy.core.utils import flash
 from GitSavvy.core.view import replace_view_content
 
 
@@ -33,7 +34,7 @@ BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno",
 
 NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
 BLAME_TITLE = "BLAME: {}{}"
-COMMIT_HASH_LENGTH = 12
+DEFAULT_COMMIT_HASH_LENGTH = 8
 
 
 class BlameMixin(GsTextCommand):
@@ -64,18 +65,28 @@ class BlameMixin(GsTextCommand):
             hunk_start_row, _ = self.view.rowcol(hunk_start)
             short_hash_row = hunk_start_row + 2
 
-        short_hash_pos = self.view.text_point(short_hash_row, 0)
-        short_hash = self.view.substr(sublime.Region(short_hash_pos, short_hash_pos + COMMIT_HASH_LENGTH))
-        return short_hash.strip()
+        if short_hash_region := self.view.expand_to_scope(
+            self.view.text_point(short_hash_row, 0),
+            "constant.numeric.commit-hash.git-savvy"
+        ):
+            return self.view.substr(short_hash_region)
+        return None
 
 
 class gs_blame(BlameMixin):
-    def run(self, edit, file_path=None, repo_path=None, commit_hash=None):
-        self._file_path = file_path or self.file_path
+    def run(self, edit, file_path: str = None, repo_path: str = None, commit_hash: str = None):
         self.__repo_path = repo_path or self.repo_path
+        self._file_path = file_path or self.file_path
+        if not self._file_path:
+            flash(self.view, "Can't extract a file name from the view.")
+            return
+
         if commit_hash == "HEAD":
             commit_hash = self.get_commit_hash_for_head()
+        if commit_hash:
+            commit_hash = self.get_short_hash(commit_hash)
         self._commit_hash = commit_hash
+
         sublime.set_timeout_async(self.blame)
 
     @util.view.single_cursor_coords
@@ -121,7 +132,7 @@ class gs_blame(BlameMixin):
         view.run_command("gs_handle_vintageous")
 
 
-class gs_blame_current_file(LogMixin, GsTextCommand):
+class gs_blame_current_file(LogMixin, BlameMixin):
 
     _commit_hash = None
     _file_path = None
@@ -133,7 +144,10 @@ class gs_blame_current_file(LogMixin, GsTextCommand):
 
         if self.view.settings().get("git_savvy.blame_view"):
             if not self._commit_hash:
-                self._commit_hash = self.view.settings().get("git_savvy.commit_hash")
+                self._commit_hash = (
+                    self.find_selected_commit_hash()
+                    or self.view.settings().get("git_savvy.commit_hash")
+                )
 
         self._file_path = self.file_path
         kwargs["file_path"] = self._file_path
@@ -146,7 +160,7 @@ class gs_blame_current_file(LogMixin, GsTextCommand):
         })
 
     def selected_index(self, commit_hash):  # type: ignore[override]
-        return self._commit_hash == commit_hash
+        return self._commit_hash and commit_hash.startswith(self._commit_hash)
 
     def log(self, **kwargs):  # type: ignore[override]
         follow = self.savvy_settings.get("blame_follow_rename")
@@ -271,7 +285,8 @@ class gs_blame_refresh(BlameMixin):
             match = re.match(r"([0-9a-f]{40}) (\d+) (\d+)( \d+)?", line)
             assert match
             commit_hash, orig_lineno, final_lineno, _ = match.groups()
-            commits[commit_hash]["short_hash"] = commit_hash[:COMMIT_HASH_LENGTH]
+            short_hash_length = self.current_state().get("short_hash_length", DEFAULT_COMMIT_HASH_LENGTH)
+            commits[commit_hash]["short_hash"] = commit_hash[:short_hash_length]
             commits[commit_hash]["long_hash"] = commit_hash
 
             next_line = next(lines_iter)
@@ -316,7 +331,7 @@ class gs_blame_refresh(BlameMixin):
         time_stamp = util.dates.fuzzy(commit["author-time"]) if commit["author-time"] else ""
 
         commit_hash = commit["short_hash"]
-        if commit["long_hash"] == current_commit_hash:
+        if current_commit_hash and commit["long_hash"].startswith(current_commit_hash):
             commit_hash += "  (CURRENT COMMIT)"
         return (summary, commit_hash, author_info, time_stamp)
 
@@ -396,7 +411,7 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
 
         settings = self.view.settings()
         if selected:
-            commit_hash = self.find_selected_commit_hash().strip()
+            commit_hash = self.find_selected_commit_hash() or ""
         else:
             commit_hash = settings.get("git_savvy.commit_hash")
 
