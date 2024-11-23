@@ -305,7 +305,7 @@ class gs_diff_refresh(TextCommand, GitCommand):
             diff = self.strict_decode(raw_diff)
         except UnicodeDecodeError:
             diff = DECODE_ERROR_MESSAGE
-            diff += "\n-- Partially decoded output follows; � denotes decoding errors --\n\n"""
+            diff += "\n-- Partially decoded output follows; � denotes decoding errors --\n\n"
             diff += raw_diff.decode("utf-8", "replace")
 
         if not diff and settings.get("git_savvy.diff_view.just_hunked"):
