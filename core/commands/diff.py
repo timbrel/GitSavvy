@@ -171,8 +171,12 @@ class gs_diff(WindowCommand, GitCommand):
             base_commit,
             target_commit
         )
-
-        if compute_identifier_for_view(active_view) == this_id and (
+        active_views_id = compute_identifier_for_view(active_view) or ()
+        if (
+            active_views_id[:2] == this_id[:2]
+            if base_commit is None and target_commit is None
+            else active_views_id == this_id
+        ) and (
             in_cached_mode is None
             or active_view.settings().get('git_savvy.diff_view.in_cached_mode') == in_cached_mode
         ):
