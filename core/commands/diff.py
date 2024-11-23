@@ -12,6 +12,7 @@ import os
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
+from . import inline_diff
 from . import intra_line_colorizer
 from . import stage_hunk
 from .navigate import GsNavigate
@@ -178,9 +179,30 @@ class gs_diff(WindowCommand, GitCommand):
             active_view.close()
             return
 
-        av_fname = active_view.file_name()
         cur_pos = None
-        if av_fname:
+        if active_view.settings().get("git_savvy.inline_diff_view"):
+            if base_commit is None and target_commit is None:
+                base_commit = active_view.settings().get("git_savvy.inline_diff_view.base_commit")
+                target_commit = active_view.settings().get("git_savvy.inline_diff_view.target_commit")
+                disable_stage = base_commit or target_commit
+            if in_cached_mode is None:
+                in_cached_mode = active_view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
+            if _cur_pos := capture_cur_position(active_view):
+                rel_file_path = self.get_rel_path(file_path)
+                row, col, offset = _cur_pos
+                line_no, col_no = inline_diff.translate_pos_from_diff_view_to_file(active_view, row + 1, col + 1)
+                cur_pos = Position(line_no - 1, col_no - 1, offset), rel_file_path
+
+        elif active_view.settings().get("git_savvy.show_file_at_commit_view"):
+            if base_commit is None and target_commit is None:
+                target_commit = active_view.settings().get("git_savvy.show_file_at_commit_view.commit")
+                base_commit = self.previous_commit(target_commit, file_path)
+                disable_stage = True
+            if _cur_pos := capture_cur_position(active_view):
+                rel_file_path = self.get_rel_path(file_path)
+                cur_pos = _cur_pos, rel_file_path
+
+        elif av_fname := active_view.file_name():
             if _cur_pos := capture_cur_position(active_view):
                 rel_file_path = self.get_rel_path(av_fname)
                 if in_cached_mode:
