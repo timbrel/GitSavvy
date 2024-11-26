@@ -1072,7 +1072,7 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
             })
         else:
             if self.view.settings().get("git_savvy.diff_view.in_cached_mode"):
-                line = self.find_matching_lineno("HEAD", None, line=line, file_path=full_path)
+                line = self.reverse_find_matching_lineno(None, None, line=line, file_path=full_path)
             window.open_file(
                 "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
                 sublime.ENCODED_POSITION
