@@ -500,7 +500,7 @@ class gs_status_open_file_on_remote(StatusInterfaceCommand):
         # type: (sublime.Edit) -> None
         file_paths = self.get_selected_subjects('staged', 'unstaged', 'merge-conflicts')
         if file_paths:
-            self.view.run_command("gs_github_open_file_on_remote", {"fpath": file_paths})
+            self.view.run_command("gs_github_open_file_in_browser", {"fpath": file_paths})
 
 
 class gs_status_diff_inline(StatusInterfaceCommand):
