@@ -49,7 +49,7 @@ class PanelActionMixin(GitCommand):
     def show_panel(self, actions=None, pre_selected_index=None):
         window = self._current_window()
         assert window
-        if pre_selected_index:
+        if pre_selected_index is not None:
             self.on_action_selection(pre_selected_index)
             return
 
