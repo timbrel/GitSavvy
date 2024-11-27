@@ -681,7 +681,17 @@ class _GitCommand(SettingsMixin):
             repo_path = search_for_git_toplevel(folder)
             if repo_path:
                 util.debug.dprint("repo path:", os.path.join(repo_path, ".git"))
-                repo_paths[folder] = repo_path
+                # Check if we followed links, as `paths_upwards` is only a string operation,
+                # then fill the cache upwards.
+                if folder.startswith(repo_path):
+                    for p in paths_upwards(folder):
+                        if p in repo_paths:
+                            break
+                        repo_paths[p] = repo_path
+                        if p == repo_path:
+                            break
+                else:
+                    repo_paths[folder] = repo_path
             else:
                 util.debug.dprint("found no .git path for {}".format(folder))
             return repo_path
