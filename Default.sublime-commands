@@ -125,8 +125,13 @@
         "command": "gs_github_open_repo"
     },
     {
-        "caption": "github: review pull request",
+        "caption": "github: review pull request (show: all)",
         "command": "gs_github_pull_request"
+    },
+    {
+        "caption": "github: review pull request (show: mine)",
+        "command": "gs_github_pull_request",
+        "args": { "query": "involves:@me" }
     },
     {
         "caption": "github: set remote for integration",
