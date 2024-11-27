@@ -39,7 +39,8 @@ from ..view import (
     join_regions,
     line_distance,
     replace_view_content,
-    show_region
+    show_region,
+    visible_views
 )
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
@@ -716,12 +717,7 @@ def on_status_update(repo_path, state):
 def on_status_update_(repo_path, repo_is_dirty):
     # type: (str, Optional[bool]) -> None
     global drawn_graph_statuses, head_commit_seen
-    visible_views = filter_(
-        window.active_view_in_group(group)
-        for window in sublime.windows()
-        for group in range(window.num_groups())
-    )
-    for view in visible_views:
+    for view in visible_views():
         if not head_commit_seen.get(view):
             # `gs_log_graph_refresh` is running and has not yet processed HEAD,
             # no need to start all over again.
