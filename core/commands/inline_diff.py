@@ -239,8 +239,8 @@ class gs_inline_diff(WindowCommand, GitCommand):
             "syntax": syntax_file,
             "cached": bool(cached),
             "match_position": cur_pos,
-            "base_commit": base_commit,
-            "target_commit": target_commit
+            "base_commit": self.resolve_commitish(base_commit) if base_commit else None,
+            "target_commit": self.resolve_commitish(target_commit) if target_commit else None
         })
 
     def open_from_show_file_at_commit_view(self, view):
