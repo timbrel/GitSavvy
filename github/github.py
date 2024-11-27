@@ -76,21 +76,19 @@ def parse_remote(remote_url: str) -> GitHubRepo:
     return GitHubRepo(url, fqdn, owner, repo, token)
 
 
-def open_file_in_browser(rel_path, remote_url, commit_hash, start_line=None, end_line=None):
+def construct_github_file_url(rel_path, remote_url, commit_hash, start_line=None, end_line=None) -> str:
     """
     Open the URL corresponding to the provided `rel_path` on `remote_url`.
     """
     github_repo = parse_remote(remote_url)
     line_numbers = "#L{}-L{}".format(start_line, end_line) if start_line is not None else ""
 
-    url = "{repo_url}/blob/{commit_hash}/{path}{lines}".format(
+    return "{repo_url}/blob/{commit_hash}/{path}{lines}".format(
         repo_url=github_repo.url,
         commit_hash=commit_hash,
         path=rel_path,
         lines=line_numbers
     )
-
-    open_in_browser(url)
 
 
 def open_repo(remote_url):

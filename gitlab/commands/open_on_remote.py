@@ -9,7 +9,7 @@ from GitSavvy.core.runtime import on_worker
 
 
 __all__ = (
-    "gs_gitlab_open_file_on_remote",
+    "gs_gitlab_open_file_in_browser",
     "gs_gitlab_open_repo",
     "gs_gitlab_open_issues",
 )
@@ -18,7 +18,7 @@ EARLIER_COMMIT_PROMPT = ("The remote chosen may not contain the commit. "
                          "Open the file {} before?")
 
 
-class gs_gitlab_open_file_on_remote(GsTextCommand, GitLabRemotesMixin):
+class gs_gitlab_open_file_in_browser(GsTextCommand, GitLabRemotesMixin):
 
     """
     Open a new browser window to the web-version of the currently opened

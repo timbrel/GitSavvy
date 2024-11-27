@@ -112,8 +112,13 @@
         "command": "gs_graph_pickaxe"
     },
     {
-        "caption": "github: open file on remote",
-        "command": "gs_github_open_file_on_remote",
+        "caption": "github: open file in browser",
+        "command": "gs_github_open_file_in_browser",
+        "args": { "preselect": true }
+    },
+    {
+        "caption": "github: copy file url to clipboard",
+        "command": "gs_github_copy_file_url",
         "args": { "preselect": true }
     },
     {
@@ -154,8 +159,8 @@
         "command": "gs_github_create_pull_request"
     },
     {
-        "caption": "gitlab: open file on remote",
-        "command": "gs_gitlab_open_file_on_remote",
+        "caption": "gitlab: open file in browser",
+        "command": "gs_gitlab_open_file_in_browser",
         "args": { "preselect": true }
     },
     {
