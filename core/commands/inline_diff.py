@@ -280,7 +280,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
 
         file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
         syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
-        target_commit = jump_position.commit_hash
+        target_commit = self.get_short_hash(jump_position.commit_hash)
         base_commit = self.previous_commit(target_commit, file_path)
         cur_pos = Position(
             jump_position.line - 1,

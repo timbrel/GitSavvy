@@ -392,6 +392,9 @@ class HistoryMixin(mixin_base):
         follow: bool = False,
         branch_hint: str | None = None,
     ) -> dict[str, str]:
+        if current_commit != self.get_short_hash(current_commit):
+            raise RuntimeError("`next_commits` must be called with a short commit hash.")
+
         if branch_hint is None:
             try:
                 branch_hint = next(iter(
@@ -427,7 +430,7 @@ class HistoryMixin(mixin_base):
     ) -> List[str]:
         return self.git_throwing_silently(
             "log",
-            "--format=%H",
+            "--format=%h",
             "--topo-order",
             "--follow" if follow else None,
             None if limit is None else f"-{limit}",

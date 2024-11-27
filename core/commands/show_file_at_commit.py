@@ -88,7 +88,9 @@ class gs_show_file_at_commit(GsWindowCommand):
             if lang is None:
                 lang = view.settings().get('syntax')
 
-        if not commit_hash:
+        if commit_hash:
+            commit_hash = self.get_short_hash(commit_hash)
+        else:
             commit_hash = self.recent_commit("HEAD", filepath)
             if not commit_hash:
                 self.window.status_message("No older revision of this file found.")
@@ -119,7 +121,7 @@ class gs_show_file_at_commit(GsWindowCommand):
         active_view = self.window.active_view()
         title = SHOW_COMMIT_TITLE.format(
             os.path.basename(file_path),
-            self.get_short_hash(commit_hash),
+            commit_hash,
         )
         view = util.view.create_scratch_view(self.window, "show_file_at_commit", {
             "title": title,
@@ -302,6 +304,7 @@ def get_next_commit(
     commit_hash: str,
     file_path: str | None = None
 ) -> str | None:
+    commit_hash = cmd.get_short_hash(commit_hash)
     if next_commit := recall_next_commit_for(view, commit_hash):
         return next_commit
 
@@ -412,7 +415,7 @@ class gs_show_current_file(LogMixin, GsTextCommand):
 
         view = self.view
         shown_hash = view.settings().get("git_savvy.show_file_at_commit_view.commit")
-        return commit_hash == shown_hash
+        return commit_hash.startswith(shown_hash)
 
 
 class gs_show_file_at_commit_open_commit(TextCommand):

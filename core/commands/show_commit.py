@@ -66,6 +66,8 @@ class gs_show_commit(WindowCommand, GitCommand):
         repo_path = self.repo_path
         if commit_hash in {"", "HEAD"}:
             commit_hash = self.git("rev-parse", "--short", "HEAD").strip()
+        else:
+            commit_hash = self.get_short_hash(commit_hash)
 
         this_id = (
             repo_path,
@@ -76,7 +78,7 @@ class gs_show_commit(WindowCommand, GitCommand):
                 focus_view(view)
                 break
         else:
-            title = SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash))
+            title = SHOW_COMMIT_TITLE.format(commit_hash)
             view = util.view.create_scratch_view(self.window, "show_commit", {
                 "title": title,
                 "syntax": "Packages/GitSavvy/syntax/show_commit.sublime-syntax",
