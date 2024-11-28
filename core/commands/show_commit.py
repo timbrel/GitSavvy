@@ -482,11 +482,13 @@ class GsShowCommitCopyCommitMessageHelper(EventListener):
             return None
 
         sel = frozen_sel[0]
-        if sel.empty():
-            return None
-
         if not view.match_selector(sel.begin(), "git-savvy.commit meta.commit_message"):
             return None
+
+        if sel.empty():
+            if not view.settings().get("copy_with_empty_selection"):
+                return None
+            sel = view.line(sel.a)
 
         selected_text = TextRange(view.substr(sel), *sel)
         by_line = [
