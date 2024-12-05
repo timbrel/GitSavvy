@@ -59,10 +59,12 @@ def user_friendly_traceback(exception_s: type[BaseException] | tuple[type[BaseEx
         found_culprit = False
         for frame in reversed(traceback.extract_tb(tb)):
             relative_filename = frame.filename.split(GITSAVVY__)[-1]
-            print(f"|  {relative_filename}:{frame.lineno}")
             if not found_culprit and relative_filename.startswith(CORE_COMMANDS__):
                 found_culprit = True
-                print(f"|>   {frame.line}")
+                left_column = f"|> {relative_filename}:{frame.lineno}"
+            else:
+                left_column = f"|  {relative_filename}:{frame.lineno}"
+            print(f"{left_column:<40} {frame.line}")
 
 
 def it_runs_on_ui():
