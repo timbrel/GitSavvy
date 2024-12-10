@@ -1084,15 +1084,15 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
         Show file at target commit if `git_savvy.diff_view.target_commit` is non-empty.
         Otherwise, open the file directly.
         """
-        target_commit = commit_hash or self.view.settings().get("git_savvy.diff_view.target_commit")
         full_path = os.path.join(self.repo_path, filename)
         window = self.view.window()
         if not window:
             return
 
-        if target_commit:
+        target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
+        if commit_hash or target_commit:
             window.run_command("gs_show_file_at_commit", {
-                "commit_hash": target_commit,
+                "commit_hash": commit_hash or self.resolve_commitish(target_commit),
                 "filepath": full_path,
                 "position": Position(line - 1, col - 1, None),
             })

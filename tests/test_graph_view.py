@@ -150,6 +150,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
     def register_commit_info(self, info):
         for sha1, info in info.items():
             when(gs_show_commit_info).read_commit(sha1, ...).thenReturn(info)
+            when(gs_show_commit_info).get_short_hash(sha1).thenReturn(sha1)
 
     def create_graph_view_async(self, repo_path, log, wait_for):
         when(gs_log_graph_refresh).read_graph(...).thenReturn(

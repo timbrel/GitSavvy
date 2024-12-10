@@ -88,7 +88,9 @@ class gs_show_file_at_commit(GsWindowCommand):
             if lang is None:
                 lang = view.settings().get('syntax')
 
-        if not commit_hash:
+        if commit_hash:
+            commit_hash = self.get_short_hash(commit_hash)
+        else:
             commit_hash = self.recent_commit("HEAD", filepath)
             if not commit_hash:
                 self.window.status_message("No older revision of this file found.")
@@ -119,7 +121,7 @@ class gs_show_file_at_commit(GsWindowCommand):
         active_view = self.window.active_view()
         title = SHOW_COMMIT_TITLE.format(
             os.path.basename(file_path),
-            self.get_short_hash(commit_hash),
+            commit_hash,
         )
         view = util.view.create_scratch_view(self.window, "show_file_at_commit", {
             "title": title,
@@ -239,12 +241,11 @@ class gs_show_file_at_commit_open_previous_commit(GsTextCommand):
         file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
 
-        previous_commit = self.previous_commit(commit_hash, file_path)
+        previous_commit = get_previous_commit(self, view, commit_hash, file_path)
         if not previous_commit:
             flash(view, "No older commit found.")
             return
 
-        remember_next_commit_for(view, {previous_commit: commit_hash})
         settings.set("git_savvy.show_file_at_commit_view.commit", previous_commit)
 
         position = capture_cur_position(view)
@@ -302,12 +303,28 @@ def get_next_commit(
     commit_hash: str,
     file_path: str | None = None
 ) -> str | None:
+    commit_hash = cmd.get_short_hash(commit_hash)
     if next_commit := recall_next_commit_for(view, commit_hash):
         return next_commit
 
     next_commits = cmd.next_commits(commit_hash, file_path)
     remember_next_commit_for(view, next_commits)
     return next_commits.get(commit_hash)
+
+
+def get_previous_commit(
+    cmd: GitCommand,
+    view: sublime.View,
+    commit_hash: str,
+    file_path: str | None = None
+) -> Optional[str]:
+    commit_hash = cmd.get_short_hash(commit_hash)
+    if previous := recall_previous_commit_for(view, commit_hash):
+        return previous
+
+    if previous := cmd.previous_commit(commit_hash, file_path):
+        remember_next_commit_for(view, {previous: commit_hash})
+    return previous
 
 
 def remember_next_commit_for(view: sublime.View, mapping: Dict[str, str]) -> None:
@@ -321,6 +338,15 @@ def recall_next_commit_for(view: sublime.View, commit_hash: str) -> Optional[str
     settings = view.settings()
     store: Dict[str, str] = settings.get("git_savvy.next_commits", {})
     return store.get(commit_hash)
+
+
+def recall_previous_commit_for(view: sublime.View, commit_hash: str) -> Optional[str]:
+    settings = view.settings()
+    store: Dict[str, str] = settings.get("git_savvy.next_commits", {})
+    try:
+        return next(previous for previous, next_commit in store.items() if next_commit == commit_hash)
+    except StopIteration:
+        return None
 
 
 def pass_next_commits_info_along(view: Optional[sublime.View], to: sublime.View) -> None:
@@ -412,7 +438,7 @@ class gs_show_current_file(LogMixin, GsTextCommand):
 
         view = self.view
         shown_hash = view.settings().get("git_savvy.show_file_at_commit_view.commit")
-        return commit_hash == shown_hash
+        return commit_hash.startswith(shown_hash)
 
 
 class gs_show_file_at_commit_open_commit(TextCommand):

@@ -1,12 +1,13 @@
+from __future__ import annotations
 from collections import deque
 from functools import partial
 from itertools import accumulate as accumulate_, chain, islice, tee
 
-from typing import Callable, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar
+from typing import Any, Callable, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar
 T = TypeVar('T')
 U = TypeVar('U')
 
-
+NOT_SET: Any = object()
 filter_ = partial(filter, None)  # type: Callable[[Iterable[Optional[T]]], Iterator[T]]
 flatten = chain.from_iterable
 
@@ -69,6 +70,16 @@ def head(iterable):
 def tail(iterable):
     # type: (Iterable[T]) -> Iterator[T]
     return drop(1, iterable)
+
+
+def last(iterable, default=NOT_SET):
+    # type: (Iterable[T], T | None) -> Optional[T]
+    try:
+        return deque(iterable, 1)[0]
+    except IndexError:
+        if default is NOT_SET:
+            raise
+        return default
 
 
 def unzip(zipped):

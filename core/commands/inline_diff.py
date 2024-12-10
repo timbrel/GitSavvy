@@ -239,8 +239,8 @@ class gs_inline_diff(WindowCommand, GitCommand):
             "syntax": syntax_file,
             "cached": bool(cached),
             "match_position": cur_pos,
-            "base_commit": base_commit,
-            "target_commit": target_commit
+            "base_commit": self.resolve_commitish(base_commit) if base_commit else None,
+            "target_commit": self.resolve_commitish(target_commit) if target_commit else None
         })
 
     def open_from_show_file_at_commit_view(self, view):
@@ -280,7 +280,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
 
         file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
         syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
-        target_commit = jump_position.commit_hash
+        target_commit = self.get_short_hash(jump_position.commit_hash)
         base_commit = self.previous_commit(target_commit, file_path)
         cur_pos = Position(
             jump_position.line - 1,
@@ -983,9 +983,7 @@ class gs_inline_diff_previous_commit(TextCommand, GitCommand):
                 return
 
         new_target_commit = base_commit
-        new_base_commit = self.previous_commit(base_commit, file_path)
-        if new_base_commit:
-            show_file_at_commit.remember_next_commit_for(view, {new_base_commit: base_commit})
+        new_base_commit = show_file_at_commit.get_previous_commit(self, view, base_commit, file_path)
         settings.set("git_savvy.inline_diff_view.base_commit", new_base_commit)
         settings.set("git_savvy.inline_diff_view.target_commit", new_target_commit)
 

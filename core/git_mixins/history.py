@@ -1,10 +1,10 @@
 from __future__ import annotations
 import email.utils
-from itertools import chain
+from itertools import chain, takewhile
 
 from ..exceptions import GitSavvyError
 from ...common import util
-from GitSavvy.core.fns import pairwise
+from GitSavvy.core.fns import last, pairwise
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.utils import cached
 
@@ -191,6 +191,9 @@ class HistoryMixin(mixin_base):
         self.update_store({"short_hash_length": len(short_hash)})
         return short_hash
 
+    def resolve_commitish(self, ref: str) -> str:
+        return self.git("rev-parse", "--short", ref).strip()
+
     def filename_at_commit(self, filename, commit_hash):
         # type: (str, str) -> str
         lines = self.git(
@@ -359,31 +362,25 @@ class HistoryMixin(mixin_base):
     @cached(not_if={"current_commit": is_dynamic_ref})
     def previous_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
-        try:
-            return self._log_commits(
-                current_commit, file_path, follow, limit=2
-            )[1]
-        except IndexError:
-            return None
+        return last(
+            self._log_commits_linewise(current_commit, file_path, follow, limit=2),
+            None
+        )
 
     @cached(not_if={"current_commit": is_dynamic_ref})
     def recent_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
-        try:
-            return self._log_commits(
-                current_commit, file_path, follow, limit=1
-            )[0]
-        except IndexError:
-            return None
+        return last(
+            self._log_commits_linewise(current_commit, file_path, follow, limit=1),
+            None
+        )
 
     def next_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
-        try:
-            return self._log_commits(
-                f"{current_commit}..", file_path, follow
-            )[-1]
-        except IndexError:
-            return None
+        return last(
+            self._log_commits_linewise(f"{current_commit}..", file_path, follow),
+            None
+        )
 
     def next_commits(
         self,
@@ -392,6 +389,9 @@ class HistoryMixin(mixin_base):
         follow: bool = False,
         branch_hint: str | None = None,
     ) -> dict[str, str]:
+        if current_commit != self.get_short_hash(current_commit):
+            raise RuntimeError("`next_commits` must be called with a short commit hash.")
+
         if branch_hint is None:
             try:
                 branch_hint = next(iter(
@@ -400,7 +400,8 @@ class HistoryMixin(mixin_base):
                         "--format=%(refname)",
                         "--contains",
                         current_commit,
-                        "--sort=-committerdate"
+                        "--sort=-committerdate",
+                        "--sort=-HEAD"
                     ).strip().splitlines()
                 ))
             except (GitSavvyError, StopIteration):
@@ -412,25 +413,32 @@ class HistoryMixin(mixin_base):
         return {
             right: left
             for left, right in pairwise(chain(
-                self._log_commits(f"{current_commit}..{branch_hint}", file_path, follow),
+                takewhile(
+                    lambda c: c != current_commit,
+                    self._log_commits_linewise(f"{branch_hint}", file_path, follow)
+                ),
                 [current_commit]
             ))
         }
 
-    def _log_commits(
+    def _log_commits_linewise(
         self,
         commitish: Optional[str],
         file_path: Optional[str],
         follow: bool,
         limit: Optional[int] = None
-    ) -> List[str]:
-        return self.git_throwing_silently(
-            "log",
-            "--format=%H",
-            "--topo-order",
-            "--follow" if follow else None,
-            None if limit is None else f"-{limit}",
-            commitish,
-            "--",
-            file_path
-        ).strip().splitlines()
+    ) -> Iterator[str]:
+        return (
+            line.strip()
+            for line in self.git_streaming(
+                "log",
+                "--format=%h",
+                "--topo-order",
+                "--follow" if follow else None,
+                None if limit is None else f"-{limit}",
+                commitish,
+                "--",
+                file_path,
+                show_panel_on_error=False
+            )
+        )

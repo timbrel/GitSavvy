@@ -34,7 +34,6 @@ BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno",
 
 NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
 BLAME_TITLE = "BLAME: {}{}"
-DEFAULT_COMMIT_HASH_LENGTH = 8
 
 
 class BlameMixin(GsTextCommand):
@@ -285,8 +284,7 @@ class gs_blame_refresh(BlameMixin):
             match = re.match(r"([0-9a-f]{40}) (\d+) (\d+)( \d+)?", line)
             assert match
             commit_hash, orig_lineno, final_lineno, _ = match.groups()
-            short_hash_length = self.current_state().get("short_hash_length", DEFAULT_COMMIT_HASH_LENGTH)
-            commits[commit_hash]["short_hash"] = commit_hash[:short_hash_length]
+            commits[commit_hash]["short_hash"] = self.get_short_hash(commit_hash)
             commits[commit_hash]["long_hash"] = commit_hash
 
             next_line = next(lines_iter)
@@ -480,7 +478,7 @@ class gs_blame_open_graph_context(BlameMixin):
         commit_hash = self.find_selected_commit_hash()
         self.window.run_command("gs_graph", {
             "all": True,
-            "follow": self.get_short_hash(commit_hash) if commit_hash else "HEAD",
+            "follow": commit_hash or "HEAD",
         })
 
 
