@@ -482,25 +482,27 @@ class GsShowCommitCopyCommitMessageHelper(EventListener):
             return None
 
         sel = frozen_sel[0]
-        if sel.empty():
-            return None
-
         if not view.match_selector(sel.begin(), "git-savvy.commit meta.commit_message"):
             return None
+
+        if sel.empty():
+            if not view.settings().get("copy_with_empty_selection"):
+                return None
+            sel = view.line(sel.a)
 
         selected_text = TextRange(view.substr(sel), *sel)
         by_line = [
             line[4:] if line.text.startswith("    ") else line
-            for line in selected_text.lines()
+            for line in selected_text.lines(keepends=False)
         ]
-        string_for_clipboard = "".join(line.text for line in by_line)
+        string_for_clipboard = "\n".join(line.text for line in by_line)
         clip_content = sublime.get_clipboard(2048)
 
         if string_for_clipboard == clip_content:
             set_clipboard_and_flash(view, selected_text.text, [selected_text.region()])
             return "noop"
 
-        regions = [line.region()[:-1] for line in by_line]
+        regions = [line.region() for line in by_line]
         set_clipboard_and_flash(view, string_for_clipboard, regions)
         return "noop"
 
