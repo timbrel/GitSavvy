@@ -1,4 +1,5 @@
 from collections import deque
+from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import lru_cache, partial
 from itertools import chain, count, groupby, islice
@@ -636,8 +637,17 @@ class BusyIndicatorConfig:
     indicators: Sequence[str]
 
 
-STATUS_BUSY_KEY = "gitsavvy-x-repo-status"
+STATUS_BUSY_KEY = "gitsavvy-x-is-busy"
 running_busy_indicators: Dict[Tuple[sublime.View, str], BusyIndicatorConfig] = {}
+
+
+@contextmanager
+def busy_indicator(view: sublime.View, status_key: str = STATUS_BUSY_KEY, **options):
+    start_busy_indicator(view, status_key, **options)
+    try:
+        yield
+    finally:
+        stop_busy_indicator(view, status_key)
 
 
 def start_busy_indicator(
@@ -680,7 +690,7 @@ def _busy_indicator(view: sublime.View, status_key: str, start_time: float) -> N
     else:
         view.erase_status(status_key)
 
-    if elapsed < config.timeout_after:
+    if elapsed < config.timeout_after and view.is_valid():
         sublime.set_timeout(
             lambda: _busy_indicator(view, status_key, start_time),
             config.cycle_time
