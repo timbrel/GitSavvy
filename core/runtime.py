@@ -108,7 +108,7 @@ def enqueue_on_worker(fn, *args, **kwargs):
 
     def task():
         _enqueued_tasks.dec()
-        action()  # type: ignore[call-arg]
+        action()
 
     _enqueue_on_worker(task)
     _enqueued_tasks.inc()
@@ -333,7 +333,7 @@ def throttled(fn, *args, **kwargs):
         with THROTTLED_LOCK:
             ok = THROTTLED_CACHE.get(token) == action
         if ok:
-            action()  # type: ignore[call-arg]
+            action()
 
     return task
 

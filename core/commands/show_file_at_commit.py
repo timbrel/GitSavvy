@@ -432,7 +432,7 @@ class gs_show_current_file(LogMixin, GsTextCommand):
             "lang": view.settings().get('syntax')
         })
 
-    def selected_index(self, commit_hash):  # type: ignore[override]
+    def selected_index(self, commit_hash):
         if not self.overlay_for_show_file_at_commit:
             return True
 
