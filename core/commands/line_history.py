@@ -1,12 +1,14 @@
 from functools import partial
 from itertools import chain
 import os
+import random
 
 import sublime
 from sublime_plugin import TextCommand, WindowCommand
 
 from . import diff
 from . import inline_diff
+from .log_graph import busy_indicator
 from .navigate import GsNavigate
 from ..fns import filter_, pairwise
 from ..git_command import GitCommand
@@ -263,8 +265,15 @@ class gs_open_line_history(WindowCommand, GitCommand):
                 ]
                 + [commit]
             )
-            for line in self.git_streaming(*cmd):
-                replace_view_content(view, line, sublime.Region(view.size()))
+            with busy_indicator(view):
+                for line in self.git_streaming(*cmd):
+                    replace_view_content(view, line, sublime.Region(view.size()))
+                    if random.random() < 0.001:
+                        if not view.is_valid():
+                            break
+                        if view.size() > 500_000:
+                            replace_view_content(view, "\n...\n", sublime.Region(view.size()))
+                            break
 
         run_on_new_thread(render)
 
