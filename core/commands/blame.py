@@ -158,7 +158,7 @@ class gs_blame_current_file(LogMixin, BlameMixin):
             "commit_hash": commit_hash, "file_path": self._file_path
         })
 
-    def selected_index(self, commit_hash):  # type: ignore[override]
+    def selected_index(self, commit_hash):
         return self._commit_hash and commit_hash.startswith(self._commit_hash)
 
     def log(self, **kwargs):  # type: ignore[override]
