@@ -165,7 +165,7 @@ class gs_checkout_current_file_at_commit(LogMixin, WindowCommand, GitCommand):
     Reset the current active file to a given commit.
     """
 
-    def run(self):
+    def run(self):  # type: ignore[override]
         if self.file_path:
             super().run(file_path=self.file_path)
 

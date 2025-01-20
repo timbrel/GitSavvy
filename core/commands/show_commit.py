@@ -66,6 +66,8 @@ class gs_show_commit(WindowCommand, GitCommand):
         repo_path = self.repo_path
         if commit_hash in {"", "HEAD"}:
             commit_hash = self.git("rev-parse", "--short", "HEAD").strip()
+        else:
+            commit_hash = self.get_short_hash(commit_hash)
 
         this_id = (
             repo_path,
@@ -76,7 +78,7 @@ class gs_show_commit(WindowCommand, GitCommand):
                 focus_view(view)
                 break
         else:
-            title = SHOW_COMMIT_TITLE.format(self.get_short_hash(commit_hash))
+            title = SHOW_COMMIT_TITLE.format(commit_hash)
             view = util.view.create_scratch_view(self.window, "show_commit", {
                 "title": title,
                 "syntax": "Packages/GitSavvy/syntax/show_commit.sublime-syntax",
@@ -325,12 +327,11 @@ class gs_show_commit_open_previous_commit(TextCommand, GitCommand):
         file_path: Optional[str] = settings.get("git_savvy.file_path")
         commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
 
-        previous_commit = self.previous_commit(commit_hash, file_path)
+        previous_commit = show_file_at_commit.get_previous_commit(self, view, commit_hash, file_path)
         if not previous_commit:
             flash(view, "No older commit found.")
             return
 
-        show_file_at_commit.remember_next_commit_for(view, {previous_commit: commit_hash})
         show_commit_info.remember_view_state(view)
         settings.set("git_savvy.show_commit_view.commit", previous_commit)
 
@@ -481,25 +482,27 @@ class GsShowCommitCopyCommitMessageHelper(EventListener):
             return None
 
         sel = frozen_sel[0]
-        if sel.empty():
-            return None
-
         if not view.match_selector(sel.begin(), "git-savvy.commit meta.commit_message"):
             return None
+
+        if sel.empty():
+            if not view.settings().get("copy_with_empty_selection"):
+                return None
+            sel = view.line(sel.a)
 
         selected_text = TextRange(view.substr(sel), *sel)
         by_line = [
             line[4:] if line.text.startswith("    ") else line
-            for line in selected_text.lines()
+            for line in selected_text.lines(keepends=False)
         ]
-        string_for_clipboard = "".join(line.text for line in by_line)
+        string_for_clipboard = "\n".join(line.text for line in by_line)
         clip_content = sublime.get_clipboard(2048)
 
         if string_for_clipboard == clip_content:
             set_clipboard_and_flash(view, selected_text.text, [selected_text.region()])
             return "noop"
 
-        regions = [line.region()[:-1] for line in by_line]
+        regions = [line.region() for line in by_line]
         set_clipboard_and_flash(view, string_for_clipboard, regions)
         return "noop"
 

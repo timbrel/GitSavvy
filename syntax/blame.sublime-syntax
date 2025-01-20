@@ -18,7 +18,7 @@ contexts:
       scope: meta.not-committed.blame.git-savvy
       push: right-column
 
-    - match: ^([0-9a-f]{12})\s+ (\(CURRENT COMMIT\))?
+    - match: ^([0-9a-f]{6,40})\s+ (\(CURRENT COMMIT\))?
       comment: SHA
       scope: meta.blame-line.git-savvy
       captures:

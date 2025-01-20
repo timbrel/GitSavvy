@@ -39,13 +39,13 @@ class LogMixin(GitCommand):
 
     selected_index: Union[int, Callable[[str], bool]] = 0
 
-    def run(self, *args, commit_hash=None, file_path=None, **kwargs):
+    def run(self, *_edit, commit_hash=None, file_path=None, **kwargs):
         if commit_hash:
             self.do_action(commit_hash, file_path=file_path, **kwargs)
         else:
             sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, **kwargs))
 
-    def run_async(self, file_path=None, **kwargs):
+    def run_async(self, *, file_path=None, **kwargs):
         follow = self.savvy_settings.get("log_follow_rename") if file_path else False
         entries = self.log_generator(file_path=file_path, follow=follow, **kwargs)
         # `on_highlight` gets called on `on_done` as well with the same
@@ -119,7 +119,7 @@ class gs_log_current_branch(LogMixin, WindowCommand, GitCommand):
 
 class gs_log_all_branches(LogMixin, WindowCommand, GitCommand):
 
-    def log(self, **kwargs):
+    def log(self, **kwargs):  # type: ignore[override]
         return super().log(all_branches=True, **kwargs)
 
 
@@ -163,7 +163,7 @@ class gs_log_by_author(LogMixin, WindowCommand, GitCommand):
         self._selected_author = self._entries[index][3]
         super().run_async(**kwargs)
 
-    def log(self, **kwargs):
+    def log(self, **kwargs):  # type: ignore[override]
         return super().log(author=self._selected_author, **kwargs)
 
 

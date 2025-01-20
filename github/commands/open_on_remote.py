@@ -1,16 +1,21 @@
+from __future__ import annotations
+
+from webbrowser import open as open_in_browser
+
 import sublime
 
-from ..github import open_file_in_browser, open_issues, open_repo
+from ..github import construct_github_file_url, open_issues, open_repo
 
 from .. import git_mixins
 from ...core.ui_mixins.quick_panel import show_remote_panel
-from ...core.utils import flash
+from ...core.utils import flash, hprint
 from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.runtime import on_worker
 
 
 __all__ = (
-    "gs_github_open_file_on_remote",
+    "gs_github_open_file_in_browser",
+    "gs_github_copy_file_url",
     "gs_github_open_repo",
     "gs_github_open_issues",
 )
@@ -20,7 +25,7 @@ EARLIER_COMMIT_PROMPT = ("The remote chosen may not contain the commit. "
                          "Open the file {} before?")
 
 
-class gs_github_open_file_on_remote(GsTextCommand, git_mixins.GithubRemotesMixin):
+class GsGithubFileUrlMixin(GsTextCommand, git_mixins.GithubRemotesMixin):
 
     """
     Open a new browser window to the web-version of the currently opened
@@ -105,14 +110,37 @@ class gs_github_open_file_on_remote(GsTextCommand, git_mixins.GithubRemotesMixin
                     start_line = self.adjust_line_according_to_diff(diff, start_line)
                     end_line = self.adjust_line_according_to_diff(diff, end_line)
 
-        for p in fpath:
-            open_file_in_browser(
+        urls = [
+            construct_github_file_url(
                 p,
                 remote_url,
                 commit_hash,
                 start_line=start_line,
                 end_line=end_line
             )
+            for p in fpath
+        ]
+        self.computed_urls(urls)
+
+    def computed_urls(self, urls: list[str]) -> None:
+        raise NotImplementedError
+
+
+class gs_github_open_file_in_browser(GsGithubFileUrlMixin):
+    def computed_urls(self, urls: list[str]) -> None:
+        for url in urls:
+            open_in_browser(url)
+
+
+class gs_github_copy_file_url(GsGithubFileUrlMixin):
+    def computed_urls(self, urls: list[str]) -> None:
+        if len(urls) > 1:
+            hprint("Multiple files selected, only copying the first URL")
+
+        for url in urls:
+            sublime.set_clipboard(url)
+            flash(self.view, f"Copied '{url}' to the clipboard")
+            break
 
 
 class gs_github_open_repo(GsTextCommand, git_mixins.GithubRemotesMixin):

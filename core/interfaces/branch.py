@@ -39,6 +39,7 @@ __all__ = (
     "gs_branches_navigate_to_active_branch",
     "gs_branches_log",
     "gs_branches_log_graph",
+    "gs_branches_unset_upstream",
 )
 
 
@@ -101,7 +102,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
       [d] delete                                    [h] fetch remote branches
       [D] delete (force)                            [m] merge selected into active branch
       [R] rename (local)                            [M] fetch and merge into active branch
-      [t] configure tracking
+      [t] configure tracking                        [u] unset upstream on selected branch
 
       [f] diff against active                       [l] show branch log
       [H] diff history against active               [g] show branch log graph
@@ -723,4 +724,24 @@ class gs_branches_log_graph(CommandForSingleBranch):
             'all': True,
             'branches': [self.selected_branch.canonical_name],
             'follow': self.selected_branch.canonical_name
+        })
+
+
+class gs_branches_unset_upstream(CommandForSingleBranch):
+
+    """
+    Unset remote tracking for the selected branch.
+    """
+
+    def run(self, edit):
+        if self.selected_branch.is_remote:
+            flash(self.view, "Cannot unset remote tracking for remote branches.")
+            return
+
+        if self.selected_branch.upstream is None:
+            flash(self.view, "Cannot unset remote tracking for a branch without an upstream")
+            return
+
+        self.window.run_command('gs_unset_tracking_information', {
+            "branch": self.selected_branch.name
         })

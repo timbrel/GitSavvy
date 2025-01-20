@@ -265,8 +265,6 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
 
         for entry in self.entries:
             conflicts = ""
-            was_rewritten = entry.long_hash in rewritten
-            new_hash = rewritten[entry.long_hash] if was_rewritten else None
             is_merge = self.commit_is_merge(entry.long_hash)
             if self.in_rebase_merge() and is_merge:
                 is_conflict = conflict_commit in self.commits_of_merge(entry.long_hash)
@@ -296,12 +294,14 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
                             for conflict in self._active_conflicts
                         )
 
+            was_rewritten = entry.long_hash in rewritten
+            new_hash = self.get_short_hash(rewritten[entry.long_hash]) if was_rewritten else entry.short_hash
             commits_info.append({
                 "caret": self.CARET if is_conflict else " ",
                 "status": (self.SUCCESS if was_rewritten else
                            self.CONFLICT if is_conflict else
                            self.UNKNOWN),
-                "commit_hash": self.get_short_hash(new_hash) if was_rewritten else entry.short_hash,
+                "commit_hash": new_hash,
                 "commit_summary": ("(was {}) {}".format(entry.short_hash, entry.summary)
                                    if was_rewritten else
                                    entry.summary),
@@ -596,7 +596,7 @@ class gs_rebase_squash(RewriteBase):
             self.do_action(self.interface.entries[squash_idx - 1].long_hash)
         else:
             reversed_logs = list(reversed(self.interface.entries[0:squash_idx]))
-            show_log_panel(reversed_logs, partial(enqueue_on_worker, self.do_action))
+            show_log_panel(reversed_logs, partial(enqueue_on_worker, self.do_action))  # type: ignore[call-arg]
 
     def do_action(self, target_commit):
         if not target_commit:
@@ -733,7 +733,7 @@ class gs_rebase_move_up(RewriteBase):
             self.do_action(self.interface.entries[move_idx - 1].long_hash)
         else:
             logs = list(reversed(self.interface.entries[:move_idx]))
-            show_log_panel(logs, partial(enqueue_on_worker, self.do_action))
+            show_log_panel(logs, partial(enqueue_on_worker, self.do_action))  # type: ignore[call-arg]
 
     def do_action(self, target_commit):
         if not target_commit:
@@ -785,7 +785,7 @@ class gs_rebase_move_down(RewriteBase):
             self.do_action(self.interface.entries[move_idx + 1].long_hash)
         else:
             logs = self.interface.entries[move_idx + 1:]
-            show_log_panel(logs, partial(enqueue_on_worker, self.do_action))
+            show_log_panel(logs, partial(enqueue_on_worker, self.do_action))  # type: ignore[call-arg]
 
     def do_action(self, target_commit):
         if not target_commit:

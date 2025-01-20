@@ -7,11 +7,12 @@ from .. import git_mixins
 from ...common import interwebs
 from ...common import util
 from ...core.commands.push import gs_push_to_branch_name
+from ...core.fns import filter_
 from ...core.ui_mixins.quick_panel import show_paginated_panel
 from ...core.ui_mixins.input_panel import show_single_line_input_panel
 from ...core.view import replace_view_content
 from GitSavvy.core.base_commands import GsWindowCommand
-from GitSavvy.core.runtime import on_worker
+from GitSavvy.core.runtime import on_worker, run_as_future
 
 
 __all__ = (
@@ -27,18 +28,29 @@ from GitSavvy.core.git_mixins.branches import Upstream
 class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
 
     """
-    Display open pull requests on the base repo.  When a pull request is selected,
+    Display pull requests on the base repo.  When a pull request is selected,
     allow the user to 1) checkout the PR as detached HEAD, 2) checkout the PR as
     a local branch, 3) view the PR's diff, or 4) open the PR in the browser.
+
+    By default, all "open" pull requests are displayed.  This can be customized
+    using the `query` arg which is of the same query format as in the Web UI of
+    Github.  Note that "repo:", "type:", and "state:" are prefilled if omitted.
     """
 
     @on_worker
-    def run(self):
+    def run(self, query=""):
         self.remotes = self.get_remotes()
         self.base_remote_name = self.get_integrated_remote_name(self.remotes)
         self.base_remote_url = self.remotes[self.base_remote_name]
-        self.base_remote = github.parse_remote(self.base_remote_url)
-        self.pull_requests = github.get_pull_requests(self.base_remote)
+        self.base_remote = repository = github.parse_remote(self.base_remote_url)
+
+        query_ = " ".join(filter_((
+            f"repo:{repository.owner}/{repository.repo}" if "repo:" not in query else None,
+            "type:pr" if "type:" not in query else None,
+            "state:open" if "state:" not in query else None,
+            query.strip()
+        )))
+        self.pull_requests = github.search_pull_requests(self.base_remote, query_)
 
         pp = show_paginated_panel(
             self.pull_requests,
@@ -67,7 +79,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
         if not pr:
             return
 
-        self.pr = pr
+        self.pr_ = run_as_future(github.get_pull_request, pr["number"], self.base_remote)
         self.window.show_quick_panel(
             ["Checkout as detached HEAD.",
              "Checkout as local branch.",
@@ -79,6 +91,15 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
 
     def on_select_action(self, idx):
         if idx == -1:
+            return
+
+        # Note that the request starts in `on_select_pr`.  So the actual wait time includes the
+        # time we wait for the user to take action.
+        timeout = 4.0
+        try:
+            self.pr = self.pr_.result(timeout)
+        except TimeoutError:
+            self.window.status_message(f"Timeout: could not fetch the PR details within {timeout} seconds.")
             return
 
         owner = self.pr["head"]["repo"]["owner"]["login"]

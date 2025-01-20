@@ -1250,6 +1250,25 @@
         ]
     },
 
+
+    {
+        "keys": ["o"],
+        "command": "gs_blame_action",
+        "args": { "pre_selected_index": 0 },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["l"],
+        "command": "gs_blame_current_file",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+
     {
         "keys": [">"],
         "command": "gs_blame_action",
@@ -1784,6 +1803,14 @@
     {
         "keys": ["g"],
         "command": "gs_branches_log_graph",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["u"],
+        "command": "gs_branches_unset_upstream",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }

@@ -1014,13 +1014,13 @@ class gs_rebase_reword_commit(gs_rebase_quick_action):
 
 
 class gs_rebase_apply_fixup(gs_rebase_quick_action):
-    def run(self, edit, base_commit, fixes):
+    def run(self, edit, base_commit, fixes):  # type: ignore[override]
         self.action = partial(fixup_commits, [Commit(*fix) for fix in fixes])
         super().run(edit, base_commit)
 
 
 class gs_rebase_squash_commits(gs_rebase_quick_action):
-    def run(self, edit, base_commit, commits):
+    def run(self, edit, base_commit, commits):  # type: ignore[override]
         self.action = partial(squash_commits, commits)
         super().run(edit, base_commit)
 

@@ -12,6 +12,7 @@ import os
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
+from . import inline_diff
 from . import intra_line_colorizer
 from . import stage_hunk
 from .navigate import GsNavigate
@@ -170,17 +171,42 @@ class gs_diff(WindowCommand, GitCommand):
             base_commit,
             target_commit
         )
-
-        if compute_identifier_for_view(active_view) == this_id and (
+        active_views_id = compute_identifier_for_view(active_view) or ()
+        if (
+            active_views_id[:2] == this_id[:2]
+            if base_commit is None and target_commit is None
+            else active_views_id == this_id
+        ) and (
             in_cached_mode is None
             or active_view.settings().get('git_savvy.diff_view.in_cached_mode') == in_cached_mode
         ):
             active_view.close()
             return
 
-        av_fname = active_view.file_name()
         cur_pos = None
-        if av_fname:
+        if active_view.settings().get("git_savvy.inline_diff_view"):
+            if base_commit is None and target_commit is None:
+                base_commit = active_view.settings().get("git_savvy.inline_diff_view.base_commit")
+                target_commit = active_view.settings().get("git_savvy.inline_diff_view.target_commit")
+                disable_stage = base_commit or target_commit
+            if in_cached_mode is None:
+                in_cached_mode = active_view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
+            if _cur_pos := capture_cur_position(active_view):
+                rel_file_path = self.get_rel_path(file_path)
+                row, col, offset = _cur_pos
+                line_no, col_no = inline_diff.translate_pos_from_diff_view_to_file(active_view, row + 1, col + 1)
+                cur_pos = Position(line_no - 1, col_no - 1, offset), rel_file_path
+
+        elif active_view.settings().get("git_savvy.show_file_at_commit_view"):
+            if base_commit is None and target_commit is None:
+                target_commit = active_view.settings().get("git_savvy.show_file_at_commit_view.commit")
+                base_commit = self.previous_commit(target_commit, file_path)
+                disable_stage = True
+            if _cur_pos := capture_cur_position(active_view):
+                rel_file_path = self.get_rel_path(file_path)
+                cur_pos = _cur_pos, rel_file_path
+
+        elif av_fname := active_view.file_name():
             if _cur_pos := capture_cur_position(active_view):
                 rel_file_path = self.get_rel_path(av_fname)
                 if in_cached_mode:
@@ -279,7 +305,7 @@ class gs_diff_refresh(TextCommand, GitCommand):
             diff = self.strict_decode(raw_diff)
         except UnicodeDecodeError:
             diff = DECODE_ERROR_MESSAGE
-            diff += "\n-- Partially decoded output follows; � denotes decoding errors --\n\n"""
+            diff += "\n-- Partially decoded output follows; � denotes decoding errors --\n\n"
             diff += raw_diff.decode("utf-8", "replace")
 
         if not diff and settings.get("git_savvy.diff_view.just_hunked"):
@@ -1058,21 +1084,21 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
         Show file at target commit if `git_savvy.diff_view.target_commit` is non-empty.
         Otherwise, open the file directly.
         """
-        target_commit = commit_hash or self.view.settings().get("git_savvy.diff_view.target_commit")
         full_path = os.path.join(self.repo_path, filename)
         window = self.view.window()
         if not window:
             return
 
-        if target_commit:
+        target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
+        if commit_hash or target_commit:
             window.run_command("gs_show_file_at_commit", {
-                "commit_hash": target_commit,
+                "commit_hash": commit_hash or self.resolve_commitish(target_commit),
                 "filepath": full_path,
                 "position": Position(line - 1, col - 1, None),
             })
         else:
             if self.view.settings().get("git_savvy.diff_view.in_cached_mode"):
-                line = self.find_matching_lineno("HEAD", None, line=line, file_path=full_path)
+                line = self.reverse_find_matching_lineno(None, None, line=line, file_path=full_path)
             window.open_file(
                 "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
                 sublime.ENCODED_POSITION

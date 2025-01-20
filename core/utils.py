@@ -361,7 +361,7 @@ def line_indentation(line):
     return len(line) - len(line.lstrip())
 
 
-def kill_proc(proc):
+def kill_proc(proc: subprocess.Popen) -> None:
     if sys.platform == "win32":
         # terminate would not kill process opened by the shell cmd.exe,
         # it will only kill cmd.exe leaving the child running
@@ -375,16 +375,16 @@ def kill_proc(proc):
         proc.terminate()
 
 
-def try_kill_proc(proc):
+def try_kill_proc(proc: Optional[subprocess.Popen]) -> None:
     if proc:
         try:
             kill_proc(proc)
         except ProcessLookupError:
             pass
-        proc.got_killed = True
+        proc.got_killed = True  # type: ignore[attr-defined]
 
 
-def proc_has_been_killed(proc):
+def proc_has_been_killed(proc: subprocess.Popen) -> bool:
     return getattr(proc, "got_killed", False)
 
 

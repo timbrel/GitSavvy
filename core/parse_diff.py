@@ -169,13 +169,13 @@ class TextRange:
         # type: () -> Region
         return Region(self.a, self.b)
 
-    def lines(self, _factory=None):
-        # type: (Type[TextRange]) -> List[TextRange]
-        factory = _factory or TextRange
+    def lines(self, factory=None, keepends=True):
+        # type: (Type[TextRange], bool) -> List[TextRange]
+        factory_ = factory or TextRange
         lines = self.text.splitlines(keepends=True)
         return [
-            factory(line, *a_b)
-            for line, a_b in zip(lines, pairwise(accumulate(map(len, lines), initial=self.a)))
+            factory_(line if keepends else line.rstrip("\n"), a)
+            for line, a in zip(lines, accumulate(map(len, lines), initial=self.a))
         ]
 
 
@@ -311,7 +311,7 @@ class HunkContent(TextRange):
     def lines(self):  # type: ignore
         # type: () -> List[HunkLine]
         factory = partial(HunkLine, mode_len=self.mode_len)
-        return super().lines(_factory=factory)  # type: ignore
+        return super().lines(factory=factory)  # type: ignore
 
 
 class Region(sublime.Region):

@@ -1,4 +1,5 @@
 from collections import deque
+from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import lru_cache, partial
 from itertools import chain, count, groupby, islice
@@ -39,7 +40,8 @@ from ..view import (
     join_regions,
     line_distance,
     replace_view_content,
-    show_region
+    show_region,
+    visible_views
 )
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui_mixins.quick_panel import show_branch_panel
@@ -635,8 +637,17 @@ class BusyIndicatorConfig:
     indicators: Sequence[str]
 
 
-STATUS_BUSY_KEY = "gitsavvy-x-repo-status"
+STATUS_BUSY_KEY = "gitsavvy-x-is-busy"
 running_busy_indicators: Dict[Tuple[sublime.View, str], BusyIndicatorConfig] = {}
+
+
+@contextmanager
+def busy_indicator(view: sublime.View, status_key: str = STATUS_BUSY_KEY, **options):
+    start_busy_indicator(view, status_key, **options)
+    try:
+        yield
+    finally:
+        stop_busy_indicator(view, status_key)
 
 
 def start_busy_indicator(
@@ -679,7 +690,7 @@ def _busy_indicator(view: sublime.View, status_key: str, start_time: float) -> N
     else:
         view.erase_status(status_key)
 
-    if elapsed < config.timeout_after:
+    if elapsed < config.timeout_after and view.is_valid():
         sublime.set_timeout(
             lambda: _busy_indicator(view, status_key, start_time),
             config.cycle_time
@@ -716,12 +727,7 @@ def on_status_update(repo_path, state):
 def on_status_update_(repo_path, repo_is_dirty):
     # type: (str, Optional[bool]) -> None
     global drawn_graph_statuses, head_commit_seen
-    visible_views = filter_(
-        window.active_view_in_group(group)
-        for window in sublime.windows()
-        for group in range(window.num_groups())
-    )
-    for view in visible_views:
+    for view in visible_views():
         if not head_commit_seen.get(view):
             # `gs_log_graph_refresh` is running and has not yet processed HEAD,
             # no need to start all over again.
@@ -1176,13 +1182,19 @@ class gs_log_graph_refresh(GsTextCommand):
                 col_range,
                 visible_selection,
             )
-            try_navigate_to_symbol = partial(
-                navigate_to_symbol,
-                view,
-                follow,
-                col_range=col_range,
-                method=set_and_show_cursor if visible_selection else just_set_cursor
-            )
+
+            if not follow:
+                def try_navigate_to_symbol(*, if_before=None) -> bool:
+                    return False
+            else:
+                try_navigate_to_symbol = partial(
+                    navigate_to_symbol,
+                    view,
+                    follow,
+                    col_range=col_range,
+                    method=set_and_show_cursor if visible_selection else just_set_cursor
+                )
+
             block_time = utils.timer()
             while True:
                 # If only the head commits changed, and the cursor (and with it `follow`)
@@ -1224,7 +1236,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 # If we still did not navigate the symbol is either
                 # gone, or happens to be after the fold of fresh
                 # content.
-                if not follow or not try_navigate_to_symbol():
+                if not try_navigate_to_symbol():
                     if initial_draw:
                         view.run_command("gs_log_graph_navigate")
                     elif visible_selection:
@@ -2156,12 +2168,17 @@ def _set_symbol_to_follow(view: sublime.View, line_text: str) -> None:
     if symbol != previous_value:
         view.settings().set('git_savvy.log_graph_view.follow', symbol)
 
-        try:
-            cursor = [s.b for s in view.sel()][-1]
-        except IndexError:
-            return
-        continuation_line = view.find("...\n", cursor, sublime.LITERAL)
-        if continuation_line:
+        # Check if the view endswith our `continuation_marker` and decide if we
+        # need to expand or shrink the graph.
+        continuation_marker = "...\n"
+        view_size = view.size()
+        continuation_line = sublime.Region(view_size - len(continuation_marker), view_size)
+        if view.substr(continuation_line) == continuation_marker:
+            try:
+                cursor = [s.b for s in view.sel()][-1]
+            except IndexError:
+                return
+
             max_row, _ = view.rowcol(continuation_line.a)
             cur_row, _ = view.rowcol(cursor)
             if not (GRAPH_HEIGHT * 0.5 < max_row - cur_row < GRAPH_HEIGHT * 2):
@@ -3114,13 +3131,13 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             ]
         return actions
 
-    def pull(self):
+    def pull(self):  # type: ignore[override]
         self.window.run_command("gs_pull")
 
-    def push(self, current_branch):
+    def push(self, current_branch):  # type: ignore[override]
         self.window.run_command("gs_push", {"local_branch_name": current_branch})
 
-    def fetch(self, current_branch):
+    def fetch(self, current_branch):  # type: ignore[override]
         remote = self.get_remote_for_branch(current_branch)
         self.window.run_command("gs_fetch", {"remote": remote} if remote else None)
 

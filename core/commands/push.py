@@ -133,7 +133,7 @@ class gs_push(PushMixin):
                 ])
                 return
             else:
-                kont()
+                kont()  # type: ignore[call-arg]
 
         else:
             self.window.run_command("gs_push_to_branch_name", {

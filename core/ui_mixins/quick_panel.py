@@ -49,7 +49,7 @@ class PanelActionMixin(GitCommand):
     def show_panel(self, actions=None, pre_selected_index=None):
         window = self._current_window()
         assert window
-        if pre_selected_index:
+        if pre_selected_index is not None:
             self.on_action_selection(pre_selected_index)
             return
 
@@ -206,7 +206,7 @@ class RemotePanel(GitCommand):
 
         self.window.show_quick_panel(
             (
-                [[remote, _remotes[remote]] for remote in self.remotes]  # type: ignore[arg-type]  # mypy bug
+                [[remote, _remotes[remote]] for remote in self.remotes]
                 if self.show_url else
                 self.remotes
             ),

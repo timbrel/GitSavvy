@@ -112,8 +112,13 @@
         "command": "gs_graph_pickaxe"
     },
     {
-        "caption": "github: open file on remote",
-        "command": "gs_github_open_file_on_remote",
+        "caption": "github: open file in browser",
+        "command": "gs_github_open_file_in_browser",
+        "args": { "preselect": true }
+    },
+    {
+        "caption": "github: copy file url to clipboard",
+        "command": "gs_github_copy_file_url",
         "args": { "preselect": true }
     },
     {
@@ -125,8 +130,13 @@
         "command": "gs_github_open_repo"
     },
     {
-        "caption": "github: review pull request",
+        "caption": "github: review pull request (show: all)",
         "command": "gs_github_pull_request"
+    },
+    {
+        "caption": "github: review pull request (show: mine)",
+        "command": "gs_github_pull_request",
+        "args": { "query": "involves:@me" }
     },
     {
         "caption": "github: set remote for integration",
@@ -137,6 +147,10 @@
         "command": "gs_github_add_fork_as_remote"
     },
     {
+        "caption": "github: create repo",
+        "command": "gs_github_create_repo"
+    },
+    {
         "caption": "github: create fork",
         "command": "gs_github_create_fork"
     },
@@ -145,8 +159,8 @@
         "command": "gs_github_create_pull_request"
     },
     {
-        "caption": "gitlab: open file on remote",
-        "command": "gs_gitlab_open_file_on_remote",
+        "caption": "gitlab: open file in browser",
+        "command": "gs_gitlab_open_file_in_browser",
         "args": { "preselect": true }
     },
     {

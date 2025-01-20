@@ -14,13 +14,13 @@ class Commit(NamedTuple):
 
 class ActiveBranchMixin(mixin_base):
 
-    def get_commit_hash_for_head(self):
+    def get_commit_hash_for_head(self) -> str:
         """
         Get the SHA1 commit hash for the commit at HEAD.
         """
         return self.git("rev-parse", "HEAD").strip()
 
-    def get_latest_commit_msg_for_head(self):
+    def get_latest_commit_msg_for_head(self) -> str:
         """
         Get last commit msg for the commit at HEAD.
         """
