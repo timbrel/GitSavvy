@@ -645,8 +645,9 @@ class gs_interface_show_commit(TextCommand):
 
         for r in view.find_by_selector("constant.other.git-savvy.sha1"):
             for s in frozen_sel:
-                if r.a <= s.a <= r.b:
-                    window.run_command("gs_show_commit", {"commit_hash": view.substr(r)})
+                for line in view.lines(s):
+                    if line.a <= r.a < line.b:
+                        window.run_command("gs_show_commit", {"commit_hash": view.substr(r)})
 
 
 class EditView():
