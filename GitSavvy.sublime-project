@@ -35,5 +35,6 @@
 		"tab_size": 4,
 		"translate_tabs_to_spaces": true,
 		"SublimeLinter.linters.ruff.disable": true,
+		"SublimeLinter.linters.ruff-lsp.disable": true,
 	},
 }
