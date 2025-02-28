@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections import deque
 from functools import partial
+import inspect
 from itertools import accumulate as accumulate_, chain, islice, tee
 
 from typing import Any, Callable, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar
@@ -158,3 +159,75 @@ def partition(pred, iterable):
         (x for (cond, x) in t1 if not cond),
         (x for (cond, x) in t2 if cond),
     )
+
+
+def arity(fn: Callable) -> int:
+    """
+    Returns the arity (number of required parameters) of a given function.
+    Handles regular functions and functools.partial objects.
+
+    Args:
+        fn: The function to analyze (can be a regular function or partial)
+
+    Returns:
+        int: The number of required parameters (arity)
+
+    Examples:
+        >>> def add(a, b, c):
+        ...     return a + b + c
+        >>> arity(add)
+        3
+
+        >>> add_partial = partial(add, 1)
+        >>> arity(add_partial)
+        2
+
+        >>> def greet(name, greeting="Hello"):
+        ...     return f"{greeting}, {name}!"
+        >>> arity(greet)
+        1
+
+        >>> greet_partial = partial(greet, greeting="Hi")
+        >>> arity(greet_partial)
+        1
+    """
+    # Handle partial functions
+    if isinstance(fn, partial):
+        # Get the original function's signature
+        signature = inspect.signature(fn.func)
+        parameters = list(signature.parameters.values())
+
+        # Count how many positional arguments are provided in the partial
+        positional_args_filled = len(fn.args)
+
+        # Get the keyword arguments provided in the partial
+        keyword_args = fn.keywords or {}
+
+        # Count required parameters, accounting for those already filled by partial
+        required_params = 0
+        for i, param in enumerate(parameters):
+            # Skip parameters already filled by positional args in partial
+            if i < positional_args_filled:
+                continue
+
+            # Skip parameters already filled by keyword args in partial
+            if param.name in keyword_args:
+                continue
+
+            # Count the parameter as required if it doesn't have a default and isn't var args
+            if param.default is param.empty and param.kind not in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
+                required_params += 1
+
+        return required_params
+
+    # Handle regular functions
+    signature = inspect.signature(fn)
+
+    # Count parameters that don't have a default value
+    required_params = 0
+    for param in signature.parameters.values():
+        # Parameter is required if it doesn't have a default value and is not a *args or **kwargs
+        if param.default is param.empty and param.kind not in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
+            required_params += 1
+
+    return required_params

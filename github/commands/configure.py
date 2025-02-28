@@ -1,13 +1,14 @@
 from __future__ import annotations
 from itertools import chain
 
+import sublime
 from sublime_plugin import WindowCommand
 
 from ..git_mixins import GithubRemotesMixin
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.git_mixins.branches import Branch
 from GitSavvy.core.ui_mixins.quick_panel import show_remote_panel
-from GitSavvy.core.utils import hprint, show_noop_panel, show_panel
+from GitSavvy.core.utils import hprint, show_busy_panel, show_noop_panel, show_panel, AnimatedText
 
 
 __all__ = (
@@ -44,7 +45,8 @@ class gs_github_configure_remote(WindowCommand, GithubRemotesMixin, GitCommand):
         self,
         remote_name: str,
         currently_set_branch: str | None,
-        only_one_remote_defined: bool
+        only_one_remote_defined: bool,
+        _hide_overlay: bool = False
     ):
         """Determine the default branch of the given remote."""
         default_branch = self.guess_default_branch(remote_name)
@@ -63,9 +65,18 @@ class gs_github_configure_remote(WindowCommand, GithubRemotesMixin, GitCommand):
 
         def on_done(idx):
             if idx == len(items) - 1:
-                self.fetch(remote_name)
-                self.ask_for_default_branch(
-                    remote_name, currently_set_branch, only_one_remote_defined)  # recurse
+                show_busy_panel(
+                    self.window,
+                    AnimatedText(
+                        f"Refreshing `{remote_name}`...",
+                        f"Refreshing `{remote_name}`.. ",
+                        tick=0.3
+                    ),
+                    task=lambda: self.fetch(remote_name),
+                    kont=lambda: self.ask_for_default_branch(
+                        remote_name, currently_set_branch, only_one_remote_defined
+                    )
+                )
                 return
 
             branch = branches[idx]
