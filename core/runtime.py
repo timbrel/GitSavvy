@@ -18,18 +18,17 @@ from . import utils
 
 from typing import (
     Any, Callable, Dict, Iterator, Literal, Optional, Sequence, Tuple, TypeVar, Union,
-    overload, TYPE_CHECKING)
+    overload)
 
-if TYPE_CHECKING:
-    from typing_extensions import Concatenate as Con, ParamSpec
-    P = ParamSpec('P')
-    T = TypeVar('T')
-    F = TypeVar('F', bound=Callable[..., Any])
-    Callback = Tuple[Callable, Tuple[Any, ...], Dict[str, Any]]
-    ReturnValue = Any
+from typing_extensions import Concatenate as Con, ParamSpec, TypeAlias
+P = ParamSpec('P')
+T = TypeVar('T')
+F = TypeVar('F', bound=Callable[..., Any])
+Callback = Tuple[Callable, Tuple[Any, ...], Dict[str, Any]]
+ReturnValue = Any
 
-    View = sublime.View
-    Edit = sublime.Edit
+View = sublime.View
+Edit = sublime.Edit
 
 
 UI_THREAD_NAME = None  # type: Optional[str]
@@ -378,8 +377,8 @@ def cooperative_thread_hopper(fn):
         elif rv == AWAIT_WORKER:
             enqueue_on_worker(tick, gen)
 
-    def decorated(*args, **kwargs):
-        # type: (P.args, P.kwargs) -> None
+    @wraps(fn)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> None:
         gen = fn(*args, **kwargs)
         if inspect.isgenerator(gen):
             tick(gen)
