@@ -453,3 +453,24 @@ class timer:
     def reset(self) -> None:
         """Reset the timer to the current time."""
         self.start = time.perf_counter()
+
+
+def time_budget(budget: float = timer.UI_BLOCK_TIME) -> Callable[[], bool]:
+    """
+    Create a function to check if a time budget has been exhausted.
+    Anytime it has been exceeded, the timer is reset, so you don't have to.
+
+    Args:
+        budget (float): The time budget in seconds. Defaults to 17ms.
+    Returns:
+        Callable[[], bool]: The predicate function to check if the budget has been exceeded.
+    """
+    t = timer()
+
+    def budget_exhausted() -> bool:
+        if t.exceeded(budget):
+            t.reset()
+            return True
+        return False
+
+    return budget_exhausted

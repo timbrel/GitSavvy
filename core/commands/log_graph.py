@@ -17,7 +17,6 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer, show_commit_info
-from .intra_line_colorizer import block_time_passed_factory
 from .log import gs_log
 from .. import utils
 from ..base_commands import GsTextCommand
@@ -34,6 +33,7 @@ from ..runtime import (
     run_or_timeout,
     run_on_new_thread,
     text_command,
+    time_budget,
     HopperR
 )
 from ..view import (
@@ -360,13 +360,13 @@ else:
 
 def diff(a, b):
     # type: (Sequence[str], Iterable[str]) -> Iterator[Union[Ins, Del, FlushT]]
-    block_time_passed = block_time_passed_factory(100)
+    budget_exhausted = time_budget(100)
     a_index = 0
     b_index = -1  # init in case b is empty
     len_a = len(a)
     a_set = set(a)
     for b_index, line in enumerate(b):
-        if block_time_passed():
+        if budget_exhausted():
             yield Flush
 
         is_commit_line = re.match(FIND_COMMIT_HASH, line)

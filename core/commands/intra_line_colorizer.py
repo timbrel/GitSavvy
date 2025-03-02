@@ -2,7 +2,6 @@ import difflib
 from functools import lru_cache, partial
 from itertools import groupby, zip_longest
 import re
-import time
 
 import sublime
 from ..fns import accumulate, filter_, flatten
@@ -14,9 +13,6 @@ from ..runtime import cooperative_thread_hopper, AWAIT_WORKER, HopperR
 from typing import Callable, List, Tuple, Sequence
 from ..parse_diff import HunkLine
 Chunk = List[HunkLine]
-
-
-MAX_BLOCK_TIME = 17
 
 
 @eat_but_log_errors()
@@ -40,23 +36,6 @@ def view_has_changed_factory(view):
         return not view.is_valid() or view.change_count() != cc
 
     return view_has_changed
-
-
-def block_time_passed_factory(block_time=MAX_BLOCK_TIME):
-    start_time = time.perf_counter()
-
-    def block_time_passed():
-        nonlocal start_time
-
-        end_time = time.perf_counter()
-        duration = round((end_time - start_time) * 1000)
-        if duration > block_time:
-            start_time = time.perf_counter()
-            return True
-        else:
-            return False
-
-    return block_time_passed
 
 
 @cooperative_thread_hopper
