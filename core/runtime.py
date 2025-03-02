@@ -5,6 +5,7 @@ from functools import lru_cache, partial, wraps
 import inspect
 import os
 import sys
+import time
 import threading
 import traceback
 import uuid
@@ -362,7 +363,7 @@ ENSURE_UI_THREAD: Literal["ENSURE_UI_THREAD"] = 'ENSURE_UI_THREAD'
 ENSURE_WORKER:    Literal["ENSURE_WORKER"]    = 'ENSURE_WORKER'     # noqa: E221, E241
 HopperR: TypeAlias = Generator[
     Literal["AWAIT_UI_THREAD", "AWAIT_WORKER", "ENSURE_UI_THREAD", "ENSURE_WORKER"],
-    None,
+    "timer",
     None
 ]
 
@@ -373,6 +374,15 @@ def cooperative_thread_hopper(fn):
 
     `fn` must return `HopperR` t.i. it must yield AWAIT_UI_THREAD,
     AWAIT_WORKER, ENSURE_UI_THREAD, or ENSURE_WORKER at some point.
+
+    Every yield answers with a timer object which can be used to
+    measure the time since the continuation started.
+
+    E.g. don't block the UI for too long:
+        timer = yield AWAIT_UI_THREAD
+        ... do something ...
+        if timer.elapsed > 100:  # [milliseconds]
+            yield AWAIT_UI_THREAD
 
     When calling `fn` it will run on the same thread as the caller
     until the function yields.  It then schedules a task on the
@@ -389,9 +399,14 @@ def cooperative_thread_hopper(fn):
     Be aware that, if the call site and the thread you request are
     _not_ the same, you can get concurrent execution afterwards!
     """
-    def tick(gen, send_value=None):
+    def tick(gen: HopperR, initial_call=False) -> None:
         try:
-            rv = gen.send(send_value)
+            # workaround mypy marking `send(None)` as error
+            # https://github.com/python/mypy/issues/11023#issuecomment-1255901328
+            if initial_call:
+                rv = next(gen)
+            else:
+                rv = gen.send(timer())
         except StopIteration:
             return
         except Exception as ex:
@@ -410,6 +425,31 @@ def cooperative_thread_hopper(fn):
     def decorated(*args: P.args, **kwargs: P.kwargs) -> None:
         gen = fn(*args, **kwargs)
         if inspect.isgenerator(gen):
-            tick(gen)
+            tick(gen, initial_call=True)
 
     return decorated
+
+
+class timer:
+    UI_BLOCK_TIME = 17
+
+    def __init__(self) -> None:
+        """Create a new timer and start it."""
+        self.start = time.perf_counter()
+
+    @property
+    def elapsed(self) -> float:
+        """Get the elapsed time in milliseconds."""
+        return (time.perf_counter() - self.start) * 1000
+
+    def exceeded(self, ms: float) -> bool:
+        """Check if the elapsed time has exceeded the given milliseconds."""
+        return self.elapsed > ms
+
+    def exhausted_ui_budget(self) -> bool:
+        """Check if the elapsed time has exceeded the UI_BLOCK_TIME of 17ms."""
+        return self.exceeded(self.UI_BLOCK_TIME)
+
+    def reset(self) -> None:
+        """Reset the timer to the current time."""
+        self.start = time.perf_counter()

@@ -33,7 +33,8 @@ from ..runtime import (
     run_and_check_timeout,
     run_or_timeout,
     run_on_new_thread,
-    text_command
+    text_command,
+    HopperR
 )
 from ..view import (
     find_by_selector,
@@ -84,7 +85,6 @@ from typing import (
     Callable, Deque, Dict, Generic, Iterable, Iterator, List, Literal, Optional, Set, Sequence, Tuple,
     TypedDict, TypeVar, Union, TYPE_CHECKING
 )
-from GitSavvy.core.runtime import HopperR
 from ..git_mixins.branches import Branch
 T = TypeVar('T')
 
@@ -2424,9 +2424,9 @@ def _colorize_dots(vid, dots):
 @cooperative_thread_hopper
 def __colorize_dots(vid, dots):
     # type: (sublime.ViewId, Tuple[colorizer.Char]) -> HopperR
+    timer = yield "ENSURE_UI_THREAD"
     view = sublime.View(vid)
 
-    block_time_passed = block_time_passed_factory()
     paths_down = []  # type: List[List[colorizer.Char]]
     paths_up = []  # type: List[List[colorizer.Char]]
 
@@ -2454,12 +2454,11 @@ def __colorize_dots(vid, dots):
             values.append(char)
         c += 1
 
-        if block_time_passed():
+        if timer.exhausted_ui_budget():
             __paint(view, paths_down, paths_up)
-            yield "AWAIT_UI_THREAD"
+            timer = yield "AWAIT_UI_THREAD"
             if ACTIVE_COMPUTATION.get(vid) != dots:
                 return
-            block_time_passed = block_time_passed_factory()
 
     if ACTIVE_COMPUTATION[vid] == dots:
         ACTIVE_COMPUTATION.pop(vid, None)

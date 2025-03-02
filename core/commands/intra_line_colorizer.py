@@ -8,12 +8,11 @@ import sublime
 from ..fns import accumulate, filter_, flatten
 from ..parse_diff import Hunk, SplittedDiff, Region
 from ..utils import eat_but_log_errors, line_indentation
-from ..runtime import cooperative_thread_hopper, AWAIT_WORKER
+from ..runtime import cooperative_thread_hopper, AWAIT_WORKER, HopperR
 
 
 from typing import Callable, List, Tuple, Sequence
 from ..parse_diff import HunkLine
-from ..runtime import HopperR
 Chunk = List[HunkLine]
 
 
@@ -87,10 +86,9 @@ def compute_intra_line_diffs(view, diff):
 
     _draw_intra_diff_regions(view, to_regions, from_regions)
 
-    yield AWAIT_WORKER
+    timer = yield AWAIT_WORKER
     if view_has_changed():
         return
-    block_time_passed = block_time_passed_factory()
 
     # Consider some chunks [1, 2, 3, 4] where 3 was *in* the viewport and thus
     # rendered immediately. Now, [1, 2] + [4] await their render. The following
@@ -101,14 +99,13 @@ def compute_intra_line_diffs(view, diff):
         from_regions.extend(new_from_regions)
         to_regions.extend(new_to_regions)
 
-        if block_time_passed():
+        if timer.exhausted_ui_budget():
             if view_has_changed():
                 return
             _draw_intra_diff_regions(view, to_regions, from_regions)
-            yield AWAIT_WORKER
+            timer = yield AWAIT_WORKER
             if view_has_changed():
                 return
-            block_time_passed = block_time_passed_factory()
 
     if view_has_changed():
         return
