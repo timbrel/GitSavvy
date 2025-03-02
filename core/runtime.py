@@ -17,7 +17,7 @@ from .exceptions import GitSavvyError
 from . import utils
 
 from typing import (
-    Any, Callable, Dict, Iterator, Literal, Optional, Sequence, Tuple, TypeVar, Union,
+    Any, Callable, Dict, Generator, Literal, Optional, Sequence, Tuple, TypeVar, Union,
     overload)
 
 from typing_extensions import Concatenate as Con, ParamSpec, TypeAlias
@@ -356,17 +356,23 @@ def throttled(fn, *args, **kwargs):
     return task
 
 
-AWAIT_UI_THREAD = 'AWAIT_UI_THREAD'  # type: Literal["AWAIT_UI_THREAD"]
-AWAIT_WORKER = 'AWAIT_WORKER'  # type: Literal["AWAIT_WORKER"]
-HopperR = Iterator[Literal["AWAIT_UI_THREAD", "AWAIT_WORKER"]]
+AWAIT_UI_THREAD:  Literal["AWAIT_UI_THREAD"]  = 'AWAIT_UI_THREAD'   # noqa: E221, E241
+AWAIT_WORKER:     Literal["AWAIT_WORKER"]     = 'AWAIT_WORKER'      # noqa: E221, E241
+ENSURE_UI_THREAD: Literal["ENSURE_UI_THREAD"] = 'ENSURE_UI_THREAD'
+ENSURE_WORKER:    Literal["ENSURE_WORKER"]    = 'ENSURE_WORKER'     # noqa: E221, E241
+HopperR: TypeAlias = Generator[
+    Literal["AWAIT_UI_THREAD", "AWAIT_WORKER", "ENSURE_UI_THREAD", "ENSURE_WORKER"],
+    None,
+    None
+]
 
 
 def cooperative_thread_hopper(fn):
     # type: (Callable[P, HopperR]) -> Callable[P, None]
     """Mark given function as cooperative.
 
-    `fn` must return `HopperR` t.i. it must yield AWAIT_UI_THREAD
-    or AWAIT_UI_THREAD at some point.
+    `fn` must return `HopperR` t.i. it must yield AWAIT_UI_THREAD,
+    AWAIT_WORKER, ENSURE_UI_THREAD, or ENSURE_WORKER at some point.
 
     When calling `fn` it will run on the same thread as the caller
     until the function yields.  It then schedules a task on the
@@ -391,7 +397,11 @@ def cooperative_thread_hopper(fn):
         except Exception as ex:
             raise ex from None
 
-        if rv == AWAIT_UI_THREAD:
+        if rv == ENSURE_UI_THREAD:
+            ensure_on_ui(tick, gen)
+        elif rv == ENSURE_WORKER:
+            ensure_on_worker(tick, gen)
+        elif rv == AWAIT_UI_THREAD:
             enqueue_on_ui(tick, gen)
         elif rv == AWAIT_WORKER:
             enqueue_on_worker(tick, gen)
