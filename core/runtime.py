@@ -32,16 +32,23 @@ Edit = sublime.Edit
 
 
 UI_THREAD_NAME = None  # type: Optional[str]
+WORKER_THREAD_NAME = None  # type: Optional[str]
 savvy_executor = ThreadPoolExecutor(max_workers=1)
 auto_timeout = threading.local()
 _enqueued_tasks = utils.Counter()
 
 
 def determine_thread_names():
-    def callback():
+    def ui_callback():
         global UI_THREAD_NAME
         UI_THREAD_NAME = threading.current_thread().name
-    sublime.set_timeout(callback)
+
+    def worker_callback():
+        global WORKER_THREAD_NAME
+        WORKER_THREAD_NAME = threading.current_thread().name
+
+    sublime.set_timeout(ui_callback)
+    sublime.set_timeout_async(worker_callback)
 
 
 GITSAVVY__ = "{0}GitSavvy{0}".format(os.sep)
@@ -78,6 +85,18 @@ def ensure_on_ui(fn, *args, **kwargs):
     else:
         enqueue_on_ui(fn, *args, **kwargs)
 
+
+def it_runs_on_worker():
+    # type: () -> bool
+    return threading.current_thread().name == WORKER_THREAD_NAME
+
+
+def ensure_on_worker(fn, *args, **kwargs):
+    # type: (Callable[P, T], P.args, P.kwargs) -> None
+    if it_runs_on_worker():
+        fn(*args, **kwargs)
+    else:
+        enqueue_on_worker(fn, *args, **kwargs)
 
 # `enqueue_on_*` functions emphasize that we run two queues and
 # just put tasks on it.  In contrast to `set_timeout_*` which
