@@ -396,8 +396,10 @@ def cooperative_thread_hopper(fn):
     However, it is sync till the first yield (but you could of
     course yield on the first line!), only then execution returns
     to the call site.
+
     Be aware that, if the call site and the thread you request are
     _not_ the same, you can get concurrent execution afterwards!
+    This is a side-effect of running two threads.
     """
     def tick(gen: HopperR, initial_call=False) -> None:
         try:
