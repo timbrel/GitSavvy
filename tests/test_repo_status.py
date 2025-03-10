@@ -97,6 +97,7 @@ class TestShortBranchStatus(DeferrableTestCase):
     @p.expand(TestShortBranchStatusTestcases)
     def test_format_branch_status_for_statusbar(self, status_lines, expected):
         git = GitCommand()
+        when(git).get_repo_path().thenReturn("somewhere")
         when(git).in_rebase().thenReturn(False)
         when(git).in_merge().thenReturn(False)
         when(git).in_cherry_pick().thenReturn(False)
@@ -104,7 +105,8 @@ class TestShortBranchStatus(DeferrableTestCase):
 
         when(git).git("status", ...).thenReturn(status_lines)
 
-        actual = git.get_branch_status_short()
+        git.get_working_dir_status()
+        actual = git.current_state().get("short_status")
         self.assertEqual(actual, expected)
 
     # TODO: Add tests for `in_rebase` True
@@ -234,6 +236,7 @@ class TestLongBranchStatus(DeferrableTestCase):
     @p.expand(TestLongBranchStatusTestcases)
     def test_format_branch_status_for_status_dashboard(self, status_lines, expected):
         git = GitCommand()
+        when(git).get_repo_path().thenReturn("somewhere")
         when(git).in_rebase().thenReturn(False)
         when(git).in_merge().thenReturn(False)
         when(git).in_cherry_pick().thenReturn(False)
@@ -241,7 +244,11 @@ class TestLongBranchStatus(DeferrableTestCase):
 
         when(git).git("status", ...).thenReturn(status_lines)
 
-        actual = git.get_branch_status(delim="\n")
+        git.get_working_dir_status()
+        actual = "\n".join(
+            line.lstrip()
+            for line in git.current_state().get("long_status").splitlines()
+        )
         self.assertEqual(actual, expected)
 
     # TODO: Add tests for `in_rebase` True

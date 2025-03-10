@@ -97,7 +97,7 @@ class StatusMixin(mixin_base):
             "status": working_dir_status,
             "head": branch_status,
             "last_branches": last_branches,
-            "long_status": self._format_branch_status(branch_status),
+            "long_status": self._format_branch_status(branch_status, working_dir_status),
             "short_status": self._format_branch_status_short(branch_status),
         })
         return working_dir_status
@@ -147,31 +147,6 @@ class StatusMixin(mixin_base):
             merge_conflicts=conflicts,
         )
 
-    def get_branch_status(self, *, delim="\n           "):
-        # type: (str) -> str
-        """
-        Return a tuple of:
-
-          1) the name of the active branch
-          2) the status of the active local branch
-             compared to its remote counterpart.
-
-        If no remote or tracking branch is defined, do not include remote-data.
-        If HEAD is detached, provide that status instead.
-
-        If a delimiter is provided, join tuple components with it, and return
-        that value.
-        """
-        lines = self._get_status()
-        branch_status = self._get_branch_status_components(lines)
-        return self._format_branch_status(branch_status, delim)
-
-    def get_branch_status_short(self):
-        # type: () -> str
-        lines = self._get_status()
-        branch_status = self._get_branch_status_components(lines)
-        return self._format_branch_status_short(branch_status)
-
     def _get_branch_status_components(self, lines):
         # type: (List[str]) -> HeadState
         """
@@ -213,8 +188,8 @@ class StatusMixin(mixin_base):
 
         return HeadState(False, branch, remote, clean, ahead, behind, bool(gone))
 
-    def _format_branch_status(self, branch_status, delim="\n           "):
-        # type: (HeadState, str) -> str
+    def _format_branch_status(self, branch_status, working_dir_status, delim="\n           "):
+        # type: (HeadState, WorkingDirState, str) -> str
         detached, branch, remote, clean, ahead, behind, gone = branch_status
 
         secondary = []
@@ -251,6 +226,24 @@ class StatusMixin(mixin_base):
             rebase_stopped_at = self.rebase_stopped_at()
             if rebase_stopped_at:
                 secondary.append("`{}".format(rebase_stopped_at))
+
+            if working_dir_status.merge_conflicts:
+                secondary.append("hint: Resolve all conflicts and stage them")
+            elif (
+                working_dir_status.staged_files
+                and not working_dir_status.unstaged_files
+                and not working_dir_status.untracked_files
+                and not working_dir_status.merge_conflicts
+            ):
+                if rebase_stopped_at and rebase_stopped_at.startswith("edit"):
+                    secondary.append("hint: Commit stage")
+                elif rebase_stopped_at and rebase_stopped_at.startswith("pick"):
+                    secondary.append("hint: Run `rebase --continue` to continue")
+            elif working_dir_status.is_clean:
+                if rebase_stopped_at and rebase_stopped_at.startswith("edit"):
+                    secondary.append("hint: Amend, edit, or run `rebase --continue` to continue")
+                else:
+                    secondary.append("hint: Run `rebase --continue` to continue")
 
         if self.in_cherry_pick():
             secondary.append("Cherry-picking {}.".format(self.cherry_pick_head()))
