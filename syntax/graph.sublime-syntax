@@ -102,6 +102,8 @@ contexts:
             2: punctuation.expression.dirty.git-savvy
         - match: (master|main|dev|trunk)\b
           scope: constant.other.git.branch.special.git-savvy gitsavvy.gotosymbol
+        - match: (origin/master|origin/main)\b
+          scope: constant.other.git.branch.special.remote.git-savvy gitsavvy.gotosymbol
         - match: (\d+)?([^ ,#/)]*)?/?(#?\d+)?([^ ,)]+)
           scope: constant.other.git.branch.git-savvy gitsavvy.gotosymbol
           captures:
