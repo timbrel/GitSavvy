@@ -186,7 +186,7 @@ def iteratively_query_github(
     while True:
         if response is not None:
             # it means this is not the first iter
-            if "link" not in response.headers:  # type: ignore[unreachable]
+            if "link" not in response.headers:
                 break
 
             # following next link

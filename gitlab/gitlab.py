@@ -206,7 +206,7 @@ def iteratively_query_gitlab(api_url_template, gitlab_repo, url_params={}, query
     while True:
         if response is not None:
             # it means this is not the first iter
-            if "link" not in response.headers:  # type: ignore[unreachable]
+            if "link" not in response.headers:
                 break
 
             # following next link
