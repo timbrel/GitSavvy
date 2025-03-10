@@ -147,31 +147,6 @@ class StatusMixin(mixin_base):
             merge_conflicts=conflicts,
         )
 
-    def get_branch_status(self, *, delim="\n           "):
-        # type: (str) -> str
-        """
-        Return a tuple of:
-
-          1) the name of the active branch
-          2) the status of the active local branch
-             compared to its remote counterpart.
-
-        If no remote or tracking branch is defined, do not include remote-data.
-        If HEAD is detached, provide that status instead.
-
-        If a delimiter is provided, join tuple components with it, and return
-        that value.
-        """
-        lines = self._get_status()
-        branch_status = self._get_branch_status_components(lines)
-        return self._format_branch_status(branch_status, delim)
-
-    def get_branch_status_short(self):
-        # type: () -> str
-        lines = self._get_status()
-        branch_status = self._get_branch_status_components(lines)
-        return self._format_branch_status_short(branch_status)
-
     def _get_branch_status_components(self, lines):
         # type: (List[str]) -> HeadState
         """
