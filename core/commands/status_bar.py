@@ -6,6 +6,9 @@ from ..runtime import run_when_worker_is_idle, throttled
 from GitSavvy.core import store
 
 
+STATUSBAR_KEY = "gitsavvy-repo-status"
+
+
 class GsStatusBarEventListener(EventListener):
     def on_activated(self, view):
         view.run_command("gs_draw_status_bar")
@@ -39,7 +42,9 @@ class gs_draw_status_bar(TextCommand, GitCommand):
     """
 
     def run(self, edit, repo_path=None):
+        view = self.view
         if not self.savvy_settings.get("git_status_in_status_bar"):
+            view.erase_status(STATUSBAR_KEY)
             return
 
         if not repo_path:
@@ -54,7 +59,7 @@ class gs_draw_status_bar(TextCommand, GitCommand):
         except Exception:
             ...
         else:
-            self.view.set_status("gitsavvy-repo-status", short_status)
+            view.set_status(STATUSBAR_KEY, short_status)
 
 
 def on_status_update(repo_path, state):
