@@ -46,6 +46,10 @@ contexts:
           captures:
             2: string.other.git-savvy.todo-item
 
+        - match: ^\s{11}(hint:\s.*)
+          captures:
+            1: keyword.other.git-savvy.hint
+
         - match: ^  (HEAD:)(?:\s+(([0-9a-f]{7,40}) (.+)))?
           comment: head summary
           scope: comment.git-savvy.summary-header.head-summary
