@@ -21,7 +21,7 @@ from . import runtime
 
 from typing import (
     Any, Callable, Dict, Iterable, Iterator, NamedTuple, Optional, Sequence,
-    Tuple, Type, TypeVar, TYPE_CHECKING)
+    Tuple, Type, TypeVar, Union, TYPE_CHECKING)
 
 if TYPE_CHECKING:
     from typing_extensions import ParamSpec
@@ -258,7 +258,7 @@ class Action(NamedTuple):
 
 
 ActionType = Tuple[str, Callable[[], None]]
-QuickPanelItems = Iterable[str]
+QuickPanelItems = Iterable[Union[str, sublime.QuickPanelItem]]
 
 
 def show_panel(

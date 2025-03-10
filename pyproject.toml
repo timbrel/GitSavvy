@@ -1,0 +1,11 @@
+[project]
+name = "GitSavvy"
+readme = "README.md"
+requires-python = ">= 3.12"
+
+[tool.rye]
+managed = true
+virtual = true
+dev-dependencies = [
+    "flake8==5.*",
+]
