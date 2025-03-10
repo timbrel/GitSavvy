@@ -5,6 +5,7 @@ from functools import lru_cache, partial, wraps
 import inspect
 import os
 import sys
+import time
 import threading
 import traceback
 import uuid
@@ -17,32 +18,38 @@ from .exceptions import GitSavvyError
 from . import utils
 
 from typing import (
-    Any, Callable, Dict, Iterator, Literal, Optional, Sequence, Tuple, TypeVar, Union,
-    overload, TYPE_CHECKING)
+    Any, Callable, Dict, Generator, Literal, Optional, Sequence, Tuple, TypeVar, Union,
+    overload)
 
-if TYPE_CHECKING:
-    from typing_extensions import Concatenate as Con, ParamSpec
-    P = ParamSpec('P')
-    T = TypeVar('T')
-    F = TypeVar('F', bound=Callable[..., Any])
-    Callback = Tuple[Callable, Tuple[Any, ...], Dict[str, Any]]
-    ReturnValue = Any
+from typing_extensions import Concatenate as Con, ParamSpec, TypeAlias
+P = ParamSpec('P')
+T = TypeVar('T')
+F = TypeVar('F', bound=Callable[..., Any])
+Callback = Tuple[Callable, Tuple[Any, ...], Dict[str, Any]]
+ReturnValue = Any
 
-    View = sublime.View
-    Edit = sublime.Edit
+View = sublime.View
+Edit = sublime.Edit
 
 
 UI_THREAD_NAME = None  # type: Optional[str]
+WORKER_THREAD_NAME = None  # type: Optional[str]
 savvy_executor = ThreadPoolExecutor(max_workers=1)
 auto_timeout = threading.local()
 _enqueued_tasks = utils.Counter()
 
 
 def determine_thread_names():
-    def callback():
+    def ui_callback():
         global UI_THREAD_NAME
         UI_THREAD_NAME = threading.current_thread().name
-    sublime.set_timeout(callback)
+
+    def worker_callback():
+        global WORKER_THREAD_NAME
+        WORKER_THREAD_NAME = threading.current_thread().name
+
+    sublime.set_timeout(ui_callback)
+    sublime.set_timeout_async(worker_callback)
 
 
 GITSAVVY__ = "{0}GitSavvy{0}".format(os.sep)
@@ -79,6 +86,18 @@ def ensure_on_ui(fn, *args, **kwargs):
     else:
         enqueue_on_ui(fn, *args, **kwargs)
 
+
+def it_runs_on_worker():
+    # type: () -> bool
+    return threading.current_thread().name == WORKER_THREAD_NAME
+
+
+def ensure_on_worker(fn, *args, **kwargs):
+    # type: (Callable[P, T], P.args, P.kwargs) -> None
+    if it_runs_on_worker():
+        fn(*args, **kwargs)
+    else:
+        enqueue_on_worker(fn, *args, **kwargs)
 
 # `enqueue_on_*` functions emphasize that we run two queues and
 # just put tasks on it.  In contrast to `set_timeout_*` which
@@ -338,17 +357,32 @@ def throttled(fn, *args, **kwargs):
     return task
 
 
-AWAIT_UI_THREAD = 'AWAIT_UI_THREAD'  # type: Literal["AWAIT_UI_THREAD"]
-AWAIT_WORKER = 'AWAIT_WORKER'  # type: Literal["AWAIT_WORKER"]
-HopperR = Iterator[Literal["AWAIT_UI_THREAD", "AWAIT_WORKER"]]
+AWAIT_UI_THREAD:  Literal["AWAIT_UI_THREAD"]  = 'AWAIT_UI_THREAD'   # noqa: E221, E241
+AWAIT_WORKER:     Literal["AWAIT_WORKER"]     = 'AWAIT_WORKER'      # noqa: E221, E241
+ENSURE_UI_THREAD: Literal["ENSURE_UI_THREAD"] = 'ENSURE_UI_THREAD'
+ENSURE_WORKER:    Literal["ENSURE_WORKER"]    = 'ENSURE_WORKER'     # noqa: E221, E241
+HopperR: TypeAlias = Generator[
+    Literal["AWAIT_UI_THREAD", "AWAIT_WORKER", "ENSURE_UI_THREAD", "ENSURE_WORKER"],
+    "timer",
+    None
+]
 
 
 def cooperative_thread_hopper(fn):
     # type: (Callable[P, HopperR]) -> Callable[P, None]
     """Mark given function as cooperative.
 
-    `fn` must return `HopperR` t.i. it must yield AWAIT_UI_THREAD
-    or AWAIT_UI_THREAD at some point.
+    `fn` must return `HopperR` t.i. it must yield AWAIT_UI_THREAD,
+    AWAIT_WORKER, ENSURE_UI_THREAD, or ENSURE_WORKER at some point.
+
+    Every yield answers with a timer object which can be used to
+    measure the time since the continuation started.
+
+    E.g. don't block the UI for too long:
+        timer = yield AWAIT_UI_THREAD
+        ... do something ...
+        if timer.elapsed > 100:  # [milliseconds]
+            yield AWAIT_UI_THREAD
 
     When calling `fn` it will run on the same thread as the caller
     until the function yields.  It then schedules a task on the
@@ -362,26 +396,83 @@ def cooperative_thread_hopper(fn):
     However, it is sync till the first yield (but you could of
     course yield on the first line!), only then execution returns
     to the call site.
+
     Be aware that, if the call site and the thread you request are
     _not_ the same, you can get concurrent execution afterwards!
+    This is a side-effect of running two threads.
     """
-    def tick(gen, send_value=None):
+    def tick(gen: HopperR, initial_call=False) -> None:
         try:
-            rv = gen.send(send_value)
+            # workaround mypy marking `send(None)` as error
+            # https://github.com/python/mypy/issues/11023#issuecomment-1255901328
+            if initial_call:
+                rv = next(gen)
+            else:
+                rv = gen.send(timer())
         except StopIteration:
             return
         except Exception as ex:
             raise ex from None
 
-        if rv == AWAIT_UI_THREAD:
+        if rv == ENSURE_UI_THREAD:
+            ensure_on_ui(tick, gen)
+        elif rv == ENSURE_WORKER:
+            ensure_on_worker(tick, gen)
+        elif rv == AWAIT_UI_THREAD:
             enqueue_on_ui(tick, gen)
         elif rv == AWAIT_WORKER:
             enqueue_on_worker(tick, gen)
 
-    def decorated(*args, **kwargs):
-        # type: (P.args, P.kwargs) -> None
+    @wraps(fn)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> None:
         gen = fn(*args, **kwargs)
         if inspect.isgenerator(gen):
-            tick(gen)
+            tick(gen, initial_call=True)
 
     return decorated
+
+
+class timer:
+    UI_BLOCK_TIME = 17
+
+    def __init__(self) -> None:
+        """Create a new timer and start it."""
+        self.start = time.perf_counter()
+
+    @property
+    def elapsed(self) -> float:
+        """Get the elapsed time in milliseconds."""
+        return (time.perf_counter() - self.start) * 1000
+
+    def exceeded(self, ms: float) -> bool:
+        """Check if the elapsed time has exceeded the given milliseconds."""
+        return self.elapsed > ms
+
+    def exhausted_ui_budget(self) -> bool:
+        """Check if the elapsed time has exceeded the UI_BLOCK_TIME of 17ms."""
+        return self.exceeded(self.UI_BLOCK_TIME)
+
+    def reset(self) -> None:
+        """Reset the timer to the current time."""
+        self.start = time.perf_counter()
+
+
+def time_budget(budget: float = timer.UI_BLOCK_TIME) -> Callable[[], bool]:
+    """
+    Create a function to check if a time budget has been exhausted.
+    Anytime it has been exceeded, the timer is reset, so you don't have to.
+
+    Args:
+        budget (float): The time budget in seconds. Defaults to 17ms.
+    Returns:
+        Callable[[], bool]: The predicate function to check if the budget has been exceeded.
+    """
+    t = timer()
+
+    def budget_exhausted() -> bool:
+        if t.exceeded(budget):
+            t.reset()
+            return True
+        return False
+
+    return budget_exhausted

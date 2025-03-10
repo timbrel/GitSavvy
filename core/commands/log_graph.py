@@ -17,7 +17,6 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer, show_commit_info
-from .intra_line_colorizer import block_time_passed_factory
 from .log import gs_log
 from .. import utils
 from ..base_commands import GsTextCommand
@@ -33,7 +32,9 @@ from ..runtime import (
     run_and_check_timeout,
     run_or_timeout,
     run_on_new_thread,
-    text_command
+    text_command,
+    time_budget,
+    HopperR
 )
 from ..view import (
     find_by_selector,
@@ -84,7 +85,6 @@ from typing import (
     Callable, Deque, Dict, Generic, Iterable, Iterator, List, Literal, Optional, Set, Sequence, Tuple,
     TypedDict, TypeVar, Union, TYPE_CHECKING
 )
-from GitSavvy.core.runtime import HopperR
 from ..git_mixins.branches import Branch
 T = TypeVar('T')
 
@@ -360,13 +360,13 @@ else:
 
 def diff(a, b):
     # type: (Sequence[str], Iterable[str]) -> Iterator[Union[Ins, Del, FlushT]]
-    block_time_passed = block_time_passed_factory(100)
+    budget_exhausted = time_budget(100)
     a_index = 0
     b_index = -1  # init in case b is empty
     len_a = len(a)
     a_set = set(a)
     for b_index, line in enumerate(b):
-        if block_time_passed():
+        if budget_exhausted():
             yield Flush
 
         is_commit_line = re.match(FIND_COMMIT_HASH, line)
@@ -2424,9 +2424,9 @@ def _colorize_dots(vid, dots):
 @cooperative_thread_hopper
 def __colorize_dots(vid, dots):
     # type: (sublime.ViewId, Tuple[colorizer.Char]) -> HopperR
+    timer = yield "ENSURE_UI_THREAD"
     view = sublime.View(vid)
 
-    block_time_passed = block_time_passed_factory()
     paths_down = []  # type: List[List[colorizer.Char]]
     paths_up = []  # type: List[List[colorizer.Char]]
 
@@ -2454,12 +2454,11 @@ def __colorize_dots(vid, dots):
             values.append(char)
         c += 1
 
-        if block_time_passed():
+        if timer.exhausted_ui_budget():
             __paint(view, paths_down, paths_up)
-            yield "AWAIT_UI_THREAD"
+            timer = yield "AWAIT_UI_THREAD"
             if ACTIVE_COMPUTATION.get(vid) != dots:
                 return
-            block_time_passed = block_time_passed_factory()
 
     if ACTIVE_COMPUTATION[vid] == dots:
         ACTIVE_COMPUTATION.pop(vid, None)
