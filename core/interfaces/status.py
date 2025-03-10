@@ -179,7 +179,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
       ## SELECTED FILE ##                   ## ALL FILES ##
       ###################                   ###############
 
-      [o] open file                         [a] stage all unstaged files
+      [o] open file                         [S] stage all unstaged files
       [s] stage file                        [A] stage all unstaged and untracked files
       [u] unstage file                      [U] unstage all staged files
       [d] discard changes to file           [D] discard all unstaged changes
@@ -200,7 +200,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
       ## SELECTED COMMIT ##                 ## ALL FILES ##
       #####################                 ###############
 
-      [o] show commit                       [a] stage all unstaged files
+      [o] show commit                       [S] stage all unstaged files
                                             [A] stage all unstaged and untracked files
                                             [U] unstage all staged files
                                             [D] discard all unstaged changes
