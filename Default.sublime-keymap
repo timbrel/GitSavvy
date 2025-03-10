@@ -285,7 +285,15 @@
     /////////////////////////////
 
     {
-        "keys": ["a"],
+        "keys": ["S"],
+        "command": "gs_status_stage_all_files",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["a"],   // backwards compatibility
         "command": "gs_status_stage_all_files",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
