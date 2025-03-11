@@ -2658,11 +2658,7 @@ def extract_commit_hash(line):
 
 
 class gs_log_graph_toggle_commit_info_panel(WindowCommand, GitCommand):
-
-    """
-    Toggle commit info output panel.
-    """
-
+    """ Toggle commit info output panel."""
     def run(self):
         if show_commit_info.panel_is_visible(self.window):
             self.window.run_command("hide_panel", {"panel": "output.show_commit_info"})
