@@ -29,7 +29,7 @@ class GsPullBase(GsWindowCommand):
 
 class gs_pull(GsPullBase):
     """
-    Pull from remote tracking branch if it is found. Otherwise, use GsPullFromBranchCommand.
+    Pull from remote tracking branch if it is found. Otherwise, use `gs_pull_from_branch`.
     """
 
     @on_worker
