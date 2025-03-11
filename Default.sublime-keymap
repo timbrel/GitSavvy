@@ -397,6 +397,14 @@
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["P"],
+        "command": "gs_pull",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     ///////////////////////////
     // STATUS VIEW - STASHES //
