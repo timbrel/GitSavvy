@@ -213,6 +213,8 @@ class gs_show_commit_help_panel(GsAbstractOpenHelpPanel):
     ### Other ###
     [w]            ignore white space
     [?]            show this help popup
+    [M]            toggle between a full view and a panel
+    [m]            minimize to a panel, or close if already minimized
     [{cr}-,]       Change Settings for current syntax
     """)
 
