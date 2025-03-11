@@ -24,6 +24,7 @@ __all__ = (
     "gs_commit_view_do_commit",
     "gs_commit_view_sign",
     "gs_commit_view_close",
+    "gs_commit_view_open_transient_view",
     "gs_commit_log_helper",
     "GsPrepareCommitFocusEventListener",
     "GsPedanticEnforceEventListener",
@@ -615,6 +616,23 @@ class gs_commit_view_close(TextCommand, GitCommand):
 
         else:
             self.view.close()
+
+
+class gs_commit_view_open_transient_view(WindowCommand):
+    def run(self):
+        window = sublime.active_window()
+        view = window.active_view()
+        text = view.substr(sublime.Region(0, view.size()))
+        text = text.replace(COMMIT_HELP_TEXT, "## To make a commit,\n")
+        text = text.replace(HELP_WHEN_PATCH_IS_VISIBLE, "")
+        text = text.replace(HELP_WHEN_UNSTAGING_IS_POSSIBLE, "")
+        text = text.replace(HELP_WHEN_DISCARDING_IS_POSSIBLE, "")
+        text = text.replace('diff --git', '\ndiff --git')
+
+        window.run_command('set_layout', { "cols": [0.0, 0.5, 1.0], "rows": [0.0, 1.0], "cells": [[0, 0, 1, 1], [1, 0, 2, 1]] })
+        window.run_command('focus_group', { "group": 1 })
+        view_transient = window.new_file(sublime.NewFileFlags.TRANSIENT, "Packages/GitSavvy/syntax/make_commit.sublime-syntax")
+        view_transient.run_command("append", {"characters": text})
 
 
 class gs_commit_log_helper(TextCommand, LogHelperMixin):
