@@ -237,7 +237,7 @@ class gs_log_graph_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
     [enter]        open main menu with additional commands
     [o]            open commit in a new view; on `#issues`, open a browser
-    [m]            toggle commit details panel on the bottom
+    [m]/[M]        toggle commit panel on the bottom, [M] to also focus the panel
     [{cr}+C]       copy commit's hash, subject or a combination to the clipboard
 
     [s]            toggle to overview mode

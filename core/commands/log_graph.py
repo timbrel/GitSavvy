@@ -76,6 +76,7 @@ __all__ = (
     "gs_log_graph_toggle_all_setting",
     "gs_log_graph_open_commit",
     "gs_log_graph_toggle_commit_info_panel",
+    "gs_log_graph_show_and_focus_panel",
     "gs_log_graph_action",
     "GsLogGraphCursorListener",
 )
@@ -2667,6 +2668,18 @@ class gs_log_graph_toggle_commit_info_panel(WindowCommand, GitCommand):
             self.window.run_command("hide_panel", {"panel": "output.show_commit_info"})
         else:
             self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
+
+
+class gs_log_graph_show_and_focus_panel(WindowCommand, GitCommand):
+    def run(self, panel: str) -> None:
+        if self.window.active_panel() != f"output.{panel}":
+            self.window.run_command("show_panel", {"panel": f"output.{panel}"})
+
+        panel_view = self.window.find_output_panel(panel)
+        if not panel_view:
+            return
+
+        self.window.focus_view(panel_view)
 
 
 class LineInfo(TypedDict, total=False):

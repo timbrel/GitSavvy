@@ -1855,6 +1855,15 @@
         ]
     },
     {
+        "keys": ["M"],
+        "command": "gs_log_graph_show_and_focus_panel",
+        "args": {"panel": "show_commit_info"},
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["a"],
         "command": "gs_log_graph_toggle_all_setting",
         "context": [
