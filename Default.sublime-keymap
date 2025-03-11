@@ -1848,7 +1848,7 @@
     },
     {
         "keys": ["m"],
-        "command": "gs_log_graph_toggle_more_info",
+        "command": "gs_log_graph_toggle_commit_info_panel",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }

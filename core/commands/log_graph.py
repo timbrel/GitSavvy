@@ -75,7 +75,7 @@ __all__ = (
     "gs_log_graph_edit_files",
     "gs_log_graph_toggle_all_setting",
     "gs_log_graph_open_commit",
-    "gs_log_graph_toggle_more_info",
+    "gs_log_graph_toggle_commit_info_panel",
     "gs_log_graph_action",
     "GsLogGraphCursorListener",
 )
@@ -2656,7 +2656,7 @@ def extract_commit_hash(line):
     return match.group('commit_hash') if match else ""
 
 
-class gs_log_graph_toggle_more_info(WindowCommand, GitCommand):
+class gs_log_graph_toggle_commit_info_panel(WindowCommand, GitCommand):
 
     """
     Toggle commit info output panel.
