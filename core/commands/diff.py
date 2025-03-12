@@ -1365,6 +1365,10 @@ class gs_diff_navigate(GsNavigate):
         def _gen():
             # type: () -> Iterator[sublime.Region]
             diff = SplittedDiff.from_view(self.view)
+            if not diff.hunks:
+                for header in diff.headers:
+                    yield sublime.Region(header.region().a)
+
             for hunk in diff.hunks:
                 yield sublime.Region(hunk.region().a)
                 chunks = list(chunkby(hunk.content().lines(), lambda line: not line.is_context()))
