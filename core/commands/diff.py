@@ -50,9 +50,11 @@ from typing import (
     Callable, Dict, Iterable, Iterator, Literal, List, NamedTuple, Optional, Set,
     Tuple, TypeVar
 )
+from typing_extensions import TypeAlias
 from ..parse_diff import FileHeader, Hunk, HunkLine, TextRange
 from ..types import LineNo, ColNo
 from ..git_mixins.history import LogEntry
+from ..git_mixins.status import FileStatus
 T = TypeVar('T')
 Point = int
 LineCol = Tuple[LineNo, ColNo]
@@ -566,43 +568,61 @@ class gs_diff_switch_files(TextCommand, GitCommand):
         settings = view.settings()
         file_path = settings.get("git_savvy.file_path")
         in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
-        SEP_1 = ("                    ———— UNTRACKED FILES ————", False)
-        SEP_2 = ("                     ———— STAGED FILES —————", False)
-        items: list[tuple[str, bool]]
+        Item: TypeAlias = "tuple[str, bool]"
+        items: list[Item]
+        display_items: list[sublime.QuickPanelItem]
         status = self.current_state().get("status")
         prefer_unstaged_files = (
             settings.get("git_savvy.diff_view.toggled_mode_automatically")
             and (status and (status.unstaged_files or status.merge_conflicts))
         )
 
+        def _make_tuple(items: Iterable[str], mode: bool) -> list[Item]:
+            return [(i, mode) for i in items]
+
+        def _create_display_items(
+            items: list[Item], topic: str | None = None
+        ) -> list[sublime.QuickPanelItem]:
+            if not topic:
+                return [sublime.QuickPanelItem(f) for f, m in items]
+
+            return [
+                sublime.QuickPanelItem(f, annotation=f"({topic})")
+                for f, _ in items[:1]
+            ] + [
+                sublime.QuickPanelItem(f, annotation="⋮    ")
+                for f, _ in items[1:]
+            ]
+
         if base_commit := settings.get("git_savvy.diff_view.base_commit"):
             target_commit = settings.get("git_savvy.diff_view.target_commit")
-            items = [("--all", in_cached_mode)] + [
-                (f, in_cached_mode)
-                for f in self.list_touched_filenames(base_commit, target_commit)
-            ]
+            files = self.list_touched_filenames(base_commit, target_commit)
+            items = _make_tuple(["--all"] + files, in_cached_mode)
+            display_items = _create_display_items(items)
         elif status:
-            if (
-                in_cached_mode
-                and not prefer_unstaged_files
-            ):
-                items = [("--all", True)] + [
-                    (f.path, True) for f in status.staged_files
-                ]
+            def extract_path(files: Iterable[FileStatus]) -> list[str]:
+                return [f.path for f in files]
+
+            if (in_cached_mode and not prefer_unstaged_files):
+                items = _make_tuple(["--all"] + extract_path(status.staged_files), True)
+                display_items = _create_display_items(items)
+
             else:
-                items = [("--all", False)] + [
-                    (f.path, False)
-                    for f in sorted(status.unstaged_files + status.merge_conflicts)
-                ]
-                if status.untracked_files:
-                    items += [SEP_1] + [(f.path, False) for f in status.untracked_files]
-                if status.staged_files:
-                    items += [SEP_2] + [(f.path, True) for f in status.staged_files]
+                unstaged_files_ = sorted(status.unstaged_files + status.merge_conflicts)
+                unstaged = _make_tuple(["--all"] + extract_path(unstaged_files_), False)
+                untracked = _make_tuple(extract_path(status.untracked_files), False)
+                staged = _make_tuple(extract_path(status.staged_files), True)
+
+                items = unstaged + untracked + staged
+                display_items = (
+                    _create_display_items(unstaged, "unstaged")
+                    + _create_display_items(untracked, "untracked")
+                    + _create_display_items(staged, "staged")
+                )
         else:
-            items = [("--all", in_cached_mode)] + [
-                (f, in_cached_mode)
-                for f in self.list_touched_filenames(None, None, cached=in_cached_mode)
-            ]
+            files = self.list_touched_filenames(None, None, cached=in_cached_mode)
+            items = _make_tuple(["--all"] + files, in_cached_mode)
+            display_items = _create_display_items(items)
 
         if file_path:
             normalized_relative_path = self.get_rel_path(file_path)
@@ -614,32 +634,30 @@ class gs_diff_switch_files(TextCommand, GitCommand):
                     selected_index = 0
 
             else:
-                section_to_select_from = (
-                    list(takewhile(lambda item: item not in (SEP_1, SEP_2), items))
-                    if prefer_unstaged_files
-                    else items
-                )
+                count = lambda it: sum(1 for x in it)
+                # always [1:] to skip the "--all" item
+                if in_cached_mode and not prefer_unstaged_files:
+                    section_to_select_from = items[1:]
+                    needle = current_diff_mode
+                else:
+                    section_to_select_from = items[1:count(takewhile(
+                        lambda item: not item.annotation.startswith(("(untracked", "(staged")),
+                        display_items
+                    ))]
+                    needle = (normalized_relative_path, False)
                 try:
-                    idx = section_to_select_from.index(
-                        (normalized_relative_path, False)
-                        if prefer_unstaged_files
-                        else current_diff_mode
-                    )
+                    idx = section_to_select_from.index(needle)
                     delta = 1 if forward else -1
                 except ValueError:
-                    idx = next(
-                        (
-                            i for i, (f, m) in enumerate(section_to_select_from)
-                            if f >= normalized_relative_path
-                        ),
-                        0
-                    )
+                    for idx, (path, _) in enumerate(section_to_select_from):
+                        if path >= normalized_relative_path:
+                            break
+                    else:
+                        idx = 0
                     delta = 0 if forward else -1
 
-                idx = (idx + delta) % len(section_to_select_from)
-                if section_to_select_from[idx] in (SEP_1, SEP_2):
-                    idx = (idx + delta) % len(section_to_select_from)
-                selected_index = idx
+                selected_index = (idx + delta) % len(section_to_select_from)
+                selected_index += 1  # add the "--all" item
 
         else:
             selected_index = (
@@ -667,7 +685,6 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             nonlocal auto_close_state
             auto_close_state = "DEAD"
             settings.erase("git_savvy.original_view_state")
-            settings.set("git_savvy.diff_view.toggled_mode_automatically", False)
             ...  # already everything done in `on_highlight`
 
         def on_highlight(idx: int) -> None:
@@ -679,11 +696,10 @@ class gs_diff_switch_files(TextCommand, GitCommand):
                 auto_close_state = "DEAD"
 
             item = items[idx]
-            if item in (SEP_1, SEP_2):
-                return
             enqueue_on_worker(throttled(on_highlight_, *item))
 
         def on_highlight_(file_path_: str, in_cached_mode: bool) -> None:
+            settings.set("git_savvy.diff_view.toggled_mode_automatically", False)
             if file_path_ == "--all":
                 file_path = ""
             else:
@@ -739,7 +755,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
         settings.set("git_savvy.ignore_next_activated_event", True)
         show_panel(
             window,
-            (f for f, m in items),
+            display_items,
             on_done,
             on_cancel=on_cancel,
             on_highlight=on_highlight,
