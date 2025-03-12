@@ -247,6 +247,7 @@ class gs_diff(WindowCommand, GitCommand):
                 "git_savvy.diff_view.disable_stage": disable_stage,
                 "git_savvy.diff_view.history": [],
                 "git_savvy.diff_view.just_hunked": "",
+                "git_savvy.diff_view.toggled_mode_automatically": False,
                 "result_file_regex": FILE_RE,
                 "result_line_regex": LINE_RE,
                 "result_base_dir": repo_path,
@@ -328,6 +329,7 @@ class gs_diff_refresh(TextCommand, GitCommand):
             history = self.view.settings().get("git_savvy.diff_view.history") or [[[]]]
             if history[-1][0][1:3] != ["-R", None]:  # not when discarding
                 view.run_command("gs_diff_toggle_cached_mode")
+                settings.set("git_savvy.diff_view.toggled_mode_automatically", True)
                 return
 
         if settings.get("git_savvy.just_committed"):
@@ -516,6 +518,7 @@ class gs_diff_toggle_cached_mode(TextCommand):
         # `just_hunked` is set read and clear first.
         just_hunked = self.view.settings().get("git_savvy.diff_view.just_hunked")
         self.view.settings().set("git_savvy.diff_view.just_hunked", "")
+        self.view.settings().set("git_savvy.diff_view.toggled_mode_automatically", False)
         self.view.run_command("gs_diff_refresh")
 
         # Check for `last_cursors` as well bc it is only falsy on the *first*
@@ -555,54 +558,94 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             return
 
         AUTO_CLOSE_AFTER = 1000  # [ms]
-        settings = view.settings()
         auto_close_state: Literal["MUST_INSTALL", "ACTIVE", "DEAD"]
         auto_close_state = "MUST_INSTALL" if auto_close else "DEAD"
 
+        settings = view.settings()
         file_path = settings.get("git_savvy.file_path")
         in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
-        SEP = ("                      ———— UNTRACKED FILES ————", False)
-        available: list[tuple[str, bool]]
+        SEP_1 = ("                    ———— UNTRACKED FILES ————", False)
+        SEP_2 = ("                     ———— STAGED FILES —————", False)
+        items: list[tuple[str, bool]]
+        status = self.current_state().get("status")
+        prefer_unstaged_files = (
+            settings.get("git_savvy.diff_view.toggled_mode_automatically")
+            and (status and (status.unstaged_files or status.merge_conflicts))
+        )
 
         if base_commit := settings.get("git_savvy.diff_view.base_commit"):
             target_commit = settings.get("git_savvy.diff_view.target_commit")
-            available = [
+            items = [("--all", in_cached_mode)] + [
                 (f, in_cached_mode)
                 for f in self.list_touched_filenames(base_commit, target_commit)
             ]
-        else:
-            status = self.current_state().get("status")
-            if status:
-                if in_cached_mode:
-                    available = [(f.path, True) for f in status.staged_files]
-                else:
-                    available = [(f.path, False) for f in status.unstaged_files]
-                    if status.untracked_files:
-                        available += [SEP] + [(f.path, False) for f in status.untracked_files]
-            else:
-                available = [
-                    (f, in_cached_mode)
-                    for f in self.list_touched_filenames(None, None, cached=in_cached_mode)
+        elif status:
+            if (
+                in_cached_mode
+                and not prefer_unstaged_files
+            ):
+                items = [("--all", True)] + [
+                    (f.path, True) for f in status.staged_files
                 ]
-
-        if not available:
-            selected_index = 0
-        elif file_path:
-            normalized_relative_path = self.get_rel_path(file_path)
-            try:
-                idx = [f for f, m in available].index(normalized_relative_path)
-            except ValueError:
-                selected_index = 0
             else:
-                delta = 1 if forward is True else -1 if forward is False else 0
-                idx = (idx + delta) % len(available)
-                if available[idx] == SEP:
-                    idx = (idx + delta) % len(available)
-                selected_index = idx + 1  # skip the "--all" entry
+                items = [("--all", False)] + [
+                    (f.path, False)
+                    for f in sorted(status.unstaged_files + status.merge_conflicts)
+                ]
+                if status.untracked_files:
+                    items += [SEP_1] + [(f.path, False) for f in status.untracked_files]
+                if status.staged_files:
+                    items += [SEP_2] + [(f.path, True) for f in status.staged_files]
         else:
-            selected_index = 1 if forward is True else len(available) if forward is False else 0
+            items = [("--all", in_cached_mode)] + [
+                (f, in_cached_mode)
+                for f in self.list_touched_filenames(None, None, cached=in_cached_mode)
+            ]
 
-        items = [("--all", in_cached_mode)] + available
+        if file_path:
+            normalized_relative_path = self.get_rel_path(file_path)
+            current_diff_mode = (normalized_relative_path, in_cached_mode)
+            if forward is None:
+                try:
+                    selected_index = items.index(current_diff_mode)
+                except ValueError:
+                    selected_index = 0
+
+            else:
+                section_to_select_from = (
+                    list(takewhile(lambda item: item not in (SEP_1, SEP_2), items))
+                    if prefer_unstaged_files
+                    else items
+                )
+                try:
+                    idx = section_to_select_from.index(
+                        (normalized_relative_path, False)
+                        if prefer_unstaged_files
+                        else current_diff_mode
+                    )
+                    delta = 1 if forward else -1
+                except ValueError:
+                    idx = next(
+                        (
+                            i for i, (f, m) in enumerate(section_to_select_from)
+                            if f >= normalized_relative_path
+                        ),
+                        0
+                    )
+                    delta = 0 if forward else -1
+
+                idx = (idx + delta) % len(section_to_select_from)
+                if section_to_select_from[idx] in (SEP_1, SEP_2):
+                    idx = (idx + delta) % len(section_to_select_from)
+                selected_index = idx
+
+        else:
+            selected_index = (
+                min(1, len(items)) if forward is True
+                else len(items) if forward is False
+                else 0
+            )
+
         if not recursed:
             original_view_state = (
                 file_path,
@@ -622,6 +665,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             nonlocal auto_close_state
             auto_close_state = "DEAD"
             settings.erase("git_savvy.original_view_state")
+            settings.set("git_savvy.diff_view.toggled_mode_automatically", False)
             ...  # already everything done in `on_highlight`
 
         def on_highlight(idx: int) -> None:
@@ -633,7 +677,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
                 auto_close_state = "DEAD"
 
             item = items[idx]
-            if item == SEP:
+            if item in (SEP_1, SEP_2):
                 return
             enqueue_on_worker(throttled(on_highlight_, *item))
 
