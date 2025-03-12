@@ -2,7 +2,7 @@
 Implements a special view to visualize and stage pieces of a project's
 current diff.
 """
-
+from __future__ import annotations
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import partial
@@ -555,34 +555,42 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             return
 
         AUTO_CLOSE_AFTER = 1000  # [ms]
-        SEP = "                      ———— UNTRACKED FILES ————"
         settings = view.settings()
         auto_close_state: Literal["MUST_INSTALL", "ACTIVE", "DEAD"]
         auto_close_state = "MUST_INSTALL" if auto_close else "DEAD"
 
+        file_path = settings.get("git_savvy.file_path")
+        in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
+        SEP = ("                      ———— UNTRACKED FILES ————", False)
+        available: list[tuple[str, bool]]
+
         if base_commit := settings.get("git_savvy.diff_view.base_commit"):
             target_commit = settings.get("git_savvy.diff_view.target_commit")
-            available = self.list_touched_filenames(base_commit, target_commit)
+            available = [
+                (f, in_cached_mode)
+                for f in self.list_touched_filenames(base_commit, target_commit)
+            ]
         else:
             status = self.current_state().get("status")
-            in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
             if status:
                 if in_cached_mode:
-                    available = [f.path for f in status.staged_files]
+                    available = [(f.path, True) for f in status.staged_files]
                 else:
-                    available = [f.path for f in status.unstaged_files]
+                    available = [(f.path, False) for f in status.unstaged_files]
                     if status.untracked_files:
-                        available += [SEP] + [f.path for f in status.untracked_files]
+                        available += [SEP] + [(f.path, False) for f in status.untracked_files]
             else:
-                available = self.list_touched_filenames(None, None, cached=in_cached_mode)
+                available = [
+                    (f, in_cached_mode)
+                    for f in self.list_touched_filenames(None, None, cached=in_cached_mode)
+                ]
 
-        file_path = settings.get("git_savvy.file_path")
         if not available:
             selected_index = 0
         elif file_path:
             normalized_relative_path = self.get_rel_path(file_path)
             try:
-                idx = available.index(normalized_relative_path)
+                idx = [f for f, m in available].index(normalized_relative_path)
             except ValueError:
                 selected_index = 0
             else:
@@ -594,9 +602,14 @@ class gs_diff_switch_files(TextCommand, GitCommand):
         else:
             selected_index = 1 if forward is True else len(available) if forward is False else 0
 
-        items = ["--all"] + available
+        items = [("--all", in_cached_mode)] + available
         if not recursed:
-            original_view_state = (file_path, view.viewport_position(), [(s.a, s.b) for s in view.sel()], )
+            original_view_state = (
+                file_path,
+                in_cached_mode,
+                view.viewport_position(),
+                [(s.a, s.b) for s in view.sel()],
+            )
             settings.set("git_savvy.original_view_state", original_view_state)
 
         def auto_close_panel():
@@ -605,13 +618,13 @@ class gs_diff_switch_files(TextCommand, GitCommand):
                 settings.set("gs_diff.intentional_hide", True)
                 window.run_command("hide_overlay")
 
-        def on_done(idx):
+        def on_done(idx: int) -> None:
             nonlocal auto_close_state
             auto_close_state = "DEAD"
             settings.erase("git_savvy.original_view_state")
             ...  # already everything done in `on_highlight`
 
-        def on_highlight(idx):
+        def on_highlight(idx: int) -> None:
             nonlocal auto_close_state
             if auto_close_state == "MUST_INSTALL":
                 auto_close_state = "ACTIVE"
@@ -622,25 +635,33 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             item = items[idx]
             if item == SEP:
                 return
-            enqueue_on_worker(throttled(on_highlight_, item))
+            enqueue_on_worker(throttled(on_highlight_, *item))
 
-        def on_highlight_(item: str) -> None:
-            if item == "--all":
-                if not settings.get("git_savvy.file_path"):
-                    return
-                settings.erase("git_savvy.file_path")
+        def on_highlight_(file_path_: str, in_cached_mode: bool) -> None:
+            if file_path_ == "--all":
+                file_path = ""
             else:
-                next_file_path = os.path.normpath(os.path.join(self.repo_path, item))
-                if next_file_path == settings.get("git_savvy.file_path"):
-                    return
-                settings.set("git_savvy.file_path", next_file_path)
+                file_path = os.path.normpath(os.path.join(self.repo_path, file_path_))
+
+            current_diff_mode = (
+                settings.get("git_savvy.file_path"),
+                settings.get("git_savvy.diff_view.in_cached_mode")
+            )
+            if (file_path, in_cached_mode) == current_diff_mode:
+                return
+            if file_path:
+                settings.set("git_savvy.file_path", file_path)
+            else:
+                settings.erase("git_savvy.file_path")
+            settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
+
             view.run_command("gs_diff_refresh", {"sync": True})
             view.set_viewport_position((0, 0))
             view.sel().clear()
             view.sel().add(sublime.Region(0))
             view.run_command("gs_diff_navigate")
 
-        def on_cancel():
+        def on_cancel() -> None:
             nonlocal auto_close_state
             auto_close_state = "DEAD"
             if settings.get("gs_diff.intentional_hide"):
@@ -649,15 +670,19 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             original_view_state = settings.get("git_savvy.original_view_state")
             settings.erase("git_savvy.original_view_state")
             if original_view_state:
-                file_path, viewport_position, sel = original_view_state
+                current_diff_mode = (
+                    settings.get("git_savvy.file_path"),
+                    settings.get("git_savvy.diff_view.in_cached_mode")
+                )
+                file_path, in_cached_mode, viewport_position, sel = original_view_state
+                if (file_path, in_cached_mode) == current_diff_mode:
+                    return
                 if file_path:
-                    if file_path == settings.get("git_savvy.file_path"):
-                        return
                     settings.set("git_savvy.file_path", file_path)
                 else:
-                    if not settings.get("git_savvy.file_path"):
-                        return
                     settings.erase("git_savvy.file_path")
+                settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
+
                 view.run_command("gs_diff_refresh", {"sync": True})
                 view.set_viewport_position(viewport_position)
                 view.sel().clear()
@@ -668,7 +693,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
         settings.set("git_savvy.ignore_next_activated_event", True)
         show_panel(
             window,
-            items,
+            (f for f, m in items),
             on_done,
             on_cancel=on_cancel,
             on_highlight=on_highlight,
