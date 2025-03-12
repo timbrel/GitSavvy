@@ -548,13 +548,15 @@ class gs_diff_switch_files(TextCommand, GitCommand):
         # type: (sublime.Edit, bool, bool, Optional[bool]) -> None
         view = self.view
         window = view.window()
-        if not window:
-            return
+        assert window
+
         if view.element() == "quick_panel:input":
             if av := window.active_view():
                 av.settings().set("gs_diff.intentional_hide", True)
                 window.run_command("hide_overlay")
-                av.run_command("gs_diff_switch_files", {"recursed": True, "auto_close": auto_close, "forward": forward})
+                av.run_command("gs_diff_switch_files", {
+                    "recursed": True, "auto_close": auto_close, "forward": forward
+                })
             return
 
         AUTO_CLOSE_AFTER = 1000  # [ms]
