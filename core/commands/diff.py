@@ -507,10 +507,9 @@ class gs_diff_toggle_cached_mode(TextCommand):
         last_cursors = settings.get('git_savvy.diff_view.last_cursors') or []
         settings.set('git_savvy.diff_view.last_cursors', pickle_sel(self.view.sel()))
 
-        setting_str = "git_savvy.diff_view.{}".format('in_cached_mode')
-        current_mode = settings.get(setting_str)
+        current_mode = settings.get("git_savvy.diff_view.in_cached_mode")
         next_mode = not current_mode
-        settings.set(setting_str, next_mode)
+        settings.set("git_savvy.diff_view.in_cached_mode", next_mode)
         flash(self.view, "Showing {} changes".format("staged" if next_mode else "unstaged"))
 
         # `gs_diff_refresh` may call us (`gs_diff_toggle_cached_mode`) if
