@@ -286,20 +286,36 @@ class gs_diff_refresh(TextCommand, GitCommand):
         disable_stage = settings.get("git_savvy.diff_view.disable_stage")
         context_lines = settings.get('git_savvy.diff_view.context_lines')
 
-        raw_diff = self.git(
-            "diff",
-            "--ignore-all-space" if ignore_whitespace else None,
-            "--unified={}".format(context_lines) if context_lines is not None else None,
-            "--stat" if show_diffstat else None,
-            "--patch",
-            "--no-color",
-            "--cached" if in_cached_mode else None,
-            base_commit,
-            target_commit,
-            "--",
-            file_path,
-            decode=False
+        def run_diff() -> bytes:
+            return self.git(
+                "diff",
+                "--ignore-all-space" if ignore_whitespace else None,
+                "--unified={}".format(context_lines) if context_lines is not None else None,
+                "--stat" if show_diffstat else None,
+                "--patch",
+                "--no-color",
+                "--cached" if in_cached_mode else None,
+                base_commit,
+                target_commit,
+                "--",
+                file_path,
+                decode=False
+            )
+
+        raw_diff = run_diff()
+        untracked_file = (
+            not raw_diff
+            and file_path
+            # Only check the cached value in `store` to not get expensive
+            # for the normal case of just checking a clean file.
+            and self.is_probably_untracked_file(file_path)
         )
+        if untracked_file:
+            self.intent_to_add(file_path)
+            try:
+                raw_diff = run_diff()
+            finally:
+                self.undo_intent_to_add(file_path)
 
         try:
             diff = self.strict_decode(raw_diff)
@@ -330,17 +346,8 @@ class gs_diff_refresh(TextCommand, GitCommand):
             os.path.basename(file_path) if file_path else os.path.basename(repo_path)
         )
 
-        untracked_file = False
         if file_path:
             rel_file_path = os.path.relpath(file_path, repo_path)
-            if (
-                not diff
-                # Only check the cached value in `store` to not get expensive
-                # for the normal case of just checking a clean file.
-                and self.is_probably_untracked_file(file_path)
-            ):
-                untracked_file = True
-
             prelude += "  FILE: {}{}\n".format(rel_file_path, "  (UNTRACKED)" if untracked_file else "")
 
         if disable_stage:
