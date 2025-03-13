@@ -562,9 +562,6 @@ class gs_status_diff(StatusInterfaceCommand):
 
     def load_diff_windows(self, window, non_cached_files, cached_files, untracked_files):
         # type: (sublime.Window, List[str], List[str], List[str]) -> None
-        if untracked_files:
-            self.intent_to_add(*untracked_files)
-
         for fpath in non_cached_files + untracked_files:
             window.run_command("gs_diff", {
                 "file_path": fpath,
