@@ -1290,7 +1290,8 @@ class gs_diff_undo(TextCommand, GitCommand):
 
     # NOTE: Blocking because `set_and_show_cursor` must run within a `TextCommand`
     def run(self, edit):
-        history = self.view.settings().get("git_savvy.diff_view.history")
+        settings = self.view.settings()
+        history = settings.get("git_savvy.diff_view.history")
         if not history:
             flash(self.view, "Undo stack is empty")
             return
@@ -1308,18 +1309,18 @@ class gs_diff_undo(TextCommand, GitCommand):
             args[1] = "-R" if not args[1] else None
             self.git(*args, stdin=stdin)
 
-        self.view.settings().set("git_savvy.diff_view.history", history)
-        self.view.settings().set("git_savvy.diff_view.just_hunked", stdin)
+        settings.set("git_savvy.diff_view.history", history)
+        settings.set("git_savvy.diff_view.just_hunked", stdin)
 
-        if self.view.settings().get("git_savvy.commit_view"):
+        if settings.get("git_savvy.commit_view"):
             self.view.run_command("gs_prepare_commit_refresh_diff")
         else:
             self.view.run_command("gs_diff_refresh")
 
         # The cursor is only applicable if we're still in the same cache/stage mode
         if (
-            self.view.settings().get("git_savvy.diff_view.in_cached_mode") == in_cached_mode
-            or self.view.settings().get("git_savvy.commit_view")
+            settings.get("git_savvy.diff_view.in_cached_mode") == in_cached_mode
+            or settings.get("git_savvy.commit_view")
         ):
             set_and_show_cursor(self.view, cursors)
 
