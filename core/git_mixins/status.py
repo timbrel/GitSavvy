@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import dataclass
 from itertools import dropwhile
 import os
@@ -7,7 +8,7 @@ import string
 from GitSavvy.core.fns import tail
 
 
-from typing import List, NamedTuple, Optional, Set, TYPE_CHECKING
+from typing import Iterable, List, NamedTuple, Optional, Set, TYPE_CHECKING
 
 
 class HeadState(NamedTuple):
@@ -22,9 +23,13 @@ class HeadState(NamedTuple):
 
 class FileStatus(NamedTuple):
     path: str
-    path_alt: Optional[str]
+    path_alt: Optional[str]  # For renames and copies, the old path
     index_status: str
     working_status: str
+
+    @classmethod
+    def new(cls, path: str, status: str, alt: str | None = None) -> FileStatus:
+        return cls(path, alt, status[0], status[1])
 
 
 @dataclass(frozen=True)
@@ -460,3 +465,51 @@ class StatusMixin(mixin_base):
             and (normed_git_path := rel_file_path.replace("\\", "/"))
             and any(file.path == normed_git_path for file in status.untracked_files)
         )
+
+    def _mark_untracked_files_as_staged(self, files: list[str]) -> None:
+        status = self.current_state().get("status")
+        if not status:
+            return
+
+        staged = extract_paths(status.staged_files)
+        staged_files = sorted(
+            status.staged_files + [
+                FileStatus.new(f, "A ")
+                for f in files if f not in staged
+            ]
+        )
+        untracked_files = [f for f in status.untracked_files if f.path not in files]
+        self.update_store({
+            "status": WorkingDirState(
+                staged_files=staged_files,
+                unstaged_files=status.unstaged_files,
+                untracked_files=untracked_files,
+                merge_conflicts=status.merge_conflicts
+            )
+        })
+
+    def _mark_staged_files_as_untracked(self, files: list[str]) -> None:
+        status = self.current_state().get("status")
+        if not status:
+            return
+
+        staged_files = [f for f in status.staged_files if f.path not in files]
+        untracked = extract_paths(status.untracked_files)
+        untracked_files = sorted(
+            status.untracked_files + [
+                FileStatus.new(f, "??")
+                for f in files if f not in untracked
+            ]
+        )
+        self.update_store({
+            "status": WorkingDirState(
+                staged_files=staged_files,
+                unstaged_files=status.unstaged_files,
+                untracked_files=untracked_files,
+                merge_conflicts=status.merge_conflicts
+            )
+        })
+
+
+def extract_paths(files: Iterable[FileStatus]) -> set[str]:
+    return {f.path for f in files if f.path}

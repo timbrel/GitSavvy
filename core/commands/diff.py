@@ -870,6 +870,32 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
 
         move_fn = None
         if whole_file or all(s.empty() for s in frozen_sel):
+            if (
+                (headers := list(unique(filter_(map(diff.head_for_pt, cursor_pts)))))
+                and (new_files := [
+                    filename
+                    for header in (headers or [diff.headers[0]])
+                    if "\nnew file mode" in header.text
+                    if (filename := header.to_filename())
+                ])
+            ):
+                self.stage_file(*new_files)
+                self._mark_untracked_files_as_staged(new_files)
+                history = self.view.settings().get("git_savvy.diff_view.history")
+                patches = flatten(
+                    chain([head], diff.hunks_for_head(head))
+                    for head in headers
+                )
+                patch = ''.join(part.text for part in patches)
+                history.append((
+                    ["add", "--add-untracked-files", new_files],
+                    patch, cursor_pts, in_cached_mode
+                ))
+                self.view.settings().set("git_savvy.diff_view.history", history)
+                self.view.settings().set("git_savvy.diff_view.just_hunked", patch)
+                self.view.run_command("gs_diff_refresh")
+                return
+
             if whole_file:
                 headers = (
                     list(unique(filter_(map(diff.head_for_pt, cursor_pts))))
@@ -1302,6 +1328,11 @@ class gs_diff_undo(TextCommand, GitCommand):
                 self.unstage_all_files()
             elif args[1] == "--intent-to-add":
                 self.undo_intent_to_add(args[2])
+            elif args[1] == "--add-untracked-files":
+                self.unstage_file(*args[2])
+                self._mark_staged_files_as_untracked(args[2])
+                current_mode = settings.get("git_savvy.diff_view.in_cached_mode")
+                settings.set("git_savvy.diff_view.in_cached_mode", not current_mode)
             else:
                 self.unstage_file(*args[1])
         else:
