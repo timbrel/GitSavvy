@@ -286,20 +286,36 @@ class gs_diff_refresh(TextCommand, GitCommand):
         disable_stage = settings.get("git_savvy.diff_view.disable_stage")
         context_lines = settings.get('git_savvy.diff_view.context_lines')
 
-        raw_diff = self.git(
-            "diff",
-            "--ignore-all-space" if ignore_whitespace else None,
-            "--unified={}".format(context_lines) if context_lines is not None else None,
-            "--stat" if show_diffstat else None,
-            "--patch",
-            "--no-color",
-            "--cached" if in_cached_mode else None,
-            base_commit,
-            target_commit,
-            "--",
-            file_path,
-            decode=False
+        def run_diff() -> bytes:
+            return self.git(
+                "diff",
+                "--ignore-all-space" if ignore_whitespace else None,
+                "--unified={}".format(context_lines) if context_lines is not None else None,
+                "--stat" if show_diffstat else None,
+                "--patch",
+                "--no-color",
+                "--cached" if in_cached_mode else None,
+                base_commit,
+                target_commit,
+                "--",
+                file_path,
+                decode=False
+            )
+
+        raw_diff = run_diff()
+        untracked_file = (
+            not raw_diff
+            and file_path
+            # Only check the cached value in `store` to not get expensive
+            # for the normal case of just checking a clean file.
+            and self.is_probably_untracked_file(file_path)
         )
+        if untracked_file:
+            self.intent_to_add(file_path)
+            try:
+                raw_diff = run_diff()
+            finally:
+                self.undo_intent_to_add(file_path)
 
         try:
             diff = self.strict_decode(raw_diff)
@@ -330,17 +346,8 @@ class gs_diff_refresh(TextCommand, GitCommand):
             os.path.basename(file_path) if file_path else os.path.basename(repo_path)
         )
 
-        untracked_file = False
         if file_path:
             rel_file_path = os.path.relpath(file_path, repo_path)
-            if (
-                not diff
-                # Only check the cached value in `store` to not get expensive
-                # for the normal case of just checking a clean file.
-                and self.is_probably_untracked_file(file_path)
-            ):
-                untracked_file = True
-
             prelude += "  FILE: {}{}\n".format(rel_file_path, "  (UNTRACKED)" if untracked_file else "")
 
         if disable_stage:
@@ -863,6 +870,32 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
 
         move_fn = None
         if whole_file or all(s.empty() for s in frozen_sel):
+            if (
+                (headers := list(unique(filter_(map(diff.head_for_pt, cursor_pts)))))
+                and (new_files := [
+                    filename
+                    for header in (headers or [diff.headers[0]])
+                    if "\nnew file mode" in header.text
+                    if (filename := header.to_filename())
+                ])
+            ):
+                self.stage_file(*new_files)
+                self._mark_untracked_files_as_staged(new_files)
+                history = self.view.settings().get("git_savvy.diff_view.history")
+                patches = flatten(
+                    chain([head], diff.hunks_for_head(head))
+                    for head in headers
+                )
+                patch = ''.join(part.text for part in patches)
+                history.append((
+                    ["add", "--add-untracked-files", new_files],
+                    patch, cursor_pts, in_cached_mode
+                ))
+                self.view.settings().set("git_savvy.diff_view.history", history)
+                self.view.settings().set("git_savvy.diff_view.just_hunked", patch)
+                self.view.run_command("gs_diff_refresh")
+                return
+
             if whole_file:
                 headers = (
                     list(unique(filter_(map(diff.head_for_pt, cursor_pts))))
@@ -1283,7 +1316,8 @@ class gs_diff_undo(TextCommand, GitCommand):
 
     # NOTE: Blocking because `set_and_show_cursor` must run within a `TextCommand`
     def run(self, edit):
-        history = self.view.settings().get("git_savvy.diff_view.history")
+        settings = self.view.settings()
+        history = settings.get("git_savvy.diff_view.history")
         if not history:
             flash(self.view, "Undo stack is empty")
             return
@@ -1294,6 +1328,11 @@ class gs_diff_undo(TextCommand, GitCommand):
                 self.unstage_all_files()
             elif args[1] == "--intent-to-add":
                 self.undo_intent_to_add(args[2])
+            elif args[1] == "--add-untracked-files":
+                self.unstage_file(*args[2])
+                self._mark_staged_files_as_untracked(args[2])
+                current_mode = settings.get("git_savvy.diff_view.in_cached_mode")
+                settings.set("git_savvy.diff_view.in_cached_mode", not current_mode)
             else:
                 self.unstage_file(*args[1])
         else:
@@ -1301,18 +1340,18 @@ class gs_diff_undo(TextCommand, GitCommand):
             args[1] = "-R" if not args[1] else None
             self.git(*args, stdin=stdin)
 
-        self.view.settings().set("git_savvy.diff_view.history", history)
-        self.view.settings().set("git_savvy.diff_view.just_hunked", stdin)
+        settings.set("git_savvy.diff_view.history", history)
+        settings.set("git_savvy.diff_view.just_hunked", stdin)
 
-        if self.view.settings().get("git_savvy.commit_view"):
+        if settings.get("git_savvy.commit_view"):
             self.view.run_command("gs_prepare_commit_refresh_diff")
         else:
             self.view.run_command("gs_diff_refresh")
 
         # The cursor is only applicable if we're still in the same cache/stage mode
         if (
-            self.view.settings().get("git_savvy.diff_view.in_cached_mode") == in_cached_mode
-            or self.view.settings().get("git_savvy.commit_view")
+            settings.get("git_savvy.diff_view.in_cached_mode") == in_cached_mode
+            or settings.get("git_savvy.commit_view")
         ):
             set_and_show_cursor(self.view, cursors)
 
