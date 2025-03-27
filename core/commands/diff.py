@@ -2,7 +2,7 @@
 Implements a special view to visualize and stage pieces of a project's
 current diff.
 """
-
+from __future__ import annotations
 from collections import defaultdict
 from contextlib import contextmanager
 from functools import partial
@@ -50,9 +50,11 @@ from typing import (
     Callable, Dict, Iterable, Iterator, Literal, List, NamedTuple, Optional, Set,
     Tuple, TypeVar
 )
+from typing_extensions import TypeAlias
 from ..parse_diff import FileHeader, Hunk, HunkLine, TextRange
 from ..types import LineNo, ColNo
 from ..git_mixins.history import LogEntry
+from ..git_mixins.status import FileStatus
 T = TypeVar('T')
 Point = int
 LineCol = Tuple[LineNo, ColNo]
@@ -247,6 +249,7 @@ class gs_diff(WindowCommand, GitCommand):
                 "git_savvy.diff_view.disable_stage": disable_stage,
                 "git_savvy.diff_view.history": [],
                 "git_savvy.diff_view.just_hunked": "",
+                "git_savvy.diff_view.toggled_mode_automatically": False,
                 "result_file_regex": FILE_RE,
                 "result_line_regex": LINE_RE,
                 "result_base_dir": repo_path,
@@ -328,6 +331,7 @@ class gs_diff_refresh(TextCommand, GitCommand):
             history = self.view.settings().get("git_savvy.diff_view.history") or [[[]]]
             if history[-1][0][1:3] != ["-R", None]:  # not when discarding
                 view.run_command("gs_diff_toggle_cached_mode")
+                settings.set("git_savvy.diff_view.toggled_mode_automatically", True)
                 return
 
         if settings.get("git_savvy.just_committed"):
@@ -507,16 +511,16 @@ class gs_diff_toggle_cached_mode(TextCommand):
         last_cursors = settings.get('git_savvy.diff_view.last_cursors') or []
         settings.set('git_savvy.diff_view.last_cursors', pickle_sel(self.view.sel()))
 
-        setting_str = "git_savvy.diff_view.{}".format('in_cached_mode')
-        current_mode = settings.get(setting_str)
+        current_mode = settings.get("git_savvy.diff_view.in_cached_mode")
         next_mode = not current_mode
-        settings.set(setting_str, next_mode)
+        settings.set("git_savvy.diff_view.in_cached_mode", next_mode)
         flash(self.view, "Showing {} changes".format("staged" if next_mode else "unstaged"))
 
         # `gs_diff_refresh` may call us (`gs_diff_toggle_cached_mode`) if
         # `just_hunked` is set read and clear first.
         just_hunked = self.view.settings().get("git_savvy.diff_view.just_hunked")
         self.view.settings().set("git_savvy.diff_view.just_hunked", "")
+        self.view.settings().set("git_savvy.diff_view.toggled_mode_automatically", False)
         self.view.run_command("gs_diff_refresh")
 
         # Check for `last_cursors` as well bc it is only falsy on the *first*
@@ -546,58 +550,129 @@ class gs_diff_switch_files(TextCommand, GitCommand):
         # type: (sublime.Edit, bool, bool, Optional[bool]) -> None
         view = self.view
         window = view.window()
-        if not window:
-            return
+        assert window
+
         if view.element() == "quick_panel:input":
             if av := window.active_view():
                 av.settings().set("gs_diff.intentional_hide", True)
                 window.run_command("hide_overlay")
-                av.run_command("gs_diff_switch_files", {"recursed": True, "auto_close": auto_close, "forward": forward})
+                av.run_command("gs_diff_switch_files", {
+                    "recursed": True, "auto_close": auto_close, "forward": forward
+                })
             return
 
         AUTO_CLOSE_AFTER = 1000  # [ms]
-        SEP = "                      ———— UNTRACKED FILES ————"
-        settings = view.settings()
         auto_close_state: Literal["MUST_INSTALL", "ACTIVE", "DEAD"]
         auto_close_state = "MUST_INSTALL" if auto_close else "DEAD"
 
+        settings = view.settings()
+        file_path = settings.get("git_savvy.file_path")
+        in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
+        Item: TypeAlias = "tuple[str, bool]"
+        items: list[Item]
+        display_items: list[sublime.QuickPanelItem]
+        status = self.current_state().get("status")
+        prefer_unstaged_files = (
+            settings.get("git_savvy.diff_view.toggled_mode_automatically")
+            and (status and (status.unstaged_files or status.merge_conflicts))
+        )
+
+        def _make_tuple(items: Iterable[str], mode: bool) -> list[Item]:
+            return [(i, mode) for i in items]
+
+        def _create_display_items(
+            items: list[Item], topic: str | None = None
+        ) -> list[sublime.QuickPanelItem]:
+            if not topic:
+                return [sublime.QuickPanelItem(f) for f, m in items]
+
+            return [
+                sublime.QuickPanelItem(f, annotation=f"({topic})")
+                for f, _ in items[:1]
+            ] + [
+                sublime.QuickPanelItem(f, annotation="⋮    ")
+                for f, _ in items[1:]
+            ]
+
         if base_commit := settings.get("git_savvy.diff_view.base_commit"):
             target_commit = settings.get("git_savvy.diff_view.target_commit")
-            available = self.list_touched_filenames(base_commit, target_commit)
-        else:
-            status = self.current_state().get("status")
-            in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
-            if status:
-                if in_cached_mode:
-                    available = [f.path for f in status.staged_files]
-                else:
-                    available = [f.path for f in status.unstaged_files]
-                    if status.untracked_files:
-                        available += [SEP] + [f.path for f in status.untracked_files]
-            else:
-                available = self.list_touched_filenames(None, None, cached=in_cached_mode)
+            files = self.list_touched_filenames(base_commit, target_commit)
+            items = _make_tuple(["--all"] + files, in_cached_mode)
+            display_items = _create_display_items(items)
+        elif status:
+            def extract_path(files: Iterable[FileStatus]) -> list[str]:
+                return [f.path for f in files]
 
-        file_path = settings.get("git_savvy.file_path")
-        if not available:
-            selected_index = 0
-        elif file_path:
+            if (in_cached_mode and not prefer_unstaged_files):
+                items = _make_tuple(["--all"] + extract_path(status.staged_files), True)
+                display_items = _create_display_items(items)
+
+            else:
+                unstaged_files_ = sorted(status.unstaged_files + status.merge_conflicts)
+                unstaged = _make_tuple(["--all"] + extract_path(unstaged_files_), False)
+                untracked = _make_tuple(extract_path(status.untracked_files), False)
+                staged = _make_tuple(extract_path(status.staged_files), True)
+
+                items = unstaged + untracked + staged
+                display_items = (
+                    _create_display_items(unstaged, "unstaged")
+                    + _create_display_items(untracked, "untracked")
+                    + _create_display_items(staged, "staged")
+                )
+        else:
+            files = self.list_touched_filenames(None, None, cached=in_cached_mode)
+            items = _make_tuple(["--all"] + files, in_cached_mode)
+            display_items = _create_display_items(items)
+
+        if file_path:
             normalized_relative_path = self.get_rel_path(file_path)
-            try:
-                idx = available.index(normalized_relative_path)
-            except ValueError:
-                selected_index = 0
-            else:
-                delta = 1 if forward is True else -1 if forward is False else 0
-                idx = (idx + delta) % len(available)
-                if available[idx] == SEP:
-                    idx = (idx + delta) % len(available)
-                selected_index = idx + 1  # skip the "--all" entry
-        else:
-            selected_index = 1 if forward is True else len(available) if forward is False else 0
+            current_diff_mode = (normalized_relative_path, in_cached_mode)
+            if forward is None:
+                try:
+                    selected_index = items.index(current_diff_mode)
+                except ValueError:
+                    selected_index = 0
 
-        items = ["--all"] + available
+            else:
+                count = lambda it: sum(1 for x in it)
+                # always [1:] to skip the "--all" item
+                if in_cached_mode and not prefer_unstaged_files:
+                    section_to_select_from = items[1:]
+                    needle = current_diff_mode
+                else:
+                    section_to_select_from = items[1:count(takewhile(
+                        lambda item: not item.annotation.startswith(("(untracked", "(staged")),
+                        display_items
+                    ))]
+                    needle = (normalized_relative_path, False)
+                try:
+                    idx = section_to_select_from.index(needle)
+                    delta = 1 if forward else -1
+                except ValueError:
+                    for idx, (path, _) in enumerate(section_to_select_from):
+                        if path >= normalized_relative_path:
+                            break
+                    else:
+                        idx = 0
+                    delta = 0 if forward else -1
+
+                selected_index = (idx + delta) % len(section_to_select_from)
+                selected_index += 1  # add the "--all" item
+
+        else:
+            selected_index = (
+                min(1, len(items)) if forward is True
+                else len(items) if forward is False
+                else 0
+            )
+
         if not recursed:
-            original_view_state = (file_path, view.viewport_position(), [(s.a, s.b) for s in view.sel()], )
+            original_view_state = (
+                file_path,
+                in_cached_mode,
+                view.viewport_position(),
+                [(s.a, s.b) for s in view.sel()],
+            )
             settings.set("git_savvy.original_view_state", original_view_state)
 
         def auto_close_panel():
@@ -606,13 +681,13 @@ class gs_diff_switch_files(TextCommand, GitCommand):
                 settings.set("gs_diff.intentional_hide", True)
                 window.run_command("hide_overlay")
 
-        def on_done(idx):
+        def on_done(idx: int) -> None:
             nonlocal auto_close_state
             auto_close_state = "DEAD"
             settings.erase("git_savvy.original_view_state")
             ...  # already everything done in `on_highlight`
 
-        def on_highlight(idx):
+        def on_highlight(idx: int) -> None:
             nonlocal auto_close_state
             if auto_close_state == "MUST_INSTALL":
                 auto_close_state = "ACTIVE"
@@ -621,27 +696,34 @@ class gs_diff_switch_files(TextCommand, GitCommand):
                 auto_close_state = "DEAD"
 
             item = items[idx]
-            if item == SEP:
-                return
-            enqueue_on_worker(throttled(on_highlight_, item))
+            enqueue_on_worker(throttled(on_highlight_, *item))
 
-        def on_highlight_(item: str) -> None:
-            if item == "--all":
-                if not settings.get("git_savvy.file_path"):
-                    return
-                settings.erase("git_savvy.file_path")
+        def on_highlight_(file_path_: str, in_cached_mode: bool) -> None:
+            settings.set("git_savvy.diff_view.toggled_mode_automatically", False)
+            if file_path_ == "--all":
+                file_path = ""
             else:
-                next_file_path = os.path.normpath(os.path.join(self.repo_path, item))
-                if next_file_path == settings.get("git_savvy.file_path"):
-                    return
-                settings.set("git_savvy.file_path", next_file_path)
+                file_path = os.path.normpath(os.path.join(self.repo_path, file_path_))
+
+            current_diff_mode = (
+                settings.get("git_savvy.file_path"),
+                settings.get("git_savvy.diff_view.in_cached_mode")
+            )
+            if (file_path, in_cached_mode) == current_diff_mode:
+                return
+            if file_path:
+                settings.set("git_savvy.file_path", file_path)
+            else:
+                settings.erase("git_savvy.file_path")
+            settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
+
             view.run_command("gs_diff_refresh", {"sync": True})
             view.set_viewport_position((0, 0))
             view.sel().clear()
             view.sel().add(sublime.Region(0))
             view.run_command("gs_diff_navigate")
 
-        def on_cancel():
+        def on_cancel() -> None:
             nonlocal auto_close_state
             auto_close_state = "DEAD"
             if settings.get("gs_diff.intentional_hide"):
@@ -650,15 +732,19 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             original_view_state = settings.get("git_savvy.original_view_state")
             settings.erase("git_savvy.original_view_state")
             if original_view_state:
-                file_path, viewport_position, sel = original_view_state
+                current_diff_mode = (
+                    settings.get("git_savvy.file_path"),
+                    settings.get("git_savvy.diff_view.in_cached_mode")
+                )
+                file_path, in_cached_mode, viewport_position, sel = original_view_state
+                if (file_path, in_cached_mode) == current_diff_mode:
+                    return
                 if file_path:
-                    if file_path == settings.get("git_savvy.file_path"):
-                        return
                     settings.set("git_savvy.file_path", file_path)
                 else:
-                    if not settings.get("git_savvy.file_path"):
-                        return
                     settings.erase("git_savvy.file_path")
+                settings.set("git_savvy.diff_view.in_cached_mode", in_cached_mode)
+
                 view.run_command("gs_diff_refresh", {"sync": True})
                 view.set_viewport_position(viewport_position)
                 view.sel().clear()
@@ -669,7 +755,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
         settings.set("git_savvy.ignore_next_activated_event", True)
         show_panel(
             window,
-            items,
+            display_items,
             on_done,
             on_cancel=on_cancel,
             on_highlight=on_highlight,
@@ -1295,6 +1381,10 @@ class gs_diff_navigate(GsNavigate):
         def _gen():
             # type: () -> Iterator[sublime.Region]
             diff = SplittedDiff.from_view(self.view)
+            if not diff.hunks:
+                for header in diff.headers:
+                    yield sublime.Region(header.region().a)
+
             for hunk in diff.hunks:
                 yield sublime.Region(hunk.region().a)
                 chunks = list(chunkby(hunk.content().lines(), lambda line: not line.is_context()))
