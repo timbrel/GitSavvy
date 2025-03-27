@@ -38,6 +38,10 @@ def ensure_panel(window, name=PANEL_NAME, syntax="Packages/GitSavvy/syntax/show_
     return output_view
 
 
+def show_panel(window: sublime.Window, name: str = PANEL_NAME) -> None:
+    window.run_command("show_panel", {"panel": "output.{}".format(PANEL_NAME)})
+
+
 def panel_is_visible(window, name=PANEL_NAME):
     # type: (sublime.Window, str) -> bool
     return window.active_panel() == "output.{}".format(name)

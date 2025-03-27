@@ -1,4 +1,3 @@
-from ._help_popups import *
 from .amend import *
 from .blame import *
 from .branch import *
@@ -13,6 +12,7 @@ from .diff import *
 from .fetch import *
 from .fixup import *
 from .flow import *
+from .help_panel import *
 from .ignore import *
 from .init import *
 from .inline_diff import *

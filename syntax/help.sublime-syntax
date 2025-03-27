@@ -1,0 +1,48 @@
+%YAML 1.2
+---
+name: GitSavvy Help
+hidden: true
+scope: git-savvy.help
+contexts:
+  main:
+    - meta_scope: comment.git-savvy.key-bindings-menu
+    - match: '(##+) ([A-Z ]+)(?: (##+))?'
+      scope: meta.git-savvy.key-bindings-header
+      captures:
+        1: punctuation.definition.git-savvy.section
+        2: support.type.git-savvy.key-bindings-header-text
+        3: punctuation.definition.git-savvy.section
+
+    - match: "#{3,}"
+      scope: punctuation.definition.git-savvy.section
+
+    - match: '(\[)([A-Za-z\,\.\-\+\?]+)(\])'
+      scope: meta.git-savvy.key-bindings-key-stroke
+      captures:
+        1: punctuation.definition.git-savvy.key-bindings-key-stroke
+        2: constant.character.git-savvy-key-binding-key
+        3: punctuation.definition.git-savvy.key-bindings-key-stroke
+      push:
+        - match: (?=\[|`|$)
+          pop: true
+        - match: \s+([\w\s,\(\)]+)
+          captures:
+            1: comment.git-savvy.key-bindings-menu.key-binding-description
+
+    - match: '(`)(.+)(`)'
+      scope: meta.git-savvy.key-bindings-key-stroke
+      captures:
+        0: constant.character.tag.git-savvy-key-binding-key
+        1: punctuation.definition.git-savvy.key-bindings-key-stroke
+        2: constant.character.git-savvy-key-binding-key
+        3: punctuation.definition.git-savvy.key-bindings-key-stroke
+
+    - match: '(\*\*) ([^\*]+) (\*\*)'
+      comment: ux note
+      scope: support.type.git-savvy.ux-note
+      captures:
+        1: punctuation.definition.git-savvy.note
+        2: support.type.git-savvy.ux-note.text
+        3: punctuation.definition.git-savvy.note
+
+

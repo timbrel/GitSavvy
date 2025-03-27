@@ -1,89 +1,121 @@
+from __future__ import annotations
 from textwrap import dedent
-import re
+
+import sublime
+import sublime_plugin
 
 from ...common import util
 from GitSavvy.core.base_commands import GsTextCommand
+from GitSavvy.core.view import replace_view_content
 
 
 __all__ = (
-    "gs_blame_help_tooltip",
-    "gs_inline_diff_help_tooltip",
-    "gs_diff_help_tooltip",
-    "gs_show_commit_help_tooltip",
-    "gs_show_file_at_commit_help_tooltip",
-    "gs_log_graph_help_tooltip",
-    "gs_line_history_help_tooltip",
-    "gs_stash_help_tooltip",
+    "HelpPanelListener",
+    "gs_blame_help_panel",
+    "gs_inline_diff_help_panel",
+    "gs_diff_help_panel",
+    "gs_show_commit_help_panel",
+    "gs_show_file_at_commit_help_panel",
+    "gs_log_graph_help_panel",
+    "gs_line_history_help_panel",
+    "gs_stash_help_panel",
 )
 
-CSS = """\
-body {
-  margin: 0em;
-  padding: 1em;
-}
-h2 {
-  margin: 0;
-  margin-top: -1em;
-  margin-bottom: -0.2em;
-  font-weight: normal;
-}
-h3 {
-  margin: 0;
-  margin-top: 0.9em;
-  margin-bottom: 0.1em;
-  font-weight: normal;
-}
-.shortcut-key {
-    color: var(--bluish);
-}
-"""
 
-HELP_TEMPLATE = """
-<html>
-<style> {css} </style>
-<body> {content} </body>
-</html>
-"""
+PANEL_NAME = "GitSavvy_Help"
+PANEL_SYNTAX = "Packages/GitSavvy/syntax/help.sublime-syntax"
+PANEL_TAG = "git_savvy.help_view"
 
 
-class GsAbstractHelpPopup(GsTextCommand):
+def ensure_panel(
+    window: sublime.Window,
+    name: str = PANEL_NAME,
+    syntax: str = PANEL_SYNTAX,
+    tag: str = PANEL_TAG,
+    read_only: bool = True,
+) -> sublime.View:
+    output_view = get_panel(window)
+    if output_view:
+        return output_view
+
+    output_view = window.create_output_panel(name)
+    if read_only:
+        output_view.set_read_only(True)
+    if syntax:
+        output_view.set_syntax_file(syntax)
+    if tag:
+        output_view.settings().set(tag, True)
+    return output_view
+
+
+def get_panel(window: sublime.Window, name: str = PANEL_NAME) -> sublime.View | None:
+    return window.find_output_panel(name)
+
+
+def show_panel(window: sublime.Window, name: str = PANEL_NAME) -> None:
+    window.run_command("show_panel", {"panel": "output.{}".format(PANEL_NAME)})
+
+
+def hide_panel(window: sublime.Window, name: str = PANEL_NAME) -> None:
+    window.run_command("hide_panel", {"panel": "output.{}".format(PANEL_NAME)})
+
+
+def panel_is_visible(window, name=PANEL_NAME):
+    # type: (sublime.Window, str) -> bool
+    return window.active_panel() == "output.{}".format(name)
+
+
+def ensure_panel_is_visible(window, name=PANEL_NAME):
+    # type: (sublime.Window, str) -> None
+    if not panel_is_visible(window, name):
+        window.run_command("show_panel", {"panel": "output.{}".format(name)})
+
+
+class HelpPanelListener(sublime_plugin.EventListener):
+    def on_window_command(self, window: sublime.Window, command_name: str, args: dict | None):
+        if (
+            command_name == 'hide_panel'
+            and panel_is_visible(window)
+            and (panel := get_panel(window))
+            and (previous_panel := panel.settings().get("git_savvy.previous_panel"))
+        ):
+            ensure_panel_is_visible(window, previous_panel)
+            if next_panel := get_panel(window, previous_panel):
+                sublime.set_timeout(
+                    lambda: window.focus_view(next_panel)
+                )
+
+
+class GsAbstractOpenHelpPanel(GsTextCommand):
     key_bindings = "<MUST IMPLEMENT `key_bindings` in subclass>"
 
     def run(self, edit):
         view = self.view
+        window = view.window()
+        assert window
 
-        def prepare_content(content):
-            for line in content.splitlines():
-                if not line:
-                    yield "<br/>"
-                elif line.startswith("## "):
-                    yield "<h3>{}</h3>".format(line.strip("# "))
-                elif line.startswith("### "):
-                    yield "<div><code>{}</code></div>".format(line.strip("# "))
-                else:
-                    line = line.replace("<", "&lt;").replace(">", "&gt;")
-                    line = re.sub(r"(\[.+?\])", r'<span class="shortcut-key">\1</span>', line)
-                    line = re.sub(r"`(.+?)`", r'<span class="shortcut-key">\1</span>', line)
-                    line = re.sub(r"(\s(?=\s))", r"&nbsp;", line)
-                    yield "<div><code>{}</code></div>".format(line)
+        if (
+            view.element() == "output:output"
+            and (settings := view.settings())
+            and settings.get("git_savvy.show_commit_view")
+        ):
+            previous_panel = "show_commit_info"
+        else:
+            previous_panel = None
 
-        content = "\n".join(prepare_content(
-            self.help_text().format(cr=util.super_key)))
-        html = HELP_TEMPLATE.format(css=CSS, content=content, super_key=util.super_key)
-        visible_region = view.visible_region()
-        viewport_extent = view.viewport_extent()
-        max_width = viewport_extent[0] - 20
-        max_height = 900
-        view.show_popup(html, 0, visible_region.begin(), max_width, max_height)
-
-    def help_text(self):
-        return dedent("""\
-        Keyboard Shortcuts:
-
-        {}""").format(self.key_bindings)
+        panel = ensure_panel(window)
+        content = panel.substr(sublime.Region(0, panel.size()))
+        next_content = self.key_bindings.format(cr=util.super_key)
+        if panel_is_visible(window) and content == next_content:
+            hide_panel(window)
+        else:
+            show_panel(window)
+            replace_view_content(panel, next_content)
+            panel.show(0)
+        panel.settings().set("git_savvy.previous_panel", previous_panel)
 
 
-class gs_blame_help_tooltip(GsAbstractHelpPopup):
+class gs_blame_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
     ### Actions ###
     [enter]        show all commands
@@ -111,7 +143,7 @@ class gs_blame_help_tooltip(GsAbstractHelpPopup):
     """)
 
 
-class gs_inline_diff_help_tooltip(GsAbstractHelpPopup):
+class gs_inline_diff_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
     ### Actions ###
     [tab]          switch between staged/unstaged area
@@ -140,7 +172,7 @@ class gs_inline_diff_help_tooltip(GsAbstractHelpPopup):
     """)
 
 
-class gs_diff_help_tooltip(GsAbstractHelpPopup):
+class gs_diff_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
     ### Actions ###
     [tab]          switch between staged/unstaged area
@@ -165,7 +197,7 @@ class gs_diff_help_tooltip(GsAbstractHelpPopup):
     """)
 
 
-class gs_show_commit_help_tooltip(GsAbstractHelpPopup):
+class gs_show_commit_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
     ### Navigation ###
     [o]            open file revision at hunk; on `#issues`, open a browser
@@ -185,7 +217,7 @@ class gs_show_commit_help_tooltip(GsAbstractHelpPopup):
     """)
 
 
-class gs_show_file_at_commit_help_tooltip(GsAbstractHelpPopup):
+class gs_show_file_at_commit_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
     ### Actions ###
     [o]            open commit
@@ -201,7 +233,7 @@ class gs_show_file_at_commit_help_tooltip(GsAbstractHelpPopup):
     """)
 
 
-class gs_log_graph_help_tooltip(GsAbstractHelpPopup):
+class gs_log_graph_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
     [enter]        open main menu with additional commands
     [o]            open commit in a new view; on `#issues`, open a browser
@@ -235,7 +267,7 @@ class gs_log_graph_help_tooltip(GsAbstractHelpPopup):
     """)
 
 
-class gs_line_history_help_tooltip(GsAbstractHelpPopup):
+class gs_line_history_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
     ### Actions ###
     [o]            open commit; on `#issues`, open a browser
@@ -251,7 +283,7 @@ class gs_line_history_help_tooltip(GsAbstractHelpPopup):
     """)
 
 
-class gs_stash_help_tooltip(GsAbstractHelpPopup):
+class gs_stash_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
     ### Actions ###
     [enter]        Open action panel
