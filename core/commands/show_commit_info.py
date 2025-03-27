@@ -2,17 +2,20 @@ from collections import defaultdict
 from contextlib import contextmanager
 
 import sublime
-from sublime_plugin import WindowCommand
+from sublime_plugin import TextCommand, WindowCommand
 
 from . import diff
 from . import intra_line_colorizer
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_worker, ensure_on_ui, throttled
-from ..view import replace_view_content
+from ..view import replace_view_content, scroll_to_pt, y_offset
+from ...common.util.debug import dprint
 
 
 __all__ = (
     "gs_show_commit_info",
+    "gs_show_commit_info_maximize_panel",
+    "gs_show_commit_info_minimize_view",
 )
 
 from typing import DefaultDict, Dict, Iterator, List, Tuple
@@ -139,3 +142,53 @@ def restore_view_state(view, next_commit):
     view.set_viewport_position(prev_position, animate=False)
     view.sel().clear()
     view.sel().add_all(prev_sel)
+
+
+class gs_show_commit_info_maximize_panel(TextCommand):
+    def run(self, edit) -> None:
+        view = self.view
+        window = view.window()
+        assert window
+
+        settings = view.settings()
+        commit_hash = settings.get("git_savvy.show_commit_view.commit")
+
+        frozen_sel = [s for s in view.sel()]
+        cursor = frozen_sel[0].b
+        offset = y_offset(view, cursor)
+
+        window.run_command("gs_show_commit", {"commit_hash": commit_hash})
+
+        av = window.active_view()
+        if av and av.settings().get("show_commit_view"):
+            av.sel().clear()
+            av.sel().add_all(frozen_sel)
+            scroll_to_pt(av, cursor, offset)
+        else:
+            dprint(
+                f"`gs_show_commit_info_maximize_panel`: active view ({av}) is not the "
+                f"expected 'show_commit_info'-view.  Skip setting the selection.")
+
+
+class gs_show_commit_info_minimize_view(TextCommand):
+    def run(self, edit) -> None:
+        view = self.view
+        window = view.window()
+        assert window
+
+        settings = view.settings()
+        commit_hash = settings.get("git_savvy.show_commit_view.commit")
+
+        view.close()
+        # If the view that receives the focus is a graph view, it may
+        # open the panel automatically.  Hence we must check.
+        if not panel_is_visible(window):
+            av = window.active_view()
+            is_graph_view = av and av.settings().get("git_savvy.log_graph_view")
+            window.run_command("gs_show_commit_info", {
+                "commit_hash": commit_hash,
+                "from_log_graph": is_graph_view,
+            })
+            panel_view = ensure_panel(window)
+            ensure_panel_is_visible(window)
+            window.focus_view(panel_view)

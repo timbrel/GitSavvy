@@ -197,7 +197,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
     def test_if_the_user_issues_our_toggle_command_open_the_panel(self):
         yield from self.setup_graph_view_async(show_commit_info_setting=False)
 
-        self.window.run_command('gs_log_graph_toggle_more_info')
+        self.window.run_command('gs_log_graph_toggle_commit_info_panel')
         yield from self.await_active_panel_to_be('output.show_commit_info')
 
         actual = self.window.active_panel()
@@ -234,7 +234,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
     def test_if_the_user_issues_our_toggle_command_close_the_panel_and_keep_it(self):
         log_view = yield from self.setup_graph_view_async()
 
-        self.window.run_command('gs_log_graph_toggle_more_info')
+        self.window.run_command('gs_log_graph_toggle_commit_info_panel')
         actual = self.window.active_panel()
         expected = None
         self.assertEqual(actual, expected)
@@ -281,13 +281,13 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         log_view = yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
         # close panel
-        self.window.run_command('gs_log_graph_toggle_more_info')
+        self.window.run_command('gs_log_graph_toggle_commit_info_panel')
 
         # move around
         navigate_to_symbol(log_view, 'f461ea1')
 
         # show panel
-        self.window.run_command('gs_log_graph_toggle_more_info')
+        self.window.run_command('gs_log_graph_toggle_commit_info_panel')
 
         yield from self.await_string_in_view(panel, COMMIT_2)
 
@@ -295,7 +295,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         log_view = yield from self.setup_graph_view_async()
         panel = self.window.find_output_panel('show_commit_info')
         # close panel
-        self.window.run_command('gs_log_graph_toggle_more_info')
+        self.window.run_command('gs_log_graph_toggle_commit_info_panel')
 
         # move around
         navigate_to_symbol(log_view, 'f461ea1')
