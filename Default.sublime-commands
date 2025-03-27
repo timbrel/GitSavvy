@@ -18,7 +18,14 @@
             "base_file": "${packages}/GitSavvy/Default (${platform}).sublime-keymap"
         }
     },
-
+    {
+        "caption": "git: open config file",
+        "command": "gs_open_repo_config"
+    },
+    {
+        "caption": "git: open exclude file",
+        "command": "gs_open_repo_exclude"
+    },
     {
         "caption": "git: diff current file inline",
         "command": "gs_inline_diff"
