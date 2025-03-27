@@ -153,7 +153,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
       [C] commit, including unstaged        [t][p] pop stash
       [m] amend previous commit             [o]    open stash
       [p] push current branch               [t][c] create stash
-                                            [t][u] create stash including untracked files
+      [P] pull current branch               [t][u] create stash including untracked files
                                             [t][g] create stash of staged changes only
       [I] add .gitignore pattern            [t][d] drop stash
 
