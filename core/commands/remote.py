@@ -43,7 +43,7 @@ class gs_remote_add(GsWindowCommand):
             run_on_new_thread(self.git, "config", "--local", "gitsavvy.pushdefault", remote_name)
             self.update_store({"last_remote_used_for_push": remote_name})
 
-        if sublime.ok_cancel_dialog(
+        if self.savvy_settings.get("fetch_new_remotes", True) or sublime.ok_cancel_dialog(
             "Your remote was added successfully.  "
             "Would you like to fetch from this remote?"
         ):
