@@ -74,7 +74,7 @@ class gs_remote_rename(GsWindowCommand):
 
     def on_remote_selection(self, remote):
         self.remote = remote
-        show_single_line_input_panel("Remote name", remote, self.on_enter_name)
+        show_single_line_input_panel("New name", remote, self.on_enter_name)
 
     def on_enter_name(self, new_name):
         self.git("remote", "rename", self.remote, new_name)
