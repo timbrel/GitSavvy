@@ -77,6 +77,10 @@ class gs_remote_rename(GsWindowCommand):
         show_single_line_input_panel("New name", remote, self.on_enter_name)
 
     def on_enter_name(self, new_name):
+        if not new_name:
+            return
+        if new_name == self.remote:
+            return
         self.git("remote", "rename", self.remote, new_name)
         self.window.status_message("remote {} was renamed as {}.".format(self.remote, new_name))
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)
