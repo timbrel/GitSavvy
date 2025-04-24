@@ -652,6 +652,12 @@ class _GitCommand(SettingsMixin):
             if file_name:
                 yield os.path.dirname(file_name)
 
+            # Support https://packagecontrol.io/packages/dired or the compatible
+            # https://packagecontrol.io/packages/FileBrowser
+            if view := self._current_view():
+                if dired_path := view.settings().get("dired_path"):
+                    yield dired_path
+
             window = self._current_window()
             if window:
                 folders = window.folders()
