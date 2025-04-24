@@ -291,6 +291,11 @@
     "confirm_force_push": true,
 
     /*
+        When set to `true`, GitSavvy will fetch newly added remotes automatically.
+     */
+    "fetch_new_remotes": true,
+
+    /*
         When set to `true`, closing the commit message window via keyboard will result
         in a commit action being taken, except in cases where the message is empty.
         The same is also true for amending commits.
