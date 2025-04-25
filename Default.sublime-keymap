@@ -496,6 +496,16 @@
         ]
     },
     {
+        "keys": ["O"],
+        "command": "gs_show_commit",
+        "args": { "commit_hash": "HEAD" },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+
+    {
         "keys": ["?"],
         "command": "gs_interface_toggle_help",
         "context": [
