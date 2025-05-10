@@ -8,7 +8,7 @@ class TestRunForTimeout(DeferrableTestCase):
         def main():
             return "Ok"
 
-        self.assertEquals("Ok", run_or_timeout(main, timeout=1.0))
+        self.assertEqual("Ok", run_or_timeout(main, timeout=1.0))
 
     def testReraisesException(self):
         def main():
