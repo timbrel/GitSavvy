@@ -98,4 +98,4 @@ class TestExtractCommitMessage(DeferrableTestCase):
         self.assertTrue(commit_view.find_by_selector("meta.dropped.git.commit"))
         self.assertTrue(commit_view.find_by_selector("git-savvy.diff"))
 
-        self.assertEquals("", extract_commit_message(commit_view).rstrip())
+        self.assertEqual("", extract_commit_message(commit_view).rstrip())
