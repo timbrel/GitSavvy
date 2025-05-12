@@ -482,12 +482,23 @@ class gs_status_open_file(StatusInterfaceCommand):
     """
     For every file that is selected or under a cursor, open a that
     file in a new view.
+    If the working dir is clean, open the recent commit.
     """
 
     def run(self, edit):
         # type: (sublime.Edit) -> None
-        for fpath in self.get_selected_files(self.repo_path):
-            self.window.open_file(fpath)
+        view = self.view
+        if fpaths := self.get_selected_files(self.repo_path):
+            for fpath in fpaths:
+                self.window.open_file(fpath)
+        elif (
+            (sel := list(view.sel()))
+            and len(sel) == 1
+            and sel[0].empty()
+            and (line := view.substr(view.line(sel[0])))
+            and line.lstrip().startswith("Your working directory is clean")
+        ):
+            self.window.run_command("gs_show_commit", {"commit_hash": "HEAD"})
 
 
 class gs_status_open_file_on_remote(StatusInterfaceCommand):
