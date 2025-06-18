@@ -138,6 +138,7 @@ class gs_graph(WindowCommand, GitCommand):
         self,
         repo_path=None,
         file_path=None,
+        overview=False,
         all=False,
         show_tags=True,
         branches=None,
@@ -173,7 +174,7 @@ class gs_graph(WindowCommand, GitCommand):
             )
             if other_id in [this_id] + standard_graph_views:
                 settings = view.settings()
-                settings.set("git_savvy.log_graph_view.overview", False)
+                settings.set("git_savvy.log_graph_view.overview", overview)
                 settings.set("git_savvy.log_graph_view.all_branches", all)
                 settings.set("git_savvy.log_graph_view.show_tags", show_tags)
                 settings.set("git_savvy.log_graph_view.branches", branches)
@@ -214,6 +215,7 @@ class gs_graph(WindowCommand, GitCommand):
                 "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
                 "git_savvy.repo_path": repo_path,
                 "git_savvy.log_graph_view.paths": paths,
+                "git_savvy.log_graph_view.overview": overview,
                 "git_savvy.log_graph_view.all_branches": all,
                 "git_savvy.log_graph_view.show_tags": show_tags,
                 "git_savvy.log_graph_view.filter_by_author": author,
