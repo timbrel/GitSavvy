@@ -1467,7 +1467,7 @@ class gs_log_graph_current_branch(WindowCommand, GitCommand):
     def run(self, file_path=None):
         self.window.run_command('gs_graph', {
             'file_path': file_path,
-            'all': True,
+            'all': False,
         })
 
 
@@ -1525,7 +1525,7 @@ class gs_log_graph_by_branch(WindowCommand, GitCommand):
             self._selected_branch = branch  # remember last selection
             self.window.run_command('gs_graph', {
                 'file_path': file_path,
-                'all': True,
+                'all': False,
                 'branches': [branch],
                 'follow': branch,
             })
