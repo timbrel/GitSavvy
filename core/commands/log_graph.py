@@ -1467,9 +1467,11 @@ class gs_log_graph(gs_log):
 
 class gs_log_graph_current_branch(WindowCommand, GitCommand):
     def run(self, file_path=None):
+        branches_to_show = self.compute_branches_to_show("HEAD")
         self.window.run_command('gs_graph', {
             'file_path': file_path,
             'all': False,
+            'branches': branches_to_show,
         })
 
 
@@ -1525,10 +1527,11 @@ class gs_log_graph_by_branch(WindowCommand, GitCommand):
     def run(self, file_path=None):
         def on_select(branch):
             self._selected_branch = branch  # remember last selection
+            branches_to_show = self.compute_branches_to_show(branch)
             self.window.run_command('gs_graph', {
                 'file_path': file_path,
                 'all': False,
-                'branches': [branch],
+                'branches': branches_to_show,
                 'follow': branch,
             })
 

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import re
 
 from GitSavvy.core.git_command import mixin_base, NOT_SET
@@ -54,6 +55,29 @@ class BranchesMixin(mixin_base):
             if branch.active:
                 return branch
         return None
+
+    def compute_branches_to_show(self, branch_name: str) -> list[str] | None:
+        """
+        For a given `branch_name` (use "HEAD" for the current branch)
+        look up its name and its upstream and return that as a list
+        """
+        branches: list[Branch] = (
+            self.current_state().get("branches", [])
+            or self.get_branches()
+        )
+        for b in branches:
+            if (
+                b.active
+                if branch_name == "HEAD"
+                else b.canonical_name == branch_name
+            ):
+                if b.upstream:
+                    return [b.canonical_name, b.upstream.canonical_name]
+                else:
+                    return [b.canonical_name]
+        else:
+            # Assume `None` implies "HEAD" but doesn't show up prominently
+            return None if branch_name == "HEAD" else [branch_name]
 
     def get_current_branch_name(self):
         # type: () -> Optional[str]
