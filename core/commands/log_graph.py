@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections import deque
 from contextlib import contextmanager
 from dataclasses import dataclass
