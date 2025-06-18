@@ -1458,8 +1458,8 @@ class gs_log_graph(gs_log):
     default_actions = [
         ["gs_log_graph_current_branch", "For current branch"],
         ["gs_log_graph_all_branches", "For all branches"],
-        ["gs_log_graph_by_author", "Filtered by author"],
-        ["gs_log_graph_by_branch", "Filtered by branch"],
+        ["gs_log_graph_by_branch", "For a specific branch..."],
+        ["gs_log_graph_by_author", "Filtered by author..."],
     ]
 
 

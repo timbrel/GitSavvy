@@ -111,6 +111,10 @@
         "args": { "all": false }
     },
     {
+        "caption": "git: graph...",
+        "command": "gs_log_graph"
+    },
+    {
         "caption": "git: Line History",
         "command": "gs_line_history"
     },
