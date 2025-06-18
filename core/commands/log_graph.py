@@ -1503,10 +1503,10 @@ class gs_log_graph_by_author(WindowCommand, GitCommand):
             if index == -1:
                 return
             selected_author = entries[index][3]
-            self.window.run_command(
-                'gs_graph',
-                {'file_path': file_path, 'author': selected_author}
-            )
+            self.window.run_command('gs_graph', {
+                'file_path': file_path,
+                'author': selected_author
+            })
 
         email = self.git("config", "user.email").strip()
         self.window.show_quick_panel(
