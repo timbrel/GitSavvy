@@ -1393,6 +1393,11 @@ def prelude(view):
     else:
         formatted_filters = None
 
+    if not all_branches and not overview:
+        formatted_branches = " ".join(branches)
+    else:
+        formatted_branches = None
+
     prelude += (
         "  "
         + "  ".join(filter_((
@@ -1401,7 +1406,7 @@ def prelude(view):
                 if overview
                 else '[a]ll: true' if all_branches else '[a]ll: false'
             ),
-            " ".join(branches) if not all_branches and not overview else None,
+            formatted_branches,
             formatted_filters
         )))
     )
