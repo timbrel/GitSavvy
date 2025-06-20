@@ -523,6 +523,15 @@
         ]
     },
     {
+        "keys": ["G"],
+        "command": "gs_graph",
+        "args": { "overview": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["."],
         "command": "gs_status_navigate_file",
         "args": { "forward": true },
