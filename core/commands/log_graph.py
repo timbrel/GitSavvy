@@ -1528,20 +1528,32 @@ class gs_log_graph_by_author(WindowCommand, GitCommand):
 
 
 class gs_log_graph_by_branch(WindowCommand, GitCommand):
+    """Open graph for a specific branch.
+
+    Include the upstream of the branch (if any).  If no `branch`
+    is given, ask for it.
+    """
     _selected_branch = None
 
-    def run(self, file_path=None):
-        def on_select(branch):
-            self._selected_branch = branch  # remember last selection
-            branches_to_show = self.compute_branches_to_show(branch)
+    def run(self, branch=None, file_path=None):
+        def just_do_it(branch_):
+            branches_to_show = self.compute_branches_to_show(branch_)
             self.window.run_command('gs_graph', {
                 'file_path': file_path,
                 'all': False,
                 'branches': branches_to_show,
-                'follow': branch,
+                'follow': branch_,
             })
 
-        show_branch_panel(on_select, selected_branch=self._selected_branch)
+        if branch:
+            just_do_it(branch)
+
+        else:
+            def on_select(branch):
+                self._selected_branch = branch  # remember last selection
+                just_do_it(branch)
+
+            show_branch_panel(on_select, selected_branch=self._selected_branch)
 
 
 class gs_log_graph_navigate(TextCommand):

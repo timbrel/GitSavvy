@@ -720,11 +720,8 @@ class gs_branches_log_graph(CommandForSingleBranch):
     """
 
     def run(self, edit):
-        branches_to_show = self.compute_branches_to_show(self.selected_branch.canonical_name)
-        self.window.run_command('gs_graph', {
-            'all': False,
-            'branches': branches_to_show,
-            'follow': self.selected_branch.canonical_name
+        self.window.run_command("gs_log_graph_by_branch", {
+            "branch": self.selected_branch.canonical_name
         })
 
 
