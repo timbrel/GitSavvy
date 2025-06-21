@@ -124,7 +124,8 @@ def compute_identifier_for_view(view):
             or settings.get('git_savvy.log_graph_view.branches')
         ),
         (
-            (
+            True if settings.get('git_savvy.log_graph_view.overview')
+            else (
                 settings.get('git_savvy.log_graph_view.paths'),
                 settings.get('git_savvy.log_graph_view.filters'),
                 settings.get('git_savvy.log_graph_view.filter_by_author')
@@ -164,13 +165,13 @@ class gs_graph(WindowCommand, GitCommand):
         this_id = (
             repo_path,
             all or branches,
-            (paths, filters, author) if apply_filters else NO_FILTERS
+            True if overview else (paths, filters, author) if apply_filters else NO_FILTERS
         )
         for view in self.window.views():
             other_id = compute_identifier_for_view(view)
             standard_graph_views = (
                 []
-                if branches
+                if branches or overview
                 else [(repo_path, True, NO_FILTERS), (repo_path, [], NO_FILTERS)]
             )
             if other_id in [this_id] + standard_graph_views:
