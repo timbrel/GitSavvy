@@ -128,7 +128,6 @@ def compute_identifier_for_view(view):
             else (
                 settings.get('git_savvy.log_graph_view.paths'),
                 settings.get('git_savvy.log_graph_view.filters'),
-                settings.get('git_savvy.log_graph_view.filter_by_author')
             ) if apply_filters
             else NO_FILTERS
         )
@@ -144,7 +143,6 @@ class gs_graph(WindowCommand, GitCommand):
         all=False,
         show_tags=True,
         branches=None,
-        author='',
         title='GRAPH',
         follow=None,
         decoration=None,
@@ -160,12 +158,12 @@ class gs_graph(WindowCommand, GitCommand):
         )
         if branches is None:
             branches = []
-        apply_filters = paths or filters or author
+        apply_filters = paths or filters
 
         this_id = (
             repo_path,
             all or branches,
-            True if overview else (paths, filters, author) if apply_filters else NO_FILTERS
+            True if overview else (paths, filters) if apply_filters else NO_FILTERS
         )
         for view in self.window.views():
             other_id = compute_identifier_for_view(view)
@@ -186,7 +184,6 @@ class gs_graph(WindowCommand, GitCommand):
                 if apply_filters:
                     settings.set('git_savvy.log_graph_view.paths', paths)
                     settings.set('git_savvy.log_graph_view.filters', filters)
-                    settings.set("git_savvy.log_graph_view.filter_by_author", author)
                 if follow:
                     settings.set('git_savvy.log_graph_view.follow', follow)
 
@@ -220,7 +217,6 @@ class gs_graph(WindowCommand, GitCommand):
                 "git_savvy.log_graph_view.overview": overview,
                 "git_savvy.log_graph_view.all_branches": all,
                 "git_savvy.log_graph_view.show_tags": show_tags,
-                "git_savvy.log_graph_view.filter_by_author": author,
                 "git_savvy.log_graph_view.branches": branches,
                 "git_savvy.log_graph_view.follow": follow,
                 "git_savvy.log_graph_view.decoration": decoration,
@@ -1308,7 +1304,6 @@ class gs_log_graph_refresh(GsTextCommand):
 
         follow = self.savvy_settings.get("log_follow_rename")
         all_branches = settings.get("git_savvy.log_graph_view.all_branches")
-        author = settings.get("git_savvy.log_graph_view.filter_by_author")
         branches = settings.get("git_savvy.log_graph_view.branches")
         paths = settings.get("git_savvy.log_graph_view.paths", [])  # type: List[str]
         date_format = (
@@ -1329,7 +1324,6 @@ class gs_log_graph_refresh(GsTextCommand):
             # Git can only follow exactly one path.  Luckily, this can
             # be a file or a directory.
             '--follow' if len(paths) == 1 and follow and apply_filters else None,
-            '--author={}'.format(author) if author and apply_filters else None,
             '--decorate-refs-exclude=refs/remotes/origin/HEAD',  # cosmetics
             '--exclude=refs/stash',
             '--all' if all_branches else None,
@@ -1516,7 +1510,7 @@ class gs_log_graph_by_author(WindowCommand, GitCommand):
             selected_author = entries[index][3]
             self.window.run_command('gs_graph', {
                 'file_path': file_path,
-                'author': selected_author
+                'filters': f"--author='{selected_author}'"
             })
 
         email = self.git("config", "user.email").strip()
@@ -1781,7 +1775,6 @@ class gs_log_graph_edit_filters(TextCommand):
             settings.set("git_savvy.log_graph_view.filter_history", new_filter_history)
             if not applying_filters:
                 settings.set("git_savvy.log_graph_view.paths", [])
-                settings.set("git_savvy.log_graph_view.filter_by_author", "")
 
             hide_toast()
             view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": bool(text)})
@@ -1955,7 +1948,6 @@ class gs_log_graph_edit_files(TextCommand, GitCommand):
             settings.set("git_savvy.log_graph_view.apply_filters", True)
             if not apply_filters:
                 settings.set("git_savvy.log_graph_view.filters", "")
-                settings.set("git_savvy.log_graph_view.filter_by_author", "")
             view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": bool(next_paths)})
             if event.get("modifier_keys", {}).get("primary"):
                 view.run_command("gs_log_graph_edit_files", {
