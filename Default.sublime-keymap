@@ -492,7 +492,7 @@
         "command": "gs_interface_show_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "selector", "operand": "meta.git-savvy.summary-header meta.git-savvy.commit-info" }
+            { "key": "selector", "operand": "meta.git-savvy.summary-header comment.git-savvy.summary-header.head-summary" }
         ]
     },
     {
