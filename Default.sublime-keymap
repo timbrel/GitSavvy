@@ -717,6 +717,24 @@
         ]
     },
     {
+        "keys": [" "],
+        "command": "gs_diff_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
+        ]
+    },
+    {
+        "keys": ["ctrl+space"],
+        "command": "gs_clear_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
+        ]
+    },
+    {
         "keys": ["u"],
         "command": "gs_diff_stage_or_reset_hunk",
         "context": [

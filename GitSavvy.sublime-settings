@@ -106,6 +106,10 @@
         "diff": {
             "multiselect_foreground": "#0af",
             "multiselect_background": "#0af1"
+        },
+        "commit": {
+            "multiselect_foreground": "#0af",
+            "multiselect_background": "#0af1"
         }
     },
 
