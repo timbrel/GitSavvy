@@ -1278,13 +1278,18 @@ class gs_log_graph_refresh(GsTextCommand):
         filters = settings.get("git_savvy.log_graph_view.filters")
         apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
         overview = settings.get("git_savvy.log_graph_view.overview")
+        remotes = self.current_state().get("remotes") or self.get_remotes()
         if overview:
             show_tags = settings.get("git_savvy.log_graph_view.show_tags")
             args = [
                 'log',
                 '--graph',
                 '--decorate',  # set explicitly for "decorate-refs-exclude" to work
-                '--decorate-refs-exclude=refs/remotes/origin/HEAD',  # cosmetics
+                *[
+                    # cosmetics
+                    f'--decorate-refs-exclude=refs/remotes/{remote}/HEAD'
+                    for remote in remotes
+                ],
                 '--decorate-refs-exclude=refs/tags' if not show_tags else None,
                 '--date=format:%b %e %Y',
                 '--format={}'.format(
@@ -1324,7 +1329,11 @@ class gs_log_graph_refresh(GsTextCommand):
             # Git can only follow exactly one path.  Luckily, this can
             # be a file or a directory.
             '--follow' if len(paths) == 1 and follow and apply_filters else None,
-            '--decorate-refs-exclude=refs/remotes/origin/HEAD',  # cosmetics
+            *[
+                # cosmetics
+                f'--decorate-refs-exclude=refs/remotes/{remote}/HEAD'
+                for remote in remotes
+            ],
             '--exclude=refs/stash',
             '--all' if all_branches else None,
         ]
