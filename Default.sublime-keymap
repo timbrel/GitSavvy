@@ -785,6 +785,22 @@
     ///////////////
 
     {
+        "keys": [" "],
+        "command": "gs_diff_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["ctrl+space"],
+        "command": "gs_clear_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["h"],
         "command": "gs_diff_stage_or_reset_hunk",
         "context": [

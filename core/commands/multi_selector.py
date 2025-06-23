@@ -1,6 +1,8 @@
 from __future__ import annotations
 from itertools import starmap
+
 from . import log_graph
+from ..parse_diff import SplittedDiff
 
 from typing import Iterable
 from typing_extensions import TypeAlias
@@ -11,6 +13,7 @@ from sublime_plugin import TextCommand
 
 __all__ = (
     "gs_log_graph_multiselect",
+    "gs_diff_multiselect",
     "gs_clear_multiselect",
 )
 
@@ -62,6 +65,56 @@ class gs_log_graph_multiselect(TextCommand):
             and any(r not in multi_selection for r in regions)
         ):
             view.run_command("gs_log_graph_navigate", {"natural_movement": True})
+
+
+class gs_diff_multiselect(TextCommand):
+    def run(self, edit) -> None:
+        view = self.view
+        frozen_sel = list(view.sel())
+
+        multi_selection: list[Region] = view.settings().get("git_savvy.multi_selection", [])
+        regions = multi_selection[:]
+        for s in frozen_sel:
+            # `hunk_selected` tracks if the last `s` selects a hunk
+            # which determines how we jump, see below
+            hunk_selected = False
+            if s.empty() and view.match_selector(s.a, "meta.diff.range.unified"):
+                diff = SplittedDiff.from_view(view)
+                if hunk := diff.hunk_for_pt(s.a):
+                    s = hunk.region()
+                    hunk_selected = True
+            line_spans = view.lines(s)
+            for line_span in line_spans:
+                if view.match_selector(line_span.a, "markup.inserted.diff | markup.deleted.diff"):
+                    wanted = [line_span.a, line_span.b]
+                    if wanted in multi_selection:
+                        if wanted in regions:
+                            regions.remove(wanted)
+                    else:
+                        regions.append(wanted)
+
+        view.settings().set("git_savvy.multi_selection", regions)
+        set_multiselect_markers(view, list(starmap(sublime.Region, regions)))
+
+        view.sel().clear()
+        view.sel().add_all([sublime.Region(s.b)])
+        if hunk_selected:
+            # if a hunk is toggled out, don't move but stay on the starting pos
+            if all(r in multi_selection for r in regions):
+                view.sel().clear()
+                view.sel().add_all([sublime.Region(s.a)])
+            # if a hunk is toggled on, likely `s.b` is on the next hunk.
+            # only move if that's not the case
+            elif not view.match_selector(s.b, "meta.diff.range.unified"):
+                view.run_command("gs_diff_navigate")
+
+        elif (
+            len(frozen_sel) == 1
+            and frozen_sel[0].empty()
+            # don't move if the selection is toggled out
+            and any(r not in multi_selection for r in regions)
+        ):
+            view.run_command("move", {"by": "lines", "forward": True})
 
 
 class gs_clear_multiselect(TextCommand):

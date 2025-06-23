@@ -102,6 +102,10 @@
             "matching_commit_background": "#199",
             "multiselect_foreground": "#0aa",
             "multiselect_background": "#0aa1"
+        },
+        "diff": {
+            "multiselect_foreground": "#0af",
+            "multiselect_background": "#0af1"
         }
     },
 
