@@ -1,3 +1,4 @@
+from __future__ import annotations
 import itertools
 import sublime
 from ...common import util
@@ -407,7 +408,7 @@ class PaginatedPanel:
     """
 
     flags = sublime.MONOSPACE_FONT | sublime.KEEP_OPEN_ON_FOCUS_LOST
-    next_page_message = ">>> NEXT PAGE >>>"
+    next_page_message: str | list[str] = ">>> NEXT PAGE >>>"
     empty_page_message = None  # type: Optional[str]
     last_page_empty_message = ">>> LAST PAGE >>>"
     status_message = None  # type: Optional[str]
@@ -426,7 +427,7 @@ class PaginatedPanel:
             setattr(self, option, kwargs[option])
 
     def load_next_batch(self):
-        self.display_list = []  # type: List[str]
+        self.display_list: list[str | list[str]] = []
         self.ret_list = []  # type: List[object]
         for item in itertools.islice(self.item_generator, self.limit):
             self.extract_item(item)
@@ -509,7 +510,7 @@ class PaginatedPanel:
 
         if index == self.limit:
             self.skip = self.skip + self.limit
-            sublime.set_timeout_async(self.show, 10)
+            sublime.set_timeout_async(self.show)
         elif self.ret_list:
             if index == -1:
                 self.on_selection(None)
@@ -578,6 +579,12 @@ def short_ref(ref):
 
 
 class LogPanel(PaginatedPanel):
+    def __init__(self, *args, **kwargs):
+        self.next_page_message = [
+            ">>> NEXT {} COMMITS >>>".format(self.limit),
+            "Skip this set of commits and choose from the next-oldest batch."
+        ]
+        super().__init__(*args, **kwargs)
 
     def format_item(self, entry):
         return (
@@ -587,11 +594,6 @@ class LogPanel(PaginatedPanel):
             ],
             entry.long_hash
         )
-
-    @property
-    def next_page_message(self):
-        return [">>> NEXT {} COMMITS >>>".format(self.limit),
-                "Skip this set of commits and choose from the next-oldest batch."]
 
     def on_selection(self, commit):
         self.on_done(commit)
