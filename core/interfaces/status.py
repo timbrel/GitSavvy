@@ -190,6 +190,9 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
       [l] diff file inline                  [f] diff all files
       [e] diff file                         [F] diff all cached files
+
+      [space] to select multiple items
+      [ctrl-space] to clear selection
     """ + _template_help
 
     template_help_on_added = template_help.replace(
@@ -211,6 +214,9 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
                                             [f] diff all files
                                             [F] diff all cached files
+
+      [space] to select multiple items
+      [ctrl-space] to clear selection
     """ + _template_help
 
     conflicts_keybindings = ui.indent_by_2("""

@@ -124,6 +124,9 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
       [o] show commit
       [g] show log graph
 
+      [space] to select multiple items
+      [ctrl-space] to clear selection
+
     -
     """
 
