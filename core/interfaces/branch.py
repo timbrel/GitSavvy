@@ -113,7 +113,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
       [e]         toggle display of remote branches
       [tab]       transition to next dashboard
-      [SHIFT-tab] transition to previous dashboard
+      [shift-tab] transition to previous dashboard
       [r]         refresh
       [?]         toggle this help menu
 

@@ -169,7 +169,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
       [G]         show overview of branches and tags
       [?]         toggle this help menu
       [tab]       transition to next dashboard
-      [SHIFT-tab] transition to previous dashboard
+      [shift-tab] transition to previous dashboard
       [.]         move cursor to next file
       [,]         move cursor to previous file
     {conflicts_bindings}
