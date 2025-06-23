@@ -110,6 +110,10 @@
         "commit": {
             "multiselect_foreground": "#0af",
             "multiselect_background": "#0af1"
+        },
+        "dashboard": {
+            "multiselect_foreground": "#0af",
+            "multiselect_background": "#0af1"
         }
     },
 

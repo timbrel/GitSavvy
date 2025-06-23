@@ -14,6 +14,7 @@ from sublime_plugin import TextCommand
 __all__ = (
     "gs_log_graph_multiselect",
     "gs_diff_multiselect",
+    "gs_dashboard_multiselect",
     "gs_clear_multiselect",
 )
 
@@ -115,6 +116,51 @@ class gs_diff_multiselect(TextCommand):
             and any(r not in multi_selection for r in regions)
         ):
             view.run_command("move", {"by": "lines", "forward": True})
+
+
+class gs_dashboard_multiselect(TextCommand):
+    def run(self, edit) -> None:
+        view = self.view
+        frozen_sel = list(view.sel())
+
+        multi_selection: list[Region] = view.settings().get("git_savvy.multi_selection", [])
+
+        entities = view.find_by_selector(
+            "meta.git-savvy.entity, "
+            "meta.git-savvy.branches.branch.name, "
+            "meta.git-savvy.tag.name, "
+            "constant.other.git-savvy.sha1"
+        )
+        regions = multi_selection[:]
+        for s in frozen_sel:
+            line_spans = view.lines(s)
+            for line_span in line_spans:
+                for r in entities:
+                    if r in line_span:
+                        wanted = [r.a, r.b]
+                        if wanted in multi_selection:
+                            if wanted in regions:
+                                regions.remove(wanted)
+                        else:
+                            regions.append(wanted)
+
+        view.settings().set("git_savvy.multi_selection", regions)
+        set_multiselect_markers(view, list(starmap(sublime.Region, regions)))
+
+        view.sel().clear()
+        view.sel().add_all([sublime.Region(frozen_sel[-1].b)])
+        if (
+            len(frozen_sel) == 1
+            and frozen_sel[0].empty()
+            and any(r not in multi_selection for r in regions)
+        ):
+            navigation_command = {
+                "tags": "gs_tags_navigate_tag",
+                "branch": "gs_branches_navigate_branch",
+                "status": "gs_status_navigate_file",
+            }.get(view.settings().get("git_savvy.interface"))
+            if navigation_command:
+                view.run_command(navigation_command)
 
 
 class gs_clear_multiselect(TextCommand):

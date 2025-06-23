@@ -191,6 +191,22 @@
     /////////////////////////////////
 
     {
+        "keys": [" "],
+        "command": "gs_dashboard_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["ctrl+space"],
+        "command": "gs_clear_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["o"],
         "command": "gs_status_open_file",
         "context": [
@@ -1522,6 +1538,22 @@
     ///////////////
 
     {
+        "keys": [" "],
+        "command": "gs_dashboard_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["ctrl+space"],
+        "command": "gs_clear_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["?"],
         "command": "gs_interface_toggle_help",
         "context": [
@@ -1684,6 +1716,22 @@
     // BRANCHES VIEW //
     ///////////////////
 
+    {
+        "keys": [" "],
+        "command": "gs_dashboard_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["ctrl+space"],
+        "command": "gs_clear_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
     {
         "keys": ["c"],
         "command": "gs_branches_checkout",
