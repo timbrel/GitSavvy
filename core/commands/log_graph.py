@@ -1616,11 +1616,25 @@ class gs_log_graph_navigate_wide(TextCommand):
             view.run_command("gs_log_graph_navigate", {"forward": forward})
             return
 
+        # We actually want to intertwine edge commits and marked fixup commits
+        # but I think that is difficult to do elegantly.  So I do it manually.
+        marked_fixup_dots = [
+            colorizer.Char(view, r.a) for r in view.get_regions('gs_log_graph_follow_fixups')
+            if (r.a > cur_dot.pt if forward else r.a < cur_dot.pt)
+        ]
+        if marked_fixup_dots:
+            next_fixup = marked_fixup_dots[0] if forward else marked_fixup_dots[-1]
+        else:
+            next_fixup = None
+
         next_dots = follow_first_parent(cur_dot, forward)
         try:
             next_dot = next(next_dots)
         except StopIteration:
-            return
+            if next_fixup:
+                next_dot = next_fixup
+            else:
+                return
 
         if line_distance(view, cur_dot.region(), next_dot.region()) < 2:
             # If the first next dot is not already a wide jump, t.i. the
@@ -1640,6 +1654,9 @@ class gs_log_graph_navigate_wide(TextCommand):
                     next_dot = next_next_dot
                 except UnboundLocalError:
                     pass
+
+        if next_fixup:
+            next_dot = (min if forward else max)(next_dot, next_fixup, key=lambda dot: dot.pt)
 
         line = line_from_pt(view, next_dot.region())
         r = extract_comit_hash_span(view, line)
