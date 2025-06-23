@@ -137,14 +137,24 @@ REGION_KEY = "git_savvy.multiselect"
 
 def set_multiselect_markers(view, regions: list[sublime.Region], styles=DEFAULT_STYLE):
     if regions:
+        # Combine adjacent `regions` to `regions_`
+        regions_: list[sublime.Region] = []
+        for r in sorted(regions):
+            if not regions_:
+                regions_.append(r)
+            elif (r.a - regions_[-1].b) in (0, 1):
+                regions_[-1].b = r.b
+            else:
+                regions_.append(r)
+
         if isinstance(styles["flags"], str):
             try:
                 styles["flags"] = STYLES[styles["flags"]]
             except LookupError:
                 styles["flags"] = STYLES["hidden"]
 
-        view.add_regions(REGION_KEY, regions, **styles)
-        regions_count = len(regions)
+        view.add_regions(REGION_KEY, regions_, **styles)
+        regions_count = len(regions_)
         s = "" if regions_count == 1 else "s"
         view.set_status("gs_multiselect_info", f"{regions_count} saved selection{s}")
     else:
