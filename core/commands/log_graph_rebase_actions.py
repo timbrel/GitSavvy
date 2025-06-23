@@ -18,6 +18,7 @@ from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
 from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.utils import flash, noop, show_actions_panel, yes_no_switch, SEPARATOR
 from GitSavvy.core.view import replace_view_content
+from . import multi_selector
 
 
 __all__ = (
@@ -217,7 +218,7 @@ class gs_rebase_action(GsWindowCommand):
             log_graph.describe_graph_line(line, known_branches={})
             for line in unique(
                 view.substr(line)
-                for s in view.sel()
+                for s in multi_selector.get_selection(view)
                 for line in view.lines(s)
             )
         ))

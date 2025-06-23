@@ -23,6 +23,7 @@ from .log_graph import *
 from .log_graph_rebase_actions import *
 from .log_graph_smart_copy import *
 from .merge import *
+from .multi_selector import *
 from .mv import *
 from .navigate import *
 from .next_hunk import *

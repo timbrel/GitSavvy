@@ -1894,6 +1894,22 @@
     ////////////////
 
     {
+        "keys": [" "],
+        "command": "gs_log_graph_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["ctrl+space"],
+        "command": "gs_clear_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["enter"],
         "command": "gs_log_graph_action",
         "context": [
