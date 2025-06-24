@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections import deque
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -123,7 +124,8 @@ def compute_identifier_for_view(view):
             or settings.get('git_savvy.log_graph_view.branches')
         ),
         (
-            (
+            True if settings.get('git_savvy.log_graph_view.overview')
+            else (
                 settings.get('git_savvy.log_graph_view.paths'),
                 settings.get('git_savvy.log_graph_view.filters'),
                 settings.get('git_savvy.log_graph_view.filter_by_author')
@@ -138,6 +140,7 @@ class gs_graph(WindowCommand, GitCommand):
         self,
         repo_path=None,
         file_path=None,
+        overview=False,
         all=False,
         show_tags=True,
         branches=None,
@@ -162,18 +165,18 @@ class gs_graph(WindowCommand, GitCommand):
         this_id = (
             repo_path,
             all or branches,
-            (paths, filters, author) if apply_filters else NO_FILTERS
+            True if overview else (paths, filters, author) if apply_filters else NO_FILTERS
         )
         for view in self.window.views():
             other_id = compute_identifier_for_view(view)
             standard_graph_views = (
                 []
-                if branches
+                if branches or overview
                 else [(repo_path, True, NO_FILTERS), (repo_path, [], NO_FILTERS)]
             )
             if other_id in [this_id] + standard_graph_views:
                 settings = view.settings()
-                settings.set("git_savvy.log_graph_view.overview", False)
+                settings.set("git_savvy.log_graph_view.overview", overview)
                 settings.set("git_savvy.log_graph_view.all_branches", all)
                 settings.set("git_savvy.log_graph_view.show_tags", show_tags)
                 settings.set("git_savvy.log_graph_view.branches", branches)
@@ -214,6 +217,7 @@ class gs_graph(WindowCommand, GitCommand):
                 "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
                 "git_savvy.repo_path": repo_path,
                 "git_savvy.log_graph_view.paths": paths,
+                "git_savvy.log_graph_view.overview": overview,
                 "git_savvy.log_graph_view.all_branches": all,
                 "git_savvy.log_graph_view.show_tags": show_tags,
                 "git_savvy.log_graph_view.filter_by_author": author,
@@ -1390,6 +1394,11 @@ def prelude(view):
     else:
         formatted_filters = None
 
+    if not all_branches and not overview:
+        formatted_branches = " ".join(branches)
+    else:
+        formatted_branches = None
+
     prelude += (
         "  "
         + "  ".join(filter_((
@@ -1398,7 +1407,7 @@ def prelude(view):
                 if overview
                 else '[a]ll: true' if all_branches else '[a]ll: false'
             ),
-            " ".join(branches) if not all_branches and not overview else None,
+            formatted_branches,
             formatted_filters
         )))
     )
@@ -1458,16 +1467,18 @@ class gs_log_graph(gs_log):
     default_actions = [
         ["gs_log_graph_current_branch", "For current branch"],
         ["gs_log_graph_all_branches", "For all branches"],
-        ["gs_log_graph_by_author", "Filtered by author"],
-        ["gs_log_graph_by_branch", "Filtered by branch"],
+        ["gs_log_graph_by_branch", "For a specific branch..."],
+        ["gs_log_graph_by_author", "Filtered by author..."],
     ]
 
 
 class gs_log_graph_current_branch(WindowCommand, GitCommand):
     def run(self, file_path=None):
+        branches_to_show = self.compute_branches_to_show("HEAD")
         self.window.run_command('gs_graph', {
             'file_path': file_path,
-            'all': True,
+            'all': False,
+            'branches': branches_to_show,
         })
 
 
@@ -1503,10 +1514,10 @@ class gs_log_graph_by_author(WindowCommand, GitCommand):
             if index == -1:
                 return
             selected_author = entries[index][3]
-            self.window.run_command(
-                'gs_graph',
-                {'file_path': file_path, 'author': selected_author}
-            )
+            self.window.run_command('gs_graph', {
+                'file_path': file_path,
+                'author': selected_author
+            })
 
         email = self.git("config", "user.email").strip()
         self.window.show_quick_panel(
@@ -1518,19 +1529,32 @@ class gs_log_graph_by_author(WindowCommand, GitCommand):
 
 
 class gs_log_graph_by_branch(WindowCommand, GitCommand):
+    """Open graph for a specific branch.
+
+    Include the upstream of the branch (if any).  If no `branch`
+    is given, ask for it.
+    """
     _selected_branch = None
 
-    def run(self, file_path=None):
-        def on_select(branch):
-            self._selected_branch = branch  # remember last selection
+    def run(self, branch=None, file_path=None):
+        def just_do_it(branch_):
+            branches_to_show = self.compute_branches_to_show(branch_)
             self.window.run_command('gs_graph', {
                 'file_path': file_path,
-                'all': True,
-                'branches': [branch],
-                'follow': branch,
+                'all': False,
+                'branches': branches_to_show,
+                'follow': branch_,
             })
 
-        show_branch_panel(on_select, selected_branch=self._selected_branch)
+        if branch:
+            just_do_it(branch)
+
+        else:
+            def on_select(branch):
+                self._selected_branch = branch  # remember last selection
+                just_do_it(branch)
+
+            show_branch_panel(on_select, selected_branch=self._selected_branch)
 
 
 class gs_log_graph_navigate(TextCommand):

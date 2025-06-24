@@ -81,6 +81,11 @@
         "command": "gs_quick_stage_current_file_and_amend"
     },
     {
+        "caption": "git: graph (overview)",
+        "command": "gs_graph",
+        "args": { "overview": true, "show_tags": true }
+    },
+    {
         "caption": "git: graph",
         "command": "gs_graph",
         "args": { "all": true }
@@ -109,6 +114,10 @@
         "caption": "git: Path History",
         "command": "gs_graph_current_path",
         "args": { "all": false }
+    },
+    {
+        "caption": "git: graph...",
+        "command": "gs_log_graph"
     },
     {
         "caption": "git: Line History",

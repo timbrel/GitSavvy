@@ -166,6 +166,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
       [O]         show most recent commit
       [g]         show graph repo history
+      [G]         show overview of branches and tags
       [?]         toggle this help menu
       [tab]       transition to next dashboard
       [SHIFT-tab] transition to previous dashboard
