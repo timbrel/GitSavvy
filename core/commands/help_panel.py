@@ -178,6 +178,7 @@ class gs_diff_help_panel(GsAbstractOpenHelpPanel):
     [tab]          switch between staged/unstaged area
     [s]/[u]/[d]    stage, unstage, or discard hunk or selection
     [S]/[U]/[D]    stage, unstage, or discard complete file
+    [space]        select line or hunk; [{cr}+space] to clear the selection
     [{cr}-z]       undo last action
 
     [c]/[C]        commit ([C] to include unstaged)
@@ -238,6 +239,7 @@ class gs_show_file_at_commit_help_panel(GsAbstractOpenHelpPanel):
 class gs_log_graph_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
     [enter]        open main menu with additional commands
+    [space]        select commit; [{cr}+space] to clear the selection
     [o]            open commit in a new view; on `#issues`, open a browser
     [m]/[M]        toggle commit panel on the bottom, [M] to also focus the panel
     [{cr}+C]       copy commit's hash, subject or a combination to the clipboard

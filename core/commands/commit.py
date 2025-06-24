@@ -7,14 +7,16 @@ from sublime_plugin import EventListener, ViewEventListener
 
 from .diff import DECODE_ERROR_MESSAGE
 from . import intra_line_colorizer
+from . import multi_selector
 from ..git_command import GitCommand, GitSavvyError
 from ..fns import flatten, head
-from ..runtime import enqueue_on_worker, text_command
-from ..settings import SettingsMixin
+from ..runtime import enqueue_on_worker, run_on_new_thread, text_command
+from ..settings import GitSavvySettings, SettingsMixin
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import focus_view
 from ..view import replace_view_content
 from ...common import util
+from ...common.theme_generator import ThemeGenerator
 
 
 __all__ = (
@@ -129,6 +131,7 @@ class gs_commit(WindowCommand, GitCommand):
             util.view.mark_as_lintable(view)
 
             view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
+            run_on_new_thread(augment_color_scheme, view)
             view.run_command("gs_handle_vintageous")
 
             title = COMMIT_TITLE.format(os.path.basename(repo_path))
@@ -166,6 +169,23 @@ class gs_commit(WindowCommand, GitCommand):
 
         replace_view_content(view, initial_text)
         view.run_command("gs_prepare_commit_refresh_diff")
+
+
+def augment_color_scheme(view):
+    # type: (sublime.View) -> None
+    settings = GitSavvySettings()
+    colors = settings.get('colors').get('commit')
+    if not colors:
+        return
+
+    themeGenerator = ThemeGenerator.for_view(view)
+    themeGenerator.add_scoped_style(
+        "GitSavvy Multiselect Marker",
+        multi_selector.MULTISELECT_SCOPE,
+        background=colors['multiselect_foreground'],
+        foreground=colors['multiselect_background'],
+    )
+    themeGenerator.apply_new_theme("commit_view", view)
 
 
 def generate_help_text(view, with_patch_commands=False):

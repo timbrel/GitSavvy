@@ -169,7 +169,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
       [G]         show overview of branches and tags
       [?]         toggle this help menu
       [tab]       transition to next dashboard
-      [SHIFT-tab] transition to previous dashboard
+      [shift-tab] transition to previous dashboard
       [.]         move cursor to next file
       [,]         move cursor to previous file
     {conflicts_bindings}
@@ -190,6 +190,9 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
       [l] diff file inline                  [f] diff all files
       [e] diff file                         [F] diff all cached files
+
+      [space] to select multiple items
+      [ctrl-space] to clear selection
     """ + _template_help
 
     template_help_on_added = template_help.replace(
@@ -211,6 +214,9 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
                                             [f] diff all files
                                             [F] diff all cached files
+
+      [space] to select multiple items
+      [ctrl-space] to clear selection
     """ + _template_help
 
     conflicts_keybindings = ui.indent_by_2("""

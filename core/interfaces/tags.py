@@ -120,9 +120,12 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
       [s] create smart tag            [?]         toggle this help menu
       [d] delete                      [e]         toggle display of remote branches
       [p] push to remote              [tab]       transition to next dashboard
-                                      [SHIFT-tab] transition to previous dashboard
+                                      [shift-tab] transition to previous dashboard
       [o] show commit
       [g] show log graph
+
+      [space] to select multiple items
+      [ctrl-space] to clear selection
 
     -
     """

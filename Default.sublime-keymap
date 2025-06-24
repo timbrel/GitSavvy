@@ -191,6 +191,22 @@
     /////////////////////////////////
 
     {
+        "keys": [" "],
+        "command": "gs_dashboard_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["ctrl+space"],
+        "command": "gs_clear_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["o"],
         "command": "gs_status_open_file",
         "context": [
@@ -492,7 +508,7 @@
         "command": "gs_interface_show_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "selector", "operand": "meta.git-savvy.summary-header meta.git-savvy.commit-info" }
+            { "key": "selector", "operand": "meta.git-savvy.summary-header comment.git-savvy.summary-header.head-summary" }
         ]
     },
     {
@@ -717,6 +733,24 @@
         ]
     },
     {
+        "keys": [" "],
+        "command": "gs_diff_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
+        ]
+    },
+    {
+        "keys": ["ctrl+space"],
+        "command": "gs_clear_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
+        ]
+    },
+    {
         "keys": ["u"],
         "command": "gs_diff_stage_or_reset_hunk",
         "context": [
@@ -784,6 +818,22 @@
     // DIFF VIEW //
     ///////////////
 
+    {
+        "keys": [" "],
+        "command": "gs_diff_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["ctrl+space"],
+        "command": "gs_clear_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
     {
         "keys": ["h"],
         "command": "gs_diff_stage_or_reset_hunk",
@@ -1488,6 +1538,22 @@
     ///////////////
 
     {
+        "keys": [" "],
+        "command": "gs_dashboard_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["ctrl+space"],
+        "command": "gs_clear_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["?"],
         "command": "gs_interface_toggle_help",
         "context": [
@@ -1650,6 +1716,22 @@
     // BRANCHES VIEW //
     ///////////////////
 
+    {
+        "keys": [" "],
+        "command": "gs_dashboard_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["ctrl+space"],
+        "command": "gs_clear_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
     {
         "keys": ["c"],
         "command": "gs_branches_checkout",
@@ -1893,6 +1975,22 @@
     // GRAPH VIEW //
     ////////////////
 
+    {
+        "keys": [" "],
+        "command": "gs_log_graph_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["ctrl+space"],
+        "command": "gs_clear_multiselect",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
     {
         "keys": ["enter"],
         "command": "gs_log_graph_action",

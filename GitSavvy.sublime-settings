@@ -99,7 +99,21 @@
             "path_above_foreground": "#19d",
             "path_above_background": "#99991109",
             "matching_commit_foreground": "#1991",
-            "matching_commit_background": "#199"
+            "matching_commit_background": "#199",
+            "multiselect_foreground": "#0aa",
+            "multiselect_background": "#0aa1"
+        },
+        "diff": {
+            "multiselect_foreground": "#0af",
+            "multiselect_background": "#0af1"
+        },
+        "commit": {
+            "multiselect_foreground": "#0af",
+            "multiselect_background": "#0af1"
+        },
+        "dashboard": {
+            "multiselect_foreground": "#0af",
+            "multiselect_background": "#0af1"
         }
     },
 

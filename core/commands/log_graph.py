@@ -17,7 +17,9 @@ from typing import NamedTuple
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
 
-from . import log_graph_colorizer as colorizer, show_commit_info
+from . import log_graph_colorizer as colorizer
+from . import multi_selector
+from . import show_commit_info
 from .log import gs_log
 from .. import utils
 from ..base_commands import GsTextCommand
@@ -323,6 +325,12 @@ def augment_color_scheme(view):
         MATCHING_COMMIT_SCOPE,
         background=colors['matching_commit_background'],
         foreground=colors['matching_commit_foreground'],
+    )
+    themeGenerator.add_scoped_style(
+        "GitSavvy Multiselect Marker",
+        multi_selector.MULTISELECT_SCOPE,
+        background=colors['multiselect_foreground'],
+        foreground=colors['multiselect_background'],
     )
     themeGenerator.apply_new_theme("log_graph_view", view)
 
@@ -2811,7 +2819,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             describe_graph_line(line, branches)
             for line in unique(
                 view.substr(line)
-                for s in view.sel()
+                for s in multi_selector.get_selection(view)
                 for line in view.lines(s)
             )
         ))

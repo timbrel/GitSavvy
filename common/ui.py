@@ -12,7 +12,9 @@ import sublime
 from sublime_plugin import TextCommand
 
 from . import util
-from ..core.runtime import enqueue_on_worker
+from .theme_generator import ThemeGenerator
+from ..core.commands import multi_selector
+from ..core.runtime import enqueue_on_worker, run_on_new_thread
 from ..core.settings import GitSavvySettings
 from ..core.utils import flash, focus_view
 from GitSavvy.core import store
@@ -160,6 +162,7 @@ class Interface(metaclass=_PrepareInterface):
         view.set_scratch(True)
         view.set_read_only(True)
         util.view.disable_other_plugins(view)
+        run_on_new_thread(augment_color_scheme, view)
 
         interface = cls(view=view)
         interface.after_view_creation(view)  # before first render
@@ -293,6 +296,23 @@ class Interface(metaclass=_PrepareInterface):
             "key": "git_savvy_interface." + key,
             "content": content
         })
+
+
+def augment_color_scheme(view):
+    # type: (sublime.View) -> None
+    settings = GitSavvySettings()
+    colors = settings.get('colors').get('dashboard')
+    if not colors:
+        return
+
+    themeGenerator = ThemeGenerator.for_view(view)
+    themeGenerator.add_scoped_style(
+        "GitSavvy Multiselect Marker",
+        multi_selector.MULTISELECT_SCOPE,
+        background=colors['multiselect_foreground'],
+        foreground=colors['multiselect_background'],
+    )
+    themeGenerator.apply_new_theme("dashboard_view", view)
 
 
 def distinct_until_state_changed(just_render_fn):
@@ -571,7 +591,7 @@ def unique_regions(regions):
 
 def unique_selected_lines(view):
     # type: (sublime.View) -> List[sublime.Region]
-    return list(unique_regions(flatten(view.lines(s) for s in view.sel())))
+    return list(unique_regions(flatten(view.lines(s) for s in multi_selector.get_selection(view))))
 
 
 def extract_by_selector(view, item_selector, within_section=None):
@@ -639,7 +659,7 @@ class gs_interface_toggle_help(TextCommand):
 class gs_interface_show_commit(TextCommand):
     def run(self, edit: sublime.Edit) -> None:
         view = self.view
-        frozen_sel = list(view.sel())
+        frozen_sel = list(multi_selector.get_selection(view))
         window = view.window()
         assert window
 

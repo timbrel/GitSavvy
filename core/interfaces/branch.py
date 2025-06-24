@@ -108,9 +108,12 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
       [H] diff history against active               [g] show branch log graph
       [E] edit branch description
 
+      [space] to select multiple items
+      [ctrl-space] to clear selection
+
       [e]         toggle display of remote branches
       [tab]       transition to next dashboard
-      [SHIFT-tab] transition to previous dashboard
+      [shift-tab] transition to previous dashboard
       [r]         refresh
       [?]         toggle this help menu
 
