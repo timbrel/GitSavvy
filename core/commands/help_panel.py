@@ -259,7 +259,7 @@ class gs_log_graph_help_panel(GsAbstractOpenHelpPanel):
     [{cr}-r]       Goto tags, branches...
     [h]            Goto HEAD commit
     [up]/[down]    go to previous/next commit (also: [,]/[.] or [j]/[k] in vintageous mode)
-    Use [alt+up]/[alt+down] for wider jumps
+    Use [alt+up]/[alt+down] for wider jumps, e.g. to jump between fixup commits
 
     ### Other ###
     [?]            show this help popup
