@@ -570,7 +570,6 @@ def set_filters(view: sublime.View, new_filters: str) -> None:
     if not settings.get("git_savvy.log_graph_view.apply_filters"):
         settings.set("git_savvy.log_graph_view.apply_filters", True)
         settings.set("git_savvy.log_graph_view.paths", [])
-        settings.set("git_savvy.log_graph_view.filter_by_author", "")
 
 
 class gs_log_graph_add_previous_tip(GsTextCommand):
