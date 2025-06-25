@@ -1,0 +1,29 @@
+GitSavvy 2.51.0
+===============
+
+That's a useful one.  All dashboards, the diff and the graph view now support
+easy multi selections. Press `[space]` to select items, e.g. a commit in the
+graph or a line in the diff, one by one, then invoke the action as usual.
+
+`[ctrl+space]` to clear the selection.
+
+For such a feature, I need colored regions.  The colors are defined in the
+GitSavvy settings.  You can also manually tweak your theme, the scope I use is
+`git_savvy.multiselect`.
+
+-
+
+In the graph view, `alt+up` and `alt+down` are bound for "wider" jumps.  These
+include now jumps between fixup and squash commits and their target commits.
+
+-
+
+Also around the graph: all commands that open a graph for a branch now include
+their upstream.  And the graph overview has now a prominent binding (`[G]`) in
+the status dashboard, and an entry in the Command Palette.  (Reminder: if you're
+in overview mode, `[s]` will bring you out; and if you're in a branches mode,
+`[a]` will show you everything again.)
+
+A small breaking change, the `gs_graph` constructor accepted an `author` argument
+to filter by author.  That has been finally removed, use the `filter` argument for
+that.  (E.g. `{"filter": "--author='herr kaste'"}`.)
