@@ -172,6 +172,9 @@ class gs_show_file_at_commit_refresh(_gs_show_file_at_commit_refresh_mixin):
         file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
 
+        if commit_hash and self.savvy_settings.get("log_follow_rename"):
+            file_path = self.filename_at_commit(file_path, commit_hash)
+
         def program():
             text = self.get_file_content_at_commit(file_path, commit_hash)
             render(view, text, position)
