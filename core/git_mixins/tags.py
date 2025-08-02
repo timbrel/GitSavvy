@@ -108,7 +108,7 @@ class TagsMixin(mixin_base):
             try:
                 semver_entries = sorted(
                     semver_entries,
-                    key=lambda entry: parse_version(entry.tag),
+                    key=lambda entry: parse_version(remove_suffix("^{}", entry.tag)),
                     reverse=True
                 )
             except Exception:
@@ -138,3 +138,7 @@ def parse_version(version_str: str) -> tuple[str | int, ...]:
         for part in re.split(r'[.-]', version_str)
         if part
     )
+
+
+def remove_suffix(suffix: str, s: str) -> str:
+    return s[:-len(suffix)] if suffix and s.endswith(suffix) else s
