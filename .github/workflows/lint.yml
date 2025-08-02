@@ -36,11 +36,9 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
-    - name: Install mypy
-      run: |
-        pip install mypy
+        python-version: '3.13'
+    - name: Install uv
+      run: pip install uv
     - name: Check with mypy
       run: |
-        mypy -p GitSavvy --platform=${{ matrix.platform }}
-
+        uvx mypy@1.16.1 -p GitSavvy --platform=${{ matrix.platform }}
