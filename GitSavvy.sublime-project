@@ -26,6 +26,7 @@
 		"GitSavvy":
 		{
 		},
+		"SublimeLinter.linters.mypy.executable": ["uvx", "mypy@1.16.1"],
 		"SublimeLinter.linters.mypy.excludes": ["*/tests/*"],
 		"rulers":
 		[
