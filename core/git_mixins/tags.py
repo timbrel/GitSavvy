@@ -1,4 +1,4 @@
-from distutils.version import LooseVersion
+from __future__ import annotations
 from itertools import chain
 import re
 
@@ -95,7 +95,8 @@ class TagsMixin(mixin_base):
     def handle_semver_tags(self, entries):
         # type: (Iterable[TagDetails]) -> TagList
         """
-        Sorts tags using LooseVersion if there's a tag matching the semver format.
+        Split list into semantic versions and "other" tags.
+        Also sort the semantic versions.
         """
         semver_entries, regular_entries = [], []
         for entry in entries:
@@ -107,7 +108,7 @@ class TagsMixin(mixin_base):
             try:
                 semver_entries = sorted(
                     semver_entries,
-                    key=lambda entry: LooseVersion(entry.tag),
+                    key=lambda entry: parse_version(entry.tag),
                     reverse=True
                 )
             except Exception:
@@ -117,7 +118,7 @@ class TagsMixin(mixin_base):
                 # Fallback and take only the numbers as sorting key.
                 semver_entries = sorted(
                     semver_entries,
-                    key=lambda entry: LooseVersion(
+                    key=lambda entry: parse_version(
                         SEMVER_TEST.search(entry.tag).group()  # type: ignore[union-attr]
                     ),
                     reverse=True
@@ -129,3 +130,11 @@ class TagsMixin(mixin_base):
 def is_semver_tag(tag):
     # type: (str) -> bool
     return bool(SEMVER_TEST.search(tag))
+
+
+def parse_version(version_str: str) -> tuple[str | int, ...]:
+    return tuple(
+        int(part) if part.isdigit() else part
+        for part in re.split(r'[.-]', version_str)
+        if part
+    )
