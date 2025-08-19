@@ -227,13 +227,11 @@ class gs_blame_refresh(BlameMixin):
 
     def get_content(self, file_path, ignore_whitespace=False, detect_options=None, commit_hash=None):
         if commit_hash and self.savvy_settings.get("blame_follow_rename"):
-            filename_at_commit = self.filename_at_commit(file_path, commit_hash)
-        else:
-            filename_at_commit = file_path
+            file_path = self.filename_at_commit(file_path, commit_hash)
 
         blame_porcelain = self.git(
             "blame", "-p", '-w' if ignore_whitespace else None, detect_options,
-            commit_hash, "--", filename_at_commit
+            commit_hash, "--", file_path
         )
         blame_porcelain = unicodedata.normalize('NFC', blame_porcelain)
         blamed_lines, commits = self.parse_blame(blame_porcelain.split('\n'))
