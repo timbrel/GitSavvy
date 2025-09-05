@@ -1229,10 +1229,10 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
         if not window:
             return
 
-        target_commit = self.view.settings().get("git_savvy.diff_view.target_commit")
+        target_commit = effective_target_commit(self.view)
         if commit_hash or target_commit:
             window.run_command("gs_show_file_at_commit", {
-                "commit_hash": commit_hash or self.resolve_commitish(target_commit),
+                "commit_hash": commit_hash or self.resolve_commitish(target_commit),  # type: ignore[arg-type]
                 "filepath": full_path,
                 "position": Position(line - 1, col - 1, None),
             })
@@ -1243,6 +1243,17 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
                 "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
                 sublime.ENCODED_POSITION
             )
+
+
+def effective_target_commit(view: sublime.View) -> str | None:
+    target_commit = view.settings().get("git_savvy.diff_view.target_commit")
+    if target_commit:
+        return target_commit
+
+    base_commit = view.settings().get("git_savvy.diff_view.base_commit")
+    if "..." in base_commit:
+        _, target_commit = base_commit.split("...")
+    return target_commit
 
 
 def jump_position_to_file(view, diff, pt):
