@@ -616,6 +616,8 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             ]
 
         if base_commit := settings.get("git_savvy.diff_view.base_commit"):
+            # Note: If base_commit marks a range with "...", per contract target_commit
+            #       is None but `list_touched_filenames` *just* works.
             target_commit = settings.get("git_savvy.diff_view.target_commit")
             files = self.list_touched_filenames(base_commit, target_commit)
             items = _make_tuple(["--all"] + files, in_cached_mode)
