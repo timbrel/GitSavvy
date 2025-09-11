@@ -1253,7 +1253,7 @@ def effective_target_commit(view: sublime.View) -> str | None:
         return target_commit
 
     base_commit = view.settings().get("git_savvy.diff_view.base_commit")
-    if "..." in base_commit:
+    if base_commit and "..." in base_commit:
         _, target_commit = base_commit.split("...")
     return target_commit
 
