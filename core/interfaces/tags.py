@@ -543,8 +543,8 @@ class gs_tags_open_on_github(TagsInterfaceCommand, GithubRemotesMixin):
 
 class gs_tags_show_graph(TagsInterfaceCommand):
     def run(self, edit) -> None:
-        # NOTE: We take the tag name because the sha can be point to
-        #       a real commit or a tag in case it's an annotated tag.
+        # NOTE: We take the tag name because the sha can point to a
+        #       real commit or a tag in case it's an annotated tag.
         #       Because in the graph a tag ref takes the form e.g.
         #       `tag: 2.14.5` we need to format it like that here.
         tags = self.selected_local_tags()
