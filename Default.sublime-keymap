@@ -1588,6 +1588,15 @@
         ]
     },
     {
+        "keys": ["h"],
+        "command": "gs_tags_open_on_github",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "git-savvy.tags meta.git-savvy.section.tags meta.git-savvy.tags.tag" }
+        ]
+    },
+    {
         "keys": ["g"],
         "command": "gs_tags_show_graph",
         "context": [
