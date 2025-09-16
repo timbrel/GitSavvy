@@ -3,6 +3,7 @@ from functools import partial
 import os
 import re
 from textwrap import indent
+from webbrowser import open as open_in_browser
 
 import sublime
 from sublime_plugin import WindowCommand
@@ -16,6 +17,8 @@ from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker, run_on_new_thread
 from GitSavvy.core.utils import flash, uprint
 from GitSavvy.core.ui_mixins.quick_panel import show_remote_panel
+from GitSavvy.github import github
+from GitSavvy.github.git_mixins import GithubRemotesMixin
 
 
 __all__ = (
@@ -25,6 +28,7 @@ __all__ = (
     "gs_tags_delete",
     "gs_tags_push",
     "gs_tags_show_commit",
+    "gs_tags_open_on_github",
     "gs_tags_show_graph",
     "gs_tags_navigate_tag",
     "gs_tags_navigate_to_next_tag",
@@ -121,6 +125,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
       [d] delete                      [e]         toggle display of remote branches
       [p] push to remote              [tab]       transition to next dashboard
                                       [shift-tab] transition to previous dashboard
+      [h] open tag on GitHub (if configured)
       [o] show commit
       [g] show log graph
 
@@ -518,10 +523,28 @@ class gs_tags_show_commit(TagsInterfaceCommand):
             self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
 
 
+class gs_tags_open_on_github(TagsInterfaceCommand, GithubRemotesMixin):
+    def run(self, edit):
+        tags = self.selected_local_tags()
+        if not tags:
+            return
+
+        try:
+            remote_url = self.get_integrated_remote_url()
+        except ValueError as exc:
+            flash(self.view, str(exc))
+            return
+
+        for tag_name in tags:
+            github_repo = github.parse_remote(remote_url)
+            url = f"{github_repo.url}/releases/tag/{tag_name}"
+            open_in_browser(url)
+
+
 class gs_tags_show_graph(TagsInterfaceCommand):
     def run(self, edit) -> None:
-        # NOTE: We take the tag name because the sha can be point to
-        #       a real commit or a tag in case it's an annotated tag.
+        # NOTE: We take the tag name because the sha can point to a
+        #       real commit or a tag in case it's an annotated tag.
         #       Because in the graph a tag ref takes the form e.g.
         #       `tag: 2.14.5` we need to format it like that here.
         tags = self.selected_local_tags()
