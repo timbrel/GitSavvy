@@ -71,7 +71,7 @@ class BranchesMixin(mixin_base):
                 if branch_name == "HEAD"
                 else b.canonical_name == branch_name
             ):
-                if b.upstream:
+                if b.upstream and b.upstream.status != "gone":
                     return [b.canonical_name, b.upstream.canonical_name]
                 else:
                     return [b.canonical_name]
