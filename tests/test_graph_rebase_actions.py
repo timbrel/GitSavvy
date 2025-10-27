@@ -148,7 +148,7 @@ class TestRebaseActions(DeferrableTestCase):
 
             pick 142972fd Mark first arg of continuation function "positional only"
             pick fee0447b Simplify `ask_for_local_branch`
-            update-ref refs/pols/fooz--old
+            update-ref refs/pols/fooz--local
             pick 0b0409f8 Let `QuickAction` be a function `str -> str` for flexibility
 
             # Rebase 2bcb7211..0b0409f8 onto 2bcb7211 (3 commands)
