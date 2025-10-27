@@ -169,7 +169,7 @@ def ask_for_ref(self, args, done, initial_text=""):
     if (
         not initial_text
         and view.settings().get("git_savvy.log_graph_view")
-        and (frozen_sel := list(view.sel()))
+        and (frozen_sel := list(multi_selector.get_selection(view)))
         and (line := log_graph.line_from_pt(view, frozen_sel[0].begin()))
         and (info := log_graph.describe_graph_line(line.text, known_branches={}))
         # As we don't feed in `known_branches`, every branch lands in `branches`.
