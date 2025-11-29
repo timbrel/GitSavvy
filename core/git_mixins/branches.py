@@ -12,6 +12,7 @@ from typing import Dict, List, NamedTuple, Optional, Sequence
 
 BRANCH_DESCRIPTION_RE = re.compile(r"^branch\.(.*?)\.description (.*)$")
 FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND = (2, 41, 0)
+FOR_EACH_REF_SUPPORTS_WORKTREEPATH = (2, 23, 0)
 
 
 class Upstream(NamedTuple):
@@ -41,6 +42,7 @@ class Branch(NamedTuple):
     relative_committerdate: str
     upstream: Optional[Upstream]
     distance_to_head: Optional[AheadBehind]
+    worktree_path: Optional[str]
 
     @property
     def is_local(self) -> bool:
@@ -120,6 +122,7 @@ class BranchesMixin(mixin_base):
         """
         Return a list of local and/or remote branches.
         """
+        supports_worktreepath = self.git_version >= FOR_EACH_REF_SUPPORTS_WORKTREEPATH
 
         def get_branches__(probe_speed: bool, supports_ahead_behind: bool) -> List[Branch]:
             WAIT_TIME = 200  # [ms]
@@ -138,7 +141,8 @@ class BranchesMixin(mixin_base):
                             "%(committerdate:relative)",
                             "%(objectname)",
                             "%(contents:subject)",
-                            "%(ahead-behind:HEAD)" if supports_ahead_behind else ""
+                            "%(ahead-behind:HEAD)" if supports_ahead_behind else "",
+                            "%(worktreepath)" if supports_worktreepath else ""
                         ))
                     ),
                     *refs,
@@ -255,7 +259,7 @@ class BranchesMixin(mixin_base):
         # type: (str) -> Branch
         (head, ref, upstream, upstream_remote, upstream_status,
          committerdate, human_committerdate, relative_committerdate,
-         commit_hash, commit_msg, ahead_behind) = line.split("\x00")
+         commit_hash, commit_msg, ahead_behind, worktree_path_str) = line.split("\x00")
 
         active = head == "*"
         is_remote = ref.startswith("refs/remotes/")
@@ -280,6 +284,7 @@ class BranchesMixin(mixin_base):
             ups = None
 
         ahead_behind_ = AheadBehind(*map(int, ahead_behind.split(" "))) if ahead_behind else None
+        worktree_path = worktree_path_str or None
 
         return Branch(
             branch_name,
@@ -293,7 +298,8 @@ class BranchesMixin(mixin_base):
             human_committerdate,
             relative_committerdate,
             upstream=ups,
-            distance_to_head=ahead_behind_
+            distance_to_head=ahead_behind_,
+            worktree_path=worktree_path
         )
 
     def merge(self, branch_names):

@@ -516,7 +516,8 @@ class TestRecentCommitsFormat(DeferrableTestCase):
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
                 ),
-                git_mixins.branches.AheadBehind(ahead=0, behind=0)
+                git_mixins.branches.AheadBehind(ahead=0, behind=0),
+                None
             )
         ]
         actual = list(active_branch.format_and_limit(lines, 5, "origin/master", branches))
