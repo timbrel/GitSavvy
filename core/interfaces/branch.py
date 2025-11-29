@@ -224,20 +224,26 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             else:
                 local_branches = sorted(local_branches, key=sort_key)
 
+            rest_key = (99, 0)
+            worktree_key = (5, 0)
+
             def sectionizer(branch):
                 ahead, behind = branch.distance_to_head
                 return (
-                    (1, 0) if ahead > 0 and behind == 0 else
+                    (1, 0) if ahead > 0 and behind == 0 and not branch.worktree_path else
                     (2, 0) if branch.active else
-                    (3, 0) if ahead == 0 and behind > 0 else
-                    (4, 0) if is_fresh(branch.committerdate) else
-                    (5, 0)
+                    (3, 0) if ahead == 0 and behind >= 0 and not branch.worktree_path else
+                    (4, 0) if is_fresh(branch.committerdate) and not branch.worktree_path else
+                    worktree_key if branch.worktree_path else
+                    rest_key
                 )
 
             local_branches = sorted(local_branches, key=sectionizer)
             return "\n{}\n".format(" " * 60).join(
+                self._render_worktree_branches(list(branches))
+                if section_key == worktree_key else
                 self._render_branch_list(
-                    None, list(branches), descriptions, human_dates=section_key != (5, 0))
+                    None, list(branches), descriptions, human_dates=section_key != rest_key)
                 for section_key, branches in groupby(local_branches, sectionizer)
             )
 
@@ -245,6 +251,60 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             if sort_by_recent:
                 local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
             return self._render_branch_list(None, local_branches, descriptions)
+
+    def _render_worktree_branches(self, branches: List[Branch]) -> str:
+        home = os.path.expanduser("~").replace("\\", "/")
+        parent_dir = os.path.dirname(self.repo_path).replace("\\", "/")
+
+        def nice_path(p: str) -> str:
+            if p.startswith(parent_dir):
+                return self.get_rel_path(p)
+            return p.replace(home, "~")
+
+        return "\n\n".join(
+            "   <{hash}> {name}\n"
+            "      \\ checked out at: {path}"
+            .format(
+                hash=self.get_short_hash(branch.commit_hash),
+                name=branch.canonical_name,
+                path=nice_path(branch.worktree_path)
+            )
+            for branch in branches
+            if branch.worktree_path
+        )
+
+    def format_name_with_etxras(self, branch, previous_branch=None, remote_name_length=0, human_dates=True):
+        def get_date(branch):
+            if human_dates:
+                # Remove possible timezone information, e.g. transform "Wed 14:28 -0700"
+                # to just "Wed 14:28".
+                return re.sub(r" [+-]\d{4}$", "", branch.human_committerdate)
+
+            d = branch.relative_committerdate
+            if d == "12 months ago":
+                d = "1 year ago"
+            # Shorten relative dates with months e.g. "1 year, 1 month ago"
+            # to just "1 year ago".
+            return re.sub(r", \d+ months? ago", " ago", d)
+
+        def mangle_date(branch: Branch, previous: Optional[Branch]):
+            date = get_date(branch)
+            if human_dates and previous and get_date(previous) == date:
+                return ""
+            return date
+
+        return " ".join(filter_((
+            branch.canonical_name[remote_name_length:],
+            ", ".join(filter_((
+                mangle_date(branch, previous_branch),
+                (
+                    "({branch}{status})".format(
+                        branch=branch.upstream.canonical_name,
+                        status=", {}".format(branch.upstream.status) if branch.upstream.status else ""
+                    ) if branch.upstream else ""
+                ),
+            ))),
+        )))
 
     def _render_branch_list(self, remote_name, branches, descriptions, human_dates=True):
         # type: (Optional[str], List[Branch], Dict[str, str], bool) -> str
@@ -275,18 +335,19 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             "  {indicator} {hash} {name_with_extras}{description}".format(
                 indicator="▸" if branch.active else " ",
                 hash=self.get_short_hash(branch.commit_hash),
-                name_with_extras=" ".join(filter_((
-                    branch.canonical_name[remote_name_length:],
-                    ", ".join(filter_((
-                        mangle_date(branch, previous),
-                        (
-                            "({branch}{status})".format(
-                                branch=branch.upstream.canonical_name,
-                                status=", {}".format(branch.upstream.status) if branch.upstream.status else ""
-                            ) if branch.upstream else ""
-                        ),
-                    ))),
-                ))),
+                name_with_extras=self.format_name_with_etxras(branch, previous, remote_name_length, human_dates),
+                # name_with_extras=" ".join(filter_((
+                #     branch.canonical_name[remote_name_length:],
+                #     ", ".join(filter_((
+                #         mangle_date(branch, previous),
+                #         (
+                #             "({branch}{status})".format(
+                #                 branch=branch.upstream.canonical_name,
+                #                 status=", {}".format(branch.upstream.status) if branch.upstream.status else ""
+                #             ) if branch.upstream else ""
+                #         ),
+                #     ))),
+                # ))),
                 description=(
                     " - {}".format(descriptions[branch.canonical_name].rstrip())
                     if descriptions.get(branch.canonical_name)
