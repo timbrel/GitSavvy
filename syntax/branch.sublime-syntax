@@ -50,15 +50,15 @@ contexts:
         3: keyword.other.git-savvy.path
 
 
-    - match: '^\s+(<)([0-9a-f]{7,40}) ?(>-?)  (.*)$'
+    - match: '^\s+(<)([0-9a-f]{7,40}) ?(>-) (.*)$'
       captures:
         0: meta.git-savvy.branches.branch.as-worktree
         1: punctuation.symbol.foreign-branch
         2: constant.other.git-savvy.branches.branch.sha1 keyword
         3: punctuation.symbol.foreign-branch
-        4: keyword
+        4: string
 
-    - match: '^\s+(<)([0-9a-f]{7,40})(>) (\S+)\s?(.*)$'
+    - match: '^\s+(<)([0-9a-f]{7,40})(>) (?:\(DETACHED\)|(\S+))\s?(.*)$'
       captures:
 
         0: meta.git-savvy.branches.branch.as-worktree
@@ -68,7 +68,7 @@ contexts:
         4: meta.git-savvy.branches.branch.name gitsavvy.gotosymbol
         5: comment.git-savvy.branches.branch.extra-info
 
-    - match: '^  (▸)?\s+([0-9a-f]{7,40}) ([^\s]+)\s([^(-].+?)?((?:, )?\(.+?(?:, (gone))?\))?( ?\- .+)?$'
+    - match: '^  (▸)?\s+([0-9a-f]{7,40}) (?:\(DETACHED\)|(\S+))\s([^(-].+?)?((?:, )?\(.+?(?:, (gone))?\))?( ?\- .+)?$'
       captures:
         0: meta.git-savvy.branches.branch
         1: punctuation.symbol.active-branch.git-savvy

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from contextlib import contextmanager
 import datetime
 from functools import partial
@@ -43,9 +44,10 @@ __all__ = (
 )
 
 
-from typing import Dict, Iterable, Iterator, List, Optional, Tuple, TypedDict
+from typing import Dict, Iterable, Iterator, List, Optional, Tuple, TypedDict, NamedTuple
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.branches import Branch
+from ..git_mixins.worktrees import Worktree
 
 
 class BranchViewState(TypedDict, total=False):
@@ -55,10 +57,20 @@ class BranchViewState(TypedDict, total=False):
     descriptions: Dict[str, str]
     remotes: Dict[str, str]
     recent_commits: List[Commit]
+    worktrees: List[Worktree]
     sort_by_recent: bool
     group_by_distance_to_head: bool
     show_remotes: bool
     show_help: bool
+
+
+class DetachedBranch(NamedTuple):
+    commit_hash: str
+    canonical_name: str
+    worktree_path: str
+
+
+BranchWithWorktree = DetachedBranch
 
 
 class gs_show_branch(WindowCommand, GitCommand):
@@ -124,7 +136,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
       REMOTE ({remote_name}):
     {remote_branch_list}"""
 
-    subscribe_to = {"branches", "descriptions", "long_status", "recent_commits", "remotes"}
+    subscribe_to = {"branches", "descriptions", "long_status", "recent_commits", "remotes", "worktrees"}
     state: BranchViewState
 
     def initial_state(self):
@@ -144,6 +156,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             enqueue_on_worker(self.get_branches)
         enqueue_on_worker(self.fetch_branch_description_subjects)
         enqueue_on_worker(self.get_latest_commits)
+        enqueue_on_worker(self.get_worktrees)
         enqueue_on_worker(self.get_remotes)
         self.view.run_command("gs_update_status")
 
@@ -202,11 +215,30 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         return "{0.hash} {0.message}".format(recent_commits[0])
 
     @ui.section("branch_list")
-    def render_branch_list(self, branches, sort_by_recent, group_by_distance_to_head):
-        # type: (List[Branch], bool, bool) -> str
+    def render_branch_list(self, branches, worktrees, sort_by_recent, group_by_distance_to_head):
+        # type: (List[Branch], List[Worktree], bool, bool) -> str
         # Manually get `descriptions` to not delay the first render.
         descriptions = self.state.get("descriptions", {})
         local_branches = [branch for branch in branches if branch.is_local]
+        normalized_repo_path = self.repo_path.replace("\\", "/")
+        detached_worktrees = [
+            DetachedBranch(
+                commit_hash=wt.commit_hash,
+                canonical_name="(DETACHED)",
+                worktree_path=wt.path,
+            )
+            for wt in worktrees
+            if wt.detached and wt.path != normalized_repo_path
+        ]
+        detached_head = [
+            DetachedBranch(
+                commit_hash=wt.commit_hash,
+                canonical_name="(DETACHED)",
+                worktree_path="."
+            )
+            for wt in worktrees
+            if wt.detached and wt.path == normalized_repo_path
+        ]
 
         has_distance_to_head_information = any(b.distance_to_head for b in local_branches)
         if has_distance_to_head_information and group_by_distance_to_head:
@@ -224,27 +256,41 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             else:
                 local_branches = sorted(local_branches, key=sort_key)
 
-            rest_key = (99, 0)
+            detached_head_key = (0, 0)
             worktree_key = (5, 0)
+            detached_worktree_key = (6, 0)
+            rest_key = (99, 0)
 
             def sectionizer(branch):
+                if branch.worktree_path and not branch.active:
+                    return worktree_key
                 ahead, behind = branch.distance_to_head
                 return (
-                    (1, 0) if ahead > 0 and behind == 0 and not branch.worktree_path else
+                    (1, 0) if ahead > 0 and behind == 0 else
                     (2, 0) if branch.active else
-                    (3, 0) if ahead == 0 and behind >= 0 and not branch.worktree_path else
-                    (4, 0) if is_fresh(branch.committerdate) and not branch.worktree_path else
-                    worktree_key if branch.worktree_path else
+                    (3, 0) if ahead == 0 and behind >= 0 else
+                    (4, 0) if is_fresh(branch.committerdate) else
                     rest_key
                 )
 
             local_branches = sorted(local_branches, key=sectionizer)
-            return "\n{}\n".format(" " * 60).join(
-                self._render_worktree_branches(list(branches))
-                if section_key == worktree_key else
-                self._render_branch_list(
-                    None, list(branches), descriptions, human_dates=section_key != rest_key)
+            grouped: dict = {
+                section_key: list(branches)
                 for section_key, branches in groupby(local_branches, sectionizer)
+            }
+            if detached_worktrees:
+                grouped[detached_worktree_key] = detached_worktrees
+            if detached_head:
+                grouped[detached_head_key] = detached_head
+
+            return "\n{}\n".format(" " * 60).join(
+                self._render_worktree_branches(branches)
+                if section_key in (worktree_key, detached_worktree_key) else
+                self._render_detached_head(branches[0])
+                if section_key == detached_head_key else
+                self._render_branch_list(
+                    None, branches, descriptions, human_dates=section_key != rest_key)
+                for section_key, branches in sorted(grouped.items())
             )
 
         else:
@@ -252,7 +298,12 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                 local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
             return self._render_branch_list(None, local_branches, descriptions)
 
-    def _render_worktree_branches(self, branches: List[Branch]) -> str:
+    def _render_detached_head(self, worktree: DetachedBranch) -> str:
+        return "  ▸ {hash} (DETACHED)".format(
+            hash=self.get_short_hash(worktree.commit_hash),
+        )
+
+    def _render_worktree_branches(self, branches: List[BranchWithWorktree | DetachedBranch]) -> str:
         home = os.path.expanduser("~").replace("\\", "/")
         parent_dir = os.path.dirname(self.repo_path).replace("\\", "/")
 
@@ -261,7 +312,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                 return self.get_rel_path(p)
             return p.replace(home, "~")
 
-        return "\n\n".join(
+        return "\n{}\n".format(" " * 60).join(
             "   <{hash}> {name}\n"
             "      \\ checked out at: {path}"
             .format(
@@ -270,41 +321,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                 path=nice_path(branch.worktree_path)
             )
             for branch in branches
-            if branch.worktree_path
         )
-
-    def format_name_with_etxras(self, branch, previous_branch=None, remote_name_length=0, human_dates=True):
-        def get_date(branch):
-            if human_dates:
-                # Remove possible timezone information, e.g. transform "Wed 14:28 -0700"
-                # to just "Wed 14:28".
-                return re.sub(r" [+-]\d{4}$", "", branch.human_committerdate)
-
-            d = branch.relative_committerdate
-            if d == "12 months ago":
-                d = "1 year ago"
-            # Shorten relative dates with months e.g. "1 year, 1 month ago"
-            # to just "1 year ago".
-            return re.sub(r", \d+ months? ago", " ago", d)
-
-        def mangle_date(branch: Branch, previous: Optional[Branch]):
-            date = get_date(branch)
-            if human_dates and previous and get_date(previous) == date:
-                return ""
-            return date
-
-        return " ".join(filter_((
-            branch.canonical_name[remote_name_length:],
-            ", ".join(filter_((
-                mangle_date(branch, previous_branch),
-                (
-                    "({branch}{status})".format(
-                        branch=branch.upstream.canonical_name,
-                        status=", {}".format(branch.upstream.status) if branch.upstream.status else ""
-                    ) if branch.upstream else ""
-                ),
-            ))),
-        )))
 
     def _render_branch_list(self, remote_name, branches, descriptions, human_dates=True):
         # type: (Optional[str], List[Branch], Dict[str, str], bool) -> str
@@ -335,19 +352,18 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             "  {indicator} {hash} {name_with_extras}{description}".format(
                 indicator="▸" if branch.active else " ",
                 hash=self.get_short_hash(branch.commit_hash),
-                name_with_extras=self.format_name_with_etxras(branch, previous, remote_name_length, human_dates),
-                # name_with_extras=" ".join(filter_((
-                #     branch.canonical_name[remote_name_length:],
-                #     ", ".join(filter_((
-                #         mangle_date(branch, previous),
-                #         (
-                #             "({branch}{status})".format(
-                #                 branch=branch.upstream.canonical_name,
-                #                 status=", {}".format(branch.upstream.status) if branch.upstream.status else ""
-                #             ) if branch.upstream else ""
-                #         ),
-                #     ))),
-                # ))),
+                name_with_extras=" ".join(filter_((
+                    branch.canonical_name[remote_name_length:],
+                    ", ".join(filter_((
+                        mangle_date(branch, previous),
+                        (
+                            "({branch}{status})".format(
+                                branch=branch.upstream.canonical_name,
+                                status=", {}".format(branch.upstream.status) if branch.upstream.status else ""
+                            ) if branch.upstream else ""
+                        ),
+                    ))),
+                ))),
                 description=(
                     " - {}".format(descriptions[branch.canonical_name].rstrip())
                     if descriptions.get(branch.canonical_name)
