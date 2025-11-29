@@ -14,6 +14,7 @@ from typing import (
 if TYPE_CHECKING:
     from GitSavvy.core.git_mixins.active_branch import Commit
     from GitSavvy.core.git_mixins.branches import Branch
+    from GitSavvy.core.git_mixins.worktrees import Worktree
     from GitSavvy.core.git_mixins.stash import Stash
     from GitSavvy.core.git_mixins.tags import TagList
     from GitSavvy.core.git_mixins.status import HeadState, WorkingDirState
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
         short_status: str
         branches: List[Branch]
         remotes: Dict[str, str]
+        worktrees: List[Worktree]
         remotes_with_no_tags_set: Set[str]
         local_tags: TagList
         last_branches: Deque[Optional[str]]

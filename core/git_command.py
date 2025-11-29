@@ -812,6 +812,7 @@ mixin_base = _GitCommand
 from .git_mixins.status import StatusMixin  # noqa: E402
 from .git_mixins.active_branch import ActiveBranchMixin  # noqa: E402
 from .git_mixins.branches import BranchesMixin  # noqa: E402
+from .git_mixins.worktrees import WorktreesMixin  # noqa: E402
 from .git_mixins.stash import StashMixin  # noqa: E402
 from .git_mixins.stage_unstage import StageUnstageMixin  # noqa: E402
 from .git_mixins.checkout_discard import CheckoutDiscardMixin  # noqa: E402
@@ -830,6 +831,7 @@ class GitCommand(
 
     RemotesMixin,  # depends on BranchesMixin
     BranchesMixin,
+    WorktreesMixin,
     CheckoutDiscardMixin,
 
     StatusMixin,  # depends on HistoryMixin
