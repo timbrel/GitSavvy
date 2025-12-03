@@ -57,4 +57,4 @@ class gs_github_add_fork_as_remote(git_mixins.GithubRemotesMixin, GsWindowComman
         elif index == 1:
             url = self.fork["ssh_url"]
 
-        self.window.run_command("gs_remote_add", {"url": url})
+        self.window.run_command("gs_remote_add", {"url": url, "ignore_tags": True})

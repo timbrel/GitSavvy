@@ -164,6 +164,8 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
         if set_upstream:
             if owner not in self.remotes.keys():
                 self.git("remote", "add", owner, url)
+                self.git("config", f"remote.{owner}.push", "+refs/heads/*:refs/heads/*")
+                self.git("config", f"remote.{owner}.tagOpt", "--no-tags")
             self.git("fetch", owner, ref)
             self.update_store({"last_remote_used": owner})
             self.git("branch", branch_name, "FETCH_HEAD")
