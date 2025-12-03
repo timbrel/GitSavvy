@@ -20,7 +20,8 @@ class gs_remote_add(GsWindowCommand):
     Add remotes
     """
 
-    def run(self, url=None, set_as_push_default=False, ignore_tags=False):
+    def run(self, url=None, set_as_push_default=False, ignore_tags=False, follow_their_head=True):
+        self.follow_their_head = follow_their_head
         self.ignore_tags = ignore_tags
         self.set_as_push_default = set_as_push_default
         if url:
@@ -43,6 +44,10 @@ class gs_remote_add(GsWindowCommand):
         if self.ignore_tags:
             self.git("config", f"remote.{remote_name}.push", "+refs/heads/*:refs/heads/*")
             self.git("config", f"remote.{remote_name}.tagOpt", "--no-tags")
+        if not self.follow_their_head:
+            self.git("config", f"remote.{remote_name}.followRemoteHEAD", "never")
+            if default_branch := self.guess_default_branch(remote_name):
+                self.git("config", "--add", f"remote.{remote_name}.fetch", f"^refs/heads/{default_branch}")
         if self.set_as_push_default:
             run_on_new_thread(self.git, "config", "--local", "gitsavvy.pushdefault", remote_name)
             self.update_store({"last_remote_used_for_push": remote_name})
