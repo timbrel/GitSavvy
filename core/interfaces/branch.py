@@ -6,11 +6,13 @@ from itertools import groupby
 import os
 import re
 
+import sublime
 from sublime_plugin import WindowCommand
 
 from ...common import ui, util
 from ..commands import GsNavigate
 from ..commands.log import LogMixin
+from ..commands import multi_selector
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -477,6 +479,84 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
             )
         ]
 
+    def single_line_info(self) -> tuple[LineInfo | None, str | None]:
+        view = self.view
+        frozen_sel = list(multi_selector.get_selection(view))
+        if len(frozen_sel) == 0:
+            return None, "View has no selection."
+        elif len(frozen_sel) > 1:
+            return None, "Only one selection allowed."
+
+        sel = frozen_sel[0]
+        lines = view.lines(sel)
+        if len(lines) == 0:
+            return None, "No lines selected."
+        elif len(lines) > 1:
+            return None, "Only one line can be selected."
+
+        remote_map = {}
+        for remote_name in self.interface.state["remotes"]:
+            region_name = self.region_name_for("branch_list_" + remote_name)
+            for r in view.get_regions(region_name):
+                remote_map[remote_name] = r
+
+        commit_hash = None
+        branch_name = None
+        remote = None
+        is_worktree = False
+        is_active = False
+
+        line = lines[0]
+        for region, scope in extract_tokens_with_scopes(view, line):
+            if "constant.other.git-savvy.branches.branch.sha1" in scope:
+                commit_hash = view.substr(region)
+            if "meta.git-savvy.branches.branch.name" in scope:
+                branch_name = view.substr(region)
+            if "meta.git-savvy.status.section.branch.remote" in scope:
+                for remote_name, r in remote_map.items():
+                    if r.contains(line):
+                        remote = remote_name
+                        break
+            if "meta.git-savvy.branches.branch.as-worktree" in scope:
+                is_worktree = True
+            if "meta.git-savvy.branches.branch.active-branch" in scope:
+                is_active = True
+
+        if not commit_hash:
+            return None, "No item selected."
+        return LineInfo(commit_hash, branch_name, remote, is_worktree, is_active), None
+
+
+def extract_tokens_with_scopes(view, region) -> list[tuple[sublime.Region, str]]:
+    rv: list[tuple[sublime.Region, str]] = []
+    for current in view.extract_tokens_with_scopes(region):
+        previous = rv[-1] if rv else None
+        if not previous or previous[1] != current[1]:
+            rv.append(current)
+        else:
+            rv[-1] = (sublime.Region(previous[0].a, current[0].b), previous[1])
+    return rv
+
+
+class LineInfo(NamedTuple):
+    commit_hash: str
+    branch_name: str | None
+    remote: str | None
+    is_worktree: bool
+    is_active: bool
+
+    @property
+    def canonical_name(self) -> str:
+        return "/".join(filter_((self.remote, self.branch_name)))
+
+    @property
+    def is_detached(self) -> bool:
+        return not self.branch_name
+
+    @property
+    def is_remote(self) -> bool:
+        return bool(self.remote)
+
 
 class CommandForSingleBranch(BranchInterfaceCommand):
     selected_branch: Branch
@@ -491,14 +571,30 @@ class CommandForSingleBranch(BranchInterfaceCommand):
             raise RuntimeError("Only one branch must be selected.")
 
 
-class gs_branches_checkout(CommandForSingleBranch):
+class CommandForSingleItem(BranchInterfaceCommand):
+    selected_item: LineInfo
+
+    def pre_run(self):
+        info, err = self.single_line_info()
+        if err:
+            raise RuntimeError(err)
+        assert info
+        self.selected_item = info
+
+
+class gs_branches_checkout(CommandForSingleItem):
 
     """
     Checkout the selected branch.
     """
 
     def run(self, edit):
-        self.window.run_command("gs_checkout_branch", {"branch": self.selected_branch.canonical_name})
+        if self.selected_item.is_active:
+            flash(self.view, "Already checked out.")
+            return
+        self.window.run_command("gs_checkout_branch", {
+            "branch": self.selected_item.canonical_name or self.selected_item.commit_hash
+        })
 
 
 class gs_branches_create_new(CommandForSingleBranch):
