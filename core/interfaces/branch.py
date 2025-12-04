@@ -189,7 +189,9 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         cursor_was_on_active_branch = cursor_is_on_active_branch()
         yield
         active_branch_available = any(b for b in self.state.get("branches", []) if b.active)
-        if active_branch_available:
+        head = self.current_state().get("head")
+        detached_head = head and head.detached
+        if active_branch_available or detached_head:
             if cursor_was_on_active_branch and not cursor_is_on_active_branch() or not on_special_symbol():
                 self.view.run_command("gs_branches_navigate_to_active_branch")
         else:
