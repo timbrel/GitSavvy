@@ -226,7 +226,6 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         # Manually get `descriptions` to not delay the first render.
         descriptions = self.state.get("descriptions", {})
         local_branches = [branch for branch in branches if branch.is_local]
-        normalized_repo_path = self.repo_path.replace("\\", "/")
         detached_worktrees = [
             DetachedBranch(
                 commit_hash=wt.commit_hash,
@@ -234,7 +233,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                 worktree_path=wt.path,
             )
             for wt in worktrees
-            if wt.detached and wt.path != normalized_repo_path
+            if wt.is_detached and not wt.is_main
         ]
         detached_head = [
             DetachedBranch(
@@ -243,7 +242,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                 worktree_path="."
             )
             for wt in worktrees
-            if wt.detached and wt.path == normalized_repo_path
+            if wt.is_detached and wt.is_main
         ]
 
         has_distance_to_head_information = any(b.distance_to_head for b in local_branches)
