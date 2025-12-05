@@ -5,6 +5,7 @@ from functools import partial
 from itertools import groupby
 import os
 import re
+import subprocess
 
 import sublime
 from sublime_plugin import WindowCommand
@@ -12,8 +13,9 @@ from sublime_plugin import WindowCommand
 from ...common import ui, util
 from ..commands import GsNavigate
 from ..commands.log import LogMixin
+from ..commands.log_graph_rebase_actions import get_sublime_executable
 from ..commands import multi_selector
-from ..git_command import GitCommand
+from ..git_command import GitCommand, STARTUPINFO
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.fns import chain, filter_, pairwise
@@ -611,25 +613,54 @@ class gs_branches_checkout(CommandForSingleItem):
     """
 
     def run(self, edit):
+        """
+        if active: detach
+        if local branch:  checkout
+        if remote: checkout detached
+        if worktree:  open new window  (// switch to project  // checkout detached)?
+        """
         if self.selected_item.is_active:
-            flash(self.view, "Already checked out.")
-            return
-        self.window.run_command("gs_checkout_branch", {
-            "branch": self.selected_item.canonical_name or self.selected_item.commit_hash
-        })
+            if self.selected_item.is_detached:
+                flash(self.view, "Already checked out.")
+            else:
+                self.window.run_command("gs_checkout_branch", {
+                    "branch": self.selected_item.commit_hash
+                })
+        elif self.selected_item.worktree:
+            worktree_path = self.selected_item.worktree.replace("/", os.path.sep)
+            open_folder_in_new_window(worktree_path)
+        else:
+            self.window.run_command("gs_checkout_branch", {
+                "branch": self.selected_item.canonical_name or self.selected_item.commit_hash
+            })
 
 
-class gs_branches_create_new(CommandForSingleBranch):
+def open_folder_in_new_window(path):
+    bin = get_sublime_executable()
+    cmd = [bin, path]
+    subprocess.Popen(cmd, startupinfo=STARTUPINFO)
+
+
+class gs_branches_create_new(CommandForSingleItem):
 
     """
     Create a new branch from selected branch and checkout.
     """
 
     def run(self, edit):
-        if self.selected_branch.is_remote:
-            self.window.run_command("gs_checkout_remote_branch", {"remote_branch": self.selected_branch.canonical_name})
+        """
+        if active: create from branch_name or commit_hash
+        if local: create from branch_name
+        if remote: create from branch_name
+        if worktree: create from branch_name or commit_hash
+        """
+
+        if self.selected_item.is_remote:
+            self.window.run_command("gs_checkout_remote_branch", {"remote_branch": self.selected_item.canonical_name})
         else:
-            self.window.run_command("gs_checkout_new_branch", {"start_point": self.selected_branch.name})
+            self.window.run_command("gs_checkout_new_branch", {
+                "start_point": self.selected_item.branch_name or self.selected_item.commit_hash
+            })
 
 
 class gs_branches_delete(CommandForSingleBranch):
