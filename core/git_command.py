@@ -55,6 +55,8 @@ encoded files.  In the latter case use the 'fallback_encoding' setting.
 -- Partially decoded output follows; � denotes decoding errors --
 """
 
+HOME = os.path.expanduser('~')
+NORM_HOME = HOME.replace("\\", "/")
 MIN_GIT_VERSION = (2, 18, 0)
 GIT_TOO_OLD_MSG = "Your Git version is too old. GitSavvy requires {:d}.{:d}.{:d} or above."
 
@@ -209,10 +211,6 @@ def log_git_runtime(fn):
             if saved_exception:
                 raise saved_exception from None
     return decorated
-
-
-HOME = os.path.expanduser('~')
-NORM_HOME = HOME.replace("\\", "/")
 
 
 def __search_for_git(folder):
