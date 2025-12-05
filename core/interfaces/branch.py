@@ -500,10 +500,28 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
             for r in view.get_regions(region_name):
                 remote_map[remote_name] = r
 
+        def extract_worktree_path(line: sublime.Region) -> str | None:
+            for region, scope in extract_tokens_with_scopes(view, line):
+                if "keyword.other.git-savvy.path" in scope:
+                    formatted_path = view.substr(region)
+                    home = os.path.expanduser("~").replace("\\", "/")
+                    parent_dir = os.path.dirname(self.repo_path).replace("\\", "/")
+
+                    def nice_path(p: str) -> str:
+                        if p.startswith(parent_dir):
+                            return self.get_rel_path(p)
+                        return p.replace(home, "~")
+
+                    for w in self.interface.state["worktrees"]:
+                        if nice_path(w.path) == formatted_path:
+                            return w.path
+
+            return None
+
         commit_hash = None
         branch_name = None
         remote = None
-        is_worktree = False
+        worktree = None
         is_active = False
 
         line = lines[0]
@@ -518,13 +536,13 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
                         remote = remote_name
                         break
             if "meta.git-savvy.branches.branch.as-worktree" in scope:
-                is_worktree = True
+                worktree = extract_worktree_path(view.line(line.b + 1))
             if "meta.git-savvy.branches.branch.active-branch" in scope:
                 is_active = True
 
         if not commit_hash:
             return None, "No item selected."
-        return LineInfo(commit_hash, branch_name, remote, is_worktree, is_active), None
+        return LineInfo(commit_hash, branch_name, remote, worktree, is_active), None
 
 
 def extract_tokens_with_scopes(view, region) -> list[tuple[sublime.Region, str]]:
@@ -542,7 +560,7 @@ class LineInfo(NamedTuple):
     commit_hash: str
     branch_name: str | None
     remote: str | None
-    is_worktree: bool
+    worktree: str | None
     is_active: bool
 
     @property
@@ -556,6 +574,10 @@ class LineInfo(NamedTuple):
     @property
     def is_remote(self) -> bool:
         return bool(self.remote)
+
+    @property
+    def is_worktree(self) -> bool:
+        return bool(self.worktree)
 
 
 class CommandForSingleBranch(BranchInterfaceCommand):
