@@ -8,7 +8,8 @@ from ..git_mixins import GithubRemotesMixin
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.git_mixins.branches import Branch
 from GitSavvy.core.ui_mixins.quick_panel import show_remote_panel
-from GitSavvy.core.utils import hprint, show_busy_panel, show_noop_panel, show_panel, AnimatedText
+from GitSavvy.core.ui__busy_panel import AnimatedText, show_busy_panel
+from GitSavvy.core.utils import hprint, show_noop_panel, show_panel
 
 
 __all__ = (
