@@ -63,3 +63,6 @@ class WorktreesMixin(mixin_base):
 
         commit_current(current)
         return worktrees
+
+    def remove_worktree(self, path: str, *, force: bool = False):
+        self.git("worktree", "remove", "-f" if force else None, path)

@@ -646,18 +646,20 @@ class gs_branches_create_new(CommandForSingleItem):
             })
 
 
-class gs_branches_delete(CommandForSingleBranch):
+class gs_branches_delete(CommandForSingleItem):
 
     """
     Delete selected branch.
     """
 
     def run(self, edit, force=False):
-        if self.selected_branch.is_remote:
-            self.delete_remote_branch(self.selected_branch.remote, self.selected_branch.name, force)
+        if self.selected_item.is_remote:
+            self.delete_remote_branch(self.selected_item.remote, self.selected_item.branch_name, force)
+        elif self.selected_item.worktree:
+            self.remove_worktree(self.selected_item.worktree, force=force)
         else:
             self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
-            self.window.run_command("gs_delete_branch", {"branch": self.selected_branch.name, "force": force})
+            self.window.run_command("gs_delete_branch", {"branch": self.selected_item.branch_name, "force": force})
 
     @util.actions.destructive(description="delete a remote branch")
     @on_worker
