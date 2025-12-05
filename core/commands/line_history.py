@@ -8,12 +8,12 @@ from sublime_plugin import TextCommand, WindowCommand
 
 from . import diff
 from . import inline_diff
-from .log_graph import busy_indicator
 from .navigate import GsNavigate
 from ..fns import filter_, pairwise
 from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff
 from ..runtime import run_on_new_thread
+from ..ui__busy_spinner import busy_indicator
 from ..utils import flash
 from ..view import clamp, replace_view_content
 from ...common import util
