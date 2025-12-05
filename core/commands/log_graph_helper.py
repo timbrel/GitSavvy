@@ -6,18 +6,20 @@ from typing import Dict, List, Literal, Optional, Sequence, TypedDict
 import sublime
 
 from ..git_mixins.branches import Branch
-from . import log_graph_colorizer as colorizer
 
 
 GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
+COMMIT_NODE_CHARS = "●⌂*"
+DEFAULT_NODE_CHAR = "●"
+ROOT_NODE_CHAR = "⌂"
 COMMIT_LINE = re.compile(
     r"^[{graph_chars}]*(?P<dot>[{node_chars}])[{graph_chars}]* "
     r"(?P<commit_hash>[a-f0-9]{{5,40}}) +"
     r"(\((?P<decoration>.+?)\))?"
-    .format(graph_chars=GRAPH_CHAR_OPTIONS, node_chars=colorizer.COMMIT_NODE_CHARS)
+    .format(graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHARS)
 )
 FIND_COMMIT_HASH = "^[{graph_chars}]*[{node_chars}][{graph_chars}]* ".format(
-    graph_chars=GRAPH_CHAR_OPTIONS, node_chars=colorizer.COMMIT_NODE_CHARS
+    graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHARS
 )
 
 
