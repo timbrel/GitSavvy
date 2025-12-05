@@ -21,7 +21,7 @@ from .log import gs_log
 from ..base_commands import GsTextCommand
 from ..fns import filter_, flatten, pairwise, partition, take
 from ..git_command import GitCommand
-from ..parse_diff import Region, TextRange
+from ..text_helper import Region, TextRange
 from ..settings import GitSavvySettings
 from ..runtime import (
     cooperative_thread_hopper,

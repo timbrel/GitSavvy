@@ -5,7 +5,8 @@ import re
 
 import sublime
 from ..fns import accumulate, filter_, flatten
-from ..parse_diff import Hunk, SplittedDiff, Region
+from ..parse_diff import Hunk, SplittedDiff
+from ..text_helper import Region
 from ..utils import eat_but_log_errors, line_indentation
 from ..runtime import cooperative_thread_hopper, AWAIT_WORKER, HopperR
 

@@ -14,7 +14,8 @@ from . import show_file_at_commit
 from ..fns import filter_, flatten, unique
 from ..git_command import GitCommand
 from ..utils import flash, flash_regions, focus_view, Cache
-from ..parse_diff import SplittedDiff, TextRange
+from ..parse_diff import SplittedDiff
+from ..text_helper import TextRange
 from ..runtime import ensure_on_ui, enqueue_on_worker
 from ..view import replace_view_content, Position
 from ...common import util

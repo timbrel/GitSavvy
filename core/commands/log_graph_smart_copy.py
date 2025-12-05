@@ -3,7 +3,7 @@ import sublime_plugin
 
 from . import log_graph
 from ..fns import pairwise, peek
-from ..parse_diff import Region, TextRange
+from ..text_helper import Region, TextRange
 from ..utils import flash, flash_regions
 from ..view import find_by_selector
 

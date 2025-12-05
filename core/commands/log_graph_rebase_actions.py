@@ -20,7 +20,7 @@ from GitSavvy.core.commands.log_graph_helper import (
 )
 from GitSavvy.core.fns import filter_, unique
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
-from GitSavvy.core.parse_diff import TextRange
+from GitSavvy.core.text_helper import TextRange
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
 from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.ui__quick_panel import noop, show_actions_panel, SEPARATOR, show_quick_panel

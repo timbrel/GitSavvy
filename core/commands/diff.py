@@ -55,7 +55,8 @@ from typing import (
     Tuple, TypeVar
 )
 from typing_extensions import TypeAlias
-from ..parse_diff import FileHeader, Hunk, HunkLine, TextRange
+from ..parse_diff import FileHeader, Hunk, HunkLine
+from ..text_helper import TextRange
 from ..types import LineNo, ColNo
 from ..git_mixins.history import LogEntry
 from ..git_mixins.status import FileStatus
