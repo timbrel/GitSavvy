@@ -619,6 +619,18 @@ class gs_branches_checkout(CommandForSingleItem):
         elif self.selected_item.worktree:
             worktree_path = self.selected_item.worktree.replace("/", os.path.sep)
             open_folder_in_new_window(worktree_path)
+
+            @on_worker
+            def search_for_new_window(_tries=5):
+                for w in sublime.windows():
+                    if worktree_path in w.folders():
+                        if not w.views():
+                            w.run_command("gs_show_branch")
+                        return
+                sublime.set_timeout(lambda: search_for_new_window(_tries - 1), 10)
+
+            search_for_new_window()
+
         else:
             self.window.run_command("gs_checkout_branch", {
                 "branch": self.selected_item.canonical_name or self.selected_item.commit_hash
