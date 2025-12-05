@@ -13,6 +13,7 @@ from sublime_plugin import WindowCommand
 from ...common import ui, util
 from ..commands import GsNavigate
 from ..commands.log import LogMixin
+from ..commands.log_graph import busy_indicator
 from ..commands.log_graph_rebase_actions import get_sublime_executable
 from ..commands import multi_selector
 from ..git_command import GitCommand, STARTUPINFO
@@ -67,6 +68,7 @@ class BranchViewState(TypedDict, total=False):
     group_by_distance_to_head: bool
     show_remotes: bool
     show_help: bool
+    worktree_deletions_in_progress: set[str]
 
 
 class DetachedBranch(NamedTuple):
@@ -148,6 +150,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
     def initial_state(self):
         return {
             'show_remotes': self.savvy_settings.get("show_remotes_in_branch_dashboard"),
+            'worktree_deletions_in_progress': set(),
         }
 
     def title(self):
@@ -158,11 +161,12 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         # type: () -> None
         if self.view.settings().get("git_savvy.update_view_in_a_blocking_manner"):
             self.get_branches()
+            self.get_worktrees()
         else:
             enqueue_on_worker(self.get_branches)
+            enqueue_on_worker(self.get_worktrees)
         enqueue_on_worker(self.fetch_branch_description_subjects)
         enqueue_on_worker(self.get_latest_commits)
-        enqueue_on_worker(self.get_worktrees)
         enqueue_on_worker(self.get_remotes)
         self.view.run_command("gs_update_status")
 
@@ -236,6 +240,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             )
             for wt in worktrees
             if wt.is_detached and not wt.is_main
+            if wt.path not in self.state["worktree_deletions_in_progress"]
         ]
         detached_head = [
             DetachedBranch(
@@ -696,7 +701,7 @@ class gs_branches_delete(CommandForSingleItem):
         if self.selected_item.is_remote:
             self.delete_remote_branch(self.selected_item.remote, self.selected_item.branch_name, force)
         elif self.selected_item.worktree:
-            self.remove_worktree(self.selected_item.worktree, force=force)
+            self.delete_worktree(self.selected_item.worktree, force)
         else:
             self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
             self.window.run_command("gs_delete_branch", {"branch": self.selected_item.branch_name, "force": force})
@@ -713,6 +718,19 @@ class gs_branches_delete(CommandForSingleItem):
         )
         self.window.status_message("Deleted remote branch.")
         util.view.refresh_gitsavvy(self.view)
+
+    @util.actions.destructive(description="delete a worktree")
+    @on_worker
+    def delete_worktree(self, path, force):
+        self.interface.state["worktree_deletions_in_progress"].add(path)
+        self.interface.just_render()
+        try:
+            with busy_indicator(self.view, start_after=0.5):
+                self.remove_worktree(path, force=force)
+        finally:
+            self.interface.state["worktree_deletions_in_progress"].discard(path)
+            self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
+            util.view.refresh_gitsavvy(self.view)
 
 
 class gs_branches_rename(CommandForSingleBranch):
