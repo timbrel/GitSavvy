@@ -309,21 +309,13 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         )
 
     def _render_worktree_branches(self, branches: List[BranchWithWorktree | DetachedBranch]) -> str:
-        home = os.path.expanduser("~").replace("\\", "/")
-        parent_dir = os.path.dirname(self.repo_path).replace("\\", "/")
-
-        def nice_path(p: str) -> str:
-            if p.startswith(parent_dir):
-                return self.get_rel_path(p)
-            return p.replace(home, "~")
-
         return "\n{}\n".format(" " * 60).join(
             "   <{hash}> {name}\n"
             "      \\ checked out at: {path}"
             .format(
                 hash=self.get_short_hash(branch.commit_hash),
                 name=branch.canonical_name,
-                path=nice_path(branch.worktree_path)
+                path=self.nice_path(branch.worktree_path)
             )
             for branch in branches
         )
@@ -505,16 +497,8 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
             for region, scope in extract_tokens_with_scopes(view, line):
                 if "keyword.other.git-savvy.path" in scope:
                     formatted_path = view.substr(region)
-                    home = os.path.expanduser("~").replace("\\", "/")
-                    parent_dir = os.path.dirname(self.repo_path).replace("\\", "/")
-
-                    def nice_path(p: str) -> str:
-                        if p.startswith(parent_dir):
-                            return self.get_rel_path(p)
-                        return p.replace(home, "~")
-
                     for w in self.interface.state["worktrees"]:
-                        if nice_path(w.path) == formatted_path:
+                        if self.nice_path(w.path) == formatted_path:
                             return w.path
 
             return None
