@@ -20,6 +20,7 @@ from .inline_diff import *
 from .line_history import *
 from .log import *
 from .log_graph import *
+from .log_graph_main_actions import *
 from .log_graph_rebase_actions import *
 from .log_graph_smart_copy import *
 from .merge import *
