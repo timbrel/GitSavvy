@@ -1,9 +1,8 @@
 from __future__ import annotations
-from functools import lru_cache, partial, wraps
+from functools import lru_cache, wraps
 from collections import OrderedDict
 from contextlib import contextmanager
 import datetime
-import html
 import inspect
 from itertools import count
 import os
@@ -136,120 +135,6 @@ def flash_regions(view, regions, key="default"):
 def erase_regions(view, region_key):
     # type: (sublime.View, str) -> None
     view.erase_regions(region_key)
-
-
-IDS = partial(next, count())  # type: Callable[[], int]
-HIDE_POPUP_TIMERS = {}  # type: Dict[sublime.ViewId, int]
-POPUPS = {}  # type: Dict[sublime.ViewId, Tuple]
-DEFAULT_TIMEOUT = 2500  # [ms]
-DEFAULT_STYLE = {
-    'background': 'transparent',
-    'foreground': 'var(--foreground)'
-}
-
-
-def show_toast(
-    view,
-    message,
-    timeout=DEFAULT_TIMEOUT,
-    style=DEFAULT_STYLE,
-    max_width=2 / 3,
-    location=1.0,
-):
-    # type: (sublime.View, str, int, Dict[str, str], float, float) -> Callable[[], None]
-    """Show a toast popup by default at the bottom of the view.
-
-    A `timeout` of -1 makes a "sticky" toast.
-    `max_width` and `location` can take floats between 0 and zero.
-    For `location` 0.0 means top of the viewport, 1.0 bottom; e.g. 0.5 is
-    the middle of the screen.
-    Same for `max_width`, 1.0 denoting the whole viewport.
-    """
-    messages_by_line = escape_text(message).splitlines()
-    content = style_message("<br />".join(messages_by_line), style)
-
-    # Order can matter here.  If we calc width *after* visible_region we get
-    # different results!
-    if isinstance(max_width, float) and 0 <= max_width <= 1:
-        width, _ = view.viewport_extent()
-        max_width = width * max_width
-
-    if isinstance(max_width, float) and 0 <= location <= 1:
-        visible_region = view.visible_region()
-        r0, _ = view.rowcol(visible_region.a)
-        r1, _ = view.rowcol(visible_region.b)
-        r_ = r0 + int(((r1 - r0) * location)) - 4 - len(messages_by_line)
-        location = view.text_point(max(r0, r_), 0)
-
-    vid = view.id()
-    key = IDS()
-
-    def on_hide(vid, key):
-        HIDE_POPUP_TIMERS.pop(vid, None)
-
-    def __hide_popup(vid, key, sink):
-        if HIDE_POPUP_TIMERS.get(vid) == key:
-            HIDE_POPUP_TIMERS.pop(vid, None)
-            sink()
-
-    inner_hide_popup = show_popup(
-        view,
-        content,
-        max_width=max_width,
-        location=int(location),
-        on_hide=partial(on_hide, vid, key)
-    )
-    HIDE_POPUP_TIMERS[vid] = key
-
-    hide_popup = partial(__hide_popup, vid, key, inner_hide_popup)
-    if timeout > 0:
-        sublime.set_timeout(hide_popup, timeout)
-    return hide_popup
-
-
-def show_popup(view, content, max_width, location, on_hide=None):
-    # type: (sublime.View, str, float, int, Callable[[], None]) -> Callable[[], None]
-    vid = view.id()
-    inner_hide_popup = view.hide_popup
-    actual_key = (int(max_width), location)
-    if POPUPS.get(vid) == actual_key:
-        view.update_popup(content)
-    else:
-        def __on_hide(vid, key):
-            POPUPS.pop(vid, None)
-            if on_hide:
-                on_hide()
-
-        view.show_popup(
-            content,
-            max_width=max_width,
-            location=location,
-            on_hide=partial(__on_hide, vid, actual_key)
-        )
-        POPUPS[vid] = actual_key
-
-    def __hide_popup(vid, key, sink):
-        if POPUPS.get(vid) == key:
-            POPUPS.pop(vid, None)
-            sink()
-
-    return partial(__hide_popup, vid, actual_key, inner_hide_popup)
-
-
-def style_message(message, style):
-    # type: (str, Dict[str, str]) -> str
-    return """
-        <div
-            style="padding: 1rem;
-                   background-color: {background};
-                   color: {foreground}"
-        >{message}</div>
-    """.format(message=message, **style)
-
-
-def escape_text(text):
-    # type: (str) -> str
-    return html.escape(text, quote=False).replace(" ", "&nbsp;")
 
 
 class Action(NamedTuple):
