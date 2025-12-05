@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = "==3.8.*"
 
 [[package]]
@@ -18,7 +18,7 @@ wheels = [
 
 [[package]]
 name = "gitsavvy"
-version = "4"
+version = "2"
 source = { virtual = "." }
 
 [package.dev-dependencies]
