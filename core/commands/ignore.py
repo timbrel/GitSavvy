@@ -6,6 +6,7 @@ from sublime_plugin import WindowCommand
 from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from ..ui__quick_panel import show_noop_panel
 
 
 IGNORE_PATTERN_PROMPT = "Enter pattern to ignore:"
@@ -93,7 +94,7 @@ class GsRestoreAssumedUnchangedCommand(WindowCommand, GitCommand):
         self._ignored_files = [f[1] for f in all_file_lines if f[0] == "h"]
 
         if not self._ignored_files:
-            self.window.show_quick_panel(["No files are assumed unchanged."], None)
+            show_noop_panel(self.window, "No files are assumed unchanged.")
         else:
             self.window.show_quick_panel(
                 self._ignored_files,

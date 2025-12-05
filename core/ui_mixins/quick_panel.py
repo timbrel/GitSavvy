@@ -4,7 +4,7 @@ import sublime
 from ...common import util
 from ..git_command import GitCommand
 from GitSavvy.core.fns import filter_, maybe
-from ..ui__quick_panel import show_panel
+from ..ui__quick_panel import show_panel, show_noop_panel
 
 
 from typing import Callable, Dict, List, Literal, Optional, Union
@@ -189,7 +189,7 @@ class RemotePanel(GitCommand):
         self.remotes = list(_remotes.keys())
 
         if not self.remotes:
-            self.window.show_quick_panel([NO_REMOTES_MESSAGE], None)
+            show_noop_panel(self.window, NO_REMOTES_MESSAGE)
             return
 
         if self.allow_direct and len(self.remotes) == 1:
@@ -313,7 +313,7 @@ class BranchPanel(GitCommand):
             self.all_branches = [b for b in self.all_branches if b.startswith(remote + "/")]
 
         if not self.all_branches:
-            self.window.show_quick_panel(["There are no branches available."], None)
+            show_noop_panel(self.window, "There are no branches available.")
             return
 
         if self.selected_branch:
