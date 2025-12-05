@@ -70,6 +70,13 @@ class TextRange:
         ]
 
 
+def line_from_pt(view, pt):
+    # type: (sublime.View, Union[sublime.Point, sublime.Region]) -> TextRange
+    line_span = view.line(pt)
+    line_text = view.substr(line_span)
+    return TextRange(line_text, line_span.a, line_span.b)
+
+
 class Region(sublime.Region):
     def __hash__(self):
         # type: () -> int

@@ -21,7 +21,7 @@ from .log import gs_log
 from ..base_commands import GsTextCommand
 from ..fns import filter_, flatten, pairwise, partition, take
 from ..git_command import GitCommand
-from ..text_helper import Region, TextRange
+from ..text_helper import Region, TextRange, line_from_pt
 from ..settings import GitSavvySettings
 from ..runtime import (
     cooperative_thread_hopper,
@@ -1300,13 +1300,6 @@ def _find_dots(view):
         dot = dot_from_line(view, line)
         if dot:
             yield dot
-
-
-def line_from_pt(view, pt):
-    # type: (sublime.View, Union[sublime.Point, sublime.Region]) -> TextRange
-    line_span = view.line(pt)
-    line_text = view.substr(line_span)
-    return TextRange(line_text, line_span.a, line_span.b)
 
 
 def dot_from_line(view, line):

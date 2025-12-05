@@ -20,7 +20,7 @@ from GitSavvy.core.commands.log_graph_helper import (
 )
 from GitSavvy.core.fns import filter_, unique
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
-from GitSavvy.core.text_helper import TextRange
+from GitSavvy.core.text_helper import TextRange, line_from_pt
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
 from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.ui__quick_panel import noop, show_actions_panel, SEPARATOR, show_quick_panel
@@ -98,7 +98,7 @@ def extract_symbol_from_graph(self, args, done):
         flash(view, "Only single cursors are supported.")
         return
 
-    line = log_graph.line_from_pt(view, sel.b)
+    line = line_from_pt(view, sel.b)
     info = describe_graph_line(line.text, known_branches={})
     if info is None:
         flash(view, "Not on a line with a commit.")
@@ -123,7 +123,7 @@ def extract_commit_hash_from_graph(self, args, done):
         flash(view, "Only single cursors are supported.")
         return
 
-    line = log_graph.line_from_pt(view, sel.b)
+    line = line_from_pt(view, sel.b)
     info = describe_graph_line(line.text, known_branches={})
     if info is None:
         flash(view, "Not on a line with a commit.")
@@ -178,7 +178,7 @@ def ask_for_ref(self, args, done, initial_text=""):
         not initial_text
         and view.settings().get("git_savvy.log_graph_view")
         and (frozen_sel := list(multi_selector.get_selection(view)))
-        and (line := log_graph.line_from_pt(view, frozen_sel[0].begin()))
+        and (line := line_from_pt(view, frozen_sel[0].begin()))
         and (info := describe_graph_line(line.text, known_branches={}))
         # As we don't feed in `known_branches`, every branch lands in `branches`.
         # We're actually only interested in `local_branches` but this is also
@@ -265,7 +265,7 @@ class gs_rebase_action(GsWindowCommand):
             return actions
 
         def single_commit_actions():
-            line = log_graph.line_from_pt(view, view.sel()[0].b)
+            line = line_from_pt(view, view.sel()[0].b)
             info = infos[0]
             commit_hash = info["commit"]
             commitish = commitish_from_info(info)
@@ -689,7 +689,7 @@ def commit_message_from_line(view, line):
 
 def commit_hash_from_dot(view, dot):
     # type: (sublime.View, log_graph.colorizer.Char) -> str
-    line = log_graph.line_from_pt(view, dot.pt)
+    line = line_from_pt(view, dot.pt)
     return log_graph.extract_commit_hash(line.text)
 
 
@@ -704,7 +704,7 @@ def find_base_commit_for_fixup(view, commit_line, commit_message):
     if not target_dot:
         return None
 
-    target_line = log_graph.line_from_pt(view, target_dot.pt)
+    target_line = line_from_pt(view, target_dot.pt)
     target_commit_hash = log_graph.extract_commit_hash(target_line.text)
     return target_commit_hash
 

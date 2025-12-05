@@ -3,7 +3,7 @@ import sublime_plugin
 
 from . import log_graph
 from ..fns import pairwise, peek
-from ..text_helper import Region, TextRange
+from ..text_helper import Region, TextRange, line_from_pt
 from ..utils import flash, flash_regions
 from ..view import find_by_selector
 
@@ -36,7 +36,7 @@ class CopyIntercepterForGraph(sublime_plugin.EventListener):
         def candidates():
             # type: () -> Iterator[Tuple[str, List[Region], str]]
             cursor = frozen_sel[0].a
-            line = log_graph.line_from_pt(view, cursor)
+            line = line_from_pt(view, cursor)
             line_span = line.region()
 
             commit_hash = read_commit_hash(view, line)
@@ -113,7 +113,7 @@ class gs_log_graph_smart_paste(sublime_plugin.TextCommand):
             return
 
         cursor = frozen_sel[0].a
-        line = log_graph.line_from_pt(view, cursor)
+        line = line_from_pt(view, cursor)
         commit_hash = read_commit_hash(view, line)
         if not commit_hash:
             return
