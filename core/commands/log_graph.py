@@ -46,9 +46,10 @@ from ..view import (
 )
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui__busy_spinner import start_busy_indicator, stop_busy_indicator
+from ..ui__quick_panel import SEPARATOR
 from ..ui__toast_popup import show_toast
 from ..ui_mixins.quick_panel import show_branch_panel
-from ..utils import add_selection_to_jump_history, flash, focus_view, Cache, SEPARATOR
+from ..utils import add_selection_to_jump_history, flash, focus_view, Cache
 from ...common import util
 from ...common.theme_generator import ThemeGenerator
 

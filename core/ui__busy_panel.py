@@ -8,7 +8,7 @@ import sublime
 from typing_extensions import TypeAlias
 
 from . import runtime, fns
-from .utils import show_panel
+from .ui__quick_panel import show_panel
 
 
 __all__ = (

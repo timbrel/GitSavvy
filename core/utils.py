@@ -1,5 +1,5 @@
 from __future__ import annotations
-from functools import lru_cache, wraps
+from functools import wraps
 from collections import OrderedDict
 from contextlib import contextmanager
 import datetime
@@ -20,8 +20,8 @@ from . import runtime
 
 
 from typing import (
-    Any, Callable, Dict, Iterable, Iterator, NamedTuple,
-    Optional, Sequence, Tuple, Type, TypeVar, Union)
+    Any, Callable, Dict, Iterator,
+    Optional, Sequence, Tuple, Type, TypeVar)
 
 from typing_extensions import ParamSpec
 P = ParamSpec('P')
@@ -135,76 +135,6 @@ def flash_regions(view, regions, key="default"):
 def erase_regions(view, region_key):
     # type: (sublime.View, str) -> None
     view.erase_regions(region_key)
-
-
-class Action(NamedTuple):
-    description: str
-    action: Callable[[], None]
-
-
-ActionType = Tuple[str, Callable[[], None]]
-QuickPanelItems = Iterable[Union[str, sublime.QuickPanelItem]]
-
-
-def show_panel(
-    window,  # type: sublime.Window
-    items,  # type: QuickPanelItems
-    on_done,  # type: Callable[[int], None]
-    on_cancel=lambda: None,  # type: Callable[[], None]
-    on_highlight=lambda _: None,  # type: Callable[[int], None]
-    selected_index=-1,  # type: int
-    flags=sublime.MONOSPACE_FONT
-):
-    # (...) -> None
-    def _on_done(idx):
-        # type: (int) -> None
-        if idx == -1:
-            on_cancel()
-        else:
-            on_done(idx)
-
-    # `on_highlight` also gets called `on_done`. We
-    # reduce the side-effects here using `lru_cache`.
-    @lru_cache(1)
-    def _on_highlight(idx):
-        # type: (int) -> None
-        on_highlight(idx)
-
-    window.show_quick_panel(
-        list(items),
-        _on_done,
-        on_highlight=_on_highlight,
-        selected_index=selected_index,
-        flags=flags
-    )
-
-
-def show_actions_panel(window, actions, select=-1):
-    # type: (sublime.Window, Sequence[ActionType], int) -> None
-    def on_selection(idx):
-        # type: (int) -> None
-        description, action = actions[idx]
-        action()
-
-    show_panel(
-        window,
-        (action[0] for action in actions),
-        on_selection,
-        selected_index=select
-    )
-
-
-def show_noop_panel(window, message):
-    # type: (sublime.Window, str) -> None
-    show_actions_panel(window, [noop(message)])
-
-
-def noop(description):
-    # type: (str) -> ActionType
-    return Action(description, lambda: None)
-
-
-SEPARATOR = noop("_" * 74)
 
 
 def yes_no_switch(name, value):

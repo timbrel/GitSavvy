@@ -4,7 +4,7 @@ import os
 from GitSavvy.common import util
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
-from GitSavvy.core.utils import show_panel
+from GitSavvy.core.ui__quick_panel import show_panel
 from GitSavvy.core.runtime import on_worker
 from GitSavvy.github import github
 

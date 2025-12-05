@@ -23,7 +23,8 @@ from ..git_command import GitCommand
 from ..runtime import ensure_on_ui, enqueue_on_worker, run_on_new_thread, throttled
 from ..settings import GitSavvySettings
 from ..ui_mixins.quick_panel import LogHelperMixin
-from ..utils import flash, focus_view, hprint, line_indentation, show_panel
+from ..ui__quick_panel import show_panel
+from ..utils import flash, focus_view, hprint, line_indentation
 from ..view import (
     capture_cur_position, clamp, replace_view_content, scroll_to_pt,
     place_view, place_cursor_and_show, y_offset, Position)

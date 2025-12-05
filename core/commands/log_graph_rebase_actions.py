@@ -16,7 +16,8 @@ from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.parse_diff import TextRange
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
 from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
-from GitSavvy.core.utils import flash, noop, show_actions_panel, yes_no_switch, SEPARATOR
+from GitSavvy.core.ui__quick_panel import noop, show_actions_panel, SEPARATOR
+from GitSavvy.core.utils import flash, yes_no_switch
 from GitSavvy.core.view import replace_view_content
 from . import multi_selector
 

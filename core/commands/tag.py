@@ -6,7 +6,8 @@ from ..git_command import GitSavvyError
 from ..ui_mixins.quick_panel import PanelActionMixin
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.base_commands import GsTextCommand
-from GitSavvy.core.utils import noop, show_actions_panel, uprint, yes_no_switch
+from ..ui__quick_panel import noop, show_actions_panel
+from GitSavvy.core.utils import uprint, yes_no_switch
 
 
 __all__ = (

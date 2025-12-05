@@ -4,7 +4,7 @@ import sublime
 from ...common import util
 from ..git_command import GitCommand
 from GitSavvy.core.fns import filter_, maybe
-from GitSavvy.core.utils import show_panel
+from ..ui__quick_panel import show_panel
 
 
 from typing import Callable, Dict, List, Literal, Optional, Union
