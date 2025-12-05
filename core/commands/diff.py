@@ -1049,6 +1049,7 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
                 first_cursor = self.view.sel()[0].begin()
                 self.view.sel().clear()
                 self.view.sel().add(first_cursor)
+                self.view.run_command("gs_clear_multiselect")
         else:
             flash(self.view, "Not within a hunk")
 

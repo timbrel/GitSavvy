@@ -310,6 +310,7 @@ diff --git a/foxx b/boxx
         view.settings().set('git_savvy.diff_view.history', [])
         cmd = module.gs_diff_stage_or_reset_hunk(view)
         when(cmd).git(...)
+        when(cmd.view).run_command("gs_clear_multiselect")
         when(cmd.view).run_command("gs_diff_refresh")
         when(cmd.view).run_command("gs_update_status")
 
@@ -394,6 +395,7 @@ diff --git a/foxx b/boxx
         view.settings().set('git_savvy.diff_view.history', [])
         cmd = module.gs_diff_stage_or_reset_hunk(view)
         when(cmd).git(...)
+        when(cmd.view).run_command("gs_clear_multiselect")
         when(cmd.view).run_command("gs_diff_refresh")
         when(cmd.view).run_command("gs_update_status")
         # when(module.gs_diff_stage_or_reset_hunk).git(...)
@@ -435,6 +437,7 @@ diff --git a/fooz b/barz
 
         cmd = module.gs_diff_stage_or_reset_hunk(view)
         when(cmd).git(...)
+        when(cmd.view).run_command("gs_clear_multiselect")
         when(cmd.view).run_command("gs_diff_refresh")
         when(cmd.view).run_command("gs_update_status")
 
