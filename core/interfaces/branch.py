@@ -667,27 +667,7 @@ class gs_branches_create_new(CommandForSingleItem):
 
 class gs_branches_create_new_worktree(CommandForSingleItem):
     def run(self, edit):
-        DEFAULT_PROJECT_ROOT = (
-            os.path.expanduser(R'~\Desktop')
-            if os.name == "nt"
-            else os.path.expanduser('~')
-        )
-
-        if self.repo_path.startswith(sublime.packages_path()):
-            base = DEFAULT_PROJECT_ROOT
-        else:
-            base = os.path.dirname(self.repo_path)
-        project_name = os.path.basename(self.repo_path)
-        start_point = self.selected_item.commit_hash
-        suffix, c = "", count(1)
-        while True:
-            worktree_path = f"{base}{os.path.sep}{project_name}-{start_point}{suffix}"
-            if os.path.exists(worktree_path):
-                suffix = f"-{next(c)}"
-            else:
-                break
-
-        self.git("worktree", "add", worktree_path, start_point)
+        worktree_path = self.create_new_worktree(self.selected_item.commit_hash)
 
         self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
         util.view.refresh_gitsavvy(self.view)
