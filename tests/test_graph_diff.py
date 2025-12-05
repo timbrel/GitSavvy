@@ -3,7 +3,7 @@ from unittesting import DeferrableTestCase
 from GitSavvy.tests.parameterized import parameterized as p
 
 
-from GitSavvy.core.commands.log_graph import (
+from GitSavvy.core.commands.log_graph_renderer import (
     diff, simplify, normalize_tokens, apply_diff, Ins, Del, Replace, Flush
 )
 

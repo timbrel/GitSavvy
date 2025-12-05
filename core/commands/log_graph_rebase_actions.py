@@ -11,6 +11,7 @@ import sublime_plugin
 from GitSavvy.common import util
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand, ask_for_branch
 from GitSavvy.core.commands import log_graph
+from GitSavvy.core.commands.log_graph_renderer import resolve_commit_to_follow_after_rebase
 from GitSavvy.core.commands.log_graph_helper import (
     LineInfo,
     describe_graph_line,
@@ -1199,7 +1200,7 @@ def follow_new_commit(self, commitish):
             settings.set("git_savvy.resolve_after_rebase", commitish)
 
         else:
-            log_graph.resolve_commit_to_follow_after_rebase(self, commitish)
+            resolve_commit_to_follow_after_rebase(self, commitish)
     return sideeffect
 
 

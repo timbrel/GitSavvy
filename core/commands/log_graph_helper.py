@@ -12,6 +12,7 @@ GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
 COMMIT_NODE_CHARS = "●⌂*"
 DEFAULT_NODE_CHAR = "●"
 ROOT_NODE_CHAR = "⌂"
+GRAPH_HEIGHT = 5000
 COMMIT_LINE = re.compile(
     r"^[{graph_chars}]*(?P<dot>[{node_chars}])[{graph_chars}]* "
     r"(?P<commit_hash>[a-f0-9]{{5,40}}) +"
