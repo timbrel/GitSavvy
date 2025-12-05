@@ -15,7 +15,6 @@ import re
 import shutil
 import stat
 import subprocess
-import sys
 import time
 import traceback
 
@@ -23,10 +22,10 @@ import sublime
 
 from ..common import util
 from .settings import SettingsMixin
+from .utils import try_kill_proc, paths_upwards, proc_has_been_killed, resolve_path, STARTUPINFO
 from GitSavvy.core import store
 from GitSavvy.core.fns import consume, filter_, pairwise
 from GitSavvy.core.runtime import auto_timeout, enqueue_on_worker, run_as_future
-from GitSavvy.core.utils import try_kill_proc, paths_upwards, proc_has_been_killed, resolve_path
 
 
 from typing import (
@@ -211,11 +210,6 @@ def log_git_runtime(fn):
                 raise saved_exception from None
     return decorated
 
-
-STARTUPINFO = None
-if sys.platform == "win32":
-    STARTUPINFO = subprocess.STARTUPINFO()
-    STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
 HOME = os.path.expanduser('~')
 NORM_HOME = HOME.replace("\\", "/")

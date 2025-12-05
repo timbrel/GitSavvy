@@ -2,10 +2,9 @@ from __future__ import annotations
 from contextlib import contextmanager
 import datetime
 from functools import partial
-from itertools import count, groupby
+from itertools import groupby
 import os
 import re
-import subprocess
 
 import sublime
 from sublime_plugin import WindowCommand
@@ -13,12 +12,12 @@ from sublime_plugin import WindowCommand
 from ...common import ui, util
 from ..commands import GsNavigate
 from ..commands.log import LogMixin
-from ..commands.log_graph_rebase_actions import get_sublime_executable
 from ..commands import multi_selector
-from ..git_command import GitCommand, STARTUPINFO
+from ..git_command import GitCommand
 from ..ui__busy_spinner import busy_indicator
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from ..utils import open_folder_in_new_window
 from GitSavvy.core.fns import chain, filter_, pairwise
 from GitSavvy.core.utils import flash, is_younger_than
 from GitSavvy.core.runtime import enqueue_on_worker, on_new_thread, on_worker
@@ -617,30 +616,17 @@ class gs_branches_checkout(CommandForSingleItem):
                     "branch": self.selected_item.commit_hash
                 })
         elif self.selected_item.worktree:
+            def callback(w: sublime.Window):
+                if not w.views():
+                    w.run_command("gs_show_branch")
+
             worktree_path = self.selected_item.worktree.replace("/", os.path.sep)
-            open_folder_in_new_window(worktree_path)
-
-            @on_worker
-            def search_for_new_window(_tries=5):
-                for w in sublime.windows():
-                    if worktree_path in w.folders():
-                        if not w.views():
-                            w.run_command("gs_show_branch")
-                        return
-                sublime.set_timeout(lambda: search_for_new_window(_tries - 1), 10)
-
-            search_for_new_window()
+            open_folder_in_new_window(worktree_path, then=callback)
 
         else:
             self.window.run_command("gs_checkout_branch", {
                 "branch": self.selected_item.canonical_name or self.selected_item.commit_hash
             })
-
-
-def open_folder_in_new_window(path):
-    bin = get_sublime_executable()
-    cmd = [bin, path]
-    subprocess.Popen(cmd, startupinfo=STARTUPINFO)
 
 
 class gs_branches_create_new(CommandForSingleItem):

@@ -24,7 +24,7 @@ from GitSavvy.core.text_helper import TextRange, line_from_pt
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
 from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.ui__quick_panel import noop, show_actions_panel, SEPARATOR, show_quick_panel
-from GitSavvy.core.utils import flash, yes_no_switch
+from GitSavvy.core.utils import flash, yes_no_switch, get_sublime_executable
 from GitSavvy.core.view import replace_view_content
 from . import multi_selector
 
@@ -846,15 +846,6 @@ def _close_panel(window):
 def sublime_git_editor():
     normalized_executable = get_sublime_executable().replace("\\", "/")
     return "{} -w".format(shlex.quote(normalized_executable))
-
-
-def get_sublime_executable() -> str:
-    executable_path = sublime.executable_path()
-    if sublime.platform() == "osx":
-        app_path = executable_path[: executable_path.rfind(".app/") + 5]
-        executable_path = app_path + "Contents/SharedSupport/bin/subl"
-
-    return executable_path
 
 
 AWAITING = None  # type: Optional[QuickAction]
