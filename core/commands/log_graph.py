@@ -46,7 +46,7 @@ from ..view import (
 )
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui__busy_spinner import start_busy_indicator, stop_busy_indicator
-from ..ui__quick_panel import SEPARATOR, show_panel
+from ..ui__quick_panel import SEPARATOR, show_quick_panel
 from ..ui__toast_popup import show_toast
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..utils import add_selection_to_jump_history, flash, focus_view, Cache
@@ -1453,7 +1453,7 @@ class gs_log_graph_by_author(WindowCommand, GitCommand):
             })
 
         email = self.git("config", "user.email").strip()
-        show_panel(
+        show_quick_panel(
             self.window,
             [entry[3] for entry in entries],
             on_select,
@@ -1907,7 +1907,7 @@ class gs_log_graph_edit_files(TextCommand, GitCommand):
                     "selected_index": max(0, idx - 1) if unselect else next_paths.index(path)
                 })
 
-        show_panel(
+        show_quick_panel(
             window,
             items,
             on_done,
@@ -2765,7 +2765,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             if selected_action == SEPARATOR:
                 selected_index += 1
 
-        show_panel(
+        show_quick_panel(
             self.window,
             [a[0] for a in actions],
             on_action_selection,

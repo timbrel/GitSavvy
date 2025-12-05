@@ -1,5 +1,5 @@
 from ..ui_mixins.input_panel import show_single_line_input_panel
-from ..ui__quick_panel import show_noop_panel, show_panel
+from ..ui__quick_panel import show_noop_panel, show_quick_panel
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_new_thread
 
@@ -50,7 +50,7 @@ class FlowMixin(GsWindowCommand):
         if not options:
             show_noop_panel(self.window, no_opts)
         else:
-            show_panel(
+            show_quick_panel(
                 self.window,
                 [help_text] + options,
                 callback

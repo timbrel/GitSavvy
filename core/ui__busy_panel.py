@@ -8,7 +8,7 @@ import sublime
 from typing_extensions import TypeAlias
 
 from . import runtime, fns
-from .ui__quick_panel import show_panel
+from .ui__quick_panel import show_quick_panel
 
 
 __all__ = (
@@ -85,11 +85,11 @@ def show_busy_panel(
 
     if isinstance(text, str):
         def working_indicator(*_) -> None:
-            show_panel(window, [text], working_indicator, abort)
+            show_quick_panel(window, [text], working_indicator, abort)
     else:
         def working_indicator(*_) -> None:
             text_, cycle_time = next(text)
-            show_panel(window, [text_], working_indicator, abort)
+            show_quick_panel(window, [text_], working_indicator, abort)
             sublime.set_timeout(tick, cycle_time)
 
         def tick():

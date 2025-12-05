@@ -6,7 +6,7 @@ from sublime_plugin import WindowCommand
 from ..git_command import GitCommand
 from ...common import util
 from ..ui_mixins.input_panel import show_single_line_input_panel
-from ..ui__quick_panel import show_noop_panel, show_panel
+from ..ui__quick_panel import show_noop_panel, show_quick_panel
 
 
 IGNORE_PATTERN_PROMPT = "Enter pattern to ignore:"
@@ -59,7 +59,7 @@ class GsAssumeUnchangedCommand(WindowCommand, GitCommand):
             f.path for f in self.get_working_dir_status().unstaged_files
         ]
 
-        show_panel(self.window, self._unstaged_files, self.on_selection)
+        show_quick_panel(self.window, self._unstaged_files, self.on_selection)
 
     def on_selection(self, index):
         fpath = self._unstaged_files[index]
@@ -90,7 +90,7 @@ class GsRestoreAssumedUnchangedCommand(WindowCommand, GitCommand):
         if not self._ignored_files:
             show_noop_panel(self.window, "No files are assumed unchanged.")
         else:
-            show_panel(self.window, self._ignored_files, self.on_selection)
+            show_quick_panel(self.window, self._ignored_files, self.on_selection)
 
     def on_selection(self, index):
         fpath = self._ignored_files[index]

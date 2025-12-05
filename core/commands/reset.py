@@ -2,7 +2,7 @@ from .log import LogMixin
 from .reflog import RefLogMixin
 from ...common import util
 from ..ui_mixins.quick_panel import show_branch_panel
-from ..ui__quick_panel import show_panel
+from ..ui__quick_panel import show_quick_panel
 from GitSavvy.core.base_commands import GsWindowCommand
 
 
@@ -54,7 +54,7 @@ class ResetMixin(GsWindowCommand):
         def on_done(index):
             self.on_reset(reset_modes[index][0].strip())
 
-        show_panel(
+        show_quick_panel(
             self.window,
             reset_modes,
             on_done,

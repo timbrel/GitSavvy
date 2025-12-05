@@ -14,7 +14,7 @@ __all__ = (
     "noop",
     "show_actions_panel",
     "show_noop_panel",
-    "show_panel",
+    "show_quick_panel",
 )
 
 
@@ -27,7 +27,7 @@ ActionType = Tuple[str, Callable[[], None]]
 QuickPanelItems = Iterable[Union[str, List[str], sublime.QuickPanelItem]]
 
 
-def show_panel(
+def show_quick_panel(
     window: sublime.Window,
     items: QuickPanelItems,
     on_done: Callable[[int], None],
@@ -66,7 +66,7 @@ def show_actions_panel(
         description, action = actions[idx]
         action()
 
-    show_panel(
+    show_quick_panel(
         window,
         (action[0] for action in actions),
         on_selection,

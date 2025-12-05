@@ -4,7 +4,7 @@ import os
 from GitSavvy.common import util
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
-from GitSavvy.core.ui__quick_panel import show_panel
+from GitSavvy.core.ui__quick_panel import show_quick_panel
 from GitSavvy.core.runtime import on_worker
 from GitSavvy.github import github
 
@@ -52,7 +52,7 @@ class gs_github_create_repo(GsWindowCommand):
         urls = [payload["clone_url"], payload["ssh_url"]]
 
         def on_remote_name(name: str) -> None:
-            show_panel(self.window, urls, partial(on_url, name))
+            show_quick_panel(self.window, urls, partial(on_url, name))
 
         def on_url(name: str, idx: int) -> None:
             url = urls[idx]

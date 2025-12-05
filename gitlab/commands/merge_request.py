@@ -9,7 +9,7 @@ from ...core.view import replace_view_content
 from ...common import util
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_worker
-from GitSavvy.core.ui__quick_panel import show_panel
+from GitSavvy.core.ui__quick_panel import show_quick_panel
 
 
 __all__ = (
@@ -64,7 +64,7 @@ class gs_gitlab_merge_request(GsWindowCommand, git_mixins.GitLabRemotesMixin):
             return
 
         self.mr = mr
-        show_panel(
+        show_quick_panel(
             self.window,
             [
                 "Checkout as local branch.",

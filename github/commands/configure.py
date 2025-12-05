@@ -9,7 +9,7 @@ from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.git_mixins.branches import Branch
 from GitSavvy.core.ui_mixins.quick_panel import show_remote_panel
 from GitSavvy.core.ui__busy_panel import AnimatedText, show_busy_panel
-from GitSavvy.core.ui__quick_panel import show_noop_panel, show_panel
+from GitSavvy.core.ui__quick_panel import show_noop_panel, show_quick_panel
 from GitSavvy.core.utils import hprint
 
 
@@ -100,7 +100,7 @@ class gs_github_configure_remote(WindowCommand, GithubRemotesMixin, GitCommand):
                     f"Configured {branch.canonical_name} to be the integration branch."
                 )
 
-        show_panel(self.window, items, on_done, selected_index=selected)
+        show_quick_panel(self.window, items, on_done, selected_index=selected)
 
     def persist_integration(self, remote_name: str | None, branch: Branch | None) -> None:
         self.git("config", "--local", "--unset-all", "GitSavvy.ghRemote", throw_on_error=False)

@@ -4,7 +4,7 @@ import sublime
 from ...common import util
 from ..git_command import GitCommand
 from GitSavvy.core.fns import filter_, maybe
-from ..ui__quick_panel import show_panel, show_noop_panel
+from ..ui__quick_panel import show_quick_panel, show_noop_panel
 
 
 from typing import Callable, Dict, List, Literal, Optional, Union
@@ -54,7 +54,7 @@ class PanelActionMixin(GitCommand):
             self.on_action_selection(pre_selected_index)
             return
 
-        show_panel(
+        show_quick_panel(
             window,
             [a[1] for a in actions or self.actions],
             self.on_action_selection,
@@ -202,7 +202,7 @@ class RemotePanel(GitCommand):
         else:
             pre_selected_index = 0
 
-        show_panel(
+        show_quick_panel(
             self.window,
             (
                 [[remote, _remotes[remote]] for remote in self.remotes]
@@ -324,7 +324,7 @@ class BranchPanel(GitCommand):
         else:
             selected_index = 0
 
-        show_panel(
+        show_quick_panel(
             self.window,
             self.all_branches,
             self.on_branch_selection,
@@ -624,7 +624,7 @@ class LogHelperMixin(GitCommand):
             )))
 
         preselected_idx = preselected_commit(items)
-        show_panel(
+        show_quick_panel(
             window,
             map(format_item, items),
             on_done,
