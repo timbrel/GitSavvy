@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Callable, Iterable, NamedTuple, Sequence, Tuple, Union
+from typing import Callable, Iterable, List, NamedTuple, Sequence, Tuple, Union
 
 import sublime
 
@@ -24,7 +24,7 @@ class Action(NamedTuple):
 
 
 ActionType = Tuple[str, Callable[[], None]]
-QuickPanelItems = Iterable[Union[str, sublime.QuickPanelItem]]
+QuickPanelItems = Iterable[Union[str, List[str], sublime.QuickPanelItem]]
 
 
 def show_panel(

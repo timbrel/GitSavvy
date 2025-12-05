@@ -16,7 +16,7 @@ from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.parse_diff import TextRange
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
 from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
-from GitSavvy.core.ui__quick_panel import noop, show_actions_panel, SEPARATOR
+from GitSavvy.core.ui__quick_panel import noop, show_actions_panel, SEPARATOR, show_panel
 from GitSavvy.core.utils import flash, yes_no_switch
 from GitSavvy.core.view import replace_view_content
 from . import multi_selector
@@ -445,9 +445,6 @@ class gs_rebase_action(GsWindowCommand):
             actions = multi_commits_actions()
 
         def on_action_selection(index):
-            if index == -1:
-                return
-
             self.selected_index = index
             description, action = actions[index]
             action()
@@ -458,10 +455,10 @@ class gs_rebase_action(GsWindowCommand):
             if selected_action == SEPARATOR:
                 selected_index += 1
 
-        self.window.show_quick_panel(
+        show_panel(
+            self.window,
             [a[0] for a in actions],
             on_action_selection,
-            flags=sublime.MONOSPACE_FONT,
             selected_index=selected_index,
         )
 

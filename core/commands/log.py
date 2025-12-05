@@ -9,6 +9,7 @@ import sublime
 from ..git_command import GitCommand
 from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin
 from ..ui_mixins.quick_panel import show_log_panel, show_branch_panel
+from ..ui__quick_panel import show_panel
 from ..view import capture_cur_position, Position
 from ...common import util
 from GitSavvy.core.fns import chain
@@ -150,16 +151,14 @@ class gs_log_by_author(LogMixin, WindowCommand, GitCommand):
         except ValueError:
             selected_index = 0
 
-        self.window.show_quick_panel(
+        show_panel(
+            self.window,
             [entry[3] for entry in self._entries],
             lambda index: self.on_author_selection(index, **kwargs),
-            flags=sublime.MONOSPACE_FONT,
             selected_index=selected_index
         )
 
     def on_author_selection(self, index, **kwargs):
-        if index == -1:
-            return
         self._selected_author = self._entries[index][3]
         super().run_async(**kwargs)
 

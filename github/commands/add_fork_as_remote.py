@@ -1,6 +1,7 @@
 from itertools import chain
 
 from ...core.ui_mixins.quick_panel import show_paginated_panel
+from GitSavvy.core.ui__quick_panel import show_panel
 from .. import github
 from .. import git_mixins
 from GitSavvy.core.base_commands import GsWindowCommand
@@ -47,12 +48,10 @@ class gs_github_add_fork_as_remote(git_mixins.GithubRemotesMixin, GsWindowComman
         if not fork:
             return
         self.fork = fork
-        self.window.show_quick_panel([fork["clone_url"], fork["ssh_url"]], self.on_select_url)
+        show_panel(self.window, [fork["clone_url"], fork["ssh_url"]], self.on_select_url)
 
     def on_select_url(self, index):
-        if index < 0:
-            return
-        elif index == 0:
+        if index == 0:
             url = self.fork["clone_url"]
         elif index == 1:
             url = self.fork["ssh_url"]

@@ -10,6 +10,7 @@ from ...core.commands.push import gs_push_to_branch_name
 from ...core.fns import filter_
 from ...core.ui_mixins.quick_panel import show_paginated_panel
 from ...core.ui_mixins.input_panel import show_single_line_input_panel
+from GitSavvy.core.ui__quick_panel import show_panel
 from ...core.view import replace_view_content
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_worker, run_as_future
@@ -80,19 +81,19 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
             return
 
         self.pr_ = run_as_future(github.get_pull_request, pr["number"], self.base_remote)
-        self.window.show_quick_panel(
-            ["Checkout as detached HEAD.",
-             "Checkout as local branch.",
-             "Create local branch without checking out.",
-             "View diff.",
-             "Open in browser."],
+        show_panel(
+            self.window,
+            [
+                "Checkout as detached HEAD.",
+                "Checkout as local branch.",
+                "Create local branch without checking out.",
+                "View diff.",
+                "Open in browser.",
+            ],
             self.on_select_action
         )
 
     def on_select_action(self, idx):
-        if idx == -1:
-            return
-
         # Note that the request starts in `on_select_pr`.  So the actual wait time includes the
         # time we wait for the user to take action.
         timeout = 4.0

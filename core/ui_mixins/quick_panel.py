@@ -54,17 +54,14 @@ class PanelActionMixin(GitCommand):
             self.on_action_selection(pre_selected_index)
             return
 
-        window.show_quick_panel(
+        show_panel(
+            window,
             [a[1] for a in actions or self.actions],
             self.on_action_selection,
-            flags=sublime.MONOSPACE_FONT,
             selected_index=self.selected_index,
         )
 
     def on_action_selection(self, index):
-        if index == -1:
-            return
-
         self.selected_index = index  # set last selected choice as default
         selected_action = self.actions[index]
         func = self.get_callable(selected_action)
@@ -205,22 +202,21 @@ class RemotePanel(GitCommand):
         else:
             pre_selected_index = 0
 
-        self.window.show_quick_panel(
+        show_panel(
+            self.window,
             (
                 [[remote, _remotes[remote]] for remote in self.remotes]
                 if self.show_url else
                 self.remotes
             ),
             self.on_remote_selection,
-            flags=sublime.MONOSPACE_FONT,
+            on_cancel=self.on_cancel,
             selected_index=pre_selected_index
         )
 
     def on_remote_selection(self, index):
         # type: (int) -> None
-        if index == -1:
-            self.on_cancel()
-        elif self.show_option_all and len(self.remotes) > 1 and index == 0:
+        if self.show_option_all and len(self.remotes) > 1 and index == 0:
             self.update_store({self.storage_key: "<ALL>"})  # type: ignore[misc]
             self.on_done("<ALL>")
         else:
@@ -328,10 +324,11 @@ class BranchPanel(GitCommand):
         else:
             selected_index = 0
 
-        self.window.show_quick_panel(
+        show_panel(
+            self.window,
             self.all_branches,
             self.on_branch_selection,
-            flags=sublime.MONOSPACE_FONT,
+            on_cancel=self.on_cancel,
             selected_index=selected_index
         )
 
@@ -350,10 +347,7 @@ class BranchPanel(GitCommand):
             return 0
 
     def on_branch_selection(self, index):
-        if index == -1:
-            self.on_cancel()
-        else:
-            self.on_done(self.all_branches[index])
+        self.on_done(self.all_branches[index])
 
 
 def show_paginated_panel(items, on_done, **kwargs):

@@ -46,7 +46,7 @@ from ..view import (
 )
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui__busy_spinner import start_busy_indicator, stop_busy_indicator
-from ..ui__quick_panel import SEPARATOR
+from ..ui__quick_panel import SEPARATOR, show_panel
 from ..ui__toast_popup import show_toast
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..utils import add_selection_to_jump_history, flash, focus_view, Cache
@@ -1446,8 +1446,6 @@ class gs_log_graph_by_author(WindowCommand, GitCommand):
             entries.append((commit_count, author_name, author_email, author_text))
 
         def on_select(index):
-            if index == -1:
-                return
             selected_author = entries[index][3]
             self.window.run_command('gs_graph', {
                 'file_path': file_path,
@@ -1455,10 +1453,10 @@ class gs_log_graph_by_author(WindowCommand, GitCommand):
             })
 
         email = self.git("config", "user.email").strip()
-        self.window.show_quick_panel(
+        show_panel(
+            self.window,
             [entry[3] for entry in entries],
             on_select,
-            flags=sublime.MONOSPACE_FONT,
             selected_index=[line[2] for line in entries].index(email)
         )
 
@@ -1891,9 +1889,6 @@ class gs_log_graph_edit_files(TextCommand, GitCommand):
         )
 
         def on_done(idx, event={}):
-            if idx < 0:
-                return
-
             selected = items[idx]
             unselect = selected[0] == ">"
             path = selected[3:]
@@ -1912,7 +1907,8 @@ class gs_log_graph_edit_files(TextCommand, GitCommand):
                     "selected_index": max(0, idx - 1) if unselect else next_paths.index(path)
                 })
 
-        window.show_quick_panel(
+        show_panel(
+            window,
             items,
             on_done,
             flags=sublime.MONOSPACE_FONT | (
@@ -2759,9 +2755,6 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             return
 
         def on_action_selection(index):
-            if index == -1:
-                return
-
             self.selected_index = index
             description, action = actions[index]
             action()
@@ -2772,10 +2765,10 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             if selected_action == SEPARATOR:
                 selected_index += 1
 
-        self.window.show_quick_panel(
+        show_panel(
+            self.window,
             [a[0] for a in actions],
             on_action_selection,
-            flags=sublime.MONOSPACE_FONT,
             selected_index=selected_index,
         )
 

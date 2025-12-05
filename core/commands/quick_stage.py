@@ -4,6 +4,7 @@ from sublime_plugin import WindowCommand
 
 from ..git_command import GitCommand
 from ...common import util
+from ..ui__quick_panel import show_panel
 
 
 MenuOption = namedtuple("MenuOption", ["requires_action", "menu_text", "filename", "is_untracked"])
@@ -44,9 +45,6 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
         menu_entries = [f.menu_text for f in menu_options]
 
         def on_selection(id):
-            if id == -1:
-                return
-
             selection = menu_options[id]
 
             if not selection.requires_action:
@@ -86,11 +84,7 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
 
             sublime.set_timeout_async(self.run_async, 0)
 
-        self.window.show_quick_panel(
-            menu_entries,
-            on_selection,
-            flags=sublime.MONOSPACE_FONT
-        )
+        show_panel(self.window, menu_entries, on_selection)
 
     def get_menu_options(self):
         """

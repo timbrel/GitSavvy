@@ -785,7 +785,7 @@ class Window:
     ) -> View: ...
     def show_quick_panel(
         self,
-        items: Union[Collection[str], Collection[Sequence[str]], Collection[Union[str, QuickPanelItem]]],
+        items: Collection[Union[str, Collection[str], QuickPanelItem]],
         on_select: Optional[Callable[[int], None]],
         flags: int = ...,
         selected_index: int = ...,
