@@ -17,7 +17,13 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import log_graph_colorizer as colorizer
 from . import multi_selector
 from . import show_commit_info
-from . import log_graph_helper as graph_helper
+from .log_graph_helper import (
+    COMMIT_LINE,
+    DEFAULT_NODE_CHAR,
+    ROOT_NODE_CHAR,
+    FIND_COMMIT_HASH,
+    COMMIT_NODE_CHARS,
+)
 from .log import gs_log
 from .. import utils
 from ..base_commands import GsTextCommand
@@ -91,12 +97,6 @@ from typing import (
 T = TypeVar('T')
 
 QUICK_PANEL_SUPPORTS_WANT_EVENT = int(sublime.version()) >= 4096
-COMMIT_LINE = graph_helper.COMMIT_LINE
-GRAPH_CHAR_OPTIONS = graph_helper.GRAPH_CHAR_OPTIONS
-DEFAULT_NODE_CHAR = graph_helper.DEFAULT_NODE_CHAR
-ROOT_NODE_CHAR = graph_helper.ROOT_NODE_CHAR
-FIND_COMMIT_HASH = graph_helper.FIND_COMMIT_HASH
-COMMIT_NODE_CHARS = graph_helper.COMMIT_NODE_CHARS
 DOT_SCOPE = 'git_savvy.graph.dot'
 DOT_ABOVE_SCOPE = 'git_savvy.graph.dot.above'
 PATH_SCOPE = 'git_savvy.graph.path_char'
