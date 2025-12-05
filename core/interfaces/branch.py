@@ -2,7 +2,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 import datetime
 from functools import partial
-from itertools import groupby
+from itertools import count, groupby
 import os
 import re
 import subprocess
@@ -27,6 +27,7 @@ __all__ = (
     "gs_show_branch",
     "gs_branches_checkout",
     "gs_branches_create_new",
+    "gs_branches_create_new_worktree",
     "gs_branches_delete",
     "gs_branches_rename",
     "gs_branches_configure_tracking",
@@ -115,6 +116,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
       [c] checkout                                  [p] push selected to remote
       [b] create from selected branch               [P] push all branches to remote
+      [w] create ad-hoc worktree from selected
       [d] delete                                    [h] fetch remote branches
       [D] delete (force)                            [m] merge selected into active branch
       [R] rename (local)                            [M] fetch and merge into active branch
@@ -644,6 +646,31 @@ class gs_branches_create_new(CommandForSingleItem):
             self.window.run_command("gs_checkout_new_branch", {
                 "start_point": self.selected_item.branch_name or self.selected_item.commit_hash
             })
+
+
+class gs_branches_create_new_worktree(CommandForSingleItem):
+    def run(self, edit):
+        DEFAULT_PROJECT_ROOT = (
+            os.path.expanduser(R'~\Desktop')
+            if os.name == "nt"
+            else os.path.expanduser('~')
+        )
+
+        if self.repo_path.startswith(sublime.packages_path()):
+            base = DEFAULT_PROJECT_ROOT
+        else:
+            base = os.path.dirname(self.repo_path)
+        project_name = os.path.basename(self.repo_path)
+        start_point = self.selected_item.commit_hash
+        suffix, c = "", count(1)
+        while True:
+            worktree_path = f"{base}{os.path.sep}{project_name}-{start_point}{suffix}"
+            if os.path.exists(worktree_path):
+                suffix = f"-{next(c)}"
+            else:
+                break
+
+        self.git("worktree", "add", worktree_path, start_point)
 
 
 class gs_branches_delete(CommandForSingleItem):
