@@ -17,6 +17,7 @@ from sublime_plugin import WindowCommand, TextCommand, EventListener
 from . import log_graph_colorizer as colorizer
 from . import multi_selector
 from . import show_commit_info
+from . import log_graph_helper as graph_helper
 from .log import gs_log
 from .. import utils
 from ..base_commands import GsTextCommand
@@ -83,26 +84,18 @@ __all__ = (
     "GsLogGraphCursorListener",
 )
 
-
 from typing import (
-    Callable, Deque, Dict, Generic, Iterable, Iterator, List, Literal, Optional, Set, Sequence, Tuple,
-    TypedDict, TypeVar, Union, TYPE_CHECKING
+    Callable, Deque, Dict, Generic, Iterable, Iterator, List, Optional, Set, Sequence, Tuple,
+    TypeVar, Union, TYPE_CHECKING
 )
-from ..git_mixins.branches import Branch
 T = TypeVar('T')
 
-
+COMMIT_LINE = graph_helper.COMMIT_LINE
+GRAPH_CHAR_OPTIONS = graph_helper.GRAPH_CHAR_OPTIONS
+FIND_COMMIT_HASH = graph_helper.FIND_COMMIT_HASH
 QUICK_PANEL_SUPPORTS_WANT_EVENT = int(sublime.version()) >= 4096
 DEFAULT_NODE_CHAR = "●"
 ROOT_NODE_CHAR = "⌂"
-GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
-COMMIT_LINE = re.compile(
-    r"^[{graph_chars}]*(?P<dot>[{node_chars}])[{graph_chars}]* "
-    r"(?P<commit_hash>[a-f0-9]{{5,40}}) +"
-    r"(\((?P<decoration>.+?)\))?"
-    .format(graph_chars=GRAPH_CHAR_OPTIONS, node_chars=colorizer.COMMIT_NODE_CHARS)
-)
-
 DOT_SCOPE = 'git_savvy.graph.dot'
 DOT_ABOVE_SCOPE = 'git_savvy.graph.dot.above'
 PATH_SCOPE = 'git_savvy.graph.path_char'
@@ -2272,11 +2265,6 @@ def extract_comit_hash_span(view, line):
     return None
 
 
-FIND_COMMIT_HASH = "^[{graph_chars}]*[{node_chars}][{graph_chars}]* ".format(
-    graph_chars=GRAPH_CHAR_OPTIONS, node_chars=colorizer.COMMIT_NODE_CHARS
-)
-
-
 @text_command
 def set_and_show_cursor(view, point_or_region):
     # type: (sublime.View, Union[sublime.Region, sublime.Point]) -> None
@@ -2645,81 +2633,3 @@ class gs_log_graph_show_and_focus_panel(WindowCommand, GitCommand):
             return
 
         self.window.focus_view(panel_view)
-
-
-class LineInfo(TypedDict, total=False):
-    commit: str
-    HEAD: str
-    branches: List[str]
-    local_branches: List[str]
-    tags: List[str]
-
-
-ListItems = Literal["branches", "local_branches", "tags"]
-
-
-def describe_graph_line(line, known_branches):
-    # type: (str, Dict[str, Branch]) -> Optional[LineInfo]
-    match = COMMIT_LINE.match(line)
-    if match is None:
-        return None
-
-    commit_hash = match.group("commit_hash")
-    decoration = match.group("decoration")
-
-    rv = {"commit": commit_hash}  # type: LineInfo
-    if decoration:
-        names = decoration.split(", ")
-        if names[0].startswith("HEAD"):
-            head, *names = names
-            if head == "HEAD" or head == "HEAD*":
-                rv["HEAD"] = commit_hash
-            else:
-                branch = head[head.index("-> ") + 3:]
-                rv["HEAD"] = branch
-                names = [branch] + names
-        branches, local_branches, tags = [], [], []
-        for name in names:
-            if name.startswith("tag: "):
-                tags.append(name[len("tag: "):])
-            else:
-                branches.append(name)
-                branch = known_branches.get(name)
-                if branch and branch.is_local:
-                    local_branches.append(name)
-        if branches:
-            rv["branches"] = branches
-        if local_branches:
-            rv["local_branches"] = local_branches
-        if tags:
-            rv["tags"] = tags
-
-    return rv
-
-
-def describe_head(view, branches):
-    # type: (sublime.View, Dict[str, Branch]) -> Optional[LineInfo]
-    try:
-        region = view.find_by_selector(
-            'meta.graph.graph-line.head.git-savvy '
-            'constant.numeric.graph.commit-hash.git-savvy'
-        )[0]
-    except IndexError:
-        return None
-
-    cursor = region.b
-    line = line_from_pt(view, cursor)
-    return describe_graph_line(line.text, branches)
-
-
-def format_revision_list(revisions):
-    # type: (Sequence[str]) -> str
-    return (
-        "{}".format(*revisions)
-        if len(revisions) == 1
-        else "{} and {}".format(*revisions)
-        if len(revisions) == 2
-        else "{}, {}, and {}".format(revisions[0], revisions[1], revisions[-1])
-        if len(revisions) == 3
-        else "{}, {} ... {}".format(revisions[0], revisions[1], revisions[-1])
-    )

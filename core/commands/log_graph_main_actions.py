@@ -14,7 +14,7 @@ from ..git_command import GitCommand
 from ..git_mixins.branches import Branch
 from ..ui__quick_panel import SEPARATOR, show_quick_panel
 from . import multi_selector
-from .log_graph import (
+from .log_graph_helper import (
     LineInfo,
     ListItems,
     describe_graph_line,

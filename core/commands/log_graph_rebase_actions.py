@@ -11,6 +11,12 @@ import sublime_plugin
 from GitSavvy.common import util
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand, ask_for_branch
 from GitSavvy.core.commands import log_graph
+from GitSavvy.core.commands.log_graph_helper import (
+    LineInfo,
+    describe_graph_line,
+    describe_head,
+    format_revision_list,
+)
 from GitSavvy.core.fns import filter_, unique
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.parse_diff import TextRange
@@ -67,7 +73,7 @@ VERSION_WITH_UPDATE_REFS = (2, 38, 0)
 
 
 def commitish_from_info(info):
-    # type: (log_graph.LineInfo) -> str
+    # type: (LineInfo) -> str
     commit_hash = info["commit"]
     head = info.get("HEAD")
     on_a_branch = head != commit_hash
@@ -92,7 +98,7 @@ def extract_symbol_from_graph(self, args, done):
         return
 
     line = log_graph.line_from_pt(view, sel.b)
-    info = log_graph.describe_graph_line(line.text, known_branches={})
+    info = describe_graph_line(line.text, known_branches={})
     if info is None:
         flash(view, "Not on a line with a commit.")
         return
@@ -117,7 +123,7 @@ def extract_commit_hash_from_graph(self, args, done):
         return
 
     line = log_graph.line_from_pt(view, sel.b)
-    info = log_graph.describe_graph_line(line.text, known_branches={})
+    info = describe_graph_line(line.text, known_branches={})
     if info is None:
         flash(view, "Not on a line with a commit.")
         return
@@ -172,7 +178,7 @@ def ask_for_ref(self, args, done, initial_text=""):
         and view.settings().get("git_savvy.log_graph_view")
         and (frozen_sel := list(multi_selector.get_selection(view)))
         and (line := log_graph.line_from_pt(view, frozen_sel[0].begin()))
-        and (info := log_graph.describe_graph_line(line.text, known_branches={}))
+        and (info := describe_graph_line(line.text, known_branches={}))
         # As we don't feed in `known_branches`, every branch lands in `branches`.
         # We're actually only interested in `local_branches` but this is also
         # only the initial text, so we probably don't need to be more accurate here.
@@ -218,7 +224,7 @@ class gs_rebase_action(GsWindowCommand):
             return
 
         infos = list(filter_(
-            log_graph.describe_graph_line(line, known_branches={})
+            describe_graph_line(line, known_branches={})
             for line in unique(
                 view.substr(line)
                 for s in multi_selector.get_selection(view)
@@ -236,7 +242,7 @@ class gs_rebase_action(GsWindowCommand):
                 info["commit"]
                 for info in infos
             ]))
-            formatted_commit_hashes = log_graph.format_revision_list(commit_hashes)
+            formatted_commit_hashes = format_revision_list(commit_hashes)
 
             actions += [
                 (
@@ -290,7 +296,7 @@ class gs_rebase_action(GsWindowCommand):
                             for dot, message in dots
                         ]
                         if fixups:
-                            formatted_commit_hashes = log_graph.format_revision_list(
+                            formatted_commit_hashes = format_revision_list(
                                 [fixup.commit_hash for fixup in fixups]
                             )
                             if len(fixups) == 1:
@@ -347,7 +353,7 @@ class gs_rebase_action(GsWindowCommand):
                 ),
             ]
 
-            head_info = log_graph.describe_head(view, {})
+            head_info = describe_head(view, {})
             # `HEAD^..HEAD` only selects one commit which is not enough
             # for autosquashing.
             if not on_head:

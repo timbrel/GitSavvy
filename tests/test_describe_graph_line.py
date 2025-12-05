@@ -2,7 +2,7 @@ from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import mock
 from GitSavvy.tests.parameterized import parameterized as p
 
-from GitSavvy.core.commands.log_graph import describe_graph_line
+from GitSavvy.core.commands.log_graph_helper import describe_graph_line
 
 
 examples = [
