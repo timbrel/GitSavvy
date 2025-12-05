@@ -672,6 +672,19 @@ class gs_branches_create_new_worktree(CommandForSingleItem):
 
         self.git("worktree", "add", worktree_path, start_point)
 
+        self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
+        util.view.refresh_gitsavvy(self.view)
+
+        normalized_worktree_path = worktree_path.replace("\\", "/")
+        displayed_path = self.nice_path(normalized_worktree_path)
+        r = self.view.find(displayed_path, 0, flags=sublime.FindFlags.LITERAL)
+        previous_line = self.view.line((self.view.line(r).a - 1))
+        for r, scope in extract_tokens_with_scopes(self.view, previous_line):
+            if "constant.other.git-savvy.branches.branch.sha1" in scope:
+                self.view.sel().clear()
+                self.view.sel().add(r.a)
+                break
+
 
 class gs_branches_delete(CommandForSingleItem):
 
