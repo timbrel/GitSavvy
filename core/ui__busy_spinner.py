@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import time
+from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Dict, Sequence, Tuple
+from itertools import count
+from typing import Sequence, Tuple
 
 import sublime
 
@@ -32,16 +34,29 @@ class BusyIndicatorConfig:
 
 
 STATUS_BUSY_KEY = "gitsavvy-x-is-busy"
-running_busy_indicators: Dict[Tuple[sublime.View, str], BusyIndicatorConfig] = {}
+Key = Tuple[sublime.View, str]
+running_busy_indicators: dict[Key, BusyIndicatorConfig] = {}
+stack: defaultdict[Key, list[tuple[int, dict]]] = defaultdict(list)
+c = count()
 
 
 @contextmanager
 def busy_indicator(view: sublime.View, status_key: str = STATUS_BUSY_KEY, **options):
+    key = (view, status_key)
+    n = next(c)
+    stack[key].append((n, options))
     start_busy_indicator(view, status_key, **options)
     try:
         yield
     finally:
-        stop_busy_indicator(view, status_key)
+        stack[key].remove((n, options))
+        try:
+            _, top = stack[key][-1]
+        except IndexError:
+            stop_busy_indicator(view, status_key)
+        else:
+            if top != options:
+                start_busy_indicator(view, status_key, **top)
 
 
 def start_busy_indicator(
