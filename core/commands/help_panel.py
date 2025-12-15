@@ -238,21 +238,22 @@ class gs_show_file_at_commit_help_panel(GsAbstractOpenHelpPanel):
 
 class gs_log_graph_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
-    [enter]        open main menu with additional commands
     [space]        select commit; [{cr}+space] to clear the selection
+    [enter]        open main menu with additional commands
+    [r]            open rebase menu
+    [s]            toggle to overview mode
+    [a]            toggle --all / in overview mode: toggle tags
+
     [o]            open commit in a new view; on `#issues`, open a browser
     [m]/[M]        toggle commit panel on the bottom, [M] to also focus the panel
     [{cr}+C]       copy commit's hash, subject or a combination to the clipboard
 
-    [s]            toggle to overview mode
-    [a]            toggle --all / in overview mode: toggle tags
     [f]            edit filters verbatim
     [l]            list paths to add or remove
     [P]/[N]        Show previous tips of the current branch
     [F]            toggle filters
 
     ### Rebasing ###
-    [r]            open rebase menu
     [W]            reWord commit message
     [E]            Edit commit
     [R]            Rebase --interactive from here

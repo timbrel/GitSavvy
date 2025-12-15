@@ -169,7 +169,7 @@ def ask_for_ref(self, args, done, initial_text=""):
     if (
         not initial_text
         and view.settings().get("git_savvy.log_graph_view")
-        and (frozen_sel := list(view.sel()))
+        and (frozen_sel := list(multi_selector.get_selection(view)))
         and (line := log_graph.line_from_pt(view, frozen_sel[0].begin()))
         and (info := log_graph.describe_graph_line(line.text, known_branches={}))
         # As we don't feed in `known_branches`, every branch lands in `branches`.
@@ -178,6 +178,8 @@ def ask_for_ref(self, args, done, initial_text=""):
         and (branches := info.get("branches", []))
     ):
         initial_text = branches[-1]
+        if initial_text.endswith("--local"):
+            initial_text = initial_text[:-7]
 
     show_single_line_input_panel(
         "Branch name or ref:",
@@ -1036,7 +1038,7 @@ def copy_commits(ref: str, commits: List[str], buffer_content: str) -> str:
 
         for line in buffer_content.splitlines():
             if line == f"update-ref {ref}":
-                yield f"{line}--old"
+                yield f"{line}--local"
             else:
                 yield line
 
