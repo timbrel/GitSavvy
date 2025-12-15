@@ -1,0 +1,37 @@
+GitSavvy 2.53.0
+===============
+
+(Initial) support for worktrees is finally here.   🤞
+
+
+Worktrees are generally displayed in the branches view.
+There you can create (`w`), check out (`c`), or `d`elete them.
+
+The main menu in the Repo History (`enter`) also has an entry to
+create new worktrees.
+
+
+--
+
+There is a new setting `users_home` which is now used as a *fallback*
+when creating worktrees or cloning repos.  Maybe make sure that this
+is a sane writeable path on your system.  But this is just a fallback.
+
+
+--
+
+When in the graph, you can grab tags or branches using ctrl+c, and
+re-create them at a different commit with ctrl+v.  A handy shortcut.
+
+
+--
+
+We're a bit sparse now when configuring and fetching forks.  E.g. we
+might by default ignore their tags or their HEAD (default branch),
+e.g. when fetching PR's.
+
+
+
+Already, almost 🎄
+
+Appreciate some virtual coffee: https://paypal.me/herrkaste 🫶
