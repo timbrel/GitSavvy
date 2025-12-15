@@ -218,6 +218,7 @@ if sys.platform == "win32":
     STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
 HOME = os.path.expanduser('~')
+NORM_HOME = HOME.replace("\\", "/")
 
 
 def __search_for_git(folder):
@@ -795,6 +796,12 @@ class _GitCommand(SettingsMixin):
             return rel_path.replace("\\", "/")
         return rel_path
 
+    def nice_path(self, p: str) -> str:
+        parent_dir = os.path.dirname(self.repo_path).replace("\\", "/")
+        if p.startswith(parent_dir):
+            return self.get_rel_path(p)
+        return p.replace(NORM_HOME, "~")
+
     def _add_global_flags(self, git_cmd, args):
         # type: (str, List[Optional[str]]) -> List[str]
         """
@@ -812,6 +819,7 @@ mixin_base = _GitCommand
 from .git_mixins.status import StatusMixin  # noqa: E402
 from .git_mixins.active_branch import ActiveBranchMixin  # noqa: E402
 from .git_mixins.branches import BranchesMixin  # noqa: E402
+from .git_mixins.worktrees import WorktreesMixin  # noqa: E402
 from .git_mixins.stash import StashMixin  # noqa: E402
 from .git_mixins.stage_unstage import StageUnstageMixin  # noqa: E402
 from .git_mixins.checkout_discard import CheckoutDiscardMixin  # noqa: E402
@@ -830,6 +838,7 @@ class GitCommand(
 
     RemotesMixin,  # depends on BranchesMixin
     BranchesMixin,
+    WorktreesMixin,
     CheckoutDiscardMixin,
 
     StatusMixin,  # depends on HistoryMixin

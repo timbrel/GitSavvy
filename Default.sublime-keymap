@@ -1758,6 +1758,14 @@
         ]
     },
     {
+        "keys": ["w"],
+        "command": "gs_branches_create_new_worktree",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["d"],
         "command": "gs_branches_delete",
         "context": [

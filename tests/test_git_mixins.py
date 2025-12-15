@@ -11,6 +11,7 @@ from GitSavvy.tests.parameterized import parameterized as p, param
 
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core import git_mixins
+from GitSavvy.core.utils import resolve_path
 
 
 class TestGitMixinsUsage(DeferrableTestCase):
@@ -66,7 +67,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         git_output = join0(
             [" ", "refs/heads/master", "refs/remotes/origin/master", "origin", ""]
             + date_sha_and_subject
-            + ["0 0"])
+            + ["0 0", "local_worktree_path"])
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -85,7 +86,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
                 ),
-                git_mixins.branches.AheadBehind(ahead=0, behind=0)
+                git_mixins.branches.AheadBehind(ahead=0, behind=0),
+                "local_worktree_path"
             )
         ])
 
@@ -94,7 +96,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         git_output = join0(
             ["*", "refs/heads/master", "refs/remotes/origin/master", "origin", ""]
             + date_sha_and_subject
-            + ["2 4"])
+            + ["2 4", ""])
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -113,7 +115,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", ""
                 ),
-                git_mixins.branches.AheadBehind(ahead=2, behind=4)
+                git_mixins.branches.AheadBehind(ahead=2, behind=4),
+                None
             )
         ])
 
@@ -122,7 +125,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         git_output = join0(
             [" ", "refs/remotes/origin/dev", "", "", ""]
             + date_sha_and_subject
-            + ["0 0"])
+            + ["0 0", ""])
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -139,7 +142,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 "now",
                 "now",
                 None,
-                git_mixins.branches.AheadBehind(ahead=0, behind=0)
+                git_mixins.branches.AheadBehind(ahead=0, behind=0),
+                None
             )
         ])
 
@@ -148,7 +152,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         git_output = join0(
             [" ", "refs/heads/master", "refs/remotes/orig/in/master", "orig/in", ""]
             + date_sha_and_subject
-            + ["0 0"])
+            + ["0 0", ""])
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -167,7 +171,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 git_mixins.branches.Upstream(
                     "orig/in", "master", "orig/in/master", ""
                 ),
-                git_mixins.branches.AheadBehind(ahead=0, behind=0)
+                git_mixins.branches.AheadBehind(ahead=0, behind=0),
+                None
             )
         ])
 
@@ -176,7 +181,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         git_output = join0(
             [" ", "refs/heads/master", "refs/remotes/origin/master", "origin", "gone"]
             + date_sha_and_subject
-            + ["0 0"])
+            + ["0 0", ""])
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -195,7 +200,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 git_mixins.branches.Upstream(
                     "origin", "master", "origin/master", "gone"
                 ),
-                git_mixins.branches.AheadBehind(ahead=0, behind=0)
+                git_mixins.branches.AheadBehind(ahead=0, behind=0),
+                None
             )
         ])
 
@@ -204,7 +210,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         git_output = join0(
             [" ", "refs/heads/test", "refs/heads/update-branch-from-upstream", ".", ""]
             + date_sha_and_subject
-            + ["0 0"])
+            + ["0 0", ""])
         when(repo).git("for-each-ref", ...).thenReturn(git_output)
         when(repo).get_repo_path().thenReturn("yeah/sure")
         actual = repo.get_branches()
@@ -223,7 +229,8 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 git_mixins.branches.Upstream(
                     ".", "update-branch-from-upstream", "update-branch-from-upstream", ""
                 ),
-                git_mixins.branches.AheadBehind(ahead=0, behind=0)
+                git_mixins.branches.AheadBehind(ahead=0, behind=0),
+                None
             )
         ])
 
@@ -300,7 +307,10 @@ class TestBranchParsing(EndToEndTestCase):
                     "Dec 19 2022",
                     "long ago",
                     None,
-                    git_mixins.branches.AheadBehind(ahead=0, behind=0)
+                    git_mixins.branches.AheadBehind(ahead=0, behind=0),
+                    # Normalize to the canonical path so 8.3 short names
+                    # (e.g. RUNNER~1 on Windows) don't break the assertion.
+                    resolve_path(repo.repo_path).replace("\\", "/")
                 )
             ]
         )
@@ -328,7 +338,10 @@ class TestBranchParsing(EndToEndTestCase):
                     git_mixins.branches.Upstream(
                         ".", "master", "master", ""
                     ),
-                    git_mixins.branches.AheadBehind(ahead=0, behind=0)
+                    git_mixins.branches.AheadBehind(ahead=0, behind=0),
+                    # Normalize to the canonical path so 8.3 short names
+                    # (e.g. RUNNER~1 on Windows) don't break the assertion.
+                    resolve_path(repo.repo_path).replace("\\", "/")
                 )
             ]
         )

@@ -1,16 +1,22 @@
+from __future__ import annotations
 from contextlib import contextmanager
 import datetime
 from functools import partial
-from itertools import groupby
+from itertools import count, groupby
 import os
 import re
+import subprocess
 
+import sublime
 from sublime_plugin import WindowCommand
 
 from ...common import ui, util
 from ..commands import GsNavigate
 from ..commands.log import LogMixin
-from ..git_command import GitCommand
+from ..commands.log_graph import busy_indicator
+from ..commands.log_graph_rebase_actions import get_sublime_executable
+from ..commands import multi_selector
+from ..git_command import GitCommand, STARTUPINFO
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.fns import chain, filter_, pairwise
@@ -22,6 +28,7 @@ __all__ = (
     "gs_show_branch",
     "gs_branches_checkout",
     "gs_branches_create_new",
+    "gs_branches_create_new_worktree",
     "gs_branches_delete",
     "gs_branches_rename",
     "gs_branches_configure_tracking",
@@ -43,9 +50,10 @@ __all__ = (
 )
 
 
-from typing import Dict, Iterable, Iterator, List, Optional, Tuple, TypedDict
+from typing import Dict, Iterable, Iterator, List, Optional, Tuple, TypedDict, NamedTuple
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.branches import Branch
+from ..git_mixins.worktrees import Worktree
 
 
 class BranchViewState(TypedDict, total=False):
@@ -55,10 +63,21 @@ class BranchViewState(TypedDict, total=False):
     descriptions: Dict[str, str]
     remotes: Dict[str, str]
     recent_commits: List[Commit]
+    worktrees: List[Worktree]
     sort_by_recent: bool
     group_by_distance_to_head: bool
     show_remotes: bool
     show_help: bool
+    worktree_deletions_in_progress: set[str]
+
+
+class DetachedBranch(NamedTuple):
+    commit_hash: str
+    canonical_name: str
+    worktree_path: str
+
+
+BranchWithWorktree = DetachedBranch
 
 
 class gs_show_branch(WindowCommand, GitCommand):
@@ -99,6 +118,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
       [c] checkout                                  [p] push selected to remote
       [b] create from selected branch               [P] push all branches to remote
+      [w] create ad-hoc worktree from selected
       [d] delete                                    [h] fetch remote branches
       [D] delete (force)                            [m] merge selected into active branch
       [R] rename (local)                            [M] fetch and merge into active branch
@@ -124,12 +144,13 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
       REMOTE ({remote_name}):
     {remote_branch_list}"""
 
-    subscribe_to = {"branches", "descriptions", "long_status", "recent_commits", "remotes"}
+    subscribe_to = {"branches", "descriptions", "long_status", "recent_commits", "remotes", "worktrees"}
     state: BranchViewState
 
     def initial_state(self):
         return {
             'show_remotes': self.savvy_settings.get("show_remotes_in_branch_dashboard"),
+            'worktree_deletions_in_progress': set(),
         }
 
     def title(self):
@@ -140,8 +161,10 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         # type: () -> None
         if self.view.settings().get("git_savvy.update_view_in_a_blocking_manner"):
             self.get_branches()
+            self.get_worktrees()
         else:
             enqueue_on_worker(self.get_branches)
+            enqueue_on_worker(self.get_worktrees)
         enqueue_on_worker(self.fetch_branch_description_subjects)
         enqueue_on_worker(self.get_latest_commits)
         enqueue_on_worker(self.get_remotes)
@@ -176,7 +199,9 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         cursor_was_on_active_branch = cursor_is_on_active_branch()
         yield
         active_branch_available = any(b for b in self.state.get("branches", []) if b.active)
-        if active_branch_available:
+        head = self.current_state().get("head")
+        detached_head = head and head.detached
+        if active_branch_available or detached_head:
             if cursor_was_on_active_branch and not cursor_is_on_active_branch() or not on_special_symbol():
                 self.view.run_command("gs_branches_navigate_to_active_branch")
         else:
@@ -202,11 +227,30 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         return "{0.hash} {0.message}".format(recent_commits[0])
 
     @ui.section("branch_list")
-    def render_branch_list(self, branches, sort_by_recent, group_by_distance_to_head):
-        # type: (List[Branch], bool, bool) -> str
+    def render_branch_list(self, branches, worktrees, sort_by_recent, group_by_distance_to_head):
+        # type: (List[Branch], List[Worktree], bool, bool) -> str
         # Manually get `descriptions` to not delay the first render.
         descriptions = self.state.get("descriptions", {})
         local_branches = [branch for branch in branches if branch.is_local]
+        detached_worktrees = [
+            DetachedBranch(
+                commit_hash=wt.commit_hash,
+                canonical_name="(DETACHED)",
+                worktree_path=wt.path,
+            )
+            for wt in worktrees
+            if wt.is_detached and not wt.is_main
+            if wt.path not in self.state["worktree_deletions_in_progress"]
+        ]
+        detached_head = [
+            DetachedBranch(
+                commit_hash=wt.commit_hash,
+                canonical_name="(DETACHED)",
+                worktree_path="."
+            )
+            for wt in worktrees
+            if wt.is_detached and wt.is_main
+        ]
 
         has_distance_to_head_information = any(b.distance_to_head for b in local_branches)
         if has_distance_to_head_information and group_by_distance_to_head:
@@ -224,27 +268,64 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             else:
                 local_branches = sorted(local_branches, key=sort_key)
 
+            detached_head_key = (0, 0)
+            worktree_key = (5, 0)
+            detached_worktree_key = (6, 0)
+            rest_key = (99, 0)
+
             def sectionizer(branch):
+                if branch.worktree_path and not branch.active:
+                    return worktree_key
                 ahead, behind = branch.distance_to_head
                 return (
                     (1, 0) if ahead > 0 and behind == 0 else
                     (2, 0) if branch.active else
-                    (3, 0) if ahead == 0 and behind > 0 else
+                    (3, 0) if ahead == 0 and behind >= 0 else
                     (4, 0) if is_fresh(branch.committerdate) else
-                    (5, 0)
+                    rest_key
                 )
 
             local_branches = sorted(local_branches, key=sectionizer)
-            return "\n{}\n".format(" " * 60).join(
-                self._render_branch_list(
-                    None, list(branches), descriptions, human_dates=section_key != (5, 0))
+            grouped: dict = {
+                section_key: list(branches)
                 for section_key, branches in groupby(local_branches, sectionizer)
+            }
+            if detached_worktrees:
+                grouped[detached_worktree_key] = detached_worktrees
+            if detached_head:
+                grouped[detached_head_key] = detached_head
+
+            return "\n{}\n".format(" " * 60).join(
+                self._render_worktree_branches(branches)
+                if section_key in (worktree_key, detached_worktree_key) else
+                self._render_detached_head(branches[0])
+                if section_key == detached_head_key else
+                self._render_branch_list(
+                    None, branches, descriptions, human_dates=section_key != rest_key)
+                for section_key, branches in sorted(grouped.items())
             )
 
         else:
             if sort_by_recent:
                 local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
             return self._render_branch_list(None, local_branches, descriptions)
+
+    def _render_detached_head(self, worktree: DetachedBranch) -> str:
+        return "  ▸ {hash} (DETACHED)".format(
+            hash=self.get_short_hash(worktree.commit_hash),
+        )
+
+    def _render_worktree_branches(self, branches: List[BranchWithWorktree | DetachedBranch]) -> str:
+        return "\n{}\n".format(" " * 60).join(
+            "   <{hash}> {name}\n"
+            "      \\ checked out at: {path}"
+            .format(
+                hash=self.get_short_hash(branch.commit_hash),
+                name=branch.canonical_name,
+                path=self.nice_path(branch.worktree_path)
+            )
+            for branch in branches
+        )
 
     def _render_branch_list(self, remote_name, branches, descriptions, human_dates=True):
         # type: (Optional[str], List[Branch], Dict[str, str], bool) -> str
@@ -398,6 +479,98 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
             )
         ]
 
+    def single_line_info(self) -> tuple[LineInfo | None, str | None]:
+        view = self.view
+        frozen_sel = list(multi_selector.get_selection(view))
+        if len(frozen_sel) == 0:
+            return None, "View has no selection."
+        elif len(frozen_sel) > 1:
+            return None, "Only one selection allowed."
+
+        sel = frozen_sel[0]
+        lines = view.lines(sel)
+        if len(lines) == 0:
+            return None, "No lines selected."
+        elif len(lines) > 1:
+            return None, "Only one line can be selected."
+
+        remote_map = {}
+        for remote_name in self.interface.state["remotes"]:
+            region_name = self.region_name_for("branch_list_" + remote_name)
+            for r in view.get_regions(region_name):
+                remote_map[remote_name] = r
+
+        def extract_worktree_path(line: sublime.Region) -> str | None:
+            for region, scope in extract_tokens_with_scopes(view, line):
+                if "keyword.other.git-savvy.path" in scope:
+                    formatted_path = view.substr(region)
+                    for w in self.interface.state["worktrees"]:
+                        if self.nice_path(w.path) == formatted_path:
+                            return w.path
+
+            return None
+
+        commit_hash = None
+        branch_name = None
+        remote = None
+        worktree = None
+        is_active = False
+
+        line = lines[0]
+        for region, scope in extract_tokens_with_scopes(view, line):
+            if "constant.other.git-savvy.branches.branch.sha1" in scope:
+                commit_hash = view.substr(region)
+            if "meta.git-savvy.branches.branch.name" in scope:
+                branch_name = view.substr(region)
+            if "meta.git-savvy.status.section.branch.remote" in scope:
+                for remote_name, r in remote_map.items():
+                    if r.contains(line):
+                        remote = remote_name
+                        break
+            if "meta.git-savvy.branches.branch.as-worktree" in scope:
+                worktree = extract_worktree_path(view.line(line.b + 1))
+            if "meta.git-savvy.branches.branch.active-branch" in scope:
+                is_active = True
+
+        if not commit_hash:
+            return None, "No item selected."
+        return LineInfo(commit_hash, branch_name, remote, worktree, is_active), None
+
+
+def extract_tokens_with_scopes(view, region) -> list[tuple[sublime.Region, str]]:
+    rv: list[tuple[sublime.Region, str]] = []
+    for current in view.extract_tokens_with_scopes(region):
+        previous = rv[-1] if rv else None
+        if not previous or previous[1] != current[1]:
+            rv.append(current)
+        else:
+            rv[-1] = (sublime.Region(previous[0].a, current[0].b), previous[1])
+    return rv
+
+
+class LineInfo(NamedTuple):
+    commit_hash: str
+    branch_name: str | None
+    remote: str | None
+    worktree: str | None
+    is_active: bool
+
+    @property
+    def canonical_name(self) -> str:
+        return "/".join(filter_((self.remote, self.branch_name)))
+
+    @property
+    def is_detached(self) -> bool:
+        return not self.branch_name
+
+    @property
+    def is_remote(self) -> bool:
+        return bool(self.remote)
+
+    @property
+    def is_worktree(self) -> bool:
+        return bool(self.worktree)
+
 
 class CommandForSingleBranch(BranchInterfaceCommand):
     selected_branch: Branch
@@ -412,41 +585,138 @@ class CommandForSingleBranch(BranchInterfaceCommand):
             raise RuntimeError("Only one branch must be selected.")
 
 
-class gs_branches_checkout(CommandForSingleBranch):
+class CommandForSingleItem(BranchInterfaceCommand):
+    selected_item: LineInfo
+
+    def pre_run(self):
+        info, err = self.single_line_info()
+        if err:
+            raise RuntimeError(err)
+        assert info
+        self.selected_item = info
+
+
+class gs_branches_checkout(CommandForSingleItem):
 
     """
     Checkout the selected branch.
     """
 
     def run(self, edit):
-        self.window.run_command("gs_checkout_branch", {"branch": self.selected_branch.canonical_name})
+        """
+        if active: detach
+        if local branch:  checkout
+        if remote: checkout detached
+        if worktree:  open new window  (// switch to project  // checkout detached)?
+        """
+        if self.selected_item.is_active:
+            if self.selected_item.is_detached:
+                flash(self.view, "Already checked out.")
+            else:
+                self.window.run_command("gs_checkout_branch", {
+                    "branch": self.selected_item.commit_hash
+                })
+        elif self.selected_item.worktree:
+            worktree_path = self.selected_item.worktree.replace("/", os.path.sep)
+            open_folder_in_new_window(worktree_path)
+
+            @on_worker
+            def search_for_new_window(_tries=5):
+                for w in sublime.windows():
+                    if worktree_path in w.folders():
+                        if not w.views():
+                            w.run_command("gs_show_branch")
+                        return
+                sublime.set_timeout(lambda: search_for_new_window(_tries - 1), 10)
+
+            search_for_new_window()
+
+        else:
+            self.window.run_command("gs_checkout_branch", {
+                "branch": self.selected_item.canonical_name or self.selected_item.commit_hash
+            })
 
 
-class gs_branches_create_new(CommandForSingleBranch):
+def open_folder_in_new_window(path):
+    bin = get_sublime_executable()
+    cmd = [bin, path]
+    subprocess.Popen(cmd, startupinfo=STARTUPINFO)
+
+
+class gs_branches_create_new(CommandForSingleItem):
 
     """
     Create a new branch from selected branch and checkout.
     """
 
     def run(self, edit):
-        if self.selected_branch.is_remote:
-            self.window.run_command("gs_checkout_remote_branch", {"remote_branch": self.selected_branch.canonical_name})
+        """
+        if active: create from branch_name or commit_hash
+        if local: create from branch_name
+        if remote: create from branch_name
+        if worktree: create from branch_name or commit_hash
+        """
+
+        if self.selected_item.is_remote:
+            self.window.run_command("gs_checkout_remote_branch", {"remote_branch": self.selected_item.canonical_name})
         else:
-            self.window.run_command("gs_checkout_new_branch", {"start_point": self.selected_branch.name})
+            self.window.run_command("gs_checkout_new_branch", {
+                "start_point": self.selected_item.branch_name or self.selected_item.commit_hash
+            })
 
 
-class gs_branches_delete(CommandForSingleBranch):
+class gs_branches_create_new_worktree(CommandForSingleItem):
+    def run(self, edit):
+        DEFAULT_PROJECT_ROOT = (
+            os.path.expanduser(R'~\Desktop')
+            if os.name == "nt"
+            else os.path.expanduser('~')
+        )
+
+        if self.repo_path.startswith(sublime.packages_path()):
+            base = DEFAULT_PROJECT_ROOT
+        else:
+            base = os.path.dirname(self.repo_path)
+        project_name = os.path.basename(self.repo_path)
+        start_point = self.selected_item.commit_hash
+        suffix, c = "", count(1)
+        while True:
+            worktree_path = f"{base}{os.path.sep}{project_name}-{start_point}{suffix}"
+            if os.path.exists(worktree_path):
+                suffix = f"-{next(c)}"
+            else:
+                break
+
+        self.git("worktree", "add", worktree_path, start_point)
+
+        self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
+        util.view.refresh_gitsavvy(self.view)
+
+        normalized_worktree_path = worktree_path.replace("\\", "/")
+        displayed_path = self.nice_path(normalized_worktree_path)
+        r = self.view.find(displayed_path, 0, flags=sublime.FindFlags.LITERAL)
+        previous_line = self.view.line((self.view.line(r).a - 1))
+        for r, scope in extract_tokens_with_scopes(self.view, previous_line):
+            if "constant.other.git-savvy.branches.branch.sha1" in scope:
+                self.view.sel().clear()
+                self.view.sel().add(r.a)
+                break
+
+
+class gs_branches_delete(CommandForSingleItem):
 
     """
     Delete selected branch.
     """
 
     def run(self, edit, force=False):
-        if self.selected_branch.is_remote:
-            self.delete_remote_branch(self.selected_branch.remote, self.selected_branch.name, force)
+        if self.selected_item.is_remote:
+            self.delete_remote_branch(self.selected_item.remote, self.selected_item.branch_name, force)
+        elif self.selected_item.worktree:
+            self.delete_worktree(self.selected_item.worktree, force)
         else:
             self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
-            self.window.run_command("gs_delete_branch", {"branch": self.selected_branch.name, "force": force})
+            self.window.run_command("gs_delete_branch", {"branch": self.selected_item.branch_name, "force": force})
 
     @util.actions.destructive(description="delete a remote branch")
     @on_worker
@@ -460,6 +730,19 @@ class gs_branches_delete(CommandForSingleBranch):
         )
         self.window.status_message("Deleted remote branch.")
         util.view.refresh_gitsavvy(self.view)
+
+    @util.actions.destructive(description="delete a worktree")
+    @on_worker
+    def delete_worktree(self, path, force):
+        self.interface.state["worktree_deletions_in_progress"].add(path)
+        self.interface.just_render()
+        try:
+            with busy_indicator(self.view, start_after=0.5):
+                self.remove_worktree(path, force=force)
+        finally:
+            self.interface.state["worktree_deletions_in_progress"].discard(path)
+            self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
+            util.view.refresh_gitsavvy(self.view)
 
 
 class gs_branches_rename(CommandForSingleBranch):
