@@ -698,7 +698,7 @@ class gs_branches_delete(CommandForSingleItem):
         util.view.refresh_gitsavvy(self.view)
 
     @util.actions.destructive(description="delete a worktree")
-    @on_worker
+    @on_new_thread
     def delete_worktree(self, path, force):
         self.interface.state["worktree_deletions_in_progress"].add(path)
         self.interface.just_render()
