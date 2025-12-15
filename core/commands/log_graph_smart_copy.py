@@ -10,6 +10,7 @@ from ..view import find_by_selector
 
 __all__ = (
     "CopyIntercepterForGraph",
+    "gs_log_graph_smart_paste",
 )
 
 
@@ -33,23 +34,29 @@ class CopyIntercepterForGraph(sublime_plugin.EventListener):
             return None
 
         def candidates():
-            # type: () -> Iterator[Tuple[str, List[Region]]]
+            # type: () -> Iterator[Tuple[str, List[Region], str]]
             cursor = frozen_sel[0].a
             line = log_graph.line_from_pt(view, cursor)
             line_span = line.region()
 
             commit_hash = read_commit_hash(view, line)
             if commit_hash:
-                yield commit_hash.text, [commit_hash.region()]
-            for d in read_commit_decoration(view, line_span):
-                yield d.text, [d.region()]
+                yield commit_hash.text, [commit_hash.region()], "commit"
+
+            for d in read_tags_in_region(view, line_span):
+                yield d.text, [d.region()], "tag"
+
+            for d in read_branches_in_region(view, line_span):
+                yield d.text, [d.region()], "branch"
+
             commit_msg = read_commit_message(view, line_span)
             if commit_msg:
-                yield commit_msg.text, [commit_msg.region()]
+                yield commit_msg.text, [commit_msg.region()], "message"
             if commit_hash and commit_msg:
                 yield (
                     "{} ({})".format(commit_hash.text, commit_msg.text),
-                    [commit_hash.region(), commit_msg.region()]
+                    [commit_hash.region(), commit_msg.region()],
+                    "combo",
                 )
 
         clip_content = sublime.get_clipboard(128)
@@ -71,11 +78,56 @@ class CopyIntercepterForGraph(sublime_plugin.EventListener):
             return "noop"
 
 
-def set_clipboard_and_flash(view, text, regions):
-    # type: (sublime.View, str, List[Region]) -> None
+def set_clipboard_and_flash(view, text, regions, kind):
+    # type: (sublime.View, str, List[Region], str) -> None
     sublime.set_clipboard(text)
     flash_regions(view, regions)
-    flash(view, "Copied '{}' to the clipboard".format(text))
+    ext = ". Paste elsewhere to recreate the branch." if kind == "branch" else ""
+    flash(view, f"Copied '{text}' to the clipboard{ext}")
+    view.settings().set("git_savvy.log_graph_view.clipboard", [text, kind])
+
+
+class gs_log_graph_smart_paste(sublime_plugin.TextCommand):
+    def run(self, edit):
+        view = self.view
+        window = view.window()
+        if not window:
+            return
+
+        frozen_sel = [r for r in view.sel()]
+        if len(frozen_sel) != 1:
+            return
+
+        if not frozen_sel[0].empty():
+            return
+
+        clip = view.settings().get("git_savvy.log_graph_view.clipboard")
+        if not isinstance(clip, list):
+            return
+
+        if len(clip) != 2:
+            return
+
+        ref, kind = clip
+        if not ref or kind not in ("branch", "tag"):
+            return
+
+        cursor = frozen_sel[0].a
+        line = log_graph.line_from_pt(view, cursor)
+        commit_hash = read_commit_hash(view, line)
+        if not commit_hash:
+            return
+
+        if kind == "branch":
+            window.run_command("gs_create_branch", {
+                "start_point": commit_hash.text,
+                "branch_name": ref,
+            })
+        elif kind == "tag":
+            window.run_command("gs_tag_create", {
+                "target_commit": commit_hash.text,
+                "tag_name": ref,
+            })
 
 
 def read_commit_hash(view, line):
@@ -87,9 +139,19 @@ def read_commit_hash(view, line):
     return TextRange(view.substr(commit_region), commit_region.a, commit_region.b)
 
 
-def read_commit_decoration(view, line_span):
+def read_tags_in_region(view, line_span):
     # type: (sublime.View, sublime.Region) -> Iterator[TextRange]
-    for r in find_by_selector(view, "constant.other.git.branch, entity.name.tag.branch-name"):
+    yield from read_commit_decoration(view, line_span, "entity.name.tag.branch-name")
+
+
+def read_branches_in_region(view, line_span):
+    # type: (sublime.View, sublime.Region) -> Iterator[TextRange]
+    yield from read_commit_decoration(view, line_span, "constant.other.git.branch")
+
+
+def read_commit_decoration(view, line_span, selector):
+    # type: (sublime.View, sublime.Region, str) -> Iterator[TextRange]
+    for r in find_by_selector(view, selector):
         if r.a > line_span.b:
             break
         if line_span.contains(r):

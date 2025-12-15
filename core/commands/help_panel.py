@@ -246,7 +246,8 @@ class gs_log_graph_help_panel(GsAbstractOpenHelpPanel):
 
     [o]            open commit in a new view; on `#issues`, open a browser
     [m]/[M]        toggle commit panel on the bottom, [M] to also focus the panel
-    [{cr}+C]       copy commit's hash, subject or a combination to the clipboard
+    [{cr}+c]       copy commit's hash, subject or a combination to the clipboard
+                   if you copied a branch name, [ctrl+v] to create such a branch
 
     [f]            edit filters verbatim
     [l]            list paths to add or remove

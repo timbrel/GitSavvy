@@ -2001,6 +2001,17 @@
         ]
     },
     {
+        // Note that for what would be "ctrl+c" we just intercept the command "copy", but
+        // Sublime Text doesn't fire the equivalent "paste" on read-only views, hence the
+        // manual binding here.
+        "keys": ["primary+v"],
+        "command": "gs_log_graph_smart_paste",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["enter"],
         "command": "gs_log_graph_action",
         "context": [
