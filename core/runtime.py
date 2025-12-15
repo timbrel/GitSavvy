@@ -331,7 +331,8 @@ class gs_generic_text_cmd(sublime_plugin.TextCommand):
         finally:
             self.view.end_edit(edit)
 
-    def run(self, token, fn, *args, **kwargs):
+    # mypy is correct here and the "override" is confusing but (at least) self contained here
+    def run(self, token, fn, *args, **kwargs):  # type: ignore[override]
         rv = fn(*args, **kwargs)
         with lock:
             RESULTS[token] = rv
