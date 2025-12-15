@@ -2,9 +2,11 @@ import re
 from sublime_plugin import TextCommand
 
 from ...common import util
+from ..git_command import GitSavvyError
 from ..ui_mixins.quick_panel import PanelActionMixin
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.base_commands import GsTextCommand
+from GitSavvy.core.utils import noop, show_actions_panel, uprint, yes_no_switch
 
 
 __all__ = (
@@ -30,6 +32,11 @@ MAYBE_SEMVER = re.compile(r"\d+\.\d+(\.\d+)?")
 TAG_CREATE_PROMPT = "Enter tag:"
 TAG_CREATE_MESSAGE = "Tag \"{}\" created."
 TAG_CREATE_MESSAGE_PROMPT = "Enter message:"
+TAG_ALREADY_EXISTS_MESSAGE = "tag '{0}' already exists"
+RECREATE_TAG_UNDO_MESSAGE = """\
+GitSavvy: Re-created tag '{0}', in case you want to undo, run:
+  $ git tag --force {0} {1}
+"""
 VERSION_ZERO = "v0.0.0"
 
 
@@ -121,15 +128,38 @@ class gs_tag_create(GsTextCommand):
         else:
             self.on_entered_message()
 
-    def on_entered_message(self, message=None):
-        # type: (str) -> None
+    def on_entered_message(self, message=None, force=False):
+        # type: (str, bool) -> None
         """
         Create a tag with the specified tag name and message.
         """
-        if not message:
-            self.git("tag", self.tag_name, self.target_commit)
-        else:
-            self.git("tag", self.tag_name, self.target_commit, "-F", "-", stdin=message)
+        try:
+            if not message:
+                self.git_throwing_silently("tag", yes_no_switch("--force", force), self.tag_name, self.target_commit)
+            else:
+                self.git_throwing_silently(
+                    "tag", yes_no_switch("--force", force), self.tag_name, self.target_commit,
+                    "-F", "-", stdin=message)
+        except GitSavvyError as e:
+            if TAG_ALREADY_EXISTS_MESSAGE.format(self.tag_name) in e.stderr and not force:
+                def overwrite_action():
+                    old_hash = self.git("rev-parse", self.tag_name).strip()
+                    uprint(RECREATE_TAG_UNDO_MESSAGE.format(self.tag_name, old_hash))
+                    self.on_entered_message(message, force=True)
+
+                show_actions_panel(self.window, [
+                    noop(f"Abort, a tag named '{self.tag_name}' already exists."),
+                    (
+                        f'Re-create the tag at {self.target_commit}.',
+                        overwrite_action
+                    )
+                ])
+                return
+
+            else:
+                e.show_error_panel()
+                raise
+
         self.window.status_message(TAG_CREATE_MESSAGE.format(self.tag_name))
         util.view.refresh_gitsavvy_interfaces(self.window)
 
