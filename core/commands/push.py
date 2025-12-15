@@ -7,7 +7,7 @@ from ..ui_mixins.quick_panel import show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import enqueue_on_worker, run_on_new_thread
-from GitSavvy.core.utils import show_actions_panel, noop
+from ..ui__quick_panel import noop, show_actions_panel
 
 
 __all__ = (

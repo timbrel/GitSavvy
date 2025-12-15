@@ -13,10 +13,10 @@ from sublime_plugin import WindowCommand
 from ...common import ui, util
 from ..commands import GsNavigate
 from ..commands.log import LogMixin
-from ..commands.log_graph import busy_indicator
 from ..commands.log_graph_rebase_actions import get_sublime_executable
 from ..commands import multi_selector
 from ..git_command import GitCommand, STARTUPINFO
+from ..ui__busy_spinner import busy_indicator
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.fns import chain, filter_, pairwise

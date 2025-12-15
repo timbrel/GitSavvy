@@ -13,7 +13,7 @@ from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker
-from GitSavvy.core.utils import noop, show_actions_panel
+from ..ui__quick_panel import noop, show_actions_panel
 
 
 __all__ = (

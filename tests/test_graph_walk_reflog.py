@@ -6,7 +6,7 @@ from unittesting import DeferrableTestCase
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.tests.parameterized import parameterized as p
 
-from GitSavvy.core.commands.log_graph import gs_log_graph_refresh
+from GitSavvy.core.commands.log_graph_renderer import gs_log_graph_refresh
 
 
 class _TestBase(DeferrableTestCase):

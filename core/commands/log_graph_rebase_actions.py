@@ -11,12 +11,20 @@ import sublime_plugin
 from GitSavvy.common import util
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand, ask_for_branch
 from GitSavvy.core.commands import log_graph
+from GitSavvy.core.commands.log_graph_renderer import resolve_commit_to_follow_after_rebase
+from GitSavvy.core.commands.log_graph_helper import (
+    LineInfo,
+    describe_graph_line,
+    describe_head,
+    format_revision_list,
+)
 from GitSavvy.core.fns import filter_, unique
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
-from GitSavvy.core.parse_diff import TextRange
+from GitSavvy.core.text_helper import TextRange, line_from_pt
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
 from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
-from GitSavvy.core.utils import flash, noop, show_actions_panel, yes_no_switch, SEPARATOR
+from GitSavvy.core.ui__quick_panel import noop, show_actions_panel, SEPARATOR, show_quick_panel
+from GitSavvy.core.utils import flash, yes_no_switch
 from GitSavvy.core.view import replace_view_content
 from . import multi_selector
 
@@ -66,7 +74,7 @@ VERSION_WITH_UPDATE_REFS = (2, 38, 0)
 
 
 def commitish_from_info(info):
-    # type: (log_graph.LineInfo) -> str
+    # type: (LineInfo) -> str
     commit_hash = info["commit"]
     head = info.get("HEAD")
     on_a_branch = head != commit_hash
@@ -90,8 +98,8 @@ def extract_symbol_from_graph(self, args, done):
         flash(view, "Only single cursors are supported.")
         return
 
-    line = log_graph.line_from_pt(view, sel.b)
-    info = log_graph.describe_graph_line(line.text, known_branches={})
+    line = line_from_pt(view, sel.b)
+    info = describe_graph_line(line.text, known_branches={})
     if info is None:
         flash(view, "Not on a line with a commit.")
         return
@@ -115,8 +123,8 @@ def extract_commit_hash_from_graph(self, args, done):
         flash(view, "Only single cursors are supported.")
         return
 
-    line = log_graph.line_from_pt(view, sel.b)
-    info = log_graph.describe_graph_line(line.text, known_branches={})
+    line = line_from_pt(view, sel.b)
+    info = describe_graph_line(line.text, known_branches={})
     if info is None:
         flash(view, "Not on a line with a commit.")
         return
@@ -170,8 +178,8 @@ def ask_for_ref(self, args, done, initial_text=""):
         not initial_text
         and view.settings().get("git_savvy.log_graph_view")
         and (frozen_sel := list(multi_selector.get_selection(view)))
-        and (line := log_graph.line_from_pt(view, frozen_sel[0].begin()))
-        and (info := log_graph.describe_graph_line(line.text, known_branches={}))
+        and (line := line_from_pt(view, frozen_sel[0].begin()))
+        and (info := describe_graph_line(line.text, known_branches={}))
         # As we don't feed in `known_branches`, every branch lands in `branches`.
         # We're actually only interested in `local_branches` but this is also
         # only the initial text, so we probably don't need to be more accurate here.
@@ -217,7 +225,7 @@ class gs_rebase_action(GsWindowCommand):
             return
 
         infos = list(filter_(
-            log_graph.describe_graph_line(line, known_branches={})
+            describe_graph_line(line, known_branches={})
             for line in unique(
                 view.substr(line)
                 for s in multi_selector.get_selection(view)
@@ -235,7 +243,7 @@ class gs_rebase_action(GsWindowCommand):
                 info["commit"]
                 for info in infos
             ]))
-            formatted_commit_hashes = log_graph.format_revision_list(commit_hashes)
+            formatted_commit_hashes = format_revision_list(commit_hashes)
 
             actions += [
                 (
@@ -257,7 +265,7 @@ class gs_rebase_action(GsWindowCommand):
             return actions
 
         def single_commit_actions():
-            line = log_graph.line_from_pt(view, view.sel()[0].b)
+            line = line_from_pt(view, view.sel()[0].b)
             info = infos[0]
             commit_hash = info["commit"]
             commitish = commitish_from_info(info)
@@ -289,7 +297,7 @@ class gs_rebase_action(GsWindowCommand):
                             for dot, message in dots
                         ]
                         if fixups:
-                            formatted_commit_hashes = log_graph.format_revision_list(
+                            formatted_commit_hashes = format_revision_list(
                                 [fixup.commit_hash for fixup in fixups]
                             )
                             if len(fixups) == 1:
@@ -346,7 +354,7 @@ class gs_rebase_action(GsWindowCommand):
                 ),
             ]
 
-            head_info = log_graph.describe_head(view, {})
+            head_info = describe_head(view, {})
             # `HEAD^..HEAD` only selects one commit which is not enough
             # for autosquashing.
             if not on_head:
@@ -444,9 +452,6 @@ class gs_rebase_action(GsWindowCommand):
             actions = multi_commits_actions()
 
         def on_action_selection(index):
-            if index == -1:
-                return
-
             self.selected_index = index
             description, action = actions[index]
             action()
@@ -457,10 +462,10 @@ class gs_rebase_action(GsWindowCommand):
             if selected_action == SEPARATOR:
                 selected_index += 1
 
-        self.window.show_quick_panel(
+        show_quick_panel(
+            self.window,
             [a[0] for a in actions],
             on_action_selection,
-            flags=sublime.MONOSPACE_FONT,
             selected_index=selected_index,
         )
 
@@ -684,7 +689,7 @@ def commit_message_from_line(view, line):
 
 def commit_hash_from_dot(view, dot):
     # type: (sublime.View, log_graph.colorizer.Char) -> str
-    line = log_graph.line_from_pt(view, dot.pt)
+    line = line_from_pt(view, dot.pt)
     return log_graph.extract_commit_hash(line.text)
 
 
@@ -699,7 +704,7 @@ def find_base_commit_for_fixup(view, commit_line, commit_message):
     if not target_dot:
         return None
 
-    target_line = log_graph.line_from_pt(view, target_dot.pt)
+    target_line = line_from_pt(view, target_dot.pt)
     target_commit_hash = log_graph.extract_commit_hash(target_line.text)
     return target_commit_hash
 
@@ -1195,7 +1200,7 @@ def follow_new_commit(self, commitish):
             settings.set("git_savvy.resolve_after_rebase", commitish)
 
         else:
-            log_graph.resolve_commit_to_follow_after_rebase(self, commitish)
+            resolve_commit_to_follow_after_rebase(self, commitish)
     return sideeffect
 
 

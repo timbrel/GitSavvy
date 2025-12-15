@@ -8,7 +8,8 @@ from ..git_command import GitSavvyError
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ...common import util
 from GitSavvy.core.base_commands import ask_for_local_branch, GsWindowCommand
-from GitSavvy.core.utils import noop, show_actions_panel, uprint
+from ..ui__quick_panel import noop, show_actions_panel
+from GitSavvy.core.utils import uprint
 
 
 __all__ = (

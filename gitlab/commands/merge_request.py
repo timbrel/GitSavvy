@@ -9,6 +9,7 @@ from ...core.view import replace_view_content
 from ...common import util
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_worker
+from GitSavvy.core.ui__quick_panel import show_quick_panel
 
 
 __all__ = (
@@ -63,23 +64,23 @@ class gs_gitlab_merge_request(GsWindowCommand, git_mixins.GitLabRemotesMixin):
             return
 
         self.mr = mr
-        self.window.show_quick_panel(
-            ["Checkout as local branch.",
-             "Create local branch, but do not checkout.",
-             "View diff.",
-             "Open in browser."],
+        show_quick_panel(
+            self.window,
+            [
+                "Checkout as local branch.",
+                "Create local branch, but do not checkout.",
+                "View diff.",
+                "Open in browser.",
+            ],
             self.on_select_action
         )
 
     def on_select_action(self, idx):
-        if idx == -1:
-            return
-
         # NOTE: not sure if it's possible to checkout detached without
         #       access to the source repository/branch
         # if idx == 0:
         #     self.fetch_and_checkout_mr()
-        elif idx == 0:
+        if idx == 0:
             show_single_line_input_panel(
                 "Enter branch name for MR {}:".format(self.mr["iid"]),
                 "{}/{}".format(self.mr["author"]["username"], self.mr["source_branch"]),

@@ -1,11 +1,10 @@
 from __future__ import annotations
-from functools import lru_cache, partial, wraps
+from functools import wraps
 from collections import OrderedDict
 from contextlib import contextmanager
 import datetime
-import html
 import inspect
-from itertools import chain, count, cycle, repeat
+from itertools import count
 import os
 import signal
 import subprocess
@@ -17,14 +16,14 @@ from types import SimpleNamespace
 
 import sublime
 
-from . import runtime, fns
+from . import runtime
 
 
 from typing import (
-    overload, Any, Callable, Dict, Iterable, Iterator, NamedTuple,
-    Optional, Sequence, Tuple, Type, TypeVar, Union)
+    Any, Callable, Dict, Iterator,
+    Optional, Sequence, Tuple, Type, TypeVar)
 
-from typing_extensions import ParamSpec, TypeAlias
+from typing_extensions import ParamSpec
 P = ParamSpec('P')
 T = TypeVar('T')
 
@@ -138,190 +137,6 @@ def erase_regions(view, region_key):
     view.erase_regions(region_key)
 
 
-IDS = partial(next, count())  # type: Callable[[], int]
-HIDE_POPUP_TIMERS = {}  # type: Dict[sublime.ViewId, int]
-POPUPS = {}  # type: Dict[sublime.ViewId, Tuple]
-DEFAULT_TIMEOUT = 2500  # [ms]
-DEFAULT_STYLE = {
-    'background': 'transparent',
-    'foreground': 'var(--foreground)'
-}
-
-
-def show_toast(
-    view,
-    message,
-    timeout=DEFAULT_TIMEOUT,
-    style=DEFAULT_STYLE,
-    max_width=2 / 3,
-    location=1.0,
-):
-    # type: (sublime.View, str, int, Dict[str, str], float, float) -> Callable[[], None]
-    """Show a toast popup by default at the bottom of the view.
-
-    A `timeout` of -1 makes a "sticky" toast.
-    `max_width` and `location` can take floats between 0 and zero.
-    For `location` 0.0 means top of the viewport, 1.0 bottom; e.g. 0.5 is
-    the middle of the screen.
-    Same for `max_width`, 1.0 denoting the whole viewport.
-    """
-    messages_by_line = escape_text(message).splitlines()
-    content = style_message("<br />".join(messages_by_line), style)
-
-    # Order can matter here.  If we calc width *after* visible_region we get
-    # different results!
-    if isinstance(max_width, float) and 0 <= max_width <= 1:
-        width, _ = view.viewport_extent()
-        max_width = width * max_width
-
-    if isinstance(max_width, float) and 0 <= location <= 1:
-        visible_region = view.visible_region()
-        r0, _ = view.rowcol(visible_region.a)
-        r1, _ = view.rowcol(visible_region.b)
-        r_ = r0 + int(((r1 - r0) * location)) - 4 - len(messages_by_line)
-        location = view.text_point(max(r0, r_), 0)
-
-    vid = view.id()
-    key = IDS()
-
-    def on_hide(vid, key):
-        HIDE_POPUP_TIMERS.pop(vid, None)
-
-    def __hide_popup(vid, key, sink):
-        if HIDE_POPUP_TIMERS.get(vid) == key:
-            HIDE_POPUP_TIMERS.pop(vid, None)
-            sink()
-
-    inner_hide_popup = show_popup(
-        view,
-        content,
-        max_width=max_width,
-        location=int(location),
-        on_hide=partial(on_hide, vid, key)
-    )
-    HIDE_POPUP_TIMERS[vid] = key
-
-    hide_popup = partial(__hide_popup, vid, key, inner_hide_popup)
-    if timeout > 0:
-        sublime.set_timeout(hide_popup, timeout)
-    return hide_popup
-
-
-def show_popup(view, content, max_width, location, on_hide=None):
-    # type: (sublime.View, str, float, int, Callable[[], None]) -> Callable[[], None]
-    vid = view.id()
-    inner_hide_popup = view.hide_popup
-    actual_key = (int(max_width), location)
-    if POPUPS.get(vid) == actual_key:
-        view.update_popup(content)
-    else:
-        def __on_hide(vid, key):
-            POPUPS.pop(vid, None)
-            if on_hide:
-                on_hide()
-
-        view.show_popup(
-            content,
-            max_width=max_width,
-            location=location,
-            on_hide=partial(__on_hide, vid, actual_key)
-        )
-        POPUPS[vid] = actual_key
-
-    def __hide_popup(vid, key, sink):
-        if POPUPS.get(vid) == key:
-            POPUPS.pop(vid, None)
-            sink()
-
-    return partial(__hide_popup, vid, actual_key, inner_hide_popup)
-
-
-def style_message(message, style):
-    # type: (str, Dict[str, str]) -> str
-    return """
-        <div
-            style="padding: 1rem;
-                   background-color: {background};
-                   color: {foreground}"
-        >{message}</div>
-    """.format(message=message, **style)
-
-
-def escape_text(text):
-    # type: (str) -> str
-    return html.escape(text, quote=False).replace(" ", "&nbsp;")
-
-
-class Action(NamedTuple):
-    description: str
-    action: Callable[[], None]
-
-
-ActionType = Tuple[str, Callable[[], None]]
-QuickPanelItems = Iterable[Union[str, sublime.QuickPanelItem]]
-
-
-def show_panel(
-    window,  # type: sublime.Window
-    items,  # type: QuickPanelItems
-    on_done,  # type: Callable[[int], None]
-    on_cancel=lambda: None,  # type: Callable[[], None]
-    on_highlight=lambda _: None,  # type: Callable[[int], None]
-    selected_index=-1,  # type: int
-    flags=sublime.MONOSPACE_FONT
-):
-    # (...) -> None
-    def _on_done(idx):
-        # type: (int) -> None
-        if idx == -1:
-            on_cancel()
-        else:
-            on_done(idx)
-
-    # `on_highlight` also gets called `on_done`. We
-    # reduce the side-effects here using `lru_cache`.
-    @lru_cache(1)
-    def _on_highlight(idx):
-        # type: (int) -> None
-        on_highlight(idx)
-
-    window.show_quick_panel(
-        list(items),
-        _on_done,
-        on_highlight=_on_highlight,
-        selected_index=selected_index,
-        flags=flags
-    )
-
-
-def show_actions_panel(window, actions, select=-1):
-    # type: (sublime.Window, Sequence[ActionType], int) -> None
-    def on_selection(idx):
-        # type: (int) -> None
-        description, action = actions[idx]
-        action()
-
-    show_panel(
-        window,
-        (action[0] for action in actions),
-        on_selection,
-        selected_index=select
-    )
-
-
-def show_noop_panel(window, message):
-    # type: (sublime.Window, str) -> None
-    show_actions_panel(window, [noop(message)])
-
-
-def noop(description):
-    # type: (str) -> ActionType
-    return Action(description, lambda: None)
-
-
-SEPARATOR = noop("_" * 74)
-
-
 def yes_no_switch(name, value):
     # type: (str, Optional[bool]) -> Optional[str]
     assert name.startswith("--")
@@ -330,112 +145,6 @@ def yes_no_switch(name, value):
     if value:
         return name
     return "--no-{}".format(name[2:])
-
-
-class AnimatedText_(NamedTuple):
-    text: Iterator[str]
-    cycle_times: Iterator[int]
-
-    def __next__(self) -> tuple[str, int]:
-        return next(self.text), next(self.cycle_times)
-
-
-def AnimatedText(*text: str, tick: float = 0.2, start_after: float = 0.8):
-    ticks = chain(
-        [int(start_after * 1000)],
-        repeat(int(tick * 1000))
-    )
-    return AnimatedText_(cycle(text), ticks)
-
-
-busy_text: TypeAlias = Union[str, AnimatedText_]
-
-
-@overload                   # noqa: E302
-def show_busy_panel(        # noqa: E704
-    window: sublime.Window, text: busy_text, task: Callable[[], None], kont: Callable[[], None]) -> None: ...
-@overload                   # noqa: E302
-def show_busy_panel(        # noqa: E704
-    window: sublime.Window, text: busy_text, task: Callable[[], None], kont: Callable[[Any], None]) -> None: ...
-@overload                   # noqa: E302
-def show_busy_panel(        # noqa: E704
-    window: sublime.Window, text: busy_text, task: Callable[[], T], kont: Callable[[T], None]) -> None: ...
-def show_busy_panel(        # noqa: E302
-    window: sublime.Window, text: busy_text, task: Callable[[], T], kont: Callable[..., None]
-) -> None:
-    """
-    Displays a busy panel in the Sublime Text window while a task is being executed.
-
-    Note that `task()` runs on Sublime's worker thread, while `kont()` runs on the UI
-    thread.  A user can abort to run the continuation by pressing the escape key.
-    The `task()` itself cannot be aborted.
-
-    The continuation function `kont` can take zero or exactly one argument.  In the
-    latter case, it will receive the return value of `task()`.  Otherwise, that return
-    value will be ignored and thrown away.
-
-    Args:
-        window: The Sublime Text window where the busy panel will be shown.
-        text: The text to display in the busy panel.
-            It can be a static string or an `AnimatedText` instance.
-        task: The task to be executed while the busy panel is displayed.
-        kont: The continuation function to be called after the task is completed.
-    Returns:
-        None
-
-    Examples:
-        # Using a static string
-        show_busy_panel(window, "Loading...", task, kont)
-
-        # Using animated text
-        animated_text = AnimatedText("Loading.", "Loading..", "Loading...")
-        show_busy_panel(window, animated_text, task, kont)
-    """
-    aborted = False
-    ignore_next_abort = False
-
-    def abort():
-        nonlocal ignore_next_abort, aborted
-        if ignore_next_abort:
-            ignore_next_abort = False
-            return
-        aborted = True
-
-    if isinstance(text, str):
-        def working_indicator(*_) -> None:
-            show_panel(window, [text], working_indicator, abort)
-    else:
-        def working_indicator(*_) -> None:
-            text_, cycle_time = next(text)
-            show_panel(window, [text_], working_indicator, abort)
-            sublime.set_timeout(tick, cycle_time)
-
-        def tick():
-            nonlocal aborted, ignore_next_abort
-            if aborted:
-                return
-            ignore_next_abort = True
-            window.run_command("hide_overlay")
-            working_indicator()
-
-    @runtime.cooperative_thread_hopper
-    def worker():
-        nonlocal aborted
-        if runtime.it_runs_on_ui():
-            yield "AWAIT_WORKER"
-        rv = task()
-        yield "AWAIT_UI_THREAD"
-        if aborted:
-            return
-        window.run_command("hide_overlay")
-        if fns.arity(kont) == 1:
-            kont(rv)
-        else:
-            kont()
-
-    runtime.ensure_on_ui(working_indicator)
-    worker()
-    return
 
 
 def focus_view(view):

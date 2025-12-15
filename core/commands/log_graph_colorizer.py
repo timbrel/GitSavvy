@@ -3,6 +3,7 @@ from collections import deque
 import sublime
 
 from GitSavvy.core.utils import Cache
+from .log_graph_helper import COMMIT_NODE_CHARS
 
 from typing import (
     Callable,
@@ -23,9 +24,6 @@ View = sublime.View
 Region = sublime.Region
 NextFn = Callable[['Char'], Iterator['Char']]
 Direction = Literal["down", "up"]
-
-
-COMMIT_NODE_CHARS = "●⌂*"
 
 
 class Char:

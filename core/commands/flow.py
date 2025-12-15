@@ -1,6 +1,5 @@
-import sublime
-
 from ..ui_mixins.input_panel import show_single_line_input_panel
+from ..ui__quick_panel import show_noop_panel, show_quick_panel
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_new_thread
 
@@ -25,7 +24,7 @@ class FlowMixin(GsWindowCommand):
     def run(self, **kwargs):
         self.get_flow_settings()
         if not self.flow_settings['branch.master']:
-            self.window.show_quick_panel([INIT_REQUIRED_MSG], None)
+            show_noop_panel(self.window, INIT_REQUIRED_MSG)
 
     def is_visible(self, **kwargs):
         return self.savvy_settings.get("show_git_flow_commands") or False
@@ -49,12 +48,12 @@ class FlowMixin(GsWindowCommand):
         In case options is empty or None displays only `no_opts` text.
         """
         if not options:
-            self.window.show_quick_panel([no_opts], None)
+            show_noop_panel(self.window, no_opts)
         else:
-            self.window.show_quick_panel(
+            show_quick_panel(
+                self.window,
                 [help_text] + options,
-                callback,
-                flags=sublime.MONOSPACE_FONT
+                callback
             )
 
     def get_value(self, options, index):
@@ -62,8 +61,8 @@ class FlowMixin(GsWindowCommand):
         Convert a selected quick_panel index to selected option.
         Ignores first option (which is the query).
         """
-        # If the user pressed `esc` or otherwise cancelled.
-        if index == -1 or index == 0:
+        # If the user selected the help text.
+        if index == 0:
             return None
         selected = options[index - 1]  # skipping help query
         if selected.startswith('* '):

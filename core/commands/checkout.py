@@ -12,7 +12,7 @@ from ..utils import uprint
 from ..view import replace_view_content
 from ...common import util
 from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
-from GitSavvy.core.utils import noop, show_actions_panel
+from ..ui__quick_panel import noop, show_actions_panel
 
 __all__ = (
     "gs_checkout_branch",

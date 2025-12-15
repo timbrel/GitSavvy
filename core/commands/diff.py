@@ -23,7 +23,8 @@ from ..git_command import GitCommand
 from ..runtime import ensure_on_ui, enqueue_on_worker, run_on_new_thread, throttled
 from ..settings import GitSavvySettings
 from ..ui_mixins.quick_panel import LogHelperMixin
-from ..utils import flash, focus_view, hprint, line_indentation, show_panel
+from ..ui__quick_panel import show_quick_panel
+from ..utils import flash, focus_view, hprint, line_indentation
 from ..view import (
     capture_cur_position, clamp, replace_view_content, scroll_to_pt,
     place_view, place_cursor_and_show, y_offset, Position)
@@ -54,7 +55,8 @@ from typing import (
     Tuple, TypeVar
 )
 from typing_extensions import TypeAlias
-from ..parse_diff import FileHeader, Hunk, HunkLine, TextRange
+from ..parse_diff import FileHeader, Hunk, HunkLine
+from ..text_helper import TextRange
 from ..types import LineNo, ColNo
 from ..git_mixins.history import LogEntry
 from ..git_mixins.status import FileStatus
@@ -776,7 +778,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
         # Skip the `on_activated` event e.g. when the quick panel closes, because
         # we update and refresh the underlying view manually in the callbacks.
         settings.set("git_savvy.ignore_next_activated_event", True)
-        show_panel(
+        show_quick_panel(
             window,
             display_items,
             on_done,
