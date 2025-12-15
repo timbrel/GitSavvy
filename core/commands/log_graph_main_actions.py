@@ -13,6 +13,7 @@ from ..fns import filter_, unique
 from ..git_command import GitCommand
 from ..git_mixins.branches import Branch
 from ..ui__quick_panel import SEPARATOR, show_quick_panel
+from ..utils import open_folder_in_new_window
 from . import multi_selector
 from .log_graph_helper import (
     LineInfo,
@@ -216,6 +217,13 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                     partial(self.checkout, good_commit_name)
                 ),
             ]
+
+        actions += [
+            (
+                "Checkout '{}' in a new worktreee".format(good_commit_name),
+                partial(self.create_worktree, commit_hash)
+            ),
+        ]
 
         for branch_name in info.get("local_branches", []):
             if branch_name == info.get("HEAD"):
@@ -450,6 +458,14 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
     def show_commit(self, commit_hash):
         self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
+
+    def create_worktree(self, commit_hash):
+        def callback(w: sublime.Window):
+            if not w.views():
+                w.run_command("gs_graph")
+
+        worktree_path = self.create_new_worktree(commit_hash)
+        open_folder_in_new_window(worktree_path, then=callback)
 
     def create_branch(self, commit_hash):
         self.window.run_command("gs_create_branch", {"start_point": commit_hash})

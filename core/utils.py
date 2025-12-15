@@ -176,6 +176,38 @@ def line_indentation(line):
     return len(line) - len(line.lstrip())
 
 
+STARTUPINFO = None
+if sys.platform == "win32":
+    STARTUPINFO = subprocess.STARTUPINFO()
+    STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+
+def open_folder_in_new_window(path: str, *, then: Callable[[sublime.Window], None] = None):
+    bin = get_sublime_executable()
+    cmd = [bin, path]
+    subprocess.Popen(cmd, startupinfo=STARTUPINFO)
+
+    if then:
+        @runtime.on_worker
+        def search_for_new_window(_tries=5):
+            for w in sublime.windows():
+                if path in w.folders():
+                    then(w)
+                    return
+            sublime.set_timeout(lambda: search_for_new_window(_tries - 1), 10)
+
+        search_for_new_window()
+
+
+def get_sublime_executable() -> str:
+    executable_path = sublime.executable_path()
+    if sublime.platform() == "osx":
+        app_path = executable_path[: executable_path.rfind(".app/") + 5]
+        executable_path = app_path + "Contents/SharedSupport/bin/subl"
+
+    return executable_path
+
+
 def kill_proc(proc: subprocess.Popen) -> None:
     if sys.platform == "win32":
         # terminate would not kill process opened by the shell cmd.exe,

@@ -1,6 +1,10 @@
 from __future__ import annotations
+from itertools import count
+import os
 
 from typing import NamedTuple
+
+import sublime
 
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.utils import cache_in_store_as
@@ -63,6 +67,31 @@ class WorktreesMixin(mixin_base):
 
         commit_current(current)
         return worktrees
+
+    def create_new_worktree(self, start_point: str, worktree_path: str = None) -> str:
+        DEFAULT_PROJECT_ROOT = (
+            os.path.expanduser(R'~\Desktop')
+            if os.name == "nt"
+            else os.path.expanduser('~')
+        )
+
+        if not worktree_path:
+            if self.repo_path.startswith(sublime.packages_path()):
+                base = DEFAULT_PROJECT_ROOT
+            else:
+                base = os.path.dirname(self.repo_path)
+
+            project_name = os.path.basename(self.repo_path)
+            suffix, c = "", count(1)
+            while True:
+                worktree_path = f"{base}{os.path.sep}{project_name}-{start_point}{suffix}"
+                if os.path.exists(worktree_path):
+                    suffix = f"-{next(c)}"
+                else:
+                    break
+
+        self.git("worktree", "add", worktree_path, start_point)
+        return worktree_path
 
     def remove_worktree(self, path: str, *, force: bool = False):
         self.git("worktree", "remove", "-f" if force else None, path)
