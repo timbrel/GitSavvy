@@ -179,7 +179,7 @@ class gs_clone(WindowCommand, GitCommand):
         # type: () -> str
         return (
             maybe(lambda: os.path.dirname(self.window.folders()[0]))
-            or DEFAULT_PROJECT_ROOT
+            or self.default_project_root()
         )
 
     def on_enter_directory(self, path):

@@ -36,6 +36,12 @@
     "dev_mode": false,
 
     /*
+        A default user folder where we can create ad hoc worktrees or clones.
+        On Windows, setting "~" actually uses "~\Desktop"
+    */
+    "users_home": "~",
+
+    /*
         Enter your github API key in the field below.  To interact with
         a GitHub Enterprise instance, add a field with the FQDN as the key
         and the API key as the value.

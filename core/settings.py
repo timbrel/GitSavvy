@@ -1,4 +1,5 @@
 from functools import lru_cache
+import os
 
 import sublime
 import sublime_plugin
@@ -100,3 +101,9 @@ class SettingsMixin:
             or maybe(lambda: self.view.window())  # type: ignore[attr-defined]
             or sublime.active_window()
         )
+
+    def default_project_root(self) -> str:
+        default_root = self.savvy_settings.get("users_home") or "~"
+        if os.name == "nt" and default_root == "~":
+            default_root = R"~\Desktop"
+        return os.path.expanduser(default_root)

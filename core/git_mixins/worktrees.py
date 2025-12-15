@@ -69,15 +69,9 @@ class WorktreesMixin(mixin_base):
         return worktrees
 
     def create_new_worktree(self, start_point: str, worktree_path: str = None) -> str:
-        DEFAULT_PROJECT_ROOT = (
-            os.path.expanduser(R'~\Desktop')
-            if os.name == "nt"
-            else os.path.expanduser('~')
-        )
-
         if not worktree_path:
             if self.repo_path.startswith(sublime.packages_path()):
-                base = DEFAULT_PROJECT_ROOT
+                base = self.default_project_root()
             else:
                 base = os.path.dirname(self.repo_path)
 
