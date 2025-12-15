@@ -3298,5 +3298,8 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         })
 
     def checkout_file_at_commit(self, commit_hash, file_path):
+        if self.savvy_settings.get("log_follow_rename"):
+            file_path = self.filename_at_commit(file_path, commit_hash)
+
         self.checkout_ref(commit_hash, fpath=file_path)
         util.view.refresh_gitsavvy_interfaces(self.window)
