@@ -107,28 +107,3 @@ class gs_github_configure_remote(WindowCommand, GithubRemotesMixin, GitCommand):
             self.git("config", "--local", "--add", "GitSavvy.ghRemote", remote_name)
         if branch:
             self.git("config", "--local", "--add", "GitSavvy.ghBranch", branch.name)
-
-    def guess_default_branch(self, remote_name) -> str | None:
-        if contents := self._read_git_file("refs", "remotes", remote_name, "HEAD"):
-            # ref: refs/remotes/origin/master
-            for line in contents.splitlines():
-                line = line.strip()
-                if line.startswith("ref: refs/remotes/"):
-                    return line[18:]
-
-        try:
-            output = self.git(
-                "ls-remote", "--symref", remote_name, "HEAD",
-                timeout=2.0,
-                throw_on_error=False,
-                show_panel_on_error=False,
-            )
-        except Exception:
-            return None
-        else:
-            for line in output.splitlines():
-                # ref: refs/heads/master  HEAD
-                line = line.strip()
-                if line.startswith("ref: refs/heads/"):
-                    return remote_name + line[16:].split()[0]
-        return None

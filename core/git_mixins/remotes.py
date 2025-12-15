@@ -1,16 +1,22 @@
+from __future__ import annotations
 import re
 
-from GitSavvy.core.git_command import BranchesMixin, _GitCommand
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.utils import cache_in_store_as, yes_no_switch
 
 
-from typing import Dict
+from typing import Dict, TYPE_CHECKING
 name = str
 url = str
 
+if TYPE_CHECKING:
+    from GitSavvy.core.git_command import (BranchesMixin, StatusMixin, _GitCommand)
+    class mixin_base(BranchesMixin, StatusMixin, _GitCommand): pass  # noqa: E701
+else:
+    mixin_base = object
 
-class RemotesMixin(BranchesMixin, _GitCommand):
+
+class RemotesMixin(mixin_base):
 
     @cache_in_store_as("remotes")
     def get_remotes(self):
@@ -111,3 +117,28 @@ class RemotesMixin(BranchesMixin, _GitCommand):
             branch.split("/")[0]
             for branch in self.branches_containing_commit(commit_hash, remote_only=True)
         ]))
+
+    def guess_default_branch(self, remote_name) -> str | None:
+        if contents := self._read_git_file("refs", "remotes", remote_name, "HEAD"):
+            # ref: refs/remotes/origin/master
+            for line in contents.splitlines():
+                line = line.strip()
+                if line.startswith("ref: refs/remotes/"):
+                    return line[18:]
+
+        try:
+            output = self.git(
+                "ls-remote", "--symref", remote_name, "HEAD",
+                timeout=2.0,
+                throw_on_error=False,
+                show_panel_on_error=False,
+            )
+        except Exception:
+            return None
+        else:
+            for line in output.splitlines():
+                # ref: refs/heads/master  HEAD
+                line = line.strip()
+                if line.startswith("ref: refs/heads/"):
+                    return line[16:].split()[0]
+        return None

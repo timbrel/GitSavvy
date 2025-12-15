@@ -45,5 +45,6 @@ class gs_github_create_fork(GsWindowCommand, git_mixins.GithubRemotesMixin):
             self.window.status_message(END_CREATE_MESSAGE)
             self.window.run_command("gs_remote_add", {
                 "url": url,
-                "set_as_push_default": True
+                "set_as_push_default": True,
+                "ignore_tags": True
             })
