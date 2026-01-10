@@ -34,8 +34,9 @@ class StashMixin(mixin_base):
 
     def show_stash(self, id):
         # type: (StashId) -> str
+        show_diffstat = self.savvy_settings.get("show_diffstat", True)
         stash_name = "stash@{{{}}}".format(id)
-        return self.git("stash", "show", "--no-color", "-p", stash_name)
+        return self.git("stash", "show", "--no-color", "--stat" if show_diffstat else None, "-p", stash_name)
 
     def apply_stash(self, id):
         # type: (StashId) -> None
