@@ -15,9 +15,9 @@ __all__ = (
 
 class gs_bisect_start(GsWindowCommand):
     @on_worker
-    def run(self, commit: str | None = None):
+    def run(self, bad: str = "HEAD", good: list[str] = []):
         try:
-            self.git("bisect", "start", commit, show_panel=True)
+            self.git("bisect", "start", bad, *good, show_panel=True)
         finally:
             util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
