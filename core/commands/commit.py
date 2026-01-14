@@ -108,6 +108,7 @@ class gs_commit(WindowCommand, GitCommand):
         after_commit: string.  Action to perform after a successful commit.
             Format "<action>:<payload>", implemented
                 close_view:<view_id>
+                apply_fixup:<base_commit>
         """
         repo_path = repo_path or self.repo_path
 
@@ -499,6 +500,13 @@ def extract_first_region(view, selector):
     return view.substr(region)
 
 
+def extract_commit_hash_from_output(commit_output):
+    match = re.search(r"\[(?P<branch>.+?) (?P<hash>\S+)]", commit_output, re.M)
+    if match:
+        return match.group("hash")
+    return None
+
+
 class gs_commit_view_do_commit(TextCommand, GitCommand):
 
     """
@@ -524,7 +532,7 @@ class gs_commit_view_do_commit(TextCommand, GitCommand):
         settings.set("git_savvy.commit_view.is_commiting", True)
         window.status_message("Committing...")
         try:
-            self.git(
+            stdout = self.git(
                 "commit",
                 "-a" if settings.get("git_savvy.commit_view.include_unstaged") else None,
                 "--amend" if settings.get("git_savvy.commit_view.amend") else None,
@@ -551,6 +559,15 @@ class gs_commit_view_do_commit(TextCommand, GitCommand):
                         print(f"fatal: for the action {after_commit} the provided view_id is not an int")
                     else:
                         sublime.View(view_id).close()
+
+                elif action == "apply_fixup":
+                    base_commit = payload
+                    new_commit_hash = extract_commit_hash_from_output(stdout)
+                    if base_commit and new_commit_hash:
+                        self.view.run_command("gs_rebase_apply_fixup", {
+                            "base_commit": base_commit,
+                            "fixes": [[new_commit_hash, commit_subject]],
+                        })
 
         # We want to refresh and maybe close open diff views.
         diff_views = mark_all_diff_views(window, self.repo_path)
