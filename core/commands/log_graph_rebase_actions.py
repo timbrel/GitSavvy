@@ -326,6 +326,10 @@ class gs_rebase_action(GsWindowCommand):
                     partial(self.edit, view, commit_hash)
                 ),
                 (
+                    "Fixup commit",
+                    partial(self.create_fixup_commit_and_apply, commit_hash)
+                ),
+                (
                     "Drop commit",
                     partial(self.drop, view, commit_hash)
                 ),
@@ -489,6 +493,13 @@ class gs_rebase_action(GsWindowCommand):
         commit_message = self.git("log", "-1", "--pretty=format:%s", commit_hash).strip()
         self.window.run_command("gs_commit", {
             "initial_text": "fixup! {}".format(commit_message)
+        })
+
+    def create_fixup_commit_and_apply(self, commit_hash):
+        commit_message = self.git("log", "-1", "--pretty=format:%s", commit_hash).strip()
+        self.window.run_command("gs_commit", {
+            "initial_text": "fixup! {}".format(commit_message),
+            "after_commit": "apply_fixup:{}".format(commit_hash),
         })
 
     def apply_fixup(self, view, base_commit, fixup_commits):

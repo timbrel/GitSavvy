@@ -1,4 +1,5 @@
 from itertools import chain, takewhile
+import re
 import os
 
 import sublime
@@ -102,7 +103,13 @@ class gs_commit(WindowCommand, GitCommand):
     message area with the previous commit message.
     """
 
-    def run(self, repo_path=None, include_unstaged=False, amend=False, initial_text=""):
+    def run(self, repo_path=None, include_unstaged=False, amend=False, initial_text="", after_commit=None):
+        """
+        after_commit: string.  Action to perform after a successful commit.
+            Format "<action>:<payload>", implemented
+                close_view:<view_id>
+                apply_fixup:<base_commit>
+        """
         repo_path = repo_path or self.repo_path
 
         this_id = (
@@ -139,8 +146,12 @@ class gs_commit(WindowCommand, GitCommand):
             view.set_scratch(True)  # ignore dirty on actual commit
             self.initialize_view(view, amend)
 
+        if after_commit:
+            settings.set("git_savvy.commit_view.after_commit", after_commit)
+
         initial_text_ = initial_text.rstrip()
         if initial_text_:
+            settings.set("git_savvy.commit_view.initial_commit_message", initial_text_)
             if extract_commit_subject(view).strip():
                 initial_text_ += "\n\n"
             replace_view_content(view, initial_text_, sublime.Region(0))
@@ -489,6 +500,13 @@ def extract_first_region(view, selector):
     return view.substr(region)
 
 
+def extract_commit_hash_from_output(commit_output):
+    match = re.search(r"\[(?P<branch>.+?) (?P<hash>\S+)]", commit_output, re.M)
+    if match:
+        return match.group("hash")
+    return None
+
+
 class gs_commit_view_do_commit(TextCommand, GitCommand):
 
     """
@@ -514,7 +532,7 @@ class gs_commit_view_do_commit(TextCommand, GitCommand):
         settings.set("git_savvy.commit_view.is_commiting", True)
         window.status_message("Committing...")
         try:
-            self.git(
+            stdout = self.git(
                 "commit",
                 "-a" if settings.get("git_savvy.commit_view.include_unstaged") else None,
                 "--amend" if settings.get("git_savvy.commit_view.amend") else None,
@@ -527,12 +545,29 @@ class gs_commit_view_do_commit(TextCommand, GitCommand):
 
         window.status_message("Committed successfully.")
 
-        # We close views on the left side which initiated the fixup
-        for v in reversed(adjacent_views_on_the_left(self.view)):
-            initiated_message = v.settings().get("initiated_fixup_commit")
-            if initiated_message and initiated_message in extract_commit_subject(self.view):
-                v.close()
-            break
+        after_commit = settings.get("git_savvy.commit_view.after_commit")
+        if after_commit:
+            initial_message = settings.get("git_savvy.commit_view.initial_commit_message", "")
+            original_message = cleanup_subject(initial_message)
+            commit_subject = extract_commit_subject(self.view).strip()
+            action, _, payload = after_commit.partition(":")
+            if original_message and original_message in commit_subject:
+                if action == "close_view":
+                    try:
+                        view_id: sublime.ViewId = int(payload)  # type: ignore[assignment]
+                    except ValueError:
+                        print(f"fatal: for the action {after_commit} the provided view_id is not an int")
+                    else:
+                        sublime.View(view_id).close()
+
+                elif action == "apply_fixup":
+                    base_commit = payload
+                    new_commit_hash = extract_commit_hash_from_output(stdout)
+                    if base_commit and new_commit_hash:
+                        self.view.run_command("gs_rebase_apply_fixup", {
+                            "base_commit": base_commit,
+                            "fixes": [[new_commit_hash, commit_subject]],
+                        })
 
         # We want to refresh and maybe close open diff views.
         diff_views = mark_all_diff_views(window, self.repo_path)
