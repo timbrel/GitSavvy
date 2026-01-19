@@ -955,6 +955,12 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
                     "file" if self.view.settings().get("git_savvy.file_path") else "repo"
                 )
             )
+
+            if not in_cached_mode:
+                file_path = self.view.settings().get("git_savvy.file_path")
+                if file_path and self.is_probably_marked_dirty(file_path):
+                    self.git("add", "--", file_path)
+                    self.view.close()
             return
 
         if diff.is_combined_diff():

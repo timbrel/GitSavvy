@@ -478,6 +478,15 @@ class StatusMixin(mixin_base):
             and any(file.path == normed_git_path for file in status.untracked_files)
         )
 
+    def is_probably_marked_dirty(self, file_path: str) -> bool:
+        """Check in the store if `file_path` is dirty/unstaged."""
+        return bool(
+            (status := self.current_state().get("status"))
+            and (rel_file_path := os.path.relpath(file_path, self.repo_path))
+            and (normed_git_path := rel_file_path.replace("\\", "/"))
+            and any(file.path == normed_git_path for file in status.unstaged_files)
+        )
+
     def _mark_untracked_files_as_staged(self, files: list[str]) -> None:
         status = self.current_state().get("status")
         if not status:
