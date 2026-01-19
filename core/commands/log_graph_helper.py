@@ -6,6 +6,7 @@ from typing import Dict, List, Literal, Optional, Sequence, TypedDict
 import sublime
 
 from ..git_mixins.branches import Branch
+from ...core.view import find_by_selector
 
 
 GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
@@ -75,7 +76,8 @@ def describe_graph_line(line: str, known_branches: Dict[str, Branch]) -> Optiona
 
 def describe_head(view: sublime.View, branches: Dict[str, Branch]) -> Optional[LineInfo]:
     try:
-        region = view.find_by_selector(
+        region = find_by_selector(
+            view,
             'meta.graph.graph-line.head.git-savvy '
             'constant.numeric.graph.commit-hash.git-savvy'
         )[0]
@@ -98,3 +100,23 @@ def format_revision_list(revisions: Sequence[str]) -> str:
         if len(revisions) == 3
         else "{}, {} ... {}".format(revisions[0], revisions[1], revisions[-1])
     )
+
+
+def headline_cursorline(view: sublime.View) -> tuple[int, int]:
+    try:
+        head_region = find_by_selector(
+            view,
+            'meta.graph.graph-line.head.git-savvy '
+            'constant.numeric.graph.commit-hash.git-savvy'
+        )[0]
+    except IndexError:
+        head_line = 0
+    else:
+        head_line, _ = view.rowcol(head_region.b)
+
+    try:
+        cursor_line, _ = view.rowcol(view.sel()[0].b)
+    except IndexError:
+        cursor_line = 0
+
+    return head_line, cursor_line

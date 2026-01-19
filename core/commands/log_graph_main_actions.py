@@ -21,6 +21,7 @@ from .log_graph_helper import (
     describe_graph_line,
     describe_head,
     format_revision_list,
+    headline_cursorline,
 )
 
 
@@ -89,17 +90,18 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         file_path = self._get_file_path(view)
         actions: List[Tuple[str, Callable[[], None]]] = []
 
+        def display_name(info: LineInfo) -> str:
+            if info.get("local_branches"):
+                return info["local_branches"][0]
+            branches = info.get("branches", [])
+            if len(branches) == 1:
+                return branches[0]
+            elif len(branches) == 0 and info.get("tags"):
+                return info["tags"][0]
+            else:
+                return info["commit"]
+
         if len(infos) == 2:
-            def display_name(info: LineInfo) -> str:
-                if info.get("local_branches"):
-                    return info["local_branches"][0]
-                branches = info.get("branches", [])
-                if len(branches) == 1:
-                    return branches[0]
-                elif len(branches) == 0 and info.get("tags"):
-                    return info["tags"][0]
-                else:
-                    return info["commit"]
 
             base_commit = display_name(infos[1])
             target_commit = display_name(infos[0])
@@ -134,8 +136,20 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                     if file_path
                     else "Show graph for {}..{}".format(target_commit, base_commit),
                     partial(self.graph_two_revisions, target_commit, base_commit, file_path)
-                )
+                ),
+            ]
 
+        if not self.in_bisect():
+            target_commit = display_name(infos[0])
+            base_commits = [
+                display_name(info)
+                for info in infos[1:]
+            ]
+            actions += [
+                (
+                    f"Bisect (bad: {target_commit}, good: {format_revision_list (base_commits)})",
+                    partial(self.start_bisecting, bad=target_commit, good=base_commits)
+                )
             ]
 
         pickable = list(reversed([
@@ -181,11 +195,40 @@ class gs_log_graph_action(WindowCommand, GitCommand):
     def actions_for_single_line(
         self, view: sublime.View, info: LineInfo, branches: Dict[str, Branch]
     ) -> List[Tuple[str, Callable[[], None]]]:
+        head_info = describe_head(view, branches)
         commit_hash = info["commit"]
+        good_commit_name = (
+            info["tags"][0]
+            if info.get("tags")
+            else commit_hash
+        )
         file_path = self._get_file_path(view)
-        actions: List[Tuple[str, Callable[[], None]]] = []
+
         on_checked_out_branch = "HEAD" in info and info["HEAD"] in info.get("local_branches", [])
-        if on_checked_out_branch:
+        head_is_on_a_branch = head_info and head_info["HEAD"] != head_info["commit"]
+        cursor_is_not_on_head = head_info and head_info["commit"] != info["commit"]
+        in_bisect = self.in_bisect()
+
+        def get_list(info: LineInfo, key: ListItems) -> List[str]:
+            return info.get(key, [])
+
+        get_lists_from_info: Callable[[ListItems], List[str]] = partial(get_list, info)
+        get_lists_from_head: Callable[[ListItems], List[str]] = (
+            partial(get_list, head_info)
+            if head_info
+            else lambda x: []
+        )
+
+        actions: List[Tuple[str, Callable[[], None]]] = []
+        if in_bisect:
+            actions += [
+                ("Good", partial(self.bisect_step, "good")),
+                ("Bad", partial(self.bisect_step, "bad")),
+                ("Skip", partial(self.bisect_step, "skip")),
+                ("Stop", partial(self.bisect_step, "stop")),
+                SEPARATOR,
+            ]
+        elif on_checked_out_branch:
             current_branch = info["HEAD"]
             b = branches[current_branch]
             if b.upstream:
@@ -199,17 +242,13 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 SEPARATOR,
             ]
 
-        actions += [
-            ("Checkout '{}'".format(branch_name), partial(self.checkout, branch_name))
-            for branch_name in info.get("local_branches", [])
-            if info.get("HEAD") != branch_name
-        ]
+        if not in_bisect:
+            actions += [
+                ("Checkout '{}'".format(branch_name), partial(self.checkout, branch_name))
+                for branch_name in info.get("local_branches", [])
+                if info.get("HEAD") != branch_name
+            ]
 
-        good_commit_name = (
-            info["tags"][0]
-            if info.get("tags")
-            else commit_hash
-        )
         if "HEAD" not in info or info["HEAD"] != commit_hash:
             actions += [
                 (
@@ -225,40 +264,41 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             ),
         ]
 
-        for branch_name in info.get("local_branches", []):
-            if branch_name == info.get("HEAD"):
-                continue
+        if not in_bisect:
+            for branch_name in info.get("local_branches", []):
+                if branch_name == info.get("HEAD"):
+                    continue
 
-            b = branches[branch_name]
-            if b.upstream and b.upstream.status != "gone":
-                if "behind" in b.upstream.status and "ahead" not in b.upstream.status:
+                b = branches[branch_name]
+                if b.upstream and b.upstream.status != "gone":
+                    if "behind" in b.upstream.status and "ahead" not in b.upstream.status:
+                        actions += [
+                            (
+                                "Fast-forward '{}' to '{}'".format(branch_name, b.upstream.canonical_name),
+                                partial(self.move_branch, branch_name, b.upstream.canonical_name)
+                            ),
+                        ]
+                    else:
+                        actions += [
+                            (
+                                "Update '{}' from '{}'".format(branch_name, b.upstream.canonical_name),
+                                partial(self.update_from_tracking, b.upstream.remote, b.upstream.branch, b.name)
+                            ),
+                        ]
+
                     actions += [
                         (
-                            "Fast-forward '{}' to '{}'".format(branch_name, b.upstream.canonical_name),
-                            partial(self.move_branch, branch_name, b.upstream.canonical_name)
+                            "Push '{}' to '{}'".format(branch_name, b.upstream.canonical_name),
+                            partial(self.push, branch_name)
                         ),
                     ]
                 else:
                     actions += [
                         (
-                            "Update '{}' from '{}'".format(branch_name, b.upstream.canonical_name),
-                            partial(self.update_from_tracking, b.upstream.remote, b.upstream.branch, b.name)
+                            "Push '{}'".format(branch_name),
+                            partial(self.push, branch_name)
                         ),
                     ]
-
-                actions += [
-                    (
-                        "Push '{}' to '{}'".format(branch_name, b.upstream.canonical_name),
-                        partial(self.push, branch_name)
-                    ),
-                ]
-            else:
-                actions += [
-                    (
-                        "Push '{}'".format(branch_name),
-                        partial(self.push, branch_name)
-                    ),
-                ]
 
         if file_path:
             actions += [
@@ -270,107 +310,145 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 )
             ]
 
+        if not in_bisect:
+            actions += [
+                (
+                    "Create branch at '{}'".format(good_commit_name),
+                    partial(self.create_branch, commit_hash)
+                ),
+            ]
+
         actions += [
-            (
-                "Create branch at '{}'".format(good_commit_name),
-                partial(self.create_branch, commit_hash)
-            ),
             (
                 "Create tag at '{}'".format(commit_hash),
                 partial(self.create_tag, commit_hash)
             )
         ]
+
         actions += [
             ("Delete tag '{}'".format(tag_name), partial(self.delete_tag, tag_name))
             for tag_name in info.get("tags", [])
         ]
 
-        head_info = describe_head(view, branches)
-        head_is_on_a_branch = head_info and head_info["HEAD"] != head_info["commit"]
-        cursor_is_not_on_head = head_info and head_info["commit"] != info["commit"]
-
-        def get_list(info: LineInfo, key: ListItems) -> List[str]:
-            return info.get(key, [])
-
-        if head_info and head_is_on_a_branch and cursor_is_not_on_head:
-            get = partial(get_list, info)  # type: Callable[[ListItems], List[str]]
-            good_move_target = next(
-                chain(get("local_branches"), get("branches")),
-                good_commit_name
-            )
-            actions += [
-                (
-                    "Move '{}' to '{}'".format(head_info["HEAD"], good_move_target),
-                    partial(self.checkout_b, head_info["HEAD"], good_commit_name)
-                ),
-            ]
-
-        if not head_info or cursor_is_not_on_head:
-            good_head_name = (
-                "'{}'".format(head_info["HEAD"])  # type: ignore
-                if head_is_on_a_branch
-                else "HEAD"
-            )
-            get_lists_from_info: Callable[[ListItems], List[str]] = partial(get_list, info)
-            good_reset_target = next(
-                chain(
-                    get_lists_from_info("local_branches"),
-                    get_lists_from_info("branches"),
-                ),
-                good_commit_name
-            )
-            actions += [
-                (
-                    "Reset {} to '{}'".format(good_head_name, good_reset_target),
-                    partial(self.reset_to, good_reset_target)
+        if not in_bisect:
+            if head_info and head_is_on_a_branch and cursor_is_not_on_head:
+                good_move_target = next(
+                    chain(
+                        get_lists_from_info("local_branches"),
+                        get_lists_from_info("branches")
+                    ),
+                    good_commit_name
                 )
-            ]
+                actions += [
+                    (
+                        "Move '{}' to '{}'".format(head_info["HEAD"], good_move_target),
+                        partial(self.checkout_b, head_info["HEAD"], good_commit_name)
+                    ),
+                ]
 
-        if head_info and not head_is_on_a_branch and cursor_is_not_on_head:
-            get_lists_from_head: Callable[[ListItems], List[str]] = partial(get_list, head_info)
-            good_move_target = next(
-                (
-                    "'{}'".format(name)
-                    for name in chain(
-                        get_lists_from_head("local_branches"),
-                        get_lists_from_head("branches"),
-                        get_lists_from_head("tags"),
+            if not head_info or cursor_is_not_on_head:
+                good_head_name = (
+                    "'{}'".format(head_info["HEAD"])  # type: ignore
+                    if head_is_on_a_branch
+                    else "HEAD"
+                )
+                good_reset_target = next(
+                    chain(
+                        get_lists_from_info("local_branches"),
+                        get_lists_from_info("branches"),
+                    ),
+                    good_commit_name
+                )
+                actions += [
+                    (
+                        "Reset {} to '{}'".format(good_head_name, good_reset_target),
+                        partial(self.reset_to, good_reset_target)
                     )
-                ),
-                "HEAD"
-            )
-            actions += [
-                (
-                    "Move '{}' to {}".format(branch_name, good_move_target),
-                    partial(self.checkout_b, branch_name)
+                ]
+
+            if head_info and not head_is_on_a_branch and cursor_is_not_on_head:
+                good_move_target = next(
+                    (
+                        "'{}'".format(name)
+                        for name in chain(
+                            get_lists_from_head("local_branches"),
+                            get_lists_from_head("branches"),
+                            get_lists_from_head("tags"),
+                        )
+                    ),
+                    "HEAD"
                 )
+                actions += [
+                    (
+                        "Move '{}' to {}".format(branch_name, good_move_target),
+                        partial(self.checkout_b, branch_name)
+                    )
+                    for branch_name in info.get("local_branches", [])
+                ]
+
+            actions += [
+                ("Delete branch '{}'".format(branch_name), partial(self.delete_branch, branch_name))
                 for branch_name in info.get("local_branches", [])
             ]
 
-        actions += [
-            ("Delete branch '{}'".format(branch_name), partial(self.delete_branch, branch_name))
-            for branch_name in info.get("local_branches", [])
-        ]
+            if "HEAD" not in info:
+                actions += [
+                    ("Cherry-pick commit", partial(self.cherry_pick, commit_hash)),
+                ]
 
-        if "HEAD" not in info:
             actions += [
-                ("Cherry-pick commit", partial(self.cherry_pick, commit_hash)),
+                ("Revert commit", partial(self.revert_commit, commit_hash)),
             ]
 
-        actions += [
-            ("Revert commit", partial(self.revert_commit, commit_hash)),
-        ]
+            if cursor_is_not_on_head:
+                good_head_name_for_bisect = next(
+                    (
+                        "{}".format(name)
+                        for name in chain(
+                            get_lists_from_head("tags"),
+                            get_lists_from_head("local_branches"),
+                            get_lists_from_head("branches"),
+                        )
+                    ),
+                    "HEAD"
+                )
+                good_other_name_for_bisect = next(
+                    (
+                        "{}".format(name)
+                        for name in chain(
+                            get_lists_from_info("tags"),
+                            get_lists_from_info("local_branches"),
+                            get_lists_from_info("branches"),
+                        )
+                    ),
+                    good_commit_name
+                )
+                head_line, cursor_line = headline_cursorline(view)
+                if cursor_line > head_line:
+                    actions += [
+                        (
+                            f"Start bisecting (good: {good_other_name_for_bisect}, bad: {good_head_name_for_bisect})",
+                            partial(self.start_bisecting, good=[commit_hash], bad="HEAD")
+                        ),
+                    ]
+                elif cursor_line < head_line:
+                    actions += [
+                        (
+                            f"Start bisecting (good: {good_head_name_for_bisect}, bad: {good_other_name_for_bisect})",
+                            partial(self.start_bisecting, bad=commit_hash, good=["HEAD"])
+                        ),
+                    ]
+
         if not head_info or cursor_is_not_on_head:
             good_head_name = (
                 "'{}'".format(head_info["HEAD"])  # type: ignore[index]
                 if head_is_on_a_branch
                 else "HEAD"
             )
-            get_lists_from_cursor = partial(get_list, info)
             good_target_name = next(
                 chain(
-                    get_lists_from_cursor("local_branches"),
-                    get_lists_from_cursor("branches"),
+                    get_lists_from_info("local_branches"),
+                    get_lists_from_info("branches"),
                 ),
                 good_commit_name
             )
@@ -418,7 +496,39 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                     partial(self.diff_commit, commit_hash, target_commit="HEAD")
                 ),
             ]
+
+        if in_bisect:
+            if "HEAD" not in info:
+                actions += [
+                    SEPARATOR,
+                    (
+                        f"Mark {good_commit_name} as good",
+                        partial(self.bisect_step, "good", commit_hash)
+                    ),
+                    (
+                        f"Mark {good_commit_name} as bad",
+                        partial(self.bisect_step, "bad", commit_hash)
+                    ),
+                    (
+                        f"Mark {good_commit_name} as to skip",
+                        partial(self.bisect_step, "skip", commit_hash)
+                    ),
+                ]
+
         return actions
+
+    def start_bisecting(self, bad: str, good: list[str]) -> None:
+        self.window.run_command("gs_bisect_start", {"bad": bad, "good": good})
+
+    def bisect_step(self, action: str, commit_hash: str | None = None) -> None:
+        if action == "good":
+            self.window.run_command("gs_bisect_good", {"commit": commit_hash})
+        elif action == "bad":
+            self.window.run_command("gs_bisect_bad", {"commit": commit_hash})
+        elif action == "skip":
+            self.window.run_command("gs_bisect_skip", {"commit": commit_hash})
+        elif action == "stop":
+            self.window.run_command("gs_bisect_reset", {"commit": "HEAD"})
 
     def pull(self) -> None:  # type: ignore[override]
         self.window.run_command("gs_pull")

@@ -489,6 +489,29 @@
         "command": "gs_cherry_pick_skip"
     },
     {
+        "caption": "git: bisect start",
+        "command": "gs_bisect_start"
+    },
+    {
+        "caption": "git: bisect good",
+        "command": "gs_bisect_good"
+    },
+    {
+        "caption": "git: bisect bad",
+        "command": "gs_bisect_bad"
+    },
+    {
+        "caption": "git: bisect ... skip",
+        "command": "gs_bisect_skip"
+    },
+    {
+        "caption": "git: bisect stop",
+        "command": "gs_bisect_reset",
+        "args": {
+            "commit": "HEAD"
+        }
+    },
+    {
         "caption": "flow: init",
         "command": "gs_git_flow_init"
     },

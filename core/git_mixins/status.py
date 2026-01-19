@@ -254,6 +254,8 @@ class StatusMixin(mixin_base):
             secondary.append("Cherry-picking {}.".format(self.cherry_pick_head()))
         if self.in_revert():
             secondary.append("Reverting {}.".format(self.revert_head()))
+        if self.in_bisect():
+            secondary.append("Bisecting from {} on.".format(self.bisect_start_commit()))
 
         return delim.join([status] + secondary) if secondary else status
 
@@ -290,6 +292,9 @@ class StatusMixin(mixin_base):
         revert_head = self.revert_head() if self.in_revert() else ""
         if revert_head:
             output += " (reverting {})".format(revert_head)
+        bisect_start = self.bisect_start_commit() if self.in_bisect() else ""
+        if bisect_start:
+            output += " (bisecting {})".format(bisect_start)
 
         return output
 
@@ -411,6 +416,13 @@ class StatusMixin(mixin_base):
     def revert_head(self):
         # type: () -> str
         commit_hash = self._read_git_file("REVERT_HEAD")
+        return self.get_short_hash(commit_hash) if commit_hash else ""
+
+    def in_bisect(self) -> bool:
+        return os.path.exists(os.path.join(self.git_dir, "BISECT_START"))
+
+    def bisect_start_commit(self) -> str:
+        commit_hash = self._read_git_file("BISECT_START")
         return self.get_short_hash(commit_hash) if commit_hash else ""
 
     def conflicting_files_(self):

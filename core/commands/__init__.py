@@ -1,4 +1,5 @@
 from .amend import *
+from .bisect import *
 from .blame import *
 from .branch import *
 from .changelog import *
