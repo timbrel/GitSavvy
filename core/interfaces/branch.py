@@ -834,17 +834,31 @@ def active_branch_name(interface: BranchInterface) -> Optional[str]:
         return None
 
 
-class gs_branches_diff_branch(CommandForSingleBranch):
+class gs_branches_diff_branch(BranchInterfaceCommand):
 
     """
-    Show a diff comparing the selected branch to the active branch.
+    Show a diff comparing the selected branch to the active branch or another selected branch.
     """
 
     def run(self, edit):
         # type: (object) -> None
+        selected_branches = self.get_selected_branches()
+        if len(selected_branches) == 0:
+            flash(self.view, "No branch selected.")
+            return
+        if len(selected_branches) > 2:
+            flash(self.view, "Not implemented for more than two branches.")
+            return
+
+        base_commit = selected_branches[0].canonical_name
+        if len(selected_branches) == 2:
+            target_commit = selected_branches[1].canonical_name
+        else:
+            target_commit = active_branch_name(self.interface) or ""
+
         self.window.run_command("gs_diff", {
-            "base_commit": self.selected_branch.canonical_name,
-            "target_commit": active_branch_name(self.interface) or "",
+            "base_commit": base_commit,
+            "target_commit": target_commit,
             "disable_stage": True,
         })
 
