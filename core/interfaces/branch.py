@@ -123,8 +123,8 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
       [R] rename (local)                            [M] fetch and merge into active branch
       [t] configure tracking                        [u] unset upstream on selected branch
 
-      [f] diff against active                       [l] show branch log
-      [H] diff history against active               [g] show branch log graph
+      [f] open diff                                 [l] show log in a quick panel
+      [H] compare commit history                    [g] show branch graph
       [E] edit branch description
 
       [space] to select multiple items
