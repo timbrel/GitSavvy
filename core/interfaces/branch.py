@@ -692,7 +692,8 @@ class gs_branches_delete(CommandForSingleItem):
             "push",
             "--force" if force else None,
             remote,
-            ":" + branch_name
+            "--delete",
+            branch_name
         )
         self.window.status_message("Deleted remote branch.")
         util.view.refresh_gitsavvy(self.view)
