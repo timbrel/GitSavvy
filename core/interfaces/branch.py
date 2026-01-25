@@ -669,34 +669,87 @@ class gs_branches_create_new_worktree(CommandForSingleItem):
                 break
 
 
-class gs_branches_delete(CommandForSingleItem):
+class gs_branches_delete(BranchInterfaceCommand):
 
     """
     Delete selected branch.
     """
 
     def run(self, edit, force=False):
-        if self.selected_item.is_remote:
-            self.delete_remote_branch(self.selected_item.remote, self.selected_item.branch_name, force)
-        elif self.selected_item.worktree:
-            self.delete_worktree(self.selected_item.worktree, force)
-        else:
-            self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
-            self.window.run_command("gs_delete_branch", {"branch": self.selected_item.branch_name, "force": force})
+        selections = list(multi_selector.get_selection(self.view))
+        if len(selections) == 0:
+            raise RuntimeError("View has no selection.")
+
+        if len(selections) == 1:
+            selected_item, err = self.single_line_info()
+            if err:
+                raise RuntimeError(err)
+            assert selected_item
+
+            if selected_item.is_remote:
+                self.delete_remote_branches(selected_item.remote, [selected_item.branch_name], force)
+            elif selected_item.worktree:
+                self.delete_worktree(selected_item.worktree, force)
+            else:
+                self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
+                self.window.run_command("gs_delete_branch", {"branch": selected_item.branch_name, "force": force})
+            return
+
+        selected_lines = ui.unique_selected_lines(self.view)
+        if any(
+            self.view.match_selector(line.a, "meta.git-savvy.branches.branch.as-worktree")
+            for line in selected_lines
+        ):
+            flash(self.view, "Only one worktree can be selected.")
+            return
+
+        branches = self.get_selected_branches()
+        if not branches:
+            flash(self.view, "No branch selected.")
+            return
+
+        local_branches = [branch.name for branch in branches if branch.is_local]
+        remote_branches = [branch for branch in branches if branch.is_remote]
+
+        if local_branches:
+            self.delete_local_branches(local_branches, force)
+        if remote_branches:
+            remote_map: dict[str, list[str]] = {}
+            for branch in remote_branches:
+                if not branch.remote:
+                    continue
+                remote_map.setdefault(branch.remote, []).append(branch.name)
+            for remote, branch_names in remote_map.items():
+                self.delete_remote_branches(remote, branch_names, force)
 
     @util.actions.destructive(description="delete a remote branch")
     @on_worker
-    def delete_remote_branch(self, remote, branch_name, force):
-        self.window.status_message("Deleting remote branch...")
+    def delete_remote_branches(self, remote, branch_names, force):
+        es = "es" if len(branch_names) > 1 else ""
+        self.window.status_message(f"Deleting remote branch{es}...")
         self.git(
             "push",
             "--force" if force else None,
             remote,
             "--delete",
-            branch_name
+            *branch_names
         )
-        self.window.status_message("Deleted remote branch.")
+        self.window.status_message(f"Deleted remote branch{es}.")
         util.view.refresh_gitsavvy(self.view)
+        self.view.run_command("gs_clear_multiselect")
+
+    @util.actions.destructive(description="delete local branches")
+    @on_worker
+    def delete_local_branches(self, branch_names, force):
+        self.window.status_message("Deleting local branches...")
+        self.git(
+            "branch",
+            "-D" if force else "-d",
+            *branch_names
+        )
+        self.window.status_message("Deleted local branches.")
+        util.view.refresh_gitsavvy(self.view)
+        self.view.run_command("gs_clear_multiselect")
 
     @util.actions.destructive(description="delete a worktree")
     @on_new_thread
