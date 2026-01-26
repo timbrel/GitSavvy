@@ -109,7 +109,13 @@ class gs_log_graph_smart_paste(sublime_plugin.TextCommand):
             return
 
         ref, kind = clip
-        if not ref or kind not in ("branch", "tag"):
+        if not ref or kind not in ("branch", "tag", "commit"):
+            return
+
+        if kind == "commit":
+            window.run_command("gs_cherry_pick", {
+                "commit_hash": ref,
+            })
             return
 
         cursor = frozen_sel[0].a
