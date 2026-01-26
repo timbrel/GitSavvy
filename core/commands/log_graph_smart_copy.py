@@ -139,7 +139,15 @@ def set_clipboard_and_flash(view, text, regions, kind):
     # type: (sublime.View, str, List[Region], str) -> None
     sublime.set_clipboard(text)
     flash_regions(view, regions)
-    ext = ". Paste elsewhere to recreate the branch." if kind == "branch" else ""
+    if kind == "branch":
+        ext = ". Paste elsewhere to recreate the branch."
+    elif kind == "tag":
+        ext = ". Paste on a commit to recreate the tag."
+    elif kind == "commit":
+        s = "s" if "," in text else ""
+        ext = f". Paste to cherry-pick the commit{s}."
+    else:
+        ext = ""
     flash(view, f"Copied '{text}' to the clipboard{ext}")
     view.settings().set("git_savvy.log_graph_view.clipboard", [text, kind])
 
