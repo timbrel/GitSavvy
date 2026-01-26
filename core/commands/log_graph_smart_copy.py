@@ -122,6 +122,7 @@ class gs_log_graph_smart_paste(sublime_plugin.TextCommand):
             window.run_command("gs_create_branch", {
                 "start_point": commit_hash.text,
                 "branch_name": ref,
+                "force": True
             })
         elif kind == "tag":
             window.run_command("gs_tag_create", {
