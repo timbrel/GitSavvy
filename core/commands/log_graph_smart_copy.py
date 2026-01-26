@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import sublime
 import sublime_plugin
 
 from . import log_graph
+from . import multi_selector
 from ..fns import pairwise, peek
 from ..text_helper import Region, TextRange, line_from_pt
 from ..utils import flash, flash_regions
@@ -26,16 +29,21 @@ class CopyIntercepterForGraph(sublime_plugin.EventListener):
         if not view.settings().get("git_savvy.log_graph_view"):
             return None
 
-        frozen_sel = [r for r in view.sel()]
-        if len(frozen_sel) != 1:
-            return None
+        sels = list(multi_selector.get_multi_selection_if_multi(view))
+        if len(sels) == 1:
+            return self.single_item(view, sels[0])
+        if len(sels) > 1:
+            return self.multiple_items(view, sels)
 
-        if not frozen_sel[0].empty():
+        return None
+
+    def single_item(self, view: sublime.View, sel: sublime.Region) -> str | None:
+        if not sel.empty():
             return None
 
         def candidates():
             # type: () -> Iterator[Tuple[str, List[Region], str]]
-            cursor = frozen_sel[0].a
+            cursor = sel.a
             line = line_from_pt(view, cursor)
             line_span = line.region()
 
@@ -58,6 +66,55 @@ class CopyIntercepterForGraph(sublime_plugin.EventListener):
                     [commit_hash.region(), commit_msg.region()],
                     "combo",
                 )
+
+        clip_content = sublime.get_clipboard(128)
+        try:
+            first, candidates_ = peek(candidates())
+        except StopIteration:
+            return None
+
+        if not clip_content:
+            set_clipboard_and_flash(view, *first)
+            return "noop"
+
+        for left, right in pairwise(candidates_):
+            if left[0] == clip_content:
+                set_clipboard_and_flash(view, *right)
+                return "noop"
+        else:
+            set_clipboard_and_flash(view, *first)
+            return "noop"
+
+    def multiple_items(self, view: sublime.View, selections: list[sublime.Region]) -> str | None:
+
+        def candidates():
+            # type: () -> Iterator[Tuple[str, List[Region], str]]
+            lines = [line_from_pt(view, sel.a) for sel in selections]
+            commit_hashes = [read_commit_hash(view, line) for line in lines]
+            if any(commit_hash is None for commit_hash in commit_hashes):
+                return
+
+            commit_texts = [commit_hash.text for commit_hash in commit_hashes if commit_hash]
+            commit_regions = [commit_hash.region() for commit_hash in commit_hashes if commit_hash]
+            if commit_texts:
+                yield ", ".join(commit_texts), commit_regions, "commit"
+
+            combo_texts: list[str] = []
+            combo_regions: list[Region] = []
+
+            for line, commit_hash in zip(lines, commit_hashes):
+                if not commit_hash:
+                    return None
+
+                commit_msg = read_commit_message(view, line.region())
+                if commit_msg:
+                    combo_texts.append(f"{commit_hash.text} ({commit_msg.text})")
+                    combo_regions.extend([commit_hash.region(), commit_msg.region()])
+                else:
+                    return None
+
+            if combo_texts:
+                yield "\n".join(combo_texts), combo_regions, "combo"
 
         clip_content = sublime.get_clipboard(128)
         try:
@@ -113,9 +170,11 @@ class gs_log_graph_smart_paste(sublime_plugin.TextCommand):
             return
 
         if kind == "commit":
-            window.run_command("gs_cherry_pick", {
-                "commit_hash": ref,
-            })
+            commit_hashes = ref.split(", ")
+            if commit_hashes:
+                window.run_command("gs_cherry_pick", {
+                    "commit_hash": list(reversed(commit_hashes),)
+                })
             return
 
         cursor = frozen_sel[0].a
