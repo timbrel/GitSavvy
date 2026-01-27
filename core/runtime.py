@@ -64,7 +64,7 @@ def user_friendly_traceback(exception_s: type[BaseException] | tuple[type[BaseEx
         print(f"Abort: {e}  ")
         _, _, tb = sys.exc_info()
         found_culprit = False
-        for frame in reversed(traceback.extract_tb(tb)):
+        for frame in traceback.extract_tb(tb):
             relative_filename = frame.filename.split(GITSAVVY__)[-1]
             if not found_culprit and relative_filename.startswith(CORE_COMMANDS__):
                 found_culprit = True
