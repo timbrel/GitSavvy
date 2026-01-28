@@ -364,6 +364,14 @@
     ///////////////////////////
 
     {
+        "keys": ["enter"],
+        "command": "gs_status_action_menu",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["c"],
         "command": "gs_commit",
         "context": [

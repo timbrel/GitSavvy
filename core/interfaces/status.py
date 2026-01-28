@@ -164,6 +164,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
       ## OTHER ##
       ###########
 
+      [enter]     open main menu
       [O]         show most recent commit
       [g]         show graph repo history
       [G]         show overview of branches and tags
