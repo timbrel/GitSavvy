@@ -5,6 +5,7 @@ current diff.
 from __future__ import annotations
 from collections import defaultdict
 from contextlib import contextmanager
+import difflib
 from functools import partial
 from itertools import chain, count, groupby, takewhile
 import os
@@ -63,8 +64,8 @@ from ..git_mixins.status import FileStatus
 T = TypeVar('T')
 Point = int
 LineCol = Tuple[LineNo, ColNo]
-_FileName = str
-Position_ = Tuple[Position, _FileName]
+RelFileName = str
+Position_ = Tuple[Position, RelFileName]
 
 
 class HunkLineWithB(NamedTuple):
@@ -72,6 +73,7 @@ class HunkLineWithB(NamedTuple):
     b: LineNo
 
 
+DIFF_HISTORY: dict[sublime.ViewId, List[str]] = defaultdict(list)
 DIFF_TITLE = "DIFF: {}"
 DIFF_CACHED_TITLE = "DIFF: {}, STAGE"
 DECODE_ERROR_MESSAGE = """
@@ -290,13 +292,24 @@ def augment_color_scheme(view):
 class gs_diff_refresh(TextCommand, GitCommand):
     """Refresh the diff view with the latest repo state."""
 
-    def run(self, edit, sync=True, match_position=None):
+    def run(
+        self,
+        edit: sublime.Edit,
+        sync: bool = True,
+        match_position: Tuple[Position, RelFileName] | None = None,
+        preserve_history: bool = False
+    ) -> None:
         if sync:
-            self.run_impl(sync, match_position)
+            self.run_impl(sync, match_position, preserve_history)
         else:
-            enqueue_on_worker(self.run_impl, sync, match_position)
+            enqueue_on_worker(self.run_impl, sync, match_position, preserve_history)
 
-    def run_impl(self, runs_on_ui_thread, match_position):
+    def run_impl(
+        self,
+        runs_on_ui_thread: bool,
+        match_position: Tuple[Position, RelFileName] | None,
+        preserve_history: bool
+    ) -> None:
         view = self.view
         if not runs_on_ui_thread and not view.is_valid():
             return
@@ -404,17 +417,42 @@ class gs_diff_refresh(TextCommand, GitCommand):
 
         prelude += "\n--\n"
 
-        ensure_on_ui(_draw, view, title, prelude, diff, match_position)
+        ensure_on_ui(_draw, view, title, prelude, diff, match_position, preserve_history)
 
 
-def _draw(view, title, prelude, diff_text, match_position):
-    # type: (sublime.View, str, str, str, Optional[Position_]) -> None
-    was_empty = not view.find_by_selector("git-savvy.diff_view git-savvy.diff")
+def _draw(view, title, prelude, diff_text, match_position, preserve_history):
+    # type: (sublime.View, str, str, str, Optional[Position_], bool) -> None
+    vid = view.id()
+    diff_regions = view.find_by_selector("git-savvy.diff_view git-savvy.diff")
+    was_empty = not diff_regions
     navigated = False
-    text = prelude + diff_text
 
+    if vid in DIFF_HISTORY:
+        prior_diff_text: str = DIFF_HISTORY[vid][-1]
+    else:
+        prior_diff_text = "".join(view.substr(r) for r in diff_regions)
+        DIFF_HISTORY[vid].append(prior_diff_text)
+
+    diff_changed = prior_diff_text != diff_text
+    if diff_changed:
+        DIFF_HISTORY[vid].append(diff_text)
+
+    text = prelude + diff_text
     view.set_name(title)
     replace_view_content(view, text)
+
+    if preserve_history:
+        if diff_changed:
+            if diff_text:
+                base_content = DIFF_HISTORY[vid][0]
+                ref_doc = compute_reference_document(base_content, diff_text)
+                view.set_reference_document(prelude + ref_doc)
+            else:
+                view.reset_reference_document()
+
+    else:
+        DIFF_HISTORY.pop(vid, None)
+        view.reset_reference_document()
 
     if match_position:
         cur_pos, wanted_filename = match_position
@@ -446,8 +484,23 @@ def _draw(view, title, prelude, diff_text, match_position):
     intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(prelude))
 
 
+def compute_reference_document(a: str, b: str) -> str:
+    # Given a history of diffs, a b, compute a a_ variant that has all the metadata
+    # from b. This is the minimal useful delta/diff from b -> a so that Sublime Text
+    # draws as few gutter annotations as possible.
+    differ = difflib.Differ()
+    diff = differ.compare(b.splitlines(keepends=True), a.splitlines(keepends=True))
+    diff_ = [
+        line if line[2] in "+-" else f" {line[1:]}"
+        for line in diff
+        if line[0] in "- " or (line[0] == "+" and line[2] in "+-")
+    ]
+    a_ = "".join(difflib.restore(diff_, 2))
+    return a_
+
+
 def find_header_for_filename(headers, filename):
-    # type: (Iterable[FileHeader], str) -> Optional[FileHeader]
+    # type: (Iterable[FileHeader], RelFileName) -> Optional[FileHeader]
     for header in headers:
         if header.to_filename() == filename:
             return header
@@ -918,7 +971,7 @@ class GsDiffFocusEventListener(EventListener):
             return
 
         if active_on_activated and is_diff_view(view):
-            view.run_command("gs_diff_refresh", {"sync": False})
+            view.run_command("gs_diff_refresh", {"sync": False, "preserve_history": True})
 
     def on_reload(self, view):
         file_path = view.file_name()
@@ -932,11 +985,14 @@ class GsDiffFocusEventListener(EventListener):
 
             other_file_path = other_view.settings().get("git_savvy.file_path")
             if other_file_path == file_path:
-                other_view.run_command("gs_diff_refresh", {"sync": False})
+                other_view.run_command("gs_diff_refresh", {"sync": False, "preserve_history": True})
             elif not other_file_path:
                 other_repo_path = other_view.settings().get("git_savvy.repo_path")
                 if other_repo_path and file_path.startswith(other_repo_path + os.sep):
-                    other_view.run_command("gs_diff_refresh", {"sync": False})
+                    other_view.run_command("gs_diff_refresh", {"sync": False, "preserve_history": True})
+
+    def on_close(self, view):
+        DIFF_HISTORY.pop(view.id(), None)
 
 
 class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
