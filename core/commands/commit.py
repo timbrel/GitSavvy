@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from itertools import chain, takewhile
 import re
 import os
@@ -6,7 +8,7 @@ import sublime
 from sublime_plugin import WindowCommand, TextCommand
 from sublime_plugin import EventListener, ViewEventListener
 
-from .diff import DECODE_ERROR_MESSAGE
+from .diff import DECODE_ERROR_MESSAGE, compute_reference_document
 from . import intra_line_colorizer
 from . import multi_selector
 from ..git_command import GitCommand, GitSavvyError
@@ -299,8 +301,53 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
             if show_patch:
                 intra_line_colorizer.annotate_intra_line_differences(view, final_text, region.begin())
 
+        enqueue_on_worker(
+            self.update_reference_document_for_amend,
+            view,
+            amend=amend,
+            show_patch=show_patch,
+            show_stat=show_stat,
+            diff_text=diff_text,
+        )
+
         if include_unstaged and automatically_switched_to_all and not just_switched:
             enqueue_on_worker(self.maybe_switch_back)
+
+    def update_reference_document_for_amend(
+        self,
+        view: sublime.View,
+        *,
+        amend: bool,
+        show_patch: bool,
+        show_stat: bool,
+        diff_text: str,
+    ) -> None:
+        if not (amend and show_patch and diff_text):
+            view.reset_reference_document()
+            return
+
+        prelude = commit_view_prelude(view)
+        if not prelude:
+            view.reset_reference_document()
+            return
+
+        try:
+            recent_commit = self.read_commit(
+                "HEAD",
+                show_diffstat=show_stat,
+                show_patch=show_patch,
+            )
+        except GitSavvyError:
+            view.reset_reference_document()
+            return
+
+        base_patch = extract_patch(recent_commit)
+        if not base_patch:
+            view.reset_reference_document()
+            return
+
+        altered_patch = compute_reference_document(base_patch, diff_text)
+        view.set_reference_document(prelude + "\n" + altered_patch)
 
     def maybe_switch_back(self) -> None:
         view = self.view
@@ -318,6 +365,27 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
         if not THE_EMPTY_SHA:
             THE_EMPTY_SHA = self.git('mktree', stdin='').strip()
         return THE_EMPTY_SHA
+
+
+def extract_patch(commit_text: str) -> str:
+    lines = commit_text.splitlines(keepends=True)
+
+    for idx, line in enumerate(lines):
+        # With stats, we watch out for the separator line,
+        if line in ("---\n", "---"):
+            return "".join(lines[idx + 1:])
+        # and if stats are disabled, the payload starts directly with the diff header.
+        if line.startswith("diff --git "):
+            return "".join(lines[idx:])
+
+    return ""
+
+
+def commit_view_prelude(view: sublime.View) -> str:
+    prelude_regions = view.find_by_selector("git-savvy.make-commit - git-savvy.diff")
+    if prelude_regions:
+        return "".join(view.substr(r) for r in prelude_regions)
+    return ""
 
 
 class gs_commit_view_unstage_in_all_mode(TextCommand, GitCommand):
