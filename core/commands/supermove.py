@@ -58,11 +58,12 @@ def delegate(view: sublime.View, forward: bool) -> None:
 
     The resolution order mirrors the existing keymap setup:
 
-    1. Inline diff view  -> gs_inline_diff_navigate_hunk
-    2. GitSavvy diff views (main diff, commit view, show-commit view)
-                         -> gs_diff_navigate
-    3. File-at-commit view -> gs_next_hunk / gs_prev_hunk
-    4. Plain views / fallback -> gs_next_hunk / gs_prev_hunk
+    1. Inline diff view           -> gs_inline_diff_navigate_hunk
+    2. Commit view                -> gs_commit_view_navigate
+    3. GitSavvy diff-ish views
+       (status/diff, show-commit) -> gs_diff_navigate
+    4. File-at-commit view        -> gs_next_hunk / gs_prev_hunk
+    5. Plain views / fallback     -> gs_next_hunk / gs_prev_hunk
     """
     settings = view.settings()
 
@@ -71,12 +72,17 @@ def delegate(view: sublime.View, forward: bool) -> None:
         view.run_command("gs_inline_diff_navigate_hunk", {"forward": forward})
         return
 
-    # Dedicated GitSavvy diff views (status/diff, commit view with diff section,
-    # and read-only show-commit views). All of these expose their hunks via
-    # SplittedDiff and use gs_diff_navigate as the canonical navigator.
+    # Commit view: navigate the embedded patch plus a virtual BOF position so we
+    # can always jump back to the commit message.
+    if settings.get("git_savvy.commit_view"):
+        view.run_command("gs_commit_view_navigate", {"forward": forward})
+        return
+
+    # Dedicated GitSavvy diff views (status/diff and read-only show-commit views).
+    # All of these expose their hunks via SplittedDiff and use gs_diff_navigate as
+    # the canonical navigator.
     if (
         settings.get("git_savvy.diff_view")
-        or settings.get("git_savvy.commit_view")
         or settings.get("git_savvy.show_commit_view")
     ):
         view.run_command("gs_diff_navigate", {"forward": forward})
