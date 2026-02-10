@@ -60,10 +60,11 @@ def delegate(view: sublime.View, forward: bool) -> None:
 
     1. Inline diff view           -> gs_inline_diff_navigate_hunk
     2. Commit view                -> gs_commit_view_navigate
-    3. GitSavvy diff-ish views
+    3. Line history view          -> gs_line_history_navigate
+    4. GitSavvy diff-ish views
        (status/diff, show-commit) -> gs_diff_navigate
-    4. File-at-commit view        -> gs_next_hunk / gs_prev_hunk
-    5. Plain views / fallback     -> gs_next_hunk / gs_prev_hunk
+    5. File-at-commit view        -> gs_next_hunk / gs_prev_hunk
+    6. Plain views / fallback     -> gs_next_hunk / gs_prev_hunk
     """
     settings = view.settings()
 
@@ -76,6 +77,11 @@ def delegate(view: sublime.View, forward: bool) -> None:
     # can always jump back to the commit message.
     if settings.get("git_savvy.commit_view"):
         view.run_command("gs_commit_view_navigate", {"forward": forward})
+        return
+
+    # Line history view: navigate between commits and hunks in a very special odd way.
+    if settings.get("git_savvy.line_history_view"):
+        view.run_command("gs_line_history_navigate", {"forward": forward})
         return
 
     # Dedicated GitSavvy diff views (status/diff and read-only show-commit views).
