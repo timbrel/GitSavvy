@@ -45,4 +45,5 @@ from .stage_diff import *
 from .stage_hunk import *
 from .stash import *
 from .status_bar import *
+from .supermove import *
 from .tag import *
