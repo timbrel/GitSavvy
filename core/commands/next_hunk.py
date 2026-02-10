@@ -7,8 +7,8 @@ from itertools import chain, takewhile
 import sublime
 import sublime_plugin
 
-
 from GitSavvy.core.fns import pairwise
+from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.utils import flash
 from GitSavvy.core.view import line_distance, show_region, touching_regions
 
@@ -26,24 +26,38 @@ T = TypeVar("T")
 LINE_DISTANCE_BETWEEN_EDITS = 2
 
 
-class gs_next_hunk(sublime_plugin.TextCommand):
+class gs_next_hunk(sublime_plugin.TextCommand, GitCommand):
     def is_enabled(self) -> bool:
         return len(self.view.sel()) > 0
 
     def run(self, edit: sublime.Edit) -> None:
         view = self.view
-        if not jump_to_hunk(view, True):
-            flash(view, "No hunk to jump to")
+        if jump_to_hunk(view, True):
+            return
+
+        # For ordinary files, load the previous file revision.  This
+        # enables hunk navigation to the last edited locations of a file.
+        if try_set_reference_document_from_previous_revision(self, view):
+            if jump_to_hunk(view, True):
+                return
+
+        flash(view, "No hunk to jump to")
 
 
-class gs_prev_hunk(sublime_plugin.TextCommand):
+class gs_prev_hunk(sublime_plugin.TextCommand, GitCommand):
     def is_enabled(self) -> bool:
         return len(self.view.sel()) > 0
 
     def run(self, edit: sublime.Edit) -> None:
         view = self.view
-        if not jump_to_hunk(view, False):
-            flash(view, "No hunk to jump to")
+        if jump_to_hunk(view, False):
+            return
+
+        if try_set_reference_document_from_previous_revision(self, view):
+            if jump_to_hunk(view, False):
+                return
+
+        flash(view, "No hunk to jump to")
 
 
 def jump_to_hunk(view: sublime.View, forwards: bool) -> bool:
@@ -55,9 +69,31 @@ def jump_to_hunk(view: sublime.View, forwards: bool) -> bool:
         if not any(filter(is_visible, view.sel())):
             view.show(view.sel())
         return False
-    else:
-        mark_and_show_line_start(view, hunk)
+
+    mark_and_show_line_start(view, hunk)
+    return True
+
+
+def try_set_reference_document_from_previous_revision(command: GitCommand, view: sublime.View) -> bool:
+    if view.settings().get("git_savvy.repo_path") is not None:
+        return False
+
+    file_path = view.file_name()
+    if not file_path:
+        return False
+
+    previous = previous_file_version(command, file_path)
+    if previous:
+        view.set_reference_document(previous)
         return True
+    return False
+
+
+def previous_file_version(command: GitCommand, file_path: str) -> str:
+    previous_commit = command.previous_commit("HEAD", file_path)
+    if previous_commit:
+        return command.get_file_content_at_commit(file_path, previous_commit)
+    return ""
 
 
 def mark_and_show_line_start(view: sublime.View, region: sublime.Region) -> None:
@@ -74,6 +110,7 @@ def hunk_region(view: sublime.View, forwards: bool = True) -> Optional[sublime.R
     )
     if not mods:
         return None
+
     a, b = mods[0], mods[-1]
     return sublime.Region(a.begin(), b.end())
 
