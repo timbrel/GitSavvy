@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from contextlib import contextmanager
 from functools import partial
 from itertools import chain, takewhile
@@ -25,27 +27,26 @@ LINE_DISTANCE_BETWEEN_EDITS = 2
 
 
 class gs_next_hunk(sublime_plugin.TextCommand):
-    def is_enabled(self):
+    def is_enabled(self) -> bool:
         return len(self.view.sel()) > 0
 
-    def run(self, edit):
+    def run(self, edit: sublime.Edit) -> None:
         view = self.view
         if not jump_to_hunk(view, True):
             flash(view, "No hunk to jump to")
 
 
 class gs_prev_hunk(sublime_plugin.TextCommand):
-    def is_enabled(self):
+    def is_enabled(self) -> bool:
         return len(self.view.sel()) > 0
 
-    def run(self, edit):
+    def run(self, edit: sublime.Edit) -> None:
         view = self.view
         if not jump_to_hunk(view, False):
             flash(view, "No hunk to jump to")
 
 
-def jump_to_hunk(view, forwards):
-    # type: (sublime.View, bool) -> bool
+def jump_to_hunk(view: sublime.View, forwards: bool) -> bool:
     with restore_sel_and_viewport(view):
         hunk = hunk_region(view, forwards)
 
@@ -59,16 +60,14 @@ def jump_to_hunk(view, forwards):
         return True
 
 
-def mark_and_show_line_start(view, region):
-    # type: (sublime.View, sublime.Region) -> None
+def mark_and_show_line_start(view: sublime.View, region: sublime.Region) -> None:
     line = view.line(region)
     r = sublime.Region(line.a)
     set_sel(view, [r])
     show_region(view, region)
 
 
-def hunk_region(view, forwards=True):
-    # type: (sublime.View, bool) -> Optional[sublime.Region]
+def hunk_region(view: sublime.View, forwards: bool = True) -> Optional[sublime.Region]:
     mods = sorted(
         modifications_per_hunk(view, forwards),
         key=lambda r: r.begin()
@@ -79,8 +78,7 @@ def hunk_region(view, forwards=True):
     return sublime.Region(a.begin(), b.end())
 
 
-def modifications_per_hunk(view, forwards=True):
-    # type: (sublime.View, bool) -> Iterator[sublime.Region]
+def modifications_per_hunk(view: sublime.View, forwards: bool = True) -> Iterator[sublime.Region]:
     jump_positions = pairwise(chain(
         [cur_pos(view)], all_modifications(view, forwards)
     ))
@@ -100,29 +98,25 @@ def modifications_per_hunk(view, forwards=True):
     )
 
 
-def all_modifications(view, forwards=True):
-    # type: (sublime.View, bool) -> Iterator[sublime.Region]
+def all_modifications(view: sublime.View, forwards: bool = True) -> Iterator[sublime.Region]:
     method = "next_modification" if forwards else "prev_modification"
     return take_while_unique(jump(view, method))
 
 
-def jump(view, method):
-    # type: (sublime.View, str) -> Iterator[sublime.Region]
+def jump(view: sublime.View, method: str) -> Iterator[sublime.Region]:
     while True:
         view.run_command(method)
         yield cur_pos(view)
 
 
-def set_sel(view, selection):
-    # type: (sublime.View, List[sublime.Region]) -> None
+def set_sel(view: sublime.View, selection: List[sublime.Region]) -> None:
     sel = view.sel()
     sel.clear()
     sel.add_all(selection)
 
 
 @contextmanager
-def restore_sel_and_viewport(view):
-    # type: (sublime.View) -> Iterator[None]
+def restore_sel_and_viewport(view: sublime.View) -> Iterator[None]:
     frozen_sel = [s for s in view.sel()]
     vp = view.viewport_position()
     try:
@@ -132,13 +126,11 @@ def restore_sel_and_viewport(view):
         view.set_viewport_position(vp, animate=False)
 
 
-def cur_pos(view):
-    # type: (sublime.View) -> sublime.Region
+def cur_pos(view: sublime.View) -> sublime.Region:
     return view.sel()[0]
 
 
-def take_while_unique(iterable):
-    # type: (Iterable[T]) -> Iterator[T]
+def take_while_unique(iterable: Iterable[T]) -> Iterator[T]:
     seen = []
     for item in iterable:
         if item in seen:
