@@ -1515,7 +1515,7 @@ class gs_diff_navigate(GsNavigate):
 
             else:
                 for hunk in diff.hunks:
-                    yield sublime.Region(hunk.region().a)
+                    yield hunk.region()
 
         return sorted(
             list(_gen())
