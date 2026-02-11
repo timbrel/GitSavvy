@@ -90,6 +90,7 @@ def delegate(view: sublime.View, forward: bool) -> None:
     if (
         settings.get("git_savvy.diff_view")
         or settings.get("git_savvy.show_commit_view")
+        or settings.get("git_savvy.stash_view")
     ):
         view.run_command("gs_diff_navigate", {"forward": forward})
         return
