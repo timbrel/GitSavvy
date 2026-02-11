@@ -188,7 +188,8 @@ class gs_diff_help_panel(GsAbstractOpenHelpPanel):
 
     ### Navigation ###
     [o]            open file at hunk
-    [,]/[.]        go to next/previous hunk (also: [j]/[k] in vintageous mode)
+    [,]/[.]        go to next/previous chunk
+    [alt+]         go to next/previous hunk (also: [j]/[k] in vintageous mode)
 
     ### Other ###
     [w]            ignore white space
