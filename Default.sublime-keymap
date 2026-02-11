@@ -963,7 +963,7 @@
     {
         "keys": ["."],
         "command": "gs_diff_navigate",
-        "args": { "forward": true },
+        "args": { "forward": true, "in_chunks": true },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
@@ -972,7 +972,25 @@
     {
         "keys": [","],
         "command": "gs_diff_navigate",
-        "args": { "forward": false },
+        "args": { "forward": false, "in_chunks": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["alt+."],
+        "command": "gs_diff_navigate",
+        "args": { "forward": true, "in_chunks": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["alt+,"],
+        "command": "gs_diff_navigate",
+        "args": { "forward": false, "in_chunks": false },
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
