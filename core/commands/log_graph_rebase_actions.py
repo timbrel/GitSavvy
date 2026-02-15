@@ -462,7 +462,10 @@ class gs_rebase_action(GsWindowCommand):
         def on_action_selection(index):
             self.selected_index = index
             description, action = actions[index]
+            # Keep the frozen multi-selection available while commands resolve
+            # defaults (e.g. `ask_for_ref`) and clear it afterwards.
             action()
+            view.run_command("gs_clear_multiselect")
 
         selected_index = self.selected_index
         if 0 <= selected_index < len(actions) - 1:
