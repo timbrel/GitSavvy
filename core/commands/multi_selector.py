@@ -1,5 +1,5 @@
 from __future__ import annotations
-from itertools import groupby, starmap
+from itertools import starmap
 
 from . import log_graph
 from ..parse_diff import SplittedDiff
@@ -199,12 +199,10 @@ def is_exactly_selected_chunk(diff: SplittedDiff, s: sublime.Region) -> bool:
     if not hunk:
         return False
 
-    for is_chunk, lines in groupby(hunk.content().lines(), key=lambda line: not line.is_context()):
-        if is_chunk:
-            chunk_lines = list(lines)
-            chunk = sublime.Region(chunk_lines[0].region().a, chunk_lines[-1].region().b)
-            if begin == chunk.begin() and end == chunk.end():
-                return True
+    for chunk in hunk.content().chunks():
+        region = chunk.region()
+        if begin == region.begin() and end == region.end():
+            return True
 
     return False
 

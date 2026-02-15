@@ -1,5 +1,5 @@
 from functools import partial
-from itertools import chain, dropwhile, takewhile
+from itertools import chain, dropwhile, groupby, takewhile
 import re
 
 import sublime
@@ -258,3 +258,13 @@ class HunkContent(TextRange):
         # type: () -> List[HunkLine]
         factory = partial(HunkLine, mode_len=self.mode_len)
         return super().lines(factory=factory)  # type: ignore
+
+    def chunks(self):
+        # type: () -> List[TextRange]
+        chunks = []
+        for is_chunk, lines in groupby(self.lines(), key=lambda line: not line.is_context()):
+            if is_chunk:
+                chunk_lines = list(lines)
+                start, end = chunk_lines[0].a, chunk_lines[-1].b
+                chunks.append(TextRange(self.text[start - self.a:end - self.a], start, end))
+        return chunks

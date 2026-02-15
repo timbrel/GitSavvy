@@ -1509,9 +1509,8 @@ class gs_diff_navigate(GsNavigate):
 
             elif self.in_chunks:
                 for hunk in diff.hunks:
-                    chunks = list(chunkby(hunk.content().lines(), lambda line: not line.is_context()))
-                    for chunk in chunks:
-                        yield sublime.Region(chunk[0].region().a, chunk[-1].region().b)
+                    for chunk in hunk.content().chunks():
+                        yield chunk.region()
 
             else:
                 for hunk in diff.hunks:
