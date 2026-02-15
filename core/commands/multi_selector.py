@@ -1,5 +1,5 @@
 from __future__ import annotations
-from itertools import starmap
+from itertools import groupby, starmap
 
 from . import log_graph
 from ..parse_diff import SplittedDiff
@@ -75,15 +75,26 @@ class gs_diff_multiselect(TextCommand):
 
         multi_selection: list[Region] = view.settings().get("git_savvy.multi_selection", [])
         regions = multi_selection[:]
+        diff: SplittedDiff | None = None
         for s in frozen_sel:
-            # `hunk_selected` tracks if the last `s` selects a hunk
-            # which determines how we jump, see below
+            # `hunk_selected`/`chunk_selected` track if the last `s` selects
+            # a full hunk/chunk which determines how we jump, see below
             hunk_selected = False
+            chunk_selected = False
+
             if s.empty() and view.match_selector(s.a, "meta.diff.range.unified"):
-                diff = SplittedDiff.from_view(view)
+                if diff is None:
+                    diff = SplittedDiff.from_view(view)
                 if hunk := diff.hunk_for_pt(s.a):
                     s = hunk.region()
                     hunk_selected = True
+
+            elif not s.empty():
+                if diff is None:
+                    diff = SplittedDiff.from_view(view)
+                if is_exactly_selected_chunk(diff, s):
+                    chunk_selected = True
+
             line_spans = view.lines(s)
             for line_span in line_spans:
                 if view.match_selector(line_span.a, "markup.inserted.diff | markup.deleted.diff"):
@@ -108,6 +119,13 @@ class gs_diff_multiselect(TextCommand):
             # only move if that's not the case
             elif not view.match_selector(s.b, "meta.diff.range.unified"):
                 view.run_command("gs_diff_navigate")
+
+        elif chunk_selected and len(frozen_sel) == 1:
+            if all(r in multi_selection for r in regions):
+                view.sel().clear()
+                view.sel().add_all(frozen_sel)
+            else:
+                view.run_command("gs_diff_navigate", {"in_chunks": True})
 
         elif (
             len(frozen_sel) == 1
@@ -168,6 +186,27 @@ class gs_clear_multiselect(TextCommand):
         view = self.view
         view.settings().set("git_savvy.multi_selection", [])
         set_multiselect_markers(view, [])
+
+
+def is_exactly_selected_chunk(diff: SplittedDiff, s: sublime.Region) -> bool:
+    if s.empty():
+        return False
+
+    begin = s.begin()
+    end = s.end()
+
+    hunk = diff.hunk_for_pt(begin)
+    if not hunk:
+        return False
+
+    for is_chunk, lines in groupby(hunk.content().lines(), key=lambda line: not line.is_context()):
+        if is_chunk:
+            chunk_lines = list(lines)
+            chunk = sublime.Region(chunk_lines[0].region().a, chunk_lines[-1].region().b)
+            if begin == chunk.begin() and end == chunk.end():
+                return True
+
+    return False
 
 
 MULTISELECT_SCOPE = 'git_savvy.multiselect'
