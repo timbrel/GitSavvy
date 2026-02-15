@@ -42,6 +42,7 @@ __all__ = (
     "gs_rebase_just_autosquash",
     "gs_rebase_edit_commit",
     "gs_rebase_drop_commit",
+    "gs_rebase_drop_commits",
     "gs_rebase_reword_commit",
     "gs_rebase_apply_fixup",
     "gs_rebase_squash_commits",
@@ -249,7 +250,11 @@ class gs_rebase_action(GsWindowCommand):
                 (
                     f"Squash {formatted_commit_hashes}",
                     partial(self.squash_commits, view, commit_hashes)
-                )
+                ),
+                (
+                    f"Drop {formatted_commit_hashes}",
+                    partial(self.drop_commits, view, commit_hashes)
+                ),
             ]
             if self.git_version >= VERSION_WITH_UPDATE_REFS:
                 actions += [
@@ -512,6 +517,12 @@ class gs_rebase_action(GsWindowCommand):
         view.run_command("gs_rebase_squash_commits", {
             "base_commit": commits[0],
             "commits": commits[1:]
+        })
+
+    def drop_commits(self, view, commits):
+        view.run_command("gs_rebase_drop_commits", {
+            "base_commit": commits[0],
+            "commits": commits,
         })
 
     def extract_commits(self, view, commits):
@@ -1010,12 +1021,34 @@ def squash_commits(commits: List[str], base_commit: str, buffer_content: str) ->
     return "\n".join(inner())
 
 
+def drop_commits(commits: List[str], _base_commit: str, buffer_content: str) -> str:
+    def inner():
+        # type: () -> Iterator[str]
+        prefixes = {"pick {} ".format(commit) for commit in commits}
+        prefix_len = 6 + len(commits[0])  # 6 == len("pick  ")
+        for line in buffer_content.splitlines():
+            if line[:prefix_len] in prefixes:
+                yield "drop" + line[4:]
+            else:
+                yield line
+
+        yield ""  # cosmetic trailing newline
+
+    return "\n".join(inner())
+
+
 class gs_rebase_edit_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "edit")
 
 
 class gs_rebase_drop_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "drop")
+
+
+class gs_rebase_drop_commits(gs_rebase_quick_action):
+    def run(self, edit, base_commit, commits):  # type: ignore[override]
+        self.action = partial(drop_commits, commits)
+        super().run(edit, base_commit)
 
 
 class gs_rebase_reword_commit(gs_rebase_quick_action):
