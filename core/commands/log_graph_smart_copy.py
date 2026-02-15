@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from itertools import starmap
+
 import sublime
 import sublime_plugin
 
 from . import log_graph
 from . import multi_selector
-from ..fns import pairwise, peek
+from ..fns import pairwise, peek, take
 from ..text_helper import Region, TextRange, line_from_pt
 from ..utils import flash, flash_regions
 from ..view import find_by_selector
@@ -145,11 +147,14 @@ def set_clipboard_and_flash(view, text, regions, kind):
         ext = ". Paste on a commit to recreate the tag."
     elif kind == "commit":
         s = "s" if "," in text else ""
-        ext = f". Paste to cherry-pick the commit{s}."
+        ext = f". Paste on a commit to insert the commit{s} there."
     else:
         ext = ""
     flash(view, f"Copied '{text}' to the clipboard{ext}")
-    view.settings().set("git_savvy.log_graph_view.clipboard", [text, kind])
+    view.settings().set(
+        "git_savvy.log_graph_view.clipboard",
+        [text, [(r.a, r.b) for r in regions], kind]
+    )
 
 
 class gs_log_graph_smart_paste(sublime_plugin.TextCommand):
@@ -170,19 +175,11 @@ class gs_log_graph_smart_paste(sublime_plugin.TextCommand):
         if not isinstance(clip, list):
             return
 
-        if len(clip) != 2:
+        if len(clip) != 3:
             return
 
-        ref, kind = clip
+        ref, regions, kind = clip
         if not ref or kind not in ("branch", "tag", "commit"):
-            return
-
-        if kind == "commit":
-            commit_hashes = ref.split(", ")
-            if commit_hashes:
-                window.run_command("gs_cherry_pick", {
-                    "commit_hash": list(reversed(commit_hashes),)
-                })
             return
 
         cursor = frozen_sel[0].a
@@ -191,7 +188,34 @@ class gs_log_graph_smart_paste(sublime_plugin.TextCommand):
         if not commit_hash:
             return
 
-        if kind == "branch":
+        if kind == "commit":
+            commit_hashes = ref.split(", ")
+            if commit_hashes:
+                insert_at = commit_hash.text
+                candidate_region_and_hashes = (
+                    list(zip(starmap(sublime.Region, regions), commit_hashes))
+                    + [(commit_hash.region(), insert_at)]
+                )
+                reachable_candidates = filter_to_commits_reachable_from_head(
+                    view,
+                    candidate_region_and_hashes
+                )
+                if not reachable_candidates:
+                    flash(view, "This commit is not reachable from HEAD.")
+                    return
+
+                reachable_hashes = {commit_hash for _, commit_hash in reachable_candidates}
+                if insert_at not in reachable_hashes:
+                    flash(view, "This commit is not reachable from HEAD.")
+                    return
+
+                _, base_commit = max(reachable_candidates)
+                view.run_command("gs_rebase_insert_commits", {
+                    "base_commit": base_commit,
+                    "insert_at": insert_at,
+                    "commits": list(reversed(commit_hashes)),
+                })
+        elif kind == "branch":
             window.run_command("gs_create_branch", {
                 "start_point": commit_hash.text,
                 "branch_name": ref,
@@ -239,3 +263,61 @@ def read_commit_message(view, line_span):
             return TextRange(view.substr(r), r.a, r.b)
     else:
         return None
+
+
+def filter_to_commits_reachable_from_head(
+    view: sublime.View,
+    region_and_hashes: list[tuple[sublime.Region, str]],
+) -> list[tuple[sublime.Region, str]]:
+    remaining = {commit_hash for _, commit_hash in region_and_hashes}
+    if not remaining:
+        return []
+
+    reachable_candidate_hashes: set[str] = set()
+    for commit_hash in take(100, reachable_commits_from_head(view)):
+        if commit_hash not in remaining:
+            continue
+
+        reachable_candidate_hashes.add(commit_hash)
+        remaining.remove(commit_hash)
+        if not remaining:
+            break
+
+    return [
+        (region, commit_hash)
+        for region, commit_hash in region_and_hashes
+        if commit_hash in reachable_candidate_hashes
+    ]
+
+
+def reachable_commits_from_head(view: sublime.View) -> Iterator[str]:
+    head_dot = read_head_dot(view)
+    if not head_dot:
+        return
+
+    head_commit_hash = read_commit_hash_from_dot(view, head_dot)
+    if head_commit_hash:
+        yield head_commit_hash
+
+    for dot in log_graph.follow_dots(head_dot, forward=True):
+        commit_hash = read_commit_hash_from_dot(view, dot)
+        if commit_hash:
+            yield commit_hash
+
+
+def read_commit_hash_from_dot(view: sublime.View, dot) -> str | None:
+    line = line_from_pt(view, dot.pt)
+    commit_hash = read_commit_hash(view, line)
+    if commit_hash:
+        return commit_hash.text
+    return None
+
+
+def read_head_dot(view: sublime.View):
+    selector = (
+        "git-savvy.graph meta.graph.graph-line.head.git-savvy "
+        "constant.numeric.graph.commit-hash.git-savvy"
+    )
+    for head_hash in find_by_selector(view, selector):
+        return log_graph.dot_from_line(view, line_from_pt(view, head_hash.a))
+    return None
