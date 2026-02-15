@@ -140,6 +140,7 @@ class CopyIntercepterForGraph(sublime_plugin.EventListener):
 def set_clipboard_and_flash(view, text, regions, kind):
     # type: (sublime.View, str, List[Region], str) -> None
     sublime.set_clipboard(text)
+    view.run_command("gs_clear_multiselect")
     flash_regions(view, regions)
     if kind == "branch":
         ext = ". Paste elsewhere to recreate the branch."
