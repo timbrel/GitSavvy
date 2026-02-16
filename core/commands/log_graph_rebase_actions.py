@@ -41,7 +41,6 @@ __all__ = (
     "gs_rebase_skip",
     "gs_rebase_just_autosquash",
     "gs_rebase_edit_commit",
-    "gs_rebase_drop_commit",
     "gs_rebase_drop_commits",
     "gs_rebase_reword_commit",
     "gs_rebase_apply_fixup",
@@ -336,7 +335,7 @@ class gs_rebase_action(GsWindowCommand):
                 ),
                 (
                     "Drop commit",
-                    partial(self.drop, view, commit_hash)
+                    partial(self.drop_commits, view, [commit_hash])
                 ),
                 (
                     "Copy commit to a <new branch> onto <branch>",
@@ -541,9 +540,6 @@ class gs_rebase_action(GsWindowCommand):
 
     def edit(self, view, commit_hash):
         view.run_command("gs_rebase_edit_commit", {"commit_hash": commit_hash})
-
-    def drop(self, view, commit_hash):
-        view.run_command("gs_rebase_drop_commit", {"commit_hash": commit_hash})
 
     def autosquash(self, view, commitish):
         view.run_command("gs_rebase_just_autosquash", {"commitish": commitish})
@@ -1039,10 +1035,6 @@ def drop_commits(commits: List[str], _base_commit: str, buffer_content: str) -> 
 
 class gs_rebase_edit_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "edit")
-
-
-class gs_rebase_drop_commit(gs_rebase_quick_action):
-    action = partial(change_first_action, "drop")
 
 
 class gs_rebase_drop_commits(gs_rebase_quick_action):
