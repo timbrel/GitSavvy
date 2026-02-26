@@ -406,9 +406,7 @@ class gs_diff_refresh(TextCommand, GitCommand):
                     prelude += "  {}..WORKING DIR\n".format(base_commit or target_commit)
                     title += ", {}..WORKING DIR".format(base_commit or target_commit)
         else:
-            if untracked_file:
-                ...
-            elif in_cached_mode:
+            if in_cached_mode:
                 prelude += "  STAGED CHANGES (Will commit)\n"
             else:
                 prelude += "  UNSTAGED CHANGES\n"

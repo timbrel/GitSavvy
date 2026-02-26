@@ -592,6 +592,31 @@ class TestZooming(DeferrableTestCase):
         cmd.run({'unused_edit'})
         verify(cmd).git('diff', None, FLAG, ...)
 
+    def test_untracked_file_in_cached_mode_shows_staged_changes_header(self):
+        repo_path = '/not/there'
+        file_path = '/not/there/core/commands/test.py'
+
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.set_scratch(True)
+        view.settings().set("git_savvy.repo_path", repo_path)
+        view.settings().set("git_savvy.file_path", file_path)
+        view.settings().set('git_savvy.diff_view.in_cached_mode', True)
+        view.settings().set('git_savvy.diff_view.disable_stage', False)
+        view.settings().set('git_savvy.diff_view.context_lines', 3)
+
+        cmd = module.gs_diff_refresh(view)
+        when(cmd).git(...).thenReturn(b'')
+        when(cmd).is_probably_untracked_file(file_path).thenReturn(True)
+        when(cmd).intent_to_add(file_path)
+        when(cmd).undo_intent_to_add(file_path)
+
+        cmd.run({'unused_edit'})
+
+        buffer_content = view.substr(sublime.Region(0, view.size()))
+        self.assertIn('(UNTRACKED)', buffer_content)
+        self.assertIn('STAGED CHANGES (Will commit)', buffer_content)
+
     @p.expand([
         (1, 5, 3),
         (2, 5, 3),
