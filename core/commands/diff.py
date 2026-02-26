@@ -1062,7 +1062,9 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         move_fn = None
         if whole_file or all(s.empty() for s in frozen_sel):
             if (
-                (headers := list(unique(filter_(map(diff.head_for_pt, cursor_pts)))))
+                not in_cached_mode
+                and not reset
+                and (headers := list(unique(filter_(map(diff.head_for_pt, cursor_pts)))))
                 and (new_files := [
                     filename
                     for header in (headers or [diff.headers[0]])

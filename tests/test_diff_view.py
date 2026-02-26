@@ -453,6 +453,89 @@ diff --git a/fooz b/barz
         expected = ['apply', None, '--cached', '--unidiff-zero', '-']
         self.assertEqual(actual, expected)
 
+    def test_unstaging_new_file_in_cached_mode_uses_reverse_apply(self):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/tests/new_file.py b/tests/new_file.py
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/tests/new_file.py
+@@ -0,0 +1,2 @@
++one
++two
+"""
+        CURSOR = VIEW_CONTENT.index("+one")
+
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        view.settings().set('git_savvy.diff_view.in_cached_mode', True)
+        view.settings().set('git_savvy.diff_view.history', [])
+
+        cmd = module.gs_diff_stage_or_reset_hunk(view)
+        when(cmd).git(...)
+        when(cmd.view).run_command("gs_clear_multiselect")
+        when(cmd.view).run_command("gs_diff_refresh")
+        when(cmd.view).run_command("gs_update_status")
+
+        view.sel().clear()
+        view.sel().add(CURSOR)
+
+        cmd.run({'unused_edit'})
+
+        history = view.settings().get('git_savvy.diff_view.history')
+        self.assertEqual(len(history), 1)
+
+        actual = history.pop()[0]
+        expected = ['apply', '-R', '--cached', '-']
+        self.assertEqual(actual, expected)
+
+    def test_staging_new_file_in_uncached_mode_uses_add(self):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/tests/new_file.py b/tests/new_file.py
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/tests/new_file.py
+@@ -0,0 +1,2 @@
++one
++two
+"""
+        CURSOR = VIEW_CONTENT.index("+one")
+
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        view.settings().set('git_savvy.diff_view.in_cached_mode', False)
+        view.settings().set('git_savvy.diff_view.history', [])
+
+        cmd = module.gs_diff_stage_or_reset_hunk(view)
+        when(cmd).git(...)
+        when(cmd)._mark_untracked_files_as_staged(...)
+        when(cmd.view).run_command("gs_clear_multiselect")
+        when(cmd.view).run_command("gs_diff_refresh")
+        when(cmd.view).run_command("gs_update_status")
+
+        view.sel().clear()
+        view.sel().add(CURSOR)
+
+        cmd.run({'unused_edit'})
+
+        history = view.settings().get('git_savvy.diff_view.history')
+        self.assertEqual(len(history), 1)
+
+        actual = history.pop()[0]
+        expected = ["add", "--add-untracked-files", ["tests/new_file.py"]]
+        self.assertEqual(actual, expected)
+
     def test_status_message_if_clean(self):
         VIEW_CONTENT = """\
 prelude
