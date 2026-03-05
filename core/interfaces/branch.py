@@ -123,8 +123,8 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
       [R] rename (local)                            [M] fetch and merge into active branch
       [t] configure tracking                        [u] unset upstream on selected branch
 
-      [f] diff against active                       [l] show branch log
-      [H] diff history against active               [g] show branch log graph
+      [f] open diff                                 [l] show log in a quick panel
+      [H] compare commit history                    [g] show branch graph
       [E] edit branch description
 
       [space] to select multiple items
@@ -669,33 +669,87 @@ class gs_branches_create_new_worktree(CommandForSingleItem):
                 break
 
 
-class gs_branches_delete(CommandForSingleItem):
+class gs_branches_delete(BranchInterfaceCommand):
 
     """
     Delete selected branch.
     """
 
     def run(self, edit, force=False):
-        if self.selected_item.is_remote:
-            self.delete_remote_branch(self.selected_item.remote, self.selected_item.branch_name, force)
-        elif self.selected_item.worktree:
-            self.delete_worktree(self.selected_item.worktree, force)
-        else:
-            self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
-            self.window.run_command("gs_delete_branch", {"branch": self.selected_item.branch_name, "force": force})
+        selections = list(multi_selector.get_selection(self.view))
+        if len(selections) == 0:
+            raise RuntimeError("View has no selection.")
+
+        if len(selections) == 1:
+            selected_item, err = self.single_line_info()
+            if err:
+                raise RuntimeError(err)
+            assert selected_item
+
+            if selected_item.is_remote:
+                self.delete_remote_branches(selected_item.remote, [selected_item.branch_name], force)
+            elif selected_item.worktree:
+                self.delete_worktree(selected_item.worktree, force)
+            else:
+                self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
+                self.window.run_command("gs_delete_branch", {"branch": selected_item.branch_name, "force": force})
+            return
+
+        selected_lines = ui.unique_selected_lines(self.view)
+        if any(
+            self.view.match_selector(line.a, "meta.git-savvy.branches.branch.as-worktree")
+            for line in selected_lines
+        ):
+            flash(self.view, "Only one worktree can be selected.")
+            return
+
+        branches = self.get_selected_branches()
+        if not branches:
+            flash(self.view, "No branch selected.")
+            return
+
+        local_branches = [branch.name for branch in branches if branch.is_local]
+        remote_branches = [branch for branch in branches if branch.is_remote]
+
+        if local_branches:
+            self.delete_local_branches(local_branches, force)
+        if remote_branches:
+            remote_map: dict[str, list[str]] = {}
+            for branch in remote_branches:
+                if not branch.remote:
+                    continue
+                remote_map.setdefault(branch.remote, []).append(branch.name)
+            for remote, branch_names in remote_map.items():
+                self.delete_remote_branches(remote, branch_names, force)
 
     @util.actions.destructive(description="delete a remote branch")
     @on_worker
-    def delete_remote_branch(self, remote, branch_name, force):
-        self.window.status_message("Deleting remote branch...")
+    def delete_remote_branches(self, remote, branch_names, force):
+        es = "es" if len(branch_names) > 1 else ""
+        self.window.status_message(f"Deleting remote branch{es}...")
         self.git(
             "push",
             "--force" if force else None,
             remote,
-            ":" + branch_name
+            "--delete",
+            *branch_names
         )
-        self.window.status_message("Deleted remote branch.")
+        self.window.status_message(f"Deleted remote branch{es}.")
         util.view.refresh_gitsavvy(self.view)
+        self.view.run_command("gs_clear_multiselect")
+
+    @util.actions.destructive(description="delete local branches")
+    @on_worker
+    def delete_local_branches(self, branch_names, force):
+        self.window.status_message("Deleting local branches...")
+        self.git(
+            "branch",
+            "-D" if force else "-d",
+            *branch_names
+        )
+        self.window.status_message("Deleted local branches.")
+        util.view.refresh_gitsavvy(self.view)
+        self.view.run_command("gs_clear_multiselect")
 
     @util.actions.destructive(description="delete a worktree")
     @on_new_thread
@@ -834,32 +888,60 @@ def active_branch_name(interface: BranchInterface) -> Optional[str]:
         return None
 
 
-class gs_branches_diff_branch(CommandForSingleBranch):
+class gs_branches_diff_branch(BranchInterfaceCommand):
 
     """
-    Show a diff comparing the selected branch to the active branch.
+    Show a diff comparing the selected branch to the active branch or another selected branch.
     """
 
     def run(self, edit):
         # type: (object) -> None
+        selected_branches = self.get_selected_branches()
+        if len(selected_branches) == 0:
+            flash(self.view, "No branch selected.")
+            return
+        if len(selected_branches) > 2:
+            flash(self.view, "Not implemented for more than two branches.")
+            return
+
+        base_commit = selected_branches[0].canonical_name
+        if len(selected_branches) == 2:
+            target_commit = selected_branches[1].canonical_name
+        else:
+            target_commit = active_branch_name(self.interface) or ""
+
         self.window.run_command("gs_diff", {
-            "base_commit": self.selected_branch.canonical_name,
-            "target_commit": active_branch_name(self.interface) or "",
+            "base_commit": base_commit,
+            "target_commit": target_commit,
             "disable_stage": True,
         })
 
 
-class gs_branches_diff_commit_history(CommandForSingleBranch):
+class gs_branches_diff_commit_history(BranchInterfaceCommand):
 
     """
-    Show a view of all commits diff between branches.
+    Show a view of all commits diff between selected branches.
     """
 
     def run(self, edit):
         # type: (object) -> None
+        selected_branches = self.get_selected_branches()
+        if len(selected_branches) == 0:
+            flash(self.view, "No branch selected.")
+            return
+        if len(selected_branches) > 2:
+            flash(self.view, "Not implemented for more than two branches.")
+            return
+
+        base_commit = selected_branches[0].canonical_name
+        if len(selected_branches) == 2:
+            target_commit = selected_branches[1].canonical_name
+        else:
+            target_commit = active_branch_name(self.interface) or ""
+
         self.window.run_command("gs_compare_commit", {
-            "base_commit": self.selected_branch.canonical_name,
-            "target_commit": active_branch_name(self.interface) or ""
+            "base_commit": base_commit,
+            "target_commit": target_commit
         })
 
 
