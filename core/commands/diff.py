@@ -444,8 +444,7 @@ def _draw(view, title, prelude, diff_text, match_position, preserve_history):
     if preserve_history:
         if diff_changed:
             if diff_text:
-                base_content = DIFF_HISTORY[vid][0]
-                ref_doc = compute_reference_document(base_content, diff_text)
+                ref_doc = compute_reference_document(prior_diff_text, diff_text)
                 view.set_reference_document(prelude + ref_doc)
             else:
                 view.reset_reference_document()
