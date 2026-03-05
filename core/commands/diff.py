@@ -1487,27 +1487,34 @@ def __recount_lines(hunk_lines, a_start, b_start):
 class gs_diff_navigate(GsNavigate):
 
     """
-    Travel between hunks. It is also used by show_commit_view.
+    Travel between hunks/chunks. It is also used by show_commit_view.
     """
 
     offset = 0
     log_position = True
     shrink_to_cursor = False
+    in_chunks = False
+
+    def run(self, edit: sublime.Edit, forward: bool = True, in_chunks: bool = False) -> None:
+        self.in_chunks = in_chunks
+        self.shrink_to_cursor = not in_chunks
+        super().run(edit, forward)
 
     def get_available_regions(self):
-        def _gen():
-            # type: () -> Iterator[sublime.Region]
+        def _gen() -> Iterator[sublime.Region]:
             diff = SplittedDiff.from_view(self.view)
             if not diff.hunks:
                 for header in diff.headers:
                     yield sublime.Region(header.region().a)
 
-            for hunk in diff.hunks:
-                yield sublime.Region(hunk.region().a)
-                chunks = list(chunkby(hunk.content().lines(), lambda line: not line.is_context()))
-                if len(chunks) > 1:
-                    for chunk in chunks:
-                        yield sublime.Region(chunk[0].region().a, chunk[-1].region().b)
+            elif self.in_chunks:
+                for hunk in diff.hunks:
+                    for chunk in hunk.content().chunks():
+                        yield chunk.region()
+
+            else:
+                for hunk in diff.hunks:
+                    yield hunk.region()
 
         return sorted(
             list(_gen())
