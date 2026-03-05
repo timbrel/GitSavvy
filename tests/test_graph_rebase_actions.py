@@ -4,8 +4,8 @@ from unittesting import DeferrableTestCase
 from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core.commands.log_graph_rebase_actions import (
-    extract_commits, change_first_action, copy_commits, fixup_commits, squash_commits,
-    Commit
+    extract_commits, change_first_action, copy_commits, drop_commits, fixup_commits,
+    squash_commits, Commit
 )
 
 
@@ -216,5 +216,30 @@ class TestRebaseActions(DeferrableTestCase):
     def test_squah_commits(self, base_commit, commits, input, expected):
         # extract_commits(ref: str, commits: List[str], buffer_content: str)
         actual = squash_commits(commits, base_commit, input)
+        self.maxDiff = None
+        self.assertEqual(expected, actual)
+
+    @p.expand([
+        (
+            "fee0447b",
+            ["fee0447b", "0b0409f8"],
+            dedent("""\
+            pick 142972fd Mark first arg of continuation function "positional only"
+            pick fee0447b Simplify `ask_for_local_branch`
+            pick 0b0409f8 Let `QuickAction` be a function `str -> str` for flexibility
+
+            # Rebase 2bcb7211..0b0409f8 onto 2bcb7211 (3 commands)
+            """),
+            dedent("""\
+            pick 142972fd Mark first arg of continuation function "positional only"
+            drop fee0447b Simplify `ask_for_local_branch`
+            drop 0b0409f8 Let `QuickAction` be a function `str -> str` for flexibility
+
+            # Rebase 2bcb7211..0b0409f8 onto 2bcb7211 (3 commands)
+            """),
+        )
+    ])
+    def test_drop_commits(self, base_commit, commits, input, expected):
+        actual = drop_commits(commits, base_commit, input)
         self.maxDiff = None
         self.assertEqual(expected, actual)
