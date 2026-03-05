@@ -649,7 +649,7 @@ class _GitCommand(SettingsMixin):
             # https://packagecontrol.io/packages/FileBrowser
             if view := self._current_view():
                 if dired_path := view.settings().get("dired_path"):
-                    yield dired_path
+                    yield os.path.normpath(dired_path)
 
             window = self._current_window()
             if window:
