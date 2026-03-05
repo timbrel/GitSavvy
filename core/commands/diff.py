@@ -46,13 +46,14 @@ __all__ = (
     "gs_initiate_fixup_commit",
     "gs_diff_open_file_at_hunk",
     "gs_diff_navigate",
+    "gs_commit_view_navigate",
     "gs_diff_undo",
     "GsDiffFocusEventListener",
 )
 
 
 from typing import (
-    Callable, Dict, Iterable, Iterator, Literal, List, NamedTuple, Optional, Set,
+    Callable, Dict, Iterable, Iterator, Literal, List, NamedTuple, Optional, Sequence, Set,
     Tuple, TypeVar
 )
 from typing_extensions import TypeAlias
@@ -1512,6 +1513,19 @@ class gs_diff_navigate(GsNavigate):
             list(_gen())
             + self.view.find_by_selector("meta.commit-info.header")
         )
+
+
+class gs_commit_view_navigate(gs_diff_navigate):
+    """Diff navigation adapted for the commit view.
+
+    In addition to the regular hunk/header regions, include a virtual region
+    at the beginning of the buffer so navigation can jump back to the commit
+    message (BOF).
+    """
+
+    def get_available_regions(self) -> Sequence[sublime.Region]:
+        regions = super().get_available_regions()
+        return [sublime.Region(0)] + regions
 
 
 class gs_diff_undo(TextCommand, GitCommand):
