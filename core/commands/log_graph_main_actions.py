@@ -492,6 +492,10 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         else:
             actions += [
                 (
+                    "Diff '{}' against workdir".format(good_commit_name),
+                    partial(self.diff_commit, commit_hash)
+                ),
+                (
                     "Diff '{}' against HEAD".format(good_commit_name),
                     partial(self.diff_commit, commit_hash, target_commit="HEAD")
                 ),
