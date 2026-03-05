@@ -27,7 +27,7 @@ from ..ui__quick_panel import show_quick_panel
 from ..utils import flash, focus_view, hprint, line_indentation
 from ..view import (
     capture_cur_position, clamp, replace_view_content, scroll_to_pt,
-    place_view, place_cursor_and_show, y_offset, Position)
+    place_view, place_cursor_and_show, visible_views, y_offset, Position)
 from ...common import util
 from ...common.theme_generator import ThemeGenerator
 
@@ -919,6 +919,24 @@ class GsDiffFocusEventListener(EventListener):
 
         if active_on_activated and is_diff_view(view):
             view.run_command("gs_diff_refresh", {"sync": False})
+
+    def on_reload(self, view):
+        file_path = view.file_name()
+        if not file_path:
+            return
+
+        window = view.window()
+        for other_view in visible_views(window):
+            if not is_diff_view(other_view):
+                return
+
+            other_file_path = other_view.settings().get("git_savvy.file_path")
+            if other_file_path == file_path:
+                other_view.run_command("gs_diff_refresh", {"sync": False})
+            elif not other_file_path:
+                other_repo_path = other_view.settings().get("git_savvy.repo_path")
+                if other_repo_path and file_path.startswith(other_repo_path + os.sep):
+                    other_view.run_command("gs_diff_refresh", {"sync": False})
 
 
 class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
