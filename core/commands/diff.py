@@ -406,9 +406,7 @@ class gs_diff_refresh(TextCommand, GitCommand):
                     prelude += "  {}..WORKING DIR\n".format(base_commit or target_commit)
                     title += ", {}..WORKING DIR".format(base_commit or target_commit)
         else:
-            if untracked_file:
-                ...
-            elif in_cached_mode:
+            if in_cached_mode:
                 prelude += "  STAGED CHANGES (Will commit)\n"
             else:
                 prelude += "  UNSTAGED CHANGES\n"
@@ -1062,7 +1060,9 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         move_fn = None
         if whole_file or all(s.empty() for s in frozen_sel):
             if (
-                (headers := list(unique(filter_(map(diff.head_for_pt, cursor_pts)))))
+                not in_cached_mode
+                and not reset
+                and (headers := list(unique(filter_(map(diff.head_for_pt, cursor_pts)))))
                 and (new_files := [
                     filename
                     for header in (headers or [diff.headers[0]])

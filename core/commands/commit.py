@@ -396,7 +396,7 @@ class gs_commit_view_unstage_in_all_mode(TextCommand, GitCommand):
         settings = view.settings()
         settings.set("git_savvy.commit_view.include_unstaged", False)
         settings.set("git_savvy.diff_view.in_cached_mode", True)
-        view.run_command("gs_diff_stage_or_reset_hunk")
+        view.run_command("gs_diff_stage_or_reset_hunk", {"whole_file": whole_file})
 
         history = settings.get("git_savvy.diff_view.history") or []
         if history:
