@@ -164,6 +164,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
       ## OTHER ##
       ###########
 
+      [enter]     open main menu
       [O]         show most recent commit
       [g]         show graph repo history
       [G]         show overview of branches and tags
@@ -630,6 +631,7 @@ class gs_status_stage_file(StatusInterfaceCommand):
             self.stage_file(*file_paths, force=False)
             self.window.status_message("Staged files successfully.")
             self.interface.refresh_repo_status_and_render()
+            self.view.run_command("gs_clear_multiselect")
 
 
 class gs_status_unstage_file(StatusInterfaceCommand):
@@ -655,6 +657,7 @@ class gs_status_unstage_file(StatusInterfaceCommand):
             else:
                 self.window.status_message("Reset files successfully.")
             self.interface.refresh_repo_status_and_render()
+            self.view.run_command("gs_clear_multiselect")
 
 
 class gs_status_discard_changes_to_file(StatusInterfaceCommand):
@@ -671,6 +674,7 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
         if untracked_files or unstaged_files:
             self.window.status_message("Successfully discarded changes.")
             self.interface.refresh_repo_status_and_render()
+            self.view.run_command("gs_clear_multiselect")
 
         if self.get_selected_subjects('staged'):
             self.window.status_message("Staged files cannot be discarded.  Unstage them first.")

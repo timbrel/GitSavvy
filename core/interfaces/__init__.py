@@ -2,6 +2,7 @@ import sublime
 from sublime_plugin import TextCommand
 
 from .status import *  # noqa: F401, F403
+from .status_main_actions import *
 from .branch import *  # noqa: F401, F403
 from .rebase import *  # noqa: F401, F403
 from .tags import *  # noqa: F401, F403
