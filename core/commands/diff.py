@@ -388,8 +388,13 @@ class gs_diff_refresh(TextCommand, GitCommand):
         )
 
         if file_path:
+            is_untracked_folder = not raw_diff and file_path.endswith(("\\", "/"))
             rel_file_path = os.path.relpath(file_path, repo_path)
-            prelude += "  FILE: {}{}\n".format(rel_file_path, "  (UNTRACKED)" if untracked_file else "")
+            if is_untracked_folder:
+                rel_folder_path = rel_file_path + os.sep
+                prelude += "  FOLDER: {}  (UNTRACKED)\n".format(rel_folder_path)
+            else:
+                prelude += "  FILE: {}{}\n".format(rel_file_path, "  (UNTRACKED)" if untracked_file else "")
 
         if disable_stage:
             if in_cached_mode:
@@ -779,7 +784,10 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             if file_path_ == "--all":
                 file_path = ""
             else:
+                is_folder = file_path_.endswith(("\\", "/"))
                 file_path = os.path.normpath(os.path.join(self.repo_path, file_path_))
+                if is_folder:
+                    file_path = file_path.rstrip("\\/") + os.sep
 
             current_diff_mode = (
                 settings.get("git_savvy.file_path"),

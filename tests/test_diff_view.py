@@ -617,6 +617,34 @@ class TestZooming(DeferrableTestCase):
         self.assertIn('(UNTRACKED)', buffer_content)
         self.assertIn('STAGED CHANGES (Will commit)', buffer_content)
 
+    def test_untracked_folder_shows_folder_header(self):
+        repo_path = '/not/there'
+        folder_path = '/not/there/tests/packages/KeymapMenuCustomCommand/'
+
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.set_scratch(True)
+        view.settings().set("git_savvy.repo_path", repo_path)
+        view.settings().set("git_savvy.file_path", folder_path)
+        view.settings().set('git_savvy.diff_view.in_cached_mode', False)
+        view.settings().set('git_savvy.diff_view.disable_stage', False)
+        view.settings().set('git_savvy.diff_view.context_lines', 3)
+
+        cmd = module.gs_diff_refresh(view)
+        when(cmd).git(...).thenReturn(b'')
+        when(cmd).is_probably_untracked_file(folder_path).thenReturn(False)
+
+        cmd.run({'unused_edit'})
+
+        buffer_content = view.substr(sublime.Region(0, view.size()))
+        expected_path = "tests{}packages{}KeymapMenuCustomCommand{}".format(
+            os.sep,
+            os.sep,
+            os.sep,
+        )
+        self.assertIn(f'FOLDER: {expected_path}  (UNTRACKED)', buffer_content)
+        self.assertNotIn('FILE: tests', buffer_content)
+
     @p.expand([
         (1, 5, 3),
         (2, 5, 3),
