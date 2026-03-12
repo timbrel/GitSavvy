@@ -559,6 +559,39 @@ prelude
 
         verify(window, times=1).status_message('The repo is clean.')
 
+    def test_discard_does_not_run_when_target_file_is_dirty(self):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
+ two
+"""
+        CURSOR = 58
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        view.settings().set('git_savvy.diff_view.in_cached_mode', False)
+        view.settings().set('git_savvy.diff_view.history', [])
+
+        cmd = module.gs_diff_stage_or_reset_hunk(view)
+        when(cmd).discard_target_has_unsaved_view(...).thenReturn(True)
+        when(cmd).git(...)
+
+        view.sel().clear()
+        view.sel().add(CURSOR)
+
+        cmd.run({'unused_edit'}, reset=True)
+
+        history = view.settings().get('git_savvy.diff_view.history')
+        self.assertEqual(history, [])
+        verify(cmd, times=0).git(...)
+
 
 class TestZooming(DeferrableTestCase):
     @classmethod

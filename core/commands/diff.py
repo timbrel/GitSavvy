@@ -1129,6 +1129,9 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             zero_diff = True
 
         if patch:
+            if reset and self.discard_target_has_unsaved_view(patch):
+                return
+
             self.apply_patch(patch, cursor_pts, reset, zero_diff)
             if move_fn:
                 move_fn()
@@ -1172,6 +1175,33 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         # Ideally we would compute the next WorkingDirState but that's not
         # trivial, so we just ask for it:
         self.view.run_command("gs_update_status")
+
+    def discard_target_has_unsaved_view(self, patch: str) -> bool:
+        diff = SplittedDiff.from_string(patch)
+        rel_file_paths = unique(filter_(header.to_filename() for header in diff.headers))
+        file_paths = (
+            os.path.normpath(os.path.join(self.repo_path, p))
+            for p in rel_file_paths
+        )
+
+        current_window = self.view.window()
+        windows = [
+            *([current_window] if current_window else []),
+            *(window for window in sublime.windows() if window != current_window),
+        ]
+
+        for file_path in file_paths:
+            for window in windows:
+                view = window.find_open_file(file_path)
+                if view and view.is_dirty():
+                    flash(
+                        self.view,
+                        "Cannot discard changes for '{}'; "
+                        "it has unsaved changes.".format(file_path)
+                    )
+                    return True
+
+        return False
 
 
 def move_to_hunk(view: sublime.View, hunk_idx: int) -> None:
