@@ -173,8 +173,12 @@ class gs_log_graph_smart_paste(sublime_plugin.TextCommand):
             return
 
         clip = view.settings().get("git_savvy.log_graph_view.clipboard")
-        if not isinstance(clip, list):
+        if not isinstance(clip, list) or not clip:
+            flash(view, "Smart clipboard is empty.")
             return
+
+        # For now: clipboard can be used only once
+        view.settings().erase("git_savvy.log_graph_view.clipboard")
 
         if len(clip) != 3:
             return
