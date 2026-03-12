@@ -626,7 +626,7 @@ class gs_diff_toggle_cached_mode(TextCommand):
 
 class gs_diff_switch_files(TextCommand, GitCommand):
     def run(self, edit, recursed=False, auto_close=False, forward=None):
-        # type: (sublime.Edit, bool, bool, Optional[bool]) -> None
+        # type: (sublime.Edit, bool, bool | Literal["slow"], Optional[bool]) -> None
         view = self.view
         window = view.window()
         assert window
@@ -640,7 +640,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
                 })
             return
 
-        AUTO_CLOSE_AFTER = 1000  # [ms]
+        AUTO_CLOSE_AFTER = 3000 if auto_close == "slow" else 600  # [ms]
         auto_close_state: Literal["MUST_INSTALL", "ACTIVE", "DEAD"]
         auto_close_state = "MUST_INSTALL" if auto_close else "DEAD"
 
