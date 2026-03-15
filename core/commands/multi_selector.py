@@ -32,6 +32,15 @@ def get_selection(view: sublime.View) -> Iterable[sublime.Region]:
     )
 
 
+def get_multi_selection_if_multi(view: sublime.View) -> Iterable[sublime.Region]:
+    multi_selection: list[Region] = view.settings().get("git_savvy.multi_selection", [])
+    return (
+        sorted(starmap(sublime.Region, multi_selection))
+        if len(multi_selection) > 1
+        else view.sel()
+    )
+
+
 class gs_log_graph_multiselect(TextCommand):
     def run(self, edit) -> None:
         view = self.view

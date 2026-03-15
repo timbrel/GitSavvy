@@ -45,6 +45,7 @@ __all__ = (
     "gs_rebase_reword_commit",
     "gs_rebase_apply_fixup",
     "gs_rebase_squash_commits",
+    "gs_rebase_insert_commits",
     "gs_rebase_extract_commits",
     "AwaitTodoListView"
 )
@@ -1036,6 +1037,26 @@ def drop_commits(commits: List[str], _base_commit: str, buffer_content: str) -> 
     return "\n".join(inner())
 
 
+def insert_commits(insert_at: str, commits: List[str], _base_commit: str, buffer_content: str) -> str:
+    def inner():
+        # type: () -> Iterator[str]
+        needle = "pick {} ".format(insert_at)
+        prefixes = {"pick {} ".format(commit) for commit in commits}
+        prefix_len = 6 + len(commits[0])  # 6 == len("pick  ")
+        for line in buffer_content.splitlines():
+            if line[:prefix_len] in prefixes:
+                continue
+
+            yield line
+            if line.startswith(needle):
+                for commit in commits:
+                    yield f"pick {commit}"
+
+        yield ""  # cosmetic trailing newline
+
+    return "\n".join(inner())
+
+
 class gs_rebase_edit_commit(gs_rebase_quick_action):
     action = partial(change_first_action, "edit")
 
@@ -1059,6 +1080,17 @@ class gs_rebase_apply_fixup(gs_rebase_quick_action):
 class gs_rebase_squash_commits(gs_rebase_quick_action):
     def run(self, edit, base_commit, commits):  # type: ignore[override]
         self.action = partial(squash_commits, commits)
+        super().run(edit, base_commit)
+
+
+class gs_rebase_insert_commits(gs_rebase_quick_action):
+    def run(self, edit, base_commit, insert_at, commits):  # type: ignore[override]
+        # `base_commit` reachability is validated in `gs_rebase_quick_action.run`.
+        if insert_at != base_commit and not self.commit_is_ancestor_of_head(insert_at):
+            flash(self.view, "Insertion point is not part of the current branch.")
+            return
+
+        self.action = partial(insert_commits, insert_at, commits)
         super().run(edit, base_commit)
 
 

@@ -5,7 +5,7 @@ from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core.commands.log_graph_rebase_actions import (
     extract_commits, change_first_action, copy_commits, drop_commits, fixup_commits,
-    squash_commits, Commit
+    insert_commits, squash_commits, Commit
 )
 
 
@@ -241,5 +241,92 @@ class TestRebaseActions(DeferrableTestCase):
     ])
     def test_drop_commits(self, base_commit, commits, input, expected):
         actual = drop_commits(commits, base_commit, input)
+        self.maxDiff = None
+        self.assertEqual(expected, actual)
+
+    @p.expand([
+        (
+            "fee0447b",
+            "fee0447b",
+            ["0f0f0f0f", "0b0409f8"],
+            dedent("""\
+            pick 142972fd Mark first arg of continuation function "positional only"
+            pick fee0447b Simplify `ask_for_local_branch`
+            pick 19978225 Check `returncode` to decide if `git log` failed
+
+            # Rebase 2bcb7211..19978225 onto 2bcb7211 (3 commands)
+            """),
+            dedent("""\
+            pick 142972fd Mark first arg of continuation function "positional only"
+            pick fee0447b Simplify `ask_for_local_branch`
+            pick 0f0f0f0f
+            pick 0b0409f8
+            pick 19978225 Check `returncode` to decide if `git log` failed
+
+            # Rebase 2bcb7211..19978225 onto 2bcb7211 (3 commands)
+            """),
+        ),
+        (
+            "19978225",
+            "19978225",
+            ["fee0447b"],
+            dedent("""\
+            pick 142972fd Mark first arg of continuation function "positional only"
+            pick 19978225 Check `returncode` to decide if `git log` failed
+            pick fee0447b Simplify `ask_for_local_branch`
+
+            # Rebase 2bcb7211..19978225 onto 2bcb7211 (3 commands)
+            """),
+            dedent("""\
+            pick 142972fd Mark first arg of continuation function "positional only"
+            pick 19978225 Check `returncode` to decide if `git log` failed
+            pick fee0447b
+
+            # Rebase 2bcb7211..19978225 onto 2bcb7211 (3 commands)
+            """),
+        ),
+        (
+            "fee0447b",
+            "fee0447b",
+            ["0f0f0f0f"],
+            dedent("""\
+            label onto
+
+            reset onto
+            pick fee0447b Simplify `ask_for_local_branch`
+            pick 0b0409f8 Let `QuickAction` be a function `str -> str` for flexibility
+            """),
+            dedent("""\
+            label onto
+
+            reset onto
+            pick fee0447b Simplify `ask_for_local_branch`
+            pick 0f0f0f0f
+            pick 0b0409f8 Let `QuickAction` be a function `str -> str` for flexibility
+            """),
+        ),
+        (
+            "19978225",
+            "fee0447b",
+            ["0f0f0f0f"],
+            dedent("""\
+            pick 142972fd Mark first arg of continuation function "positional only"
+            pick fee0447b Simplify `ask_for_local_branch`
+            pick 19978225 Check `returncode` to decide if `git log` failed
+
+            # Rebase 2bcb7211..19978225 onto 2bcb7211 (3 commands)
+            """),
+            dedent("""\
+            pick 142972fd Mark first arg of continuation function "positional only"
+            pick fee0447b Simplify `ask_for_local_branch`
+            pick 19978225 Check `returncode` to decide if `git log` failed
+            pick 0f0f0f0f
+
+            # Rebase 2bcb7211..19978225 onto 2bcb7211 (3 commands)
+            """),
+        ),
+    ])
+    def test_insert_commits(self, insert_at, base_commit, commits, input, expected):
+        actual = insert_commits(insert_at, commits, base_commit, input)
         self.maxDiff = None
         self.assertEqual(expected, actual)
