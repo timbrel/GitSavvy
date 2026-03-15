@@ -3,14 +3,14 @@ Given the resource path to a Sublime theme file, generate a new
 theme and allow the consumer to augment this theme and apply it
 to a view.
 """
-
+from __future__ import annotations
 import os
 from xml.etree import ElementTree
 from collections import OrderedDict
 
 import sublime
 from . import util
-
+from ..core.fns import filter_
 
 from typing import Sequence
 
@@ -53,16 +53,19 @@ class ThemeGenerator():
         # type: (sublime.View) -> ThemeGenerator
         settings = view.settings()
         color_scheme = settings.get("color_scheme")
+        if not color_scheme:
+            return cls([])
 
         if color_scheme == "auto":
             def generator_for_key(name):
-                # type: (str) -> AbstractThemeGenerator
-                return generator_for_scheme(settings.get(name), name)
+                # type: (str) -> AbstractThemeGenerator | None
+                color_scheme = settings.get(name)
+                return generator_for_scheme(color_scheme, name) if color_scheme else None
 
-            return cls([
+            return cls(list(filter_((
                 generator_for_key("light_color_scheme"),
                 generator_for_key("dark_color_scheme"),
-            ])
+            ))))
 
         return cls([generator_for_scheme(color_scheme, "color_scheme")])
 
