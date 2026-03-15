@@ -1036,7 +1036,7 @@
     {
         "keys": ["N"],
         "command": "gs_diff_switch_files",
-        "args": { "forward": true },
+        "args": { "forward": true, "auto_close": "slow" },
         "context": [
             { "key": "setting.gs_diff_files_selector", "operator": "equal", "operand": true }
         ]
@@ -1053,7 +1053,7 @@
     {
         "keys": ["P"],
         "command": "gs_diff_switch_files",
-        "args": { "forward": false },
+        "args": { "forward": false, "auto_close": "slow" },
         "context": [
             { "key": "setting.gs_diff_files_selector", "operator": "equal", "operand": true }
         ]

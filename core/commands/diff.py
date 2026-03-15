@@ -388,8 +388,13 @@ class gs_diff_refresh(TextCommand, GitCommand):
         )
 
         if file_path:
+            is_untracked_folder = not raw_diff and file_path.endswith(("\\", "/"))
             rel_file_path = os.path.relpath(file_path, repo_path)
-            prelude += "  FILE: {}{}\n".format(rel_file_path, "  (UNTRACKED)" if untracked_file else "")
+            if is_untracked_folder:
+                rel_folder_path = rel_file_path + os.sep
+                prelude += "  FOLDER: {}  (UNTRACKED)\n".format(rel_folder_path)
+            else:
+                prelude += "  FILE: {}{}\n".format(rel_file_path, "  (UNTRACKED)" if untracked_file else "")
 
         if disable_stage:
             if in_cached_mode:
@@ -621,7 +626,7 @@ class gs_diff_toggle_cached_mode(TextCommand):
 
 class gs_diff_switch_files(TextCommand, GitCommand):
     def run(self, edit, recursed=False, auto_close=False, forward=None):
-        # type: (sublime.Edit, bool, bool, Optional[bool]) -> None
+        # type: (sublime.Edit, bool, bool | Literal["slow"], Optional[bool]) -> None
         view = self.view
         window = view.window()
         assert window
@@ -635,7 +640,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
                 })
             return
 
-        AUTO_CLOSE_AFTER = 1000  # [ms]
+        AUTO_CLOSE_AFTER = 3000 if auto_close == "slow" else 600  # [ms]
         auto_close_state: Literal["MUST_INSTALL", "ACTIVE", "DEAD"]
         auto_close_state = "MUST_INSTALL" if auto_close else "DEAD"
 
@@ -779,7 +784,10 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             if file_path_ == "--all":
                 file_path = ""
             else:
+                is_folder = file_path_.endswith(("\\", "/"))
                 file_path = os.path.normpath(os.path.join(self.repo_path, file_path_))
+                if is_folder:
+                    file_path = file_path.rstrip("\\/") + os.sep
 
             current_diff_mode = (
                 settings.get("git_savvy.file_path"),
@@ -1121,6 +1129,9 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             zero_diff = True
 
         if patch:
+            if reset and self.discard_target_has_unsaved_view(patch):
+                return
+
             self.apply_patch(patch, cursor_pts, reset, zero_diff)
             if move_fn:
                 move_fn()
@@ -1164,6 +1175,33 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         # Ideally we would compute the next WorkingDirState but that's not
         # trivial, so we just ask for it:
         self.view.run_command("gs_update_status")
+
+    def discard_target_has_unsaved_view(self, patch: str) -> bool:
+        diff = SplittedDiff.from_string(patch)
+        rel_file_paths = unique(filter_(header.to_filename() for header in diff.headers))
+        file_paths = (
+            os.path.normpath(os.path.join(self.repo_path, p))
+            for p in rel_file_paths
+        )
+
+        current_window = self.view.window()
+        windows = [
+            *([current_window] if current_window else []),
+            *(window for window in sublime.windows() if window != current_window),
+        ]
+
+        for file_path in file_paths:
+            for window in windows:
+                view = window.find_open_file(file_path)
+                if view and view.is_dirty():
+                    flash(
+                        self.view,
+                        "Cannot discard changes for '{}'; "
+                        "it has unsaved changes.".format(file_path)
+                    )
+                    return True
+
+        return False
 
 
 def move_to_hunk(view: sublime.View, hunk_idx: int) -> None:

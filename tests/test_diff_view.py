@@ -559,6 +559,39 @@ prelude
 
         verify(window, times=1).status_message('The repo is clean.')
 
+    def test_discard_does_not_run_when_target_file_is_dirty(self):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
+ two
+"""
+        CURSOR = 58
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        view.settings().set('git_savvy.diff_view.in_cached_mode', False)
+        view.settings().set('git_savvy.diff_view.history', [])
+
+        cmd = module.gs_diff_stage_or_reset_hunk(view)
+        when(cmd).discard_target_has_unsaved_view(...).thenReturn(True)
+        when(cmd).git(...)
+
+        view.sel().clear()
+        view.sel().add(CURSOR)
+
+        cmd.run({'unused_edit'}, reset=True)
+
+        history = view.settings().get('git_savvy.diff_view.history')
+        self.assertEqual(history, [])
+        verify(cmd, times=0).git(...)
+
 
 class TestZooming(DeferrableTestCase):
     @classmethod
@@ -616,6 +649,34 @@ class TestZooming(DeferrableTestCase):
         buffer_content = view.substr(sublime.Region(0, view.size()))
         self.assertIn('(UNTRACKED)', buffer_content)
         self.assertIn('STAGED CHANGES (Will commit)', buffer_content)
+
+    def test_untracked_folder_shows_folder_header(self):
+        repo_path = '/not/there'
+        folder_path = '/not/there/tests/packages/KeymapMenuCustomCommand/'
+
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.set_scratch(True)
+        view.settings().set("git_savvy.repo_path", repo_path)
+        view.settings().set("git_savvy.file_path", folder_path)
+        view.settings().set('git_savvy.diff_view.in_cached_mode', False)
+        view.settings().set('git_savvy.diff_view.disable_stage', False)
+        view.settings().set('git_savvy.diff_view.context_lines', 3)
+
+        cmd = module.gs_diff_refresh(view)
+        when(cmd).git(...).thenReturn(b'')
+        when(cmd).is_probably_untracked_file(folder_path).thenReturn(False)
+
+        cmd.run({'unused_edit'})
+
+        buffer_content = view.substr(sublime.Region(0, view.size()))
+        expected_path = "tests{}packages{}KeymapMenuCustomCommand{}".format(
+            os.sep,
+            os.sep,
+            os.sep,
+        )
+        self.assertIn(f'FOLDER: {expected_path}  (UNTRACKED)', buffer_content)
+        self.assertNotIn('FILE: tests', buffer_content)
 
     @p.expand([
         (1, 5, 3),
