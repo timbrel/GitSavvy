@@ -23,6 +23,7 @@ __all__ = (
     "gs_status_open_file_on_remote",
     "gs_status_diff_inline",
     "gs_status_diff",
+    "gs_status_diff_all_files",
     "gs_status_stage_file",
     "gs_status_unstage_file",
     "gs_status_discard_changes_to_file",
@@ -190,7 +191,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
       [h] open file in browser
 
       [l] diff file inline                  [f] diff all files
-      [e] diff file                         [F] diff all cached files
+      [e] diff file                         [F] show staged changes
 
       [space] to select multiple items
       [ctrl-space] to clear selection
@@ -214,7 +215,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
 
                                             [f] diff all files
-                                            [F] diff all cached files
+                                            [F] show staged changes
 
       [space] to select multiple items
       [ctrl-space] to clear selection
@@ -593,6 +594,31 @@ class gs_status_diff(StatusInterfaceCommand):
                 "file_path": fpath,
                 "in_cached_mode": True,
             })
+
+
+class gs_status_diff_all_files(StatusInterfaceCommand):
+
+    """
+    Open a diff view for all files. If there are only staged changes,
+    open directly in cached mode.
+    """
+
+    def run(self, edit):
+        # type: (sublime.Edit) -> None
+        self.window.run_command("gs_diff", {
+            "in_cached_mode": self.should_open_in_cached_mode()
+        })
+
+    def should_open_in_cached_mode(self):
+        # type: () -> bool
+        status = self.interface.state.get("status")
+        return bool(
+            status
+            and status.staged_files
+            and not status.unstaged_files
+            and not status.untracked_files
+            and not status.merge_conflicts
+        )
 
 
 class gs_status_stage_file(StatusInterfaceCommand):

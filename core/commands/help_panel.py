@@ -184,7 +184,7 @@ class gs_diff_help_panel(GsAbstractOpenHelpPanel):
     [c]/[C]        commit ([C] to include unstaged)
     [m]            amend previous commit
     [f]            make fixup commit
-    [a]            set intent-to-add (only if the file is untracked)
+    [a]            toggle all files / current file
 
     ### Navigation ###
     [o]            open file at hunk

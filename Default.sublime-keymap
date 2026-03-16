@@ -342,8 +342,7 @@
     },
     {
         "keys": ["f"],
-        "command": "gs_diff",
-        "args": { "in_cached_mode": false },
+        "command": "gs_status_diff_all_files",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
@@ -1076,11 +1075,10 @@
     },
     {
         "keys": ["a"],
-        "command": "gs_diff_intent_to_add",
+        "command": "gs_diff_toggle_all",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
-            { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
         ]
     },
     {
