@@ -54,7 +54,7 @@ __all__ = (
 
 from typing import (
     Callable, Dict, Iterable, Iterator, Literal, List, NamedTuple, Optional, Sequence, Set,
-    Tuple, TypeVar
+    Tuple, TypeVar, Union
 )
 from typing_extensions import TypeAlias
 from ..parse_diff import FileHeader, Hunk, HunkLine
@@ -66,7 +66,10 @@ T = TypeVar('T')
 Point = int
 LineCol = Tuple[LineNo, ColNo]
 RelFileName = str
-Position_ = Tuple[Position, RelFileName]
+PositionFromFile: TypeAlias = Tuple[Literal["from_file"], Position, RelFileName]
+PositionFromDiff: TypeAlias = Tuple[Literal["from_diff"], Position, Optional[RelFileName]]
+LegacyMatchPosition: TypeAlias = Tuple[Position, RelFileName]
+MatchPosition: TypeAlias = Union[PositionFromFile, PositionFromDiff, LegacyMatchPosition]
 
 
 class HunkLineWithB(NamedTuple):
@@ -205,7 +208,7 @@ class gs_diff(WindowCommand, GitCommand):
                 rel_file_path = self.get_rel_path(file_path)
                 row, col, offset = _cur_pos
                 line_no, col_no = inline_diff.translate_pos_from_diff_view_to_file(active_view, row + 1, col + 1)
-                cur_pos = Position(line_no - 1, col_no - 1, offset), rel_file_path
+                cur_pos = ("from_file", Position(line_no - 1, col_no - 1, offset), rel_file_path)
 
         elif active_view.settings().get("git_savvy.show_file_at_commit_view"):
             if base_commit is None and target_commit is None:
@@ -214,7 +217,7 @@ class gs_diff(WindowCommand, GitCommand):
                 disable_stage = True
             if _cur_pos := capture_cur_position(active_view):
                 rel_file_path = self.get_rel_path(file_path)
-                cur_pos = _cur_pos, rel_file_path
+                cur_pos = ("from_file", _cur_pos, rel_file_path)
 
         elif av_fname := active_view.file_name():
             if _cur_pos := capture_cur_position(active_view):
@@ -222,9 +225,9 @@ class gs_diff(WindowCommand, GitCommand):
                 if in_cached_mode:
                     row, col, offset = _cur_pos
                     new_row = self.find_matching_lineno(None, None, row + 1, file_path) - 1
-                    cur_pos = Position(new_row, col, offset), rel_file_path
+                    cur_pos = ("from_file", Position(new_row, col, offset), rel_file_path)
                 else:
-                    cur_pos = _cur_pos, rel_file_path
+                    cur_pos = ("from_file", _cur_pos, rel_file_path)
 
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
@@ -297,7 +300,7 @@ class gs_diff_refresh(TextCommand, GitCommand):
         self,
         edit: sublime.Edit,
         sync: bool = True,
-        match_position: Tuple[Position, RelFileName] | None = None,
+        match_position: MatchPosition | None = None,
         preserve_history: bool = False
     ) -> None:
         if sync:
@@ -308,7 +311,7 @@ class gs_diff_refresh(TextCommand, GitCommand):
     def run_impl(
         self,
         runs_on_ui_thread: bool,
-        match_position: Tuple[Position, RelFileName] | None,
+        match_position: MatchPosition | None,
         preserve_history: bool
     ) -> None:
         view = self.view
@@ -425,7 +428,7 @@ class gs_diff_refresh(TextCommand, GitCommand):
 
 
 def _draw(view, title, prelude, diff_text, match_position, preserve_history):
-    # type: (sublime.View, str, str, str, Optional[Position_], bool) -> None
+    # type: (sublime.View, str, str, str, Optional[MatchPosition], bool) -> None
     vid = view.id()
     diff_regions = view.find_by_selector("git-savvy.diff_view git-savvy.diff")
     was_empty = not diff_regions
@@ -458,33 +461,119 @@ def _draw(view, title, prelude, diff_text, match_position, preserve_history):
         view.reset_reference_document()
 
     if match_position:
-        cur_pos, wanted_filename = match_position
         diff = SplittedDiff.from_view(view)
-        if header := find_header_for_filename(diff.headers, wanted_filename):
-            row, col, row_offset = cur_pos
-            lineno = row + 1
-            if hunk := find_hunk_for_line(diff.hunks_for_head(header), lineno):
-                for line, b in recount_lines_for_jump_to_file(hunk):
-                    # We're switching from a real file to the diff.  `lineno`
-                    # comes from the `b` ("to") side.  We must filter using
-                    # `not is_from_line()` as `recount_lines_for_jump_to_file`
-                    # yields all lines in the hunk.
-                    if not line.is_from_line() and b == lineno:
-                        pt = line.a + col + line.mode_len
-                        # Do not scroll if the cursor fits on the first "page",
-                        # always show the prelude if possible.
-                        _, cy = view.text_to_layout(pt)
-                        _, vh = view.viewport_extent()
-                        should_scroll = cy >= vh
-                        place_cursor_and_show(
-                            view, pt, row_offset if should_scroll else None, no_overscroll=True)
-                        navigated = True
-                        break
+        mode, cur_pos, wanted_filename = normalized_match_position(match_position)
+        if mode == "from_diff":
+            navigated = apply_diff_position(view, diff, cur_pos, wanted_filename)
+        else:
+            navigated = apply_file_position(view, diff, cur_pos, wanted_filename)
 
     if was_empty and not navigated:
         view.run_command("gs_diff_navigate")
 
     intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(prelude))
+
+
+def normalized_match_position(match_position: MatchPosition) -> tuple[Literal["from_file", "from_diff"], Position, RelFileName | None]:
+    if isinstance(match_position[0], str):
+        mode, pos, filename = match_position
+        return mode, pos, filename
+
+    pos, filename = match_position
+    return "from_file", pos, filename
+
+
+def apply_file_position(
+    view: sublime.View,
+    diff: SplittedDiff,
+    cur_pos: Position,
+    wanted_filename: RelFileName | None,
+) -> bool:
+    if not wanted_filename:
+        return False
+
+    if header := find_header_for_filename(diff.headers, wanted_filename):
+        row, col, row_offset = cur_pos
+        lineno = row + 1
+        if hunk := find_hunk_for_line(diff.hunks_for_head(header), lineno):
+            for line, b in recount_lines_for_jump_to_file(hunk):
+                # We're switching from a real file to the diff.  `lineno`
+                # comes from the `b` ("to") side.  We must filter using
+                # `not is_from_line()` as `recount_lines_for_jump_to_file`
+                # yields all lines in the hunk.
+                if not line.is_from_line() and b == lineno:
+                    pt = line.a + col + line.mode_len
+                    place_position_in_view(view, pt, row_offset)
+                    return True
+    return False
+
+
+def apply_diff_position(
+    view: sublime.View,
+    diff: SplittedDiff,
+    cur_pos: Position,
+    wanted_filename: RelFileName | None,
+) -> bool:
+    row, col, row_offset = cur_pos
+    if wanted_filename is None:
+        anchor = 0
+        section_end = diff.headers[0].a if diff.headers else view.size()
+        pt = point_from_relative_position(view, anchor, section_end, row, col)
+        place_position_in_view(view, pt, row_offset)
+        return True
+
+    if header := find_header_for_filename(diff.headers, wanted_filename):
+        anchor = header.a
+        section_end = first_header_after(diff.headers, header) or view.size()
+        pt = point_from_relative_position(view, anchor, section_end, row, col)
+        place_position_in_view(view, pt, row_offset)
+        return True
+
+    if diff.headers:
+        place_position_in_view(view, diff.headers[0].a, row_offset)
+        return True
+
+    place_position_in_view(view, view.size(), row_offset)
+    return True
+
+
+def first_header_after(headers: tuple[FileHeader, ...], header: FileHeader) -> int | None:
+    try:
+        idx = headers.index(header)
+    except ValueError:
+        return None
+
+    next_idx = idx + 1
+    if next_idx < len(headers):
+        return headers[next_idx].a
+    return None
+
+
+def point_from_relative_position(
+    view: sublime.View,
+    anchor: int,
+    section_end: int,
+    row_delta: int,
+    col: int,
+) -> int:
+    anchor_row, _ = view.rowcol(anchor)
+    target_row = max(anchor_row, anchor_row + row_delta)
+    target_pt = view.text_point(target_row, max(0, col))
+
+    if section_end <= anchor:
+        return anchor
+
+    return clamp(anchor, section_end - 1, target_pt)
+
+
+def place_position_in_view(view: sublime.View, pt: int, row_offset: float | None) -> None:
+    # Do not scroll if the cursor fits on the first "page",
+    # always show the prelude if possible.
+    _, cy = view.text_to_layout(pt)
+    _, vh = view.viewport_extent()
+    should_scroll = cy >= vh
+    place_cursor_and_show(
+        view, pt, row_offset if should_scroll else None, no_overscroll=True)
 
 
 def compute_reference_document(a: str, b: str) -> str:
@@ -606,15 +695,20 @@ class gs_diff_toggle_all(TextCommand, GitCommand):
 
     def run(self, edit):
         settings = self.view.settings()
-        match_position = self.capture_match_position()
+        diff = SplittedDiff.from_view(self.view)
+        match_position = self.capture_match_position(diff)
 
         current_file_path = settings.get("git_savvy.file_path")
         if current_file_path:
             settings.erase("git_savvy.file_path")
         else:
-            file_to_show = self.file_to_show_in_single_file_mode(match_position)
+            file_to_show: Optional[RelFileName] = None
+            if match_position:
+                _, _, file_to_show = match_position
+            if not file_to_show and diff.headers:
+                file_to_show = diff.headers[0].to_filename()
             if not file_to_show:
-                flash(self.view, "No file found at cursor.")
+                flash(self.view, "No files in diff.")
                 return
             settings.set(
                 "git_savvy.file_path",
@@ -627,46 +721,22 @@ class gs_diff_toggle_all(TextCommand, GitCommand):
             "match_position": match_position,
         })
 
-    def capture_match_position(self):
-        # type: () -> Position_ | None
+    def capture_match_position(self, diff):
+        # type: (SplittedDiff) -> PositionFromDiff | None
         view = self.view
         try:
             pt = view.sel()[0].b
         except Exception:
             return None
 
-        diff = SplittedDiff.from_view(view)
-        jump_position = (
-            jump_position_to_file(view, diff, pt)
-            or first_jump_position_in_view(view, diff, pt)
-        )
-        if not jump_position:
-            return None
+        header = diff.head_for_pt(pt)
+        filename = header.to_filename() if header else None
+        anchor = header.a if header else 0
 
-        return (
-            Position(jump_position.line - 1, jump_position.col - 1, y_offset(view, pt)),
-            jump_position.filename,
-        )
-
-    def file_to_show_in_single_file_mode(self, match_position):
-        # type: (Position_ | None) -> str | None
-        if match_position:
-            return match_position[1]
-
-        view = self.view
-        try:
-            pt = view.sel()[0].b
-        except Exception:
-            return None
-
-        diff = SplittedDiff.from_view(view)
-        if header := diff.head_for_pt(pt):
-            return header.to_filename()
-
-        if diff.headers:
-            return diff.headers[0].to_filename()
-
-        return None
+        anchor_row, _ = view.rowcol(anchor)
+        pt_row, pt_col = view.rowcol(pt)
+        position = Position(pt_row - anchor_row, pt_col, y_offset(view, pt))
+        return "from_diff", position, filename
 
 
 class gs_diff_switch_files(TextCommand, GitCommand):
