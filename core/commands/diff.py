@@ -9,6 +9,7 @@ import difflib
 from functools import partial
 from itertools import chain, count, groupby, takewhile
 import os
+import re
 
 import sublime
 from sublime_plugin import WindowCommand, TextCommand, EventListener
@@ -18,7 +19,7 @@ from . import intra_line_colorizer
 from . import multi_selector
 from . import stage_hunk
 from .navigate import GsNavigate
-from ..fns import head, filter_, flatten, unique
+from ..fns import head, filter_, flatten, pairwise, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand
 from ..runtime import ensure_on_ui, enqueue_on_worker, run_on_new_thread, throttled
@@ -573,9 +574,68 @@ def place_position_in_view(view: sublime.View, pt: int, row_offset: float | None
 
 
 def compute_reference_document(a: str, b: str) -> str:
-    # Given a history of diffs, a b, compute a a_ variant that has all the metadata
-    # from b. This is the minimal useful delta/diff from b -> a so that Sublime Text
-    # draws as few gutter annotations as possible.
+    # Build a synthetic reference document `a_` for current diff text `b`, using
+    # the previous diff text `a` as source of truth for already-known patch lines.
+    #
+    # Desired properties (for Sublime's built-in gutter/change annotations):
+    # - Keep most noisy metadata from `b` (index lines, hunk ranges, etc.).
+    # - Keep matching changed patch lines from `a` (so only *new* changes in `b`
+    #   are annotated).
+    # - Drop changed patch lines that don't match `a` anymore (so they still show
+    #   up as changes when comparing `b` against this reference).
+    # - Treat changed `---`/`+++` file header lines as meaningful and keep them
+    #   from `a` so path churn is surfaced as a marker.
+    # - Omit file sections that existed in `a` but not in `b`, to keep the
+    #   reference structurally aligned with the current view.
+    #
+    # To reduce cross-file matches in multi-file diffs, process each `diff --git`
+    # section independently and stitch the result back together in `b` order.
+    #
+    # Match sections by the `a/...` side of the `diff --git` header so we can
+    # keep tracking the same section even if the `b/...` side changes (e.g. rename
+    # destination churn while a file is still uncommitted).
+    b_prelude, b_sections = split_diff_into_file_sections(b)
+    if not b_sections:
+        return _compute_reference_document_monolithic(a, b)
+
+    _, a_sections = split_diff_into_file_sections(a)
+    a_sections_by_key: dict[str, str] = {
+        file_section_key(section): section
+        for section in a_sections
+    }
+
+    sections = []
+    for b_section in b_sections:
+        key = file_section_key(b_section)
+        a_section = a_sections_by_key.get(key)
+        if a_section:
+            sections.append(_compute_reference_document_monolithic(a_section, b_section))
+        else:
+            sections.append(b_section)
+
+    return b_prelude + "".join(sections)
+
+
+def split_diff_into_file_sections(text: str) -> tuple[str, list[str]]:
+    starts = [m.start() for m in re.finditer(r"^diff --git ", text, flags=re.MULTILINE)]
+    if not starts:
+        return text, []
+
+    prelude = text[:starts[0]]
+    sections = [
+        text[start:end]
+        for start, end in pairwise(starts + [len(text)])
+    ]
+    return prelude, sections
+
+
+def file_section_key(section: str) -> str:
+    header = section.splitlines()[0]
+    a_side, separator, _ = header.rpartition(" b/")
+    return a_side if separator else header
+
+
+def _compute_reference_document_monolithic(a: str, b: str) -> str:
     differ = difflib.Differ()
     diff = differ.compare(b.splitlines(keepends=True), a.splitlines(keepends=True))
     diff_ = [
