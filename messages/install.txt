@@ -1,10 +1,74 @@
 # Welcome to GitSavvy
 
-GitSavvy provides integration between Sublime Text 3 and Git.
+GitSavvy provides integration between Sublime Text and Git.
 
-If you're a new user and you find yourself asking, _"Can GitSavvy do X?"_, there are two places to look.  First, open your command palette and type `GitSavvy: help`.  This will take you to the offline wiki-style documentation.
+If you're a new user and you find yourself asking, _"Can GitSavvy do X?"_,
+first, open your command palette and type `Git`.  This will show you a lot of
+commands Sublime Text just learned.
 
-You can also check for configurability options by opening `Preferences > Package Settings > GitSavvy > Settings - Default` in the ST3 menu.  Any optional or configurable behavior will be documented here, along with the default values.
+GitSavvy does not ship any global shortcuts as that would be rude; however, without
+defining any bindings on your own, you will get stuck as that's just not fast enough.
 
-Finally, if at any time you encounter a bug, or if you wish that GitSavvy included some missing functionality, please open an issue:
-https://github.com/timbrel/GitSavvy/issues
+So here are some entry points into the GitSavvy world.  As soon as you're inside the
+GitSavvy world, `[?]` will show available features and options.
+
+```
+  // The equivalent of `git status`. MUST HAVE.
+  { "keys": ["ctrl+shift+s"], "command": "gs_show_status"},
+
+  // The `Git: Repo History`
+  { "keys": ["ctrl+shift+g"], "command": "gs_graph", "args": { "all": true }},
+  // "all: true" or not true is up to you, *I* prefer "true" and configure
+  // git's remotes to not fetch everything upstream, just a subset I'm interested
+  // in.  Any way you decide, when the view is open, `[a]` will toggle that flag
+  // dynamically.
+
+  { "keys": ["ctrl+shift+c"], "command": "gs_commit"},
+  // `gs_commit` is important as you can open it and if you haven't anything
+  // staged it will show all changes.  Use `u` in the diff to unselect parts of
+  // your changes. `[ctrl+enter]` will commit.
+
+  // Navigate between changes, works in normal buffers and GitSavvy views:
+  { "keys": ["ctrl+."], "command": "gs_super_next" },
+  { "keys": ["ctrl+,"], "command": "gs_super_prev" },
+
+  // The equivalent of `git diff`.
+  // "current_file: true" or not (t.i. show all changes) is up to you. *I* prefer
+  // to start with "true". However, `[a]` will toggle between both modes.
+  // `[l]` will open the file chooser, `[N]` and `[P]` switch to the next or previous
+  // files immediately.
+  // Use `[space]` to select individual lines. Or `[,]` and `[.]` and the two super
+  // move commands above.
+  // If you're happy, move along with e.g. `[c]` to commit or `[m]` to amend the previous
+  // commit.
+  {
+      "keys": ["ctrl+shift+."],
+      "command": "gs_diff",
+      "args": { "current_file": true }
+  },
+```
+
+That is a lot to digest and you haven't even checked out a different branch or anything.
+To be honest, I create and checkout new branches usually using the Command Palette (`chn`).
+More branching can be found in the `Git: branch` special view.  E.g. `[ctrl+shift+s, tab]`
+(open the status view, then shift to the branches sub view using `[tab]`).  Obviously you
+can create branches here as well, here using `[b]`.  But you can also create branhces in the
+Repo History.  Very often there are multiple ways to the same goal!
+
+The Repo History is your friend for anything really.  Lesser known is the `[s]` knob that
+hides all commits so you can quickly see the branches and tags only.
+
+Use `[o]` to see the full commit/patch under cursor, then `[p]` and `[n]` to walk the history.
+When you spot an spelling in one of the commit messages, `[W]` will let you reWord the message.
+
+Or use `[space]` to select two commits, then open the main menu with `[enter]` to open a diff
+between them for example.
+
+Or `[N]` (and `[P]`) to see and walk the *reflog*, i.e. to flip in the previous position/tip of
+your current branch (`@{1}`).  (For example to check or undo a rebase.)
+
+You see, endless, deep, savvy features.
+
+
+With 🔥 and 💖
+https://github.com/timbrel/GitSavvy

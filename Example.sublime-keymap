@@ -1,0 +1,56 @@
+[
+    // The equivalent of `git status`
+    { "keys": ["ctrl+shift+s"], "command": "gs_show_status"},
+
+    // "all: true" or not true is up to you, *I* prefer "true" and configure
+    // git's remotes to not fetch everything upstream, just a subset I'm interested
+    // in.  Any way you decide, when the view is open, `[a]` will toggle that flag
+    // dynamically.
+    // Btw. you can use `f` to e.g. pick-axe, but it is IMO easier to just select
+    // something in any view, and then to open the context menu (e.g. right mouse click),
+    // choose: `GitSavvy: Pick-axe`.
+    // By another way, you can use `l` to open a file/folder chooser to limit the
+    // output, but I usually use the Command Palette (`fh` for `File History`) for that.
+    { "keys": ["ctrl+shift+g"], "command": "gs_graph", "args": { "all": true }},
+
+    // `gs_commit` is important as you can open it and if you haven't anything
+    // staged it will show all changes.  Use `u` in the diff to unselect parts of
+    // your changes. `[ctrl+enter]` will commit.
+    { "keys": ["ctrl+shift+c"], "command": "gs_commit"},
+
+    // *I* think the Line History is the quicker blame, so I use that actually a lot.
+    // Select some line, e.g. `[ctrl+l]`, and then `[ctrl+shift+l]` to see the history
+    // of the selected lines.  Works also in diffs, e.g. to follow the history of a hunk!
+    { "keys": ["ctrl+shift+l"], "command": "gs_line_history"},
+
+    // Navigate between changes, works in normal buffers and GitSavvy views.
+    { "keys": ["ctrl+."], "command": "gs_super_next" },
+    { "keys": ["ctrl+,"], "command": "gs_super_prev" },
+
+    // "current_file: true" or not (t.i. show all changes) is up to you. *I* prefer
+    // to start with "true". `[a]` will toggle between both modes.
+    // `[l]` will open the file chooser, `[N]` and `[P]` switch to the next or previous
+    // files immediately.
+    // Use `[space]` to select individual lines. Or `[,]` and `[.]` and the two super
+    // move commands above.
+    // If you're happy, move along with e.g. `[c]` to commit or `[m]` to amend the previous
+    // commit.
+    {
+        "keys": ["ctrl+shift+."],
+        "command": "gs_diff",
+        "args": { "current_file": true }
+    },
+    // I use the inline diff seldom but it has the `[a]`/`[b]` toggle to see the code
+    // in one of the two states, before and after. And it has `[n]` and `[p]` to walk
+    // back and forth in the file history...
+    {
+        "keys": ["ctrl+shift+,"],
+        "command": "gs_inline_diff"
+    },
+    // ... but I actually prefer the command `gs_show_file_at_commit` ("Show File at HEAD")
+    // which also has `[n]` and `[p]` walking but hides the diffing portion but just
+    // shows Sublime Text's gutter annotations for changes.
+    // Do note the `[l]` which let's you choose any revision of a file.
+    // For completeness, e.g.:
+    { "keys": ["ctrl+alt+shift+h"], "command": "gs_show_file_at_commit" }
+]

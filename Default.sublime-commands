@@ -12,10 +12,18 @@
         "command": "gs_edit_project_settings"
     },
     {
-        "caption": "Preferences: GitSavvy Key Bindings",
+        "caption": "Preferences: GitSavvy Key Bindings Reference",
         "command": "gs_edit_settings",
         "args": {
             "base_file": "${packages}/GitSavvy/Default (${platform}).sublime-keymap"
+        }
+    },
+    {
+        "caption": "Preferences: GitSavvy Example Key Bindings",
+        "command": "edit_settings",
+        "args": {
+            "base_file": "${packages}/GitSavvy/Example.sublime-keymap",
+            "user_file": "${packages}/User/Default (${platform}).sublime-keymap"
         }
     },
     {
@@ -381,6 +389,10 @@
     },
     {
         "caption": "git: show recent revision of current file",
+        "command": "gs_show_file_at_commit"
+    },
+    {
+        "caption": "git: show file at HEAD",
         "command": "gs_show_file_at_commit"
     },
     {
