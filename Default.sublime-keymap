@@ -1075,11 +1075,10 @@
     },
     {
         "keys": ["a"],
-        "command": "gs_diff_intent_to_add",
+        "command": "gs_diff_toggle_all",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
-            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true },
-            { "key": "setting.git_savvy.diff_view.disable_stage", "operator": "equal", "operand": false }
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
         ]
     },
     {

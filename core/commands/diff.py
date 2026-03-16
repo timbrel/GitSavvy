@@ -39,6 +39,7 @@ __all__ = (
     "gs_diff_intent_to_add",
     "gs_diff_toggle_setting",
     "gs_diff_toggle_cached_mode",
+    "gs_diff_toggle_all",
     "gs_diff_switch_files",
     "gs_diff_grab_quick_panel_view",
     "gs_diff_zoom",
@@ -622,6 +623,75 @@ class gs_diff_toggle_cached_mode(TextCommand):
             # without visual clutter.
             with no_animations():
                 set_and_show_cursor(self.view, unpickle_sel(last_cursors))
+
+
+class gs_diff_toggle_all(TextCommand, GitCommand):
+
+    """Toggle between all-files and single-file diff mode."""
+
+    def run(self, edit):
+        settings = self.view.settings()
+        match_position = self.capture_match_position()
+
+        current_file_path = settings.get("git_savvy.file_path")
+        if current_file_path:
+            settings.erase("git_savvy.file_path")
+        else:
+            file_to_show = self.file_to_show_in_single_file_mode(match_position)
+            if not file_to_show:
+                flash(self.view, "No file found at cursor.")
+                return
+            settings.set(
+                "git_savvy.file_path",
+                os.path.normpath(os.path.join(self.repo_path, file_to_show))
+            )
+
+        settings.set("git_savvy.diff_view.toggled_mode_automatically", False)
+        self.view.run_command("gs_diff_refresh", {
+            "sync": True,
+            "match_position": match_position,
+        })
+
+    def capture_match_position(self):
+        # type: () -> Position_ | None
+        view = self.view
+        try:
+            pt = view.sel()[0].b
+        except Exception:
+            return None
+
+        diff = SplittedDiff.from_view(view)
+        jump_position = (
+            jump_position_to_file(view, diff, pt)
+            or first_jump_position_in_view(view, diff, pt)
+        )
+        if not jump_position:
+            return None
+
+        return (
+            Position(jump_position.line - 1, jump_position.col - 1, y_offset(view, pt)),
+            jump_position.filename,
+        )
+
+    def file_to_show_in_single_file_mode(self, match_position):
+        # type: (Position_ | None) -> str | None
+        if match_position:
+            return match_position[1]
+
+        view = self.view
+        try:
+            pt = view.sel()[0].b
+        except Exception:
+            return None
+
+        diff = SplittedDiff.from_view(view)
+        if header := diff.head_for_pt(pt):
+            return header.to_filename()
+
+        if diff.headers:
+            return diff.headers[0].to_filename()
+
+        return None
 
 
 class gs_diff_switch_files(TextCommand, GitCommand):
