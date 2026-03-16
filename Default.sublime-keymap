@@ -342,8 +342,7 @@
     },
     {
         "keys": ["f"],
-        "command": "gs_diff",
-        "args": { "in_cached_mode": false },
+        "command": "gs_status_diff_all_files",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
