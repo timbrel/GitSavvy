@@ -745,7 +745,7 @@ class _GitCommand(SettingsMixin):
             gitdir = os.path.join(repo_path, ".git")
             if os.path.isfile(gitdir):
                 try:
-                    with open(gitdir) as f:
+                    with open(gitdir, encoding="utf-8") as f:
                         content = f.read()
                         if content.startswith("gitdir: "):
                             gitdir = content[8:].strip()
