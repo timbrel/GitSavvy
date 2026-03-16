@@ -1,3 +1,4 @@
+import difflib
 import os
 import re
 
@@ -174,6 +175,145 @@ class TestDiffViewInternalFunctions(DeferrableTestCase):
 
         actual = module.compute_reference_document(a, b)
         self.assertEqual(actual, b)
+
+    def test_compute_reference_document_reduces_multifile_noise(self):
+        a = (
+            "diff --git a/f1 b/f1\n"
+            "index aa1..ad2 100644\n"
+            "--- a/f1\n"
+            "+++ b/f1\n"
+            "@@ -19,1 +19,1 @@\n"
+            "-old\n"
+            "+AA\n"
+            "diff --git a/f2 b/f2\n"
+            "index aa2..124 100644\n"
+            "--- a/f2\n"
+            "+++ b/f2\n"
+            "@@ -10,1 +10,1 @@\n"
+            "-old\n"
+            "+AB\n"
+            "diff --git a/f3 b/f3\n"
+            "index aa3..151 100644\n"
+            "--- a/f3\n"
+            "+++ b/f3\n"
+            "@@ -12,1 +12,1 @@\n"
+            "-old\n"
+            "+AB\n"
+        )
+        b = (
+            "diff --git a/f1 b/f1\n"
+            "index aa1..8a0 100644\n"
+            "--- a/f1\n"
+            "+++ b/f1\n"
+            "@@ -20,1 +20,1 @@\n"
+            "-old\n"
+            "+AA\n"
+            "diff --git a/f2 b/f2\n"
+            "index aa2..53e 100644\n"
+            "--- a/f2\n"
+            "+++ b/f2\n"
+            "@@ -12,1 +12,1 @@\n"
+            "-old\n"
+            "+AB\n"
+            "diff --git a/f3 b/f3\n"
+            "index aa3..4c8 100644\n"
+            "--- a/f3\n"
+            "+++ b/f3\n"
+            "@@ -11,1 +11,1 @@\n"
+            "-old\n"
+            "+B\n"
+        )
+
+        monolithic = module._compute_reference_document_monolithic(a, b)
+        split_by_file = module.compute_reference_document(a, b)
+
+        monolithic_noise = self.count_expensive_markers(monolithic, b)
+        split_noise = self.count_expensive_markers(split_by_file, b)
+
+        self.assertGreater(monolithic_noise, split_noise)
+        self.assertEqual(split_noise, 1)
+
+    def test_compute_reference_document_omits_removed_sections(self):
+        a = (
+            "diff --git a/f1 b/f1\n"
+            "index aa1..ad2 100644\n"
+            "--- a/f1\n"
+            "+++ b/f1\n"
+            "@@ -19,1 +19,1 @@\n"
+            "-old\n"
+            "+AA\n"
+            "diff --git a/f2 b/f2\n"
+            "index aa2..124 100644\n"
+            "--- a/f2\n"
+            "+++ b/f2\n"
+            "@@ -10,1 +10,1 @@\n"
+            "-old\n"
+            "+AB\n"
+        )
+        b = (
+            "diff --git a/f1 b/f1\n"
+            "index aa1..8a0 100644\n"
+            "--- a/f1\n"
+            "+++ b/f1\n"
+            "@@ -20,1 +20,1 @@\n"
+            "-old\n"
+            "+AA\n"
+        )
+
+        reference = module.compute_reference_document(a, b)
+
+        self.assertEqual(reference, b)
+        self.assertEqual(self.count_expensive_markers(reference, b), 0)
+
+    def test_compute_reference_document_tracks_section_when_only_b_side_renames(self):
+        a = (
+            "diff --git a/old_name.py b/new_name.py\n"
+            "index aa1..ad2 100644\n"
+            "--- a/old_name.py\n"
+            "+++ b/new_name.py\n"
+            "@@ -1,1 +1,1 @@\n"
+            "-old\n"
+            "+known\n"
+        )
+        b = (
+            "diff --git a/old_name.py b/newer_name.py\n"
+            "index aa1..8a0 100644\n"
+            "--- a/old_name.py\n"
+            "+++ b/newer_name.py\n"
+            "@@ -2,1 +2,1 @@\n"
+            "-old\n"
+            "+fresh\n"
+        )
+        expected = (
+            "diff --git a/old_name.py b/newer_name.py\n"
+            "index aa1..8a0 100644\n"
+            "--- a/old_name.py\n"
+            "+++ b/new_name.py\n"
+            "@@ -2,1 +2,1 @@\n"
+            "-old\n"
+            "+known\n"
+        )
+
+        reference = module.compute_reference_document(a, b)
+
+        self.assertEqual(reference, expected)
+        self.assertEqual(self.count_expensive_markers(reference, b), 2)
+
+    @staticmethod
+    def count_expensive_markers(reference: str, current: str) -> int:
+        return sum(
+            1
+            for line in difflib.ndiff(reference.splitlines(), current.splitlines())
+            if line.startswith("+ ")
+        )
+
+    def test_split_diff_into_file_sections_without_headers(self):
+        text = "Just some text\nwithout a diff header.\n"
+
+        prelude, sections = module.split_diff_into_file_sections(text)
+
+        self.assertEqual(prelude, text)
+        self.assertEqual(sections, [])
 
     @p.expand([
         ("@@ 1\n1234\n1567\n1890", (41, 46)),
