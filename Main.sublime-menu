@@ -17,9 +17,18 @@
                                     "base_file": "${packages}/GitSavvy/GitSavvy.sublime-settings",
                                     "default": "// Settings in here override those in \"GitSavvy/GitSavvy.sublime-settings\",\n\n{\n\t$0\n}\n"
                                 }
-                            }, {
-                                "caption": "Key Bindings",
+                            },
+                            {
+                                "caption": "Example Key Bindings",
                                 "command": "edit_settings",
+                                "args": {
+                                    "base_file": "${packages}/GitSavvy/Example.sublime-keymap",
+                                    "user_file": "${packages}/User/Default (${platform}).sublime-keymap"
+                                }
+                            },
+                            {
+                                "caption": "Key Bindings Reference",
+                                "command": "gs_edit_settings",
                                 "args": {
                                     "base_file": "${packages}/GitSavvy/Default (${platform}).sublime-keymap"
                                 }
