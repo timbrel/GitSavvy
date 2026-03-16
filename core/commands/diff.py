@@ -68,8 +68,7 @@ LineCol = Tuple[LineNo, ColNo]
 RelFileName = str
 PositionFromFile: TypeAlias = Tuple[Literal["from_file"], Position, RelFileName]
 PositionFromDiff: TypeAlias = Tuple[Literal["from_diff"], Position, Optional[RelFileName]]
-LegacyMatchPosition: TypeAlias = Tuple[Position, RelFileName]
-MatchPosition: TypeAlias = Union[PositionFromFile, PositionFromDiff, LegacyMatchPosition]
+MatchPosition: TypeAlias = Union[PositionFromFile, PositionFromDiff]
 
 
 class HunkLineWithB(NamedTuple):
@@ -468,7 +467,7 @@ def _draw(
 
     if match_position:
         diff = SplittedDiff.from_view(view)
-        mode, cur_pos, wanted_filename = normalized_match_position(match_position)
+        mode, cur_pos, wanted_filename = match_position
         if mode == "from_diff":
             navigated = apply_diff_position(view, diff, cur_pos, wanted_filename)
         else:
@@ -478,21 +477,6 @@ def _draw(
         view.run_command("gs_diff_navigate")
 
     intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(prelude))
-
-
-def normalized_match_position(
-    match_position: MatchPosition
-) -> tuple[
-    Literal["from_file", "from_diff"],
-    Position,
-    RelFileName | None,
-]:
-    if isinstance(match_position[0], str):
-        mode, pos, filename = match_position
-        return mode, pos, filename
-
-    pos, filename = match_position
-    return "from_file", pos, filename
 
 
 def apply_file_position(
