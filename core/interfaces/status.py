@@ -191,7 +191,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
       [h] open file in browser
 
       [l] diff file inline                  [f] diff all files
-      [e] diff file                         [F] diff all cached files
+      [e] diff file                         [F] show staged changes
 
       [space] to select multiple items
       [ctrl-space] to clear selection
@@ -215,7 +215,7 @@ class StatusInterface(ui.ReactiveInterface, GitCommand):
 
 
                                             [f] diff all files
-                                            [F] diff all cached files
+                                            [F] show staged changes
 
       [space] to select multiple items
       [ctrl-space] to clear selection
