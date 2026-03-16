@@ -427,8 +427,14 @@ class gs_diff_refresh(TextCommand, GitCommand):
         ensure_on_ui(_draw, view, title, prelude, diff, match_position, preserve_history)
 
 
-def _draw(view, title, prelude, diff_text, match_position, preserve_history):
-    # type: (sublime.View, str, str, str, Optional[MatchPosition], bool) -> None
+def _draw(
+    view: sublime.View,
+    title: str,
+    prelude: str,
+    diff_text: str,
+    match_position: Optional[MatchPosition],
+    preserve_history: bool
+) -> None:
     vid = view.id()
     diff_regions = view.find_by_selector("git-savvy.diff_view git-savvy.diff")
     was_empty = not diff_regions
@@ -474,7 +480,13 @@ def _draw(view, title, prelude, diff_text, match_position, preserve_history):
     intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(prelude))
 
 
-def normalized_match_position(match_position: MatchPosition) -> tuple[Literal["from_file", "from_diff"], Position, RelFileName | None]:
+def normalized_match_position(
+    match_position: MatchPosition
+) -> tuple[
+    Literal["from_file", "from_diff"],
+    Position,
+    RelFileName | None,
+]:
     if isinstance(match_position[0], str):
         mode, pos, filename = match_position
         return mode, pos, filename
@@ -693,7 +705,7 @@ class gs_diff_toggle_all(TextCommand, GitCommand):
 
     """Toggle between all-files and single-file diff mode."""
 
-    def run(self, edit):
+    def run(self, edit: sublime.Edit) -> None:
         settings = self.view.settings()
         diff = SplittedDiff.from_view(self.view)
         match_position = self.capture_match_position(diff)
@@ -721,8 +733,7 @@ class gs_diff_toggle_all(TextCommand, GitCommand):
             "match_position": match_position,
         })
 
-    def capture_match_position(self, diff):
-        # type: (SplittedDiff) -> PositionFromDiff | None
+    def capture_match_position(self, diff: SplittedDiff) -> PositionFromDiff | None:
         view = self.view
         try:
             pt = view.sel()[0].b
