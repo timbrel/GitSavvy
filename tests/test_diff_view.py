@@ -44,6 +44,137 @@ class TestDiffViewInternalFunctions(DeferrableTestCase):
         actual = list(actual)
         self.assertEqual(actual, expected)
 
+    def test_compute_reference_document_updates_metadata_and_keeps_patch_origin(self):
+        a = (
+            "diff --git a/core/commands/multi_selector.py b/core/commands/multi_selector.py\n"
+            "index 84df8d3f..8e9a6cb9 100644\n"
+            "--- a/core/commands/multi_selector.py\n"
+            "+++ b/core/commands/multi_selector.py\n"
+            "@@ -23,7 +23,7 @@ __all__ = (\n"
+            " Region: TypeAlias = \"list[int]\"\n"
+            "\n"
+            "\n"
+            "-def get_selection(view: sublime.View) -> Iterable[sublime.Region]:\n"
+            "+def  get_selection(view: sublime.View) -> Iterable[sublime.Region]:\n"
+            "    multi_selection: list[Region] = view.settings().get(\"git_savvy.multi_selection\", [])\n"
+            "    return (\n"
+            "        sorted(starmap(sublime.Region, multi_selection))\n"
+        )
+        b = (
+            "diff --git a/core/commands/multi_selector.py b/core/commands/multi_selector.py\n"
+            "index 84df8d3f..75a1d3c4 100644\n"
+            "--- a/core/commands/multi_selector.py\n"
+            "+++ b/core/commands/multi_selector.py\n"
+            "@@ -23,7 +23,7 @@ __all__ = (\n"
+            " Region: TypeAlias = \"list[int]\"\n"
+            "\n"
+            "\n"
+            "-def get_selection(view: sublime.View) -> Iterable[sublime.Region]:\n"
+            "+def   get_selection(view: sublime.View) -> Iterable[sublime.Region]:\n"
+            "    multi_selection: list[Region] = view.settings().get(\"git_savvy.multi_selection\", [])\n"
+            "    return (\n"
+            "        sorted(starmap(sublime.Region, multi_selection))\n"
+        )
+        expected = (
+            "diff --git a/core/commands/multi_selector.py b/core/commands/multi_selector.py\n"
+            "index 84df8d3f..75a1d3c4 100644\n"
+            "--- a/core/commands/multi_selector.py\n"
+            "+++ b/core/commands/multi_selector.py\n"
+            "@@ -23,7 +23,7 @@ __all__ = (\n"
+            " Region: TypeAlias = \"list[int]\"\n"
+            "\n"
+            "\n"
+            "-def get_selection(view: sublime.View) -> Iterable[sublime.Region]:\n"
+            "+def  get_selection(view: sublime.View) -> Iterable[sublime.Region]:\n"
+            "    multi_selection: list[Region] = view.settings().get(\"git_savvy.multi_selection\", [])\n"
+            "    return (\n"
+            "        sorted(starmap(sublime.Region, multi_selection))\n"
+        )
+
+        actual = module.compute_reference_document(a, b)
+        self.assertEqual(actual, expected)
+
+    def test_compute_reference_document_drops_non_matching_changed_patch_lines(self):
+        a = (
+            "diff --git a/core/commands/multi_selector.py b/core/commands/multi_selector.py\n"
+            "index 84df8d3f..8e9a6cb9 100644\n"
+            "--- a/core/commands/multi_selector.py\n"
+            "+++ b/core/commands/multi_selector.py\n"
+            "@@ -23,7 +23,7 @@ __all__ = (\n"
+            " Region: TypeAlias = \"list[int]\"\n"
+            "\n"
+            "\n"
+            "-def get_selection(view: sublime.View) -> Iterable[sublime.Region]:\n"
+            "+def  get_selection(view: sublime.View) -> Iterable[sublime.Region]:\n"
+            "    multi_selection: list[Region] = view.settings().get(\"git_savvy.multi_selection\", [])\n"
+            "    return (\n"
+            "        sorted(starmap(sublime.Region, multi_selection))\n"
+        )
+        b = (
+            "diff --git a/core/commands/multi_selector.py b/core/commands/multi_selector.py\n"
+            "index 84df8d3f..f0642a05 100644\n"
+            "--- a/core/commands/multi_selector.py\n"
+            "+++ b/core/commands/multi_selector.py\n"
+            "@@ -23,11 +23,11 @@ __all__ = (\n"
+            " Region: TypeAlias = \"list[int]\"\n"
+            "\n"
+            "\n"
+            "-def get_selection(view: sublime.View) -> Iterable[sublime.Region]:\n"
+            "+def  get_selection(view: sublime.View) -> Iterable[sublime.Region]:\n"
+            "    multi_selection: list[Region] = view.settings().get(\"git_savvy.multi_selection\", [])\n"
+            "    return (\n"
+            "        sorted(starmap(sublime.Region, multi_selection))\n"
+            "-        if multi_selection\n"
+            "+        if  multi_selection\n"
+            "        else view.sel()\n"
+            "    )\n"
+        )
+        expected = (
+            "diff --git a/core/commands/multi_selector.py b/core/commands/multi_selector.py\n"
+            "index 84df8d3f..f0642a05 100644\n"
+            "--- a/core/commands/multi_selector.py\n"
+            "+++ b/core/commands/multi_selector.py\n"
+            "@@ -23,11 +23,11 @@ __all__ = (\n"
+            " Region: TypeAlias = \"list[int]\"\n"
+            "\n"
+            "\n"
+            "-def get_selection(view: sublime.View) -> Iterable[sublime.Region]:\n"
+            "+def  get_selection(view: sublime.View) -> Iterable[sublime.Region]:\n"
+            "    multi_selection: list[Region] = view.settings().get(\"git_savvy.multi_selection\", [])\n"
+            "    return (\n"
+            "        sorted(starmap(sublime.Region, multi_selection))\n"
+            "        else view.sel()\n"
+            "    )\n"
+        )
+
+        actual = module.compute_reference_document(a, b)
+        self.assertEqual(actual, expected)
+
+    def test_compute_reference_document_ignores_metadata_only_changes(self):
+        a = (
+            "diff --git a/foo.py b/foo.py\n"
+            "index 1111111..2222222 100644\n"
+            "--- a/foo.py\n"
+            "+++ b/foo.py\n"
+            "@@ -10,3 +10,3 @@ def run():\n"
+            "-    before\n"
+            "+    after\n"
+            "     keep\n"
+        )
+        b = (
+            "diff --git a/foo.py b/foo.py\n"
+            "index 1111111..3333333 100644\n"
+            "--- a/foo.py\n"
+            "+++ b/foo.py\n"
+            "@@ -20,3 +20,3 @@ def run():\n"
+            "-    before\n"
+            "+    after\n"
+            "     keep\n"
+        )
+
+        actual = module.compute_reference_document(a, b)
+        self.assertEqual(actual, b)
+
     @p.expand([
         ("@@ 1\n1234\n1567\n1890", (41, 46)),
         ("@@ 1\n1234\n1567", (41, 46)),

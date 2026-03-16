@@ -573,9 +573,15 @@ def place_position_in_view(view: sublime.View, pt: int, row_offset: float | None
 
 
 def compute_reference_document(a: str, b: str) -> str:
-    # Given a history of diffs, a b, compute a a_ variant that has all the metadata
-    # from b. This is the minimal useful delta/diff from b -> a so that Sublime Text
-    # draws as few gutter annotations as possible.
+    # Build a synthetic reference document `a_` for current diff text `b`, using
+    # the previous diff text `a` as source of truth for already-known patch lines.
+    #
+    # Desired properties (for Sublime's built-in gutter/change annotations):
+    # - Keep noisy metadata from `b` (index lines, hunk ranges, etc.).
+    # - Keep matching changed patch lines from `a` (so only *new* changes in `b`
+    #   are annotated).
+    # - Drop changed patch lines that don't match `a` anymore (so they still show
+    #   up as changes when comparing `b` against this reference).
     differ = difflib.Differ()
     diff = differ.compare(b.splitlines(keepends=True), a.splitlines(keepends=True))
     diff_ = [
