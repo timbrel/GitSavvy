@@ -5,9 +5,7 @@
 
 GitSavvy is a powerful and mature plugin for Sublime Text that brings most of Git's functionalities directly into the text editor.
 
-It offers features that just come naturally when in an editor.  For example, you can easily interactively stage or discard changes per hunk, per line, per file. Search for specific content that you just select right in the buffer.  Navigate through the history of commits and revisions of files, write clear and long(!) commit messages (because who wants to deal with a clunky input box in a separate program for that?).  GitSavvy makes standard rebasing actions, like rewording a commit message, trivial, and advanced rebasing techniques, such as splitting a feature branch into two, manageable.
-
-However, GitSavvy enhances your Git experience.  It does not replace it.
+Some users stick to Sublime Text because of GitSavvy.
 
 
 ## Installation
@@ -32,99 +30,98 @@ If you want more control over what you pull down, or if you'd like to submit cha
 
 When you first install GitSavvy, you may not notice any immediate changes to your Sublime Text interface. Except that you may see the checked out branch name and dirty status displayed in the status bar.  (You can change this in the settings if you want to.)  It's important to note that GitSavvy actually adds a lot of commands to Sublime's Command Palette, which can be accessed by pressing `ctrl+shift+p` on Windows or `cmd+shift+p` on macOS.  These commands are typically prefixed with `git: `, while all GitHub features are prefixed with `github: `.
 
-GitSavvy also comes with dedicated views.  In order to get started with GitSavvy, it's a good idea to become familiar with the `git: status` and `git: Repo History` views first. These views are a great entry point into the GitSavvy world and will help you get comfortable with the plugin before diving deeper into its other features.  (In fact, *I* did not venture beyond the `git: status` view for the first year or so but hey, GitSavvy also changed a lot since then.)
+GitSavvy comes with dedicated views and is basically famous for it.  In order to get started with GitSavvy, it's a good idea to become familiar with the `git: status` and `git: Repo History` views first. These views are a great entry point into the GitSavvy world and will help you get comfortable with the plugin before diving deeper into its other features.  (In fact, *I* did not venture beyond the `git: status` view for the first year or so but hey, GitSavvy also changed a lot since then.)
 
-By default, the status view shows some helpful information, while in the repo history view, you can get additional help by pressing `[?]`. The most important keys to remember in the repo history view are `[enter]` for the main menu and `[r]` for the rebase menu.
-
-
-## Basic Git Functionality
-
-GitSavvy provides all the essential Git commands such as `clone`, `init`, `commit`, `checkout`, `pull`, `push`, `fetch`, and many more.
-
-All of these commands and features can be accessed easily through Sublime's Command Palette (`ctrl+shift+p`). Just start typing the name of the command you want to use, e.g. `checkout`, and Sublime will quickly select the correct command. You can recognize GitSavvy commands as they are all prefixed with `git: `.
-
-After you hit `enter` to select a command, GitSavvy will often start a wizard. For example, typing `checkout` will show a list of available branches, while typing `checkout new branch` will ask for the name of the new branch. Note that Sublime's fuzzy logic helps with typing long commands and remembers acronyms you've used in the Command Palette.  For instance, on my computer, typing `chn` followed by `enter` is enough to create a new branch.
-
-## Special Views for Git Status, Branches, and Tags
-
-GitSavvy provides dedicated views for Git status, branches, and tags. Users can access these views by running the `git: status`, `git: branch` commands.
-
-In addition to these views, GitSavvy also has sophisticated special views for viewing diffs and patches, making commits, or showing the repository history. However, for new users, running the `git: status` command may be the first entry point into the GitSavvy world. From here, you can stage (`[s]`), unstage (`[u]`), and discard (`[d]`) changes to whole files. You can also start the commit phase (`[c]`), open the repository history (`[g]`), open a diff view (`[f]`), and push the current branch (`[p]`).
-
-*Tip*: if nothing has been staged yet, pressing `[c]` will default to committing all changes with the `-a` flag.
-
-Note that views with smaller content like the status view typically display their keyboard bindings directly at the bottom of the screen, while views with larger content, e.g. the repo history, will only show the key bindings in a help popup after you press `[?]`.
+In the special GitSavvy views, you can always toggle the help view by pressing `[?]`.  In the Repo History. the most important keys to remember are `[enter]` for the main menu and `[r]` for the rebase menu.
 
 
-#### Usability Note 1:
+## Global shortcuts; aka Recommended Start
 
-GitSavvy comes with a lot of keyboard bindings, but it doesn't include any *global* shortcuts. This is because adding global shortcuts can conflict with other packages or built-in functionality. However, you can easily add your own global shortcuts by opening Sublime's key bindings file (`Preferences: Key Bindings`).
+GitSavvy does not ship any global shortcuts as that would be rude; however, without defining any
+bindings on your own, you will get stuck as that's just not fast enough.
 
-For example, you can add a global shortcut to open the status view from anywhere by adding the following to your key bindings file:
+Here are some entry points into the GitSavvy world:
 
 ```
-{ "keys": ["ctrl+shift+s"], "command": "gs_show_status"}
+  // The equivalent of `git status`
+  { "keys": ["ctrl+shift+s"], "command": "gs_show_status"},
+
+  // "all: true" or not true is up to you, *I* prefer "true" and configure
+  // git's remotes to not fetch everything upstream, just a subset I'm interested
+  // in.  Any way you decide, when the view is open, `[a]` will toggle that flag
+  // dynamically.
+  // Btw. you can use `f` to e.g. pick-axe, but it is IMO easier to just select
+  // something in any view, and then to open the context menu (e.g. right mouse click),
+  // choose: `GitSavvy: Pick-axe`.
+  // By another way, you can use `l` to open a file/folder chooser to limit the
+  // output, but I usually use the Command Palette (`fh` for `File History`) for that.
+  { "keys": ["ctrl+shift+g"], "command": "gs_graph", "args": { "all": true }},
+
+  // `gs_commit` is important as you can open it and if you haven't anything
+  // staged it will show all changes.  Use `u` in the diff to unselect parts of
+  // your changes. `[ctrl+enter]` will commit.
+  { "keys": ["ctrl+shift+c"], "command": "gs_commit"},
+
+  // *I* think the Line History is the quicker blame, so I use that actually a lot.
+  // Select some line, e.g. `[ctrl+l]`, and then `[ctrl+shift+l]` to see the history
+  // of the selected lines.  Works also in diffs, e.g. to follow the history of a hunk!
+  { "keys": ["ctrl+shift+l"], "command": "gs_line_history"},
+
+  // Navigate between changes, works in normal buffers and GitSavvy views.
+  { "keys": ["ctrl+."], "command": "gs_super_next" },
+  { "keys": ["ctrl+,"], "command": "gs_super_prev" },
+
+  // "current_file: true" or not (t.i. show all changes) is up to you. *I* prefer
+  // to start with "true". `[a]` will toggle between both modes.
+  // `[l]` will open the file chooser, `[N]` and `[P]` switch to the next or previous
+  // files immediately.
+  // Use `[space]` to select individual lines. Or `[,]` and `[.]` and the two super
+  // move commands above.
+  // If you're happy, move along with e.g. `[c]` to commit or `[m]` to amend the previous
+  // commit.
+  {
+      "keys": ["ctrl+shift+."],
+      "command": "gs_diff",
+      "args": { "current_file": true }
+  },
+  // I use the inline diff seldom but it has the `[a]`/`[b]` toggle to see the code
+  // in one of the two states, before and after. And it has `[n]` and `[p]` to walk
+  // back and forth in the file history...
+  {
+      "keys": ["ctrl+shift+,"],
+      "command": "gs_inline_diff",
+  },
+  // ... but I actually prefer the command `gs_show_file_at_commit` ("Show File at HEAD")
+  // which also has `[n]` and `[p]` walking but hides the diffing portion but just
+  // shows Sublime Text's gutter annotations for changes.
+  // Do note the `[l]` which let's you choose any revision of a file.
+  // For completeness, e.g.:
+  { "keys": ["ctrl+alt+shift+h"], "command": "gs_show_file_at_commit" },
 ```
 
-This will allow you to quickly access the Git status view with the `ctrl+shift+s` shortcut, no matter what file or view you have open. You can add other shortcuts for other GitSavvy commands in a similar way.
+That is a lot to digest and you haven't even checked out a different branch or anything.
+To be honest, I create and checkout new branches usually using the Command Palette (`chn`).
+More branching can be found in the `Git: branch` special view.  E.g. `[ctrl+shift+s, tab]`
+(open the status view, then shift to the branches sub view using `[tab]`).  Obviously you
+can create branches here as well, here using `[b]`.  But you can also create branhces in the
+Repo History.  Very often there are multiple ways to the same goal.
 
-#### Usability Note 2:
+The Repo History is your friend for anything really.  Lesser known is the `[s]` knob that
+hides all commits so you can quickly see the branches and tags only.  Using `[ctrl+r]` you
+can quickly search and select a branch or tag.
 
-After checking the `git status`, the second most common action is probably to make a commit. So it is a good idea to make a shortcut here as well.  Simply add the following code to Sublime's keybindings:
+Use `[o]` to see the full commit/patch under cursor, then `[p]` and `[n]` to walk the history.
+When you spot an spelling in one of the commit messages, `[W]` will let you reWord the message.
 
-```
-{ "keys": ["ctrl+shift+c"], "command": "gs_commit"},
-```
+Or use `[space]` to select two commits, then open the main menu with `[enter]` to open a diff
+between them for example.
 
-`gs_commit` will open up the commit view in GitSavvy. If nothing is staged yet, it will assume the `-a` flag and select all changes. However, it will not include untracked files as is typical with Git. Within the commit view, you always see the diff of the changes to be committed at the bottom. Here, you can easily unstage or discard hunks or single lines directly using the keyboard shortcuts `[u]` and `[d]`.  Note that you can undo a discard by pressing `ctrl+z`.
+Or `[N]` (and `[P]`) to see and walk the *reflog*, i.e. to flip in the previous position/tip of
+your current branch (`@{1}`).  (For example to check or undo a rebase.)
 
-
-#### Pro-tip: Finding and Running (GitSavvy) Commands
-
-Sometimes you may want to find out which commands to use, along with their optional arguments. You can use Sublime's console, which is a Python REPL, to help you with this.
-
-To open the console in Sublime, press ``Ctrl + ` `` on Windows or Linux, or ``Cmd + ` `` on a Mac. This will open a panel at the bottom of the window where you can enter commands.
-
-To enable logging of commands, enter the following command in the console:
-
-```python
-sublime.log_commands(True)
-```
-
-This will cause Sublime to log all commands executed by the user in the console.
-
-Now, start GitSavvy's Command Palette (`ctrl+shift+p`) and run a command, such as `git: status`. After the command has executed, look at the console to see the name of the command and any optional arguments that were passed.
-
-For example, you might see:
-
-```
-command: gs_commit {"amend": true}
-```
-
-Here, `gs_commit` is the name of the command, and the optional argument passed was `{"amend": true}`. This information can be useful for learning and customizing GitSavvy's functionality.
-
-Don't forget to turn off command logging when you're done, by entering:
-
-```python
-sublime.log_commands(False)
-```
-
-in the console.
-
+You see, endless, deep, savvy features.
 
 ## Repo History
-
-GitSavvy's `Repo History` view provides a visual representation of a repository's commit history and is accessible via the `git: Repo History` command. It's similar to `gitk` but with more features. When editing a tracked file, you can alternatively use `git: File History` to open a file-specific history view. But you can also turn any standard `Repo History` view into a file/folder history view and vice versa by using `[l]` which opens up a list of all tracked files.
-
-The `Repo History` view offers additional filtering options. Press `[a]` to toggle between showing *all* branches or only the currently checked out branch.  Press `[f]` to open the filter prompt, where you can add filters verbatim, like `--author=` or `-Sfoobar`.  You can use the up and down arrow keys to access a list of default filters or to see the history of filters you've previously used. Once you've filtered the graph, you can quickly toggle the filter on and off using `[F]`.
-
-Press `[s]` to enter a special "overview" mode showing only the tip of the branches and the tags.  (`[a]` in that mode will toggle the tags on and off too.)
-
-To move around the commit graph, you can either use your mouse or the up and down arrow keys. If you want to make larger jumps in the graph, you can use the keyboard shortcut `alt+up` or `alt+down`, which jumps through the "first-parent" only.
-
-The `Repo History` view has two main menus. Pressing `[enter]` will open the standard menu, which provides typical functionality such as checking out, cherry-picking, or reverting the currently selected commit. You can also find basic branch and tag functionality like creating or deleting them. Additionally, you can move branch pointers around (as opposed to resetting) or update branches from their upstream.
-
-You can access a second menu by pressing `[r]`, which is specifically designed for rebasing. This menu allows you to reword commit messages (`[W]`), edit (`[E]`) or drop commits, apply fixups, and generally rebase anything onto anything. For example, you can extract a series of commits onto your main branch to make two feature branches out of a convoluted one.
 
 <table>
     <tr>
@@ -230,18 +227,7 @@ GitSavvy provides GitHub integration that allows users to reference issues/colla
 ## GitHub-Style Blame View
 GitSavvy offers a "blame" view that shows hunk metadata and allows users to view the commit that made the change, similar to GitHub's blame view.
 
-
-
-
-
-## Documentation
-
-The documentation is probably outdated.  Yeah it's sad but you can contribute and I will eventually get onto it **but** every special view has help available, just press `?`.
-
-Feature documentation can be found [here](docs/README.md).  It can also be accessed from within Sublime by opening the command palette and typing `GitSavvy: help`.
-
-
-## Highlights
+## Other highlights
 
 <table>
     <tr>
