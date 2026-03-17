@@ -9,6 +9,7 @@ from ..parse_diff import Hunk, SplittedDiff
 from ..text_helper import Region
 from ..utils import eat_but_log_errors, line_indentation
 from ..runtime import cooperative_thread_hopper, AWAIT_WORKER, HopperR
+from ...common import util
 
 
 from typing import Callable, List, Tuple, Sequence
@@ -261,7 +262,20 @@ def intra_diff_line_by_line(from_lines, to_lines):
             line_indentation(to_line.content)
         )
         a_input, b_input = from_line.content[indentation:], to_line.content[indentation:]
+
         matches = match_sequences(a_input, b_input)
+        fallback_changes = compute_tokenized_changes(matches, a_input, b_input)
+        if fallback_changes:
+            a_offset = from_line.a + from_line.mode_len + indentation
+            b_offset = to_line.a + to_line.mode_len + indentation
+            for change in fallback_changes:
+                if change.type in (util.diff_string.DELETE, util.diff_string.REPLACE):
+                    from_regions.append(Region(a_offset + change.old_start, a_offset + change.old_end))
+
+                if change.type in (util.diff_string.INSERT, util.diff_string.REPLACE):
+                    to_regions.append(Region(b_offset + change.new_start, b_offset + change.new_end))
+            continue
+
         if matches.ratio() < 0.5:
             # We just continue, so it is possible that for a given chunk
             # *some* lines have markers, others not.
@@ -291,6 +305,12 @@ def intra_diff_line_by_line(from_lines, to_lines):
                 to_regions.append(Region(to_offsets[b_start], to_offsets[b_end]))
 
     return from_regions, to_regions
+
+
+def compute_tokenized_changes(matches, a_input, b_input):
+    if not isinstance(matches, NullSequenceMatcher):
+        return []
+    return util.diff_string.get_changes(a_input, b_input)
 
 
 boundary = re.compile(r'(\W)')
