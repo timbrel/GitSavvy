@@ -4,7 +4,8 @@ from GitSavvy.tests.parameterized import parameterized as p
 
 
 from GitSavvy.core.commands.log_graph_renderer import (
-    diff, simplify, normalize_tokens, apply_diff, Ins, Del, Replace, Flush
+    diff, simplify, normalize_tokens, apply_diff, Ins, Del, Replace, Flush,
+    text_width, trunc_and_pad
 )
 
 
@@ -103,3 +104,35 @@ class TestGraphDiff(DeferrableTestCase):
         B = _(B)
         ops = tx(ops)
         self.assertEqual(apply_diff(A, normalize_tokens(simplify(diff(A, B), 100))), B)
+
+    @p.expand([
+        ('ASCII', 5),
+        ('中文', 4),
+        ('中a文', 5),
+        ('📦', 2),
+        ('a📦b', 4),
+    ])
+    def test_text_width(self, text, expected):
+        self.assertEqual(text_width(text), expected)
+
+    @p.expand([
+        ('00', 'hello', 8, 'hello   '),
+        ('01', '中文', 6, '中文  '),
+        ('02', '中文', 4, '中文'),
+        ('03', 'abcdef', 5, 'abc..'),
+        ('04', '中文hello', 6, '中文..'),
+        ('05', 'abc中文', 5, 'abc..'),
+        ('06', '中文ab', 5, '中.. '),
+        ('07', '中a文', 4, '中..'),
+        ('08', 'a中中', 4, 'a.. '),
+        ('09', '中中中', 5, '中.. '),
+        ('10', '📦', 4, '📦  '),
+        ('11', '📦abcd', 5, '📦a..'),
+        ('12', '中中', 3, '.. '),
+        ('13', '📦中', 3, '.. '),
+        ('14', 'e\u0301x', 4, 'e\u0301x  '),
+    ])
+    def test_trunc_and_pad(self, _, text, width, expected):
+        actual = trunc_and_pad(text, width)
+        self.assertEqual(actual, expected)
+        self.assertEqual(text_width(actual), width)

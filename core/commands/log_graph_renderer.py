@@ -9,6 +9,7 @@ import shlex
 import subprocess
 import textwrap
 import threading
+import unicodedata
 from typing import (
     Callable,
     Deque,
@@ -64,6 +65,70 @@ __all__ = ("gs_log_graph_refresh",)
 
 GIT_SUPPORTS_HUMAN_DATE_FORMAT = (2, 21, 0)
 FALLBACK_DATE_FORMAT = 'format:%Y-%m-%d %H:%M'
+
+
+def text_width(text):
+    # type: (str) -> int
+    if text.isascii():
+        return len(text)
+
+    combining = unicodedata.combining
+    east_asian_width = unicodedata.east_asian_width
+
+    width = 0
+    for char in text:
+        if ord(char) < 0x80:
+            width += 1
+        elif combining(char):
+            continue
+        elif east_asian_width(char) in ('W', 'F'):
+            width += 2
+        else:
+            width += 1
+    return width
+
+
+def trunc_and_pad(text, width):
+    # type: (str, int) -> str
+    if width <= 0:
+        return ''
+
+    if text.isascii():
+        if len(text) > width:
+            if width <= 2:
+                return '.' * width
+            return f"{text[:width - 2]}.."
+        return f"{text:{width}}"
+
+    combining = unicodedata.combining
+    east_asian_width = unicodedata.east_asian_width
+    target = max(0, width - 2)
+    text_width_ = 0
+    trunc_idx = len(text)
+    target_idx = 0
+    target_width = 0
+    for idx, char in enumerate(text):
+        if ord(char) < 0x80:
+            char_width_ = 1
+        elif combining(char):
+            char_width_ = 0
+        elif east_asian_width(char) in ('W', 'F'):
+            char_width_ = 2
+        else:
+            char_width_ = 1
+
+        if text_width_ + char_width_ <= target:
+            target_idx = idx + 1
+            target_width = text_width_ + char_width_
+
+        text_width_ += char_width_
+        if text_width_ > width:
+            trunc_idx = idx
+            break
+
+    if trunc_idx < len(text):
+        return text[:target_idx] + '..' + (' ' * max(0, width - (target_width + 2)))
+    return text + (' ' * max(0, width - text_width_))
 
 
 class Ins(NamedTuple):
@@ -600,10 +665,6 @@ class gs_log_graph_refresh(GsTextCommand):
                     if isinstance(line, str) or not line.decoration:
                         yield "...\n"
 
-        def trunc(text, width):
-            # type: (str, int) -> str
-            return f"{text[:width - 2]}.." if len(text) > width else f"{text:{width}}"
-
         def resolve_refs_from_the_logs():
             # type: () -> Dict[str, str]
             # git does not decorate refs from the reflogs, e.g. "branch@{2}", so we resolve
@@ -706,7 +767,8 @@ class gs_log_graph_refresh(GsTextCommand):
                 left = f"{hash} ({decoration})"
             else:
                 left = f"{hash}"
-            return f"{left} {trunc(subject, max(2, LEFT_COLUMN_WIDTH - len(left)))} \u200b {info}\n"
+            left_width = len(left) if left.isascii() else text_width(left)
+            return f"{left} {trunc_and_pad(subject, max(2, LEFT_COLUMN_WIDTH - left_width))} \u200b {info}\n"
 
         def filter_consecutive_continuation_lines(lines):
             # type: (Iterator[str]) -> Iterator[str]
