@@ -196,6 +196,10 @@ class NullSequenceMatcher(difflib.SequenceMatcher):
 
 def intra_diff_general_algorithm(from_lines, to_lines):
     # type: (List[HunkLine], List[HunkLine]) -> Tuple[List[Region], List[Region]]
+    whole_chunk_diff = intra_diff_whole_chunk(from_lines, to_lines)
+    if whole_chunk_diff:
+        return whole_chunk_diff
+
     # Generally, if the two line chunks have different size, try to fit
     # the smaller one into the bigger, or try to find how and where the
     # smaller could be placed in the bigger one.
@@ -226,6 +230,50 @@ def intra_diff_general_algorithm(from_lines, to_lines):
         return intra_diff_line_by_line(from_lines, to_lines)
     else:
         return [], []
+
+
+def intra_diff_whole_chunk(from_lines, to_lines):
+    if not (from_lines and to_lines):
+        return None
+
+    from_text = ''.join(line.content for line in from_lines)
+    to_text = ''.join(line.content for line in to_lines)
+    changes = util.diff_string.get_changes(from_text, to_text)
+    if not changes:
+        return None
+
+    from_regions = []
+    to_regions = []
+    for change in changes:
+        if change.type in (util.diff_string.DELETE, util.diff_string.REPLACE):
+            from_regions.extend(compute_chunk_regions(from_lines, change.old_start, change.old_end))
+
+        if change.type in (util.diff_string.INSERT, util.diff_string.REPLACE):
+            to_regions.extend(compute_chunk_regions(to_lines, change.new_start, change.new_end))
+
+    return from_regions, to_regions
+
+
+def compute_chunk_regions(lines, start, end):
+    regions = []
+    offset = 0
+    for line in lines:
+        line_end = offset + len(line.content)
+        if end <= offset:
+            break
+
+        region_start = max(start, offset)
+        region_end = min(end, line_end)
+        if region_start < region_end:
+            absolute_offset = line.a + line.mode_len
+            regions.append(Region(
+                absolute_offset + region_start - offset,
+                absolute_offset + region_end - offset,
+            ))
+
+        offset = line_end
+
+    return regions
 
 
 def find_best_slice(matcher, lines):

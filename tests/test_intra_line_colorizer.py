@@ -1,7 +1,19 @@
 import unittest
 
-from GitSavvy.core.commands.intra_line_colorizer import intra_diff_line_by_line
+from GitSavvy.core.commands.intra_line_colorizer import intra_diff_general_algorithm, intra_diff_line_by_line
 from GitSavvy.core.parse_diff import HunkLine
+
+
+def extract_region_texts(lines, regions):
+    texts = []
+    for region in regions:
+        for line in lines:
+            start = line.a + line.mode_len
+            end = start + len(line.content)
+            if start <= region.a and region.b <= end:
+                texts.append(line.content[region.a - start:region.b - start])
+                break
+    return texts
 
 
 class TestIntraLineColorizer(unittest.TestCase):
@@ -26,3 +38,21 @@ class TestIntraLineColorizer(unittest.TestCase):
 
         self.assertEqual([from_line.content[r.a - 1: r.b - 1] for r in from_regions], ['hello'])
         self.assertEqual([to_line.content[r.a - to_line.a - 1: r.b - to_line.a - 1] for r in to_regions], ['world'])
+
+    def test_general_algorithm_marks_changes_across_merged_lines(self):
+        from_lines = [
+            HunkLine('-alpha beta gamma\n', 0, mode_len=1),
+            HunkLine('-delta epsilon zeta\n', len('-alpha beta gamma\n'), mode_len=1),
+        ]
+        to_lines = [
+            HunkLine(
+                "+alpha beta gamma delta EPSILON zeta\n",
+                len("-alpha beta gamma\n-delta epsilon zeta\n"),
+                mode_len=1,
+            ),
+        ]
+
+        from_regions, to_regions = intra_diff_general_algorithm(from_lines, to_lines)
+
+        self.assertIn('epsilon', extract_region_texts(from_lines, from_regions))
+        self.assertIn('EPSILON', extract_region_texts(to_lines, to_regions))
