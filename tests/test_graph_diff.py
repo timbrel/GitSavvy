@@ -111,6 +111,13 @@ class TestGraphDiff(DeferrableTestCase):
         ('中a文', 5),
         ('📦', 2),
         ('a📦b', 4),
+        ('\u200d', 0),
+        ('a\u200db', 2),
+        ('a\u2060b', 2),
+        ('👍🏽', 2),
+        ('a\ufe0fb', 2),
+        ('👩\u200d💻', 4),
+        ('👩‍💻', 4),  # sic!
     ])
     def test_text_width(self, text, expected):
         self.assertEqual(text_width(text), expected)
@@ -131,6 +138,11 @@ class TestGraphDiff(DeferrableTestCase):
         ('12', '中中', 3, '.. '),
         ('13', '📦中', 3, '.. '),
         ('14', 'e\u0301x', 4, 'e\u0301x  '),
+        ('15', 'a\u200db', 2, 'a\u200db'),
+        ('16', '👩\u200d💻', 4, '👩\u200d💻'),
+        ('17', 'a\u2060b', 2, 'a\u2060b'),
+        ('18', '👍🏽', 2, '👍🏽'),
+        ('19', 'a\ufe0fb', 2, 'a\ufe0fb'),
     ])
     def test_trunc_and_pad(self, _, text, width, expected):
         actual = trunc_and_pad(text, width)

@@ -74,15 +74,36 @@ def text_width(text):
 
     combining = unicodedata.combining
     east_asian_width = unicodedata.east_asian_width
+    category = unicodedata.category
 
     width = 0
     for char in text:
-        if ord(char) < 0x80:
+        codepoint = ord(char)
+        if codepoint < 0x80:
             width += 1
         elif combining(char):
             continue
+        elif 0x1F3FB <= codepoint <= 0x1F3FF:
+            continue
         elif east_asian_width(char) in ('W', 'F'):
             width += 2
+        elif (
+            codepoint == 0x200D
+            or codepoint == 0x200C
+            or 0xFE00 <= codepoint <= 0xFE0F
+            or 0xE0100 <= codepoint <= 0xE01EF
+            or (
+                (
+                    0x0600 <= codepoint <= 0x06FF
+                    or codepoint == 0x180E
+                    or 0x2000 <= codepoint <= 0x206F
+                    or codepoint == 0xFEFF
+                    or 0xFFF0 <= codepoint <= 0xFFFF
+                )
+                and category(char) == 'Cf'
+            )
+        ):
+            continue
         else:
             width += 1
     return width
@@ -102,18 +123,39 @@ def trunc_and_pad(text, width):
 
     combining = unicodedata.combining
     east_asian_width = unicodedata.east_asian_width
+    category = unicodedata.category
     target = max(0, width - 2)
     text_width_ = 0
     trunc_idx = len(text)
     target_idx = 0
     target_width = 0
     for idx, char in enumerate(text):
-        if ord(char) < 0x80:
+        codepoint = ord(char)
+        if codepoint < 0x80:
             char_width_ = 1
         elif combining(char):
             char_width_ = 0
+        elif 0x1F3FB <= codepoint <= 0x1F3FF:
+            char_width_ = 0
         elif east_asian_width(char) in ('W', 'F'):
             char_width_ = 2
+        elif (
+            codepoint == 0x200D
+            or codepoint == 0x200C
+            or 0xFE00 <= codepoint <= 0xFE0F
+            or 0xE0100 <= codepoint <= 0xE01EF
+            or (
+                (
+                    0x0600 <= codepoint <= 0x06FF
+                    or codepoint == 0x180E
+                    or 0x2000 <= codepoint <= 0x206F
+                    or codepoint == 0xFEFF
+                    or 0xFFF0 <= codepoint <= 0xFFFF
+                )
+                and category(char) == 'Cf'
+            )
+        ):
+            char_width_ = 0
         else:
             char_width_ = 1
 
