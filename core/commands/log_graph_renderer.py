@@ -9,6 +9,7 @@ import shlex
 import subprocess
 import textwrap
 import threading
+import unicodedata
 from typing import (
     Callable,
     Deque,
@@ -600,10 +601,6 @@ class gs_log_graph_refresh(GsTextCommand):
                     if isinstance(line, str) or not line.decoration:
                         yield "...\n"
 
-        def trunc(text, width):
-            # type: (str, int) -> str
-            return f"{text[:width - 2]}.." if len(text) > width else f"{text:{width}}"
-
         def resolve_refs_from_the_logs():
             # type: () -> Dict[str, str]
             # git does not decorate refs from the reflogs, e.g. "branch@{2}", so we resolve
@@ -706,7 +703,8 @@ class gs_log_graph_refresh(GsTextCommand):
                 left = f"{hash} ({decoration})"
             else:
                 left = f"{hash}"
-            return f"{left} {trunc(subject, max(2, LEFT_COLUMN_WIDTH - len(left)))} \u200b {info}\n"
+            left_width = len(left) if left.isascii() else text_width(left)
+            return f"{left} {trunc_and_pad(subject, max(2, LEFT_COLUMN_WIDTH - left_width))} \u200b {info}\n"
 
         def filter_consecutive_continuation_lines(lines):
             # type: (Iterator[str]) -> Iterator[str]
@@ -1085,3 +1083,127 @@ def is_sel_in_viewport(view):
     # type: (sublime.View) -> bool
     viewport = view.visible_region()
     return all(viewport.contains(s) or viewport.intersects(s) for s in view.sel())
+
+
+# The following are basically unicode aware len(text) variants.
+# `text_width` and `trunc_and_pad` duplicate code.  We found no
+# zero-cost abstraction. In perf benchmarking I found an iterator
+# variant to be 20% slower.  Calling a `char_width` function in a
+# loop was even worse.  So we life with the following.
+
+
+def text_width(
+    text: str,
+    _combining=unicodedata.combining,
+    _east_asian_width=unicodedata.east_asian_width,
+    _category=unicodedata.category
+) -> int:
+    if text.isascii():
+        return len(text)
+
+    width = 0
+    for char in text:
+        codepoint = ord(char)
+        if codepoint < 0x80:
+            width += 1
+        elif _combining(char):
+            continue
+        elif 0x1F3FB <= codepoint <= 0x1F3FF:
+            continue
+        elif _east_asian_width(char) in ('W', 'F'):
+            width += 2
+        elif (
+            codepoint == 0x200D                 # ZWJ
+            or codepoint == 0x200C              # ZWNJ
+            or 0xFE00 <= codepoint <= 0xFE0F    # variation selectors (VS1..VS16)
+            or 0xE0100 <= codepoint <= 0xE01EF  # variation selectors supplement
+            or (
+                (
+                    0x0600 <= codepoint <= 0x06FF
+                    or codepoint == 0x180E
+                    or 0x2000 <= codepoint <= 0x206F
+                    or codepoint == 0xFEFF
+                    or 0xFFF0 <= codepoint <= 0xFFFF
+                )
+                and _category(char) == 'Cf'
+            )
+        ):
+            continue
+        else:
+            width += 1
+    return width
+
+
+def trunc_and_pad(
+    text: str,
+    width: int,
+    _combining=unicodedata.combining,
+    _east_asian_width=unicodedata.east_asian_width,
+    _category=unicodedata.category
+) -> str:
+    if width <= 0:
+        return ''
+
+    if text.isascii():
+        if len(text) > width:
+            if width <= 2:
+                return '.' * width
+            return f"{text[:width - 2]}.."
+        return f"{text:{width}}"
+
+    target = max(0, width - 2)
+    text_width_ = 0
+    trunc_idx = len(text)
+    target_idx = 0
+    target_width = 0
+    for idx, char in enumerate(text):
+        codepoint = ord(char)
+
+        # Fast-path ASCII and then apply terminal-ish display width rules:
+        # - combining / format / modifiers / joiners / variation selectors: 0
+        # - East Asian wide/full-width: 2
+        # - everything else: 1
+        if codepoint < 0x80:
+            char_width_ = 1
+        elif _combining(char):
+            char_width_ = 0
+        elif 0x1F3FB <= codepoint <= 0x1F3FF:
+            char_width_ = 0
+        elif _east_asian_width(char) in ('W', 'F'):
+            char_width_ = 2
+        elif (
+            codepoint == 0x200D                 # ZWJ
+            or codepoint == 0x200C              # ZWNJ
+            or 0xFE00 <= codepoint <= 0xFE0F    # variation selectors (VS1..VS16)
+            or 0xE0100 <= codepoint <= 0xE01EF  # variation selectors supplement
+            or (
+                (
+                    0x0600 <= codepoint <= 0x06FF
+                    or codepoint == 0x180E
+                    or 0x2000 <= codepoint <= 0x206F
+                    or codepoint == 0xFEFF
+                    or 0xFFF0 <= codepoint <= 0xFFFF
+                )
+                and _category(char) == 'Cf'
+            )
+        ):
+            char_width_ = 0
+        else:
+            char_width_ = 1
+
+        # Remember the longest prefix that still leaves room for '..'.
+        if text_width_ + char_width_ <= target:
+            target_idx = idx + 1
+            target_width = text_width_ + char_width_
+
+        text_width_ += char_width_
+        # Once we overflow, we know the string must be truncated.
+        if text_width_ > width:
+            trunc_idx = idx
+            break
+
+    if trunc_idx < len(text):
+        return text[:target_idx] + '..' + (' ' * max(0, width - (target_width + 2)))
+
+    # Pad using computed display width, not Python string length.
+    return text + (' ' * max(0, width - text_width_))
