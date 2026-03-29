@@ -32,9 +32,11 @@ def ask_for_repo_name(cmd: GsCommand, args: Args, done: Kont) -> None:
 
 def get_github_user_token(cmd: GsCommand, args: Args, done: Kont) -> None:
     fqdn = "github.com"
-    token = cmd.savvy_settings.get("api_tokens", {}).get(fqdn)
+    token = cmd.savvy_settings.get("api_tokens", {}).get(fqdn) or os.environ.get("GITHUB_TOKEN")
     if not token:
-        cmd.window.status_message(f"Abort, no API token found in the settings for {fqdn}.")
+        cmd.window.status_message(
+            f"Abort, no API token found in settings for {fqdn} or env var GITHUB_TOKEN."
+        )
         return
     done(token)
 

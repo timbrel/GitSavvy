@@ -2,6 +2,7 @@
 GitLab methods that are functionally separate from anything Sublime-related.
 """
 
+import os
 import re
 from collections import namedtuple
 from functools import partial, lru_cache
@@ -72,7 +73,7 @@ def parse_remote(remote):
         return None
 
     fqdn, owner, repo = match.groups()
-    token = GitSavvySettings().get("api_tokens", {}).get(fqdn)
+    token = GitSavvySettings().get("api_tokens", {}).get(fqdn) or os.environ.get("GITLAB_TOKEN")
     return GitLabRepo(url, fqdn, owner, repo, token)
 
 

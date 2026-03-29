@@ -11,6 +11,7 @@ When interacting with a public repository, no configuration is required.  Howeve
 2. After submitting, copy the generated API key.
 3. In the Sublime Menu, open `Preferences > Package Settings > GitSavvy > Settings - User`.
 4. Add your key to the `api_tokens` object (you can find an example in `Preferences > Package Settings > GitSavvy > Settings`).
+5. Alternatively, set the `GITHUB_TOKEN` environment variable. GitSavvy uses it as a fallback when no token is configured for the remote in `api_tokens`.
 
 
 ## Choosing a remote

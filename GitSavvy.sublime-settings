@@ -42,9 +42,15 @@
     "users_home": "~",
 
     /*
-        Enter your github API key in the field below.  To interact with
-        a GitHub Enterprise instance, add a field with the FQDN as the key
-        and the API key as the value.
+        Enter your GitHub/GitLab API key(s) in the field below.
+        To interact with enterprise/self-hosted instances, add a field with
+        the FQDN as the key and the API key as the value.
+
+        Alternatively, you can set environment variables as fallback:
+        - GITHUB_TOKEN (for GitHub)
+        - GITLAB_TOKEN (for GitLab)
+
+        Per-host keys in `api_tokens` take precedence over env vars.
      */
     "api_tokens": {
         // "github.com": "ADD YOUR GITHUB TOKEN HERE"
