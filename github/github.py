@@ -5,13 +5,15 @@ GitHub methods that are functionally separate from anything Sublime-related.
 from __future__ import annotations
 import os
 import re
-from webbrowser import open as open_in_browser
-from functools import partial
+import subprocess
+from functools import lru_cache, partial
 from typing import NamedTuple
+from webbrowser import open as open_in_browser
 
 from ..common import interwebs
 from ..core.exceptions import FailedGithubRequest
 from ..core.settings import GitSavvySettings
+from ..core.utils import STARTUPINFO
 
 
 GITHUB_PER_PAGE_MAX = 100
@@ -33,6 +35,7 @@ class GitHubRepo(NamedTuple):
     token: str | None
 
 
+@lru_cache(maxsize=128)
 def remote_to_url(remote_url: str) -> str:
     """
     Parse out a Github HTTP URL from a remote URI:
@@ -40,7 +43,7 @@ def remote_to_url(remote_url: str) -> str:
     r1 = remote_to_url("git://github.com/timbrel/GitSavvy.git")
     assert r1 == "https://github.com/timbrel/GitSavvy"
 
-    r2 = remote_to_url("git@github.com:divmain/GitSavvy.git")
+    r2 = remote_to_url("git@github.com:timbrel/GitSavvy.git")
     assert r2 == "https://github.com/timbrel/GitSavvy"
 
     r3 = remote_to_url("https://github.com/timbrel/GitSavvy.git")
@@ -50,14 +53,14 @@ def remote_to_url(remote_url: str) -> str:
     if remote_url.endswith(".git"):
         remote_url = remote_url[:-4]
 
-    if remote_url.startswith("git@"):
-        return remote_url.replace(":", "/").replace("git@", "https://")
-    elif remote_url.startswith("git://"):
+    if remote_url.startswith("git://"):
         return remote_url.replace("git://", "https://")
-    elif remote_url.startswith("http"):
+    if remote_url.startswith("http"):
         return remote_url
-    else:
-        raise ValueError('Cannot parse remote "{}" and transform to url'.format(remote_url))
+    if url := _transform_ssh_remote_to_https(remote_url):
+        return url
+
+    raise ValueError('Cannot parse remote "{}" and transform to url'.format(remote_url))
 
 
 def parse_remote(remote_url: str) -> GitHubRepo:
@@ -75,6 +78,51 @@ def parse_remote(remote_url: str) -> GitHubRepo:
     fqdn, owner, repo = match.groups()
     token = GitSavvySettings().get("api_tokens", {}).get(fqdn) or os.environ.get("GITHUB_TOKEN")
     return GitHubRepo(url, fqdn, owner, repo, token)
+
+
+def _transform_ssh_remote_to_https(remote_url: str) -> str | None:
+    match = re.match(r"^ssh://(?:[^@/]+@)?(?P<host>[^/]+)/(?P<path>.+)$", remote_url)
+    if not match:
+        if "://" in remote_url:
+            return None
+        match = re.match(r"^(?:[^@/:]+@)?(?P<host>[^:]+):(?P<path>.+)$", remote_url)
+        if not match:
+            return None
+
+    host, path = match.group("host"), match.group("path").lstrip("/")
+    if "/" not in path:
+        return None
+
+    return "https://{host}/{path}".format(host=_resolve_ssh_hostname(host), path=path)
+
+
+@lru_cache(maxsize=128)
+def _resolve_ssh_hostname(hostname: str) -> str:
+    return _read_ssh_config_hostname(hostname) or hostname
+
+
+def _read_ssh_config_hostname(hostname: str) -> str | None:
+    try:
+        output = subprocess.check_output(
+            ["ssh", "-G", hostname],
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=1.0,
+            startupinfo=STARTUPINFO,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+    for line in output.splitlines():
+        parts = line.split(maxsplit=1)
+        if len(parts) != 2:
+            continue
+
+        key, value = parts
+        if key.lower() == "hostname" and value:
+            return value.strip()
+
+    return None
 
 
 def construct_github_file_url(rel_path, remote_url, commit_hash, start_line=None, end_line=None) -> str:
