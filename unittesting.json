@@ -1,6 +1,5 @@
 {
     "deferred": true,
     "capture_console": true,
-    "legacy_runner": false,
-    "failfast": true
+    "legacy_runner": false
 }
