@@ -203,8 +203,8 @@ class HistoryMixin(mixin_base):
     def resolve_commitish(self, ref: str) -> str:
         return self.git("rev-parse", "--short", ref).strip()
 
-    def filename_at_commit(self, filename, commit_hash):
-        # type: (str, str) -> str
+    @cached(not_if={"commit_hash": is_dynamic_ref})
+    def filename_at_commit(self, filename: str, commit_hash: str) -> str:
         lines = self.git(
             "log",
             "--format=",  # we don't need any commit info beside the name status
