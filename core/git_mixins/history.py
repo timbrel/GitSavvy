@@ -259,7 +259,11 @@ class HistoryMixin(mixin_base):
         if not commit:
             return None
 
-        name_status = self.git("show", "--name-status", "--format=", "-z", commit)
+        return self._renamed_filename_at_commit(filename, commit)
+
+    @cached(not_if={"commit_hash": is_dynamic_ref})
+    def _renamed_filename_at_commit(self, filename: str, commit_hash: str) -> Optional[str]:
+        name_status = self.git("show", "--name-status", "--format=", "-z", commit_hash)
         for file_status in parse_name_status_z(name_status):
             if file_status.mode.startswith("R") and file_status.from_path == filename:
                 return file_status.to_path
