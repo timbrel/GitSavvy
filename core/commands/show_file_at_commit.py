@@ -146,9 +146,10 @@ class _gs_show_file_at_commit_refresh_mixin(GsTextCommand):
         views_with_reference_document.add(self.view)
 
     def previous_file_version(self, current_commit: str, file_path: str) -> str:
-        previous_commit = self.previous_commit(current_commit, file_path)
+        previous_commit = self.previous_commit(current_commit, file_path, follow=True)
         if previous_commit:
-            return self.get_file_content_at_commit(file_path, previous_commit)
+            file_path_at_commit = self.filename_at_commit(file_path, previous_commit)
+            return self.get_file_content_at_commit(file_path_at_commit, previous_commit)
         else:
             # For initial revisions of a file, everything is new/added, and we
             # just compare with the empty "".
@@ -173,7 +174,8 @@ class gs_show_file_at_commit_refresh(_gs_show_file_at_commit_refresh_mixin):
         commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
 
         def program():
-            text = self.get_file_content_at_commit(file_path, commit_hash)
+            file_path_at_commit = self.filename_at_commit(file_path, commit_hash)
+            text = self.get_file_content_at_commit(file_path_at_commit, commit_hash)
             render(view, text, position)
             view.reset_reference_document()
             commit_details = self.commit_subject_and_date(commit_hash)
@@ -307,7 +309,7 @@ def get_next_commit(
     if next_commit := recall_next_commit_for(view, commit_hash):
         return next_commit
 
-    next_commits = cmd.next_commits(commit_hash, file_path)
+    next_commits = cmd.next_commits(commit_hash, file_path, follow=bool(file_path))
     remember_next_commit_for(view, next_commits)
     return next_commits.get(commit_hash)
 
@@ -322,7 +324,7 @@ def get_previous_commit(
     if previous := recall_previous_commit_for(view, commit_hash):
         return previous
 
-    if previous := cmd.previous_commit(commit_hash, file_path):
+    if previous := cmd.previous_commit(commit_hash, file_path, follow=bool(file_path)):
         remember_next_commit_for(view, {previous: commit_hash})
     return previous
 

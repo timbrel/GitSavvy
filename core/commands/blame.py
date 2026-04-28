@@ -450,11 +450,10 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
                 settings.get("git_savvy.commit_hash"), commit_hash, lineno)
 
         assert self.file_path
-        file_path = self.filename_at_commit(self.file_path, commit_hash)
 
         self.window.run_command("gs_show_file_at_commit", {
             "commit_hash": commit_hash,
-            "filepath": file_path,
+            "filepath": self.file_path,
             "position": Position(lineno - 1, 0, None),
             "lang": settings.get('git_savvy.original_syntax', None)
         })
