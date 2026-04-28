@@ -90,6 +90,10 @@ class gs_show_file_at_commit(GsWindowCommand):
 
         if commit_hash:
             commit_hash = self.get_short_hash(commit_hash)
+            # Callers may pass a historical path from a diff hunk.  Keep the
+            # view anchored to the working-dir path and resolve historical
+            # names only when loading content for a specific commit.
+            filepath = self.filename_at_head(filepath, commit_hash)
         else:
             commit_hash = self.recent_commit("HEAD", filepath)
             if not commit_hash:
