@@ -278,11 +278,6 @@
     "log_follow_rename": false,
 
     /*
-        When set to `true`, GitSavvy will follow file renames in blame view
-    */
-    "blame_follow_rename": false,
-
-    /*
         Set it to "file", "commit" or "all_commits" to specify the default detection
         method for the blame view.
     */

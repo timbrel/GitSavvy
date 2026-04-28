@@ -161,11 +161,6 @@ class gs_blame_current_file(LogMixin, BlameMixin):
     def selected_index(self, commit_hash):
         return self._commit_hash and commit_hash.startswith(self._commit_hash)
 
-    def log(self, **kwargs):  # type: ignore[override]
-        follow = self.savvy_settings.get("blame_follow_rename")
-        kwargs["follow"] = follow
-        return super().log(**kwargs)
-
 
 class gs_blame_refresh(BlameMixin):
     _highlighted_count = 0  # to be implemented
@@ -226,7 +221,7 @@ class gs_blame_refresh(BlameMixin):
                 scroll_to_pt(self.view, self.view.sel()[0].begin(), yoffset)
 
     def get_content(self, file_path, ignore_whitespace=False, detect_options=None, commit_hash=None):
-        if commit_hash and self.savvy_settings.get("blame_follow_rename"):
+        if commit_hash:
             filename_at_commit = self.filename_at_commit(file_path, commit_hash)
         else:
             filename_at_commit = file_path
@@ -402,8 +397,6 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
         self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
 
     def blame_neighbor(self, position, selected=False):
-        follow = self.savvy_settings.get("blame_follow_rename")
-
         if position == "newer" and selected:
             raise Exception("blame a commit after selected commit is confusing")
 
@@ -415,7 +408,7 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
 
         assert self.file_path
         if position == "older":
-            neighbor_hash = self.previous_commit(commit_hash, self.file_path, follow)
+            neighbor_hash = self.previous_commit(commit_hash, self.file_path, follow=True)
             if not neighbor_hash:
                 self.window.status_message("Already on the oldest revision.")
                 return
@@ -424,7 +417,7 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
             if not commit_hash:
                 self.window.status_message("Already showing the workdir state.")
                 return
-            neighbor_hash = self.next_commit(commit_hash, self.file_path, follow)
+            neighbor_hash = self.next_commit(commit_hash, self.file_path, follow=True)
 
         if commit_hash == neighbor_hash:
             return
