@@ -628,7 +628,24 @@ class gs_log_graph_action(WindowCommand, GitCommand):
     def diff(self):
         self.window.run_command("gs_diff", {"in_cached_mode": False})
 
-    def diff_commit(self, base_commit, target_commit=None, file_path=None):
+    def diff_commit(
+        self,
+        base_commit: str,
+        target_commit: str | None = None,
+        file_path: str | None = None
+    ):
+        if file_path:
+            base_path = self.filename_at_commit(file_path, base_commit)
+            target_path = (
+                self.filename_at_commit(file_path, target_commit)
+                if target_commit else
+                self.get_rel_path(file_path)
+            )
+            if base_path != target_path:
+                self.window.status_message("Not implemented across rename boundaries.")
+                return
+            file_path = base_path
+
         self.window.run_command("gs_diff", {
             "in_cached_mode": False,
             "file_path": file_path,
