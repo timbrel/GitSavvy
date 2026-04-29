@@ -96,6 +96,8 @@ class gs_show_commit_info(WindowCommand, GitCommand):
         if commit_hash:
             show_patch = self.savvy_settings.get("show_full_commit_info")
             show_diffstat = self.savvy_settings.get("show_diffstat")
+            if file_path:
+                file_path = self.filename_at_commit(file_path, commit_hash)
             text = self.read_commit(commit_hash, file_path, show_diffstat, show_patch)
         else:
             text = ''
