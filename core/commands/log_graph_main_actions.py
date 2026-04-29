@@ -203,6 +203,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             else commit_hash
         )
         file_path = self._get_file_path(view)
+        file_path_is_file = os.path.isfile(file_path) if file_path else False
 
         on_checked_out_branch = "HEAD" in info and info["HEAD"] in info.get("local_branches", [])
         head_is_on_a_branch = head_info and head_info["HEAD"] != head_info["commit"]
@@ -300,7 +301,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                         ),
                     ]
 
-        if file_path:
+        if file_path and file_path_is_file:
             actions += [
                 ("Show file at commit", partial(self.show_file_at_commit, commit_hash, file_path)),
                 ("Blame file at commit", partial(self.blame_file_atcommit, commit_hash, file_path)),
@@ -478,7 +479,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 ),
             ]
 
-        if file_path:
+        if file_path and file_path_is_file:
             actions += [
                 (
                     "Diff file against workdir",
