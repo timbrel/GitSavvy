@@ -65,6 +65,8 @@ class HistoryMixin(mixin_base):
             limit=6000, skip=None, reverse=False, all_branches=False, msg_regexp=None,
             diff_regexp=None, first_parent=False, merges=False, no_merges=False, topo_order=False,
             follow=False) -> List[LogEntry]:
+        if follow and not file_path:
+            raise RuntimeError("follow=True requires file_path")
 
         log_output = self.git(
             "log",
@@ -488,6 +490,9 @@ class HistoryMixin(mixin_base):
         follow: bool,
         limit: Optional[int] = None
     ) -> Iterator[str]:
+        if follow and not file_path:
+            raise RuntimeError("follow=True requires file_path")
+
         return (
             line.strip()
             for line in self.git_streaming(

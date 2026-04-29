@@ -36,6 +36,18 @@ class TestDescribeGraphLine(DeferrableTestCase):
         cmd = ["a", "b", "--", "foofile.py"]
         verify(test).git(*(common + cmd))
 
+    def test_log_follow_requires_file_path(self):
+        test = HistoryMixin()
+
+        with self.assertRaises(RuntimeError):
+            test.log(follow=True)
+
+    def test_log_commits_linewise_follow_requires_file_path(self):
+        test = HistoryMixin()
+
+        with self.assertRaises(RuntimeError):
+            test._log_commits_linewise("HEAD", None, follow=True)
+
     def test_filename_at_head_keeps_existing_workdir_path(self):
         test = HistoryMixin()
         when(test).get_repo_path().thenReturn("/repo")
