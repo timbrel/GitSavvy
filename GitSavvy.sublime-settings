@@ -275,7 +275,7 @@
     /*
         When set to `true`, GitSavvy will follow file renames when running git log/graph
     */
-    "log_follow_rename": false,
+    "log_follow_rename": true,
 
     /*
         Set it to "file", "commit" or "all_commits" to specify the default detection
