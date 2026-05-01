@@ -17,7 +17,7 @@ from ..utils import flash, flash_regions, focus_view, Cache
 from ..parse_diff import SplittedDiff
 from ..text_helper import TextRange
 from ..runtime import ensure_on_ui, enqueue_on_worker
-from ..view import replace_view_content, Position
+from ..view import replace_view_content
 from ...common import util
 
 from GitSavvy.github import github
@@ -32,7 +32,6 @@ __all__ = (
     "gs_show_commit_toggle_setting",
     "gs_show_commit_open_previous_commit",
     "gs_show_commit_open_next_commit",
-    "gs_show_commit_open_file_at_hunk",
     "gs_show_commit_show_hunk_on_working_dir",
     "gs_show_commit_open_graph_context",
     "gs_show_commit_initiate_fixup_commit",
@@ -370,34 +369,6 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
 
         view.run_command("gs_show_commit_refresh")
         flash(view, "On commit {}".format(next_commit))
-
-
-class gs_show_commit_open_file_at_hunk(diff.gs_diff_open_file_at_hunk):
-
-    """
-    For each cursor in the view, identify the hunk in which the cursor lies,
-    and open the file at that hunk in a separate view.
-    """
-
-    def load_file_at_line(self, commit_hash, filename, line, col):
-        # type: (Optional[str], str, LineNo, ColNo) -> None
-        """
-        Show file at target commit if `git_savvy.diff_view.target_commit` is non-empty.
-        Otherwise, open the file directly.
-        """
-        if not commit_hash:
-            flash(self.view, "Could not parse commit for its commit hash")
-            return
-        window = self.view.window()
-        if not window:
-            return
-
-        full_path = os.path.join(self.repo_path, filename)
-        window.run_command("gs_show_file_at_commit", {
-            "commit_hash": commit_hash,
-            "filepath": full_path,
-            "position": Position(line - 1, col - 1, None)
-        })
 
 
 class gs_show_commit_show_hunk_on_working_dir(diff.gs_diff_open_file_at_hunk):
