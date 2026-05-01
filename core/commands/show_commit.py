@@ -1,5 +1,3 @@
-from contextlib import contextmanager
-import os
 import re
 from webbrowser import open as open_in_browser
 
@@ -32,7 +30,6 @@ __all__ = (
     "gs_show_commit_toggle_setting",
     "gs_show_commit_open_previous_commit",
     "gs_show_commit_open_next_commit",
-    "gs_show_commit_show_hunk_on_working_dir",
     "gs_show_commit_open_graph_context",
     "gs_show_commit_initiate_fixup_commit",
     "gs_show_commit_reword_commit",
@@ -44,7 +41,6 @@ __all__ = (
 
 from typing import Dict, Optional, Sequence, Tuple, Union
 from GitSavvy.core.base_commands import GsCommand, Args, Kont
-from GitSavvy.core.types import LineNo, ColNo
 
 
 SUBLIME_SUPPORTS_REGION_ANNOTATIONS = int(sublime.version()) >= 4050
@@ -369,57 +365,6 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
 
         view.run_command("gs_show_commit_refresh")
         flash(view, "On commit {}".format(next_commit))
-
-
-class gs_show_commit_show_hunk_on_working_dir(diff.gs_diff_open_file_at_hunk):
-    def load_file_at_line(self, commit_hash, filename, line, col):
-        # type: (Optional[str], str, LineNo, ColNo) -> None
-        if not commit_hash:
-            flash(self.view, "Could not parse commit for its commit hash")
-            return
-        window = self.view.window()
-        if not window:
-            return
-
-        full_path = os.path.join(self.repo_path, filename)
-        line = self.find_matching_lineno(commit_hash, None, line, full_path)
-
-        with force_remember_commit_info_panel_focus_state(window):
-            view = window.open_file(
-                "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
-                sublime.ENCODED_POSITION
-            )
-            # https://github.com/sublimehq/sublime_text/issues/4418
-            # Sublime Text 4 focuses the view automatically *if* it
-            # was already open, otherwise it makes the view only
-            # visible. Force the focus for a consistent behavior.
-            focus_view(view)
-
-
-@contextmanager
-def force_remember_commit_info_panel_focus_state(window):
-    # Although we automatically detect when the panel loses its focus in `log_graph.py`,
-    # it fails when `window.open_file` brought the file to front *without* focusing
-    # it.  In that case, t.i. when it just *opens* the file, `focus_view()` will first
-    # activate the graph view and *then* the file we just opened.  This looks like
-    # a bug, probably related to https://github.com/sublimehq/sublime_text/issues/4418
-
-    # When `gs_show_commit_show_hunk_on_working_dir` runs and the graph view is the
-    # `active_view`, the panel has the focus as the command is only bound to the panel
-    # view.
-    av = window.active_view()
-    had_focus = (
-        av.settings().get("git_savvy.log_graph_view", False)
-        if av
-        else False
-    )
-
-    yield
-
-    if had_focus:
-        panel_view = window.find_output_panel('show_commit_info')
-        if panel_view:
-            panel_view.settings().set("git_savvy.show_commit_view.had_focus", True)
 
 
 class gs_show_commit_open_graph_context(TextCommand, GitCommand):
