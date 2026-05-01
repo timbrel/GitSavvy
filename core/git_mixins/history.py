@@ -357,10 +357,7 @@ class HistoryMixin(mixin_base):
             file_path = self.file_path
 
         diff = self.no_context_diff(base_commit, target_commit, file_path)
-        hunks = util.parse_diff(diff)
-        if not hunks:
-            return line
-        return self.reverse_adjust_line_according_to_hunks(hunks, line)
+        return self.reverse_adjust_line_according_to_diff(diff, line)
 
     def reverse_find_matching_lineno_between_files(
         self,
@@ -374,10 +371,7 @@ class HistoryMixin(mixin_base):
         The target commit may be None to compare against the working tree.
         """
         diff = self.no_context_diff_between_files(base, target)
-        hunks = util.parse_diff(diff)
-        if not hunks:
-            return line
-        return self.reverse_adjust_line_according_to_hunks(hunks, line)
+        return self.reverse_adjust_line_according_to_diff(diff, line)
 
     @cached(not_if={"base_commit": is_dynamic_ref, "target_commit": is_dynamic_ref})
     def no_context_diff(self, base_commit, target_commit, file_path=None):
@@ -415,13 +409,19 @@ class HistoryMixin(mixin_base):
             return self.git("diff", "--no-color", "-U0", base_spec, target_spec)
         return self.git("diff", "--no-color", "-U0", base_spec, "--", target_file_path)
 
-    def adjust_line_according_to_diff(self, diff, line):
-        # type: (str, int) -> int
+    def adjust_line_according_to_diff(self, diff: str, line: int) -> int:
         hunks = util.parse_diff(diff)
         if not hunks:
             return line
 
         return self.adjust_line_according_to_hunks(hunks, line)
+
+    def reverse_adjust_line_according_to_diff(self, diff: str, line: int) -> int:
+        hunks = util.parse_diff(diff)
+        if not hunks:
+            return line
+
+        return self.reverse_adjust_line_according_to_hunks(hunks, line)
 
     def adjust_line_according_to_hunks(self, hunks, line):
         for hunk in reversed(hunks):

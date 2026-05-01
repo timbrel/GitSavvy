@@ -143,6 +143,12 @@ class TestDescribeGraphLine(DeferrableTestCase):
             3
         )
 
+    def test_reverse_adjust_line_according_to_diff(self):
+        test = HistoryMixin()
+        diff = "@@ -1,0 +2 @@\n+new\n"
+
+        self.assertEqual(test.reverse_adjust_line_according_to_diff(diff, 3), 2)
+
     def test_reverse_find_matching_lineno_between_files_at_commits(self):
         test = HistoryMixin()
         when(test).get_rel_path("old.py").thenReturn("old.py")
