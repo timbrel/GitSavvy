@@ -1070,7 +1070,15 @@ class gs_inline_diff_open_file(TextCommand, GitCommand):
                 line_no = self.adjust_line_according_to_diff(diff, line_no)
         else:
             target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
-            line_no = self.find_matching_lineno(target_commit, None, line_no, file_path)
+            if target_commit:
+                historical_path = self.filename_at_commit(file_path, target_commit)
+                current_path = self.filename_at_head(file_path, target_commit)
+                line_no = self.find_matching_lineno_between_files(
+                    (target_commit, historical_path),
+                    (None, current_path),
+                    line_no
+                )
+                file_path = current_path
         self.open_file(window, file_path, line_no, col_no)
 
     def open_file(self, window, file_path, line_no, col_no):

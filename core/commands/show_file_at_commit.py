@@ -473,8 +473,13 @@ class gs_show_file_at_commit_open_file_on_working_dir(GsTextCommand):
         assert file_path
 
         full_path = os.path.join(self.repo_path, file_path)
+        historical_path = self.filename_at_commit(full_path, commit_hash)
         row, col = self.view.rowcol(self.view.sel()[0].begin())
-        line = self.find_matching_lineno(commit_hash, None, row + 1, full_path)
+        line = self.find_matching_lineno_between_files(
+            (commit_hash, historical_path),
+            (None, full_path),
+            row + 1
+        )
         window.open_file(
             "{file}:{line}:{col}".format(file=full_path, line=line, col=col + 1),
             sublime.ENCODED_POSITION
