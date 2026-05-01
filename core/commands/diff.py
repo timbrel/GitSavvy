@@ -1532,12 +1532,13 @@ class gs_diff_open_hunk_on_working_dir(_GsDiffOpenFileAtHunk):
         target_commit = effective_target_commit(self.view)
         if commit_hash or target_commit:
             target_side_commit = commit_hash or self.resolve_commitish(target_commit)  # type: ignore[arg-type]
-            line = self.find_matching_lineno(
-                target_side_commit,
-                None,
-                line=line,
-                file_path=full_path
+            current_path = self.filename_at_head(full_path, target_side_commit)
+            line = self.find_matching_lineno_between_files(
+                (target_side_commit, full_path),
+                (None, current_path),
+                line
             )
+            full_path = current_path
         elif self.view.settings().get("git_savvy.diff_view.in_cached_mode"):
             line = self.reverse_find_matching_lineno(
                 None,

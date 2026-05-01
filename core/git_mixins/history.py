@@ -300,6 +300,20 @@ class HistoryMixin(mixin_base):
         diff = self.no_context_diff(base_commit, target_commit, file_path)
         return self.adjust_line_according_to_diff(diff, line)
 
+    def find_matching_lineno_between_files(
+        self,
+        base: tuple[str, str],
+        target: tuple[Optional[str], str],
+        line: int
+    ) -> int:
+        """
+        Return the matching line in target file for a line in base file.
+
+        The target commit may be None to compare against the working tree.
+        """
+        diff = self.no_context_diff_between_files(base, target)
+        return self.adjust_line_according_to_diff(diff, line)
+
     def reverse_find_matching_lineno(self, base_commit="HEAD", target_commit="HEAD", line=1, file_path=None):
         # type: (Optional[str], Optional[str], int, str) -> int
         """
@@ -328,6 +342,27 @@ class HistoryMixin(mixin_base):
             cmd += ["--", file_path]
 
         return self.git(*cmd)
+
+    @cached(
+        not_if={
+            "base": lambda ref: is_dynamic_ref(ref[0]),
+            "target": lambda ref: is_dynamic_ref(ref[0])
+        }
+    )
+    def no_context_diff_between_files(
+        self,
+        base: tuple[str, str],
+        target: tuple[Optional[str], str]
+    ) -> str:
+        base_commit, base_file_path = base
+        target_commit, target_file_path = target
+        base_file_path = self.get_rel_path(base_file_path)
+        target_file_path = self.get_rel_path(target_file_path)
+        base_spec = "{}:{}".format(base_commit, base_file_path)
+        if target_commit:
+            target_spec = "{}:{}".format(target_commit, target_file_path)
+            return self.git("diff", "--no-color", "-U0", base_spec, target_spec)
+        return self.git("diff", "--no-color", "-U0", base_spec, "--", target_file_path)
 
     def adjust_line_according_to_diff(self, diff, line):
         # type: (str, int) -> int

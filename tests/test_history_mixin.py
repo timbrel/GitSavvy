@@ -80,6 +80,40 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
         self.assertEqual(test.filename_at_head("old.py", "abc123"), "new.py")
 
+    def test_find_matching_lineno_between_files_at_commits(self):
+        test = HistoryMixin()
+        when(test).get_rel_path("old.py").thenReturn("old.py")
+        when(test).get_rel_path("new.py").thenReturn("new.py")
+        when(test).git(
+            "diff", "--no-color", "-U0", "abc123:old.py", "def456:new.py"
+        ).thenReturn("@@ -1,0 +2 @@\n+new\n")
+
+        self.assertEqual(
+            test.find_matching_lineno_between_files(
+                ("abc123", "old.py"),
+                ("def456", "new.py"),
+                2
+            ),
+            3
+        )
+
+    def test_find_matching_lineno_between_files_in_worktree(self):
+        test = HistoryMixin()
+        when(test).get_rel_path("old.py").thenReturn("old.py")
+        when(test).get_rel_path("new.py").thenReturn("new.py")
+        when(test).git(
+            "diff", "--no-color", "-U0", "abc123:old.py", "--", "new.py"
+        ).thenReturn("@@ -1,0 +2 @@\n+new\n")
+
+        self.assertEqual(
+            test.find_matching_lineno_between_files(
+                ("abc123", "old.py"),
+                (None, "new.py"),
+                2
+            ),
+            3
+        )
+
     def test_parse_name_status_z_regular_statuses(self):
         self.assertEqual(
             list(parse_name_status_z("M\0modified.py\0D\0deleted.py\0")),
