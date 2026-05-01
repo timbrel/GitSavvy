@@ -289,6 +289,40 @@ class HistoryMixin(mixin_base):
         filename = self.get_rel_path(filename)
         return self.git("show", "{}:{}".format(commit_hash or "", filename))
 
+    def find_matching_lineno_in_file_history(
+        self,
+        base_commit: Optional[str],
+        target_commit: Optional[str],
+        line: int,
+        file_path: str
+    ) -> int:
+        """
+        Return the target line while following renames for a HEAD-anchored file.
+
+        `file_path` is the current/HEAD filename for the logical file history.
+        `line` is in that file at `base_commit`, or in the working tree if
+        `base_commit` is None.  The result is the corresponding line at
+        `target_commit`, or in the working tree if `target_commit` is None.
+        """
+        target: tuple[Optional[str], str]
+        if base_commit:
+            base = (base_commit, self.filename_at_commit(file_path, base_commit))
+            if target_commit:
+                target = (target_commit, self.filename_at_commit(file_path, target_commit))
+            else:
+                target = (None, file_path)
+            return self.find_matching_lineno_between_files(base, target, line)
+
+        if target_commit:
+            target = (target_commit, self.filename_at_commit(file_path, target_commit))
+            return self.reverse_find_matching_lineno_between_files(
+                target,
+                (None, file_path),
+                line
+            )
+
+        return line
+
     def find_matching_lineno(self, base_commit="HEAD", target_commit="HEAD", line=1, file_path=None):
         # type: (Optional[str], Optional[str], int, str) -> int
         """
@@ -323,6 +357,23 @@ class HistoryMixin(mixin_base):
             file_path = self.file_path
 
         diff = self.no_context_diff(base_commit, target_commit, file_path)
+        hunks = util.parse_diff(diff)
+        if not hunks:
+            return line
+        return self.reverse_adjust_line_according_to_hunks(hunks, line)
+
+    def reverse_find_matching_lineno_between_files(
+        self,
+        base: tuple[str, str],
+        target: tuple[Optional[str], str],
+        line: int
+    ) -> int:
+        """
+        Return the matching line in base file for a line in target file.
+
+        The target commit may be None to compare against the working tree.
+        """
+        diff = self.no_context_diff_between_files(base, target)
         hunks = util.parse_diff(diff)
         if not hunks:
             return line

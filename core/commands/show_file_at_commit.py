@@ -103,7 +103,11 @@ class gs_show_file_at_commit(GsWindowCommand):
             if fix_position:
                 assert position
                 row, col, offset = position
-                line = self.find_matching_lineno(None, commit_hash, row + 1, filepath)
+                line = self.reverse_find_matching_lineno_between_files(
+                    (commit_hash, self.filename_at_commit(filepath, commit_hash)),
+                    (None, filepath),
+                    row + 1
+                )
                 position = Position(line - 1, col, offset)
 
         this_id = (
@@ -257,7 +261,11 @@ class gs_show_file_at_commit_open_previous_commit(GsTextCommand):
         position = capture_cur_position(view)
         if position is not None:
             row, col, offset = position
-            line = self.find_matching_lineno(commit_hash, previous_commit, row + 1, file_path)
+            line = self.find_matching_lineno_between_files(
+                (commit_hash, self.filename_at_commit(file_path, commit_hash)),
+                (previous_commit, self.filename_at_commit(file_path, previous_commit)),
+                row + 1
+            )
             position = Position(line - 1, col, offset)
 
         popup_was_visible = settings.get("git_savvy.show_file_at_commit.info_popup_visible")
@@ -290,8 +298,10 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
         position = capture_cur_position(view)
         if position is not None:
             row, col, offset = position
-            line = self.reverse_find_matching_lineno(
-                next_commit, commit_hash, row + 1, file_path
+            line = self.find_matching_lineno_between_files(
+                (commit_hash, self.filename_at_commit(file_path, commit_hash)),
+                (next_commit, self.filename_at_commit(file_path, next_commit)),
+                row + 1
             )
             position = Position(line - 1, col, offset)
 
@@ -415,7 +425,12 @@ class gs_show_current_file(LogMixin, GsTextCommand):
         position = capture_cur_position(view)
         if position is not None:
             row, col, offset = position
-            line = self.find_matching_lineno(previous_commit, commit, row + 1)
+            file_path = view.settings().get("git_savvy.file_path")
+            line = self.find_matching_lineno_between_files(
+                (previous_commit, self.filename_at_commit(file_path, previous_commit)),
+                (commit, self.filename_at_commit(file_path, commit)),
+                row + 1
+            )
             position = Position(line - 1, col, offset)
 
         view.run_command("gs_show_file_at_commit_refresh", {
@@ -427,8 +442,13 @@ class gs_show_current_file(LogMixin, GsTextCommand):
         view = self.view
         position = capture_cur_position(view)
         if position is not None:
+            assert self.file_path
             row, col, offset = position
-            line = self.find_matching_lineno(None, commit_hash, row + 1)
+            line = self.reverse_find_matching_lineno_between_files(
+                (commit_hash, self.filename_at_commit(self.file_path, commit_hash)),
+                (None, self.file_path),
+                row + 1
+            )
             position = Position(line - 1, col, offset)
 
         self.window.run_command("gs_show_file_at_commit", {
@@ -473,10 +493,9 @@ class gs_show_file_at_commit_open_file_on_working_dir(GsTextCommand):
         assert file_path
 
         full_path = os.path.join(self.repo_path, file_path)
-        historical_path = self.filename_at_commit(full_path, commit_hash)
         row, col = self.view.rowcol(self.view.sel()[0].begin())
         line = self.find_matching_lineno_between_files(
-            (commit_hash, historical_path),
+            (commit_hash, self.filename_at_commit(full_path, commit_hash)),
             (None, full_path),
             row + 1
         )

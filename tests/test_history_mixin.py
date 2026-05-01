@@ -114,6 +114,52 @@ class TestDescribeGraphLine(DeferrableTestCase):
             3
         )
 
+    def test_find_matching_lineno_in_file_history_from_worktree(self):
+        test = HistoryMixin()
+        when(test).filename_at_commit("new.py", "abc123").thenReturn("old.py")
+        when(test).reverse_find_matching_lineno_between_files(
+            ("abc123", "old.py"),
+            (None, "new.py"),
+            3
+        ).thenReturn(2)
+
+        self.assertEqual(
+            test.find_matching_lineno_in_file_history(None, "abc123", 3, "new.py"),
+            2
+        )
+
+    def test_find_matching_lineno_in_file_history_between_commits(self):
+        test = HistoryMixin()
+        when(test).filename_at_commit("new.py", "abc123").thenReturn("old.py")
+        when(test).filename_at_commit("new.py", "def456").thenReturn("new.py")
+        when(test).find_matching_lineno_between_files(
+            ("abc123", "old.py"),
+            ("def456", "new.py"),
+            2
+        ).thenReturn(3)
+
+        self.assertEqual(
+            test.find_matching_lineno_in_file_history("abc123", "def456", 2, "new.py"),
+            3
+        )
+
+    def test_reverse_find_matching_lineno_between_files_at_commits(self):
+        test = HistoryMixin()
+        when(test).get_rel_path("old.py").thenReturn("old.py")
+        when(test).get_rel_path("new.py").thenReturn("new.py")
+        when(test).git(
+            "diff", "--no-color", "-U0", "abc123:old.py", "def456:new.py"
+        ).thenReturn("@@ -1,0 +2 @@\n+new\n")
+
+        self.assertEqual(
+            test.reverse_find_matching_lineno_between_files(
+                ("abc123", "old.py"),
+                ("def456", "new.py"),
+                3
+            ),
+            2
+        )
+
     def test_parse_name_status_z_regular_statuses(self):
         self.assertEqual(
             list(parse_name_status_z("M\0modified.py\0D\0deleted.py\0")),

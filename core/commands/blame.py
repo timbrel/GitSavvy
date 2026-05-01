@@ -90,6 +90,7 @@ class gs_blame(BlameMixin):
 
     @util.view.single_cursor_coords
     def blame(self, coords):
+        assert self._file_path
         original_view = self.view
         view = self.window.new_file()
 
@@ -99,10 +100,12 @@ class gs_blame(BlameMixin):
         settings.set("git_savvy.file_path", self._file_path)
 
         if original_view.settings().get("git_savvy.blame_view"):
-            lineno = self.find_matching_lineno(
+            lineno = self.find_matching_lineno_in_file_history(
                 original_view.settings().get("git_savvy.commit_hash"),
                 self._commit_hash,
-                self.find_lineno())
+                self.find_lineno(),
+                self._file_path
+            )
 
             for key in [
                 "git_savvy.blame_view.ignore_whitespace",
@@ -113,7 +116,12 @@ class gs_blame(BlameMixin):
 
         else:
             if self._commit_hash:
-                lineno = self.find_matching_lineno(None, self._commit_hash, coords[0] + 1)
+                target_path = self.filename_at_commit(self._file_path, self._commit_hash)
+                lineno = self.reverse_find_matching_lineno_between_files(
+                    (self._commit_hash, target_path),
+                    (None, self._file_path),
+                    coords[0] + 1
+                )
             else:
                 lineno = coords[0] + 1
             settings.set("git_savvy.blame_view.ignore_whitespace", False)
@@ -428,13 +436,18 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
                 "file_path": settings.get("git_savvy.file_path")
             })
         else:
-            lineno = self.find_matching_lineno(
-                commit_hash, neighbor_hash, self.find_lineno())
+            lineno = self.find_matching_lineno_in_file_history(
+                commit_hash,
+                neighbor_hash,
+                self.find_lineno(),
+                settings.get("git_savvy.file_path")
+            )
             settings.set("git_savvy.commit_hash", neighbor_hash)
             settings.set("git_savvy.lineno", lineno)
             self.view.run_command("gs_blame_refresh")
 
     def show_file_at_commit(self, from_line=False):
+        assert self.file_path
         settings = self.view.settings()
 
         if from_line:
@@ -444,10 +457,12 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
 
         lineno = self.find_lineno()
         if from_line:
-            lineno = self.find_matching_lineno(
-                settings.get("git_savvy.commit_hash"), commit_hash, lineno)
-
-        assert self.file_path
+            lineno = self.find_matching_lineno_in_file_history(
+                settings.get("git_savvy.commit_hash"),
+                commit_hash,
+                lineno,
+                self.file_path
+            )
 
         self.window.run_command("gs_show_file_at_commit", {
             "commit_hash": commit_hash,

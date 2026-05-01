@@ -268,11 +268,16 @@ class gs_log_action(PanelActionMixin, WindowCommand):
             print("RuntimeError: Window has no active view")
             return
 
+        assert self.file_path
         commit_hash = self._commit_hash
         position = capture_cur_position(view)
         if position is not None:
             row, col, offset = position
-            line = self.find_matching_lineno(None, commit_hash, row + 1)
+            line = self.reverse_find_matching_lineno_between_files(
+                (commit_hash, self.filename_at_commit(self.file_path, commit_hash)),
+                (None, self.file_path),
+                row + 1
+            )
             position = Position(line - 1, col, offset)
 
         self.window.run_command("gs_show_file_at_commit", {
