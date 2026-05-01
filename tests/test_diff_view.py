@@ -461,7 +461,7 @@ diff --git a/foxx b/boxx
         view.run_command('append', {'characters': VIEW_CONTENT})
         view.set_scratch(True)
 
-        cmd = module.gs_diff_open_file_at_hunk(view)
+        cmd = module.gs_diff_open_hunk_on_working_dir(view)
         when(cmd).load_file_at_line(...)
 
         view.sel().clear()
@@ -496,7 +496,7 @@ diff --git a/fooz b/barz
         view.run_command('append', {'characters': VIEW_CONTENT})
         view.set_scratch(True)
 
-        cmd = module.gs_diff_open_file_at_hunk(view)
+        cmd = module.gs_diff_open_hunk_on_working_dir(view)
         when(cmd).load_file_at_line(...)
 
         view.sel().clear()
