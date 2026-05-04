@@ -1524,7 +1524,7 @@ class gs_diff_open_hunk_on_working_dir(_GsDiffOpenFileAtHunk):
     def load_file_at_line(
         self, commit_hash: Optional[str], filename: str, line: LineNo, col: ColNo
     ) -> None:
-        full_path = os.path.join(self.repo_path, filename)
+        full_path = os.path.normpath(os.path.join(self.repo_path, filename))
         window = self.view.window()
         if not window:
             return
@@ -1556,7 +1556,7 @@ class gs_diff_open_hunk_at_target_revision(_GsDiffOpenFileAtHunk):
     def load_file_at_line(
         self, commit_hash: Optional[str], filename: str, line: LineNo, col: ColNo
     ) -> None:
-        full_path = os.path.join(self.repo_path, filename)
+        full_path = os.path.normpath(os.path.join(self.repo_path, filename))
         window = self.view.window()
         if not window:
             return
