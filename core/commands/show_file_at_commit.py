@@ -154,7 +154,7 @@ class _gs_show_file_at_commit_refresh_mixin(GsTextCommand):
         views_with_reference_document.add(self.view)
 
     def previous_file_version(self, current_commit: str, file_path: str) -> str:
-        previous_commit = self.previous_commit(current_commit, file_path, follow=True)
+        previous_commit = get_previous_commit(self, self.view, current_commit, file_path)
         if previous_commit:
             file_path_at_commit = self.filename_at_commit(file_path, previous_commit)
             return self.get_file_content_at_commit(file_path_at_commit, previous_commit)
