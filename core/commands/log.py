@@ -47,7 +47,10 @@ class LogMixin(GitCommand):
             sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, **kwargs))
 
     def run_async(self, *, file_path=None, **kwargs):
-        follow = self.savvy_settings.get("log_follow_rename") if file_path else False
+        follow = kwargs.pop(
+            "follow",
+            self.savvy_settings.get("log_follow_rename") if file_path else False
+        )
         entries = self.log_generator(file_path=file_path, follow=follow, **kwargs)
         # `on_highlight` gets called on `on_done` as well with the same
         # commit.  Limit the side-effect here.  Especially prevent that

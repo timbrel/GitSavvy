@@ -541,22 +541,7 @@ class HistoryMixin(mixin_base):
             raise RuntimeError("`next_commits` must be called with a short commit hash.")
 
         if branch_hint is None:
-            try:
-                branch_hint = next(iter(
-                    self.git_throwing_silently(
-                        "for-each-ref",
-                        "--format=%(refname)",
-                        "--contains",
-                        current_commit,
-                        "--sort=-committerdate",
-                        "--sort=-HEAD"
-                    ).strip().splitlines()
-                ))
-            except (GitSavvyError, StopIteration):
-                if self.commit_is_ancestor_of_head(current_commit):
-                    branch_hint = ""
-                else:
-                    raise ValueError(f"{current_commit} seems orphaned")
+            branch_hint = self.get_branch_hint_for_commit(current_commit)
 
         return {
             right: left
@@ -568,6 +553,24 @@ class HistoryMixin(mixin_base):
                 [current_commit]
             ))
         }
+
+    def get_branch_hint_for_commit(self, commit_hash: str) -> str:
+        try:
+            return next(iter(
+                self.git_throwing_silently(
+                    "for-each-ref",
+                    "--format=%(refname)",
+                    "--contains",
+                    commit_hash,
+                    "--sort=-committerdate",
+                    "--sort=-HEAD"
+                ).strip().splitlines()
+            ))
+        except (GitSavvyError, StopIteration):
+            if self.commit_is_ancestor_of_head(commit_hash):
+                return ""
+            else:
+                raise ValueError(f"{commit_hash} seems orphaned")
 
     def _log_commits_linewise(
         self,

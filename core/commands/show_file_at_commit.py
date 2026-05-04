@@ -394,6 +394,16 @@ class gs_show_current_file(LogMixin, GsTextCommand):
         self.initial_position = capture_cur_position(self.view)
         super().run(file_path=self.file_path)
 
+    def run_async(self, *, file_path=None, **kwargs):
+        if self.overlay_for_show_file_at_commit:
+            try:
+                kwargs["branch"] = self.get_branch_hint_for_commit(self.initial_commit)
+            except ValueError:
+                kwargs["branch"] = self.initial_commit
+            kwargs["follow"] = True
+            kwargs["topo_order"] = True
+        super().run_async(file_path=file_path, **kwargs)
+
     def on_done(self, commit, **kwargs):
         if not self.overlay_for_show_file_at_commit:
             return super().on_done(commit, **kwargs)
