@@ -80,7 +80,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             else []
         )  # type: List[str]
         if len(paths) == 1:
-            return os.path.normcase(os.path.join(self.repo_path, paths[0]))
+            return os.path.normpath(os.path.join(self.repo_path, paths[0]))
 
         return None
 
