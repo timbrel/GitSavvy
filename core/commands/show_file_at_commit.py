@@ -213,7 +213,7 @@ class gs_show_file_at_commit_refresh(_gs_show_file_at_commit_refresh_mixin):
         def sink(n=0):
             if (
                 view != window.active_view()
-                or commit_details.commit_hash != settings.get("git_savvy.show_file_at_commit_view.commit")
+                or commit_details.short_hash != settings.get("git_savvy.show_file_at_commit_view.commit")
             ):
                 return
 
@@ -420,6 +420,7 @@ class gs_show_current_file(LogMixin, GsTextCommand):
 
     def _on_highlight(self, commit):
         view = self.view
+        commit = self.get_short_hash(commit)
         previous_commit = view.settings().get("git_savvy.show_file_at_commit_view.commit")
         view.settings().set("git_savvy.show_file_at_commit_view.commit", commit)
         position = capture_cur_position(view)
