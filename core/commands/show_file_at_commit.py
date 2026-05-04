@@ -323,7 +323,13 @@ def get_next_commit(
     if next_commit := recall_next_commit_for(view, commit_hash):
         return next_commit
 
-    next_commits = cmd.next_commits(commit_hash, file_path, follow=bool(file_path))
+    branch_hint = get_branch_hint_for_view(cmd, view, commit_hash)
+    next_commits = cmd.next_commits(
+        commit_hash,
+        file_path,
+        follow=bool(file_path),
+        branch_hint=branch_hint
+    )
     remember_next_commit_for(view, next_commits)
     return next_commits.get(commit_hash)
 
@@ -341,6 +347,15 @@ def get_previous_commit(
     if previous := cmd.previous_commit(commit_hash, file_path, follow=bool(file_path)):
         remember_next_commit_for(view, {previous: commit_hash})
     return previous
+
+
+def get_branch_hint_for_view(cmd: GitCommand, view: sublime.View, commit_hash: str) -> str:
+    if (branch_hint := recall_branch_hint_for(view)) is not None:
+        return branch_hint
+
+    branch_hint = cmd.get_branch_hint_for_commit(commit_hash)
+    remember_branch_hint_for(view, branch_hint)
+    return branch_hint
 
 
 def remember_next_commit_for(view: sublime.View, mapping: Dict[str, str]) -> None:
@@ -365,6 +380,14 @@ def recall_previous_commit_for(view: sublime.View, commit_hash: str) -> Optional
         return None
 
 
+def remember_branch_hint_for(view: sublime.View, branch_hint: str) -> None:
+    view.settings().set("git_savvy.history.branch_hint", branch_hint)
+
+
+def recall_branch_hint_for(view: sublime.View) -> Optional[str]:
+    return view.settings().get("git_savvy.history.branch_hint")
+
+
 def pass_next_commits_info_along(view: Optional[sublime.View], to: sublime.View) -> None:
     if not view:
         return
@@ -374,6 +397,9 @@ def pass_next_commits_info_along(view: Optional[sublime.View], to: sublime.View)
     store: Dict[str, str] = from_settings.get("git_savvy.next_commits", {})
     if store:
         to_settings.set("git_savvy.next_commits", store)
+    branch_hint = from_settings.get("git_savvy.history.branch_hint")
+    if branch_hint is not None:
+        to_settings.set("git_savvy.history.branch_hint", branch_hint)
 
 
 class gs_show_current_file(LogMixin, GsTextCommand):
@@ -397,7 +423,7 @@ class gs_show_current_file(LogMixin, GsTextCommand):
     def run_async(self, *, file_path=None, **kwargs):
         if self.overlay_for_show_file_at_commit:
             try:
-                kwargs["branch"] = self.get_branch_hint_for_commit(self.initial_commit)
+                kwargs["branch"] = get_branch_hint_for_view(self, self.view, self.initial_commit)
             except ValueError:
                 kwargs["branch"] = self.initial_commit
             kwargs["follow"] = True
