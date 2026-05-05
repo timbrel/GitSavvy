@@ -531,6 +531,9 @@ class gs_show_current_file(LogMixin, GsTextCommand):
         })
 
     def do_action(self, commit_hash, **kwargs):
+        if self.overlay_for_show_file_at_commit:
+            return
+
         view = self.view
         position = capture_cur_position(view)
         if position is not None:
