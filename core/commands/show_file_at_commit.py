@@ -291,7 +291,11 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
             return
 
         if not next_commit:
-            flash(view, "No newer commit found.")
+            branch_hint = recall_branch_hint_for(view)
+            if branch_hint is not None:
+                flash(view, f"No newer commit found on {friendly_branch_hint(branch_hint)}.")
+            else:
+                flash(view, "No newer commit found.")
             return
 
         settings.set("git_savvy.show_file_at_commit_view.commit", next_commit)
@@ -386,6 +390,24 @@ def remember_branch_hint_for(view: sublime.View, branch_hint: str) -> None:
 
 def recall_branch_hint_for(view: sublime.View) -> Optional[str]:
     return view.settings().get("git_savvy.history.branch_hint")
+
+
+def friendly_branch_hint(branch_hint: str) -> str:
+    if not branch_hint:
+        return "HEAD"
+    return drop_prefix(branch_hint, ("refs/heads/", "refs/remotes/"))
+
+
+def drop_prefix(s: str, prefixes: str | tuple[str, ...]) -> str:
+    if isinstance(prefixes, str):
+        prefixes = (prefixes,)
+    try:
+        prefix = next(prefix for prefix in prefixes if s.startswith(prefix))
+    except StopIteration:
+        return s
+    return s[len(prefix):]
+
+
 
 
 def pass_next_commits_info_along(view: Optional[sublime.View], to: sublime.View) -> None:
