@@ -22,6 +22,7 @@ __all__ = (
     "gs_show_file_at_commit_refresh",
     "gs_show_file_at_commit_just_refresh_reference_document",
     "gs_show_current_file",
+    "gs_show_file_at_commit_open_log",
     "gs_show_file_at_commit_open_previous_commit",
     "gs_show_file_at_commit_open_next_commit",
     "gs_show_file_at_commit_open_commit",
@@ -455,43 +456,68 @@ class gs_show_current_file(LogMixin, GsTextCommand):
             else:
                 flash(self.view, "The view does not refer any file name.")
             return
-        self.overlay_for_show_file_at_commit = bool(self.view.settings().get("git_savvy.show_file_at_commit_view"))
+        super().run(file_path=self.file_path)
+
+    def do_action(self, commit_hash, **kwargs):
+        view = self.view
+        position = capture_cur_position(view)
+        if position is not None:
+            assert self.file_path
+            row, col, offset = position
+            line = self.reverse_find_matching_lineno_between_files(
+                (commit_hash, self.filename_at_commit(self.file_path, commit_hash)),
+                (None, self.file_path),
+                row + 1
+            )
+            position = Position(line - 1, col, offset)
+
+        self.window.run_command("gs_show_file_at_commit", {
+            "commit_hash": commit_hash,
+            "filepath": self.file_path,
+            "position": position,
+            "lang": view.settings().get('syntax')
+        })
+
+
+class gs_show_file_at_commit_open_log(LogMixin, GsTextCommand):
+    """
+    Show a panel of commits of this historical file and live-preview
+    highlighted commits in the current show-file-at-commit view.
+    """
+
+    def run(self, edit: sublime.Edit) -> None:  # type: ignore[override]
         self.initial_commit = self.view.settings().get("git_savvy.show_file_at_commit_view.commit")
         self.initial_position = capture_cur_position(self.view)
         super().run(file_path=self.file_path)
 
     def run_async(self, *, file_path=None, **kwargs):
         branch_hint = None
-        if self.overlay_for_show_file_at_commit:
-            try:
-                branch_hint = get_branch_hint_for_view(self, self.view, self.initial_commit)
-                kwargs["branch"] = branch_hint
-            except ValueError:
-                kwargs["branch"] = self.initial_commit
-            kwargs["follow"] = True
-            kwargs["topo_order"] = True
-            kwargs["show_panel_on_error"] = False
+        try:
+            branch_hint = get_branch_hint_for_view(self, self.view, self.initial_commit)
+            kwargs["branch"] = branch_hint
+        except ValueError:
+            kwargs["branch"] = self.initial_commit
 
         try:
-            super().run_async(file_path=file_path, **kwargs)
+            super().run_async(
+                file_path=file_path,
+                **kwargs,
+                follow=True,
+                topo_order=True,
+                show_panel_on_error=False
+            )
         except GitSavvyError as e:
-            if (
-                self.overlay_for_show_file_at_commit
-                and branch_hint
-                and branch_hint_is_gone(branch_hint, e)
-            ):
-                flash(self.view, str(e))
+            if branch_hint and branch_hint_is_gone(branch_hint, e):
+                flash(self.view, correlated_branch_is_gone_msg(branch_hint))
             else:
                 e.show_error_panel()
                 raise
 
     def on_done(self, commit, **kwargs):
-        if not self.overlay_for_show_file_at_commit:
-            return super().on_done(commit, **kwargs)
-
         if commit:
             return  # nothing further to do as we already updated `on_highlight`
 
+        # Revert
         view = self.view
         view.settings().set("git_savvy.show_file_at_commit_view.commit", self.initial_commit)
         position = self.initial_position
@@ -500,10 +526,6 @@ class gs_show_current_file(LogMixin, GsTextCommand):
         })
 
     def on_highlight(self, commit, file_path=None):
-        if not self.overlay_for_show_file_at_commit:
-            super().on_highlight(commit, file_path)
-            return
-
         if not commit:
             return
 
@@ -530,33 +552,7 @@ class gs_show_current_file(LogMixin, GsTextCommand):
             "sync": False,
         })
 
-    def do_action(self, commit_hash, **kwargs):
-        if self.overlay_for_show_file_at_commit:
-            return
-
-        view = self.view
-        position = capture_cur_position(view)
-        if position is not None:
-            assert self.file_path
-            row, col, offset = position
-            line = self.reverse_find_matching_lineno_between_files(
-                (commit_hash, self.filename_at_commit(self.file_path, commit_hash)),
-                (None, self.file_path),
-                row + 1
-            )
-            position = Position(line - 1, col, offset)
-
-        self.window.run_command("gs_show_file_at_commit", {
-            "commit_hash": commit_hash,
-            "filepath": self.file_path,
-            "position": position,
-            "lang": view.settings().get('syntax')
-        })
-
     def selected_index(self, commit_hash):
-        if not self.overlay_for_show_file_at_commit:
-            return True
-
         view = self.view
         shown_hash = view.settings().get("git_savvy.show_file_at_commit_view.commit")
         return commit_hash.startswith(shown_hash)
