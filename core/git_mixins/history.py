@@ -64,7 +64,7 @@ class HistoryMixin(mixin_base):
     def log(self, author=None, branch=None, file_path=None, start_end=None, cherry=None,
             limit=6000, skip=None, reverse=False, all_branches=False, msg_regexp=None,
             diff_regexp=None, first_parent=False, merges=False, no_merges=False, topo_order=False,
-            follow=False) -> List[LogEntry]:
+            follow=False, show_panel_on_error=True) -> List[LogEntry]:
         if follow and not file_path:
             raise RuntimeError("follow=True requires file_path")
 
@@ -88,7 +88,8 @@ class HistoryMixin(mixin_base):
             "{}..{}".format(*start_end) if start_end else None,
             branch if branch else None,
             "--" if file_path else None,
-            file_path if file_path else None
+            file_path if file_path else None,
+            show_panel_on_error=show_panel_on_error
         ).strip("\x00")
 
         entries = []

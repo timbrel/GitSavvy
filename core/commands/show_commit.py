@@ -352,6 +352,9 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
         commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
         try:
             next_commit = show_file_at_commit.get_next_commit(self, view, commit_hash, file_path)
+        except show_file_at_commit.CorrelatedBranchGone as e:
+            flash(view, str(e))
+            return
         except ValueError:
             flash(view, "Can't find a newer commit; it looks orphaned.")
             return

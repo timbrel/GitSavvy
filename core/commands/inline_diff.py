@@ -1015,6 +1015,9 @@ class gs_inline_diff_next_commit(TextCommand, GitCommand):
         new_base_commit = target_commit
         try:
             new_target_commit = show_file_at_commit.get_next_commit(self, view, target_commit, file_path)
+        except show_file_at_commit.CorrelatedBranchGone as e:
+            flash(view, str(e))
+            return
         except ValueError:
             flash(view, "Can't find a newer commit; it looks orphaned.")
             return

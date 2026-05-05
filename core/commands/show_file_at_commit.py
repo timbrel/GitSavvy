@@ -11,7 +11,7 @@ from ..runtime import enqueue_on_worker, run_as_text_command, text_command, thro
 from ..utils import flash, focus_view
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
 from ...common import util
-from GitSavvy.core.git_command import GitCommand
+from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.git_mixins.history import CommitInfo
 
 from .log import LogMixin
@@ -37,6 +37,10 @@ from typing import Dict, Optional, Set, Tuple
 
 SHOW_COMMIT_TITLE = "FILE: {}, {}"
 views_with_reference_document: Set[sublime.View] = set()
+
+
+class CorrelatedBranchGone(ValueError):
+    pass
 
 
 # Reapply the reference document as Sublime forgets these on reload.
@@ -286,6 +290,9 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
 
         try:
             next_commit = get_next_commit(self, view, commit_hash, file_path)
+        except CorrelatedBranchGone as e:
+            flash(view, str(e))
+            return
         except ValueError:
             flash(view, "Can't find a newer commit; it looks orphaned.")
             return
@@ -328,12 +335,17 @@ def get_next_commit(
         return next_commit
 
     branch_hint = get_branch_hint_for_view(cmd, view, commit_hash)
-    next_commits = cmd.next_commits(
-        commit_hash,
-        file_path,
-        follow=bool(file_path),
-        branch_hint=branch_hint
-    )
+    try:
+        next_commits = cmd.next_commits(
+            commit_hash,
+            file_path,
+            follow=bool(file_path),
+            branch_hint=branch_hint
+        )
+    except GitSavvyError as e:
+        if branch_hint and branch_hint_is_gone(branch_hint, e):
+            raise CorrelatedBranchGone(correlated_branch_is_gone_msg(branch_hint))
+        raise
     remember_next_commit_for(view, next_commits)
     return next_commits.get(commit_hash)
 
@@ -408,6 +420,12 @@ def drop_prefix(s: str, prefixes: str | tuple[str, ...]) -> str:
     return s[len(prefix):]
 
 
+def branch_hint_is_gone(branch_hint: str, error: GitSavvyError) -> bool:
+    return f"ambiguous argument '{branch_hint}" in error.stderr
+
+
+def correlated_branch_is_gone_msg(branch_hint: str) -> str:
+    return f"The correlated branch {friendly_branch_hint(branch_hint)} is gone."
 
 
 def pass_next_commits_info_along(view: Optional[sublime.View], to: sublime.View) -> None:
@@ -443,14 +461,29 @@ class gs_show_current_file(LogMixin, GsTextCommand):
         super().run(file_path=self.file_path)
 
     def run_async(self, *, file_path=None, **kwargs):
+        branch_hint = None
         if self.overlay_for_show_file_at_commit:
             try:
-                kwargs["branch"] = get_branch_hint_for_view(self, self.view, self.initial_commit)
+                branch_hint = get_branch_hint_for_view(self, self.view, self.initial_commit)
+                kwargs["branch"] = branch_hint
             except ValueError:
                 kwargs["branch"] = self.initial_commit
             kwargs["follow"] = True
             kwargs["topo_order"] = True
-        super().run_async(file_path=file_path, **kwargs)
+            kwargs["show_panel_on_error"] = False
+
+        try:
+            super().run_async(file_path=file_path, **kwargs)
+        except GitSavvyError as e:
+            if (
+                self.overlay_for_show_file_at_commit
+                and branch_hint
+                and branch_hint_is_gone(branch_hint, e)
+            ):
+                flash(self.view, str(e))
+            else:
+                e.show_error_panel()
+                raise
 
     def on_done(self, commit, **kwargs):
         if not self.overlay_for_show_file_at_commit:
