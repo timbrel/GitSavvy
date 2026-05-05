@@ -38,15 +38,16 @@ __all__ = (
 )
 
 
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, NamedTuple, Optional, Set, Tuple
 
 
 SHOW_COMMIT_TITLE = "FILE: {}, {}"
 views_with_reference_document: Set[sublime.View] = set()
 
 
-class CorrelatedBranchGone(ValueError):
-    pass
+class NextCommit(NamedTuple):
+    commit_hash: Optional[str]
+    error_message: Optional[str] = None
 
 
 # Reapply the reference document as Sublime forgets these on reload.
@@ -294,16 +295,13 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
         file_path: str = settings.get("git_savvy.file_path")
         commit_hash: str = settings.get("git_savvy.show_file_at_commit_view.commit")
 
-        try:
-            next_commit = get_next_commit(self, view, commit_hash, file_path)
-        except CorrelatedBranchGone as e:
-            flash(view, str(e))
-            return
-        except ValueError:
-            flash(view, "Can't find a newer commit; it looks orphaned.")
+        next_commit = get_next_commit(self, view, commit_hash, file_path)
+        if next_commit.error_message:
+            flash(view, next_commit.error_message)
             return
 
-        if not next_commit:
+        commit = next_commit.commit_hash
+        if not commit:
             branch_hint = recall_branch_hint_for(view)
             if branch_hint is not None:
                 flash(view, f"No newer commit found on {friendly_branch_hint(branch_hint)}.")
@@ -311,13 +309,13 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
                 flash(view, "No newer commit found.")
             return
 
-        settings.set("git_savvy.show_file_at_commit_view.commit", next_commit)
+        settings.set("git_savvy.show_file_at_commit_view.commit", commit)
         position = capture_cur_position(view)
         if position is not None:
             row, col, offset = position
             line = self.find_matching_lineno_between_files(
                 (commit_hash, self.filename_at_commit(file_path, commit_hash)),
-                (next_commit, self.filename_at_commit(file_path, next_commit)),
+                (commit, self.filename_at_commit(file_path, commit)),
                 row + 1
             )
             position = Position(line - 1, col, offset)
@@ -335,12 +333,16 @@ def get_next_commit(
     view: sublime.View,
     commit_hash: str,
     file_path: str | None = None
-) -> str | None:
+) -> NextCommit:
     commit_hash = cmd.get_short_hash(commit_hash)
     if next_commit := recall_next_commit_for(view, commit_hash):
-        return next_commit
+        return NextCommit(next_commit)
 
-    branch_hint = get_branch_hint_for_view(cmd, view, commit_hash)
+    try:
+        branch_hint = get_branch_hint_for_view(cmd, view, commit_hash)
+    except ValueError:
+        return NextCommit(None, "Can't find a newer commit; it looks orphaned.")
+
     try:
         next_commits = cmd.next_commits(
             commit_hash,
@@ -350,10 +352,12 @@ def get_next_commit(
         )
     except GitSavvyError as e:
         if branch_hint and branch_hint_is_gone(branch_hint, e):
-            raise CorrelatedBranchGone(correlated_branch_is_gone_msg(branch_hint))
+            return NextCommit(None, correlated_branch_is_gone_msg(branch_hint))
         raise
+    if next_commits is None:
+        return NextCommit(None, commit_is_not_on_branch_msg(commit_hash, branch_hint))
     remember_next_commit_for(view, next_commits)
-    return next_commits.get(commit_hash)
+    return NextCommit(next_commits.get(commit_hash))
 
 
 def get_previous_commit(
@@ -432,6 +436,10 @@ def branch_hint_is_gone(branch_hint: str, error: GitSavvyError) -> bool:
 
 def correlated_branch_is_gone_msg(branch_hint: str) -> str:
     return f"The correlated branch {friendly_branch_hint(branch_hint)} is gone."
+
+
+def commit_is_not_on_branch_msg(commit_hash: str, branch_hint: str) -> str:
+    return f"Commit {commit_hash} is no longer on {friendly_branch_hint(branch_hint)}."
 
 
 def pass_next_commits_info_along(view: Optional[sublime.View], to: sublime.View) -> None:

@@ -2,7 +2,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 import email.utils
 import os
-from itertools import chain, takewhile
 
 from ..exceptions import GitSavvyError
 from ...common import util
@@ -537,22 +536,24 @@ class HistoryMixin(mixin_base):
         file_path: str | None = None,
         follow: bool = False,
         branch_hint: str | None = None,
-    ) -> dict[str, str]:
+    ) -> dict[str, str] | None:
         if current_commit != self.get_short_hash(current_commit):
             raise RuntimeError("`next_commits` must be called with a short commit hash.")
 
         if branch_hint is None:
             branch_hint = self.get_branch_hint_for_commit(current_commit)
 
+        commits = []
+        for commit in self._log_commits_linewise(f"{branch_hint}", file_path, follow):
+            commits.append(commit)
+            if commit == current_commit:
+                break
+        else:
+            return None
+
         return {
             right: left
-            for left, right in pairwise(chain(
-                takewhile(
-                    lambda c: c != current_commit,
-                    self._log_commits_linewise(f"{branch_hint}", file_path, follow)
-                ),
-                [current_commit]
-            ))
+            for left, right in pairwise(commits)
         }
 
     def get_branch_hint_for_commit(self, commit_hash: str) -> str:

@@ -350,24 +350,21 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
         settings = view.settings()
         file_path: Optional[str] = settings.get("git_savvy.file_path")
         commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
-        try:
-            next_commit = show_file_at_commit.get_next_commit(self, view, commit_hash, file_path)
-        except show_file_at_commit.CorrelatedBranchGone as e:
-            flash(view, str(e))
-            return
-        except ValueError:
-            flash(view, "Can't find a newer commit; it looks orphaned.")
+        next_commit = show_file_at_commit.get_next_commit(self, view, commit_hash, file_path)
+        if next_commit.error_message:
+            flash(view, next_commit.error_message)
             return
 
-        if not next_commit:
+        commit = next_commit.commit_hash
+        if not commit:
             flash(view, "No newer commit found.")
             return
 
         show_commit_info.remember_view_state(view)
-        settings.set("git_savvy.show_commit_view.commit", next_commit)
+        settings.set("git_savvy.show_commit_view.commit", commit)
 
         view.run_command("gs_show_commit_refresh")
-        flash(view, "On commit {}".format(next_commit))
+        flash(view, "On commit {}".format(commit))
 
 
 class gs_show_commit_open_graph_context(TextCommand, GitCommand):
