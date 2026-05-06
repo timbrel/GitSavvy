@@ -1,4 +1,5 @@
 from __future__ import annotations
+from functools import lru_cache
 import os
 import re
 
@@ -6,8 +7,12 @@ import sublime
 from sublime_plugin import TextCommand, ViewEventListener
 
 from ..base_commands import GsTextCommand, GsWindowCommand
-from ..fns import filter_
-from ..runtime import enqueue_on_worker, run_as_text_command, text_command, throttled
+from ..fns import chain, filter_
+from ..runtime import (
+    enqueue_on_ui, enqueue_on_worker, on_worker,
+    run_as_text_command, text_command, throttled
+)
+from ..ui_mixins.quick_panel import show_log_panel
 from ..utils import flash, focus_view
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
 from ...common import util
@@ -479,33 +484,40 @@ class gs_show_current_file(LogMixin, GsTextCommand):
         })
 
 
-class gs_show_file_at_commit_open_log(LogMixin, GsTextCommand):
+class gs_show_file_at_commit_open_log(GsTextCommand):
     """
     Show a panel of commits of this historical file and live-preview
     highlighted commits in the current show-file-at-commit view.
     """
+    selected_index: int = 0
 
-    def run(self, edit: sublime.Edit) -> None:  # type: ignore[override]
-        self.initial_commit = self.view.settings().get("git_savvy.show_file_at_commit_view.commit")
+    @on_worker
+    def run(self, edit: sublime.Edit) -> None:
+        shown_commit = self.initial_commit = \
+            self.view.settings().get("git_savvy.show_file_at_commit_view.commit")
         self.initial_position = capture_cur_position(self.view)
-        super().run(file_path=self.file_path)
+        file_path = self.file_path
 
-    def run_async(self, *, file_path=None, **kwargs):
-        branch_hint = None
         try:
             branch_hint = get_branch_hint_for_view(self, self.view, self.initial_commit)
-            kwargs["branch"] = branch_hint
         except ValueError:
-            kwargs["branch"] = self.initial_commit
+            branch_hint = self.initial_commit
 
+        entries = self.log_generator(
+            file_path=file_path,
+            branch=branch_hint,
+            follow=True,
+            topo_order=True,
+            show_panel_on_error=False
+        )
+
+        leading = []
         try:
-            super().run_async(
-                file_path=file_path,
-                **kwargs,
-                follow=True,
-                topo_order=True,
-                show_panel_on_error=False
-            )
+            for idx, entry in enumerate(entries):
+                leading.append(entry)
+                if entry.long_hash.startswith(shown_commit):
+                    self.selected_index = idx
+                    break
         except GitSavvyError as e:
             if branch_hint and branch_hint_is_gone(branch_hint, e):
                 flash(self.view, correlated_branch_is_gone_msg(branch_hint))
@@ -513,7 +525,15 @@ class gs_show_file_at_commit_open_log(LogMixin, GsTextCommand):
                 e.show_error_panel()
                 raise
 
-    def on_done(self, commit, **kwargs):
+        enqueue_on_ui(
+            show_log_panel,
+            chain(leading, entries),
+            self.on_done,
+            selected_index=self.selected_index,
+            on_highlight=self.on_highlight
+        )
+
+    def on_done(self, commit):
         if commit:
             return  # nothing further to do as we already updated `on_highlight`
 
@@ -525,11 +545,10 @@ class gs_show_file_at_commit_open_log(LogMixin, GsTextCommand):
             "position": position
         })
 
-    def on_highlight(self, commit, file_path=None):
-        if not commit:
-            return
-
-        sublime.set_timeout_async(throttled(self._on_highlight, commit), 10)
+    @lru_cache(1)
+    def on_highlight(self, commit):
+        if commit:
+            sublime.set_timeout_async(throttled(self._on_highlight, commit), 10)
 
     def _on_highlight(self, commit):
         view = self.view
@@ -551,11 +570,6 @@ class gs_show_file_at_commit_open_log(LogMixin, GsTextCommand):
             "position": position,
             "sync": False,
         })
-
-    def selected_index(self, commit_hash):
-        view = self.view
-        shown_hash = view.settings().get("git_savvy.show_file_at_commit_view.commit")
-        return commit_hash.startswith(shown_hash)
 
 
 class gs_show_file_at_commit_open_commit(TextCommand):
