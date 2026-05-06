@@ -529,6 +529,14 @@ class gs_show_file_at_commit_open_log(GsTextCommand):
                 if entry.long_hash.startswith(shown_commit):
                     self.selected_index = idx
                     break
+            else:
+                msg = (
+                    commit_is_not_on_branch_msg(shown_commit, branch_hint)
+                    if leading else
+                    f"No commits found on {friendly_branch_hint(branch_hint)} for this file."
+                )
+                flash(self.view, msg)
+                return
         except GitSavvyError as e:
             if branch_hint and branch_hint_is_gone(branch_hint, e):
                 flash(self.view, correlated_branch_is_gone_msg(branch_hint))
