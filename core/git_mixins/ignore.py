@@ -42,7 +42,7 @@ class IgnoreMixin(mixin_base):
             else:
                 linesep = os.linesep
 
-        gitignore = os.path.join(self.repo_path, ".gitignore")
+        gitignore = self.to_abs_path(".gitignore")
         if os.path.exists(gitignore):
             with util.file.safe_open(gitignore, "r", encoding="utf-8") as fp:
                 ignore_lines = fp.read().splitlines()

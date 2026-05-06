@@ -788,6 +788,14 @@ class _GitCommand(SettingsMixin):
             return rel_path.replace("\\", "/")
         return rel_path
 
+    def to_abs_path(self, file_path: str, base: str = NOT_SET) -> str:
+        """
+        Return the absolute file path from a repo-relative path, or the given base.
+        """
+        if base is NOT_SET:
+            base = self.repo_path
+        return os.path.normpath(os.path.join(base, file_path))
+
     def nice_path(self, p: str) -> str:
         parent_dir = os.path.dirname(self.repo_path).replace("\\", "/")
         if p.startswith(parent_dir):

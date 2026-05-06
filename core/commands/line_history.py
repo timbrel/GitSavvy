@@ -192,7 +192,7 @@ class gs_line_history(TextCommand, GitCommand):
 
         window.run_command("gs_open_line_history", {
             "repo_path": repo_path,
-            "file_path": os.path.normpath(os.path.join(repo_path, file_path)),
+            "file_path": self.to_abs_path(file_path, repo_path),
             "ranges": ranges,
             "commit": commit_hash,
         })

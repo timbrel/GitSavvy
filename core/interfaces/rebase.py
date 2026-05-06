@@ -838,7 +838,7 @@ class gs_rebase_open_file(RebaseInterfaceCommand):
     def run(self, edit):
         sels = self.view.sel()
         line_regions = [self.view.line(sel) for sel in sels]
-        abs_paths = [os.path.join(self.repo_path, line[18:])
+        abs_paths = [self.to_abs_path(line[18:])
                      for reg in line_regions
                      for line in self.view.substr(reg).split("\n") if line]
         for path in abs_paths:
@@ -933,7 +933,7 @@ class gs_rebase_launch_merge_tool(RebaseInterfaceCommand):
             sublime.error_message("Cannot open merge tool for file that has been deleted.")
             return
 
-        self.launch_tool_for_file(os.path.join(self.repo_path, path))
+        self.launch_tool_for_file(self.to_abs_path(path))
 
     def is_either_version_deleted(self, path, conflicts):
         for conflict in conflicts:
