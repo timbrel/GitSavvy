@@ -524,8 +524,8 @@ diff --git a/fooz b/barz
         when(cmd).resolve_commitish("HEAD").thenReturn("deadbeef")
         when(cmd).filename_at_head(historical_path, "deadbeef").thenReturn(current_path)
         when(cmd).filename_at_commit(current_path, "deadbeef").thenReturn(historical_path)
-        when(cmd).get_rel_path(historical_path).thenReturn("foo.py")
-        when(cmd).get_rel_path(current_path).thenReturn("bar.py")
+        when(cmd).to_rel_path(historical_path).thenReturn("foo.py")
+        when(cmd).to_rel_path(current_path).thenReturn("bar.py")
         when(cmd).git(
             "diff",
             "--no-color",

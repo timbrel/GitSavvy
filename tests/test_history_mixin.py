@@ -51,7 +51,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
     def test_filename_at_head_keeps_existing_workdir_path(self):
         test = HistoryMixin()
         when(test).get_repo_path().thenReturn("/repo")
-        when(test).get_rel_path("current.py").thenReturn("current.py")
+        when(test).to_rel_path("current.py").thenReturn("current.py")
 
         when(os.path).exists(...).thenReturn(True)
 
@@ -60,7 +60,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
     def test_filename_at_head_follows_renames_forward(self):
         test = HistoryMixin()
         when(test).get_repo_path().thenReturn("/repo")
-        when(test).get_rel_path("old.py").thenReturn("old.py")
+        when(test).to_rel_path("old.py").thenReturn("old.py")
         when(test).commit_is_ancestor_of_head("abc123").thenReturn(True)
         when(os.path).exists(...).thenReturn(False)
         when(test).git(
@@ -82,8 +82,8 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
     def test_find_matching_lineno_between_files_at_commits(self):
         test = HistoryMixin()
-        when(test).get_rel_path("old.py").thenReturn("old.py")
-        when(test).get_rel_path("new.py").thenReturn("new.py")
+        when(test).to_rel_path("old.py").thenReturn("old.py")
+        when(test).to_rel_path("new.py").thenReturn("new.py")
         when(test).git(
             "diff", "--no-color", "-U0", "abc123:old.py", "def456:new.py"
         ).thenReturn("@@ -1,0 +2 @@\n+new\n")
@@ -99,8 +99,8 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
     def test_find_matching_lineno_between_files_in_worktree(self):
         test = HistoryMixin()
-        when(test).get_rel_path("old.py").thenReturn("old.py")
-        when(test).get_rel_path("new.py").thenReturn("new.py")
+        when(test).to_rel_path("old.py").thenReturn("old.py")
+        when(test).to_rel_path("new.py").thenReturn("new.py")
         when(test).git(
             "diff", "--no-color", "-U0", "abc123:old.py", "--", "new.py"
         ).thenReturn("@@ -1,0 +2 @@\n+new\n")
@@ -151,8 +151,8 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
     def test_reverse_find_matching_lineno_between_files_at_commits(self):
         test = HistoryMixin()
-        when(test).get_rel_path("old.py").thenReturn("old.py")
-        when(test).get_rel_path("new.py").thenReturn("new.py")
+        when(test).to_rel_path("old.py").thenReturn("old.py")
+        when(test).to_rel_path("new.py").thenReturn("new.py")
         when(test).git(
             "diff", "--no-color", "-U0", "abc123:old.py", "def456:new.py"
         ).thenReturn("@@ -1,0 +2 @@\n+new\n")

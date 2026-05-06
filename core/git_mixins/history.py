@@ -222,7 +222,7 @@ class HistoryMixin(mixin_base):
             return filename
 
     def filename_at_head(self, filename: str, commit_hash: str) -> str:
-        rel_path = self.get_rel_path(filename)
+        rel_path = self.to_rel_path(filename)
         was_abs = rel_path != filename
 
         if os.path.exists(filename if was_abs else self.to_abs_path(rel_path)):
@@ -286,7 +286,7 @@ class HistoryMixin(mixin_base):
     @cached(not_if={"commit_hash": is_dynamic_ref})
     def get_file_content_at_commit(self, filename, commit_hash):
         # type: (str, Optional[str]) -> str
-        filename = self.get_rel_path(filename)
+        filename = self.to_rel_path(filename)
         return self.git("show", "{}:{}".format(commit_hash or "", filename))
 
     def find_matching_lineno_in_file_history(
@@ -401,8 +401,8 @@ class HistoryMixin(mixin_base):
     ) -> str:
         base_commit, base_file_path = base
         target_commit, target_file_path = target
-        base_file_path = self.get_rel_path(base_file_path)
-        target_file_path = self.get_rel_path(target_file_path)
+        base_file_path = self.to_rel_path(base_file_path)
+        target_file_path = self.to_rel_path(target_file_path)
         base_spec = "{}:{}".format(base_commit, base_file_path)
         if target_commit:
             target_spec = "{}:{}".format(target_commit, target_file_path)

@@ -769,20 +769,18 @@ class _GitCommand(SettingsMixin):
 
         return view.settings().get("git_savvy.file_path") or view.file_name()
 
-    def get_rel_path(self, abs_path=NOT_SET):
-        # type: (str) -> str
+    def to_rel_path(self, file_path: str, base: str = NOT_SET) -> str:
         """
-        Return the file path relative to the repo root.
+        Return the file path relative to the repo root, or the given base.
         """
-        fpath = self.file_path if abs_path is NOT_SET else abs_path
-        assert fpath
-        repo_path = self.repo_path
-        repo_path_ = repo_path.rstrip(os.path.sep) + os.path.sep
+        if base is NOT_SET:
+            base = self.repo_path
+        base_ = base.rstrip(os.path.sep) + os.path.sep
         rel_path = (
-            fpath[len(repo_path_):] if fpath.startswith(repo_path_) else
-            os.path.relpath(resolve_path(fpath), start=resolve_path(repo_path))
-            if os.path.isabs(fpath) else
-            fpath
+            file_path[len(base_):] if file_path.startswith(base_) else
+            os.path.relpath(resolve_path(file_path), start=resolve_path(base))
+            if os.path.isabs(file_path) else
+            file_path
         )
         if os.name == "nt":
             return rel_path.replace("\\", "/")
@@ -799,7 +797,7 @@ class _GitCommand(SettingsMixin):
     def nice_path(self, p: str) -> str:
         parent_dir = os.path.dirname(self.repo_path).replace("\\", "/")
         if p.startswith(parent_dir):
-            return self.get_rel_path(p)
+            return self.to_rel_path(p)
         return p.replace(NORM_HOME, "~")
 
     def _add_global_flags(self, git_cmd, args):

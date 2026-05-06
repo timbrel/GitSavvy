@@ -39,7 +39,13 @@ class GsGithubFileUrlMixin(GsTextCommand, git_mixins.GithubRemotesMixin):
 
     @on_worker
     def run(self, edit, remote=None, preselect=False, fpath=None):
-        self.fpath = fpath or self.get_rel_path()
+        if fpath is None:
+            file_path = self.file_path
+            if not file_path:
+                flash(self.view, "Not available for unsaved files.")
+                return
+            fpath = self.to_rel_path(file_path)
+        self.fpath = fpath
         self.preselect = preselect
 
         self.remotes = remotes = self.get_remotes()

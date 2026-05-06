@@ -188,7 +188,7 @@ class gs_blame_refresh(BlameMixin):
 
         self.view.set_name(
             BLAME_TITLE.format(
-                self.get_rel_path(file_path),
+                self.to_rel_path(file_path),
                 " at {}".format(commit_hash[0:7]) if commit_hash else ""
             )
         )
