@@ -197,15 +197,18 @@ class gs_show_file_at_commit_refresh(_gs_show_file_at_commit_refresh_mixin):
             text = self.get_file_content_at_commit(file_path_at_commit, commit_hash)
             render(view, text, position)
             view.reset_reference_document()
-            commit_details = self.commit_subject_and_date(commit_hash)
-            self.update_title(commit_details, file_path)
-            self.update_status_bar(commit_details)
+            enqueue_on_worker(self.update_commit_details, commit_hash, file_path)
             enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
 
         if sync:
             program()
         else:
             enqueue_on_worker(program)
+
+    def update_commit_details(self, commit_hash: str, file_path: str) -> None:
+        commit_details = self.commit_subject_and_date(commit_hash)
+        self.update_title(commit_details, file_path)
+        self.update_status_bar(commit_details)
 
     def update_status_bar(self, commit_details: CommitInfo) -> None:
         view = self.view
