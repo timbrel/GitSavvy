@@ -73,13 +73,13 @@ class TestDescribeGraphLine(DeferrableTestCase):
         )
         when(test).git(
             "log",
-            "--format=%x1e%h%x1f%ci%x1f%s",
             "--topo-order",
+            "--format=%x1e%h%x1f%ci%x1f%s",
+            "-z",
+            "-201",
+            "HEAD",
             "--follow",
             "--name-status",
-            "-200",
-            "-z",
-            "HEAD",
             "--",
             "/repo/tests/instancemethods_test.py"
         ).thenReturn(log_output)
@@ -131,18 +131,63 @@ class TestDescribeGraphLine(DeferrableTestCase):
                 "2026-2-1"
             )
         )
-        verify(test).git(
-            "log",
-            "--format=%x1e%h%x1f%ci%x1f%s",
-            "--topo-order",
-            "--follow",
-            "--name-status",
-            "-200",
-            "-z",
-            "HEAD",
-            "--",
-            "/repo/tests/instancemethods_test.py"
+        verify(test).git(...)
+
+    def test_fetch_info_without_file_path_warms_commit_only_cache(self):
+        test = HistoryMixin()
+        log_output = (
+            "\x1ec3\x1f2026-05-07 10:00:00 +0200\x1fnewest\0"
+            "\x1ec2\x1f2026-04-03 10:00:00 +0200\x1fmiddle\0"
+            "\x1ec1\x1f2026-01-02 10:00:00 +0200\x1foldest\0"
         )
+        when(test).git(
+            "log",
+            "--topo-order",
+            "--format=%x1e%h%x1f%ci%x1f%s",
+            "-z",
+            "-201",
+            "HEAD"
+        ).thenReturn(log_output)
+
+        test._fetch_info_for_commit_file_path_pairs()
+
+        self.assertEqual(
+            file_history_cache[("c3", None)],
+            FileHistoryInfo(None, "c2", "newest", "2026-5-7")
+        )
+        self.assertEqual(
+            file_history_cache[("c2", None)],
+            FileHistoryInfo(None, "c1", "middle", "2026-4-3")
+        )
+        self.assertEqual(
+            file_history_cache[("c1", None)],
+            FileHistoryInfo(None, None, "oldest", "2026-1-2")
+        )
+        verify(test).git(...)
+
+    def test_fetch_info_does_not_mark_truncated_history_as_initial(self):
+        test = HistoryMixin()
+        log_output = (
+            "\x1ec3\x1f2026-05-07 10:00:00 +0200\x1fnewest\0"
+            "\x1ec2\x1f2026-04-03 10:00:00 +0200\x1fmiddle\0"
+            "\x1ec1\x1f2026-01-02 10:00:00 +0200\x1foldest fetched\0"
+        )
+        when(test).git(
+            "log",
+            "--topo-order",
+            "--format=%x1e%h%x1f%ci%x1f%s",
+            "-z",
+            "-3",
+            "HEAD"
+        ).thenReturn(log_output)
+
+        test._fetch_info_for_commit_file_path_pairs(limit=2)
+
+        self.assertEqual(
+            file_history_cache[("c2", None)],
+            FileHistoryInfo(None, "c1", "middle", "2026-4-3")
+        )
+        self.assertNotIn(("c1", None), file_history_cache)
 
     def test_filename_at_head_keeps_existing_workdir_path(self):
         test = HistoryMixin()

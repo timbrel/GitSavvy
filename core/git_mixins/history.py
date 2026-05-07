@@ -7,7 +7,7 @@ from typing import Iterator, List, NamedTuple, Optional
 
 from ..exceptions import GitSavvyError
 from ...common import util
-from GitSavvy.core.fns import last, pairwise
+from GitSavvy.core.fns import last, pairwise, take
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.utils import Cache, cached
 
@@ -55,7 +55,7 @@ class FileHistoryEntry(NamedTuple):
 
 
 class FileHistoryInfo(NamedTuple):
-    filename_at_commit: str
+    filename_at_commit: Optional[str]
     previous_commit: Optional[str]
     subject: str
     date: str
@@ -617,7 +617,7 @@ class HistoryMixin(mixin_base):
 
     def _fetch_info_for_commit_file_path_pairs(
         self,
-        file_path: str,
+        file_path: Optional[str] = None,
         start_commit: str = "HEAD",
         cache: Cache = file_history_cache,
         limit: int = 200
@@ -634,35 +634,47 @@ class HistoryMixin(mixin_base):
                 date
             )
 
-        `file_path` must be the name of the file at `start_commit`.  For the
-        default `start_commit="HEAD"`, this means the HEAD filename which is
-        usually the checked-out filename.
+        If `file_path` is given, it must be the full name of the file at
+        `start_commit`.  For the default `start_commit="HEAD"`, this means the
+        full HEAD filename which is usually the checked-out filename.  The
+        cache key keeps this anchor path for all entries.  In this mode,
+        `filename_at_commit` is the full historical path for that same logical
+        file at `short_commit_hash`, following renames backwards.
 
-        The cache key keeps this anchor path for all entries;
-        `filename_at_commit` is the historical path for that same logical file
-        at `short_commit_hash`, following renames backwards. `previous_commit`
-        is the next older commit in this followed file history, or None for
-        the initial revision in the fetched range. `date` is the committer
-        date from `%ci`, normalized to the same year-month-day format that
-        `commit_subject_and_date_from_patch` returns.
+        If `file_path` is None, the cache is filled with commit-only entries:
 
-        All file paths are full paths, all hashes are short hashes.
+            (short_commit_hash, None) -> FileHistoryInfo(
+                None,
+                previous_commit,
+                subject,
+                date
+            )
+
+        `previous_commit` is the next older commit in the fetched history if
+        known, or None only if the fetched log reaches the initial revision.
+        `date` is the committer date from `%ci`, normalized to the same year-month-day
+        format that `commit_subject_and_date_from_patch` returns.
+
+        All hashes are short hashes.
         """
         log_output = self.git(
             "log",
-            "--format=%x1e%h%x1f%ci%x1f%s",
             "--topo-order",
-            "--follow",
-            "--name-status",
-            f"-{limit}",
+            "--format=%x1e%h%x1f%ci%x1f%s",
             "-z",
+            f"-{limit + 1}",
             start_commit,
-            "--",
-            file_path
+            *(
+                "--follow",
+                "--name-status",
+                "--",
+                file_path
+            ) if file_path else ()
         )
         records = parse_file_history_log(log_output)
         filename = file_path
-        for record, right in pairwise(records):
+        for record, right in take(limit, pairwise(chain(records, [None]))):
+            assert record
             info = FileHistoryInfo(
                 filename,
                 right.short_hash if right else None,
