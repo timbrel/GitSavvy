@@ -221,8 +221,19 @@ class HistoryMixin(mixin_base):
     def resolve_commitish(self, ref: str) -> str:
         return self.git("rev-parse", "--short", ref).strip()
 
-    @cached(not_if={"commit_hash": is_dynamic_ref})
     def filename_at_commit(self, filename: str, commit_hash: str) -> str:
+        if is_dynamic_ref(commit_hash):
+            return self._filename_at_commit(filename, commit_hash)
+
+        key = (commit_hash, filename)
+        try:
+            return file_history_cache[key].filename_at_commit
+        except KeyError:
+            self._fetch_info_for_commit_file_path_pairs(filename, commit_hash)
+            return file_history_cache[key].filename_at_commit
+
+    @cached(not_if={"commit_hash": is_dynamic_ref})
+    def _filename_at_commit(self, filename: str, commit_hash: str) -> str:
         lines = self.git(
             "log",
             "--format=",  # we don't need any commit info beside the name status
@@ -523,8 +534,24 @@ class HistoryMixin(mixin_base):
                 break
         return CommitInfo(commit_hash, self.get_short_hash(commit_hash), subject, date)
 
+    def previous_commit(
+        self,
+        current_commit: str,
+        file_path: str | None = None,
+        follow: bool = False
+    ):
+        if is_dynamic_ref(current_commit) or (file_path and not follow):
+            return self._previous_commit(current_commit, file_path, follow)
+
+        key = (current_commit, file_path)
+        try:
+            return file_history_cache[key].previous_commit
+        except KeyError:
+            self._fetch_info_for_commit_file_path_pairs(file_path, current_commit)
+            return file_history_cache[key].previous_commit
+
     @cached(not_if={"current_commit": is_dynamic_ref})
-    def previous_commit(self, current_commit, file_path=None, follow=False):
+    def _previous_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
         return last(
             self._log_commits_linewise(current_commit, file_path, follow, limit=2),
