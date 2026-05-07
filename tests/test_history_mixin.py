@@ -4,7 +4,15 @@ from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import unstub, when, verify
 from GitSavvy.tests.parameterized import parameterized as p
 
-from GitSavvy.core.git_mixins.history import FileStatus, HistoryMixin, parse_name_status_z
+from GitSavvy.core.git_mixins.history import (
+    FileHistoryEntry,
+    FileHistoryInfo,
+    FileStatus,
+    HistoryMixin,
+    file_history_cache,
+    parse_file_history_log,
+    parse_name_status_z
+)
 
 
 examples = [
@@ -18,6 +26,7 @@ examples = [
 
 class TestDescribeGraphLine(DeferrableTestCase):
     def tearDown(self):
+        file_history_cache.clear()
         unstub()
 
     @p.expand(examples)
@@ -47,6 +56,93 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
         with self.assertRaises(RuntimeError):
             test._log_commits_linewise("HEAD", None, follow=True)
+
+    def test_file_history_log_warms_commit_file_caches(self):
+        test = HistoryMixin()
+        log_output = (
+            "\x1ec5\x1f2026-05-07 10:00:00 +0200\x1fnewest\0"
+            "\nM\0tests/instancemethods_test.py\0"
+            "\x1ec4\x1f2026-04-03 10:00:00 +0200\x1frename to tests\0"
+            "\nR100\0mockito/tests/instancemethods_test.py\0tests/instancemethods_test.py\0"
+            "\x1ec3\x1f2026-03-02 10:00:00 +0200\x1fmiddle\0"
+            "\nM\0mockito/tests/instancemethods_test.py\0"
+            "\x1ec2\x1f2026-02-01 10:00:00 +0200\x1frename to mockito/tests\0"
+            "\nR099\0mockito_test/instancemethods_test.py\0mockito/tests/instancemethods_test.py\0"
+            "\x1ec1\x1f2026-01-02 10:00:00 +0200\x1foldest\0"
+            "\nM\0mockito_test/instancemethods_test.py\0"
+        )
+        when(test).git(
+            "log",
+            "--format=%x1e%h%x1f%ci%x1f%s",
+            "--topo-order",
+            "--follow",
+            "--name-status",
+            "-200",
+            "-z",
+            "HEAD",
+            "--",
+            "/repo/tests/instancemethods_test.py"
+        ).thenReturn(log_output)
+        when(test).to_abs_path("tests/instancemethods_test.py").thenReturn(
+            "/repo/tests/instancemethods_test.py"
+        )
+        when(test).to_abs_path("mockito/tests/instancemethods_test.py").thenReturn(
+            "/repo/mockito/tests/instancemethods_test.py"
+        )
+        when(test).to_abs_path("mockito_test/instancemethods_test.py").thenReturn(
+            "/repo/mockito_test/instancemethods_test.py"
+        )
+
+        test._fetch_info_for_commit_file_path_pairs("/repo/tests/instancemethods_test.py")
+
+        self.assertEqual(
+            file_history_cache[("c4", "/repo/tests/instancemethods_test.py")],
+            FileHistoryInfo(
+                "/repo/tests/instancemethods_test.py",
+                "c3",
+                "rename to tests",
+                "2026-4-3"
+            )
+        )
+        self.assertEqual(
+            file_history_cache[("c3", "/repo/tests/instancemethods_test.py")],
+            FileHistoryInfo(
+                "/repo/mockito/tests/instancemethods_test.py",
+                "c2",
+                "middle",
+                "2026-3-2"
+            )
+        )
+        self.assertEqual(
+            file_history_cache[("c1", "/repo/tests/instancemethods_test.py")],
+            FileHistoryInfo(
+                "/repo/mockito_test/instancemethods_test.py",
+                None,
+                "oldest",
+                "2026-1-2"
+            )
+        )
+        self.assertEqual(
+            file_history_cache[("c2", "/repo/tests/instancemethods_test.py")],
+            FileHistoryInfo(
+                "/repo/mockito/tests/instancemethods_test.py",
+                "c1",
+                "rename to mockito/tests",
+                "2026-2-1"
+            )
+        )
+        verify(test).git(
+            "log",
+            "--format=%x1e%h%x1f%ci%x1f%s",
+            "--topo-order",
+            "--follow",
+            "--name-status",
+            "-200",
+            "-z",
+            "HEAD",
+            "--",
+            "/repo/tests/instancemethods_test.py"
+        )
 
     def test_filename_at_head_keeps_existing_workdir_path(self):
         test = HistoryMixin()
@@ -164,6 +260,20 @@ class TestDescribeGraphLine(DeferrableTestCase):
                 3
             ),
             2
+        )
+
+    def test_parse_file_history_log(self):
+        self.assertEqual(
+            list(parse_file_history_log(
+                "\x1ec2\x1f2026-04-03 10:00:00 +0200\x1frename\0"
+                "\nR100\0old.py\0new.py\0"
+            )),
+            [FileHistoryEntry(
+                "c2",
+                "2026-4-3",
+                "rename",
+                FileStatus("R100", "old.py", "new.py")
+            )]
         )
 
     def test_parse_name_status_z_regular_statuses(self):

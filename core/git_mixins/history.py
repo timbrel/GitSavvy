@@ -1,16 +1,15 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import email.utils
+from itertools import chain
 import os
+from typing import Iterator, List, NamedTuple, Optional
 
 from ..exceptions import GitSavvyError
 from ...common import util
 from GitSavvy.core.fns import last, pairwise
 from GitSavvy.core.git_command import mixin_base
-from GitSavvy.core.utils import cached
-
-
-from typing import Iterator, List, NamedTuple, Optional
+from GitSavvy.core.utils import Cache, cached
 
 
 class LogEntry(NamedTuple):
@@ -46,6 +45,23 @@ class FileStatus:
     mode: str
     from_path: str
     to_path: Optional[str] = None
+
+
+class FileHistoryEntry(NamedTuple):
+    short_hash: str
+    date: str
+    subject: str
+    status: Optional[FileStatus]
+
+
+class FileHistoryInfo(NamedTuple):
+    filename_at_commit: str
+    previous_commit: Optional[str]
+    subject: str
+    date: str
+
+
+file_history_cache = Cache(maxsize=65536)
 
 
 def is_dynamic_ref(ref):
@@ -599,6 +615,83 @@ class HistoryMixin(mixin_base):
             )
         )
 
+    def _fetch_info_for_commit_file_path_pairs(
+        self,
+        file_path: str,
+        start_commit: str = "HEAD",
+        cache: Cache = file_history_cache,
+        limit: int = 200
+    ) -> None:
+        """
+        Populate file-history info for a single logical file history.
+
+        The cache is filled with entries of this shape:
+
+            (short_commit_hash, file_path) -> FileHistoryInfo(
+                filename_at_commit,
+                previous_commit,
+                subject,
+                date
+            )
+
+        `file_path` must be the name of the file at `start_commit`.  For the
+        default `start_commit="HEAD"`, this means the HEAD filename which is
+        usually the checked-out filename.
+
+        The cache key keeps this anchor path for all entries;
+        `filename_at_commit` is the historical path for that same logical file
+        at `short_commit_hash`, following renames backwards. `previous_commit`
+        is the next older commit in this followed file history, or None for
+        the initial revision in the fetched range. `date` is the committer
+        date from `%ci`, normalized to the same year-month-day format that
+        `commit_subject_and_date_from_patch` returns.
+
+        All file paths are full paths, all hashes are short hashes.
+        """
+        log_output = self.git(
+            "log",
+            "--format=%x1e%h%x1f%ci%x1f%s",
+            "--topo-order",
+            "--follow",
+            "--name-status",
+            f"-{limit}",
+            "-z",
+            start_commit,
+            "--",
+            file_path
+        )
+        records = parse_file_history_log(log_output)
+        filename = file_path
+        for record, right in pairwise(records):
+            info = FileHistoryInfo(
+                filename,
+                right.short_hash if right else None,
+                record.subject,
+                record.date
+            )
+            cache[(record.short_hash, file_path)] = info
+            if status := record.status:
+                filename = self.to_abs_path(status.from_path)
+
+
+def parse_file_history_log(output: str) -> Iterator[FileHistoryEntry]:
+    for record in output.split("\x1e"):
+        if not record:
+            continue
+
+        header, _, name_status = record.partition("\0")
+        try:
+            short_hash, committer_date, subject = header.split("\x1f", 2)
+        except ValueError:
+            continue
+
+        yield FileHistoryEntry(
+            short_hash,
+            date_from_committer_date(committer_date),
+            subject,
+            next(parse_name_status_z(name_status), None)
+        )
+
 
 def parse_name_status_z(output: str) -> Iterator[FileStatus]:
     fields = output.rstrip("\0").split("\0")
@@ -615,3 +708,12 @@ def parse_name_status_z(output: str) -> Iterator[FileStatus]:
         else:
             yield FileStatus(mode, fields[idx])
             idx += 1
+
+
+def date_from_committer_date(committer_date: str) -> str:
+    date, _, _ = committer_date.partition(" ")
+    try:
+        year, month, day = date.split("-")
+        return "-".join((str(int(year)), str(int(month)), str(int(day))))
+    except ValueError:
+        return date
