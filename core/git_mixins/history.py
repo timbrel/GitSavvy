@@ -4,6 +4,7 @@ import email.utils
 from itertools import chain
 import os
 from typing import Iterator, List, NamedTuple, Optional
+from typing_extensions import TypeAlias
 
 from ..exceptions import GitSavvyError
 from ...common import util
@@ -57,11 +58,17 @@ class FileHistoryEntry(NamedTuple):
 class FileHistoryInfo(NamedTuple):
     filename_at_commit: Optional[str]
     previous_commit: Optional[str]
+
+
+class CommitHistoryInfo(NamedTuple):
     subject: str
     date: str
 
 
-file_history_cache = Cache(maxsize=65536)
+FileHistoryCache: TypeAlias = "dict[tuple[str, str | None], FileHistoryInfo]"
+CommitInfoCache: TypeAlias = "dict[str, CommitHistoryInfo]"
+file_history_cache: FileHistoryCache = Cache(maxsize=8192)
+commit_info_cache: CommitInfoCache = Cache(maxsize=8192)
 
 
 def is_dynamic_ref(ref):
@@ -514,6 +521,26 @@ class HistoryMixin(mixin_base):
         return rv
 
     def commit_subject_and_date(self, commit_hash: str) -> CommitInfo:
+        if is_dynamic_ref(commit_hash):
+            return self._commit_subject_and_date(commit_hash)
+
+        def to_commit_info(info: CommitHistoryInfo) -> CommitInfo:
+            return CommitInfo(
+                commit_hash,
+                commit_hash,
+                info.subject,
+                info.date
+            )
+
+        key = commit_hash
+        try:
+            return to_commit_info(commit_info_cache[key])
+        except KeyError:
+            self._fetch_info_for_commit_file_path_pairs(None, commit_hash)
+            return to_commit_info(commit_info_cache[key])
+
+    @cached(not_if={"commit_hash": is_dynamic_ref})
+    def _commit_subject_and_date(self, commit_hash: str) -> CommitInfo:
         # call with the same settings as gs_show_commit to either use or
         # warm up the cache
         show_diffstat = self.savvy_settings.get("show_diffstat")
@@ -646,7 +673,8 @@ class HistoryMixin(mixin_base):
         self,
         file_path: Optional[str] = None,
         start_commit: str = "HEAD",
-        cache: Cache = file_history_cache,
+        file_cache: FileHistoryCache = file_history_cache,
+        commit_cache: CommitInfoCache = commit_info_cache,
         limit: int = 200
     ) -> None:
         """
@@ -704,11 +732,14 @@ class HistoryMixin(mixin_base):
             assert record
             info = FileHistoryInfo(
                 filename,
-                right.short_hash if right else None,
+                right.short_hash if right else None
+            )
+            file_cache[(record.short_hash, file_path)] = info
+            commit_cache[record.short_hash] = CommitHistoryInfo(
                 record.subject,
                 record.date
             )
-            cache[(record.short_hash, file_path)] = info
+
             if status := record.status:
                 filename = self.to_abs_path(status.from_path)
 
