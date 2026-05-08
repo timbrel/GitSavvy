@@ -159,6 +159,95 @@ class TestDescribeGraphLine(DeferrableTestCase):
             "c2": CommitHistoryInfo("middle", "2026-4-3")
         })
 
+    def test_fetch_info_with_stop_at_returns_chain_and_warms_caches(self):
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}newest{NUL}"
+            f"{RS}c2{US}2026-04-03 10:00:00 +0200{US}middle{NUL}"
+            f"{RS}c1{US}2026-01-02 10:00:00 +0200{US}target{NUL}"
+        )
+
+        file_cache = {}
+        commit_cache = {}
+        hashes = test._fetch_info_for_commit_file_path_pairs(
+            start_commit="branch_tip",
+            stop_at="c1",
+            file_cache=file_cache,
+            commit_cache=commit_cache,
+        )
+
+        self.assertEqual(hashes, ["c3", "c2", "c1"])
+        # `stop_at`'s file_cache entry would lie about previous_commit, so
+        # only c3 and c2 are written.
+        self.assertEqual(file_cache, {
+            ("c3", None): FileHistoryInfo(None, "c2"),
+            ("c2", None): FileHistoryInfo(None, "c1")
+        })
+        # commit_cache is populated for every fetched commit, including stop_at.
+        self.assertEqual(commit_cache, {
+            "c3": CommitHistoryInfo("newest", "2026-5-7"),
+            "c2": CommitHistoryInfo("middle", "2026-4-3"),
+            "c1": CommitHistoryInfo("target", "2026-1-2")
+        })
+
+    def test_fetch_info_with_stop_at_excludes_via_separate_arg(self):
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn("")
+
+        test._fetch_info_for_commit_file_path_pairs(
+            start_commit="branch_tip",
+            stop_at="c1",
+        )
+
+        # The exclusion is passed as a separate `^c1^@` arg, not as a
+        # `c1^@..branch_tip` rev-range (which git rejects as ambiguous).
+        verify(test).git(
+            "log",
+            "--topo-order",
+            "--format=%x1e%h%x1f%ci%x1f%s",
+            "-z",
+            None,
+            "branch_tip",
+            "^c1^@",
+        )
+
+    def test_next_commits_returns_right_to_left_chain_dict(self):
+        test = HistoryMixin()
+        when(test).get_short_hash("c3").thenReturn("c3")
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c5{US}2026-05-07 10:00:00 +0200{US}tip{NUL}"
+            f"{RS}c4{US}2026-04-03 10:00:00 +0200{US}middle{NUL}"
+            f"{RS}c3{US}2026-01-02 10:00:00 +0200{US}target{NUL}"
+        )
+
+        result = test.next_commits("c3", branch_hint="branch_tip")
+
+        self.assertEqual(result, {"c4": "c5", "c3": "c4"})
+
+    def test_next_commits_returns_empty_dict_when_current_is_tip(self):
+        test = HistoryMixin()
+        when(test).get_short_hash("c3").thenReturn("c3")
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}tip{NUL}"
+        )
+
+        result = test.next_commits("c3", branch_hint="c3")
+
+        self.assertEqual(result, {})
+
+    def test_next_commits_returns_none_when_current_not_on_branch(self):
+        test = HistoryMixin()
+        when(test).get_short_hash("c3").thenReturn("c3")
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c5{US}2026-05-07 10:00:00 +0200{US}tip{NUL}"
+            f"{RS}c4{US}2026-04-03 10:00:00 +0200{US}middle{NUL}"
+            # c3 is missing from the fetched chain
+        )
+
+        result = test.next_commits("c3", branch_hint="branch_tip")
+
+        self.assertIsNone(result)
+
     def test_filename_at_head_keeps_existing_workdir_path(self):
         test = HistoryMixin()
         when(test).get_repo_path().thenReturn("/repo")

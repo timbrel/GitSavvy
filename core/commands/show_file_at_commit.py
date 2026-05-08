@@ -350,7 +350,6 @@ def get_next_commit(
         next_commits = cmd.next_commits(
             commit_hash,
             file_path,
-            follow=bool(file_path),
             branch_hint=branch_hint
         )
     except GitSavvyError as e:
