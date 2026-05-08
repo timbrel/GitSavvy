@@ -5,14 +5,19 @@ from GitSavvy.tests.mockito import unstub, when, verify
 from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core.git_mixins.history import (
+    CommitHistoryInfo,
     FileHistoryEntry,
     FileHistoryInfo,
     FileStatus,
     HistoryMixin,
-    file_history_cache,
     parse_file_history_log,
     parse_name_status_z
 )
+
+
+RS = "\x1e"
+US = "\x1f"
+NUL = "\0"
 
 
 examples = [
@@ -26,7 +31,6 @@ examples = [
 
 class TestDescribeGraphLine(DeferrableTestCase):
     def tearDown(self):
-        file_history_cache.clear()
         unstub()
 
     @p.expand(examples)
@@ -59,135 +63,100 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
     def test_file_history_log_warms_commit_file_caches(self):
         test = HistoryMixin()
-        log_output = (
-            "\x1ec5\x1f2026-05-07 10:00:00 +0200\x1fnewest\0"
-            "\nM\0tests/instancemethods_test.py\0"
-            "\x1ec4\x1f2026-04-03 10:00:00 +0200\x1frename to tests\0"
-            "\nR100\0mockito/tests/instancemethods_test.py\0tests/instancemethods_test.py\0"
-            "\x1ec3\x1f2026-03-02 10:00:00 +0200\x1fmiddle\0"
-            "\nM\0mockito/tests/instancemethods_test.py\0"
-            "\x1ec2\x1f2026-02-01 10:00:00 +0200\x1frename to mockito/tests\0"
-            "\nR099\0mockito_test/instancemethods_test.py\0mockito/tests/instancemethods_test.py\0"
-            "\x1ec1\x1f2026-01-02 10:00:00 +0200\x1foldest\0"
-            "\nM\0mockito_test/instancemethods_test.py\0"
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c5{US}2026-05-07 10:00:00 +0200{US}newest{NUL}"
+            f"\nM{NUL}tests/instancemethods_test.py{NUL}"
+            f"{RS}c4{US}2026-04-03 10:00:00 +0200{US}rename to tests{NUL}"
+            f"\nR100{NUL}mockito/tests/instancemethods_test.py{NUL}tests/instancemethods_test.py{NUL}"
+            f"{RS}c3{US}2026-03-02 10:00:00 +0200{US}middle{NUL}"
+            f"\nM{NUL}mockito/tests/instancemethods_test.py{NUL}"
+            f"{RS}c2{US}2026-02-01 10:00:00 +0200{US}rename to mockito/tests{NUL}"
+            f"\nR099{NUL}mockito_test/instancemethods_test.py{NUL}mockito/tests/instancemethods_test.py{NUL}"
+            f"{RS}c1{US}2026-01-02 10:00:00 +0200{US}oldest{NUL}"
+            f"\nM{NUL}mockito_test/instancemethods_test.py{NUL}"
         )
-        when(test).git(
-            "log",
-            "--topo-order",
-            "--format=%x1e%h%x1f%ci%x1f%s",
-            "-z",
-            "-201",
-            "HEAD",
-            "--follow",
-            "--name-status",
-            "--",
-            "/repo/tests/instancemethods_test.py"
-        ).thenReturn(log_output)
-        when(test).to_abs_path("tests/instancemethods_test.py").thenReturn(
-            "/repo/tests/instancemethods_test.py"
-        )
-        when(test).to_abs_path("mockito/tests/instancemethods_test.py").thenReturn(
-            "/repo/mockito/tests/instancemethods_test.py"
-        )
-        when(test).to_abs_path("mockito_test/instancemethods_test.py").thenReturn(
-            "/repo/mockito_test/instancemethods_test.py"
+        when(test).get_repo_path().thenReturn("/repo")
+
+        file_cache = {}
+        commit_cache = {}
+        test._fetch_info_for_commit_file_path_pairs(
+            "/repo/tests/instancemethods_test.py",
+            file_cache=file_cache,
+            commit_cache=commit_cache
         )
 
-        test._fetch_info_for_commit_file_path_pairs("/repo/tests/instancemethods_test.py")
-
-        self.assertEqual(
-            file_history_cache[("c4", "/repo/tests/instancemethods_test.py")],
-            FileHistoryInfo(
-                "/repo/tests/instancemethods_test.py",
-                "c3",
-                "rename to tests",
-                "2026-4-3"
-            )
-        )
-        self.assertEqual(
-            file_history_cache[("c3", "/repo/tests/instancemethods_test.py")],
-            FileHistoryInfo(
-                "/repo/mockito/tests/instancemethods_test.py",
-                "c2",
-                "middle",
-                "2026-3-2"
-            )
-        )
-        self.assertEqual(
-            file_history_cache[("c1", "/repo/tests/instancemethods_test.py")],
-            FileHistoryInfo(
-                "/repo/mockito_test/instancemethods_test.py",
-                None,
-                "oldest",
-                "2026-1-2"
-            )
-        )
-        self.assertEqual(
-            file_history_cache[("c2", "/repo/tests/instancemethods_test.py")],
-            FileHistoryInfo(
-                "/repo/mockito/tests/instancemethods_test.py",
-                "c1",
-                "rename to mockito/tests",
-                "2026-2-1"
-            )
-        )
+        self.assertEqual(file_cache, {
+            ("c5", "/repo/tests/instancemethods_test.py"):
+                FileHistoryInfo("/repo/tests/instancemethods_test.py", "c4"),
+            ("c4", "/repo/tests/instancemethods_test.py"):
+                FileHistoryInfo("/repo/tests/instancemethods_test.py", "c3"),
+            ("c3", "/repo/tests/instancemethods_test.py"):
+                FileHistoryInfo("/repo/mockito/tests/instancemethods_test.py", "c2"),
+            ("c2", "/repo/tests/instancemethods_test.py"):
+                FileHistoryInfo("/repo/mockito/tests/instancemethods_test.py", "c1"),
+            ("c1", "/repo/tests/instancemethods_test.py"):
+                FileHistoryInfo("/repo/mockito_test/instancemethods_test.py", None)
+        })
+        self.assertEqual(commit_cache, {
+            "c5": CommitHistoryInfo("newest", "2026-5-7"),
+            "c4": CommitHistoryInfo("rename to tests", "2026-4-3"),
+            "c3": CommitHistoryInfo("middle", "2026-3-2"),
+            "c2": CommitHistoryInfo("rename to mockito/tests", "2026-2-1"),
+            "c1": CommitHistoryInfo("oldest", "2026-1-2")
+        })
         verify(test).git(...)
 
     def test_fetch_info_without_file_path_warms_commit_only_cache(self):
         test = HistoryMixin()
-        log_output = (
-            "\x1ec3\x1f2026-05-07 10:00:00 +0200\x1fnewest\0"
-            "\x1ec2\x1f2026-04-03 10:00:00 +0200\x1fmiddle\0"
-            "\x1ec1\x1f2026-01-02 10:00:00 +0200\x1foldest\0"
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}newest{NUL}"
+            f"{RS}c2{US}2026-04-03 10:00:00 +0200{US}middle{NUL}"
+            f"{RS}c1{US}2026-01-02 10:00:00 +0200{US}oldest{NUL}"
         )
-        when(test).git(
-            "log",
-            "--topo-order",
-            "--format=%x1e%h%x1f%ci%x1f%s",
-            "-z",
-            "-201",
-            "HEAD"
-        ).thenReturn(log_output)
 
-        test._fetch_info_for_commit_file_path_pairs()
+        file_cache = {}
+        commit_cache = {}
+        test._fetch_info_for_commit_file_path_pairs(
+            file_cache=file_cache,
+            commit_cache=commit_cache
+        )
 
-        self.assertEqual(
-            file_history_cache[("c3", None)],
-            FileHistoryInfo(None, "c2", "newest", "2026-5-7")
-        )
-        self.assertEqual(
-            file_history_cache[("c2", None)],
-            FileHistoryInfo(None, "c1", "middle", "2026-4-3")
-        )
-        self.assertEqual(
-            file_history_cache[("c1", None)],
-            FileHistoryInfo(None, None, "oldest", "2026-1-2")
-        )
+        self.assertEqual(file_cache, {
+            ("c3", None): FileHistoryInfo(None, "c2"),
+            ("c2", None): FileHistoryInfo(None, "c1"),
+            ("c1", None): FileHistoryInfo(None, None)
+        })
+        self.assertEqual(commit_cache, {
+            "c3": CommitHistoryInfo("newest", "2026-5-7"),
+            "c2": CommitHistoryInfo("middle", "2026-4-3"),
+            "c1": CommitHistoryInfo("oldest", "2026-1-2")
+        })
         verify(test).git(...)
 
     def test_fetch_info_does_not_mark_truncated_history_as_initial(self):
         test = HistoryMixin()
-        log_output = (
-            "\x1ec3\x1f2026-05-07 10:00:00 +0200\x1fnewest\0"
-            "\x1ec2\x1f2026-04-03 10:00:00 +0200\x1fmiddle\0"
-            "\x1ec1\x1f2026-01-02 10:00:00 +0200\x1foldest fetched\0"
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}newest{NUL}"
+            f"{RS}c2{US}2026-04-03 10:00:00 +0200{US}middle{NUL}"
+            f"{RS}c1{US}2026-01-02 10:00:00 +0200{US}oldest fetched{NUL}"
         )
-        when(test).git(
-            "log",
-            "--topo-order",
-            "--format=%x1e%h%x1f%ci%x1f%s",
-            "-z",
-            "-3",
-            "HEAD"
-        ).thenReturn(log_output)
 
-        test._fetch_info_for_commit_file_path_pairs(limit=2)
-
-        self.assertEqual(
-            file_history_cache[("c2", None)],
-            FileHistoryInfo(None, "c1", "middle", "2026-4-3")
+        file_cache = {}
+        commit_cache = {}
+        test._fetch_info_for_commit_file_path_pairs(
+            file_cache=file_cache,
+            commit_cache=commit_cache,
+            limit=2
         )
-        self.assertNotIn(("c1", None), file_history_cache)
+
+        self.assertEqual(file_cache, {
+            ("c3", None): FileHistoryInfo(None, "c2"),
+            ("c2", None): FileHistoryInfo(None, "c1")
+        })
+        self.assertEqual(commit_cache, {
+            "c3": CommitHistoryInfo("newest", "2026-5-7"),
+            "c2": CommitHistoryInfo("middle", "2026-4-3")
+        })
 
     def test_filename_at_head_keeps_existing_workdir_path(self):
         test = HistoryMixin()
@@ -201,23 +170,14 @@ class TestDescribeGraphLine(DeferrableTestCase):
     def test_filename_at_head_follows_renames_forward(self):
         test = HistoryMixin()
         when(test).get_repo_path().thenReturn("/repo")
-        when(test).to_rel_path("old.py").thenReturn("old.py")
         when(test).commit_is_ancestor_of_head("abc123").thenReturn(True)
-        when(os.path).exists(...).thenReturn(False)
-        when(test).git(
-            "log", "--follow", "--format=%H", "--name-status", "-1", "-z",
-            "abc123..HEAD", "--", "old.py"
-        ).thenReturn("rename1\0\nD\0old.py\0")
-        when(test).git(
-            "show", "--name-status", "--format=", "-z", "rename1"
-        ).thenReturn("R100\0old.py\0new.py\0")
-        when(test).git(
-            "log", "--follow", "--format=%H", "--name-status", "-1", "-z",
-            "abc123..HEAD", "--", "new.py"
-        ).thenReturn("change1\0\nM\0new.py\0")
-        when(test).git(
-            "show", "--name-status", "--format=", "-z", "change1"
-        ).thenReturn("M\0new.py\0")
+
+        when(test).git("log", ...) \
+            .thenReturn("rename1\0\nD\0old.py\0") \
+            .thenReturn("change1\0\nM\0new.py\0")
+        when(test).git("show", ...) \
+            .thenReturn("R100\0old.py\0new.py\0") \
+            .thenReturn("M\0new.py\0")
 
         self.assertEqual(test.filename_at_head("old.py", "abc123"), "new.py")
 
@@ -310,8 +270,8 @@ class TestDescribeGraphLine(DeferrableTestCase):
     def test_parse_file_history_log(self):
         self.assertEqual(
             list(parse_file_history_log(
-                "\x1ec2\x1f2026-04-03 10:00:00 +0200\x1frename\0"
-                "\nR100\0old.py\0new.py\0"
+                f"{RS}c2{US}2026-04-03 10:00:00 +0200{US}rename{NUL}"
+                f"\nR100{NUL}old.py{NUL}new.py{NUL}"
             )),
             [FileHistoryEntry(
                 "c2",
