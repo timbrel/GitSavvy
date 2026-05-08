@@ -22,9 +22,9 @@ from . import runtime
 
 from typing import (
     Any, Callable, Dict, Iterator,
-    Optional, Sequence, Tuple, Type, TypeVar)
+    Optional, Sequence, Tuple, Type, TypeVar, overload)
 
-from typing_extensions import ParamSpec
+from typing_extensions import Concatenate, ParamSpec
 P = ParamSpec('P')
 T = TypeVar('T')
 
@@ -378,13 +378,30 @@ class UntilFocusSwitchCacheController(sublime_plugin.EventListener):
         until_focus_switch_cache.clear()
 
 
-def cached_until_focus_switch(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
-    key = (fn.__self__.repo_path, fn.__name__, args, tuple(sorted(kwargs.items())))  # type: ignore[attr-defined]
-    try:
-        return until_focus_switch_cache[key]
-    except KeyError:
-        val = until_focus_switch_cache[key] = fn(*args, **kwargs)
-        return val
+@overload
+def cached_until_focus_switch(
+    fn: Callable[Concatenate[Any, P], T]) -> Callable[Concatenate[Any, P], T]: ...
+@overload
+def cached_until_focus_switch(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T: ...
+def cached_until_focus_switch(fn, *args, **kwargs):
+    def impl_(self, fn, args, kwargs):
+        key = (self.repo_path, fn.__name__, args, tuple(sorted(kwargs.items())))
+        try:
+            return until_focus_switch_cache[key]
+        except KeyError:
+            val = until_focus_switch_cache[key] = fn(*args, **kwargs)
+            return val
+
+    if hasattr(fn, "__self__"):
+        self = fn.__self__
+        return impl_(self, fn, args, kwargs)
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        return impl_(self, fn, args, kwargs)
+
+    return wrapper
 
 
 class Counter:
