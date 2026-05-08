@@ -32,6 +32,9 @@ View = sublime.View
 Edit = sublime.Edit
 
 
+__all__ = ("gs_generic_text_cmd",)
+
+
 UI_THREAD_NAME = None  # type: Optional[str]
 WORKER_THREAD_NAME = None  # type: Optional[str]
 savvy_executor = ThreadPoolExecutor(max_workers=1)
