@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import email.utils
 from itertools import chain
 import os
-from typing import Iterator, List, NamedTuple, Optional
+from typing import Generic, Iterator, List, NamedTuple, Optional, TypeVar
 from typing_extensions import TypeAlias
 
 from ..exceptions import GitSavvyError
@@ -55,8 +55,12 @@ class FileHistoryEntry(NamedTuple):
     status: Optional[FileStatus]
 
 
-class FileHistoryInfo(NamedTuple):
-    filename_at_commit: Optional[str]
+T = TypeVar("T", bound=Optional[str])
+FileHistoryKey: TypeAlias = "tuple[str, T]"
+
+
+class FileHistoryInfo(NamedTuple, Generic[T]):
+    filename_at_commit: T
     previous_commit: Optional[str]
 
 
@@ -65,9 +69,16 @@ class CommitHistoryInfo(NamedTuple):
     date: str
 
 
-FileHistoryCache: TypeAlias = "dict[tuple[str, str | None], FileHistoryInfo]"
+class FileHistoryCache(Cache):
+    def __getitem__(self, key: FileHistoryKey[T]) -> FileHistoryInfo[T]:
+        return super().__getitem__(key)
+
+    def __setitem__(self, key: FileHistoryKey[T], value: FileHistoryInfo[T]) -> None:
+        super().__setitem__(key, value)
+
+
 CommitInfoCache: TypeAlias = "dict[str, CommitHistoryInfo]"
-file_history_cache: FileHistoryCache = Cache(maxsize=8192)
+file_history_cache = FileHistoryCache(maxsize=8192)
 commit_info_cache: CommitInfoCache = Cache(maxsize=8192)
 
 
