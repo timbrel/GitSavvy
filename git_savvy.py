@@ -7,6 +7,7 @@ from .core.commands import *
 from .core.settings import *
 from .core.interfaces import *
 from .core.runtime import *
+from .core.utils import *
 from .github.commands import *
 from .gitlab.commands import *
 

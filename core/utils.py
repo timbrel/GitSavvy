@@ -15,6 +15,7 @@ import traceback
 from types import SimpleNamespace
 
 import sublime
+import sublime_plugin
 
 from . import runtime
 
@@ -26,6 +27,9 @@ from typing import (
 from typing_extensions import ParamSpec
 P = ParamSpec('P')
 T = TypeVar('T')
+
+
+__all__ = ("UntilFocusSwitchCacheController",)
 
 
 @contextmanager
@@ -364,6 +368,23 @@ def cache_in_store_as(key):
 
         return decorated
     return decorator
+
+
+until_focus_switch_cache = Cache()
+
+
+class UntilFocusSwitchCacheController(sublime_plugin.EventListener):
+    def on_deactivated(self, view):
+        until_focus_switch_cache.clear()
+
+
+def cached_until_focus_switch(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+    key = (fn.__self__.repo_path, fn.__name__, args, tuple(sorted(kwargs.items())))  # type: ignore[attr-defined]
+    try:
+        return until_focus_switch_cache[key]
+    except KeyError:
+        val = until_focus_switch_cache[key] = fn(*args, **kwargs)
+        return val
 
 
 class Counter:
