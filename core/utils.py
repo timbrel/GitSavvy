@@ -1,5 +1,5 @@
 from __future__ import annotations
-from functools import wraps
+from functools import lru_cache, wraps
 from collections import OrderedDict
 from contextlib import contextmanager
 import datetime
@@ -381,11 +381,14 @@ class UntilFocusSwitchCacheController(sublime_plugin.EventListener):
 @overload
 def cached_until_focus_switch(
     fn: Callable[Concatenate[Any, P], T]) -> Callable[Concatenate[Any, P], T]: ...
-@overload
+@overload                                                                     # noqa: E302
 def cached_until_focus_switch(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T: ...
-def cached_until_focus_switch(fn, *args, **kwargs):
-    def impl_(self, fn, args, kwargs):
-        key = (self.repo_path, fn.__name__, args, tuple(sorted(kwargs.items())))
+def cached_until_focus_switch(fn, *args, **kwargs):                           # noqa: E302
+    def impl_(fn: Callable[..., T], args, kwargs) -> T:
+        sig = get_signature(fn)
+        arguments = _bind_arguments(sig, args, kwargs)
+        self = args[0]
+        key = (self.repo_path, fn.__name__, tuple(sorted(arguments.items())))
         try:
             return until_focus_switch_cache[key]
         except KeyError:
@@ -393,15 +396,25 @@ def cached_until_focus_switch(fn, *args, **kwargs):
             return val
 
     if hasattr(fn, "__self__"):
-        self = fn.__self__
-        return impl_(self, fn, args, kwargs)
+        # Normalize to the decorator shape: unwrap the bound method and
+        # prepend `self` to args, so `impl_` always sees the unbound
+        # function plus self at args[0].
+        return impl_(fn.__func__, (fn.__self__,) + args, kwargs)
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        self = args[0]
-        return impl_(self, fn, args, kwargs)
+        return impl_(fn, args, kwargs)
 
     return wrapper
+
+
+def get_signature(fn: Callable) -> inspect.Signature:
+    return _get_signature(getattr(fn, "__func__", fn))
+
+
+@lru_cache(maxsize=None)
+def _get_signature(fn: Callable) -> inspect.Signature:
+    return inspect.signature(fn)
 
 
 class Counter:
