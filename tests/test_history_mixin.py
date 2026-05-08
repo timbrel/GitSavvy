@@ -5,7 +5,9 @@ from GitSavvy.tests.mockito import unstub, when, verify
 from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core.git_mixins.history import (
+    commit_info_cache,
     CommitHistoryInfo,
+    file_history_cache,
     FileHistoryEntry,
     FileHistoryInfo,
     FileStatus,
@@ -245,6 +247,32 @@ class TestDescribeGraphLine(DeferrableTestCase):
         )
 
         result = test.next_commits("c3", branch_hint="branch_tip")
+
+        self.assertIsNone(result)
+
+    def test_recent_commit_with_file_and_follow_returns_first_and_warms_caches(self):
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}touched{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+            f"{RS}c2{US}2026-04-03 10:00:00 +0200{US}also{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+        )
+        when(test).get_repo_path().thenReturn("/repo")
+        file_history_cache.clear()
+        commit_info_cache.clear()
+
+        result = test.recent_commit("c5", "/repo/foo.py", follow=True)
+
+        self.assertEqual(result, "c3")
+        self.assertIn(("c3", "/repo/foo.py"), file_history_cache)
+        self.assertIn("c3", commit_info_cache)
+
+    def test_recent_commit_returns_none_when_history_empty(self):
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn("")
+
+        result = test.recent_commit("c5", "/repo/foo.py", follow=True)
 
         self.assertIsNone(result)
 

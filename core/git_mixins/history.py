@@ -596,8 +596,22 @@ class HistoryMixin(mixin_base):
             None
         )
 
+    def recent_commit(
+        self,
+        current_commit: str,
+        file_path: str | None = None,
+        follow: bool = None,
+    ) -> Optional[str]:
+        if file_path and follow is False:
+            return self._recent_commit(current_commit, file_path, follow)
+
+        return next(
+            iter(self._fetch_info_for_commit_file_path_pairs(file_path, current_commit)),
+            None
+        )
+
     @cached(not_if={"current_commit": is_dynamic_ref})
-    def recent_commit(self, current_commit, file_path=None, follow=False):
+    def _recent_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
         return last(
             self._log_commits_linewise(current_commit, file_path, follow, limit=1),
