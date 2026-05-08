@@ -334,7 +334,7 @@ def cached(not_if, cache=general_purpose_cache):
     return decorator
 
 
-def _bind_arguments(sig, args, kwargs):
+def _bind_arguments(sig: inspect.Signature, args: tuple, kwargs: dict) -> Dict[str, Any]:
     bound = sig.bind(*args, **kwargs)
     arguments = bound.arguments
 
