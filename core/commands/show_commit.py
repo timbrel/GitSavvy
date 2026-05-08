@@ -130,7 +130,7 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
     def annotate_with_github_link(self, commit):
         # type: (str) -> None
         try:
-            remote_url = self.get_integrated_remote_url()
+            remote_url = cached_until_focus_switch(self.get_integrated_remote_url)
         except ValueError:
             return
         github_repo = github.parse_remote(remote_url)
