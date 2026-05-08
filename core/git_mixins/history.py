@@ -712,10 +712,13 @@ class HistoryMixin(mixin_base):
 
         All hashes are short hashes.
         """
+        RS = "%x1e"  # record separator
+        US = "%x1f"  # unit separaor
+
         log_output = self.git(
             "log",
             "--topo-order",
-            "--format=%x1e%h%x1f%ci%x1f%s",
+            f"--format={RS}%h{US}%ci{US}%s",
             "-z",
             f"-{limit + 1}",
             start_commit,
