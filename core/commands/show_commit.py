@@ -127,6 +127,7 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
         title = SHOW_COMMIT_TITLE.format(message)
         self.view.set_name(title)
 
+    @cached_until_focus_switch
     def annotate_with_github_link(self, commit):
         # type: (str) -> None
         try:
