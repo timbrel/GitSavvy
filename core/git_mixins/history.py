@@ -577,16 +577,22 @@ class HistoryMixin(mixin_base):
         current_commit: str,
         file_path: str | None = None,
         follow: bool = False
-    ):
-        if is_dynamic_ref(current_commit) or (file_path and not follow):
+    ) -> Optional[str]:
+        if file_path and not follow:
             return self._previous_commit(current_commit, file_path, follow)
 
-        key = (current_commit, file_path)
+        # `current_commit` may be a ref (like "HEAD" or a branch name).
+        # If so the key lookup will always fail since we cache by commit_hash,
+        # resulting in a fresh fetch.
         try:
-            return file_history_cache[key].previous_commit
+            return file_history_cache[(current_commit, file_path)].previous_commit
         except KeyError:
-            self._fetch_info_for_commit_file_path_pairs(file_path, current_commit)
-            return file_history_cache[key].previous_commit
+            hashes = self._fetch_info_for_commit_file_path_pairs(file_path, current_commit)
+            return (
+                file_history_cache[(hashes[0], file_path)].previous_commit
+                if hashes else
+                None
+            )
 
     @cached(not_if={"current_commit": is_dynamic_ref})
     def _previous_commit(self, current_commit, file_path=None, follow=False):

@@ -276,6 +276,55 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
         self.assertIsNone(result)
 
+    def test_previous_commit_with_short_hash_uses_cache_after_fetch(self):
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}newest{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+            f"{RS}c2{US}2026-04-03 10:00:00 +0200{US}prev{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+        )
+        when(test).get_repo_path().thenReturn("/repo")
+        file_history_cache.clear()
+        commit_info_cache.clear()
+
+        result = test.previous_commit("c3", "/repo/foo.py", follow=True)
+
+        self.assertEqual(result, "c2")
+        self.assertIn(("c3", "/repo/foo.py"), file_history_cache)
+
+    def test_previous_commit_falls_back_to_list_index_for_non_short_hash_ref(self):
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}newest{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+            f"{RS}c2{US}2026-04-03 10:00:00 +0200{US}prev{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+        )
+        when(test).get_repo_path().thenReturn("/repo")
+        file_history_cache.clear()
+        commit_info_cache.clear()
+
+        # `"HEAD"` is not a key the fetch will write — cache misses both
+        # times, fallback returns hashes[1].
+        result = test.previous_commit("HEAD", "/repo/foo.py", follow=True)
+
+        self.assertEqual(result, "c2")
+
+    def test_previous_commit_returns_none_when_only_one_commit_fetched(self):
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}only{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+        )
+        when(test).get_repo_path().thenReturn("/repo")
+        file_history_cache.clear()
+        commit_info_cache.clear()
+
+        result = test.previous_commit("HEAD", "/repo/foo.py", follow=True)
+
+        self.assertIsNone(result)
+
     def test_filename_at_head_keeps_existing_workdir_path(self):
         test = HistoryMixin()
         when(test).get_repo_path().thenReturn("/repo")
