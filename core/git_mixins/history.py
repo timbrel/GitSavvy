@@ -531,9 +531,16 @@ class HistoryMixin(mixin_base):
             rv += stdout.decode("utf-8", "replace")
         return rv
 
-    def commit_subject_and_date(self, commit_hash: str) -> CommitInfo:
-        if is_dynamic_ref(commit_hash):
-            return self._commit_subject_and_date(commit_hash)
+    def commit_subject_and_date(self, commit_hash: str, file_path: str | None = None) -> CommitInfo:
+        """
+
+        Note: Providing `file_path` can affect the return value!
+              Only use if you know that (commit_hash, file_path) is a valid pair
+              to warm up the cache.
+              E.g. the semantics of ("HEAD", <file_path>) is: return the CommitInfo
+              of the *most recent* commit that change <file_path>.
+              But ("HEAD", None) returns the CommitInfo of the HEAD commit.
+        """
 
         def to_commit_info(info: CommitHistoryInfo) -> CommitInfo:
             return CommitInfo(
@@ -543,20 +550,18 @@ class HistoryMixin(mixin_base):
                 info.date
             )
 
-        key = commit_hash
+        # `commit_hash` may be a ref (like "HEAD" or a branch name).
+        # If so the key lookup will always fail since we cache by commit_hash,
+        # resulting in a fresh fetch.
         try:
-            return to_commit_info(commit_info_cache[key])
+            return to_commit_info(commit_info_cache[commit_hash])
         except KeyError:
-            self._fetch_info_for_commit_file_path_pairs(None, commit_hash)
-            return to_commit_info(commit_info_cache[key])
-
-    @cached(not_if={"commit_hash": is_dynamic_ref})
-    def _commit_subject_and_date(self, commit_hash: str) -> CommitInfo:
-        # call with the same settings as gs_show_commit to either use or
-        # warm up the cache
-        show_diffstat = self.savvy_settings.get("show_diffstat")
-        patch = self.read_commit(commit_hash, show_diffstat=show_diffstat)
-        return self.commit_subject_and_date_from_patch(patch)
+            hashes = self._fetch_info_for_commit_file_path_pairs(file_path, commit_hash)
+            if not hashes:
+                raise ValueError(
+                    f"no history for {file_path!r} reachable from {commit_hash!r}"
+                )
+            return to_commit_info(commit_info_cache[hashes[0]])
 
     def commit_subject_and_date_from_patch(self, patch: str) -> CommitInfo:
         commit_hash, date, subject = "", "", ""

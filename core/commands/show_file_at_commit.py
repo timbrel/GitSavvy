@@ -206,7 +206,7 @@ class gs_show_file_at_commit_refresh(_gs_show_file_at_commit_refresh_mixin):
             enqueue_on_worker(program)
 
     def update_commit_details(self, commit_hash: str, file_path: str) -> None:
-        commit_details = self.commit_subject_and_date(commit_hash)
+        commit_details = self.commit_subject_and_date(commit_hash, file_path)
         self.update_title(commit_details, file_path)
         self.update_status_bar(commit_details)
 
