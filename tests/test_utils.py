@@ -1,6 +1,6 @@
 from unittesting import DeferrableTestCase
 
-from GitSavvy.core.utils import (
+from GitSavvy.core.caches import (
     cached_until_focus_switch,
     until_focus_switch_cache,
 )

@@ -14,7 +14,8 @@ from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff
 from ..runtime import ensure_on_ui, enqueue_on_worker
 from ..text_helper import TextRange
-from ..utils import flash, flash_regions, focus_view, cached_until_focus_switch, Cache
+from ..caches import Cache, cached_until_focus_switch
+from ..utils import flash, flash_regions, focus_view
 from ..view import replace_view_content
 from ...common import util
 

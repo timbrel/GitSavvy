@@ -2,7 +2,8 @@ from __future__ import annotations
 import re
 
 from GitSavvy.core.fns import filter_
-from GitSavvy.core.utils import cache_in_store_as, yes_no_switch
+from GitSavvy.core.caches import cache_in_store_as
+from GitSavvy.core.utils import yes_no_switch
 
 
 from typing import Dict, TYPE_CHECKING

@@ -2,7 +2,7 @@ from collections import deque
 
 import sublime
 
-from GitSavvy.core.utils import Cache
+from GitSavvy.core.caches import Cache
 from .log_graph_helper import COMMIT_NODE_CHARS
 
 from typing import (

@@ -7,7 +7,7 @@ from typing import NamedTuple
 import sublime
 
 from GitSavvy.core.fns import filter_
-from GitSavvy.core.utils import cache_in_store_as
+from GitSavvy.core.caches import cache_in_store_as
 from GitSavvy.core.git_command import mixin_base
 
 
