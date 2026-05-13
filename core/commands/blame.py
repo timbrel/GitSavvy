@@ -48,20 +48,6 @@ class BlameMixin(GsTextCommand):
     """
 
     @util.view.single_cursor_pt
-    def find_lineno(self, cursor_pt):
-        pattern = r"^.+ \| +\d+"
-        line_start = util.view.get_instance_before_pt(self.view, cursor_pt, pattern)
-        if line_start is None:
-            return 1
-        else:
-            line = self.view.substr(self.view.find(pattern, line_start))
-            _, lineno = line.split("|", 1)
-            try:
-                return int(lineno.strip().split(" ")[0])
-            except Exception:
-                return 1
-
-    @util.view.single_cursor_pt
     def find_selected_commit_hash(self, cursor_pt):
         hunk_start = util.view.get_instance_before_pt(self.view, cursor_pt, r"^\-+ \| \-+")
         if hunk_start is None:
@@ -76,6 +62,28 @@ class BlameMixin(GsTextCommand):
         ):
             return self.view.substr(short_hash_region)
         return None
+
+
+def current_lineno(view: sublime.View) -> int:
+    cursor = cursor_pos(view)
+    pattern = r"^.+ \| +\d+"
+    line_start = util.view.get_instance_before_pt(view, cursor, pattern)
+    if line_start is None:
+        return 1
+    else:
+        line = view.substr(view.find(pattern, line_start))
+        _, lineno = line.split("|", 1)
+        try:
+            return int(lineno.strip().split(" ")[0])
+        except Exception:
+            return 1
+
+
+def cursor_pos(view: sublime.View) -> int:
+    try:
+        return view.sel()[0].b
+    except Exception:
+        return 0
 
 
 class gs_blame(BlameMixin):
@@ -125,7 +133,7 @@ class gs_blame(BlameMixin):
             lineno = self.find_matching_lineno_in_file_history(
                 original_view.settings().get("git_savvy.commit_hash"),
                 self._commit_hash,
-                self.find_lineno(),
+                current_lineno(original_view),
                 self._file_path
             )
 
@@ -436,7 +444,7 @@ def open_blame_neighbor(cmd: BlameMixin, position: str) -> None:
     lineno = cmd.find_matching_lineno_in_file_history(
         commit_hash,
         neighbor_hash,
-        cmd.find_lineno(),
+        current_lineno(cmd.view),
         settings.get("git_savvy.file_path")
     )
     settings.set("git_savvy.commit_hash", neighbor_hash)
@@ -468,7 +476,7 @@ class gs_blame_open_file_at_current_commit(BlameMixin):
         settings = self.view.settings()
 
         commit_hash = settings.get("git_savvy.commit_hash", "HEAD")
-        lineno = self.find_lineno()
+        lineno = current_lineno(self.view)
 
         self.window.run_command("gs_show_file_at_commit", {
             "commit_hash": commit_hash,
@@ -488,7 +496,7 @@ class gs_blame_open_file_at_cursor_commit(BlameMixin):
         lineno = self.find_matching_lineno_in_file_history(
             current_commit,
             next_commit,
-            self.find_lineno(),
+            current_lineno(self.view),
             self.file_path
         )
 
@@ -552,7 +560,7 @@ class gs_blame_toggle_setting(BlameMixin):
             settings.set(setting_str, not settings.get(setting_str))
 
         self.window.status_message("{} is now {}".format(setting, settings.get(setting_str)))
-        self.view.settings().set("git_savvy.lineno", self.find_lineno())
+        self.view.settings().set("git_savvy.lineno", current_lineno(self.view))
         self.view.run_command("gs_blame_refresh")
 
 
