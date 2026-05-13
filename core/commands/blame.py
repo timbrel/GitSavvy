@@ -12,7 +12,7 @@ from ..fns import filter_
 from ..git_mixins.history import CommitInfo, LogEntry, is_dynamic_ref
 from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker, run_as_text_command, throttled
 from ..ui_mixins.quick_panel import PanelCommandMixin, show_log_panel
-from ..view import apply_position, scroll_to_pt, y_offset, Position
+from ..view import scroll_to_pt, y_offset, Position
 from ...common import util
 from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.caches import cached
@@ -89,6 +89,33 @@ def cursor_pos(view: sublime.View) -> int:
         return 0
 
 
+def apply_blame_position(
+    view: sublime.View,
+    lineno: int,
+    y_offset_: float | None
+) -> None:
+    if not select_blame_line(view, lineno):
+        return
+
+    point = view.sel()[0].begin()
+    if y_offset_ is not None:
+        scroll_to_pt(view, point, y_offset_)
+    else:
+        view.show(point)
+
+
+def select_blame_line(view: sublime.View, lineno: int) -> bool:
+    pattern = r".{{30}} \| {lineno: >4}\s".format(lineno=lineno)
+    corresponding_region = view.find(pattern, 0)
+    blame_view_pt = corresponding_region.end()
+    if blame_view_pt < 0:
+        return False
+
+    view.sel().clear()
+    view.sel().add(sublime.Region(blame_view_pt, blame_view_pt))
+    return True
+
+
 def compute_identifier_for_view(view: sublime.View) -> Optional[Tuple]:
     settings = view.settings()
     return (
@@ -155,11 +182,10 @@ class gs_blame(GsTextCommand):
             file_path,
             commit_hash
         )
-        position = Position(lineno - 1, 0, offset)
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
                 focus_view(view)
-                run_as_text_command(apply_position, view, *position)
+                run_as_text_command(apply_blame_position, view, lineno, offset)
                 break
         else:
             view = util.view.create_scratch_view(
@@ -322,7 +348,7 @@ class gs_blame_refresh(GsTextCommand):
         initial_y_offset = settings.get("git_savvy.blame_view.y_offset")
         settings.erase("git_savvy.blame_view.y_offset")
         if settings.get("git_savvy.lineno", None) is not None:
-            self.select_line(settings.get("git_savvy.lineno"))
+            select_blame_line(self.view, settings.get("git_savvy.lineno"))
             settings.erase("git_savvy.lineno")
 
         if len(self.view.sel()) > 0:
@@ -521,14 +547,6 @@ class gs_blame_refresh(GsTextCommand):
                 )
 
             yield output
-
-    def select_line(self, lineno):
-        pattern = r".{{30}} \| {lineno: >4}\s".format(lineno=lineno)
-        corresponding_region = self.view.find(pattern, 0)
-        blame_view_pt = corresponding_region.end()
-        if blame_view_pt >= 0:
-            self.view.sel().clear()
-            self.view.sel().add(sublime.Region(blame_view_pt, blame_view_pt))
 
 
 class gs_blame_open_commit(GsTextCommand):
