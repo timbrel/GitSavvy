@@ -629,6 +629,24 @@ class HistoryMixin(mixin_base):
             None
         )
 
+    def recent_commit_for_line_range(
+        self,
+        current_commit: str,
+        file_path: str,
+        line_range: tuple[int, int],
+        skip_current: bool = False
+    ) -> Optional[str]:
+        current_commit = self.get_short_hash(current_commit)
+        commits = self._log_commits_for_line_range(
+            current_commit,
+            file_path,
+            line_range
+        )
+        return next(
+            (commit for commit in commits if not skip_current or commit != current_commit),
+            None
+        )
+
     def next_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
         return last(
@@ -676,6 +694,29 @@ class HistoryMixin(mixin_base):
                 return ""
             else:
                 raise ValueError(f"{commit_hash} seems orphaned")
+
+    @cached(not_if={"current_commit": is_dynamic_ref})
+    def _log_commits_for_line_range(
+        self,
+        current_commit: str,
+        file_path: str,
+        line_range: tuple[int, int]
+    ) -> list[str]:
+        file_path_at_commit = self.filename_at_commit(file_path, current_commit)
+        relative_path = self.to_rel_path(file_path_at_commit)
+        start_line, end_line = line_range
+        output = self.git(
+            "log",
+            "--format=%x1e%h",
+            "-2",
+            f"-L{start_line},{end_line}:{relative_path}",
+            current_commit
+        )
+        return [
+            line.strip()
+            for record in output.split("\x1e")
+            if record and (line := record.splitlines()[0])
+        ]
 
     def _log_commits_linewise(
         self,

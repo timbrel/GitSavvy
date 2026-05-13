@@ -344,17 +344,12 @@ class gs_show_file_at_commit_open_next_change(GsTextCommand):
             flash(view, "No visible lines to inspect.")
             return
 
-        try:
-            commit = recent_commit_for_line_range(
-                self,
-                commit_hash,
-                file_path,
-                line_range
-            )
-        except GitSavvyError:
-            flash(view, "Could not inspect the visible lines.")
-            return
-
+        commit = self.recent_commit_for_line_range(
+            commit_hash,
+            file_path,
+            line_range,
+            skip_current=True
+        )
         if not commit:
             flash(view, "No older change found in the visible lines.")
             return
@@ -393,26 +388,6 @@ class gs_show_file_at_commit_open_previous_change(GsTextCommand):
         refresh_show_file_at_commit_view(view, position)
 
 
-def recent_commit_for_line_range(
-    cmd: GitCommand,
-    commit_hash: str,
-    file_path: str,
-    line_range: Tuple[int, int]
-) -> Optional[str]:
-    commit_hash = cmd.get_short_hash(commit_hash)
-    file_path_at_commit = cmd.filename_at_commit(file_path, commit_hash)
-    relative_path = cmd.to_rel_path(file_path_at_commit)
-    start_line, end_line = line_range
-    output = cmd.git(
-        "log",
-        "--format=%x1e%h",
-        "-2",
-        f"-L{start_line},{end_line}:{relative_path}",
-        commit_hash,
-        # show_panel_on_error=False
-    )
-    commits = re.findall(r"\x1e([0-9a-f]+)", output)
-    return next((commit for commit in commits if commit != commit_hash), None)
 
 
 def visible_line_range(view: sublime.View) -> Optional[Tuple[int, int]]:
