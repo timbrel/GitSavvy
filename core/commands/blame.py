@@ -413,6 +413,37 @@ class gs_blame_open_next_commit(BlameMixin):
         open_blame_neighbor(self, "newer")
 
 
+def open_blame_neighbor(cmd: BlameMixin, position: str) -> None:
+    settings = cmd.view.settings()
+    commit_hash = settings.get("git_savvy.commit_hash")
+
+    assert cmd.file_path
+    if position == "older":
+        neighbor_hash = cmd.previous_commit(commit_hash, cmd.file_path, follow=True)
+        if not neighbor_hash:
+            cmd.window.status_message("Already on the oldest revision.")
+            return
+
+    elif position == "newer":
+        if not commit_hash:
+            cmd.window.status_message("Already showing the workdir state.")
+            return
+        neighbor_hash = cmd.next_commit(commit_hash, cmd.file_path, follow=True)
+
+    if commit_hash == neighbor_hash:
+        return
+
+    lineno = cmd.find_matching_lineno_in_file_history(
+        commit_hash,
+        neighbor_hash,
+        cmd.find_lineno(),
+        settings.get("git_savvy.file_path")
+    )
+    settings.set("git_savvy.commit_hash", neighbor_hash)
+    settings.set("git_savvy.lineno", lineno)
+    cmd.view.run_command("gs_blame_refresh")
+
+
 class gs_blame_open_commit_before_cursor_commit(BlameMixin):
     def run(self, edit) -> None:
         commit_hash = self.find_selected_commit_hash()
@@ -488,37 +519,6 @@ class gs_blame_action(BlameMixin, PanelCommandMixin):
         if selected_commit:
             for act in self.actions:
                 act[1] = act[1].replace("cursor commit", selected_commit[0:7])
-
-
-def open_blame_neighbor(cmd: BlameMixin, position: str) -> None:
-    settings = cmd.view.settings()
-    commit_hash = settings.get("git_savvy.commit_hash")
-
-    assert cmd.file_path
-    if position == "older":
-        neighbor_hash = cmd.previous_commit(commit_hash, cmd.file_path, follow=True)
-        if not neighbor_hash:
-            cmd.window.status_message("Already on the oldest revision.")
-            return
-
-    elif position == "newer":
-        if not commit_hash:
-            cmd.window.status_message("Already showing the workdir state.")
-            return
-        neighbor_hash = cmd.next_commit(commit_hash, cmd.file_path, follow=True)
-
-    if commit_hash == neighbor_hash:
-        return
-
-    lineno = cmd.find_matching_lineno_in_file_history(
-        commit_hash,
-        neighbor_hash,
-        cmd.find_lineno(),
-        settings.get("git_savvy.file_path")
-    )
-    settings.set("git_savvy.commit_hash", neighbor_hash)
-    settings.set("git_savvy.lineno", lineno)
-    cmd.view.run_command("gs_blame_refresh")
 
 
 class gs_blame_open_graph_context(BlameMixin):
