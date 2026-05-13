@@ -110,6 +110,7 @@ class gs_blame(GsTextCommand):
     def create_blame_view(self):
         assert self._file_path
         original_view = self.view
+        original_settings = original_view.settings()
         row, _ = original_view.rowcol(cursor_pos(original_view))
         view = self.window.new_file()
 
@@ -124,11 +125,11 @@ class gs_blame(GsTextCommand):
                 settings.set("git_savvy.blame_view.y_offset", self._position.offset)
             settings.set("git_savvy.blame_view.ignore_whitespace", False)
             settings.set("git_savvy.blame_view.detect_move_or_copy_within", None)
-            settings.set("git_savvy.original_syntax", original_view.settings().get('syntax'))
+            settings.set("git_savvy.original_syntax", original_settings.get('syntax'))
 
-        elif original_view.settings().get("git_savvy.blame_view"):
+        elif original_settings.get("git_savvy.blame_view"):
             lineno = self.find_matching_lineno_in_file_history(
-                original_view.settings().get("git_savvy.commit_hash"),
+                original_settings.get("git_savvy.commit_hash"),
                 self._commit_hash,
                 current_lineno(original_view),
                 self._file_path
@@ -139,7 +140,7 @@ class gs_blame(GsTextCommand):
                 "git_savvy.blame_view.detect_move_or_copy_within",
                 "git_savvy.original_syntax"
             ]:
-                settings.set(key, original_view.settings().get(key))
+                settings.set(key, original_settings.get(key))
 
         else:
             if self._commit_hash:
@@ -153,7 +154,7 @@ class gs_blame(GsTextCommand):
                 lineno = row + 1
             settings.set("git_savvy.blame_view.ignore_whitespace", False)
             settings.set("git_savvy.blame_view.detect_move_or_copy_within", None)
-            settings.set("git_savvy.original_syntax", original_view.settings().get('syntax'))
+            settings.set("git_savvy.original_syntax", original_settings.get('syntax'))
 
         settings.set("git_savvy.lineno", lineno)
         settings.set("git_savvy.commit_hash", self._commit_hash)
