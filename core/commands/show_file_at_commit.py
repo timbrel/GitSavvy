@@ -1,4 +1,5 @@
 from __future__ import annotations
+from contextlib import contextmanager
 from functools import lru_cache
 import os
 import re
@@ -40,7 +41,7 @@ __all__ = (
 )
 
 
-from typing import Dict, NamedTuple, Optional, Set, Tuple
+from typing import Dict, Iterator, NamedTuple, Optional, Set, Tuple
 
 
 SHOW_COMMIT_TITLE = "FILE: {}, {}"
@@ -284,12 +285,10 @@ class gs_show_file_at_commit_open_previous_commit(GsTextCommand):
             )
             position = Position(line - 1, col, offset)
 
-        popup_was_visible = settings.get("git_savvy.show_file_at_commit.info_popup_visible")
-        view.run_command("gs_show_file_at_commit_refresh", {
-            "position": position
-        })
-        if popup_was_visible:
-            view.run_command("gs_show_file_at_commit_open_info_popup")
+        with keep_info_popup_state(view):
+            view.run_command("gs_show_file_at_commit_refresh", {
+                "position": position
+            })
 
 
 class gs_show_file_at_commit_open_next_commit(GsTextCommand):
@@ -325,12 +324,10 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
             )
             position = Position(line - 1, col, offset)
 
-        popup_was_visible = settings.get("git_savvy.show_file_at_commit.info_popup_visible")
-        view.run_command("gs_show_file_at_commit_refresh", {
-            "position": position
-        })
-        if popup_was_visible:
-            view.run_command("gs_show_file_at_commit_open_info_popup")
+        with keep_info_popup_state(view):
+            view.run_command("gs_show_file_at_commit_refresh", {
+                "position": position
+            })
 
 
 class gs_show_file_at_commit_open_next_change(GsTextCommand):
@@ -373,7 +370,8 @@ class gs_show_file_at_commit_open_next_change(GsTextCommand):
             )
             position = Position(line - 1, col, offset)
 
-        refresh_show_file_at_commit_view(view, position)
+        with keep_info_popup_state(view):
+            view.run_command("gs_show_file_at_commit_refresh", {"position": position})
 
 
 class gs_show_file_at_commit_open_previous_change(GsTextCommand):
@@ -388,9 +386,9 @@ class gs_show_file_at_commit_open_previous_change(GsTextCommand):
 
         settings.set("git_savvy.show_file_at_commit_view.commit", previous["to_commit"])
         position = position_from_setting(previous.get("position"))
-        refresh_show_file_at_commit_view(view, position)
 
-
+        with keep_info_popup_state(view):
+            view.run_command("gs_show_file_at_commit_refresh", {"position": position})
 
 
 def visible_line_range(view: sublime.View) -> Optional[Tuple[int, int]]:
@@ -403,16 +401,16 @@ def visible_line_range(view: sublime.View) -> Optional[Tuple[int, int]]:
     return start_row + 1, end_row + 1
 
 
-def refresh_show_file_at_commit_view(
-    view: sublime.View,
-    position: Optional[Position]
-) -> None:
+@contextmanager
+def keep_info_popup_state(view: sublime.View) -> Iterator[None]:
     popup_was_visible = view.settings().get(
         "git_savvy.show_file_at_commit.info_popup_visible"
     )
-    view.run_command("gs_show_file_at_commit_refresh", {"position": position})
-    if popup_was_visible:
-        view.run_command("gs_show_file_at_commit_open_info_popup")
+    try:
+        yield
+    finally:
+        if popup_was_visible:
+            view.run_command("gs_show_file_at_commit_open_info_popup")
 
 
 def get_next_commit(
