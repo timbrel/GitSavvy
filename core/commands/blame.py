@@ -104,41 +104,25 @@ class gs_blame(GsTextCommand):
         if commit_hash:
             commit_hash = self.get_short_hash(commit_hash)
 
-        original_view = self.view
-        original_settings = original_view.settings()
-        row, _ = original_view.rowcol(cursor_pos(original_view))
-        view = self.window.new_file()
-
-        settings = view.settings()
-        settings.set("git_savvy.blame_view", True)
-        settings.set("git_savvy.repo_path", repo_path)
-        settings.set("git_savvy.file_path", file_path)
+        active_view = self.view
+        av_settings = active_view.settings()
 
         if position:
-            position = Position(*position)
+            position = Position(*position) if position else None
             lineno = position.row + 1
-            if position.offset is not None:
-                settings.set("git_savvy.blame_view.y_offset", position.offset)
-            settings.set("git_savvy.blame_view.ignore_whitespace", False)
-            settings.set("git_savvy.blame_view.detect_move_or_copy_within", None)
-            settings.set("git_savvy.original_syntax", original_settings.get('syntax'))
+            offset = position.offset
 
-        elif original_settings.get("git_savvy.blame_view"):
+        elif av_settings.get("git_savvy.blame_view"):
             lineno = self.find_matching_lineno_in_file_history(
-                original_settings.get("git_savvy.commit_hash"),
+                av_settings.get("git_savvy.commit_hash"),
                 commit_hash,
-                current_lineno(original_view),
+                current_lineno(active_view),
                 file_path
             )
-
-            for key in [
-                "git_savvy.blame_view.ignore_whitespace",
-                "git_savvy.blame_view.detect_move_or_copy_within",
-                "git_savvy.original_syntax"
-            ]:
-                settings.set(key, original_settings.get(key))
+            offset = None
 
         else:
+            row, _ = active_view.rowcol(cursor_pos(active_view))
             if commit_hash:
                 target_path = self.filename_at_commit(file_path, commit_hash)
                 lineno = self.reverse_find_matching_lineno_between_files(
@@ -148,16 +132,25 @@ class gs_blame(GsTextCommand):
                 )
             else:
                 lineno = row + 1
-            settings.set("git_savvy.blame_view.ignore_whitespace", False)
-            settings.set("git_savvy.blame_view.detect_move_or_copy_within", None)
-            settings.set("git_savvy.original_syntax", original_settings.get('syntax'))
+            offset = None
 
-        settings.set("git_savvy.lineno", lineno)
-        settings.set("git_savvy.commit_hash", commit_hash)
-
-        view.set_syntax_file("Packages/GitSavvy/syntax/blame.sublime-syntax")
-        view.set_scratch(True)
-        view.set_read_only(True)
+        view = util.view.create_scratch_view(
+            self.window,
+            "blame",
+            {
+                "syntax": "Packages/GitSavvy/syntax/blame.sublime-syntax",
+                "git_savvy.repo_path": repo_path,
+                "git_savvy.file_path": file_path,
+                "git_savvy.commit_hash": commit_hash,
+                "git_savvy.lineno": lineno,
+                "git_savvy.blame_view.y_offset": offset,
+                "git_savvy.blame_view.ignore_whitespace":
+                    av_settings.get("git_savvy.blame_view.ignore_whitespace", False),
+                "git_savvy.blame_view.detect_move_or_copy_within":
+                    av_settings.get("git_savvy.blame_view.detect_move_or_copy_within", None),
+                "git_savvy.original_syntax": av_settings.get('syntax')
+            }
+        )
 
         view.run_command("gs_blame_refresh")
         view.run_command("gs_handle_vintageous")
