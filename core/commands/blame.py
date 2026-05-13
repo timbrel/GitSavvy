@@ -43,12 +43,6 @@ NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
 BLAME_TITLE = "BLAME: {}{}"
 
 
-class BlameMixin(GsTextCommand):
-    """
-    Some helper functions
-    """
-
-
 def commit_under_cursor(view: sublime.View) -> str | None:
     cursor = cursor_pos(view)
     hunk_start = util.view.get_instance_before_pt(view, cursor, r"^\-+ \| \-+")
@@ -88,7 +82,7 @@ def cursor_pos(view: sublime.View) -> int:
         return 0
 
 
-class gs_blame(BlameMixin):
+class gs_blame(GsTextCommand):
     def run(
         self,
         edit,
@@ -171,7 +165,7 @@ class gs_blame(BlameMixin):
         view.run_command("gs_handle_vintageous")
 
 
-class gs_blame_current_file(LogMixin, BlameMixin):
+class gs_blame_current_file(LogMixin, GsTextCommand):
 
     _commit_hash = None
     _file_path = None
@@ -202,7 +196,7 @@ class gs_blame_current_file(LogMixin, BlameMixin):
         return self._commit_hash and commit_hash.startswith(self._commit_hash)
 
 
-class gs_blame_refresh(BlameMixin):
+class gs_blame_refresh(GsTextCommand):
     _highlighted_count = 0  # to be implemented
     _original_color_scheme = None  # to be implemented
     _theme = None  # to be implemented
@@ -404,7 +398,7 @@ class gs_blame_refresh(BlameMixin):
             self.view.sel().add(sublime.Region(blame_view_pt, blame_view_pt))
 
 
-class gs_blame_open_commit(BlameMixin):
+class gs_blame_open_commit(GsTextCommand):
     def run(self, edit) -> None:
         commit_hash = commit_under_cursor(self.view)
         if not commit_hash:
@@ -413,17 +407,17 @@ class gs_blame_open_commit(BlameMixin):
         self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
 
 
-class gs_blame_open_previous_commit(BlameMixin):
+class gs_blame_open_previous_commit(GsTextCommand):
     def run(self, edit) -> None:
         open_blame_neighbor(self, "older")
 
 
-class gs_blame_open_next_commit(BlameMixin):
+class gs_blame_open_next_commit(GsTextCommand):
     def run(self, edit) -> None:
         open_blame_neighbor(self, "newer")
 
 
-def open_blame_neighbor(cmd: BlameMixin, position: str) -> None:
+def open_blame_neighbor(cmd: GsTextCommand, position: str) -> None:
     settings = cmd.view.settings()
     commit_hash = settings.get("git_savvy.commit_hash")
 
@@ -454,7 +448,7 @@ def open_blame_neighbor(cmd: BlameMixin, position: str) -> None:
     cmd.view.run_command("gs_blame_refresh")
 
 
-class gs_blame_open_commit_before_cursor_commit(BlameMixin):
+class gs_blame_open_commit_before_cursor_commit(GsTextCommand):
     def run(self, edit) -> None:
         commit_hash = commit_under_cursor(self.view)
         if not commit_hash:
@@ -472,7 +466,7 @@ class gs_blame_open_commit_before_cursor_commit(BlameMixin):
         })
 
 
-class gs_blame_open_file_at_current_commit(BlameMixin):
+class gs_blame_open_file_at_current_commit(GsTextCommand):
     def run(self, edit) -> None:
         assert self.file_path
         settings = self.view.settings()
@@ -488,7 +482,7 @@ class gs_blame_open_file_at_current_commit(BlameMixin):
         })
 
 
-class gs_blame_open_file_at_cursor_commit(BlameMixin):
+class gs_blame_open_file_at_cursor_commit(GsTextCommand):
     def run(self, edit) -> None:
         assert self.file_path
         settings = self.view.settings()
@@ -510,7 +504,7 @@ class gs_blame_open_file_at_cursor_commit(BlameMixin):
         })
 
 
-class gs_blame_action(BlameMixin, PanelCommandMixin):
+class gs_blame_action(GsTextCommand, PanelCommandMixin):
     selected_index = 0
     default_actions = [
         ["gs_blame_open_commit", "Show Commit"],
@@ -531,7 +525,7 @@ class gs_blame_action(BlameMixin, PanelCommandMixin):
                 act[1] = act[1].replace("cursor commit", selected_commit[0:7])
 
 
-class gs_blame_open_graph_context(BlameMixin):
+class gs_blame_open_graph_context(GsTextCommand):
     def run(self, edit):
         # type: (...) -> None
         commit_hash = commit_under_cursor(self.view)
@@ -541,7 +535,7 @@ class gs_blame_open_graph_context(BlameMixin):
         })
 
 
-class gs_blame_toggle_setting(BlameMixin):
+class gs_blame_toggle_setting(GsTextCommand):
 
     """
     Toggle view settings: `ignore_whitespace`, `detect_move_or_copy_within_file`,
