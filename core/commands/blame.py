@@ -105,9 +105,9 @@ class gs_blame(GsTextCommand):
         self._commit_hash = commit_hash
         self._position = Position(*position) if position else None
 
-        enqueue_on_worker(self.blame)
+        enqueue_on_worker(self.create_blame_view)
 
-    def blame(self):
+    def create_blame_view(self):
         assert self._file_path
         original_view = self.view
         row, _ = original_view.rowcol(cursor_pos(original_view))
