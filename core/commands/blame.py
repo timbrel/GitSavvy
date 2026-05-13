@@ -8,7 +8,9 @@ import sublime
 
 from .navigate import GsNavigate
 from .log import LogMixin
-from ..git_mixins.history import is_dynamic_ref
+from ..fns import filter_
+from ..git_mixins.history import CommitInfo, is_dynamic_ref
+from ..runtime import enqueue_on_worker
 from ..ui_mixins.quick_panel import PanelCommandMixin
 from ..view import scroll_to_pt, y_offset, Position
 from ...common import util
@@ -206,12 +208,7 @@ class gs_blame_refresh(GsTextCommand):
         file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.commit_hash", None)  # type: Optional[str]
 
-        self.view.set_name(
-            BLAME_TITLE.format(
-                self.to_rel_path(file_path),
-                " at {}".format(commit_hash[0:7]) if commit_hash else ""
-            )
-        )
+        enqueue_on_worker(self.update_commit_details, commit_hash, file_path)
 
         within_what = settings.get("git_savvy.blame_view.detect_move_or_copy_within")
         if not within_what:
@@ -251,6 +248,56 @@ class gs_blame_refresh(GsTextCommand):
                 self.view.show_at_center(self.view.line(self.view.sel()[0].begin()).begin())
             else:
                 scroll_to_pt(self.view, self.view.sel()[0].begin(), yoffset)
+
+    def update_commit_details(
+        self,
+        commit_hash: str | None,
+        file_path: str
+    ) -> None:
+        if commit_hash:
+            commit_details = self.commit_subject_and_date(commit_hash, file_path)
+            self.update_title(commit_details, file_path)
+            self.update_status_bar(commit_details)
+        else:
+            self.view.set_name(BLAME_TITLE.format(self.to_rel_path(file_path), ""))
+
+    def update_status_bar(self, commit_details: CommitInfo) -> None:
+        view = self.view
+        settings = view.settings()
+        window = view.window()
+        if not window:
+            return
+        message = "On commit {}{}{}".format(
+            commit_details.short_hash,
+            f": {commit_details.subject}" if commit_details.subject else "",
+            f" ({commit_details.date})" if commit_details.date else "")
+
+        # Status messages are only temporary shown and in this case
+        # the roundabout 4 seconds just aren't enough. Loop here to
+        # extend Sublime Text's hardcoded duration.
+        def sink(n=0):
+            if (
+                view != window.active_view()
+                or commit_details.short_hash != settings.get("git_savvy.commit_hash")
+            ):
+                return
+
+            flash(self.view, message)
+            if n < 4:
+                sublime.set_timeout_async(lambda: sink(n + 1), 3000)
+
+        sink()
+
+    def update_title(self, commit_details: CommitInfo, file_path: str) -> None:
+        details = ", ".join(filter_((commit_details.subject, commit_details.date)))
+        message = "{}{}".format(
+            commit_details.short_hash,
+            f" {details}" if details else ""
+        )
+        self.view.set_name(BLAME_TITLE.format(
+            self.to_rel_path(file_path),
+            f", {message}"
+        ))
 
     @cached(not_if={"commit_hash": is_dynamic_ref})
     def render_blame(
