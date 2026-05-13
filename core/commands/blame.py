@@ -9,7 +9,7 @@ import sublime
 
 from .navigate import GsNavigate
 from ..fns import filter_
-from ..git_mixins.history import CommitInfo, is_dynamic_ref
+from ..git_mixins.history import CommitInfo, LogEntry, is_dynamic_ref
 from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker, throttled
 from ..ui_mixins.quick_panel import PanelCommandMixin, show_log_panel
 from ..view import scroll_to_pt, y_offset, Position
@@ -194,12 +194,12 @@ class gs_blame_open_log(GsTextCommand):
             topo_order=True
         )
 
-        leading = []
+        leading = [self.workdir_log_entry()]
         if shown_commit:
             for idx, entry in enumerate(entries):
                 leading.append(entry)
                 if entry.long_hash.startswith(shown_commit):
-                    self.selected_index = idx
+                    self.selected_index = idx + 1
                     break
             else:
                 flash(self.view, f"No commits found for {self.to_rel_path(file_path)}.")
@@ -213,8 +213,15 @@ class gs_blame_open_log(GsTextCommand):
             on_highlight=self.on_highlight
         )
 
+    def workdir_log_entry(self) -> LogEntry:
+        short_hash_length = (
+            self.current_state().get("short_hash_length") or
+            len(self.get_short_hash("HEAD")))
+        placeholder = (".-" * short_hash_length)[:short_hash_length]
+        return LogEntry(placeholder, "", "", "HEAD / WORKTREE", "", "", "", "")
+
     def on_done(self, commit) -> None:
-        if commit:
+        if commit is not None:
             return  # nothing further to do as we already updated `on_highlight`
 
         # Revert
@@ -226,14 +233,14 @@ class gs_blame_open_log(GsTextCommand):
 
     @lru_cache(1)
     def on_highlight(self, commit) -> None:
-        if commit:
+        if commit is not None:
             sublime.set_timeout_async(throttled(self._on_highlight, commit), 10)
 
     def _on_highlight(self, commit) -> None:
         assert self.file_path
         view = self.view
         settings = view.settings()
-        commit = self.get_short_hash(commit)
+        commit = self.get_short_hash(commit) if commit else None
         previous_commit = settings.get("git_savvy.commit_hash")
         lineno = self.find_matching_lineno_in_file_history(
             previous_commit,
