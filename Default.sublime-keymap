@@ -1479,6 +1479,22 @@
     },
 
     {
+        "keys": ["alt+shift+."],
+        "command": "gs_blame_open_next_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["alt+shift+,"],
+        "command": "gs_blame_open_commit_before_cursor_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["g"],
         "command": "gs_blame_open_graph_context",
         "context": [
