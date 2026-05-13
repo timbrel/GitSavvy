@@ -119,6 +119,7 @@ class gs_blame_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
     ### Actions ###
     [enter]        show all commands
+    [shift+enter]  focus commit under cursor
     [o]            open commit under cursor
     [l]            show log of surrounding commits
 

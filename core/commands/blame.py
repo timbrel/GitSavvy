@@ -29,6 +29,7 @@ __all__ = (
     "gs_blame_open_previous_commit",
     "gs_blame_open_next_commit",
     "gs_blame_open_commit_before_cursor_commit",
+    "gs_blame_focus_commit",
     "gs_blame_return_to_newer_commit",
     "gs_blame_open_file_at_current_commit",
     "gs_blame_open_file_at_cursor_commit",
@@ -558,6 +559,36 @@ def open_blame_neighbor(cmd: GsTextCommand, position: str) -> None:
     cmd.view.run_command("gs_blame_refresh")
 
 
+class gs_blame_focus_commit(GsTextCommand):
+    def run(self, edit) -> None:
+        view = self.view
+        settings = view.settings()
+        commit_hash = commit_under_cursor(view)
+        if not commit_hash:
+            return
+
+        current_commit = settings.get("git_savvy.commit_hash")
+        if commit_hash == current_commit:
+            return
+
+        assert self.file_path
+        lineno = current_lineno(view)
+        remember_blame_navigation(view, {
+            "commit_hash": current_commit,
+            "lineno": lineno,
+            "y_offset": y_offset(view, cursor_pos(view)),
+        })
+        lineno = self.find_matching_lineno_in_file_history(
+            current_commit,
+            commit_hash,
+            lineno,
+            self.file_path
+        )
+        settings.set("git_savvy.commit_hash", commit_hash)
+        settings.set("git_savvy.lineno", lineno)
+        view.run_command("gs_blame_refresh")
+
+
 class gs_blame_open_commit_before_cursor_commit(GsTextCommand):
     def run(self, edit) -> None:
         view = self.view
@@ -664,6 +695,7 @@ class gs_blame_action(GsTextCommand, PanelCommandMixin):
     selected_index = 0
     default_actions = [
         ["gs_blame_open_commit", "Show Commit"],
+        ["gs_blame_focus_commit", "Focus cursor commit"],
         ["gs_blame_open_commit_before_cursor_commit", "Blame commit prior to cursor commit"],
         ["gs_blame_open_previous_commit", "Blame previous commit"],
         ["gs_blame_open_next_commit", "Blame next commit"],

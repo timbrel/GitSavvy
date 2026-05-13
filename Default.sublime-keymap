@@ -1426,6 +1426,14 @@
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["shift+enter"],
+        "command": "gs_blame_focus_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
 
 
     {
