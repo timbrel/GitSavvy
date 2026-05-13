@@ -206,8 +206,9 @@ yet, as usual.)
  (previous).  In file-at-commit views, `[N]` skips unrelated file revisions and jumps to the previous
  revision that changed the code currently visible in the viewport. `[P]` returns through those jumps.
  This is useful when you want to follow the evolution of a function or feature without stepping through
- every noisy commit that touched the file.  You can show the commit's context using `[g]`, and the
- hunks context by opening the inline diff.  That's easier with more keybindings:
+ every noisy commit that touched the file.  You can show the commit's context using `[g]`, open
+ blame for the current revision with `[b]`, and show the hunks context by opening the inline diff.
+ That's easier with more keybindings:
 
 ```
   { "keys": ["ctrl+shift+,"], "command": "gs_inline_diff" },
@@ -228,7 +229,7 @@ GitSavvy offers fixup/squash helpers that can be accessed from various views, in
 GitSavvy provides GitHub integration that allows users to reference issues/collaborators when committing, open the current file or a commit on GitHub at the selected line, and create a new pull request from the current branch.
 
 ## GitHub-Style Blame View
-GitSavvy offers a "blame" view that shows hunk metadata and allows users to view the commit that made the change, similar to GitHub's blame view.
+GitSavvy offers a "blame" view that shows hunk metadata and allows users to view the commit that made the change, similar to GitHub's blame view.  In file-at-commit views, `[b]` opens blame for that revision at the same visible position.
 
 ## Other highlights
 

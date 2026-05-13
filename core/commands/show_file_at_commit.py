@@ -33,6 +33,7 @@ __all__ = (
     "gs_show_file_at_commit_open_next_commit",
     "gs_show_file_at_commit_open_previous_change",
     "gs_show_file_at_commit_open_next_change",
+    "gs_show_file_at_commit_open_blame",
     "gs_show_file_at_commit_open_commit",
     "gs_show_file_at_commit_open_file_on_working_dir",
     "gs_show_file_at_commit_open_graph_context",
@@ -700,6 +701,18 @@ class gs_show_file_at_commit_open_log(GsTextCommand):
         view.run_command("gs_show_file_at_commit_refresh", {
             "position": position,
             "sync": False,
+        })
+
+
+class gs_show_file_at_commit_open_blame(GsTextCommand):
+    def run(self, edit) -> None:
+        settings = self.view.settings()
+        position = capture_cur_position(self.view)
+        self.view.run_command("gs_blame", {
+            "repo_path": settings.get("git_savvy.repo_path"),
+            "file_path": settings.get("git_savvy.file_path"),
+            "commit_hash": settings.get("git_savvy.show_file_at_commit_view.commit"),
+            "position": list(position) if position else None,
         })
 
 

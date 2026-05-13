@@ -73,7 +73,14 @@ class BlameMixin(GsTextCommand):
 
 
 class gs_blame(BlameMixin):
-    def run(self, edit, file_path: str = None, repo_path: str = None, commit_hash: str = None):
+    def run(
+        self,
+        edit,
+        file_path: str = None,
+        repo_path: str = None,
+        commit_hash: str = None,
+        position: Position = None
+    ):
         self.__repo_path = repo_path or self.repo_path
         self._file_path = file_path or self.file_path
         if not self._file_path:
@@ -85,6 +92,7 @@ class gs_blame(BlameMixin):
         if commit_hash:
             commit_hash = self.get_short_hash(commit_hash)
         self._commit_hash = commit_hash
+        self._position = Position(*position) if position else None
 
         sublime.set_timeout_async(self.blame)
 
@@ -99,7 +107,15 @@ class gs_blame(BlameMixin):
         settings.set("git_savvy.repo_path", self.__repo_path)
         settings.set("git_savvy.file_path", self._file_path)
 
-        if original_view.settings().get("git_savvy.blame_view"):
+        if self._position:
+            lineno = self._position.row + 1
+            if self._position.offset is not None:
+                settings.set("git_savvy.blame_view.y_offset", self._position.offset)
+            settings.set("git_savvy.blame_view.ignore_whitespace", False)
+            settings.set("git_savvy.blame_view.detect_move_or_copy_within", None)
+            settings.set("git_savvy.original_syntax", original_view.settings().get('syntax'))
+
+        elif original_view.settings().get("git_savvy.blame_view"):
             lineno = self.find_matching_lineno_in_file_history(
                 original_view.settings().get("git_savvy.commit_hash"),
                 self._commit_hash,
@@ -217,12 +233,16 @@ class gs_blame_refresh(BlameMixin):
 
         replace_view_content(self.view, content)
 
+        initial_y_offset = settings.get("git_savvy.blame_view.y_offset")
+        settings.erase("git_savvy.blame_view.y_offset")
         if settings.get("git_savvy.lineno", None) is not None:
             self.select_line(settings.get("git_savvy.lineno"))
             settings.erase("git_savvy.lineno")
 
         if len(self.view.sel()) > 0:
-            if was_empty:
+            if initial_y_offset is not None:
+                scroll_to_pt(self.view, self.view.sel()[0].begin(), initial_y_offset)
+            elif was_empty:
                 # if it was opened as a new file
                 self.view.show_at_center(self.view.line(self.view.sel()[0].begin()).begin())
             else:

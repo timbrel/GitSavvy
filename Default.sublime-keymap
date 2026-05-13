@@ -1339,6 +1339,14 @@
         ]
     },
     {
+        "keys": ["b"],
+        "command": "gs_show_file_at_commit_open_blame",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_file_at_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["p"],
         "command": "gs_show_file_at_commit_open_previous_commit",
         "context": [
