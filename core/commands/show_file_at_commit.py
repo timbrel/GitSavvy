@@ -363,13 +363,16 @@ class gs_show_file_at_commit_open_next_change(GsTextCommand):
         })
 
         settings.set("git_savvy.show_file_at_commit_view.commit", commit)
-        position = translate_position_between_commits(
-            self,
-            file_path,
-            commit_hash,
-            commit,
-            current_position
-        )
+        position = None
+        if current_position is not None:
+            row, col, offset = current_position
+            line = self.find_matching_lineno_between_files(
+                (commit_hash, self.filename_at_commit(file_path, commit_hash)),
+                (commit, self.filename_at_commit(file_path, commit)),
+                row + 1
+            )
+            position = Position(line - 1, col, offset)
+
         refresh_show_file_at_commit_view(view, position)
 
 
@@ -398,25 +401,6 @@ def visible_line_range(view: sublime.View) -> Optional[Tuple[int, int]]:
     start_row, _ = view.rowcol(visible_region.a)
     end_row, _ = view.rowcol(visible_region.b)
     return start_row + 1, end_row + 1
-
-
-def translate_position_between_commits(
-    cmd: GitCommand,
-    file_path: str,
-    from_commit: str,
-    to_commit: str,
-    position: Optional[Position]
-) -> Optional[Position]:
-    if position is None:
-        return None
-
-    row, col, offset = position
-    line = cmd.find_matching_lineno_between_files(
-        (from_commit, cmd.filename_at_commit(file_path, from_commit)),
-        (to_commit, cmd.filename_at_commit(file_path, to_commit)),
-        row + 1
-    )
-    return Position(line - 1, col, offset)
 
 
 def refresh_show_file_at_commit_view(
