@@ -12,7 +12,6 @@ from ...common import util
 from .log import LogMixin
 from ..ui_mixins.quick_panel import PanelCommandMixin
 from GitSavvy.core.base_commands import GsTextCommand
-from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import flash
 from GitSavvy.core.view import replace_view_content
 
@@ -92,23 +91,19 @@ class gs_blame(GsTextCommand):
         commit_hash: str = None,
         position: Position = None
     ):
-        self.__repo_path = repo_path or self.repo_path
-        self._file_path = file_path or self.file_path
-        if not self._file_path:
-            flash(self.view, "Can't extract a file name from the view.")
-            return
+        if not repo_path:
+            repo_path = self.repo_path
+        if not file_path:
+            file_path = self.file_path
+            if not file_path:
+                flash(self.view, "Can't extract a file name from the view.")
+                return
 
         if commit_hash == "HEAD":
             commit_hash = self.get_commit_hash_for_head()
         if commit_hash:
             commit_hash = self.get_short_hash(commit_hash)
-        self._commit_hash = commit_hash
-        self._position = Position(*position) if position else None
 
-        enqueue_on_worker(self.create_blame_view)
-
-    def create_blame_view(self):
-        assert self._file_path
         original_view = self.view
         original_settings = original_view.settings()
         row, _ = original_view.rowcol(cursor_pos(original_view))
@@ -116,13 +111,14 @@ class gs_blame(GsTextCommand):
 
         settings = view.settings()
         settings.set("git_savvy.blame_view", True)
-        settings.set("git_savvy.repo_path", self.__repo_path)
-        settings.set("git_savvy.file_path", self._file_path)
+        settings.set("git_savvy.repo_path", repo_path)
+        settings.set("git_savvy.file_path", file_path)
 
-        if self._position:
-            lineno = self._position.row + 1
-            if self._position.offset is not None:
-                settings.set("git_savvy.blame_view.y_offset", self._position.offset)
+        if position:
+            position = Position(*position)
+            lineno = position.row + 1
+            if position.offset is not None:
+                settings.set("git_savvy.blame_view.y_offset", position.offset)
             settings.set("git_savvy.blame_view.ignore_whitespace", False)
             settings.set("git_savvy.blame_view.detect_move_or_copy_within", None)
             settings.set("git_savvy.original_syntax", original_settings.get('syntax'))
@@ -130,9 +126,9 @@ class gs_blame(GsTextCommand):
         elif original_settings.get("git_savvy.blame_view"):
             lineno = self.find_matching_lineno_in_file_history(
                 original_settings.get("git_savvy.commit_hash"),
-                self._commit_hash,
+                commit_hash,
                 current_lineno(original_view),
-                self._file_path
+                file_path
             )
 
             for key in [
@@ -143,11 +139,11 @@ class gs_blame(GsTextCommand):
                 settings.set(key, original_settings.get(key))
 
         else:
-            if self._commit_hash:
-                target_path = self.filename_at_commit(self._file_path, self._commit_hash)
+            if commit_hash:
+                target_path = self.filename_at_commit(file_path, commit_hash)
                 lineno = self.reverse_find_matching_lineno_between_files(
-                    (self._commit_hash, target_path),
-                    (None, self._file_path),
+                    (commit_hash, target_path),
+                    (None, file_path),
                     row + 1
                 )
             else:
@@ -157,7 +153,7 @@ class gs_blame(GsTextCommand):
             settings.set("git_savvy.original_syntax", original_settings.get('syntax'))
 
         settings.set("git_savvy.lineno", lineno)
-        settings.set("git_savvy.commit_hash", self._commit_hash)
+        settings.set("git_savvy.commit_hash", commit_hash)
 
         view.set_syntax_file("Packages/GitSavvy/syntax/blame.sublime-syntax")
         view.set_scratch(True)
