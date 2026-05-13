@@ -397,7 +397,7 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
     """
     default_actions = [
         ["show_commit", "Show Commit"],
-        ["blame_neighbor", "Blame a commit before this line's commit", (),
+        ["blame_neighbor", "Blame commit before commit under cursor", (),
             {'position': "older", 'selected': True}],
         ["blame_neighbor", "Blame previous commit", (), {'position': "older"}],
         ["blame_neighbor", "Blame next commit", (), {'position': "newer"}],

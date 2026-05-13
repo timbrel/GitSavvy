@@ -127,10 +127,8 @@ class gs_blame_help_panel(GsAbstractOpenHelpPanel):
     [c]            detect moved or copied lines within same commit
     [a]            detect moved or copied lines within all commits
 
-    [<]            Blame previous commit
-    [>]            Blame next commit
-    [alt+<]        Blame a commit before this line's commit
-    [alt+>]        Blame next commit
+    [n]/[p]        blame next/previous commit (also: [<]/[>])
+    [alt+<]        blame commit before commit under cursor
 
     ### Navigation ###
     [g]            show (commit under cursor) in graph
