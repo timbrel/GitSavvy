@@ -1,17 +1,17 @@
 from __future__ import annotations
+from functools import lru_cache
 import re
 from collections import namedtuple, defaultdict
-from itertools import groupby
+from itertools import chain, groupby
 import unicodedata
 
 import sublime
 
 from .navigate import GsNavigate
-from .log import LogMixin
 from ..fns import filter_
 from ..git_mixins.history import CommitInfo, is_dynamic_ref
-from ..runtime import enqueue_on_worker
-from ..ui_mixins.quick_panel import PanelCommandMixin
+from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker, throttled
+from ..ui_mixins.quick_panel import PanelCommandMixin, show_log_panel
 from ..view import scroll_to_pt, y_offset, Position
 from ...common import util
 from GitSavvy.core.base_commands import GsTextCommand
@@ -22,7 +22,7 @@ from GitSavvy.core.view import replace_view_content
 
 __all__ = (
     "gs_blame",
-    "gs_blame_current_file",
+    "gs_blame_open_log",
     "gs_blame_refresh",
     "gs_blame_action",
     "gs_blame_open_commit",
@@ -161,35 +161,90 @@ class gs_blame(GsTextCommand):
         view.run_command("gs_handle_vintageous")
 
 
-class gs_blame_current_file(LogMixin, GsTextCommand):
+class gs_blame_open_log(GsTextCommand):
+    """
+    Show a panel of commits of this blamed file and live-preview
+    highlighted commits in the current blame view.
+    """
+    selected_index: int = 0
 
-    _commit_hash = None
-    _file_path = None
+    @on_worker
+    def run(self, edit: sublime.Edit) -> None:
+        assert self.file_path
+        view = self.view
+        settings = view.settings()
+        self.initial_commit = settings.get("git_savvy.commit_hash")
+        self.initial_lineno = current_lineno(view)
+        self.initial_y_offset = y_offset(view, cursor_pos(view))
+        file_path = self.file_path
+        shown_commit = self.initial_commit or commit_under_cursor(view)
 
-    def run(self, edit, **kwargs):  # type: ignore[override]
-        # reset memorized commit hash when blaming a different file
-        if self._file_path != self.file_path:
-            self._commit_hash = None
+        if shown_commit:
+            try:
+                branch_hint = self.get_branch_hint_for_commit(shown_commit)
+            except ValueError:
+                branch_hint = shown_commit
+        else:
+            branch_hint = None
 
-        if self.view.settings().get("git_savvy.blame_view"):
-            if not self._commit_hash:
-                self._commit_hash = (
-                    commit_under_cursor(self.view)
-                    or self.view.settings().get("git_savvy.commit_hash")
-                )
+        entries = self.log_generator(
+            file_path=file_path,
+            branch=branch_hint,
+            follow=True,
+            topo_order=True
+        )
 
-        self._file_path = self.file_path
-        kwargs["file_path"] = self._file_path
-        super().run(**kwargs)
+        leading = []
+        if shown_commit:
+            for idx, entry in enumerate(entries):
+                leading.append(entry)
+                if entry.long_hash.startswith(shown_commit):
+                    self.selected_index = idx
+                    break
+            else:
+                flash(self.view, f"No commits found for {self.to_rel_path(file_path)}.")
+                return
 
-    def do_action(self, commit_hash, **kwargs):
-        self._commit_hash = commit_hash
-        self.window.run_command("gs_blame", {
-            "commit_hash": commit_hash, "file_path": self._file_path
-        })
+        enqueue_on_ui(
+            show_log_panel,
+            chain(leading, entries),
+            self.on_done,
+            selected_index=self.selected_index,
+            on_highlight=self.on_highlight
+        )
 
-    def selected_index(self, commit_hash):
-        return self._commit_hash and commit_hash.startswith(self._commit_hash)
+    def on_done(self, commit) -> None:
+        if commit:
+            return  # nothing further to do as we already updated `on_highlight`
+
+        # Revert
+        settings = self.view.settings()
+        settings.set("git_savvy.commit_hash", self.initial_commit)
+        settings.set("git_savvy.lineno", self.initial_lineno)
+        settings.set("git_savvy.blame_view.y_offset", self.initial_y_offset)
+        self.view.run_command("gs_blame_refresh")
+
+    @lru_cache(1)
+    def on_highlight(self, commit) -> None:
+        if commit:
+            sublime.set_timeout_async(throttled(self._on_highlight, commit), 10)
+
+    def _on_highlight(self, commit) -> None:
+        assert self.file_path
+        view = self.view
+        settings = view.settings()
+        commit = self.get_short_hash(commit)
+        previous_commit = settings.get("git_savvy.commit_hash")
+        lineno = self.find_matching_lineno_in_file_history(
+            previous_commit,
+            commit,
+            current_lineno(view),
+            self.file_path
+        )
+        settings.set("git_savvy.commit_hash", commit)
+        settings.set("git_savvy.lineno", lineno)
+        settings.set("git_savvy.blame_view.y_offset", y_offset(view, cursor_pos(view)))
+        view.run_command("gs_blame_refresh")
 
 
 class gs_blame_refresh(GsTextCommand):
@@ -605,7 +660,7 @@ class gs_blame_action(GsTextCommand, PanelCommandMixin):
         ["gs_blame_open_commit_before_cursor_commit", "Blame commit prior to cursor commit"],
         ["gs_blame_open_previous_commit", "Blame previous commit"],
         ["gs_blame_open_next_commit", "Blame next commit"],
-        ["gs_blame_current_file", "Pick another commit to blame"],
+        ["gs_blame_open_log", "Pick another commit to blame"],
         ["gs_blame_open_file_at_current_commit", "Show file at current commit"],
         ["gs_blame_open_file_at_cursor_commit", "Show file at cursor commit"],
     ]  # type: List[List]

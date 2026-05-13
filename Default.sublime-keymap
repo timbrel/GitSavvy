@@ -1438,7 +1438,7 @@
     },
     {
         "keys": ["l"],
-        "command": "gs_blame_current_file",
+        "command": "gs_blame_open_log",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
