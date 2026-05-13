@@ -30,6 +30,8 @@ __all__ = (
     "gs_show_file_at_commit_open_log",
     "gs_show_file_at_commit_open_previous_commit",
     "gs_show_file_at_commit_open_next_commit",
+    "gs_show_file_at_commit_open_previous_change",
+    "gs_show_file_at_commit_open_next_change",
     "gs_show_file_at_commit_open_commit",
     "gs_show_file_at_commit_open_file_on_working_dir",
     "gs_show_file_at_commit_open_graph_context",
@@ -331,6 +333,129 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
             view.run_command("gs_show_file_at_commit_open_info_popup")
 
 
+class gs_show_file_at_commit_open_next_change(GsTextCommand):
+    def run(self, edit) -> None:
+        view = self.view
+        settings = view.settings()
+        file_path: str = settings.get("git_savvy.file_path")
+        commit_hash: str = settings.get("git_savvy.show_file_at_commit_view.commit")
+        line_range = visible_line_range(view)
+        if line_range is None:
+            flash(view, "No visible lines to inspect.")
+            return
+
+        try:
+            commit = recent_commit_for_line_range(
+                self,
+                commit_hash,
+                file_path,
+                line_range
+            )
+        except GitSavvyError:
+            flash(view, "Could not inspect the visible lines.")
+            return
+
+        if not commit:
+            flash(view, "No older change found in the visible lines.")
+            return
+
+        current_position = capture_cur_position(view)
+        remember_line_change_navigation(view, {
+            "from_commit": commit,
+            "to_commit": commit_hash,
+            "line_range": list(line_range),
+            "position": list(current_position) if current_position else None,
+        })
+
+        settings.set("git_savvy.show_file_at_commit_view.commit", commit)
+        position = translate_position_between_commits(
+            self,
+            file_path,
+            commit_hash,
+            commit,
+            current_position
+        )
+        refresh_show_file_at_commit_view(view, position)
+
+
+class gs_show_file_at_commit_open_previous_change(GsTextCommand):
+    def run(self, edit) -> None:
+        view = self.view
+        settings = view.settings()
+        commit_hash: str = settings.get("git_savvy.show_file_at_commit_view.commit")
+        previous = pop_line_change_navigation(view, commit_hash)
+        if not previous:
+            flash(view, "No line-change navigation to undo.")
+            return
+
+        settings.set("git_savvy.show_file_at_commit_view.commit", previous["to_commit"])
+        position = position_from_setting(previous.get("position"))
+        refresh_show_file_at_commit_view(view, position)
+
+
+def recent_commit_for_line_range(
+    cmd: GitCommand,
+    commit_hash: str,
+    file_path: str,
+    line_range: Tuple[int, int]
+) -> Optional[str]:
+    commit_hash = cmd.get_short_hash(commit_hash)
+    file_path_at_commit = cmd.filename_at_commit(file_path, commit_hash)
+    relative_path = cmd.to_rel_path(file_path_at_commit)
+    start_line, end_line = line_range
+    output = cmd.git(
+        "log",
+        "--format=%x1e%h",
+        "-2",
+        f"-L{start_line},{end_line}:{relative_path}",
+        commit_hash,
+        # show_panel_on_error=False
+    )
+    commits = re.findall(r"\x1e([0-9a-f]+)", output)
+    return next((commit for commit in commits if commit != commit_hash), None)
+
+
+def visible_line_range(view: sublime.View) -> Optional[Tuple[int, int]]:
+    if view.size() == 0:
+        return None
+
+    visible_region = view.visible_region()
+    start_row, _ = view.rowcol(visible_region.a)
+    end_row, _ = view.rowcol(visible_region.b)
+    return start_row + 1, end_row + 1
+
+
+def translate_position_between_commits(
+    cmd: GitCommand,
+    file_path: str,
+    from_commit: str,
+    to_commit: str,
+    position: Optional[Position]
+) -> Optional[Position]:
+    if position is None:
+        return None
+
+    row, col, offset = position
+    line = cmd.find_matching_lineno_between_files(
+        (from_commit, cmd.filename_at_commit(file_path, from_commit)),
+        (to_commit, cmd.filename_at_commit(file_path, to_commit)),
+        row + 1
+    )
+    return Position(line - 1, col, offset)
+
+
+def refresh_show_file_at_commit_view(
+    view: sublime.View,
+    position: Optional[Position]
+) -> None:
+    popup_was_visible = view.settings().get(
+        "git_savvy.show_file_at_commit.info_popup_visible"
+    )
+    view.run_command("gs_show_file_at_commit_refresh", {"position": position})
+    if popup_was_visible:
+        view.run_command("gs_show_file_at_commit_open_info_popup")
+
+
 def get_next_commit(
     cmd: GitCommand,
     view: sublime.View,
@@ -384,6 +509,37 @@ def get_branch_hint_for_view(cmd: GitCommand, view: sublime.View, commit_hash: s
     branch_hint = cmd.get_branch_hint_for_commit(commit_hash)
     remember_branch_hint_for(view, branch_hint)
     return branch_hint
+
+
+def remember_line_change_navigation(view: sublime.View, entry: Dict) -> None:
+    settings = view.settings()
+    stack = settings.get("git_savvy.line_change_navigation", [])
+    stack.append(entry)
+    settings.set("git_savvy.line_change_navigation", stack)
+
+
+def pop_line_change_navigation(
+    view: sublime.View,
+    commit_hash: str
+) -> Optional[Dict]:
+    settings = view.settings()
+    stack: list[dict] = settings.get("git_savvy.line_change_navigation", [])
+    while stack:
+        entry = stack.pop()
+        if entry.get("from_commit") == commit_hash:
+            settings.set("git_savvy.line_change_navigation", stack)
+            return entry
+
+    settings.set("git_savvy.line_change_navigation", stack)
+    return None
+
+
+def position_from_setting(value) -> Optional[Position]:
+    if value is None:
+        return None
+
+    row, col, offset = value
+    return Position(row, col, offset)
 
 
 def remember_next_commit_for(view: sublime.View, mapping: Dict[str, str]) -> None:
