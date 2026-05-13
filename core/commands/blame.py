@@ -106,10 +106,10 @@ class gs_blame(GsTextCommand):
 
         sublime.set_timeout_async(self.blame)
 
-    @util.view.single_cursor_coords
-    def blame(self, coords):
+    def blame(self):
         assert self._file_path
         original_view = self.view
+        row, _ = original_view.rowcol(cursor_pos(original_view))
         view = self.window.new_file()
 
         settings = view.settings()
@@ -146,10 +146,10 @@ class gs_blame(GsTextCommand):
                 lineno = self.reverse_find_matching_lineno_between_files(
                     (self._commit_hash, target_path),
                     (None, self._file_path),
-                    coords[0] + 1
+                    row + 1
                 )
             else:
-                lineno = coords[0] + 1
+                lineno = row + 1
             settings.set("git_savvy.blame_view.ignore_whitespace", False)
             settings.set("git_savvy.blame_view.detect_move_or_copy_within", None)
             settings.set("git_savvy.original_syntax", original_view.settings().get('syntax'))
