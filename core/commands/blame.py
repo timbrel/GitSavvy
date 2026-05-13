@@ -1,3 +1,4 @@
+from __future__ import annotations
 import re
 from collections import namedtuple, defaultdict
 from itertools import groupby
@@ -47,21 +48,22 @@ class BlameMixin(GsTextCommand):
     Some helper functions
     """
 
-    @util.view.single_cursor_pt
-    def find_selected_commit_hash(self, cursor_pt):
-        hunk_start = util.view.get_instance_before_pt(self.view, cursor_pt, r"^\-+ \| \-+")
-        if hunk_start is None:
-            short_hash_row = 1
-        else:
-            hunk_start_row, _ = self.view.rowcol(hunk_start)
-            short_hash_row = hunk_start_row + 2
 
-        if short_hash_region := self.view.expand_to_scope(
-            self.view.text_point(short_hash_row, 0),
-            "constant.numeric.commit-hash.git-savvy"
-        ):
-            return self.view.substr(short_hash_region)
-        return None
+def commit_under_cursor(view: sublime.View) -> str | None:
+    cursor = cursor_pos(view)
+    hunk_start = util.view.get_instance_before_pt(view, cursor, r"^\-+ \| \-+")
+    if hunk_start is None:
+        short_hash_row = 1
+    else:
+        hunk_start_row, _ = view.rowcol(hunk_start)
+        short_hash_row = hunk_start_row + 2
+
+    if short_hash_region := view.expand_to_scope(
+        view.text_point(short_hash_row, 0),
+        "constant.numeric.commit-hash.git-savvy"
+    ):
+        return view.substr(short_hash_region)
+    return None
 
 
 def current_lineno(view: sublime.View) -> int:
@@ -182,7 +184,7 @@ class gs_blame_current_file(LogMixin, BlameMixin):
         if self.view.settings().get("git_savvy.blame_view"):
             if not self._commit_hash:
                 self._commit_hash = (
-                    self.find_selected_commit_hash()
+                    commit_under_cursor(self.view)
                     or self.view.settings().get("git_savvy.commit_hash")
                 )
 
@@ -404,7 +406,7 @@ class gs_blame_refresh(BlameMixin):
 
 class gs_blame_open_commit(BlameMixin):
     def run(self, edit) -> None:
-        commit_hash = self.find_selected_commit_hash()
+        commit_hash = commit_under_cursor(self.view)
         if not commit_hash:
             return
 
@@ -454,7 +456,7 @@ def open_blame_neighbor(cmd: BlameMixin, position: str) -> None:
 
 class gs_blame_open_commit_before_cursor_commit(BlameMixin):
     def run(self, edit) -> None:
-        commit_hash = self.find_selected_commit_hash()
+        commit_hash = commit_under_cursor(self.view)
         if not commit_hash:
             return
 
@@ -492,7 +494,7 @@ class gs_blame_open_file_at_cursor_commit(BlameMixin):
         settings = self.view.settings()
 
         current_commit = settings.get("git_savvy.commit_hash")
-        next_commit = self.find_selected_commit_hash() or 'HEAD'
+        next_commit = commit_under_cursor(self.view) or 'HEAD'
         lineno = self.find_matching_lineno_in_file_history(
             current_commit,
             next_commit,
@@ -523,7 +525,7 @@ class gs_blame_action(BlameMixin, PanelCommandMixin):
     def update_actions(self):
         # a deepcopy
         self.actions = [act.copy() for act in self.default_actions]
-        selected_commit = self.find_selected_commit_hash()
+        selected_commit = commit_under_cursor(self.view)
         if selected_commit:
             for act in self.actions:
                 act[1] = act[1].replace("cursor commit", selected_commit[0:7])
@@ -532,7 +534,7 @@ class gs_blame_action(BlameMixin, PanelCommandMixin):
 class gs_blame_open_graph_context(BlameMixin):
     def run(self, edit):
         # type: (...) -> None
-        commit_hash = self.find_selected_commit_hash()
+        commit_hash = commit_under_cursor(self.view)
         self.window.run_command("gs_graph", {
             "all": True,
             "follow": commit_hash or "HEAD",
