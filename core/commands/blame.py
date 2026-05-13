@@ -429,12 +429,40 @@ class gs_blame_open_commit_before_cursor_commit(BlameMixin):
 
 class gs_blame_open_file_at_current_commit(BlameMixin):
     def run(self, edit) -> None:
-        open_file_at_commit(self)
+        assert self.file_path
+        settings = self.view.settings()
+
+        commit_hash = settings.get("git_savvy.commit_hash", "HEAD")
+        lineno = self.find_lineno()
+
+        self.window.run_command("gs_show_file_at_commit", {
+            "commit_hash": commit_hash,
+            "filepath": self.file_path,
+            "position": Position(lineno - 1, 0, None),
+            "lang": settings.get('git_savvy.original_syntax', None)
+        })
 
 
 class gs_blame_open_file_at_cursor_commit(BlameMixin):
     def run(self, edit) -> None:
-        open_file_at_commit(self, from_line=True)
+        assert self.file_path
+        settings = self.view.settings()
+
+        current_commit = settings.get("git_savvy.commit_hash")
+        next_commit = self.find_selected_commit_hash() or 'HEAD'
+        lineno = self.find_matching_lineno_in_file_history(
+            current_commit,
+            next_commit,
+            self.find_lineno(),
+            self.file_path
+        )
+
+        self.window.run_command("gs_show_file_at_commit", {
+            "commit_hash": next_commit,
+            "filepath": self.file_path,
+            "position": Position(lineno - 1, 0, None),
+            "lang": settings.get('git_savvy.original_syntax', None)
+        })
 
 
 class gs_blame_action(BlameMixin, PanelCommandMixin):
@@ -496,32 +524,6 @@ def open_blame_neighbor(cmd: BlameMixin, position: str) -> None:
     settings.set("git_savvy.commit_hash", neighbor_hash)
     settings.set("git_savvy.lineno", lineno)
     cmd.view.run_command("gs_blame_refresh")
-
-
-def open_file_at_commit(cmd: BlameMixin, from_line: bool = False) -> None:
-    assert cmd.file_path
-    settings = cmd.view.settings()
-
-    if from_line:
-        commit_hash = cmd.find_selected_commit_hash() or 'HEAD'
-    else:
-        commit_hash = settings.get("git_savvy.commit_hash", "HEAD")
-
-    lineno = cmd.find_lineno()
-    if from_line:
-        lineno = cmd.find_matching_lineno_in_file_history(
-            settings.get("git_savvy.commit_hash"),
-            commit_hash,
-            lineno,
-            cmd.file_path
-        )
-
-    cmd.window.run_command("gs_show_file_at_commit", {
-        "commit_hash": commit_hash,
-        "filepath": cmd.file_path,
-        "position": Position(lineno - 1, 0, None),
-        "lang": settings.get('git_savvy.original_syntax', None)
-    })
 
 
 class gs_blame_open_graph_context(BlameMixin):
