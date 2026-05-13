@@ -10,13 +10,13 @@ import sublime
 from .navigate import GsNavigate
 from ..fns import filter_
 from ..git_mixins.history import CommitInfo, LogEntry, is_dynamic_ref
-from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker, throttled
+from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker, run_as_text_command, throttled
 from ..ui_mixins.quick_panel import PanelCommandMixin, show_log_panel
-from ..view import scroll_to_pt, y_offset, Position
+from ..view import apply_position, scroll_to_pt, y_offset, Position
 from ...common import util
 from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.caches import cached
-from GitSavvy.core.utils import flash
+from GitSavvy.core.utils import flash, focus_view
 from GitSavvy.core.view import replace_view_content
 
 
@@ -40,7 +40,7 @@ __all__ = (
 )
 
 
-from typing import DefaultDict, List, Iterator, Optional
+from typing import DefaultDict, List, Iterator, Optional, Tuple
 
 
 BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))
@@ -86,6 +86,15 @@ def cursor_pos(view: sublime.View) -> int:
         return view.sel()[0].b
     except Exception:
         return 0
+
+
+def compute_identifier_for_view(view: sublime.View) -> Optional[Tuple]:
+    settings = view.settings()
+    return (
+        settings.get('git_savvy.repo_path'),
+        settings.get('git_savvy.file_path'),
+        settings.get('git_savvy.commit_hash')
+    ) if settings.get('git_savvy.blame_view') else None
 
 
 class gs_blame(GsTextCommand):
@@ -140,26 +149,38 @@ class gs_blame(GsTextCommand):
                 lineno = row + 1
             offset = None
 
-        view = util.view.create_scratch_view(
-            self.window,
-            "blame",
-            {
-                "syntax": "Packages/GitSavvy/syntax/blame.sublime-syntax",
-                "git_savvy.repo_path": repo_path,
-                "git_savvy.file_path": file_path,
-                "git_savvy.commit_hash": commit_hash,
-                "git_savvy.lineno": lineno,
-                "git_savvy.blame_view.y_offset": offset,
-                "git_savvy.blame_view.ignore_whitespace":
-                    av_settings.get("git_savvy.blame_view.ignore_whitespace", False),
-                "git_savvy.blame_view.detect_move_or_copy_within":
-                    av_settings.get("git_savvy.blame_view.detect_move_or_copy_within", None),
-                "git_savvy.original_syntax": av_settings.get('syntax')
-            }
+        this_id = (
+            repo_path,
+            file_path,
+            commit_hash
         )
+        position = Position(lineno - 1, 0, offset)
+        for view in self.window.views():
+            if compute_identifier_for_view(view) == this_id:
+                focus_view(view)
+                run_as_text_command(apply_position, view, *position)
+                break
+        else:
+            view = util.view.create_scratch_view(
+                self.window,
+                "blame",
+                {
+                    "syntax": "Packages/GitSavvy/syntax/blame.sublime-syntax",
+                    "git_savvy.repo_path": repo_path,
+                    "git_savvy.file_path": file_path,
+                    "git_savvy.commit_hash": commit_hash,
+                    "git_savvy.lineno": lineno,
+                    "git_savvy.blame_view.y_offset": offset,
+                    "git_savvy.blame_view.ignore_whitespace":
+                        av_settings.get("git_savvy.blame_view.ignore_whitespace", False),
+                    "git_savvy.blame_view.detect_move_or_copy_within":
+                        av_settings.get("git_savvy.blame_view.detect_move_or_copy_within", None),
+                    "git_savvy.original_syntax": av_settings.get('syntax')
+                }
+            )
 
-        view.run_command("gs_blame_refresh")
-        view.run_command("gs_handle_vintageous")
+            view.run_command("gs_blame_refresh")
+            view.run_command("gs_handle_vintageous")
 
 
 class gs_blame_open_log(GsTextCommand):
