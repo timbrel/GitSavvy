@@ -1438,7 +1438,24 @@
 
     {
         "keys": ["o"],
+        "command": "gs_blame_open_file_at_cursor_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["o"],
         "command": "gs_blame_open_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "constant.numeric.commit-hash.git-savvy" }
+        ]
+    },
+    {
+        "keys": ["O"],
+        "command": "gs_blame_open_file_on_working_dir",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }

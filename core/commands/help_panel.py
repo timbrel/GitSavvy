@@ -120,7 +120,8 @@ class gs_blame_help_panel(GsAbstractOpenHelpPanel):
     ### Actions ###
     [enter]        show all commands
     [shift+enter]  focus commit under cursor
-    [o]            open commit under cursor
+    [o]            open file at commit, on a commit hash: open the commit
+    [O]            open working dir file
     [l]            show log of surrounding commits
 
     [w]            ignore white space

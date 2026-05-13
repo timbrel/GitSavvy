@@ -33,6 +33,7 @@ __all__ = (
     "gs_blame_return_to_newer_commit",
     "gs_blame_open_file_at_current_commit",
     "gs_blame_open_file_at_cursor_commit",
+    "gs_blame_open_file_on_working_dir",
     "gs_blame_toggle_setting",
     "gs_blame_open_graph_context",
     "gs_blame_navigate_chunk",
@@ -692,6 +693,26 @@ class gs_blame_open_file_at_cursor_commit(GsTextCommand):
             "position": Position(lineno - 1, 0, None),
             "lang": settings.get('git_savvy.original_syntax', None)
         })
+
+
+class gs_blame_open_file_on_working_dir(GsTextCommand):
+    def run(self, edit) -> None:
+        assert self.file_path
+        settings = self.view.settings()
+        commit_hash = settings.get("git_savvy.commit_hash")
+        lineno = current_lineno(self.view)
+        if commit_hash:
+            lineno = self.find_matching_lineno_in_file_history(
+                commit_hash,
+                None,
+                lineno,
+                self.file_path
+            )
+
+        self.window.open_file(
+            "{file}:{line}".format(file=self.file_path, line=lineno),
+            sublime.ENCODED_POSITION
+        )
 
 
 def remember_blame_navigation(view: sublime.View, entry: dict) -> None:
