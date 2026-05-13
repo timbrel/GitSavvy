@@ -396,7 +396,11 @@ class gs_blame_refresh(BlameMixin):
 
 class gs_blame_open_commit(BlameMixin):
     def run(self, edit) -> None:
-        open_commit_under_cursor(self)
+        commit_hash = self.find_selected_commit_hash()
+        if not commit_hash:
+            return
+
+        self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
 
 
 class gs_blame_open_previous_commit(BlameMixin):
@@ -484,15 +488,6 @@ class gs_blame_action(BlameMixin, PanelCommandMixin):
         if selected_commit:
             for act in self.actions:
                 act[1] = act[1].replace("cursor commit", selected_commit[0:7])
-
-
-def open_commit_under_cursor(cmd: BlameMixin) -> None:
-    # Uncommitted blocks.
-    commit_hash = cmd.find_selected_commit_hash()
-    if not commit_hash:
-        return
-
-    cmd.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
 
 
 def open_blame_neighbor(cmd: BlameMixin, position: str) -> None:
