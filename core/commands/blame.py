@@ -7,11 +7,13 @@ import unicodedata
 import sublime
 
 from .navigate import GsNavigate
+from .log import LogMixin
+from ..git_mixins.history import is_dynamic_ref
+from ..ui_mixins.quick_panel import PanelCommandMixin
 from ..view import scroll_to_pt, y_offset, Position
 from ...common import util
-from .log import LogMixin
-from ..ui_mixins.quick_panel import PanelCommandMixin
 from GitSavvy.core.base_commands import GsTextCommand
+from GitSavvy.core.caches import cached
 from GitSavvy.core.utils import flash
 from GitSavvy.core.view import replace_view_content
 
@@ -214,11 +216,11 @@ class gs_blame_refresh(GsTextCommand):
         if not within_what:
             within_what = self.savvy_settings.get("blame_detect_move_or_copy_within")
 
-        content = self.get_content(
+        content = self.render_blame(
             file_path,
+            commit_hash,
             ignore_whitespace=settings.get("git_savvy.ignore_whitespace", False),
-            detect_options=self._detect_move_or_copy_dict[within_what],
-            commit_hash=commit_hash
+            detect_options=self._detect_move_or_copy_dict[within_what]
         )
 
         # only if the content changes
@@ -249,7 +251,14 @@ class gs_blame_refresh(GsTextCommand):
             else:
                 scroll_to_pt(self.view, self.view.sel()[0].begin(), yoffset)
 
-    def get_content(self, file_path, ignore_whitespace=False, detect_options=None, commit_hash=None):
+    @cached(not_if={"commit_hash": is_dynamic_ref})
+    def render_blame(
+        self,
+        file_path: str,
+        commit_hash: str | None,
+        ignore_whitespace=False,
+        detect_options=None
+    ) -> str:
         if commit_hash:
             file_path = self.filename_at_commit(file_path, commit_hash)
 
