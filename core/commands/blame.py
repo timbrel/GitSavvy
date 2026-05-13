@@ -12,6 +12,7 @@ from ...common import util
 from .log import LogMixin
 from ..ui_mixins.quick_panel import PanelCommandMixin
 from GitSavvy.core.base_commands import GsTextCommand
+from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import flash
 from GitSavvy.core.view import replace_view_content
 
@@ -104,7 +105,7 @@ class gs_blame(GsTextCommand):
         self._commit_hash = commit_hash
         self._position = Position(*position) if position else None
 
-        sublime.set_timeout_async(self.blame)
+        enqueue_on_worker(self.blame)
 
     def blame(self):
         assert self._file_path
