@@ -766,7 +766,7 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
             return
 
         assert self.file_path
-        header = DIFF_HEADER.format(path=self.to_rel_path(self.file_path))
+        header = DIFF_HEADER.format(path=self.to_short_path(self.file_path))
         full_diff = header + diff_lines + "\n"
 
         # The three argument combinations below result from the following

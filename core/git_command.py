@@ -769,7 +769,7 @@ class _GitCommand(SettingsMixin):
 
         return view.settings().get("git_savvy.file_path") or view.file_name()
 
-    def to_rel_path(self, file_path: str, base: str = NOT_SET) -> ShortPath:
+    def to_short_path(self, file_path: str, base: str = NOT_SET) -> ShortPath:
         """
         Return the file path relative to the repo root, or the given base.
         """
@@ -797,7 +797,7 @@ class _GitCommand(SettingsMixin):
     def nice_path(self, p: str) -> str:
         parent_dir = os.path.dirname(self.repo_path).replace("\\", "/")
         if p.startswith(parent_dir):
-            return self.to_rel_path(p)
+            return self.to_short_path(p)
         return p.replace(NORM_HOME, "~")
 
     def _add_global_flags(self, git_cmd, args):

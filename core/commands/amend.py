@@ -22,5 +22,5 @@ class gs_quick_stage_current_file_and_amend(gs_amend, GitCommand):
             return
 
         self.git("add", "--", file_path)
-        self.window.status_message("staged {}".format(self.to_rel_path(file_path)))
+        self.window.status_message("staged {}".format(self.to_short_path(file_path)))
         super().run()

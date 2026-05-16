@@ -251,7 +251,7 @@ class gs_blame_open_log(GsTextCommand):
                     self.selected_index = idx + 1
                     break
             else:
-                flash(self.view, f"No commits found for {self.to_rel_path(file_path)}.")
+                flash(self.view, f"No commits found for {self.to_short_path(file_path)}.")
                 return
 
         enqueue_on_ui(
@@ -370,7 +370,7 @@ class gs_blame_refresh(GsTextCommand):
             self.update_title(commit_details, file_path)
             self.update_status_bar(commit_details)
         else:
-            self.view.set_name(BLAME_TITLE.format(self.to_rel_path(file_path), ""))
+            self.view.set_name(BLAME_TITLE.format(self.to_short_path(file_path), ""))
 
     def update_status_bar(self, commit_details: CommitInfo) -> None:
         view = self.view
@@ -406,7 +406,7 @@ class gs_blame_refresh(GsTextCommand):
             f" {details}" if details else ""
         )
         self.view.set_name(BLAME_TITLE.format(
-            self.to_rel_path(file_path),
+            self.to_short_path(file_path),
             f", {message}"
         ))
 

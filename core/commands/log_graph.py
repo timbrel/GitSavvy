@@ -133,7 +133,7 @@ class gs_graph(WindowCommand, GitCommand):
             repo_path = self.repo_path
         assert repo_path
         paths = (
-            [self.to_rel_path(file_path)]
+            [self.to_short_path(file_path)]
             if file_path
             else []
         )

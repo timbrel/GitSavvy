@@ -206,7 +206,7 @@ class gs_diff(WindowCommand, GitCommand):
             if in_cached_mode is None:
                 in_cached_mode = active_view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
             if _cur_pos := capture_cur_position(active_view):
-                rel_file_path = self.to_rel_path(file_path)
+                rel_file_path = self.to_short_path(file_path)
                 row, col, offset = _cur_pos
                 line_no, col_no = inline_diff.translate_pos_from_diff_view_to_file(active_view, row + 1, col + 1)
                 cur_pos = ("from_file", Position(line_no - 1, col_no - 1, offset), rel_file_path)
@@ -217,12 +217,12 @@ class gs_diff(WindowCommand, GitCommand):
                 base_commit = self.previous_commit(target_commit, file_path)
                 disable_stage = True
             if _cur_pos := capture_cur_position(active_view):
-                rel_file_path = self.to_rel_path(file_path)
+                rel_file_path = self.to_short_path(file_path)
                 cur_pos = ("from_file", _cur_pos, rel_file_path)
 
         elif av_fname := active_view.file_name():
             if _cur_pos := capture_cur_position(active_view):
-                rel_file_path = self.to_rel_path(av_fname)
+                rel_file_path = self.to_short_path(av_fname)
                 if in_cached_mode:
                     row, col, offset = _cur_pos
                     new_row = self.find_matching_lineno(None, None, row + 1, file_path) - 1
@@ -877,7 +877,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             display_items = _create_display_items(items)
 
         if file_path:
-            normalized_relative_path = self.to_rel_path(file_path)
+            normalized_relative_path = self.to_short_path(file_path)
             current_diff_mode = (normalized_relative_path, in_cached_mode)
             if forward is None:
                 try:
