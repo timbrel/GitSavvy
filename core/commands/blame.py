@@ -196,8 +196,6 @@ class gs_blame(GsTextCommand):
                     "git_savvy.repo_path": repo_path,
                     "git_savvy.file_path": file_path,
                     "git_savvy.commit_hash": commit_hash,
-                    "git_savvy.lineno": lineno,
-                    "git_savvy.blame_view.y_offset": offset,
                     "git_savvy.blame_view.ignore_whitespace":
                         av_settings.get("git_savvy.blame_view.ignore_whitespace", False),
                     "git_savvy.blame_view.detect_move_or_copy_within":
@@ -206,7 +204,7 @@ class gs_blame(GsTextCommand):
                 }
             )
 
-            view.run_command("gs_blame_refresh")
+            view.run_command("gs_blame_refresh", {"scroll_to": (lineno, offset)})
             view.run_command("gs_handle_vintageous")
 
 
@@ -276,9 +274,9 @@ class gs_blame_open_log(GsTextCommand):
         # Revert
         settings = self.view.settings()
         settings.set("git_savvy.commit_hash", self.initial_commit)
-        settings.set("git_savvy.lineno", self.initial_lineno)
-        settings.set("git_savvy.blame_view.y_offset", self.initial_y_offset)
-        self.view.run_command("gs_blame_refresh")
+        self.view.run_command("gs_blame_refresh", {
+            "scroll_to": (self.initial_lineno, self.initial_y_offset)
+        })
 
     @lru_cache(1)
     def on_highlight(self, commit) -> None:
@@ -298,9 +296,9 @@ class gs_blame_open_log(GsTextCommand):
             self.file_path
         )
         settings.set("git_savvy.commit_hash", commit)
-        settings.set("git_savvy.lineno", lineno)
-        settings.set("git_savvy.blame_view.y_offset", y_offset(view, cursor_pos(view)))
-        view.run_command("gs_blame_refresh")
+        view.run_command("gs_blame_refresh", {
+            "scroll_to": (lineno, y_offset(view, cursor_pos(view)))
+        })
 
 
 class gs_blame_refresh(GsTextCommand):
@@ -313,8 +311,7 @@ class gs_blame_refresh(GsTextCommand):
         "all_commits": "-CCC"
     }
 
-    def run(self, edit):
-
+    def run(self, edit, scroll_to: tuple[int, float | None] | None = None) -> None:
         settings = self.view.settings()
         file_path = settings.get("git_savvy.file_path")
         commit_hash = settings.get("git_savvy.commit_hash", None)  # type: Optional[str]
@@ -334,6 +331,9 @@ class gs_blame_refresh(GsTextCommand):
 
         # only if the content changes
         if content == self.view.substr(sublime.Region(0, self.view.size())):
+            if scroll_to is not None:
+                lineno, initial_y_offset = scroll_to
+                apply_blame_position(self.view, lineno, initial_y_offset)
             return
 
         was_empty = self.view.size() == 0
@@ -345,11 +345,10 @@ class gs_blame_refresh(GsTextCommand):
 
         replace_view_content(self.view, content)
 
-        initial_y_offset = settings.get("git_savvy.blame_view.y_offset")
-        settings.erase("git_savvy.blame_view.y_offset")
-        if settings.get("git_savvy.lineno", None) is not None:
-            select_blame_line(self.view, settings.get("git_savvy.lineno"))
-            settings.erase("git_savvy.lineno")
+        initial_y_offset = None
+        if scroll_to is not None:
+            lineno, initial_y_offset = scroll_to
+            select_blame_line(self.view, lineno)
 
         if len(self.view.sel()) > 0:
             if initial_y_offset is not None:
@@ -595,8 +594,7 @@ def open_blame_neighbor(cmd: GsTextCommand, position: str) -> None:
         settings.get("git_savvy.file_path")
     )
     settings.set("git_savvy.commit_hash", neighbor_hash)
-    settings.set("git_savvy.lineno", lineno)
-    cmd.view.run_command("gs_blame_refresh")
+    cmd.view.run_command("gs_blame_refresh", {"scroll_to": (lineno, None)})
 
 
 class gs_blame_focus_commit(GsTextCommand):
@@ -625,8 +623,7 @@ class gs_blame_focus_commit(GsTextCommand):
             self.file_path
         )
         settings.set("git_savvy.commit_hash", commit_hash)
-        settings.set("git_savvy.lineno", lineno)
-        view.run_command("gs_blame_refresh")
+        view.run_command("gs_blame_refresh", {"scroll_to": (lineno, None)})
 
 
 class gs_blame_open_commit_before_cursor_commit(GsTextCommand):
@@ -657,8 +654,7 @@ class gs_blame_open_commit_before_cursor_commit(GsTextCommand):
             self.file_path
         )
         settings.set("git_savvy.commit_hash", previous_commit)
-        settings.set("git_savvy.lineno", lineno)
-        view.run_command("gs_blame_refresh")
+        view.run_command("gs_blame_refresh", {"scroll_to": (lineno, None)})
 
 
 class gs_blame_return_to_newer_commit(GsTextCommand):
@@ -670,9 +666,9 @@ class gs_blame_return_to_newer_commit(GsTextCommand):
 
         settings = self.view.settings()
         settings.set("git_savvy.commit_hash", previous.get("commit_hash"))
-        settings.set("git_savvy.lineno", previous.get("lineno"))
-        settings.set("git_savvy.blame_view.y_offset", previous.get("y_offset"))
-        self.view.run_command("gs_blame_refresh")
+        self.view.run_command("gs_blame_refresh", {
+            "scroll_to": (previous.get("lineno"), previous.get("y_offset"))
+        })
 
 
 class gs_blame_open_file_at_current_commit(GsTextCommand):
@@ -804,8 +800,9 @@ class gs_blame_toggle_setting(GsTextCommand):
             settings.set(setting_str, not settings.get(setting_str))
 
         self.window.status_message("{} is now {}".format(setting, settings.get(setting_str)))
-        self.view.settings().set("git_savvy.lineno", current_lineno(self.view))
-        self.view.run_command("gs_blame_refresh")
+        self.view.run_command("gs_blame_refresh", {
+            "scroll_to": (current_lineno(self.view), None)
+        })
 
 
 class gs_blame_navigate_chunk(GsNavigate):
