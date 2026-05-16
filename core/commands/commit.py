@@ -175,7 +175,7 @@ class gs_commit(WindowCommand, GitCommand):
         initial_text += "\n\n" + generate_help_text(view)
 
         commit_help_extra_file = self.savvy_settings.get("commit_help_extra_file") or ".commit_help"
-        commit_help_extra_path = self.to_abs_path(commit_help_extra_file)
+        commit_help_extra_path = self.to_full_path(commit_help_extra_file)
         if os.path.exists(commit_help_extra_path):
             with util.file.safe_open(commit_help_extra_path, "r", encoding="utf-8") as f:
                 initial_text += f.read()

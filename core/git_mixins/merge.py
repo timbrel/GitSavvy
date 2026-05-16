@@ -42,7 +42,7 @@ class MergeMixin(mixin_base):
         ours_path = os.path.join(temp_dir, "ours")
         theirs_path = os.path.join(temp_dir, "theirs")
         backup_path = os.path.join(temp_dir, "backup")
-        merge_path = self.to_abs_path(fpath, repo_path)
+        merge_path = self.to_full_path(fpath, repo_path)
 
         merge_cmd = merge_cmd_tmpl.replace("$REMOTE", theirs_path)
         merge_cmd = merge_cmd.replace("$BASE", base_path)

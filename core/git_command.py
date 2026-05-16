@@ -786,7 +786,7 @@ class _GitCommand(SettingsMixin):
             return rel_path.replace("\\", "/")
         return rel_path
 
-    def to_abs_path(self, file_path: str, base: str = NOT_SET) -> FullPath:
+    def to_full_path(self, file_path: str, base: str = NOT_SET) -> FullPath:
         """
         Return the absolute file path from a repo-relative path, or the given base.
         """

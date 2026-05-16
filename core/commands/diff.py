@@ -769,7 +769,7 @@ class gs_diff_toggle_all(TextCommand, GitCommand):
                 return
             settings.set(
                 "git_savvy.file_path",
-                self.to_abs_path(file_to_show)
+                self.to_full_path(file_to_show)
             )
 
         settings.set("git_savvy.diff_view.toggled_mode_automatically", False)
@@ -956,7 +956,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
                 file_path = ""
             else:
                 is_folder = file_path_.endswith(("\\", "/"))
-                file_path = self.to_abs_path(file_path_)
+                file_path = self.to_full_path(file_path_)
                 if is_folder:
                     file_path = file_path.rstrip("\\/") + os.sep
 
@@ -1350,7 +1350,7 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
     def discard_target_has_unsaved_view(self, patch: str) -> bool:
         diff = SplittedDiff.from_string(patch)
         rel_file_paths = unique(filter_(header.to_filename() for header in diff.headers))
-        file_paths = (self.to_abs_path(p) for p in rel_file_paths)
+        file_paths = (self.to_full_path(p) for p in rel_file_paths)
 
         current_window = self.view.window()
         windows = [
@@ -1520,7 +1520,7 @@ class gs_diff_open_hunk_on_working_dir(_GsDiffOpenFileAtHunk):
     def load_file_at_line(
         self, commit_hash: FullHash | None, filename: ShortPath, line: LineNo, col: ColNo
     ) -> None:
-        full_path = self.to_abs_path(filename)
+        full_path = self.to_full_path(filename)
         window = self.view.window()
         if not window:
             return
@@ -1552,7 +1552,7 @@ class gs_diff_open_hunk_at_target_revision(_GsDiffOpenFileAtHunk):
     def load_file_at_line(
         self, commit_hash: FullHash | None, filename: ShortPath, line: LineNo, col: ColNo
     ) -> None:
-        full_path = self.to_abs_path(filename)
+        full_path = self.to_full_path(filename)
         window = self.view.window()
         if not window:
             return

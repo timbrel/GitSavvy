@@ -218,7 +218,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
                 "Assertion failed! "
                 "Historical diffs shouldn't have `jump_position.commit_hash`.")
 
-        file_path = self.to_abs_path(jump_position.filename, repo_path)
+        file_path = self.to_full_path(jump_position.filename, repo_path)
         syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
         base_commit = settings.get("git_savvy.diff_view.base_commit")
         target_commit = settings.get("git_savvy.diff_view.target_commit")
@@ -278,7 +278,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
             flash(view, "Could not parse for a commit hash at cursor position.")
             return
 
-        file_path = self.to_abs_path(jump_position.filename, repo_path)
+        file_path = self.to_full_path(jump_position.filename, repo_path)
         syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
         target_commit = self.get_short_hash(jump_position.commit_hash)
         base_commit = self.previous_commit(target_commit, file_path)

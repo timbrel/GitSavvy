@@ -80,7 +80,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             else []
         )  # type: List[str]
         if len(paths) == 1:
-            return self.to_abs_path(paths[0])
+            return self.to_full_path(paths[0])
 
         return None
 

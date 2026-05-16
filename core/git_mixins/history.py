@@ -270,7 +270,7 @@ class HistoryMixin(mixin_base):
         rel_path = self.to_short_path(filename)
         was_abs = rel_path != filename
 
-        if os.path.exists(filename if was_abs else self.to_abs_path(rel_path)):
+        if os.path.exists(filename if was_abs else self.to_full_path(rel_path)):
             return filename
 
         if not self.commit_is_ancestor_of_head(commit_hash):
@@ -286,7 +286,7 @@ class HistoryMixin(mixin_base):
             current_filename = next_filename
 
         return (
-            self.to_abs_path(current_filename)
+            self.to_full_path(current_filename)
             if was_abs else
             current_filename
         )
@@ -841,7 +841,7 @@ class HistoryMixin(mixin_base):
             )
 
             if status := record.status:
-                filename = self.to_abs_path(status.from_path)
+                filename = self.to_full_path(status.from_path)
 
         return hashes
 
