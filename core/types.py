@@ -5,3 +5,11 @@ LineNo = int
 ColNo = int
 Row = int
 Col = int
+
+#
+FullPath = str
+ShortPath = str
+
+#
+ShortHash = str
+FullHash = str

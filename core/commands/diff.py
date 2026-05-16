@@ -62,15 +62,14 @@ from typing import (
 from typing_extensions import TypeAlias
 from ..parse_diff import FileHeader, Hunk, HunkLine
 from ..text_helper import TextRange
-from ..types import LineNo, ColNo
+from ..types import ColNo, FullHash, LineNo, ShortPath
 from ..git_mixins.history import LogEntry
 from ..git_mixins.status import FileStatus
 T = TypeVar('T')
 Point = int
 LineCol = Tuple[LineNo, ColNo]
-RelFileName = str
-PositionFromFile: TypeAlias = Tuple[Literal["from_file"], Position, RelFileName]
-PositionFromDiff: TypeAlias = Tuple[Literal["from_diff"], Position, Optional[RelFileName]]
+PositionFromFile: TypeAlias = Tuple[Literal["from_file"], Position, ShortPath]
+PositionFromDiff: TypeAlias = Tuple[Literal["from_diff"], Position, Optional[ShortPath]]
 MatchPosition: TypeAlias = Union[PositionFromFile, PositionFromDiff]
 
 
@@ -486,7 +485,7 @@ def apply_file_position(
     view: sublime.View,
     diff: SplittedDiff,
     cur_pos: Position,
-    wanted_filename: RelFileName | None,
+    wanted_filename: ShortPath | None,
 ) -> bool:
     if not wanted_filename:
         return False
@@ -511,7 +510,7 @@ def apply_diff_position(
     view: sublime.View,
     diff: SplittedDiff,
     cur_pos: Position,
-    wanted_filename: RelFileName | None,
+    wanted_filename: ShortPath | None,
 ) -> bool:
     row, col, row_offset = cur_pos
     if wanted_filename is None:
@@ -650,7 +649,7 @@ def _compute_reference_document_monolithic(a: str, b: str) -> str:
 
 
 def find_header_for_filename(headers, filename):
-    # type: (Iterable[FileHeader], RelFileName) -> Optional[FileHeader]
+    # type: (Iterable[FileHeader], ShortPath) -> Optional[FileHeader]
     for header in headers:
         if header.to_filename() == filename:
             return header
@@ -760,7 +759,7 @@ class gs_diff_toggle_all(TextCommand, GitCommand):
         if current_file_path:
             settings.erase("git_savvy.file_path")
         else:
-            file_to_show: Optional[RelFileName] = None
+            file_to_show: Optional[ShortPath] = None
             if match_position:
                 _, _, file_to_show = match_position
             if not file_to_show and diff.headers:
@@ -1460,8 +1459,8 @@ class gs_initiate_fixup_commit(TextCommand, LogHelperMixin):
 
 
 class JumpTo(NamedTuple):
-    commit_hash: Optional[str]
-    filename: str
+    commit_hash: FullHash | None
+    filename: ShortPath
     line: LineNo
     col: ColNo
 
@@ -1512,14 +1511,14 @@ class _GsDiffOpenFileAtHunk(TextCommand, GitCommand, ABC):
 
     @abstractmethod
     def load_file_at_line(
-        self, commit_hash: Optional[str], filename: str, line: LineNo, col: ColNo
+        self, commit_hash: Optional[str], filename: ShortPath, line: LineNo, col: ColNo
     ) -> None:
         raise NotImplementedError
 
 
 class gs_diff_open_hunk_on_working_dir(_GsDiffOpenFileAtHunk):
     def load_file_at_line(
-        self, commit_hash: Optional[str], filename: str, line: LineNo, col: ColNo
+        self, commit_hash: FullHash | None, filename: ShortPath, line: LineNo, col: ColNo
     ) -> None:
         full_path = self.to_abs_path(filename)
         window = self.view.window()
@@ -1551,7 +1550,7 @@ class gs_diff_open_hunk_on_working_dir(_GsDiffOpenFileAtHunk):
 
 class gs_diff_open_hunk_at_target_revision(_GsDiffOpenFileAtHunk):
     def load_file_at_line(
-        self, commit_hash: Optional[str], filename: str, line: LineNo, col: ColNo
+        self, commit_hash: FullHash | None, filename: ShortPath, line: LineNo, col: ColNo
     ) -> None:
         full_path = self.to_abs_path(filename)
         window = self.view.window()
