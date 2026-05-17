@@ -528,11 +528,11 @@ class gs_blame_refresh(GsTextCommand):
             chunk_content, chunk_blame_line_by_row = self.format_blame_chunk(
                 chunk,
                 commit_infos[chunk[0].commit_hash],
-                len(longest_commit_line)
+                len(longest_commit_line),
+                row
             )
             content_parts.append(chunk_content)
-            for chunk_row, blame_line in chunk_blame_line_by_row.items():
-                blame_line_by_row[row + chunk_row] = blame_line
+            blame_line_by_row.update(chunk_blame_line_by_row)
             row += chunk_content.count("\n")
 
         return RenderedBlame("".join(content_parts), blame_line_by_row)
@@ -615,13 +615,17 @@ class gs_blame_refresh(GsTextCommand):
         self,
         chunk: List[BlamedLine],
         commit_info: BlameCommitInfoLines,
-        left_pad: int
+        left_pad: int,
+        row_offset: int
     ) -> tuple[str, BlameLineByRow]:
         content_parts: List[str] = []
         blame_line_by_row: BlameLineByRow = {}
         current_blame_line = chunk[0]
 
-        for row, (left, blame_line) in enumerate(zip_longest(commit_info, chunk)):
+        for row, (left, blame_line) in enumerate(
+            zip_longest(commit_info, chunk),
+            start=row_offset
+        ):
             if blame_line is not None:
                 current_blame_line = blame_line
                 right = "{lineno: >4} {contents}".format(
