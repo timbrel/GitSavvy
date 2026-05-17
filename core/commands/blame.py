@@ -266,7 +266,7 @@ class gs_blame_open_log(GsTextCommand):
         self.initial_lineno = current_lineno(view)
         self.initial_y_offset = y_offset(view, cursor_pos(view))
         file_path = self.file_path
-        shown_commit = self.initial_commit or commit_under_cursor(view)
+        shown_commit = self.initial_commit
 
         if shown_commit:
             try:
