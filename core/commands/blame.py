@@ -525,15 +525,15 @@ class gs_blame_refresh(GsTextCommand):
                 blame_line_by_row[row] = chunk[0]
                 row += 1
 
-            chunk_content, chunk_blame_line_by_row = self.format_blame_chunk(
+            chunk_lines, chunk_blame_line_by_row = self.format_blame_chunk(
                 chunk,
                 commit_infos[chunk[0].commit_hash],
                 len(longest_commit_line),
                 row
             )
-            content_parts.append(chunk_content)
+            content_parts.extend(chunk_lines)
             blame_line_by_row.update(chunk_blame_line_by_row)
-            row += chunk_content.count("\n")
+            row += len(chunk_lines)
 
         return RenderedBlame("".join(content_parts), blame_line_by_row)
 
@@ -616,9 +616,9 @@ class gs_blame_refresh(GsTextCommand):
         chunk: List[BlamedLine],
         commit_info: BlameCommitInfoLines,
         left_pad: int,
-        row_offset: int
-    ) -> tuple[str, BlameLineByRow]:
-        content_parts: List[str] = []
+        row_offset: Row
+    ) -> tuple[list[str], BlameLineByRow]:
+        lines: List[str] = []
         blame_line_by_row: BlameLineByRow = {}
         current_blame_line = chunk[0]
 
@@ -636,13 +636,13 @@ class gs_blame_refresh(GsTextCommand):
                 right = ""
 
             blame_line_by_row[row] = current_blame_line
-            content_parts.append("{left: <{left_pad}} | {right}\n".format(
+            lines.append("{left: <{left_pad}} | {right}\n".format(
                 left=left or "",
                 left_pad=left_pad,
                 right=right
             ))
 
-        return "".join(content_parts), blame_line_by_row
+        return lines, blame_line_by_row
 
 
 class gs_blame_open_commit(GsTextCommand):
