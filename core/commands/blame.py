@@ -51,7 +51,6 @@ from typing_extensions import TypeAlias
 class BlamedLine(NamedTuple):
     contents: str
     commit_hash: ShortHash | Literal[""]
-    orig_lineno: LineNo
     final_lineno: LineNo
 
 
@@ -552,7 +551,7 @@ class gs_blame_refresh(GsTextCommand):
         for line in lines_iter:
             match = re.match(r"([0-9a-f]{40}) (\d+) (\d+)( \d+)?", line)
             assert match
-            commit_hash, orig_lineno, final_lineno, _ = match.groups()
+            commit_hash, _, final_lineno, _ = match.groups()
             short_hash = (
                 ""
                 if commit_hash == NOT_COMMITED_HASH
@@ -580,7 +579,6 @@ class gs_blame_refresh(GsTextCommand):
                 # Strip tab character.
                 contents=next_line[1:],
                 commit_hash=short_hash,
-                orig_lineno=int(orig_lineno),
                 final_lineno=int(final_lineno)))
 
         return blamed_lines, commits
