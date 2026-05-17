@@ -11,6 +11,7 @@ from ...common import util
 from GitSavvy.core.fns import last, pairwise, take
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.caches import Cache, cached
+from GitSavvy.core.types import FullPath, ShortHash
 
 
 class LogEntry(NamedTuple):
@@ -239,7 +240,7 @@ class HistoryMixin(mixin_base):
     def resolve_commitish(self, ref: str) -> str:
         return self.git("rev-parse", "--short", ref).strip()
 
-    def filename_at_commit(self, filename: str, commit_hash: str) -> str:
+    def filename_at_commit(self, filename: FullPath, commit_hash: ShortHash) -> str:
         if is_dynamic_ref(commit_hash):
             return self._filename_at_commit(filename, commit_hash)
 
