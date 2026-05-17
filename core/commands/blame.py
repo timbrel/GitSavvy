@@ -6,6 +6,7 @@ from itertools import chain, groupby, zip_longest
 import unicodedata
 
 import sublime
+from sublime_plugin import EventListener
 
 from .navigate import GsNavigate
 from ..fns import filter_
@@ -39,6 +40,7 @@ __all__ = (
     "gs_blame_open_graph_context",
     "gs_blame_navigate_chunk",
     "gs_blame_navigate_head",
+    "GsBlameController",
 )
 
 
@@ -66,6 +68,11 @@ class RenderedBlame(NamedTuple):
 
 
 _blame_line_by_row_by_view_id: Dict[sublime.ViewId, BlameLineByRow] = {}
+
+
+class GsBlameController(EventListener):
+    def on_close(self, view: sublime.View) -> None:
+        _blame_line_by_row_by_view_id.pop(view.id(), None)
 
 
 NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
