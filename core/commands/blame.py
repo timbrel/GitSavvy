@@ -1,8 +1,8 @@
 from __future__ import annotations
 from functools import lru_cache
 import re
-from collections import namedtuple, defaultdict
-from itertools import chain, groupby
+from collections import defaultdict
+from itertools import chain, groupby, zip_longest
 import unicodedata
 
 import sublime
@@ -12,6 +12,7 @@ from ..fns import filter_
 from ..git_mixins.history import CommitInfo, LogEntry, is_dynamic_ref
 from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker, run_as_text_command, throttled
 from ..ui_mixins.quick_panel import PanelCommandMixin, show_log_panel
+from ..types import FullHash
 from ..view import scroll_to_pt, y_offset, Position
 from ...common import util
 from GitSavvy.core.base_commands import GsTextCommand
@@ -41,10 +42,21 @@ __all__ = (
 )
 
 
-from typing import DefaultDict, List, Iterator, Optional, Tuple
+from typing import DefaultDict, List, Iterator, NamedTuple, Optional, Tuple
+from typing_extensions import TypeAlias
 
 
-BlamedLine = namedtuple("BlamedLine", ("contents", "commit_hash", "orig_lineno", "final_lineno"))
+class BlamedLine(NamedTuple):
+    contents: str
+    commit_hash: FullHash
+    orig_lineno: str
+    final_lineno: str
+
+
+_CommitInfo: TypeAlias = DefaultDict[str, str]
+_CommitsByHash: TypeAlias = DefaultDict[FullHash, _CommitInfo]
+BlameCommitInfoLines: TypeAlias = "list[str]"
+
 
 NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
 BLAME_TITLE = "BLAME: {}{}"
@@ -445,7 +457,7 @@ class gs_blame_refresh(GsTextCommand):
             for commit_hash_, commit in commits.items()
         }
 
-        partitions = tuple(self.group_consecutive_lines(blamed_lines))
+        blame_chunks = tuple(self.group_consecutive_lines(blamed_lines))
 
         longest_commit_line = max(
             (line
@@ -454,12 +466,12 @@ class gs_blame_refresh(GsTextCommand):
             key=len)
 
         longest_code_line = max(
-            (line.contents for partition in partitions for line in partition),
+            (line.contents for chunk in blame_chunks for line in chunk),
             key=len
         )
 
-        partitions_with_commits_iter = self.couple_partitions_and_commits(
-            partitions=partitions,
+        formatted_chunks = self.format_blame_chunks(
+            blame_chunks=blame_chunks,
             commit_infos=commit_infos,
             left_pad=len(longest_commit_line)
         )
@@ -471,16 +483,19 @@ class gs_blame_refresh(GsTextCommand):
             "\n"
         )
 
-        return spacer.join(partitions_with_commits_iter)
+        return spacer.join(formatted_chunks)
 
-    def parse_blame(self, blame_porcelain):
+    def parse_blame(
+        self,
+        blame_porcelain: List[str]
+    ) -> Tuple[List[BlamedLine], _CommitsByHash]:
         if blame_porcelain[-1] == '':
             blame_porcelain = blame_porcelain[:-1]
 
         lines_iter = iter(blame_porcelain)
 
-        blamed_lines = []
-        commits = defaultdict(lambda: defaultdict(str))  # type: DefaultDict[str, DefaultDict[str, str]]
+        blamed_lines: List[BlamedLine] = []
+        commits: _CommitsByHash = defaultdict(lambda: defaultdict(str))
 
         for line in lines_iter:
             match = re.match(r"([0-9a-f]{40}) (\d+) (\d+)( \d+)?", line)
@@ -518,9 +533,13 @@ class gs_blame_refresh(GsTextCommand):
         for _, lines in groupby(blamed_lines, lambda line: line.commit_hash):
             yield list(lines)
 
-    def short_commit_info(self, commit, current_commit_hash):
+    def short_commit_info(
+        self,
+        commit: _CommitInfo,
+        current_commit_hash: str | None
+    ) -> BlameCommitInfoLines:
         if commit["long_hash"] == NOT_COMMITED_HASH:
-            return ("Not committed yet", )
+            return ["Not committed yet"]
 
         summary = commit["summary"]
         if len(summary) > 40:
@@ -533,32 +552,32 @@ class gs_blame_refresh(GsTextCommand):
         commit_hash = commit["short_hash"]
         if current_commit_hash and commit["long_hash"].startswith(current_commit_hash):
             commit_hash += "  (CURRENT COMMIT)"
-        return (summary, commit_hash, author_info, time_stamp)
+        return [summary, commit_hash, author_info, time_stamp]
 
-    def couple_partitions_and_commits(self, partitions, commit_infos, left_pad):
-        left_fallback = " " * left_pad
-        right_fallback = ""
+    def format_blame_chunks(
+        self,
+        blame_chunks: tuple[List[BlamedLine], ...],
+        commit_infos: dict[FullHash, BlameCommitInfoLines],
+        left_pad: int
+    ) -> Iterator[str]:
+        for chunk in blame_chunks:
+            commit_info = commit_infos[chunk[0].commit_hash]
+            source_lines = [
+                "{lineno: >4} {contents}".format(
+                    lineno=line.final_lineno,
+                    contents=line.contents
+                )
+                for line in chunk
+            ]
 
-        for partition in partitions:
-            output = ""
-            commit_info = commit_infos[partition[0].commit_hash]
-            left_len = len(commit_info)
-            right_len = len(partition)
-            total_lines = len(max((commit_info, partition), key=len))
-
-            for i in range(total_lines):
-                left = commit_info[i] if i < left_len else left_fallback
-                right = partition[i].contents if i < right_len else right_fallback
-                lineno = partition[i].final_lineno if i < right_len else right_fallback
-
-                output += "{left: <{left_pad}} | {lineno: >4} {right}\n".format(
+            yield "".join(
+                "{left: <{left_pad}} | {right}\n".format(
                     left=left,
                     left_pad=left_pad,
-                    lineno=lineno,
                     right=right
                 )
-
-            yield output
+                for left, right in zip_longest(commit_info, source_lines, fillvalue="")
+            )
 
 
 class gs_blame_open_commit(GsTextCommand):
