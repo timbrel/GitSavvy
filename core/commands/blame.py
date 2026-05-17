@@ -409,7 +409,6 @@ class gs_blame_refresh(GsTextCommand):
             f", {message}"
         ))
 
-    @cached(not_if={"commit_hash": is_dynamic_ref})
     def render_blame(
         self,
         file_path: str,
@@ -417,6 +416,19 @@ class gs_blame_refresh(GsTextCommand):
         ignore_whitespace=False,
         detect_options=None
     ) -> str:
+        blamed_lines, commits = self._run_blame_and_parse(
+            file_path, commit_hash, ignore_whitespace, detect_options
+        )
+        return self._verbose_format_blame(commit_hash, blamed_lines, commits)
+
+    @cached(not_if={"commit_hash": is_dynamic_ref})
+    def _run_blame_and_parse(
+        self,
+        file_path: str,
+        commit_hash: str | None,
+        ignore_whitespace=False,
+        detect_options=None
+    ):
         if commit_hash:
             file_path = self.filename_at_commit(file_path, commit_hash)
 
@@ -425,8 +437,9 @@ class gs_blame_refresh(GsTextCommand):
             commit_hash, "--", file_path
         )
         blame_porcelain = unicodedata.normalize('NFC', blame_porcelain)
-        blamed_lines, commits = self.parse_blame(blame_porcelain.split('\n'))
+        return self.parse_blame(blame_porcelain.split('\n'))
 
+    def _verbose_format_blame(self, commit_hash: str | None, blamed_lines, commits) -> str:
         commit_infos = {
             commit_hash_: self.short_commit_info(commit, current_commit_hash=commit_hash)
             for commit_hash_, commit in commits.items()
