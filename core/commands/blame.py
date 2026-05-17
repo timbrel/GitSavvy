@@ -44,7 +44,7 @@ __all__ = (
 )
 
 
-from typing import DefaultDict, Dict, List, Literal, Iterator, NamedTuple, Optional, Tuple
+from typing import DefaultDict, Dict, Literal, Iterator, NamedTuple
 from typing_extensions import TypeAlias
 
 
@@ -55,7 +55,7 @@ class BlamedLine(NamedTuple):
     final_lineno: LineNo
 
 
-BlameCommitHash: TypeAlias = Optional[ShortHash]
+BlameCommitHash: TypeAlias = "ShortHash | None"
 BlameLineByRow: TypeAlias = Dict[Row, BlamedLine]
 BlameCommitInfoLines: TypeAlias = "list[str]"
 _CommitInfo: TypeAlias = DefaultDict[str, str]
@@ -165,7 +165,7 @@ def select_blame_line(view: sublime.View, lineno: LineNo) -> bool:
     return True
 
 
-def compute_identifier_for_view(view: sublime.View) -> Optional[Tuple]:
+def compute_identifier_for_view(view: sublime.View) -> tuple | None:
     settings = view.settings()
     return (
         settings.get('git_savvy.repo_path'),
@@ -516,7 +516,7 @@ class gs_blame_refresh(GsTextCommand):
             "\n"
         )
 
-        content_parts: List[str] = []
+        content_parts: list[str] = []
         blame_line_by_row: BlameLineByRow = {}
         row = 0
         for idx, chunk in enumerate(blame_chunks):
@@ -539,14 +539,14 @@ class gs_blame_refresh(GsTextCommand):
 
     def parse_blame(
         self,
-        blame_porcelain: List[str]
-    ) -> Tuple[List[BlamedLine], _CommitsByHash]:
+        blame_porcelain: list[str]
+    ) -> tuple[list[BlamedLine], _CommitsByHash]:
         if blame_porcelain[-1] == '':
             blame_porcelain = blame_porcelain[:-1]
 
         lines_iter = iter(blame_porcelain)
 
-        blamed_lines: List[BlamedLine] = []
+        blamed_lines: list[BlamedLine] = []
         commits: _CommitsByHash = defaultdict(lambda: defaultdict(str))
 
         for line in lines_iter:
@@ -585,8 +585,10 @@ class gs_blame_refresh(GsTextCommand):
 
         return blamed_lines, commits
 
-    def group_consecutive_lines(self, blamed_lines):
-        # type: (List[BlamedLine]) -> Iterator[List[BlamedLine]]
+    def group_consecutive_lines(
+        self,
+        blamed_lines: list[BlamedLine]
+    ) -> Iterator[list[BlamedLine]]:
         for _, lines in groupby(blamed_lines, lambda line: line.commit_hash):
             yield list(lines)
 
@@ -613,12 +615,12 @@ class gs_blame_refresh(GsTextCommand):
 
     def format_blame_chunk(
         self,
-        chunk: List[BlamedLine],
+        chunk: list[BlamedLine],
         commit_info: BlameCommitInfoLines,
         left_pad: int,
         row_offset: Row
     ) -> tuple[list[str], BlameLineByRow]:
-        lines: List[str] = []
+        lines: list[str] = []
         blame_line_by_row: BlameLineByRow = {}
         current_blame_line = chunk[0]
 
@@ -846,7 +848,7 @@ def pop_blame_navigation(view: sublime.View) -> dict | None:
 
 class gs_blame_action(GsTextCommand, PanelCommandMixin):
     selected_index = 0
-    default_actions = [
+    default_actions: list[list[str]] = [
         ["gs_blame_open_commit", "Show Commit"],
         ["gs_blame_focus_commit", "Focus cursor commit"],
         ["gs_blame_open_commit_before_cursor_commit", "Blame commit prior to cursor commit"],
@@ -855,7 +857,7 @@ class gs_blame_action(GsTextCommand, PanelCommandMixin):
         ["gs_blame_open_log", "Pick another commit to blame"],
         ["gs_blame_open_file_at_current_commit", "Show file at current commit"],
         ["gs_blame_open_file_at_cursor_commit", "Show file at cursor commit"],
-    ]  # type: List[List]
+    ]
 
     def update_actions(self):
         # a deepcopy
