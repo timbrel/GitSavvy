@@ -538,10 +538,15 @@ class gs_blame_refresh(GsTextCommand):
             key=len
         )
 
+        line_number_width = max(
+            4,
+            max(len(str(line.lineno)) for chunk in blame_chunks for line in chunk)
+        )
+
         spacer = (
             "-" * len(longest_commit_line) +
             " | " +
-            "-" * (5 + len(longest_code_line)) +
+            "-" * (line_number_width + 1 + len(longest_code_line)) +
             "\n"
         )
 
@@ -561,6 +566,7 @@ class gs_blame_refresh(GsTextCommand):
                 chunk,
                 commit_infos[chunk[0].commit_hash],
                 len(longest_commit_line),
+                line_number_width,
                 row
             )
             content_parts.extend(chunk_lines)
@@ -649,6 +655,7 @@ class gs_blame_refresh(GsTextCommand):
         chunk: list[BlamedLine],
         commit_info: _RenderedCommitInfo,
         left_pad: int,
+        line_number_width: int,
         row_offset: Row
     ) -> tuple[list[str], BlameInfoByRow]:
         lines: list[str] = []
@@ -664,8 +671,9 @@ class gs_blame_refresh(GsTextCommand):
                     blame_line.commit_hash,
                     blame_line.lineno
                 )
-                right = "{lineno: >4} {contents}".format(
+                right = "{lineno: >{width}} {contents}".format(
                     lineno=blame_line.lineno,
+                    width=line_number_width,
                     contents=blame_line.contents
                 )
             else:
