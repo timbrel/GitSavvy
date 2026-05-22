@@ -167,31 +167,31 @@ def serialize_blame_info_by_row(
     ]
 
 
-def apply_blame_position(
+def scroll_to_lineno(
     view: sublime.View,
-    lineno: int,
+    lineno: LineNo,
     y_offset_: float | None
 ) -> None:
-    if not select_blame_line(view, lineno):
+    point = select_blame_line(view, lineno)
+    if point is None:
         return
 
-    point = view.sel()[0].begin()
     if y_offset_ is not None:
         scroll_to_pt(view, point, y_offset_)
     else:
         view.show(point)
 
 
-def select_blame_line(view: sublime.View, lineno: LineNo) -> bool:
+def select_blame_line(view: sublime.View, lineno: LineNo) -> int | None:
     pattern = r".{{30}} \| {lineno: >4}\s".format(lineno=lineno)
     corresponding_region = view.find(pattern, 0)
     blame_view_pt = corresponding_region.end()
     if blame_view_pt < 0:
-        return False
+        return None
 
     view.sel().clear()
-    view.sel().add(sublime.Region(blame_view_pt, blame_view_pt))
-    return True
+    view.sel().add(sublime.Region(blame_view_pt))
+    return blame_view_pt
 
 
 def compute_identifier_for_view(view: sublime.View) -> tuple | None:
@@ -263,7 +263,7 @@ class gs_blame(GsTextCommand):
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
                 focus_view(view)
-                run_as_text_command(apply_blame_position, view, lineno, offset)
+                run_as_text_command(scroll_to_lineno, view, lineno, offset)
                 break
         else:
             view = util.view.create_scratch_view(
@@ -413,7 +413,7 @@ class gs_blame_refresh(GsTextCommand):
         if content == self.view.substr(sublime.Region(0, self.view.size())):
             if scroll_to is not None:
                 lineno, initial_y_offset = scroll_to
-                apply_blame_position(self.view, lineno, initial_y_offset)
+                scroll_to_lineno(self.view, lineno, initial_y_offset)
             return
 
         was_empty = self.view.size() == 0
