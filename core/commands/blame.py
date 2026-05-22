@@ -54,34 +54,38 @@ class BlamedLine(NamedTuple):
     final_lineno: LineNo
 
 
+class BlameRowInfo(NamedTuple):
+    commit_hash: ShortHash | Literal[""]
+    lineno: LineNo
+
+
+class RenderedBlame(NamedTuple):
+    content: str
+    blame_info_by_row: BlameInfoByRow
+
+
 BlameCommitHash: TypeAlias = "ShortHash | None"
-BlameLineByRow: TypeAlias = Dict[Row, BlamedLine]
+BlameInfoByRow: TypeAlias = Dict[Row, BlameRowInfo]
 BlameCommitInfoLines: TypeAlias = "list[str]"
 _CommitInfo: TypeAlias = DefaultDict[str, str]
 _CommitsByHash: TypeAlias = DefaultDict[FullHash, _CommitInfo]
 
 
-class RenderedBlame(NamedTuple):
-    content: str
-    blame_line_by_row: BlameLineByRow
-
-
-_blame_line_by_row_by_view_id: Dict[sublime.ViewId, BlameLineByRow] = {}
-
-
 class GsBlameController(EventListener):
     def on_close(self, view: sublime.View) -> None:
-        _blame_line_by_row_by_view_id.pop(view.id(), None)
+        _blame_info_by_row_by_view_id.pop(view.id(), None)
 
 
+BLAME_INFO_BY_ROW_KEY = "git_savvy.blame_info_by_row"
 NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
 BLAME_TITLE = "BLAME: {}{}"
+_blame_info_by_row_by_view_id: Dict[sublime.ViewId, BlameInfoByRow] = {}
 
 
 def commit_under_cursor(view: sublime.View) -> ShortHash | None:
-    blame_line = blame_line_at_cursor(view)
-    if blame_line:
-        return blame_line.commit_hash
+    blame_info = blame_info_at_cursor(view)
+    if blame_info:
+        return blame_info.commit_hash or None
 
     cursor = cursor_pos(view)
     hunk_start = util.view.get_instance_before_pt(view, cursor, r"^\-+ \| \-+")
@@ -100,9 +104,9 @@ def commit_under_cursor(view: sublime.View) -> ShortHash | None:
 
 
 def current_lineno(view: sublime.View) -> LineNo:
-    blame_line = blame_line_at_cursor(view)
-    if blame_line:
-        return blame_line.final_lineno
+    blame_info = blame_info_at_cursor(view)
+    if blame_info:
+        return blame_info.lineno
 
     cursor = cursor_pos(view)
     pattern = r"^.+ \| +\d+"
@@ -125,16 +129,48 @@ def cursor_pos(view: sublime.View) -> int:
         return 0
 
 
-def blame_line_at_cursor(view: sublime.View) -> BlamedLine | None:
+def blame_info_at_cursor(view: sublime.View) -> BlameRowInfo | None:
     row, _ = view.rowcol(cursor_pos(view))
-    return _blame_line_by_row_by_view_id.get(view.id(), {}).get(row)
+    return blame_info_by_row(view).get(row)
 
 
-def remember_blame_lines_by_row(
+def blame_info_by_row(view: sublime.View) -> BlameInfoByRow:
+    view_id = view.id()
+    try:
+        return _blame_info_by_row_by_view_id[view_id]
+    except KeyError:
+        blame_info_by_row_ = _blame_info_by_row_by_view_id[view_id] = \
+            restore_blame_info_by_row(view)
+        return blame_info_by_row_
+
+
+def remember_blame_info_by_row(
     view: sublime.View,
-    blame_line_by_row: BlameLineByRow
+    blame_info_by_row_: BlameInfoByRow
 ) -> None:
-    _blame_line_by_row_by_view_id[view.id()] = blame_line_by_row
+    _blame_info_by_row_by_view_id[view.id()] = blame_info_by_row_
+    view.settings().set(
+        BLAME_INFO_BY_ROW_KEY,
+        serialize_blame_info_by_row(blame_info_by_row_)
+    )
+
+
+def restore_blame_info_by_row(view: sublime.View) -> BlameInfoByRow:
+    stored_blame_infos: list[tuple[Row, str, LineNo]] = \
+        view.settings().get(BLAME_INFO_BY_ROW_KEY, [])
+    return {
+        row: BlameRowInfo(commit_hash, lineno)
+        for row, commit_hash, lineno in stored_blame_infos
+    }
+
+
+def serialize_blame_info_by_row(
+    blame_info_by_row_: BlameInfoByRow
+) -> list[tuple[Row, str, LineNo]]:
+    return [
+        (row, blame_info.commit_hash, blame_info.lineno)
+        for row, blame_info in blame_info_by_row_.items()
+    ]
 
 
 def apply_blame_position(
@@ -377,7 +413,7 @@ class gs_blame_refresh(GsTextCommand):
             detect_options=self._detect_move_or_copy_dict[within_what]
         )
         content = rendered_blame.content
-        remember_blame_lines_by_row(self.view, rendered_blame.blame_line_by_row)
+        remember_blame_info_by_row(self.view, rendered_blame.blame_info_by_row)
 
         # only if the content changes
         if content == self.view.substr(sublime.Region(0, self.view.size())):
@@ -516,25 +552,28 @@ class gs_blame_refresh(GsTextCommand):
         )
 
         content_parts: list[str] = []
-        blame_line_by_row: BlameLineByRow = {}
+        blame_info_by_row: BlameInfoByRow = {}
         row = 0
         for idx, chunk in enumerate(blame_chunks):
             if idx:
                 content_parts.append(spacer)
-                blame_line_by_row[row] = chunk[0]
+                blame_info_by_row[row] = BlameRowInfo(
+                    chunk[0].commit_hash,
+                    chunk[0].final_lineno
+                )
                 row += 1
 
-            chunk_lines, chunk_blame_line_by_row = self.format_blame_chunk(
+            chunk_lines, chunk_blame_info_by_row = self.format_blame_chunk(
                 chunk,
                 commit_infos[chunk[0].commit_hash],
                 len(longest_commit_line),
                 row
             )
             content_parts.extend(chunk_lines)
-            blame_line_by_row.update(chunk_blame_line_by_row)
+            blame_info_by_row.update(chunk_blame_info_by_row)
             row += len(chunk_lines)
 
-        return RenderedBlame("".join(content_parts), blame_line_by_row)
+        return RenderedBlame("".join(content_parts), blame_info_by_row)
 
     def parse_blame(
         self,
@@ -617,17 +656,20 @@ class gs_blame_refresh(GsTextCommand):
         commit_info: BlameCommitInfoLines,
         left_pad: int,
         row_offset: Row
-    ) -> tuple[list[str], BlameLineByRow]:
+    ) -> tuple[list[str], BlameInfoByRow]:
         lines: list[str] = []
-        blame_line_by_row: BlameLineByRow = {}
-        current_blame_line = chunk[0]
+        blame_info_by_row: BlameInfoByRow = {}
+        current_blame_info = BlameRowInfo(chunk[0].commit_hash, chunk[0].final_lineno)
 
         for row, (left, blame_line) in enumerate(
             zip_longest(commit_info, chunk),
             start=row_offset
         ):
             if blame_line is not None:
-                current_blame_line = blame_line
+                current_blame_info = BlameRowInfo(
+                    blame_line.commit_hash,
+                    blame_line.final_lineno
+                )
                 right = "{lineno: >4} {contents}".format(
                     lineno=blame_line.final_lineno,
                     contents=blame_line.contents
@@ -635,14 +677,14 @@ class gs_blame_refresh(GsTextCommand):
             else:
                 right = ""
 
-            blame_line_by_row[row] = current_blame_line
+            blame_info_by_row[row] = current_blame_info
             lines.append("{left: <{left_pad}} | {right}\n".format(
                 left=left or "",
                 left_pad=left_pad,
                 right=right
             ))
 
-        return lines, blame_line_by_row
+        return lines, blame_info_by_row
 
 
 class gs_blame_open_commit(GsTextCommand):
