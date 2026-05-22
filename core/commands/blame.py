@@ -50,12 +50,12 @@ from typing_extensions import TypeAlias
 
 class BlamedLine(NamedTuple):
     contents: str
-    commit_hash: ShortHash | Literal[""]
+    commit_hash: ShortHashOrEmpty
     final_lineno: LineNo
 
 
 class BlameRowInfo(NamedTuple):
-    commit_hash: ShortHash | Literal[""]
+    commit_hash: ShortHashOrEmpty
     lineno: LineNo
 
 
@@ -64,7 +64,7 @@ class RenderedBlame(NamedTuple):
     blame_info_by_row: BlameInfoByRow
 
 
-BlameCommitHash: TypeAlias = "ShortHash | None"
+ShortHashOrEmpty: TypeAlias = "ShortHash | Literal[\"\"]"
 BlameInfoByRow: TypeAlias = Dict[Row, BlameRowInfo]
 BlameCommitInfoLines: TypeAlias = "list[str]"
 _CommitInfo: TypeAlias = DefaultDict[str, str]
@@ -82,44 +82,14 @@ BLAME_TITLE = "BLAME: {}{}"
 _blame_info_by_row_by_view_id: Dict[sublime.ViewId, BlameInfoByRow] = {}
 
 
-def commit_under_cursor(view: sublime.View) -> ShortHash | None:
+def commit_under_cursor(view: sublime.View) -> ShortHashOrEmpty:
     blame_info = blame_info_at_cursor(view)
-    if blame_info:
-        return blame_info.commit_hash or None
-
-    cursor = cursor_pos(view)
-    hunk_start = util.view.get_instance_before_pt(view, cursor, r"^\-+ \| \-+")
-    if hunk_start is None:
-        short_hash_row = 1
-    else:
-        hunk_start_row, _ = view.rowcol(hunk_start)
-        short_hash_row = hunk_start_row + 2
-
-    if short_hash_region := view.expand_to_scope(
-        view.text_point(short_hash_row, 0),
-        "constant.numeric.commit-hash.git-savvy"
-    ):
-        return view.substr(short_hash_region)
-    return None
+    return blame_info.commit_hash if blame_info else ""
 
 
 def current_lineno(view: sublime.View) -> LineNo:
     blame_info = blame_info_at_cursor(view)
-    if blame_info:
-        return blame_info.lineno
-
-    cursor = cursor_pos(view)
-    pattern = r"^.+ \| +\d+"
-    line_start = util.view.get_instance_before_pt(view, cursor, pattern)
-    if line_start is None:
-        return 1
-    else:
-        line = view.substr(view.find(pattern, line_start))
-        _, lineno = line.split("|", 1)
-        try:
-            return int(lineno.strip().split(" ")[0])
-        except Exception:
-            return 1
+    return blame_info.lineno if blame_info else 1
 
 
 def cursor_pos(view: sublime.View) -> int:
@@ -156,7 +126,7 @@ def remember_blame_info_by_row(
 
 
 def restore_blame_info_by_row(view: sublime.View) -> BlameInfoByRow:
-    stored_blame_infos: list[tuple[Row, str, LineNo]] = \
+    stored_blame_infos: list[tuple[Row, ShortHashOrEmpty, LineNo]] = \
         view.settings().get(BLAME_INFO_BY_ROW_KEY, [])
     return {
         row: BlameRowInfo(commit_hash, lineno)
@@ -166,7 +136,7 @@ def restore_blame_info_by_row(view: sublime.View) -> BlameInfoByRow:
 
 def serialize_blame_info_by_row(
     blame_info_by_row_: BlameInfoByRow
-) -> list[tuple[Row, str, LineNo]]:
+) -> list[tuple[Row, ShortHashOrEmpty, LineNo]]:
     return [
         (row, blame_info.commit_hash, blame_info.lineno)
         for row, blame_info in blame_info_by_row_.items()
