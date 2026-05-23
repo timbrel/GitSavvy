@@ -76,26 +76,27 @@ class TestDescribeGraphLine(DeferrableTestCase):
             f"\nM{NUL}mockito_test/instancemethods_test.py{NUL}"
         )
         when(test).get_repo_path().thenReturn("/repo")
+        p = lambda p: os.path.normpath(os.path.join("/repo", p))
 
         file_cache = {}
         commit_cache = {}
         test._fetch_info_for_commit_file_path_pairs(
-            "/repo/tests/instancemethods_test.py",
+            p("tests/instancemethods_test.py"),
             file_cache=file_cache,
             commit_cache=commit_cache
         )
 
         self.assertEqual(file_cache, {
-            ("c5", "/repo/tests/instancemethods_test.py"):
-                FileHistoryInfo("/repo/tests/instancemethods_test.py", "c4"),
-            ("c4", "/repo/tests/instancemethods_test.py"):
-                FileHistoryInfo("/repo/tests/instancemethods_test.py", "c3"),
-            ("c3", "/repo/tests/instancemethods_test.py"):
-                FileHistoryInfo("/repo/mockito/tests/instancemethods_test.py", "c2"),
-            ("c2", "/repo/tests/instancemethods_test.py"):
-                FileHistoryInfo("/repo/mockito/tests/instancemethods_test.py", "c1"),
-            ("c1", "/repo/tests/instancemethods_test.py"):
-                FileHistoryInfo("/repo/mockito_test/instancemethods_test.py", None)
+            ("c5", p("tests/instancemethods_test.py")):
+                FileHistoryInfo(p("tests/instancemethods_test.py"), "c4"),
+            ("c4", p("tests/instancemethods_test.py")):
+                FileHistoryInfo(p("tests/instancemethods_test.py"), "c3"),
+            ("c3", p("tests/instancemethods_test.py")):
+                FileHistoryInfo(p("mockito/tests/instancemethods_test.py"), "c2"),
+            ("c2", p("tests/instancemethods_test.py")):
+                FileHistoryInfo(p("mockito/tests/instancemethods_test.py"), "c1"),
+            ("c1", p("tests/instancemethods_test.py")):
+                FileHistoryInfo(p("mockito_test/instancemethods_test.py"), None)
         })
         self.assertEqual(commit_cache, {
             "c5": CommitHistoryInfo("newest", "2026-5-7"),
