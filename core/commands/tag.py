@@ -80,6 +80,14 @@ def smart_incremented_tag(tag, release_type):
     return None
 
 
+def default_tag_message(message_template: str, tag_name: str) -> str:
+    if tag_name[:1].lower() == "v":
+        message_template = message_template.replace("v{tag_name}", "{tag_name}")
+        message_template = message_template.replace("V{tag_name}", "{tag_name}")
+
+    return message_template.format(tag_name=tag_name)
+
+
 class gs_tag_create(GsTextCommand):
 
     """
@@ -123,7 +131,7 @@ class gs_tag_create(GsTextCommand):
         if MAYBE_SEMVER.search(tag_name) and self.savvy_settings.get("only_ask_to_annotate_versions"):
             show_single_line_input_panel(
                 TAG_CREATE_MESSAGE_PROMPT,
-                self.savvy_settings.get("default_tag_message").format(tag_name=tag_name),
+                default_tag_message(self.savvy_settings.get("default_tag_message"), tag_name),
                 self.on_entered_message
             )
         else:

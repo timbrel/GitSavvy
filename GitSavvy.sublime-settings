@@ -167,6 +167,10 @@
     /*
         When entering a tag message, this will be used if the message is empty.
         The replacement value "{tag_name}" is optional, but recommended.
+
+        If this is configured with a literal `v` before the placeholder, e.g.
+        "v{tag_name}", GitSavvy will avoid doubling it for tag names that
+        already start with `v`.
      */
     "default_tag_message": "Tag {tag_name}",
 
