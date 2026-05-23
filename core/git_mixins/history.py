@@ -615,7 +615,6 @@ class HistoryMixin(mixin_base):
         self,
         current_commit: str,
         file_path: str | None = None,
-        follow: bool = False,
         branch_hint: str | None = None,
     ) -> dict[str, str] | None:
         if current_commit != self.get_short_hash(current_commit):
@@ -624,17 +623,15 @@ class HistoryMixin(mixin_base):
         if branch_hint is None:
             branch_hint = self.get_branch_hint_for_commit(current_commit)
 
-        commits = []
-        for commit in self._log_commits_linewise(f"{branch_hint}", file_path, follow):
-            commits.append(commit)
-            if commit == current_commit:
-                break
-        else:
+        hashes = self._fetch_info_for_commit_file_path_pairs(
+            file_path, start_commit=branch_hint, stop_at=current_commit
+        )
+        if not hashes or hashes[-1] != current_commit:
             return None
 
         return {
             right: left
-            for left, right in pairwise(commits)
+            for left, right in pairwise(hashes)
         }
 
     def get_branch_hint_for_commit(self, commit_hash: str) -> str:
@@ -684,10 +681,11 @@ class HistoryMixin(mixin_base):
         self,
         file_path: Optional[str] = None,
         start_commit: str = "HEAD",
+        stop_at: Optional[str] = None,
+        limit: int = 200,
         file_cache: FileHistoryCache = file_history_cache,
         commit_cache: CommitInfoCache = commit_info_cache,
-        limit: int = 200
-    ) -> None:
+    ) -> List[str]:
         """
         Populate file-history info for a single logical file history.
 
@@ -721,6 +719,16 @@ class HistoryMixin(mixin_base):
         `date` is the committer date from `%ci`, normalized to the same year-month-day
         format that `commit_subject_and_date_from_patch` returns.
 
+        If `stop_at` is given, fetch the chain from `start_commit` down to and
+        including `stop_at` (regardless of `limit`).  In this mode the
+        `file_cache` entry for `stop_at` itself is intentionally *not* written
+        — we don't have its parent in this fetch, so its `previous_commit`
+        would be a lie.  `commit_cache` is populated for every fetched commit
+        including `stop_at` (subject/date don't depend on the parent).
+
+        Returns the ordered list of short hashes that were fetched, newest to
+        oldest.  Existing callers can ignore the return value.
+
         All hashes are short hashes.
         """
         RS = "%x1e"  # record separator
@@ -731,8 +739,9 @@ class HistoryMixin(mixin_base):
             "--topo-order",
             f"--format={RS}%h{US}%ci{US}%s",
             "-z",
-            f"-{limit + 1}",
+            None if stop_at else f"-{limit + 1}",
             start_commit,
+            f"^{stop_at}^@" if stop_at else None,
             *(
                 "--follow",
                 "--name-status",
@@ -741,21 +750,34 @@ class HistoryMixin(mixin_base):
             ) if file_path else ()
         )
         records = parse_file_history_log(log_output)
+        pairs = pairwise(chain(records, [None]))
+        if stop_at is None:
+            pairs = take(limit, pairs)
+
         filename = file_path
-        for record, right in take(limit, pairwise(chain(records, [None]))):
+        hashes: List[str] = []
+        for record, right in pairs:
             assert record
-            info = FileHistoryInfo(
-                filename,
-                right.short_hash if right else None
-            )
-            file_cache[(record.short_hash, file_path)] = info
+            hashes.append(record.short_hash)
             commit_cache[record.short_hash] = CommitHistoryInfo(
                 record.subject,
                 record.date
             )
+            if stop_at is not None and right is None:
+                # `record` is `stop_at`; we don't have its parent in this
+                # fetch, so writing `file_cache` would lie about
+                # `previous_commit`.  Leave the file-cache entry off so a
+                # subsequent `previous_commit(stop_at)` re-fetches from there.
+                break
+            file_cache[(record.short_hash, file_path)] = FileHistoryInfo(
+                filename,
+                right.short_hash if right else None
+            )
 
             if status := record.status:
                 filename = self.to_abs_path(status.from_path)
+
+        return hashes
 
 
 def parse_file_history_log(output: str) -> Iterator[FileHistoryEntry]:
