@@ -42,7 +42,8 @@ from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui__quick_panel import show_quick_panel
 from ..ui__toast_popup import show_toast
 from ..ui_mixins.quick_panel import show_branch_panel
-from ..utils import add_selection_to_jump_history, flash, focus_view, Cache
+from ..caches import Cache
+from ..utils import add_selection_to_jump_history, flash, focus_view
 from ...common import util
 from ...common.theme_generator import ThemeGenerator
 

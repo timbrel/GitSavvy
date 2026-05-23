@@ -10,7 +10,7 @@ from ..exceptions import GitSavvyError
 from ...common import util
 from GitSavvy.core.fns import last, pairwise, take
 from GitSavvy.core.git_command import mixin_base
-from GitSavvy.core.utils import Cache, cached
+from GitSavvy.core.caches import Cache, cached
 
 
 class LogEntry(NamedTuple):

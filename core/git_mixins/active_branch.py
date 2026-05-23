@@ -1,6 +1,6 @@
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.git_mixins.tags import is_semver_tag
-from GitSavvy.core.utils import cache_in_store_as
+from GitSavvy.core.caches import cache_in_store_as
 
 from typing import Iterable, Iterator, List, NamedTuple, Optional
 from .branches import Branch

@@ -4,7 +4,8 @@ import re
 from GitSavvy.core.git_command import mixin_base, NOT_SET
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.exceptions import GitSavvyError
-from GitSavvy.core.utils import cache_in_store_as, hprint, measure_runtime, yes_no_switch
+from GitSavvy.core.caches import cache_in_store_as
+from GitSavvy.core.utils import hprint, measure_runtime, yes_no_switch
 from GitSavvy.core.runtime import run_on_new_thread
 
 from typing import Dict, List, NamedTuple, Optional, Sequence

@@ -11,10 +11,11 @@ from . import show_commit_info
 from . import show_file_at_commit
 from ..fns import filter_, flatten, unique
 from ..git_command import GitCommand
-from ..utils import flash, flash_regions, focus_view, Cache
 from ..parse_diff import SplittedDiff
-from ..text_helper import TextRange
 from ..runtime import ensure_on_ui, enqueue_on_worker
+from ..text_helper import TextRange
+from ..caches import Cache, cached_until_focus_switch
+from ..utils import flash, flash_regions, focus_view
 from ..view import replace_view_content
 from ...common import util
 
@@ -127,10 +128,11 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
         title = SHOW_COMMIT_TITLE.format(message)
         self.view.set_name(title)
 
+    @cached_until_focus_switch
     def annotate_with_github_link(self, commit):
         # type: (str) -> None
         try:
-            remote_url = self.get_integrated_remote_url()
+            remote_url = cached_until_focus_switch(self.get_integrated_remote_url)
         except ValueError:
             return
         github_repo = github.parse_remote(remote_url)

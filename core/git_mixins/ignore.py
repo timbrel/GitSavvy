@@ -2,7 +2,7 @@ import os
 from ...common import util
 
 from GitSavvy.core.git_command import mixin_base
-from GitSavvy.core.utils import cache_in_store_as
+from GitSavvy.core.caches import cache_in_store_as
 
 from typing import List
 
