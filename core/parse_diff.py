@@ -1,3 +1,4 @@
+from __future__ import annotations
 from functools import partial
 from itertools import chain, dropwhile, groupby, takewhile
 import re
@@ -8,7 +9,7 @@ from .text_helper import TextRange
 
 
 from typing import Final, Iterator, List, NamedTuple, Optional, Tuple
-from .types import LineNo
+from .types import FullHash, LineNo, ShortPath
 
 
 class SplittedDiff(NamedTuple):
@@ -116,8 +117,7 @@ class SplittedDiff(NamedTuple):
         else:
             return None
 
-    def commit_hash_before_pt(self, pt):
-        # type: (int) -> Optional[str]
+    def commit_hash_before_pt(self, pt: int) -> FullHash | None:
         commit_header = self.commit_before_pt(pt)
         return commit_header.commit_hash() if commit_header else None
 
@@ -126,8 +126,7 @@ HEADER_TO_FILE_RE = re.compile(r'\+\+\+ b/(.+?)\t?$')
 
 
 class CommitHeader(TextRange):
-    def commit_hash(self):
-        # type: () -> Optional[str]
+    def commit_hash(self) -> FullHash | None:
         first_line = self.text[:self.text.index('\n')]
         if first_line.startswith('commit '):
             return first_line.split(' ')[1]
@@ -135,8 +134,7 @@ class CommitHeader(TextRange):
 
 
 class FileHeader(TextRange):
-    def to_filename(self):
-        # type: () -> Optional[str]
+    def to_filename(self) -> ShortPath | None:
         match = HEADER_TO_FILE_RE.search(self.text)
         if not match:
             return None

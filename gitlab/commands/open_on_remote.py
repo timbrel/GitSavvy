@@ -38,7 +38,7 @@ class gs_gitlab_open_file_in_browser(GsTextCommand, GitLabRemotesMixin):
             if not file_path:
                 flash(self.view, "Not available for unsaved files.")
                 return
-            fpath = self.to_rel_path(file_path)
+            fpath = self.to_short_path(file_path)
         self.fpath = fpath
         self.preselect = preselect
 

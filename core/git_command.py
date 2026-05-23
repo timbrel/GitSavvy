@@ -5,7 +5,7 @@ Define a base command class that:
   3) tracks file- and repo- specific data the is necessary
      for Git operations.
 """
-
+from __future__ import annotations
 from collections import deque, ChainMap
 from itertools import chain, repeat
 from functools import lru_cache, partial
@@ -26,6 +26,7 @@ from .utils import try_kill_proc, paths_upwards, proc_has_been_killed, resolve_p
 from GitSavvy.core import store
 from GitSavvy.core.fns import consume, filter_, pairwise
 from GitSavvy.core.runtime import auto_timeout, enqueue_on_worker, run_as_future
+from GitSavvy.core.types import FullPath, ShortPath
 
 
 from typing import (
@@ -755,8 +756,7 @@ class _GitCommand(SettingsMixin):
             return gitdir
 
     @property
-    def file_path(self):
-        # type: () -> Optional[str]
+    def file_path(self) -> FullPath | None:
         """
         Return the absolute path to the file this view interacts with. In most
         cases, this will be the open file.  However, for views with special
@@ -769,7 +769,7 @@ class _GitCommand(SettingsMixin):
 
         return view.settings().get("git_savvy.file_path") or view.file_name()
 
-    def to_rel_path(self, file_path: str, base: str = NOT_SET) -> str:
+    def to_short_path(self, file_path: str, base: str = NOT_SET) -> ShortPath:
         """
         Return the file path relative to the repo root, or the given base.
         """
@@ -786,7 +786,7 @@ class _GitCommand(SettingsMixin):
             return rel_path.replace("\\", "/")
         return rel_path
 
-    def to_abs_path(self, file_path: str, base: str = NOT_SET) -> str:
+    def to_full_path(self, file_path: str, base: str = NOT_SET) -> FullPath:
         """
         Return the absolute file path from a repo-relative path, or the given base.
         """
@@ -797,7 +797,7 @@ class _GitCommand(SettingsMixin):
     def nice_path(self, p: str) -> str:
         parent_dir = os.path.dirname(self.repo_path).replace("\\", "/")
         if p.startswith(parent_dir):
-            return self.to_rel_path(p)
+            return self.to_short_path(p)
         return p.replace(NORM_HOME, "~")
 
     def _add_global_flags(self, git_cmd, args):

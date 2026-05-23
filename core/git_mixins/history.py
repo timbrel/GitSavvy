@@ -11,6 +11,7 @@ from ...common import util
 from GitSavvy.core.fns import last, pairwise, take
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.caches import Cache, cached
+from GitSavvy.core.types import FullPath, ShortHash
 
 
 class LogEntry(NamedTuple):
@@ -239,7 +240,7 @@ class HistoryMixin(mixin_base):
     def resolve_commitish(self, ref: str) -> str:
         return self.git("rev-parse", "--short", ref).strip()
 
-    def filename_at_commit(self, filename: str, commit_hash: str) -> str:
+    def filename_at_commit(self, filename: FullPath, commit_hash: ShortHash) -> str:
         if is_dynamic_ref(commit_hash):
             return self._filename_at_commit(filename, commit_hash)
 
@@ -267,10 +268,10 @@ class HistoryMixin(mixin_base):
             return filename
 
     def filename_at_head(self, filename: str, commit_hash: str) -> str:
-        rel_path = self.to_rel_path(filename)
+        rel_path = self.to_short_path(filename)
         was_abs = rel_path != filename
 
-        if os.path.exists(filename if was_abs else self.to_abs_path(rel_path)):
+        if os.path.exists(filename if was_abs else self.to_full_path(rel_path)):
             return filename
 
         if not self.commit_is_ancestor_of_head(commit_hash):
@@ -286,7 +287,7 @@ class HistoryMixin(mixin_base):
             current_filename = next_filename
 
         return (
-            self.to_abs_path(current_filename)
+            self.to_full_path(current_filename)
             if was_abs else
             current_filename
         )
@@ -331,7 +332,7 @@ class HistoryMixin(mixin_base):
     @cached(not_if={"commit_hash": is_dynamic_ref})
     def get_file_content_at_commit(self, filename, commit_hash):
         # type: (str, Optional[str]) -> str
-        filename = self.to_rel_path(filename)
+        filename = self.to_short_path(filename)
         return self.git("show", "{}:{}".format(commit_hash or "", filename))
 
     def find_matching_lineno_in_file_history(
@@ -446,8 +447,8 @@ class HistoryMixin(mixin_base):
     ) -> str:
         base_commit, base_file_path = base
         target_commit, target_file_path = target
-        base_file_path = self.to_rel_path(base_file_path)
-        target_file_path = self.to_rel_path(target_file_path)
+        base_file_path = self.to_short_path(base_file_path)
+        target_file_path = self.to_short_path(target_file_path)
         base_spec = "{}:{}".format(base_commit, base_file_path)
         if target_commit:
             target_spec = "{}:{}".format(target_commit, target_file_path)
@@ -703,7 +704,7 @@ class HistoryMixin(mixin_base):
         line_range: tuple[int, int]
     ) -> list[str]:
         file_path_at_commit = self.filename_at_commit(file_path, current_commit)
-        relative_path = self.to_rel_path(file_path_at_commit)
+        relative_path = self.to_short_path(file_path_at_commit)
         start_line, end_line = line_range
         output = self.git(
             "log",
@@ -841,7 +842,7 @@ class HistoryMixin(mixin_base):
             )
 
             if status := record.status:
-                filename = self.to_abs_path(status.from_path)
+                filename = self.to_full_path(status.from_path)
 
         return hashes
 

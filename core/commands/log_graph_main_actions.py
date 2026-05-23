@@ -80,7 +80,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             else []
         )  # type: List[str]
         if len(paths) == 1:
-            return self.to_abs_path(paths[0])
+            return self.to_full_path(paths[0])
 
         return None
 
@@ -640,7 +640,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             target_path = (
                 self.filename_at_commit(file_path, target_commit)
                 if target_commit else
-                self.to_rel_path(file_path)
+                self.to_short_path(file_path)
             )
             if base_path != target_path:
                 self.window.status_message("Not implemented across rename boundaries.")
