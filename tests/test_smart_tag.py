@@ -1,9 +1,16 @@
-from GitSavvy.core.commands.tag import smart_incremented_tag
+from GitSavvy.core.commands.tag import default_tag_message, smart_incremented_tag
 
 import unittest
 
 
 class TestSmartTag(unittest.TestCase):
+    def test_default_tag_message(self):
+        self.assertEqual(default_tag_message('v{tag_name}', '2.1.0'), 'v2.1.0')
+        self.assertEqual(default_tag_message('v{tag_name}', 'v2.1.0'), 'v2.1.0')
+        self.assertEqual(default_tag_message('V{tag_name}', 'v2.1.0'), 'v2.1.0')
+        self.assertEqual(default_tag_message('Tag {tag_name}', 'v2.1.0'), 'Tag v2.1.0')
+        self.assertEqual(default_tag_message('Release v{tag_name}', 'v2.1.0'), 'Release v2.1.0')
+
     def test_smart_tag(self):
         self.assertEqual(smart_incremented_tag('v1.3.2', "prerelease"), 'v1.3.3-0')
         self.assertEqual(smart_incremented_tag('v1.3.2', "prepatch"), 'v1.3.3-0')
