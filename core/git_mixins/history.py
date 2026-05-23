@@ -1,17 +1,16 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import email.utils
+from itertools import chain
 import os
-from itertools import chain, takewhile
+from typing import Generic, Iterator, List, NamedTuple, Optional, TypeVar
+from typing_extensions import TypeAlias
 
 from ..exceptions import GitSavvyError
 from ...common import util
-from GitSavvy.core.fns import last, pairwise
+from GitSavvy.core.fns import last, pairwise, take
 from GitSavvy.core.git_command import mixin_base
-from GitSavvy.core.utils import cached
-
-
-from typing import Iterator, List, NamedTuple, Optional
+from GitSavvy.core.utils import Cache, cached
 
 
 class LogEntry(NamedTuple):
@@ -49,6 +48,40 @@ class FileStatus:
     to_path: Optional[str] = None
 
 
+class FileHistoryEntry(NamedTuple):
+    short_hash: str
+    date: str
+    subject: str
+    status: Optional[FileStatus]
+
+
+T = TypeVar("T", bound=Optional[str])
+FileHistoryKey: TypeAlias = "tuple[str, T]"
+
+
+class FileHistoryInfo(NamedTuple, Generic[T]):
+    filename_at_commit: T
+    previous_commit: Optional[str]
+
+
+class CommitHistoryInfo(NamedTuple):
+    subject: str
+    date: str
+
+
+class FileHistoryCache(Cache):
+    def __getitem__(self, key: FileHistoryKey[T]) -> FileHistoryInfo[T]:
+        return super().__getitem__(key)
+
+    def __setitem__(self, key: FileHistoryKey[T], value: FileHistoryInfo[T]) -> None:
+        super().__setitem__(key, value)
+
+
+CommitInfoCache: TypeAlias = "dict[str, CommitHistoryInfo]"
+file_history_cache = FileHistoryCache(maxsize=8192)
+commit_info_cache: CommitInfoCache = Cache(maxsize=8192)
+
+
 def is_dynamic_ref(ref):
     # type: (Optional[str]) -> bool
     return (
@@ -64,7 +97,7 @@ class HistoryMixin(mixin_base):
     def log(self, author=None, branch=None, file_path=None, start_end=None, cherry=None,
             limit=6000, skip=None, reverse=False, all_branches=False, msg_regexp=None,
             diff_regexp=None, first_parent=False, merges=False, no_merges=False, topo_order=False,
-            follow=False) -> List[LogEntry]:
+            follow=False, show_panel_on_error=True) -> List[LogEntry]:
         if follow and not file_path:
             raise RuntimeError("follow=True requires file_path")
 
@@ -88,7 +121,8 @@ class HistoryMixin(mixin_base):
             "{}..{}".format(*start_end) if start_end else None,
             branch if branch else None,
             "--" if file_path else None,
-            file_path if file_path else None
+            file_path if file_path else None,
+            show_panel_on_error=show_panel_on_error
         ).strip("\x00")
 
         entries = []
@@ -205,8 +239,19 @@ class HistoryMixin(mixin_base):
     def resolve_commitish(self, ref: str) -> str:
         return self.git("rev-parse", "--short", ref).strip()
 
-    @cached(not_if={"commit_hash": is_dynamic_ref})
     def filename_at_commit(self, filename: str, commit_hash: str) -> str:
+        if is_dynamic_ref(commit_hash):
+            return self._filename_at_commit(filename, commit_hash)
+
+        key = (commit_hash, filename)
+        try:
+            return file_history_cache[key].filename_at_commit
+        except KeyError:
+            self._fetch_info_for_commit_file_path_pairs(filename, commit_hash)
+            return file_history_cache[key].filename_at_commit
+
+    @cached(not_if={"commit_hash": is_dynamic_ref})
+    def _filename_at_commit(self, filename: str, commit_hash: str) -> str:
         lines = self.git(
             "log",
             "--format=",  # we don't need any commit info beside the name status
@@ -222,10 +267,10 @@ class HistoryMixin(mixin_base):
             return filename
 
     def filename_at_head(self, filename: str, commit_hash: str) -> str:
-        rel_path = self.get_rel_path(filename)
+        rel_path = self.to_rel_path(filename)
         was_abs = rel_path != filename
 
-        if os.path.exists(os.path.join(self.repo_path, rel_path)):
+        if os.path.exists(filename if was_abs else self.to_abs_path(rel_path)):
             return filename
 
         if not self.commit_is_ancestor_of_head(commit_hash):
@@ -241,7 +286,7 @@ class HistoryMixin(mixin_base):
             current_filename = next_filename
 
         return (
-            os.path.normpath(os.path.join(self.repo_path, current_filename))
+            self.to_abs_path(current_filename)
             if was_abs else
             current_filename
         )
@@ -286,8 +331,42 @@ class HistoryMixin(mixin_base):
     @cached(not_if={"commit_hash": is_dynamic_ref})
     def get_file_content_at_commit(self, filename, commit_hash):
         # type: (str, Optional[str]) -> str
-        filename = self.get_rel_path(filename)
+        filename = self.to_rel_path(filename)
         return self.git("show", "{}:{}".format(commit_hash or "", filename))
+
+    def find_matching_lineno_in_file_history(
+        self,
+        base_commit: Optional[str],
+        target_commit: Optional[str],
+        line: int,
+        file_path: str
+    ) -> int:
+        """
+        Return the target line while following renames for a HEAD-anchored file.
+
+        `file_path` is the current/HEAD filename for the logical file history.
+        `line` is in that file at `base_commit`, or in the working tree if
+        `base_commit` is None.  The result is the corresponding line at
+        `target_commit`, or in the working tree if `target_commit` is None.
+        """
+        target: tuple[Optional[str], str]
+        if base_commit:
+            base = (base_commit, self.filename_at_commit(file_path, base_commit))
+            if target_commit:
+                target = (target_commit, self.filename_at_commit(file_path, target_commit))
+            else:
+                target = (None, file_path)
+            return self.find_matching_lineno_between_files(base, target, line)
+
+        if target_commit:
+            target = (target_commit, self.filename_at_commit(file_path, target_commit))
+            return self.reverse_find_matching_lineno_between_files(
+                target,
+                (None, file_path),
+                line
+            )
+
+        return line
 
     def find_matching_lineno(self, base_commit="HEAD", target_commit="HEAD", line=1, file_path=None):
         # type: (Optional[str], Optional[str], int, str) -> int
@@ -300,6 +379,20 @@ class HistoryMixin(mixin_base):
         diff = self.no_context_diff(base_commit, target_commit, file_path)
         return self.adjust_line_according_to_diff(diff, line)
 
+    def find_matching_lineno_between_files(
+        self,
+        base: tuple[str, str],
+        target: tuple[Optional[str], str],
+        line: int
+    ) -> int:
+        """
+        Return the matching line in target file for a line in base file.
+
+        The target commit may be None to compare against the working tree.
+        """
+        diff = self.no_context_diff_between_files(base, target)
+        return self.adjust_line_according_to_diff(diff, line)
+
     def reverse_find_matching_lineno(self, base_commit="HEAD", target_commit="HEAD", line=1, file_path=None):
         # type: (Optional[str], Optional[str], int, str) -> int
         """
@@ -309,10 +402,21 @@ class HistoryMixin(mixin_base):
             file_path = self.file_path
 
         diff = self.no_context_diff(base_commit, target_commit, file_path)
-        hunks = util.parse_diff(diff)
-        if not hunks:
-            return line
-        return self.reverse_adjust_line_according_to_hunks(hunks, line)
+        return self.reverse_adjust_line_according_to_diff(diff, line)
+
+    def reverse_find_matching_lineno_between_files(
+        self,
+        base: tuple[str, str],
+        target: tuple[Optional[str], str],
+        line: int
+    ) -> int:
+        """
+        Return the matching line in base file for a line in target file.
+
+        The target commit may be None to compare against the working tree.
+        """
+        diff = self.no_context_diff_between_files(base, target)
+        return self.reverse_adjust_line_according_to_diff(diff, line)
 
     @cached(not_if={"base_commit": is_dynamic_ref, "target_commit": is_dynamic_ref})
     def no_context_diff(self, base_commit, target_commit, file_path=None):
@@ -329,13 +433,40 @@ class HistoryMixin(mixin_base):
 
         return self.git(*cmd)
 
-    def adjust_line_according_to_diff(self, diff, line):
-        # type: (str, int) -> int
+    @cached(
+        not_if={
+            "base": lambda ref: is_dynamic_ref(ref[0]),
+            "target": lambda ref: is_dynamic_ref(ref[0])
+        }
+    )
+    def no_context_diff_between_files(
+        self,
+        base: tuple[str, str],
+        target: tuple[Optional[str], str]
+    ) -> str:
+        base_commit, base_file_path = base
+        target_commit, target_file_path = target
+        base_file_path = self.to_rel_path(base_file_path)
+        target_file_path = self.to_rel_path(target_file_path)
+        base_spec = "{}:{}".format(base_commit, base_file_path)
+        if target_commit:
+            target_spec = "{}:{}".format(target_commit, target_file_path)
+            return self.git("diff", "--no-color", "-U0", base_spec, target_spec)
+        return self.git("diff", "--no-color", "-U0", base_spec, "--", target_file_path)
+
+    def adjust_line_according_to_diff(self, diff: str, line: int) -> int:
         hunks = util.parse_diff(diff)
         if not hunks:
             return line
 
         return self.adjust_line_according_to_hunks(hunks, line)
+
+    def reverse_adjust_line_according_to_diff(self, diff: str, line: int) -> int:
+        hunks = util.parse_diff(diff)
+        if not hunks:
+            return line
+
+        return self.reverse_adjust_line_according_to_hunks(hunks, line)
 
     def adjust_line_according_to_hunks(self, hunks, line):
         for hunk in reversed(hunks):
@@ -401,6 +532,26 @@ class HistoryMixin(mixin_base):
         return rv
 
     def commit_subject_and_date(self, commit_hash: str) -> CommitInfo:
+        if is_dynamic_ref(commit_hash):
+            return self._commit_subject_and_date(commit_hash)
+
+        def to_commit_info(info: CommitHistoryInfo) -> CommitInfo:
+            return CommitInfo(
+                commit_hash,
+                commit_hash,
+                info.subject,
+                info.date
+            )
+
+        key = commit_hash
+        try:
+            return to_commit_info(commit_info_cache[key])
+        except KeyError:
+            self._fetch_info_for_commit_file_path_pairs(None, commit_hash)
+            return to_commit_info(commit_info_cache[key])
+
+    @cached(not_if={"commit_hash": is_dynamic_ref})
+    def _commit_subject_and_date(self, commit_hash: str) -> CommitInfo:
         # call with the same settings as gs_show_commit to either use or
         # warm up the cache
         show_diffstat = self.savvy_settings.get("show_diffstat")
@@ -421,8 +572,24 @@ class HistoryMixin(mixin_base):
                 break
         return CommitInfo(commit_hash, self.get_short_hash(commit_hash), subject, date)
 
+    def previous_commit(
+        self,
+        current_commit: str,
+        file_path: str | None = None,
+        follow: bool = False
+    ):
+        if is_dynamic_ref(current_commit) or (file_path and not follow):
+            return self._previous_commit(current_commit, file_path, follow)
+
+        key = (current_commit, file_path)
+        try:
+            return file_history_cache[key].previous_commit
+        except KeyError:
+            self._fetch_info_for_commit_file_path_pairs(file_path, current_commit)
+            return file_history_cache[key].previous_commit
+
     @cached(not_if={"current_commit": is_dynamic_ref})
-    def previous_commit(self, current_commit, file_path=None, follow=False):
+    def _previous_commit(self, current_commit, file_path=None, follow=False):
         # type: (str, Optional[str], bool) -> Optional[str]
         return last(
             self._log_commits_linewise(current_commit, file_path, follow, limit=2),
@@ -450,38 +617,43 @@ class HistoryMixin(mixin_base):
         file_path: str | None = None,
         follow: bool = False,
         branch_hint: str | None = None,
-    ) -> dict[str, str]:
+    ) -> dict[str, str] | None:
         if current_commit != self.get_short_hash(current_commit):
             raise RuntimeError("`next_commits` must be called with a short commit hash.")
 
         if branch_hint is None:
-            try:
-                branch_hint = next(iter(
-                    self.git_throwing_silently(
-                        "for-each-ref",
-                        "--format=%(refname)",
-                        "--contains",
-                        current_commit,
-                        "--sort=-committerdate",
-                        "--sort=-HEAD"
-                    ).strip().splitlines()
-                ))
-            except (GitSavvyError, StopIteration):
-                if self.commit_is_ancestor_of_head(current_commit):
-                    branch_hint = ""
-                else:
-                    raise ValueError(f"{current_commit} seems orphaned")
+            branch_hint = self.get_branch_hint_for_commit(current_commit)
+
+        commits = []
+        for commit in self._log_commits_linewise(f"{branch_hint}", file_path, follow):
+            commits.append(commit)
+            if commit == current_commit:
+                break
+        else:
+            return None
 
         return {
             right: left
-            for left, right in pairwise(chain(
-                takewhile(
-                    lambda c: c != current_commit,
-                    self._log_commits_linewise(f"{branch_hint}", file_path, follow)
-                ),
-                [current_commit]
-            ))
+            for left, right in pairwise(commits)
         }
+
+    def get_branch_hint_for_commit(self, commit_hash: str) -> str:
+        try:
+            return next(iter(
+                self.git_throwing_silently(
+                    "for-each-ref",
+                    "--format=%(refname)",
+                    "--contains",
+                    commit_hash,
+                    "--sort=-committerdate",
+                    "--sort=-HEAD"
+                ).strip().splitlines()
+            ))
+        except (GitSavvyError, StopIteration):
+            if self.commit_is_ancestor_of_head(commit_hash):
+                return ""
+            else:
+                raise ValueError(f"{commit_hash} seems orphaned")
 
     def _log_commits_linewise(
         self,
@@ -508,6 +680,102 @@ class HistoryMixin(mixin_base):
             )
         )
 
+    def _fetch_info_for_commit_file_path_pairs(
+        self,
+        file_path: Optional[str] = None,
+        start_commit: str = "HEAD",
+        file_cache: FileHistoryCache = file_history_cache,
+        commit_cache: CommitInfoCache = commit_info_cache,
+        limit: int = 200
+    ) -> None:
+        """
+        Populate file-history info for a single logical file history.
+
+        The cache is filled with entries of this shape:
+
+            (short_commit_hash, file_path) -> FileHistoryInfo(
+                filename_at_commit,
+                previous_commit,
+                subject,
+                date
+            )
+
+        If `file_path` is given, it must be the full name of the file at
+        `start_commit`.  For the default `start_commit="HEAD"`, this means the
+        full HEAD filename which is usually the checked-out filename.  The
+        cache key keeps this anchor path for all entries.  In this mode,
+        `filename_at_commit` is the full historical path for that same logical
+        file at `short_commit_hash`, following renames backwards.
+
+        If `file_path` is None, the cache is filled with commit-only entries:
+
+            (short_commit_hash, None) -> FileHistoryInfo(
+                None,
+                previous_commit,
+                subject,
+                date
+            )
+
+        `previous_commit` is the next older commit in the fetched history if
+        known, or None only if the fetched log reaches the initial revision.
+        `date` is the committer date from `%ci`, normalized to the same year-month-day
+        format that `commit_subject_and_date_from_patch` returns.
+
+        All hashes are short hashes.
+        """
+        RS = "%x1e"  # record separator
+        US = "%x1f"  # unit separaor
+
+        log_output = self.git(
+            "log",
+            "--topo-order",
+            f"--format={RS}%h{US}%ci{US}%s",
+            "-z",
+            f"-{limit + 1}",
+            start_commit,
+            *(
+                "--follow",
+                "--name-status",
+                "--",
+                file_path
+            ) if file_path else ()
+        )
+        records = parse_file_history_log(log_output)
+        filename = file_path
+        for record, right in take(limit, pairwise(chain(records, [None]))):
+            assert record
+            info = FileHistoryInfo(
+                filename,
+                right.short_hash if right else None
+            )
+            file_cache[(record.short_hash, file_path)] = info
+            commit_cache[record.short_hash] = CommitHistoryInfo(
+                record.subject,
+                record.date
+            )
+
+            if status := record.status:
+                filename = self.to_abs_path(status.from_path)
+
+
+def parse_file_history_log(output: str) -> Iterator[FileHistoryEntry]:
+    for record in output.split("\x1e"):
+        if not record:
+            continue
+
+        header, _, name_status = record.partition("\0")
+        try:
+            short_hash, committer_date, subject = header.split("\x1f", 2)
+        except ValueError:
+            continue
+
+        yield FileHistoryEntry(
+            short_hash,
+            date_from_committer_date(committer_date),
+            subject,
+            next(parse_name_status_z(name_status), None)
+        )
+
 
 def parse_name_status_z(output: str) -> Iterator[FileStatus]:
     fields = output.rstrip("\0").split("\0")
@@ -524,3 +792,12 @@ def parse_name_status_z(output: str) -> Iterator[FileStatus]:
         else:
             yield FileStatus(mode, fields[idx])
             idx += 1
+
+
+def date_from_committer_date(committer_date: str) -> str:
+    date, _, _ = committer_date.partition(" ")
+    try:
+        year, month, day = date.split("-")
+        return "-".join((str(int(year)), str(int(month)), str(int(day))))
+    except ValueError:
+        return date

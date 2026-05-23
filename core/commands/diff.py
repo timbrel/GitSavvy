@@ -207,7 +207,7 @@ class gs_diff(WindowCommand, GitCommand):
             if in_cached_mode is None:
                 in_cached_mode = active_view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
             if _cur_pos := capture_cur_position(active_view):
-                rel_file_path = self.get_rel_path(file_path)
+                rel_file_path = self.to_rel_path(file_path)
                 row, col, offset = _cur_pos
                 line_no, col_no = inline_diff.translate_pos_from_diff_view_to_file(active_view, row + 1, col + 1)
                 cur_pos = ("from_file", Position(line_no - 1, col_no - 1, offset), rel_file_path)
@@ -218,12 +218,12 @@ class gs_diff(WindowCommand, GitCommand):
                 base_commit = self.previous_commit(target_commit, file_path)
                 disable_stage = True
             if _cur_pos := capture_cur_position(active_view):
-                rel_file_path = self.get_rel_path(file_path)
+                rel_file_path = self.to_rel_path(file_path)
                 cur_pos = ("from_file", _cur_pos, rel_file_path)
 
         elif av_fname := active_view.file_name():
             if _cur_pos := capture_cur_position(active_view):
-                rel_file_path = self.get_rel_path(av_fname)
+                rel_file_path = self.to_rel_path(av_fname)
                 if in_cached_mode:
                     row, col, offset = _cur_pos
                     new_row = self.find_matching_lineno(None, None, row + 1, file_path) - 1
@@ -770,7 +770,7 @@ class gs_diff_toggle_all(TextCommand, GitCommand):
                 return
             settings.set(
                 "git_savvy.file_path",
-                os.path.normpath(os.path.join(self.repo_path, file_to_show))
+                self.to_abs_path(file_to_show)
             )
 
         settings.set("git_savvy.diff_view.toggled_mode_automatically", False)
@@ -878,7 +878,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             display_items = _create_display_items(items)
 
         if file_path:
-            normalized_relative_path = self.get_rel_path(file_path)
+            normalized_relative_path = self.to_rel_path(file_path)
             current_diff_mode = (normalized_relative_path, in_cached_mode)
             if forward is None:
                 try:
@@ -957,7 +957,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
                 file_path = ""
             else:
                 is_folder = file_path_.endswith(("\\", "/"))
-                file_path = os.path.normpath(os.path.join(self.repo_path, file_path_))
+                file_path = self.to_abs_path(file_path_)
                 if is_folder:
                     file_path = file_path.rstrip("\\/") + os.sep
 
@@ -1351,10 +1351,7 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
     def discard_target_has_unsaved_view(self, patch: str) -> bool:
         diff = SplittedDiff.from_string(patch)
         rel_file_paths = unique(filter_(header.to_filename() for header in diff.headers))
-        file_paths = (
-            os.path.normpath(os.path.join(self.repo_path, p))
-            for p in rel_file_paths
-        )
+        file_paths = (self.to_abs_path(p) for p in rel_file_paths)
 
         current_window = self.view.window()
         windows = [
@@ -1524,7 +1521,7 @@ class gs_diff_open_hunk_on_working_dir(_GsDiffOpenFileAtHunk):
     def load_file_at_line(
         self, commit_hash: Optional[str], filename: str, line: LineNo, col: ColNo
     ) -> None:
-        full_path = os.path.join(self.repo_path, filename)
+        full_path = self.to_abs_path(filename)
         window = self.view.window()
         if not window:
             return
@@ -1532,12 +1529,13 @@ class gs_diff_open_hunk_on_working_dir(_GsDiffOpenFileAtHunk):
         target_commit = effective_target_commit(self.view)
         if commit_hash or target_commit:
             target_side_commit = commit_hash or self.resolve_commitish(target_commit)  # type: ignore[arg-type]
-            line = self.find_matching_lineno(
-                target_side_commit,
-                None,
-                line=line,
-                file_path=full_path
+            current_path = self.filename_at_head(full_path, target_side_commit)
+            line = self.find_matching_lineno_between_files(
+                (target_side_commit, full_path),
+                (None, current_path),
+                line
             )
+            full_path = current_path
         elif self.view.settings().get("git_savvy.diff_view.in_cached_mode"):
             line = self.reverse_find_matching_lineno(
                 None,
@@ -1555,7 +1553,7 @@ class gs_diff_open_hunk_at_target_revision(_GsDiffOpenFileAtHunk):
     def load_file_at_line(
         self, commit_hash: Optional[str], filename: str, line: LineNo, col: ColNo
     ) -> None:
-        full_path = os.path.join(self.repo_path, filename)
+        full_path = self.to_abs_path(filename)
         window = self.view.window()
         if not window:
             return

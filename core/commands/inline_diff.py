@@ -218,7 +218,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
                 "Assertion failed! "
                 "Historical diffs shouldn't have `jump_position.commit_hash`.")
 
-        file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
+        file_path = self.to_abs_path(jump_position.filename, repo_path)
         syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
         base_commit = settings.get("git_savvy.diff_view.base_commit")
         target_commit = settings.get("git_savvy.diff_view.target_commit")
@@ -278,7 +278,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
             flash(view, "Could not parse for a commit hash at cursor position.")
             return
 
-        file_path = os.path.normpath(os.path.join(repo_path, jump_position.filename))
+        file_path = self.to_abs_path(jump_position.filename, repo_path)
         syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
         target_commit = self.get_short_hash(jump_position.commit_hash)
         base_commit = self.previous_commit(target_commit, file_path)
@@ -765,7 +765,8 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
             flash(self.view, "Not on a hunk.")
             return
 
-        header = DIFF_HEADER.format(path=self.get_rel_path())
+        assert self.file_path
+        header = DIFF_HEADER.format(path=self.to_rel_path(self.file_path))
         full_diff = header + diff_lines + "\n"
 
         # The three argument combinations below result from the following
@@ -1013,12 +1014,12 @@ class gs_inline_diff_next_commit(TextCommand, GitCommand):
 
         target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
         new_base_commit = target_commit
-        try:
-            new_target_commit = show_file_at_commit.get_next_commit(self, view, target_commit, file_path)
-        except ValueError:
-            flash(view, "Can't find a newer commit; it looks orphaned.")
+        next_commit = show_file_at_commit.get_next_commit(self, view, target_commit, file_path)
+        if next_commit.error_message:
+            flash(view, next_commit.error_message)
             return
 
+        new_target_commit = next_commit.commit_hash
         if not new_target_commit:
             new_base_commit = None
 
@@ -1070,7 +1071,14 @@ class gs_inline_diff_open_file(TextCommand, GitCommand):
                 line_no = self.adjust_line_according_to_diff(diff, line_no)
         else:
             target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
-            line_no = self.find_matching_lineno(target_commit, None, line_no, file_path)
+            if target_commit:
+                historical_path = self.filename_at_commit(file_path, target_commit)
+                file_path = self.filename_at_head(file_path, target_commit)
+                line_no = self.find_matching_lineno_between_files(
+                    (target_commit, historical_path),
+                    (None, file_path),
+                    line_no
+                )
         self.open_file(window, file_path, line_no, col_no)
 
     def open_file(self, window, file_path, line_no, col_no):

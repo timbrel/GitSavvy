@@ -509,7 +509,8 @@ diff --git a/fooz b/barz
 
     def test_o_opens_historical_diff_hunks_on_the_working_dir(self):
         repo_path = os.path.dirname(THIS_DIRNAME)
-        full_path = os.path.join(repo_path, "foo.py")
+        historical_path = os.path.join(repo_path, "foo.py")
+        current_path = os.path.join(repo_path, "bar.py")
         view = self.window.new_file()
         self.addCleanup(view.close)
         view.settings().set("git_savvy.repo_path", repo_path)
@@ -521,12 +522,28 @@ diff --git a/fooz b/barz
         when(window).open_file(...)
         cmd = module.gs_diff_open_hunk_on_working_dir(view)
         when(cmd).resolve_commitish("HEAD").thenReturn("deadbeef")
-        when(cmd).find_matching_lineno("deadbeef", None, line=17, file_path=full_path).thenReturn(23)
+        when(cmd).filename_at_head(historical_path, "deadbeef").thenReturn(current_path)
+        when(cmd).filename_at_commit(current_path, "deadbeef").thenReturn(historical_path)
+        when(cmd).to_rel_path(historical_path).thenReturn("foo.py")
+        when(cmd).to_rel_path(current_path).thenReturn("bar.py")
+        when(cmd).git(
+            "diff",
+            "--no-color",
+            "-U0",
+            "deadbeef:foo.py",
+            "--",
+            "bar.py"
+        ).thenReturn("""\
+diff --git a/foo.py b/bar.py
+@@ -17 +20 @@
+-old
++new
+""")
 
         cmd.load_file_at_line(None, "foo.py", 17, 4)
 
         verify(window).open_file(
-            "{}:23:4".format(full_path),
+            "{}:20:4".format(current_path),
             sublime.ENCODED_POSITION
         )
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from functools import lru_cache
 import os
 import re
 
@@ -6,12 +7,16 @@ import sublime
 from sublime_plugin import TextCommand, ViewEventListener
 
 from ..base_commands import GsTextCommand, GsWindowCommand
-from ..fns import filter_
-from ..runtime import enqueue_on_worker, run_as_text_command, text_command, throttled
+from ..fns import chain, filter_
+from ..runtime import (
+    enqueue_on_ui, enqueue_on_worker, on_worker,
+    run_as_text_command, text_command, throttled
+)
+from ..ui_mixins.quick_panel import show_log_panel
 from ..utils import flash, focus_view
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
 from ...common import util
-from GitSavvy.core.git_command import GitCommand
+from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.git_mixins.history import CommitInfo
 
 from .log import LogMixin
@@ -22,6 +27,7 @@ __all__ = (
     "gs_show_file_at_commit_refresh",
     "gs_show_file_at_commit_just_refresh_reference_document",
     "gs_show_current_file",
+    "gs_show_file_at_commit_open_log",
     "gs_show_file_at_commit_open_previous_commit",
     "gs_show_file_at_commit_open_next_commit",
     "gs_show_file_at_commit_open_commit",
@@ -32,11 +38,16 @@ __all__ = (
 )
 
 
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, NamedTuple, Optional, Set, Tuple
 
 
 SHOW_COMMIT_TITLE = "FILE: {}, {}"
 views_with_reference_document: Set[sublime.View] = set()
+
+
+class NextCommit(NamedTuple):
+    commit_hash: Optional[str]
+    error_message: Optional[str] = None
 
 
 # Reapply the reference document as Sublime forgets these on reload.
@@ -103,7 +114,11 @@ class gs_show_file_at_commit(GsWindowCommand):
             if fix_position:
                 assert position
                 row, col, offset = position
-                line = self.find_matching_lineno(None, commit_hash, row + 1, filepath)
+                line = self.reverse_find_matching_lineno_between_files(
+                    (commit_hash, self.filename_at_commit(filepath, commit_hash)),
+                    (None, filepath),
+                    row + 1
+                )
                 position = Position(line - 1, col, offset)
 
         this_id = (
@@ -150,7 +165,7 @@ class _gs_show_file_at_commit_refresh_mixin(GsTextCommand):
         views_with_reference_document.add(self.view)
 
     def previous_file_version(self, current_commit: str, file_path: str) -> str:
-        previous_commit = self.previous_commit(current_commit, file_path, follow=True)
+        previous_commit = get_previous_commit(self, self.view, current_commit, file_path)
         if previous_commit:
             file_path_at_commit = self.filename_at_commit(file_path, previous_commit)
             return self.get_file_content_at_commit(file_path_at_commit, previous_commit)
@@ -182,15 +197,18 @@ class gs_show_file_at_commit_refresh(_gs_show_file_at_commit_refresh_mixin):
             text = self.get_file_content_at_commit(file_path_at_commit, commit_hash)
             render(view, text, position)
             view.reset_reference_document()
-            commit_details = self.commit_subject_and_date(commit_hash)
-            self.update_title(commit_details, file_path)
-            self.update_status_bar(commit_details)
+            enqueue_on_worker(self.update_commit_details, commit_hash, file_path)
             enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
 
         if sync:
             program()
         else:
             enqueue_on_worker(program)
+
+    def update_commit_details(self, commit_hash: str, file_path: str) -> None:
+        commit_details = self.commit_subject_and_date(commit_hash)
+        self.update_title(commit_details, file_path)
+        self.update_status_bar(commit_details)
 
     def update_status_bar(self, commit_details: CommitInfo) -> None:
         view = self.view
@@ -209,7 +227,7 @@ class gs_show_file_at_commit_refresh(_gs_show_file_at_commit_refresh_mixin):
         def sink(n=0):
             if (
                 view != window.active_view()
-                or commit_details.commit_hash != settings.get("git_savvy.show_file_at_commit_view.commit")
+                or commit_details.short_hash != settings.get("git_savvy.show_file_at_commit_view.commit")
             ):
                 return
 
@@ -257,7 +275,11 @@ class gs_show_file_at_commit_open_previous_commit(GsTextCommand):
         position = capture_cur_position(view)
         if position is not None:
             row, col, offset = position
-            line = self.find_matching_lineno(commit_hash, previous_commit, row + 1, file_path)
+            line = self.find_matching_lineno_between_files(
+                (commit_hash, self.filename_at_commit(file_path, commit_hash)),
+                (previous_commit, self.filename_at_commit(file_path, previous_commit)),
+                row + 1
+            )
             position = Position(line - 1, col, offset)
 
         popup_was_visible = settings.get("git_savvy.show_file_at_commit.info_popup_visible")
@@ -276,22 +298,28 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
         file_path: str = settings.get("git_savvy.file_path")
         commit_hash: str = settings.get("git_savvy.show_file_at_commit_view.commit")
 
-        try:
-            next_commit = get_next_commit(self, view, commit_hash, file_path)
-        except ValueError:
-            flash(view, "Can't find a newer commit; it looks orphaned.")
+        next_commit = get_next_commit(self, view, commit_hash, file_path)
+        if next_commit.error_message:
+            flash(view, next_commit.error_message)
             return
 
-        if not next_commit:
-            flash(view, "No newer commit found.")
+        commit = next_commit.commit_hash
+        if not commit:
+            branch_hint = recall_branch_hint_for(view)
+            if branch_hint is not None:
+                flash(view, f"No newer commit found on {friendly_branch_hint(branch_hint)}.")
+            else:
+                flash(view, "No newer commit found.")
             return
 
-        settings.set("git_savvy.show_file_at_commit_view.commit", next_commit)
+        settings.set("git_savvy.show_file_at_commit_view.commit", commit)
         position = capture_cur_position(view)
         if position is not None:
             row, col, offset = position
-            line = self.reverse_find_matching_lineno(
-                next_commit, commit_hash, row + 1, file_path
+            line = self.find_matching_lineno_between_files(
+                (commit_hash, self.filename_at_commit(file_path, commit_hash)),
+                (commit, self.filename_at_commit(file_path, commit)),
+                row + 1
             )
             position = Position(line - 1, col, offset)
 
@@ -308,14 +336,31 @@ def get_next_commit(
     view: sublime.View,
     commit_hash: str,
     file_path: str | None = None
-) -> str | None:
+) -> NextCommit:
     commit_hash = cmd.get_short_hash(commit_hash)
     if next_commit := recall_next_commit_for(view, commit_hash):
-        return next_commit
+        return NextCommit(next_commit)
 
-    next_commits = cmd.next_commits(commit_hash, file_path, follow=bool(file_path))
+    try:
+        branch_hint = get_branch_hint_for_view(cmd, view, commit_hash)
+    except ValueError:
+        return NextCommit(None, "Can't find a newer commit; it looks orphaned.")
+
+    try:
+        next_commits = cmd.next_commits(
+            commit_hash,
+            file_path,
+            follow=bool(file_path),
+            branch_hint=branch_hint
+        )
+    except GitSavvyError as e:
+        if branch_hint and branch_hint_is_gone(branch_hint, e):
+            return NextCommit(None, correlated_branch_is_gone_msg(branch_hint))
+        raise
+    if next_commits is None:
+        return NextCommit(None, commit_is_not_on_branch_msg(commit_hash, branch_hint))
     remember_next_commit_for(view, next_commits)
-    return next_commits.get(commit_hash)
+    return NextCommit(next_commits.get(commit_hash))
 
 
 def get_previous_commit(
@@ -331,6 +376,15 @@ def get_previous_commit(
     if previous := cmd.previous_commit(commit_hash, file_path, follow=bool(file_path)):
         remember_next_commit_for(view, {previous: commit_hash})
     return previous
+
+
+def get_branch_hint_for_view(cmd: GitCommand, view: sublime.View, commit_hash: str) -> str:
+    if (branch_hint := recall_branch_hint_for(view)) is not None:
+        return branch_hint
+
+    branch_hint = cmd.get_branch_hint_for_commit(commit_hash)
+    remember_branch_hint_for(view, branch_hint)
+    return branch_hint
 
 
 def remember_next_commit_for(view: sublime.View, mapping: Dict[str, str]) -> None:
@@ -355,6 +409,42 @@ def recall_previous_commit_for(view: sublime.View, commit_hash: str) -> Optional
         return None
 
 
+def remember_branch_hint_for(view: sublime.View, branch_hint: str) -> None:
+    view.settings().set("git_savvy.history.branch_hint", branch_hint)
+
+
+def recall_branch_hint_for(view: sublime.View) -> Optional[str]:
+    return view.settings().get("git_savvy.history.branch_hint")
+
+
+def friendly_branch_hint(branch_hint: str) -> str:
+    if not branch_hint:
+        return "HEAD"
+    return drop_prefix(branch_hint, ("refs/heads/", "refs/remotes/"))
+
+
+def drop_prefix(s: str, prefixes: str | tuple[str, ...]) -> str:
+    if isinstance(prefixes, str):
+        prefixes = (prefixes,)
+    try:
+        prefix = next(prefix for prefix in prefixes if s.startswith(prefix))
+    except StopIteration:
+        return s
+    return s[len(prefix):]
+
+
+def branch_hint_is_gone(branch_hint: str, error: GitSavvyError) -> bool:
+    return f"ambiguous argument '{branch_hint}" in error.stderr
+
+
+def correlated_branch_is_gone_msg(branch_hint: str) -> str:
+    return f"The correlated branch {friendly_branch_hint(branch_hint)} is gone."
+
+
+def commit_is_not_on_branch_msg(commit_hash: str, branch_hint: str) -> str:
+    return f"Commit {commit_hash} is no longer on {friendly_branch_hint(branch_hint)}."
+
+
 def pass_next_commits_info_along(view: Optional[sublime.View], to: sublime.View) -> None:
     if not view:
         return
@@ -364,6 +454,9 @@ def pass_next_commits_info_along(view: Optional[sublime.View], to: sublime.View)
     store: Dict[str, str] = from_settings.get("git_savvy.next_commits", {})
     if store:
         to_settings.set("git_savvy.next_commits", store)
+    branch_hint = from_settings.get("git_savvy.history.branch_hint")
+    if branch_hint is not None:
+        to_settings.set("git_savvy.history.branch_hint", branch_hint)
 
 
 class gs_show_current_file(LogMixin, GsTextCommand):
@@ -379,56 +472,19 @@ class gs_show_current_file(LogMixin, GsTextCommand):
             else:
                 flash(self.view, "The view does not refer any file name.")
             return
-        self.overlay_for_show_file_at_commit = bool(self.view.settings().get("git_savvy.show_file_at_commit_view"))
-        self.initial_commit = self.view.settings().get("git_savvy.show_file_at_commit_view.commit")
-        self.initial_position = capture_cur_position(self.view)
         super().run(file_path=self.file_path)
-
-    def on_done(self, commit, **kwargs):
-        if not self.overlay_for_show_file_at_commit:
-            return super().on_done(commit, **kwargs)
-
-        if commit:
-            return  # nothing further to do as we already updated `on_highlight`
-
-        view = self.view
-        view.settings().set("git_savvy.show_file_at_commit_view.commit", self.initial_commit)
-        position = self.initial_position
-        view.run_command("gs_show_file_at_commit_refresh", {
-            "position": position
-        })
-
-    def on_highlight(self, commit, file_path=None):
-        if not self.overlay_for_show_file_at_commit:
-            super().on_highlight(commit, file_path)
-            return
-
-        if not commit:
-            return
-
-        sublime.set_timeout_async(throttled(self._on_highlight, commit), 10)
-
-    def _on_highlight(self, commit):
-        view = self.view
-        previous_commit = view.settings().get("git_savvy.show_file_at_commit_view.commit")
-        view.settings().set("git_savvy.show_file_at_commit_view.commit", commit)
-        position = capture_cur_position(view)
-        if position is not None:
-            row, col, offset = position
-            line = self.find_matching_lineno(previous_commit, commit, row + 1)
-            position = Position(line - 1, col, offset)
-
-        view.run_command("gs_show_file_at_commit_refresh", {
-            "position": position,
-            "sync": False,
-        })
 
     def do_action(self, commit_hash, **kwargs):
         view = self.view
         position = capture_cur_position(view)
         if position is not None:
+            assert self.file_path
             row, col, offset = position
-            line = self.find_matching_lineno(None, commit_hash, row + 1)
+            line = self.reverse_find_matching_lineno_between_files(
+                (commit_hash, self.filename_at_commit(self.file_path, commit_hash)),
+                (None, self.file_path),
+                row + 1
+            )
             position = Position(line - 1, col, offset)
 
         self.window.run_command("gs_show_file_at_commit", {
@@ -438,13 +494,101 @@ class gs_show_current_file(LogMixin, GsTextCommand):
             "lang": view.settings().get('syntax')
         })
 
-    def selected_index(self, commit_hash):
-        if not self.overlay_for_show_file_at_commit:
-            return True
 
+class gs_show_file_at_commit_open_log(GsTextCommand):
+    """
+    Show a panel of commits of this historical file and live-preview
+    highlighted commits in the current show-file-at-commit view.
+    """
+    selected_index: int = 0
+
+    @on_worker
+    def run(self, edit: sublime.Edit) -> None:
+        shown_commit = self.initial_commit = \
+            self.view.settings().get("git_savvy.show_file_at_commit_view.commit")
+        self.initial_position = capture_cur_position(self.view)
+        file_path = self.file_path
+
+        try:
+            branch_hint = get_branch_hint_for_view(self, self.view, self.initial_commit)
+        except ValueError:
+            branch_hint = self.initial_commit
+
+        entries = self.log_generator(
+            file_path=file_path,
+            branch=branch_hint,
+            follow=True,
+            topo_order=True,
+            show_panel_on_error=False
+        )
+
+        leading = []
+        try:
+            for idx, entry in enumerate(entries):
+                leading.append(entry)
+                if entry.long_hash.startswith(shown_commit):
+                    self.selected_index = idx
+                    break
+            else:
+                msg = (
+                    commit_is_not_on_branch_msg(shown_commit, branch_hint)
+                    if leading else
+                    f"No commits found on {friendly_branch_hint(branch_hint)} for this file."
+                )
+                flash(self.view, msg)
+                return
+        except GitSavvyError as e:
+            if branch_hint and branch_hint_is_gone(branch_hint, e):
+                flash(self.view, correlated_branch_is_gone_msg(branch_hint))
+            else:
+                e.show_error_panel()
+                raise
+
+        enqueue_on_ui(
+            show_log_panel,
+            chain(leading, entries),
+            self.on_done,
+            selected_index=self.selected_index,
+            on_highlight=self.on_highlight
+        )
+
+    def on_done(self, commit):
+        if commit:
+            return  # nothing further to do as we already updated `on_highlight`
+
+        # Revert
         view = self.view
-        shown_hash = view.settings().get("git_savvy.show_file_at_commit_view.commit")
-        return commit_hash.startswith(shown_hash)
+        view.settings().set("git_savvy.show_file_at_commit_view.commit", self.initial_commit)
+        position = self.initial_position
+        view.run_command("gs_show_file_at_commit_refresh", {
+            "position": position
+        })
+
+    @lru_cache(1)
+    def on_highlight(self, commit):
+        if commit:
+            sublime.set_timeout_async(throttled(self._on_highlight, commit), 10)
+
+    def _on_highlight(self, commit):
+        view = self.view
+        commit = self.get_short_hash(commit)
+        previous_commit = view.settings().get("git_savvy.show_file_at_commit_view.commit")
+        view.settings().set("git_savvy.show_file_at_commit_view.commit", commit)
+        position = capture_cur_position(view)
+        if position is not None:
+            row, col, offset = position
+            file_path = view.settings().get("git_savvy.file_path")
+            line = self.find_matching_lineno_between_files(
+                (previous_commit, self.filename_at_commit(file_path, previous_commit)),
+                (commit, self.filename_at_commit(file_path, commit)),
+                row + 1
+            )
+            position = Position(line - 1, col, offset)
+
+        view.run_command("gs_show_file_at_commit_refresh", {
+            "position": position,
+            "sync": False,
+        })
 
 
 class gs_show_file_at_commit_open_commit(TextCommand):
@@ -472,11 +616,14 @@ class gs_show_file_at_commit_open_file_on_working_dir(GsTextCommand):
         assert commit_hash
         assert file_path
 
-        full_path = os.path.join(self.repo_path, file_path)
         row, col = self.view.rowcol(self.view.sel()[0].begin())
-        line = self.find_matching_lineno(commit_hash, None, row + 1, full_path)
+        line = self.find_matching_lineno_between_files(
+            (commit_hash, self.filename_at_commit(file_path, commit_hash)),
+            (None, file_path),
+            row + 1
+        )
         window.open_file(
-            "{file}:{line}:{col}".format(file=full_path, line=line, col=col + 1),
+            "{file}:{line}:{col}".format(file=file_path, line=line, col=col + 1),
             sublime.ENCODED_POSITION
         )
 

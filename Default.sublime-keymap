@@ -1373,7 +1373,7 @@
     },
     {
         "keys": ["l"],
-        "command": "gs_show_current_file",
+        "command": "gs_show_file_at_commit_open_log",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.show_file_at_commit_view", "operator": "equal", "operand": true }

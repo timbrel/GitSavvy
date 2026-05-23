@@ -47,7 +47,10 @@ class LogMixin(GitCommand):
             sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, **kwargs))
 
     def run_async(self, *, file_path=None, **kwargs):
-        follow = self.savvy_settings.get("log_follow_rename") if file_path else False
+        follow = kwargs.pop(
+            "follow",
+            self.savvy_settings.get("log_follow_rename") if file_path else False
+        )
         entries = self.log_generator(file_path=file_path, follow=follow, **kwargs)
         # `on_highlight` gets called on `on_done` as well with the same
         # commit.  Limit the side-effect here.  Especially prevent that
@@ -268,11 +271,16 @@ class gs_log_action(PanelActionMixin, WindowCommand):
             print("RuntimeError: Window has no active view")
             return
 
+        assert self.file_path
         commit_hash = self._commit_hash
         position = capture_cur_position(view)
         if position is not None:
             row, col, offset = position
-            line = self.find_matching_lineno(None, commit_hash, row + 1)
+            line = self.reverse_find_matching_lineno_between_files(
+                (commit_hash, self.filename_at_commit(self.file_path, commit_hash)),
+                (None, self.file_path),
+                row + 1
+            )
             position = Position(line - 1, col, offset)
 
         self.window.run_command("gs_show_file_at_commit", {
