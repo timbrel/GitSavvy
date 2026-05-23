@@ -161,11 +161,6 @@ class gs_blame_current_file(LogMixin, BlameMixin):
     def selected_index(self, commit_hash):
         return self._commit_hash and commit_hash.startswith(self._commit_hash)
 
-    def log(self, **kwargs):  # type: ignore[override]
-        follow = self.savvy_settings.get("blame_follow_rename")
-        kwargs["follow"] = follow
-        return super().log(**kwargs)
-
 
 class gs_blame_refresh(BlameMixin):
     _highlighted_count = 0  # to be implemented
@@ -226,14 +221,12 @@ class gs_blame_refresh(BlameMixin):
                 scroll_to_pt(self.view, self.view.sel()[0].begin(), yoffset)
 
     def get_content(self, file_path, ignore_whitespace=False, detect_options=None, commit_hash=None):
-        if commit_hash and self.savvy_settings.get("blame_follow_rename"):
-            filename_at_commit = self.filename_at_commit(file_path, commit_hash)
-        else:
-            filename_at_commit = file_path
+        if commit_hash:
+            file_path = self.filename_at_commit(file_path, commit_hash)
 
         blame_porcelain = self.git(
             "blame", "-p", '-w' if ignore_whitespace else None, detect_options,
-            commit_hash, "--", filename_at_commit
+            commit_hash, "--", file_path
         )
         blame_porcelain = unicodedata.normalize('NFC', blame_porcelain)
         blamed_lines, commits = self.parse_blame(blame_porcelain.split('\n'))
@@ -402,8 +395,6 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
         self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
 
     def blame_neighbor(self, position, selected=False):
-        follow = self.savvy_settings.get("blame_follow_rename")
-
         if position == "newer" and selected:
             raise Exception("blame a commit after selected commit is confusing")
 
@@ -415,7 +406,7 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
 
         assert self.file_path
         if position == "older":
-            neighbor_hash = self.previous_commit(commit_hash, self.file_path, follow)
+            neighbor_hash = self.previous_commit(commit_hash, self.file_path, follow=True)
             if not neighbor_hash:
                 self.window.status_message("Already on the oldest revision.")
                 return
@@ -424,7 +415,7 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
             if not commit_hash:
                 self.window.status_message("Already showing the workdir state.")
                 return
-            neighbor_hash = self.next_commit(commit_hash, self.file_path, follow)
+            neighbor_hash = self.next_commit(commit_hash, self.file_path, follow=True)
 
         if commit_hash == neighbor_hash:
             return
@@ -457,11 +448,10 @@ class gs_blame_action(BlameMixin, PanelActionMixin):
                 settings.get("git_savvy.commit_hash"), commit_hash, lineno)
 
         assert self.file_path
-        file_path = self.filename_at_commit(self.file_path, commit_hash)
 
         self.window.run_command("gs_show_file_at_commit", {
             "commit_hash": commit_hash,
-            "filepath": file_path,
+            "filepath": self.file_path,
             "position": Position(lineno - 1, 0, None),
             "lang": settings.get('git_savvy.original_syntax', None)
         })

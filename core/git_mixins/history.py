@@ -1,5 +1,7 @@
 from __future__ import annotations
+from dataclasses import dataclass
 import email.utils
+import os
 from itertools import chain, takewhile
 
 from ..exceptions import GitSavvyError
@@ -40,6 +42,13 @@ class CommitInfo(NamedTuple):
     date: str
 
 
+@dataclass(frozen=True)
+class FileStatus:
+    mode: str
+    from_path: str
+    to_path: Optional[str] = None
+
+
 def is_dynamic_ref(ref):
     # type: (Optional[str]) -> bool
     return (
@@ -56,6 +65,8 @@ class HistoryMixin(mixin_base):
             limit=6000, skip=None, reverse=False, all_branches=False, msg_regexp=None,
             diff_regexp=None, first_parent=False, merges=False, no_merges=False, topo_order=False,
             follow=False) -> List[LogEntry]:
+        if follow and not file_path:
+            raise RuntimeError("follow=True requires file_path")
 
         log_output = self.git(
             "log",
@@ -194,8 +205,8 @@ class HistoryMixin(mixin_base):
     def resolve_commitish(self, ref: str) -> str:
         return self.git("rev-parse", "--short", ref).strip()
 
-    def filename_at_commit(self, filename, commit_hash):
-        # type: (str, str) -> str
+    @cached(not_if={"commit_hash": is_dynamic_ref})
+    def filename_at_commit(self, filename: str, commit_hash: str) -> str:
         lines = self.git(
             "log",
             "--format=",  # we don't need any commit info beside the name status
@@ -209,6 +220,57 @@ class HistoryMixin(mixin_base):
             return lines[-1].split("\t")[1]
         except IndexError:
             return filename
+
+    def filename_at_head(self, filename: str, commit_hash: str) -> str:
+        rel_path = self.get_rel_path(filename)
+        was_abs = rel_path != filename
+
+        if os.path.exists(os.path.join(self.repo_path, rel_path)):
+            return filename
+
+        if not self.commit_is_ancestor_of_head(commit_hash):
+            return filename
+
+        current_filename = rel_path
+        seen = set()
+        while current_filename not in seen:
+            seen.add(current_filename)
+            next_filename = self._next_filename_after_commit(current_filename, commit_hash)
+            if not next_filename or next_filename == current_filename:
+                break
+            current_filename = next_filename
+
+        return (
+            os.path.normpath(os.path.join(self.repo_path, current_filename))
+            if was_abs else
+            current_filename
+        )
+
+    def _next_filename_after_commit(self, filename: str, commit_hash: str) -> Optional[str]:
+        commit = self.git(
+            "log",
+            "--follow",
+            "--format=%H",
+            "--name-status",
+            "-1",
+            "-z",
+            "{}..HEAD".format(commit_hash),
+            "--",
+            filename
+        ).split("\0", 1)[0].strip()
+        if not commit:
+            return None
+
+        return self._renamed_filename_at_commit(filename, commit)
+
+    @cached(not_if={"commit_hash": is_dynamic_ref})
+    def _renamed_filename_at_commit(self, filename: str, commit_hash: str) -> Optional[str]:
+        name_status = self.git("show", "--name-status", "--format=", "-z", commit_hash)
+        for file_status in parse_name_status_z(name_status):
+            if file_status.mode.startswith("R") and file_status.from_path == filename:
+                return file_status.to_path
+
+        return None
 
     @cached(not_if={"base_commit": is_dynamic_ref, "target_commit": is_dynamic_ref})
     def list_touched_filenames(self, base_commit, target_commit, cached=None):
@@ -428,6 +490,9 @@ class HistoryMixin(mixin_base):
         follow: bool,
         limit: Optional[int] = None
     ) -> Iterator[str]:
+        if follow and not file_path:
+            raise RuntimeError("follow=True requires file_path")
+
         return (
             line.strip()
             for line in self.git_streaming(
@@ -442,3 +507,20 @@ class HistoryMixin(mixin_base):
                 show_panel_on_error=False
             )
         )
+
+
+def parse_name_status_z(output: str) -> Iterator[FileStatus]:
+    fields = output.rstrip("\0").split("\0")
+    idx = 0
+    while idx < len(fields):
+        mode = fields[idx].strip()
+        idx += 1
+        if not mode:
+            continue
+
+        if mode.startswith(("R", "C")):
+            yield FileStatus(mode, fields[idx], fields[idx + 1])
+            idx += 2
+        else:
+            yield FileStatus(mode, fields[idx])
+            idx += 1

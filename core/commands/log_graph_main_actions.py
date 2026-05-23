@@ -203,6 +203,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             else commit_hash
         )
         file_path = self._get_file_path(view)
+        file_path_is_file = os.path.isfile(file_path) if file_path else False
 
         on_checked_out_branch = "HEAD" in info and info["HEAD"] in info.get("local_branches", [])
         head_is_on_a_branch = head_info and head_info["HEAD"] != head_info["commit"]
@@ -300,7 +301,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                         ),
                     ]
 
-        if file_path:
+        if file_path and file_path_is_file:
             actions += [
                 ("Show file at commit", partial(self.show_file_at_commit, commit_hash, file_path)),
                 ("Blame file at commit", partial(self.blame_file_atcommit, commit_hash, file_path)),
@@ -478,7 +479,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 ),
             ]
 
-        if file_path:
+        if file_path and file_path_is_file:
             actions += [
                 (
                     "Diff file against workdir",
@@ -628,7 +629,24 @@ class gs_log_graph_action(WindowCommand, GitCommand):
     def diff(self):
         self.window.run_command("gs_diff", {"in_cached_mode": False})
 
-    def diff_commit(self, base_commit, target_commit=None, file_path=None):
+    def diff_commit(
+        self,
+        base_commit: str,
+        target_commit: str | None = None,
+        file_path: str | None = None
+    ):
+        if file_path:
+            base_path = self.filename_at_commit(file_path, base_commit)
+            target_path = (
+                self.filename_at_commit(file_path, target_commit)
+                if target_commit else
+                self.get_rel_path(file_path)
+            )
+            if base_path != target_path:
+                self.window.status_message("Not implemented across rename boundaries.")
+                return
+            file_path = base_path
+
         self.window.run_command("gs_diff", {
             "in_cached_mode": False,
             "file_path": file_path,
@@ -649,6 +667,11 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             "file_path": file_path
         })
 
-    def checkout_file_at_commit(self, commit_hash, file_path):
+    def checkout_file_at_commit(self, commit_hash: str, file_path: str):
+        file_path = (
+            self.filename_at_commit(file_path, commit_hash)
+            if self.savvy_settings.get("log_follow_rename") else
+            file_path
+        )
         self.checkout_ref(commit_hash, fpath=file_path)
         util.view.refresh_gitsavvy_interfaces(self.window)

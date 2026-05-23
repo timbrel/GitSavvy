@@ -6,6 +6,7 @@ from sublime_plugin import TextCommand, WindowCommand
 
 from . import diff
 from . import intra_line_colorizer
+from ..fns import filter_, unique
 from ..git_command import GitCommand
 from ..runtime import enqueue_on_worker, ensure_on_ui, throttled
 from ..view import replace_view_content, scroll_to_pt, y_offset
@@ -96,11 +97,49 @@ class gs_show_commit_info(WindowCommand, GitCommand):
         if commit_hash:
             show_patch = self.savvy_settings.get("show_full_commit_info")
             show_diffstat = self.savvy_settings.get("show_diffstat")
-            text = self.read_commit(commit_hash, file_path, show_diffstat, show_patch)
+            text = (
+                self._read_commit_for_file(commit_hash, file_path, show_diffstat, show_patch, settings)
+                if file_path else
+                self.read_commit(commit_hash, None, show_diffstat, show_patch)
+            )
         else:
             text = ''
 
         ensure_on_ui(_draw, self.window, output_view, text, commit_hash, from_log_graph)
+
+    def _read_commit_for_file(self, commit_hash, file_path, show_diffstat, show_patch, settings):
+        """
+        Read a file-scoped commit, optimizing for adjacent commits using the
+        same path.
+
+        The output panel is reused for different graph/log views and for
+        unrestricted commit info.  Keep one cache entry with the requested
+        working-tree path plus the last path that successfully produced a
+        file-scoped commit patch.  Only reuse the cached path if the requested
+        working-tree path matches.
+        """
+        storage_key = "git_savvy.show_commit_info.file_path_cache"
+        _requested_file_path, _successful_file_path = settings.get(storage_key, (None, None))
+        candidates = unique(filter_(
+            get_candidate()
+            for get_candidate in (
+                lambda: (
+                    _successful_file_path
+                    if _successful_file_path and _requested_file_path == file_path else
+                    None
+                ),
+                lambda: file_path,
+                lambda: self.filename_at_commit(file_path, commit_hash)
+            )
+        ))
+
+        for candidate in candidates:
+            text = self.read_commit(commit_hash, candidate, show_diffstat, show_patch)
+            if text:
+                settings.set(storage_key, [file_path, candidate])
+                return text
+
+        return ""
 
 
 def _draw(window, view, text, commit, from_log_graph):
