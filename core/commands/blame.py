@@ -1,4 +1,5 @@
 from __future__ import annotations
+from dataclasses import dataclass
 from functools import lru_cache
 import re
 from collections import defaultdict
@@ -80,12 +81,6 @@ _CommitsByHash: TypeAlias = DefaultDict[FullHash, _CommitInfo]
 _RenderedCommitInfo: TypeAlias = "list[str]"
 
 
-class RenderResult(NamedTuple):
-    content: str
-    info_by_row: BlameInfoByRow
-    source_column: int
-
-
 class BlameRowInfo(NamedTuple):
     # This is the persistable subset of `BlamedLine`: the source contents already
     # live in the view buffer, so settings only store cursor/navigation data.
@@ -96,26 +91,56 @@ class BlameRowInfo(NamedTuple):
 BlameInfoByRow: TypeAlias = Dict[Row, BlameRowInfo]
 
 
+@dataclass
+class NavigationInfo:
+    source_start_column: int
+    by_row: BlameInfoByRow
+
+    def commit_hash_for_row(self, row: Row) -> ShortHashOrEmpty:
+        blame_info = self.by_row.get(row)
+        return blame_info.commit_hash if blame_info else ""
+
+    def lineno_for_row(self, row: Row) -> LineNo:
+        blame_info = self.by_row.get(row)
+        return blame_info.lineno if blame_info else 1
+
+    def point_for_lineno(self, view: sublime.View, lineno: LineNo) -> int | None:
+        row = self.row_for_lineno(lineno)
+        if row is None:
+            return None
+        return view.text_point(row, self.source_start_column)
+
+    def row_for_lineno(self, lineno: LineNo) -> Row | None:
+        for row, blame_info in sorted(self.by_row.items()):
+            if blame_info.lineno == lineno:
+                return row
+        return None
+
+
+class RenderResult(NamedTuple):
+    content: str
+    navigation_info: NavigationInfo
+
+
 class GsBlameController(EventListener):
     def on_close(self, view: sublime.View) -> None:
-        _blame_info_by_row_by_view_id.pop(view.id(), None)
+        _navigation_info_by_view_id.pop(view.id(), None)
 
 
-BLAME_INFO_BY_ROW_KEY = "git_savvy.blame_info_by_row"
-BLAME_SOURCE_COLUMN_KEY = "git_savvy.blame_source_column"
+BLAME_NAVIGATION_INFO_KEY = "git_savvy.blame_navigation_info"
 NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
 BLAME_TITLE = "BLAME: {}{}"
-_blame_info_by_row_by_view_id: Dict[sublime.ViewId, BlameInfoByRow] = {}
+_navigation_info_by_view_id: Dict[sublime.ViewId, NavigationInfo] = {}
 
 
 def commit_under_cursor(view: sublime.View) -> ShortHashOrEmpty:
-    blame_info = blame_info_at_cursor(view)
-    return blame_info.commit_hash if blame_info else ""
+    row, _ = view.rowcol(cursor_pos(view))
+    return navigation_info_for_view(view).commit_hash_for_row(row)
 
 
 def current_lineno(view: sublime.View) -> LineNo:
-    blame_info = blame_info_at_cursor(view)
-    return blame_info.lineno if blame_info else 1
+    row, _ = view.rowcol(cursor_pos(view))
+    return navigation_info_for_view(view).lineno_for_row(row)
 
 
 def cursor_pos(view: sublime.View) -> int:
@@ -125,50 +150,48 @@ def cursor_pos(view: sublime.View) -> int:
         return 0
 
 
-def blame_info_at_cursor(view: sublime.View) -> BlameRowInfo | None:
-    row, _ = view.rowcol(cursor_pos(view))
-    return blame_info_by_row(view).get(row)
-
-
-def blame_info_by_row(view: sublime.View) -> BlameInfoByRow:
+def navigation_info_for_view(view: sublime.View) -> NavigationInfo:
     view_id = view.id()
     try:
-        return _blame_info_by_row_by_view_id[view_id]
+        return _navigation_info_by_view_id[view_id]
     except KeyError:
-        blame_info_by_row_ = _blame_info_by_row_by_view_id[view_id] = \
-            restore_blame_info_by_row(view)
-        return blame_info_by_row_
+        navigation_info = _navigation_info_by_view_id[view_id] = \
+            restore_navigation_info(view)
+        return navigation_info
 
 
-def remember_blame_info_by_row(
+def remember_navigation_info(
     view: sublime.View,
-    blame_info_by_row_: BlameInfoByRow,
-    source_column: int
+    navigation_info: NavigationInfo
 ) -> None:
-    _blame_info_by_row_by_view_id[view.id()] = blame_info_by_row_
+    _navigation_info_by_view_id[view.id()] = navigation_info
     view.settings().set(
-        BLAME_INFO_BY_ROW_KEY,
-        serialize_blame_info_by_row(blame_info_by_row_)
+        BLAME_NAVIGATION_INFO_KEY,
+        serialize_navigation_info(navigation_info)
     )
-    view.settings().set(BLAME_SOURCE_COLUMN_KEY, source_column)
 
 
-def restore_blame_info_by_row(view: sublime.View) -> BlameInfoByRow:
-    stored_blame_infos: list[tuple[Row, ShortHashOrEmpty, LineNo]] = \
-        view.settings().get(BLAME_INFO_BY_ROW_KEY, [])
+def restore_navigation_info(view: sublime.View) -> NavigationInfo:
+    stored_navigation_info: dict = view.settings().get(BLAME_NAVIGATION_INFO_KEY, {})
+    stored_row_info: list[tuple[Row, ShortHashOrEmpty, LineNo]] = \
+        stored_navigation_info.get("row_info", [])
+    return NavigationInfo(
+        stored_navigation_info.get("source_start_column", 0),
+        {
+            row: BlameRowInfo(commit_hash, lineno)
+            for row, commit_hash, lineno in stored_row_info
+        }
+    )
+
+
+def serialize_navigation_info(navigation_info: NavigationInfo) -> dict[str, object]:
     return {
-        row: BlameRowInfo(commit_hash, lineno)
-        for row, commit_hash, lineno in stored_blame_infos
+        "source_start_column": navigation_info.source_start_column,
+        "row_info": [
+            (row, blame_info.commit_hash, blame_info.lineno)
+            for row, blame_info in navigation_info.by_row.items()
+        ]
     }
-
-
-def serialize_blame_info_by_row(
-    blame_info_by_row_: BlameInfoByRow
-) -> list[tuple[Row, ShortHashOrEmpty, LineNo]]:
-    return [
-        (row, blame_info.commit_hash, blame_info.lineno)
-        for row, blame_info in blame_info_by_row_.items()
-    ]
 
 
 def scroll_to_lineno(
@@ -187,23 +210,13 @@ def scroll_to_lineno(
 
 
 def select_blame_line(view: sublime.View, lineno: LineNo) -> int | None:
-    row = row_for_lineno(view, lineno)
-    if row is None:
+    point = navigation_info_for_view(view).point_for_lineno(view, lineno)
+    if point is None:
         return None
-
-    source_column = view.settings().get(BLAME_SOURCE_COLUMN_KEY, 0)
-    point = view.text_point(row, source_column)
 
     view.sel().clear()
     view.sel().add(sublime.Region(point))
     return point
-
-
-def row_for_lineno(view: sublime.View, lineno: LineNo) -> Row | None:
-    for row, blame_info in sorted(blame_info_by_row(view).items()):
-        if blame_info.lineno == lineno:
-            return row
-    return None
 
 
 def compute_identifier_for_view(view: sublime.View) -> tuple | None:
@@ -419,11 +432,7 @@ class gs_blame_refresh(GsTextCommand):
             detect_options=self._detect_move_or_copy_dict[within_what]
         )
         content = rendered_blame.content
-        remember_blame_info_by_row(
-            self.view,
-            rendered_blame.info_by_row,
-            rendered_blame.source_column
-        )
+        remember_navigation_info(self.view, rendered_blame.navigation_info)
 
         # only if the content changes
         if content == self.view.substr(sublime.Region(0, self.view.size())):
@@ -594,7 +603,10 @@ class gs_blame_refresh(GsTextCommand):
             last_blame_info = BlameRowInfo(chunk[-1].commit_hash, chunk[-1].lineno)
             row += len(chunk_lines)
 
-        return RenderResult("".join(content_parts), blame_info_by_row, source_column)
+        return RenderResult(
+            "".join(content_parts),
+            NavigationInfo(source_column, blame_info_by_row)
+        )
 
     def parse_blame(
         self,
