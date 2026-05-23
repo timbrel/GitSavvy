@@ -9,12 +9,15 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ...common import util
-from ..fns import filter_, unique
+from ..fns import filter_, take, unique
 from ..git_command import GitCommand
 from ..git_mixins.branches import Branch
+from ..text_helper import line_from_pt
 from ..ui__quick_panel import SEPARATOR, show_quick_panel
 from ..utils import open_folder_in_new_window
 from . import multi_selector
+from . import log_graph_colorizer as colorizer
+from .log_graph import dot_from_line, follow_dots
 from .log_graph_helper import (
     LineInfo,
     ListItems,
@@ -23,6 +26,9 @@ from .log_graph_helper import (
     format_revision_list,
     headline_cursorline,
 )
+
+
+FOLLOW_DECORATION_LIMIT = 100
 
 
 class gs_log_graph_action(WindowCommand, GitCommand):
@@ -89,17 +95,6 @@ class gs_log_graph_action(WindowCommand, GitCommand):
     ) -> List[Tuple[str, Callable[[], None]]]:
         file_path = self._get_file_path(view)
         actions: List[Tuple[str, Callable[[], None]]] = []
-
-        def display_name(info: LineInfo) -> str:
-            if info.get("local_branches"):
-                return info["local_branches"][0]
-            branches = info.get("branches", [])
-            if len(branches) == 1:
-                return branches[0]
-            elif len(branches) == 0 and info.get("tags"):
-                return info["tags"][0]
-            else:
-                return info["commit"]
 
         if len(infos) == 2:
 
@@ -502,6 +497,23 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 ),
             ]
 
+        if next_decoration := next_decorated_commit_down(view, branches):
+            good_diff_name = "HEAD" if "HEAD" in info else display_name(info)
+            file_prefix = "file " if file_path else ""
+            actions += [
+                (
+                    "Diff {}{}..{}".format(file_prefix, next_decoration, good_diff_name),
+                    partial(self.diff_commit, next_decoration, target_commit=commit_hash, file_path=file_path)
+                )
+            ]
+            if "HEAD" in info:
+                actions += [
+                    (
+                        "Diff {}{} against workdir".format(file_prefix, next_decoration),
+                        partial(self.diff_commit, next_decoration, file_path=file_path)
+                    )
+                ]
+
         if in_bisect:
             if "HEAD" not in info:
                 actions += [
@@ -675,3 +687,50 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         )
         self.checkout_ref(commit_hash, fpath=file_path)
         util.view.refresh_gitsavvy_interfaces(self.window)
+
+
+def display_name(info: LineInfo) -> str:
+    if info.get("local_branches"):
+        return info["local_branches"][0]
+    branches = info.get("branches", [])
+    if len(branches) == 1:
+        return branches[0]
+    elif len(branches) == 0 and info.get("tags"):
+        return info["tags"][0]
+    else:
+        return info["commit"]
+
+
+def next_decorated_commit_down(view: sublime.View, branches: Dict[str, Branch]) -> str | None:
+    try:
+        line = line_from_pt(view, view.sel()[0].b)
+    except IndexError:
+        return None
+
+    dot = dot_from_line(view, line)
+    return next_diff_target_down(view, dot, branches) if dot else None
+
+
+def next_diff_target_down(
+    view: sublime.View,
+    dot: colorizer.Char,
+    branches: Dict[str, Branch],
+    limit: int = FOLLOW_DECORATION_LIMIT
+) -> str | None:
+    for dot in take(limit, follow_dots(dot, forward=True)):
+        line = line_from_pt(view, dot.pt)
+        if info := describe_graph_line(line.text, branches):
+            if target := diff_target_from_line_info(info):
+                return target
+    return None
+
+
+def diff_target_from_line_info(info: LineInfo) -> str | None:
+    return next(
+        chain(
+            info.get("tags", []),
+            info.get("local_branches", []),
+            info.get("branches", []),
+        ),
+        None,
+    )
