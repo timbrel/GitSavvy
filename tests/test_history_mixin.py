@@ -5,7 +5,9 @@ from GitSavvy.tests.mockito import unstub, when, verify
 from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core.git_mixins.history import (
+    commit_info_cache,
     CommitHistoryInfo,
+    file_history_cache,
     FileHistoryEntry,
     FileHistoryInfo,
     FileStatus,
@@ -247,6 +249,127 @@ class TestDescribeGraphLine(DeferrableTestCase):
         result = test.next_commits("c3", branch_hint="branch_tip")
 
         self.assertIsNone(result)
+
+    def test_recent_commit_with_file_and_follow_returns_first_and_warms_caches(self):
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}touched{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+            f"{RS}c2{US}2026-04-03 10:00:00 +0200{US}also{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+        )
+        when(test).get_repo_path().thenReturn("/repo")
+        file_history_cache.clear()
+        commit_info_cache.clear()
+
+        result = test.recent_commit("c5", "/repo/foo.py", follow=True)
+
+        self.assertEqual(result, "c3")
+        self.assertIn(("c3", "/repo/foo.py"), file_history_cache)
+        self.assertIn("c3", commit_info_cache)
+
+    def test_recent_commit_returns_none_when_history_empty(self):
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn("")
+
+        result = test.recent_commit("c5", "/repo/foo.py", follow=True)
+
+        self.assertIsNone(result)
+
+    def test_previous_commit_with_short_hash_uses_cache_after_fetch(self):
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}newest{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+            f"{RS}c2{US}2026-04-03 10:00:00 +0200{US}prev{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+        )
+        when(test).get_repo_path().thenReturn("/repo")
+        file_history_cache.clear()
+        commit_info_cache.clear()
+
+        result = test.previous_commit("c3", "/repo/foo.py", follow=True)
+
+        self.assertEqual(result, "c2")
+        self.assertIn(("c3", "/repo/foo.py"), file_history_cache)
+
+    def test_previous_commit_falls_back_to_list_index_for_non_short_hash_ref(self):
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}newest{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+            f"{RS}c2{US}2026-04-03 10:00:00 +0200{US}prev{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+        )
+        when(test).get_repo_path().thenReturn("/repo")
+        file_history_cache.clear()
+        commit_info_cache.clear()
+
+        # `"HEAD"` is not a key the fetch will write — cache misses both
+        # times, fallback returns hashes[1].
+        result = test.previous_commit("HEAD", "/repo/foo.py", follow=True)
+
+        self.assertEqual(result, "c2")
+
+    def test_previous_commit_returns_none_when_only_one_commit_fetched(self):
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}only{NUL}"
+            f"\nM{NUL}foo.py{NUL}"
+        )
+        when(test).get_repo_path().thenReturn("/repo")
+        file_history_cache.clear()
+        commit_info_cache.clear()
+
+        result = test.previous_commit("HEAD", "/repo/foo.py", follow=True)
+
+        self.assertIsNone(result)
+
+    def test_commit_subject_and_date_uses_cache_without_fetching(self):
+        from GitSavvy.core.git_mixins.history import CommitInfo
+        test = HistoryMixin()
+        commit_info_cache.clear()
+        commit_info_cache["c3"] = CommitHistoryInfo("cached subject", "2026-5-7")
+
+        result = test.commit_subject_and_date("c3")
+
+        self.assertEqual(result, CommitInfo("c3", "c3", "cached subject", "2026-5-7"))
+
+    def test_commit_subject_and_date_fetches_on_cache_miss(self):
+        from GitSavvy.core.git_mixins.history import CommitInfo
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}fetched{NUL}"
+        )
+        commit_info_cache.clear()
+
+        result = test.commit_subject_and_date("c3")
+
+        self.assertEqual(result, CommitInfo("c3", "c3", "fetched", "2026-5-7"))
+        self.assertIn("c3", commit_info_cache)
+
+    def test_commit_subject_and_date_resolves_ref_via_first_fetched_hash(self):
+        from GitSavvy.core.git_mixins.history import CommitInfo
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn(
+            f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}tip{NUL}"
+            f"{RS}c2{US}2026-04-03 10:00:00 +0200{US}older{NUL}"
+        )
+        commit_info_cache.clear()
+
+        # "HEAD" never appears as a cache key; we read from
+        # `commit_info_cache[hashes[0]]` (i.e. c3) instead.
+        result = test.commit_subject_and_date("HEAD")
+
+        self.assertEqual(result, CommitInfo("HEAD", "HEAD", "tip", "2026-5-7"))
+
+    def test_commit_subject_and_date_raises_when_file_path_not_in_history(self):
+        test = HistoryMixin()
+        when(test).git("log", ...).thenReturn("")
+        commit_info_cache.clear()
+
+        with self.assertRaises(ValueError):
+            test.commit_subject_and_date("c3", "/repo/never-touched.py")
 
     def test_filename_at_head_keeps_existing_workdir_path(self):
         test = HistoryMixin()
