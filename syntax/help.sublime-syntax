@@ -16,16 +16,16 @@ contexts:
     - match: "#{3,}"
       scope: punctuation.definition.git-savvy.section
 
-    - match: '(\[)([A-Za-z\,\.\-\+\?]+)(\])'
+    - match: '(\[)([^\[\]]+)(\])'
       scope: meta.git-savvy.key-bindings-key-stroke
       captures:
         1: punctuation.definition.git-savvy.key-bindings-key-stroke
         2: constant.character.git-savvy-key-binding-key
         3: punctuation.definition.git-savvy.key-bindings-key-stroke
       push:
-        - match: (?=\[|`|$)
+        - match: (?=/\[|\[|`|$)
           pop: true
-        - match: \s+([\w\s,\(\)]+)
+        - match: \s+([^\[`]+)
           captures:
             1: comment.git-savvy.key-bindings-menu.key-binding-description
 

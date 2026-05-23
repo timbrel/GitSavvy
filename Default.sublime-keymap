@@ -1426,12 +1426,36 @@
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["shift+enter"],
+        "command": "gs_blame_focus_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
 
 
     {
         "keys": ["o"],
-        "command": "gs_blame_action",
-        "args": { "pre_selected_index": 0 },
+        "command": "gs_blame_open_file_at_cursor_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["o"],
+        "command": "gs_blame_open_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true },
+            { "key": "selector", "operator": "equal", "operand": "constant.numeric.commit-hash.git-savvy" }
+        ]
+    },
+    {
+        "keys": ["O"],
+        "command": "gs_blame_open_file_on_working_dir",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
@@ -1439,7 +1463,7 @@
     },
     {
         "keys": ["l"],
-        "command": "gs_blame_current_file",
+        "command": "gs_blame_open_log",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
@@ -1448,8 +1472,15 @@
 
     {
         "keys": [">"],
-        "command": "gs_blame_action",
-        "args": { "pre_selected_index": 3 },
+        "command": "gs_blame_open_next_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["n"],
+        "command": "gs_blame_open_next_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
@@ -1457,18 +1488,23 @@
     },
     {
         "keys": ["<"],
-        "command": "gs_blame_action",
-        "args": { "pre_selected_index": 2 },
+        "command": "gs_blame_open_previous_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
         ]
     },
-
     {
-        "keys": ["alt+shift+."],
-        "command": "gs_blame_action",
-        "args": { "pre_selected_index": 3 },
+        "keys": ["p"],
+        "command": "gs_blame_open_previous_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["N"],
+        "command": "gs_blame_open_commit_before_cursor_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
@@ -1476,8 +1512,23 @@
     },
     {
         "keys": ["alt+shift+,"],
-        "command": "gs_blame_action",
-        "args": { "pre_selected_index": 1 },
+        "command": "gs_blame_open_commit_before_cursor_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["P"],
+        "command": "gs_blame_return_to_newer_commit",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["alt+shift+."],
+        "command": "gs_blame_return_to_newer_commit",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }

@@ -119,7 +119,9 @@ class gs_blame_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
     ### Actions ###
     [enter]        show all commands
-    [o]            open commit under cursor
+    [shift+enter]  focus commit under cursor
+    [o]            open file at commit, on a commit hash: open the commit
+    [O]            open working dir file
     [l]            show log of surrounding commits
 
     [w]            ignore white space
@@ -127,10 +129,8 @@ class gs_blame_help_panel(GsAbstractOpenHelpPanel):
     [c]            detect moved or copied lines within same commit
     [a]            detect moved or copied lines within all commits
 
-    [<]            Blame previous commit
-    [>]            Blame next commit
-    [alt+<]        Blame a commit before this line's commit
-    [alt+>]        Blame next commit
+    [n]/[p]        blame next/previous commit (also: [<]/[>])
+    [N]/[P]        blame commit prior to the commit under cursor / return
 
     ### Navigation ###
     [g]            show (commit under cursor) in graph

@@ -584,7 +584,10 @@ class LogPanel(PaginatedPanel):
         return (
             [
                 "  ".join(filter_((entry.short_hash, short_ref(entry.ref), entry.summary))),
-                ", ".join(filter_((entry.author, util.dates.fuzzy(entry.datetime)))),
+                ", ".join(filter_((
+                    entry.author,
+                    util.dates.fuzzy(entry.datetime) if entry.datetime else ""
+                ))),
             ],
             entry.long_hash
         )

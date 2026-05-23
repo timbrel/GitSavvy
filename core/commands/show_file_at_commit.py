@@ -1,7 +1,6 @@
 from __future__ import annotations
 from contextlib import contextmanager
 from functools import lru_cache
-import os
 import re
 
 import sublime
@@ -143,7 +142,7 @@ class gs_show_file_at_commit(GsWindowCommand):
                     position: Optional[Position], syntax: Optional[str]) -> None:
         active_view = self.window.active_view()
         title = SHOW_COMMIT_TITLE.format(
-            os.path.basename(file_path),
+            self.to_rel_path(file_path),
             commit_hash,
         )
         view = util.view.create_scratch_view(self.window, "show_file_at_commit", {
@@ -248,7 +247,7 @@ class gs_show_file_at_commit_refresh(_gs_show_file_at_commit_refresh_mixin):
             f" {details}" if details else ""
         )
         title = SHOW_COMMIT_TITLE.format(
-            os.path.basename(file_path),
+            self.to_rel_path(file_path),
             message
         )
         self.view.set_name(title)
