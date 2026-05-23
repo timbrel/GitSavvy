@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import Callable, Iterable, List, NamedTuple, Sequence, Tuple, Union
+from typing import Callable, Iterable, List, NamedTuple, Optional, Sequence, Tuple, Union
 
 import sublime
 
@@ -30,15 +30,19 @@ QuickPanelItems = Iterable[Union[str, List[str], sublime.QuickPanelItem]]
 def show_quick_panel(
     window: sublime.Window,
     items: QuickPanelItems,
-    on_done: Callable[[int], None],
+    on_done: Callable[..., None],
     on_cancel: Callable[[], None] = lambda: None,
     on_highlight: Callable[[int], None] = lambda _: None,
     selected_index: int = -1,
     flags: int = sublime.MONOSPACE_FONT,
 ) -> None:
-    def _on_done(idx: int) -> None:
+    wants_event = bool(flags & getattr(sublime, "WANT_EVENT", 0))
+
+    def _on_done(idx: int, event: Optional[dict] = None) -> None:
         if idx == -1:
             on_cancel()
+        elif wants_event:
+            on_done(idx, event)
         else:
             on_done(idx)
 
