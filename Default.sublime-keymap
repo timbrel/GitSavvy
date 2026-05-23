@@ -712,7 +712,7 @@
     },
     {
         "keys": ["o"],
-        "command": "gs_diff_open_file_at_hunk",
+        "command": "gs_diff_open_hunk_on_working_dir",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
@@ -1059,7 +1059,15 @@
     },
     {
         "keys": ["o"],
-        "command": "gs_diff_open_file_at_hunk",
+        "command": "gs_diff_open_hunk_on_working_dir",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["O"],
+        "command": "gs_diff_open_hunk_at_target_revision",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
@@ -1178,7 +1186,7 @@
     },
     {
         "keys": ["o"],
-        "command": "gs_show_commit_open_file_at_hunk",
+        "command": "gs_diff_open_hunk_at_target_revision",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
@@ -1186,7 +1194,7 @@
     },
     {
         "keys": ["O"],
-        "command": "gs_show_commit_show_hunk_on_working_dir",
+        "command": "gs_diff_open_hunk_on_working_dir",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
@@ -2311,7 +2319,7 @@
     },
     {
         "keys": ["O"],
-        "command": "gs_diff_open_file_at_hunk",
+        "command": "gs_diff_open_hunk_at_target_revision",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.line_history_view", "operator": "equal", "operand": true }

@@ -461,7 +461,7 @@ diff --git a/foxx b/boxx
         view.run_command('append', {'characters': VIEW_CONTENT})
         view.set_scratch(True)
 
-        cmd = module.gs_diff_open_file_at_hunk(view)
+        cmd = module.gs_diff_open_hunk_on_working_dir(view)
         when(cmd).load_file_at_line(...)
 
         view.sel().clear()
@@ -496,7 +496,7 @@ diff --git a/fooz b/barz
         view.run_command('append', {'characters': VIEW_CONTENT})
         view.set_scratch(True)
 
-        cmd = module.gs_diff_open_file_at_hunk(view)
+        cmd = module.gs_diff_open_hunk_on_working_dir(view)
         when(cmd).load_file_at_line(...)
 
         view.sel().clear()
@@ -506,6 +506,52 @@ diff --git a/fooz b/barz
 
         # In all cases here "commit" is `None`
         verify(cmd).load_file_at_line(None, EXPECTED, ...)
+
+    def test_o_opens_historical_diff_hunks_on_the_working_dir(self):
+        repo_path = os.path.dirname(THIS_DIRNAME)
+        full_path = os.path.join(repo_path, "foo.py")
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.settings().set("git_savvy.repo_path", repo_path)
+        view.settings().set("git_savvy.diff_view.target_commit", "HEAD")
+        view.set_scratch(True)
+
+        window = mock()
+        when(view).window().thenReturn(window)
+        when(window).open_file(...)
+        cmd = module.gs_diff_open_hunk_on_working_dir(view)
+        when(cmd).resolve_commitish("HEAD").thenReturn("deadbeef")
+        when(cmd).find_matching_lineno("deadbeef", None, line=17, file_path=full_path).thenReturn(23)
+
+        cmd.load_file_at_line(None, "foo.py", 17, 4)
+
+        verify(window).open_file(
+            "{}:23:4".format(full_path),
+            sublime.ENCODED_POSITION
+        )
+
+    def test_O_opens_historical_diff_hunks_on_the_target_revision(self):
+        repo_path = os.path.dirname(THIS_DIRNAME)
+        full_path = os.path.join(repo_path, "foo.py")
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.settings().set("git_savvy.repo_path", repo_path)
+        view.settings().set("git_savvy.diff_view.target_commit", "HEAD")
+        view.set_scratch(True)
+
+        window = mock()
+        when(view).window().thenReturn(window)
+        when(window).run_command(...)
+        cmd = module.gs_diff_open_hunk_at_target_revision(view)
+        when(cmd).resolve_commitish("HEAD").thenReturn("deadbeef")
+
+        cmd.load_file_at_line(None, "foo.py", 17, 4)
+
+        verify(window).run_command("gs_show_file_at_commit", {
+            "commit_hash": "deadbeef",
+            "filepath": full_path,
+            "position": module.Position(16, 3, None),
+        })
 
 
 class TestDiffViewHunking(DeferrableTestCase):

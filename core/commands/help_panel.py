@@ -187,7 +187,8 @@ class gs_diff_help_panel(GsAbstractOpenHelpPanel):
     [a]            toggle all files / current file
 
     ### Navigation ###
-    [o]            open file at hunk
+    [o]            open hunk in working dir
+    [O]            open hunk at target revision
     [,]/[.]        go to next/previous chunk
     [alt+]         go to next/previous hunk (also: [j]/[k] in vintageous mode)
 

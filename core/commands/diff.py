@@ -3,6 +3,7 @@ Implements a special view to visualize and stage pieces of a project's
 current diff.
 """
 from __future__ import annotations
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from contextlib import contextmanager
 import difflib
@@ -45,7 +46,8 @@ __all__ = (
     "gs_diff_zoom",
     "gs_diff_stage_or_reset_hunk",
     "gs_initiate_fixup_commit",
-    "gs_diff_open_file_at_hunk",
+    "gs_diff_open_hunk_on_working_dir",
+    "gs_diff_open_hunk_at_target_revision",
     "gs_diff_navigate",
     "gs_commit_view_navigate",
     "gs_diff_undo",
@@ -1467,7 +1469,7 @@ class JumpTo(NamedTuple):
     col: ColNo
 
 
-class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
+class _GsDiffOpenFileAtHunk(TextCommand, GitCommand, ABC):
 
     """
     For each cursor in the view, identify the hunk in which the cursor lies,
@@ -1511,12 +1513,48 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
             for jp in jump_positions:
                 self.load_file_at_line(*jp)
 
-    def load_file_at_line(self, commit_hash, filename, line, col):
-        # type: (Optional[str], str, LineNo, ColNo) -> None
-        """
-        Show file at target commit if `git_savvy.diff_view.target_commit` is non-empty.
-        Otherwise, open the file directly.
-        """
+    @abstractmethod
+    def load_file_at_line(
+        self, commit_hash: Optional[str], filename: str, line: LineNo, col: ColNo
+    ) -> None:
+        raise NotImplementedError
+
+
+class gs_diff_open_hunk_on_working_dir(_GsDiffOpenFileAtHunk):
+    def load_file_at_line(
+        self, commit_hash: Optional[str], filename: str, line: LineNo, col: ColNo
+    ) -> None:
+        full_path = os.path.join(self.repo_path, filename)
+        window = self.view.window()
+        if not window:
+            return
+
+        target_commit = effective_target_commit(self.view)
+        if commit_hash or target_commit:
+            target_side_commit = commit_hash or self.resolve_commitish(target_commit)  # type: ignore[arg-type]
+            line = self.find_matching_lineno(
+                target_side_commit,
+                None,
+                line=line,
+                file_path=full_path
+            )
+        elif self.view.settings().get("git_savvy.diff_view.in_cached_mode"):
+            line = self.reverse_find_matching_lineno(
+                None,
+                None,
+                line=line,
+                file_path=full_path
+            )
+        window.open_file(
+            "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
+            sublime.ENCODED_POSITION
+        )
+
+
+class gs_diff_open_hunk_at_target_revision(_GsDiffOpenFileAtHunk):
+    def load_file_at_line(
+        self, commit_hash: Optional[str], filename: str, line: LineNo, col: ColNo
+    ) -> None:
         full_path = os.path.join(self.repo_path, filename)
         window = self.view.window()
         if not window:
@@ -1531,7 +1569,12 @@ class gs_diff_open_file_at_hunk(TextCommand, GitCommand):
             })
         else:
             if self.view.settings().get("git_savvy.diff_view.in_cached_mode"):
-                line = self.reverse_find_matching_lineno(None, None, line=line, file_path=full_path)
+                line = self.reverse_find_matching_lineno(
+                    None,
+                    None,
+                    line=line,
+                    file_path=full_path
+                )
             window.open_file(
                 "{file}:{line}:{col}".format(file=full_path, line=line, col=col),
                 sublime.ENCODED_POSITION
