@@ -67,12 +67,12 @@ the view across plugin reloads.
 """
 
 
-ShortHashOrEmpty: TypeAlias = "ShortHash | Literal[\"\"]"
+BlamedCommit: TypeAlias = 'ShortHash | Literal[""]'
 
 
 class BlamedLine(NamedTuple):
     contents: str
-    commit_hash: ShortHashOrEmpty
+    commit_hash: BlamedCommit
     lineno: LineNo
 
 
@@ -84,7 +84,7 @@ _RenderedCommitInfo: TypeAlias = "list[str]"
 class BlameRowInfo(NamedTuple):
     # This is the persistable subset of `BlamedLine`: the source contents already
     # live in the view buffer, so settings only store cursor/navigation data.
-    commit_hash: ShortHashOrEmpty
+    commit_hash: BlamedCommit
     lineno: LineNo
 
 
@@ -96,7 +96,7 @@ class NavigationInfo:
     source_start_column: int
     by_row: BlameInfoByRow
 
-    def commit_hash_for_row(self, row: Row) -> ShortHashOrEmpty:
+    def commit_hash_for_row(self, row: Row) -> BlamedCommit:
         blame_info = self.by_row.get(row)
         return blame_info.commit_hash if blame_info else ""
 
@@ -133,7 +133,7 @@ BLAME_TITLE = "BLAME: {}{}"
 _navigation_info_by_view_id: Dict[sublime.ViewId, NavigationInfo] = {}
 
 
-def commit_under_cursor(view: sublime.View) -> ShortHashOrEmpty:
+def commit_under_cursor(view: sublime.View) -> BlamedCommit:
     row, _ = view.rowcol(cursor_pos(view))
     return navigation_info_for_view(view).commit_hash_for_row(row)
 
@@ -173,7 +173,7 @@ def remember_navigation_info(
 
 def restore_navigation_info(view: sublime.View) -> NavigationInfo:
     stored_navigation_info: dict = view.settings().get(BLAME_NAVIGATION_INFO_KEY, {})
-    stored_row_info: list[tuple[Row, ShortHashOrEmpty, LineNo]] = \
+    stored_row_info: list[tuple[Row, BlamedCommit, LineNo]] = \
         stored_navigation_info.get("row_info", [])
     return NavigationInfo(
         stored_navigation_info.get("source_start_column", 0),
