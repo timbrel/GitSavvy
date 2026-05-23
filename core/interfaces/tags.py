@@ -17,6 +17,7 @@ from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker, run_on_new_thread
 from GitSavvy.core.utils import flash, uprint
 from GitSavvy.core.ui_mixins.quick_panel import show_remote_panel
+from ..ui__quick_panel import noop, show_actions_panel
 from GitSavvy.github import github
 from GitSavvy.github.git_mixins import GithubRemotesMixin
 
@@ -490,19 +491,75 @@ class gs_tags_push(TagsInterfaceCommand):
             for name, url in remotes.items()
             if name in actual_remotes_to_fetch
         }
-        show_remote_panel(self.push_selected, remotes=remote_candidates, allow_direct=True)
+        tags_to_push = self.selected_local_tags()
+        kont = partial(self.push_selected, tags_to_push=tags_to_push)
+        show_remote_panel(kont, remotes=remote_candidates, allow_direct=True)
 
     @on_worker
-    def push_selected(self, remote):
-        tags_to_push = self.selected_local_tags()
-
+    def push_selected(
+        self,
+        remote: str,
+        tags_to_push: List[str],
+        force: bool = False
+    ) -> None:
         flash(self.view, START_PUSH_MESSAGE)
-        self.git("push", "--no-follow-tags", remote, *("refs/tags/" + tag for tag in tags_to_push))
+        try:
+            self.git_throwing_silently(
+                "push",
+                "--force" if force else None,
+                "--no-follow-tags",
+                remote,
+                *("refs/tags/" + tag for tag in tags_to_push)
+            )
+        except GitSavvyError as e:
+            existing_tags = tags_that_already_exist_on_remote(e.stderr, tags_to_push)
+            if existing_tags and not force:
+                show_actions_panel(self.window, [
+                    noop(remote_tag_conflict_message(existing_tags)),
+                    (
+                        "Forcefully push.",
+                        partial(self.push_selected, remote, existing_tags, force=True)
+                    )
+                ])
+                return
+
+            e.show_error_panel()
+            raise
+
         flash(self.view, END_PUSH_MESSAGE)
 
         interface = self.interface
         interface.state["remote_tags_info"] = {}
         util.view.refresh_gitsavvy(self.view)
+
+
+TAG_ALREADY_EXISTS_ON_REMOTE_RE = re.compile(
+    r"^\s*!\s+\[rejected\]\s+(?P<tag>\S+)\s+->\s+\S+\s+\(already exists\)$",
+    re.MULTILINE
+)
+
+
+def tags_that_already_exist_on_remote(stderr: str, tags: List[str]) -> List[str]:
+    rejected_tags = {
+        short_tag_name(match.group("tag"))
+        for match in TAG_ALREADY_EXISTS_ON_REMOTE_RE.finditer(stderr)
+    }
+    # Keep tags in user/interface order
+    return [tag for tag in tags if tag in rejected_tags]
+
+
+def remote_tag_conflict_message(tags: List[str]) -> str:
+    if len(tags) == 1:
+        return "Abort, '{}' already exists on the remote.".format(tags[0])
+
+    return "Abort, {} already exist on the remote.".format(
+        ", ".join("'{}'".format(tag) for tag in tags)
+    )
+
+
+def short_tag_name(ref: str) -> str:
+    prefix = "refs/tags/"
+    return ref[len(prefix):] if ref.startswith(prefix) else ref
 
 
 class gs_tags_show_commit(TagsInterfaceCommand):
