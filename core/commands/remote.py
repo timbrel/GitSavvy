@@ -70,7 +70,15 @@ class gs_remote_remove(GsWindowCommand):
     @util.actions.destructive(description="remove a remote")
     def on_remote_selection(self, remote):
         self.git("remote", "remove", remote)
+        self.remove_remote_tracking_refs(remote)
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)
+
+    def remove_remote_tracking_refs(self, remote):
+        prefix = f"refs/remotes/{remote}/"
+        refs = self.git("for-each-ref", "--format=%(refname)", prefix).splitlines()
+        for ref in refs:
+            if ref.startswith(prefix):
+                self.git("update-ref", "--no-deref", "-d", ref)
 
 
 class gs_remote_rename(GsWindowCommand):
