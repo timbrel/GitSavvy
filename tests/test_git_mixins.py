@@ -11,6 +11,7 @@ from GitSavvy.tests.parameterized import parameterized as p, param
 
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core import git_mixins
+from GitSavvy.core.git_mixins.worktrees import Worktree, WorktreesMixin
 from GitSavvy.core.utils import resolve_path
 
 
@@ -233,6 +234,103 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 None
             )
         ])
+
+
+class TestGetWorktreesParsing(TestGitMixinsUsage):
+    def test_old_git_uses_non_z_parser(self):
+        repo = WorktreesTestRepo(
+            (2, 34, 1),
+            "\n".join((
+                "worktree C:/Users/c-flo/AppData/Roaming/Sublime Text/Packages/GitSavvy",
+                "HEAD 0da1384c809f837b835c335ffdc513337308f1d8",
+                "detached",
+                "",
+                "worktree C:/Users/c-flo/Dev/GitSavvy-enhance-merge-branch-list",
+                "HEAD 72021faf22b1377d3c4b72b350a95ea71f585efb",
+                "branch refs/heads/enhance-merge-branch-list",
+                ""
+            )),
+            "C:/Users/c-flo/AppData/Roaming/Sublime Text/Packages/GitSavvy"
+        )
+
+        actual = repo.get_worktrees()
+
+        self.assertEqual(repo.git_args, ("worktree", "list", "--porcelain"))
+        self.assertEqual(actual, [
+            Worktree(
+                "C:/Users/c-flo/AppData/Roaming/Sublime Text/Packages/GitSavvy",
+                "0da1384c809f837b835c335ffdc513337308f1d8",
+                None,
+                True,
+                False,
+                False
+            ),
+            Worktree(
+                "C:/Users/c-flo/Dev/GitSavvy-enhance-merge-branch-list",
+                "72021faf22b1377d3c4b72b350a95ea71f585efb",
+                "enhance-merge-branch-list",
+                False,
+                False,
+                False
+            )
+        ])
+
+    def test_old_git_drops_malformed_non_z_output(self):
+        repo = WorktreesTestRepo(
+            (2, 34, 1),
+            "\n".join((
+                "worktree /tmp/work",
+                "tree",
+                "HEAD 0da1384c809f837b835c335ffdc513337308f1d8",
+                "branch refs/heads/master",
+                ""
+            )),
+            "/tmp/work\ntree"
+        )
+
+        actual = repo.get_worktrees()
+
+        self.assertEqual(actual, [])
+
+    def test_old_git_drops_quoted_non_z_paths(self):
+        repo = WorktreesTestRepo(
+            (2, 34, 1),
+            "\n".join((
+                'worktree "/tmp/work\\ntree"',
+                "HEAD 0da1384c809f837b835c335ffdc513337308f1d8",
+                "branch refs/heads/master",
+                ""
+            )),
+            "/tmp/work\ntree"
+        )
+
+        actual = repo.get_worktrees()
+
+        self.assertEqual(actual, [])
+
+
+class WorktreesTestRepo(WorktreesMixin):
+    def __init__(self, git_version, stdout, repo_path):
+        self._git_version = git_version
+        self.stdout = stdout
+        self._repo_path = repo_path
+        self.git_args = None
+        self.store = None
+
+    @property
+    def git_version(self):
+        return self._git_version
+
+    @property
+    def repo_path(self):
+        return self._repo_path
+
+    def git(self, *args, **kwargs):
+        self.git_args = args
+        return self.stdout
+
+    def update_store(self, partial_state):
+        self.store = partial_state
 
 
 TMPDIR_PREFIX = "GitSavvy-end-to-end-test-"
