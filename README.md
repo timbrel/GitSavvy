@@ -203,8 +203,11 @@ yet, as usual.)
  the *"hunk-history"*, so to speak.
 
 *Even deeper*: After `[o]` or `[O]` you can navigate around in time with `[n]` (next) and `[p]`
- (previous).  You can show the commit's context using `[g]`, and the hunks context by opening the
- inline diff.  That's easier with more keybindings:
+ (previous).  In file-at-commit views, `[N]` skips unrelated file revisions and jumps to the previous
+ revision that changed the code currently visible in the viewport. `[P]` returns through those jumps.
+ This is useful when you want to follow the evolution of a function or feature without stepping through
+ every noisy commit that touched the file.  You can show the commit's context using `[g]`, and the
+ hunks context by opening the inline diff.  That's easier with more keybindings:
 
 ```
   { "keys": ["ctrl+shift+,"], "command": "gs_inline_diff" },
