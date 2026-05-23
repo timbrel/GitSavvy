@@ -2,13 +2,25 @@ from __future__ import annotations
 from itertools import count
 import os
 
-from typing import NamedTuple
+from typing import Iterable, NamedTuple
 
 import sublime
 
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.caches import cache_in_store_as
 from GitSavvy.core.git_command import mixin_base
+
+
+WORKTREE_LIST_SUPPORTS_Z_FORMAT = (2, 36, 0)
+WORKTREE_LIST_PORCELAIN_FIELD_PREFIXES = (
+    "worktree ",
+    "HEAD ",
+    "branch ",
+    "locked",
+    "prunable",
+    "bare",
+    "detached"
+)
 
 
 class Worktree(NamedTuple):
@@ -27,6 +39,21 @@ class Worktree(NamedTuple):
 class WorktreesMixin(mixin_base):
     @cache_in_store_as("worktrees")
     def get_worktrees(self) -> list[Worktree]:
+        if self.git_version < WORKTREE_LIST_SUPPORTS_Z_FORMAT:
+            return self._get_worktrees_without_z()
+
+        stdout: str = self.git("worktree", "list", "--porcelain", "-z")
+        return self._parse_worktree_entries(stdout.split("\0"))
+
+    def _get_worktrees_without_z(self) -> list[Worktree]:
+        stdout: str = self.git("worktree", "list", "--porcelain")
+        fields = stdout.splitlines()
+        if any(_looks_malformed_non_z_field(field) for field in filter_(fields)):
+            return []
+
+        return self._parse_worktree_entries(fields)
+
+    def _parse_worktree_entries(self, fields: Iterable[str]) -> list[Worktree]:
         normalized_repo_path = self.repo_path.replace("\\", "/")
         worktrees: list[Worktree] = []
 
@@ -47,8 +74,7 @@ class WorktreesMixin(mixin_base):
             ))
 
         current: dict = {}
-        stdout: str = self.git("worktree", "list", "--porcelain", "-z")
-        for field in filter_(stdout.split("\0")):
+        for field in filter_(fields):
             if field.startswith("worktree "):
                 commit_current(current)
                 current = {}
@@ -89,3 +115,10 @@ class WorktreesMixin(mixin_base):
 
     def remove_worktree(self, path: str, *, force: bool = False):
         self.git("worktree", "remove", "-f" if force else None, path)
+
+
+def _looks_malformed_non_z_field(field: str) -> bool:
+    return (
+        field.startswith('worktree "')
+        or not field.startswith(WORKTREE_LIST_PORCELAIN_FIELD_PREFIXES)
+    )
