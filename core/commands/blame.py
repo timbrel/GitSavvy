@@ -83,6 +83,7 @@ _RenderedCommitInfo: TypeAlias = "list[str]"
 class RenderResult(NamedTuple):
     content: str
     info_by_row: BlameInfoByRow
+    source_column: int
 
 
 class BlameRowInfo(NamedTuple):
@@ -101,6 +102,7 @@ class GsBlameController(EventListener):
 
 
 BLAME_INFO_BY_ROW_KEY = "git_savvy.blame_info_by_row"
+BLAME_SOURCE_COLUMN_KEY = "git_savvy.blame_source_column"
 NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
 BLAME_TITLE = "BLAME: {}{}"
 _blame_info_by_row_by_view_id: Dict[sublime.ViewId, BlameInfoByRow] = {}
@@ -140,13 +142,15 @@ def blame_info_by_row(view: sublime.View) -> BlameInfoByRow:
 
 def remember_blame_info_by_row(
     view: sublime.View,
-    blame_info_by_row_: BlameInfoByRow
+    blame_info_by_row_: BlameInfoByRow,
+    source_column: int
 ) -> None:
     _blame_info_by_row_by_view_id[view.id()] = blame_info_by_row_
     view.settings().set(
         BLAME_INFO_BY_ROW_KEY,
         serialize_blame_info_by_row(blame_info_by_row_)
     )
+    view.settings().set(BLAME_SOURCE_COLUMN_KEY, source_column)
 
 
 def restore_blame_info_by_row(view: sublime.View) -> BlameInfoByRow:
@@ -183,15 +187,23 @@ def scroll_to_lineno(
 
 
 def select_blame_line(view: sublime.View, lineno: LineNo) -> int | None:
-    pattern = r".{{30}} \| {lineno: >4}\s".format(lineno=lineno)
-    corresponding_region = view.find(pattern, 0)
-    blame_view_pt = corresponding_region.end()
-    if blame_view_pt < 0:
+    row = row_for_lineno(view, lineno)
+    if row is None:
         return None
 
+    source_column = view.settings().get(BLAME_SOURCE_COLUMN_KEY, 0)
+    point = view.text_point(row, source_column)
+
     view.sel().clear()
-    view.sel().add(sublime.Region(blame_view_pt))
-    return blame_view_pt
+    view.sel().add(sublime.Region(point))
+    return point
+
+
+def row_for_lineno(view: sublime.View, lineno: LineNo) -> Row | None:
+    for row, blame_info in sorted(blame_info_by_row(view).items()):
+        if blame_info.lineno == lineno:
+            return row
+    return None
 
 
 def compute_identifier_for_view(view: sublime.View) -> tuple | None:
@@ -407,7 +419,11 @@ class gs_blame_refresh(GsTextCommand):
             detect_options=self._detect_move_or_copy_dict[within_what]
         )
         content = rendered_blame.content
-        remember_blame_info_by_row(self.view, rendered_blame.info_by_row)
+        remember_blame_info_by_row(
+            self.view,
+            rendered_blame.info_by_row,
+            rendered_blame.source_column
+        )
 
         # only if the content changes
         if content == self.view.substr(sublime.Region(0, self.view.size())):
@@ -543,6 +559,11 @@ class gs_blame_refresh(GsTextCommand):
             max(len(str(line.lineno)) for chunk in blame_chunks for line in chunk)
         )
 
+        source_column = source_column_for_left_pad(
+            len(longest_commit_line),
+            line_number_width
+        )
+
         spacer = (
             "-" * len(longest_commit_line) +
             " | " +
@@ -552,14 +573,13 @@ class gs_blame_refresh(GsTextCommand):
 
         content_parts: list[str] = []
         blame_info_by_row: BlameInfoByRow = {}
+        last_blame_info: BlameRowInfo | None = None
         row = 0
         for idx, chunk in enumerate(blame_chunks):
             if idx:
                 content_parts.append(spacer)
-                blame_info_by_row[row] = BlameRowInfo(
-                    chunk[0].commit_hash,
-                    chunk[0].lineno
-                )
+                if last_blame_info:
+                    blame_info_by_row[row] = last_blame_info
                 row += 1
 
             chunk_lines, chunk_blame_info_by_row = self.format_blame_chunk(
@@ -571,9 +591,10 @@ class gs_blame_refresh(GsTextCommand):
             )
             content_parts.extend(chunk_lines)
             blame_info_by_row.update(chunk_blame_info_by_row)
+            last_blame_info = BlameRowInfo(chunk[-1].commit_hash, chunk[-1].lineno)
             row += len(chunk_lines)
 
-        return RenderResult("".join(content_parts), blame_info_by_row)
+        return RenderResult("".join(content_parts), blame_info_by_row, source_column)
 
     def parse_blame(
         self,
@@ -661,7 +682,6 @@ class gs_blame_refresh(GsTextCommand):
         lines: list[str] = []
         blame_info_by_row: BlameInfoByRow = {}
         current_blame_info = BlameRowInfo(chunk[0].commit_hash, chunk[0].lineno)
-
         for row, (left, blame_line) in enumerate(
             zip_longest(commit_info, chunk),
             start=row_offset
@@ -687,6 +707,10 @@ class gs_blame_refresh(GsTextCommand):
             ))
 
         return lines, blame_info_by_row
+
+
+def source_column_for_left_pad(left_pad: int, line_number_width: int) -> int:
+    return left_pad + len(" | ") + line_number_width + len(" ")
 
 
 class gs_blame_open_commit(GsTextCommand):
