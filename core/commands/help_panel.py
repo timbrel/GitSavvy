@@ -117,25 +117,31 @@ class GsAbstractOpenHelpPanel(GsTextCommand):
 
 class gs_blame_help_panel(GsAbstractOpenHelpPanel):
     key_bindings = dedent("""\
-    ### Actions ###
-    [enter]        show all commands
+    ### Navigation ###
     [shift+enter]  focus commit under cursor
-    [o]            open file at commit, on a commit hash: open the commit
-    [O]            open working dir file
+
+    [n]/[p]        blame next/previous commit (also: [<]/[>])
+    [N]/[P]        blame commit prior to the commit under cursor / return
+
     [l]            show log of surrounding commits
+    [g]            show (commit under cursor) in graph
+
+    [h]            move through the current chunks
+    [,]/[.]        go to next/previous chunk (also: [j]/[k] in vintageous mode)
+
+    ### Format ###
+    [tab]/[shift+tab]  cycle compact blame formats
+    [s]                toggle to verbose blame format
 
     [w]            ignore white space
     [f]            detect moved or copied lines within same file
     [c]            detect moved or copied lines within same commit
     [a]            detect moved or copied lines within all commits
 
-    [n]/[p]        blame next/previous commit (also: [<]/[>])
-    [N]/[P]        blame commit prior to the commit under cursor / return
-
-    ### Navigation ###
-    [g]            show (commit under cursor) in graph
-    [h]            move through the current chunks
-    [,]/[.]        go to next/previous chunk (also: [j]/[k] in vintageous mode)
+    ### Actions ###
+    [enter]        show all commands
+    [o]            open file at commit, on a commit hash: open the commit
+    [O]            open working dir file
 
     ### Other ###
     [?]            show this help popup
