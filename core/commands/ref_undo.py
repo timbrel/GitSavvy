@@ -57,15 +57,25 @@ def add_branch_undo(cmd: GitCommand, branch_name: str, old_hash: str) -> None:
     )
 
 
-def add_tag_undo(cmd: GitCommand, tag_name: str, old_hash: str, target_hash: str) -> None:
+def add_tag_undo(
+    cmd: GitCommand,
+    tag_name: str,
+    tag_ref_hash: str,
+    dereferenced_target_hash: str,
+) -> None:
+    assert tag_ref_hash and dereferenced_target_hash
+
+    display_hash = cmd.get_short_hash(dereferenced_target_hash)
+    # Undo via `update-ref` instead of `git tag --force` so annotated tags
+    # are restored as the exact same tag object.  That preserves the tagger,
+    # timestamp, annotation message, and signature.  The trade-off is that
+    # the tag object becomes unreachable after deletion and undo can fail if
+    # Git prunes it before the user restores the ref.
     add_undo_action(
         cmd,
         RefUndoAction(
-            "Re-create tag '{}' at {}".format(
-                tag_name,
-                target_hash or cmd.get_short_hash(old_hash)
-            ),
-            ("update-ref", f"refs/tags/{tag_name}", old_hash),
+            "Re-create tag '{}' at {}".format(tag_name, display_hash),
+            ("update-ref", f"refs/tags/{tag_name}", tag_ref_hash),
             time.time()
         )
     )

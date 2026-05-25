@@ -736,10 +736,10 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
 def delete_tag_from_graph(cmd: GitCommand, window: sublime.Window, tag_name: str) -> None:
     ref = f"refs/tags/{tag_name}"
-    old_hash = cmd.git("rev-parse", "--verify", ref).strip()
-    target_hash = cmd.git("rev-parse", "--short", f"{ref}^{{}}", throw_on_error=False).strip()
+    tag_ref_hash = cmd.git("rev-parse", "--verify", ref).strip()
+    dereferenced_target_hash = cmd.git("rev-parse", "--verify", f"{ref}^{{}}").strip()
     cmd.git("tag", "-d", tag_name)
-    ref_undo.add_tag_undo(cmd, tag_name, old_hash, target_hash)
+    ref_undo.add_tag_undo(cmd, tag_name, tag_ref_hash, dereferenced_target_hash)
     window.status_message("Deleted tag '{}'.".format(tag_name))
     util.view.refresh_gitsavvy_interfaces(window)
 

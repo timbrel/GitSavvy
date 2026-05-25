@@ -454,10 +454,10 @@ class gs_tags_delete(TagsInterfaceCommand):
         tags_to_delete = self.selected_local_tags()
         for tag in tags_to_delete:
             ref = f"refs/tags/{tag}"
-            old_hash = self.git("rev-parse", "--verify", ref).strip()
-            target_hash = self.git("rev-parse", "--short", f"{ref}^{{}}", throw_on_error=False).strip()
+            tag_ref_hash = self.git("rev-parse", "--verify", ref).strip()
+            dereferenced_target_hash = self.git("rev-parse", "--verify", f"{ref}^{{}}").strip()
             rv = self.git("tag", "-d", tag)
-            add_tag_undo(self, tag, old_hash, target_hash)
+            add_tag_undo(self, tag, tag_ref_hash, dereferenced_target_hash)
             match = EXTRACT_COMMIT.search(rv.strip())
             if match:
                 commit = match.group(1)
