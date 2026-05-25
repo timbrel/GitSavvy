@@ -59,7 +59,7 @@ class gs_log_graph_delete_decoration(WindowCommand, GitCommand):
         return [
             (
                 "Delete branch '{}'".format(branch_name),
-                partial(self.delete_branch, view, branch_name)
+                partial(self.delete_branch, branch_name)
             )
             for branch_name in info.get("local_branches", [])
         ] + [
@@ -70,21 +70,11 @@ class gs_log_graph_delete_decoration(WindowCommand, GitCommand):
             for tag_name in info.get("tags", [])
         ]
 
-    def delete_branch(self, view: sublime.View, branch_name: str) -> None:
-        old_hash = self.git("rev-parse", "--verify", f"refs/heads/{branch_name}").strip()
-        self.git("branch", "-D", branch_name)
-        ref_undo.add_branch_undo(self, branch_name, old_hash)
-        self.window.status_message("Deleted branch '{}'.".format(branch_name))
-        util.view.refresh_gitsavvy_interfaces(self.window)
+    def delete_branch(self, branch_name: str) -> None:
+        self.window.run_command("gs_delete_branch", {"branch": branch_name})
 
     def delete_tag(self, view: sublime.View, tag_name: str) -> None:
-        ref = f"refs/tags/{tag_name}"
-        old_hash = self.git("rev-parse", "--verify", ref).strip()
-        target_hash = self.git("rev-parse", "--short", f"{ref}^{{}}", throw_on_error=False).strip()
-        self.git("tag", "-d", tag_name)
-        ref_undo.add_tag_undo(self, tag_name, old_hash, target_hash)
-        self.window.status_message("Deleted tag '{}'.".format(tag_name))
-        util.view.refresh_gitsavvy_interfaces(self.window)
+        delete_tag_from_graph(self, self.window, tag_name)
 
 
 class gs_log_graph_action(WindowCommand, GitCommand):
@@ -657,8 +647,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         self.window.run_command("gs_tag_create", {"target_commit": commit_hash})
 
     def delete_tag(self, tag_name):
-        self.git("tag", "-d", tag_name)
-        util.view.refresh_gitsavvy_interfaces(self.window)
+        delete_tag_from_graph(self, self.window, tag_name)
 
     def reset_to(self, commitish):
         self.window.run_command("gs_reset", {"commit_hash": commitish})
@@ -743,6 +732,16 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         )
         self.checkout_ref(commit_hash, fpath=file_path)
         util.view.refresh_gitsavvy_interfaces(self.window)
+
+
+def delete_tag_from_graph(cmd: GitCommand, window: sublime.Window, tag_name: str) -> None:
+    ref = f"refs/tags/{tag_name}"
+    old_hash = cmd.git("rev-parse", "--verify", ref).strip()
+    target_hash = cmd.git("rev-parse", "--short", f"{ref}^{{}}", throw_on_error=False).strip()
+    cmd.git("tag", "-d", tag_name)
+    ref_undo.add_tag_undo(cmd, tag_name, old_hash, target_hash)
+    window.status_message("Deleted tag '{}'.".format(tag_name))
+    util.view.refresh_gitsavvy_interfaces(window)
 
 
 def is_log_graph_view(view: sublime.View) -> bool:

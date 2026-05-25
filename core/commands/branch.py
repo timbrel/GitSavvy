@@ -4,6 +4,7 @@ import re
 import sublime
 
 from . import push
+from .ref_undo import add_branch_undo
 from ..git_command import GitSavvyError
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ...common import util
@@ -162,6 +163,7 @@ class gs_delete_branch(GsWindowCommand):
     @util.actions.destructive(description="delete a local branch")
     def run(self, branch, force=False):
         # type: (str, bool) -> None
+        old_hash = self.git("rev-parse", "--verify", f"refs/heads/{branch}").strip()
         if force:
             rv = self.git("branch", "-D", branch)
         else:
@@ -180,6 +182,7 @@ class gs_delete_branch(GsWindowCommand):
                 e.show_error_panel()
                 raise
 
+        add_branch_undo(self, branch, old_hash)
         match = EXTRACT_COMMIT.search(rv.strip())
         if match:
             commit = match.group(1)
