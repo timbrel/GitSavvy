@@ -2160,6 +2160,22 @@
         ]
     },
     {
+        "keys": ["D"],
+        "command": "gs_log_graph_delete_decoration",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["primary+z"],
+        "command": "gs_log_graph_undo_ref_action",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["m"],
         "command": "gs_log_graph_toggle_commit_info_panel",
         "context": [

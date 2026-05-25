@@ -258,6 +258,8 @@ class gs_log_graph_help_panel(GsAbstractOpenHelpPanel):
     [m]/[M]        toggle commit panel on the bottom, [M] to also focus the panel
     [{cr}+c]       copy commit's hash, subject or a combination to the clipboard
                    if you copied a branch name, [ctrl+v] to create such a branch
+    [D]            delete a branch/tag decoration on the commit
+    [{cr}+z]       undo a branch/tag deletion from this graph
 
     [f]            edit filters verbatim
     [l]            list paths to add or remove

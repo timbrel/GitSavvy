@@ -3,7 +3,8 @@ from __future__ import annotations
 from functools import partial
 import os
 from itertools import chain
-from typing import Callable, Dict, List, Optional, Tuple
+import time
+from typing import Callable, Dict, List, NamedTuple, Optional, Tuple
 
 import sublime
 from sublime_plugin import WindowCommand
@@ -13,7 +14,7 @@ from ..fns import filter_, take, unique
 from ..git_command import GitCommand
 from ..git_mixins.branches import Branch
 from ..text_helper import line_from_pt
-from ..ui__quick_panel import SEPARATOR, show_quick_panel
+from ..ui__quick_panel import SEPARATOR, show_actions_panel, show_quick_panel
 from ..utils import open_folder_in_new_window
 from . import multi_selector
 from . import log_graph_colorizer as colorizer
@@ -29,6 +30,107 @@ from .log_graph_helper import (
 
 
 FOLLOW_DECORATION_LIMIT = 100
+UNDO_REF_ACTIONS: Dict[sublime.ViewId, List["RefUndoAction"]] = {}
+
+
+class RefUndoAction(NamedTuple):
+    description: str
+    command: Tuple[str, ...]
+    timestamp: float
+
+
+class gs_log_graph_delete_decoration(WindowCommand, GitCommand):
+    def run(self) -> None:
+        view = self.window.active_view()
+        if view is None or not is_log_graph_view(view):
+            return
+
+        branches = {b.canonical_name: b for b in self.get_branches()}
+        info = describe_line_at_cursor(view, branches)
+        if not info:
+            return
+
+        actions = self.delete_actions(view, info)
+        if len(actions) == 1:
+            actions[0][1]()
+        elif actions:
+            show_actions_panel(self.window, actions)
+        elif remote_refs := undeletable_refs(info):
+            flash_cannot_delete_remote_ref(view, remote_refs)
+        else:
+            self.window.status_message("No branch or tag on this commit.")
+
+    def delete_actions(
+        self, view: sublime.View, info: LineInfo
+    ) -> List[Tuple[str, Callable[[], None]]]:
+        return [
+            (
+                "Delete branch '{}'".format(branch_name),
+                partial(self.delete_branch, view, branch_name)
+            )
+            for branch_name in info.get("local_branches", [])
+        ] + [
+            (
+                "Delete tag '{}'".format(tag_name),
+                partial(self.delete_tag, view, tag_name)
+            )
+            for tag_name in info.get("tags", [])
+        ]
+
+    def delete_branch(self, view: sublime.View, branch_name: str) -> None:
+        old_hash = self.git("rev-parse", "--verify", f"refs/heads/{branch_name}").strip()
+        self.git("branch", "-D", branch_name)
+        add_undo_ref_action(
+            view,
+            RefUndoAction(
+                "Re-create branch '{}' at {}".format(branch_name, self.get_short_hash(old_hash)),
+                ("branch", branch_name, old_hash),
+                time.time()
+            )
+        )
+        self.window.status_message("Deleted branch '{}'.".format(branch_name))
+        util.view.refresh_gitsavvy_interfaces(self.window)
+
+    def delete_tag(self, view: sublime.View, tag_name: str) -> None:
+        ref = f"refs/tags/{tag_name}"
+        old_hash = self.git("rev-parse", "--verify", ref).strip()
+        target_hash = self.git("rev-parse", "--short", f"{ref}^{{}}", throw_on_error=False).strip()
+        self.git("tag", "-d", tag_name)
+        add_undo_ref_action(
+            view,
+            RefUndoAction(
+                "Re-create tag '{}' at {}".format(tag_name, target_hash or self.get_short_hash(old_hash)),
+                ("update-ref", ref, old_hash),
+                time.time()
+            )
+        )
+        self.window.status_message("Deleted tag '{}'.".format(tag_name))
+        util.view.refresh_gitsavvy_interfaces(self.window)
+
+
+class gs_log_graph_undo_ref_action(WindowCommand, GitCommand):
+    def run(self) -> None:
+        view = self.window.active_view()
+        if view is None or not is_log_graph_view(view):
+            return
+
+        undo_actions = get_undo_ref_actions(view)
+        if not undo_actions:
+            self.window.status_message("No graph ref deletion to undo.")
+            return
+
+        def on_selection(index: int) -> None:
+            undo_action = undo_actions[index]
+            self.git(*undo_action.command)
+            remove_undo_ref_action(view, undo_action)
+            self.window.status_message(undo_action.description + ".")
+            util.view.refresh_gitsavvy_interfaces(self.window)
+
+        show_quick_panel(
+            self.window,
+            [undo_action.description for undo_action in undo_actions],
+            on_selection
+        )
 
 
 class gs_log_graph_action(WindowCommand, GitCommand):
@@ -687,6 +789,64 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         )
         self.checkout_ref(commit_hash, fpath=file_path)
         util.view.refresh_gitsavvy_interfaces(self.window)
+
+
+def is_log_graph_view(view: sublime.View) -> bool:
+    return bool(view.settings().get("git_savvy.log_graph_view"))
+
+
+def describe_line_at_cursor(
+    view: sublime.View, branches: Dict[str, Branch]
+) -> Optional[LineInfo]:
+    try:
+        line = line_from_pt(view, view.sel()[0].b)
+    except IndexError:
+        return None
+
+    return describe_graph_line(line.text, branches)
+
+
+def undeletable_refs(info: LineInfo) -> List[str]:
+    local_branches = set(info.get("local_branches", []))
+    return list(unique(
+        ref for ref in info.get("branches", [])
+        if ref not in local_branches
+    ))
+
+
+def flash_cannot_delete_remote_ref(view: sublime.View, refs: List[str]) -> None:
+    window = view.window()
+    if not window:
+        return
+
+    if len(refs) == 1:
+        window.status_message("Cannot delete remote ref '{}'".format(refs[0]))
+    else:
+        window.status_message("Cannot delete remote refs {}".format(
+            " and ".join("'{}'".format(ref) for ref in refs)
+        ))
+
+
+def add_undo_ref_action(view: sublime.View, undo_action: RefUndoAction) -> None:
+    UNDO_REF_ACTIONS.setdefault(view.id(), []).append(undo_action)
+
+
+def get_undo_ref_actions(view: sublime.View) -> List[RefUndoAction]:
+    return sorted(
+        UNDO_REF_ACTIONS.get(view.id(), []),
+        key=lambda undo_action: undo_action.timestamp,
+        reverse=True
+    )
+
+
+def remove_undo_ref_action(view: sublime.View, undo_action: RefUndoAction) -> None:
+    actions = UNDO_REF_ACTIONS.get(view.id())
+    if not actions:
+        return
+
+    actions.remove(undo_action)
+    if not actions:
+        UNDO_REF_ACTIONS.pop(view.id(), None)
 
 
 def display_name(info: LineInfo) -> str:
