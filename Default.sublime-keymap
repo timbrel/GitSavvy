@@ -1469,6 +1469,31 @@
             { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
         ]
     },
+    {
+        "keys": ["tab"],
+        "command": "gs_blame_toggle_format",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["shift+tab"],
+        "command": "gs_blame_toggle_format",
+        "args": { "forwards": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["s"],
+        "command": "gs_blame_toggle_verbose_format",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.blame_view", "operator": "equal", "operand": true }
+        ]
+    },
 
     {
         "keys": [">"],
