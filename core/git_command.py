@@ -773,7 +773,7 @@ class _GitCommand(SettingsMixin):
         """
         Return the file path relative to the repo root, or the given base.
         """
-        if base is NOT_SET:
+        if base == NOT_SET:
             base = self.repo_path
         base_ = base.rstrip(os.path.sep) + os.path.sep
         rel_path = (
@@ -790,7 +790,7 @@ class _GitCommand(SettingsMixin):
         """
         Return the absolute file path from a repo-relative path, or the given base.
         """
-        if base is NOT_SET:
+        if base == NOT_SET:
             base = self.repo_path
         return os.path.normpath(os.path.join(base, file_path))
 
