@@ -2,9 +2,12 @@
 Sublime commands related to development and debugging.
 """
 
+import os
+
+import sublime
 from sublime_plugin import WindowCommand
 
-from ..util import debug, reload
+from ..util import debug
 from ...core.settings import GitSavvySettings
 from ...core.view import replace_view_content
 
@@ -24,7 +27,16 @@ class gs_reload_modules_debug(WindowCommand):
     """
 
     def run(self):
-        reload.reload_plugin()
+        root_plugin = os.path.join(
+            sublime.packages_path(),
+            "GitSavvy",
+            "git_savvy.py"
+        )
+        os.utime(root_plugin, None)
+        sublime.set_timeout(
+            lambda: sublime.active_window().status_message('GitSavvy has 🙌 reloaded.'),
+            1000
+        )
 
     def is_visible(self):
         return GitSavvySettings().get("dev_mode")

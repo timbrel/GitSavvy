@@ -1,5 +1,6 @@
 import json
 import shlex
+import sys
 import threading
 
 from GitSavvy.core.fns import filter_
@@ -9,11 +10,14 @@ from typing import Dict, List, Optional, Sequence, Union
 LogEntry = Dict
 
 
-# Preserve state of `enabled` during hot-reloads
+# Preserve state of `enabled` during hot-reloads.  Some reloaders execute this
+# module in-place, in which case the local `enabled` global survives.  Others
+# delete submodules and recreate them; for those, keep the flag on the base
+# package module which the root plugin reloader intentionally leaves alone.
 try:
-    enabled  # type: ignore[used-before-def]
+    enabled  # type: ignore[has-type, used-before-def]
 except NameError:
-    enabled = False
+    enabled = bool(getattr(sys.modules.get("GitSavvy"), "_debug_enabled", False))
 
 _log = []  # type: List[LogEntry]
 ENCODING_NOT_UTF8 = "{} was sent as binaries and we dont know the encoding, not utf-8"
@@ -22,14 +26,19 @@ last_working_dir = ""
 
 def start_logging():
     global _log
-    global enabled
     _log = []
-    enabled = True
+    set_logging_enabled(True)
 
 
 def stop_logging():
+    set_logging_enabled(False)
+
+
+def set_logging_enabled(value):
     global enabled
-    enabled = False
+    enabled = value
+    if pkg := sys.modules.get("GitSavvy"):
+        setattr(pkg, "_debug_enabled", value)
 
 
 def get_log():
@@ -128,19 +137,3 @@ def log_error(err):
         "type": "error",
         "error": repr(err)
     })
-
-
-class StackMeter:
-    """Reentrant context manager counting the reentrancy depth."""
-
-    def __init__(self, depth=0):
-        super().__init__()
-        self.depth = depth
-
-    def __enter__(self):
-        depth = self.depth
-        self.depth += 1
-        return depth
-
-    def __exit__(self, *exc_info):
-        self.depth -= 1
