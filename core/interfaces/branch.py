@@ -12,6 +12,7 @@ from sublime_plugin import WindowCommand
 from ...common import ui, util
 from ..commands import GsNavigate
 from ..commands.log import LogMixin
+from ..commands.ref_undo import add_branch_undo
 from ..commands import multi_selector
 from ..git_command import GitCommand
 from ..ui__busy_spinner import busy_indicator
@@ -741,12 +742,18 @@ class gs_branches_delete(BranchInterfaceCommand):
     @util.actions.destructive(description="delete local branches")
     @on_worker
     def delete_local_branches(self, branch_names, force):
+        old_hashes = {
+            branch_name: self.git("rev-parse", "--verify", f"refs/heads/{branch_name}").strip()
+            for branch_name in branch_names
+        }
         self.window.status_message("Deleting local branches...")
         self.git(
             "branch",
             "-D" if force else "-d",
             *branch_names
         )
+        for branch_name, old_hash in old_hashes.items():
+            add_branch_undo(self, branch_name, old_hash)
         self.window.status_message("Deleted local branches.")
         util.view.refresh_gitsavvy(self.view)
         self.view.run_command("gs_clear_multiselect")
