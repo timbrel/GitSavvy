@@ -1,0 +1,49 @@
+GitSavvy 2.58.0
+===============
+
+* The File revision view (internally named show_file_at_commit), reachable via
+  e.g. "git: show current file at commit" or "git: show file at HEAD" has
+  learned new navigation shortcuts `N` and `P`.
+
+  Usually you walked revisions by `n`/`p`, basically: walk newer and older
+  revisions, but that often meant that contents of the viewport did not change
+  while navigating, simply because the changeset was at other places of the
+  file.
+
+  But you often are interested in exactly what is currently visible in the
+  viewport, that function or algorithm.  `N`/`P` is for that.  `N` navigates
+  to next change of the code in the viewport, and `P` walks back.  -- That is
+  a bit like a Line History, only that you see a bigger portion of the file,
+  and without the patch/commit metadata in between.
+
+  Also added `b`, to open the blame view from where you're at.
+
+* The Blame view has been redesigned completely.
+
+  It now starts in a compact mode, and you can use `tab`/`shift+tab` to switch
+  between formats. `s` will switch to the (old and known) verbose format.
+
+  In the Blame view, `o` will open the File revision as above (and `b` will
+  open the Blame view), and `O` will try to open the hunk on the checked out
+  file, aka working tree.
+
+  We now have `n`/`p` for simple logical commit navigation, basically: show
+  newer or older revisions of the file, and `N` to navigate to the
+  commit *before* the commit under the cursor (GitHub style) and `shift+enter`
+  to navigate to the commit *on* the cursor.  (Like: Focus that revision!)
+
+  `P` goes back in navigation history.
+
+  In both views, `l` shows the log for the current, active file.
+
+* Following file renames has been completely revamped.  Thanks to @kylebebak
+  for being patient with that.
+
+* I never advertised 2.56.0, but it introduced at least `a` 👀 in the Diff view
+  to switch between diffing a single file vs all files quickly.
+
+
+I switched to the kiss-reloader.  Not sure if that requires a restart once.
+
+
+Appreciate your 💖 too: https://paypal.me/herrkaste 🫶
