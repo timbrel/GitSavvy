@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from GitSavvy.core.git_mixins.stash import Stash
     from GitSavvy.core.git_mixins.tags import TagList
     from GitSavvy.core.git_mixins.status import HeadState, WorkingDirState
+    from GitSavvy.core.commands.ref_undo import RefUndoAction
 
     class RepoStore(TypedDict, total=False):
         status: WorkingDirState
@@ -43,6 +44,7 @@ if TYPE_CHECKING:
         recent_commits: List[Commit]
         descriptions: Dict[str, str]
         default_graph_options: Dict[str, str]
+        ref_undo_actions: List[RefUndoAction]
     RepoPath = str
     SubscriberKey = str
     Keys = AbstractSet[str]

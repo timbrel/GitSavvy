@@ -34,6 +34,7 @@ from .pull import *
 from .push import *
 from .quick_commit import *
 from .quick_stage import *
+from .ref_undo import *
 from .reflog import *
 from .remote import *
 from .reset import *
