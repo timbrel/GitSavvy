@@ -60,22 +60,30 @@ class gs_log_graph_delete_decoration(WindowCommand, GitCommand):
         return [
             (
                 "Delete branch '{}'".format(branch_name),
-                partial(self.delete_branch, branch_name)
+                partial(self.delete_branch, branch_name, view.id())
             )
             for branch_name in info.get("local_branches", [])
         ] + [
             (
                 "Delete tag '{}'".format(tag_name),
-                partial(self.delete_tag, tag_name, info["commit"])
+                partial(self.delete_tag, tag_name, info["commit"], view.id())
             )
             for tag_name in info.get("tags", [])
         ]
 
-    def delete_branch(self, branch_name: str) -> None:
-        self.window.run_command("gs_delete_branch", {"branch": branch_name})
+    def delete_branch(self, branch_name: str, undo_owner: ref_undo.UndoOwner) -> None:
+        self.window.run_command("gs_delete_branch", {
+            "branch": branch_name,
+            "undo_owner": undo_owner
+        })
 
-    def delete_tag(self, tag_name: str, commit_hash: ShortHash) -> None:
-        delete_tag_from_graph(self, self.window, tag_name, commit_hash)
+    def delete_tag(
+        self,
+        tag_name: str,
+        commit_hash: ShortHash,
+        undo_owner: sublime.ViewId
+    ) -> None:
+        delete_tag_from_graph(self, self.window, tag_name, commit_hash, undo_owner)
 
 
 class gs_log_graph_action(WindowCommand, GitCommand):
@@ -369,7 +377,10 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         ]
 
         actions += [
-            ("Delete tag '{}'".format(tag_name), partial(self.delete_tag, tag_name, commit_hash))
+            (
+                "Delete tag '{}'".format(tag_name),
+                partial(self.delete_tag, tag_name, commit_hash, view.id())
+            )
             for tag_name in info.get("tags", [])
         ]
 
@@ -430,7 +441,10 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 ]
 
             actions += [
-                ("Delete branch '{}'".format(branch_name), partial(self.delete_branch, branch_name))
+                (
+                    "Delete branch '{}'".format(branch_name),
+                    partial(self.delete_branch, branch_name, view.id())
+                )
                 for branch_name in info.get("local_branches", [])
             ]
 
@@ -627,8 +641,11 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         self.git("branch", "-f", branch_name, target)
         util.view.refresh_gitsavvy_interfaces(self.window)
 
-    def delete_branch(self, branch_name):
-        self.window.run_command("gs_delete_branch", {"branch": branch_name})
+    def delete_branch(self, branch_name: str, undo_owner: sublime.ViewId):
+        self.window.run_command("gs_delete_branch", {
+            "branch": branch_name,
+            "undo_owner": undo_owner
+        })
 
     def show_commit(self, commit_hash):
         self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
@@ -647,8 +664,13 @@ class gs_log_graph_action(WindowCommand, GitCommand):
     def create_tag(self, commit_hash):
         self.window.run_command("gs_tag_create", {"target_commit": commit_hash})
 
-    def delete_tag(self, tag_name: str, commit_hash: ShortHash):
-        delete_tag_from_graph(self, self.window, tag_name, commit_hash)
+    def delete_tag(
+        self,
+        tag_name: str,
+        commit_hash: ShortHash,
+        undo_owner: sublime.ViewId
+    ) -> None:
+        delete_tag_from_graph(self, self.window, tag_name, commit_hash, undo_owner)
 
     def reset_to(self, commitish):
         self.window.run_command("gs_reset", {"commit_hash": commitish})
@@ -739,12 +761,14 @@ def delete_tag_from_graph(
     cmd: GitCommand,
     window: sublime.Window,
     tag_name: str,
-    dereferenced_target_hash: ShortHash
+    dereferenced_target_hash: ShortHash,
+    undo_owner: sublime.ViewId
 ) -> None:
     with ref_undo.record_tag_recreate_action(
         cmd,
         tag_name,
-        dereferenced_target_hash=dereferenced_target_hash
+        dereferenced_target_hash=dereferenced_target_hash,
+        undo_owner=undo_owner
     ):
         cmd.git("tag", "-d", tag_name)
     window.status_message("Deleted tag '{}'.".format(tag_name))

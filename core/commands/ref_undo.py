@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from contextlib import contextmanager
+import threading
 import time
-from typing import cast, Iterator, List, NamedTuple, Tuple
+from typing import DefaultDict, Iterator, List, NamedTuple, Tuple
 
-from sublime_plugin import WindowCommand
+from typing_extensions import TypeAlias
+
+import sublime
+from sublime_plugin import EventListener, WindowCommand
 
 from ...common import util
 from ..git_command import GitCommand
@@ -13,12 +18,8 @@ from ..ui__quick_panel import show_quick_panel
 
 
 __all__ = (
-    "RefUndoAction",
-    "add_branch_undo",
-    "add_tag_undo",
-    "add_undo_action",
-    "record_tag_recreate_action",
     "gs_ref_undo",
+    "GsRefUndoCleanup",
 )
 
 
@@ -28,9 +29,21 @@ class RefUndoAction(NamedTuple):
     timestamp: float
 
 
+UndoOwner: TypeAlias = "sublime.ViewId"
+
+
+undo_actions_by_owner: DefaultDict[UndoOwner, List[RefUndoAction]] = defaultdict(list)
+lock = threading.Lock()
+
+
 class gs_ref_undo(WindowCommand, GitCommand):
-    def run(self) -> None:
-        undo_actions = get_undo_actions(self)
+    def run(self, undo_owner: UndoOwner | None = None) -> None:
+        undo_owner = undo_owner or resolve_undo_owner(self)
+        if undo_owner is None:
+            self.window.status_message("No ref deletion to undo.")
+            return
+
+        undo_actions = get_undo_actions(undo_owner)
         if not undo_actions:
             self.window.status_message("No ref deletion to undo.")
             return
@@ -38,7 +51,7 @@ class gs_ref_undo(WindowCommand, GitCommand):
         def on_selection(index: int) -> None:
             undo_action = undo_actions[index]
             self.git(*undo_action.command)
-            remove_undo_action(self, undo_action)
+            remove_undo_action(undo_owner, undo_action)
             self.window.status_message(undo_action.description + ".")
             util.view.refresh_gitsavvy_interfaces(self.window)
 
@@ -49,9 +62,19 @@ class gs_ref_undo(WindowCommand, GitCommand):
         )
 
 
-def add_branch_undo(cmd: GitCommand, branch_name: str, old_hash: str) -> None:
+class GsRefUndoCleanup(EventListener):
+    def on_close(self, view) -> None:
+        clear_undo_actions(view.id())
+
+
+def add_branch_undo(
+    cmd: GitCommand,
+    branch_name: str,
+    old_hash: str,
+    undo_owner: UndoOwner
+) -> None:
     add_undo_action(
-        cmd,
+        undo_owner,
         RefUndoAction(
             "Re-create branch '{}' at {}".format(branch_name, cmd.get_short_hash(old_hash)),
             ("branch", branch_name, old_hash),
@@ -65,7 +88,8 @@ def record_tag_recreate_action(
     cmd: GitCommand,
     tag_name: str,
     tag_ref_hash: ShortHash | None = None,
-    dereferenced_target_hash: ShortHash | None = None
+    dereferenced_target_hash: ShortHash | None = None,
+    undo_owner: UndoOwner | None = None
 ) -> Iterator[None]:
     ref = f"refs/tags/{tag_name}"
     tag_ref_hash = tag_ref_hash or cmd.git("rev-parse", "--short", ref).strip()
@@ -76,7 +100,7 @@ def record_tag_recreate_action(
 
     yield
 
-    add_tag_undo(cmd, tag_name, tag_ref_hash, dereferenced_target_hash)
+    add_tag_undo(cmd, tag_name, tag_ref_hash, dereferenced_target_hash, undo_owner)
 
 
 def add_tag_undo(
@@ -84,14 +108,19 @@ def add_tag_undo(
     tag_name: str,
     tag_ref_hash: ShortHash,
     dereferenced_target_hash: ShortHash,
+    undo_owner: UndoOwner | None = None
 ) -> None:
+    undo_owner = undo_owner or resolve_undo_owner(cmd)
+    if undo_owner is None:
+        return
+
     # Undo via `update-ref` instead of `git tag --force` so annotated tags
     # are restored as the exact same tag object.  That preserves the tagger,
     # timestamp, annotation message, and signature.  The trade-off is that
     # the tag object becomes unreachable after deletion and undo can fail if
     # Git prunes it before the user restores the ref.
     add_undo_action(
-        cmd,
+        undo_owner,
         RefUndoAction(
             "Re-create tag '{}' at {}".format(tag_name, dereferenced_target_hash),
             ("update-ref", f"refs/tags/{tag_name}", tag_ref_hash),
@@ -100,31 +129,40 @@ def add_tag_undo(
     )
 
 
-def add_undo_action(cmd: GitCommand, undo_action: RefUndoAction) -> None:
-    actions = list(current_undo_actions(cmd))
-    actions.append(undo_action)
-    cmd.update_store({"ref_undo_actions": actions})
+def add_undo_action(undo_owner: UndoOwner, undo_action: RefUndoAction) -> None:
+    with lock:
+        undo_actions_by_owner[undo_owner].append(undo_action)
 
 
-def get_undo_actions(cmd: GitCommand) -> List[RefUndoAction]:
+def get_undo_actions(undo_owner: UndoOwner) -> List[RefUndoAction]:
     return sorted(
-        current_undo_actions(cmd),
+        current_undo_actions(undo_owner),
         key=lambda undo_action: undo_action.timestamp,
         reverse=True
     )
 
 
-def remove_undo_action(cmd: GitCommand, undo_action: RefUndoAction) -> None:
-    actions = list(current_undo_actions(cmd))
-    if not actions:
-        return
+def remove_undo_action(undo_owner: UndoOwner, undo_action: RefUndoAction) -> None:
+    with lock:
+        actions = undo_actions_by_owner.get(undo_owner)
+        if not actions:
+            return
 
-    actions.remove(undo_action)
-    cmd.update_store({"ref_undo_actions": actions})
+        actions.remove(undo_action)
+        if not actions:
+            del undo_actions_by_owner[undo_owner]
 
 
-def current_undo_actions(cmd: GitCommand) -> List[RefUndoAction]:
-    return cast(
-        List[RefUndoAction],
-        cmd.current_state().get("ref_undo_actions", [])
-    )
+def clear_undo_actions(undo_owner: UndoOwner) -> None:
+    with lock:
+        undo_actions_by_owner.pop(undo_owner, None)
+
+
+def current_undo_actions(undo_owner: UndoOwner) -> List[RefUndoAction]:
+    with lock:
+        return list(undo_actions_by_owner.get(undo_owner, []))
+
+
+def resolve_undo_owner(cmd: GitCommand) -> UndoOwner | None:
+    view = cmd._current_view()
+    return view.id() if view else None

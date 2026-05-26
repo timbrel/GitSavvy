@@ -1,10 +1,10 @@
+from __future__ import annotations
 from functools import lru_cache
 import inspect
 import re
 import sublime
 
-from . import push
-from .ref_undo import add_branch_undo
+from . import push, ref_undo
 from ..git_command import GitSavvyError
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ...common import util
@@ -21,7 +21,7 @@ __all__ = (
 )
 
 
-from typing import Callable, TypeVar
+from typing import Callable, Optional, TypeVar
 from GitSavvy.core.base_commands import Args, Kont
 T = TypeVar("T")
 
@@ -161,8 +161,16 @@ class gs_delete_branch(GsWindowCommand):
     }
 
     @util.actions.destructive(description="delete a local branch")
-    def run(self, branch, force=False):
-        # type: (str, bool) -> None
+    def run(
+        self,
+        branch: str,
+        force: bool = False,
+        undo_owner: Optional[sublime.ViewId] = None
+    ) -> None:
+        if undo_owner is None:
+            av = self.window.active_view()
+            undo_owner = av.id() if av else None
+
         old_hash = self.git("rev-parse", "--verify", f"refs/heads/{branch}").strip()
         if force:
             rv = self.git("branch", "-D", branch)
@@ -171,18 +179,20 @@ class gs_delete_branch(GsWindowCommand):
                 rv = self.git_throwing_silently("branch", "-d", branch)
             except GitSavvyError as e:
                 if NOT_MERGED_WARNING.search(e.stderr):
-                    self.offer_force_deletion(branch)
+                    self.offer_force_deletion(branch, undo_owner)
                     return
                 if (
                     CANT_DELETE_USED_BRANCH.search(e.stderr)
                     and branch == self.get_current_branch_name()
                 ):
-                    self.offer_detaching_head(branch)
+                    self.offer_detaching_head(branch, undo_owner)
                     return
                 e.show_error_panel()
                 raise
 
-        add_branch_undo(self, branch, old_hash)
+        if undo_owner:
+            ref_undo.add_branch_undo(self, branch, old_hash, undo_owner)
+
         match = EXTRACT_COMMIT.search(rv.strip())
         if match:
             commit = match.group(1)
@@ -193,23 +203,27 @@ class gs_delete_branch(GsWindowCommand):
         )
         util.view.refresh_gitsavvy_interfaces(self.window)
 
-    def offer_force_deletion(self, branch_name):
-        # type: (str) -> None
+    def offer_force_deletion(self, branch_name: str, undo_owner: Optional[sublime.ViewId]) -> None:
         show_actions_panel(self.window, [
             noop("Abort, '{}' is not fully merged.".format(branch_name)),
             (
                 "Delete anyway.",
                 lambda: self.window.run_command("gs_delete_branch", {
                     "branch": branch_name,
-                    "force": True
+                    "force": True,
+                    "undo_owner": undo_owner
                 })
             )
         ])
 
-    def offer_detaching_head(self, branch):
+    def offer_detaching_head(self, branch: str, undo_owner: Optional[sublime.ViewId]) -> None:
         def kont():
             self.git("checkout", branch, "--detach")
-            self.window.run_command("gs_delete_branch", {"branch": branch, "force": False})
+            self.window.run_command("gs_delete_branch", {
+                "branch": branch,
+                "force": False,
+                "undo_owner": undo_owner
+            })
 
         show_actions_panel(self.window, [
             noop("Abort, '{}' is checked out.".format(branch)),
