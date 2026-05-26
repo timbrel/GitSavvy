@@ -9,9 +9,10 @@ from typing import DefaultDict, Iterator, List, NamedTuple, Tuple
 from typing_extensions import TypeAlias
 
 import sublime
-from sublime_plugin import EventListener, WindowCommand
+from sublime_plugin import EventListener
 
 from ...common import util
+from ..base_commands import GsTextCommand
 from ..git_command import GitCommand
 from ..types import ShortHash
 from ..ui__quick_panel import show_quick_panel
@@ -36,13 +37,9 @@ undo_actions_by_owner: DefaultDict[UndoOwner, List[RefUndoAction]] = defaultdict
 lock = threading.Lock()
 
 
-class gs_ref_undo(WindowCommand, GitCommand):
-    def run(self, undo_owner: UndoOwner | None = None) -> None:
-        undo_owner = undo_owner or resolve_undo_owner(self)
-        if undo_owner is None:
-            self.window.status_message("No ref deletion to undo.")
-            return
-
+class gs_ref_undo(GsTextCommand):
+    def run(self, edit) -> None:
+        undo_owner = self.view.id()
         undo_actions = get_undo_actions(undo_owner)
         if not undo_actions:
             self.window.status_message("No ref deletion to undo.")
