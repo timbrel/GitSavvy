@@ -704,7 +704,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         })
 
     def copy_sha(self, commit_hash):
-        sublime.set_clipboard(self.git("rev-parse", commit_hash).strip())
+        sublime.set_clipboard(self.resolve(commit_hash))
 
     def diff(self):
         self.window.run_command("gs_diff", {"in_cached_mode": False})

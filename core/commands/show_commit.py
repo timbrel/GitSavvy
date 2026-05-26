@@ -62,7 +62,7 @@ class gs_show_commit(WindowCommand, GitCommand):
     def run(self, commit_hash):
         repo_path = self.repo_path
         if commit_hash in {"", "HEAD"}:
-            commit_hash = self.git("rev-parse", "--short", "HEAD").strip()
+            commit_hash = self.resolve("HEAD", short=True)
         else:
             commit_hash = self.get_short_hash(commit_hash)
 

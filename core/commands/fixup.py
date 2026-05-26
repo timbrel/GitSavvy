@@ -44,10 +44,10 @@ class GsFixupFromStageCommand(gs_log_current_branch):
         return commit_chain
 
     def do_action(self, commit_hash, **kwargs):
-        commit = self.git("rev-parse", commit_hash).strip()
+        commit = self.resolve(commit_hash)
         self.git("commit", "--fixup", commit)
         try:
-            base_commit = self.git("rev-parse", "{}~1".format(commit)).strip()
+            base_commit = self.resolve(f"{commit}~1")
             entries = self.log_rebase(base_commit, preserve=True)
             commit_chain = self.auto_squash(self.perpare_rewrites(entries))
 

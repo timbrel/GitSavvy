@@ -373,7 +373,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
             return NOT_A_COMMIT_SHA
 
     def is_not_rebased(self):
-        return self.base_commit() != self.git("rev-parse", self.base_ref()).strip()
+        return self.base_commit() != self.resolve(self.base_ref())
 
     def contain_merges(self, base_commit=None):
         if not base_commit:

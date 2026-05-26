@@ -416,7 +416,7 @@ def resolve_commit_to_follow_after_rebase(self, commitish):
     try:
         to_follow = (
             self.next_commit(commitish)
-            or self.git("rev-parse", "--short", commitish).strip()
+            or self.resolve(commitish, short=True)
         )
     except GitSavvyError as err:
         # Root commits don't have a parent and so the "^" suffix refers

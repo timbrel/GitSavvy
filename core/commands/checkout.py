@@ -112,7 +112,7 @@ class gs_checkout_new_branch(GsWindowCommand):
 
             elif BRANCH_ALREADY_EXISTS_MESSAGE.format(branch_name) in e.stderr and not force:
                 def overwrite_action():
-                    old_hash = self.git("rev-parse", branch_name).strip()
+                    old_hash = self.resolve(branch_name)
                     uprint(RECREATE_BRANCH_UNDO_MESSAGE.format(branch_name, old_hash))
 
                     self.window.run_command("gs_checkout_new_branch", {

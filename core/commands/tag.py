@@ -152,7 +152,7 @@ class gs_tag_create(GsTextCommand):
         except GitSavvyError as e:
             if TAG_ALREADY_EXISTS_MESSAGE.format(self.tag_name) in e.stderr and not force:
                 def overwrite_action():
-                    old_hash = self.git("rev-parse", self.tag_name).strip()
+                    old_hash = self.resolve(self.tag_name)
                     uprint(RECREATE_TAG_UNDO_MESSAGE.format(self.tag_name, old_hash))
                     self.on_entered_message(message, force=True)
 

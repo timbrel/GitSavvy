@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import email.utils
 from itertools import chain
 import os
-from typing import Generic, Iterator, List, NamedTuple, Optional, TypeVar
+from typing import Generic, Iterator, List, Literal, NamedTuple, Optional, overload, TypeVar
 from typing_extensions import TypeAlias
 
 from ..exceptions import GitSavvyError
@@ -11,7 +11,7 @@ from ...common import util
 from GitSavvy.core.fns import last, pairwise, take
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.caches import Cache, cached
-from GitSavvy.core.types import FullPath, ShortHash
+from GitSavvy.core.types import FullHash, FullPath, ShortHash
 
 
 class LogEntry(NamedTuple):
@@ -227,18 +227,56 @@ class HistoryMixin(mixin_base):
         else:
             return True
 
+    @overload
+    def resolve(
+        self, commitish: str, *, short: Literal[True] = True, lenient: Literal[False] = False
+    ) -> ShortHash: ...
+
+    @overload
+    def resolve(
+        self, commitish: str, *, short: Literal[True] = True, lenient: Literal[True] = True
+    ) -> ShortHash | None: ...
+
+    @overload
+    def resolve(
+        self, commitish: str, *, short: Literal[False] = False, lenient: Literal[False] = False
+    ) -> FullHash: ...
+
+    @overload
+    def resolve(
+        self, commitish: str, *, short: Literal[False] = False, lenient: Literal[True]
+    ) -> FullHash | None: ...
+
+    def resolve(
+        self,
+        commitish: str,
+        *,
+        short: bool = False,
+        lenient: bool = False
+    ) -> ShortHash | FullHash | None:
+        resolved = self.git(
+            "rev-parse",
+            "--verify",
+            "--short" if short else None,
+            commitish,
+            throw_on_error=not lenient
+        ).strip()
+        if lenient:
+            return resolved or None
+        return resolved
+
+    def resolve_commitish(self, ref: str) -> ShortHash:
+        return self.resolve(ref, short=True)
+
     def get_short_hash(self, commit_hash):
-        # type: (str) -> str
+        # type: (FullHash | ShortHash) -> ShortHash
         short_hash_length = self.current_state().get("short_hash_length")
         if short_hash_length:
             return commit_hash[:short_hash_length]
 
-        short_hash = self.git("rev-parse", "--short", commit_hash).strip()
+        short_hash = self.resolve(commit_hash, short=True)
         self.update_store({"short_hash_length": len(short_hash)})
         return short_hash
-
-    def resolve_commitish(self, ref: str) -> str:
-        return self.git("rev-parse", "--short", ref).strip()
 
     def filename_at_commit(self, filename: FullPath, commit_hash: ShortHash) -> str:
         if is_dynamic_ref(commit_hash):

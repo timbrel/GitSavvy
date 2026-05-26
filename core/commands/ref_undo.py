@@ -105,10 +105,10 @@ def record_tag_recreate_action(
     undo_owner: UndoOwner | None = None
 ) -> Iterator[None]:
     ref = f"refs/tags/{tag_name}"
-    tag_ref_hash = tag_ref_hash or cmd.git("rev-parse", "--short", ref).strip()
+    tag_ref_hash = tag_ref_hash or cmd.resolve(ref, short=True)
     dereferenced_target_hash = (
         dereferenced_target_hash
-        or cmd.git("rev-parse", "--short", f"{ref}^{{}}").strip()
+        or cmd.resolve(f"{ref}^{{}}", short=True)
     )
 
     yield
