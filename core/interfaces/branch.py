@@ -14,7 +14,7 @@ from ..commands import GsNavigate
 from ..commands.log import LogMixin
 from ..commands.ref_undo import add_branch_undo
 from ..commands import multi_selector
-from ..git_command import GitCommand
+from ..git_command import GitCommand, GitSavvyError
 from ..ui__busy_spinner import busy_indicator
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -741,19 +741,19 @@ class gs_branches_delete(BranchInterfaceCommand):
 
     @util.actions.destructive(description="delete local branches")
     @on_worker
-    def delete_local_branches(self, branch_names, force):
-        old_hashes = {
-            branch_name: self.git("rev-parse", "--verify", f"refs/heads/{branch_name}").strip()
-            for branch_name in branch_names
-        }
+    def delete_local_branches(self, branch_names: list[str], force: bool):
         self.window.status_message("Deleting local branches...")
-        self.git(
-            "branch",
-            "-D" if force else "-d",
-            *branch_names
-        )
-        for branch_name, old_hash in old_hashes.items():
-            add_branch_undo(self, branch_name, old_hash)
+        try:
+            stdout = self.git(
+                "branch",
+                "-D" if force else "-d",
+                *branch_names
+            )
+        except GitSavvyError as e:
+            record_deleted_branch_undos(self, branch_names, e.stdout)
+            raise
+        else:
+            record_deleted_branch_undos(self, branch_names, stdout)
         self.window.status_message("Deleted local branches.")
         util.view.refresh_gitsavvy(self.view)
         self.view.run_command("gs_clear_multiselect")
@@ -770,6 +770,21 @@ class gs_branches_delete(BranchInterfaceCommand):
             self.interface.state["worktree_deletions_in_progress"].discard(path)
             self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
             util.view.refresh_gitsavvy(self.view)
+
+
+DELETED_BRANCH_RE = re.compile(r"^Deleted branch (.+?) \\(was ([0-9a-f]+)\\)\\.$", re.MULTILINE)
+
+
+def record_deleted_branch_undos(
+    cmd: GitCommand,
+    branch_names: list[str],
+    stdout: str
+) -> None:
+    expected_branches = set(branch_names)
+    for match in DELETED_BRANCH_RE.finditer(stdout):
+        branch_name, commit_hash = match.groups()
+        if branch_name in expected_branches:
+            add_branch_undo(cmd, branch_name, commit_hash)
 
 
 class gs_branches_rename(CommandForSingleBranch):
