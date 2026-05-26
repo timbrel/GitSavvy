@@ -416,7 +416,7 @@ def resolve_commit_to_follow_after_rebase(self, commitish):
     try:
         to_follow = (
             self.next_commit(commitish)
-            or self.git("rev-parse", commitish).strip()
+            or self.git("rev-parse", "--short", commitish).strip()
         )
     except GitSavvyError as err:
         # Root commits don't have a parent and so the "^" suffix refers
@@ -428,7 +428,7 @@ def resolve_commit_to_follow_after_rebase(self, commitish):
 
     if to_follow:
         settings = self.view.settings()
-        settings.set("git_savvy.log_graph_view.follow", self.get_short_hash(to_follow))
+        settings.set("git_savvy.log_graph_view.follow", to_follow)
 
 
 class gs_log_graph_refresh(GsTextCommand):
