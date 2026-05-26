@@ -374,11 +374,11 @@ class TestDescribeGraphLine(DeferrableTestCase):
     def test_filename_at_head_keeps_existing_workdir_path(self):
         test = HistoryMixin()
         when(test).get_repo_path().thenReturn("/repo")
-        when(test).to_short_path("current.py").thenReturn("current.py")
+        when(test).to_short_path("/repo/current.py").thenReturn("current.py")
 
         when(os.path).exists(...).thenReturn(True)
 
-        self.assertEqual(test.filename_at_head("current.py", "abc123"), "current.py")
+        self.assertEqual(test.filename_at_head("/repo/current.py", "abc123"), "/repo/current.py")
 
     def test_filename_at_head_follows_renames_forward(self):
         test = HistoryMixin()
@@ -392,7 +392,10 @@ class TestDescribeGraphLine(DeferrableTestCase):
             .thenReturn("R100\0old.py\0new.py\0") \
             .thenReturn("M\0new.py\0")
 
-        self.assertEqual(test.filename_at_head("old.py", "abc123"), "new.py")
+        self.assertEqual(
+            test.filename_at_head("/repo/old.py", "abc123"),
+            os.path.normpath("/repo/new.py")
+        )
 
     def test_find_matching_lineno_between_files_at_commits(self):
         test = HistoryMixin()

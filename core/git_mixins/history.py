@@ -11,7 +11,7 @@ from ...common import util
 from GitSavvy.core.fns import last, pairwise, take
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.caches import Cache, cached
-from GitSavvy.core.types import FullHash, FullPath, ShortHash
+from GitSavvy.core.types import FullHash, FullPath, ShortHash, ShortPath
 
 
 class LogEntry(NamedTuple):
@@ -322,17 +322,14 @@ class HistoryMixin(mixin_base):
         except IndexError:
             return filename
 
-    def filename_at_head(self, filename: str, commit_hash: str) -> str:
-        rel_path = self.to_short_path(filename)
-        was_abs = rel_path != filename
-
-        if os.path.exists(filename if was_abs else self.to_full_path(rel_path)):
+    def filename_at_head(self, filename: FullPath, commit_hash: str) -> FullPath:
+        if os.path.exists(filename):
             return filename
 
         if not self.commit_is_ancestor_of_head(commit_hash):
             return filename
 
-        current_filename = rel_path
+        current_filename = self.to_short_path(filename)
         seen = set()
         while current_filename not in seen:
             seen.add(current_filename)
@@ -341,13 +338,9 @@ class HistoryMixin(mixin_base):
                 break
             current_filename = next_filename
 
-        return (
-            self.to_full_path(current_filename)
-            if was_abs else
-            current_filename
-        )
+        return self.to_full_path(current_filename)
 
-    def _next_filename_after_commit(self, filename: str, commit_hash: str) -> Optional[str]:
+    def _next_filename_after_commit(self, filename: ShortPath, commit_hash: str) -> ShortPath | None:
         commit = self.git(
             "log",
             "--follow",
@@ -365,7 +358,7 @@ class HistoryMixin(mixin_base):
         return self._renamed_filename_at_commit(filename, commit)
 
     @cached(not_if={"commit_hash": is_dynamic_ref})
-    def _renamed_filename_at_commit(self, filename: str, commit_hash: str) -> Optional[str]:
+    def _renamed_filename_at_commit(self, filename: ShortPath, commit_hash: FullHash) -> ShortPath | None:
         name_status = self.git("show", "--name-status", "--format=", "-z", commit_hash)
         for file_status in parse_name_status_z(name_status):
             if file_status.mode.startswith("R") and file_status.from_path == filename:
