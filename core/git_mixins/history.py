@@ -229,22 +229,38 @@ class HistoryMixin(mixin_base):
 
     @overload
     def resolve(
-        self, commitish: str, *, short: Literal[True] = True, lenient: Literal[False] = False
+        self,
+        commitish: str,
+        *,
+        short: Literal[True] = True,
+        on_error: Literal["show_panel", "suppress_panel"] = "show_panel"
     ) -> ShortHash: ...
 
     @overload
     def resolve(
-        self, commitish: str, *, short: Literal[True] = True, lenient: Literal[True] = True
+        self,
+        commitish: str,
+        *,
+        short: Literal[True] = True,
+        on_error: Literal["ignore"]
     ) -> ShortHash | None: ...
 
     @overload
     def resolve(
-        self, commitish: str, *, short: Literal[False] = False, lenient: Literal[False] = False
+        self,
+        commitish: str,
+        *,
+        short: Literal[False] = False,
+        on_error: Literal["show_panel", "suppress_panel"] = "show_panel"
     ) -> FullHash: ...
 
     @overload
     def resolve(
-        self, commitish: str, *, short: Literal[False] = False, lenient: Literal[True]
+        self,
+        commitish: str,
+        *,
+        short: Literal[False] = False,
+        on_error: Literal["ignore"]
     ) -> FullHash | None: ...
 
     def resolve(
@@ -252,16 +268,17 @@ class HistoryMixin(mixin_base):
         commitish: str,
         *,
         short: bool = False,
-        lenient: bool = False
+        on_error: Literal["show_panel", "suppress_panel", "ignore"] = "show_panel"
     ) -> ShortHash | FullHash | None:
         resolved = self.git(
             "rev-parse",
             "--verify",
             "--short" if short else None,
             commitish,
-            throw_on_error=not lenient
+            throw_on_error=on_error != "ignore",
+            show_panel_on_error=on_error == "show_panel"
         ).strip()
-        if lenient:
+        if on_error == "ignore":
             return resolved or None
         return resolved
 

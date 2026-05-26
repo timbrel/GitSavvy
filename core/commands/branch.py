@@ -95,7 +95,7 @@ class gs_create_branch(GsWindowCommand):
         previous_tip: Optional[str] = None
     ) -> None:
         if force and previous_tip is None:
-            previous_tip = self.resolve(f"refs/heads/{branch_name}", lenient=True)
+            previous_tip = self.resolve(f"refs/heads/{branch_name}", on_error="ignore")
 
         try:
             self.git_throwing_silently(
