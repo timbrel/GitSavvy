@@ -168,7 +168,6 @@ class gs_delete_branch(GsWindowCommand):
         undo_owner: sublime.ViewId,
         force: bool = False
     ) -> None:
-        old_hash = self.git("rev-parse", "--verify", f"refs/heads/{branch}").strip()
         if force:
             rv = self.git("branch", "-D", branch)
         else:
@@ -187,12 +186,10 @@ class gs_delete_branch(GsWindowCommand):
                 e.show_error_panel()
                 raise
 
-        if undo_owner:
-            ref_undo.add_branch_undo(self, branch, old_hash, undo_owner)
-
         match = EXTRACT_COMMIT.search(rv.strip())
         if match:
             commit = match.group(1)
+            ref_undo.add_branch_undo(self, branch, commit, undo_owner)
             uprint(DELETE_UNDO_MESSAGE.format(branch, commit))
         self.window.status_message(
             "Deleted local branch ({}).".format(branch)
