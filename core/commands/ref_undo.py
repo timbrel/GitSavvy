@@ -80,6 +80,22 @@ def add_branch_undo(
     )
 
 
+def add_branch_move_undo(
+    cmd: GitCommand,
+    branch_name: str,
+    old_hash: str,
+    undo_owner: UndoOwner
+) -> None:
+    add_undo_action(
+        undo_owner,
+        RefUndoAction(
+            "Move branch '{}' back to {}".format(branch_name, cmd.get_short_hash(old_hash)),
+            ("branch", "--force", branch_name, old_hash),
+            time.time()
+        )
+    )
+
+
 @contextmanager
 def record_tag_recreate_action(
     cmd: GitCommand,

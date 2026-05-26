@@ -83,10 +83,25 @@ def ask_for_name(caption=just(NEW_BRANCH_PROMPT), initial_text=just("")):
 class gs_create_branch(GsWindowCommand):
     defaults = {
         "branch_name": ask_for_name(),
+        "undo_owner": std_undo_owner,
     }
 
-    def run(self, branch_name, start_point=None, force=False):
-        # type: (str, str, bool) -> None
+    def run(
+        self,
+        branch_name: str,
+        undo_owner: sublime.ViewId,
+        start_point: Optional[str] = None,
+        force: bool = False,
+        previous_tip: Optional[str] = None
+    ) -> None:
+        if force and previous_tip is None:
+            previous_tip = self.git(
+                "rev-parse",
+                "--verify",
+                f"refs/heads/{branch_name}",
+                throw_on_error=False
+            ).strip() or None
+
         try:
             self.git_throwing_silently(
                 "branch",
@@ -97,13 +112,19 @@ class gs_create_branch(GsWindowCommand):
         except GitSavvyError as e:
             if BRANCH_ALREADY_EXISTS_MESSAGE.format(branch_name) in e.stderr and not force:
                 def overwrite_action():
-                    old_hash = self.git("rev-parse", branch_name).strip()
-                    uprint(RECREATE_BRANCH_UNDO_MESSAGE.format(branch_name, old_hash))
+                    previous_tip = self.git(
+                        "rev-parse",
+                        "--verify",
+                        f"refs/heads/{branch_name}"
+                    ).strip()
+                    uprint(RECREATE_BRANCH_UNDO_MESSAGE.format(branch_name, previous_tip))
 
                     self.window.run_command("gs_create_branch", {
                         "branch_name": branch_name,
                         "start_point": start_point,
                         "force": True,
+                        "previous_tip": previous_tip,
+                        "undo_owner": undo_owner,
                     })
 
                 show_actions_panel(self.window, [
@@ -118,6 +139,9 @@ class gs_create_branch(GsWindowCommand):
             else:
                 e.show_error_panel()
                 raise
+
+        if force and previous_tip:
+            ref_undo.add_branch_move_undo(self, branch_name, previous_tip, undo_owner)
 
         self.window.status_message("Created {}{}".format(
             branch_name,
