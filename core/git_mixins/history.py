@@ -295,7 +295,7 @@ class HistoryMixin(mixin_base):
         self.update_store({"short_hash_length": len(short_hash)})
         return short_hash
 
-    def filename_at_commit(self, filename: FullPath, commit_hash: ShortHash) -> str:
+    def filename_at_commit(self, filename: FullPath, commit_hash: str) -> FullPath:
         if is_dynamic_ref(commit_hash):
             return self._filename_at_commit(filename, commit_hash)
 
@@ -307,7 +307,7 @@ class HistoryMixin(mixin_base):
             return file_history_cache[key].filename_at_commit
 
     @cached(not_if={"commit_hash": is_dynamic_ref})
-    def _filename_at_commit(self, filename: str, commit_hash: str) -> str:
+    def _filename_at_commit(self, filename: FullPath, commit_hash: str) -> FullPath:
         lines = self.git(
             "log",
             "--format=",  # we don't need any commit info beside the name status
@@ -318,7 +318,7 @@ class HistoryMixin(mixin_base):
         ).strip().splitlines()
 
         try:
-            return lines[-1].split("\t")[1]
+            return self.to_full_path(lines[-1].split("\t")[1])
         except IndexError:
             return filename
 
