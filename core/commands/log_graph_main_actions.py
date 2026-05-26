@@ -138,9 +138,9 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
     def actions_for_multiple_lines(
         self, view: sublime.View, infos: List[LineInfo]
-    ) -> List[Tuple[str, Callable[[], None]]]:
+    ) -> Sequence[ActionType]:
         file_path = self._get_file_path(view)
-        actions: List[Tuple[str, Callable[[], None]]] = []
+        actions: List[ActionType] = []
 
         if len(infos) == 2:
 
@@ -235,7 +235,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
     def actions_for_single_line(
         self, view: sublime.View, info: LineInfo, branches: Dict[str, Branch]
-    ) -> List[Tuple[str, Callable[[], None]]]:
+    ) -> Sequence[ActionType]:
         head_info = describe_head(view, branches)
         commit_hash = info["commit"]
         good_commit_name = (
@@ -261,7 +261,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             else lambda x: []
         )
 
-        actions: List[Tuple[str, Callable[[], None]]] = []
+        actions: List[ActionType] = []
         if in_bisect:
             actions += [
                 ("Good", partial(self.bisect_step, "good")),
