@@ -8,7 +8,7 @@ from . import push, ref_undo
 from ..git_command import GitSavvyError
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ...common import util
-from GitSavvy.core.base_commands import ask_for_local_branch, GsWindowCommand
+from GitSavvy.core.base_commands import ask_for_local_branch, std_undo_owner, GsWindowCommand
 from ..ui__quick_panel import noop, show_actions_panel
 from GitSavvy.core.utils import uprint
 
@@ -158,19 +158,16 @@ class gs_unset_tracking_information(GsWindowCommand):
 class gs_delete_branch(GsWindowCommand):
     defaults = {
         "branch": ask_for_local_branch,
+        "undo_owner": std_undo_owner,
     }
 
     @util.actions.destructive(description="delete a local branch")
     def run(
         self,
         branch: str,
-        force: bool = False,
-        undo_owner: Optional[sublime.ViewId] = None
+        undo_owner: sublime.ViewId,
+        force: bool = False
     ) -> None:
-        if undo_owner is None:
-            av = self.window.active_view()
-            undo_owner = av.id() if av else None
-
         old_hash = self.git("rev-parse", "--verify", f"refs/heads/{branch}").strip()
         if force:
             rv = self.git("branch", "-D", branch)
