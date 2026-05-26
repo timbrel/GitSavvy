@@ -45,8 +45,8 @@ class CommitInfo(NamedTuple):
 @dataclass(frozen=True)
 class FileStatus:
     mode: str
-    from_path: str
-    to_path: Optional[str] = None
+    from_path: ShortPath
+    to_path: ShortPath | None = None
 
 
 class FileHistoryEntry(NamedTuple):
@@ -391,7 +391,7 @@ class HistoryMixin(mixin_base):
         base_commit: Optional[str],
         target_commit: Optional[str],
         line: int,
-        file_path: str
+        file_path: FullPath
     ) -> int:
         """
         Return the target line while following renames for a HEAD-anchored file.
@@ -684,7 +684,7 @@ class HistoryMixin(mixin_base):
     def recent_commit_for_line_range(
         self,
         current_commit: str,
-        file_path: str,
+        file_path: FullPath,
         line_range: tuple[int, int],
         skip_current: bool = False
     ) -> ShortHash | None:
@@ -755,7 +755,7 @@ class HistoryMixin(mixin_base):
     def _log_commits_for_line_range(
         self,
         current_commit: str,
-        file_path: str,
+        file_path: FullPath,
         line_range: tuple[int, int]
     ) -> list[ShortHash]:
         file_path_at_commit = self.filename_at_commit(file_path, current_commit)
@@ -931,10 +931,10 @@ def parse_name_status_z(output: str) -> Iterator[FileStatus]:
             continue
 
         if mode.startswith(("R", "C")):
-            yield FileStatus(mode, fields[idx], fields[idx + 1])
+            yield FileStatus(mode, ShortPath(fields[idx]), ShortPath(fields[idx + 1]))
             idx += 2
         else:
-            yield FileStatus(mode, fields[idx])
+            yield FileStatus(mode, ShortPath(fields[idx]))
             idx += 1
 
 

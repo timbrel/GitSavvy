@@ -13,7 +13,7 @@ from ..fns import filter_, take, unique
 from ..git_command import GitCommand
 from ..git_mixins.branches import Branch
 from ..text_helper import line_from_pt
-from ..types import ShortHash
+from ..types import FullPath, ShortHash
 from ..ui__quick_panel import ActionType, SEPARATOR, show_actions_panel, show_quick_panel
 from ..utils import open_folder_in_new_window
 from . import multi_selector
@@ -132,7 +132,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             selected_index=selected_index,
         )
 
-    def _get_file_path(self, view: sublime.View) -> Optional[str]:
+    def _get_file_path(self, view: sublime.View) -> FullPath | None:
         settings = view.settings()
         apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
         paths = (
@@ -713,7 +713,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         self,
         base_commit: str,
         target_commit: str | None = None,
-        file_path: str | None = None
+        file_path: FullPath | None = None
     ):
         if file_path:
             base_path = self.filename_at_commit(file_path, base_commit)
@@ -747,7 +747,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             "file_path": file_path
         })
 
-    def checkout_file_at_commit(self, commit_hash: str, file_path: str):
+    def checkout_file_at_commit(self, commit_hash: str, file_path: FullPath):
         file_path = (
             self.filename_at_commit(file_path, commit_hash)
             if self.savvy_settings.get("log_follow_rename") else

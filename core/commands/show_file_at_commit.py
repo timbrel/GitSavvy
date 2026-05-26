@@ -12,6 +12,7 @@ from ..runtime import (
     enqueue_on_ui, enqueue_on_worker, on_worker,
     run_as_text_command, text_command, throttled
 )
+from ..types import FullPath
 from ..ui_mixins.quick_panel import show_log_panel
 from ..utils import flash, focus_view
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
@@ -82,7 +83,7 @@ def compute_identifier_for_view(view: sublime.View) -> Optional[Tuple]:
 
 class gs_show_file_at_commit(GsWindowCommand):
 
-    def run(self, commit_hash: str = None, filepath: str = None,
+    def run(self, commit_hash: str = None, filepath: FullPath = None,
             position: Optional[Position] = None, lang: Optional[str] = None) -> None:
         fix_position = False
         if not filepath:
@@ -163,11 +164,11 @@ class gs_show_file_at_commit(GsWindowCommand):
 
 
 class _gs_show_file_at_commit_refresh_mixin(GsTextCommand):
-    def update_reference_document(self, commit_hash: str, file_path: str) -> None:
+    def update_reference_document(self, commit_hash: str, file_path: FullPath) -> None:
         self.view.set_reference_document(self.previous_file_version(commit_hash, file_path))
         views_with_reference_document.add(self.view)
 
-    def previous_file_version(self, current_commit: str, file_path: str) -> str:
+    def previous_file_version(self, current_commit: str, file_path: FullPath) -> str:
         previous_commit = get_previous_commit(self, self.view, current_commit, file_path)
         if previous_commit:
             file_path_at_commit = self.filename_at_commit(file_path, previous_commit)
@@ -296,7 +297,7 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
         view = self.view
 
         settings = view.settings()
-        file_path: str = settings.get("git_savvy.file_path")
+        file_path: FullPath = settings.get("git_savvy.file_path")
         commit_hash: str = settings.get("git_savvy.show_file_at_commit_view.commit")
 
         next_commit = get_next_commit(self, view, commit_hash, file_path)
@@ -334,7 +335,7 @@ class gs_show_file_at_commit_open_next_change(GsTextCommand):
     def run(self, edit) -> None:
         view = self.view
         settings = view.settings()
-        file_path: str = settings.get("git_savvy.file_path")
+        file_path: FullPath = settings.get("git_savvy.file_path")
         commit_hash: str = settings.get("git_savvy.show_file_at_commit_view.commit")
         line_range = visible_line_range(view)
         if line_range is None:

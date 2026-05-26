@@ -6,9 +6,9 @@ import re
 import string
 
 from GitSavvy.core.fns import tail
+from GitSavvy.core.types import ShortPath
 
-
-from typing import Iterable, List, NamedTuple, Optional, Set, TYPE_CHECKING
+from typing import Iterable, List, NamedTuple, Optional, TYPE_CHECKING
 
 
 class HeadState(NamedTuple):
@@ -22,13 +22,13 @@ class HeadState(NamedTuple):
 
 
 class FileStatus(NamedTuple):
-    path: str
-    path_alt: Optional[str]  # For renames and copies, the old path
+    path: ShortPath
+    path_alt: Optional[ShortPath]  # For renames and copies, the old path
     index_status: str
     working_status: str
 
     @classmethod
-    def new(cls, path: str, status: str, alt: str | None = None) -> FileStatus:
+    def new(cls, path: ShortPath, status: str, alt: ShortPath | None = None) -> FileStatus:
         return cls(path, alt, status[0], status[1])
 
 
@@ -117,9 +117,9 @@ class StatusMixin(mixin_base):
                 continue
             index_status = entry[0].strip()
             working_status = entry[1].strip()
-            path = entry[3:]
+            path = ShortPath(entry[3:])
             path_alt = (
-                next(porcelain_entries)
+                ShortPath(next(porcelain_entries))
                 if index_status in ["R", "C"] or working_status in ["R", "C"]
                 else None)
             entries.append(FileStatus(path, path_alt, index_status, working_status))
@@ -451,14 +451,13 @@ class StatusMixin(mixin_base):
             if line.startswith("#\t")
         ]
 
-    def check_for_conflict_markers(self, file_paths):
-        # type: (List[str]) -> Set[str]
+    def check_for_conflict_markers(self, file_paths: list[ShortPath]) -> set[ShortPath]:
         to_check = set(file_paths) & set(self.conflicting_files_())
         if not to_check:
             return set()
 
         return {
-            re.search(r"^(?P<fpath>[^:]+)", line).group("fpath")  # type: ignore[union-attr]
+            ShortPath(fpath)
             for line in self.git(
                 "diff",
                 "--check",
@@ -467,6 +466,8 @@ class StatusMixin(mixin_base):
                 throw_on_error=False
             ).splitlines()
             if "leftover conflict marker" in line
+            if (match := re.search(r"^(?P<fpath>[^:]+)", line))
+            if (fpath := match.group("fpath"))
         }
 
     def is_probably_untracked_file(self, file_path: str) -> bool:
@@ -487,7 +488,7 @@ class StatusMixin(mixin_base):
             and any(file.path == normed_git_path for file in status.unstaged_files)
         )
 
-    def _mark_untracked_files_as_staged(self, files: list[str]) -> None:
+    def _mark_untracked_files_as_staged(self, files: list[ShortPath]) -> None:
         status = self.current_state().get("status")
         if not status:
             return
@@ -509,7 +510,7 @@ class StatusMixin(mixin_base):
             )
         })
 
-    def _mark_staged_files_as_untracked(self, files: list[str]) -> None:
+    def _mark_staged_files_as_untracked(self, files: list[ShortPath]) -> None:
         status = self.current_state().get("status")
         if not status:
             return
@@ -532,5 +533,5 @@ class StatusMixin(mixin_base):
         })
 
 
-def extract_paths(files: Iterable[FileStatus]) -> set[str]:
+def extract_paths(files: Iterable[FileStatus]) -> set[ShortPath]:
     return {f.path for f in files if f.path}

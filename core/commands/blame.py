@@ -14,7 +14,7 @@ from ..fns import filter_
 from ..git_mixins.history import CommitInfo, LogEntry, is_dynamic_ref
 from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker, run_as_text_command, throttled
 from ..ui_mixins.quick_panel import PanelCommandMixin, show_log_panel
-from ..types import FullHash, LineNo, Row, ShortHash
+from ..types import FullHash, FullPath, LineNo, Row, ShortHash
 from ..view import scroll_to_pt, y_offset, Position
 from ...common import util
 from GitSavvy.core.base_commands import GsTextCommand
@@ -255,7 +255,7 @@ class gs_blame(GsTextCommand):
     def run(
         self,
         edit,
-        file_path: str = None,
+        file_path: FullPath = None,
         repo_path: str = None,
         commit_hash: str = None,
         position: Position = None
@@ -545,7 +545,7 @@ class gs_blame_refresh(GsTextCommand):
 
     def render_blame(
         self,
-        file_path: str,
+        file_path: FullPath,
         commit_hash: ShortHash | None,
         blame_format: _BlameFormat,
         ignore_whitespace=False,
@@ -561,7 +561,7 @@ class gs_blame_refresh(GsTextCommand):
     @cached(not_if={"commit_hash": is_dynamic_ref})
     def _run_blame_and_parse(
         self,
-        file_path: str,
+        file_path: FullPath,
         commit_hash: ShortHash | None,
         ignore_whitespace=False,
         detect_options=None

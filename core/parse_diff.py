@@ -139,7 +139,7 @@ class FileHeader(TextRange):
         if not match:
             return None
 
-        return match.group(1)
+        return ShortPath(match.group(1))
 
     def first_line(self):
         # type: () -> str
