@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import time
-from typing import cast, List, NamedTuple, Tuple
+from typing import cast, Iterator, List, NamedTuple, Tuple
 
 from sublime_plugin import WindowCommand
 
 from ...common import util
 from ..git_command import GitCommand
+from ..types import ShortHash
 from ..ui__quick_panel import show_quick_panel
 
 
@@ -15,6 +17,7 @@ __all__ = (
     "add_branch_undo",
     "add_tag_undo",
     "add_undo_action",
+    "record_tag_recreate_action",
     "gs_ref_undo",
 )
 
@@ -57,15 +60,31 @@ def add_branch_undo(cmd: GitCommand, branch_name: str, old_hash: str) -> None:
     )
 
 
+@contextmanager
+def record_tag_recreate_action(
+    cmd: GitCommand,
+    tag_name: str,
+    tag_ref_hash: ShortHash | None = None,
+    dereferenced_target_hash: ShortHash | None = None
+) -> Iterator[None]:
+    ref = f"refs/tags/{tag_name}"
+    tag_ref_hash = tag_ref_hash or cmd.git("rev-parse", "--short", ref).strip()
+    dereferenced_target_hash = (
+        dereferenced_target_hash
+        or cmd.git("rev-parse", "--short", f"{ref}^{{}}").strip()
+    )
+
+    yield
+
+    add_tag_undo(cmd, tag_name, tag_ref_hash, dereferenced_target_hash)
+
+
 def add_tag_undo(
     cmd: GitCommand,
     tag_name: str,
-    tag_ref_hash: str,
-    dereferenced_target_hash: str,
+    tag_ref_hash: ShortHash,
+    dereferenced_target_hash: ShortHash,
 ) -> None:
-    assert tag_ref_hash and dereferenced_target_hash
-
-    display_hash = cmd.get_short_hash(dereferenced_target_hash)
     # Undo via `update-ref` instead of `git tag --force` so annotated tags
     # are restored as the exact same tag object.  That preserves the tagger,
     # timestamp, annotation message, and signature.  The trade-off is that
@@ -74,7 +93,7 @@ def add_tag_undo(
     add_undo_action(
         cmd,
         RefUndoAction(
-            "Re-create tag '{}' at {}".format(tag_name, display_hash),
+            "Re-create tag '{}' at {}".format(tag_name, dereferenced_target_hash),
             ("update-ref", f"refs/tags/{tag_name}", tag_ref_hash),
             time.time()
         )
