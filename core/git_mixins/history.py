@@ -83,8 +83,7 @@ file_history_cache = FileHistoryCache(maxsize=8192)
 commit_info_cache: CommitInfoCache = Cache(maxsize=8192)
 
 
-def is_dynamic_ref(ref):
-    # type: (Optional[str]) -> bool
+def is_dynamic_ref(ref: Optional[str]) -> bool:
     return (
         not ref
         or ref == "HEAD"
@@ -367,8 +366,12 @@ class HistoryMixin(mixin_base):
         return None
 
     @cached(not_if={"base_commit": is_dynamic_ref, "target_commit": is_dynamic_ref})
-    def list_touched_filenames(self, base_commit, target_commit, cached=None):
-        # type: (Optional[str], Optional[str], Optional[bool]) -> List[str]
+    def list_touched_filenames(
+        self,
+        base_commit: Optional[str],
+        target_commit: Optional[str],
+        cached: Optional[bool] = None
+    ) -> list[ShortPath]:
         return self.git(
             "diff",
             "--name-only",
