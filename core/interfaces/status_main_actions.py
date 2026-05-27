@@ -161,7 +161,7 @@ class gs_status_action_menu(GsWindowCommand):
             if not w.views():
                 w.run_command("gs_show_status")
 
-        commit_hash = self.get_short_hash("HEAD")
+        commit_hash = self.resolve("HEAD", short=True)
         worktree_path = self.create_new_worktree(commit_hash)
         open_folder_in_new_window(worktree_path, then=callback)
 
