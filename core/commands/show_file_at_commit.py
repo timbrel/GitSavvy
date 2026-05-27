@@ -417,7 +417,7 @@ def keep_info_popup_state(view: sublime.View) -> Iterator[None]:
 def get_next_commit(
     cmd: GitCommand,
     view: sublime.View,
-    commit_hash: str,
+    commit_hash: ShortHash,
     file_path: str | None = None
 ) -> NextCommit:
     commit_hash = cmd.get_short_hash(commit_hash)
