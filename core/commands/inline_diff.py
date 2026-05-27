@@ -1,3 +1,4 @@
+from __future__ import annotations
 from itertools import groupby, takewhile
 import os
 from contextlib import contextmanager
@@ -38,7 +39,7 @@ __all__ = (
 
 
 from typing import Dict, Iterable, List, Literal, NamedTuple, Optional, Tuple
-from ..types import LineNo, ColNo, Row
+from ..types import LineNo, ColNo, Row, ShortHash
 from GitSavvy.common.util.parse_diff import Hunk as InlineDiff_Hunk
 
 
@@ -1004,16 +1005,16 @@ class gs_inline_diff_previous_commit(TextCommand, GitCommand):
 
 
 class gs_inline_diff_next_commit(TextCommand, GitCommand):
-    def run(self, edit):
+    def run(self, edit) -> None:
         view = self.view
         settings = view.settings()
         file_path = settings.get("git_savvy.file_path")
-        target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
+        target_commit: ShortHash | None = settings.get("git_savvy.inline_diff_view.target_commit")
         if target_commit is None:
             flash(view, "Already on the working dir version.")
             return
 
-        new_base_commit = target_commit
+        new_base_commit: ShortHash | None = target_commit
         next_commit = show_file_at_commit.get_next_commit(self, view, target_commit, file_path)
         if next_commit.error_message:
             flash(view, next_commit.error_message)
