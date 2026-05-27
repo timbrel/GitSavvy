@@ -14,6 +14,7 @@ from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff
 from ..runtime import ensure_on_ui, enqueue_on_worker
 from ..text_helper import TextRange
+from ..types import ShortHash
 from ..caches import Cache, cached_until_focus_switch
 from ..utils import flash, flash_regions, focus_view
 from ..view import replace_view_content
@@ -323,7 +324,7 @@ class gs_show_commit_open_previous_commit(TextCommand, GitCommand):
 
         settings = view.settings()
         file_path: Optional[str] = settings.get("git_savvy.file_path")
-        commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
+        commit_hash: ShortHash = settings.get("git_savvy.show_commit_view.commit")
 
         previous_commit = show_file_at_commit.get_previous_commit(self, view, commit_hash, file_path)
         if not previous_commit:
@@ -351,7 +352,7 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
 
         settings = view.settings()
         file_path: Optional[str] = settings.get("git_savvy.file_path")
-        commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
+        commit_hash: ShortHash = settings.get("git_savvy.show_commit_view.commit")
         next_commit = show_file_at_commit.get_next_commit(self, view, commit_hash, file_path)
         if next_commit.error_message:
             flash(view, next_commit.error_message)
