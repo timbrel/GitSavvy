@@ -6,9 +6,9 @@ import re
 import string
 
 from GitSavvy.core.fns import tail
-from GitSavvy.core.types import ShortPath
+from GitSavvy.core.types import FullHash, ShortHash, ShortPath
 
-from typing import Iterable, List, NamedTuple, Optional, TYPE_CHECKING
+from typing import Iterable, List, Literal, NamedTuple, Optional, TYPE_CHECKING
 
 
 class HeadState(NamedTuple):
@@ -371,8 +371,7 @@ class StatusMixin(mixin_base):
             return "{}/{}".format(cursor, total)
         return ""
 
-    def _read_rebase_file(self, fname):
-        # type: (str) -> str
+    def _read_rebase_file(self, fname: str) -> str:
         path = os.path.join(self._rebase_dir, fname)
         try:
             with open(path, "r") as f:
@@ -393,8 +392,7 @@ class StatusMixin(mixin_base):
         # type: () -> bool
         return os.path.exists(os.path.join(self.git_dir, "MERGE_HEAD"))
 
-    def merge_head(self):
-        # type: () -> str
+    def merge_head(self) -> ShortHash:
         path = os.path.join(self.git_dir, "MERGE_HEAD")
         with open(path, "r") as f:
             commit_hash = f.read().strip()
@@ -404,8 +402,7 @@ class StatusMixin(mixin_base):
         # type: () -> bool
         return os.path.exists(os.path.join(self.git_dir, "CHERRY_PICK_HEAD"))
 
-    def cherry_pick_head(self):
-        # type: () -> str
+    def cherry_pick_head(self) -> ShortHash | Literal[""]:
         commit_hash = self._read_git_file("CHERRY_PICK_HEAD")
         return self.get_short_hash(commit_hash) if commit_hash else ""
 
@@ -413,15 +410,14 @@ class StatusMixin(mixin_base):
         # type: () -> bool
         return os.path.exists(os.path.join(self.git_dir, "REVERT_HEAD"))
 
-    def revert_head(self):
-        # type: () -> str
+    def revert_head(self) -> ShortHash | Literal[""]:
         commit_hash = self._read_git_file("REVERT_HEAD")
         return self.get_short_hash(commit_hash) if commit_hash else ""
 
     def in_bisect(self) -> bool:
         return os.path.exists(os.path.join(self.git_dir, "BISECT_START"))
 
-    def bisect_start_commit(self) -> str:
+    def bisect_start_commit(self) -> ShortHash | Literal[""]:
         commit_hash = self._read_git_file("BISECT_START")
         return self.get_short_hash(commit_hash) if commit_hash else ""
 
