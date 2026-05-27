@@ -500,9 +500,9 @@ def position_from_setting(value) -> Optional[Position]:
     return Position(row, col, offset)
 
 
-def remember_next_commit_for(view: sublime.View, mapping: Dict[str, str]) -> None:
+def remember_next_commit_for(view: sublime.View, mapping: dict[ShortHash, ShortHash]) -> None:
     settings = view.settings()
-    store: Dict[str, str] = settings.get("git_savvy.next_commits", {})
+    store = settings.get("git_savvy.next_commits", {})
     store.update(mapping)
     settings.set("git_savvy.next_commits", store)
 
