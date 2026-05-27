@@ -1,3 +1,4 @@
+from __future__ import annotations
 from contextlib import contextmanager
 from functools import partial
 import os
@@ -15,6 +16,7 @@ from ..git_mixins.tags import TagList
 from ...common import util
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker, run_on_new_thread
+from GitSavvy.core.types import ShortHash
 from GitSavvy.core.utils import flash, uprint
 from GitSavvy.core.ui_mixins.quick_panel import show_remote_panel
 from ..ui__quick_panel import noop, show_actions_panel
@@ -374,8 +376,7 @@ class TagsInterfaceCommand(ui.InterfaceCommand):
         return ui.extract_by_selector(
             self.view, TAGS_SELECTOR, self.region_name_for("local_tags"))
 
-    def selected_local_commits(self):
-        # type: () -> List[str]
+    def selected_local_commits(self) -> list[ShortHash]:
         return ui.extract_by_selector(
             self.view, SHA_SELECTOR, self.region_name_for("local_tags"))
 
@@ -384,8 +385,7 @@ class TagsInterfaceCommand(ui.InterfaceCommand):
         return ui.extract_by_selector(
             self.view, TAGS_SELECTOR, self.remote_section_name_for(remote_name))
 
-    def selected_remote_commits(self, remote_name):
-        # type: (str) -> List[str]
+    def selected_remote_commits(self, remote_name) -> list[ShortHash]:
         return ui.extract_by_selector(
             self.view, SHA_SELECTOR, self.remote_section_name_for(remote_name))
 
