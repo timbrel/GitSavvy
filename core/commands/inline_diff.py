@@ -1008,11 +1008,11 @@ class gs_inline_diff_next_commit(TextCommand, GitCommand):
         view = self.view
         settings = view.settings()
         file_path = settings.get("git_savvy.file_path")
-        if is_interactive_diff(view):
+        target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
+        if target_commit is None:
             flash(view, "Already on the working dir version.")
             return
 
-        target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
         new_base_commit = target_commit
         next_commit = show_file_at_commit.get_next_commit(self, view, target_commit, file_path)
         if next_commit.error_message:
