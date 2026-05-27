@@ -1,5 +1,6 @@
 from GitSavvy.core.git_mixins.tags import is_semver_tag
 from GitSavvy.core.caches import cache_in_store_as
+from GitSavvy.core.types import FullHash, ShortHash
 
 from typing import Iterable, Iterator, List, NamedTuple, Optional, TYPE_CHECKING
 from .branches import Branch
@@ -13,14 +14,14 @@ else:
 
 
 class Commit(NamedTuple):
-    hash: str
+    hash: ShortHash
     decoration: str
     message: str
 
 
 class ActiveBranchMixin(mixin_base):
 
-    def get_commit_hash_for_head(self) -> str:
+    def get_commit_hash_for_head(self) -> FullHash:
         """
         Get the SHA1 commit hash for the commit at HEAD.
         """
