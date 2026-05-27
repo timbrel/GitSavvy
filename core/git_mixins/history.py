@@ -49,7 +49,7 @@ class FileStatus:
 
 
 class FileHistoryEntry(NamedTuple):
-    short_hash: str
+    short_hash: ShortHash
     date: str
     subject: str
     status: Optional[FileStatus]
@@ -61,7 +61,7 @@ FileHistoryKey: TypeAlias = "tuple[str, T]"
 
 class FileHistoryInfo(NamedTuple, Generic[T]):
     filename_at_commit: T
-    previous_commit: Optional[str]
+    previous_commit: ShortHash | None
 
 
 class CommitHistoryInfo(NamedTuple):
