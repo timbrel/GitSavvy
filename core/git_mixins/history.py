@@ -703,13 +703,10 @@ class HistoryMixin(mixin_base):
 
     def next_commits(
         self,
-        current_commit: str,
+        current_commit: ShortHash,
         file_path: str | None = None,
         branch_hint: str | None = None,
     ) -> dict[ShortHash, ShortHash] | None:
-        if current_commit != self.get_short_hash(current_commit):
-            raise RuntimeError("`next_commits` must be called with a short commit hash.")
-
         if branch_hint is None:
             branch_hint = self.get_branch_hint_for_commit(current_commit)
 
