@@ -4,12 +4,13 @@ import re
 
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.caches import cache_in_store_as
+from GitSavvy.core.types import FullHash
 
 from typing import Iterable, List, NamedTuple, Optional, Set
 
 
 class TagDetails(NamedTuple):
-    sha: str
+    sha: FullHash
     tag: str
     human_date: str
     relative_date: str
