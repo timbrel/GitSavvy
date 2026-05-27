@@ -11,6 +11,7 @@ from ...common import util
 from GitSavvy.core.base_commands import ask_for_local_branch, std_undo_owner, GsWindowCommand
 from ..ui__quick_panel import noop, show_actions_panel
 from GitSavvy.core.utils import uprint
+from GitSavvy.core.types import FullHash, ShortHash
 
 
 __all__ = (
@@ -92,7 +93,7 @@ class gs_create_branch(GsWindowCommand):
         undo_owner: sublime.ViewId,
         start_point: Optional[str] = None,
         force: bool = False,
-        previous_tip: Optional[str] = None
+        previous_tip: FullHash | ShortHash | None = None
     ) -> None:
         if force and previous_tip is None:
             previous_tip = self.resolve(f"refs/heads/{branch_name}", on_error="ignore")
