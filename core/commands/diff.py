@@ -1511,7 +1511,7 @@ class _GsDiffOpenFileAtHunk(TextCommand, GitCommand, ABC):
 
     @abstractmethod
     def load_file_at_line(
-        self, commit_hash: Optional[str], filename: ShortPath, line: LineNo, col: ColNo
+        self, commit_hash: FullHash | None, filename: ShortPath, line: LineNo, col: ColNo
     ) -> None:
         raise NotImplementedError
 
