@@ -36,8 +36,8 @@ class RefLogEntry(NamedTuple):
 
 
 class CommitInfo(NamedTuple):
-    commit_hash: str
-    short_hash: str
+    commit_hash: FullHash
+    short_hash: ShortHash
     subject: str
     date: str
 
@@ -577,7 +577,7 @@ class HistoryMixin(mixin_base):
             rv += stdout.decode("utf-8", "replace")
         return rv
 
-    def commit_subject_and_date(self, commit_hash: str, file_path: str | None = None) -> CommitInfo:
+    def commit_subject_and_date(self, commit_hash: ShortHash, file_path: FullPath | None = None) -> CommitInfo:
         """
 
         Note: Providing `file_path` can affect the return value!
