@@ -675,12 +675,11 @@ class HistoryMixin(mixin_base):
 
     def recent_commit_for_line_range(
         self,
-        current_commit: str,
+        current_commit: ShortHash,
         file_path: FullPath,
         line_range: tuple[int, int],
         skip_current: bool = False
     ) -> ShortHash | None:
-        current_commit = self.get_short_hash(current_commit)
         commits = self._log_commits_for_line_range(
             current_commit,
             file_path,
