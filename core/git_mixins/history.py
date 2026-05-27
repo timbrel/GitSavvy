@@ -231,7 +231,7 @@ class HistoryMixin(mixin_base):
         self,
         commitish: str,
         *,
-        short: Literal[True] = True,
+        short: Literal[True],
         on_error: Literal["show_panel", "suppress_panel"] = "show_panel"
     ) -> ShortHash: ...
 
@@ -240,7 +240,7 @@ class HistoryMixin(mixin_base):
         self,
         commitish: str,
         *,
-        short: Literal[True] = True,
+        short: Literal[True],
         on_error: Literal["ignore"]
     ) -> ShortHash | None: ...
 
@@ -262,13 +262,7 @@ class HistoryMixin(mixin_base):
         on_error: Literal["ignore"]
     ) -> FullHash | None: ...
 
-    def resolve(
-        self,
-        commitish: str,
-        *,
-        short: bool = False,
-        on_error: Literal["show_panel", "suppress_panel", "ignore"] = "show_panel"
-    ) -> ShortHash | FullHash | None:
+    def resolve(self, commitish, *, short=False, on_error="show_panel"):
         resolved = self.git(
             "rev-parse",
             "--verify",
