@@ -277,15 +277,9 @@ class HistoryMixin(mixin_base):
     def resolve_commitish(self, ref: str) -> ShortHash:
         return self.resolve(ref, short=True)
 
-    def get_short_hash(self, commit_hash):
-        # type: (FullHash | ShortHash) -> ShortHash
-        short_hash_length = self.current_state().get("short_hash_length")
-        if short_hash_length:
-            return commit_hash[:short_hash_length]
-
-        short_hash = self.resolve(commit_hash, short=True)
-        self.update_store({"short_hash_length": len(short_hash)})
-        return short_hash
+    def get_short_hash(self, commit_hash: FullHash | ShortHash) -> ShortHash:
+        short_hash_length = self.get_short_hash_length()
+        return ShortHash(commit_hash[:short_hash_length])
 
     def get_short_hash_length(self) -> int:
         short_hash_length = self.current_state().get("short_hash_length")
