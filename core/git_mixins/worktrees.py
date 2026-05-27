@@ -9,7 +9,7 @@ import sublime
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.caches import cache_in_store_as
 from GitSavvy.core.git_command import mixin_base
-from GitSavvy.core.types import ShortHash
+from GitSavvy.core.types import FullHash, ShortHash
 
 
 WORKTREE_LIST_SUPPORTS_Z_FORMAT = (2, 36, 0)
@@ -26,7 +26,7 @@ WORKTREE_LIST_PORCELAIN_FIELD_PREFIXES = (
 
 class Worktree(NamedTuple):
     path: str
-    commit_hash: str
+    commit_hash: FullHash
     branch_name: str | None
     is_main: bool
     locked: str | bool
