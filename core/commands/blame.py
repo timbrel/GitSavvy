@@ -257,7 +257,7 @@ class gs_blame(GsTextCommand):
         edit,
         file_path: FullPath = None,
         repo_path: str = None,
-        commit_hash: str = None,
+        commit_hash: ShortHash | FullHash | Literal["HEAD"] | None = None,
         position: Position = None
     ):
         if not repo_path:
@@ -270,9 +270,12 @@ class gs_blame(GsTextCommand):
 
         if commit_hash == "HEAD":
             commit_hash = self.get_commit_hash_for_head()
-        if commit_hash:
-            commit_hash = self.get_short_hash(commit_hash)
 
+        commit_hash_: ShortHash | None = (
+            self.get_short_hash(commit_hash)
+            if commit_hash else
+            None
+        )
         active_view = self.view
         av_settings = active_view.settings()
         blame_format = blame_format_for_view(active_view)
@@ -285,7 +288,7 @@ class gs_blame(GsTextCommand):
         elif av_settings.get("git_savvy.blame_view"):
             lineno = self.find_matching_lineno_in_file_history(
                 av_settings.get("git_savvy.commit_hash"),
-                commit_hash,
+                commit_hash_,
                 current_lineno(active_view),
                 file_path
             )
@@ -293,10 +296,10 @@ class gs_blame(GsTextCommand):
 
         else:
             row, _ = active_view.rowcol(cursor_pos(active_view))
-            if commit_hash:
-                target_path = self.filename_at_commit(file_path, commit_hash)
+            if commit_hash_:
+                target_path = self.filename_at_commit(file_path, commit_hash_)
                 lineno = self.reverse_find_matching_lineno_between_files(
-                    (commit_hash, target_path),
+                    (commit_hash_, target_path),
                     (None, file_path),
                     row + 1
                 )
@@ -307,7 +310,7 @@ class gs_blame(GsTextCommand):
         this_id = (
             repo_path,
             file_path,
-            commit_hash
+            commit_hash_
         )
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
@@ -322,7 +325,7 @@ class gs_blame(GsTextCommand):
                     "syntax": "Packages/GitSavvy/syntax/blame.sublime-syntax",
                     "git_savvy.repo_path": repo_path,
                     "git_savvy.file_path": file_path,
-                    "git_savvy.commit_hash": commit_hash,
+                    "git_savvy.commit_hash": commit_hash_,
                     "git_savvy.blame_view.ignore_whitespace":
                         av_settings.get("git_savvy.blame_view.ignore_whitespace", False),
                     "git_savvy.blame_view.detect_move_or_copy_within":
