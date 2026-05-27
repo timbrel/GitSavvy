@@ -333,7 +333,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
         result = test.commit_subject_and_date("c3")
 
-        self.assertEqual(result, CommitInfo("c3", "c3", "cached subject", "2026-5-7"))
+        self.assertEqual(result, CommitInfo("c3", "cached subject", "2026-5-7"))
 
     def test_commit_subject_and_date_fetches_on_cache_miss(self):
         from GitSavvy.core.git_mixins.history import CommitInfo
@@ -345,7 +345,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
         result = test.commit_subject_and_date("c3")
 
-        self.assertEqual(result, CommitInfo("c3", "c3", "fetched", "2026-5-7"))
+        self.assertEqual(result, CommitInfo("c3", "fetched", "2026-5-7"))
         self.assertIn("c3", commit_info_cache)
 
     def test_commit_subject_and_date_resolves_ref_via_first_fetched_hash(self):
@@ -361,7 +361,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
         # `commit_info_cache[hashes[0]]` (i.e. c3) instead.
         result = test.commit_subject_and_date("HEAD")
 
-        self.assertEqual(result, CommitInfo("HEAD", "HEAD", "tip", "2026-5-7"))
+        self.assertEqual(result, CommitInfo("HEAD", "tip", "2026-5-7"))
 
     def test_commit_subject_and_date_raises_when_file_path_not_in_history(self):
         test = HistoryMixin()

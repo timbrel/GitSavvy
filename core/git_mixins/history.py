@@ -36,7 +36,6 @@ class RefLogEntry(NamedTuple):
 
 
 class CommitInfo(NamedTuple):
-    commit_hash: FullHash
     short_hash: ShortHash
     subject: str
     date: str
@@ -591,7 +590,6 @@ class HistoryMixin(mixin_base):
         def to_commit_info(info: CommitHistoryInfo) -> CommitInfo:
             return CommitInfo(
                 commit_hash,
-                commit_hash,
                 info.subject,
                 info.date
             )
@@ -621,7 +619,7 @@ class HistoryMixin(mixin_base):
             elif line.startswith("    "):
                 subject = line.lstrip()
                 break
-        return CommitInfo(commit_hash, self.get_short_hash(commit_hash), subject, date)
+        return CommitInfo(self.get_short_hash(commit_hash), subject, date)
 
     def previous_commit(
         self,
