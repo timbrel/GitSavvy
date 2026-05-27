@@ -42,7 +42,7 @@ def describe_graph_line(line: str, known_branches: Dict[str, Branch]) -> Optiona
     if match is None:
         return None
 
-    commit_hash = match.group("commit_hash")
+    commit_hash = ShortHash(match.group("commit_hash"))
     decoration = match.group("decoration")
 
     rv: LineInfo = {"commit": commit_hash}

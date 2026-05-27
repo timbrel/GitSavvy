@@ -292,7 +292,7 @@ class BranchesMixin(mixin_base):
             branch_name,
             remote,
             canonical_name,
-            commit_hash,
+            FullHash(commit_hash),
             commit_msg,
             active,
             is_remote,

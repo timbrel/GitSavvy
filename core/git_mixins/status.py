@@ -8,7 +8,7 @@ import string
 from GitSavvy.core.fns import tail
 from GitSavvy.core.types import FullHash, ShortHash, ShortPath
 
-from typing import Iterable, List, Literal, NamedTuple, Optional, TYPE_CHECKING
+from typing import Iterable, List, Literal, NamedTuple, Optional, TYPE_CHECKING, overload
 
 
 class HeadState(NamedTuple):
@@ -69,6 +69,15 @@ if TYPE_CHECKING:
     class mixin_base(HistoryMixin, _GitCommand): pass  # noqa: E701
 else:
     mixin_base = object
+
+
+RebaseHashFile = Literal[
+    "onto",
+    "orig-head",
+    "stopped-sha",
+    "current-commit",
+    "original-commit",
+]
 
 
 class StatusMixin(mixin_base):
@@ -219,7 +228,7 @@ class StatusMixin(mixin_base):
             secondary.append("Merging {}.".format(self.merge_head()))
 
         if self.in_rebase():
-            onto = self._read_rebase_file("onto")
+            onto = self.rebase_onto_commit()
             rebase_progress = self._rebase_progress()
             secondary.append(
                 "Rebasing `{}`{}{}.".format(
@@ -322,12 +331,10 @@ class StatusMixin(mixin_base):
     def rebase_branch_name(self):
         return self._read_rebase_file("head-name").replace("refs/heads/", "")
 
-    def rebase_orig_head(self):
-        # type: () -> str
+    def rebase_orig_head(self) -> FullHash | Literal[""]:
         return self._read_rebase_file("orig-head")
 
-    def rebase_conflict_at(self):
-        # type: () -> str
+    def rebase_conflict_at(self) -> FullHash | Literal[""]:
         if self.in_rebase_merge():
             return (
                 self._read_rebase_file("stopped-sha")
@@ -336,8 +343,7 @@ class StatusMixin(mixin_base):
         else:
             return self._read_rebase_file("original-commit")
 
-    def rebase_onto_commit(self):
-        # type: () -> str
+    def rebase_onto_commit(self) -> FullHash | Literal[""]:
         return self._read_rebase_file("onto")
 
     def rebase_stopped_at(self):
@@ -359,7 +365,7 @@ class StatusMixin(mixin_base):
 
         parts = item.split()
         if parts[0] in {"pick", "fixup", "squash", "reword", "edit"}:
-            parts[1] = self.get_short_hash(parts[1])
+            parts[1] = ShortHash(parts[1])
             return " ".join(parts)
         else:
             return item
@@ -371,7 +377,11 @@ class StatusMixin(mixin_base):
             return "{}/{}".format(cursor, total)
         return ""
 
-    def _read_rebase_file(self, fname: str) -> str:
+    @overload
+    def _read_rebase_file(self, fname: RebaseHashFile) -> FullHash | Literal[""]: ...
+    @overload
+    def _read_rebase_file(self, fname: str) -> str: ...
+    def _read_rebase_file(self, fname: str) -> str:  # noqa: E301
         path = os.path.join(self._rebase_dir, fname)
         try:
             with open(path, "r") as f:
@@ -396,7 +406,7 @@ class StatusMixin(mixin_base):
         path = os.path.join(self.git_dir, "MERGE_HEAD")
         with open(path, "r") as f:
             commit_hash = f.read().strip()
-        return self.get_short_hash(commit_hash)
+        return self.get_short_hash(FullHash(commit_hash))
 
     def in_cherry_pick(self):
         # type: () -> bool
@@ -404,7 +414,7 @@ class StatusMixin(mixin_base):
 
     def cherry_pick_head(self) -> ShortHash | Literal[""]:
         commit_hash = self._read_git_file("CHERRY_PICK_HEAD")
-        return self.get_short_hash(commit_hash) if commit_hash else ""
+        return self.get_short_hash(FullHash(commit_hash)) if commit_hash else ""
 
     def in_revert(self):
         # type: () -> bool
@@ -412,14 +422,14 @@ class StatusMixin(mixin_base):
 
     def revert_head(self) -> ShortHash | Literal[""]:
         commit_hash = self._read_git_file("REVERT_HEAD")
-        return self.get_short_hash(commit_hash) if commit_hash else ""
+        return self.get_short_hash(FullHash(commit_hash)) if commit_hash else ""
 
     def in_bisect(self) -> bool:
         return os.path.exists(os.path.join(self.git_dir, "BISECT_START"))
 
     def bisect_start_commit(self) -> ShortHash | Literal[""]:
         commit_hash = self._read_git_file("BISECT_START")
-        return self.get_short_hash(commit_hash) if commit_hash else ""
+        return self.get_short_hash(FullHash(commit_hash)) if commit_hash else ""
 
     def conflicting_files_(self):
         # type: () -> List[str]

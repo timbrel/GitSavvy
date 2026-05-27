@@ -205,7 +205,7 @@ class gs_delete_branch(GsWindowCommand):
         match = EXTRACT_COMMIT.search(rv.strip())
         if match:
             commit = match.group(1)
-            ref_undo.add_branch_undo(self, branch, commit, undo_owner)
+            ref_undo.add_branch_undo(self, branch, ShortHash(commit), undo_owner)
             uprint(DELETE_UNDO_MESSAGE.format(branch, commit))
         self.window.status_message(
             "Deleted local branch ({}).".format(branch)

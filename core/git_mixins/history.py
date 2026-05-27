@@ -610,17 +610,21 @@ class HistoryMixin(mixin_base):
             return to_commit_info(commit_info_cache[hashes[0]])
 
     def commit_subject_and_date_from_patch(self, patch: str) -> CommitInfo:
-        commit_hash, date, subject = "", "", ""
+        commit_hash: FullHash | None = None
+        date = subject = ""
         for line in patch.splitlines():
             if line.startswith("commit "):
                 # The commit line can include decorations we must split off!
-                commit_hash = line[7:].split(" ", 1)[0]
+                commit_hash = FullHash(line[7:].split(" ", 1)[0])
             # CommitDate: Tue Dec 20 18:21:40 2022 +0100
             elif line.startswith("CommitDate: ") and (parsed_date := email.utils.parsedate(line[12:])):
                 date = "-".join(map(str, parsed_date[:3]))
             elif line.startswith("    "):
                 subject = line.lstrip()
                 break
+
+        if commit_hash is None:
+            raise ValueError("Patch does not contain a commit hash")
         return CommitInfo(self.get_short_hash(commit_hash), subject, date)
 
     def previous_commit(
@@ -775,7 +779,7 @@ class HistoryMixin(mixin_base):
             raise RuntimeError("follow=True requires file_path")
 
         return (
-            line.strip()
+            ShortHash(line.strip())
             for line in self.git_streaming(
                 "log",
                 "--format=%h",
@@ -904,7 +908,7 @@ def parse_file_history_log(output: str) -> Iterator[FileHistoryEntry]:
             continue
 
         yield FileHistoryEntry(
-            short_hash,
+            ShortHash(short_hash),
             date_from_committer_date(committer_date),
             subject,
             next(parse_name_status_z(name_status), None)

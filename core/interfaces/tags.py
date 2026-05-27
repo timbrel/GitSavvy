@@ -38,7 +38,7 @@ __all__ = (
 )
 
 
-from typing import Dict, Iterator, List, Literal, Optional, Set, Union, TypedDict
+from typing import Dict, Iterator, List, Literal, Optional, Set, Union, TypedDict, cast
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.tags import TagDetails
 
@@ -377,8 +377,10 @@ class TagsInterfaceCommand(ui.InterfaceCommand):
             self.view, TAGS_SELECTOR, self.region_name_for("local_tags"))
 
     def selected_local_commits(self) -> list[ShortHash]:
-        return ui.extract_by_selector(
-            self.view, SHA_SELECTOR, self.region_name_for("local_tags"))
+        return cast(
+            List[ShortHash],
+            ui.extract_by_selector(
+                self.view, SHA_SELECTOR, self.region_name_for("local_tags")))
 
     def selected_remote_tags(self, remote_name):
         # type: (str) -> List[str]
@@ -386,8 +388,10 @@ class TagsInterfaceCommand(ui.InterfaceCommand):
             self.view, TAGS_SELECTOR, self.remote_section_name_for(remote_name))
 
     def selected_remote_commits(self, remote_name) -> list[ShortHash]:
-        return ui.extract_by_selector(
-            self.view, SHA_SELECTOR, self.remote_section_name_for(remote_name))
+        return cast(
+            List[ShortHash],
+            ui.extract_by_selector(
+                self.view, SHA_SELECTOR, self.remote_section_name_for(remote_name)))
 
     def remote_section_name_for(self, remote_name):
         # type: (str) -> str

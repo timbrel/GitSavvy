@@ -519,7 +519,7 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
         line = lines[0]
         for region, scope in extract_tokens_with_scopes(view, line):
             if "constant.other.git-savvy.branches.branch.sha1" in scope:
-                commit_hash = view.substr(region)
+                commit_hash = ShortHash(view.substr(region))
             if "meta.git-savvy.branches.branch.name" in scope:
                 branch_name = view.substr(region)
             if "meta.git-savvy.status.section.branch.remote" in scope:
@@ -789,7 +789,7 @@ def record_deleted_branch_undos(
     for match in DELETED_BRANCH_RE.finditer(stdout):
         branch_name, commit_hash = match.groups()
         if branch_name in expected_branches:
-            ref_undo.add_branch_undo(cmd, branch_name, commit_hash, undo_owner)
+            ref_undo.add_branch_undo(cmd, branch_name, ShortHash(commit_hash), undo_owner)
 
 
 class gs_branches_rename(CommandForSingleBranch):

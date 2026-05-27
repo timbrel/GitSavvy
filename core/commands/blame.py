@@ -394,7 +394,10 @@ class gs_blame_open_log(GsTextCommand):
     def workdir_log_entry(self) -> LogEntry:
         short_hash_length = self.get_short_hash_length()
         placeholder = (".-" * short_hash_length)[:short_hash_length]
-        return LogEntry(placeholder, "", "", "HEAD / WORKTREE", "", "", "", "")
+        return LogEntry(
+            placeholder,   # type: ignore[arg-type] # quick'n'dirty
+            "",            # type: ignore[arg-type]
+            "", "HEAD / WORKTREE", "", "", "", "")
 
     def on_done(self, commit) -> None:
         if commit is not None:
@@ -700,10 +703,14 @@ class gs_blame_refresh(GsTextCommand):
         commits: _CommitsByHash = defaultdict(lambda: defaultdict(str))
 
         for line in lines_iter:
-            match = re.match(r"([0-9a-f]{40}) (\d+) (\d+)( \d+)?", line)
+            match = re.match(
+                r"(?P<commit>[0-9a-f]{40}) \d+ (?P<lineno>\d+)(?: \d+)?",
+                line
+            )
             assert match
-            commit_hash, _, lineno, _ = match.groups()
-            short_hash = (
+            commit_hash = FullHash(match["commit"])
+            lineno = int(match["lineno"])
+            short_hash: BlamedCommit = (
                 ""
                 if commit_hash == NOT_COMMITED_HASH
                 else self.get_short_hash(commit_hash)
@@ -730,7 +737,7 @@ class gs_blame_refresh(GsTextCommand):
                 # Strip tab character.
                 contents=next_line[1:],
                 commit_hash=short_hash,
-                lineno=int(lineno)))
+                lineno=lineno))
 
         return blamed_lines, commits
 
