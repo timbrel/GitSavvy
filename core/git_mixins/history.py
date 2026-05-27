@@ -15,8 +15,8 @@ from GitSavvy.core.types import FullHash, FullPath, ShortHash, ShortPath
 
 
 class LogEntry(NamedTuple):
-    short_hash: str
-    long_hash: str
+    short_hash: ShortHash
+    long_hash: FullHash
     ref: str
     summary: str
     raw_body: str
@@ -26,8 +26,8 @@ class LogEntry(NamedTuple):
 
 
 class RefLogEntry(NamedTuple):
-    short_hash: str
-    long_hash: str
+    short_hash: ShortHash
+    long_hash: FullHash
     summary: str
     reflog_name: str
     reflog_selector: str
