@@ -444,7 +444,7 @@ class gs_blame_refresh(GsTextCommand):
 
     def run(self, edit, scroll_to: tuple[int, float | None] | None = None) -> None:
         settings = self.view.settings()
-        file_path = settings.get("git_savvy.file_path")
+        file_path: FullPath = settings.get("git_savvy.file_path")
         commit_hash: ShortHash | None = settings.get("git_savvy.commit_hash", None)
 
         enqueue_on_worker(self.update_commit_details, commit_hash, file_path)
@@ -498,8 +498,8 @@ class gs_blame_refresh(GsTextCommand):
 
     def update_commit_details(
         self,
-        commit_hash: str | None,
-        file_path: str
+        commit_hash: ShortHash | None,
+        file_path: FullPath
     ) -> None:
         if commit_hash:
             commit_details = self.commit_subject_and_date(commit_hash, file_path)
