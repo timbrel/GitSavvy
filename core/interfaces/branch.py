@@ -21,6 +21,7 @@ from ..utils import open_folder_in_new_window
 from GitSavvy.core.fns import chain, filter_, pairwise
 from GitSavvy.core.utils import flash, is_younger_than
 from GitSavvy.core.runtime import enqueue_on_worker, on_new_thread, on_worker
+from GitSavvy.core.types import FullHash, ShortHash
 
 
 __all__ = (
@@ -71,7 +72,7 @@ class BranchViewState(TypedDict, total=False):
 
 
 class DetachedBranch(NamedTuple):
-    commit_hash: str
+    commit_hash: FullHash
     canonical_name: str
     worktree_path: str
 
@@ -548,7 +549,7 @@ def extract_tokens_with_scopes(view, region) -> list[tuple[sublime.Region, str]]
 
 
 class LineInfo(NamedTuple):
-    commit_hash: str
+    commit_hash: ShortHash
     branch_name: str | None
     remote: str | None
     worktree: str | None
