@@ -392,9 +392,7 @@ class gs_blame_open_log(GsTextCommand):
         )
 
     def workdir_log_entry(self) -> LogEntry:
-        short_hash_length = (
-            self.current_state().get("short_hash_length") or
-            len(self.get_short_hash("HEAD")))
+        short_hash_length = self.get_short_hash_length()
         placeholder = (".-" * short_hash_length)[:short_hash_length]
         return LogEntry(placeholder, "", "", "HEAD / WORKTREE", "", "", "", "")
 

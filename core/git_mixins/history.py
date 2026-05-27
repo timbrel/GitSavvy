@@ -287,6 +287,14 @@ class HistoryMixin(mixin_base):
         self.update_store({"short_hash_length": len(short_hash)})
         return short_hash
 
+    def get_short_hash_length(self) -> int:
+        short_hash_length = self.current_state().get("short_hash_length")
+        if not short_hash_length:
+            short_hash_length = len(self.resolve("HEAD", short=True))
+            self.update_store({"short_hash_length": short_hash_length})
+
+        return short_hash_length
+
     def filename_at_commit(self, filename: FullPath, commit_hash: str) -> FullPath:
         if is_dynamic_ref(commit_hash):
             return self._filename_at_commit(filename, commit_hash)
