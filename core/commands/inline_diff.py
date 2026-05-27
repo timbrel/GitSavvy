@@ -39,7 +39,7 @@ __all__ = (
 
 
 from typing import Dict, Iterable, List, Literal, NamedTuple, Optional, Tuple
-from ..types import LineNo, ColNo, Row, ShortHash
+from ..types import LineNo, ColNo, Row, FullPath, ShortHash
 from GitSavvy.common.util.parse_diff import Hunk as InlineDiff_Hunk
 
 
@@ -967,11 +967,11 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
 
 
 class gs_inline_diff_previous_commit(TextCommand, GitCommand):
-    def run(self, edit):
-        # type: (...) -> None
+    def run(self, edit) -> None:
         view = self.view
         settings = view.settings()
-        file_path = settings.get("git_savvy.file_path")
+        file_path: FullPath = settings.get("git_savvy.file_path")
+        base_commit: ShortHash | None
         if is_interactive_diff(view):
             base_commit = self.recent_commit("HEAD", file_path, follow=False)
             if not base_commit:
@@ -1008,7 +1008,7 @@ class gs_inline_diff_next_commit(TextCommand, GitCommand):
     def run(self, edit) -> None:
         view = self.view
         settings = view.settings()
-        file_path = settings.get("git_savvy.file_path")
+        file_path: FullPath = settings.get("git_savvy.file_path")
         target_commit: ShortHash | None = settings.get("git_savvy.inline_diff_view.target_commit")
         if target_commit is None:
             flash(view, "Already on the working dir version.")

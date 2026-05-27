@@ -266,8 +266,8 @@ class gs_show_file_at_commit_open_previous_commit(GsTextCommand):
         view = self.view
 
         settings = view.settings()
-        file_path = settings.get("git_savvy.file_path")
-        commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
+        file_path: FullPath = settings.get("git_savvy.file_path")
+        commit_hash: ShortHash = settings.get("git_savvy.show_file_at_commit_view.commit")
 
         previous_commit = get_previous_commit(self, view, commit_hash, file_path)
         if not previous_commit:
@@ -448,7 +448,7 @@ def get_next_commit(
 def get_previous_commit(
     cmd: GitCommand,
     view: sublime.View,
-    commit_hash: str,
+    commit_hash: ShortHash,
     file_path: str | None = None
 ) -> Optional[str]:
     commit_hash = cmd.get_short_hash(commit_hash)
