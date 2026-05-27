@@ -14,7 +14,7 @@ from sublime_plugin import EventListener
 from ...common import util
 from ..base_commands import GsTextCommand
 from ..git_command import GitCommand
-from ..types import ShortHash
+from ..types import FullHash, ShortHash
 from ..ui__quick_panel import show_quick_panel
 
 
@@ -67,7 +67,7 @@ class GsRefUndoCleanup(EventListener):
 def add_branch_undo(
     cmd: GitCommand,
     branch_name: str,
-    old_hash: str,
+    old_hash: FullHash | ShortHash,
     undo_owner: UndoOwner
 ) -> None:
     add_undo_action(
@@ -83,7 +83,7 @@ def add_branch_undo(
 def add_branch_move_undo(
     cmd: GitCommand,
     branch_name: str,
-    old_hash: str,
+    old_hash: FullHash | ShortHash,
     undo_owner: UndoOwner
 ) -> None:
     add_undo_action(
@@ -100,16 +100,13 @@ def add_branch_move_undo(
 def record_tag_recreate_action(
     cmd: GitCommand,
     tag_name: str,
-    tag_ref_hash: ShortHash | None = None,
-    dereferenced_target_hash: ShortHash | None = None,
+    tag_ref_hash: FullHash | ShortHash | None = None,
+    dereferenced_target_hash: FullHash | ShortHash | None = None,
     undo_owner: UndoOwner | None = None
 ) -> Iterator[None]:
     ref = f"refs/tags/{tag_name}"
-    tag_ref_hash = tag_ref_hash or cmd.resolve(ref, short=True)
-    dereferenced_target_hash = (
-        dereferenced_target_hash
-        or cmd.resolve(f"{ref}^{{}}", short=True)
-    )
+    tag_ref_hash = tag_ref_hash or cmd.resolve(ref)
+    dereferenced_target_hash = dereferenced_target_hash or cmd.resolve(f"{ref}^{{}}")
 
     yield
 
@@ -119,8 +116,8 @@ def record_tag_recreate_action(
 def add_tag_undo(
     cmd: GitCommand,
     tag_name: str,
-    tag_ref_hash: ShortHash,
-    dereferenced_target_hash: ShortHash,
+    tag_ref_hash: FullHash | ShortHash,
+    dereferenced_target_hash: FullHash | ShortHash,
     undo_owner: UndoOwner | None = None
 ) -> None:
     undo_owner = undo_owner or resolve_undo_owner(cmd)
@@ -135,7 +132,8 @@ def add_tag_undo(
     add_undo_action(
         undo_owner,
         RefUndoAction(
-            "Re-create tag '{}' at {}".format(tag_name, dereferenced_target_hash),
+            "Re-create tag '{}' at {}".format(
+                tag_name, cmd.get_short_hash(dereferenced_target_hash)),
             ("update-ref", f"refs/tags/{tag_name}", tag_ref_hash),
             time.time()
         )

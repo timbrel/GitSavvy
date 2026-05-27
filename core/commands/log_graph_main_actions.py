@@ -13,7 +13,7 @@ from ..fns import filter_, take, unique
 from ..git_command import GitCommand
 from ..git_mixins.branches import Branch
 from ..text_helper import line_from_pt
-from ..types import FullPath, ShortHash
+from ..types import FullHash, FullPath, ShortHash
 from ..ui__quick_panel import ActionType, SEPARATOR, show_actions_panel, show_quick_panel
 from ..utils import open_folder_in_new_window
 from . import multi_selector
@@ -761,7 +761,7 @@ def delete_tag_from_graph(
     cmd: GitCommand,
     window: sublime.Window,
     tag_name: str,
-    dereferenced_target_hash: ShortHash,
+    dereferenced_target_hash: FullHash | ShortHash,
     undo_owner: sublime.ViewId
 ) -> None:
     with ref_undo.record_tag_recreate_action(
