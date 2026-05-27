@@ -9,6 +9,7 @@ import sublime
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.caches import cache_in_store_as
 from GitSavvy.core.git_command import mixin_base
+from GitSavvy.core.types import ShortHash
 
 
 WORKTREE_LIST_SUPPORTS_Z_FORMAT = (2, 36, 0)
@@ -94,7 +95,9 @@ class WorktreesMixin(mixin_base):
         commit_current(current)
         return worktrees
 
-    def create_new_worktree(self, start_point: str, worktree_path: str = None) -> str:
+    def create_new_worktree(self, start_point: ShortHash, worktree_path: str = None) -> str:
+        # Note: `start_point: ShortHash` is a shortcut for the automatic `worktree_path`
+        #       computation.  Change when needed.
         if not worktree_path:
             if self.repo_path.startswith(sublime.packages_path()):
                 base = self.default_project_root()
