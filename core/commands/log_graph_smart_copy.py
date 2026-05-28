@@ -230,6 +230,7 @@ class gs_log_graph_smart_paste(sublime_plugin.TextCommand):
             window.run_command("gs_create_tag", {
                 "target_commit": commit_hash.text,
                 "tag_name": ref,
+                "force": True
             })
 
 
