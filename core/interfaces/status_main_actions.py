@@ -166,4 +166,4 @@ class gs_status_action_menu(GsWindowCommand):
         open_folder_in_new_window(worktree_path, then=callback)
 
     def create_tag(self) -> None:
-        self.window.run_command("gs_tag_create")
+        self.window.run_command("gs_create_tag")

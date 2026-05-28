@@ -16,7 +16,8 @@ import sublime
 from . import runtime
 
 
-from typing import Callable, Iterator, Optional, Sequence, Type
+from typing import Callable, Iterator, Optional, Sequence, Type, TypeVar
+T = TypeVar("T")
 
 
 @contextmanager
@@ -136,6 +137,10 @@ def yes_no_switch(name, value):
     if value:
         return name
     return "--no-{}".format(name[2:])
+
+
+def just(value: T) -> Callable[..., T]:
+    return lambda: value
 
 
 def focus_view(view):

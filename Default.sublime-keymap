@@ -1756,7 +1756,7 @@
     },
     {
         "keys": ["c"],
-        "command": "gs_tag_create",
+        "command": "gs_create_tag",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }

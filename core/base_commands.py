@@ -17,8 +17,9 @@ class Kont(Protocol):
         pass
 
 
+T = TypeVar("T")
 CommandT = TypeVar("CommandT", bound="GsCommand")
-Args = Dict[str, object]
+Args = Dict[str, Any]
 ArgProvider = Callable[[CommandT, Args, Kont], None]
 
 
@@ -202,3 +203,8 @@ def std_undo_owner(self: GsCommand, args: Args, done: Kont) -> None:
         done(av.id())
     else:
         self.window.status_message("No active_view() available.")
+
+
+def call_with_wanted_args(fn: Callable[..., T], args: Args) -> T:
+    fs = _signature(fn)
+    return fn(**{k: args[k] for k in fs.parameters.keys() if k in args})

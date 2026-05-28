@@ -227,7 +227,7 @@ class gs_log_graph_smart_paste(sublime_plugin.TextCommand):
                 "force": True
             })
         elif kind == "tag":
-            window.run_command("gs_tag_create", {
+            window.run_command("gs_create_tag", {
                 "target_commit": commit_hash.text,
                 "tag_name": ref,
             })

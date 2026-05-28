@@ -662,7 +662,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         self.window.run_command("gs_create_branch", {"start_point": commit_hash})
 
     def create_tag(self, commit_hash):
-        self.window.run_command("gs_tag_create", {"target_commit": commit_hash})
+        self.window.run_command("gs_create_tag", {"target_commit": commit_hash})
 
     def delete_tag(
         self,
