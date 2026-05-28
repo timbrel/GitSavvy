@@ -276,7 +276,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
             filter_((
                 "\n".join(
                     "    {} {}".format(
-                        self.get_short_hash(tag.sha),
+                        self.to_short_hash(tag.sha),
                         tag.tag,
                     )
                     for tag in local_tags.regular[:max_items]
@@ -284,7 +284,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                 "\n".join(
                     "   {}{} {:<10} {}{}".format(
                         maybe_mark(tag),
-                        self.get_short_hash(tag.sha),
+                        self.to_short_hash(tag.sha),
                         tag.tag,
                         tag.human_date,
                         " ({})".format(tag.relative_date) if tag.relative_date != tag.human_date else ""
@@ -341,7 +341,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                     if tag.tag[-3:] != "^{}" and (tag.sha, tag.tag) not in seen
                 ]
                 msg = "\n".join(
-                    "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
+                    "    {} {}".format(self.to_short_hash(tag.sha), tag.tag)
                     for tag in tags_list[:max_items]
                 ) or NO_MORE_TAGS_MESSAGE
 

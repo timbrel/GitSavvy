@@ -277,7 +277,7 @@ class HistoryMixin(mixin_base):
     def resolve_commitish(self, ref: str) -> ShortHash:
         return self.resolve(ref, short=True)
 
-    def get_short_hash(self, commit_hash: FullHash | ShortHash) -> ShortHash:
+    def to_short_hash(self, commit_hash: FullHash | ShortHash) -> ShortHash:
         short_hash_length = self.get_short_hash_length()
         return ShortHash(commit_hash[:short_hash_length])
 
@@ -625,7 +625,7 @@ class HistoryMixin(mixin_base):
 
         if commit_hash is None:
             raise ValueError("Patch does not contain a commit hash")
-        return CommitInfo(self.get_short_hash(commit_hash), subject, date)
+        return CommitInfo(self.to_short_hash(commit_hash), subject, date)
 
     def previous_commit(
         self,

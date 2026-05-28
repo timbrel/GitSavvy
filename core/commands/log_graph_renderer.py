@@ -631,7 +631,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 if (wanted_refs := list(refs))
 
                 for n, commit_hash in enumerate(reversed([
-                    self.get_short_hash(FullHash(line.split(maxsplit=2)[1]))
+                    self.to_short_hash(FullHash(line.split(maxsplit=2)[1]))
                     for line in self._read_git_file("logs", "refs", "heads", branch_name).splitlines()
                 ]))
                 if (ref := f"{branch_name}@{{{n}}}") in wanted_refs

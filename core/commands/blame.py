@@ -272,7 +272,7 @@ class gs_blame(GsTextCommand):
             commit_hash = self.get_commit_hash_for_head()
 
         commit_hash_: ShortHash | None = (
-            self.get_short_hash(commit_hash)
+            self.to_short_hash(commit_hash)
             if commit_hash else
             None
         )
@@ -419,7 +419,7 @@ class gs_blame_open_log(GsTextCommand):
         assert self.file_path
         view = self.view
         settings = view.settings()
-        commit = self.get_short_hash(commit) if commit else None
+        commit = self.to_short_hash(commit) if commit else None
         previous_commit = settings.get("git_savvy.commit_hash")
         lineno = self.find_matching_lineno_in_file_history(
             previous_commit,
@@ -713,7 +713,7 @@ class gs_blame_refresh(GsTextCommand):
             short_hash: BlamedCommit = (
                 ""
                 if commit_hash == NOT_COMMITED_HASH
-                else self.get_short_hash(commit_hash)
+                else self.to_short_hash(commit_hash)
             )
             commits[commit_hash]["short_hash"] = short_hash
             commits[commit_hash]["long_hash"] = commit_hash

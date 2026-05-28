@@ -185,7 +185,7 @@ class gs_checkout_current_file_at_commit(LogMixin, WindowCommand, GitCommand):
             self.window.status_message(
                 "Successfully checked out {} from {}.".format(
                     self.file_path,
-                    self.get_short_hash(commit_hash)
+                    self.to_short_hash(commit_hash)
                 )
             )
             util.view.refresh_gitsavvy_interfaces(self.window)

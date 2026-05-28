@@ -281,7 +281,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
 
         file_path = self.to_full_path(jump_position.filename, repo_path)
         syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
-        target_commit = self.get_short_hash(jump_position.commit_hash)
+        target_commit = self.to_short_hash(jump_position.commit_hash)
         base_commit = self.previous_commit(target_commit, file_path)
         cur_pos = Position(
             jump_position.line - 1,
@@ -451,14 +451,14 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         if target_commit:
             title += (
                 ", ({}..{})".format(
-                    self.get_short_hash(base_commit),
-                    self.get_short_hash(target_commit),
+                    self.to_short_hash(base_commit),
+                    self.to_short_hash(target_commit),
                 )
                 if base_commit
                 else ", (initial version)"
             )
         elif base_commit:
-            title += ", ({}..WORKING DIR)".format(self.get_short_hash(base_commit))
+            title += ", ({}..WORKING DIR)".format(self.to_short_hash(base_commit))
         if runs_on_ui_thread:
             self.draw(self.view, title, match_position, inline_diff_contents, hunks)
         else:
@@ -1133,7 +1133,7 @@ class gs_inline_diff_open_graph_context(TextCommand, GitCommand):
         target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
         window.run_command("gs_graph", {
             "all": True,
-            "follow": self.get_short_hash(target_commit) if target_commit else "HEAD",
+            "follow": self.to_short_hash(target_commit) if target_commit else "HEAD",
         })
 
 

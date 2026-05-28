@@ -64,7 +64,7 @@ def ensure_panel_is_visible(window, name=PANEL_NAME):
 
 class gs_show_commit_info(WindowCommand, GitCommand):
     def run(self, commit_hash, file_path=None, from_log_graph=False):
-        commit_hash = self.get_short_hash(commit_hash) if commit_hash else ""
+        commit_hash = self.to_short_hash(commit_hash) if commit_hash else ""
 
         # We're running either blocking or lazy, and currently choose
         # automatically.  Generally, we run blocking to reduce multiple

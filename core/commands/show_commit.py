@@ -65,7 +65,7 @@ class gs_show_commit(WindowCommand, GitCommand):
         if commit_hash in {"", "HEAD"}:
             commit_hash = self.resolve("HEAD", short=True)
         else:
-            commit_hash = self.get_short_hash(commit_hash)
+            commit_hash = self.to_short_hash(commit_hash)
 
         this_id = (
             repo_path,
@@ -260,7 +260,7 @@ def extract_commit_hash(self, args, done):
         flash(view, "Multiple commits are selected.")
         return
 
-    commit_hash = self.get_short_hash(commit_hashes.pop())
+    commit_hash = self.to_short_hash(commit_hashes.pop())
     done(commit_hash)
 
 
@@ -387,7 +387,7 @@ class gs_show_commit_open_graph_context(TextCommand, GitCommand):
         commit_hash = settings.get("git_savvy.show_commit_view.commit")
         window.run_command("gs_graph", {
             "all": True,
-            "follow": self.get_short_hash(commit_hash)
+            "follow": self.to_short_hash(commit_hash)
         })
 
 

@@ -312,7 +312,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
     def _render_detached_head(self, worktree: DetachedBranch) -> str:
         return "  ▸ {hash} (DETACHED)".format(
-            hash=self.get_short_hash(worktree.commit_hash),
+            hash=self.to_short_hash(worktree.commit_hash),
         )
 
     def _render_worktree_branches(self, branches: List[BranchWithWorktree | DetachedBranch]) -> str:
@@ -320,7 +320,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             "   <{hash}> {name}\n"
             "      \\ checked out at: {path}"
             .format(
-                hash=self.get_short_hash(branch.commit_hash),
+                hash=self.to_short_hash(branch.commit_hash),
                 name=branch.canonical_name,
                 path=self.nice_path(branch.worktree_path)
             )
@@ -355,7 +355,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         return "\n".join(
             "  {indicator} {hash} {name_with_extras}{description}".format(
                 indicator="▸" if branch.active else " ",
-                hash=self.get_short_hash(branch.commit_hash),
+                hash=self.to_short_hash(branch.commit_hash),
                 name_with_extras=" ".join(filter_((
                     branch.canonical_name[remote_name_length:],
                     ", ".join(filter_((

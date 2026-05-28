@@ -29,7 +29,7 @@ class gs_compare_commit(WindowCommand, GitCommand):
 
         branches = (
             [base_commit, target_commit]
-            + ['{}^!'.format(base) for base in map(self.get_short_hash, merge_bases)]
+            + ['{}^!'.format(base) for base in map(self.to_short_hash, merge_bases)]
         )
         self.window.run_command("gs_graph", {
             'all': False,

@@ -104,7 +104,7 @@ class gs_show_file_at_commit(GsWindowCommand):
                 lang = view.settings().get('syntax')
 
         if commit_hash:
-            commit_hash = self.get_short_hash(commit_hash)
+            commit_hash = self.to_short_hash(commit_hash)
             # Callers may pass a historical path from a diff hunk.  Keep the
             # view anchored to the working-dir path and resolve historical
             # names only when loading content for a specific commit.
@@ -420,7 +420,7 @@ def get_next_commit(
     commit_hash: ShortHash,
     file_path: str | None = None
 ) -> NextCommit:
-    commit_hash = cmd.get_short_hash(commit_hash)
+    commit_hash = cmd.to_short_hash(commit_hash)
     if next_commit := recall_next_commit_for(view, commit_hash):
         return NextCommit(next_commit)
 
@@ -451,7 +451,7 @@ def get_previous_commit(
     commit_hash: ShortHash,
     file_path: str | None = None
 ) -> Optional[str]:
-    commit_hash = cmd.get_short_hash(commit_hash)
+    commit_hash = cmd.to_short_hash(commit_hash)
     if previous := recall_previous_commit_for(view, commit_hash):
         return previous
 
@@ -684,7 +684,7 @@ class gs_show_file_at_commit_open_log(GsTextCommand):
 
     def _on_highlight(self, commit):
         view = self.view
-        commit = self.get_short_hash(commit)
+        commit = self.to_short_hash(commit)
         previous_commit = view.settings().get("git_savvy.show_file_at_commit_view.commit")
         view.settings().set("git_savvy.show_file_at_commit_view.commit", commit)
         position = capture_cur_position(view)
@@ -765,7 +765,7 @@ class gs_show_file_at_commit_open_graph_context(GsTextCommand):
 
         window.run_command("gs_graph", {
             "all": True,
-            "follow": self.get_short_hash(commit_hash),
+            "follow": self.to_short_hash(commit_hash),
         })
 
 

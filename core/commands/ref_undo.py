@@ -73,7 +73,7 @@ def add_branch_undo(
     add_undo_action(
         undo_owner,
         RefUndoAction(
-            "Re-create branch '{}' at {}".format(branch_name, cmd.get_short_hash(old_hash)),
+            "Re-create branch '{}' at {}".format(branch_name, cmd.to_short_hash(old_hash)),
             ("branch", branch_name, old_hash),
             time.time()
         )
@@ -89,7 +89,7 @@ def add_branch_move_undo(
     add_undo_action(
         undo_owner,
         RefUndoAction(
-            "Move branch '{}' back to {}".format(branch_name, cmd.get_short_hash(old_hash)),
+            "Move branch '{}' back to {}".format(branch_name, cmd.to_short_hash(old_hash)),
             ("branch", "--force", branch_name, old_hash),
             time.time()
         )
@@ -133,7 +133,7 @@ def add_tag_undo(
         undo_owner,
         RefUndoAction(
             "Re-create tag '{}' at {}".format(
-                tag_name, cmd.get_short_hash(dereferenced_target_hash)),
+                tag_name, cmd.to_short_hash(dereferenced_target_hash)),
             ("update-ref", f"refs/tags/{tag_name}", tag_ref_hash),
             time.time()
         )

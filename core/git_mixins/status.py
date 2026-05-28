@@ -233,7 +233,7 @@ class StatusMixin(mixin_base):
             secondary.append(
                 "Rebasing `{}`{}{}.".format(
                     self.rebase_branch_name(),
-                    " onto {}".format(self.get_short_hash(onto)) if onto else "",
+                    " onto {}".format(self.to_short_hash(onto)) if onto else "",
                     " ({})".format(rebase_progress) if rebase_progress else ""
                 )
             )
@@ -406,7 +406,7 @@ class StatusMixin(mixin_base):
         path = os.path.join(self.git_dir, "MERGE_HEAD")
         with open(path, "r") as f:
             commit_hash = f.read().strip()
-        return self.get_short_hash(FullHash(commit_hash))
+        return self.to_short_hash(FullHash(commit_hash))
 
     def in_cherry_pick(self):
         # type: () -> bool
@@ -414,7 +414,7 @@ class StatusMixin(mixin_base):
 
     def cherry_pick_head(self) -> ShortHash | Literal[""]:
         commit_hash = self._read_git_file("CHERRY_PICK_HEAD")
-        return self.get_short_hash(FullHash(commit_hash)) if commit_hash else ""
+        return self.to_short_hash(FullHash(commit_hash)) if commit_hash else ""
 
     def in_revert(self):
         # type: () -> bool
@@ -422,14 +422,14 @@ class StatusMixin(mixin_base):
 
     def revert_head(self) -> ShortHash | Literal[""]:
         commit_hash = self._read_git_file("REVERT_HEAD")
-        return self.get_short_hash(FullHash(commit_hash)) if commit_hash else ""
+        return self.to_short_hash(FullHash(commit_hash)) if commit_hash else ""
 
     def in_bisect(self) -> bool:
         return os.path.exists(os.path.join(self.git_dir, "BISECT_START"))
 
     def bisect_start_commit(self) -> ShortHash | Literal[""]:
         commit_hash = self._read_git_file("BISECT_START")
-        return self.get_short_hash(FullHash(commit_hash)) if commit_hash else ""
+        return self.to_short_hash(FullHash(commit_hash)) if commit_hash else ""
 
     def conflicting_files_(self):
         # type: () -> List[str]

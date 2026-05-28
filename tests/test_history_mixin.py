@@ -215,7 +215,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
     def test_next_commits_returns_right_to_left_chain_dict(self):
         test = HistoryMixin()
-        when(test).get_short_hash("c3").thenReturn("c3")
+        when(test).to_short_hash("c3").thenReturn("c3")
         when(test).git("log", ...).thenReturn(
             f"{RS}c5{US}2026-05-07 10:00:00 +0200{US}tip{NUL}"
             f"{RS}c4{US}2026-04-03 10:00:00 +0200{US}middle{NUL}"
@@ -228,7 +228,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
     def test_next_commits_returns_empty_dict_when_current_is_tip(self):
         test = HistoryMixin()
-        when(test).get_short_hash("c3").thenReturn("c3")
+        when(test).to_short_hash("c3").thenReturn("c3")
         when(test).git("log", ...).thenReturn(
             f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}tip{NUL}"
         )
@@ -239,7 +239,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
     def test_next_commits_returns_none_when_current_not_on_branch(self):
         test = HistoryMixin()
-        when(test).get_short_hash("c3").thenReturn("c3")
+        when(test).to_short_hash("c3").thenReturn("c3")
         when(test).git("log", ...).thenReturn(
             f"{RS}c5{US}2026-05-07 10:00:00 +0200{US}tip{NUL}"
             f"{RS}c4{US}2026-04-03 10:00:00 +0200{US}middle{NUL}"
