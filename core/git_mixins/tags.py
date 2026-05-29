@@ -29,7 +29,6 @@ class TagList(NamedTuple):
         return chain(self.regular, self.versions)
 
 
-SEMVER_TEST = re.compile(r'\d+\.\d+\.?\d*')
 SEMVER_TAG_RE = re.compile(
     r"^v?"
     r"\d+\.\d+\.\d+"
@@ -134,14 +133,14 @@ class TagsMixin(mixin_base):
         if semver_entries:
             return TagList(
                 [entry for entry in entries if entry not in semver_entries],
-                sort_version_tags(semver_entries),
+                sort_semver_tags(semver_entries),
                 "semver"
             )
 
         calendar_entries = [entry for entry in entries if is_calendar_version_tag(entry.tag)]
         return TagList(
             [entry for entry in entries if entry not in calendar_entries],
-            sort_version_tags(calendar_entries),
+            sort_calendar_version_tags(calendar_entries),
             "calendar"
         )
 
@@ -155,33 +154,38 @@ def is_calendar_version_tag(tag: str) -> bool:
     return bool(CALENDAR_VERSION_TAG_RE.match(tag))
 
 
-def sort_version_tags(entries: List[TagDetails]) -> List[TagDetails]:
-    if not entries:
-        return entries
-
-    try:
-        return sorted(
-            entries,
-            key=lambda entry: parse_version(entry.tag),
-            reverse=True
-        )
-    except Exception:
-        # The error might be caused by having tags like 1.2.3.1 and 1.2.3.beta.
-        # Exception thrown is "can't convert str to int" as it is comparing
-        # 'beta' with 1.
-        # Fallback and take only the numbers as sorting key.
-        return sorted(
-            entries,
-            key=lambda entry: parse_version(
-                SEMVER_TEST.search(entry.tag).group()  # type: ignore[union-attr]
-            ),
-            reverse=True
-        )
+def sort_semver_tags(entries: List[TagDetails]) -> List[TagDetails]:
+    return sorted(
+        entries,
+        key=lambda entry: semver_sort_key(entry.tag),
+        reverse=True
+    )
 
 
-def parse_version(version_str: str) -> tuple[str | int, ...]:
+def sort_calendar_version_tags(entries: List[TagDetails]) -> List[TagDetails]:
+    return sorted(
+        entries,
+        key=lambda entry: natural_version_key(entry.tag),
+        reverse=True
+    )
+
+
+def semver_sort_key(version_str: str) -> tuple[tuple[int, object], ...]:
+    base, separator, prerelease = strip_v_prefix(version_str).partition("-")
+    return (
+        natural_version_key(base)
+        + ((2, 0 if separator else 1),)
+        + natural_version_key(prerelease)
+    )
+
+
+def natural_version_key(version_str: str) -> tuple[tuple[int, object], ...]:
     return tuple(
-        int(part) if part.isdigit() else part
+        (0, int(part)) if part.isdigit() else (1, part)
         for part in re.split(r'[.-]', version_str)
         if part
     )
+
+
+def strip_v_prefix(version_str: str) -> str:
+    return version_str[1:] if version_str.startswith("v") else version_str

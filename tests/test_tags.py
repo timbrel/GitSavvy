@@ -47,6 +47,17 @@ class TestTags(unittest.TestCase):
             ["2026.05.29", "private", "v1.2.3"]
         )
 
+    def test_handle_tags_sorts_semver_naturally(self):
+        tag_list = TagsMixin().handle_semver_tags([
+            TagDetails("abc", "v2.0.0", "", ""),
+            TagDetails("def", "v10.0.0", "", ""),
+            TagDetails("ghi", "v10.0.0-rc.1", "", "")
+        ])
+        self.assertEqual(
+            [tag.tag for tag in tag_list.versions],
+            ["v10.0.0", "v10.0.0-rc.1", "v2.0.0"]
+        )
+
     def test_handle_tags_detects_calendar_versions(self):
         tag_list = TagsMixin().handle_semver_tags([
             TagDetails("abc", "2026.05.29", "", ""),
