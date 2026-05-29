@@ -1,20 +1,19 @@
 from __future__ import annotations
 
 from datetime import datetime
+from functools import partial
 import re
 from string import Formatter
 import sublime
-from sublime_plugin import TextCommand
 
 from . import ref_undo
 from ...common import util
 from ..git_command import GitSavvyError
-from ..ui_mixins.quick_panel import PanelActionMixin
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.base_commands import (
     call_with_wanted_args,
     Args, GsCommand, GsWindowCommand, Kont, std_undo_owner)
-from ..ui__quick_panel import noop, show_actions_panel
+from ..ui__quick_panel import ActionType, noop, show_actions_panel
 from GitSavvy.core.utils import just, uprint, yes_no_switch
 from GitSavvy.core.types import CommitHash
 
@@ -236,34 +235,42 @@ class gs_create_tag(GsWindowCommand):
         util.view.refresh_gitsavvy_interfaces(self.window)
 
 
-class gs_smart_tag(PanelActionMixin, TextCommand):
+class gs_smart_tag(GsWindowCommand):
     """
     Displays a panel of possible smart tag options, based on the choice,
     tag the current commit with the corresponding tagname.
     """
 
-    async_action = True
-    default_actions = [
-        ["smart_tag", "patch", ("patch", )],
-        ["smart_tag", "minor", ("minor", )],
-        ["smart_tag", "major", ("major", )],
-        ["smart_tag", "prerelease", ("prerelease", )],
-        ["smart_tag", "prepatch", ("prepatch", )],
-        ["smart_tag", "preminor", ("preminor", )],
-        ["smart_tag", "premajor", ("premajor", )],
-    ]
+    def run(self, version_style: str | None = None) -> None:
+        if not version_style:
+            version_style = self.get_local_tags().version_style
 
-    def update_actions(self) -> None:
-        if self.get_local_tags().version_style == "calendar":
-            style = self.get_calendar_version_style()
-            primary, secondary = calendar_version_options(style)
-            self.actions = [
-                ["create_tag", "Create '{}'".format(primary), (primary, )],
-                ["create_tag", "Create '{}'".format(secondary), (secondary, )],
-                ["edit_tag_name", "Edit the tag name", (primary, )],
-            ]
-        else:
-            self.actions = self.default_actions[:]
+        actions = (
+            self.calendar_actions()
+            if version_style == "calendar" else
+            self.semver_actions()
+        )
+        show_actions_panel(self.window, actions)
+
+    def calendar_actions(self) -> list[ActionType]:
+        style = self.get_calendar_version_style()
+        primary, secondary = calendar_version_options(style)
+        return [
+            ("Create '{}'".format(primary), partial(self.create_tag, primary)),
+            ("Create '{}'".format(secondary), partial(self.create_tag, secondary)),
+            ("Edit the tag name", partial(self.edit_tag_name, primary)),
+        ]
+
+    def semver_actions(self) -> list[ActionType]:
+        return [
+            ("patch", partial(self.smart_tag, "patch")),
+            ("minor", partial(self.smart_tag, "minor")),
+            ("major", partial(self.smart_tag, "major")),
+            ("prerelease", partial(self.smart_tag, "prerelease")),
+            ("prepatch", partial(self.smart_tag, "prepatch")),
+            ("preminor", partial(self.smart_tag, "preminor")),
+            ("premajor", partial(self.smart_tag, "premajor")),
+        ]
 
     def get_calendar_version_style(self) -> str:
         style = self.savvy_settings.get("calendar_version_style")
@@ -281,16 +288,10 @@ class gs_smart_tag(PanelActionMixin, TextCommand):
         self.edit_tag_name(tag_name)
 
     def create_tag(self, tag_name: str) -> None:
-        window = self.view.window()
-        if not window:
-            return
-        window.run_command("gs_create_tag", {"tag_name": tag_name})
+        self.window.run_command("gs_create_tag", {"tag_name": tag_name})
 
     def edit_tag_name(self, suggested_name: str) -> None:
-        window = self.view.window()
-        if not window:
-            return
-        window.run_command("gs_create_tag", {"suggested_name": suggested_name})
+        self.window.run_command("gs_create_tag", {"suggested_name": suggested_name})
 
 
 def calendar_version_style_is_valid(style: object) -> bool:

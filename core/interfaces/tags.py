@@ -29,6 +29,7 @@ __all__ = (
     "gs_tags_toggle_remotes",
     "gs_tags_refresh",
     "gs_tags_delete",
+    "gs_tags_smart_tag",
     "gs_tags_push",
     "gs_tags_show_commit",
     "gs_tags_open_on_github",
@@ -426,6 +427,18 @@ class gs_tags_refresh(TagsInterfaceCommand):
             interface.state["remote_tags_info"] = {}
 
         util.view.refresh_gitsavvy(self.view)
+
+
+class gs_tags_smart_tag(TagsInterfaceCommand):
+    """
+    Open the smart tag panel using the dashboard's known tag style.
+    """
+
+    def run(self, edit) -> None:
+        local_tags = self.interface.state.get("local_tags")
+        self.window.run_command("gs_smart_tag", {
+            "version_style": local_tags.version_style if local_tags else "semver"
+        })
 
 
 DELETE_UNDO_MESSAGE = """\
