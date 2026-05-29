@@ -14,7 +14,7 @@ from sublime_plugin import EventListener
 from ...common import util
 from ..base_commands import GsTextCommand
 from ..git_command import GitCommand
-from ..types import FullHash, ShortHash
+from ..types import CommitHash, FullHash, ShortHash
 from ..ui__quick_panel import show_quick_panel
 
 
@@ -100,13 +100,9 @@ def add_branch_move_undo(
 def record_tag_recreate_action(
     cmd: GitCommand,
     tag_name: str,
-    tag_ref_hash: FullHash | ShortHash | None = None,
-    dereferenced_target_hash: FullHash | ShortHash | None = None,
     undo_owner: UndoOwner | None = None
 ) -> Iterator[None]:
-    ref = f"refs/tags/{tag_name}"
-    tag_ref_hash = tag_ref_hash or cmd.resolve(ref)
-    dereferenced_target_hash = dereferenced_target_hash or cmd.resolve(f"{ref}^{{}}")
+    tag_ref_hash, dereferenced_target_hash = cmd.resolve_tag(tag_name)
 
     yield
 
@@ -116,8 +112,8 @@ def record_tag_recreate_action(
 def add_tag_undo(
     cmd: GitCommand,
     tag_name: str,
-    tag_ref_hash: FullHash | ShortHash,
-    dereferenced_target_hash: FullHash | ShortHash,
+    tag_ref_hash: CommitHash,
+    dereferenced_target_hash: CommitHash,
     undo_owner: UndoOwner | None = None
 ) -> None:
     undo_owner = undo_owner or resolve_undo_owner(cmd)

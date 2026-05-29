@@ -11,7 +11,7 @@ from ...common import util
 from GitSavvy.core.fns import last, pairwise, take
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.caches import Cache, cached
-from GitSavvy.core.types import FullHash, FullPath, ShortHash, ShortPath
+from GitSavvy.core.types import CommitHash, FullHash, FullPath, ShortHash, ShortPath
 
 
 class LogEntry(NamedTuple):
@@ -276,6 +276,48 @@ class HistoryMixin(mixin_base):
 
     def resolve_commitish(self, ref: str) -> ShortHash:
         return self.resolve(ref, short=True)
+
+    @overload
+    def resolve_tag(
+        self,
+        tag_name: str,
+        *,
+        lenient: Literal[False] = False
+    ) -> tuple[CommitHash, CommitHash]: ...
+
+    @overload
+    def resolve_tag(
+        self,
+        tag_name: str,
+        *,
+        lenient: Literal[True]
+    ) -> tuple[CommitHash, CommitHash] | None: ...
+
+    def resolve_tag(self, tag_name: str, *, lenient: bool = False):
+        ref = tag_name if tag_name.startswith("refs/tags/") else f"refs/tags/{tag_name}"
+        output = self.git(
+            "show-ref",
+            "--dereference",
+            ref,
+            throw_on_error=not lenient,
+            show_panel_on_error=not lenient
+        ).strip()
+        if not output:
+            return None
+
+        tag_ref_hash = None
+        dereferenced_target_hash = None
+        for line in output.splitlines():
+            commit_hash, ref_name = line.split(" ", 1)
+            if ref_name == ref:
+                tag_ref_hash = FullHash(commit_hash)
+            elif ref_name == f"{ref}^{{}}":
+                dereferenced_target_hash = FullHash(commit_hash)
+
+        if not tag_ref_hash:
+            return None
+
+        return (tag_ref_hash, dereferenced_target_hash or tag_ref_hash)
 
     def to_short_hash(self, commit_hash: FullHash | ShortHash) -> ShortHash:
         short_hash_length = self.get_short_hash_length()

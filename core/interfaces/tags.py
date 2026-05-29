@@ -455,10 +455,9 @@ class gs_tags_delete(TagsInterfaceCommand):
     def delete_local(self):
         # type: () -> List[str]
         tags_to_delete = self.selected_local_tags()
-        tag_hashes = self.selected_local_commits()
-        for tag, tag_hash in zip(tags_to_delete, tag_hashes):
+        for tag in tags_to_delete:
             with ref_undo.record_tag_recreate_action(
-                self, tag, tag_hash, undo_owner=self.view.id()
+                self, tag, undo_owner=self.view.id()
             ):
                 rv = self.git("tag", "-d", tag)
 

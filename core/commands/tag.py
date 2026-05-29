@@ -178,15 +178,7 @@ class gs_create_tag(GsWindowCommand):
         previous_hash: tuple[CommitHash, CommitHash] | None = None
     ) -> None:
         if force and previous_hash is None:
-            if previous_tag_ref_hash := self.resolve(
-                f"refs/tags/{tag_name}",
-                on_error="ignore"
-            ):
-                if previous_tag_deref_hash := self.resolve(
-                    f"refs/tags/{tag_name}^{{}}",
-                    on_error="ignore"
-                ):
-                    previous_hash = (previous_tag_ref_hash, previous_tag_deref_hash)
+            previous_hash = self.resolve_tag(tag_name, lenient=True)
 
         try:
             if not tag_message:
@@ -199,10 +191,7 @@ class gs_create_tag(GsWindowCommand):
         except GitSavvyError as e:
             if TAG_ALREADY_EXISTS_MESSAGE.format(tag_name) in e.stderr and not force:
                 def overwrite_action():
-                    previous_hash = (
-                        self.resolve(f"refs/tags/{tag_name}"),
-                        self.resolve(f"refs/tags/{tag_name}^{{}}")
-                    )
+                    previous_hash = self.resolve_tag(tag_name)
                     uprint(RECREATE_TAG_UNDO_MESSAGE.format(
                         tag_name,
                         previous_hash[1]
