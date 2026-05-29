@@ -85,6 +85,7 @@ LOADING_TAGS_MESSAGE = "    Loading tags from remote..."
 START_PUSH_MESSAGE = "Pushing tag..."
 END_PUSH_MESSAGE = "Push complete."
 TAG_DELETE_MESSAGE = "Tag(s) deleted."
+SHORT_VERSION_TAG_RE = re.compile(r"^v\d+(?:\.\d+)?$")
 
 
 class gs_show_tags(WindowCommand, GitCommand):
@@ -275,7 +276,8 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                                                 # the syntax expects the remote section begins
             filter_((
                 "\n".join(
-                    "    {} {}".format(
+                    "   {}{} {}".format(
+                        maybe_mark(tag) if is_short_version_tag(tag.tag) else " ",
                         self.to_short_hash(tag.sha),
                         tag.tag,
                     )
@@ -592,6 +594,10 @@ TAG_ALREADY_EXISTS_ON_REMOTE_RE = re.compile(
     r"^\s*!\s+\[rejected\]\s+(?P<tag>\S+)\s+->\s+\S+\s+\(already exists\)$",
     re.MULTILINE
 )
+
+
+def is_short_version_tag(tag: str) -> bool:
+    return bool(SHORT_VERSION_TAG_RE.match(tag))
 
 
 def tags_that_already_exist_on_remote(stderr: str, tags: List[str]) -> List[str]:

@@ -1,9 +1,20 @@
 import unittest
 
-from GitSavvy.core.interfaces.tags import remote_tag_conflict_message, tags_that_already_exist_on_remote
+from GitSavvy.core.interfaces.tags import (
+    is_short_version_tag,
+    remote_tag_conflict_message,
+    tags_that_already_exist_on_remote,
+)
 
 
 class TestTags(unittest.TestCase):
+    def test_is_short_version_tag(self):
+        self.assertTrue(is_short_version_tag("v1"))
+        self.assertTrue(is_short_version_tag("v1.2"))
+        self.assertFalse(is_short_version_tag("1"))
+        self.assertFalse(is_short_version_tag("v1.2.3"))
+        self.assertFalse(is_short_version_tag("version-1"))
+
     def test_remote_tag_conflict_message(self):
         self.assertEqual(
             remote_tag_conflict_message(["a", "b", "c"]),
