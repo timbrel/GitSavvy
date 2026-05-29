@@ -263,9 +263,9 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
             def maybe_mark(tag):
                 if tag.tag not in remote_tag_names:
-                    return "*"  # denote new semver
+                    return "*"  # denote new version tag
                 if (tag.sha, tag.tag) not in remote_tags:
-                    return "!"  # denote known semver on a different hash
+                    return "!"  # denote known version tag on a different hash
                 return " "
 
         else:
@@ -338,7 +338,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                 tags_list = [
                     tag
                     for tag in remote_info["tags"]
-                    if tag.tag[-3:] != "^{}" and (tag.sha, tag.tag) not in seen
+                    if (tag.sha, tag.tag) not in seen
                 ]
                 msg = "\n".join(
                     "    {} {}".format(self.to_short_hash(tag.sha), tag.tag)

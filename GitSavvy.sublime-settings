@@ -183,6 +183,14 @@
     "only_ask_to_annotate_versions": true,
 
     /*
+        Format used by the smart tagger for repositories that use calendar
+        versioning instead of semantic versioning.  Available fields are
+        {year}, {month}, {day}, {hour}, {minute}, and {second}; all numeric
+        fields are zero-padded.
+     */
+    "calendar_version_style": "{year}.{month}.{day}.{hour}.{minute}.{second}",
+
+    /*
         The filename for extra customized info to be displayed after the default
         COMMIT_HELP_TEXT, such as commit message rules/tips/conventions.
         Place this file at the root of the repo, and it should be committed to the

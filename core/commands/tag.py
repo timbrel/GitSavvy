@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
 import re
+from string import Formatter
 import sublime
 from sublime_plugin import TextCommand
 
@@ -46,6 +48,9 @@ GitSavvy: Re-created tag '{0}', in case you want to undo, run:
   $ git tag --force {0} {1}
 """
 VERSION_ZERO = "v0.0.0"
+DEFAULT_CALENDAR_VERSION_STYLE = "{year}.{month}.{day}.{hour}.{minute}.{second}"
+SHORT_CALENDAR_VERSION_STYLE = "{year}.{month}.{day}"
+CALENDAR_VERSION_FIELDS = {"year", "month", "day", "hour", "minute", "second"}
 
 
 def smart_incremented_tag(tag, release_type):
@@ -248,10 +253,89 @@ class gs_smart_tag(PanelActionMixin, TextCommand):
         ["smart_tag", "premajor", ("premajor", )],
     ]
 
+    def update_actions(self) -> None:
+        if self.get_local_tags().version_style == "calendar":
+            style = self.get_calendar_version_style()
+            primary, secondary = calendar_version_options(style)
+            self.actions = [
+                ["create_tag", "Create '{}'".format(primary), (primary, )],
+                ["create_tag", "Create '{}'".format(secondary), (secondary, )],
+                ["edit_tag_name", "Edit the tag name", (primary, )],
+            ]
+        else:
+            self.actions = self.default_actions[:]
+
+    def get_calendar_version_style(self) -> str:
+        style = self.savvy_settings.get("calendar_version_style")
+        if not calendar_version_style_is_valid(style):
+            print(
+                f"calendar_version_style is invalid. "
+                f"falling back to '{DEFAULT_CALENDAR_VERSION_STYLE}'"
+            )
+            return DEFAULT_CALENDAR_VERSION_STYLE
+        return style
+
     def smart_tag(self, release_type: ReleaseTypes) -> None:
         last_tag_name = self.get_last_local_semver_tag() or VERSION_ZERO
         tag_name = smart_incremented_tag(last_tag_name, release_type) or last_tag_name
+        self.edit_tag_name(tag_name)
+
+    def create_tag(self, tag_name: str) -> None:
         window = self.view.window()
         if not window:
             return
-        window.run_command("gs_create_tag", {"suggested_name": tag_name})
+        window.run_command("gs_create_tag", {"tag_name": tag_name})
+
+    def edit_tag_name(self, suggested_name: str) -> None:
+        window = self.view.window()
+        if not window:
+            return
+        window.run_command("gs_create_tag", {"suggested_name": suggested_name})
+
+
+def calendar_version_style_is_valid(style: object) -> bool:
+    if not isinstance(style, str) or not style:
+        return False
+
+    try:
+        fields = [field for _, field, _, _ in Formatter().parse(style) if field]
+    except ValueError:
+        return False
+
+    if not fields or any(field not in CALENDAR_VERSION_FIELDS for field in fields):
+        return False
+
+    return True
+
+
+def calendar_version_options(
+    primary_style: str,
+    now: datetime | None = None
+) -> tuple[str, str]:
+    now = now or datetime.now()
+    primary = calendar_version(primary_style, now)
+    secondary_style = (
+        DEFAULT_CALENDAR_VERSION_STYLE
+        if primary_style == SHORT_CALENDAR_VERSION_STYLE
+        else SHORT_CALENDAR_VERSION_STYLE
+    )
+    return primary, calendar_version(secondary_style, now)
+
+
+def calendar_version(style: str, now: datetime | None = None) -> str:
+    now = now or datetime.now()
+    try:
+        return style.format(**calendar_version_fields(now))
+    except (AttributeError, IndexError, KeyError, ValueError):
+        return DEFAULT_CALENDAR_VERSION_STYLE.format(**calendar_version_fields(now))
+
+
+def calendar_version_fields(now: datetime) -> dict[str, str]:
+    return {
+        "year": f"{now.year:04}",
+        "month": f"{now.month:02}",
+        "day": f"{now.day:02}",
+        "hour": f"{now.hour:02}",
+        "minute": f"{now.minute:02}",
+        "second": f"{now.second:02}"
+    }
