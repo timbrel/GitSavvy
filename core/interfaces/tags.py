@@ -18,7 +18,7 @@ from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker, run_on_new_thread
 from GitSavvy.core.types import ShortHash
 from GitSavvy.core.utils import flash, uprint
-from GitSavvy.core.ui_mixins.quick_panel import show_remote_panel
+from GitSavvy.core.ui_mixins.quick_panel import NO_REMOTES_MESSAGE
 from ..ui__quick_panel import noop, show_actions_panel
 from GitSavvy.github import github
 from GitSavvy.github.git_mixins import GithubRemotesMixin
@@ -500,16 +500,63 @@ class gs_tags_push(TagsInterfaceCommand):
             if name in actual_remotes_to_fetch
         }
         tags_to_push = self.selected_local_tags()
-        kont = partial(self.push_selected, tags_to_push=tags_to_push)
-        show_remote_panel(kont, remotes=remote_candidates, allow_direct=True)
+
+        if not remote_candidates:
+            show_actions_panel(self.window, [noop(NO_REMOTES_MESSAGE)])
+            return
+
+        if len(remote_candidates) == 1:
+            self.push_selected(next(iter(remote_candidates)), tags_to_push)
+            return
+
+        remote = self.guess_remote_to_push_to(list(remote_candidates))
+        show_actions_panel(self.window, [
+            (
+                "Push to '{}'".format(remote),
+                partial(self.push_selected, remote, tags_to_push)
+            ),
+            (
+                "Choose where to push to...",
+                partial(self.ask_which_remote_to_push_to, remote_candidates, remote, tags_to_push)
+            )
+        ])
+
+    def ask_which_remote_to_push_to(
+        self,
+        remote_candidates: Dict[str, str],
+        selected_remote: str,
+        tags_to_push: List[str]
+    ) -> None:
+        available_remotes = list(remote_candidates)
+        show_actions_panel(
+            self.window,
+            [
+                (
+                    remote,
+                    partial(
+                        self.push_selected,
+                        remote,
+                        tags_to_push,
+                        remember_used_remote=True
+                    )
+                )
+                for remote in available_remotes
+            ],
+            select=available_remotes.index(selected_remote)
+        )
 
     @on_worker
     def push_selected(
         self,
         remote: str,
         tags_to_push: List[str],
-        force: bool = False
+        force: bool = False,
+        remember_used_remote: bool = False
     ) -> None:
+        if remember_used_remote:
+            run_on_new_thread(self.git, "config", "--local", "gitsavvy.pushdefault", remote)
+            self.update_store({"last_remote_used_for_push": remote})
+
         flash(self.view, START_PUSH_MESSAGE)
         try:
             self.git_throwing_silently(
