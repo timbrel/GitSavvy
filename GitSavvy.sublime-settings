@@ -188,7 +188,7 @@
         {year}, {month}, {day}, {hour}, {minute}, and {second}; all numeric
         fields are zero-padded.
      */
-    "calendar_version_style": "{year}.{month}.{day}.{hour}.{minute}.{second}",
+    "calendar_version_style": "{year}.{month}.{day}",
 
     /*
         The filename for extra customized info to be displayed after the default

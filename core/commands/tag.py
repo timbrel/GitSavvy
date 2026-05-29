@@ -47,8 +47,8 @@ GitSavvy: Re-created tag '{0}', in case you want to undo, run:
   $ git tag --force {0} {1}
 """
 VERSION_ZERO = "v0.0.0"
-DEFAULT_CALENDAR_VERSION_STYLE = "{year}.{month}.{day}.{hour}.{minute}.{second}"
-SHORT_CALENDAR_VERSION_STYLE = "{year}.{month}.{day}"
+DEFAULT_CALENDAR_VERSION_STYLE = "{year}.{month}.{day}"
+LONG_CALENDAR_VERSION_STYLE = "{year}.{month}.{day}.{hour}.{minute}"
 CALENDAR_VERSION_FIELDS = {"year", "month", "day", "hour", "minute", "second"}
 
 
@@ -343,9 +343,9 @@ def calendar_version_options(
     now = now or datetime.now()
     primary = calendar_version(primary_style, now)
     secondary_style = (
-        DEFAULT_CALENDAR_VERSION_STYLE
-        if primary_style == SHORT_CALENDAR_VERSION_STYLE
-        else SHORT_CALENDAR_VERSION_STYLE
+        LONG_CALENDAR_VERSION_STYLE
+        if primary_style == DEFAULT_CALENDAR_VERSION_STYLE
+        else DEFAULT_CALENDAR_VERSION_STYLE
     )
     return primary, calendar_version(secondary_style, now)
 
