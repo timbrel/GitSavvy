@@ -9,6 +9,7 @@ import sublime
 from . import ref_undo
 from ...common import util
 from ..git_command import GitSavvyError
+from ..git_mixins.tags import is_version_tag
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.base_commands import (
     call_with_wanted_args,
@@ -36,7 +37,6 @@ ReleaseTypes = Literal[
 
 
 RELEASE_REGEXP = re.compile(r"^([0-9A-Za-z-]*[A-Za-z-])?([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-\.]*?)?([0-9]+))?$")
-MAYBE_SEMVER = re.compile(r"\d+\.\d+(\.\d+)?")
 
 TAG_CREATE_PROMPT = "Enter tag:"
 TAG_CREATE_MESSAGE = "Tag \"{}\" created."
@@ -144,7 +144,7 @@ def ask_for_tag_message():
 def should_ask_for_tag_message(cmd: GsCommand, tag_name: str) -> bool:
     return (
         not cmd.savvy_settings.get("only_ask_to_annotate_versions")
-        or bool(MAYBE_SEMVER.search(tag_name))
+        or is_version_tag(tag_name)
     )
 
 

@@ -1,6 +1,6 @@
 import unittest
 
-from GitSavvy.core.git_mixins.tags import TagDetails, TagsMixin, is_semver_tag
+from GitSavvy.core.git_mixins.tags import TagDetails, TagsMixin, is_semver_tag, is_version_tag
 from GitSavvy.core.interfaces.tags import (
     is_short_version_tag,
     remote_tag_conflict_message,
@@ -24,6 +24,13 @@ class TestTags(unittest.TestCase):
         self.assertFalse(is_semver_tag("release-1.2.3"))
         self.assertFalse(is_semver_tag("2026.05.29"))
         self.assertFalse(is_semver_tag("v2026.05.29"))
+
+    def test_is_version_tag(self):
+        self.assertTrue(is_version_tag("v1.2.3"))
+        self.assertTrue(is_version_tag("2026.05.29"))
+        self.assertTrue(is_version_tag("2026.05.29.12.34.56"))
+        self.assertFalse(is_version_tag("v1"))
+        self.assertFalse(is_version_tag("private"))
 
     def test_get_remote_tags_skips_peeled_annotated_tags(self):
         tag_list = RemoteTagsRepo("""\

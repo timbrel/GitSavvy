@@ -145,6 +145,10 @@ class TagsMixin(mixin_base):
         )
 
 
+def is_version_tag(tag: str) -> bool:
+    return bool(SEMVER_TAG_RE.match(tag) or CALENDAR_VERSION_TAG_RE.match(tag))
+
+
 def is_semver_tag(tag):
     # type: (str) -> bool
     return bool(SEMVER_TAG_RE.match(tag)) and not is_calendar_version_tag(tag)
