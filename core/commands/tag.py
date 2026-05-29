@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import re
+import sublime
 from sublime_plugin import TextCommand
 
+from . import ref_undo
 from ...common import util
 from ..git_command import GitSavvyError
 from ..ui_mixins.quick_panel import PanelActionMixin
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.base_commands import (
     call_with_wanted_args,
-    Args, GsCommand, GsWindowCommand, Kont)
+    Args, GsCommand, GsWindowCommand, Kont, std_undo_owner)
 from ..ui__quick_panel import noop, show_actions_panel
 from GitSavvy.core.utils import just, uprint, yes_no_switch
+from GitSavvy.core.types import CommitHash
 
 
 __all__ = (
@@ -161,16 +164,30 @@ class gs_create_tag(GsWindowCommand):
             initial_text=lambda suggested_name="": suggested_name
         ),
         "tag_message": ask_for_tag_message(),
+        "undo_owner": std_undo_owner,
     }
 
     def run(
         self,
         tag_name: str,
         tag_message: str | None,
+        undo_owner: sublime.ViewId,
         target_commit: str | None = None,
         force: bool = False,
         suggested_name: str = "",
+        previous_hash: tuple[CommitHash, CommitHash] | None = None
     ) -> None:
+        if force and previous_hash is None:
+            if previous_tag_ref_hash := self.resolve(
+                f"refs/tags/{tag_name}",
+                on_error="ignore"
+            ):
+                if previous_tag_deref_hash := self.resolve(
+                    f"refs/tags/{tag_name}^{{}}",
+                    on_error="ignore"
+                ):
+                    previous_hash = (previous_tag_ref_hash, previous_tag_deref_hash)
+
         try:
             if not tag_message:
                 self.git_throwing_silently(
@@ -182,14 +199,22 @@ class gs_create_tag(GsWindowCommand):
         except GitSavvyError as e:
             if TAG_ALREADY_EXISTS_MESSAGE.format(tag_name) in e.stderr and not force:
                 def overwrite_action():
-                    old_hash = self.resolve(tag_name)
-                    uprint(RECREATE_TAG_UNDO_MESSAGE.format(tag_name, old_hash))
+                    previous_hash = (
+                        self.resolve(f"refs/tags/{tag_name}"),
+                        self.resolve(f"refs/tags/{tag_name}^{{}}")
+                    )
+                    uprint(RECREATE_TAG_UNDO_MESSAGE.format(
+                        tag_name,
+                        previous_hash[1]
+                    ))
 
                     self.window.run_command("gs_create_tag", {
                         "tag_name": tag_name,
                         "tag_message": tag_message,
                         "target_commit": target_commit,
                         "force": True,
+                        "previous_hash": previous_hash,
+                        "undo_owner": undo_owner,
                     })
 
                 show_actions_panel(self.window, [
@@ -204,6 +229,14 @@ class gs_create_tag(GsWindowCommand):
             else:
                 e.show_error_panel()
                 raise
+
+        if force and previous_hash:
+            ref_undo.add_tag_undo(
+                self,
+                tag_name,
+                *previous_hash,
+                undo_owner
+            )
 
         self.window.status_message(TAG_CREATE_MESSAGE.format(tag_name))
         util.view.refresh_gitsavvy_interfaces(self.window)
