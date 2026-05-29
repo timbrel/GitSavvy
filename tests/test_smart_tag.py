@@ -21,12 +21,16 @@ class TestSmartTag(unittest.TestCase):
     def test_calendar_version_options(self):
         now = datetime(2026, 5, 29, 12, 34, 56)
         self.assertEqual(
+            calendar_version_options("{year}.{month}", now),
+            ["2026.05", "2026.05.29", "2026.05.29.12.34"]
+        )
+        self.assertEqual(
             calendar_version_options("{year}.{month}.{day}", now),
-            ("2026.05.29", "2026.05.29.12.34")
+            ["2026.05.29", "2026.05.29.12.34"]
         )
         self.assertEqual(
             calendar_version_options("{year}.{month}.{day}.{hour}.{minute}", now),
-            ("2026.05.29.12.34", "2026.05.29")
+            ["2026.05.29.12.34", "2026.05.29"]
         )
 
     def test_calendar_version_style_is_valid_rejects_invalid_settings(self):

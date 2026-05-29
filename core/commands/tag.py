@@ -8,6 +8,7 @@ import sublime
 
 from . import ref_undo
 from ...common import util
+from ..fns import unique
 from ..git_command import GitSavvyError
 from ..git_mixins.tags import is_version_tag
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -281,10 +282,13 @@ class gs_smart_tag(GsWindowCommand):
 
     def calendar_actions(self) -> list[ActionType]:
         style = self.get_calendar_version_style()
-        primary, secondary = calendar_version_options(style)
+        versions = calendar_version_options(style)
+        primary = versions[0]
         return [
-            ("Create '{}'".format(primary), partial(self.create_tag, primary)),
-            ("Create '{}'".format(secondary), partial(self.create_tag, secondary)),
+            *(
+                ("Create '{}'".format(version), partial(self.create_tag, version))
+                for version in versions
+            ),
             ("Edit the tag name", partial(self.edit_tag_name, primary)),
         ]
 
@@ -339,15 +343,16 @@ def calendar_version_style_is_valid(style: object) -> bool:
 def calendar_version_options(
     primary_style: str,
     now: datetime | None = None
-) -> tuple[str, str]:
+) -> list[str]:
     now = now or datetime.now()
-    primary = calendar_version(primary_style, now)
-    secondary_style = (
-        LONG_CALENDAR_VERSION_STYLE
-        if primary_style == DEFAULT_CALENDAR_VERSION_STYLE
-        else DEFAULT_CALENDAR_VERSION_STYLE
-    )
-    return primary, calendar_version(secondary_style, now)
+    return list(unique(
+        calendar_version(style, now)
+        for style in (
+            primary_style,
+            DEFAULT_CALENDAR_VERSION_STYLE,
+            LONG_CALENDAR_VERSION_STYLE
+        )
+    ))
 
 
 def calendar_version(style: str, now: datetime | None = None) -> str:
