@@ -240,6 +240,7 @@ class gs_smart_tag(GsWindowCommand):
     Displays a panel of possible smart tag options, based on the choice,
     tag the current commit with the corresponding tagname.
     """
+    last_selected_items: dict[str, int] = {}
 
     def run(self, version_style: str | None = None) -> None:
         if not version_style:
@@ -250,7 +251,33 @@ class gs_smart_tag(GsWindowCommand):
             if version_style == "calendar" else
             self.semver_actions()
         )
-        show_actions_panel(self.window, actions)
+        show_actions_panel(
+            self.window,
+            self.with_selection_storage(version_style, actions),
+            select=self.last_selected_item(version_style, actions)
+        )
+
+    def with_selection_storage(
+        self,
+        version_style: str,
+        actions: list[ActionType]
+    ) -> list[ActionType]:
+        return [
+            (description, partial(self.run_and_remember, version_style, idx, action))
+            for idx, (description, action) in enumerate(actions)
+        ]
+
+    def last_selected_item(self, version_style: str, actions: list[ActionType]) -> int:
+        return min(self.last_selected_items.get(version_style, -1), len(actions) - 1)
+
+    def run_and_remember(
+        self,
+        version_style: str,
+        idx: int,
+        action: Callable[[], None]
+    ) -> None:
+        self.last_selected_items[version_style] = idx
+        action()
 
     def calendar_actions(self) -> list[ActionType]:
         style = self.get_calendar_version_style()
