@@ -279,17 +279,15 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                     "   {}{} {}".format(
                         maybe_mark(tag) if is_short_version_tag(tag.tag) else " ",
                         self.to_short_hash(tag.sha),
-                        tag.tag,
+                        tag_with_date(tag, is_short_version_tag(tag.tag)),
                     )
                     for tag in local_tags.regular[:max_items]
                 ),
                 "\n".join(
-                    "   {}{} {:<10} {}{}".format(
+                    "   {}{} {}".format(
                         maybe_mark(tag),
                         self.to_short_hash(tag.sha),
-                        tag.tag,
-                        tag.human_date,
-                        " ({})".format(tag.relative_date) if tag.relative_date != tag.human_date else ""
+                        tag_with_date(tag, True)
                     )
                     for tag in local_tags.versions[:max_items]
                 )
@@ -594,6 +592,17 @@ TAG_ALREADY_EXISTS_ON_REMOTE_RE = re.compile(
     r"^\s*!\s+\[rejected\]\s+(?P<tag>\S+)\s+->\s+\S+\s+\(already exists\)$",
     re.MULTILINE
 )
+
+
+def tag_with_date(tag: TagDetails, show_date: bool) -> str:
+    if not show_date or not tag.human_date:
+        return tag.tag
+
+    return "{:<10} {}{}".format(
+        tag.tag,
+        tag.human_date,
+        " ({})".format(tag.relative_date) if tag.relative_date != tag.human_date else ""
+    )
 
 
 def is_short_version_tag(tag: str) -> bool:

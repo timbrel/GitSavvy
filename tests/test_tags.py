@@ -1,8 +1,10 @@
 import unittest
 
+from GitSavvy.core.git_mixins.tags import TagDetails
 from GitSavvy.core.interfaces.tags import (
     is_short_version_tag,
     remote_tag_conflict_message,
+    tag_with_date,
     tags_that_already_exist_on_remote,
 )
 
@@ -14,6 +16,11 @@ class TestTags(unittest.TestCase):
         self.assertFalse(is_short_version_tag("1"))
         self.assertFalse(is_short_version_tag("v1.2.3"))
         self.assertFalse(is_short_version_tag("version-1"))
+
+    def test_tag_with_date(self):
+        tag = TagDetails("abc", "v1", "25 May 2026", "4 minutes ago")
+        self.assertEqual(tag_with_date(tag, True), "v1         25 May 2026 (4 minutes ago)")
+        self.assertEqual(tag_with_date(tag, False), "v1")
 
     def test_remote_tag_conflict_message(self):
         self.assertEqual(
