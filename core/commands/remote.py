@@ -1,3 +1,4 @@
+from __future__ import annotations
 import sublime
 
 from . import init
@@ -61,19 +62,25 @@ class gs_remote_add(GsWindowCommand):
 
 class gs_remote_remove(GsWindowCommand):
     """
-    Remove remotes
+    Remove a git remote.
+
+    If `remote` is omitted, prompt for one.  Also remove remaining
+    local remote-tracking refs for the deleted remote.
     """
 
-    def run(self):
-        show_remote_panel(self.on_remote_selection, show_url=True)
+    def run(self, remote: str | None = None) -> None:
+        if remote:
+            self.on_remote_selection(remote)
+        else:
+            show_remote_panel(self.on_remote_selection, show_url=True)
 
     @util.actions.destructive(description="remove a remote")
-    def on_remote_selection(self, remote):
+    def on_remote_selection(self, remote: str) -> None:
         self.git("remote", "remove", remote)
         self.remove_remote_tracking_refs(remote)
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)
 
-    def remove_remote_tracking_refs(self, remote):
+    def remove_remote_tracking_refs(self, remote: str) -> None:
         prefix = f"refs/remotes/{remote}/"
         refs = self.git("for-each-ref", "--format=%(refname)", prefix).splitlines()
         for ref in refs:
@@ -83,17 +90,22 @@ class gs_remote_remove(GsWindowCommand):
 
 class gs_remote_rename(GsWindowCommand):
     """
-    Reame remotes
+    Rename a git remote.
+
+    If `remote` is omitted, prompt for one.  Then prompt for the new name.
     """
 
-    def run(self):
-        show_remote_panel(self.on_remote_selection, show_url=True)
+    def run(self, remote: str | None = None) -> None:
+        if remote:
+            self.on_remote_selection(remote)
+        else:
+            show_remote_panel(self.on_remote_selection, show_url=True)
 
-    def on_remote_selection(self, remote):
+    def on_remote_selection(self, remote: str) -> None:
         self.remote = remote
         show_single_line_input_panel("New name", remote, self.on_enter_name)
 
-    def on_enter_name(self, new_name):
+    def on_enter_name(self, new_name: str) -> None:
         if not new_name:
             return
         if new_name == self.remote:
