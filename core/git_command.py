@@ -777,6 +777,10 @@ class _GitCommand(SettingsMixin):
             return commondir
 
     @property
+    def repo_config_path(self) -> FullPath:
+        return FullPath(os.path.join(self.git_common_dir, "config"))
+
+    @property
     def file_path(self) -> FullPath | None:
         """
         Return the absolute path to the file this view interacts with. In most
