@@ -1,13 +1,19 @@
+import importlib
 import sys
 
 # kiss-reloader:
-prefix = __spec__.parent + "."  # type: ignore[operator]  # don't clear the base package
-for module_name in [
-    module_name
-    for module_name in sys.modules
+prefix = __spec__.parent + "."  # type: ignore[operator]  # don't reload the base package
+modules = [
+    module
+    for module_name, module in sys.modules.items()
     if module_name.startswith(prefix) and module_name != __name__
-]:
-    del sys.modules[module_name]
+]
+regular_modules = [module for module in modules if not hasattr(module, "__path__")]
+package_modules = [module for module in modules if hasattr(module, "__path__")]
+for module in sorted(regular_modules, key=lambda module: module.__name__.count(".")):
+    importlib.reload(module)
+for module in sorted(package_modules, key=lambda module: module.__name__.count("."), reverse=True):
+    importlib.reload(module)
 
 
 import sublime
