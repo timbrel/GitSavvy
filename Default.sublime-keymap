@@ -2136,6 +2136,136 @@
     },
 
 
+    //////////////////
+    // REMOTES VIEW //
+    //////////////////
+
+    {
+        "keys": ["a"],
+        "command": "gs_remotes_add",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["D"],
+        "command": "gs_remotes_delete",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["R"],
+        "command": "gs_remotes_rename",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["o"],
+        "command": "gs_remotes_open_config",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["?"],
+        "command": "gs_interface_toggle_help",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["r"],
+        "command": "gs_remotes_refresh",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["tab"],
+        "command": "gs_tab_cycle",
+        "args": { "source": "remotes" },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["shift+tab"],
+        "command": "gs_tab_cycle",
+        "args": { "source": "remotes", "reverse": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["."],
+        "command": "gs_remotes_navigate_remote",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": [","],
+        "command": "gs_remotes_navigate_remote",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["down"],
+        "command": "gs_remotes_navigate_remote",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["up"],
+        "command": "gs_remotes_navigate_remote",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.arrow_keys_navigation", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["j"],
+        "command": "gs_remotes_navigate_remote",
+        "args": { "forward": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["k"],
+        "command": "gs_remotes_navigate_remote",
+        "args": { "forward": false },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.vintageous_friendly", "operator": "equal", "operand": true },
+            { "key": "setting.git_savvy.remotes_view", "operator": "equal", "operand": true }
+        ]
+    },
+
+
     ////////////////
     // GRAPH VIEW //
     ////////////////

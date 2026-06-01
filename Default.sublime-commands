@@ -445,6 +445,10 @@
         "command": "gs_show_tags"
     },
     {
+        "caption": "git: remotes",
+        "command": "gs_show_remotes"
+    },
+    {
         "caption": "git: quick tag",
         "command": "gs_create_tag"
     },

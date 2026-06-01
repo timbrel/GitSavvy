@@ -4,6 +4,7 @@ from sublime_plugin import TextCommand
 from .status import *  # noqa: F401, F403
 from .status_main_actions import *
 from .branch import *  # noqa: F401, F403
+from .remotes import *  # noqa: F401, F403
 from .rebase import *  # noqa: F401, F403
 from .tags import *  # noqa: F401, F403
 from ..git_command import GitCommand
@@ -13,6 +14,7 @@ class gs_tab_cycle(TextCommand, GitCommand):
     commands = {
         "status": "gs_show_status",
         "branch": "gs_show_branch",
+        "remotes": "gs_show_remotes",
         "rebase": "gs_show_rebase",
         "tags": "gs_show_tags",
         "graph": "gs_log_graph_tab_in"

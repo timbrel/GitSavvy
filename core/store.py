@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from GitSavvy.core.git_mixins.worktrees import Worktree
     from GitSavvy.core.git_mixins.stash import Stash
     from GitSavvy.core.git_mixins.tags import TagList
+    from GitSavvy.core.git_mixins.remotes import RemoteInfoBlob
     from GitSavvy.core.git_mixins.status import HeadState, WorkingDirState
 
     class RepoStore(TypedDict, total=False):
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
         short_status: str
         branches: List[Branch]
         remotes: Dict[str, str]
+        remote_info: RemoteInfoBlob
         worktrees: List[Worktree]
         remotes_with_no_tags_set: Set[str]
         local_tags: TagList
