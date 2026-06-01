@@ -18,10 +18,21 @@ __all__ = (
 
 class gs_remote_add(GsWindowCommand):
     """
-    Add remotes
+    Add a git remote.
+
+    If `url` is omitted, prompt for a URL and then a remote name.
+    `ignore_tags` configures the remote for branch-only fetch/push use,
+    `follow_their_head` controls whether Git should track the remote HEAD,
+    and `set_as_push_default` stores the remote as GitSavvy's push target.
     """
 
-    def run(self, url=None, set_as_push_default=False, ignore_tags=False, follow_their_head=True):
+    def run(
+        self,
+        url: str | None = None,
+        set_as_push_default: bool = False,
+        ignore_tags: bool = False,
+        follow_their_head: bool = True
+    ) -> None:
         self.follow_their_head = follow_their_head
         self.ignore_tags = ignore_tags
         self.set_as_push_default = set_as_push_default
@@ -34,13 +45,13 @@ class gs_remote_add(GsWindowCommand):
                 init.parse_url_from_clipboard(clip_content),
                 self.on_enter_remote)
 
-    def on_enter_remote(self, input_url):
+    def on_enter_remote(self, input_url: str) -> None:
         self.url = input_url
         owner = self.username_from_url(input_url)
 
         show_single_line_input_panel("Remote name", owner, self.on_enter_name)
 
-    def on_enter_name(self, remote_name):
+    def on_enter_name(self, remote_name: str) -> None:
         self.git("remote", "add", remote_name, self.url)
         if self.ignore_tags:
             self.git("config", f"remote.{remote_name}.push", "+refs/heads/*:refs/heads/*")
