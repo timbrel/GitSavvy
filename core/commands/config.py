@@ -65,7 +65,7 @@ class gs_open_repo_exclude(sublime_plugin.WindowCommand, GitCommand):
             self.window.status_message("No .git repo found")
             return
 
-        wanted_file = os.path.join(repo_path, '.git', 'info', 'exclude')
+        wanted_file = os.path.join(self.git_common_dir, 'info', 'exclude')
         if not os.path.exists(wanted_file):
             self.window.status_message("No exclude file found for {}".format(repo_path))
             return
