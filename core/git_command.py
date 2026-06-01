@@ -46,7 +46,8 @@ binary_not_found_message_displayed, git_too_old_message_displayed = False, False
 repo_paths = {}  # type: Dict[str, str]
 #: A mapping from a repo_path to the actual ".git" path
 #: Typically this *is* "{repo_path}/.git"
-git_dirs = {}  # type: Dict[str, str]
+git_dirs: dict[str, FullPath] = {}
+git_common_dirs: dict[str, FullPath] = {}
 
 DECODE_ERROR_MESSAGE = """
 The Git command returned data that is unparsable.  This may happen
@@ -736,24 +737,44 @@ class _GitCommand(SettingsMixin):
         return store.current_state(self.repo_path)
 
     @property
-    def git_dir(self):
-        # type: () -> str
+    def git_dir(self) -> FullPath:
         repo_path = self.repo_path
         try:
             return git_dirs[repo_path]
         except KeyError:
             # Note: per contract `{self.repo_path}/.git` exists.
-            gitdir = os.path.join(repo_path, ".git")
+            gitdir = FullPath(os.path.join(repo_path, ".git"))
             if os.path.isfile(gitdir):
                 try:
                     with open(gitdir, encoding="utf-8") as f:
                         content = f.read()
                         if content.startswith("gitdir: "):
-                            gitdir = content[8:].strip()
+                            gitdir__ = content[8:].strip()
+                            if not os.path.isabs(gitdir__):
+                                gitdir__ = os.path.join(repo_path, gitdir__)
+                            gitdir = FullPath(os.path.normpath(gitdir__))
                 except OSError:
                     pass
             git_dirs[repo_path] = gitdir
             return gitdir
+
+    @property
+    def git_common_dir(self) -> FullPath:
+        repo_path = self.repo_path
+        try:
+            return git_common_dirs[repo_path]
+        except KeyError:
+            commondir = self.git_dir
+            try:
+                with open(os.path.join(self.git_dir, "commondir"), encoding="utf-8") as f:
+                    commondir__ = f.read().strip()
+                    if not os.path.isabs(commondir__):
+                        commondir__ = os.path.join(self.git_dir, commondir__)
+                    commondir = FullPath(os.path.normpath(commondir__))
+            except OSError:
+                pass
+            git_common_dirs[repo_path] = commondir
+            return commondir
 
     @property
     def file_path(self) -> FullPath | None:
