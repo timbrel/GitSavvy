@@ -787,6 +787,48 @@ diff --git a/fooz b/barz
         expected = ['apply', None, '--cached', '--unidiff-zero', '-']
         self.assertEqual(actual, expected)
 
+    @p.expand([
+        (False, ['apply', None, None, '-']),
+        (True, ['apply', '-R', None, '-'])
+    ])
+    def test_show_commit_applies_to_working_tree(self, RESET, EXPECTED_ARGS):
+        VIEW_CONTENT = """\
+prelude
+--
+diff --git a/fooz b/barz
+--- a/fooz
++++ b/barz
+@@ -16,1 +16,1 @@ Hi
+ one
+ two
+"""
+        CURSOR = 58
+        view = self.window.new_file()
+        self.addCleanup(view.close)
+        view.run_command('append', {'characters': VIEW_CONTENT})
+        view.set_scratch(True)
+
+        view.settings().set('git_savvy.show_commit_view', True)
+        view.settings().set('git_savvy.diff_view.history', [])
+
+        cmd = module.gs_diff_stage_or_reset_hunk(view)
+        when(cmd).git(...)
+        when(cmd).patch_target_has_unsaved_view(...).thenReturn(False)
+        when(cmd.view).run_command("gs_clear_multiselect")
+        when(cmd.view).run_command("gs_update_status")
+
+        view.sel().clear()
+        view.sel().add(CURSOR)
+
+        cmd.run({'unused_edit'}, reset=RESET)
+
+        history = view.settings().get('git_savvy.diff_view.history')
+        self.assertEqual(len(history), 1)
+
+        actual = history.pop()
+        expected = [EXPECTED_ARGS, self.HUNK1, [CURSOR], None]
+        self.assertEqual(actual, expected)
+
     def test_unstaging_new_file_in_cached_mode_uses_reverse_apply(self):
         VIEW_CONTENT = """\
 prelude
@@ -914,7 +956,7 @@ diff --git a/fooz b/barz
         view.settings().set('git_savvy.diff_view.history', [])
 
         cmd = module.gs_diff_stage_or_reset_hunk(view)
-        when(cmd).discard_target_has_unsaved_view(...).thenReturn(True)
+        when(cmd).patch_target_has_unsaved_view(...).thenReturn(True)
         when(cmd).git(...)
 
         view.sel().clear()

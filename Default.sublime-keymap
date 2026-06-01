@@ -1201,6 +1201,23 @@
         ]
     },
     {
+        "keys": ["s"],
+        "command": "gs_diff_stage_or_reset_hunk",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["d"],
+        "command": "gs_diff_stage_or_reset_hunk",
+        "args": { "reset": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.show_commit_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["h"],
         "command": "gs_show_commit_open_on_github",
         "context": [
