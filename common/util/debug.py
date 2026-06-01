@@ -10,14 +10,11 @@ from typing import Dict, List, Optional, Sequence, Union
 LogEntry = Dict
 
 
-# Preserve state of `enabled` during hot-reloads.  Some reloaders execute this
-# module in-place, in which case the local `enabled` global survives.  Others
-# delete submodules and recreate them; for those, keep the flag on the base
-# package module which the root plugin reloader intentionally leaves alone.
+# Preserve state of `enabled` during hot-reloads.
 try:
-    enabled  # type: ignore[has-type, used-before-def]
+    enabled  # type: ignore[used-before-def]
 except NameError:
-    enabled = bool(getattr(sys.modules.get("GitSavvy"), "_debug_enabled", False))
+    enabled = False
 
 _log = []  # type: List[LogEntry]
 ENCODING_NOT_UTF8 = "{} was sent as binaries and we dont know the encoding, not utf-8"

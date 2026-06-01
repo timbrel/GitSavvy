@@ -8,11 +8,9 @@ modules = [
     for module_name, module in sys.modules.items()
     if module_name.startswith(prefix) and module_name != __name__
 ]
-regular_modules = [module for module in modules if not hasattr(module, "__path__")]
-package_modules = [module for module in modules if hasattr(module, "__path__")]
-for module in sorted(regular_modules, key=lambda module: module.__name__.count(".")):
+for module in modules:
     importlib.reload(module)
-for module in sorted(package_modules, key=lambda module: module.__name__.count("."), reverse=True):
+for module in modules:
     importlib.reload(module)
 
 
