@@ -1308,8 +1308,15 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
 
         else:
             line_starts = selected_line_starts(self.view, frozen_sel)
-            patch = compute_patch_for_sel(diff, line_starts, reset or in_cached_mode)
-            zero_diff = True
+            if apply_to_working_tree:
+                patch, error = compute_contextual_patch_for_sel(diff, line_starts, reset)
+                if error:
+                    flash(self.view, error)
+                    return
+                zero_diff = False
+            else:
+                patch = compute_no_context_patch_for_sel(diff, line_starts, reset or in_cached_mode)
+                zero_diff = True
 
         if patch:
             if (
@@ -1423,7 +1430,7 @@ def chunkby(it, predicate):
     return (list(items) for selected, items in groupby(it, key=predicate) if selected)
 
 
-def compute_patch_for_sel(diff, line_starts, reverse):
+def compute_no_context_patch_for_sel(diff, line_starts, reverse):
     # type: (SplittedDiff, Set[int], bool) -> str
     hunks = unique(filter_(diff.hunk_for_pt(pt) for pt in sorted(line_starts)))
 
@@ -1460,6 +1467,87 @@ def form_patch(lines):
     blen = sum(1 for line, _ in lines if not line.is_from_line())
     content = "".join(line.text for line, _ in lines)
     return stage_hunk.Hunk(a_start, alen, b_start, blen, content)
+
+
+def compute_contextual_patch_for_sel(
+    diff: SplittedDiff, line_starts: set[int], reverse: bool
+) -> tuple[str, str | None]:
+    hunks = unique(filter_(diff.hunk_for_pt(pt) for pt in sorted(line_starts)))
+    patches: dict[FileHeader, list[stage_hunk.Hunk]] = defaultdict(list)
+
+    for hunk in hunks:
+        if not hunk_has_selected_changed_lines(hunk, line_starts):
+            continue
+
+        contextual_hunk = form_contextual_patch(hunk, line_starts, reverse)
+        if contextual_hunk is None:
+            return "", "Cannot apply selection without context."
+
+        header = diff.head_for_hunk(hunk)
+        patches[header].append(contextual_hunk)
+
+    return "".join(
+        format_patch_without_rewrite(header.text, hunks)
+        for header, hunks in patches.items()
+    ), None
+
+
+def format_patch_without_rewrite(header: str, hunks: list[stage_hunk.Hunk]) -> str:
+    return ''.join(chain(
+        [header],
+        map(stage_hunk.format_hunk, hunks)
+    ))
+
+
+def hunk_has_selected_changed_lines(hunk: Hunk, line_starts: set[int]) -> bool:
+    return any(
+        line.a in line_starts
+        for line in hunk.content().lines()
+        if not line.is_context()
+        if not line.is_no_newline_marker()
+    )
+
+
+def form_contextual_patch(
+    hunk: Hunk, line_starts: set[int], reverse: bool
+) -> stage_hunk.Hunk | None:
+    lines = list(recount_lines(hunk))
+    patch_lines = lines_for_partial_patch(lines, line_starts, reverse)
+    patch_lines_ = [line for line, _ in patch_lines]
+
+    # no context lines in patch
+    if not any(line.startswith(" ") for line in patch_lines_):
+        return None
+
+    hunk_start = next(
+        line_id.b if reverse else line_id.a
+        for _, line_id in patch_lines
+        if line_id is not None
+    )
+    a_len = sum(1 for line in patch_lines_ if not line.startswith(("+", "\\")))
+    b_len = sum(1 for line in patch_lines_ if not line.startswith(("-", "\\")))
+    content = "".join(patch_lines_)
+    return stage_hunk.Hunk(hunk_start, a_len, hunk_start, b_len, content)
+
+
+def lines_for_partial_patch(
+    lines: list[HunkLineWithLineNumbers],
+    line_starts: set[int],
+    revert: bool
+) -> list[tuple[str, LineId | None]]:
+    contextualized_mode = "+" if revert else "-"
+    patch_lines: list[tuple[str, LineId | None]] = []
+
+    for line, line_id in lines:
+        if line.is_no_newline_marker():
+            if patch_lines:
+                patch_lines.append((line.text, None))
+        elif line.is_context() or line.a in line_starts:
+            patch_lines.append((line.text, line_id))
+        elif line.text.startswith(contextualized_mode):
+            patch_lines.append((" " + line.content, line_id))
+
+    return patch_lines
 
 
 class gs_initiate_fixup_commit(TextCommand, LogHelperMixin):
