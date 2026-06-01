@@ -1,31 +1,91 @@
-import importlib
+import importlib.abc
+import importlib.machinery
 import sys
+from types import ModuleType
+
 
 # kiss-reloader:
-prefix = __spec__.parent + "."  # type: ignore[operator]  # don't reload the base package
-modules = [
-    module
-    for module_name, module in sys.modules.items()
-    if module_name.startswith(prefix) and module_name != __name__
-]
-for module in modules:
-    importlib.reload(module)
-for module in modules:
-    importlib.reload(module)
+class InPlaceReloader(importlib.abc.MetaPathFinder, importlib.abc.Loader):
+    def __init__(self, package_name=__spec__.parent, plugin_name=__name__):
+        prefix = package_name + "."
+        self.modules = {
+            name: module
+            for name, module in sys.modules.items()
+            if name.startswith(prefix) and name != plugin_name
+        }
+        self.loaders = {}
+
+    def __enter__(self):
+        return self.install()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.uninstall(failed=exc_type is not None)
+
+    def install(self):
+        for name in self.modules:
+            sys.modules.pop(name, None)
+
+        self.clear_parent_module_attributes()
+        sys.meta_path.insert(0, self)
+        return self
+
+    def uninstall(self, failed=False):
+        if self in sys.meta_path:
+            sys.meta_path.remove(self)
+
+        if failed:
+            for name, module in self.modules.items():
+                sys.modules.setdefault(name, module)
+                self.restore_parent_module_attribute(name, module)
+
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname not in self.modules:
+            return None
+
+        spec = importlib.machinery.PathFinder.find_spec(fullname, path)
+        if spec is None or spec.loader is None:
+            return None
+
+        self.loaders[fullname] = spec.loader
+        spec.loader = self
+        return spec
+
+    def create_module(self, spec):
+        return self.modules[spec.name]
+
+    def exec_module(self, module):
+        self.loaders[module.__name__].exec_module(module)
+
+    def clear_parent_module_attributes(self):
+        for name, module in self.modules.items():
+            parent = self.parent_module(name)
+            attr = name.rpartition(".")[-1]
+            if isinstance(parent, ModuleType) and getattr(parent, attr, None) is module:
+                delattr(parent, attr)
+
+    def restore_parent_module_attribute(self, name, module):
+        parent = self.parent_module(name)
+        if isinstance(parent, ModuleType):
+            setattr(parent, name.rpartition(".")[-1], module)
+
+    def parent_module(self, name):
+        parent_name = name.rpartition(".")[0]
+        return self.modules.get(parent_name) or sys.modules.get(parent_name)
 
 
-import sublime
+with InPlaceReloader():
+    import sublime
 
-from .common.commands import *
-from .common.ui import *
-from .common.global_events import *
-from .core.commands import *
-from .core.settings import *
-from .core.interfaces import *
-from .core.runtime import *
-from .core.caches import *
-from .github.commands import *
-from .gitlab.commands import *
+    from .common.commands import *
+    from .common.ui import *
+    from .common.global_events import *
+    from .core.commands import *
+    from .core.settings import *
+    from .core.interfaces import *
+    from .core.runtime import *
+    from .core.caches import *
+    from .github.commands import *
+    from .gitlab.commands import *
 
 
 def prepare_gitsavvy():
