@@ -30,6 +30,7 @@ from .multi_selector import *
 from .mv import *
 from .navigate import *
 from .next_hunk import *
+from .output_panel import *
 from .pull import *
 from .push import *
 from .quick_commit import *

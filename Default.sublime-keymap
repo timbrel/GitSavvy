@@ -1,5 +1,18 @@
 [
 
+    //////////////////
+    // OUTPUT PANEL //
+    //////////////////
+
+    {
+        "keys": ["ctrl+z"],
+        "command": "gs_abort_output_panel",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.output_panel", "operator": "equal", "operand": true }
+        ]
+    },
+
     //////////////////////
     // INLINE DIFF VIEW //
     //////////////////////

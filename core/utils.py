@@ -218,6 +218,12 @@ def kill_proc(proc: subprocess.Popen) -> None:
         proc.terminate()
 
 
+def abort_proc(proc: Optional[subprocess.Popen]) -> None:
+    if proc:
+        proc.aborted_by_user = True  # type: ignore[attr-defined]
+    try_kill_proc(proc)
+
+
 def try_kill_proc(proc: Optional[subprocess.Popen]) -> None:
     if proc:
         try:
@@ -229,6 +235,10 @@ def try_kill_proc(proc: Optional[subprocess.Popen]) -> None:
 
 def proc_has_been_killed(proc: subprocess.Popen) -> bool:
     return getattr(proc, "got_killed", False)
+
+
+def proc_has_been_aborted_by_user(proc: subprocess.Popen) -> bool:
+    return getattr(proc, "aborted_by_user", False)
 
 
 # `realpath` also supports `bytes` and we don't, hence the indirection

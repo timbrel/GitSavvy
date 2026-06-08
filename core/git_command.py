@@ -22,7 +22,10 @@ import sublime
 
 from ..common import util
 from .settings import SettingsMixin
-from .utils import try_kill_proc, paths_upwards, proc_has_been_killed, resolve_path, STARTUPINFO
+from .utils import (
+    try_kill_proc, paths_upwards, proc_has_been_aborted_by_user,
+    proc_has_been_killed, resolve_path, STARTUPINFO
+)
 from GitSavvy.core import store
 from GitSavvy.core.fns import consume, filter_, pairwise
 from GitSavvy.core.runtime import auto_timeout, enqueue_on_worker, run_as_future
@@ -30,7 +33,7 @@ from GitSavvy.core.types import FullPath, ShortPath
 
 
 from typing import (
-    Callable, Deque, Dict, IO, Iterable, Iterator, List, Optional, Sequence,
+    Any, Callable, Deque, Dict, IO, Iterable, Iterator, List, Optional, Sequence,
     Tuple, TypeVar, Union)
 T = TypeVar("T")
 
@@ -366,6 +369,7 @@ class _GitCommand(SettingsMixin):
                 raise GitSavvyError(str(e), show_panel=show_panel_on_error, window=window)
 
         stdout, stderr = None, None
+        p = None
         vars_for_replace = ChainMap(
             custom_environ or {},
             window.extract_variables(),
@@ -381,6 +385,9 @@ class _GitCommand(SettingsMixin):
             savvy_env_expanded or {},
             os.environ
         )
+        popen_kwargs: Dict[str, Any] = {"startupinfo": STARTUPINFO}
+        if os.name != "nt":
+            popen_kwargs["start_new_session"] = True
         start = time.time()
         try:
             p = subprocess.Popen(
@@ -390,11 +397,14 @@ class _GitCommand(SettingsMixin):
                 stderr=subprocess.PIPE,
                 cwd=working_dir,
                 env=environ,
-                startupinfo=STARTUPINFO
+                **popen_kwargs
             )
 
             if just_the_proc:
                 return p
+
+            if log:
+                util.log.start_abortable_command(panel, p)
 
             if isinstance(stdin, str):
                 stdin = stdin.encode(encoding=stdin_encoding)
@@ -433,7 +443,13 @@ class _GitCommand(SettingsMixin):
                 end = time.time()
                 util.debug.log_git(final_args, working_dir, stdin, stdout, stderr, end - start)
                 if log:
-                    log("\n[Done in {:.2f}s]".format(end - start))
+                    aborted = proc_has_been_aborted_by_user(p) if p else False
+                    util.log.finish_abortable_command(panel, p)
+                    util.log.append_done_message(
+                        panel,
+                        end - start,
+                        "Aborted" if aborted else "Done"
+                    )
 
         if decode:
             try:
@@ -454,6 +470,18 @@ class _GitCommand(SettingsMixin):
                     show_panel=show_panel_on_error,
                     window=window
                 )
+
+        assert p is not None
+        if proc_has_been_aborted_by_user(p):
+            stdout_s, stderr_s = self.ensure_decoded(stdout), self.ensure_decoded(stderr)
+            raise AbortedGitCall(
+                "$ {}\n\nAborted by user.".format(command_str),
+                cmd=command,
+                stdout=stdout_s,
+                stderr=stderr_s,
+                show_panel=False,
+                window=window
+            )
 
         if throw_on_error and not p.returncode == 0:
             stdout_s, stderr_s = self.ensure_decoded(stdout), self.ensure_decoded(stderr)
@@ -852,7 +880,7 @@ from .git_mixins.tags import TagsMixin  # noqa: E402
 from .git_mixins.history import HistoryMixin  # noqa: E402
 from .git_mixins.rewrite import RewriteMixin  # noqa: E402
 from .git_mixins.merge import MergeMixin  # noqa: E402
-from .exceptions import DetachedView, GitSavvyError  # noqa: E402
+from .exceptions import AbortedGitCall, DetachedView, GitSavvyError  # noqa: E402
 
 
 class GitCommand(
