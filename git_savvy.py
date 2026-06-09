@@ -19,7 +19,7 @@ class InPlaceReloader(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         return self.install()
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.uninstall(failed=exc_type is not None)
+        self.uninstall()
 
     def install(self):
         for name in self.modules:
@@ -29,14 +29,9 @@ class InPlaceReloader(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         sys.meta_path.insert(0, self)
         return self
 
-    def uninstall(self, failed=False):
+    def uninstall(self):
         if self in sys.meta_path:
             sys.meta_path.remove(self)
-
-        if failed:
-            for name, module in self.modules.items():
-                sys.modules.setdefault(name, module)
-                self.restore_parent_module_attribute(name, module)
 
     def find_spec(self, fullname, path=None, target=None):
         if fullname not in self.modules:
@@ -58,19 +53,10 @@ class InPlaceReloader(importlib.abc.MetaPathFinder, importlib.abc.Loader):
 
     def clear_parent_module_attributes(self):
         for name, module in self.modules.items():
-            parent = self.parent_module(name)
-            attr = name.rpartition(".")[-1]
+            parent_name, _, attr = name.rpartition(".")
+            parent = self.modules.get(parent_name)
             if isinstance(parent, ModuleType) and getattr(parent, attr, None) is module:
                 delattr(parent, attr)
-
-    def restore_parent_module_attribute(self, name, module):
-        parent = self.parent_module(name)
-        if isinstance(parent, ModuleType):
-            setattr(parent, name.rpartition(".")[-1], module)
-
-    def parent_module(self, name):
-        parent_name = name.rpartition(".")[0]
-        return self.modules.get(parent_name) or sys.modules.get(parent_name)
 
 
 with InPlaceReloader():
