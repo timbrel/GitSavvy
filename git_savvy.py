@@ -1,27 +1,77 @@
+import importlib.abc
+import importlib.machinery
 import sys
+from types import ModuleType
+
 
 # kiss-reloader:
-prefix = __spec__.parent + "."  # type: ignore[operator]  # don't clear the base package
-for module_name in [
-    module_name
-    for module_name in sys.modules
-    if module_name.startswith(prefix) and module_name != __name__
-]:
-    del sys.modules[module_name]
+class InPlaceReloader(importlib.abc.MetaPathFinder, importlib.abc.Loader):
+    def __init__(self, package_name=__spec__.parent, plugin_name=__name__):
+        prefix = package_name + "."
+        self.modules = {
+            name: module
+            for name, module in sys.modules.items()
+            if name.startswith(prefix) and name != plugin_name
+        }
+        self.loaders = {}
+
+    def __enter__(self):
+        return self.install()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.uninstall()
+
+    def install(self):
+        for name in self.modules:
+            sys.modules.pop(name, None)
+
+        self.clear_parent_module_attributes()
+        sys.meta_path.insert(0, self)
+        return self
+
+    def uninstall(self):
+        if self in sys.meta_path:
+            sys.meta_path.remove(self)
+
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname not in self.modules:
+            return None
+
+        spec = importlib.machinery.PathFinder.find_spec(fullname, path)
+        if spec is None or spec.loader is None:
+            return None
+
+        self.loaders[fullname] = spec.loader
+        spec.loader = self
+        return spec
+
+    def create_module(self, spec):
+        return self.modules[spec.name]
+
+    def exec_module(self, module):
+        self.loaders[module.__name__].exec_module(module)
+
+    def clear_parent_module_attributes(self):
+        for name, module in self.modules.items():
+            parent_name, _, attr = name.rpartition(".")
+            parent = self.modules.get(parent_name)
+            if isinstance(parent, ModuleType) and getattr(parent, attr, None) is module:
+                delattr(parent, attr)
 
 
-import sublime
+with InPlaceReloader():
+    import sublime
 
-from .common.commands import *
-from .common.ui import *
-from .common.global_events import *
-from .core.commands import *
-from .core.settings import *
-from .core.interfaces import *
-from .core.runtime import *
-from .core.caches import *
-from .github.commands import *
-from .gitlab.commands import *
+    from .common.commands import *
+    from .common.ui import *
+    from .common.global_events import *
+    from .core.commands import *
+    from .core.settings import *
+    from .core.interfaces import *
+    from .core.runtime import *
+    from .core.caches import *
+    from .github.commands import *
+    from .gitlab.commands import *
 
 
 def prepare_gitsavvy():

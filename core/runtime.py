@@ -35,8 +35,8 @@ Edit = sublime.Edit
 __all__ = ("gs_generic_text_cmd",)
 
 
-UI_THREAD_NAME = None  # type: Optional[str]
-WORKER_THREAD_NAME = None  # type: Optional[str]
+UI_THREAD_NAME: str = threading.current_thread().name
+WORKER_THREAD_NAME: str | None = None
 savvy_executor = ThreadPoolExecutor(max_workers=1)
 auto_timeout = threading.local()
 _enqueued_tasks = utils.Counter()
