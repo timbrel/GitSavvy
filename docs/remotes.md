@@ -2,6 +2,18 @@
 
 GitSavvy provides a few mechanisms for interact with remotes.
 
+## `git: remotes`
+
+Open the remotes dashboard. It lists configured remotes, marks the integration
+remote with `*`, and marks the push target with `▸` when they differ.
+
+Available actions:
+
+- `a`: add remote
+- `D`: delete selected remote
+- `R`: rename selected remote
+- `o`: open the repository config file
+
 ## `git: fetch`
 
 This updates the local history of remote branches, and downloads all commit objects referenced in that history. If the repository has multiple remotes you will prompted to indicate the remote from which you'd like to fetch, when running this command from the palette.

@@ -1,0 +1,26 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/3/syntax.html
+name: GitSavvy Remotes
+hidden: true
+scope: git-savvy.remotes
+contexts:
+  main:
+    - include: "Packages/GitSavvy/syntax/dashboard.sublime-syntax"
+
+    - match: '^  REMOTE:$'
+      scope: keyword.other.git-savvy.section-header.remote
+
+    - match: '^  ([*▸ ]) ([^\s]+)(\s+)(.+)$'
+      captures:
+        0: meta.git-savvy.remotes.remote
+        1: punctuation.symbol.remote-marker.git-savvy
+        2: meta.git-savvy.remotes.remote.name gitsavvy.gotosymbol
+        4: markup.underline.link.git-savvy.remote.url
+
+    - match: '^      ([^\s=]+)( = )(.+)$'
+      captures:
+        0: meta.git-savvy.remotes.config
+        1: variable.parameter.git-savvy.remote.config.key
+        2: punctuation.separator.key-value.git-savvy
+        3: string.unquoted.git-savvy.remote.config.value

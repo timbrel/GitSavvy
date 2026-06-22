@@ -1,0 +1,22 @@
+{
+    // same on all syntaxes
+    "auto_indent": false,
+    "detect_indentation": false,
+    "draw_indent_guides": false,
+    "draw_white_space": "None",
+    "gutter": false,
+    "line_numbers": false,
+    "margin": 20,
+    "rulers": [],
+    "translate_tabs_to_spaces": false,
+    "word_wrap": false,
+
+    // syntax specific
+    "gutter": true,
+    "margin": -8,
+    "highlight_line": true,
+    "fold_buttons": false,
+    "fade_fold_buttons": false,
+    "match_brackets": false,
+    "match_tags": false
+}

@@ -362,6 +362,7 @@
 
             status
             branch
+            remotes
             rebase
             tags
             graph
@@ -370,6 +371,7 @@
     "tab_order": [
         "status",
         "branch",
+        "remotes",
         "tags",
         "graph"
     ],
