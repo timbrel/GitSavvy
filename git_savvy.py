@@ -1,18 +1,14 @@
 import importlib.abc
 import importlib.machinery
 import sys
+from contextlib import nullcontext
 from types import ModuleType
 
 
-# kiss-reloader:
+# kiss-reloader
 class InPlaceReloader(importlib.abc.MetaPathFinder, importlib.abc.Loader):
-    def __init__(self, package_name=__spec__.parent, plugin_name=__name__):
-        prefix = package_name + "."
-        self.modules = {
-            name: module
-            for name, module in sys.modules.items()
-            if name.startswith(prefix) and name != plugin_name
-        }
+    def __init__(self, modules):
+        self.modules = modules
         self.loaders = {}
 
     def __enter__(self):
@@ -59,7 +55,17 @@ class InPlaceReloader(importlib.abc.MetaPathFinder, importlib.abc.Loader):
                 delattr(parent, attr)
 
 
-with InPlaceReloader():
+def reloader(package_name=__spec__.parent, plugin_name=__name__):
+    prefix = package_name + "."
+    modules = {
+        name: module
+        for name, module in sys.modules.items()
+        if name.startswith(prefix) and name != plugin_name
+    }
+    return InPlaceReloader(modules) if modules else nullcontext()
+
+
+with reloader():
     import sublime
 
     from .common.commands import *
