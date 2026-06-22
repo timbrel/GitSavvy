@@ -8,7 +8,7 @@ from webbrowser import open as open_in_browser
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..commands import GsNavigate
+from ..commands import GsNavigate, ref_undo
 from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
 from ..git_mixins.tags import TagList
@@ -451,8 +451,13 @@ class gs_tags_delete(TagsInterfaceCommand):
     def delete_local(self):
         # type: () -> List[str]
         tags_to_delete = self.selected_local_tags()
-        for tag in tags_to_delete:
-            rv = self.git("tag", "-d", tag)
+        tag_hashes = self.selected_local_commits()
+        for tag, tag_hash in zip(tags_to_delete, tag_hashes):
+            with ref_undo.record_tag_recreate_action(
+                self, tag, tag_hash, undo_owner=self.view.id()
+            ):
+                rv = self.git("tag", "-d", tag)
+
             match = EXTRACT_COMMIT.search(rv.strip())
             if match:
                 commit = match.group(1)

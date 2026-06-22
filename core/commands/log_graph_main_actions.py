@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import partial
 import os
 from itertools import chain
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Sequence
 
 import sublime
 from sublime_plugin import WindowCommand
@@ -13,9 +13,11 @@ from ..fns import filter_, take, unique
 from ..git_command import GitCommand
 from ..git_mixins.branches import Branch
 from ..text_helper import line_from_pt
-from ..ui__quick_panel import SEPARATOR, show_quick_panel
+from ..types import ShortHash
+from ..ui__quick_panel import ActionType, SEPARATOR, show_actions_panel, show_quick_panel
 from ..utils import open_folder_in_new_window
 from . import multi_selector
+from . import ref_undo
 from . import log_graph_colorizer as colorizer
 from .log_graph import dot_from_line, follow_dots
 from .log_graph_helper import (
@@ -29,6 +31,59 @@ from .log_graph_helper import (
 
 
 FOLLOW_DECORATION_LIMIT = 100
+
+
+class gs_log_graph_delete_decoration(WindowCommand, GitCommand):
+    def run(self) -> None:
+        view = self.window.active_view()
+        if view is None or not is_log_graph_view(view):
+            return
+
+        branches = {b.canonical_name: b for b in self.get_branches()}
+        info = describe_line_at_cursor(view, branches)
+        if not info:
+            return
+
+        actions = self.delete_actions(view, info)
+        if len(actions) == 1:
+            actions[0][1]()
+        elif actions:
+            show_actions_panel(self.window, actions)
+        elif remote_refs := undeletable_refs(info):
+            flash_cannot_delete_remote_ref(view, remote_refs)
+        else:
+            self.window.status_message("No branch or tag on this commit.")
+
+    def delete_actions(
+        self, view: sublime.View, info: LineInfo
+    ) -> Sequence[ActionType]:
+        return [
+            (
+                "Delete branch '{}'".format(branch_name),
+                partial(self.delete_branch, branch_name, view.id())
+            )
+            for branch_name in info.get("local_branches", [])
+        ] + [
+            (
+                "Delete tag '{}'".format(tag_name),
+                partial(self.delete_tag, tag_name, info["commit"], view.id())
+            )
+            for tag_name in info.get("tags", [])
+        ]
+
+    def delete_branch(self, branch_name: str, undo_owner: ref_undo.UndoOwner) -> None:
+        self.window.run_command("gs_delete_branch", {
+            "branch": branch_name,
+            "undo_owner": undo_owner
+        })
+
+    def delete_tag(
+        self,
+        tag_name: str,
+        commit_hash: ShortHash,
+        undo_owner: sublime.ViewId
+    ) -> None:
+        delete_tag_from_graph(self, self.window, tag_name, commit_hash, undo_owner)
 
 
 class gs_log_graph_action(WindowCommand, GitCommand):
@@ -92,9 +147,9 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
     def actions_for_multiple_lines(
         self, view: sublime.View, infos: List[LineInfo]
-    ) -> List[Tuple[str, Callable[[], None]]]:
+    ) -> Sequence[ActionType]:
         file_path = self._get_file_path(view)
-        actions: List[Tuple[str, Callable[[], None]]] = []
+        actions: List[ActionType] = []
 
         if len(infos) == 2:
 
@@ -189,7 +244,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
     def actions_for_single_line(
         self, view: sublime.View, info: LineInfo, branches: Dict[str, Branch]
-    ) -> List[Tuple[str, Callable[[], None]]]:
+    ) -> Sequence[ActionType]:
         head_info = describe_head(view, branches)
         commit_hash = info["commit"]
         good_commit_name = (
@@ -215,7 +270,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             else lambda x: []
         )
 
-        actions: List[Tuple[str, Callable[[], None]]] = []
+        actions: List[ActionType] = []
         if in_bisect:
             actions += [
                 ("Good", partial(self.bisect_step, "good")),
@@ -322,7 +377,10 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         ]
 
         actions += [
-            ("Delete tag '{}'".format(tag_name), partial(self.delete_tag, tag_name))
+            (
+                "Delete tag '{}'".format(tag_name),
+                partial(self.delete_tag, tag_name, commit_hash, view.id())
+            )
             for tag_name in info.get("tags", [])
         ]
 
@@ -383,7 +441,10 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 ]
 
             actions += [
-                ("Delete branch '{}'".format(branch_name), partial(self.delete_branch, branch_name))
+                (
+                    "Delete branch '{}'".format(branch_name),
+                    partial(self.delete_branch, branch_name, view.id())
+                )
                 for branch_name in info.get("local_branches", [])
             ]
 
@@ -580,8 +641,11 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         self.git("branch", "-f", branch_name, target)
         util.view.refresh_gitsavvy_interfaces(self.window)
 
-    def delete_branch(self, branch_name):
-        self.window.run_command("gs_delete_branch", {"branch": branch_name})
+    def delete_branch(self, branch_name: str, undo_owner: sublime.ViewId):
+        self.window.run_command("gs_delete_branch", {
+            "branch": branch_name,
+            "undo_owner": undo_owner
+        })
 
     def show_commit(self, commit_hash):
         self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
@@ -600,9 +664,13 @@ class gs_log_graph_action(WindowCommand, GitCommand):
     def create_tag(self, commit_hash):
         self.window.run_command("gs_tag_create", {"target_commit": commit_hash})
 
-    def delete_tag(self, tag_name):
-        self.git("tag", "-d", tag_name)
-        util.view.refresh_gitsavvy_interfaces(self.window)
+    def delete_tag(
+        self,
+        tag_name: str,
+        commit_hash: ShortHash,
+        undo_owner: sublime.ViewId
+    ) -> None:
+        delete_tag_from_graph(self, self.window, tag_name, commit_hash, undo_owner)
 
     def reset_to(self, commitish):
         self.window.run_command("gs_reset", {"commit_hash": commitish})
@@ -687,6 +755,60 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         )
         self.checkout_ref(commit_hash, fpath=file_path)
         util.view.refresh_gitsavvy_interfaces(self.window)
+
+
+def delete_tag_from_graph(
+    cmd: GitCommand,
+    window: sublime.Window,
+    tag_name: str,
+    dereferenced_target_hash: ShortHash,
+    undo_owner: sublime.ViewId
+) -> None:
+    with ref_undo.record_tag_recreate_action(
+        cmd,
+        tag_name,
+        dereferenced_target_hash=dereferenced_target_hash,
+        undo_owner=undo_owner
+    ):
+        cmd.git("tag", "-d", tag_name)
+    window.status_message("Deleted tag '{}'.".format(tag_name))
+    util.view.refresh_gitsavvy_interfaces(window)
+
+
+def is_log_graph_view(view: sublime.View) -> bool:
+    return bool(view.settings().get("git_savvy.log_graph_view"))
+
+
+def describe_line_at_cursor(
+    view: sublime.View, branches: Dict[str, Branch]
+) -> Optional[LineInfo]:
+    try:
+        line = line_from_pt(view, view.sel()[0].b)
+    except IndexError:
+        return None
+
+    return describe_graph_line(line.text, branches)
+
+
+def undeletable_refs(info: LineInfo) -> List[str]:
+    local_branches = set(info.get("local_branches", []))
+    return list(unique(
+        ref for ref in info.get("branches", [])
+        if ref not in local_branches
+    ))
+
+
+def flash_cannot_delete_remote_ref(view: sublime.View, refs: List[str]) -> None:
+    window = view.window()
+    if not window:
+        return
+
+    if len(refs) == 1:
+        window.status_message("Cannot delete remote ref '{}'".format(refs[0]))
+    else:
+        window.status_message("Cannot delete remote refs {}".format(
+            " and ".join("'{}'".format(ref) for ref in refs)
+        ))
 
 
 def display_name(info: LineInfo) -> str:

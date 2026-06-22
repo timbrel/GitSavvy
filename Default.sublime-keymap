@@ -1747,6 +1747,14 @@
         ]
     },
     {
+        "keys": ["primary+z"],
+        "command": "gs_ref_undo",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["c"],
         "command": "gs_tag_create",
         "context": [
@@ -1909,6 +1917,14 @@
         "keys": ["D"],
         "command": "gs_branches_delete",
         "args": { "force": true },
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["primary+z"],
+        "command": "gs_ref_undo",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
@@ -2154,6 +2170,22 @@
     {
         "keys": ["enter"],
         "command": "gs_log_graph_action",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["D"],
+        "command": "gs_log_graph_delete_decoration",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "keys": ["primary+z"],
+        "command": "gs_ref_undo",
         "context": [
             { "key": "setting.command_mode", "operator": "equal", "operand": false },
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }

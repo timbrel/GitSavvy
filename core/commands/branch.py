@@ -1,13 +1,14 @@
+from __future__ import annotations
 from functools import lru_cache
 import inspect
 import re
 import sublime
 
-from . import push
+from . import push, ref_undo
 from ..git_command import GitSavvyError
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ...common import util
-from GitSavvy.core.base_commands import ask_for_local_branch, GsWindowCommand
+from GitSavvy.core.base_commands import ask_for_local_branch, std_undo_owner, GsWindowCommand
 from ..ui__quick_panel import noop, show_actions_panel
 from GitSavvy.core.utils import uprint
 
@@ -20,7 +21,7 @@ __all__ = (
 )
 
 
-from typing import Callable, TypeVar
+from typing import Callable, Optional, TypeVar
 from GitSavvy.core.base_commands import Args, Kont
 T = TypeVar("T")
 
@@ -82,10 +83,25 @@ def ask_for_name(caption=just(NEW_BRANCH_PROMPT), initial_text=just("")):
 class gs_create_branch(GsWindowCommand):
     defaults = {
         "branch_name": ask_for_name(),
+        "undo_owner": std_undo_owner,
     }
 
-    def run(self, branch_name, start_point=None, force=False):
-        # type: (str, str, bool) -> None
+    def run(
+        self,
+        branch_name: str,
+        undo_owner: sublime.ViewId,
+        start_point: Optional[str] = None,
+        force: bool = False,
+        previous_tip: Optional[str] = None
+    ) -> None:
+        if force and previous_tip is None:
+            previous_tip = self.git(
+                "rev-parse",
+                "--verify",
+                f"refs/heads/{branch_name}",
+                throw_on_error=False
+            ).strip() or None
+
         try:
             self.git_throwing_silently(
                 "branch",
@@ -96,13 +112,19 @@ class gs_create_branch(GsWindowCommand):
         except GitSavvyError as e:
             if BRANCH_ALREADY_EXISTS_MESSAGE.format(branch_name) in e.stderr and not force:
                 def overwrite_action():
-                    old_hash = self.git("rev-parse", branch_name).strip()
-                    uprint(RECREATE_BRANCH_UNDO_MESSAGE.format(branch_name, old_hash))
+                    previous_tip = self.git(
+                        "rev-parse",
+                        "--verify",
+                        f"refs/heads/{branch_name}"
+                    ).strip()
+                    uprint(RECREATE_BRANCH_UNDO_MESSAGE.format(branch_name, previous_tip))
 
                     self.window.run_command("gs_create_branch", {
                         "branch_name": branch_name,
                         "start_point": start_point,
                         "force": True,
+                        "previous_tip": previous_tip,
+                        "undo_owner": undo_owner,
                     })
 
                 show_actions_panel(self.window, [
@@ -117,6 +139,9 @@ class gs_create_branch(GsWindowCommand):
             else:
                 e.show_error_panel()
                 raise
+
+        if force and previous_tip:
+            ref_undo.add_branch_move_undo(self, branch_name, previous_tip, undo_owner)
 
         self.window.status_message("Created {}{}".format(
             branch_name,
@@ -157,11 +182,16 @@ class gs_unset_tracking_information(GsWindowCommand):
 class gs_delete_branch(GsWindowCommand):
     defaults = {
         "branch": ask_for_local_branch,
+        "undo_owner": std_undo_owner,
     }
 
     @util.actions.destructive(description="delete a local branch")
-    def run(self, branch, force=False):
-        # type: (str, bool) -> None
+    def run(
+        self,
+        branch: str,
+        undo_owner: sublime.ViewId,
+        force: bool = False
+    ) -> None:
         if force:
             rv = self.git("branch", "-D", branch)
         else:
@@ -169,13 +199,13 @@ class gs_delete_branch(GsWindowCommand):
                 rv = self.git_throwing_silently("branch", "-d", branch)
             except GitSavvyError as e:
                 if NOT_MERGED_WARNING.search(e.stderr):
-                    self.offer_force_deletion(branch)
+                    self.offer_force_deletion(branch, undo_owner)
                     return
                 if (
                     CANT_DELETE_USED_BRANCH.search(e.stderr)
                     and branch == self.get_current_branch_name()
                 ):
-                    self.offer_detaching_head(branch)
+                    self.offer_detaching_head(branch, undo_owner)
                     return
                 e.show_error_panel()
                 raise
@@ -183,6 +213,7 @@ class gs_delete_branch(GsWindowCommand):
         match = EXTRACT_COMMIT.search(rv.strip())
         if match:
             commit = match.group(1)
+            ref_undo.add_branch_undo(self, branch, commit, undo_owner)
             uprint(DELETE_UNDO_MESSAGE.format(branch, commit))
         self.window.status_message(
             "Deleted local branch ({}).".format(branch)
@@ -190,23 +221,27 @@ class gs_delete_branch(GsWindowCommand):
         )
         util.view.refresh_gitsavvy_interfaces(self.window)
 
-    def offer_force_deletion(self, branch_name):
-        # type: (str) -> None
+    def offer_force_deletion(self, branch_name: str, undo_owner: Optional[sublime.ViewId]) -> None:
         show_actions_panel(self.window, [
             noop("Abort, '{}' is not fully merged.".format(branch_name)),
             (
                 "Delete anyway.",
                 lambda: self.window.run_command("gs_delete_branch", {
                     "branch": branch_name,
-                    "force": True
+                    "force": True,
+                    "undo_owner": undo_owner
                 })
             )
         ])
 
-    def offer_detaching_head(self, branch):
+    def offer_detaching_head(self, branch: str, undo_owner: Optional[sublime.ViewId]) -> None:
         def kont():
             self.git("checkout", branch, "--detach")
-            self.window.run_command("gs_delete_branch", {"branch": branch, "force": False})
+            self.window.run_command("gs_delete_branch", {
+                "branch": branch,
+                "force": False,
+                "undo_owner": undo_owner
+            })
 
         show_actions_panel(self.window, [
             noop("Abort, '{}' is checked out.".format(branch)),

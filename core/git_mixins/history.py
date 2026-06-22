@@ -583,7 +583,7 @@ class HistoryMixin(mixin_base):
         current_commit: str,
         file_path: str | None = None,
         follow: bool = False
-    ) -> Optional[str]:
+    ) -> ShortHash | None:
         if file_path and not follow:
             return self._previous_commit(current_commit, file_path, follow)
 
@@ -602,7 +602,7 @@ class HistoryMixin(mixin_base):
 
     @cached(not_if={"current_commit": is_dynamic_ref})
     def _previous_commit(self, current_commit, file_path=None, follow=False):
-        # type: (str, Optional[str], bool) -> Optional[str]
+        # type: (str, Optional[str], bool) -> ShortHash | None
         return last(
             self._log_commits_linewise(current_commit, file_path, follow, limit=2),
             None
@@ -613,7 +613,7 @@ class HistoryMixin(mixin_base):
         current_commit: str,
         file_path: str | None = None,
         follow: bool = None,
-    ) -> Optional[str]:
+    ) -> ShortHash | None:
         if file_path and follow is False:
             return self._recent_commit(current_commit, file_path, follow)
 
@@ -624,7 +624,7 @@ class HistoryMixin(mixin_base):
 
     @cached(not_if={"current_commit": is_dynamic_ref})
     def _recent_commit(self, current_commit, file_path=None, follow=False):
-        # type: (str, Optional[str], bool) -> Optional[str]
+        # type: (str, Optional[str], bool) -> ShortHash | None
         return last(
             self._log_commits_linewise(current_commit, file_path, follow, limit=1),
             None
@@ -636,7 +636,7 @@ class HistoryMixin(mixin_base):
         file_path: str,
         line_range: tuple[int, int],
         skip_current: bool = False
-    ) -> Optional[str]:
+    ) -> ShortHash | None:
         current_commit = self.get_short_hash(current_commit)
         commits = self._log_commits_for_line_range(
             current_commit,
@@ -648,8 +648,12 @@ class HistoryMixin(mixin_base):
             None
         )
 
-    def next_commit(self, current_commit, file_path=None, follow=False):
-        # type: (str, Optional[str], bool) -> Optional[str]
+    def next_commit(
+        self,
+        current_commit: str,
+        file_path: str | None = None,
+        follow: bool = False
+    ) -> ShortHash | None:
         return last(
             self._log_commits_linewise(f"{current_commit}..", file_path, follow),
             None
@@ -660,7 +664,7 @@ class HistoryMixin(mixin_base):
         current_commit: str,
         file_path: str | None = None,
         branch_hint: str | None = None,
-    ) -> dict[str, str] | None:
+    ) -> dict[ShortHash, ShortHash] | None:
         if current_commit != self.get_short_hash(current_commit):
             raise RuntimeError("`next_commits` must be called with a short commit hash.")
 
@@ -702,7 +706,7 @@ class HistoryMixin(mixin_base):
         current_commit: str,
         file_path: str,
         line_range: tuple[int, int]
-    ) -> list[str]:
+    ) -> list[ShortHash]:
         file_path_at_commit = self.filename_at_commit(file_path, current_commit)
         relative_path = self.to_short_path(file_path_at_commit)
         start_line, end_line = line_range
@@ -725,7 +729,7 @@ class HistoryMixin(mixin_base):
         file_path: Optional[str],
         follow: bool,
         limit: Optional[int] = None
-    ) -> Iterator[str]:
+    ) -> Iterator[ShortHash]:
         if follow and not file_path:
             raise RuntimeError("follow=True requires file_path")
 
@@ -752,7 +756,7 @@ class HistoryMixin(mixin_base):
         limit: int = 200,
         file_cache: FileHistoryCache = file_history_cache,
         commit_cache: CommitInfoCache = commit_info_cache,
-    ) -> List[str]:
+    ) -> list[ShortHash]:
         """
         Populate file-history info for a single logical file history.
 
@@ -822,7 +826,7 @@ class HistoryMixin(mixin_base):
             pairs = take(limit, pairs)
 
         filename = file_path
-        hashes: List[str] = []
+        hashes: list[ShortHash] = []
         for record, right in pairs:
             assert record
             hashes.append(record.short_hash)

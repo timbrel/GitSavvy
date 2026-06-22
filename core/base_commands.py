@@ -195,3 +195,10 @@ ask_for_local_branch = ask_for_branch(
     ignore_current_branch=True,
     local_branches_only=True
 )
+
+
+def std_undo_owner(self: GsCommand, args: Args, done: Kont) -> None:
+    if av := self.window.active_view():
+        done(av.id())
+    else:
+        self.window.status_message("No active_view() available.")
