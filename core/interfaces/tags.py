@@ -18,7 +18,7 @@ from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker, run_on_new_thread
 from GitSavvy.core.types import ShortHash
 from GitSavvy.core.utils import flash, uprint
-from GitSavvy.core.ui_mixins.quick_panel import show_remote_panel
+from GitSavvy.core.ui_mixins.quick_panel import NO_REMOTES_MESSAGE
 from ..ui__quick_panel import noop, show_actions_panel
 from GitSavvy.github import github
 from GitSavvy.github.git_mixins import GithubRemotesMixin
@@ -29,6 +29,7 @@ __all__ = (
     "gs_tags_toggle_remotes",
     "gs_tags_refresh",
     "gs_tags_delete",
+    "gs_tags_smart_tag",
     "gs_tags_push",
     "gs_tags_show_commit",
     "gs_tags_open_on_github",
@@ -85,6 +86,7 @@ LOADING_TAGS_MESSAGE = "    Loading tags from remote..."
 START_PUSH_MESSAGE = "Pushing tag..."
 END_PUSH_MESSAGE = "Push complete."
 TAG_DELETE_MESSAGE = "Tag(s) deleted."
+SHORT_VERSION_TAG_RE = re.compile(r"^v\d+(?:\.\d+)?$")
 
 
 class gs_show_tags(WindowCommand, GitCommand):
@@ -262,9 +264,9 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
             def maybe_mark(tag):
                 if tag.tag not in remote_tag_names:
-                    return "*"  # denote new semver
+                    return "*"  # denote new version tag
                 if (tag.sha, tag.tag) not in remote_tags:
-                    return "!"  # denote known semver on a different hash
+                    return "!"  # denote known version tag on a different hash
                 return " "
 
         else:
@@ -275,19 +277,18 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                                                 # the syntax expects the remote section begins
             filter_((
                 "\n".join(
-                    "    {} {}".format(
+                    "   {}{} {}".format(
+                        maybe_mark(tag) if is_short_version_tag(tag.tag) else " ",
                         self.to_short_hash(tag.sha),
-                        tag.tag,
+                        tag_with_date(tag, is_short_version_tag(tag.tag)),
                     )
                     for tag in local_tags.regular[:max_items]
                 ),
                 "\n".join(
-                    "   {}{} {:<10} {}{}".format(
+                    "   {}{} {}".format(
                         maybe_mark(tag),
                         self.to_short_hash(tag.sha),
-                        tag.tag,
-                        tag.human_date,
-                        " ({})".format(tag.relative_date) if tag.relative_date != tag.human_date else ""
+                        tag_with_date(tag, True)
                     )
                     for tag in local_tags.versions[:max_items]
                 )
@@ -338,7 +339,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                 tags_list = [
                     tag
                     for tag in remote_info["tags"]
-                    if tag.tag[-3:] != "^{}" and (tag.sha, tag.tag) not in seen
+                    if (tag.sha, tag.tag) not in seen
                 ]
                 msg = "\n".join(
                     "    {} {}".format(self.to_short_hash(tag.sha), tag.tag)
@@ -428,6 +429,18 @@ class gs_tags_refresh(TagsInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
+class gs_tags_smart_tag(TagsInterfaceCommand):
+    """
+    Open the smart tag panel using the dashboard's known tag style.
+    """
+
+    def run(self, edit) -> None:
+        local_tags = self.interface.state.get("local_tags")
+        self.window.run_command("gs_smart_tag", {
+            "version_style": local_tags.version_style if local_tags else "semver"
+        })
+
+
 DELETE_UNDO_MESSAGE = """\
 GitSavvy: Deleted tag ({0}), in case you want to undo, run:
   $ git tag {0} {1}
@@ -500,16 +513,63 @@ class gs_tags_push(TagsInterfaceCommand):
             if name in actual_remotes_to_fetch
         }
         tags_to_push = self.selected_local_tags()
-        kont = partial(self.push_selected, tags_to_push=tags_to_push)
-        show_remote_panel(kont, remotes=remote_candidates, allow_direct=True)
+
+        if not remote_candidates:
+            show_actions_panel(self.window, [noop(NO_REMOTES_MESSAGE)])
+            return
+
+        if len(remote_candidates) == 1:
+            self.push_selected(next(iter(remote_candidates)), tags_to_push)
+            return
+
+        remote = self.guess_remote_to_push_to(list(remote_candidates))
+        show_actions_panel(self.window, [
+            (
+                "Push to '{}'".format(remote),
+                partial(self.push_selected, remote, tags_to_push)
+            ),
+            (
+                "Choose where to push to...",
+                partial(self.ask_which_remote_to_push_to, remote_candidates, remote, tags_to_push)
+            )
+        ])
+
+    def ask_which_remote_to_push_to(
+        self,
+        remote_candidates: Dict[str, str],
+        selected_remote: str,
+        tags_to_push: List[str]
+    ) -> None:
+        available_remotes = list(remote_candidates)
+        show_actions_panel(
+            self.window,
+            [
+                (
+                    remote,
+                    partial(
+                        self.push_selected,
+                        remote,
+                        tags_to_push,
+                        remember_used_remote=True
+                    )
+                )
+                for remote in available_remotes
+            ],
+            select=available_remotes.index(selected_remote)
+        )
 
     @on_worker
     def push_selected(
         self,
         remote: str,
         tags_to_push: List[str],
-        force: bool = False
+        force: bool = False,
+        remember_used_remote: bool = False
     ) -> None:
+        if remember_used_remote:
+            run_on_new_thread(self.git, "config", "--local", "gitsavvy.pushdefault", remote)
+            self.update_store({"last_remote_used_for_push": remote})
+
         flash(self.view, START_PUSH_MESSAGE)
         try:
             self.git_throwing_silently(
@@ -545,6 +605,21 @@ TAG_ALREADY_EXISTS_ON_REMOTE_RE = re.compile(
     r"^\s*!\s+\[rejected\]\s+(?P<tag>\S+)\s+->\s+\S+\s+\(already exists\)$",
     re.MULTILINE
 )
+
+
+def tag_with_date(tag: TagDetails, show_date: bool) -> str:
+    if not show_date or not tag.human_date:
+        return tag.tag
+
+    return "{:<10} {}{}".format(
+        tag.tag,
+        tag.human_date,
+        " ({})".format(tag.relative_date) if tag.relative_date != tag.human_date else ""
+    )
+
+
+def is_short_version_tag(tag: str) -> bool:
+    return bool(SHORT_VERSION_TAG_RE.match(tag))
 
 
 def tags_that_already_exist_on_remote(stderr: str, tags: List[str]) -> List[str]:

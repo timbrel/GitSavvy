@@ -1,9 +1,44 @@
-from GitSavvy.core.commands.tag import default_tag_message, smart_incremented_tag
-
+from datetime import datetime
 import unittest
+
+from GitSavvy.core.commands.tag import (
+    calendar_version,
+    calendar_version_options,
+    calendar_version_style_is_valid,
+    default_tag_message,
+    smart_incremented_tag,
+)
 
 
 class TestSmartTag(unittest.TestCase):
+    def test_calendar_version(self):
+        now = datetime(2026, 5, 29, 12, 34, 56)
+        self.assertEqual(
+            calendar_version("{year}.{month}.{day}.{hour}.{minute}.{second}", now),
+            "2026.05.29.12.34.56"
+        )
+
+    def test_calendar_version_options(self):
+        now = datetime(2026, 5, 29, 12, 34, 56)
+        self.assertEqual(
+            calendar_version_options("{year}.{month}", now),
+            ["2026.05", "2026.05.29", "2026.05.29.12.34"]
+        )
+        self.assertEqual(
+            calendar_version_options("{year}.{month}.{day}", now),
+            ["2026.05.29", "2026.05.29.12.34"]
+        )
+        self.assertEqual(
+            calendar_version_options("{year}.{month}.{day}.{hour}.{minute}", now),
+            ["2026.05.29.12.34", "2026.05.29"]
+        )
+
+    def test_calendar_version_style_is_valid_rejects_invalid_settings(self):
+        invalid_settings = [None, "", "{year}.{unknown}", "{year.foo}", "{"]
+        for setting in invalid_settings:
+            with self.subTest(setting=setting):
+                self.assertFalse(calendar_version_style_is_valid(setting))
+
     def test_default_tag_message(self):
         self.assertEqual(default_tag_message('v{tag_name}', '2.1.0'), 'v2.1.0')
         self.assertEqual(default_tag_message('v{tag_name}', 'v2.1.0'), 'v2.1.0')

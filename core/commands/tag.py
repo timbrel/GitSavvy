@@ -1,18 +1,21 @@
 from __future__ import annotations
 
+from datetime import datetime
+from functools import partial
 import re
+from string import Formatter
 import sublime
-from sublime_plugin import TextCommand
 
 from . import ref_undo
 from ...common import util
+from ..fns import unique
 from ..git_command import GitSavvyError
-from ..ui_mixins.quick_panel import PanelActionMixin
+from ..git_mixins.tags import is_version_tag
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.base_commands import (
     call_with_wanted_args,
     Args, GsCommand, GsWindowCommand, Kont, std_undo_owner)
-from ..ui__quick_panel import noop, show_actions_panel
+from ..ui__quick_panel import ActionType, noop, show_actions_panel
 from GitSavvy.core.utils import just, uprint, yes_no_switch
 from GitSavvy.core.types import CommitHash
 
@@ -35,7 +38,6 @@ ReleaseTypes = Literal[
 
 
 RELEASE_REGEXP = re.compile(r"^([0-9A-Za-z-]*[A-Za-z-])?([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-\.]*?)?([0-9]+))?$")
-MAYBE_SEMVER = re.compile(r"\d+\.\d+(\.\d+)?")
 
 TAG_CREATE_PROMPT = "Enter tag:"
 TAG_CREATE_MESSAGE = "Tag \"{}\" created."
@@ -46,6 +48,9 @@ GitSavvy: Re-created tag '{0}', in case you want to undo, run:
   $ git tag --force {0} {1}
 """
 VERSION_ZERO = "v0.0.0"
+DEFAULT_CALENDAR_VERSION_STYLE = "{year}.{month}.{day}"
+LONG_CALENDAR_VERSION_STYLE = "{year}.{month}.{day}.{hour}.{minute}"
+CALENDAR_VERSION_FIELDS = {"year", "month", "day", "hour", "minute", "second"}
 
 
 def smart_incremented_tag(tag, release_type):
@@ -140,7 +145,7 @@ def ask_for_tag_message():
 def should_ask_for_tag_message(cmd: GsCommand, tag_name: str) -> bool:
     return (
         not cmd.savvy_settings.get("only_ask_to_annotate_versions")
-        or bool(MAYBE_SEMVER.search(tag_name))
+        or is_version_tag(tag_name)
     )
 
 
@@ -231,27 +236,139 @@ class gs_create_tag(GsWindowCommand):
         util.view.refresh_gitsavvy_interfaces(self.window)
 
 
-class gs_smart_tag(PanelActionMixin, TextCommand):
+class gs_smart_tag(GsWindowCommand):
     """
     Displays a panel of possible smart tag options, based on the choice,
     tag the current commit with the corresponding tagname.
     """
+    last_selected_items: dict[str, int] = {}
 
-    async_action = True
-    default_actions = [
-        ["smart_tag", "patch", ("patch", )],
-        ["smart_tag", "minor", ("minor", )],
-        ["smart_tag", "major", ("major", )],
-        ["smart_tag", "prerelease", ("prerelease", )],
-        ["smart_tag", "prepatch", ("prepatch", )],
-        ["smart_tag", "preminor", ("preminor", )],
-        ["smart_tag", "premajor", ("premajor", )],
-    ]
+    def run(self, version_style: str | None = None) -> None:
+        if not version_style:
+            version_style = self.get_local_tags().version_style
+
+        actions = (
+            self.calendar_actions()
+            if version_style == "calendar" else
+            self.semver_actions()
+        )
+        show_actions_panel(
+            self.window,
+            self.with_selection_storage(version_style, actions),
+            select=self.last_selected_item(version_style, actions)
+        )
+
+    def with_selection_storage(
+        self,
+        version_style: str,
+        actions: list[ActionType]
+    ) -> list[ActionType]:
+        return [
+            (description, partial(self.run_and_remember, version_style, idx, action))
+            for idx, (description, action) in enumerate(actions)
+        ]
+
+    def last_selected_item(self, version_style: str, actions: list[ActionType]) -> int:
+        return min(self.last_selected_items.get(version_style, -1), len(actions) - 1)
+
+    def run_and_remember(
+        self,
+        version_style: str,
+        idx: int,
+        action: Callable[[], None]
+    ) -> None:
+        self.last_selected_items[version_style] = idx
+        action()
+
+    def calendar_actions(self) -> list[ActionType]:
+        style = self.get_calendar_version_style()
+        versions = calendar_version_options(style)
+        primary = versions[0]
+        return [
+            *(
+                ("Create '{}'".format(version), partial(self.create_tag, version))
+                for version in versions
+            ),
+            ("Edit the tag name", partial(self.edit_tag_name, primary)),
+        ]
+
+    def semver_actions(self) -> list[ActionType]:
+        return [
+            ("patch", partial(self.smart_tag, "patch")),
+            ("minor", partial(self.smart_tag, "minor")),
+            ("major", partial(self.smart_tag, "major")),
+            ("prerelease", partial(self.smart_tag, "prerelease")),
+            ("prepatch", partial(self.smart_tag, "prepatch")),
+            ("preminor", partial(self.smart_tag, "preminor")),
+            ("premajor", partial(self.smart_tag, "premajor")),
+        ]
+
+    def get_calendar_version_style(self) -> str:
+        style = self.savvy_settings.get("calendar_version_style")
+        if not calendar_version_style_is_valid(style):
+            print(
+                f"calendar_version_style is invalid. "
+                f"falling back to '{DEFAULT_CALENDAR_VERSION_STYLE}'"
+            )
+            return DEFAULT_CALENDAR_VERSION_STYLE
+        return style
 
     def smart_tag(self, release_type: ReleaseTypes) -> None:
         last_tag_name = self.get_last_local_semver_tag() or VERSION_ZERO
         tag_name = smart_incremented_tag(last_tag_name, release_type) or last_tag_name
-        window = self.view.window()
-        if not window:
-            return
-        window.run_command("gs_create_tag", {"suggested_name": tag_name})
+        self.edit_tag_name(tag_name)
+
+    def create_tag(self, tag_name: str) -> None:
+        self.window.run_command("gs_create_tag", {"tag_name": tag_name})
+
+    def edit_tag_name(self, suggested_name: str) -> None:
+        self.window.run_command("gs_create_tag", {"suggested_name": suggested_name})
+
+
+def calendar_version_style_is_valid(style: object) -> bool:
+    if not isinstance(style, str) or not style:
+        return False
+
+    try:
+        fields = [field for _, field, _, _ in Formatter().parse(style) if field]
+    except ValueError:
+        return False
+
+    if not fields or any(field not in CALENDAR_VERSION_FIELDS for field in fields):
+        return False
+
+    return True
+
+
+def calendar_version_options(
+    primary_style: str,
+    now: datetime | None = None
+) -> list[str]:
+    now = now or datetime.now()
+    return list(unique(
+        calendar_version(style, now)
+        for style in (
+            primary_style,
+            DEFAULT_CALENDAR_VERSION_STYLE,
+            LONG_CALENDAR_VERSION_STYLE
+        )
+    ))
+
+
+def calendar_version(style: str, now: datetime | None = None) -> str:
+    now = now or datetime.now()
+    try:
+        return style.format(**calendar_version_fields(now))
+    except (AttributeError, IndexError, KeyError, ValueError):
+        return DEFAULT_CALENDAR_VERSION_STYLE.format(**calendar_version_fields(now))
+
+
+def calendar_version_fields(now: datetime) -> dict[str, str]:
+    return {
+        "year": f"{now.year:04}",
+        "month": f"{now.month:02}",
+        "day": f"{now.day:02}",
+        "hour": f"{now.hour:02}",
+        "minute": f"{now.minute:02}",
+        "second": f"{now.second:02}"
+    }

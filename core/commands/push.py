@@ -17,7 +17,7 @@ __all__ = (
 )
 
 
-from typing import Dict, Sequence, TypeVar
+from typing import TypeVar
 from GitSavvy.core.base_commands import Args, GsCommand, Kont
 T = TypeVar("T")
 
@@ -28,34 +28,6 @@ CONFIRM_FORCE_PUSH = ("You are about to `git push {}`. Would you  "
 
 
 class PushMixin(GsWindowCommand):
-    def guess_remote_to_push_to(self, available_remotes):
-        # type: (Sequence[str]) -> str
-        if len(available_remotes) == 0:
-            raise RuntimeError("")
-        if len(available_remotes) == 1:
-            return next(iter(available_remotes))
-
-        last_remote_used = self.current_state().get("last_remote_used_for_push")
-        if last_remote_used in available_remotes:
-            return last_remote_used  # type: ignore[return-value]
-
-        defaults = dict(
-            (key[:-12], val)  # strip trailing ".pushdefault" from key
-            for key, val in (
-                line.split()
-                for line in self.git(
-                    "config",
-                    "--get-regexp",
-                    r".*\.pushdefault",
-                    throw_on_error=False
-                ).splitlines()
-            )
-        )  # type: Dict[str, str]
-        for key in (defaults.get("gitsavvy"), defaults.get("remote"), "fork", "origin"):
-            if key in available_remotes:
-                return key  # type: ignore[return-value]
-        return next(iter(available_remotes))
-
     def do_push(
         self,
         remote,

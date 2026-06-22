@@ -6,7 +6,7 @@ from GitSavvy.core.caches import cache_in_store_as
 from GitSavvy.core.utils import yes_no_switch
 
 
-from typing import Dict, TYPE_CHECKING
+from typing import Dict, Sequence, TYPE_CHECKING
 name = str
 url = str
 
@@ -101,6 +101,33 @@ class RemotesMixin(mixin_base):
             remote,
             branch if not remote_branch else "{}:{}".format(branch, remote_branch)
         )
+
+    def guess_remote_to_push_to(self, available_remotes: Sequence[str]) -> str:
+        if len(available_remotes) == 0:
+            raise RuntimeError("")
+        if len(available_remotes) == 1:
+            return next(iter(available_remotes))
+
+        last_remote_used = self.current_state().get("last_remote_used_for_push")
+        if last_remote_used in available_remotes:
+            return last_remote_used  # type: ignore[return-value]
+
+        defaults = dict(
+            (key[:-12], val)  # strip trailing ".pushdefault" from key
+            for key, val in (
+                line.split()
+                for line in self.git(
+                    "config",
+                    "--get-regexp",
+                    r".*\.pushdefault",
+                    throw_on_error=False
+                ).splitlines()
+            )
+        )  # type: Dict[str, str]
+        for key in (defaults.get("gitsavvy"), defaults.get("remote"), "fork", "origin"):
+            if key in available_remotes:
+                return key  # type: ignore[return-value]
+        return next(iter(available_remotes))
 
     def username_from_url(self, input_url):
         # URLs can come in one of following formats format
