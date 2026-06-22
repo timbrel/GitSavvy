@@ -32,6 +32,9 @@ To https://github.com/timbrel/GitSavvy
 $ git rebase --interactive --autostash --no-autosquash 87e57b9d^
 # <- markup.heading entity.name.section
 #                                                      ^^^^^^^^^ constant.numeric.graph.commit-hash.git-savvy
+[ctrl+z to abort]
+# <- comment.string.other.hint.git-savvy
+#^^^^^^^^^^^^^^^^ comment.string.other.hint.git-savvy
 [detached HEAD at 87e57b9d]
 #                 ^^^^^^^^ constant.numeric.graph.commit-hash.git-savvy
 Rebasing (2/3)

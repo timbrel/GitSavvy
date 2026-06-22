@@ -12,8 +12,11 @@ contexts:
       captures:
         1: markup.heading entity.name.section
 
-    - match: ^\[Done.*\]$
-      scope: string.other
+    - match: ^\[(?:Done|Aborted).*\]$
+      scope: string.other.git-savvy
+
+    - match: ^\[ctrl\+z to abort\]$
+      scope: comment.string.other.hint.git-savvy
 
     - match: (\b{{sha}}\^?)
       comment: SHA

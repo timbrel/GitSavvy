@@ -24,6 +24,10 @@ class GitSavvyError(Exception):
         util.log.display_panel(self.window or sublime.active_window(), self.message)
 
 
+class AbortedGitCall(GitSavvyError):
+    pass
+
+
 class FailedGithubRequest(GitSavvyError):
     pass
 
