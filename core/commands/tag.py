@@ -1,22 +1,29 @@
+from __future__ import annotations
+
 import re
+import sublime
 from sublime_plugin import TextCommand
 
+from . import ref_undo
 from ...common import util
 from ..git_command import GitSavvyError
 from ..ui_mixins.quick_panel import PanelActionMixin
 from ..ui_mixins.input_panel import show_single_line_input_panel
-from GitSavvy.core.base_commands import GsTextCommand
+from GitSavvy.core.base_commands import (
+    call_with_wanted_args,
+    Args, GsCommand, GsWindowCommand, Kont, std_undo_owner)
 from ..ui__quick_panel import noop, show_actions_panel
-from GitSavvy.core.utils import uprint, yes_no_switch
+from GitSavvy.core.utils import just, uprint, yes_no_switch
+from GitSavvy.core.types import CommitHash
 
 
 __all__ = (
-    "gs_tag_create",
+    "gs_create_tag",
     "gs_smart_tag",
 )
 
 
-from typing import Literal, Optional
+from typing import Callable, Literal, Optional
 ReleaseTypes = Literal[
     "patch",
     "minor",
@@ -88,78 +95,121 @@ def default_tag_message(message_template: str, tag_name: str) -> str:
     return message_template.format(tag_name=tag_name)
 
 
-class gs_tag_create(GsTextCommand):
+def ask_for_tag_name(
+    caption: str = TAG_CREATE_PROMPT,
+    initial_text: Callable[..., str] = just("")
+):
+    def handler(cmd: GsCommand, args: Args, done: Kont, initial_text_: str = "") -> None:
+        def on_done(tag_name):
+            if not tag_name:
+                return None
 
+            normalized_tag_name = normalize_tag_name(cmd, tag_name)
+            if not normalized_tag_name:
+                util.log.display_panel(
+                    cmd.window,
+                    "'{}' is not a valid tag name.".format(tag_name)
+                )
+                handler(cmd, args, done, initial_text_=tag_name)
+                return None
+
+            done(normalized_tag_name)
+
+        show_single_line_input_panel(
+            caption,
+            initial_text_ or call_with_wanted_args(initial_text, args),
+            on_done
+        )
+    return handler
+
+
+def ask_for_tag_message():
+    def handler(cmd: GsCommand, args: Args, done: Kont) -> None:
+        tag_name = args["tag_name"]
+        if should_ask_for_tag_message(cmd, tag_name):
+            show_single_line_input_panel(
+                TAG_CREATE_MESSAGE_PROMPT,
+                default_tag_message(cmd.savvy_settings.get("default_tag_message"), tag_name),
+                done
+            )
+        else:
+            done(None)
+    return handler
+
+
+def should_ask_for_tag_message(cmd: GsCommand, tag_name: str) -> bool:
+    return (
+        not cmd.savvy_settings.get("only_ask_to_annotate_versions")
+        or bool(MAYBE_SEMVER.search(tag_name))
+    )
+
+
+def normalize_tag_name(cmd: GsCommand, tag_name: str) -> str | None:
+    stdout = cmd.git(
+        "check-ref-format",
+        "--normalize",
+        "refs/tags/" + tag_name,
+        throw_on_error=False
+    )
+    return stdout.strip()[10:] if stdout else None
+
+
+class gs_create_tag(GsWindowCommand):
     """
     Through a series of panels, allow the user to add a tag and message.
     """
 
-    def run(self, edit, tag_name="", target_commit=None):
-        # type: (object, str, str) -> None
-        window = self.view.window()
-        if not window:
-            return
-        self.window = window
-        self.target_commit = target_commit
-        show_single_line_input_panel(TAG_CREATE_PROMPT, tag_name, self.on_entered_name)
+    defaults = {
+        "tag_name": ask_for_tag_name(
+            initial_text=lambda suggested_name="": suggested_name
+        ),
+        "tag_message": ask_for_tag_message(),
+        "undo_owner": std_undo_owner,
+    }
 
-    def on_entered_name(self, tag_name):
-        # type: (str) -> None
-        """
-        After the user has entered a tag name, validate the tag name and prompt for
-        a tag message.
-        """
-        if not tag_name:
-            return
+    def run(
+        self,
+        tag_name: str,
+        tag_message: str | None,
+        undo_owner: sublime.ViewId,
+        target_commit: str | None = None,
+        force: bool = False,
+        suggested_name: str = "",
+        previous_hash: tuple[CommitHash, CommitHash] | None = None
+    ) -> None:
+        if force and previous_hash is None:
+            previous_hash = self.resolve_tag(tag_name, lenient=True)
 
-        stdout = self.git(
-            "check-ref-format",
-            "--normalize",
-            "refs/tags/" + tag_name,
-            throw_on_error=False
-        )
-
-        if not stdout:
-            util.log.display_panel(
-                self.window,
-                "'{}' is not a valid tag name.".format(tag_name)
-            )
-            return None
-
-        self.tag_name = stdout.strip()[10:]
-
-        if MAYBE_SEMVER.search(tag_name) and self.savvy_settings.get("only_ask_to_annotate_versions"):
-            show_single_line_input_panel(
-                TAG_CREATE_MESSAGE_PROMPT,
-                default_tag_message(self.savvy_settings.get("default_tag_message"), tag_name),
-                self.on_entered_message
-            )
-        else:
-            self.on_entered_message()
-
-    def on_entered_message(self, message=None, force=False):
-        # type: (str, bool) -> None
-        """
-        Create a tag with the specified tag name and message.
-        """
         try:
-            if not message:
-                self.git_throwing_silently("tag", yes_no_switch("--force", force), self.tag_name, self.target_commit)
+            if not tag_message:
+                self.git_throwing_silently(
+                    "tag", yes_no_switch("--force", force), tag_name, target_commit)
             else:
                 self.git_throwing_silently(
-                    "tag", yes_no_switch("--force", force), self.tag_name, self.target_commit,
-                    "-F", "-", stdin=message)
+                    "tag", yes_no_switch("--force", force), tag_name, target_commit,
+                    "-F", "-", stdin=tag_message)
         except GitSavvyError as e:
-            if TAG_ALREADY_EXISTS_MESSAGE.format(self.tag_name) in e.stderr and not force:
+            if TAG_ALREADY_EXISTS_MESSAGE.format(tag_name) in e.stderr and not force:
                 def overwrite_action():
-                    old_hash = self.resolve(self.tag_name)
-                    uprint(RECREATE_TAG_UNDO_MESSAGE.format(self.tag_name, old_hash))
-                    self.on_entered_message(message, force=True)
+                    previous_hash = self.resolve_tag(tag_name)
+                    uprint(RECREATE_TAG_UNDO_MESSAGE.format(
+                        tag_name,
+                        previous_hash[1]
+                    ))
+
+                    self.window.run_command("gs_create_tag", {
+                        "tag_name": tag_name,
+                        "tag_message": tag_message,
+                        "target_commit": target_commit,
+                        "force": True,
+                        "previous_hash": previous_hash,
+                        "undo_owner": undo_owner,
+                    })
 
                 show_actions_panel(self.window, [
-                    noop(f"Abort, a tag named '{self.tag_name}' already exists."),
+                    noop(f"Abort, a tag named '{tag_name}' already exists."),
                     (
-                        f'Re-create the tag at {self.target_commit}.',
+                        f'Re-create the tag at {target_commit or "HEAD"}.',
                         overwrite_action
                     )
                 ])
@@ -169,7 +219,15 @@ class gs_tag_create(GsTextCommand):
                 e.show_error_panel()
                 raise
 
-        self.window.status_message(TAG_CREATE_MESSAGE.format(self.tag_name))
+        if force and previous_hash:
+            ref_undo.add_tag_undo(
+                self,
+                tag_name,
+                *previous_hash,
+                undo_owner
+            )
+
+        self.window.status_message(TAG_CREATE_MESSAGE.format(tag_name))
         util.view.refresh_gitsavvy_interfaces(self.window)
 
 
@@ -190,8 +248,10 @@ class gs_smart_tag(PanelActionMixin, TextCommand):
         ["smart_tag", "premajor", ("premajor", )],
     ]
 
-    def smart_tag(self, release_type):
-        # type: (ReleaseTypes) -> None
+    def smart_tag(self, release_type: ReleaseTypes) -> None:
         last_tag_name = self.get_last_local_semver_tag() or VERSION_ZERO
         tag_name = smart_incremented_tag(last_tag_name, release_type) or last_tag_name
-        self.view.run_command("gs_tag_create", {"tag_name": tag_name})
+        window = self.view.window()
+        if not window:
+            return
+        window.run_command("gs_create_tag", {"suggested_name": tag_name})

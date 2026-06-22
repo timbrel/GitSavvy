@@ -1,6 +1,4 @@
 from __future__ import annotations
-from functools import lru_cache
-import inspect
 import re
 import sublime
 
@@ -8,9 +6,11 @@ from . import push, ref_undo
 from ..git_command import GitSavvyError
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ...common import util
-from GitSavvy.core.base_commands import ask_for_local_branch, std_undo_owner, GsWindowCommand
+from GitSavvy.core.base_commands import (
+    ask_for_local_branch, call_with_wanted_args, std_undo_owner,
+    GsWindowCommand)
 from ..ui__quick_panel import noop, show_actions_panel
-from GitSavvy.core.utils import uprint
+from GitSavvy.core.utils import just, uprint
 from GitSavvy.core.types import FullHash, ShortHash
 
 
@@ -22,7 +22,7 @@ __all__ = (
 )
 
 
-from typing import Callable, Optional, TypeVar
+from typing import Optional, TypeVar
 from GitSavvy.core.base_commands import Args, Kont
 T = TypeVar("T")
 
@@ -42,22 +42,6 @@ GitSavvy: Re-created branch '{0}', in case you want to undo, run:
 EXTRACT_COMMIT = re.compile(r"\(was (.+)\)")
 NOT_MERGED_WARNING = re.compile(r"the branch.*is not fully merged", re.I)
 CANT_DELETE_USED_BRANCH = re.compile(r"cannot delete branch .+ (checked out|used by worktree) at ", re.I)
-
-
-def just(value):
-    # type: (T) -> Callable[..., T]
-    return lambda: value
-
-
-def call_with_wanted_args(fn, args):
-    # type: (Callable[..., T], Args) -> T
-    fs = _signature(fn)
-    return fn(**{k: args[k] for k in fs.parameters.keys() if k in args})
-
-
-@lru_cache()
-def _signature(fn):
-    return inspect.signature(fn)
 
 
 def ask_for_name(caption=just(NEW_BRANCH_PROMPT), initial_text=just("")):

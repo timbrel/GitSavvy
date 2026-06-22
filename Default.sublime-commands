@@ -446,7 +446,7 @@
     },
     {
         "caption": "git: quick tag",
-        "command": "gs_tag_create"
+        "command": "gs_create_tag"
     },
     {
         "caption": "git: smart tag",
