@@ -304,7 +304,7 @@ class gs_line_history_open_graph_context(TextCommand, GitCommand):
         if commit_hash:
             window.run_command("gs_graph", {
                 "all": True,
-                "follow": self.get_short_hash(commit_hash)
+                "follow": self.to_short_hash(commit_hash)
             })
 
 

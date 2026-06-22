@@ -1,3 +1,4 @@
+from __future__ import annotations
 from itertools import groupby, takewhile
 import os
 from contextlib import contextmanager
@@ -38,7 +39,7 @@ __all__ = (
 
 
 from typing import Dict, Iterable, List, Literal, NamedTuple, Optional, Tuple
-from ..types import LineNo, ColNo, Row
+from ..types import LineNo, ColNo, Row, FullPath, ShortHash
 from GitSavvy.common.util.parse_diff import Hunk as InlineDiff_Hunk
 
 
@@ -280,7 +281,7 @@ class gs_inline_diff(WindowCommand, GitCommand):
 
         file_path = self.to_full_path(jump_position.filename, repo_path)
         syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
-        target_commit = self.get_short_hash(jump_position.commit_hash)
+        target_commit = self.to_short_hash(jump_position.commit_hash)
         base_commit = self.previous_commit(target_commit, file_path)
         cur_pos = Position(
             jump_position.line - 1,
@@ -450,14 +451,14 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         if target_commit:
             title += (
                 ", ({}..{})".format(
-                    self.get_short_hash(base_commit),
-                    self.get_short_hash(target_commit),
+                    self.to_short_hash(base_commit),
+                    self.to_short_hash(target_commit),
                 )
                 if base_commit
                 else ", (initial version)"
             )
         elif base_commit:
-            title += ", ({}..WORKING DIR)".format(self.get_short_hash(base_commit))
+            title += ", ({}..WORKING DIR)".format(self.to_short_hash(base_commit))
         if runs_on_ui_thread:
             self.draw(self.view, title, match_position, inline_diff_contents, hunks)
         else:
@@ -966,11 +967,11 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
 
 
 class gs_inline_diff_previous_commit(TextCommand, GitCommand):
-    def run(self, edit):
-        # type: (...) -> None
+    def run(self, edit) -> None:
         view = self.view
         settings = view.settings()
-        file_path = settings.get("git_savvy.file_path")
+        file_path: FullPath = settings.get("git_savvy.file_path")
+        base_commit: ShortHash | None
         if is_interactive_diff(view):
             base_commit = self.recent_commit("HEAD", file_path, follow=False)
             if not base_commit:
@@ -1004,16 +1005,16 @@ class gs_inline_diff_previous_commit(TextCommand, GitCommand):
 
 
 class gs_inline_diff_next_commit(TextCommand, GitCommand):
-    def run(self, edit):
+    def run(self, edit) -> None:
         view = self.view
         settings = view.settings()
-        file_path = settings.get("git_savvy.file_path")
-        if is_interactive_diff(view):
+        file_path: FullPath = settings.get("git_savvy.file_path")
+        target_commit: ShortHash | None = settings.get("git_savvy.inline_diff_view.target_commit")
+        if target_commit is None:
             flash(view, "Already on the working dir version.")
             return
 
-        target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
-        new_base_commit = target_commit
+        new_base_commit: ShortHash | None = target_commit
         next_commit = show_file_at_commit.get_next_commit(self, view, target_commit, file_path)
         if next_commit.error_message:
             flash(view, next_commit.error_message)
@@ -1132,7 +1133,7 @@ class gs_inline_diff_open_graph_context(TextCommand, GitCommand):
         target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
         window.run_command("gs_graph", {
             "all": True,
-            "follow": self.get_short_hash(target_commit) if target_commit else "HEAD",
+            "follow": self.to_short_hash(target_commit) if target_commit else "HEAD",
         })
 
 

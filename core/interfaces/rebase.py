@@ -185,7 +185,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
 
     @ui.section("base_commit")
     def render_base_commit(self):
-        return self.get_short_hash(self.base_commit())
+        return self.to_short_hash(self.base_commit())
 
     @ui.section("status")
     def render_status(self):
@@ -295,7 +295,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
                         )
 
             was_rewritten = entry.long_hash in rewritten
-            new_hash = self.get_short_hash(rewritten[entry.long_hash]) if was_rewritten else entry.short_hash
+            new_hash = self.to_short_hash(rewritten[entry.long_hash]) if was_rewritten else entry.short_hash
             commits_info.append({
                 "caret": self.CARET if is_conflict else " ",
                 "status": (self.SUCCESS if was_rewritten else
@@ -373,7 +373,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
             return NOT_A_COMMIT_SHA
 
     def is_not_rebased(self):
-        return self.base_commit() != self.git("rev-parse", self.base_ref()).strip()
+        return self.base_commit() != self.resolve(self.base_ref())
 
     def contain_merges(self, base_commit=None):
         if not base_commit:
@@ -604,7 +604,7 @@ class gs_rebase_squash(RewriteBase):
 
         squash_idx, squash_entry, _ = self.get_idx_entry_and_prev(self.squash_entry.short_hash)
         target_idx, target_entry, before_target = \
-            self.get_idx_entry_and_prev(self.get_short_hash(target_commit))
+            self.get_idx_entry_and_prev(self.to_short_hash(target_commit))
 
         if self.commit_is_merge(target_entry.long_hash):
             sublime.message_dialog("Unable to squash a merge.")
@@ -741,7 +741,7 @@ class gs_rebase_move_up(RewriteBase):
 
         move_idx, move_entry, _ = self.get_idx_entry_and_prev(self.move_entry.short_hash)
         target_idx, target_entry, before_target = \
-            self.get_idx_entry_and_prev(self.get_short_hash(target_commit))
+            self.get_idx_entry_and_prev(self.to_short_hash(target_commit))
         idx = move_idx - target_idx
 
         commit_chain = self.perpare_rewrites(self.interface.entries[target_idx:])
@@ -793,7 +793,7 @@ class gs_rebase_move_down(RewriteBase):
 
         move_idx, move_entry, before_move = self.get_idx_entry_and_prev(self.move_entry.short_hash)
         target_idx, target_entry, _ = \
-            self.get_idx_entry_and_prev(self.get_short_hash(target_commit))
+            self.get_idx_entry_and_prev(self.to_short_hash(target_commit))
         idx = target_idx - move_idx
 
         commit_chain = self.perpare_rewrites(self.interface.entries[move_idx:])

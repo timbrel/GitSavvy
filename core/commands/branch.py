@@ -11,6 +11,7 @@ from ...common import util
 from GitSavvy.core.base_commands import ask_for_local_branch, std_undo_owner, GsWindowCommand
 from ..ui__quick_panel import noop, show_actions_panel
 from GitSavvy.core.utils import uprint
+from GitSavvy.core.types import FullHash, ShortHash
 
 
 __all__ = (
@@ -92,15 +93,10 @@ class gs_create_branch(GsWindowCommand):
         undo_owner: sublime.ViewId,
         start_point: Optional[str] = None,
         force: bool = False,
-        previous_tip: Optional[str] = None
+        previous_tip: FullHash | ShortHash | None = None
     ) -> None:
         if force and previous_tip is None:
-            previous_tip = self.git(
-                "rev-parse",
-                "--verify",
-                f"refs/heads/{branch_name}",
-                throw_on_error=False
-            ).strip() or None
+            previous_tip = self.resolve(f"refs/heads/{branch_name}", on_error="ignore")
 
         try:
             self.git_throwing_silently(
@@ -112,11 +108,7 @@ class gs_create_branch(GsWindowCommand):
         except GitSavvyError as e:
             if BRANCH_ALREADY_EXISTS_MESSAGE.format(branch_name) in e.stderr and not force:
                 def overwrite_action():
-                    previous_tip = self.git(
-                        "rev-parse",
-                        "--verify",
-                        f"refs/heads/{branch_name}"
-                    ).strip()
+                    previous_tip = self.resolve(f"refs/heads/{branch_name}")
                     uprint(RECREATE_BRANCH_UNDO_MESSAGE.format(branch_name, previous_tip))
 
                     self.window.run_command("gs_create_branch", {
@@ -213,7 +205,7 @@ class gs_delete_branch(GsWindowCommand):
         match = EXTRACT_COMMIT.search(rv.strip())
         if match:
             commit = match.group(1)
-            ref_undo.add_branch_undo(self, branch, commit, undo_owner)
+            ref_undo.add_branch_undo(self, branch, ShortHash(commit), undo_owner)
             uprint(DELETE_UNDO_MESSAGE.format(branch, commit))
         self.window.status_message(
             "Deleted local branch ({}).".format(branch)

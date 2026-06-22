@@ -12,6 +12,7 @@ from ..runtime import (
     enqueue_on_ui, enqueue_on_worker, on_worker,
     run_as_text_command, text_command, throttled
 )
+from ..types import FullHash, FullPath, ShortHash
 from ..ui_mixins.quick_panel import show_log_panel
 from ..utils import flash, focus_view
 from ..view import apply_position, capture_cur_position, replace_view_content, Position
@@ -82,7 +83,7 @@ def compute_identifier_for_view(view: sublime.View) -> Optional[Tuple]:
 
 class gs_show_file_at_commit(GsWindowCommand):
 
-    def run(self, commit_hash: str = None, filepath: str = None,
+    def run(self, commit_hash: FullHash | ShortHash | None = None, filepath: FullPath = None,
             position: Optional[Position] = None, lang: Optional[str] = None) -> None:
         fix_position = False
         if not filepath:
@@ -103,7 +104,7 @@ class gs_show_file_at_commit(GsWindowCommand):
                 lang = view.settings().get('syntax')
 
         if commit_hash:
-            commit_hash = self.get_short_hash(commit_hash)
+            commit_hash = self.to_short_hash(commit_hash)
             # Callers may pass a historical path from a diff hunk.  Keep the
             # view anchored to the working-dir path and resolve historical
             # names only when loading content for a specific commit.
@@ -163,11 +164,11 @@ class gs_show_file_at_commit(GsWindowCommand):
 
 
 class _gs_show_file_at_commit_refresh_mixin(GsTextCommand):
-    def update_reference_document(self, commit_hash: str, file_path: str) -> None:
+    def update_reference_document(self, commit_hash: ShortHash, file_path: FullPath) -> None:
         self.view.set_reference_document(self.previous_file_version(commit_hash, file_path))
         views_with_reference_document.add(self.view)
 
-    def previous_file_version(self, current_commit: str, file_path: str) -> str:
+    def previous_file_version(self, current_commit: ShortHash, file_path: FullPath) -> str:
         previous_commit = get_previous_commit(self, self.view, current_commit, file_path)
         if previous_commit:
             file_path_at_commit = self.filename_at_commit(file_path, previous_commit)
@@ -208,7 +209,7 @@ class gs_show_file_at_commit_refresh(_gs_show_file_at_commit_refresh_mixin):
         else:
             enqueue_on_worker(program)
 
-    def update_commit_details(self, commit_hash: str, file_path: str) -> None:
+    def update_commit_details(self, commit_hash: ShortHash, file_path: FullPath) -> None:
         commit_details = self.commit_subject_and_date(commit_hash, file_path)
         self.update_title(commit_details, file_path)
         self.update_status_bar(commit_details)
@@ -265,8 +266,8 @@ class gs_show_file_at_commit_open_previous_commit(GsTextCommand):
         view = self.view
 
         settings = view.settings()
-        file_path = settings.get("git_savvy.file_path")
-        commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
+        file_path: FullPath = settings.get("git_savvy.file_path")
+        commit_hash: ShortHash = settings.get("git_savvy.show_file_at_commit_view.commit")
 
         previous_commit = get_previous_commit(self, view, commit_hash, file_path)
         if not previous_commit:
@@ -296,8 +297,8 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
         view = self.view
 
         settings = view.settings()
-        file_path: str = settings.get("git_savvy.file_path")
-        commit_hash: str = settings.get("git_savvy.show_file_at_commit_view.commit")
+        file_path: FullPath = settings.get("git_savvy.file_path")
+        commit_hash: ShortHash = settings.get("git_savvy.show_file_at_commit_view.commit")
 
         next_commit = get_next_commit(self, view, commit_hash, file_path)
         if next_commit.error_message:
@@ -334,8 +335,8 @@ class gs_show_file_at_commit_open_next_change(GsTextCommand):
     def run(self, edit) -> None:
         view = self.view
         settings = view.settings()
-        file_path: str = settings.get("git_savvy.file_path")
-        commit_hash: str = settings.get("git_savvy.show_file_at_commit_view.commit")
+        file_path: FullPath = settings.get("git_savvy.file_path")
+        commit_hash: ShortHash = settings.get("git_savvy.show_file_at_commit_view.commit")
         line_range = visible_line_range(view)
         if line_range is None:
             flash(view, "No visible lines to inspect.")
@@ -416,10 +417,10 @@ def keep_info_popup_state(view: sublime.View) -> Iterator[None]:
 def get_next_commit(
     cmd: GitCommand,
     view: sublime.View,
-    commit_hash: str,
+    commit_hash: ShortHash,
     file_path: str | None = None
 ) -> NextCommit:
-    commit_hash = cmd.get_short_hash(commit_hash)
+    commit_hash = cmd.to_short_hash(commit_hash)
     if next_commit := recall_next_commit_for(view, commit_hash):
         return NextCommit(next_commit)
 
@@ -447,10 +448,10 @@ def get_next_commit(
 def get_previous_commit(
     cmd: GitCommand,
     view: sublime.View,
-    commit_hash: str,
+    commit_hash: ShortHash,
     file_path: str | None = None
 ) -> Optional[str]:
-    commit_hash = cmd.get_short_hash(commit_hash)
+    commit_hash = cmd.to_short_hash(commit_hash)
     if previous := recall_previous_commit_for(view, commit_hash):
         return previous
 
@@ -499,9 +500,9 @@ def position_from_setting(value) -> Optional[Position]:
     return Position(row, col, offset)
 
 
-def remember_next_commit_for(view: sublime.View, mapping: Dict[str, str]) -> None:
+def remember_next_commit_for(view: sublime.View, mapping: dict[ShortHash, ShortHash]) -> None:
     settings = view.settings()
-    store: Dict[str, str] = settings.get("git_savvy.next_commits", {})
+    store = settings.get("git_savvy.next_commits", {})
     store.update(mapping)
     settings.set("git_savvy.next_commits", store)
 
@@ -683,7 +684,7 @@ class gs_show_file_at_commit_open_log(GsTextCommand):
 
     def _on_highlight(self, commit):
         view = self.view
-        commit = self.get_short_hash(commit)
+        commit = self.to_short_hash(commit)
         previous_commit = view.settings().get("git_savvy.show_file_at_commit_view.commit")
         view.settings().set("git_savvy.show_file_at_commit_view.commit", commit)
         position = capture_cur_position(view)
@@ -764,7 +765,7 @@ class gs_show_file_at_commit_open_graph_context(GsTextCommand):
 
         window.run_command("gs_graph", {
             "all": True,
-            "follow": self.get_short_hash(commit_hash),
+            "follow": self.to_short_hash(commit_hash),
         })
 
 

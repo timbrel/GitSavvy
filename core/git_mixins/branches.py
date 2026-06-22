@@ -7,6 +7,7 @@ from GitSavvy.core.exceptions import GitSavvyError
 from GitSavvy.core.caches import cache_in_store_as
 from GitSavvy.core.utils import hprint, measure_runtime, yes_no_switch
 from GitSavvy.core.runtime import run_on_new_thread
+from GitSavvy.core.types import FullHash
 
 from typing import Dict, List, NamedTuple, Optional, Sequence
 
@@ -34,7 +35,7 @@ class Branch(NamedTuple):
     name: str              # e.g. "master"
     remote: Optional[str]  # e.g. "origin"
     canonical_name: str    # e.g. "origin/master"
-    commit_hash: str
+    commit_hash: FullHash
     commit_msg: str
     active: bool
     is_remote: bool
@@ -291,7 +292,7 @@ class BranchesMixin(mixin_base):
             branch_name,
             remote,
             canonical_name,
-            commit_hash,
+            FullHash(commit_hash),
             commit_msg,
             active,
             is_remote,

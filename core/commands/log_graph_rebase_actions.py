@@ -613,9 +613,7 @@ class gs_log_graph_add_previous_tip(GsTextCommand):
 
         def probe_tip(ref: str) -> bool:
             try:
-                commit_hash = self.git_throwing_silently(
-                    "rev-parse", "--short", ref
-                ).strip()
+                commit_hash = self.resolve(ref, short=True, on_error="suppress_panel")
             except GitSavvyError as e:
                 if "log for '{}'".format(branch_name) in e.stderr:
                     flash(view, "The branch '{}' has no older tip.".format(branch_name))
@@ -681,7 +679,7 @@ class gs_log_graph_remove_previous_tip(GsTextCommand):
             next_nr = int(last_ref.group(1)) - 1
             if next_nr > 0:
                 previous_tip = "{}@{{{}}}".format(branch_name, next_nr)
-                commit_hash = self.git("rev-parse", "--short", previous_tip).strip()
+                commit_hash = self.resolve(previous_tip, short=True)
                 settings.set("git_savvy.log_graph_view.follow", commit_hash)
             else:
                 previous_tip = ""

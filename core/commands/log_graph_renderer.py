@@ -43,6 +43,7 @@ from ..runtime import (
     text_command,
     time_budget,
 )
+from ..types import FullHash
 from ..ui__busy_spinner import start_busy_indicator, stop_busy_indicator
 from ..view import replace_view_content, visible_views
 from .log_graph import (
@@ -414,9 +415,9 @@ def resolve_commit_to_follow_after_rebase(self, commitish):
     # and its first child is the actual commit the user is interested in.
     # A typical form is then `abcdef^` if it is not a branch name.
     try:
-        to_follow = (
+        to_follow: str = (
             self.next_commit(commitish)
-            or self.git("rev-parse", commitish).strip()
+            or self.resolve(commitish, short=True)
         )
     except GitSavvyError as err:
         # Root commits don't have a parent and so the "^" suffix refers
@@ -428,7 +429,7 @@ def resolve_commit_to_follow_after_rebase(self, commitish):
 
     if to_follow:
         settings = self.view.settings()
-        settings.set("git_savvy.log_graph_view.follow", self.get_short_hash(to_follow))
+        settings.set("git_savvy.log_graph_view.follow", to_follow)
 
 
 class gs_log_graph_refresh(GsTextCommand):
@@ -630,7 +631,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 if (wanted_refs := list(refs))
 
                 for n, commit_hash in enumerate(reversed([
-                    self.get_short_hash(line.split(maxsplit=2)[1])
+                    self.to_short_hash(FullHash(line.split(maxsplit=2)[1]))
                     for line in self._read_git_file("logs", "refs", "heads", branch_name).splitlines()
                 ]))
                 if (ref := f"{branch_name}@{{{n}}}") in wanted_refs

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from functools import partial
 from contextlib import contextmanager
 import os
@@ -12,6 +13,7 @@ from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 from GitSavvy.core.fns import filter_
+from GitSavvy.core.types import FullPath, ShortPath
 from GitSavvy.core.runtime import enqueue_on_worker
 from ..ui__quick_panel import noop, show_actions_panel
 
@@ -42,7 +44,7 @@ __all__ = (
 )
 
 
-from typing import Iterable, Iterator, List, Optional, TypedDict
+from typing import Iterable, Iterator, List, Optional, TypedDict, cast
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.branches import Branch
 from ..git_mixins.stash import Stash
@@ -470,18 +472,18 @@ class StatusInterfaceCommand(ui.InterfaceCommand):
             for section in sections
         )
 
-    def get_selected_subjects(self, *sections):
-        # type: (str) -> List[str]
-        return ui.extract_by_selector(self.view, self._get_subjects_selector(sections))
+    def get_selected_subjects(self, *sections: str) -> list[ShortPath]:
+        return cast(
+            List[ShortPath],
+            ui.extract_by_selector(self.view, self._get_subjects_selector(sections)))
 
-    def get_selected_files(self, base_path, *sections):
-        # type: (str, str) -> List[str]
+    def get_selected_files(self, base_path: str, *sections: str) -> list[FullPath]:
         if not sections:
             sections = ('staged', 'unstaged', 'untracked', 'added', 'merge-conflicts', 'skipped')
 
         make_abs_path = partial(os.path.join, base_path)
         return [
-            os.path.normpath(make_abs_path(filename))
+            FullPath(os.path.normpath(make_abs_path(filename)))
             for filename in self.get_selected_subjects(*sections)
         ]
 
@@ -541,8 +543,12 @@ class gs_status_diff_inline(StatusInterfaceCommand):
             self.load_inline_diff_views, self.window, non_cached_files, cached_files
         )
 
-    def load_inline_diff_views(self, window, non_cached_files, cached_files):
-        # type: (sublime.Window, List[str], List[str]) -> None
+    def load_inline_diff_views(
+        self,
+        window: sublime.Window,
+        non_cached_files: list[FullPath],
+        cached_files: list[FullPath]
+    ) -> None:
         for fpath in non_cached_files:
             syntax = util.file.guess_syntax_for_file(window, fpath)
             window.run_command("gs_inline_diff_open", {
@@ -581,8 +587,13 @@ class gs_status_diff(StatusInterfaceCommand):
             self.load_diff_windows, self.window, non_cached_files, cached_files, untracked_files
         )
 
-    def load_diff_windows(self, window, non_cached_files, cached_files, untracked_files):
-        # type: (sublime.Window, List[str], List[str], List[str]) -> None
+    def load_diff_windows(
+        self,
+        window: sublime.Window,
+        non_cached_files: list[FullPath],
+        cached_files: list[FullPath],
+        untracked_files: list[FullPath]
+    ) -> None:
         for fpath in non_cached_files + untracked_files:
             window.run_command("gs_diff", {
                 "file_path": fpath,
@@ -718,11 +729,10 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
             return do_discard()
         return None
 
-    def discard_unstaged(self):
-        # type: () -> Optional[List[str]]
+    def discard_unstaged(self) -> list[ShortPath] | None:
 
         @util.actions.destructive(description="discard one or more unstaged files")
-        def do_discard(file_paths: List[str]):
+        def do_discard(file_paths: list[ShortPath]):
             try:
                 self.checkout_file(*file_paths)
             except GitSavvyError as err:

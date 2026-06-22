@@ -14,7 +14,7 @@ from ..fns import filter_
 from ..git_mixins.history import CommitInfo, LogEntry, is_dynamic_ref
 from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker, run_as_text_command, throttled
 from ..ui_mixins.quick_panel import PanelCommandMixin, show_log_panel
-from ..types import FullHash, LineNo, Row, ShortHash
+from ..types import FullHash, FullPath, LineNo, Row, ShortHash
 from ..view import scroll_to_pt, y_offset, Position
 from ...common import util
 from GitSavvy.core.base_commands import GsTextCommand
@@ -255,9 +255,9 @@ class gs_blame(GsTextCommand):
     def run(
         self,
         edit,
-        file_path: str = None,
+        file_path: FullPath = None,
         repo_path: str = None,
-        commit_hash: str = None,
+        commit_hash: ShortHash | FullHash | Literal["HEAD"] | None = None,
         position: Position = None
     ):
         if not repo_path:
@@ -270,9 +270,12 @@ class gs_blame(GsTextCommand):
 
         if commit_hash == "HEAD":
             commit_hash = self.get_commit_hash_for_head()
-        if commit_hash:
-            commit_hash = self.get_short_hash(commit_hash)
 
+        commit_hash_: ShortHash | None = (
+            self.to_short_hash(commit_hash)
+            if commit_hash else
+            None
+        )
         active_view = self.view
         av_settings = active_view.settings()
         blame_format = blame_format_for_view(active_view)
@@ -285,7 +288,7 @@ class gs_blame(GsTextCommand):
         elif av_settings.get("git_savvy.blame_view"):
             lineno = self.find_matching_lineno_in_file_history(
                 av_settings.get("git_savvy.commit_hash"),
-                commit_hash,
+                commit_hash_,
                 current_lineno(active_view),
                 file_path
             )
@@ -293,10 +296,10 @@ class gs_blame(GsTextCommand):
 
         else:
             row, _ = active_view.rowcol(cursor_pos(active_view))
-            if commit_hash:
-                target_path = self.filename_at_commit(file_path, commit_hash)
+            if commit_hash_:
+                target_path = self.filename_at_commit(file_path, commit_hash_)
                 lineno = self.reverse_find_matching_lineno_between_files(
-                    (commit_hash, target_path),
+                    (commit_hash_, target_path),
                     (None, file_path),
                     row + 1
                 )
@@ -307,7 +310,7 @@ class gs_blame(GsTextCommand):
         this_id = (
             repo_path,
             file_path,
-            commit_hash
+            commit_hash_
         )
         for view in self.window.views():
             if compute_identifier_for_view(view) == this_id:
@@ -322,7 +325,7 @@ class gs_blame(GsTextCommand):
                     "syntax": "Packages/GitSavvy/syntax/blame.sublime-syntax",
                     "git_savvy.repo_path": repo_path,
                     "git_savvy.file_path": file_path,
-                    "git_savvy.commit_hash": commit_hash,
+                    "git_savvy.commit_hash": commit_hash_,
                     "git_savvy.blame_view.ignore_whitespace":
                         av_settings.get("git_savvy.blame_view.ignore_whitespace", False),
                     "git_savvy.blame_view.detect_move_or_copy_within":
@@ -389,11 +392,12 @@ class gs_blame_open_log(GsTextCommand):
         )
 
     def workdir_log_entry(self) -> LogEntry:
-        short_hash_length = (
-            self.current_state().get("short_hash_length") or
-            len(self.get_short_hash("HEAD")))
+        short_hash_length = self.get_short_hash_length()
         placeholder = (".-" * short_hash_length)[:short_hash_length]
-        return LogEntry(placeholder, "", "", "HEAD / WORKTREE", "", "", "", "")
+        return LogEntry(
+            placeholder,   # type: ignore[arg-type] # quick'n'dirty
+            "",            # type: ignore[arg-type]
+            "", "HEAD / WORKTREE", "", "", "", "")
 
     def on_done(self, commit) -> None:
         if commit is not None:
@@ -415,7 +419,7 @@ class gs_blame_open_log(GsTextCommand):
         assert self.file_path
         view = self.view
         settings = view.settings()
-        commit = self.get_short_hash(commit) if commit else None
+        commit = self.to_short_hash(commit) if commit else None
         previous_commit = settings.get("git_savvy.commit_hash")
         lineno = self.find_matching_lineno_in_file_history(
             previous_commit,
@@ -441,7 +445,7 @@ class gs_blame_refresh(GsTextCommand):
 
     def run(self, edit, scroll_to: tuple[int, float | None] | None = None) -> None:
         settings = self.view.settings()
-        file_path = settings.get("git_savvy.file_path")
+        file_path: FullPath = settings.get("git_savvy.file_path")
         commit_hash: ShortHash | None = settings.get("git_savvy.commit_hash", None)
 
         enqueue_on_worker(self.update_commit_details, commit_hash, file_path)
@@ -495,8 +499,8 @@ class gs_blame_refresh(GsTextCommand):
 
     def update_commit_details(
         self,
-        commit_hash: str | None,
-        file_path: str
+        commit_hash: ShortHash | None,
+        file_path: FullPath
     ) -> None:
         if commit_hash:
             commit_details = self.commit_subject_and_date(commit_hash, file_path)
@@ -545,7 +549,7 @@ class gs_blame_refresh(GsTextCommand):
 
     def render_blame(
         self,
-        file_path: str,
+        file_path: FullPath,
         commit_hash: ShortHash | None,
         blame_format: _BlameFormat,
         ignore_whitespace=False,
@@ -561,7 +565,7 @@ class gs_blame_refresh(GsTextCommand):
     @cached(not_if={"commit_hash": is_dynamic_ref})
     def _run_blame_and_parse(
         self,
-        file_path: str,
+        file_path: FullPath,
         commit_hash: ShortHash | None,
         ignore_whitespace=False,
         detect_options=None
@@ -699,13 +703,17 @@ class gs_blame_refresh(GsTextCommand):
         commits: _CommitsByHash = defaultdict(lambda: defaultdict(str))
 
         for line in lines_iter:
-            match = re.match(r"([0-9a-f]{40}) (\d+) (\d+)( \d+)?", line)
+            match = re.match(
+                r"(?P<commit>[0-9a-f]{40}) \d+ (?P<lineno>\d+)(?: \d+)?",
+                line
+            )
             assert match
-            commit_hash, _, lineno, _ = match.groups()
-            short_hash = (
+            commit_hash = FullHash(match["commit"])
+            lineno = int(match["lineno"])
+            short_hash: BlamedCommit = (
                 ""
                 if commit_hash == NOT_COMMITED_HASH
-                else self.get_short_hash(commit_hash)
+                else self.to_short_hash(commit_hash)
             )
             commits[commit_hash]["short_hash"] = short_hash
             commits[commit_hash]["long_hash"] = commit_hash
@@ -729,7 +737,7 @@ class gs_blame_refresh(GsTextCommand):
                 # Strip tab character.
                 contents=next_line[1:],
                 commit_hash=short_hash,
-                lineno=int(lineno)))
+                lineno=lineno))
 
         return blamed_lines, commits
 

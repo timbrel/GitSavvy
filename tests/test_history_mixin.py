@@ -215,7 +215,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
     def test_next_commits_returns_right_to_left_chain_dict(self):
         test = HistoryMixin()
-        when(test).get_short_hash("c3").thenReturn("c3")
+        when(test).to_short_hash("c3").thenReturn("c3")
         when(test).git("log", ...).thenReturn(
             f"{RS}c5{US}2026-05-07 10:00:00 +0200{US}tip{NUL}"
             f"{RS}c4{US}2026-04-03 10:00:00 +0200{US}middle{NUL}"
@@ -228,7 +228,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
     def test_next_commits_returns_empty_dict_when_current_is_tip(self):
         test = HistoryMixin()
-        when(test).get_short_hash("c3").thenReturn("c3")
+        when(test).to_short_hash("c3").thenReturn("c3")
         when(test).git("log", ...).thenReturn(
             f"{RS}c3{US}2026-05-07 10:00:00 +0200{US}tip{NUL}"
         )
@@ -239,7 +239,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
     def test_next_commits_returns_none_when_current_not_on_branch(self):
         test = HistoryMixin()
-        when(test).get_short_hash("c3").thenReturn("c3")
+        when(test).to_short_hash("c3").thenReturn("c3")
         when(test).git("log", ...).thenReturn(
             f"{RS}c5{US}2026-05-07 10:00:00 +0200{US}tip{NUL}"
             f"{RS}c4{US}2026-04-03 10:00:00 +0200{US}middle{NUL}"
@@ -333,7 +333,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
         result = test.commit_subject_and_date("c3")
 
-        self.assertEqual(result, CommitInfo("c3", "c3", "cached subject", "2026-5-7"))
+        self.assertEqual(result, CommitInfo("c3", "cached subject", "2026-5-7"))
 
     def test_commit_subject_and_date_fetches_on_cache_miss(self):
         from GitSavvy.core.git_mixins.history import CommitInfo
@@ -345,7 +345,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
         result = test.commit_subject_and_date("c3")
 
-        self.assertEqual(result, CommitInfo("c3", "c3", "fetched", "2026-5-7"))
+        self.assertEqual(result, CommitInfo("c3", "fetched", "2026-5-7"))
         self.assertIn("c3", commit_info_cache)
 
     def test_commit_subject_and_date_resolves_ref_via_first_fetched_hash(self):
@@ -361,7 +361,7 @@ class TestDescribeGraphLine(DeferrableTestCase):
         # `commit_info_cache[hashes[0]]` (i.e. c3) instead.
         result = test.commit_subject_and_date("HEAD")
 
-        self.assertEqual(result, CommitInfo("HEAD", "HEAD", "tip", "2026-5-7"))
+        self.assertEqual(result, CommitInfo("HEAD", "tip", "2026-5-7"))
 
     def test_commit_subject_and_date_raises_when_file_path_not_in_history(self):
         test = HistoryMixin()
@@ -374,11 +374,11 @@ class TestDescribeGraphLine(DeferrableTestCase):
     def test_filename_at_head_keeps_existing_workdir_path(self):
         test = HistoryMixin()
         when(test).get_repo_path().thenReturn("/repo")
-        when(test).to_short_path("current.py").thenReturn("current.py")
+        when(test).to_short_path("/repo/current.py").thenReturn("current.py")
 
         when(os.path).exists(...).thenReturn(True)
 
-        self.assertEqual(test.filename_at_head("current.py", "abc123"), "current.py")
+        self.assertEqual(test.filename_at_head("/repo/current.py", "abc123"), "/repo/current.py")
 
     def test_filename_at_head_follows_renames_forward(self):
         test = HistoryMixin()
@@ -392,7 +392,10 @@ class TestDescribeGraphLine(DeferrableTestCase):
             .thenReturn("R100\0old.py\0new.py\0") \
             .thenReturn("M\0new.py\0")
 
-        self.assertEqual(test.filename_at_head("old.py", "abc123"), "new.py")
+        self.assertEqual(
+            test.filename_at_head("/repo/old.py", "abc123"),
+            os.path.normpath("/repo/new.py")
+        )
 
     def test_find_matching_lineno_between_files_at_commits(self):
         test = HistoryMixin()

@@ -6,6 +6,7 @@ from typing import Dict, List, Literal, Optional, Sequence, TypedDict
 import sublime
 
 from ..git_mixins.branches import Branch
+from ..types import ShortHash
 from ...core.view import find_by_selector
 
 
@@ -26,7 +27,7 @@ FIND_COMMIT_HASH = "^[{graph_chars}]*[{node_chars}][{graph_chars}]* ".format(
 
 
 class LineInfo(TypedDict, total=False):
-    commit: str
+    commit: ShortHash
     HEAD: str
     branches: List[str]
     local_branches: List[str]
@@ -41,7 +42,7 @@ def describe_graph_line(line: str, known_branches: Dict[str, Branch]) -> Optiona
     if match is None:
         return None
 
-    commit_hash = match.group("commit_hash")
+    commit_hash = ShortHash(match.group("commit_hash"))
     decoration = match.group("decoration")
 
     rv: LineInfo = {"commit": commit_hash}

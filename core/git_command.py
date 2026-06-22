@@ -783,8 +783,8 @@ class _GitCommand(SettingsMixin):
             file_path
         )
         if os.name == "nt":
-            return rel_path.replace("\\", "/")
-        return rel_path
+            return ShortPath(rel_path.replace("\\", "/"))
+        return ShortPath(rel_path)
 
     def to_full_path(self, file_path: str, base: str = NOT_SET) -> FullPath:
         """
@@ -792,7 +792,7 @@ class _GitCommand(SettingsMixin):
         """
         if base == NOT_SET:
             base = self.repo_path
-        return os.path.normpath(os.path.join(base, file_path))
+        return FullPath(os.path.normpath(os.path.join(base, file_path)))
 
     def nice_path(self, p: str) -> str:
         parent_dir = os.path.dirname(self.repo_path).replace("\\", "/")

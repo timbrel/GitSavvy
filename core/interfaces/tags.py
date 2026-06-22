@@ -1,3 +1,4 @@
+from __future__ import annotations
 from contextlib import contextmanager
 from functools import partial
 import os
@@ -15,6 +16,7 @@ from ..git_mixins.tags import TagList
 from ...common import util
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker, run_on_new_thread
+from GitSavvy.core.types import ShortHash
 from GitSavvy.core.utils import flash, uprint
 from GitSavvy.core.ui_mixins.quick_panel import show_remote_panel
 from ..ui__quick_panel import noop, show_actions_panel
@@ -36,7 +38,7 @@ __all__ = (
 )
 
 
-from typing import Dict, Iterator, List, Literal, Optional, Set, Union, TypedDict
+from typing import Dict, Iterator, List, Literal, Optional, Set, Union, TypedDict, cast
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.tags import TagDetails
 
@@ -274,7 +276,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
             filter_((
                 "\n".join(
                     "    {} {}".format(
-                        self.get_short_hash(tag.sha),
+                        self.to_short_hash(tag.sha),
                         tag.tag,
                     )
                     for tag in local_tags.regular[:max_items]
@@ -282,7 +284,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                 "\n".join(
                     "   {}{} {:<10} {}{}".format(
                         maybe_mark(tag),
-                        self.get_short_hash(tag.sha),
+                        self.to_short_hash(tag.sha),
                         tag.tag,
                         tag.human_date,
                         " ({})".format(tag.relative_date) if tag.relative_date != tag.human_date else ""
@@ -339,7 +341,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
                     if tag.tag[-3:] != "^{}" and (tag.sha, tag.tag) not in seen
                 ]
                 msg = "\n".join(
-                    "    {} {}".format(self.get_short_hash(tag.sha), tag.tag)
+                    "    {} {}".format(self.to_short_hash(tag.sha), tag.tag)
                     for tag in tags_list[:max_items]
                 ) or NO_MORE_TAGS_MESSAGE
 
@@ -374,20 +376,22 @@ class TagsInterfaceCommand(ui.InterfaceCommand):
         return ui.extract_by_selector(
             self.view, TAGS_SELECTOR, self.region_name_for("local_tags"))
 
-    def selected_local_commits(self):
-        # type: () -> List[str]
-        return ui.extract_by_selector(
-            self.view, SHA_SELECTOR, self.region_name_for("local_tags"))
+    def selected_local_commits(self) -> list[ShortHash]:
+        return cast(
+            List[ShortHash],
+            ui.extract_by_selector(
+                self.view, SHA_SELECTOR, self.region_name_for("local_tags")))
 
     def selected_remote_tags(self, remote_name):
         # type: (str) -> List[str]
         return ui.extract_by_selector(
             self.view, TAGS_SELECTOR, self.remote_section_name_for(remote_name))
 
-    def selected_remote_commits(self, remote_name):
-        # type: (str) -> List[str]
-        return ui.extract_by_selector(
-            self.view, SHA_SELECTOR, self.remote_section_name_for(remote_name))
+    def selected_remote_commits(self, remote_name) -> list[ShortHash]:
+        return cast(
+            List[ShortHash],
+            ui.extract_by_selector(
+                self.view, SHA_SELECTOR, self.remote_section_name_for(remote_name)))
 
     def remote_section_name_for(self, remote_name):
         # type: (str) -> str

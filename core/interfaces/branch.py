@@ -21,6 +21,7 @@ from ..utils import open_folder_in_new_window
 from GitSavvy.core.fns import chain, filter_, pairwise
 from GitSavvy.core.utils import flash, is_younger_than
 from GitSavvy.core.runtime import enqueue_on_worker, on_new_thread, on_worker
+from GitSavvy.core.types import FullHash, ShortHash
 
 
 __all__ = (
@@ -71,7 +72,7 @@ class BranchViewState(TypedDict, total=False):
 
 
 class DetachedBranch(NamedTuple):
-    commit_hash: str
+    commit_hash: FullHash
     canonical_name: str
     worktree_path: str
 
@@ -311,7 +312,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
     def _render_detached_head(self, worktree: DetachedBranch) -> str:
         return "  ▸ {hash} (DETACHED)".format(
-            hash=self.get_short_hash(worktree.commit_hash),
+            hash=self.to_short_hash(worktree.commit_hash),
         )
 
     def _render_worktree_branches(self, branches: List[BranchWithWorktree | DetachedBranch]) -> str:
@@ -319,7 +320,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             "   <{hash}> {name}\n"
             "      \\ checked out at: {path}"
             .format(
-                hash=self.get_short_hash(branch.commit_hash),
+                hash=self.to_short_hash(branch.commit_hash),
                 name=branch.canonical_name,
                 path=self.nice_path(branch.worktree_path)
             )
@@ -354,7 +355,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         return "\n".join(
             "  {indicator} {hash} {name_with_extras}{description}".format(
                 indicator="▸" if branch.active else " ",
-                hash=self.get_short_hash(branch.commit_hash),
+                hash=self.to_short_hash(branch.commit_hash),
                 name_with_extras=" ".join(filter_((
                     branch.canonical_name[remote_name_length:],
                     ", ".join(filter_((
@@ -518,7 +519,7 @@ class BranchInterfaceCommand(ui.InterfaceCommand):
         line = lines[0]
         for region, scope in extract_tokens_with_scopes(view, line):
             if "constant.other.git-savvy.branches.branch.sha1" in scope:
-                commit_hash = view.substr(region)
+                commit_hash = ShortHash(view.substr(region))
             if "meta.git-savvy.branches.branch.name" in scope:
                 branch_name = view.substr(region)
             if "meta.git-savvy.status.section.branch.remote" in scope:
@@ -548,7 +549,7 @@ def extract_tokens_with_scopes(view, region) -> list[tuple[sublime.Region, str]]
 
 
 class LineInfo(NamedTuple):
-    commit_hash: str
+    commit_hash: ShortHash
     branch_name: str | None
     remote: str | None
     worktree: str | None
@@ -788,7 +789,7 @@ def record_deleted_branch_undos(
     for match in DELETED_BRANCH_RE.finditer(stdout):
         branch_name, commit_hash = match.groups()
         if branch_name in expected_branches:
-            ref_undo.add_branch_undo(cmd, branch_name, commit_hash, undo_owner)
+            ref_undo.add_branch_undo(cmd, branch_name, ShortHash(commit_hash), undo_owner)
 
 
 class gs_branches_rename(CommandForSingleBranch):

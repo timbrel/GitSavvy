@@ -849,7 +849,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
             #       is None but `list_touched_filenames` *just* works.
             target_commit = settings.get("git_savvy.diff_view.target_commit")
             files = self.list_touched_filenames(base_commit, target_commit)
-            items = _make_tuple(["--all"] + files, in_cached_mode)
+            items = _make_tuple(chain(["--all"], files), in_cached_mode)
             display_items = _create_display_items(items)
         elif status:
             def extract_path(files: Iterable[FileStatus]) -> list[str]:
@@ -873,7 +873,7 @@ class gs_diff_switch_files(TextCommand, GitCommand):
                 )
         else:
             files = self.list_touched_filenames(None, None, cached=in_cached_mode)
-            items = _make_tuple(["--all"] + files, in_cached_mode)
+            items = _make_tuple(chain(["--all"], files), in_cached_mode)
             display_items = _create_display_items(items)
 
         if file_path:
@@ -1511,7 +1511,7 @@ class _GsDiffOpenFileAtHunk(TextCommand, GitCommand, ABC):
 
     @abstractmethod
     def load_file_at_line(
-        self, commit_hash: Optional[str], filename: ShortPath, line: LineNo, col: ColNo
+        self, commit_hash: FullHash | None, filename: ShortPath, line: LineNo, col: ColNo
     ) -> None:
         raise NotImplementedError
 

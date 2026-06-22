@@ -57,7 +57,7 @@ class TestRebaseActions(_TestBase):
         ("main", "main@{3} main@{3}", "main@{3} main@{4}"),
     ])
     def test_add_previous_tip(self, branch_name, input, expected):
-        when(GitCommand).git("rev-parse", "--short", ...).thenReturn("deadbee")
+        when(GitCommand).git("rev-parse", "--verify", "--short", ...).thenReturn("deadbee")
         when(gs_log_graph_refresh).run(...).thenReturn()
 
         view = self.create_new_view()
@@ -77,7 +77,7 @@ class TestRebaseActions(_TestBase):
         ("main", "main@{1} main@{1}", "main@{1}"),
     ])
     def test_remove_previous_tip(self, branch_name, input, expected):
-        when(GitCommand).git("rev-parse", "--short", ...).thenReturn("deadbee")
+        when(GitCommand).git("rev-parse", "--verify", "--short", ...).thenReturn("deadbee")
         when(gs_log_graph_refresh).run(...).thenReturn()
 
         view = self.create_new_view()

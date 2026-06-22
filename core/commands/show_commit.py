@@ -14,6 +14,7 @@ from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff
 from ..runtime import ensure_on_ui, enqueue_on_worker
 from ..text_helper import TextRange
+from ..types import ShortHash
 from ..caches import Cache, cached_until_focus_switch
 from ..utils import flash, flash_regions, focus_view
 from ..view import replace_view_content
@@ -62,9 +63,9 @@ class gs_show_commit(WindowCommand, GitCommand):
     def run(self, commit_hash):
         repo_path = self.repo_path
         if commit_hash in {"", "HEAD"}:
-            commit_hash = self.git("rev-parse", "--short", "HEAD").strip()
+            commit_hash = self.resolve("HEAD", short=True)
         else:
-            commit_hash = self.get_short_hash(commit_hash)
+            commit_hash = self.to_short_hash(commit_hash)
 
         this_id = (
             repo_path,
@@ -259,7 +260,7 @@ def extract_commit_hash(self, args, done):
         flash(view, "Multiple commits are selected.")
         return
 
-    commit_hash = self.get_short_hash(commit_hashes.pop())
+    commit_hash = self.to_short_hash(commit_hashes.pop())
     done(commit_hash)
 
 
@@ -323,7 +324,7 @@ class gs_show_commit_open_previous_commit(TextCommand, GitCommand):
 
         settings = view.settings()
         file_path: Optional[str] = settings.get("git_savvy.file_path")
-        commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
+        commit_hash: ShortHash = settings.get("git_savvy.show_commit_view.commit")
 
         previous_commit = show_file_at_commit.get_previous_commit(self, view, commit_hash, file_path)
         if not previous_commit:
@@ -351,7 +352,7 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
 
         settings = view.settings()
         file_path: Optional[str] = settings.get("git_savvy.file_path")
-        commit_hash: str = settings.get("git_savvy.show_commit_view.commit")
+        commit_hash: ShortHash = settings.get("git_savvy.show_commit_view.commit")
         next_commit = show_file_at_commit.get_next_commit(self, view, commit_hash, file_path)
         if next_commit.error_message:
             flash(view, next_commit.error_message)
@@ -386,7 +387,7 @@ class gs_show_commit_open_graph_context(TextCommand, GitCommand):
         commit_hash = settings.get("git_savvy.show_commit_view.commit")
         window.run_command("gs_graph", {
             "all": True,
-            "follow": self.get_short_hash(commit_hash)
+            "follow": self.to_short_hash(commit_hash)
         })
 
 

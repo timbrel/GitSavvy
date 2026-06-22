@@ -1,24 +1,31 @@
-from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.git_mixins.tags import is_semver_tag
 from GitSavvy.core.caches import cache_in_store_as
+from GitSavvy.core.types import FullHash, ShortHash
 
-from typing import Iterable, Iterator, List, NamedTuple, Optional
+from typing import Iterable, Iterator, List, NamedTuple, Optional, TYPE_CHECKING
 from .branches import Branch
+
+if TYPE_CHECKING:
+    from GitSavvy.core.git_command import _GitCommand
+    from GitSavvy.core.git_mixins.history import HistoryMixin
+    class mixin_base(HistoryMixin, _GitCommand): pass  # noqa: E701
+else:
+    mixin_base = object
 
 
 class Commit(NamedTuple):
-    hash: str
+    hash: ShortHash
     decoration: str
     message: str
 
 
 class ActiveBranchMixin(mixin_base):
 
-    def get_commit_hash_for_head(self) -> str:
+    def get_commit_hash_for_head(self) -> FullHash:
         """
         Get the SHA1 commit hash for the commit at HEAD.
         """
-        return self.git("rev-parse", "HEAD").strip()
+        return self.resolve("HEAD")
 
     def get_latest_commit_msg_for_head(self) -> str:
         """

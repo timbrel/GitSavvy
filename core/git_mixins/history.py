@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import email.utils
 from itertools import chain
 import os
-from typing import Generic, Iterator, List, NamedTuple, Optional, TypeVar
+from typing import Generic, Iterator, List, Literal, NamedTuple, Optional, overload, TypeVar
 from typing_extensions import TypeAlias
 
 from ..exceptions import GitSavvyError
@@ -11,12 +11,12 @@ from ...common import util
 from GitSavvy.core.fns import last, pairwise, take
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.caches import Cache, cached
-from GitSavvy.core.types import FullPath, ShortHash
+from GitSavvy.core.types import FullHash, FullPath, ShortHash, ShortPath
 
 
 class LogEntry(NamedTuple):
-    short_hash: str
-    long_hash: str
+    short_hash: ShortHash
+    long_hash: FullHash
     ref: str
     summary: str
     raw_body: str
@@ -26,8 +26,8 @@ class LogEntry(NamedTuple):
 
 
 class RefLogEntry(NamedTuple):
-    short_hash: str
-    long_hash: str
+    short_hash: ShortHash
+    long_hash: FullHash
     summary: str
     reflog_name: str
     reflog_selector: str
@@ -36,8 +36,7 @@ class RefLogEntry(NamedTuple):
 
 
 class CommitInfo(NamedTuple):
-    commit_hash: str
-    short_hash: str
+    short_hash: ShortHash
     subject: str
     date: str
 
@@ -45,12 +44,12 @@ class CommitInfo(NamedTuple):
 @dataclass(frozen=True)
 class FileStatus:
     mode: str
-    from_path: str
-    to_path: Optional[str] = None
+    from_path: ShortPath
+    to_path: ShortPath | None = None
 
 
 class FileHistoryEntry(NamedTuple):
-    short_hash: str
+    short_hash: ShortHash
     date: str
     subject: str
     status: Optional[FileStatus]
@@ -62,7 +61,7 @@ FileHistoryKey: TypeAlias = "tuple[str, T]"
 
 class FileHistoryInfo(NamedTuple, Generic[T]):
     filename_at_commit: T
-    previous_commit: Optional[str]
+    previous_commit: ShortHash | None
 
 
 class CommitHistoryInfo(NamedTuple):
@@ -83,8 +82,7 @@ file_history_cache = FileHistoryCache(maxsize=8192)
 commit_info_cache: CommitInfoCache = Cache(maxsize=8192)
 
 
-def is_dynamic_ref(ref):
-    # type: (Optional[str]) -> bool
+def is_dynamic_ref(ref: Optional[str]) -> bool:
     return (
         not ref
         or ref == "HEAD"
@@ -227,20 +225,71 @@ class HistoryMixin(mixin_base):
         else:
             return True
 
-    def get_short_hash(self, commit_hash):
-        # type: (str) -> str
+    @overload
+    def resolve(
+        self,
+        commitish: str,
+        *,
+        short: Literal[True],
+        on_error: Literal["show_panel", "suppress_panel"] = "show_panel"
+    ) -> ShortHash: ...
+
+    @overload
+    def resolve(
+        self,
+        commitish: str,
+        *,
+        short: Literal[True],
+        on_error: Literal["ignore"]
+    ) -> ShortHash | None: ...
+
+    @overload
+    def resolve(
+        self,
+        commitish: str,
+        *,
+        short: Literal[False] = False,
+        on_error: Literal["show_panel", "suppress_panel"] = "show_panel"
+    ) -> FullHash: ...
+
+    @overload
+    def resolve(
+        self,
+        commitish: str,
+        *,
+        short: Literal[False] = False,
+        on_error: Literal["ignore"]
+    ) -> FullHash | None: ...
+
+    def resolve(self, commitish, *, short=False, on_error="show_panel"):
+        resolved = self.git(
+            "rev-parse",
+            "--verify",
+            "--short" if short else None,
+            commitish,
+            throw_on_error=on_error != "ignore",
+            show_panel_on_error=on_error == "show_panel"
+        ).strip()
+        if on_error == "ignore":
+            return resolved or None
+        return resolved
+
+    def resolve_commitish(self, ref: str) -> ShortHash:
+        return self.resolve(ref, short=True)
+
+    def to_short_hash(self, commit_hash: FullHash | ShortHash) -> ShortHash:
+        short_hash_length = self.get_short_hash_length()
+        return ShortHash(commit_hash[:short_hash_length])
+
+    def get_short_hash_length(self) -> int:
         short_hash_length = self.current_state().get("short_hash_length")
-        if short_hash_length:
-            return commit_hash[:short_hash_length]
+        if not short_hash_length:
+            short_hash_length = len(self.resolve("HEAD", short=True))
+            self.update_store({"short_hash_length": short_hash_length})
 
-        short_hash = self.git("rev-parse", "--short", commit_hash).strip()
-        self.update_store({"short_hash_length": len(short_hash)})
-        return short_hash
+        return short_hash_length
 
-    def resolve_commitish(self, ref: str) -> str:
-        return self.git("rev-parse", "--short", ref).strip()
-
-    def filename_at_commit(self, filename: FullPath, commit_hash: ShortHash) -> str:
+    def filename_at_commit(self, filename: FullPath, commit_hash: str) -> FullPath:
         if is_dynamic_ref(commit_hash):
             return self._filename_at_commit(filename, commit_hash)
 
@@ -252,7 +301,7 @@ class HistoryMixin(mixin_base):
             return file_history_cache[key].filename_at_commit
 
     @cached(not_if={"commit_hash": is_dynamic_ref})
-    def _filename_at_commit(self, filename: str, commit_hash: str) -> str:
+    def _filename_at_commit(self, filename: FullPath, commit_hash: str) -> FullPath:
         lines = self.git(
             "log",
             "--format=",  # we don't need any commit info beside the name status
@@ -263,21 +312,18 @@ class HistoryMixin(mixin_base):
         ).strip().splitlines()
 
         try:
-            return lines[-1].split("\t")[1]
+            return self.to_full_path(lines[-1].split("\t")[1])
         except IndexError:
             return filename
 
-    def filename_at_head(self, filename: str, commit_hash: str) -> str:
-        rel_path = self.to_short_path(filename)
-        was_abs = rel_path != filename
-
-        if os.path.exists(filename if was_abs else self.to_full_path(rel_path)):
+    def filename_at_head(self, filename: FullPath, commit_hash: str) -> FullPath:
+        if os.path.exists(filename):
             return filename
 
         if not self.commit_is_ancestor_of_head(commit_hash):
             return filename
 
-        current_filename = rel_path
+        current_filename = self.to_short_path(filename)
         seen = set()
         while current_filename not in seen:
             seen.add(current_filename)
@@ -286,13 +332,9 @@ class HistoryMixin(mixin_base):
                 break
             current_filename = next_filename
 
-        return (
-            self.to_full_path(current_filename)
-            if was_abs else
-            current_filename
-        )
+        return self.to_full_path(current_filename)
 
-    def _next_filename_after_commit(self, filename: str, commit_hash: str) -> Optional[str]:
+    def _next_filename_after_commit(self, filename: ShortPath, commit_hash: str) -> ShortPath | None:
         commit = self.git(
             "log",
             "--follow",
@@ -310,7 +352,7 @@ class HistoryMixin(mixin_base):
         return self._renamed_filename_at_commit(filename, commit)
 
     @cached(not_if={"commit_hash": is_dynamic_ref})
-    def _renamed_filename_at_commit(self, filename: str, commit_hash: str) -> Optional[str]:
+    def _renamed_filename_at_commit(self, filename: ShortPath, commit_hash: FullHash) -> ShortPath | None:
         name_status = self.git("show", "--name-status", "--format=", "-z", commit_hash)
         for file_status in parse_name_status_z(name_status):
             if file_status.mode.startswith("R") and file_status.from_path == filename:
@@ -319,8 +361,12 @@ class HistoryMixin(mixin_base):
         return None
 
     @cached(not_if={"base_commit": is_dynamic_ref, "target_commit": is_dynamic_ref})
-    def list_touched_filenames(self, base_commit, target_commit, cached=None):
-        # type: (Optional[str], Optional[str], Optional[bool]) -> List[str]
+    def list_touched_filenames(
+        self,
+        base_commit: Optional[str],
+        target_commit: Optional[str],
+        cached: Optional[bool] = None
+    ) -> list[ShortPath]:
         return self.git(
             "diff",
             "--name-only",
@@ -340,7 +386,7 @@ class HistoryMixin(mixin_base):
         base_commit: Optional[str],
         target_commit: Optional[str],
         line: int,
-        file_path: str
+        file_path: FullPath
     ) -> int:
         """
         Return the target line while following renames for a HEAD-anchored file.
@@ -532,7 +578,7 @@ class HistoryMixin(mixin_base):
             rv += stdout.decode("utf-8", "replace")
         return rv
 
-    def commit_subject_and_date(self, commit_hash: str, file_path: str | None = None) -> CommitInfo:
+    def commit_subject_and_date(self, commit_hash: ShortHash, file_path: FullPath | None = None) -> CommitInfo:
         """
 
         Note: Providing `file_path` can affect the return value!
@@ -545,7 +591,6 @@ class HistoryMixin(mixin_base):
 
         def to_commit_info(info: CommitHistoryInfo) -> CommitInfo:
             return CommitInfo(
-                commit_hash,
                 commit_hash,
                 info.subject,
                 info.date
@@ -565,18 +610,22 @@ class HistoryMixin(mixin_base):
             return to_commit_info(commit_info_cache[hashes[0]])
 
     def commit_subject_and_date_from_patch(self, patch: str) -> CommitInfo:
-        commit_hash, date, subject = "", "", ""
+        commit_hash: FullHash | None = None
+        date = subject = ""
         for line in patch.splitlines():
             if line.startswith("commit "):
                 # The commit line can include decorations we must split off!
-                commit_hash = line[7:].split(" ", 1)[0]
+                commit_hash = FullHash(line[7:].split(" ", 1)[0])
             # CommitDate: Tue Dec 20 18:21:40 2022 +0100
             elif line.startswith("CommitDate: ") and (parsed_date := email.utils.parsedate(line[12:])):
                 date = "-".join(map(str, parsed_date[:3]))
             elif line.startswith("    "):
                 subject = line.lstrip()
                 break
-        return CommitInfo(commit_hash, self.get_short_hash(commit_hash), subject, date)
+
+        if commit_hash is None:
+            raise ValueError("Patch does not contain a commit hash")
+        return CommitInfo(self.to_short_hash(commit_hash), subject, date)
 
     def previous_commit(
         self,
@@ -632,12 +681,11 @@ class HistoryMixin(mixin_base):
 
     def recent_commit_for_line_range(
         self,
-        current_commit: str,
-        file_path: str,
+        current_commit: ShortHash,
+        file_path: FullPath,
         line_range: tuple[int, int],
         skip_current: bool = False
     ) -> ShortHash | None:
-        current_commit = self.get_short_hash(current_commit)
         commits = self._log_commits_for_line_range(
             current_commit,
             file_path,
@@ -661,13 +709,10 @@ class HistoryMixin(mixin_base):
 
     def next_commits(
         self,
-        current_commit: str,
+        current_commit: ShortHash,
         file_path: str | None = None,
         branch_hint: str | None = None,
     ) -> dict[ShortHash, ShortHash] | None:
-        if current_commit != self.get_short_hash(current_commit):
-            raise RuntimeError("`next_commits` must be called with a short commit hash.")
-
         if branch_hint is None:
             branch_hint = self.get_branch_hint_for_commit(current_commit)
 
@@ -704,7 +749,7 @@ class HistoryMixin(mixin_base):
     def _log_commits_for_line_range(
         self,
         current_commit: str,
-        file_path: str,
+        file_path: FullPath,
         line_range: tuple[int, int]
     ) -> list[ShortHash]:
         file_path_at_commit = self.filename_at_commit(file_path, current_commit)
@@ -734,7 +779,7 @@ class HistoryMixin(mixin_base):
             raise RuntimeError("follow=True requires file_path")
 
         return (
-            line.strip()
+            ShortHash(line.strip())
             for line in self.git_streaming(
                 "log",
                 "--format=%h",
@@ -863,7 +908,7 @@ def parse_file_history_log(output: str) -> Iterator[FileHistoryEntry]:
             continue
 
         yield FileHistoryEntry(
-            short_hash,
+            ShortHash(short_hash),
             date_from_committer_date(committer_date),
             subject,
             next(parse_name_status_z(name_status), None)
@@ -880,10 +925,10 @@ def parse_name_status_z(output: str) -> Iterator[FileStatus]:
             continue
 
         if mode.startswith(("R", "C")):
-            yield FileStatus(mode, fields[idx], fields[idx + 1])
+            yield FileStatus(mode, ShortPath(fields[idx]), ShortPath(fields[idx + 1]))
             idx += 2
         else:
-            yield FileStatus(mode, fields[idx])
+            yield FileStatus(mode, ShortPath(fields[idx]))
             idx += 1
 
 

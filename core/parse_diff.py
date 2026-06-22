@@ -129,7 +129,7 @@ class CommitHeader(TextRange):
     def commit_hash(self) -> FullHash | None:
         first_line = self.text[:self.text.index('\n')]
         if first_line.startswith('commit '):
-            return first_line.split(' ')[1]
+            return FullHash(first_line.split(' ')[1])
         return None
 
 
@@ -139,7 +139,7 @@ class FileHeader(TextRange):
         if not match:
             return None
 
-        return match.group(1)
+        return ShortPath(match.group(1))
 
     def first_line(self):
         # type: () -> str
