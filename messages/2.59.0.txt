@@ -1,0 +1,47 @@
+GitSavvy 2.59.0
+===============
+
+
+* The Show Commit view learned `s` and `d`.
+
+  Open any commit, put the cursor on a hunk, or select just some changed lines,
+  and press `s` to apply that patch to your working tree.  Press `d` to apply
+  the reverse patch.
+
+  In practice this is a lightweight "pick just this part" workflow.  You do not
+  have to start a cherry-pick and then clean up the rest.  You can browse a
+  commit, grab the useful hunk, or revert exactly the noisy line, and continue.
+
+* There is a new Remotes dashboard: "git: remotes".
+
+  It shows the configured remotes, marks the integration remote with `*`, and
+  marks the push target with `▸` if that differs.  From there:
+
+  `a` adds a remote, `D` deletes one, `R` renames it, and `o` opens the repo
+  config right at the remote section.  It also participates in the dashboard
+  `tab` / `shift+tab` cycle.
+
+* The Repo History can now clean up refs where you see them.
+
+  `D` on a decorated commit deletes a local branch or tag.  If there are
+  multiple decorations, GitSavvy asks which one.  Afterwards `ctrl+z` / `cmd+z`
+  in the graph brings the branch or tag back.
+
+  The same undo is also available in the Branches and Tags dashboards.  It is
+  especially useful after deleting old branches, re-creating tags, or forcing a
+  branch marker to another commit.
+
+* The Tags dashboard and "git: smart tag" should now be more useful for release
+  work.
+
+  Repositories that use date-style versions are recognized, and smart tagging
+  offers calendar tags.  The default is configured by `calendar_version_style`,
+  e.g. `{year}.{month}.{day}`.  Short version tags also show their dates, and
+  local tags that still need attention are marked more clearly: `*` for not yet
+  pushed, `!` for same tag name on another hash.
+
+* If a Git command is still running in GitSavvy's output panel, `ctrl+z` now
+  aborts it from there.
+
+
+Appreciate your 💖 too: https://paypal.me/herrkaste 🫶
