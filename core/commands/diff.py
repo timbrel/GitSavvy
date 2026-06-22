@@ -22,7 +22,7 @@ from . import stage_hunk
 from .navigate import GsNavigate
 from ..fns import head, filter_, flatten, pairwise, unique
 from ..parse_diff import SplittedDiff
-from ..git_command import GitCommand
+from ..git_command import GitCommand, GitSavvyError
 from ..runtime import ensure_on_ui, enqueue_on_worker, run_on_new_thread, throttled
 from ..settings import GitSavvySettings
 from ..ui_mixins.quick_panel import LogHelperMixin
@@ -1186,12 +1186,19 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
 
     def run(self, edit, reset=False, whole_file=False):
         # type: (sublime.Edit, bool, bool) -> None
-        ignore_whitespace = self.view.settings().get("git_savvy.diff_view.ignore_whitespace")
+        settings = self.view.settings()
+        ignore_whitespace = (
+            settings.get("git_savvy.diff_view.ignore_whitespace")
+            or settings.get("git_savvy.show_commit_view.ignore_whitespace")
+        )
         if ignore_whitespace:
-            sublime.error_message("Staging is not supported while ignoring [w]hitespace is on.")
+            sublime.error_message(
+                "Applying patches is not supported while ignoring [w]hitespace is on."
+            )
             return None
 
-        in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
+        in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
+        apply_to_working_tree = settings.get("git_savvy.show_commit_view")
         if in_cached_mode and reset:
             flash(self.view, "Can't discard staged changes.  Unstage first.")
             return None
@@ -1215,6 +1222,10 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             return
 
         if diff.is_combined_diff():
+            if apply_to_working_tree:
+                flash(self.view, "Combined diffs are not supported.")
+                return
+
             headers = list(unique(filter_(map(diff.head_for_pt, cursor_pts))))
             files = list(filter_(head.to_filename() for head in headers))
             if not files:
@@ -1239,7 +1250,8 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
         move_fn = None
         if whole_file or all(s.empty() for s in frozen_sel):
             if (
-                not in_cached_mode
+                not apply_to_working_tree
+                and not in_cached_mode
                 and not reset
                 and (headers := list(unique(filter_(map(diff.head_for_pt, cursor_pts)))))
                 and (new_files := [
@@ -1296,11 +1308,27 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
 
         else:
             line_starts = selected_line_starts(self.view, frozen_sel)
-            patch = compute_patch_for_sel(diff, line_starts, reset or in_cached_mode)
-            zero_diff = True
+            if apply_to_working_tree:
+                patch, error = compute_contextual_patch_for_sel(diff, line_starts, reset)
+                if error:
+                    flash(self.view, error)
+                    return
+                zero_diff = False
+            else:
+                patch = compute_no_context_patch_for_sel(diff, line_starts, reset or in_cached_mode)
+                zero_diff = True
 
         if patch:
-            if reset and self.discard_target_has_unsaved_view(patch):
+            if (
+                reset
+                and not apply_to_working_tree
+                and self.patch_target_has_unsaved_view(patch, "discard changes for")
+            ):
+                return
+            if (
+                apply_to_working_tree
+                and self.patch_target_has_unsaved_view(patch, "apply patch to")
+            ):
                 return
 
             self.apply_patch(patch, cursor_pts, reset, zero_diff)
@@ -1317,11 +1345,15 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
 
     def apply_patch(self, patch, pts, reset, zero_diff):
         # type: (str, List[int], bool, bool) -> None
-        in_cached_mode = self.view.settings().get("git_savvy.diff_view.in_cached_mode")
+        settings = self.view.settings()
+        in_cached_mode = settings.get("git_savvy.diff_view.in_cached_mode")
+        apply_to_working_tree = settings.get("git_savvy.show_commit_view")
 
         # ATT: Undo expects always the same args length and order!
         args = ["apply"]  # type: List[Optional[str]]
-        if reset:
+        if apply_to_working_tree:
+            args += ["-R" if reset else None, None]  # partial pick/revert
+        elif reset:
             args += ["-R", None]        # discard
         elif in_cached_mode:
             args += ["-R", "--cached"]  # unstage
@@ -1332,22 +1364,30 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
             args += ["--unidiff-zero"]
 
         args += ["-"]
-        self.git(*args, stdin=patch)
+        try:
+            self.git_throwing_silently(*args, stdin=patch)
+        except GitSavvyError as e:
+            if apply_to_working_tree:
+                flash(self.view, "Patch did not apply.")
+                return
+            e.show_error_panel()
 
-        history = self.view.settings().get("git_savvy.diff_view.history") or []
+        history = settings.get("git_savvy.diff_view.history") or []
         history.append((args, patch, pts, in_cached_mode))
-        self.view.settings().set("git_savvy.diff_view.history", history)
-        self.view.settings().set("git_savvy.diff_view.just_hunked", patch)
+        settings.set("git_savvy.diff_view.history", history)
+        settings.set("git_savvy.diff_view.just_hunked", patch)
 
-        if self.view.settings().get("git_savvy.commit_view"):
+        if settings.get("git_savvy.commit_view"):
             self.view.run_command("gs_prepare_commit_refresh_diff")
+        elif settings.get("git_savvy.show_commit_view"):
+            flash(self.view, "Applied patch.")
         else:
             self.view.run_command("gs_diff_refresh")
         # Ideally we would compute the next WorkingDirState but that's not
         # trivial, so we just ask for it:
         self.view.run_command("gs_update_status")
 
-    def discard_target_has_unsaved_view(self, patch: str) -> bool:
+    def patch_target_has_unsaved_view(self, patch: str, action: str) -> bool:
         diff = SplittedDiff.from_string(patch)
         rel_file_paths = unique(filter_(header.to_filename() for header in diff.headers))
         file_paths = (self.to_full_path(p) for p in rel_file_paths)
@@ -1364,8 +1404,8 @@ class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
                 if view and view.is_dirty():
                     flash(
                         self.view,
-                        "Cannot discard changes for '{}'; "
-                        "it has unsaved changes.".format(file_path)
+                        "Cannot {} '{}'; "
+                        "it has unsaved changes.".format(action, file_path)
                     )
                     return True
 
@@ -1390,7 +1430,7 @@ def chunkby(it, predicate):
     return (list(items) for selected, items in groupby(it, key=predicate) if selected)
 
 
-def compute_patch_for_sel(diff, line_starts, reverse):
+def compute_no_context_patch_for_sel(diff, line_starts, reverse):
     # type: (SplittedDiff, Set[int], bool) -> str
     hunks = unique(filter_(diff.hunk_for_pt(pt) for pt in sorted(line_starts)))
 
@@ -1427,6 +1467,87 @@ def form_patch(lines):
     blen = sum(1 for line, _ in lines if not line.is_from_line())
     content = "".join(line.text for line, _ in lines)
     return stage_hunk.Hunk(a_start, alen, b_start, blen, content)
+
+
+def compute_contextual_patch_for_sel(
+    diff: SplittedDiff, line_starts: set[int], reverse: bool
+) -> tuple[str, str | None]:
+    hunks = unique(filter_(diff.hunk_for_pt(pt) for pt in sorted(line_starts)))
+    patches: dict[FileHeader, list[stage_hunk.Hunk]] = defaultdict(list)
+
+    for hunk in hunks:
+        if not hunk_has_selected_changed_lines(hunk, line_starts):
+            continue
+
+        contextual_hunk = form_contextual_patch(hunk, line_starts, reverse)
+        if contextual_hunk is None:
+            return "", "Cannot apply selection without context."
+
+        header = diff.head_for_hunk(hunk)
+        patches[header].append(contextual_hunk)
+
+    return "".join(
+        format_patch_without_rewrite(header.text, hunks)
+        for header, hunks in patches.items()
+    ), None
+
+
+def format_patch_without_rewrite(header: str, hunks: list[stage_hunk.Hunk]) -> str:
+    return ''.join(chain(
+        [header],
+        map(stage_hunk.format_hunk, hunks)
+    ))
+
+
+def hunk_has_selected_changed_lines(hunk: Hunk, line_starts: set[int]) -> bool:
+    return any(
+        line.a in line_starts
+        for line in hunk.content().lines()
+        if not line.is_context()
+        if not line.is_no_newline_marker()
+    )
+
+
+def form_contextual_patch(
+    hunk: Hunk, line_starts: set[int], reverse: bool
+) -> stage_hunk.Hunk | None:
+    lines = list(recount_lines(hunk))
+    patch_lines = lines_for_partial_patch(lines, line_starts, reverse)
+    patch_lines_ = [line for line, _ in patch_lines]
+
+    # no context lines in patch
+    if not any(line.startswith(" ") for line in patch_lines_):
+        return None
+
+    hunk_start = next(
+        line_id.b if reverse else line_id.a
+        for _, line_id in patch_lines
+        if line_id is not None
+    )
+    a_len = sum(1 for line in patch_lines_ if not line.startswith(("+", "\\")))
+    b_len = sum(1 for line in patch_lines_ if not line.startswith(("-", "\\")))
+    content = "".join(patch_lines_)
+    return stage_hunk.Hunk(hunk_start, a_len, hunk_start, b_len, content)
+
+
+def lines_for_partial_patch(
+    lines: list[HunkLineWithLineNumbers],
+    line_starts: set[int],
+    revert: bool
+) -> list[tuple[str, LineId | None]]:
+    contextualized_mode = "+" if revert else "-"
+    patch_lines: list[tuple[str, LineId | None]] = []
+
+    for line, line_id in lines:
+        if line.is_no_newline_marker():
+            if patch_lines:
+                patch_lines.append((line.text, None))
+        elif line.is_context() or line.a in line_starts:
+            patch_lines.append((line.text, line_id))
+        elif line.text.startswith(contextualized_mode):
+            patch_lines.append((" " + line.content, line_id))
+
+    return patch_lines
 
 
 class gs_initiate_fixup_commit(TextCommand, LogHelperMixin):

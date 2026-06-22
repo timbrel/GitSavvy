@@ -264,7 +264,7 @@ class TestDiffPatchGeneration(DeferrableTestCase):
         line_starts = {all_line_starts[i] for i, m in enumerate(marker) if m.strip()}
         diff_text = header + "".join(content)
         diff = module.SplittedDiff.from_string(diff_text)
-        actual = module.compute_patch_for_sel(diff, line_starts, reverse=False)
+        actual = module.compute_no_context_patch_for_sel(diff, line_starts, reverse=False)
         expected = header + patch
         if _.startswith("_"):
             if expected == actual:

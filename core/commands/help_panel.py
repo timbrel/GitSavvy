@@ -214,6 +214,7 @@ class gs_show_commit_help_panel(GsAbstractOpenHelpPanel):
     [n]/[p]        show next/previous commit
     [h]            open commit on GitHub (if available)
     [f]            initiate fixup commit
+    [s]/[d]        apply or reverse-apply hunk/selection to working tree
     [W]            reWord commit message
     [E]            Edit commit
     [g]            show in graph
