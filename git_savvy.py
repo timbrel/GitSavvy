@@ -45,12 +45,18 @@ class InPlaceReloader(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         return self.modules[spec.name]
 
     def exec_module(self, module):
-        self.loaders[module.__name__].exec_module(module)
+        loader = self.loaders[module.__name__]
+        if hasattr(loader, "exec_module"):
+            loader.exec_module(module)
+        else:
+            loader.load_module(module.__name__)
 
     def clear_parent_module_attributes(self):
         for name, module in self.modules.items():
             parent_name, _, attr = name.rpartition(".")
             parent = self.modules.get(parent_name)
+            if parent is None:
+                parent = sys.modules.get(parent_name)
             if isinstance(parent, ModuleType) and getattr(parent, attr, None) is module:
                 delattr(parent, attr)
 
