@@ -46,6 +46,8 @@ Here are some entry points into the GitSavvy world:
   // The equivalent of `git status`
   { "keys": ["ctrl+shift+s"], "command": "gs_show_status"},
 
+  // The log/graph/history view
+  { "keys": ["ctrl+shift+g"], "command": "gs_graph", "args": { "all": true }},
   // "all: true" or not true is up to you, *I* prefer "true" and configure
   // git's remotes to not fetch everything upstream, just a subset I'm interested
   // in.  Any way you decide, when the view is open, `[a]` will toggle that flag
@@ -55,12 +57,11 @@ Here are some entry points into the GitSavvy world:
   // choose: `GitSavvy: Pick-axe`.
   // By another way, you can use `l` to open a file/folder chooser to limit the
   // output, but I usually use the Command Palette (`fh` for `File History`) for that.
-  { "keys": ["ctrl+shift+g"], "command": "gs_graph", "args": { "all": true }},
 
+  { "keys": ["ctrl+shift+c"], "command": "gs_commit"},
   // `gs_commit` is important as you can open it and if you haven't anything
   // staged it will show all changes.  Use `u` in the diff to unselect parts of
   // your changes. `[ctrl+enter]` will commit.
-  { "keys": ["ctrl+shift+c"], "command": "gs_commit"},
 
   // *I* think the Line History is the quicker blame, so I use that actually a lot.
   // Select some line, e.g. `[ctrl+l]`, and then `[ctrl+shift+l]` to see the history
@@ -71,6 +72,11 @@ Here are some entry points into the GitSavvy world:
   { "keys": ["ctrl+."], "command": "gs_super_next" },
   { "keys": ["ctrl+,"], "command": "gs_super_prev" },
 
+  {
+      "keys": ["ctrl+shift+."],
+      "command": "gs_diff",
+      "args": { "current_file": true }
+  },
   // "current_file: true" or not (t.i. show all changes) is up to you. *I* prefer
   // to start with "true". `[a]` will toggle between both modes.
   // `[l]` will open the file chooser, `[N]` and `[P]` switch to the next or previous
@@ -79,11 +85,7 @@ Here are some entry points into the GitSavvy world:
   // move commands above.
   // If you're happy, move along with e.g. `[c]` to commit or `[m]` to amend the previous
   // commit.
-  {
-      "keys": ["ctrl+shift+."],
-      "command": "gs_diff",
-      "args": { "current_file": true }
-  },
+
   // I use the inline diff seldom but it has the `[a]`/`[b]` toggle to see the code
   // in one of the two states, before and after. And it has `[n]` and `[p]` to walk
   // back and forth in the file history...
@@ -118,6 +120,20 @@ between them for example.
 
 Or `[N]` (and `[P]`) to see and walk the *reflog*, i.e. to flip in the previous position/tip of
 your current branch (`@{1}`).  (For example to check or undo a rebase.)
+
+Also: make it your own!  E.g.
+
+```
+  {
+    "keys": ["f5"],
+    "command": "gs_fetch",
+    "args": {"remote": "<ALL>"},
+    "context": [
+        { "key": "setting.command_mode", "operator": "equal", "operand": false },
+        { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+    ]
+  },
+```
 
 You see, endless, deep, savvy features.
 
