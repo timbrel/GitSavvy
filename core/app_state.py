@@ -34,6 +34,7 @@ def save() -> None:
     global _save_scheduled
     with _save_lock:
         with _lock:
+            _remove_stale_repo_state()
             try:
                 contents = json.dumps(_state, ensure_ascii=False, indent=2, sort_keys=True)
             except (TypeError, ValueError):
@@ -52,6 +53,21 @@ def save() -> None:
             os.replace(temporary_path, state_path)
         except OSError:
             traceback.print_exc()
+
+
+def _remove_stale_repo_state() -> None:
+    global _repo_state_pruned
+    if _repo_state_pruned:
+        return
+    _repo_state_pruned = True
+
+    by_repo = _state.get("by_repo")
+    if isinstance(by_repo, dict):
+        _state["by_repo"] = {
+            repo_path: repo_state
+            for repo_path, repo_state in by_repo.items()
+            if isinstance(repo_path, str) and os.path.isdir(repo_path)
+        }
 
 
 def _load() -> dict[str, Any]:
@@ -78,4 +94,5 @@ def _state_path() -> str:
 _lock = threading.Lock()
 _save_lock = threading.Lock()
 _save_scheduled = False
+_repo_state_pruned = False
 _state = _load()

@@ -17,17 +17,20 @@ class TestAppState(DeferrableTestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.old_state = app_state._state
         self.old_save_scheduled = app_state._save_scheduled
+        self.old_repo_state_pruned = app_state._repo_state_pruned
         self.old_state_path = app_state._state_path
         self.old_sublime = app_state.sublime
 
         app_state._state = {}
         app_state._save_scheduled = False
+        app_state._repo_state_pruned = False
         app_state._state_path = lambda: os.path.join(self.temp_dir.name, "state.json")
         app_state.sublime = mock()
 
     def tearDown(self):
         app_state._state = self.old_state
         app_state._save_scheduled = self.old_save_scheduled
+        app_state._repo_state_pruned = self.old_repo_state_pruned
         app_state._state_path = self.old_state_path
         app_state.sublime = self.old_sublime
         self.temp_dir.cleanup()
@@ -57,6 +60,28 @@ class TestAppState(DeferrableTestCase):
         with open(app_state._state_path(), encoding="utf-8") as file:
             self.assertEqual(json.load(file), {"name": "José"})
         self.assertEqual(app_state._load(), {"name": "José"})
+
+    def test_prunes_missing_repositories_on_first_save_only(self):
+        existing_repo = os.path.join(self.temp_dir.name, "existing-repo")
+        missing_repo = os.path.join(self.temp_dir.name, "missing-repo")
+        os.makedirs(existing_repo)
+        app_state._state = {
+            "by_repo": {
+                existing_repo: {"last_remote_used": "origin"},
+                missing_repo: {"last_remote_used": "fork"}
+            }
+        }
+
+        app_state.save()
+
+        self.assertEqual(app_state.get("by_repo"), {
+            existing_repo: {"last_remote_used": "origin"}
+        })
+
+        app_state._state["by_repo"][missing_repo] = {"last_remote_used": "fork"}
+        app_state.save()
+
+        self.assertIn(missing_repo, app_state.get("by_repo"))
 
     def test_ignores_a_non_object_state_file(self):
         os.makedirs(os.path.dirname(app_state._state_path()), exist_ok=True)
