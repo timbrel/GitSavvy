@@ -1,5 +1,7 @@
 from __future__ import annotations
 import re
+import threading
+import time
 
 from GitSavvy.core.git_command import mixin_base, NOT_SET
 from GitSavvy.core.fns import filter_
@@ -15,6 +17,8 @@ from typing import Dict, List, NamedTuple, Optional, Sequence
 BRANCH_DESCRIPTION_RE = re.compile(r"^branch\.(.*?)\.description (.*)$")
 FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND = (2, 41, 0)
 FOR_EACH_REF_SUPPORTS_WORKTREEPATH = (2, 23, 0)
+COMMIT_GRAPH_WRITE_INTERVAL = 60 * 60  # [s]
+COMMIT_GRAPH_WRITE_LOCK = threading.Lock()
 
 
 class Upstream(NamedTuple):
@@ -155,6 +159,7 @@ class BranchesMixin(mixin_base):
                 )
             except GitSavvyError as e:
                 if probe_speed and "timed out after" in e.stderr:
+                    self.update_store({"slow_repo": True})
 
                     def run_commit_graph_write():
                         hprint(
@@ -166,7 +171,6 @@ class BranchesMixin(mixin_base):
                             self.git_throwing_silently("commit-graph", "write")
                         except GitSavvyError as err:
                             hprint(f"`git commit-graph write` raised: {err}")
-                            self.update_store({"slow_repo": True})
                             return
 
                         with measure_runtime() as ms:
@@ -177,12 +181,10 @@ class BranchesMixin(mixin_base):
                             f"After `git commit-graph write` the `git for-each-ref` call "
                             f"{'' if ok else 'still '}takes {elapsed}ms"
                         )
-                        if not ok:
-                            hprint("Disabling sections in the branches dashboard.")
 
-                        self.update_store({"slow_repo": True if not ok else False})
+                    if self._claim_commit_graph_write():
+                        run_on_new_thread(run_commit_graph_write)
 
-                    run_on_new_thread(run_commit_graph_write)
                     return get_branches__(False, False)
 
                 if "fatal: failed to find 'HEAD'" in e.stderr and supports_ahead_behind:
@@ -220,6 +222,16 @@ class BranchesMixin(mixin_base):
         )
         probe_speed = compute_ahead_behind and slow_repo is None
         return get_branches__(probe_speed, compute_ahead_behind)
+
+    def _claim_commit_graph_write(self) -> bool:
+        with COMMIT_GRAPH_WRITE_LOCK:
+            now = time.monotonic()
+            last_run = self.current_state().get("last_commit_graph_write", -COMMIT_GRAPH_WRITE_INTERVAL)
+            if now - last_run < COMMIT_GRAPH_WRITE_INTERVAL:
+                return False
+
+            self.update_store({"last_commit_graph_write": now})
+            return True
 
     def _cache_branches(self, branches, refs):
         # type: (List[Branch], Sequence[str]) -> None

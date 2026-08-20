@@ -41,6 +41,7 @@ if TYPE_CHECKING:
         short_hash_length: int
         skipped_files: List[str]
         slow_repo: bool
+        last_commit_graph_write: float
         stashes: List[Stash]
         recent_commits: List[Commit]
         descriptions: Dict[str, str]

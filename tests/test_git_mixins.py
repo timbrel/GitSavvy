@@ -2,6 +2,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 import sublime
 
@@ -10,6 +11,7 @@ from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p, param
 
 from GitSavvy.core.git_command import GitCommand
+from GitSavvy.core.exceptions import GitSavvyError
 from GitSavvy.core import git_mixins
 from GitSavvy.core.git_mixins.worktrees import Worktree, WorktreesMixin
 from GitSavvy.core.utils import resolve_path
@@ -234,6 +236,58 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 None
             )
         ])
+
+
+class TestCommitGraphWrite(TestGitMixinsUsage):
+    def test_diagnostic_result_does_not_change_slow_repo_detection(self):
+        repo = SlowBranchesRepo()
+
+        when(git_mixins.branches).run_on_new_thread(...).thenAnswer(lambda fn: fn())
+        repo.get_branches()
+
+        self.assertTrue(repo.state["slow_repo"])
+        self.assertEqual(repo.commit_graph_writes, 1)
+        self.assertEqual(repo.ahead_behind_queries, 2)
+
+    def test_commit_graph_write_is_rate_limited(self):
+        repo = SlowBranchesRepo({"last_commit_graph_write": time.monotonic()})
+
+        repo.get_branches()
+
+        self.assertTrue(repo.state["slow_repo"])
+        self.assertEqual(repo.commit_graph_writes, 0)
+        self.assertEqual(repo.ahead_behind_queries, 1)
+
+
+class SlowBranchesRepo(git_mixins.branches.BranchesMixin):
+    def __init__(self, state=None):
+        self.state = state or {}
+        self.ahead_behind_queries = 0
+        self.commit_graph_writes = 0
+
+    @property
+    def git_version(self):
+        return (2, 41, 0)
+
+    def current_state(self):
+        return self.state
+
+    def update_store(self, partial_state):
+        self.state.update(partial_state)
+
+    def git_throwing_silently(self, command, *args, **kwargs):
+        if command == "commit-graph":
+            self.commit_graph_writes += 1
+            return ""
+
+        if any("%(ahead-behind:HEAD)" in str(arg) for arg in args):
+            self.ahead_behind_queries += 1
+            if self.ahead_behind_queries == 1:
+                raise GitSavvyError(
+                    "", stderr="timed out after 0.2 seconds", show_panel=False
+                )
+
+        return ""
 
 
 class TestGetWorktreesParsing(TestGitMixinsUsage):
