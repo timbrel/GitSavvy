@@ -50,7 +50,7 @@ __all__ = (
 )
 
 
-from typing import Dict, Iterable, Iterator, List, Optional, Tuple, TypedDict, NamedTuple
+from typing import cast, Dict, Iterable, Iterator, List, Optional, Tuple, TypedDict, NamedTuple, Protocol
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.branches import Branch
 from ..git_mixins.worktrees import Worktree
@@ -77,7 +77,15 @@ class DetachedBranch(NamedTuple):
     worktree_path: str
 
 
-BranchWithWorktree = DetachedBranch
+class BranchWithWorktree(Protocol):
+    @property
+    def commit_hash(self) -> FullHash: ...
+
+    @property
+    def canonical_name(self) -> str: ...
+
+    @property
+    def worktree_path(self) -> str: ...
 
 
 class gs_show_branch(WindowCommand, GitCommand):
@@ -308,14 +316,30 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         else:
             if sort_by_recent:
                 local_branches = sorted(local_branches, key=lambda branch: -branch.committerdate)
-            return self._render_branch_list(None, local_branches, descriptions)
+
+            worktree_branches = [
+                cast(BranchWithWorktree, branch)
+                for branch in local_branches
+                if branch.worktree_path and not branch.active
+            ]
+            local_branches = [
+                branch for branch in local_branches
+                if not branch.worktree_path or branch.active
+            ]
+            sections = [
+                self._render_detached_head(detached_head[0]) if detached_head else "",
+                self._render_branch_list(None, local_branches, descriptions),
+                self._render_worktree_branches(worktree_branches) if worktree_branches else "",
+                self._render_worktree_branches(detached_worktrees) if detached_worktrees else ""
+            ]
+            return "\n{}\n".format(" " * 60).join(filter_(sections))
 
     def _render_detached_head(self, worktree: DetachedBranch) -> str:
         return "  ▸ {hash} (DETACHED)".format(
             hash=self.to_short_hash(worktree.commit_hash),
         )
 
-    def _render_worktree_branches(self, branches: List[BranchWithWorktree | DetachedBranch]) -> str:
+    def _render_worktree_branches(self, branches: Iterable[BranchWithWorktree]) -> str:
         return "\n{}\n".format(" " * 60).join(
             "   <{hash}> {name}\n"
             "      \\ checked out at: {path}"
