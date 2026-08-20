@@ -45,6 +45,7 @@ from ..ui_mixins.quick_panel import show_branch_panel
 from ..caches import Cache
 from ..utils import add_selection_to_jump_history, flash, focus_view
 from ...common import util
+from GitSavvy.core import app_state
 from ...common.theme_generator import ThemeGenerator
 
 
@@ -82,6 +83,7 @@ from typing import (
 )
 T = TypeVar('T')
 
+GRAPH_SHOW_MORE_COMMIT_INFO_KEY = "graph_show_more_commit_info"
 QUICK_PANEL_SUPPORTS_WANT_EVENT = int(sublime.version()) >= 4096
 DOT_SCOPE = 'git_savvy.graph.dot'
 DOT_ABOVE_SCOPE = 'git_savvy.graph.dot.above'
@@ -189,7 +191,9 @@ class gs_graph(WindowCommand, GitCommand):
                 follow = "HEAD"
             if decoration is None:
                 decoration = "sparse"
-            show_commit_info_panel = bool(self.savvy_settings.get("graph_show_more_commit_info"))
+            show_commit_info_panel = bool(
+                app_state.get(GRAPH_SHOW_MORE_COMMIT_INFO_KEY, True)
+            )
             view = util.view.create_scratch_view(self.window, "log_graph", {
                 "title": title,
                 "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
@@ -1062,13 +1066,12 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
 PREVIOUS_OPEN_PANEL_PER_WINDOW = {}  # type: Dict[sublime.WindowId, Optional[str]]
 
 
-def remember_commit_panel_state(view, state):
-    # type: (sublime.View, bool) -> None
+def remember_commit_panel_state(view: sublime.View, state: bool) -> None:
     # Note `view` is the ("parent") log graph view!
     view.settings().set("git_savvy.log_graph_view.show_commit_info_panel", state)
     # Also save to global state as the new initial mode
     # for the next graph view.
-    GitSavvySettings().set("graph_show_more_commit_info", state)
+    app_state.set(GRAPH_SHOW_MORE_COMMIT_INFO_KEY, state)
 
 
 def set_symbol_to_follow(view):

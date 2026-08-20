@@ -27,7 +27,7 @@ Opens a special view that displays an ASCII-graphic representation of the repo's
 
 Use `.` to go to next commit and use `,` to go to previous commit.
 
-Pressing `m` while your cursor is over a particular line will toggle display of a quick panel containing more info about the selected commit.  If you've changed your is `graph_show_more_commit_info` settting to `false`, the quick panel will not display automatically.
+Pressing `m` while your cursor is over a particular line will toggle display of a quick panel containing more info about the selected commit. GitSavvy remembers the selection for the next graph view.
 
 Pressing `Enter` while your cursor is over a particular line will show the options similar to that of `git: log`.
 

@@ -88,9 +88,7 @@ A scratch view will be opened, showing the log between the selected branch and t
 
 #### Toggle display of remote branches (`e`)
 
-By default, remote branches are not displayed in the branch dashboard.  In many cases, there are many remote branches that would overwhelm the interface.  To view, press `e`.  To hide, press `e` again.
-
-If you would like the default behavior to be inverted, set `show_remotes_in_branch_dashboard` in `GitSavvy` settings.
+By default, remote branches are not displayed in the branch dashboard.  In many cases, there are many remote branches that would overwhelm the interface.  To view, press `e`.  To hide, press `e` again. GitSavvy remembers the selection for the next branch dashboard.
 
 #### Edit branch description (`E`)
 

@@ -238,16 +238,6 @@
     "group_by_distance_to_head_in_branch_dashboard": true,
 
     /*
-        Set this to `true` to display remotes in the branch dashboard by default.
-     */
-    "show_remotes_in_branch_dashboard": false,
-
-    /*
-        Set this to `true` to display remotes in the tags dashboard by default.
-     */
-    "show_remotes_in_tags_dashboard": false,
-
-    /*
         Limit the number of tags listed in the tags dashboard.
     */
     "max_items_in_tags_dashboard": null,
@@ -268,15 +258,6 @@
         Set to `false` if don't want to show this when view a commit or diff.
      */
     "show_diffstat": true,
-
-
-    /*
-        When set to `true`, GitSavvy will automatically display more info about the
-        current commit in an output panel.  When set to `false`, this function must
-        be invoked manually.
-     */
-    "graph_show_more_commit_info": true,
-
 
     /*
         When set to `true,`, GitSavvy will display the full diff of the current
@@ -398,12 +379,6 @@
         Ignored if `vintageous_friendly` is `false`.
      */
     "vintageous_enter_insert_mode": false,
-
-    /*
-        When set to `true`, all views will hide their help menu when rendering.
-        You can still toggle the help menu by pressing `?`.
-     */
-    "hide_help_menu": false,
 
     /*
         When set to `true`, no views will receive the prompt asking to initialize

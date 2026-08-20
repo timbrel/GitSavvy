@@ -18,6 +18,7 @@ from ..ui__busy_spinner import busy_indicator
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..utils import open_folder_in_new_window
+from GitSavvy.core import app_state
 from GitSavvy.core.fns import chain, filter_, pairwise
 from GitSavvy.core.utils import flash, is_younger_than
 from GitSavvy.core.runtime import enqueue_on_worker, on_new_thread, on_worker
@@ -54,6 +55,9 @@ from typing import cast, Dict, Iterable, Iterator, List, Optional, Tuple, TypedD
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.branches import Branch
 from ..git_mixins.worktrees import Worktree
+
+
+SHOW_REMOTES_KEY = "show_remotes_in_branch_dashboard"
 
 
 class BranchViewState(TypedDict, total=False):
@@ -155,9 +159,9 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
     subscribe_to = {"branches", "descriptions", "long_status", "recent_commits", "remotes", "worktrees"}
     state: BranchViewState
 
-    def initial_state(self):
+    def initial_state(self) -> Dict:
         return {
-            'show_remotes': self.savvy_settings.get("show_remotes_in_branch_dashboard"),
+            'show_remotes': app_state.get(SHOW_REMOTES_KEY, False),
             'worktree_deletions_in_progress': set(),
         }
 
@@ -1012,11 +1016,14 @@ class gs_branches_toggle_remotes(BranchInterfaceCommand):
     Toggle display of the remote branches.
     """
 
-    def run(self, edit, show=None):
-        if show is None:
-            self.interface.update_state({"show_remotes": not self.interface.state["show_remotes"]})
-        else:
-            self.interface.update_state({"show_remotes": show})
+    def run(self, edit: sublime.Edit, show: bool | None = None) -> None:
+        show_remotes = (
+            not self.interface.state["show_remotes"]
+            if show is None
+            else show
+        )
+        self.interface.update_state({"show_remotes": show_remotes})
+        app_state.set(SHOW_REMOTES_KEY, show_remotes)
         self.interface.render()
 
 
