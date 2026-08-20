@@ -86,6 +86,11 @@ with reloader():
     from .gitlab.commands import *
 
 
+def plugin_unloaded() -> None:
+    from .core import app_state
+    app_state.save()
+
+
 def prepare_gitsavvy():
     from .common import util
     from .core import runtime

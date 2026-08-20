@@ -1,0 +1,81 @@
+from __future__ import annotations
+import json
+import os
+import threading
+import traceback
+
+import sublime
+
+
+from typing import Any
+
+
+SAVE_DELAY = 1000
+STATE_FILE = "GitSavvy-app-state.json"
+
+
+def get(key: str, default: Any = None) -> Any:
+    with _lock:
+        return _state.get(key, default)
+
+
+def set(key: str, value: Any) -> None:
+    global _save_scheduled
+    with _lock:
+        _state[key] = value
+        if _save_scheduled:
+            return
+        _save_scheduled = True
+
+    sublime.set_timeout_async(save, SAVE_DELAY)
+
+
+def save() -> None:
+    global _save_scheduled
+    with _save_lock:
+        with _lock:
+            try:
+                contents = json.dumps(_state, ensure_ascii=False, indent=2, sort_keys=True)
+            except (TypeError, ValueError):
+                _save_scheduled = False
+                traceback.print_exc()
+                return
+            _save_scheduled = False
+
+        try:
+            state_path = _state_path()
+            os.makedirs(os.path.dirname(state_path), exist_ok=True)
+            temporary_path = state_path + ".tmp"
+            with open(temporary_path, "w", encoding="utf-8") as file:
+                file.write(contents)
+                file.write("\n")
+            os.replace(temporary_path, state_path)
+        except OSError:
+            traceback.print_exc()
+
+
+def _load() -> dict[str, Any]:
+    try:
+        with open(_state_path(), encoding="utf-8") as file:
+            state = json.load(file)
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError):
+        traceback.print_exc()
+        return {}
+
+    if isinstance(state, dict):
+        return state
+
+    print("GitSavvy: app state must be a JSON object; ignoring it.")
+    return {}
+
+
+def _state_path() -> str:
+    return os.path.join(sublime.cache_path(), "GitSavvy", STATE_FILE)
+
+
+_lock = threading.Lock()
+_save_lock = threading.Lock()
+_save_scheduled = False
+_state = _load()

@@ -1,14 +1,16 @@
+from __future__ import annotations
 from collections import defaultdict, deque
 from functools import partial
 import threading
 import uuid
 
 from .utils import eat_but_log_errors
+from GitSavvy.core import app_state
 
 
 from typing import (
-    AbstractSet, Callable, DefaultDict, Deque, Dict, List, Optional, Set, Tuple, TypedDict,
-    TYPE_CHECKING
+    AbstractSet, Callable, cast, DefaultDict, Deque, Dict, List, Optional, Set, Tuple,
+    TypedDict, TYPE_CHECKING
 )
 
 if TYPE_CHECKING:
@@ -52,12 +54,23 @@ if TYPE_CHECKING:
     Keys = AbstractSet[str]
 
 
-def initial_state():
-    # type: () -> RepoStore
+def initial_state() -> RepoStore:
     return {
         "last_branches": deque([None] * 2, 2),
     }
 
+
+PERSISTED_KEYS = {
+    "ahead_behind_consecutive_failures",
+    "ahead_behind_retry_at",
+    "last_branch_used_to_pull_from",
+    "last_branch_used_to_rebase_from",
+    "last_commit_graph_write",
+    "last_remote_used",
+    "last_remote_used_for_push",
+    "last_remote_used_with_option_all",
+}
+PERSISTED_STATE_KEY = "by_repo"
 
 state = defaultdict(initial_state)  # type: DefaultDict[RepoPath, RepoStore]
 subscribers = {}  # type: Dict[SubscriberKey, Tuple[RepoPath, Keys, Callable]]
@@ -65,15 +78,18 @@ subscribers = {}  # type: Dict[SubscriberKey, Tuple[RepoPath, Keys, Callable]]
 lock = threading.Lock()
 
 
-def update_state(repo_path, partial_state):
-    # type: (RepoPath, RepoStore) -> None
+def update_state(repo_path: RepoPath, partial_state: RepoStore) -> None:
     with lock:
         state[repo_path].update(partial_state)
+        _persist_state(repo_path, partial_state)
     notify_all(repo_path, partial_state.keys(), state[repo_path])
 
 
-def notify_all(repo_path, updated_keys, current_state):
-    # type: (RepoPath, Keys, RepoStore) -> None
+def notify_all(
+    repo_path: RepoPath,
+    updated_keys: Keys,
+    current_state: RepoStore
+) -> None:
     for (subscribed_repo_path, keys, fn) in subscribers.values():
         if (
             subscribed_repo_path in {repo_path, "*"}
@@ -83,18 +99,55 @@ def notify_all(repo_path, updated_keys, current_state):
                 fn(repo_path, current_state)
 
 
-def current_state(repo_path):
-    # type: (RepoPath) -> RepoStore
+def current_state(repo_path: RepoPath) -> RepoStore:
     return state[repo_path]
 
 
-def subscribe(repo_path, keys, fn):
-    # type: (RepoPath, Keys, Callable) -> Callable[[], None]
+def subscribe(repo_path: RepoPath, keys: Keys, fn: Callable) -> Callable[[], None]:
     key = uuid.uuid4().hex
     subscribers[key] = (repo_path, keys, fn)
     return partial(_unsubscribe, key)
 
 
-def _unsubscribe(key):
-    # type: (SubscriberKey) -> None
+def _unsubscribe(key: SubscriberKey) -> None:
     subscribers.pop(key, None)
+
+
+def _persist_state(repo_path: RepoPath, partial_state: RepoStore) -> None:
+    persistent_update = {
+        key: value
+        for key, value in partial_state.items()
+        if key in PERSISTED_KEYS
+    }
+    if not persistent_update:
+        return
+
+    by_repo = app_state.get(PERSISTED_STATE_KEY, {})
+    if not isinstance(by_repo, dict):
+        by_repo = {}
+    repo_state = by_repo.get(repo_path, {})
+    if not isinstance(repo_state, dict):
+        repo_state = {}
+
+    app_state.set(PERSISTED_STATE_KEY, {
+        **by_repo,
+        repo_path: {**repo_state, **persistent_update}
+    })
+
+
+def _restore_state() -> None:
+    by_repo = app_state.get(PERSISTED_STATE_KEY, {})
+    if not isinstance(by_repo, dict):
+        return
+
+    for repo_path, repo_state in by_repo.items():
+        if not isinstance(repo_path, str) or not isinstance(repo_state, dict):
+            continue
+        state[repo_path].update(cast("RepoStore", {
+            key: value
+            for key, value in repo_state.items()
+            if key in PERSISTED_KEYS
+        }))
+
+
+_restore_state()
