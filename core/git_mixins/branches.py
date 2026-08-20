@@ -161,28 +161,28 @@ class BranchesMixin(mixin_base):
                 if probe_speed and "timed out after" in e.stderr:
                     self.update_store({"slow_repo": True})
 
-                    def run_commit_graph_write():
-                        hprint(
-                            f"`git for-each-ref` took more than {WAIT_TIME}ms which is slow "
-                            "for our purpose. We now run `git commit-graph write` to see if "
-                            "it gets better."
-                        )
-                        try:
-                            self.git_throwing_silently("commit-graph", "write")
-                        except GitSavvyError as err:
-                            hprint(f"`git commit-graph write` raised: {err}")
-                            return
-
-                        with measure_runtime() as ms:
-                            get_branches__(False, supports_ahead_behind)
-                        elapsed = ms.get()
-                        ok = elapsed < WAIT_TIME
-                        hprint(
-                            f"After `git commit-graph write` the `git for-each-ref` call "
-                            f"{'' if ok else 'still '}takes {elapsed}ms"
-                        )
-
                     if self._claim_commit_graph_write():
+                        def run_commit_graph_write():
+                            hprint(
+                                f"`git for-each-ref` took more than {WAIT_TIME}ms which is slow "
+                                "for our purpose. We now run `git commit-graph write` to see if "
+                                "it gets better."
+                            )
+                            try:
+                                self.git_throwing_silently("commit-graph", "write")
+                            except GitSavvyError as err:
+                                hprint(f"`git commit-graph write` raised: {err}")
+                                return
+
+                            with measure_runtime() as ms:
+                                get_branches__(False, supports_ahead_behind)
+                            elapsed = ms.get()
+                            ok = elapsed < WAIT_TIME
+                            hprint(
+                                f"After `git commit-graph write` the `git for-each-ref` call "
+                                f"{'' if ok else 'still '}takes {elapsed}ms"
+                            )
+
                         run_on_new_thread(run_commit_graph_write)
 
                     return get_branches__(False, False)
