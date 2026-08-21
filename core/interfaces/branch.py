@@ -836,6 +836,8 @@ class gs_branches_rename(CommandForSingleItem):
             )
         elif self.selected_item.is_remote:
             flash(self.view, "Cannot rename remote branches.")
+        elif self.selected_item.is_detached:
+            flash(self.view, "Cannot rename a detached HEAD.")
         else:
             self.window.run_command("gs_rename_branch", {
                 "branch": self.selected_item.branch_name
