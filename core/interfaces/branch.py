@@ -17,7 +17,7 @@ from ..git_command import GitCommand, GitSavvyError
 from ..ui__busy_spinner import busy_indicator
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
-from ..utils import open_folder_in_new_window
+from ..utils import open_worktree_in_new_window
 from GitSavvy.core import app_state
 from GitSavvy.core.fns import chain, filter_, pairwise
 from GitSavvy.core.utils import flash, is_younger_than
@@ -650,7 +650,7 @@ class gs_branches_checkout(CommandForSingleItem):
                     w.run_command("gs_show_branch")
 
             worktree_path = self.selected_item.worktree.replace("/", os.path.sep)
-            open_folder_in_new_window(worktree_path, then=callback)
+            open_worktree_in_new_window(worktree_path, then=callback)
 
         else:
             self.window.run_command("gs_checkout_branch", {

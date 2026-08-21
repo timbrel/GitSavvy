@@ -7,7 +7,7 @@ import sublime
 
 from ..base_commands import GsWindowCommand
 from ..ui__quick_panel import SEPARATOR, show_quick_panel
-from ..utils import open_folder_in_new_window
+from ..utils import open_worktree_in_new_window
 
 
 __all__ = (
@@ -163,7 +163,7 @@ class gs_status_action_menu(GsWindowCommand):
 
         commit_hash = self.resolve("HEAD", short=True)
         worktree_path = self.create_new_worktree(commit_hash)
-        open_folder_in_new_window(worktree_path, then=callback)
+        open_worktree_in_new_window(worktree_path, then=callback)
 
     def create_tag(self) -> None:
         self.window.run_command("gs_create_tag")

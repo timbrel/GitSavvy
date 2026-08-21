@@ -15,7 +15,7 @@ from ..git_mixins.branches import Branch
 from ..text_helper import line_from_pt
 from ..types import FullPath
 from ..ui__quick_panel import ActionType, SEPARATOR, show_actions_panel, show_quick_panel
-from ..utils import open_folder_in_new_window
+from ..utils import open_worktree_in_new_window
 from . import multi_selector
 from . import ref_undo
 from . import log_graph_colorizer as colorizer
@@ -655,7 +655,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                 w.run_command("gs_graph")
 
         worktree_path = self.create_new_worktree(commit_hash)
-        open_folder_in_new_window(worktree_path, then=callback)
+        open_worktree_in_new_window(worktree_path, then=callback)
 
     def create_branch(self, commit_hash):
         self.window.run_command("gs_create_branch", {"start_point": commit_hash})
