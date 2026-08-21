@@ -59,7 +59,11 @@ class TestAppState(DeferrableTestCase):
 
         with open(app_state._state_path(), encoding="utf-8") as file:
             self.assertEqual(json.load(file), {"name": "José"})
-        self.assertEqual(app_state._load(), {"name": "José"})
+
+        app_state._state = {}
+        app_state.load()
+
+        self.assertEqual(app_state.get("name"), "José")
 
     def test_prunes_missing_repositories_on_first_save_only(self):
         existing_repo = os.path.join(self.temp_dir.name, "existing-repo")
@@ -211,7 +215,7 @@ class TestPersistentRepoState(DeferrableTestCase):
             }
         }
 
-        store._restore_state()
+        store.load_app_state()
 
         self.assertEqual(
             store.current_state(self.repo_path).get("last_branch_used_to_pull_from"),

@@ -101,7 +101,10 @@ def plugin_unloaded() -> None:
 
 def prepare_gitsavvy() -> None:
     from .common import util
-    from .core import runtime
+    from .core import app_state, runtime, store
+
+    app_state.load()
+    store.load_app_state()
     runtime.determine_thread_names()
 
     # Ensure all interfaces are ready.

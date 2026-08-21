@@ -135,19 +135,17 @@ def _persist_state(repo_path: RepoPath, partial_state: RepoStore) -> None:
     })
 
 
-def _restore_state() -> None:
+def load_app_state() -> None:
     by_repo = app_state.get(PERSISTED_STATE_KEY, {})
     if not isinstance(by_repo, dict):
         return
 
-    for repo_path, repo_state in by_repo.items():
-        if not isinstance(repo_path, str) or not isinstance(repo_state, dict):
-            continue
-        state[repo_path].update(cast("RepoStore", {
-            key: value
-            for key, value in repo_state.items()
-            if key in PERSISTED_KEYS
-        }))
-
-
-_restore_state()
+    with lock:
+        for repo_path, repo_state in by_repo.items():
+            if not isinstance(repo_path, str) or not isinstance(repo_state, dict):
+                continue
+            state[repo_path].update(cast("RepoStore", {
+                key: value
+                for key, value in repo_state.items()
+                if key in PERSISTED_KEYS
+            }))

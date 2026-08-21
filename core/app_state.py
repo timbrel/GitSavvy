@@ -13,6 +13,18 @@ from typing import Any
 SAVE_DELAY = 1000
 STATE_FILE = "GitSavvy-app-state.json"
 
+_lock = threading.Lock()
+_save_lock = threading.Lock()
+_save_scheduled = False
+_repo_state_pruned = False
+_state: dict[str, Any] = {}
+
+
+def load() -> None:
+    global _state
+    with _lock:
+        _state = _load()
+
 
 def get(key: str, default: Any = None) -> Any:
     with _lock:
@@ -89,10 +101,3 @@ def _load() -> dict[str, Any]:
 
 def _state_path() -> str:
     return os.path.join(sublime.cache_path(), "GitSavvy", STATE_FILE)
-
-
-_lock = threading.Lock()
-_save_lock = threading.Lock()
-_save_scheduled = False
-_repo_state_pruned = False
-_state = _load()
