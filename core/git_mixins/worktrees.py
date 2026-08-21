@@ -116,6 +116,9 @@ class WorktreesMixin(mixin_base):
         self.git("worktree", "add", worktree_path, start_point)
         return worktree_path
 
+    def move_worktree(self, path: str, new_path: str) -> None:
+        self.git("worktree", "move", path, new_path)
+
     def remove_worktree(self, path: str, *, force: bool = False):
         self.git("worktree", "remove", "-f" if force else None, path)
 
