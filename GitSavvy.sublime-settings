@@ -42,6 +42,21 @@
     "users_home": "~",
 
     /*
+        When set to `true`, GitSavvy will copy the active project file into a
+        newly created worktree.
+
+        BETA/restrictions/dragons:
+        - Only project files stored in the repository root are considered.
+        - Absolute folder paths pointing to the original repository are
+          rewritten to ".".
+        - Tracked project files are left entirely to Git and are not copied.
+
+        Integrates with:
+        https://github.com/kaste/OpenTheProject
+    */
+    "copy_active_project_file_to_new_worktrees": true,
+
+    /*
         Enter your GitHub/GitLab API key(s) in the field below.
         To interact with enterprise/self-hosted instances, add a field with
         the FQDN as the key and the API key as the value.
