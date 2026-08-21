@@ -194,21 +194,13 @@ def open_worktree_in_new_window(
         "new_window": True
     })
     if then:
-        @runtime.on_worker
-        def search_for_new_window(_tries=5):
-            for window in set(sublime.windows()) - current_windows:
-                candidate = window.project_file_name()
-                if (
-                    candidate
-                    and os.path.normcase(candidate) == os.path.normcase(project_file)
-                ):
-                    then(window)
-                    return
+        def is_project_window(window: sublime.Window) -> bool:
+            return bool(
+                (candidate := window.project_file_name())
+                and os.path.normcase(candidate) == os.path.normcase(project_file)
+            )
 
-            if _tries:
-                sublime.set_timeout(lambda: search_for_new_window(_tries - 1), 10)
-
-        search_for_new_window()
+        wait_for_new_window(current_windows, is_project_window, then)
 
 
 def open_folder_in_new_window(
@@ -220,16 +212,29 @@ def open_folder_in_new_window(
     subprocess.Popen(cmd, startupinfo=STARTUPINFO)
 
     if then:
-        @runtime.on_worker
-        def search_for_new_window(_tries=5):
-            for w in set(sublime.windows()) - current_windows:
-                if path in w.folders():
-                    then(w)
-                    return
-            if _tries:
-                sublime.set_timeout(lambda: search_for_new_window(_tries - 1), 10)
+        wait_for_new_window(
+            current_windows,
+            lambda window: path in window.folders(),
+            then
+        )
 
-        search_for_new_window()
+
+def wait_for_new_window(
+    current_windows: set[sublime.Window],
+    predicate: Callable[[sublime.Window], bool],
+    kont: Callable[[sublime.Window], None]
+) -> None:
+    @runtime.on_worker
+    def search(tries=5):
+        for window in set(sublime.windows()) - current_windows:
+            if predicate(window):
+                kont(window)
+                return
+
+        if tries:
+            sublime.set_timeout(lambda: search(tries - 1), 10)
+
+    search()
 
 
 def get_sublime_executable() -> str:
