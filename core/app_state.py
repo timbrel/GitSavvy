@@ -11,7 +11,9 @@ from typing import Any
 
 
 SAVE_DELAY = 1000
-STATE_FILE = "GitSavvy-app-state.json"
+CACHE_PATH = os.path.join(sublime.cache_path(), "GitSavvy")
+STATE_PATH = os.path.join(CACHE_PATH, "GitSavvy-app-state.json")
+TEMP_PATH = STATE_PATH + ".tmp"
 
 _lock = threading.Lock()
 _save_lock = threading.Lock()
@@ -56,13 +58,11 @@ def save() -> None:
             _save_scheduled = False
 
         try:
-            state_path = _state_path()
-            os.makedirs(os.path.dirname(state_path), exist_ok=True)
-            temporary_path = state_path + ".tmp"
-            with open(temporary_path, "w", encoding="utf-8") as file:
+            os.makedirs(CACHE_PATH, exist_ok=True)
+            with open(TEMP_PATH, "w", encoding="utf-8") as file:
                 file.write(contents)
                 file.write("\n")
-            os.replace(temporary_path, state_path)
+            os.replace(TEMP_PATH, STATE_PATH)
         except OSError:
             traceback.print_exc()
 
@@ -84,7 +84,7 @@ def _remove_stale_repo_state() -> None:
 
 def _load() -> dict[str, Any]:
     try:
-        with open(_state_path(), encoding="utf-8") as file:
+        with open(STATE_PATH, encoding="utf-8") as file:
             state = json.load(file)
     except FileNotFoundError:
         return {}
@@ -97,7 +97,3 @@ def _load() -> dict[str, Any]:
 
     print("GitSavvy: app state must be a JSON object; ignoring it.")
     return {}
-
-
-def _state_path() -> str:
-    return os.path.join(sublime.cache_path(), "GitSavvy", STATE_FILE)
