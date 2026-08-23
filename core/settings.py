@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from functools import lru_cache
 import os
 
@@ -11,7 +13,7 @@ __all__ = (
     "ProjectFileChanges",
 )
 
-from typing import Dict
+from typing import Any, Dict, Mapping
 
 
 class GitSavvySettings:
@@ -61,6 +63,24 @@ def _get_project_settings(wid, _counter):
 @lru_cache(maxsize=1)
 def get_global_settings():
     return GlobalSettings("GitSavvy.sublime-settings")
+
+
+def color_value(
+    user_settings: Mapping[str, Mapping[str, str]],
+    default_settings: Mapping[str, Mapping[str, str]],
+    namespace: str,
+    key: str
+) -> str:
+    try:
+        return user_settings[namespace][key]
+    except KeyError:
+        return default_settings[namespace][key]
+
+
+@lru_cache(maxsize=1)
+def read_default_settings() -> dict[str, Any]:
+    path = "Packages/GitSavvy/GitSavvy.sublime-settings"
+    return sublime.decode_value(sublime.load_resource(path))
 
 
 class GlobalSettings:

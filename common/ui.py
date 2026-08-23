@@ -1,7 +1,7 @@
 from __future__ import annotations
 from contextlib import contextmanager
 from copy import deepcopy
-from functools import wraps
+from functools import partial, wraps
 import inspect
 import re
 from textwrap import dedent
@@ -15,7 +15,7 @@ from . import util
 from .theme_generator import ThemeGenerator
 from ..core.commands import multi_selector
 from ..core.runtime import enqueue_on_worker, run_on_new_thread
-from ..core.settings import GitSavvySettings
+from ..core.settings import color_value, GitSavvySettings, read_default_settings
 from ..core.utils import flash, focus_view
 from GitSavvy.core import app_state, store
 from GitSavvy.core.base_commands import GsTextCommand
@@ -300,19 +300,17 @@ class Interface(metaclass=_PrepareInterface):
         })
 
 
-def augment_color_scheme(view):
-    # type: (sublime.View) -> None
-    settings = GitSavvySettings()
-    colors = settings.get('colors').get('dashboard')
-    if not colors:
-        return
+def augment_color_scheme(view: sublime.View) -> None:
+    user_settings = GitSavvySettings().get('colors', {})
+    default_settings = read_default_settings()['colors']
+    color = partial(color_value, user_settings, default_settings, 'dashboard')
 
     themeGenerator = ThemeGenerator.for_view(view)
     themeGenerator.add_scoped_style(
         "GitSavvy Multiselect Marker",
         multi_selector.MULTISELECT_SCOPE,
-        background=colors['multiselect_foreground'],
-        foreground=colors['multiselect_background'],
+        background=color('multiselect_foreground'),
+        foreground=color('multiselect_background'),
     )
     themeGenerator.apply_new_theme("dashboard_view", view)
 
