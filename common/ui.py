@@ -15,7 +15,7 @@ from . import util
 from .theme_generator import ThemeGenerator
 from ..core.commands import multi_selector
 from ..core.runtime import enqueue_on_worker, run_on_new_thread
-from ..core.settings import color_value, GitSavvySettings, read_default_settings
+from ..core.settings import color_value, get_global_settings, read_default_settings
 from ..core.utils import flash, focus_view
 from GitSavvy.core import app_state, store
 from GitSavvy.core.base_commands import GsTextCommand
@@ -301,9 +301,9 @@ class Interface(metaclass=_PrepareInterface):
 
 
 def augment_color_scheme(view: sublime.View) -> None:
-    user_settings = GitSavvySettings().get('colors', {})
+    app_settings = get_global_settings().get('colors', {})
     default_settings = read_default_settings()['colors']
-    color = partial(color_value, user_settings, default_settings, 'dashboard')
+    color = partial(color_value, app_settings, default_settings, 'dashboard')
 
     themeGenerator = ThemeGenerator.for_view(view)
     themeGenerator.add_scoped_style(

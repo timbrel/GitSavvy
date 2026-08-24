@@ -22,7 +22,7 @@ from ..base_commands import GsTextCommand
 from ..fns import filter_, flatten, pairwise, partition, take
 from ..git_command import GitCommand
 from ..text_helper import Region, TextRange, line_from_pt
-from ..settings import color_value, GitSavvySettings, read_default_settings
+from ..settings import color_value, get_global_settings, read_default_settings
 from ..runtime import (
     cooperative_thread_hopper,
     enqueue_on_ui,
@@ -272,9 +272,9 @@ class gs_graph_pickaxe(TextCommand, GitCommand):
 
 
 def augment_color_scheme(view: sublime.View) -> None:
-    user_settings = GitSavvySettings().get('colors', {})
+    app_settings = get_global_settings().get('colors', {})
     default_settings = read_default_settings()['colors']
-    color = partial(color_value, user_settings, default_settings, 'log_graph')
+    color = partial(color_value, app_settings, default_settings, 'log_graph')
 
     themeGenerator = ThemeGenerator.for_view(view)
     themeGenerator.add_scoped_style(

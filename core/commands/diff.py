@@ -24,7 +24,7 @@ from ..fns import head, filter_, flatten, pairwise, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand, GitSavvyError
 from ..runtime import ensure_on_ui, enqueue_on_worker, run_on_new_thread, throttled
-from ..settings import color_value, GitSavvySettings, read_default_settings
+from ..settings import color_value, get_global_settings, read_default_settings
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..ui__quick_panel import show_quick_panel
 from ..utils import flash, focus_view, hprint, line_indentation
@@ -278,9 +278,9 @@ class gs_diff(WindowCommand, GitCommand):
 
 
 def augment_color_scheme(view: sublime.View) -> None:
-    user_settings = GitSavvySettings().get('colors', {})
+    app_settings = get_global_settings().get('colors', {})
     default_settings = read_default_settings()['colors']
-    color = partial(color_value, user_settings, default_settings, 'diff')
+    color = partial(color_value, app_settings, default_settings, 'diff')
 
     themeGenerator = ThemeGenerator.for_view(view)
     themeGenerator.add_scoped_style(

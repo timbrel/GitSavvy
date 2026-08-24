@@ -66,13 +66,13 @@ def get_global_settings():
 
 
 def color_value(
-    user_settings: Mapping[str, Mapping[str, str]],
+    app_settings: Mapping[str, Mapping[str, str]],
     default_settings: Mapping[str, Mapping[str, str]],
     namespace: str,
     key: str
 ) -> str:
     try:
-        return user_settings[namespace][key]
+        return app_settings[namespace][key]
     except KeyError:
         return default_settings[namespace][key]
 
