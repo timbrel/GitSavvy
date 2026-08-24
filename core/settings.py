@@ -13,7 +13,7 @@ __all__ = (
     "ProjectFileChanges",
 )
 
-from typing import Any, Dict, Mapping
+from typing import Any, Dict
 
 
 class GitSavvySettings:
@@ -65,12 +65,9 @@ def get_global_settings():
     return GlobalSettings("GitSavvy.sublime-settings")
 
 
-def color_value(
-    app_settings: Mapping[str, Mapping[str, str]],
-    default_settings: Mapping[str, Mapping[str, str]],
-    namespace: str,
-    key: str
-) -> str:
+def color_value(namespace: str, key: str) -> str:
+    app_settings = get_global_settings().get("colors", {})
+    default_settings = read_default_settings()["colors"]
     try:
         return app_settings[namespace][key]
     except KeyError:
