@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import tempfile
 
@@ -54,6 +55,42 @@ class TestThemeGenerator(DeferrableTestCase):
             (dark_scheme, "dark_color_scheme"),
         ])
 
+    def test_switching_to_auto_removes_old_generated_settings(self) -> None:
+        when(theme_generator.sublime).load_settings(
+            "Preferences.sublime-settings"
+        ).thenReturn({"color_scheme": "auto"})
+        when(theme_generator.sublime).load_settings(
+            "graph.sublime-settings"
+        ).thenReturn({})
+        view = FakeView({
+            "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
+            "color_scheme": generated_theme("color_scheme"),
+            "light_color_scheme": generated_theme("light_color_scheme"),
+            "dark_color_scheme": generated_theme("dark_color_scheme"),
+        })
+
+        ThemeGenerator.for_view(view).ensure_theme()
+
+        self.assertNotIn("color_scheme", view.settings())
+        self.assertNotIn("light_color_scheme", view.settings())
+        self.assertNotIn("dark_color_scheme", view.settings())
+
+    def test_native_scheme_removes_old_generated_setting(self) -> None:
+        source = "Packages/Example/Example.sublime-color-scheme"
+        generator = configured_generator(source, {
+            "color_scheme": generated_theme("color_scheme"),
+        })
+        version = generator._dependency_version(source)
+        filename = "GitSavvy.graph.color_scheme.hidden-color-scheme"
+        when(theme_generator).theme_version_record(filename).thenReturn({
+            "version": version,
+            "generated": False,
+        })
+
+        generator.ensure_theme()
+
+        self.assertNotIn("color_scheme", generator._view.settings())
+
     def test_cache_hit_does_not_materialize_scheme(self) -> None:
         source = "Packages/Example/Example.sublime-color-scheme"
         generator = configured_generator(source)
@@ -69,6 +106,36 @@ class TestThemeGenerator(DeferrableTestCase):
         )
 
         generator.ensure_theme()
+
+    def test_generated_scheme_can_be_ensured_again(self) -> None:
+        source = "Packages/Example/Example.sublime-color-scheme"
+        generated = generated_theme("color_scheme")
+        generator = configured_generator(source, {"color_scheme": generated})
+        version = generator._dependency_version(source)
+        filename = "GitSavvy.graph.color_scheme.hidden-color-scheme"
+        when(theme_generator).theme_version_record(filename).thenReturn({
+            "version": version,
+            "generated": True,
+        })
+        when(theme_generator).generator_for_scheme(...).thenRaise(
+            AssertionError("cache hit must not load the scheme")
+        )
+        when(theme_generator).try_apply_theme(
+            generator._view, "color_scheme", generated
+        ).thenAnswer(
+            lambda view, setting_name, theme: view.settings().__setitem__(setting_name, theme)
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            when(theme_generator.sublime).packages_path().thenReturn(directory)
+            path = os.path.join(directory, "User", "GitSavvy", filename)
+            os.makedirs(os.path.dirname(path))
+            with open(path, "w", encoding="utf-8") as file:
+                file.write("{}")
+
+            generator.ensure_theme()
+
+        self.assertEqual(generator._view.settings()["color_scheme"], generated)
 
     def test_cache_miss_materializes_and_records_scheme(self) -> None:
         source = "Packages/Example/Example.sublime-color-scheme"
@@ -145,10 +212,15 @@ class TestResourceVersion(DeferrableTestCase):
 
 class FakeView:
     def __init__(self, settings: dict) -> None:
-        self._settings = settings
+        self._settings = FakeViewSettings(settings)
 
-    def settings(self) -> dict:
+    def settings(self) -> "FakeViewSettings":
         return self._settings
+
+
+class FakeViewSettings(dict):
+    def erase(self, key: str) -> None:
+        self.pop(key, None)
 
 
 class FakeConcreteGenerator:
@@ -165,7 +237,7 @@ class FakeConcreteGenerator:
         self.written_path = path
 
 
-def configured_generator(source: str) -> ThemeGenerator:
+def configured_generator(source: str, view_settings: dict | None = None) -> ThemeGenerator:
     when(theme_generator.sublime).load_settings(
         "Preferences.sublime-settings"
     ).thenReturn({"color_scheme": source})
@@ -176,9 +248,16 @@ def configured_generator(source: str) -> ThemeGenerator:
         "Packages/Example/Example.sublime-color-scheme"
     ])
     when(theme_generator).resource_version(...).thenReturn(("package", "Example", 10, 20))
-    generator = ThemeGenerator.for_view(FakeView({
+    settings = {
         "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
-        "color_scheme": source,
-    }))
+        **(view_settings or {}),
+    }
+    generator = ThemeGenerator.for_view(FakeView(settings))
     generator.add_scoped_style("Marker", "git_savvy.marker", foreground="#abc")
     return generator
+
+
+def generated_theme(setting_name: str) -> str:
+    return "Packages/User/GitSavvy/GitSavvy.graph.{}.hidden-color-scheme".format(
+        setting_name
+    )

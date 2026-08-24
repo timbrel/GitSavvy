@@ -43,6 +43,12 @@ PROPERTY_TEMPLATE = """
 
 THEME_VERSIONS_KEY = "generated_theme_versions"
 THEME_GENERATOR_VERSION = 1
+GENERATED_THEME_PREFIX = "Packages/User/GitSavvy/GitSavvy."
+THEME_SETTING_NAMES = (
+    "color_scheme",
+    "light_color_scheme",
+    "dark_color_scheme",
+)
 _theme_lock = threading.Lock()
 
 
@@ -90,6 +96,11 @@ class ThemeGenerator():
         if not syntax_path:
             return
 
+        active_setting_names = {setting_name for _, setting_name in self._schemes}
+        for setting_name in THEME_SETTING_NAMES:
+            if setting_name not in active_setting_names:
+                maybe_erase_theme_override(self._view, setting_name)
+
         syntax_name = os.path.splitext(os.path.basename(syntax_path))[0]
         for color_scheme, setting_name in self._schemes:
             self._ensure_scheme(syntax_name, color_scheme, setting_name)
@@ -106,6 +117,7 @@ class ThemeGenerator():
             record = theme_version_record(filename)
             if record and record.get("version") == version:
                 if not record.get("generated"):
+                    maybe_erase_theme_override(self._view, setting_name)
                     return
                 if os.path.isfile(full_path):
                     try_apply_theme(self._view, setting_name, theme_path)
@@ -123,6 +135,8 @@ class ThemeGenerator():
             store_theme_version(filename, version, generated)
             if generated:
                 try_apply_theme(self._view, setting_name, theme_path)
+            else:
+                maybe_erase_theme_override(self._view, setting_name)
 
     def _dependency_version(self, color_scheme: str) -> str:
         digest = hashlib.sha256(str(THEME_GENERATOR_VERSION).encode())
@@ -303,6 +317,13 @@ def resource_version(resource: str) -> tuple:
 def file_version(kind: str, path: str) -> tuple:
     stat = os.stat(path)
     return (kind, stat.st_size, stat.st_mtime_ns)
+
+
+def maybe_erase_theme_override(view: sublime.View, setting_name: str) -> None:
+    settings = view.settings()
+    theme = settings.get(setting_name)
+    if isinstance(theme, str) and theme.startswith(GENERATED_THEME_PREFIX):
+        settings.erase(setting_name)
 
 
 def try_apply_theme(view, setting_name, theme_path, tries=0):
