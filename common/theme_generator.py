@@ -60,6 +60,13 @@ class ColorRef(NamedTuple):
     key: str
 
 
+class ScopedStyle:
+    def __init__(self, name: str, scope: str, **properties: object) -> None:
+        self.name = name
+        self.scope = scope
+        self.properties = properties
+
+
 ThemeEffect = Callable[[sublime.View], None]
 
 
@@ -77,12 +84,15 @@ class ThemeGenerator():
     def __init__(self, view: sublime.View, syntax_name: str | None) -> None:
         self._view = view
         self._syntax_name = syntax_name
-        self._styles: list[tuple[str, str, dict[str, object]]] = []
+        self._styles: tuple[ScopedStyle, ...] | None = None
 
-    def add_scoped_style(self, name: str, scope: str, **kwargs: object) -> None:
-        self._styles.append((name, scope, dict(kwargs)))
+    def configure(self, *styles: ScopedStyle) -> None:
+        self._styles = styles
+        self.ensure_theme()
 
     def ensure_theme(self) -> None:
+        if self._styles is None:
+            raise RuntimeError("theme generator is not configured")
         if not self._syntax_name:
             return
 
@@ -126,13 +136,17 @@ class ThemeGenerator():
         return [(color_scheme, "color_scheme")]
 
     def _resolved_styles(self) -> list[tuple[str, str, dict[str, object]]]:
+        assert self._styles is not None
         return [
             (
-                name,
-                scope,
-                {key: resolve_style_value(value) for key, value in properties.items()}
+                style.name,
+                style.scope,
+                {
+                    key: resolve_style_value(value)
+                    for key, value in style.properties.items()
+                }
             )
-            for name, scope, properties in self._styles
+            for style in self._styles
         ]
 
     def _ensure_scheme(

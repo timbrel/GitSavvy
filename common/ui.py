@@ -12,7 +12,7 @@ import sublime
 from sublime_plugin import TextCommand
 
 from . import util
-from .theme_generator import ColorRef, ThemeGenerator
+from .theme_generator import ColorRef, ScopedStyle, ThemeGenerator
 from ..core.commands import multi_selector
 from ..core.runtime import enqueue_on_worker, run_on_new_thread
 from ..core.utils import flash, focus_view
@@ -301,13 +301,12 @@ class Interface(metaclass=_PrepareInterface):
 
 def augment_color_scheme(view: sublime.View) -> None:
     themeGenerator = ThemeGenerator.for_view(view)
-    themeGenerator.add_scoped_style(
+    themeGenerator.configure(ScopedStyle(
         "GitSavvy Multiselect Marker",
         multi_selector.MULTISELECT_SCOPE,
         background=ColorRef("dashboard", "multiselect_foreground"),
-        foreground=ColorRef("dashboard", "multiselect_background"),
-    )
-    themeGenerator.ensure_theme()
+        foreground=ColorRef("dashboard", "multiselect_background")
+    ))
 
 
 def distinct_until_state_changed(just_render_fn):

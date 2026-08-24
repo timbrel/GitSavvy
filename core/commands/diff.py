@@ -31,7 +31,7 @@ from ..view import (
     capture_cur_position, clamp, replace_view_content, scroll_to_pt,
     place_view, place_cursor_and_show, visible_views, y_offset, Position)
 from ...common import util
-from ...common.theme_generator import ColorRef, ThemeGenerator
+from ...common.theme_generator import ColorRef, ScopedStyle, ThemeGenerator
 
 
 __all__ = (
@@ -278,13 +278,12 @@ class gs_diff(WindowCommand, GitCommand):
 
 def augment_color_scheme(view: sublime.View) -> None:
     themeGenerator = ThemeGenerator.for_view(view)
-    themeGenerator.add_scoped_style(
+    themeGenerator.configure(ScopedStyle(
         "GitSavvy Multiselect Marker",
         multi_selector.MULTISELECT_SCOPE,
         background=ColorRef("diff", "multiselect_foreground"),
-        foreground=ColorRef("diff", "multiselect_background"),
-    )
-    themeGenerator.ensure_theme()
+        foreground=ColorRef("diff", "multiselect_background")
+    ))
 
 
 class gs_diff_refresh(TextCommand, GitCommand):

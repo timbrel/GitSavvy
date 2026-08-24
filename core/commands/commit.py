@@ -19,7 +19,7 @@ from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import focus_view
 from ..view import replace_view_content
 from ...common import util
-from ...common.theme_generator import ColorRef, ThemeGenerator
+from ...common.theme_generator import ColorRef, ScopedStyle, ThemeGenerator
 
 
 __all__ = (
@@ -186,13 +186,12 @@ class gs_commit(WindowCommand, GitCommand):
 
 def augment_color_scheme(view: sublime.View) -> None:
     themeGenerator = ThemeGenerator.for_view(view)
-    themeGenerator.add_scoped_style(
+    themeGenerator.configure(ScopedStyle(
         "GitSavvy Multiselect Marker",
         multi_selector.MULTISELECT_SCOPE,
         background=ColorRef("commit", "multiselect_foreground"),
-        foreground=ColorRef("commit", "multiselect_background"),
-    )
-    themeGenerator.ensure_theme()
+        foreground=ColorRef("commit", "multiselect_background")
+    ))
 
 
 def generate_help_text(view, with_patch_commands=False):
