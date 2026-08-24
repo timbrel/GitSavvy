@@ -97,9 +97,20 @@ class ThemeGenerator():
             return
 
         styles = self._resolved_styles()
-        schemes = self._resolved_schemes()
+        scheme_configuration = self._resolved_schemes()
+        effects = self._compute_effects(styles, scheme_configuration)
+        apply_theme_effects(effects, [self._view])
 
-        active_setting_names = {setting_name for _, setting_name in schemes}
+    def _compute_effects(
+        self,
+        styles: Sequence[tuple[str, str, dict[str, object]]],
+        scheme_configuration: Sequence[tuple[str, str]]
+    ) -> list[ThemeEffect]:
+        assert self._syntax_name
+        active_setting_names = {
+            setting_name
+            for _, setting_name in scheme_configuration
+        }
         effects: list[ThemeEffect] = [
             partial(maybe_erase_theme_override, setting_name)
             for setting_name in THEME_SETTING_NAMES
@@ -107,9 +118,9 @@ class ThemeGenerator():
         ]
         effects.extend(
             self._ensure_scheme(self._syntax_name, color_scheme, setting_name, styles)
-            for color_scheme, setting_name in schemes
+            for color_scheme, setting_name in scheme_configuration
         )
-        apply_theme_effects(effects, [self._view])
+        return effects
 
     def _resolved_schemes(self) -> list[tuple[str, str]]:
         assert self._syntax_name
