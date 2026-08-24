@@ -7,6 +7,7 @@ from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p
 
+import GitSavvy.core.commands.commit as module
 from GitSavvy.core.commands.commit import extract_commit_message, gs_prepare_commit_refresh_diff
 
 
@@ -61,6 +62,9 @@ class TestExtractCommitMessage(DeferrableTestCase):
     @classmethod
     def tearDownClass(self):
         self.window.run_command('close_window')
+
+    def setUp(self):
+        when(module).augment_color_scheme(...).thenReturn()
 
     def tearDown(self):
         unstub()
