@@ -95,7 +95,9 @@ UNUSED_GLOBAL_SETTINGS = (
 
 
 def plugin_unloaded() -> None:
+    from .common.theme_generator import stop_auto_update
     from .core import app_state
+    stop_auto_update()
     app_state.save()
 
 

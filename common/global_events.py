@@ -4,6 +4,7 @@ import sublime
 from sublime_plugin import EventListener, WindowCommand
 
 from . import util
+from .theme_generator import unregister
 from ..core import app_state
 from ..core.settings import SettingsMixin
 from ..core.utils import focus_view
@@ -49,6 +50,7 @@ class GsInterfaceFocusEventListener(EventListener):
 
     def on_close(self, view):
         SEEN.discard(view.id())
+        unregister(view)
         util.view.handle_closed_view(view)
 
 

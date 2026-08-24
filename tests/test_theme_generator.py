@@ -16,15 +16,9 @@ class TestThemeGenerator(DeferrableTestCase):
         )
 
     def tearDown(self) -> None:
+        theme_generator.stop_auto_update()
+        theme_generator._theme_generators.clear()
         unstub()
-
-    def test_ensure_requires_configuration(self) -> None:
-        generator = ThemeGenerator.for_view(FakeView({
-            "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
-        }))
-
-        with self.assertRaises(RuntimeError):
-            generator.ensure_theme()
 
     def test_source_scheme_comes_from_syntax_settings(self) -> None:
         syntax_scheme = "Packages/Example/Syntax.sublime-color-scheme"
@@ -37,10 +31,7 @@ class TestThemeGenerator(DeferrableTestCase):
             "graph.sublime-settings"
         ).thenReturn({"color_scheme": syntax_scheme})
 
-        generator = ThemeGenerator.for_view(FakeView({
-            "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
-            "color_scheme": "Packages/User/GitSavvy/generated.hidden-color-scheme",
-        }))
+        generator = ThemeGenerator("graph")
 
         self.assertEqual(
             generator._resolved_schemes(),
@@ -59,9 +50,8 @@ class TestThemeGenerator(DeferrableTestCase):
         when(theme_generator.sublime).load_settings(
             "graph.sublime-settings"
         ).thenReturn({})
-        generator = ThemeGenerator.for_view(FakeView({
-            "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
-        }))
+
+        generator = ThemeGenerator("graph")
 
         self.assertEqual(generator._resolved_schemes(), [(first, "color_scheme")])
         self.assertEqual(generator._resolved_schemes(), [(second, "color_scheme")])
@@ -81,22 +71,83 @@ class TestThemeGenerator(DeferrableTestCase):
             "light_color_scheme": light_scheme,
         })
 
-        generator = ThemeGenerator.for_view(FakeView({
-            "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
-        }))
+        generator = ThemeGenerator("graph")
 
         self.assertEqual(generator._resolved_schemes(), [
             (light_scheme, "light_color_scheme"),
             (dark_scheme, "dark_color_scheme"),
         ])
 
+    def test_relevant_setting_changes_refresh_registered_views(self) -> None:
+        source = "Packages/Example/Example.sublime-color-scheme"
+        preferences = WatchableSettings({"color_scheme": source})
+        syntax_settings = WatchableSettings({})
+        savvy_settings = WatchableSettings({"colors": {}})
+        when(theme_generator.sublime).load_settings(
+            "Preferences.sublime-settings"
+        ).thenReturn(preferences)
+        when(theme_generator.sublime).load_settings(
+            "GitSavvy.sublime-settings"
+        ).thenReturn(savvy_settings)
+        when(theme_generator.sublime).load_settings(
+            "graph.sublime-settings"
+        ).thenReturn(syntax_settings)
+        when(theme_generator.sublime).set_timeout_async(...).thenAnswer(
+            lambda callback: callback()
+        )
+        when(theme_generator).run_on_new_thread(...).thenAnswer(
+            lambda callback, *args: callback(*args)
+        )
+        when(theme_generator).resources_for_scheme(source).thenReturn([
+            "Packages/Example/Example.sublime-color-scheme"
+        ])
+        when(theme_generator).resource_version(...).thenReturn(
+            ("package", "Example", 10, 20)
+        )
+        when(theme_generator).color_value("test", "marker").thenReturn("#abc")
+
+        view = FakeView({
+            "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
+            "color_scheme": generated_theme("color_scheme"),
+        })
+        configurator = ThemeGenerator.for_view(view)
+        version = dependency_version(configurator, source)
+        filename = "GitSavvy.graph.color_scheme.hidden-color-scheme"
+        when(theme_generator).theme_version_record(filename).thenReturn({
+            "version": version,
+            "generated": False,
+        })
+        configurator.configure(marker_style())
+        verify(theme_generator, times=1).theme_version_record(filename)
+
+        view.settings()["color_scheme"] = generated_theme("color_scheme")
+        savvy_settings.set("colors", {"test": {"marker": "#def"}})
+
+        self.assertNotIn("color_scheme", view.settings())
+        verify(theme_generator, times=2).theme_version_record(filename)
+
+        view.settings()["color_scheme"] = generated_theme("color_scheme")
+        syntax_settings.set("color_scheme", source)
+
+        self.assertNotIn("color_scheme", view.settings())
+        verify(theme_generator, times=3).theme_version_record(filename)
+
+        view.settings()["color_scheme"] = generated_theme("color_scheme")
+        preferences.set("light_color_scheme", "Packages/Example/Light.sublime-color-scheme")
+
+        self.assertNotIn("color_scheme", view.settings())
+        verify(theme_generator, times=4).theme_version_record(filename)
+
     def test_switching_to_auto_removes_old_generated_settings(self) -> None:
         when(theme_generator.sublime).load_settings(
             "Preferences.sublime-settings"
-        ).thenReturn({"color_scheme": "auto"})
+        ).thenReturn(WatchableSettings({"color_scheme": "auto"}))
         when(theme_generator.sublime).load_settings(
             "graph.sublime-settings"
-        ).thenReturn({})
+        ).thenReturn(WatchableSettings({}))
+        when(theme_generator.sublime).load_settings(
+            "GitSavvy.sublime-settings"
+        ).thenReturn(WatchableSettings({"colors": {}}))
         view = FakeView({
             "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
             "color_scheme": generated_theme("color_scheme"),
@@ -169,9 +220,46 @@ class TestThemeGenerator(DeferrableTestCase):
                 file.write("{}")
 
             generator.configure(marker_style())
-            generator.ensure_theme()
+            generator._generator.refresh_all()
 
         self.assertEqual(generator._view.settings()["color_scheme"], generated)
+
+    def test_shared_generator_attaches_new_views_without_recomputing(self) -> None:
+        source = "Packages/Example/Example.sublime-color-scheme"
+        first = configured_generator(source, {
+            "color_scheme": generated_theme("color_scheme"),
+        })
+        second = ThemeGenerator.for_view(FakeView({
+            "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
+            "color_scheme": generated_theme("color_scheme"),
+        }))
+        version = dependency_version(first, source)
+        filename = "GitSavvy.graph.color_scheme.hidden-color-scheme"
+        when(theme_generator).theme_version_record(filename).thenReturn({
+            "version": version,
+            "generated": False,
+        })
+
+        first.configure(marker_style())
+        second.configure(marker_style())
+
+        self.assertIs(first._generator, second._generator)
+        self.assertNotIn("color_scheme", first._view.settings())
+        self.assertNotIn("color_scheme", second._view.settings())
+        verify(theme_generator, times=1).theme_version_record(filename)
+
+        first._view.settings()["color_scheme"] = generated_theme("color_scheme")
+        second._view.settings()["color_scheme"] = generated_theme("color_scheme")
+        first._generator.refresh_all()
+
+        self.assertNotIn("color_scheme", first._view.settings())
+        self.assertNotIn("color_scheme", second._view.settings())
+        verify(theme_generator, times=2).theme_version_record(filename)
+
+        theme_generator.unregister(first._view)
+        self.assertIn("graph.sublime-settings", theme_generator._settings_watchers)
+        theme_generator.unregister(second._view)
+        self.assertNotIn("graph.sublime-settings", theme_generator._settings_watchers)
 
     def test_cache_miss_materializes_and_records_scheme(self) -> None:
         source = "Packages/Example/Example.sublime-color-scheme"
@@ -250,6 +338,9 @@ class FakeView:
     def __init__(self, settings: dict) -> None:
         self._settings = FakeViewSettings(settings)
 
+    def id(self) -> int:
+        return id(self)
+
     def is_valid(self) -> bool:
         return True
 
@@ -260,6 +351,23 @@ class FakeView:
 class FakeViewSettings(dict):
     def erase(self, key: str) -> None:
         self.pop(key, None)
+
+
+class WatchableSettings(dict):
+    def __init__(self, values: dict) -> None:
+        super().__init__(values)
+        self.callbacks = {}
+
+    def add_on_change(self, key: str, callback) -> None:
+        self.callbacks[key] = callback
+
+    def clear_on_change(self, key: str) -> None:
+        self.callbacks.pop(key, None)
+
+    def set(self, key: str, value: object) -> None:
+        self[key] = value
+        for callback in list(self.callbacks.values()):
+            callback()
 
 
 class FakeConcreteGenerator:
@@ -276,8 +384,8 @@ class FakeConcreteGenerator:
         self.written_path = path
 
 
-def dependency_version(generator: ThemeGenerator, source: str) -> str:
-    return generator._dependency_version(source, [(
+def dependency_version(generator, source: str) -> str:
+    return generator._generator._dependency_version(source, [(
         "Marker",
         "git_savvy.marker",
         {"foreground": "#abc"},
@@ -295,10 +403,13 @@ def marker_style() -> ScopedStyle:
 def configured_generator(source: str, view_settings: dict | None = None) -> ThemeGenerator:
     when(theme_generator.sublime).load_settings(
         "Preferences.sublime-settings"
-    ).thenReturn({"color_scheme": source})
+    ).thenReturn(WatchableSettings({"color_scheme": source}))
     when(theme_generator.sublime).load_settings(
         "graph.sublime-settings"
-    ).thenReturn({})
+    ).thenReturn(WatchableSettings({}))
+    when(theme_generator.sublime).load_settings(
+        "GitSavvy.sublime-settings"
+    ).thenReturn(WatchableSettings({"colors": {}}))
     when(theme_generator).resources_for_scheme(source).thenReturn([
         "Packages/Example/Example.sublime-color-scheme"
     ])

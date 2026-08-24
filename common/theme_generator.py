@@ -15,7 +15,7 @@ import sublime
 from . import util
 from ..core import app_state
 from ..core.fns import filter_
-from ..core.runtime import enqueue_on_ui
+from ..core.runtime import enqueue_on_ui, run_on_new_thread
 from ..core.settings import color_value
 
 from typing import Callable, NamedTuple, Sequence
@@ -53,6 +53,116 @@ THEME_SETTING_NAMES = (
     "dark_color_scheme",
 )
 _theme_lock = threading.Lock()
+_theme_state_lock = threading.Lock()
+_theme_generators: dict[str, ThemeGenerator] = {}
+_settings_watchers: dict[str, SettingsWatcher] = {}
+
+
+def register(view: sublime.View, syntax_name: str) -> ThemeGenerator:
+    with _theme_state_lock:
+        generator = _theme_generators.get(syntax_name)
+        if generator is None:
+            generator = _theme_generators[syntax_name] = ThemeGenerator(syntax_name)
+            start_auto_update(syntax_name)
+        generator._views.add(view)
+    return generator
+
+
+def unregister(view: sublime.View) -> None:
+    with _theme_state_lock:
+        for syntax_name, generator in _theme_generators.items():
+            if view in generator._views:
+                generator._views.remove(view)
+                if not generator._views:
+                    _theme_generators.pop(syntax_name)
+                    if not _theme_generators:
+                        stop_auto_update()
+                    else:
+                        unwatch_syntax_settings(syntax_name)
+                break
+
+
+def start_auto_update(syntax_name: str) -> None:
+    watch_settings("Preferences.sublime-settings", THEME_SETTING_NAMES)
+    watch_settings("GitSavvy.sublime-settings", ("colors",))
+    watch_settings(syntax_name + ".sublime-settings", THEME_SETTING_NAMES, syntax_name)
+
+
+def stop_auto_update() -> None:
+    for watcher in list(_settings_watchers.values()):
+        watcher.stop()
+    _settings_watchers.clear()
+
+
+def watch_settings(
+    settings_name: str,
+    keys: Sequence[str],
+    syntax_name: str | None = None
+) -> None:
+    if settings_name in _settings_watchers:
+        return
+    settings = sublime.load_settings(settings_name)
+    _settings_watchers[settings_name] = SettingsWatcher(
+        settings,
+        keys,
+        partial(schedule_refresh, syntax_name)
+    )
+
+
+def unwatch_syntax_settings(syntax_name: str) -> None:
+    settings_name = syntax_name + ".sublime-settings"
+    watcher = _settings_watchers.pop(settings_name, None)
+    if watcher:
+        watcher.stop()
+
+
+class SettingsWatcher:
+    callback_key = "GitSavvy.theme_generator"
+
+    def __init__(
+        self,
+        settings: sublime.Settings,
+        keys: Sequence[str],
+        on_change: Callable[[], None]
+    ) -> None:
+        self.settings = settings
+        self.keys = keys
+        self.on_change = on_change
+        self.values = self.current_values()
+        settings.clear_on_change(self.callback_key)
+        settings.add_on_change(self.callback_key, self.check_for_changes)
+
+    def stop(self) -> None:
+        self.settings.clear_on_change(self.callback_key)
+
+    def check_for_changes(self) -> None:
+        values = self.current_values()
+        if values == self.values:
+            return
+        self.values = values
+        self.on_change()
+
+    def current_values(self) -> tuple[str, ...]:
+        return tuple(self.settings.get(key) for key in self.keys)
+
+
+def schedule_refresh(syntax_name: str | None) -> None:
+    with _theme_state_lock:
+        generators = [
+            generator
+            for name, generator in _theme_generators.items()
+            if syntax_name is None or name == syntax_name
+            if generator._styles is not None
+        ]
+
+    if generators:
+        run_on_new_thread(refresh_generators, generators)
+
+
+def refresh_generators(generators: Sequence[ThemeGenerator]) -> None:
+    for generator in generators:
+        if generator._views:
+            generator.refresh_all()
 
 
 class ColorRef(NamedTuple):
@@ -66,31 +176,56 @@ class ScopedStyle:
         self.scope = scope
         self.properties = properties
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ScopedStyle):
+            return NotImplemented
+        return (
+            self.name == other.name
+            and self.scope == other.scope
+            and self.properties == other.properties
+        )
+
 
 ThemeEffect = Callable[[sublime.View], None]
 
 
+class ThemeConfigurator:
+    def __init__(self, generator: ThemeGenerator, view: sublime.View) -> None:
+        self._generator = generator
+        self._view = view
+
+    def configure(self, *styles: ScopedStyle) -> None:
+        self._generator.configure_view(self._view, styles)
+
+
 class ThemeGenerator():
     @classmethod
-    def for_view(cls, view: sublime.View) -> ThemeGenerator:
+    def for_view(cls, view: sublime.View) -> ThemeConfigurator:
         syntax_path = view.settings().get("syntax")
         syntax_name = (
             os.path.splitext(os.path.basename(syntax_path))[0]
             if syntax_path
             else None
         )
-        return cls(view, syntax_name)
+        if not syntax_name:
+            return ThemeConfigurator(cls(None), view)
+        return ThemeConfigurator(register(view, syntax_name), view)
 
-    def __init__(self, view: sublime.View, syntax_name: str | None) -> None:
-        self._view = view
+    def __init__(self, syntax_name: str | None) -> None:
         self._syntax_name = syntax_name
         self._styles: tuple[ScopedStyle, ...] | None = None
+        self._effects: tuple[ThemeEffect, ...] | None = None
+        self._views: set[sublime.View] = set()
 
-    def configure(self, *styles: ScopedStyle) -> None:
-        self._styles = styles
-        self.ensure_theme()
+    def configure_view(self, view: sublime.View, styles: tuple[ScopedStyle, ...]) -> None:
+        if self._styles != styles:
+            self._styles = styles
+            self.refresh_all()
+        else:
+            assert self._effects
+            apply_theme_effects(self._effects, [view])
 
-    def ensure_theme(self) -> None:
+    def refresh_all(self) -> None:
         if self._styles is None:
             raise RuntimeError("theme generator is not configured")
         if not self._syntax_name:
@@ -98,14 +233,15 @@ class ThemeGenerator():
 
         styles = self._resolved_styles()
         scheme_configuration = self._resolved_schemes()
-        effects = self._compute_effects(styles, scheme_configuration)
-        apply_theme_effects(effects, [self._view])
+        self._effects = effects = self._compute_effects(styles, scheme_configuration)
+
+        apply_theme_effects(effects, list(self._views))
 
     def _compute_effects(
         self,
         styles: Sequence[tuple[str, str, dict[str, object]]],
         scheme_configuration: Sequence[tuple[str, str]]
-    ) -> list[ThemeEffect]:
+    ) -> tuple[ThemeEffect, ...]:
         assert self._syntax_name
         active_setting_names = {
             setting_name
@@ -120,7 +256,7 @@ class ThemeGenerator():
             self._ensure_scheme(self._syntax_name, color_scheme, setting_name, styles)
             for color_scheme, setting_name in scheme_configuration
         )
-        return effects
+        return tuple(effects)
 
     def _resolved_schemes(self) -> list[tuple[str, str]]:
         assert self._syntax_name
