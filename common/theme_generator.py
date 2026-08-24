@@ -156,13 +156,7 @@ class AbstractThemeGenerator:
         return self._dirty
 
     def write_new_theme(self, path: str) -> None:
-        self._write_new_theme(path)
-
-    def _write_new_theme(self, path):
-        # type: (str) -> None
-        """
-        Write the new theme on disk.
-        """
+        """Write the new theme on disk."""
         raise NotImplementedError
 
 
@@ -186,8 +180,7 @@ class XMLThemeGenerator(AbstractThemeGenerator):
         new_style = STYLE_TEMPLATE.format(name=name, scope=scope, properties=properties)
         self.styles.append(ElementTree.XML(new_style))
 
-    def _write_new_theme(self, path):
-        # type: (str) -> None
+    def write_new_theme(self, path: str) -> None:
         with util.file.safe_open(path, "wb", buffering=0) as out_f:
             out_f.write(STYLES_HEADER.encode("utf-8"))
             out_f.write(ElementTree.tostring(self.plist, encoding="utf-8"))
@@ -211,8 +204,7 @@ class JSONThemeGenerator(AbstractThemeGenerator):
             new_rule[k] = v
         self.dict["rules"].insert(0, new_rule)
 
-    def _write_new_theme(self, path):
-        # type: (str) -> None
+    def write_new_theme(self, path: str) -> None:
         with util.file.safe_open(path, "wb", buffering=0) as out_f:
             out_f.write(sublime.encode_value(self.dict, pretty=True).encode("utf-8"))
 
