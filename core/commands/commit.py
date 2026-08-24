@@ -192,7 +192,7 @@ def augment_color_scheme(view: sublime.View) -> None:
         background=color_value('commit', 'multiselect_foreground'),
         foreground=color_value('commit', 'multiselect_background'),
     )
-    themeGenerator.apply_new_theme()
+    themeGenerator.ensure_theme()
 
 
 def generate_help_text(view, with_patch_commands=False):

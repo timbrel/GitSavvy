@@ -285,7 +285,7 @@ def augment_color_scheme(view: sublime.View) -> None:
         background=color_value('diff', 'multiselect_foreground'),
         foreground=color_value('diff', 'multiselect_background'),
     )
-    themeGenerator.apply_new_theme()
+    themeGenerator.ensure_theme()
 
 
 class gs_diff_refresh(TextCommand, GitCommand):

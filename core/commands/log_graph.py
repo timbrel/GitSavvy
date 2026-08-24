@@ -309,7 +309,7 @@ def augment_color_scheme(view: sublime.View) -> None:
         background=color_value('log_graph', 'multiselect_foreground'),
         foreground=color_value('log_graph', 'multiselect_background'),
     )
-    themeGenerator.apply_new_theme()
+    themeGenerator.ensure_theme()
 
 
 class gs_log_graph_tab_out(GsTextCommand):
