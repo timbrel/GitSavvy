@@ -29,7 +29,29 @@ class TestThemeGenerator(DeferrableTestCase):
             "color_scheme": "Packages/User/GitSavvy/generated.hidden-color-scheme",
         }))
 
-        self.assertEqual(generator._schemes, [(syntax_scheme, "color_scheme")])
+        self.assertEqual(
+            generator._resolved_schemes(),
+            [(syntax_scheme, "color_scheme")]
+        )
+
+    def test_source_scheme_is_resolved_for_each_run(self) -> None:
+        first = "Packages/Example/First.sublime-color-scheme"
+        second = "Packages/Example/Second.sublime-color-scheme"
+        when(theme_generator.sublime).load_settings(
+            "Preferences.sublime-settings"
+        ).thenReturn(
+            {"color_scheme": first},
+            {"color_scheme": second}
+        )
+        when(theme_generator.sublime).load_settings(
+            "graph.sublime-settings"
+        ).thenReturn({})
+        generator = ThemeGenerator.for_view(FakeView({
+            "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
+        }))
+
+        self.assertEqual(generator._resolved_schemes(), [(first, "color_scheme")])
+        self.assertEqual(generator._resolved_schemes(), [(second, "color_scheme")])
 
     def test_auto_scheme_falls_back_to_global_preferences_by_key(self) -> None:
         light_scheme = "Packages/Example/Light.sublime-color-scheme"
@@ -50,7 +72,7 @@ class TestThemeGenerator(DeferrableTestCase):
             "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
         }))
 
-        self.assertEqual(generator._schemes, [
+        self.assertEqual(generator._resolved_schemes(), [
             (light_scheme, "light_color_scheme"),
             (dark_scheme, "dark_color_scheme"),
         ])

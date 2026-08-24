@@ -62,55 +62,59 @@ class ThemeGenerator():
     @classmethod
     def for_view(cls, view: sublime.View) -> ThemeGenerator:
         syntax_path = view.settings().get("syntax")
-        if not syntax_path:
-            return cls(view, [])
-
-        preferences = sublime.load_settings("Preferences.sublime-settings")
-        syntax_settings = sublime.load_settings(
-            os.path.splitext(os.path.basename(syntax_path))[0] + ".sublime-settings"
+        syntax_name = (
+            os.path.splitext(os.path.basename(syntax_path))[0]
+            if syntax_path
+            else None
         )
+        return cls(view, syntax_name)
 
-        def preference(name: str):
-            return syntax_settings.get(name, preferences.get(name))
-
-        color_scheme = preference("color_scheme")
-        if not color_scheme:
-            return cls(view, [])
-
-        if color_scheme == "auto":
-            def scheme_for_key(name: str) -> tuple[str, str] | None:
-                color_scheme = preference(name)
-                return (color_scheme, name) if color_scheme else None
-
-            return cls(view, list(filter_((
-                scheme_for_key("light_color_scheme"),
-                scheme_for_key("dark_color_scheme"),
-            ))))
-
-        return cls(view, [(color_scheme, "color_scheme")])
-
-    def __init__(self, view: sublime.View, schemes: Sequence[tuple[str, str]]) -> None:
+    def __init__(self, view: sublime.View, syntax_name: str | None) -> None:
         self._view = view
-        self._schemes = schemes
+        self._syntax_name = syntax_name
         self._styles: list[tuple[str, str, dict[str, object]]] = []
 
     def add_scoped_style(self, name: str, scope: str, **kwargs: object) -> None:
         self._styles.append((name, scope, dict(kwargs)))
 
     def ensure_theme(self) -> None:
-        syntax_path = self._view.settings().get("syntax")
-        if not syntax_path:
+        if not self._syntax_name:
             return
 
-        active_setting_names = {setting_name for _, setting_name in self._schemes}
+        styles = self._resolved_styles()
+        schemes = self._resolved_schemes()
+
+        active_setting_names = {setting_name for _, setting_name in schemes}
         for setting_name in THEME_SETTING_NAMES:
             if setting_name not in active_setting_names:
                 maybe_erase_theme_override(self._view, setting_name)
 
-        syntax_name = os.path.splitext(os.path.basename(syntax_path))[0]
-        styles = self._resolved_styles()
-        for color_scheme, setting_name in self._schemes:
-            self._ensure_scheme(syntax_name, color_scheme, setting_name, styles)
+        for color_scheme, setting_name in schemes:
+            self._ensure_scheme(self._syntax_name, color_scheme, setting_name, styles)
+
+    def _resolved_schemes(self) -> list[tuple[str, str]]:
+        assert self._syntax_name
+        preferences = sublime.load_settings("Preferences.sublime-settings")
+        syntax_settings = sublime.load_settings(self._syntax_name + ".sublime-settings")
+
+        def preference(name: str):
+            return syntax_settings.get(name, preferences.get(name))
+
+        color_scheme = preference("color_scheme")
+        if not color_scheme:
+            return []
+
+        if color_scheme == "auto":
+            def scheme_for_key(name: str) -> tuple[str, str] | None:
+                color_scheme = preference(name)
+                return (color_scheme, name) if color_scheme else None
+
+            return list(filter_((
+                scheme_for_key("light_color_scheme"),
+                scheme_for_key("dark_color_scheme"),
+            )))
+
+        return [(color_scheme, "color_scheme")]
 
     def _resolved_styles(self) -> list[tuple[str, str, dict[str, object]]]:
         return [
