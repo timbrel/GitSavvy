@@ -49,39 +49,35 @@ def generator_for_scheme(color_scheme, name):
 
 class ThemeGenerator():
     @classmethod
-    def for_view(cls, view):
-        # type: (sublime.View) -> ThemeGenerator
+    def for_view(cls, view: sublime.View) -> ThemeGenerator:
         settings = view.settings()
         color_scheme = settings.get("color_scheme")
         if not color_scheme:
-            return cls([])
+            return cls(view, [])
 
         if color_scheme == "auto":
-            def generator_for_key(name):
-                # type: (str) -> AbstractThemeGenerator | None
+            def generator_for_key(name: str) -> AbstractThemeGenerator | None:
                 color_scheme = settings.get(name)
                 return generator_for_scheme(color_scheme, name) if color_scheme else None
 
-            return cls(list(filter_((
+            return cls(view, list(filter_((
                 generator_for_key("light_color_scheme"),
                 generator_for_key("dark_color_scheme"),
             ))))
 
-        return cls([generator_for_scheme(color_scheme, "color_scheme")])
+        return cls(view, [generator_for_scheme(color_scheme, "color_scheme")])
 
-    def __init__(self, generators):
-        # type: (Sequence[AbstractThemeGenerator]) -> None
+    def __init__(self, view: sublime.View, generators: Sequence[AbstractThemeGenerator]) -> None:
+        self._view = view
         self._generators = generators
 
-    def add_scoped_style(self, name, scope, **kwargs):
-        # type: (str, str, object) -> None
+    def add_scoped_style(self, name: str, scope: str, **kwargs: object) -> None:
         for g in self._generators:
             g.add_scoped_style(name, scope, **kwargs)
 
-    def apply_new_theme(self, name, target_view):
-        # type: (str, sublime.View) -> None
+    def apply_new_theme(self, name: str) -> None:
         for g in self._generators:
-            g.apply_new_theme(name, target_view)
+            g.apply_new_theme(name, self._view)
 
 
 class AbstractThemeGenerator:

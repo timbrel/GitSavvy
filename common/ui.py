@@ -312,7 +312,7 @@ def augment_color_scheme(view: sublime.View) -> None:
         background=color('multiselect_foreground'),
         foreground=color('multiselect_background'),
     )
-    themeGenerator.apply_new_theme("dashboard_view", view)
+    themeGenerator.apply_new_theme("dashboard_view")
 
 
 def distinct_until_state_changed(just_render_fn):
