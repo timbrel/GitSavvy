@@ -75,9 +75,14 @@ class ThemeGenerator():
         for g in self._generators:
             g.add_scoped_style(name, scope, **kwargs)
 
-    def apply_new_theme(self, name: str) -> None:
+    def apply_new_theme(self) -> None:
+        syntax_path = self._view.settings().get("syntax")
+        if not syntax_path:
+            return
+
+        syntax_name = os.path.splitext(os.path.basename(syntax_path))[0]
         for g in self._generators:
-            g.apply_new_theme(name, self._view)
+            g.apply_new_theme(syntax_name, self._view)
 
 
 class AbstractThemeGenerator:
@@ -129,7 +134,7 @@ class AbstractThemeGenerator:
         """
         raise NotImplementedError
 
-    def apply_new_theme(self, name, target_view):
+    def apply_new_theme(self, syntax_name, target_view):
         # type: (str, sublime.View) -> None
         """
         Apply the transformed theme to the specified target view.
@@ -138,7 +143,9 @@ class AbstractThemeGenerator:
             return
 
         path = os.path.join(sublime.packages_path(), "User", "GitSavvy")
-        filename = "GitSavvy.{}.{}.{}".format(name, self.setting_name, self.hidden_theme_extension)
+        filename = "GitSavvy.{}.{}.{}".format(
+            syntax_name, self.setting_name, self.hidden_theme_extension
+        )
         full_path = os.path.join(path, filename)
 
         os.makedirs(path, exist_ok=True)
