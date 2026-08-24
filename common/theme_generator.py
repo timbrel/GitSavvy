@@ -161,7 +161,9 @@ def schedule_refresh(syntax_name: str | None) -> None:
         ]
 
     if generators:
-        run_on_new_thread(refresh_generators, generators)
+        # Let all settings callbacks, including the color cache invalidation,
+        # finish before resolving the new values.
+        enqueue_on_ui(run_on_new_thread, refresh_generators, generators)
 
 
 def refresh_generators(generators: Sequence[ThemeGenerator]) -> None:
