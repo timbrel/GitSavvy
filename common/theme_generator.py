@@ -49,14 +49,25 @@ _theme_lock = threading.Lock()
 class ThemeGenerator():
     @classmethod
     def for_view(cls, view: sublime.View) -> ThemeGenerator:
-        settings = view.settings()
-        color_scheme = settings.get("color_scheme")
+        syntax_path = view.settings().get("syntax")
+        if not syntax_path:
+            return cls(view, [])
+
+        preferences = sublime.load_settings("Preferences.sublime-settings")
+        syntax_settings = sublime.load_settings(
+            os.path.splitext(os.path.basename(syntax_path))[0] + ".sublime-settings"
+        )
+
+        def preference(name: str):
+            return syntax_settings.get(name, preferences.get(name))
+
+        color_scheme = preference("color_scheme")
         if not color_scheme:
             return cls(view, [])
 
         if color_scheme == "auto":
             def scheme_for_key(name: str) -> tuple[str, str] | None:
-                color_scheme = settings.get(name)
+                color_scheme = preference(name)
                 return (color_scheme, name) if color_scheme else None
 
             return cls(view, list(filter_((

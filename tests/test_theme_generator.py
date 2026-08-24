@@ -12,6 +12,48 @@ class TestThemeGenerator(DeferrableTestCase):
     def tearDown(self) -> None:
         unstub()
 
+    def test_source_scheme_comes_from_syntax_settings(self) -> None:
+        syntax_scheme = "Packages/Example/Syntax.sublime-color-scheme"
+        when(theme_generator.sublime).load_settings(
+            "Preferences.sublime-settings"
+        ).thenReturn({
+            "color_scheme": "Packages/Example/Global.sublime-color-scheme",
+        })
+        when(theme_generator.sublime).load_settings(
+            "graph.sublime-settings"
+        ).thenReturn({"color_scheme": syntax_scheme})
+
+        generator = ThemeGenerator.for_view(FakeView({
+            "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
+            "color_scheme": "Packages/User/GitSavvy/generated.hidden-color-scheme",
+        }))
+
+        self.assertEqual(generator._schemes, [(syntax_scheme, "color_scheme")])
+
+    def test_auto_scheme_falls_back_to_global_preferences_by_key(self) -> None:
+        light_scheme = "Packages/Example/Light.sublime-color-scheme"
+        dark_scheme = "Packages/Example/Dark.sublime-color-scheme"
+        when(theme_generator.sublime).load_settings(
+            "Preferences.sublime-settings"
+        ).thenReturn({
+            "color_scheme": "auto",
+            "dark_color_scheme": dark_scheme,
+        })
+        when(theme_generator.sublime).load_settings(
+            "graph.sublime-settings"
+        ).thenReturn({
+            "light_color_scheme": light_scheme,
+        })
+
+        generator = ThemeGenerator.for_view(FakeView({
+            "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
+        }))
+
+        self.assertEqual(generator._schemes, [
+            (light_scheme, "light_color_scheme"),
+            (dark_scheme, "dark_color_scheme"),
+        ])
+
     def test_cache_hit_does_not_materialize_scheme(self) -> None:
         source = "Packages/Example/Example.sublime-color-scheme"
         generator = configured_generator(source)
@@ -102,19 +144,11 @@ class TestResourceVersion(DeferrableTestCase):
 
 
 class FakeView:
-    def __init__(self, values: dict) -> None:
-        self._settings = FakeSettings(values)
+    def __init__(self, settings: dict) -> None:
+        self._settings = settings
 
-    def settings(self) -> "FakeSettings":
+    def settings(self) -> dict:
         return self._settings
-
-
-class FakeSettings:
-    def __init__(self, values: dict) -> None:
-        self._values = values
-
-    def get(self, key: str, default=None):
-        return self._values.get(key, default)
 
 
 class FakeConcreteGenerator:
@@ -132,6 +166,12 @@ class FakeConcreteGenerator:
 
 
 def configured_generator(source: str) -> ThemeGenerator:
+    when(theme_generator.sublime).load_settings(
+        "Preferences.sublime-settings"
+    ).thenReturn({"color_scheme": source})
+    when(theme_generator.sublime).load_settings(
+        "graph.sublime-settings"
+    ).thenReturn({})
     when(theme_generator).resources_for_scheme(source).thenReturn([
         "Packages/Example/Example.sublime-color-scheme"
     ])
