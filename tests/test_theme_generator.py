@@ -10,6 +10,11 @@ from GitSavvy.tests.mockito import ANY, unstub, verify, when
 
 
 class TestThemeGenerator(DeferrableTestCase):
+    def setUp(self) -> None:
+        when(theme_generator).enqueue_on_ui(...).thenAnswer(
+            lambda callback: callback()
+        )
+
     def tearDown(self) -> None:
         unstub()
 
@@ -143,9 +148,9 @@ class TestThemeGenerator(DeferrableTestCase):
             AssertionError("cache hit must not load the scheme")
         )
         when(theme_generator).try_apply_theme(
-            generator._view, "color_scheme", generated
+            "color_scheme", generated, generator._view
         ).thenAnswer(
-            lambda view, setting_name, theme: view.settings().__setitem__(setting_name, theme)
+            lambda setting_name, theme, view: view.settings().__setitem__(setting_name, theme)
         )
 
         with tempfile.TemporaryDirectory() as directory:
@@ -185,9 +190,9 @@ class TestThemeGenerator(DeferrableTestCase):
 
         verify(theme_generator).store_theme_version(filename, ANY(str), True)
         verify(theme_generator).try_apply_theme(
-            generator._view,
             "color_scheme",
-            "Packages/User/GitSavvy/" + filename
+            "Packages/User/GitSavvy/" + filename,
+            generator._view
         )
 
 
@@ -235,6 +240,9 @@ class TestResourceVersion(DeferrableTestCase):
 class FakeView:
     def __init__(self, settings: dict) -> None:
         self._settings = FakeViewSettings(settings)
+
+    def is_valid(self) -> bool:
+        return True
 
     def settings(self) -> "FakeViewSettings":
         return self._settings

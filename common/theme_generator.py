@@ -5,6 +5,7 @@ to a view.
 """
 from __future__ import annotations
 from collections import OrderedDict
+from functools import partial
 import hashlib
 import os
 import threading
@@ -14,9 +15,10 @@ import sublime
 from . import util
 from ..core import app_state
 from ..core.fns import filter_
+from ..core.runtime import enqueue_on_ui
 from ..core.settings import color_value
 
-from typing import NamedTuple, Sequence
+from typing import Callable, NamedTuple, Sequence
 
 
 STYLES_HEADER = """
@@ -58,6 +60,9 @@ class ColorRef(NamedTuple):
     key: str
 
 
+ThemeEffect = Callable[[sublime.View], None]
+
+
 class ThemeGenerator():
     @classmethod
     def for_view(cls, view: sublime.View) -> ThemeGenerator:
@@ -85,12 +90,16 @@ class ThemeGenerator():
         schemes = self._resolved_schemes()
 
         active_setting_names = {setting_name for _, setting_name in schemes}
-        for setting_name in THEME_SETTING_NAMES:
-            if setting_name not in active_setting_names:
-                maybe_erase_theme_override(self._view, setting_name)
-
-        for color_scheme, setting_name in schemes:
+        effects: list[ThemeEffect] = [
+            partial(maybe_erase_theme_override, setting_name)
+            for setting_name in THEME_SETTING_NAMES
+            if setting_name not in active_setting_names
+        ]
+        effects.extend(
             self._ensure_scheme(self._syntax_name, color_scheme, setting_name, styles)
+            for color_scheme, setting_name in schemes
+        )
+        apply_theme_effects(effects, [self._view])
 
     def _resolved_schemes(self) -> list[tuple[str, str]]:
         assert self._syntax_name
@@ -132,7 +141,7 @@ class ThemeGenerator():
         color_scheme: str,
         setting_name: str,
         styles: Sequence[tuple[str, str, dict[str, object]]]
-    ) -> None:
+    ) -> ThemeEffect:
         extension = hidden_extension_for_scheme(color_scheme)
         filename = "GitSavvy.{}.{}.{}".format(syntax_name, setting_name, extension)
         path = os.path.join(sublime.packages_path(), "User", "GitSavvy")
@@ -144,11 +153,9 @@ class ThemeGenerator():
             record = theme_version_record(filename)
             if record and record.get("version") == version:
                 if not record.get("generated"):
-                    maybe_erase_theme_override(self._view, setting_name)
-                    return
+                    return partial(maybe_erase_theme_override, setting_name)
                 if os.path.isfile(full_path):
-                    try_apply_theme(self._view, setting_name, theme_path)
-                    return
+                    return partial(try_apply_theme, setting_name, theme_path)
 
             generator = generator_for_scheme(color_scheme, setting_name)
             for name, scope, properties in styles:
@@ -161,9 +168,8 @@ class ThemeGenerator():
 
             store_theme_version(filename, version, generated)
             if generated:
-                try_apply_theme(self._view, setting_name, theme_path)
-            else:
-                maybe_erase_theme_override(self._view, setting_name)
+                return partial(try_apply_theme, setting_name, theme_path)
+            return partial(maybe_erase_theme_override, setting_name)
 
     def _dependency_version(
         self,
@@ -356,16 +362,35 @@ def file_version(kind: str, path: str) -> tuple:
     return (kind, stat.st_size, stat.st_mtime_ns)
 
 
-def maybe_erase_theme_override(view: sublime.View, setting_name: str) -> None:
+def apply_theme_effects(
+    effects: Sequence[ThemeEffect],
+    views: Sequence[sublime.View]
+) -> None:
+    def apply() -> None:
+        for view in views:
+            if view.is_valid():
+                for effect in effects:
+                    effect(view)
+
+    enqueue_on_ui(apply)
+
+
+def maybe_erase_theme_override(setting_name: str, view: sublime.View) -> None:
     settings = view.settings()
     theme = settings.get(setting_name)
     if isinstance(theme, str) and theme.startswith(GENERATED_THEME_PREFIX):
         settings.erase(setting_name)
 
 
-def try_apply_theme(view, setting_name, theme_path, tries=0):
-    # type: (sublime.View, str, str, int) -> None
-    """ Safely apply new theme as color_scheme. """
+def try_apply_theme(
+    setting_name: str,
+    theme_path: str,
+    view: sublime.View,
+    tries: int = 0
+) -> None:
+    """Safely apply new theme as color_scheme."""
+    if not view.is_valid():
+        return
     if view.settings().get(setting_name) == theme_path:
         return
 
@@ -380,7 +405,10 @@ def try_apply_theme(view, setting_name, theme_path, tries=0):
             return
 
         delay = (pow(2, tries) - 1) * 10
-        sublime.set_timeout_async(lambda: try_apply_theme(view, setting_name, theme_path, tries + 1), delay)
+        sublime.set_timeout(
+            lambda: try_apply_theme(setting_name, theme_path, view, tries + 1),
+            delay
+        )
         return
 
     view.settings().set(setting_name, theme_path)
