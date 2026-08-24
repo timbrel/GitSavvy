@@ -24,7 +24,6 @@ from ..fns import head, filter_, flatten, pairwise, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand, GitSavvyError
 from ..runtime import ensure_on_ui, enqueue_on_worker, run_on_new_thread, throttled
-from ..settings import color_value
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..ui__quick_panel import show_quick_panel
 from ..utils import flash, focus_view, hprint, line_indentation
@@ -32,7 +31,7 @@ from ..view import (
     capture_cur_position, clamp, replace_view_content, scroll_to_pt,
     place_view, place_cursor_and_show, visible_views, y_offset, Position)
 from ...common import util
-from ...common.theme_generator import ThemeGenerator
+from ...common.theme_generator import ColorRef, ThemeGenerator
 
 
 __all__ = (
@@ -282,8 +281,8 @@ def augment_color_scheme(view: sublime.View) -> None:
     themeGenerator.add_scoped_style(
         "GitSavvy Multiselect Marker",
         multi_selector.MULTISELECT_SCOPE,
-        background=color_value('diff', 'multiselect_foreground'),
-        foreground=color_value('diff', 'multiselect_background'),
+        background=ColorRef("diff", "multiselect_foreground"),
+        foreground=ColorRef("diff", "multiselect_background"),
     )
     themeGenerator.ensure_theme()
 

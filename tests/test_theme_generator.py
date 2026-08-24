@@ -5,7 +5,7 @@ import tempfile
 from unittesting import DeferrableTestCase
 
 from GitSavvy.common import theme_generator
-from GitSavvy.common.theme_generator import ThemeGenerator
+from GitSavvy.common.theme_generator import ColorRef, ThemeGenerator
 from GitSavvy.tests.mockito import ANY, unstub, verify, when
 
 
@@ -80,7 +80,7 @@ class TestThemeGenerator(DeferrableTestCase):
         generator = configured_generator(source, {
             "color_scheme": generated_theme("color_scheme"),
         })
-        version = generator._dependency_version(source)
+        version = dependency_version(generator, source)
         filename = "GitSavvy.graph.color_scheme.hidden-color-scheme"
         when(theme_generator).theme_version_record(filename).thenReturn({
             "version": version,
@@ -94,7 +94,7 @@ class TestThemeGenerator(DeferrableTestCase):
     def test_cache_hit_does_not_materialize_scheme(self) -> None:
         source = "Packages/Example/Example.sublime-color-scheme"
         generator = configured_generator(source)
-        version = generator._dependency_version(source)
+        version = dependency_version(generator, source)
         filename = "GitSavvy.graph.color_scheme.hidden-color-scheme"
 
         when(theme_generator).theme_version_record(filename).thenReturn({
@@ -111,7 +111,7 @@ class TestThemeGenerator(DeferrableTestCase):
         source = "Packages/Example/Example.sublime-color-scheme"
         generated = generated_theme("color_scheme")
         generator = configured_generator(source, {"color_scheme": generated})
-        version = generator._dependency_version(source)
+        version = dependency_version(generator, source)
         filename = "GitSavvy.graph.color_scheme.hidden-color-scheme"
         when(theme_generator).theme_version_record(filename).thenReturn({
             "version": version,
@@ -237,6 +237,10 @@ class FakeConcreteGenerator:
         self.written_path = path
 
 
+def dependency_version(generator: ThemeGenerator, source: str) -> str:
+    return generator._dependency_version(source, generator._resolved_styles())
+
+
 def configured_generator(source: str, view_settings: dict | None = None) -> ThemeGenerator:
     when(theme_generator.sublime).load_settings(
         "Preferences.sublime-settings"
@@ -248,12 +252,17 @@ def configured_generator(source: str, view_settings: dict | None = None) -> Them
         "Packages/Example/Example.sublime-color-scheme"
     ])
     when(theme_generator).resource_version(...).thenReturn(("package", "Example", 10, 20))
+    when(theme_generator).color_value("test", "marker").thenReturn("#abc")
     settings = {
         "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
         **(view_settings or {}),
     }
     generator = ThemeGenerator.for_view(FakeView(settings))
-    generator.add_scoped_style("Marker", "git_savvy.marker", foreground="#abc")
+    generator.add_scoped_style(
+        "Marker",
+        "git_savvy.marker",
+        foreground=ColorRef("test", "marker")
+    )
     return generator
 
 

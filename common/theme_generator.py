@@ -14,8 +14,9 @@ import sublime
 from . import util
 from ..core import app_state
 from ..core.fns import filter_
+from ..core.settings import color_value
 
-from typing import Sequence
+from typing import NamedTuple, Sequence
 
 
 STYLES_HEADER = """
@@ -50,6 +51,11 @@ THEME_SETTING_NAMES = (
     "dark_color_scheme",
 )
 _theme_lock = threading.Lock()
+
+
+class ColorRef(NamedTuple):
+    namespace: str
+    key: str
 
 
 class ThemeGenerator():
@@ -102,10 +108,27 @@ class ThemeGenerator():
                 maybe_erase_theme_override(self._view, setting_name)
 
         syntax_name = os.path.splitext(os.path.basename(syntax_path))[0]
+        styles = self._resolved_styles()
         for color_scheme, setting_name in self._schemes:
-            self._ensure_scheme(syntax_name, color_scheme, setting_name)
+            self._ensure_scheme(syntax_name, color_scheme, setting_name, styles)
 
-    def _ensure_scheme(self, syntax_name: str, color_scheme: str, setting_name: str) -> None:
+    def _resolved_styles(self) -> list[tuple[str, str, dict[str, object]]]:
+        return [
+            (
+                name,
+                scope,
+                {key: resolve_style_value(value) for key, value in properties.items()}
+            )
+            for name, scope, properties in self._styles
+        ]
+
+    def _ensure_scheme(
+        self,
+        syntax_name: str,
+        color_scheme: str,
+        setting_name: str,
+        styles: Sequence[tuple[str, str, dict[str, object]]]
+    ) -> None:
         extension = hidden_extension_for_scheme(color_scheme)
         filename = "GitSavvy.{}.{}.{}".format(syntax_name, setting_name, extension)
         path = os.path.join(sublime.packages_path(), "User", "GitSavvy")
@@ -113,7 +136,7 @@ class ThemeGenerator():
         theme_path = "/".join(("Packages", "User", "GitSavvy", filename))
 
         with _theme_lock:
-            version = self._dependency_version(color_scheme)
+            version = self._dependency_version(color_scheme, styles)
             record = theme_version_record(filename)
             if record and record.get("version") == version:
                 if not record.get("generated"):
@@ -124,7 +147,7 @@ class ThemeGenerator():
                     return
 
             generator = generator_for_scheme(color_scheme, setting_name)
-            for name, scope, properties in self._styles:
+            for name, scope, properties in styles:
                 generator.add_scoped_style(name, scope, **properties)
 
             generated = generator.is_dirty
@@ -138,12 +161,16 @@ class ThemeGenerator():
             else:
                 maybe_erase_theme_override(self._view, setting_name)
 
-    def _dependency_version(self, color_scheme: str) -> str:
+    def _dependency_version(
+        self,
+        color_scheme: str,
+        styles: Sequence[tuple[str, str, dict[str, object]]]
+    ) -> str:
         digest = hashlib.sha256(str(THEME_GENERATOR_VERSION).encode())
         for resource in resources_for_scheme(color_scheme):
             digest.update(resource.encode())
             digest.update(repr(resource_version(resource)).encode())
-        digest.update(repr(self._styles).encode())
+        digest.update(repr(styles).encode())
         return digest.hexdigest()
 
 
@@ -232,6 +259,12 @@ class JSONThemeGenerator(AbstractThemeGenerator):
     def write_new_theme(self, path: str) -> None:
         with util.file.safe_open(path, "wb", buffering=0) as out_f:
             out_f.write(sublime.encode_value(self.dict, pretty=True).encode("utf-8"))
+
+
+def resolve_style_value(value: object) -> object:
+    if isinstance(value, ColorRef):
+        return color_value(value.namespace, value.key)
+    return value
 
 
 def generator_for_scheme(color_scheme: str, setting_name: str) -> AbstractThemeGenerator:

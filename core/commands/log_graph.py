@@ -22,7 +22,6 @@ from ..base_commands import GsTextCommand
 from ..fns import filter_, flatten, pairwise, partition, take
 from ..git_command import GitCommand
 from ..text_helper import Region, TextRange, line_from_pt
-from ..settings import color_value
 from ..runtime import (
     cooperative_thread_hopper,
     enqueue_on_ui,
@@ -46,7 +45,7 @@ from ..caches import Cache
 from ..utils import add_selection_to_jump_history, flash, focus_view
 from ...common import util
 from GitSavvy.core import app_state
-from ...common.theme_generator import ThemeGenerator
+from ...common.theme_generator import ColorRef, ThemeGenerator
 
 
 __all__ = (
@@ -276,38 +275,38 @@ def augment_color_scheme(view: sublime.View) -> None:
     themeGenerator.add_scoped_style(
         "GitSavvy Highlighted Commit Dot",
         DOT_SCOPE,
-        background=color_value('log_graph', 'commit_dot_background'),
-        foreground=color_value('log_graph', 'commit_dot_foreground'),
+        background=ColorRef("log_graph", "commit_dot_background"),
+        foreground=ColorRef("log_graph", "commit_dot_foreground"),
     )
     themeGenerator.add_scoped_style(
         "GitSavvy Highlighted Path Char",
         PATH_SCOPE,
-        background=color_value('log_graph', 'path_background'),
-        foreground=color_value('log_graph', 'path_foreground'),
+        background=ColorRef("log_graph", "path_background"),
+        foreground=ColorRef("log_graph", "path_foreground"),
     )
     themeGenerator.add_scoped_style(
         "GitSavvy Highlighted Commit Dot Above",
         DOT_ABOVE_SCOPE,
-        background=color_value('log_graph', 'commit_dot_above_background'),
-        foreground=color_value('log_graph', 'commit_dot_above_foreground'),
+        background=ColorRef("log_graph", "commit_dot_above_background"),
+        foreground=ColorRef("log_graph", "commit_dot_above_foreground"),
     )
     themeGenerator.add_scoped_style(
         "GitSavvy Highlighted Path Char Above",
         PATH_ABOVE_SCOPE,
-        background=color_value('log_graph', 'path_above_background'),
-        foreground=color_value('log_graph', 'path_above_foreground'),
+        background=ColorRef("log_graph", "path_above_background"),
+        foreground=ColorRef("log_graph", "path_above_foreground"),
     )
     themeGenerator.add_scoped_style(
         "GitSavvy Highlighted Matching Commit",
         MATCHING_COMMIT_SCOPE,
-        background=color_value('log_graph', 'matching_commit_background'),
-        foreground=color_value('log_graph', 'matching_commit_foreground'),
+        background=ColorRef("log_graph", "matching_commit_background"),
+        foreground=ColorRef("log_graph", "matching_commit_foreground"),
     )
     themeGenerator.add_scoped_style(
         "GitSavvy Multiselect Marker",
         multi_selector.MULTISELECT_SCOPE,
-        background=color_value('log_graph', 'multiselect_foreground'),
-        foreground=color_value('log_graph', 'multiselect_background'),
+        background=ColorRef("log_graph", "multiselect_foreground"),
+        foreground=ColorRef("log_graph", "multiselect_background"),
     )
     themeGenerator.ensure_theme()
 

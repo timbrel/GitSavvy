@@ -12,10 +12,9 @@ import sublime
 from sublime_plugin import TextCommand
 
 from . import util
-from .theme_generator import ThemeGenerator
+from .theme_generator import ColorRef, ThemeGenerator
 from ..core.commands import multi_selector
 from ..core.runtime import enqueue_on_worker, run_on_new_thread
-from ..core.settings import color_value
 from ..core.utils import flash, focus_view
 from GitSavvy.core import app_state, store
 from GitSavvy.core.base_commands import GsTextCommand
@@ -305,8 +304,8 @@ def augment_color_scheme(view: sublime.View) -> None:
     themeGenerator.add_scoped_style(
         "GitSavvy Multiselect Marker",
         multi_selector.MULTISELECT_SCOPE,
-        background=color_value('dashboard', 'multiselect_foreground'),
-        foreground=color_value('dashboard', 'multiselect_background'),
+        background=ColorRef("dashboard", "multiselect_foreground"),
+        foreground=ColorRef("dashboard", "multiselect_background"),
     )
     themeGenerator.ensure_theme()
 

@@ -14,12 +14,12 @@ from . import multi_selector
 from ..git_command import GitCommand, GitSavvyError
 from ..fns import flatten, head
 from ..runtime import enqueue_on_worker, run_on_new_thread, text_command
-from ..settings import color_value, SettingsMixin
+from ..settings import SettingsMixin
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import focus_view
 from ..view import replace_view_content
 from ...common import util
-from ...common.theme_generator import ThemeGenerator
+from ...common.theme_generator import ColorRef, ThemeGenerator
 
 
 __all__ = (
@@ -189,8 +189,8 @@ def augment_color_scheme(view: sublime.View) -> None:
     themeGenerator.add_scoped_style(
         "GitSavvy Multiselect Marker",
         multi_selector.MULTISELECT_SCOPE,
-        background=color_value('commit', 'multiselect_foreground'),
-        foreground=color_value('commit', 'multiselect_background'),
+        background=ColorRef("commit", "multiselect_foreground"),
+        foreground=ColorRef("commit", "multiselect_background"),
     )
     themeGenerator.ensure_theme()
 
