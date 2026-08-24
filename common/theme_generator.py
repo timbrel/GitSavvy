@@ -68,6 +68,11 @@ def register(view: sublime.View, syntax_name: str) -> ThemeGenerator:
     return generator
 
 
+def is_registered(view: sublime.View) -> bool:
+    with _theme_state_lock:
+        return any(view in generator._views for generator in _theme_generators.values())
+
+
 def unregister(view: sublime.View) -> None:
     with _theme_state_lock:
         for syntax_name, generator in _theme_generators.items():

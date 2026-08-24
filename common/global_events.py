@@ -4,8 +4,9 @@ import sublime
 from sublime_plugin import EventListener, WindowCommand
 
 from . import util
-from .theme_generator import unregister
+from .theme_generator import is_registered, unregister
 from ..core import app_state
+from ..core.runtime import run_on_new_thread
 from ..core.settings import SettingsMixin
 from ..core.utils import focus_view
 
@@ -45,6 +46,7 @@ class GsInterfaceFocusEventListener(EventListener):
         if view.settings().get("is_widget"):
             return
 
+        register_theme(view)
         SEEN.add(vid)
         util.view.refresh_gitsavvy(view)
 
@@ -52,6 +54,35 @@ class GsInterfaceFocusEventListener(EventListener):
         SEEN.discard(view.id())
         unregister(view)
         util.view.handle_closed_view(view)
+
+    def on_load_project(self, window):
+        register_open_themes(window)
+
+
+def register_open_themes(window=None) -> None:
+    windows = [window] if window else sublime.windows()
+    for current_window in windows:
+        for view in current_window.views():
+            register_theme(view)
+
+
+def register_theme(view: sublime.View) -> None:
+    if is_registered(view):
+        return
+
+    settings = view.settings()
+    if settings.get("git_savvy.log_graph_view"):
+        from ..core.commands.log_graph import augment_color_scheme
+    elif settings.get("git_savvy.diff_view"):
+        from ..core.commands.diff import augment_color_scheme
+    elif settings.get("git_savvy.commit_view"):
+        from ..core.commands.commit import augment_color_scheme
+    elif settings.get("git_savvy.interface"):
+        from .ui import augment_color_scheme
+    else:
+        return
+
+    run_on_new_thread(augment_color_scheme, view)
 
 
 NATIVE_GIT_EDITOR_FILES = {

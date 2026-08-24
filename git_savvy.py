@@ -103,6 +103,7 @@ def plugin_unloaded() -> None:
 
 def prepare_gitsavvy() -> None:
     from .common import util
+    from .common.global_events import register_open_themes
     from .core import app_state, runtime, store
 
     app_state.load()
@@ -110,8 +111,11 @@ def prepare_gitsavvy() -> None:
     runtime.determine_thread_names()
 
     # Ensure all interfaces are ready.
-    sublime.set_timeout_async(
-        lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
+    def prepare_views() -> None:
+        register_open_themes()
+        util.view.refresh_gitsavvy(sublime.active_window().active_view())
+
+    sublime.set_timeout_async(prepare_views)
 
     savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
     warn_about_unused_global_settings(savvy_settings)
