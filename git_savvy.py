@@ -104,7 +104,6 @@ def plugin_unloaded() -> None:
 
 def prepare_gitsavvy() -> None:
     from .common import util
-    from .common.global_events import register_open_themes
     from .core import app_state, runtime, store
 
     app_state.load()
@@ -113,7 +112,6 @@ def prepare_gitsavvy() -> None:
 
     # Ensure all interfaces are ready.
     def prepare_views() -> None:
-        register_open_themes()
         util.view.refresh_gitsavvy(sublime.active_window().active_view())
 
     sublime.set_timeout_async(prepare_views)
