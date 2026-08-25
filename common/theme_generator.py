@@ -9,7 +9,6 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from functools import partial
 import hashlib
 import os
-import threading
 import traceback
 from xml.etree import ElementTree
 
@@ -17,7 +16,7 @@ import sublime
 from . import util
 from ..core import app_state
 from ..core.fns import filter_
-from ..core.runtime import enqueue_on_ui
+from ..core.runtime import assert_on_ui, enqueue_on_ui
 from ..core.settings import color_value
 
 from typing import Callable, NamedTuple, Optional, Sequence, TypeVar
@@ -58,7 +57,6 @@ THEME_SETTING_NAMES = (
     "light_color_scheme",
     "dark_color_scheme",
 )
-_theme_state_lock = threading.Lock()
 _theme_executor = ThreadPoolExecutor(
     max_workers=1,
     thread_name_prefix="GitSavvyTheme"
@@ -68,32 +66,32 @@ _settings_watchers: dict[str, SettingsWatcher] = {}
 
 
 def register(view: sublime.View, syntax_name: str) -> ThemeGenerator:
-    with _theme_state_lock:
-        generator = _theme_generators.get(syntax_name)
-        if generator is None:
-            generator = _theme_generators[syntax_name] = ThemeGenerator(syntax_name)
-            start_auto_update(syntax_name)
-        generator._views.add(view)
+    assert_on_ui()
+    generator = _theme_generators.get(syntax_name)
+    if generator is None:
+        generator = _theme_generators[syntax_name] = ThemeGenerator(syntax_name)
+        start_auto_update(syntax_name)
+    generator._views.add(view)
     return generator
 
 
 def is_registered(view: sublime.View) -> bool:
-    with _theme_state_lock:
-        return any(view in generator._views for generator in _theme_generators.values())
+    assert_on_ui()
+    return any(view in generator._views for generator in _theme_generators.values())
 
 
 def unregister(view: sublime.View) -> None:
-    with _theme_state_lock:
-        for syntax_name, generator in _theme_generators.items():
-            if view in generator._views:
-                generator._views.remove(view)
-                if not generator._views:
-                    _theme_generators.pop(syntax_name)
-                    if not _theme_generators:
-                        stop_auto_update()
-                    else:
-                        unwatch_syntax_settings(syntax_name)
-                break
+    assert_on_ui()
+    for syntax_name, generator in _theme_generators.items():
+        if view in generator._views:
+            generator._views.remove(view)
+            if not generator._views:
+                _theme_generators.pop(syntax_name)
+                if not _theme_generators:
+                    stop_auto_update()
+                else:
+                    unwatch_syntax_settings(syntax_name)
+            break
 
 
 def start_auto_update(syntax_name: str) -> None:
@@ -180,13 +178,13 @@ class SettingsWatcher:
 
 
 def schedule_refresh(syntax_name: str | None) -> None:
-    with _theme_state_lock:
-        generators = [
-            generator
-            for name, generator in _theme_generators.items()
-            if syntax_name is None or name == syntax_name
-            if generator._styles is not None
-        ]
+    assert_on_ui()
+    generators = [
+        generator
+        for name, generator in _theme_generators.items()
+        if syntax_name is None or name == syntax_name
+        if generator._styles is not None
+    ]
 
     if generators:
         # Let all settings callbacks, including the color cache invalidation,

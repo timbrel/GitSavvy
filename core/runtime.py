@@ -82,6 +82,11 @@ def it_runs_on_ui():
     return threading.current_thread().name == UI_THREAD_NAME
 
 
+def assert_on_ui() -> None:
+    if not it_runs_on_ui():
+        raise RuntimeError("This operation must run on the UI thread")
+
+
 def ensure_on_ui(fn, *args, **kwargs):
     # type: (Callable[P, T], P.args, P.kwargs) -> None
     if it_runs_on_ui():
