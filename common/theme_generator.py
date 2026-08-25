@@ -211,7 +211,7 @@ class ThemeConfigurator:
         self._view = view
 
     def configure(self, *styles: ScopedStyle) -> None:
-        self._generator.configure_view(self._view, styles)
+        run_on_new_thread(self._generator.configure_view, self._view, styles)
 
 
 class ThemeGenerator():

@@ -14,7 +14,7 @@ from sublime_plugin import TextCommand
 from . import util
 from .theme_generator import ColorRef, ScopedStyle, ThemeGenerator
 from ..core.commands import multi_selector
-from ..core.runtime import enqueue_on_worker, run_on_new_thread
+from ..core.runtime import enqueue_on_worker
 from ..core.utils import flash, focus_view
 from GitSavvy.core import app_state, store
 from GitSavvy.core.base_commands import GsTextCommand
@@ -163,7 +163,7 @@ class Interface(metaclass=_PrepareInterface):
         view.set_scratch(True)
         view.set_read_only(True)
         util.view.disable_other_plugins(view)
-        run_on_new_thread(augment_color_scheme, view)
+        augment_color_scheme(view)
 
         interface = cls(view=view)
         interface.after_view_creation(view)  # before first render

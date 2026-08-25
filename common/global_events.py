@@ -6,7 +6,6 @@ from sublime_plugin import EventListener, WindowCommand
 from . import util
 from .theme_generator import is_registered, unregister
 from ..core import app_state
-from ..core.runtime import run_on_new_thread
 from ..core.settings import SettingsMixin
 from ..core.utils import focus_view
 
@@ -82,7 +81,7 @@ def register_theme(view: sublime.View) -> None:
     else:
         return
 
-    run_on_new_thread(augment_color_scheme, view)
+    augment_color_scheme(view)
 
 
 NATIVE_GIT_EDITOR_FILES = {

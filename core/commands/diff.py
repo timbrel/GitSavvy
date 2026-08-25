@@ -23,7 +23,7 @@ from .navigate import GsNavigate
 from ..fns import head, filter_, flatten, pairwise, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand, GitSavvyError
-from ..runtime import ensure_on_ui, enqueue_on_worker, run_on_new_thread, throttled
+from ..runtime import ensure_on_ui, enqueue_on_worker, throttled
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..ui__quick_panel import show_quick_panel
 from ..utils import flash, focus_view, hprint, line_indentation
@@ -265,7 +265,7 @@ class gs_diff(WindowCommand, GitCommand):
                 "result_line_regex": LINE_RE,
                 "result_base_dir": repo_path,
             })
-            run_on_new_thread(augment_color_scheme, diff_view)
+            augment_color_scheme(diff_view)
             diff_view.run_command("gs_handle_vintageous")
 
         # Assume diffing a single file is very fast and do it

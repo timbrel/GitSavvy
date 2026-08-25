@@ -13,7 +13,7 @@ from . import intra_line_colorizer
 from . import multi_selector
 from ..git_command import GitCommand, GitSavvyError
 from ..fns import flatten, head
-from ..runtime import enqueue_on_worker, run_on_new_thread, text_command
+from ..runtime import enqueue_on_worker, text_command
 from ..settings import SettingsMixin
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import focus_view
@@ -140,7 +140,7 @@ class gs_commit(WindowCommand, GitCommand):
             util.view.mark_as_lintable(view)
 
             view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
-            run_on_new_thread(augment_color_scheme, view)
+            augment_color_scheme(view)
             view.run_command("gs_handle_vintageous")
 
             title = COMMIT_TITLE.format(os.path.basename(repo_path))

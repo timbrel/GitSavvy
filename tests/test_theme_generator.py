@@ -15,11 +15,26 @@ class TestThemeGenerator(DeferrableTestCase):
         when(theme_generator).enqueue_on_ui(...).thenAnswer(
             lambda callback, *args: callback(*args)
         )
+        when(theme_generator).run_on_new_thread(...).thenAnswer(
+            lambda callback, *args: callback(*args)
+        )
 
     def tearDown(self) -> None:
         theme_generator.stop_auto_update()
         theme_generator._theme_generators.clear()
         unstub()
+
+    def test_configuration_runs_on_a_new_thread(self) -> None:
+        view = FakeView({})
+        configurator = ThemeGenerator.for_view(view)
+
+        configurator.configure()
+
+        verify(theme_generator).run_on_new_thread(
+            configurator._generator.configure_view,
+            view,
+            ()
+        )
 
     def test_source_scheme_comes_from_syntax_settings(self) -> None:
         syntax_scheme = "Packages/Example/Syntax.sublime-color-scheme"
@@ -95,9 +110,6 @@ class TestThemeGenerator(DeferrableTestCase):
         ).thenReturn(syntax_settings)
         when(theme_generator.sublime).set_timeout_async(...).thenAnswer(
             lambda callback: callback()
-        )
-        when(theme_generator).run_on_new_thread(...).thenAnswer(
-            lambda callback, *args: callback(*args)
         )
         when(theme_generator).resources_for_scheme(source).thenReturn([
             "Packages/Example/Example.sublime-color-scheme"

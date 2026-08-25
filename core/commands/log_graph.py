@@ -26,7 +26,6 @@ from ..runtime import (
     cooperative_thread_hopper,
     enqueue_on_ui,
     enqueue_on_worker,
-    run_on_new_thread,
     text_command,
     HopperR
 )
@@ -210,7 +209,7 @@ class gs_graph(WindowCommand, GitCommand):
             })
             view.run_command("gs_handle_vintageous")
             view.run_command("gs_handle_arrow_keys")
-            run_on_new_thread(augment_color_scheme, view)
+            augment_color_scheme(view)
 
             # We need to ensure the panel has been created, so it appears
             # e.g. in the menu. Otherwise Sublime will not handle `show_panel`
