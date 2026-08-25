@@ -15,7 +15,7 @@ class TestThemeGenerator(DeferrableTestCase):
         when(theme_generator).enqueue_on_ui(...).thenAnswer(
             lambda callback, *args: callback(*args)
         )
-        when(theme_generator).run_on_new_thread(...).thenAnswer(
+        when(theme_generator).enqueue_theme_task(...).thenAnswer(
             lambda callback, *args: callback(*args)
         )
 
@@ -24,13 +24,13 @@ class TestThemeGenerator(DeferrableTestCase):
         theme_generator._theme_generators.clear()
         unstub()
 
-    def test_configuration_runs_on_a_new_thread(self) -> None:
+    def test_configuration_runs_on_the_theme_executor(self) -> None:
         view = FakeView({})
         configurator = ThemeGenerator.for_view(view)
 
         configurator.configure()
 
-        verify(theme_generator).run_on_new_thread(
+        verify(theme_generator).enqueue_theme_task(
             configurator._generator.configure_view,
             view,
             ()

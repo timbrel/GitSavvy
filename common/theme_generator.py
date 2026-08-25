@@ -5,20 +5,26 @@ to a view.
 """
 from __future__ import annotations
 from collections import OrderedDict
+from concurrent.futures import Future, ThreadPoolExecutor
 from functools import partial
 import hashlib
 import os
 import threading
+import traceback
 from xml.etree import ElementTree
 
 import sublime
 from . import util
 from ..core import app_state
 from ..core.fns import filter_
-from ..core.runtime import enqueue_on_ui, run_on_new_thread
+from ..core.runtime import enqueue_on_ui
 from ..core.settings import color_value
 
-from typing import Callable, NamedTuple, Optional, Sequence
+from typing import Callable, NamedTuple, Optional, Sequence, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec("P")
+T = TypeVar("T")
 
 
 STYLES_HEADER = """
@@ -52,8 +58,11 @@ THEME_SETTING_NAMES = (
     "light_color_scheme",
     "dark_color_scheme",
 )
-_theme_lock = threading.Lock()
 _theme_state_lock = threading.Lock()
+_theme_executor = ThreadPoolExecutor(
+    max_workers=1,
+    thread_name_prefix="GitSavvyTheme"
+)
 _theme_generators: dict[str, ThemeGenerator] = {}
 _settings_watchers: dict[str, SettingsWatcher] = {}
 
@@ -97,6 +106,25 @@ def stop_auto_update() -> None:
     for watcher in list(_settings_watchers.values()):
         watcher.stop()
     _settings_watchers.clear()
+
+
+def shutdown_theme_executor() -> None:
+    _theme_executor.shutdown(wait=False)
+
+
+def enqueue_theme_task(
+    fn: Callable[P, T],
+    *args: P.args,
+    **kwargs: P.kwargs
+) -> None:
+    future = _theme_executor.submit(fn, *args, **kwargs)
+    future.add_done_callback(report_theme_task_error)
+
+
+def report_theme_task_error(future: Future[T]) -> None:
+    error = future.exception()
+    if error:
+        traceback.print_exception(type(error), error, error.__traceback__)
 
 
 def watch_settings(
@@ -163,7 +191,7 @@ def schedule_refresh(syntax_name: str | None) -> None:
     if generators:
         # Let all settings callbacks, including the color cache invalidation,
         # finish before resolving the new values.
-        enqueue_on_ui(run_on_new_thread, refresh_generators, generators)
+        enqueue_on_ui(enqueue_theme_task, refresh_generators, generators)
 
 
 def refresh_generators(generators: Sequence[ThemeGenerator]) -> None:
@@ -211,7 +239,7 @@ class ThemeConfigurator:
         self._view = view
 
     def configure(self, *styles: ScopedStyle) -> None:
-        run_on_new_thread(self._generator.configure_view, self._view, styles)
+        enqueue_theme_task(self._generator.configure_view, self._view, styles)
 
 
 class ThemeGenerator():
@@ -325,37 +353,36 @@ class ThemeGenerator():
         full_path = os.path.join(path, filename)
         theme_path = "/".join(("Packages", "User", "GitSavvy", filename))
 
-        with _theme_lock:
-            new_resource = not os.path.isfile(full_path)
-            version = self._dependency_version(color_scheme, styles)
-            record = theme_version_record(filename)
-            if record and record.get("version") == version:
-                if not record.get("generated"):
-                    return partial(maybe_erase_theme_override, setting_name)
-                if not new_resource:
-                    return partial(set_theme, setting_name, theme_path, None)
+        new_resource = not os.path.isfile(full_path)
+        version = self._dependency_version(color_scheme, styles)
+        record = theme_version_record(filename)
+        if record and record.get("version") == version:
+            if not record.get("generated"):
+                return partial(maybe_erase_theme_override, setting_name)
+            if not new_resource:
+                return partial(set_theme, setting_name, theme_path, None)
 
-            generator = generator_for_scheme(color_scheme, setting_name)
-            for name, scope, properties in styles:
-                generator.add_scoped_style(name, scope, **properties)
+        generator = generator_for_scheme(color_scheme, setting_name)
+        for name, scope, properties in styles:
+            generator.add_scoped_style(name, scope, **properties)
 
-            generated = generator.is_dirty
-            if generated:
-                os.makedirs(path, exist_ok=True)
-                generator.write_new_theme(full_path)
+        generated = generator.is_dirty
+        if generated:
+            os.makedirs(path, exist_ok=True)
+            generator.write_new_theme(full_path)
 
-            store_theme_version(filename, version, generated)
-            if generated:
-                waiter = (
-                    partial(wait_for_resource, theme_path)
-                    if new_resource
-                    # Give Sublime Text a chance to parse an updated resource.
-                    # Otherwise, changing the setting causes one draw with the
-                    # old theme and another with the updated theme.
-                    else partial(wait, 100)
-                )
-                return partial(set_theme, setting_name, theme_path, waiter)
-            return partial(maybe_erase_theme_override, setting_name)
+        store_theme_version(filename, version, generated)
+        if generated:
+            waiter = (
+                partial(wait_for_resource, theme_path)
+                if new_resource
+                # Give Sublime Text a chance to parse an updated resource.
+                # Otherwise, changing the setting causes one draw with the
+                # old theme and another with the updated theme.
+                else partial(wait, 100)
+            )
+            return partial(set_theme, setting_name, theme_path, waiter)
+        return partial(maybe_erase_theme_override, setting_name)
 
     def _dependency_version(
         self,
