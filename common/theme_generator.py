@@ -565,6 +565,9 @@ def try_apply_theme(
     try:
         sublime.load_resource(theme_path)
     except Exception:
+        # Case:
+        #   theme_path is a new file, and Sublime Text doesn't know about it yet,
+        #   or it was not parsed (initially, for the first time).
         if tries >= 8:
             print(
                 'GitSavvy: The theme {} is not ready to load. Maybe restart to get colored '
@@ -579,4 +582,21 @@ def try_apply_theme(
         )
         return
 
-    view.settings().set(setting_name, theme_path)
+    if tries == 0:
+        # Case:
+        #   theme_path did exist,
+        #   has been updated,
+        #   and the view setting must change
+        # add artificial delay because to give Sublime Text a chance to actually parse
+        # the new theme.  Otherwise we get two paints, one immediately with the old
+        # version, then after Sublime has parsed the file, a redraw with the new version.
+        # TODO: find a clear signal for (a) this exact case, (b) when the new version
+        #       is actually ready.
+        # Case:
+        #   theme_path did exists,
+        #   has not been updated,
+        #   the view setting must be set initially, e.g. from normal to augmented theme.
+        # this should not have a delay.
+        sublime.set_timeout(lambda: view.settings().set(setting_name, theme_path), 100)
+    else:
+        view.settings().set(setting_name, theme_path)
