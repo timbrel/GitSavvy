@@ -54,16 +54,6 @@ class GsInterfaceFocusEventListener(EventListener):
         unregister(view)
         util.view.handle_closed_view(view)
 
-    def on_load_project(self, window):
-        register_open_themes(window)
-
-
-def register_open_themes(window=None) -> None:
-    windows = [window] if window else sublime.windows()
-    for current_window in windows:
-        for view in current_window.views():
-            register_theme(view)
-
 
 def register_theme(view: sublime.View) -> None:
     if is_registered(view):
