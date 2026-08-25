@@ -26,12 +26,16 @@ class TestThemeGenerator(DeferrableTestCase):
 
     def test_configuration_runs_on_the_theme_executor(self) -> None:
         view = FakeView({})
-        configurator = ThemeGenerator.for_view(view)
+        generator = ThemeGenerator("plain")
+        configurator = theme_generator.ThemeConfigurator(generator, view)
+        when(theme_generator).enqueue_theme_task(
+            generator.configure_view, view, ()
+        ).thenReturn(None)
 
         configurator.configure()
 
         verify(theme_generator).enqueue_theme_task(
-            configurator._generator.configure_view,
+            generator.configure_view,
             view,
             ()
         )

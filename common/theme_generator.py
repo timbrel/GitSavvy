@@ -243,17 +243,13 @@ class ThemeConfigurator:
 class ThemeGenerator():
     @classmethod
     def for_view(cls, view: sublime.View) -> ThemeConfigurator:
+        assert_on_ui()
         syntax_path = view.settings().get("syntax")
-        syntax_name = (
-            os.path.splitext(os.path.basename(syntax_path))[0]
-            if syntax_path
-            else None
-        )
-        if not syntax_name:
-            return ThemeConfigurator(cls(None), view)
-        return ThemeConfigurator(register(view, syntax_name), view)
+        syntax_name = os.path.splitext(os.path.basename(syntax_path))[0]
+        generator = register(view, syntax_name)
+        return ThemeConfigurator(generator, view)
 
-    def __init__(self, syntax_name: str | None) -> None:
+    def __init__(self, syntax_name: str) -> None:
         self._syntax_name = syntax_name
         self._styles: tuple[ScopedStyle, ...] | None = None
         self._effects: tuple[ThemeEffect, ...] | None = None
@@ -270,8 +266,6 @@ class ThemeGenerator():
     def refresh_all(self) -> None:
         if self._styles is None:
             raise RuntimeError("theme generator is not configured")
-        if not self._syntax_name:
-            return
 
         styles = self._resolved_styles()
         scheme_configuration = self._resolved_schemes()
@@ -284,7 +278,6 @@ class ThemeGenerator():
         styles: Sequence[tuple[str, str, dict[str, object]]],
         scheme_configuration: Sequence[tuple[str, str]]
     ) -> tuple[ThemeEffect, ...]:
-        assert self._syntax_name
         active_setting_names = {
             setting_name
             for _, setting_name in scheme_configuration
@@ -301,7 +294,6 @@ class ThemeGenerator():
         return tuple(effects)
 
     def _resolved_schemes(self) -> list[tuple[str, str]]:
-        assert self._syntax_name
         preferences = sublime.load_settings("Preferences.sublime-settings")
         syntax_settings = sublime.load_settings(self._syntax_name + ".sublime-settings")
 
