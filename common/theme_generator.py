@@ -62,6 +62,7 @@ _theme_executor = ThreadPoolExecutor(
     thread_name_prefix="GitSavvyTheme"
 )
 _theme_generators: dict[str, ThemeGenerator] = {}
+_cached_color_schemes: dict[str, tuple[tuple[str, str], ...]] = {}
 _settings_watchers: dict[str, SettingsWatcher] = {}
 
 
@@ -224,8 +225,9 @@ ThemeWaiter = Callable[[Callable[[], None]], None]
 
 
 class PreparedThemeEffect(NamedTuple):
-    setter: ThemeSetter
+    setter: ThemeSetter | None
     waiter: ThemeWaiter | None = None
+    color_scheme: tuple[str, str] | None = None
 
 
 ThemeEffect = Callable[[sublime.Settings], Optional[PreparedThemeEffect]]
@@ -237,6 +239,7 @@ class ThemeConfigurator:
         self._view = view
 
     def configure(self, *styles: ScopedStyle) -> None:
+        apply_color_schemes_if_cached(self._view, self._generator.syntax_name)
         enqueue_theme_task(self._generator.configure_view, self._view, styles)
 
 
@@ -250,7 +253,7 @@ class ThemeGenerator():
         return ThemeConfigurator(generator, view)
 
     def __init__(self, syntax_name: str) -> None:
-        self._syntax_name = syntax_name
+        self.syntax_name = syntax_name
         self._styles: tuple[ScopedStyle, ...] | None = None
         self._effects: tuple[ThemeEffect, ...] | None = None
         self._views: set[sublime.View] = set()
@@ -261,7 +264,7 @@ class ThemeGenerator():
             self.refresh_all()
         else:
             assert self._effects
-            apply_theme_effects(self._effects, [view])
+            apply_theme_effects(self.syntax_name, self._effects, [view])
 
     def refresh_all(self) -> None:
         if self._styles is None:
@@ -271,7 +274,7 @@ class ThemeGenerator():
         scheme_configuration = self._resolved_schemes()
         self._effects = effects = self._compute_effects(styles, scheme_configuration)
 
-        apply_theme_effects(effects, list(self._views))
+        apply_theme_effects(self.syntax_name, effects, list(self._views))
 
     def _compute_effects(
         self,
@@ -288,14 +291,14 @@ class ThemeGenerator():
             if setting_name not in active_setting_names
         ]
         effects.extend(
-            self._ensure_scheme(self._syntax_name, color_scheme, setting_name, styles)
+            self._ensure_scheme(self.syntax_name, color_scheme, setting_name, styles)
             for color_scheme, setting_name in scheme_configuration
         )
         return tuple(effects)
 
     def _resolved_schemes(self) -> list[tuple[str, str]]:
         preferences = sublime.load_settings("Preferences.sublime-settings")
-        syntax_settings = sublime.load_settings(self._syntax_name + ".sublime-settings")
+        syntax_settings = sublime.load_settings(self.syntax_name + ".sublime-settings")
 
         def preference(name: str):
             return syntax_settings.get(name, preferences.get(name))
@@ -565,7 +568,16 @@ def file_version(kind: str, path: str) -> tuple:
     return (kind, stat.st_size, stat.st_mtime_ns)
 
 
+def apply_color_schemes_if_cached(view: sublime.View, syntax_name: str) -> None:
+    assert_on_ui()
+    settings = view.settings()
+    for setting_name, theme_path in _cached_color_schemes.get(syntax_name, ()):
+        if settings.get(setting_name) != theme_path:
+            settings.set(setting_name, theme_path)
+
+
 def apply_theme_effects(
+    syntax_name: str,
     effects: Sequence[ThemeEffect],
     views: Sequence[sublime.View]
 ) -> None:
@@ -581,6 +593,14 @@ def apply_theme_effects(
 
         apply_after_waiters(prepared_effects)
 
+    def apply(prepared_effects: Sequence[PreparedThemeEffect]) -> None:
+        _cached_color_schemes[syntax_name] = tuple(dict.fromkeys(
+            effect.color_scheme
+            for effect in prepared_effects
+            if effect.color_scheme
+        ))
+        apply_setters(prepared_effects)
+
     def apply_after_waiters(
         prepared_effects: Sequence[PreparedThemeEffect]
     ) -> None:
@@ -590,7 +610,7 @@ def apply_theme_effects(
             if effect.waiter
         ))
         if not waiters:
-            apply_setters(prepared_effects)
+            apply(prepared_effects)
             return
 
         remaining = len(waiters)
@@ -599,7 +619,7 @@ def apply_theme_effects(
             nonlocal remaining
             remaining -= 1
             if remaining == 0:
-                apply_setters(prepared_effects)
+                apply(prepared_effects)
 
         for waiter in waiters:
             waiter(waiter_finished)
@@ -609,7 +629,8 @@ def apply_theme_effects(
 
 def apply_setters(effects: Sequence[PreparedThemeEffect]) -> None:
     for effect in effects:
-        effect.setter()
+        if effect.setter:
+            effect.setter()
 
 
 def wait(delay: int, on_ready: Callable[[], None]) -> None:
@@ -656,10 +677,12 @@ def set_theme(
     theme_path: str,
     waiter: ThemeWaiter | None,
     settings: sublime.Settings
-) -> PreparedThemeEffect | None:
+) -> PreparedThemeEffect:
+    color_scheme = (setting_name, theme_path)
     if settings.get(setting_name) != theme_path:
         return PreparedThemeEffect(
             partial(settings.set, setting_name, theme_path),
-            waiter
+            waiter,
+            color_scheme
         )
-    return None
+    return PreparedThemeEffect(None, color_scheme=color_scheme)

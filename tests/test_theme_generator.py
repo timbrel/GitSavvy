@@ -22,6 +22,7 @@ class TestThemeGenerator(DeferrableTestCase):
     def tearDown(self) -> None:
         theme_generator.stop_auto_update()
         theme_generator._theme_generators.clear()
+        theme_generator._cached_color_schemes.clear()
         unstub()
 
     def test_configuration_runs_on_the_theme_executor(self) -> None:
@@ -39,6 +40,29 @@ class TestThemeGenerator(DeferrableTestCase):
             view,
             ()
         )
+
+    def test_configure_applies_cached_color_schemes_before_enqueuing(self) -> None:
+        color_scheme = generated_theme("color_scheme")
+        dark_color_scheme = generated_theme("dark_color_scheme")
+        view = FakeView({"color_scheme": "Packages/Example/Example.sublime-color-scheme"})
+        generator = ThemeGenerator("graph")
+        configurator = theme_generator.ThemeConfigurator(generator, view)
+        theme_generator._cached_color_schemes["graph"] = (
+            ("color_scheme", color_scheme),
+            ("dark_color_scheme", dark_color_scheme),
+        )
+        when(theme_generator).enqueue_theme_task(
+            generator.configure_view, view, ()
+        ).thenAnswer(
+            lambda callback, *args: self.assertEqual(
+                view.settings()["color_scheme"], color_scheme
+            )
+        )
+
+        configurator.configure()
+
+        self.assertEqual(view.settings()["color_scheme"], color_scheme)
+        self.assertEqual(view.settings()["dark_color_scheme"], dark_color_scheme)
 
     def test_source_scheme_comes_from_syntax_settings(self) -> None:
         syntax_scheme = "Packages/Example/Syntax.sublime-color-scheme"
@@ -297,9 +321,11 @@ class TestThemeGenerator(DeferrableTestCase):
             self.assertTrue(concrete_generator.written_path.endswith(filename))
 
         verify(theme_generator).store_theme_version(filename, ANY(str), True)
+        theme_path = "Packages/User/GitSavvy/" + filename
+        self.assertEqual(generator._view.settings()["color_scheme"], theme_path)
         self.assertEqual(
-            generator._view.settings()["color_scheme"],
-            "Packages/User/GitSavvy/" + filename
+            theme_generator._cached_color_schemes["graph"],
+            (("color_scheme", theme_path),)
         )
 
     def test_rewriting_an_existing_scheme_waits_before_changing_the_setting(self) -> None:
@@ -364,7 +390,7 @@ class TestThemeGenerator(DeferrableTestCase):
             ),
         )
 
-        theme_generator.apply_theme_effects(effects, [view])
+        theme_generator.apply_theme_effects("graph", effects, [view])
 
         verify(theme_generator.sublime, times=0).set_timeout(...)
         verify(theme_generator.sublime, times=0).load_resource(...)
@@ -405,7 +431,7 @@ class TestThemeGenerator(DeferrableTestCase):
             ),
         )
 
-        theme_generator.apply_theme_effects(effects, [view])
+        theme_generator.apply_theme_effects("graph", effects, [view])
 
         self.assertEqual(len(callbacks), 1)
         verify(theme_generator.sublime).load_resource(second_resource)
