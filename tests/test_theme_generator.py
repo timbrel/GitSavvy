@@ -1,4 +1,5 @@
 from __future__ import annotations
+from functools import partial
 import os
 import tempfile
 
@@ -12,7 +13,7 @@ from GitSavvy.tests.mockito import ANY, unstub, verify, when
 class TestThemeGenerator(DeferrableTestCase):
     def setUp(self) -> None:
         when(theme_generator).enqueue_on_ui(...).thenAnswer(
-            lambda callback: callback()
+            lambda callback, *args: callback(*args)
         )
 
     def tearDown(self) -> None:
@@ -206,12 +207,6 @@ class TestThemeGenerator(DeferrableTestCase):
         when(theme_generator).generator_for_scheme(...).thenRaise(
             AssertionError("cache hit must not load the scheme")
         )
-        when(theme_generator).try_apply_theme(
-            "color_scheme", generated, generator._view
-        ).thenAnswer(
-            lambda setting_name, theme, view: view.settings().__setitem__(setting_name, theme)
-        )
-
         with tempfile.TemporaryDirectory() as directory:
             when(theme_generator.sublime).packages_path().thenReturn(directory)
             path = os.path.join(directory, "User", "GitSavvy", filename)
@@ -272,7 +267,7 @@ class TestThemeGenerator(DeferrableTestCase):
             source, "color_scheme"
         ).thenReturn(concrete_generator)
         when(theme_generator).store_theme_version(...).thenReturn(None)
-        when(theme_generator).try_apply_theme(...).thenReturn(None)
+        when(theme_generator.sublime).load_resource(...).thenReturn("{}")
 
         with tempfile.TemporaryDirectory() as directory:
             when(theme_generator.sublime).packages_path().thenReturn(directory)
@@ -286,11 +281,133 @@ class TestThemeGenerator(DeferrableTestCase):
             self.assertTrue(concrete_generator.written_path.endswith(filename))
 
         verify(theme_generator).store_theme_version(filename, ANY(str), True)
-        verify(theme_generator).try_apply_theme(
-            "color_scheme",
-            "Packages/User/GitSavvy/" + filename,
-            generator._view
+        self.assertEqual(
+            generator._view.settings()["color_scheme"],
+            "Packages/User/GitSavvy/" + filename
         )
+
+    def test_rewriting_an_existing_scheme_waits_before_changing_the_setting(self) -> None:
+        source = "Packages/Example/Example.sublime-color-scheme"
+        generator = configured_generator(source)
+        concrete_generator = FakeConcreteGenerator()
+        filename = "GitSavvy.graph.color_scheme.hidden-color-scheme"
+
+        when(theme_generator).theme_version_record(filename).thenReturn(None)
+        when(theme_generator).generator_for_scheme(
+            source, "color_scheme"
+        ).thenReturn(concrete_generator)
+        when(theme_generator).store_theme_version(...).thenReturn(None)
+        scheduled = []
+        when(theme_generator.sublime).set_timeout(...).thenAnswer(
+            lambda callback, delay: scheduled.append((callback, delay))
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            when(theme_generator.sublime).packages_path().thenReturn(directory)
+            path = os.path.join(directory, "User", "GitSavvy", filename)
+            os.makedirs(os.path.dirname(path))
+            with open(path, "w", encoding="utf-8") as file:
+                file.write("{}")
+
+            generator.configure(marker_style())
+
+        verify(theme_generator.sublime, times=0).load_resource(...)
+        self.assertNotIn("color_scheme", generator._view.settings())
+        self.assertEqual(len(scheduled), 1)
+        callback, delay = scheduled.pop()
+        self.assertEqual(delay, 100)
+
+        callback()
+
+        self.assertEqual(
+            generator._view.settings()["color_scheme"],
+            "Packages/User/GitSavvy/" + filename
+        )
+
+    def test_theme_waiters_do_not_wait_if_the_settings_will_not_change(self) -> None:
+        theme_path = generated_theme("color_scheme")
+        new_resource = generated_theme("dark_color_scheme")
+        view = FakeView({
+            "color_scheme": theme_path,
+            "dark_color_scheme": new_resource,
+        })
+        when(theme_generator.sublime).set_timeout(...).thenReturn(None)
+        when(theme_generator.sublime).load_resource(...).thenReturn("{}")
+        effects = (
+            partial(
+                theme_generator.set_theme,
+                "color_scheme",
+                theme_path,
+                partial(theme_generator.wait, 100)
+            ),
+            partial(
+                theme_generator.set_theme,
+                "dark_color_scheme",
+                new_resource,
+                partial(theme_generator.wait_for_resource, new_resource)
+            ),
+        )
+
+        theme_generator.apply_theme_effects(effects, [view])
+
+        verify(theme_generator.sublime, times=0).set_timeout(...)
+        verify(theme_generator.sublime, times=0).load_resource(...)
+        self.assertEqual(view.settings()["color_scheme"], theme_path)
+        self.assertEqual(view.settings()["dark_color_scheme"], new_resource)
+
+    def test_waits_for_new_resources_before_applying_all_view_settings(self) -> None:
+        resource = "Packages/User/GitSavvy/GitSavvy.graph.color_scheme.hidden-color-scheme"
+        second_resource = (
+            "Packages/User/GitSavvy/GitSavvy.graph.dark_color_scheme.hidden-color-scheme"
+        )
+        view = FakeView({
+            "color_scheme": "Packages/Example/Example.sublime-color-scheme",
+            "light_color_scheme": generated_theme("light_color_scheme"),
+        })
+        settings = view.settings()
+        callbacks = []
+        when(theme_generator.sublime).load_resource(resource).thenRaise(
+            IOError("not indexed yet")
+        ).thenReturn("{}")
+        when(theme_generator.sublime).load_resource(second_resource).thenReturn("{}")
+        when(theme_generator.sublime).set_timeout(...).thenAnswer(
+            lambda callback, delay: callbacks.append(callback)
+        )
+        effects = (
+            partial(theme_generator.maybe_erase_theme_override, "light_color_scheme"),
+            partial(
+                theme_generator.set_theme,
+                "color_scheme",
+                resource,
+                partial(theme_generator.wait_for_resource, resource)
+            ),
+            partial(
+                theme_generator.set_theme,
+                "dark_color_scheme",
+                second_resource,
+                partial(theme_generator.wait_for_resource, second_resource)
+            ),
+        )
+
+        theme_generator.apply_theme_effects(effects, [view])
+
+        self.assertEqual(len(callbacks), 1)
+        verify(theme_generator.sublime).load_resource(second_resource)
+        self.assertEqual(
+            settings["light_color_scheme"],
+            generated_theme("light_color_scheme")
+        )
+        self.assertEqual(
+            settings["color_scheme"],
+            "Packages/Example/Example.sublime-color-scheme"
+        )
+
+        retry_first_resource = callbacks.pop()
+        retry_first_resource()
+
+        self.assertNotIn("light_color_scheme", settings)
+        self.assertEqual(settings["color_scheme"], resource)
+        self.assertEqual(settings["dark_color_scheme"], second_resource)
 
 
 class TestResourceVersion(DeferrableTestCase):
@@ -351,6 +468,9 @@ class FakeView:
 class FakeViewSettings(dict):
     def erase(self, key: str) -> None:
         self.pop(key, None)
+
+    def set(self, key: str, value: object) -> None:
+        self[key] = value
 
 
 class WatchableSettings(dict):

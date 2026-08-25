@@ -18,7 +18,7 @@ from ..core.fns import filter_
 from ..core.runtime import enqueue_on_ui, run_on_new_thread
 from ..core.settings import color_value
 
-from typing import Callable, NamedTuple, Sequence
+from typing import Callable, NamedTuple, Optional, Sequence
 
 
 STYLES_HEADER = """
@@ -193,7 +193,16 @@ class ScopedStyle:
         )
 
 
-ThemeEffect = Callable[[sublime.View], None]
+ThemeSetter = Callable[[], None]
+ThemeWaiter = Callable[[Callable[[], None]], None]
+
+
+class PreparedThemeEffect(NamedTuple):
+    setter: ThemeSetter
+    waiter: ThemeWaiter | None = None
+
+
+ThemeEffect = Callable[[sublime.Settings], Optional[PreparedThemeEffect]]
 
 
 class ThemeConfigurator:
@@ -317,13 +326,14 @@ class ThemeGenerator():
         theme_path = "/".join(("Packages", "User", "GitSavvy", filename))
 
         with _theme_lock:
+            new_resource = not os.path.isfile(full_path)
             version = self._dependency_version(color_scheme, styles)
             record = theme_version_record(filename)
             if record and record.get("version") == version:
                 if not record.get("generated"):
                     return partial(maybe_erase_theme_override, setting_name)
-                if os.path.isfile(full_path):
-                    return partial(try_apply_theme, setting_name, theme_path)
+                if not new_resource:
+                    return partial(set_theme, setting_name, theme_path, None)
 
             generator = generator_for_scheme(color_scheme, setting_name)
             for name, scope, properties in styles:
@@ -336,7 +346,15 @@ class ThemeGenerator():
 
             store_theme_version(filename, version, generated)
             if generated:
-                return partial(try_apply_theme, setting_name, theme_path)
+                waiter = (
+                    partial(wait_for_resource, theme_path)
+                    if new_resource
+                    # Give Sublime Text a chance to parse an updated resource.
+                    # Otherwise, changing the setting causes one draw with the
+                    # old theme and another with the updated theme.
+                    else partial(wait, 100)
+                )
+                return partial(set_theme, setting_name, theme_path, waiter)
             return partial(maybe_erase_theme_override, setting_name)
 
     def _dependency_version(
@@ -534,69 +552,97 @@ def apply_theme_effects(
     effects: Sequence[ThemeEffect],
     views: Sequence[sublime.View]
 ) -> None:
-    def apply() -> None:
-        for view in views:
-            if view.is_valid():
-                for effect in effects:
-                    effect(view)
+    def prepare_and_apply() -> None:
+        prepared_effects = [
+            prepared_effect
+            for view in views
+            if view.is_valid()
+            if (settings := view.settings())
+            for effect in effects
+            if (prepared_effect := effect(settings))
+        ]
 
-    enqueue_on_ui(apply)
+        apply_after_waiters(prepared_effects)
+
+    def apply_after_waiters(
+        prepared_effects: Sequence[PreparedThemeEffect]
+    ) -> None:
+        waiters = tuple(dict.fromkeys(
+            effect.waiter
+            for effect in prepared_effects
+            if effect.waiter
+        ))
+        if not waiters:
+            apply_setters(prepared_effects)
+            return
+
+        remaining = len(waiters)
+
+        def waiter_finished() -> None:
+            nonlocal remaining
+            remaining -= 1
+            if remaining == 0:
+                apply_setters(prepared_effects)
+
+        for waiter in waiters:
+            waiter(waiter_finished)
+
+    enqueue_on_ui(prepare_and_apply)
 
 
-def maybe_erase_theme_override(setting_name: str, view: sublime.View) -> None:
-    settings = view.settings()
-    theme = settings.get(setting_name)
-    if isinstance(theme, str) and theme.startswith(GENERATED_THEME_PREFIX):
-        settings.erase(setting_name)
+def apply_setters(effects: Sequence[PreparedThemeEffect]) -> None:
+    for effect in effects:
+        effect.setter()
 
 
-def try_apply_theme(
-    setting_name: str,
-    theme_path: str,
-    view: sublime.View,
+def wait(delay: int, on_ready: Callable[[], None]) -> None:
+    sublime.set_timeout(on_ready, delay)
+
+
+def wait_for_resource(
+    resource_path: str,
+    on_ready: Callable[[], None],
     tries: int = 0
 ) -> None:
-    """Safely apply new theme as color_scheme."""
-    if not view.is_valid():
-        return
-    if view.settings().get(setting_name) == theme_path:
-        return
-
     try:
-        sublime.load_resource(theme_path)
+        sublime.load_resource(resource_path)
     except Exception:
-        # Case:
-        #   theme_path is a new file, and Sublime Text doesn't know about it yet,
-        #   or it was not parsed (initially, for the first time).
         if tries >= 8:
             print(
                 'GitSavvy: The theme {} is not ready to load. Maybe restart to get colored '
-                'highlights.'.format(theme_path)
+                'highlights.'.format(resource_path)
             )
             return
 
         delay = (pow(2, tries) - 1) * 10
         sublime.set_timeout(
-            lambda: try_apply_theme(setting_name, theme_path, view, tries + 1),
+            lambda: wait_for_resource(resource_path, on_ready, tries + 1),
             delay
         )
         return
 
-    if tries == 0:
-        # Case:
-        #   theme_path did exist,
-        #   has been updated,
-        #   and the view setting must change
-        # add artificial delay because to give Sublime Text a chance to actually parse
-        # the new theme.  Otherwise we get two paints, one immediately with the old
-        # version, then after Sublime has parsed the file, a redraw with the new version.
-        # TODO: find a clear signal for (a) this exact case, (b) when the new version
-        #       is actually ready.
-        # Case:
-        #   theme_path did exists,
-        #   has not been updated,
-        #   the view setting must be set initially, e.g. from normal to augmented theme.
-        # this should not have a delay.
-        sublime.set_timeout(lambda: view.settings().set(setting_name, theme_path), 100)
-    else:
-        view.settings().set(setting_name, theme_path)
+    on_ready()
+
+
+def maybe_erase_theme_override(
+    setting_name: str,
+    settings: sublime.Settings
+) -> PreparedThemeEffect | None:
+    theme = settings.get(setting_name)
+    if isinstance(theme, str) and theme.startswith(GENERATED_THEME_PREFIX):
+        return PreparedThemeEffect(partial(settings.erase, setting_name))
+    return None
+
+
+def set_theme(
+    setting_name: str,
+    theme_path: str,
+    waiter: ThemeWaiter | None,
+    settings: sublime.Settings
+) -> PreparedThemeEffect | None:
+    if settings.get(setting_name) != theme_path:
+        return PreparedThemeEffect(
+            partial(settings.set, setting_name, theme_path),
+            waiter
+        )
+    return None
