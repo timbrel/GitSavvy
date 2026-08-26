@@ -518,10 +518,13 @@ def load_scheme_resource(color_scheme: str) -> str:
     if not resources:
         raise IOError("{} cannot be found".format(color_scheme))
 
-    resource = next(
-        (resource for resource in resources if resource.startswith("Packages/User/")),
-        color_scheme if color_scheme in resources else resources[0]
-    )
+    # Prefer package resources over cached copies.  Within packages, deeper
+    # resources are typically partial customizations, so start from the complete
+    # base that the generated scheme can safely copy.
+    resource = min(resources, key=lambda resource: (
+        not resource.startswith("Packages/"),
+        resource.count("/")
+    ))
     return sublime.load_resource(resource)
 
 

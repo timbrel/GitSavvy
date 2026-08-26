@@ -452,6 +452,39 @@ class TestThemeGenerator(DeferrableTestCase):
         self.assertEqual(settings["dark_color_scheme"], second_resource)
 
 
+class TestLoadSchemeResource(DeferrableTestCase):
+    def tearDown(self) -> None:
+        unstub()
+
+    def test_loads_the_shallowest_resource(self) -> None:
+        source = "Packages/User/Color Schemes/Example.sublime-color-scheme"
+        pristine = "Packages/Example/Example.sublime-color-scheme"
+        when(theme_generator).resources_for_scheme(source).thenReturn([
+            source,
+            pristine,
+        ])
+        when(theme_generator.sublime).load_resource(pristine).thenReturn("pristine")
+
+        contents = theme_generator.load_scheme_resource(source)
+
+        self.assertEqual(contents, "pristine")
+        verify(theme_generator.sublime).load_resource(pristine)
+
+    def test_prefers_package_resources_over_cache_resources(self) -> None:
+        source = "Cache/Example.sublime-color-scheme"
+        pristine = "Packages/Example/Color Schemes/Example.sublime-color-scheme"
+        when(theme_generator).resources_for_scheme(source).thenReturn([
+            source,
+            pristine,
+        ])
+        when(theme_generator.sublime).load_resource(pristine).thenReturn("pristine")
+
+        contents = theme_generator.load_scheme_resource(source)
+
+        self.assertEqual(contents, "pristine")
+        verify(theme_generator.sublime).load_resource(pristine)
+
+
 class TestResourceVersion(DeferrableTestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
