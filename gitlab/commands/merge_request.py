@@ -38,7 +38,7 @@ class gs_gitlab_merge_request(GsWindowCommand, git_mixins.GitLabRemotesMixin):
         pp = show_paginated_panel(
             self.merge_requests,
             self.on_select_mr,
-            limit=self.savvy_settings.get("gitlab_per_page_max", 100),
+            limit=self.app_settings.get("gitlab_per_page_max", 100),
             format_item=self.format_item,
             status_message="Getting merge requests..."
         )

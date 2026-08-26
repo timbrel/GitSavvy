@@ -23,7 +23,7 @@ class gs_github_create_fork(GsWindowCommand, git_mixins.GithubRemotesMixin):
         base_remote = github.parse_remote(base_remote_url)
 
         if default_branch_only is None:
-            default_branch_only = self.savvy_settings.get("sparse_fork", True)
+            default_branch_only = self.app_settings.get("sparse_fork", True)
         self.window.status_message(START_CREATE_MESSAGE.format(repo=base_remote.url))
         result = github.create_fork(base_remote, default_branch_only=default_branch_only)
         util.debug.add_to_log({"github: fork result": result})

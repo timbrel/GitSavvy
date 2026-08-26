@@ -146,7 +146,7 @@ class TestAppState(DeferrableTestCase):
         self.assertIs(app_state.get(ui.HIDE_HELP_MENU_KEY), True)
 
 
-class TestUnusedGlobalSettingsWarning(DeferrableTestCase):
+class TestUnusedAppSettingsWarning(DeferrableTestCase):
     def tearDown(self):
         unstub()
 
@@ -158,7 +158,7 @@ class TestUnusedGlobalSettingsWarning(DeferrableTestCase):
         })
         when(builtins).print(...)
 
-        git_savvy.warn_about_unused_global_settings(settings)
+        git_savvy.warn_about_unused_app_settings(settings)
 
         verify(builtins).print(
             'GitSavvy: The "hide_help_menu" setting is no longer used. '

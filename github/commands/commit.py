@@ -68,7 +68,7 @@ class gs_github_show_issues(git_mixins.GithubRemotesMixin, GsTextCommand):
             issues,
             self.on_done,
             format_item=self.format_item,
-            limit=self.savvy_settings.get("github_per_page_max", 100),
+            limit=self.app_settings.get("github_per_page_max", 100),
             status_message="Getting issues..."
         )
         if pp.is_empty():
@@ -113,7 +113,7 @@ class gs_github_show_contributors(git_mixins.GithubRemotesMixin, GsTextCommand):
             contributors,
             self.on_done,
             format_item=self.format_item,
-            limit=self.savvy_settings.get("github_per_page_max", 100),
+            limit=self.app_settings.get("github_per_page_max", 100),
             status_message="Getting contributors..."
         )
         if pp.is_empty():

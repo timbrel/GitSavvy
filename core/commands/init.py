@@ -51,7 +51,7 @@ class gs_offer_init(WindowCommand, GitCommand):
     """
 
     def run(self):
-        if self.savvy_settings.get("disable_git_init_prompt"):
+        if self.app_settings.get("disable_git_init_prompt"):
             return
 
         view = self.window.active_view()

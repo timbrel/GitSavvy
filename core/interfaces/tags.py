@@ -180,7 +180,7 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
 
         self.update_state({
             'git_root': self.short_repo_path,
-            'max_items': self.savvy_settings.get("max_items_in_tags_dashboard", None),
+            'max_items': self.app_settings.get("max_items_in_tags_dashboard", None),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })
 

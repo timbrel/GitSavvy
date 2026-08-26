@@ -748,7 +748,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
     def checkout_file_at_commit(self, commit_hash: str, file_path: FullPath):
         file_path = (
             self.filename_at_commit(file_path, commit_hash)
-            if self.savvy_settings.get("log_follow_rename") else
+            if self.project_settings.get("log_follow_rename") else
             file_path
         )
         self.checkout_ref(commit_hash, fpath=file_path)

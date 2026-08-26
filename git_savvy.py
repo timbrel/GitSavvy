@@ -78,6 +78,7 @@ with reloader():
     from .common.ui import *
     from .common.global_events import *
     from .core.commands import *
+    from .core.settings import _AppSettings, app_settings
     from .core.settings import *
     from .core.interfaces import *
     from .core.runtime import *
@@ -86,7 +87,7 @@ with reloader():
     from .gitlab.commands import *
 
 
-UNUSED_GLOBAL_SETTINGS = (
+UNUSED_APP_SETTINGS = (
     "graph_show_more_commit_info",
     "hide_help_menu",
     "show_remotes_in_branch_dashboard",
@@ -122,14 +123,13 @@ def prepare_gitsavvy() -> None:
 
     sublime.set_timeout_async(prepare_views)
 
-    savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-    warn_about_unused_global_settings(savvy_settings)
-    if savvy_settings.get("load_additional_codecs"):
+    warn_about_unused_app_settings(app_settings)
+    if app_settings.get("load_additional_codecs"):
         sublime.set_timeout_async(reload_codecs)
 
 
-def warn_about_unused_global_settings(settings: sublime.Settings) -> None:
-    for key in UNUSED_GLOBAL_SETTINGS:
+def warn_about_unused_app_settings(settings: _AppSettings) -> None:
+    for key in UNUSED_APP_SETTINGS:
         if settings.has(key):
             print(
                 f'GitSavvy: The "{key}" setting is no longer used. '
@@ -139,8 +139,7 @@ def warn_about_unused_global_settings(settings: sublime.Settings) -> None:
 
 
 def reload_codecs() -> None:
-    savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
-    fallback_encoding = savvy_settings.get("fallback_encoding")
+    fallback_encoding = app_settings.get("fallback_encoding")
     try:
         import imp, codecs, encodings
         imp.reload(encodings)

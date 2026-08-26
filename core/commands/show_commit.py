@@ -84,7 +84,7 @@ class gs_show_commit(WindowCommand, GitCommand):
                 "git_savvy.show_commit_view.commit": commit_hash,
                 "git_savvy.show_commit_view.ignore_whitespace": False,
                 "git_savvy.show_commit_view.show_diffstat":
-                    self.savvy_settings.get("show_diffstat", True),
+                    self.app_settings.get("show_diffstat", True),
                 "result_file_regex": diff.FILE_RE,
                 "result_line_regex": diff.LINE_RE,
                 "result_base_dir": repo_path,

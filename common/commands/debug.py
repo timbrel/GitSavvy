@@ -8,7 +8,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ..util import debug
-from ...core.settings import GitSavvySettings
+from ...core.settings import app_settings
 from ...core.view import replace_view_content
 
 
@@ -39,7 +39,7 @@ class gs_reload_modules_debug(WindowCommand):
         )
 
     def is_visible(self):
-        return GitSavvySettings().get("dev_mode")
+        return app_settings.get("dev_mode")
 
 
 class gs_start_logging(WindowCommand):

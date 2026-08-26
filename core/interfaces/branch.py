@@ -184,9 +184,9 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
 
         self.update_state({
             'git_root': self.short_repo_path,
-            'sort_by_recent': self.savvy_settings.get("sort_by_recent_in_branch_dashboard"),
+            'sort_by_recent': self.app_settings.get("sort_by_recent_in_branch_dashboard"),
             'group_by_distance_to_head':
-                self.savvy_settings.get("group_by_distance_to_head_in_branch_dashboard"),
+                self.app_settings.get("group_by_distance_to_head_in_branch_dashboard"),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })
 

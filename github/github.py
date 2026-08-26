@@ -12,7 +12,7 @@ from webbrowser import open as open_in_browser
 
 from ..common import interwebs
 from ..core.exceptions import FailedGithubRequest
-from ..core.settings import GitSavvySettings
+from ..core.settings import app_settings
 from ..core.utils import STARTUPINFO
 
 
@@ -76,7 +76,7 @@ def parse_remote(remote_url: str) -> GitHubRepo:
         raise ValueError("Invalid github url: {}".format(url))
 
     fqdn, owner, repo = match.groups()
-    token = GitSavvySettings().get("api_tokens", {}).get(fqdn) or os.environ.get("GITHUB_TOKEN")
+    token = app_settings.get("api_tokens", {}).get(fqdn) or os.environ.get("GITHUB_TOKEN")
     return GitHubRepo(url, fqdn, owner, repo, token)
 
 

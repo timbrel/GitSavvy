@@ -28,7 +28,7 @@ class CommandContext:
 
     @cached_property
     def enabled(self) -> bool:
-        return not self._cmd.savvy_settings.get("disable_context_menus")
+        return not self._cmd.app_settings.get("disable_context_menus")
 
     @cached_property
     def sel(self) -> List[sublime.Region]:

@@ -1,9 +1,8 @@
 {
-    /*
-        Change this to `false` if you don't wish to be prompted when
-        discarding files.
-     */
-    "prompt_before_destructive_action": true,
+    // Project settings
+    //
+    // These application defaults can be overridden in a project file under
+    // "settings": { "GitSavvy": { ... } }.
 
     /*
         Uncomment the setting below to explicitly set which git binary
@@ -29,6 +28,107 @@
     */
     "env": {
     },
+
+    /*
+        When entering a tag message, this will be used if the message is empty.
+        The replacement value "{tag_name}" is optional, but recommended.
+
+        If this is configured with a literal `v` before the placeholder, e.g.
+        "v{tag_name}", GitSavvy will avoid doubling it for tag names that
+        already start with `v`.
+     */
+    "default_tag_message": "Tag {tag_name}",
+
+    /*
+        Ask for a tag message to annotate the tag only if the tag looks like
+        a version, e.g. "v2.31.2" or "2022.11.23".  All other tags are considered
+        private and don't need to get annotated as we never push them.
+        Set to `false` if you always want to get asked for a tag message.
+     */
+    "only_ask_to_annotate_versions": true,
+
+    /*
+        Format used by the smart tagger for repositories that use calendar
+        versioning instead of semantic versioning.  Available fields are
+        {year}, {month}, {day}, {hour}, {minute}, and {second}; all numeric
+        fields are zero-padded.
+     */
+    "calendar_version_style": "{year}.{month}.{day}",
+
+    /*
+        The filename for extra customized info to be displayed after the default
+        COMMIT_HELP_TEXT, such as commit message rules/tips/conventions.
+        Place this file at the root of the repo, and it should be committed to the
+        repo as well.
+        The file name defaults to `.commit_help`.
+        If this file is not presented, the functionality is totally ignored.
+     */
+    "commit_help_extra_file": ".commit_help",
+
+    /*
+        For each command specified, always include the command line flags
+        indicated in the global_flags option AFTER the command.
+     */
+    "global_flags": {
+        // --no-columns is not supported in Git versions <1.7.11.  If Git is configured
+        //   to use columns globally, --no-columns should be added here.
+        // "branch": ["--no-columns"]
+        //
+        // or, configure a GPG key to sign commits with a given key
+        // "commit": ["-S", "--gpg-sign=<key-id>"]
+    },
+
+    /*
+        For each command specified, always include the command line flags
+        indicated in the global_flags option BEFORE the command.
+     */
+    "global_pre_flags": {
+        // for example, override settings via the "-c" option, e.g
+        // the following configures a gpg.program no-tty wrapper script
+        // "commit": ["-c", "gpg.program=./scripts/stgpg.sh"]
+        // and configure every commit to be signed with your key
+        // "commit": ["-c", "commit.gpgsign=true"]
+    },
+
+    /*
+        When set to `true`, GitSavvy will follow file renames when running git log/graph
+    */
+    "log_follow_rename": true,
+
+    /*
+        When set to `true`, GitSavvy will display git-flow integration commands.
+    */
+    "show_git_flow_commands": false,
+
+    /*
+        The default base for the rebase dashboard.
+    */
+    "rebase_default_base_ref": "",
+
+    /*
+        When set to `true`, rebase dashboard uses preserve-merges mode when opened.
+    */
+    "rebase_preserve_merges": false,
+
+    /*
+        This encoding will be used whenever Git's output cannot be correctly parsed
+        as UTF-8.  Modify this value if you regularly work with files and Git history
+        with a different text encoding.
+
+        Example:
+            "fallback_encoding": "gbk"
+     */
+    "fallback_encoding": "windows-1252",
+
+    //
+    // Application wide settings
+    //
+
+    /*
+        Change this to `false` if you don't wish to be prompted when
+        discarding files.
+     */
+    "prompt_before_destructive_action": true,
 
     /*
         Change this to `true` when doing dev work on GitSavvy.
@@ -182,67 +282,6 @@
     "git_status_in_status_bar": true,
 
     /*
-        When entering a tag message, this will be used if the message is empty.
-        The replacement value "{tag_name}" is optional, but recommended.
-
-        If this is configured with a literal `v` before the placeholder, e.g.
-        "v{tag_name}", GitSavvy will avoid doubling it for tag names that
-        already start with `v`.
-     */
-    "default_tag_message": "Tag {tag_name}",
-
-    /*
-        Ask for a tag message to annotate the tag only if the tag looks like
-        a version, e.g. "v2.31.2" or "2022.11.23".  All other tags are considered
-        private and don't need to get annotated as we never push them.
-        Set to `false` if you always want to get asked for a tag message.
-     */
-    "only_ask_to_annotate_versions": true,
-
-    /*
-        Format used by the smart tagger for repositories that use calendar
-        versioning instead of semantic versioning.  Available fields are
-        {year}, {month}, {day}, {hour}, {minute}, and {second}; all numeric
-        fields are zero-padded.
-     */
-    "calendar_version_style": "{year}.{month}.{day}",
-
-    /*
-        The filename for extra customized info to be displayed after the default
-        COMMIT_HELP_TEXT, such as commit message rules/tips/conventions.
-        Place this file at the root of the repo, and it should be committed to the
-        repo as well.
-        The file name defaults to `.commit_help`.
-        If this file is not presented, the functionality is totally ignored.
-     */
-    "commit_help_extra_file": ".commit_help",
-
-    /*
-        For each command specified, always include the command line flags
-        indicated in the global_flags option AFTER the command.
-     */
-    "global_flags": {
-        // --no-columns is not supported in Git versions <1.7.11.  If Git is configured
-        //   to use columns globally, --no-columns should be added here.
-        // "branch": ["--no-columns"]
-        //
-        // or, configure a GPG key to sign commits with a given key
-        // "commit": ["-S", "--gpg-sign=<key-id>"]
-    },
-
-    /*
-        For each command specified, always include the command line flags
-        indicated in the global_flags option BEFORE the command.
-     */
-    "global_pre_flags": {
-        // for example, override settings via the "-c" option, e.g
-        // the following configures a gpg.program no-tty wrapper script
-        // "commit": ["-c", "gpg.program=./scripts/stgpg.sh"]
-        // and configure every commit to be signed with your key
-        // "commit": ["-c", "commit.gpgsign=true"]
-    },
-
-    /*
         Sort branches by recency.
         Change this to `true` to sort branches by "committerdate".
         Change this to `false` to sort branches by their name.
@@ -283,11 +322,6 @@
     "show_full_commit_info": true,
 
     /*
-        When set to `true`, GitSavvy will follow file renames when running git log/graph
-    */
-    "log_follow_rename": true,
-
-    /*
         Set it to "file", "commit" or "all_commits" to specify the default detection
         method for the blame view.
     */
@@ -299,21 +333,6 @@
         the commit message view. Ignored when "commit_on_close" is true.
     */
     "prompt_on_abort_commit": true,
-
-    /*
-        When set to `true`, GitSavvy will display git-flow integration commands.
-    */
-    "show_git_flow_commands": false,
-
-    /*
-        The default base for the rebase dashboard.
-    */
-    "rebase_default_base_ref": "",
-
-    /*
-        When set to `true`, rebase dashboard uses preserve-merges mode when opened.
-    */
-    "rebase_preserve_merges": false,
 
     /*
         When set to `true`, GitSavvy will prompt for confirmation before actually
@@ -332,16 +351,6 @@
         The same is also true for amending commits.
      */
     "commit_on_close": false,
-
-    /*
-        This encoding will be used whenever Git's output cannot be correctly parsed
-        as UTF-8.  Modify this value if you regularly with files and Git history
-        with a different text encoding.
-
-        Example:
-            "fallback_encoding": "gbk"
-     */
-    "fallback_encoding": "windows-1252",
 
     /*
         This setting should only be set to true in the following conditions:

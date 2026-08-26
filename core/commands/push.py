@@ -41,7 +41,7 @@ class PushMixin(GsWindowCommand):
         """
         Perform `git push remote branch`.
         """
-        if self.savvy_settings.get("confirm_force_push", True):
+        if self.app_settings.get("confirm_force_push", True):
             if force:
                 if not sublime.ok_cancel_dialog(CONFIRM_FORCE_PUSH.format("--force")):
                     return

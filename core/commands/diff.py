@@ -254,7 +254,7 @@ class gs_diff(WindowCommand, GitCommand):
                 title = (DIFF_CACHED_TITLE if in_cached_mode else DIFF_TITLE).format(
                     os.path.basename(file_path) if file_path else os.path.basename(repo_path)
                 )
-            show_diffstat = self.savvy_settings.get("show_diffstat", True)
+            show_diffstat = self.app_settings.get("show_diffstat", True)
             diff_view = util.view.create_scratch_view(self.window, "diff", {
                 "title": title,
                 "syntax": "Packages/GitSavvy/syntax/diff_view.sublime-syntax",

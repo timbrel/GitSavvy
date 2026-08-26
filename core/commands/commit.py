@@ -142,9 +142,9 @@ class gs_commit(WindowCommand, GitCommand):
             settings.set("git_savvy.commit_view.automatically_switched_to_all", False)
             settings.set("git_savvy.diff_view.in_cached_mode", not include_unstaged)
             settings.set("git_savvy.commit_view.amend", amend)
-            commit_on_close = self.savvy_settings.get("commit_on_close")
+            commit_on_close = self.app_settings.get("commit_on_close")
             settings.set("git_savvy.commit_on_close", commit_on_close)
-            prompt_on_abort_commit = self.savvy_settings.get("prompt_on_abort_commit")
+            prompt_on_abort_commit = self.app_settings.get("prompt_on_abort_commit")
             settings.set("git_savvy.prompt_on_abort_commit", prompt_on_abort_commit)
             util.view.mark_as_lintable(view)
 
@@ -182,7 +182,7 @@ class gs_commit(WindowCommand, GitCommand):
 
         initial_text += "\n\n" + generate_help_text(view)
 
-        commit_help_extra_file = self.savvy_settings.get("commit_help_extra_file") or ".commit_help"
+        commit_help_extra_file = self.project_settings.get("commit_help_extra_file") or ".commit_help"
         commit_help_extra_path = self.to_full_path(commit_help_extra_file)
         if os.path.exists(commit_help_extra_path):
             with util.file.safe_open(commit_help_extra_path, "r", encoding="utf-8") as f:
@@ -227,12 +227,12 @@ class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
         automatically_switched_to_all = settings.get(
             "git_savvy.commit_view.automatically_switched_to_all")
         amend = settings.get("git_savvy.commit_view.amend")
-        show_commit_diff = self.savvy_settings.get("show_commit_diff")
+        show_commit_diff = self.app_settings.get("show_commit_diff")
         # for backward compatibility, check also if show_commit_diff is True
         show_patch = show_commit_diff is True or show_commit_diff == "full"
         show_stat = (
             show_commit_diff == "stat"
-            or (show_commit_diff == "full" and self.savvy_settings.get("show_diffstat"))
+            or (show_commit_diff == "full" and self.app_settings.get("show_diffstat"))
         )
 
         try:
@@ -468,14 +468,14 @@ class GsPedanticEnforceEventListener(EventListener, SettingsMixin):
         if 'make_commit' not in view.settings().get('syntax', ''):
             return
 
-        if not self.savvy_settings.get('pedantic_commit'):
+        if not self.app_settings.get('pedantic_commit'):
             return
 
-        subject_line_limit = self.savvy_settings.get('pedantic_commit_first_line_length')
-        body_line_limit = self.savvy_settings.get('pedantic_commit_message_line_length')
-        warning_length = self.savvy_settings.get('pedantic_commit_warning_length')
+        subject_line_limit = self.app_settings.get('pedantic_commit_first_line_length')
+        body_line_limit = self.app_settings.get('pedantic_commit_message_line_length')
+        warning_length = self.app_settings.get('pedantic_commit_warning_length')
 
-        if self.savvy_settings.get('pedantic_commit_ruler'):
+        if self.app_settings.get('pedantic_commit_ruler'):
             rulers = self.find_rulers(view, subject_line_limit, body_line_limit)
             view.settings().set("rulers", rulers)
 

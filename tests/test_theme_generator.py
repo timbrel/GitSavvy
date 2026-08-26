@@ -27,10 +27,10 @@ class TestThemeGenerator(DeferrableTestCase):
             "color_scheme": "Packages/Example/Example.sublime-color-scheme"
         })
         syntax_settings = WatchableSettings({})
-        savvy_settings = WatchableSettings({"colors": {}})
+        app_settings = WatchableSettings({"colors": {}})
         settings = {
             "Preferences.sublime-settings": preferences,
-            "GitSavvy.sublime-settings": savvy_settings,
+            "GitSavvy.sublime-settings": app_settings,
             "graph.sublime-settings": syntax_settings,
         }
         queued = []

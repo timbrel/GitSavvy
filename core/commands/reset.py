@@ -32,7 +32,7 @@ class ResetMixin(GsWindowCommand):
             return
         self._selected_hash = commit_hash
 
-        use_reset_mode = self.savvy_settings.get("use_reset_mode")
+        use_reset_mode = self.app_settings.get("use_reset_mode")
         last_reset_mode_used = \
             self.current_state().get("last_reset_mode_used", use_reset_mode)
         reset_modes = (

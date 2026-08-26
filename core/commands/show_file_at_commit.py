@@ -774,8 +774,8 @@ class gs_show_file_at_commit_open_info_popup(GsTextCommand):
         # type: (...) -> None
         settings = self.view.settings()
         commit_hash = settings.get("git_savvy.show_file_at_commit_view.commit")
-        show_patch = self.savvy_settings.get("show_full_commit_info")
-        show_diffstat = self.savvy_settings.get("show_diffstat")
+        show_patch = self.app_settings.get("show_full_commit_info")
+        show_diffstat = self.app_settings.get("show_diffstat")
         text = self.read_commit(commit_hash, None, show_diffstat, show_patch)
 
         prelude = re.split(r"^diff", text, 1, re.M)[0].rstrip()

@@ -467,7 +467,7 @@ class gs_blame_refresh(GsTextCommand):
 
         within_what = settings.get("git_savvy.blame_view.detect_move_or_copy_within")
         if not within_what:
-            within_what = self.savvy_settings.get("blame_detect_move_or_copy_within")
+            within_what = self.app_settings.get("blame_detect_move_or_copy_within")
 
         blame_format = blame_format_for_view(self.view)
         remember_blame_format(blame_format)

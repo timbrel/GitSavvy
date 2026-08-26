@@ -134,7 +134,7 @@ def ask_for_tag_message():
         if should_ask_for_tag_message(cmd, tag_name):
             show_single_line_input_panel(
                 TAG_CREATE_MESSAGE_PROMPT,
-                default_tag_message(cmd.savvy_settings.get("default_tag_message"), tag_name),
+                default_tag_message(cmd.project_settings.get("default_tag_message"), tag_name),
                 done
             )
         else:
@@ -144,7 +144,7 @@ def ask_for_tag_message():
 
 def should_ask_for_tag_message(cmd: GsCommand, tag_name: str) -> bool:
     return (
-        not cmd.savvy_settings.get("only_ask_to_annotate_versions")
+        not cmd.project_settings.get("only_ask_to_annotate_versions")
         or is_version_tag(tag_name)
     )
 
@@ -304,7 +304,7 @@ class gs_smart_tag(GsWindowCommand):
         ]
 
     def get_calendar_version_style(self) -> str:
-        style = self.savvy_settings.get("calendar_version_style")
+        style = self.project_settings.get("calendar_version_style")
         if not calendar_version_style_is_valid(style):
             print(
                 f"calendar_version_style is invalid. "
