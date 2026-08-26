@@ -299,8 +299,9 @@
     "max_items_in_tags_dashboard": null,
 
     /*
-        When set to `true`, GitSavvy will automatically display more info about the
-        current commit in a output panel.
+        When set to `true`, GitSavvy will show a preview in an output panel while
+        navigating commit lists, such as those shown by log, cherry-pick, revert,
+        reset, fixup, and checkout commands.
      */
     "log_show_more_commit_info": true,
 
