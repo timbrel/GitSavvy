@@ -277,7 +277,12 @@
     "pedantic_commit_warning_length": 20,
 
     /*
-        Change this to `false` to suppress Git status in ST3 status bar.
+        When set to `true`, GitSavvy will show detailed Git status in the status
+        bar.
+
+        To avoid showing both GitSavvy's and Sublime Text's Git status, set
+        "show_git_status_in_status_bar" to `false` in Sublime Text's standard
+        preferences.
      */
     "git_status_in_status_bar": true,
 
