@@ -53,7 +53,7 @@ CONTEXT_MENU = [
             },
             {"caption": "-"},
             {
-                "caption": "Show file at HEAD",
+                "caption": "Show last committed version",
                 "command": "gs_ctx_show_file_at_commit",
             },
         ],
