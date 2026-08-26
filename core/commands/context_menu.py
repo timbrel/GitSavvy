@@ -12,8 +12,11 @@ from typing import Callable, List, Optional, TypeVar
 T = TypeVar("T")
 
 __all__ = (
+    "gs_ctx_file_history",
     "gs_ctx_line_history",
+    "gs_ctx_path_history",
     "gs_ctx_pick_axe",
+    "gs_ctx_show_file_at_commit",
     "gs_ctx_stage_hunk",
 )
 
@@ -42,17 +45,16 @@ CONTEXT_MENU = [
             },
             {
                 "caption": "   Path History",
-                "command": "gs_graph_current_path",
+                "command": "gs_ctx_path_history",
             },
             {
                 "caption": "   File History",
-                "command": "gs_graph_current_file",
-                "args": {"all": False},
+                "command": "gs_ctx_file_history",
             },
             {"caption": "-"},
             {
                 "caption": "Show file at HEAD",
-                "command": "gs_show_file_at_commit",
+                "command": "gs_ctx_show_file_at_commit",
             },
         ],
     },
@@ -172,6 +174,33 @@ class gs_ctx_pick_axe(GsTextCommand):
 
     def run(self, edit) -> None:
         self.view.run_command("gs_graph_pickaxe")
+
+
+class gs_ctx_path_history(GsTextCommand):
+    def is_visible(self) -> bool:
+        ctx = get_context(self)
+        return bool(ctx.file_path)
+
+    def run(self, edit) -> None:
+        self.window.run_command("gs_graph_current_path")
+
+
+class gs_ctx_file_history(GsTextCommand):
+    def is_visible(self) -> bool:
+        ctx = get_context(self)
+        return bool(ctx.file_path)
+
+    def run(self, edit) -> None:
+        self.window.run_command("gs_graph_current_file", {"all": False})
+
+
+class gs_ctx_show_file_at_commit(GsTextCommand):
+    def is_visible(self) -> bool:
+        ctx = get_context(self)
+        return bool(ctx.file_path)
+
+    def run(self, edit) -> None:
+        self.window.run_command("gs_show_file_at_commit")
 
 
 def on_context_menu_settings_changed() -> None:

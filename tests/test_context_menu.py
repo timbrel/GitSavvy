@@ -15,7 +15,19 @@ class TestContextMenuWatcher(DeferrableTestCase):
 
     def tearDown(self) -> None:
         context_menu.stop_context_menu_watcher()
+        context_menu.reset_context()
         unstub()
+
+    def test_file_commands_are_visible_only_with_a_file_path(self) -> None:
+        command_types = (
+            context_menu.gs_ctx_path_history,
+            context_menu.gs_ctx_file_history,
+            context_menu.gs_ctx_show_file_at_commit,
+        )
+        for file_path, expected in ((None, False), ("/repo/file.py", True)):
+            context_menu.Context = Context(file_path)
+            for command_type in command_types:
+                self.assertEqual(command_type.is_visible(None), expected)
 
     def test_tracks_disable_context_menus(self) -> None:
         settings = WatchableSettings({"disable_context_menus": False})
@@ -67,6 +79,11 @@ class TestContextMenuWatcher(DeferrableTestCase):
             context_menu.start_context_menu_watcher()
 
             self.assertFalse(os.path.exists(menu_path))
+
+
+class Context:
+    def __init__(self, file_path) -> None:
+        self.file_path = file_path
 
 
 class WatchableSettings(dict):
