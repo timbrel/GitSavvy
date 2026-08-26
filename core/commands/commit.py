@@ -19,7 +19,7 @@ from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import focus_view
 from ..view import replace_view_content
 from ...common import util
-from ...common.theme_generator import ColorRef, ScopedStyle, ThemeGenerator
+from ...common.theme_generator import ColorRef, ScopedStyle, provide
 
 
 __all__ = (
@@ -83,6 +83,15 @@ THE_EMPTY_SHA = ""
 
 CONFIRM_ABORT = "Confirm to abort commit?"
 
+provide("make_commit", [
+    ScopedStyle(
+        "GitSavvy Multiselect Marker",
+        multi_selector.MULTISELECT_SCOPES["commit"],
+        background=ColorRef("commit", "multiselect_foreground"),
+        foreground=ColorRef("commit", "multiselect_background")
+    )
+])
+
 
 def compute_identifier_for_view(view):
     # type: (sublime.View) -> Optional[Tuple]
@@ -140,7 +149,6 @@ class gs_commit(WindowCommand, GitCommand):
             util.view.mark_as_lintable(view)
 
             view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
-            augment_color_scheme(view)
             view.run_command("gs_handle_vintageous")
 
             title = COMMIT_TITLE.format(os.path.basename(repo_path))
@@ -182,16 +190,6 @@ class gs_commit(WindowCommand, GitCommand):
 
         replace_view_content(view, initial_text)
         view.run_command("gs_prepare_commit_refresh_diff")
-
-
-def augment_color_scheme(view: sublime.View) -> None:
-    themeGenerator = ThemeGenerator.for_view(view)
-    themeGenerator.configure(ScopedStyle(
-        "GitSavvy Multiselect Marker",
-        multi_selector.MULTISELECT_SCOPE,
-        background=ColorRef("commit", "multiselect_foreground"),
-        foreground=ColorRef("commit", "multiselect_background")
-    ))
 
 
 def generate_help_text(view, with_patch_commands=False):

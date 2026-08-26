@@ -31,7 +31,7 @@ from ..view import (
     capture_cur_position, clamp, replace_view_content, scroll_to_pt,
     place_view, place_cursor_and_show, visible_views, y_offset, Position)
 from ...common import util
-from ...common.theme_generator import ColorRef, ScopedStyle, ThemeGenerator
+from ...common.theme_generator import ColorRef, ScopedStyle, provide
 
 
 __all__ = (
@@ -70,6 +70,15 @@ LineCol = Tuple[LineNo, ColNo]
 PositionFromFile: TypeAlias = Tuple[Literal["from_file"], Position, ShortPath]
 PositionFromDiff: TypeAlias = Tuple[Literal["from_diff"], Position, Optional[ShortPath]]
 MatchPosition: TypeAlias = Union[PositionFromFile, PositionFromDiff]
+
+provide("diff_view", [
+    ScopedStyle(
+        "GitSavvy Multiselect Marker",
+        multi_selector.MULTISELECT_SCOPES["diff"],
+        background=ColorRef("diff", "multiselect_foreground"),
+        foreground=ColorRef("diff", "multiselect_background")
+    )
+])
 
 
 class HunkLineWithB(NamedTuple):
@@ -265,7 +274,6 @@ class gs_diff(WindowCommand, GitCommand):
                 "result_line_regex": LINE_RE,
                 "result_base_dir": repo_path,
             })
-            augment_color_scheme(diff_view)
             diff_view.run_command("gs_handle_vintageous")
 
         # Assume diffing a single file is very fast and do it
@@ -274,16 +282,6 @@ class gs_diff(WindowCommand, GitCommand):
             "sync": bool(file_path),
             "match_position": cur_pos
         })
-
-
-def augment_color_scheme(view: sublime.View) -> None:
-    themeGenerator = ThemeGenerator.for_view(view)
-    themeGenerator.configure(ScopedStyle(
-        "GitSavvy Multiselect Marker",
-        multi_selector.MULTISELECT_SCOPE,
-        background=ColorRef("diff", "multiselect_foreground"),
-        foreground=ColorRef("diff", "multiselect_background")
-    ))
 
 
 class gs_diff_refresh(TextCommand, GitCommand):

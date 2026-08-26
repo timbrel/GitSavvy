@@ -94,11 +94,17 @@ UNUSED_GLOBAL_SETTINGS = (
 )
 
 
+def plugin_loaded() -> None:
+    from .common.theme_generator import start_watchers
+    prepare_gitsavvy()
+    start_watchers()
+
+
 def plugin_unloaded() -> None:
-    from .common.theme_generator import shutdown_theme_executor, stop_auto_update
+    from .common.theme_generator import shutdown_executor, stop_watchers
     from .core import app_state
-    stop_auto_update()
-    shutdown_theme_executor()
+    stop_watchers()
+    shutdown_executor()
     app_state.save()
 
 
@@ -146,6 +152,3 @@ def reload_codecs() -> None:
             "`fallback_encoding` codec cannot load.  This probably means "
             "you don't have the Codecs33 package installed, or you've "
             "entered an unsupported encoding.")
-
-
-prepare_gitsavvy()

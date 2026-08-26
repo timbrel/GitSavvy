@@ -7,7 +7,6 @@ from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.mockito import spy2, unstub, when
 
 from GitSavvy.core import app_state
-import GitSavvy.core.commands.log_graph as module
 from GitSavvy.core.commands.log_graph import (
     extract_commit_hash,
     navigate_to_symbol,
@@ -116,8 +115,6 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         s.set("close_windows_when_empty", False)
 
     def setUp(self):
-        when(module).augment_color_scheme(...).thenReturn()
-
         self.window = window = self.create_new_window()
         self.create_new_view(window)
 

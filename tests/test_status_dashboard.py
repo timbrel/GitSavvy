@@ -31,8 +31,6 @@ class TestStatusDashboard(DeferrableTestCase):
         cls.window.run_command('close_window')
 
     def setUp(self):
-        when(ui).augment_color_scheme(...).thenReturn()
-
         store.state.clear()
         self.create_new_view()
 

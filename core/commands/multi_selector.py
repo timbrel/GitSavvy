@@ -1,7 +1,6 @@
 from __future__ import annotations
 from itertools import starmap
 
-from . import log_graph
 from ..parse_diff import SplittedDiff
 
 from typing import Iterable
@@ -43,6 +42,8 @@ def get_multi_selection_if_multi(view: sublime.View) -> Iterable[sublime.Region]
 
 class gs_log_graph_multiselect(TextCommand):
     def run(self, edit) -> None:
+        from .log_graph import COMMIT_LINE
+
         view = self.view
         frozen_sel = list(view.sel())
 
@@ -53,7 +54,7 @@ class gs_log_graph_multiselect(TextCommand):
             line_spans = view.lines(s)
             for line_span in line_spans:
                 line_text = view.substr(line_span)
-                match = log_graph.COMMIT_LINE.search(line_text)
+                match = COMMIT_LINE.search(line_text)
                 if match:
                     # a, _ = match.span('dot')
                     b, c = match.span('commit_hash')
@@ -217,7 +218,13 @@ def is_exactly_selected_chunk(diff: SplittedDiff, s: sublime.Region) -> bool:
 
 
 MULTISELECT_SCOPE = 'git_savvy.multiselect'
-DEFAULT_STYLE = {"scope": MULTISELECT_SCOPE, "flags": "fill"}
+MULTISELECT_SCOPES = {
+    "commit": "git_savvy.commit.multiselect",
+    "dashboard": "git_savvy.dashboard.multiselect",
+    "diff": "git_savvy.diff.multiselect",
+    "graph": "git_savvy.graph.multiselect",
+}
+DEFAULT_STYLE = {"flags": "fill"}
 BASE_FLAGS = sublime.DRAW_EMPTY | sublime.PERSISTENT | sublime.RegionFlags.NO_UNDO
 STYLES = {
     "fill": BASE_FLAGS,
@@ -227,8 +234,15 @@ STYLES = {
 REGION_KEY = "git_savvy.multiselect"
 
 
-def set_multiselect_markers(view, regions: list[sublime.Region], styles=DEFAULT_STYLE):
+def set_multiselect_markers(
+    view: sublime.View,
+    regions: list[sublime.Region],
+    styles: dict | None = None
+) -> None:
     if regions:
+        styles = {**DEFAULT_STYLE, **(styles or {})}
+        styles.setdefault("scope", multiselect_scope(view))
+
         # Combine adjacent `regions` to `regions_`
         regions_: list[sublime.Region] = []
         for r in sorted(regions):
@@ -252,3 +266,16 @@ def set_multiselect_markers(view, regions: list[sublime.Region], styles=DEFAULT_
     else:
         view.erase_regions(REGION_KEY)
         view.erase_status("gs_multiselect_info")
+
+
+def multiselect_scope(view: sublime.View) -> str:
+    settings = view.settings()
+    if settings.get("git_savvy.log_graph_view"):
+        return MULTISELECT_SCOPES["graph"]
+    if settings.get("git_savvy.commit_view"):
+        return MULTISELECT_SCOPES["commit"]
+    if settings.get("git_savvy.diff_view"):
+        return MULTISELECT_SCOPES["diff"]
+    if settings.get("git_savvy.interface"):
+        return MULTISELECT_SCOPES["dashboard"]
+    return MULTISELECT_SCOPE

@@ -1099,8 +1099,6 @@ class TestDiffView(DeferrableTestCase):
         self.window.run_command('close_window')
 
     def setUp(self):
-        when(module).augment_color_scheme(...).thenReturn()
-
         self.view = self.window.new_file()
         self.view.set_scratch(True)
         self.addCleanup(self.view.close)
