@@ -4,12 +4,18 @@ import sublime
 from sublime_plugin import EventListener, WindowCommand
 
 from . import util
+from ..core import app_state
 from ..core.settings import SettingsMixin
 from ..core.utils import focus_view
 
 
 IGNORE_NEXT_ACTIVATE = False
 SEEN = set()
+
+
+class GsAppStateSaver(EventListener):
+    def on_exit(self) -> None:
+        app_state.save()
 
 
 class GsInterfaceFocusEventListener(EventListener):

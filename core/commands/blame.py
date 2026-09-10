@@ -17,6 +17,7 @@ from ..ui_mixins.quick_panel import PanelCommandMixin, show_log_panel
 from ..types import FullHash, FullPath, LineNo, Row, ShortHash
 from ..view import scroll_to_pt, y_offset, Position
 from ...common import util
+from GitSavvy.core import app_state
 from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.caches import cached
 from GitSavvy.core.utils import flash, focus_view
@@ -133,13 +134,13 @@ class GsBlameController(EventListener):
 
 BLAME_NAVIGATION_INFO_KEY = "git_savvy.blame_navigation_info"
 BLAME_FORMAT_SETTING = "git_savvy.blame_view.format"
+LAST_BLAME_FORMAT_KEY = "last_blame_format"
+LAST_COMPACT_BLAME_FORMAT_KEY = "last_compact_blame_format"
 COMPACT_BLAME_FORMATS: tuple[_CompactBlameFormat, ...] = ("hash", "date", "message", "author")
 DEFAULT_BLAME_FORMAT: _CompactBlameFormat = COMPACT_BLAME_FORMATS[0]
 NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
 BLAME_TITLE = "BLAME: {}{}"
 _navigation_info_by_view_id: Dict[sublime.ViewId, NavigationInfo] = {}
-_last_blame_format: _BlameFormat = DEFAULT_BLAME_FORMAT
-_last_compact_blame_format: _CompactBlameFormat = DEFAULT_BLAME_FORMAT
 
 
 def commit_under_cursor(view: sublime.View) -> BlamedCommit:
@@ -204,17 +205,31 @@ def serialize_navigation_info(navigation_info: NavigationInfo) -> dict[str, obje
 
 
 def blame_format_for_view(view: sublime.View) -> _BlameFormat:
-    blame_format: _BlameFormat = view.settings().get(BLAME_FORMAT_SETTING, _last_blame_format)
+    default = last_blame_format()
+    blame_format: _BlameFormat = view.settings().get(BLAME_FORMAT_SETTING, default)
     if blame_format in COMPACT_BLAME_FORMATS or blame_format == "verbose":
         return blame_format
-    return _last_blame_format
+    return default
 
 
 def remember_blame_format(blame_format: _BlameFormat) -> None:
-    global _last_blame_format, _last_compact_blame_format
-    _last_blame_format = blame_format
+    app_state.set(LAST_BLAME_FORMAT_KEY, blame_format)
     if blame_format in COMPACT_BLAME_FORMATS:
-        _last_compact_blame_format = blame_format  # type: ignore[assignment]
+        app_state.set(LAST_COMPACT_BLAME_FORMAT_KEY, blame_format)
+
+
+def last_blame_format() -> _BlameFormat:
+    blame_format = app_state.get(LAST_BLAME_FORMAT_KEY, DEFAULT_BLAME_FORMAT)
+    if blame_format in COMPACT_BLAME_FORMATS or blame_format == "verbose":
+        return blame_format
+    return DEFAULT_BLAME_FORMAT
+
+
+def last_compact_blame_format() -> _CompactBlameFormat:
+    blame_format = app_state.get(LAST_COMPACT_BLAME_FORMAT_KEY, DEFAULT_BLAME_FORMAT)
+    if blame_format in COMPACT_BLAME_FORMATS:
+        return blame_format
+    return DEFAULT_BLAME_FORMAT
 
 
 def scroll_to_lineno(
@@ -1093,7 +1108,7 @@ def shifted_compact_blame_format(
     offset: int
 ) -> _CompactBlameFormat:
     if current_format == "verbose":
-        return _last_compact_blame_format
+        return last_compact_blame_format()
 
     index = COMPACT_BLAME_FORMATS.index(current_format)
     return COMPACT_BLAME_FORMATS[(index + offset) % len(COMPACT_BLAME_FORMATS)]
@@ -1103,7 +1118,7 @@ class gs_blame_toggle_verbose_format(GsTextCommand):
     def run(self, edit) -> None:
         current_format = blame_format_for_view(self.view)
         next_format: _BlameFormat = (
-            _last_compact_blame_format
+            last_compact_blame_format()
             if current_format == "verbose"
             else "verbose"
         )

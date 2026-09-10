@@ -240,7 +240,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
 
 class TestAheadBehindCircuitBreaker(TestGitMixinsUsage):
     def test_diagnostic_result_does_not_reset_timeout_state(self):
-        now = time.monotonic()
+        now = time.time()
         repo = SlowBranchesRepo()
 
         when(git_mixins.branches).run_on_new_thread(...).thenAnswer(lambda fn: fn())
@@ -252,7 +252,7 @@ class TestAheadBehindCircuitBreaker(TestGitMixinsUsage):
         self.assertEqual(repo.ahead_behind_queries, 2)
 
     def test_commit_graph_write_is_rate_limited(self):
-        repo = SlowBranchesRepo({"last_commit_graph_write": time.monotonic()})
+        repo = SlowBranchesRepo({"last_commit_graph_write": time.time()})
 
         repo.get_branches()
 
@@ -263,7 +263,7 @@ class TestAheadBehindCircuitBreaker(TestGitMixinsUsage):
     def test_queries_without_ahead_behind_before_retry_time(self):
         repo = SlowBranchesRepo({
             "ahead_behind_consecutive_failures": 1,
-            "ahead_behind_retry_at": time.monotonic() + 60
+            "ahead_behind_retry_at": time.time() + 60
         })
 
         repo.get_branches()
@@ -272,7 +272,7 @@ class TestAheadBehindCircuitBreaker(TestGitMixinsUsage):
         self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 1)
 
     def test_fast_retry_immediately_resets_failures(self):
-        retry_at = time.monotonic() - 1
+        retry_at = time.time() - 1
         repo = SlowBranchesRepo({
             "ahead_behind_consecutive_failures": 3,
             "ahead_behind_retry_at": retry_at
@@ -285,7 +285,7 @@ class TestAheadBehindCircuitBreaker(TestGitMixinsUsage):
         self.assertEqual(repo.state["ahead_behind_retry_at"], retry_at)
 
     def test_repeated_timeout_increases_retry_delay(self):
-        now = time.monotonic()
+        now = time.time()
         repo = SlowBranchesRepo({
             "ahead_behind_consecutive_failures": 2,
             "ahead_behind_retry_at": now,

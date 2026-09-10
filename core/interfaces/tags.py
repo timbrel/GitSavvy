@@ -14,6 +14,7 @@ from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
 from ..git_mixins.tags import TagList
 from ...common import util
+from GitSavvy.core import app_state
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker, run_on_new_thread
 from GitSavvy.core.types import ShortHash
@@ -42,6 +43,9 @@ __all__ = (
 from typing import Dict, Iterator, List, Literal, Optional, Set, Union, TypedDict, cast
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.tags import TagDetails
+
+
+SHOW_REMOTES_KEY = "show_remotes_in_tags_dashboard"
 
 
 class Loading(TypedDict):
@@ -149,9 +153,9 @@ class TagsInterface(ui.ReactiveInterface, GitCommand):
     }
     state: TagsViewState
 
-    def initial_state(self):
+    def initial_state(self) -> Dict:
         return {
-            'show_remotes': self.savvy_settings.get("show_remotes_in_branch_dashboard"),
+            'show_remotes': app_state.get(SHOW_REMOTES_KEY, False),
             'remote_tags_info': {}
         }
 
@@ -405,11 +409,12 @@ class gs_tags_toggle_remotes(TagsInterfaceCommand):
     Toggle display of the remote tags.
     """
 
-    def run(self, edit, show=None):
+    def run(self, edit: sublime.Edit, show: bool | None = None) -> None:
         interface = self.interface
         current_state = interface.state["show_remotes"]
         next_state = not current_state if show is None else show
         interface.state["show_remotes"] = next_state
+        app_state.set(SHOW_REMOTES_KEY, next_state)
         if next_state:
             interface.state["remote_tags_info"] = {}
         interface.render()

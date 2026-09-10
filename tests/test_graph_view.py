@@ -6,6 +6,7 @@ from unittesting import DeferrableTestCase, expectedFailure
 from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.mockito import spy2, unstub, when
 
+from GitSavvy.core import app_state
 from GitSavvy.core.commands.log_graph import (
     extract_commit_hash,
     navigate_to_symbol,
@@ -147,6 +148,11 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         settings.set(key, value)
         self.addCleanup(settings.set, key, original_value)
 
+    def set_app_state(self, key, value, default):
+        original_value = app_state.get(key, default)
+        app_state.set(key, value)
+        self.addCleanup(app_state.set, key, original_value)
+
     def register_commit_info(self, info):
         for sha1, info in info.items():
             when(gs_show_commit_info).read_commit(sha1, ...).thenReturn(info)
@@ -172,7 +178,11 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         REPO_PATH = '/not/there'
         LOG = fixture('log_graph_1.txt')
 
-        self.set_global_setting('graph_show_more_commit_info', show_commit_info_setting)
+        self.set_app_state(
+            'graph_show_more_commit_info',
+            show_commit_info_setting,
+            default=True
+        )
         self.set_global_setting('git_status_in_status_bar', False)
         self.register_commit_info({
             'fec0aca': COMMIT_1,

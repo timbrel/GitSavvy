@@ -86,9 +86,25 @@ with reloader():
     from .gitlab.commands import *
 
 
-def prepare_gitsavvy():
+UNUSED_GLOBAL_SETTINGS = (
+    "graph_show_more_commit_info",
+    "hide_help_menu",
+    "show_remotes_in_branch_dashboard",
+    "show_remotes_in_tags_dashboard",
+)
+
+
+def plugin_unloaded() -> None:
+    from .core import app_state
+    app_state.save()
+
+
+def prepare_gitsavvy() -> None:
     from .common import util
-    from .core import runtime
+    from .core import app_state, runtime, store
+
+    app_state.load()
+    store.load_app_state()
     runtime.determine_thread_names()
 
     # Ensure all interfaces are ready.
@@ -96,11 +112,22 @@ def prepare_gitsavvy():
         lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
 
     savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
+    warn_about_unused_global_settings(savvy_settings)
     if savvy_settings.get("load_additional_codecs"):
         sublime.set_timeout_async(reload_codecs)
 
 
-def reload_codecs():
+def warn_about_unused_global_settings(settings: sublime.Settings) -> None:
+    for key in UNUSED_GLOBAL_SETTINGS:
+        if settings.has(key):
+            print(
+                f'GitSavvy: The "{key}" setting is no longer used. '
+                "GitSavvy now remembers this preference automatically; "
+                "you may remove it from your settings file."
+            )
+
+
+def reload_codecs() -> None:
     savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
     fallback_encoding = savvy_settings.get("fallback_encoding")
     try:

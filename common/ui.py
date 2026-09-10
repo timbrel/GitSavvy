@@ -17,7 +17,7 @@ from ..core.commands import multi_selector
 from ..core.runtime import enqueue_on_worker, run_on_new_thread
 from ..core.settings import GitSavvySettings
 from ..core.utils import flash, focus_view
-from GitSavvy.core import store
+from GitSavvy.core import app_state, store
 from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.fns import flatten
 from GitSavvy.core.git_command import GitCommand
@@ -43,6 +43,9 @@ from typing import (
 T = TypeVar("T")
 T_fn = TypeVar("T_fn", bound=Callable)
 T_state = TypeVar("T_state", Dict, MutableMapping)
+
+
+HIDE_HELP_MENU_KEY = "hide_help_menu"
 
 SectionRegions = Dict[str, sublime.Region]
 RenderFnReturnType = Union[str, Tuple[str, List["SectionFn"]]]
@@ -148,8 +151,7 @@ class Interface(metaclass=_PrepareInterface):
         self.on_create()
 
     @classmethod
-    def create_view(cls, window, repo_path):
-        # type: (sublime.Window, str) -> Interface
+    def create_view(cls, window: sublime.Window, repo_path: str) -> Interface:
         window = sublime.active_window()
         view = window.new_file()
 
@@ -157,7 +159,7 @@ class Interface(metaclass=_PrepareInterface):
         view.settings().set("git_savvy.{}_view".format(cls.interface_type), True)
         view.settings().set("git_savvy.tabbable", True)
         view.settings().set("git_savvy.interface", cls.interface_type)
-        view.settings().set("git_savvy.help_hidden", GitSavvySettings().get("hide_help_menu"))
+        view.settings().set("git_savvy.help_hidden", help_hidden_by_default())
         view.set_syntax_file(cls.syntax_file)
         view.set_scratch(True)
         view.set_read_only(True)
@@ -650,10 +652,16 @@ class gs_interface_toggle_help(TextCommand):
     Toggle GitSavvy help.
     """
 
-    def run(self, edit):
+    def run(self, edit: sublime.Edit) -> None:
         current_help = bool(self.view.settings().get("git_savvy.help_hidden"))
-        self.view.settings().set("git_savvy.help_hidden", not current_help)
+        help_hidden = not current_help
+        self.view.settings().set("git_savvy.help_hidden", help_hidden)
+        app_state.set(HIDE_HELP_MENU_KEY, help_hidden)
         self.view.run_command("gs_interface_refresh")
+
+
+def help_hidden_by_default() -> bool:
+    return bool(app_state.get(HIDE_HELP_MENU_KEY, False))
 
 
 class gs_interface_show_commit(TextCommand):

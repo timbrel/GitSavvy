@@ -20,6 +20,7 @@ FOR_EACH_REF_SUPPORTS_WORKTREEPATH = (2, 23, 0)
 COMMIT_GRAPH_WRITE_INTERVAL = 60 * 60  # [s]
 COMMIT_GRAPH_WRITE_LOCK = threading.Lock()
 AHEAD_BEHIND_RETRY_DELAYS = (1, 10, 60, 10 * 60, 60 * 60)  # [s]
+# Retry deadlines and graph-write times persist, so use time.time(), not monotonic time.
 
 
 class Upstream(NamedTuple):
@@ -225,7 +226,7 @@ class BranchesMixin(mixin_base):
 
             return branches
 
-        now = time.monotonic()
+        now = time.time()
         retry_at = self.current_state().get("ahead_behind_retry_at", now)
         compute_ahead_behind = supports_ahead_behind and now >= retry_at
         return get_branches__(compute_ahead_behind)
@@ -237,7 +238,7 @@ class BranchesMixin(mixin_base):
         ]
         self.update_store({
             "ahead_behind_consecutive_failures": failures,
-            "ahead_behind_retry_at": time.monotonic() + delay
+            "ahead_behind_retry_at": time.time() + delay
         })
 
     def _record_fast_ahead_behind_query(self) -> None:
@@ -246,7 +247,7 @@ class BranchesMixin(mixin_base):
 
     def _claim_commit_graph_write(self) -> bool:
         with COMMIT_GRAPH_WRITE_LOCK:
-            now = time.monotonic()
+            now = time.time()
             last_run = self.current_state().get("last_commit_graph_write", -COMMIT_GRAPH_WRITE_INTERVAL)
             if now - last_run < COMMIT_GRAPH_WRITE_INTERVAL:
                 return False
