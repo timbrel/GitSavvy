@@ -2,6 +2,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 import sublime
 
@@ -10,6 +11,7 @@ from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p, param
 
 from GitSavvy.core.git_command import GitCommand
+from GitSavvy.core.exceptions import GitSavvyError
 from GitSavvy.core import git_mixins
 from GitSavvy.core.git_mixins.worktrees import Worktree, WorktreesMixin
 from GitSavvy.core.utils import resolve_path
@@ -234,6 +236,98 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
                 None
             )
         ])
+
+
+class TestAheadBehindCircuitBreaker(TestGitMixinsUsage):
+    def test_diagnostic_result_does_not_reset_timeout_state(self):
+        now = time.monotonic()
+        repo = SlowBranchesRepo()
+
+        when(git_mixins.branches).run_on_new_thread(...).thenAnswer(lambda fn: fn())
+        repo.get_branches()
+
+        self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 1)
+        self.assertGreaterEqual(repo.state["ahead_behind_retry_at"], now + 1)
+        self.assertEqual(repo.commit_graph_writes, 1)
+        self.assertEqual(repo.ahead_behind_queries, 2)
+
+    def test_commit_graph_write_is_rate_limited(self):
+        repo = SlowBranchesRepo({"last_commit_graph_write": time.monotonic()})
+
+        repo.get_branches()
+
+        self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 1)
+        self.assertEqual(repo.commit_graph_writes, 0)
+        self.assertEqual(repo.ahead_behind_queries, 1)
+
+    def test_queries_without_ahead_behind_before_retry_time(self):
+        repo = SlowBranchesRepo({
+            "ahead_behind_consecutive_failures": 1,
+            "ahead_behind_retry_at": time.monotonic() + 60
+        })
+
+        repo.get_branches()
+
+        self.assertEqual(repo.ahead_behind_queries, 0)
+        self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 1)
+
+    def test_fast_retry_immediately_resets_failures(self):
+        retry_at = time.monotonic() - 1
+        repo = SlowBranchesRepo({
+            "ahead_behind_consecutive_failures": 3,
+            "ahead_behind_retry_at": retry_at
+        }, timeouts=0)
+
+        repo.get_branches()
+
+        self.assertEqual(repo.ahead_behind_queries, 1)
+        self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 0)
+        self.assertEqual(repo.state["ahead_behind_retry_at"], retry_at)
+
+    def test_repeated_timeout_increases_retry_delay(self):
+        now = time.monotonic()
+        repo = SlowBranchesRepo({
+            "ahead_behind_consecutive_failures": 2,
+            "ahead_behind_retry_at": now,
+            "last_commit_graph_write": now
+        })
+
+        repo.get_branches()
+
+        self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 3)
+        self.assertGreaterEqual(repo.state["ahead_behind_retry_at"], now + 60)
+
+
+class SlowBranchesRepo(git_mixins.branches.BranchesMixin):
+    def __init__(self, state=None, *, timeouts=1):
+        self.state = state or {}
+        self.timeouts = timeouts
+        self.ahead_behind_queries = 0
+        self.commit_graph_writes = 0
+
+    @property
+    def git_version(self):
+        return (2, 41, 0)
+
+    def current_state(self):
+        return self.state
+
+    def update_store(self, partial_state):
+        self.state.update(partial_state)
+
+    def git_throwing_silently(self, command, *args, **kwargs):
+        if command == "commit-graph":
+            self.commit_graph_writes += 1
+            return ""
+
+        if any("%(ahead-behind:HEAD)" in str(arg) for arg in args):
+            self.ahead_behind_queries += 1
+            if self.ahead_behind_queries <= self.timeouts:
+                raise GitSavvyError(
+                    "", stderr="timed out after 0.2 seconds", show_panel=False
+                )
+
+        return ""
 
 
 class TestGetWorktreesParsing(TestGitMixinsUsage):

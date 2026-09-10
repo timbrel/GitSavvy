@@ -40,7 +40,9 @@ if TYPE_CHECKING:
         last_reset_mode_used: Optional[str]
         short_hash_length: int
         skipped_files: List[str]
-        slow_repo: bool
+        ahead_behind_consecutive_failures: int
+        ahead_behind_retry_at: float
+        last_commit_graph_write: float
         stashes: List[Stash]
         recent_commits: List[Commit]
         descriptions: Dict[str, str]

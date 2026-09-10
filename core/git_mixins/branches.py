@@ -1,5 +1,7 @@
 from __future__ import annotations
 import re
+import threading
+import time
 
 from GitSavvy.core.git_command import mixin_base, NOT_SET
 from GitSavvy.core.fns import filter_
@@ -15,6 +17,9 @@ from typing import Dict, List, NamedTuple, Optional, Sequence
 BRANCH_DESCRIPTION_RE = re.compile(r"^branch\.(.*?)\.description (.*)$")
 FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND = (2, 41, 0)
 FOR_EACH_REF_SUPPORTS_WORKTREEPATH = (2, 23, 0)
+COMMIT_GRAPH_WRITE_INTERVAL = 60 * 60  # [s]
+COMMIT_GRAPH_WRITE_LOCK = threading.Lock()
+AHEAD_BEHIND_RETRY_DELAYS = (1, 10, 60, 10 * 60, 60 * 60)  # [s]
 
 
 class Upstream(NamedTuple):
@@ -124,9 +129,15 @@ class BranchesMixin(mixin_base):
         """
         Return a list of local and/or remote branches.
         """
+        supports_ahead_behind = self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND
         supports_worktreepath = self.git_version >= FOR_EACH_REF_SUPPORTS_WORKTREEPATH
 
-        def get_branches__(probe_speed: bool, supports_ahead_behind: bool) -> List[Branch]:
+        def get_branches__(
+            with_ahead_behind: bool,
+            *,
+            allow_slow_run: bool = False
+        ) -> List[Branch]:
+            probe_speed = with_ahead_behind and not allow_slow_run
             WAIT_TIME = 200  # [ms]
             try:
                 stdout: str = self.git_throwing_silently(
@@ -143,53 +154,54 @@ class BranchesMixin(mixin_base):
                             "%(committerdate:relative)",
                             "%(objectname)",
                             "%(contents:subject)",
-                            "%(ahead-behind:HEAD)" if supports_ahead_behind else "",
+                            "%(ahead-behind:HEAD)" if with_ahead_behind else "",
                             "%(worktreepath)" if supports_worktreepath else ""
                         ))
                     ),
                     *refs,
-                    # If `supports_ahead_behind` we don't use the `--[no-]merged` argument
+                    # With ahead/behind data we don't use the `--[no-]merged` argument
                     # and instead filter here in Python land.
-                    yes_no_switch("--merged", merged) if not supports_ahead_behind else None,
+                    yes_no_switch("--merged", merged) if not with_ahead_behind else None,
                     timeout=WAIT_TIME / 1000 if probe_speed else NOT_SET
                 )
             except GitSavvyError as e:
                 if probe_speed and "timed out after" in e.stderr:
+                    self._record_ahead_behind_timeout()
 
-                    def run_commit_graph_write():
-                        hprint(
-                            f"`git for-each-ref` took more than {WAIT_TIME}ms which is slow "
-                            "for our purpose. We now run `git commit-graph write` to see if "
-                            "it gets better."
-                        )
-                        try:
-                            self.git_throwing_silently("commit-graph", "write")
-                        except GitSavvyError as err:
-                            hprint(f"`git commit-graph write` raised: {err}")
-                            self.update_store({"slow_repo": True})
-                            return
+                    if self._claim_commit_graph_write():
+                        def run_commit_graph_write():
+                            hprint(
+                                f"`git for-each-ref` took more than {WAIT_TIME}ms which is slow "
+                                "for our purpose. We now run `git commit-graph write` to see if "
+                                "it gets better."
+                            )
+                            try:
+                                self.git_throwing_silently("commit-graph", "write")
+                            except GitSavvyError as err:
+                                hprint(f"`git commit-graph write` raised: {err}")
+                                return
 
-                        with measure_runtime() as ms:
-                            get_branches__(False, supports_ahead_behind)
-                        elapsed = ms.get()
-                        ok = elapsed < WAIT_TIME
-                        hprint(
-                            f"After `git commit-graph write` the `git for-each-ref` call "
-                            f"{'' if ok else 'still '}takes {elapsed}ms"
-                        )
-                        if not ok:
-                            hprint("Disabling sections in the branches dashboard.")
+                            with measure_runtime() as ms:
+                                get_branches__(True, allow_slow_run=True)
+                            elapsed = ms.get()
+                            ok = elapsed < WAIT_TIME
+                            hprint(
+                                f"After `git commit-graph write` the `git for-each-ref` call "
+                                f"{'' if ok else 'still '}takes {elapsed}ms"
+                            )
 
-                        self.update_store({"slow_repo": True if not ok else False})
+                        run_on_new_thread(run_commit_graph_write)
 
-                    run_on_new_thread(run_commit_graph_write)
-                    return get_branches__(False, False)
+                    return get_branches__(False)
 
-                if "fatal: failed to find 'HEAD'" in e.stderr and supports_ahead_behind:
-                    return get_branches__(False, False)
+                if "fatal: failed to find 'HEAD'" in e.stderr and with_ahead_behind:
+                    return get_branches__(False)
 
                 e.show_error_panel()
                 raise
+
+            if probe_speed:
+                self._record_fast_ahead_behind_query()
 
             branches = [
                 branch
@@ -199,7 +211,7 @@ class BranchesMixin(mixin_base):
                 )
                 if branch.name != "HEAD"
             ]
-            if supports_ahead_behind:
+            if with_ahead_behind:
                 # Cache git's full output but return a filtered result if requested.
                 self._cache_branches(branches, refs)
                 if merged is True:
@@ -213,13 +225,34 @@ class BranchesMixin(mixin_base):
 
             return branches
 
-        slow_repo = self.current_state().get("slow_repo", None)
-        compute_ahead_behind = (
-            self.git_version >= FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND
-            and not slow_repo
-        )
-        probe_speed = compute_ahead_behind and slow_repo is None
-        return get_branches__(probe_speed, compute_ahead_behind)
+        now = time.monotonic()
+        retry_at = self.current_state().get("ahead_behind_retry_at", now)
+        compute_ahead_behind = supports_ahead_behind and now >= retry_at
+        return get_branches__(compute_ahead_behind)
+
+    def _record_ahead_behind_timeout(self) -> None:
+        failures = self.current_state().get("ahead_behind_consecutive_failures", 0) + 1
+        delay = AHEAD_BEHIND_RETRY_DELAYS[
+            min(failures - 1, len(AHEAD_BEHIND_RETRY_DELAYS) - 1)
+        ]
+        self.update_store({
+            "ahead_behind_consecutive_failures": failures,
+            "ahead_behind_retry_at": time.monotonic() + delay
+        })
+
+    def _record_fast_ahead_behind_query(self) -> None:
+        if self.current_state().get("ahead_behind_consecutive_failures", 0):
+            self.update_store({"ahead_behind_consecutive_failures": 0})
+
+    def _claim_commit_graph_write(self) -> bool:
+        with COMMIT_GRAPH_WRITE_LOCK:
+            now = time.monotonic()
+            last_run = self.current_state().get("last_commit_graph_write", -COMMIT_GRAPH_WRITE_INTERVAL)
+            if now - last_run < COMMIT_GRAPH_WRITE_INTERVAL:
+                return False
+
+            self.update_store({"last_commit_graph_write": now})
+            return True
 
     def _cache_branches(self, branches, refs):
         # type: (List[Branch], Sequence[str]) -> None
