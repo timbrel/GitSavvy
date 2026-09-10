@@ -4,6 +4,7 @@ import sublime
 from sublime_plugin import EventListener, WindowCommand
 
 from . import util
+from .theme_generator import migrate_color_scheme
 from ..core import app_state
 from ..core.settings import SettingsMixin
 from ..core.utils import focus_view
@@ -44,6 +45,7 @@ class GsInterfaceFocusEventListener(EventListener):
         if view.settings().get("is_widget"):
             return
 
+        migrate_color_scheme(view)
         SEEN.add(vid)
         util.view.refresh_gitsavvy(view)
 

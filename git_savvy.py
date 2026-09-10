@@ -94,8 +94,17 @@ UNUSED_GLOBAL_SETTINGS = (
 )
 
 
+def plugin_loaded() -> None:
+    from .common.theme_generator import start_watchers
+    prepare_gitsavvy()
+    start_watchers()
+
+
 def plugin_unloaded() -> None:
+    from .common.theme_generator import shutdown_executor, stop_watchers
     from .core import app_state
+    stop_watchers()
+    shutdown_executor()
     app_state.save()
 
 
@@ -108,8 +117,10 @@ def prepare_gitsavvy() -> None:
     runtime.determine_thread_names()
 
     # Ensure all interfaces are ready.
-    sublime.set_timeout_async(
-        lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
+    def prepare_views() -> None:
+        util.view.refresh_gitsavvy(sublime.active_window().active_view())
+
+    sublime.set_timeout_async(prepare_views)
 
     savvy_settings = sublime.load_settings("GitSavvy.sublime-settings")
     warn_about_unused_global_settings(savvy_settings)
@@ -141,6 +152,3 @@ def reload_codecs() -> None:
             "`fallback_encoding` codec cannot load.  This probably means "
             "you don't have the Codecs33 package installed, or you've "
             "entered an unsupported encoding.")
-
-
-prepare_gitsavvy()

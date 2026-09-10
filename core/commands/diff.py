@@ -23,8 +23,7 @@ from .navigate import GsNavigate
 from ..fns import head, filter_, flatten, pairwise, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand, GitSavvyError
-from ..runtime import ensure_on_ui, enqueue_on_worker, run_on_new_thread, throttled
-from ..settings import GitSavvySettings
+from ..runtime import ensure_on_ui, enqueue_on_worker, throttled
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..ui__quick_panel import show_quick_panel
 from ..utils import flash, focus_view, hprint, line_indentation
@@ -32,7 +31,7 @@ from ..view import (
     capture_cur_position, clamp, replace_view_content, scroll_to_pt,
     place_view, place_cursor_and_show, visible_views, y_offset, Position)
 from ...common import util
-from ...common.theme_generator import ThemeGenerator
+from ...common.theme_generator import ColorRef, ScopedStyle, provide
 
 
 __all__ = (
@@ -71,6 +70,15 @@ LineCol = Tuple[LineNo, ColNo]
 PositionFromFile: TypeAlias = Tuple[Literal["from_file"], Position, ShortPath]
 PositionFromDiff: TypeAlias = Tuple[Literal["from_diff"], Position, Optional[ShortPath]]
 MatchPosition: TypeAlias = Union[PositionFromFile, PositionFromDiff]
+
+provide("diff_view", [
+    ScopedStyle(
+        "GitSavvy Multiselect Marker",
+        multi_selector.MULTISELECT_SCOPES["diff"],
+        background=ColorRef("diff", "multiselect_foreground"),
+        foreground=ColorRef("diff", "multiselect_background")
+    )
+])
 
 
 class HunkLineWithB(NamedTuple):
@@ -266,7 +274,6 @@ class gs_diff(WindowCommand, GitCommand):
                 "result_line_regex": LINE_RE,
                 "result_base_dir": repo_path,
             })
-            run_on_new_thread(augment_color_scheme, diff_view)
             diff_view.run_command("gs_handle_vintageous")
 
         # Assume diffing a single file is very fast and do it
@@ -275,23 +282,6 @@ class gs_diff(WindowCommand, GitCommand):
             "sync": bool(file_path),
             "match_position": cur_pos
         })
-
-
-def augment_color_scheme(view):
-    # type: (sublime.View) -> None
-    settings = GitSavvySettings()
-    colors = settings.get('colors').get('diff')
-    if not colors:
-        return
-
-    themeGenerator = ThemeGenerator.for_view(view)
-    themeGenerator.add_scoped_style(
-        "GitSavvy Multiselect Marker",
-        multi_selector.MULTISELECT_SCOPE,
-        background=colors['multiselect_foreground'],
-        foreground=colors['multiselect_background'],
-    )
-    themeGenerator.apply_new_theme("diff_view", view)
 
 
 class gs_diff_refresh(TextCommand, GitCommand):

@@ -12,10 +12,9 @@ import sublime
 from sublime_plugin import TextCommand
 
 from . import util
-from .theme_generator import ThemeGenerator
+from .theme_generator import ColorRef, ScopedStyle, provide
 from ..core.commands import multi_selector
-from ..core.runtime import enqueue_on_worker, run_on_new_thread
-from ..core.settings import GitSavvySettings
+from ..core.runtime import enqueue_on_worker
 from ..core.utils import flash, focus_view
 from GitSavvy.core import app_state, store
 from GitSavvy.core.base_commands import GsTextCommand
@@ -46,6 +45,16 @@ T_state = TypeVar("T_state", Dict, MutableMapping)
 
 
 HIDE_HELP_MENU_KEY = "hide_help_menu"
+
+for syntax_name in ("branch", "rebase", "remotes", "status", "tags"):
+    provide(syntax_name, [
+        ScopedStyle(
+            "GitSavvy Multiselect Marker",
+            multi_selector.MULTISELECT_SCOPES["dashboard"],
+            background=ColorRef("dashboard", "multiselect_foreground"),
+            foreground=ColorRef("dashboard", "multiselect_background")
+        )
+    ])
 
 SectionRegions = Dict[str, sublime.Region]
 RenderFnReturnType = Union[str, Tuple[str, List["SectionFn"]]]
@@ -164,7 +173,6 @@ class Interface(metaclass=_PrepareInterface):
         view.set_scratch(True)
         view.set_read_only(True)
         util.view.disable_other_plugins(view)
-        run_on_new_thread(augment_color_scheme, view)
 
         interface = cls(view=view)
         interface.after_view_creation(view)  # before first render
@@ -298,23 +306,6 @@ class Interface(metaclass=_PrepareInterface):
             "key": "git_savvy_interface." + key,
             "content": content
         })
-
-
-def augment_color_scheme(view):
-    # type: (sublime.View) -> None
-    settings = GitSavvySettings()
-    colors = settings.get('colors').get('dashboard')
-    if not colors:
-        return
-
-    themeGenerator = ThemeGenerator.for_view(view)
-    themeGenerator.add_scoped_style(
-        "GitSavvy Multiselect Marker",
-        multi_selector.MULTISELECT_SCOPE,
-        background=colors['multiselect_foreground'],
-        foreground=colors['multiselect_background'],
-    )
-    themeGenerator.apply_new_theme("dashboard_view", view)
 
 
 def distinct_until_state_changed(just_render_fn):

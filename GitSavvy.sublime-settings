@@ -127,6 +127,8 @@
             "path_above_background": "#99991109",
             "matching_commit_foreground": "#1991",
             "matching_commit_background": "#199",
+            // For multiselect markers, "foreground" means the prominent marker
+            // color and "background" the subtle shine-through tint.
             "multiselect_foreground": "#0aa",
             "multiselect_background": "#0aa1"
         },
