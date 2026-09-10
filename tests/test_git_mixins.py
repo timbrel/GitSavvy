@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import sys
@@ -401,6 +402,134 @@ class TestGetWorktreesParsing(TestGitMixinsUsage):
         actual = repo.get_worktrees()
 
         self.assertEqual(actual, [])
+
+
+class TestCreateNewWorktreeProject(TestGitMixinsUsage):
+    def setUp(self):
+        self.tmp_dir = tempfile.mkdtemp(prefix=TMPDIR_PREFIX)
+        self.addCleanup(lambda: rmdir(self.tmp_dir))
+        self.repo_path = os.path.join(self.tmp_dir, "repo")
+        os.makedirs(self.repo_path)
+        self.project_file = os.path.join(self.repo_path, "repo.sublime-project")
+        self.project_data = {
+            "folders": [
+                {"path": self.repo_path},
+                {"path": ".", "folder_exclude_patterns": [".git"]}
+            ]
+        }
+
+    def test_copies_an_untracked_local_project(self):
+        repo = WorktreeCreationTestRepo(
+            self.repo_path, self.project_file, self.project_data
+        )
+        worktree_path = os.path.join(self.tmp_dir, "worktree")
+
+        repo.create_new_worktree("abc123", worktree_path)
+
+        with open(os.path.join(worktree_path, "repo.sublime-project"), encoding="utf-8") as file:
+            copied_data = sublime.decode_value(file.read())
+        self.assertEqual(copied_data, {
+            "folders": [
+                {"path": "."},
+                {"path": ".", "folder_exclude_patterns": [".git"]}
+            ]
+        })
+        self.assertEqual(self.project_data["folders"][0]["path"], self.repo_path)
+
+    def test_respects_the_copy_project_setting(self):
+        repo = WorktreeCreationTestRepo(
+            self.repo_path, self.project_file, self.project_data,
+            copy_project=False
+        )
+        worktree_path = os.path.join(self.tmp_dir, "worktree")
+
+        repo.create_new_worktree("abc123", worktree_path)
+
+        self.assertFalse(os.path.exists(os.path.join(worktree_path, "repo.sublime-project")))
+
+    def test_does_not_copy_a_non_local_project(self):
+        repo = WorktreeCreationTestRepo(
+            self.repo_path,
+            os.path.join(self.tmp_dir, "another-repo", "repo.sublime-project"),
+            self.project_data
+        )
+        worktree_path = os.path.join(self.tmp_dir, "worktree")
+
+        repo.create_new_worktree("abc123", worktree_path)
+
+        self.assertFalse(os.path.exists(os.path.join(worktree_path, "repo.sublime-project")))
+
+    def test_does_not_copy_a_tracked_project(self):
+        repo = WorktreeCreationTestRepo(
+            self.repo_path, self.project_file, self.project_data,
+            tracked=True
+        )
+        worktree_path = os.path.join(self.tmp_dir, "worktree")
+
+        repo.create_new_worktree("abc123", worktree_path)
+
+        self.assertFalse(os.path.exists(os.path.join(worktree_path, "repo.sublime-project")))
+
+    def test_does_not_overwrite_a_project_from_the_start_point(self):
+        repo = WorktreeCreationTestRepo(
+            self.repo_path, self.project_file, self.project_data,
+            checked_out_project="from the start point"
+        )
+        worktree_path = os.path.join(self.tmp_dir, "worktree")
+
+        repo.create_new_worktree("abc123", worktree_path)
+
+        with open(os.path.join(worktree_path, "repo.sublime-project"), encoding="utf-8") as file:
+            self.assertEqual(file.read(), "from the start point")
+
+
+class WorktreeCreationTestRepo(WorktreesMixin):
+    def __init__(
+        self,
+        repo_path,
+        project_file,
+        project_data,
+        *,
+        tracked=False,
+        checked_out_project=None,
+        copy_project=True
+    ):
+        self._repo_path = repo_path
+        self._savvy_settings = {
+            "copy_active_project_file_to_new_worktrees": copy_project
+        }
+        self.window = WorktreeCreationTestWindow(project_file, project_data)
+        self.tracked = tracked
+        self.checked_out_project = checked_out_project
+
+    @property
+    def repo_path(self):
+        return self._repo_path
+
+    def git(self, command, *args, **kwargs):
+        if command == "worktree":
+            worktree_path = args[1]
+            os.makedirs(worktree_path)
+            if self.checked_out_project is not None:
+                filename = os.path.basename(self.window.project_file_name())
+                with open(os.path.join(worktree_path, filename), "w", encoding="utf-8") as file:
+                    file.write(self.checked_out_project)
+            return ""
+        if command == "ls-files":
+            return "tracked\0" if self.tracked else ""
+        raise AssertionError("Unexpected git command: {} {}".format(command, args))
+
+
+class WorktreeCreationTestWindow:
+    def __init__(self, project_file, project_data):
+        self.project_file = project_file
+        self.data = project_data
+
+    def project_file_name(self):
+        return self.project_file
+
+    def project_data(self):
+        return self.data
 
 
 class WorktreesTestRepo(WorktreesMixin):

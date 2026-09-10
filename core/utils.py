@@ -1,6 +1,7 @@
 from __future__ import annotations
 from contextlib import contextmanager
 import datetime
+from glob import glob
 from itertools import count
 import os
 import signal
@@ -178,21 +179,62 @@ if sys.platform == "win32":
     STARTUPINFO.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
 
-def open_folder_in_new_window(path: str, *, then: Callable[[sublime.Window], None] = None):
+def open_worktree_in_new_window(
+    path: str, *, then: Callable[[sublime.Window], None] | None = None
+) -> None:
+    project_files = glob(os.path.join(path, "*.sublime-project"))
+    if len(project_files) != 1:
+        open_folder_in_new_window(path, then=then)
+        return
+
+    project_file = project_files[0]
+    current_windows = set(sublime.windows())
+    sublime.active_window().run_command("open_project_or_workspace", {
+        "file": project_file,
+        "new_window": True
+    })
+    if then:
+        def is_project_window(window: sublime.Window) -> bool:
+            return bool(
+                (candidate := window.project_file_name())
+                and os.path.normcase(candidate) == os.path.normcase(project_file)
+            )
+
+        wait_for_new_window(current_windows, is_project_window, then)
+
+
+def open_folder_in_new_window(
+    path: str, *, then: Callable[[sublime.Window], None] | None = None
+) -> None:
+    current_windows = set(sublime.windows())
     bin = get_sublime_executable()
     cmd = [bin, path]
     subprocess.Popen(cmd, startupinfo=STARTUPINFO)
 
     if then:
-        @runtime.on_worker
-        def search_for_new_window(_tries=5):
-            for w in sublime.windows():
-                if path in w.folders():
-                    then(w)
-                    return
-            sublime.set_timeout(lambda: search_for_new_window(_tries - 1), 10)
+        wait_for_new_window(
+            current_windows,
+            lambda window: path in window.folders(),
+            then
+        )
 
-        search_for_new_window()
+
+def wait_for_new_window(
+    current_windows: set[sublime.Window],
+    predicate: Callable[[sublime.Window], bool],
+    kont: Callable[[sublime.Window], None]
+) -> None:
+    @runtime.on_worker
+    def search(tries=5):
+        for window in set(sublime.windows()) - current_windows:
+            if predicate(window):
+                kont(window)
+                return
+
+        if tries:
+            sublime.set_timeout(lambda: search(tries - 1), 10)
+
+    search()
 
 
 def get_sublime_executable() -> str:

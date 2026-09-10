@@ -17,7 +17,7 @@ from ..git_command import GitCommand, GitSavvyError
 from ..ui__busy_spinner import busy_indicator
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
-from ..utils import open_folder_in_new_window
+from ..utils import open_worktree_in_new_window
 from GitSavvy.core import app_state
 from GitSavvy.core.fns import chain, filter_, pairwise
 from GitSavvy.core.utils import flash, is_younger_than
@@ -133,7 +133,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
       [w] create ad-hoc worktree from selected
       [d] delete                                    [h] fetch remote branches
       [D] delete (force)                            [m] merge selected into active branch
-      [R] rename (local)                            [M] fetch and merge into active branch
+      [R] rename branch / worktree directory        [M] fetch and merge into active branch
       [t] configure tracking                        [u] unset upstream on selected branch
 
       [f] open diff                                 [l] show log in a quick panel
@@ -650,7 +650,7 @@ class gs_branches_checkout(CommandForSingleItem):
                     w.run_command("gs_show_branch")
 
             worktree_path = self.selected_item.worktree.replace("/", os.path.sep)
-            open_folder_in_new_window(worktree_path, then=callback)
+            open_worktree_in_new_window(worktree_path, then=callback)
 
         else:
             self.window.run_command("gs_checkout_branch", {
@@ -820,18 +820,36 @@ def record_deleted_branch_undos(
             ref_undo.add_branch_undo(cmd, branch_name, ShortHash(commit_hash), undo_owner)
 
 
-class gs_branches_rename(CommandForSingleBranch):
+class gs_branches_rename(CommandForSingleItem):
 
     """
-    Rename selected branch.
+    Rename the selected branch or worktree directory.
     """
 
     def run(self, edit):
-        if self.selected_branch.is_remote:
+        if worktree_path := self.selected_item.worktree:
+            show_single_line_input_panel(
+                "Rename worktree directory:",
+                worktree_path,
+                partial(self.rename_worktree, worktree_path),
+                select_text=False
+            )
+        elif self.selected_item.is_remote:
             flash(self.view, "Cannot rename remote branches.")
+        elif self.selected_item.is_detached:
+            flash(self.view, "Cannot rename a detached HEAD.")
+        else:
+            self.window.run_command("gs_rename_branch", {
+                "branch": self.selected_item.branch_name
+            })
+
+    @on_worker
+    def rename_worktree(self, current_path: str, new_path: str) -> None:
+        if not new_path or new_path == current_path:
             return
 
-        self.window.run_command("gs_rename_branch", {"branch": self.selected_branch.name})
+        self.move_worktree(current_path, new_path)
+        util.view.refresh_gitsavvy(self.view)
 
 
 class gs_branches_configure_tracking(CommandForSingleBranch):
