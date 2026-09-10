@@ -81,18 +81,5 @@ similarity index 59%
 #         ^ markup.inserted.diff.content
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ markup.inserted.diff
 
-In the midlle {+inserted+} of the word
-#             ^ punctuation.definition.inserted.diff
-#              ^ punctuation.definition.inserted.diff
-#               ^^^^^^^^ markup.inserted.git-savvy.add-block.content
-#                       ^ punctuation.definition.inserted.diff
-#                        ^ punctuation.definition.inserted.diff
-#             ^^^^^^^^^^^^ markup.inserted.git-savvy.add-block
-
-In the midlle [-deleted-] of the word
-#             ^ punctuation.definition.deleted.diff
-#              ^ punctuation.definition.deleted.diff
-#               ^^^^^^^ markup.deleted.git-savvy.delete-block.content
-#                      ^ punctuation.definition.deleted.diff
-#                       ^ punctuation.definition.deleted.diff
-#             ^^^^^^^^^^^ markup.deleted.git-savvy.delete-block
+ const SEMVER_TAG_RE = /^v?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/
+#                                          ^^^^^^^^^^^^^^^^^ - markup.deleted.git-savvy.delete-block

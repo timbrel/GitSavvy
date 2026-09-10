@@ -128,20 +128,4 @@ contexts:
         1: punctuation.definition.deleted.diff
         2: markup.deleted.diff.content
 
-    - match: (\{\+)(.+?)(\+\})
-      comment: Add block/sections
-      scope: markup.inserted.git-savvy.add-block
-      captures:
-        1: punctuation.definition.inserted.diff
-        2: markup.inserted.git-savvy.add-block.content
-        3: punctuation.definition.inserted.diff
-
-    - match: (\[\-)(.+?)(\-\])
-      comment: Delete block/sections
-      scope: markup.deleted.git-savvy.delete-block
-      captures:
-        1: punctuation.definition.deleted.diff
-        2: markup.deleted.git-savvy.delete-block.content
-        3: punctuation.definition.deleted.diff
-
     - include: "scope:git-savvy.commit-diffstat"
