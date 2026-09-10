@@ -1,0 +1,29 @@
+GitSavvy 2.60.0
+===============
+
+
+* GitSavvy now remembers some app state across restarts.  For example, it keeps
+  the last-used remotes, your preferred Blame format, and dashboard toggles.
+
+* The dashboards have always needed some color overrides or additions.
+  And we used decade-old ways for that.
+
+  I rewrote that now and it was truly painful.  Fallout:
+
+  Colors configured in the settings finally apply immediately, and your own
+  overrides in User settings should be applied consistently.
+
+* A major pain point when using worktrees (especially temporary, ad-hoc ones) is
+  IMO that they don't carry project information with them (because who commits
+  Sublime configuration files these days).
+
+  This release attempts to fix that.  You can control it with the new setting
+  `copy_active_project_file_to_new_worktrees`.
+
+* `disable_context_menus` works again.  🌞
+
+Also: You can now use `R` on a worktree in the Branches dashboard to
+move/rename its directory.
+
+
+Appreciate your 💖 too: https://paypal.me/herrkaste 🫶
