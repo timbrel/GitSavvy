@@ -32,7 +32,7 @@ class gs_tab_cycle(TextCommand, GitCommand):
                 self.view.close()
 
     def get_next(self, source, reverse=False):
-        tab_order = self.savvy_settings.get("tab_order")
+        tab_order = self.app_settings.get("tab_order")
 
         try:
             idx = tab_order.index(source)

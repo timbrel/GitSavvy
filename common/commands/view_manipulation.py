@@ -16,9 +16,9 @@ class gs_handle_vintageous(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        if self.savvy_settings.get("vintageous_friendly"):
+        if self.app_settings.get("vintageous_friendly"):
             self.view.settings().set("git_savvy.vintageous_friendly", True)
-            if self.savvy_settings.get("vintageous_enter_insert_mode"):
+            if self.app_settings.get("vintageous_enter_insert_mode"):
                 self.view.settings().set("vintageous_reset_mode_when_switching_tabs", False)
                 # NeoVintageous renamed the command starting with v1.22.0.
                 # We call both commands for backwards compatibility.
@@ -34,5 +34,5 @@ class gs_handle_arrow_keys(TextCommand, GitCommand):
     """
 
     def run(self, edit):
-        if self.savvy_settings.get("arrow_keys_navigation"):
+        if self.app_settings.get("arrow_keys_navigation"):
             self.view.settings().set("git_savvy.arrow_keys_navigation", True)

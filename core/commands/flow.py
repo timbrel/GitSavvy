@@ -27,7 +27,7 @@ class FlowMixin(GsWindowCommand):
             show_noop_panel(self.window, INIT_REQUIRED_MSG)
 
     def is_visible(self, **kwargs):
-        return self.savvy_settings.get("show_git_flow_commands") or False
+        return self.project_settings.get("show_git_flow_commands") or False
 
     def get_flow_settings(self):
         flow_ver = self.git("flow", "version")

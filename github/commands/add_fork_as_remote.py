@@ -40,7 +40,7 @@ class gs_github_add_fork_as_remote(git_mixins.GithubRemotesMixin, GsWindowComman
         show_paginated_panel(
             forks_,
             self.on_select_fork,
-            limit=self.savvy_settings.get("github_per_page_max", 100),
+            limit=self.app_settings.get("github_per_page_max", 100),
             format_item=lambda fork: (fork["full_name"], fork),
             status_message="Getting forks...")
 

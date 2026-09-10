@@ -350,7 +350,7 @@ class _GitCommand(SettingsMixin):
         command_str = util.debug.pretty_git_command(command[1:])
 
         if show_panel is None:
-            show_panel = git_cmd in self.savvy_settings.get("show_panel_for")
+            show_panel = git_cmd in self.app_settings.get("show_panel_for")
 
         log = None
         if show_panel:
@@ -375,7 +375,7 @@ class _GitCommand(SettingsMixin):
             window.extract_variables(),
             os.environ
         )
-        savvy_env = self.savvy_settings.get("env") or {}
+        savvy_env = self.project_settings.get("env") or {}
         savvy_env_expanded = {
             k: sublime.expand_variables(v, vars_for_replace)
             for k, v in savvy_env.items()
@@ -554,7 +554,7 @@ class _GitCommand(SettingsMixin):
         return [
             'utf-8',
             locale.getpreferredencoding(),
-            self.savvy_settings.get("fallback_encoding")
+            self.project_settings.get("fallback_encoding")
         ]
 
     def strict_decode(self, input):
@@ -602,7 +602,7 @@ class _GitCommand(SettingsMixin):
         global binary_not_found_message_displayed, git_too_old_message_displayed
         global git_binaries
 
-        git_path_setting = self.savvy_settings.get("git_path")
+        git_path_setting = self.project_settings.get("git_path")
         git_path = (
             (
                 git_path_setting.get(sublime.platform())
@@ -859,8 +859,8 @@ class _GitCommand(SettingsMixin):
         Transforms the Git command arguments with flags indicated in the
         global GitSavvy settings.
         """
-        global_pre_flags = self.savvy_settings.get("global_pre_flags", {}).get(git_cmd, [])
-        global_flags = self.savvy_settings.get("global_flags", {}).get(git_cmd, [])
+        global_pre_flags = self.project_settings.get("global_pre_flags", {}).get(git_cmd, [])
+        global_flags = self.project_settings.get("global_flags", {}).get(git_cmd, [])
         return global_pre_flags + [git_cmd] + global_flags + args
 
 

@@ -170,7 +170,7 @@ class gs_checkout_current_file_at_commit(LogMixin, WindowCommand, GitCommand):
             super().run(file_path=self.file_path)
 
     def on_highlight(self, commit, file_path=None):
-        if not self.savvy_settings.get("log_show_more_commit_info", True):
+        if not self.app_settings.get("log_show_more_commit_info", True):
             return
         if commit:
             self.window.run_command('gs_show_file_diff', {

@@ -49,7 +49,7 @@ class LogMixin(GitCommand):
     def run_async(self, *, file_path=None, **kwargs):
         follow = kwargs.pop(
             "follow",
-            self.savvy_settings.get("log_follow_rename") if file_path else False
+            self.project_settings.get("log_follow_rename") if file_path else False
         )
         entries = self.log_generator(file_path=file_path, follow=follow, **kwargs)
         # `on_highlight` gets called on `on_done` as well with the same
@@ -96,7 +96,7 @@ class LogMixin(GitCommand):
     def on_highlight(self, commit, file_path=None):
         if not commit:
             return
-        if not self.savvy_settings.get("log_show_more_commit_info", True):
+        if not self.app_settings.get("log_show_more_commit_info", True):
             return
         window = self._current_window()
         if window:
@@ -300,7 +300,7 @@ class gs_log_action(PanelActionMixin, WindowCommand):
         assert self._file_path
         file_path = (
             self.filename_at_commit(self._file_path, self._commit_hash)
-            if self.savvy_settings.get("log_follow_rename") else
+            if self.project_settings.get("log_follow_rename") else
             self._file_path
         )
         self.checkout_ref(self._commit_hash, fpath=file_path)

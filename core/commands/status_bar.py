@@ -43,7 +43,7 @@ class gs_draw_status_bar(TextCommand, GitCommand):
 
     def run(self, edit, repo_path=None):
         view = self.view
-        if not self.savvy_settings.get("git_status_in_status_bar"):
+        if not self.app_settings.get("git_status_in_status_bar"):
             view.erase_status(STATUSBAR_KEY)
             return
 

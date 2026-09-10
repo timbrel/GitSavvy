@@ -15,7 +15,7 @@ from GitSavvy.core.commands.log_graph import (
 from GitSavvy.core.commands.log_graph_renderer import gs_log_graph_refresh
 from GitSavvy.core.commands.show_commit_info import gs_show_commit_info
 from GitSavvy.core.git_mixins.status import WorkingDirState
-from GitSavvy.core.settings import GitSavvySettings
+from GitSavvy.core.settings import app_settings
 
 
 RUNNING_ON_LINUX = os.environ.get('RUNNER_OS') == 'Linux'
@@ -142,11 +142,10 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         view.set_scratch(True)
         view.close()
 
-    def set_global_setting(self, key, value):
-        settings = GitSavvySettings()
-        original_value = settings.get(key)
-        settings.set(key, value)
-        self.addCleanup(settings.set, key, original_value)
+    def set_app_setting(self, key, value):
+        original_value = app_settings.get(key)
+        app_settings.set(key, value)
+        self.addCleanup(app_settings.set, key, original_value)
 
     def set_app_state(self, key, value, default):
         original_value = app_state.get(key, default)
@@ -183,7 +182,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
             show_commit_info_setting,
             default=True
         )
-        self.set_global_setting('git_status_in_status_bar', False)
+        self.set_app_setting('git_status_in_status_bar', False)
         self.register_commit_info({
             'fec0aca': COMMIT_1,
             'f461ea1': COMMIT_2

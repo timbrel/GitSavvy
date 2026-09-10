@@ -245,7 +245,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
                 skip_commit_key='k' if not vintageous_friendly else 'K')
 
     def preserve_merges(self):
-        default = self.savvy_settings.get("rebase_preserve_merges")
+        default = self.project_settings.get("rebase_preserve_merges")
         return not self.in_rebase_apply() and \
             (self.in_rebase_merge() or
              self.view.settings().get("git_savvy.rebase.preserve_merges", default))
@@ -332,7 +332,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
         base_ref = self.view.settings().get("git_savvy.rebase.base_ref")
 
         if not base_ref or reset_ref:
-            base_ref = self.savvy_settings.get("rebase_default_base_ref")
+            base_ref = self.project_settings.get("rebase_default_base_ref")
 
             if not base_ref:
                 # use remote tracking branch as a sane default
@@ -1003,7 +1003,7 @@ class gs_rebase_toggle_preserve_mode(RebaseInterfaceCommand):
     def run(self, edit):
         preserve = self.view.settings().get("git_savvy.rebase.preserve_merges", False)
         self.view.settings().set("git_savvy.rebase.preserve_merges", not preserve)
-        self.savvy_settings.set("rebase_preserve_merges", not preserve)
+        self.app_settings.set("rebase_preserve_merges", not preserve)
         util.view.refresh_gitsavvy(self.view)
 
 

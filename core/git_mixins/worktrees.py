@@ -103,7 +103,7 @@ class WorktreesMixin(mixin_base):
         #       computation.  Change when needed.
         project = (
             self._project_for_new_worktree()
-            if self.savvy_settings.get("copy_active_project_file_to_new_worktrees", True)
+            if self.app_settings.get("copy_active_project_file_to_new_worktrees", True)
             else None
         )
         if not worktree_path:

@@ -964,7 +964,7 @@ class gs_log_graph_refresh(GsTextCommand):
 
             return args
 
-        follow = self.savvy_settings.get("log_follow_rename")
+        follow = self.project_settings.get("log_follow_rename")
         all_branches = settings.get("git_savvy.log_graph_view.all_branches")
         branches = settings.get("git_savvy.log_graph_view.branches")
         paths = settings.get("git_savvy.log_graph_view.paths", [])  # type: List[str]

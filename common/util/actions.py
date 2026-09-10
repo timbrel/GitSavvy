@@ -2,7 +2,7 @@ from functools import wraps
 
 import sublime
 
-from ...core.settings import GitSavvySettings
+from ...core.settings import app_settings
 
 from typing import Callable, Optional, TypeVar, TYPE_CHECKING
 T = TypeVar('T')
@@ -16,7 +16,7 @@ def destructive(description: str) -> "Callable[[Callable[P, T]], Callable[P, Opt
     def decorator(fn: "Callable[P, T]") -> "Callable[P, Optional[T]]":
         @wraps(fn)
         def wrapped_fn(*args: "P.args", **kwargs: "P.kwargs") -> Optional[T]:
-            if GitSavvySettings().get("prompt_before_destructive_action"):
+            if app_settings.get("prompt_before_destructive_action"):
                 message = (
                     "You are about to {desc}.  "
                     "This is a destructive action.  \n\n"

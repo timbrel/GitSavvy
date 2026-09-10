@@ -10,7 +10,7 @@ from webbrowser import open as open_in_browser
 
 from ..common import interwebs, util
 from ..core.exceptions import FailedGitLabRequest
-from ..core.settings import GitSavvySettings
+from ..core.settings import app_settings
 
 
 GITLAB_PER_PAGE_MAX = 100
@@ -73,7 +73,7 @@ def parse_remote(remote):
         return None
 
     fqdn, owner, repo = match.groups()
-    token = GitSavvySettings().get("api_tokens", {}).get(fqdn) or os.environ.get("GITLAB_TOKEN")
+    token = app_settings.get("api_tokens", {}).get(fqdn) or os.environ.get("GITLAB_TOKEN")
     return GitLabRepo(url, fqdn, owner, repo, token)
 
 

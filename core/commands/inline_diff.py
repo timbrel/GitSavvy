@@ -388,7 +388,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         in_cached_mode = settings.get("git_savvy.inline_diff_view.in_cached_mode")
         base_commit = settings.get("git_savvy.inline_diff_view.base_commit")
         target_commit = settings.get("git_savvy.inline_diff_view.target_commit")
-        ignore_eol_ws = self.savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
+        ignore_eol_ws = self.app_settings.get("inline_diff_ignore_eol_whitespaces", True)
         if target_commit and not base_commit:
             target_commit = "{}^".format(target_commit)
 
@@ -468,7 +468,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         navigate_to_first_hunk = (
             match_position is None
             and view.size() == 0  # t.i. only on the initial draw!
-            and self.savvy_settings.get("inline_diff_auto_scroll", True)
+            and self.app_settings.get("inline_diff_auto_scroll", True)
         )
 
         with reapply_possible_fold(view):
@@ -752,7 +752,7 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
 
         ignore_ws = (
             "--ignore-whitespace"
-            if self.savvy_settings.get("inline_diff_ignore_eol_whitespaces", True)
+            if self.app_settings.get("inline_diff_ignore_eol_whitespaces", True)
             else None
         )
         frozen_sel = [s for s in self.view.sel()]

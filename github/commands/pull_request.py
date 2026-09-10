@@ -56,7 +56,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
         pp = show_paginated_panel(
             self.pull_requests,
             self.on_select_pr,
-            limit=self.savvy_settings.get("github_per_page_max", 100),
+            limit=self.app_settings.get("github_per_page_max", 100),
             format_item=self.format_item,
             status_message="Getting pull requests..."
         )

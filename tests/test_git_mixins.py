@@ -495,12 +495,16 @@ class WorktreeCreationTestRepo(WorktreesMixin):
         copy_project=True
     ):
         self._repo_path = repo_path
-        self._savvy_settings = {
+        self._app_settings = {
             "copy_active_project_file_to_new_worktrees": copy_project
         }
         self.window = WorktreeCreationTestWindow(project_file, project_data)
         self.tracked = tracked
         self.checked_out_project = checked_out_project
+
+    @property
+    def app_settings(self):
+        return self._app_settings
 
     @property
     def repo_path(self):
