@@ -124,13 +124,12 @@ class RemotesInterface(ui.ReactiveInterface):
     def render_remote_list(self, remote_info: RemoteInfoBlob) -> str:
         remote_infos = remote_info.remotes
         if not remote_infos:
-            return "\n  ** No remotes configured. **"
+            return "\n  ** No remotes configured. **\n"
 
         show_markers = len(remote_infos) > 1
         name_width = max(len(remote.name) for remote in remote_infos)
-
-        return "\n".join(
-            f"\n{rendered}\n" if "\n" in rendered else rendered
+        rendered_remotes = [
+            rendered
             for remote in remote_infos
             if (rendered := self.render_remote(
                 remote,
@@ -139,7 +138,13 @@ class RemotesInterface(ui.ReactiveInterface):
                 remote_info.integration_remote,
                 name_width
             ))
-        ).lstrip("\n")
+        ]
+
+        output = rendered_remotes[0]
+        for previous, rendered in zip(rendered_remotes, rendered_remotes[1:]):
+            separator = "\n\n" if "\n" in previous or "\n" in rendered else "\n"
+            output += separator + rendered
+        return output + "\n"
 
     @ui.section("help")
     def render_help(self, show_help: bool) -> str:
