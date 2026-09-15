@@ -242,6 +242,7 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
 class TestAheadBehindBackgroundProbes(TestGitMixinsUsage):
     def setUp(self):
         self.scheduled_tasks = []
+        self.scheduled_delays = []
         when(git_mixins.branches).run_when_worker_is_idle(...).thenAnswer(
             self.schedule_task
         )
@@ -296,6 +297,7 @@ class TestAheadBehindBackgroundProbes(TestGitMixinsUsage):
         self.run_all_tasks()
 
         self.assertEqual(repo.ahead_behind_queries, 6)
+        self.assertEqual(self.scheduled_delays, [1000, 10000, 60000, 600000])
         self.assertEqual(repo.plain_queries, 1)
         self.assertEqual(repo.commit_graph_writes, 1)
         self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 2)
@@ -358,7 +360,7 @@ class TestAheadBehindBackgroundProbes(TestGitMixinsUsage):
 
         self.assertEqual(repo.ahead_behind_queries, 1)
 
-    def test_failed_slow_repo_probe_schedules_the_next_probe_for_later(self):
+    def test_known_slow_repo_only_gets_three_probes(self):
         now = time.time()
         repo = SlowBranchesRepo({
             "ahead_behind_consecutive_failures": 2,
@@ -369,7 +371,8 @@ class TestAheadBehindBackgroundProbes(TestGitMixinsUsage):
         repo.get_branches()
         self.run_all_tasks()
 
-        self.assertEqual(repo.ahead_behind_queries, 5)
+        self.assertEqual(repo.ahead_behind_queries, 3)
+        self.assertEqual(self.scheduled_delays, [60000, 600000])
         self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 3)
         self.assertGreaterEqual(
             repo.state["ahead_behind_retry_at"],
@@ -381,6 +384,7 @@ class TestAheadBehindBackgroundProbes(TestGitMixinsUsage):
         self.scheduled_tasks.append((fn, args, kwargs))
 
     def schedule_delayed_task(self, after, fn, *args, **kwargs):
+        self.scheduled_delays.append(after)
         self.schedule_task(fn, *args, **kwargs)
 
     def run_next_task(self):

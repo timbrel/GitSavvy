@@ -21,6 +21,7 @@ FOR_EACH_REF_SUPPORTS_AHEAD_BEHIND = (2, 41, 0)
 FOR_EACH_REF_SUPPORTS_WORKTREEPATH = (2, 23, 0)
 AHEAD_BEHIND_QUERY_TIMEOUT = 0.2  # [s]
 AHEAD_BEHIND_PROBE_DELAYS = (0, 1, 10, 60, 10 * 60)  # [s]
+AHEAD_BEHIND_SLOW_PROBE_DELAYS = (0, 60, 10 * 60)  # [s]
 AHEAD_BEHIND_SLOW_RETRY_INTERVAL = 60 * 60  # [s]
 COMMIT_GRAPH_WRITE_INTERVAL = 60 * 60  # [s]
 # Retry deadlines and graph-write times persist, so use time.time(), not monotonic time.
@@ -163,7 +164,7 @@ class BranchesMixin(mixin_base):
                 raise
 
         elif supports_ahead_behind:
-            self._schedule_ahead_behind_probe(refs, merged)
+            self._schedule_ahead_behind_probe(refs, merged, full_probe=False)
 
         return self._get_branches(refs, merged, with_ahead_behind=False)
 
@@ -225,19 +226,25 @@ class BranchesMixin(mixin_base):
     def _schedule_ahead_behind_probe(
         self,
         refs: Sequence[str],
-        merged: Optional[bool]
+        merged: Optional[bool],
+        *,
+        full_probe: bool = True
     ) -> None:
         # Avoid filling the worker queue while a known-slow repo is cooling down.
         retry_at = self.current_state().get("ahead_behind_retry_at", 0)
         if time.time() >= retry_at:
             run_when_worker_is_idle(
-                self._start_ahead_behind_probe_if_due, refs, merged
+                self._start_ahead_behind_probe_if_due,
+                refs,
+                merged,
+                full_probe
             )
 
     def _start_ahead_behind_probe_if_due(
         self,
         refs: Sequence[str],
-        merged: Optional[bool]
+        merged: Optional[bool],
+        full_probe: bool
     ) -> None:
         # Multiple callers can schedule this before the first task starts.
         # Re-check on the serialized worker: an earlier task may have claimed
@@ -255,12 +262,13 @@ class BranchesMixin(mixin_base):
             "ahead_behind_retry_at": now + AHEAD_BEHIND_SLOW_RETRY_INTERVAL
         })
         self._write_commit_graph_if_due()
-        self._run_ahead_behind_probe(refs, merged, attempt=0)
+        self._run_ahead_behind_probe(refs, merged, full_probe, attempt=0)
 
     def _run_ahead_behind_probe(
         self,
         refs: Sequence[str],
         merged: Optional[bool],
+        full_probe: bool,
         *,
         attempt: int
     ) -> None:
@@ -273,20 +281,26 @@ class BranchesMixin(mixin_base):
                 hprint(f"Ahead/behind probe raised: {e}")
                 return
 
+            probe_delays = (
+                AHEAD_BEHIND_PROBE_DELAYS
+                if full_probe
+                else AHEAD_BEHIND_SLOW_PROBE_DELAYS
+            )
             next_attempt = attempt + 1
-            if next_attempt < len(AHEAD_BEHIND_PROBE_DELAYS):
+            if next_attempt < len(probe_delays):
                 run_when_worker_is_idle_after(
-                    AHEAD_BEHIND_PROBE_DELAYS[next_attempt] * 1000,
+                    probe_delays[next_attempt] * 1000,
                     self._run_ahead_behind_probe,
                     refs,
                     merged,
+                    full_probe,
                     attempt=next_attempt
                 )
             else:
                 self._record_slow_ahead_behind_query()
                 hprint(
                     "Ahead/behind queries are still slow after "
-                    f"{len(AHEAD_BEHIND_PROBE_DELAYS)} background probes."
+                    f"{len(probe_delays)} background probes."
                 )
             return
 
