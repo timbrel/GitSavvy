@@ -243,6 +243,9 @@ class TestAheadBehindBackgroundProbes(TestGitMixinsUsage):
     def setUp(self):
         self.scheduled_tasks = []
         self.scheduled_delays = []
+        when(git_mixins.branches).run_on_new_thread(...).thenAnswer(
+            lambda fn, *args, **kwargs: fn(*args, **kwargs)
+        )
         when(git_mixins.branches).run_when_worker_is_idle(...).thenAnswer(
             self.schedule_task
         )
@@ -269,7 +272,7 @@ class TestAheadBehindBackgroundProbes(TestGitMixinsUsage):
         self.assertEqual(repo.commit_graph_writes, 0)
         self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 1)
 
-        self.run_next_task()
+        self.run_all_tasks()
 
         self.assertEqual(repo.ahead_behind_queries, 2)
         self.assertEqual(repo.commit_graph_writes, 1)
@@ -282,7 +285,7 @@ class TestAheadBehindBackgroundProbes(TestGitMixinsUsage):
         repo.get_branches()
         self.assertIsNone(repo.state["branches"][0].distance_to_head)
 
-        self.run_next_task()
+        self.run_all_tasks()
 
         self.assertEqual(
             repo.state["branches"][0].distance_to_head,
@@ -341,7 +344,7 @@ class TestAheadBehindBackgroundProbes(TestGitMixinsUsage):
         self.assertEqual(repo.plain_queries, 1)
         self.assertEqual(len(self.scheduled_tasks), 1)
 
-        self.run_next_task()
+        self.run_all_tasks()
 
         self.assertEqual(repo.ahead_behind_queries, 1)
         self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 0)

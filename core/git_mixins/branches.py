@@ -8,6 +8,7 @@ from GitSavvy.core.exceptions import GitSavvyError
 from GitSavvy.core.caches import cache_in_store_as
 from GitSavvy.core.utils import hprint, yes_no_switch
 from GitSavvy.core.runtime import (
+    run_on_new_thread,
     run_when_worker_is_idle,
     run_when_worker_is_idle_after
 )
@@ -261,8 +262,20 @@ class BranchesMixin(mixin_base):
         self.update_store({
             "ahead_behind_retry_at": now + AHEAD_BEHIND_SLOW_RETRY_INTERVAL
         })
-        self._write_commit_graph_if_due()
-        self._run_ahead_behind_probe(refs, merged, full_probe, attempt=0)
+
+        def task():
+            self._write_commit_graph_if_due()
+            # Run on worker, _get_branches runs with a short timeout,
+            # and eventually, when successful, updates the store.
+            run_when_worker_is_idle(
+                self._run_ahead_behind_probe,
+                refs,
+                merged,
+                full_probe,
+                attempt=0
+            )
+
+        run_on_new_thread(task)
 
     def _run_ahead_behind_probe(
         self,
