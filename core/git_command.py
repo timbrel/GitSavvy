@@ -411,11 +411,22 @@ class _GitCommand(SettingsMixin):
 
             if log:
                 log_b = lambda line: log(line.decode("utf-8", "replace"))
+                # May raise TimeoutError
                 stdout, stderr = communicate_and_log(p, stdin, log_b, timeout=timeout)
             else:
+                # May raise TimeoutExpired
                 stdout, stderr = p.communicate(stdin, timeout=timeout)
 
-        except (subprocess.TimeoutExpired, TimeoutError):
+        except (subprocess.TimeoutExpired, TimeoutError) as e:
+            assert p is not None
+            if not proc_has_been_killed(p):
+                try_kill_proc(p)
+            if isinstance(e, subprocess.TimeoutExpired):
+                # `communicate` leaves the process running on timeout.  After
+                # killing it, call `communicate` again to drain the pipes and
+                # reap the process.
+                p.communicate()
+
             raise GitSavvyError(
                 "$ {} ({})\n\n"
                 "Timeout after {} seconds:\n\n{}".format(

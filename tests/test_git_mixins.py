@@ -239,71 +239,181 @@ class TestGetBranchesParsing(TestGitMixinsUsage):
         ])
 
 
-class TestAheadBehindCircuitBreaker(TestGitMixinsUsage):
-    def test_diagnostic_result_does_not_reset_timeout_state(self):
-        now = time.time()
-        repo = SlowBranchesRepo()
+class TestAheadBehindBackgroundProbes(TestGitMixinsUsage):
+    def setUp(self):
+        self.scheduled_tasks = []
+        self.scheduled_delays = []
+        when(git_mixins.branches).run_on_new_thread(...).thenAnswer(
+            lambda fn, *args, **kwargs: fn(*args, **kwargs)
+        )
+        when(git_mixins.branches).run_when_worker_is_idle(...).thenAnswer(
+            self.schedule_task
+        )
+        when(git_mixins.branches).run_when_worker_is_idle_after(...).thenAnswer(
+            self.schedule_delayed_task
+        )
 
-        when(git_mixins.branches).run_on_new_thread(...).thenAnswer(lambda fn: fn())
+    def test_missing_head_retries_without_ahead_behind(self):
+        repo = SlowBranchesRepo(head_missing=True)
+
         repo.get_branches()
 
+        self.assertEqual(repo.ahead_behind_queries, 1)
+        self.assertEqual(repo.plain_queries, 1)
+        self.assertEqual(self.scheduled_tasks, [])
+
+    def test_a_hiccup_is_confirmed_in_the_background(self):
+        repo = SlowBranchesRepo()
+
+        repo.get_branches()
+
+        self.assertEqual(repo.ahead_behind_queries, 1)
+        self.assertEqual(repo.plain_queries, 1)
+        self.assertEqual(repo.commit_graph_writes, 0)
         self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 1)
-        self.assertGreaterEqual(repo.state["ahead_behind_retry_at"], now + 1)
-        self.assertEqual(repo.commit_graph_writes, 1)
+
+        self.run_all_tasks()
+
         self.assertEqual(repo.ahead_behind_queries, 2)
+        self.assertEqual(repo.commit_graph_writes, 1)
+        self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 0)
+        self.assertEqual(repo.state["ahead_behind_retry_at"], 0)
+
+    def test_successful_probe_replaces_the_fallback_cache(self):
+        repo = SlowBranchesRepo(branch_output=True)
+
+        repo.get_branches()
+        self.assertIsNone(repo.state["branches"][0].distance_to_head)
+
+        self.run_all_tasks()
+
+        self.assertEqual(
+            repo.state["branches"][0].distance_to_head,
+            git_mixins.branches.AheadBehind(2, 4)
+        )
+
+    def test_a_slow_repo_is_confirmed_after_five_background_probes(self):
+        now = time.time()
+        repo = SlowBranchesRepo(timeouts=6)
+
+        repo.get_branches()
+        self.run_all_tasks()
+
+        self.assertEqual(repo.ahead_behind_queries, 6)
+        self.assertEqual(self.scheduled_delays, [1000, 10000, 60000, 600000])
+        self.assertEqual(repo.plain_queries, 1)
+        self.assertEqual(repo.commit_graph_writes, 1)
+        self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 2)
+        self.assertGreaterEqual(
+            repo.state["ahead_behind_retry_at"],
+            now + git_mixins.branches.AHEAD_BEHIND_SLOW_RETRY_INTERVAL
+        )
 
     def test_commit_graph_write_is_rate_limited(self):
         repo = SlowBranchesRepo({"last_commit_graph_write": time.time()})
 
         repo.get_branches()
+        self.run_all_tasks()
 
-        self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 1)
         self.assertEqual(repo.commit_graph_writes, 0)
-        self.assertEqual(repo.ahead_behind_queries, 1)
+        self.assertEqual(repo.ahead_behind_queries, 2)
+        self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 0)
 
-    def test_queries_without_ahead_behind_before_retry_time(self):
+    def test_known_slow_repo_uses_the_fast_query_before_retry_time(self):
         repo = SlowBranchesRepo({
-            "ahead_behind_consecutive_failures": 1,
+            "ahead_behind_consecutive_failures": 2,
             "ahead_behind_retry_at": time.time() + 60
         })
 
         repo.get_branches()
 
         self.assertEqual(repo.ahead_behind_queries, 0)
-        self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 1)
+        self.assertEqual(repo.plain_queries, 1)
+        self.assertEqual(self.scheduled_tasks, [])
 
-    def test_fast_retry_immediately_resets_failures(self):
-        retry_at = time.time() - 1
+    def test_due_probe_does_not_interrupt_a_known_slow_repo(self):
         repo = SlowBranchesRepo({
-            "ahead_behind_consecutive_failures": 3,
-            "ahead_behind_retry_at": retry_at
+            "ahead_behind_consecutive_failures": 2,
+            "ahead_behind_retry_at": time.time() - 1,
+            "last_commit_graph_write": time.time()
         }, timeouts=0)
 
         repo.get_branches()
 
+        self.assertEqual(repo.ahead_behind_queries, 0)
+        self.assertEqual(repo.plain_queries, 1)
+        self.assertEqual(len(self.scheduled_tasks), 1)
+
+        self.run_all_tasks()
+
         self.assertEqual(repo.ahead_behind_queries, 1)
         self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 0)
-        self.assertEqual(repo.state["ahead_behind_retry_at"], retry_at)
 
-    def test_repeated_timeout_increases_retry_delay(self):
+    def test_duplicate_schedules_only_start_one_probe(self):
+        state = {
+            "ahead_behind_consecutive_failures": 2,
+            "ahead_behind_retry_at": time.time() - 1,
+            "last_commit_graph_write": time.time()
+        }
+        repo = SlowBranchesRepo(state, timeouts=0)
+
+        repo.get_branches()
+        repo.get_branches()
+        self.run_all_tasks()
+
+        self.assertEqual(repo.ahead_behind_queries, 1)
+
+    def test_known_slow_repo_only_gets_three_probes(self):
         now = time.time()
         repo = SlowBranchesRepo({
             "ahead_behind_consecutive_failures": 2,
             "ahead_behind_retry_at": now,
             "last_commit_graph_write": now
-        })
+        }, timeouts=5)
 
         repo.get_branches()
+        self.run_all_tasks()
 
+        self.assertEqual(repo.ahead_behind_queries, 3)
+        self.assertEqual(self.scheduled_delays, [60000, 600000])
         self.assertEqual(repo.state["ahead_behind_consecutive_failures"], 3)
-        self.assertGreaterEqual(repo.state["ahead_behind_retry_at"], now + 60)
+        self.assertGreaterEqual(
+            repo.state["ahead_behind_retry_at"],
+            now + git_mixins.branches.AHEAD_BEHIND_SLOW_RETRY_INTERVAL
+        )
+
+    def schedule_task(self, fn, *args, **kwargs):
+        kwargs.pop("after", None)
+        self.scheduled_tasks.append((fn, args, kwargs))
+
+    def schedule_delayed_task(self, after, fn, *args, **kwargs):
+        self.scheduled_delays.append(after)
+        self.schedule_task(fn, *args, **kwargs)
+
+    def run_next_task(self):
+        fn, args, kwargs = self.scheduled_tasks.pop(0)
+        fn(*args, **kwargs)
+
+    def run_all_tasks(self):
+        while self.scheduled_tasks:
+            self.run_next_task()
 
 
 class SlowBranchesRepo(git_mixins.branches.BranchesMixin):
-    def __init__(self, state=None, *, timeouts=1):
+    def __init__(
+        self,
+        state=None,
+        *,
+        timeouts=1,
+        branch_output=False,
+        head_missing=False
+    ):
         self.state = state or {}
         self.timeouts = timeouts
+        self.branch_output = branch_output
+        self.head_missing = head_missing
         self.ahead_behind_queries = 0
+        self.plain_queries = 0
         self.commit_graph_writes = 0
 
     @property
@@ -323,11 +433,25 @@ class SlowBranchesRepo(git_mixins.branches.BranchesMixin):
 
         if any("%(ahead-behind:HEAD)" in str(arg) for arg in args):
             self.ahead_behind_queries += 1
+            if self.head_missing:
+                raise GitSavvyError(
+                    "", stderr="fatal: failed to find 'HEAD'", show_panel=False
+                )
             if self.ahead_behind_queries <= self.timeouts:
                 raise GitSavvyError(
                     "", stderr="timed out after 0.2 seconds", show_panel=False
                 )
+            ahead_behind = "2 4"
+        else:
+            self.plain_queries += 1
+            ahead_behind = ""
 
+        if self.branch_output:
+            return join0(
+                [" ", "refs/heads/master", "refs/remotes/origin/master", "origin", ""]
+                + date_sha_and_subject
+                + [ahead_behind, ""]
+            )
         return ""
 
 

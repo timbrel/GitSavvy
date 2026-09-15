@@ -141,7 +141,21 @@ def enqueue_on_worker(fn, *args, **kwargs):
     _enqueued_tasks.inc()
 
 
-def run_when_worker_is_idle(fn, *args, **kwargs):
+def run_when_worker_is_idle(
+    fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs
+) -> None:
+    _run_when_worker_is_idle(0, fn, *args, **kwargs)
+
+
+def run_when_worker_is_idle_after(
+    after: int, fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs
+) -> None:
+    _run_when_worker_is_idle(after, fn, *args, **kwargs)
+
+
+def _run_when_worker_is_idle(
+    after: int, fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs
+) -> None:
     action = partial(fn, *args, **kwargs)
 
     def task():
@@ -150,13 +164,12 @@ def run_when_worker_is_idle(fn, *args, **kwargs):
         else:
             sublime.set_timeout_async(task)
 
-    _enqueue_on_worker(task)
+    _enqueue_on_worker(task, after)
 
 
-def _enqueue_on_worker(fn):
-    # type: (Callable[[], T]) -> None
+def _enqueue_on_worker(fn: Callable[[], T], after: int = 0) -> None:
     fn_ = user_friendly_traceback((RuntimeError, GitSavvyError))(fn)
-    sublime.set_timeout_async(fn_)
+    sublime.set_timeout_async(fn_, after)
 
 
 def run_on_new_thread(fn, *args, **kwargs):
