@@ -86,7 +86,7 @@ def show_popup(
         view.update_popup(content)
     else:
         def __on_hide(vid: sublime.ViewId, key: Tuple[int, int]) -> None:
-            POPUPS.pop(vid)
+            POPUPS.pop(vid, None)
             if on_hide:
                 on_hide()
 
@@ -100,7 +100,7 @@ def show_popup(
 
     def __hide_popup(vid: sublime.ViewId, key: Tuple[int, int], sink: Callable[[], None]) -> None:
         if POPUPS.get(vid) == key:
-            POPUPS.pop(vid)
+            POPUPS.pop(vid, None)
             sink()
 
     return partial(__hide_popup, vid, actual_key, inner_hide_popup)
