@@ -15,6 +15,7 @@ from types import SimpleNamespace
 import sublime
 
 from . import runtime
+from .types import FullPath
 
 
 from typing import Callable, Iterator, Optional, Sequence, Type, TypeVar
@@ -284,32 +285,8 @@ def proc_has_been_aborted_by_user(proc: subprocess.Popen) -> bool:
 
 
 # `realpath` also supports `bytes` and we don't, hence the indirection
-def _resolve_path(path):
-    # type: (str) -> str
-    return os.path.realpath(path)
-
-
-if (
-    sys.platform == "win32"
-    and sys.version_info < (3, 8)
-    and sys.getwindowsversion()[:2] >= (6, 0)
-):
-    try:
-        from nt import _getfinalpathname
-    except ImportError:
-        resolve_path = _resolve_path
-    else:
-        def resolve_path(path):
-            # type: (str) -> str
-            rpath = _getfinalpathname(path)
-            if rpath.startswith("\\\\?\\"):
-                rpath = rpath[4:]
-                if rpath.startswith("UNC\\"):
-                    rpath = "\\" + rpath[3:]
-            return rpath
-
-else:
-    resolve_path = _resolve_path
+def resolve_path(path: str) -> FullPath:
+    return FullPath(os.path.realpath(path))
 
 
 def paths_upwards(path):
