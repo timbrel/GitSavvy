@@ -382,8 +382,10 @@ class TestDescribeGraphLine(DeferrableTestCase):
 
     def test_filename_at_head_follows_renames_forward(self):
         test = HistoryMixin()
-        when(test).get_repo_path().thenReturn("/repo")
+        repo_path = os.path.abspath("/repo")
+        when(test).get_repo_path().thenReturn(repo_path)
         when(test).commit_is_ancestor_of_head("abc123").thenReturn(True)
+        when(os.path).exists(...).thenReturn(False)
 
         when(test).git("log", ...) \
             .thenReturn("rename1\0\nD\0old.py\0") \
@@ -393,8 +395,8 @@ class TestDescribeGraphLine(DeferrableTestCase):
             .thenReturn("M\0new.py\0")
 
         self.assertEqual(
-            test.filename_at_head("/repo/old.py", "abc123"),
-            os.path.normpath("/repo/new.py")
+            test.filename_at_head(os.path.join(repo_path, "old.py"), "abc123"),
+            os.path.join(repo_path, "new.py")
         )
 
     def test_find_matching_lineno_between_files_at_commits(self):
