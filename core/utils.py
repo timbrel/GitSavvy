@@ -289,11 +289,10 @@ def resolve_path(path: str) -> FullPath:
     return FullPath(os.path.realpath(path))
 
 
-def paths_upwards(path):
-    # type: (str) -> Iterator[str]
+def paths_upwards(path: FullPath) -> Iterator[FullPath]:
     while True:
         yield path
-        path, name = os.path.split(path)
+        path, name = os.path.split(path)  # type: ignore[assignment]
         if not name or path == "/":
             break
 

@@ -46,11 +46,11 @@ def map_(it: Iterable[T], k: Callable[[T], object]):
 git_binaries = {}  # type: Dict[str, Tuple[int, int, int]]
 binary_not_found_message_displayed, git_too_old_message_displayed = False, False
 
-repo_paths = {}  # type: Dict[str, str]
+repo_paths: dict[FullPath, FullPath] = {}
 #: A mapping from a repo_path to the actual ".git" path
 #: Typically this *is* "{repo_path}/.git"
-git_dirs: dict[str, FullPath] = {}
-git_common_dirs: dict[str, FullPath] = {}
+git_dirs: dict[FullPath, FullPath] = {}
+git_common_dirs: dict[FullPath, FullPath] = {}
 
 DECODE_ERROR_MESSAGE = """
 The Git command returned data that is unparsable.  This may happen
@@ -218,8 +218,7 @@ def log_git_runtime(fn):
     return decorated
 
 
-def __search_for_git(folder):
-    # type: (str) -> Optional[str]
+def __search_for_git(folder: FullPath) -> FullPath | None:
     for p in paths_upwards(folder):
         if is_git_directory(os.path.join(p, ".git")):
             return p
@@ -228,8 +227,7 @@ def __search_for_git(folder):
     return None
 
 
-def is_git_directory(suspect):
-    # type: (str) -> bool
+def is_git_directory(suspect: str) -> bool:
     try:
         st = os.stat(suspect)
     except (OSError, ValueError):
@@ -244,8 +242,7 @@ def is_git_directory(suspect):
     return ok
 
 
-def search_for_git(folder):
-    # type: (str) -> Optional[str]
+def search_for_git(folder: FullPath) -> FullPath | None:
     util.debug.dprint("searching .git repo starting at ", folder)
     try:
         return __search_for_git(folder)
@@ -254,8 +251,7 @@ def search_for_git(folder):
         return None
 
 
-def search_for_git_toplevel(start_folder):
-    # type: (str) -> Optional[str]
+def search_for_git_toplevel(start_folder: FullPath) -> FullPath | None:
     real_start_folder = resolve_path(start_folder)
     real_repo_path = search_for_git(real_start_folder)
     if real_start_folder == start_folder:
@@ -655,42 +651,37 @@ class _GitCommand(SettingsMixin):
         # type: () -> Tuple[int, int, int]
         return git_binaries[self.git_binary_path]
 
-    def _current_window(self):
-        # type: () -> Optional[sublime.Window]
+    def _current_window(self) -> sublime.Window | None:
         try:
             return self.window  # type: ignore[attr-defined]
         except AttributeError:
             return self.view.window()  # type: ignore[attr-defined]
 
-    def _current_view(self):
-        # type: () -> Optional[sublime.View]
+    def _current_view(self) -> sublime.View | None:
         try:
             return self.view  # type: ignore[attr-defined]
         except AttributeError:
             return self.window.active_view()  # type: ignore[attr-defined]
 
-    def _current_filename(self):
-        # type: () -> Optional[str]
+    def _current_filename(self) -> FullPath | None:
         try:
             return self.view.file_name()  # type: ignore[attr-defined]
         except AttributeError:
             return self.window.extract_variables().get("file")  # type: ignore[attr-defined]
 
-    def _search_paths(self):
-        # type: () -> Iterator[str]
-        def __search_paths():
-            # type: () -> Iterator[str]
+    def _search_paths(self) -> Iterator[FullPath]:
+        def __search_paths() -> Iterator[FullPath]:
             file_name = self._current_filename()
             if file_name and not os.path.isfile(file_name):
                 file_name = None
             if file_name:
-                yield os.path.dirname(file_name)
+                yield FullPath(os.path.dirname(file_name))
 
             # Support https://packagecontrol.io/packages/dired or the compatible
             # https://packagecontrol.io/packages/FileBrowser
             if view := self._current_view():
                 if dired_path := view.settings().get("dired_path"):
-                    yield os.path.normpath(dired_path)
+                    yield FullPath(os.path.normpath(dired_path))
 
             window = self._current_window()
             if window:
@@ -700,21 +691,19 @@ class _GitCommand(SettingsMixin):
                         not file_name
                         or not is_subpath(resolve_path(folders[0]), resolve_path(file_name))
                     ):
-                        yield folders[0]
+                        yield FullPath(folders[0])
 
         return filter(os.path.isdir, __search_paths())
 
-    def find_repo_path(self):
-        # type: () -> Optional[str]
+    def find_repo_path(self) -> FullPath | None:
         view = self._current_view()
         repo_path = view.settings().get("git_savvy.repo_path") if view else None
         if repo_path and os.path.exists(repo_path):
-            return repo_path
+            return FullPath(repo_path)
 
         return next(filter_(map(self._find_git_toplevel, self._search_paths())), None)
 
-    def _find_git_toplevel(self, folder):
-        # type: (str) -> Optional[str]
+    def _find_git_toplevel(self, folder: FullPath) -> FullPath | None:
         try:
             return repo_paths[folder]
         except KeyError:
@@ -736,8 +725,7 @@ class _GitCommand(SettingsMixin):
                 util.debug.dprint("found no .git path for {}".format(folder))
             return repo_path
 
-    def get_repo_path(self):
-        # type: () -> str
+    def get_repo_path(self) -> FullPath:
         repo_path = self.find_repo_path()
         if repo_path:
             return repo_path
@@ -751,8 +739,7 @@ class _GitCommand(SettingsMixin):
         raise ValueError("Not a git repository.")
 
     @property
-    def repo_path(self):
-        # type: () -> str
+    def repo_path(self) -> FullPath:
         """
         Return the absolute path to the git repo that contains the file that this
         view interacts with.  Like `file_path`, this can be overridden by setting
@@ -761,7 +748,7 @@ class _GitCommand(SettingsMixin):
         return self.get_repo_path()
 
     @property
-    def short_repo_path(self):
+    def short_repo_path(self) -> str:
         if "HOME" in os.environ:
             return self.repo_path.replace(os.environ["HOME"], "~")
         else:
