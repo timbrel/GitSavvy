@@ -1,13 +1,16 @@
+from __future__ import annotations
 from functools import partial
+import os
+from typing import Any
 
 import sublime
-from sublime_plugin import WindowCommand
+from sublime_plugin import ListInputHandler, WindowCommand
 
 from . import intra_line_colorizer
 from .branch import ask_for_name
 from .log import LogMixin
 from ..git_command import GitCommand, GitSavvyError
-from ..ui_mixins.quick_panel import show_branch_panel
+from ..git_mixins.branches import Branch
 from ..utils import uprint
 from ..view import replace_view_content
 from ...common import util
@@ -32,29 +35,54 @@ GitSavvy: Re-created branch '{0}', in case you want to undo, run:
 
 
 class gs_checkout_branch(WindowCommand, GitCommand):
+    """Check out a local branch, track a remote branch, or open its worktree."""
 
-    """
-    Display a panel of all local branches.  Change to the branch the
-    user selected.
-    """
+    _input_handler: CheckoutBranchInputHandler | None = None
 
-    def run(self, branch=None):
-        if branch:
-            self.on_branch_selection(branch)
-        else:
-            show_branch_panel(
-                self.on_branch_selection,
-                local_branches_only=True,
-                ignore_current_branch=True,
-                selected_branch=self.current_state()["last_branches"][-2]
-            )
+    def run(self, branch: str | None = None, detach: bool = False) -> None:
+        if branch is None:
+            self.window.run_command("show_overlay", {
+                "overlay": "command_palette",
+                "command": "gs_checkout_branch"
+            })
+            return
 
-    def on_branch_selection(self, branch, merge=False):
+        handler, self._input_handler = self._input_handler, None
+        if handler:
+            detach = detach or handler.detach
+            selected = handler.branches.get(branch)
+            if selected:
+                if not detach and (path := other_worktree(selected, self.repo_path)):
+                    self.open_worktree_in_new_window(path)
+                    return
+                if not detach and selected.is_remote:
+                    self.on_branch_selection(branch, local_name=selected.name)
+                    return
+                if not detach:
+                    branch = selected.name
+
+        self.on_branch_selection(branch, detach=detach)
+
+    def input(self, args: dict[str, Any]) -> CheckoutBranchInputHandler | None:
+        if "branch" not in args:
+            self._input_handler = CheckoutBranchInputHandler(self)
+            return self._input_handler
+        return None
+
+    def on_branch_selection(
+        self, branch: str, merge: bool = False, *,
+        detach: bool = False, local_name: str | None = None
+    ) -> None:
+        checkout_args = (
+            ("--detach", branch) if detach else
+            ("-b", local_name, "--track", branch) if local_name else
+            (branch,)
+        )
         try:
             self.git_throwing_silently(
                 "checkout",
                 "--merge" if merge else None,
-                branch
+                *checkout_args
             )
         except GitSavvyError as e:
             if DIRTY_WORKTREE_MESSAGE in e.stderr and not merge:
@@ -62,7 +90,10 @@ class gs_checkout_branch(WindowCommand, GitCommand):
                     noop("Abort, local changes would be overwritten by checkout."),
                     (
                         "Try a 'checkout --merge'.",
-                        partial(self.on_branch_selection, branch, merge=True)
+                        partial(
+                            self.on_branch_selection, branch, merge=True,
+                            detach=detach, local_name=local_name
+                        )
                     )
                 ])
                 return
@@ -70,7 +101,16 @@ class gs_checkout_branch(WindowCommand, GitCommand):
                 e.show_error_panel()
                 raise
 
-        self.window.status_message("Checked out `{}`.".format(branch))
+        display_name = (
+            branch.split("/", 2)[2]
+            if branch.startswith(("refs/heads/", "refs/remotes/")) else branch
+        )
+        message = (
+            f"Checked out `{display_name}` as local branch `{local_name}`." if local_name else
+            f"Checked out `{display_name}` (detached)." if detach else
+            f"Checked out `{display_name}`."
+        )
+        self.window.status_message(message)
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
@@ -213,3 +253,85 @@ class gs_show_file_diff(WindowCommand, GitCommand):
         replace_view_content(view, text)
         self.window.run_command("show_panel", {"panel": "output.show_file_diff"})
         intra_line_colorizer.annotate_intra_line_differences(view)
+
+
+class CheckoutBranchInputHandler(ListInputHandler):
+    def __init__(self, command: gs_checkout_branch) -> None:
+        self.command = command
+        self.branches: dict[str, Branch] = {}
+        self.detach = False
+
+    def name(self) -> str:
+        return "branch"
+
+    def list_items(self) -> tuple[list[sublime.ListInputItem], int]:
+        branches = self.command.get_branches()
+        local_branches = [b for b in branches if b.is_local]
+        local_names = {b.name for b in local_branches}
+        remote_branches = [
+            b for remote in self.command.get_remotes()
+            for b in branches
+            if b.remote == remote and b.is_remote and b.name not in local_names
+        ]
+        self.branches = {
+            branch_ref(b): b
+            for b in (*local_branches, *remote_branches)
+        }
+        items = [self.branch_item(b) for b in local_branches]
+        items.extend(self.branch_item(b) for b in remote_branches)
+        if not items:
+            items.append(sublime.ListInputItem("There are no branches available.", None))
+
+        previous = self.command.current_state()["last_branches"][-2]
+        selected_index = next((
+            i for i, item in enumerate(items)
+            if (b := self.branches.get(item.value)) and b.is_local and b.name == previous
+        ), 0)
+        return items, selected_index
+
+    def preview(self, value: str | None) -> str:
+        branch = self.branches.get(value) if value else None
+        if not branch:
+            return "Select a branch."
+        if other_worktree(branch, self.command.repo_path):
+            action = "to open in a new window"
+        elif branch.is_remote:
+            action = f"to checkout as `{branch.name}`"
+        else:
+            action = "to checkout"
+        return f"[enter] {action}, [ctrl+enter] to checkout detached"
+
+    def want_event(self) -> bool:
+        return True
+
+    def validate(self, value: str | None, event: dict | None = None) -> bool:
+        return value in self.branches
+
+    def confirm(self, value: str, event: dict) -> None:
+        self.detach = event.get("modifier_keys", {}).get("ctrl", False)
+
+    def cancel(self) -> None:
+        self.command._input_handler = None
+
+    def branch_item(self, branch: Branch) -> sublime.ListInputItem:
+        return sublime.ListInputItem(
+            branch.canonical_name,
+            branch_ref(branch),
+            annotation=(
+                "worktree" if other_worktree(branch, self.command.repo_path) else
+                "remote" if branch.is_remote else
+                ""
+            )
+        )
+
+
+def branch_ref(branch: Branch) -> str:
+    namespace = "remotes" if branch.is_remote else "heads"
+    return f"refs/{namespace}/{branch.canonical_name}"
+
+
+def other_worktree(branch: Branch, repo_path: str) -> str | None:
+    path = branch.worktree_path
+    if path and os.path.normcase(os.path.realpath(path)) != os.path.normcase(os.path.realpath(repo_path)):
+        return path
+    return None

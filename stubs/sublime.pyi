@@ -1146,6 +1146,19 @@ class QuickPanelItem:
         ...
 
 
+class ListInputItem:
+    text: str
+    value: Any
+    details: str | Sequence[str]
+    annotation: str
+    kind: CompletionKind
+
+    def __init__(
+        self, text: str, value: Any, details: str | Sequence[str] = ...,
+        annotation: str = ..., kind: CompletionKind = ...
+    ) -> None: ...
+
+
 class SymbolRegion:
     name: str
     region: Region
