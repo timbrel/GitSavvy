@@ -1,9 +1,10 @@
 from __future__ import annotations
 from copy import deepcopy
+from glob import glob
 from itertools import count
 import os
 
-from typing import Iterable, NamedTuple
+from typing import Callable, Iterable, NamedTuple
 
 import sublime
 
@@ -11,6 +12,7 @@ from GitSavvy.core.fns import filter_
 from GitSavvy.core.caches import cache_in_store_as
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.types import FullHash, ShortHash
+from GitSavvy.core.utils import open_worktree_in_new_window
 
 
 WORKTREE_LIST_SUPPORTS_Z_FORMAT = (2, 36, 0)
@@ -101,11 +103,6 @@ class WorktreesMixin(mixin_base):
     ) -> str:
         # Note: `start_point: ShortHash` is a shortcut for the automatic `worktree_path`
         #       computation.  Change when needed.
-        project = (
-            self._project_for_new_worktree()
-            if self.app_settings.get("copy_active_project_file_to_new_worktrees", True)
-            else None
-        )
         if not worktree_path:
             if self.repo_path.startswith(sublime.packages_path()):
                 base = self.default_project_root()
@@ -122,9 +119,14 @@ class WorktreesMixin(mixin_base):
                     break
 
         self.git("worktree", "add", worktree_path, start_point)
-        if project:
-            self._copy_project_to_worktree(project, worktree_path)
+        self._copy_active_project_to_worktree(worktree_path)
         return worktree_path
+
+    def open_worktree_in_new_window(
+        self, path: str, *, then: Callable[[sublime.Window], None] | None = None
+    ) -> None:
+        self._copy_active_project_to_worktree(path)
+        open_worktree_in_new_window(path, then=then)
 
     def move_worktree(self, path: str, new_path: str) -> None:
         self.git("worktree", "move", path, new_path)
@@ -132,7 +134,17 @@ class WorktreesMixin(mixin_base):
     def remove_worktree(self, path: str, *, force: bool = False):
         self.git("worktree", "remove", "-f" if force else None, path)
 
-    def _project_for_new_worktree(self) -> tuple[str, dict] | None:
+    def _copy_active_project_to_worktree(self, path: str) -> None:
+        if (
+            not self.app_settings.get("copy_active_project_file_to_new_worktrees", True)
+            or glob(os.path.join(path, "*.sublime-project"))
+        ):
+            return
+
+        if project := self._project_for_worktree():
+            self._copy_project_to_worktree(project, path)
+
+    def _project_for_worktree(self) -> tuple[str, dict] | None:
         window = self.some_window()
         project_file = window.project_file_name()
         if (

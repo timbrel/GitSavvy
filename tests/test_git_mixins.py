@@ -8,12 +8,13 @@ import time
 import sublime
 
 from unittesting import DeferrableTestCase
-from GitSavvy.tests.mockito import unstub, when
+from GitSavvy.tests.mockito import unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p, param
 
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.exceptions import GitSavvyError
 from GitSavvy.core import git_mixins
+from GitSavvy.core.git_mixins import worktrees
 from GitSavvy.core.git_mixins.worktrees import Worktree, WorktreesMixin
 from GitSavvy.core.utils import resolve_path
 
@@ -528,7 +529,7 @@ class TestGetWorktreesParsing(TestGitMixinsUsage):
         self.assertEqual(actual, [])
 
 
-class TestCreateNewWorktreeProject(TestGitMixinsUsage):
+class TestWorktreeProject(TestGitMixinsUsage):
     def setUp(self):
         self.tmp_dir = tempfile.mkdtemp(prefix=TMPDIR_PREFIX)
         self.addCleanup(lambda: rmdir(self.tmp_dir))
@@ -605,6 +606,76 @@ class TestCreateNewWorktreeProject(TestGitMixinsUsage):
 
         with open(os.path.join(worktree_path, "repo.sublime-project"), encoding="utf-8") as file:
             self.assertEqual(file.read(), "from the start point")
+
+    def test_copies_project_when_opening_an_external_worktree(self) -> None:
+        repo = WorktreeCreationTestRepo(
+            self.repo_path, self.project_file, self.project_data
+        )
+        worktree_path = self._external_worktree_path()
+
+        self._open_worktree(repo, worktree_path)
+
+        with open(os.path.join(worktree_path, "repo.sublime-project"), encoding="utf-8") as file:
+            copied_data = sublime.decode_value(file.read())
+        self.assertEqual(copied_data, {
+            "folders": [
+                {"path": "."},
+                {"path": ".", "folder_exclude_patterns": [".git"]}
+            ]
+        })
+        self.assertEqual(self.project_data["folders"][0]["path"], self.repo_path)
+
+    @p.expand(["disabled", "tracked", "non_local", "unsaved", "no_data"])
+    def test_opening_respects_project_copy_restrictions(self, restriction: str) -> None:
+        project_file = self.project_file
+        if restriction == "unsaved":
+            project_file = None
+        elif restriction == "non_local":
+            project_file = os.path.join(self.tmp_dir, "elsewhere.sublime-project")
+        repo = WorktreeCreationTestRepo(
+            self.repo_path, project_file,
+            None if restriction == "no_data" else self.project_data,
+            copy_project=restriction != "disabled",
+            tracked=restriction == "tracked"
+        )
+        worktree_path = self._external_worktree_path()
+
+        self._open_worktree(repo, worktree_path)
+
+        self.assertEqual(os.listdir(worktree_path), [])
+
+    @p.expand([(1,), (2,)])
+    def test_opening_leaves_existing_projects_unchanged(self, project_count: int) -> None:
+        repo = WorktreeCreationTestRepo(
+            self.repo_path, self.project_file, self.project_data
+        )
+        worktree_path = self._external_worktree_path()
+        filenames = [f"existing-{i}.sublime-project" for i in range(project_count)]
+        for filename in filenames:
+            with open(os.path.join(worktree_path, filename), "w", encoding="utf-8") as file:
+                file.write("existing project")
+
+        self._open_worktree(repo, worktree_path)
+
+        self.assertEqual(sorted(os.listdir(worktree_path)), filenames)
+        for filename in filenames:
+            with open(os.path.join(worktree_path, filename), encoding="utf-8") as file:
+                self.assertEqual(file.read(), "existing project")
+
+    def _external_worktree_path(self) -> str:
+        path = os.path.join(self.repo_path, ".claude", "worktrees", "feature")
+        os.makedirs(path)
+        return path
+
+    def _open_worktree(self, repo: WorktreesMixin, path: str) -> None:
+        def callback(window: sublime.Window) -> None:
+            pass
+
+        when(worktrees).open_worktree_in_new_window(path, then=callback).thenReturn(None)
+
+        repo.open_worktree_in_new_window(path, then=callback)
+
+        verify(worktrees).open_worktree_in_new_window(path, then=callback)
 
 
 class WorktreeCreationTestRepo(WorktreesMixin):
