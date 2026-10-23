@@ -166,7 +166,8 @@ class WorktreesMixin(mixin_base):
     def _copy_project_to_worktree(
         self, project: tuple[str, dict], worktree_path: str
     ) -> None:
-        filename, source_data = project
+        _, source_data = project
+        filename = os.path.basename(os.path.normpath(worktree_path)) + ".sublime-project"
         destination = os.path.join(worktree_path, filename)
         if os.path.exists(destination):
             return

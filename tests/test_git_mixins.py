@@ -543,15 +543,18 @@ class TestWorktreeProject(TestGitMixinsUsage):
             ]
         }
 
-    def test_copies_an_untracked_local_project(self):
+    @p.expand(["worktree", "feature with spaces"])
+    def test_copies_an_untracked_local_project(self, worktree_name: str) -> None:
         repo = WorktreeCreationTestRepo(
             self.repo_path, self.project_file, self.project_data
         )
-        worktree_path = os.path.join(self.tmp_dir, "worktree")
+        worktree_path = os.path.join(self.tmp_dir, worktree_name)
 
         repo.create_new_worktree("abc123", worktree_path)
 
-        with open(os.path.join(worktree_path, "repo.sublime-project"), encoding="utf-8") as file:
+        filename = worktree_name + ".sublime-project"
+        self.assertEqual(os.listdir(worktree_path), [filename])
+        with open(os.path.join(worktree_path, filename), encoding="utf-8") as file:
             copied_data = sublime.decode_value(file.read())
         self.assertEqual(copied_data, {
             "folders": [
@@ -570,7 +573,7 @@ class TestWorktreeProject(TestGitMixinsUsage):
 
         repo.create_new_worktree("abc123", worktree_path)
 
-        self.assertFalse(os.path.exists(os.path.join(worktree_path, "repo.sublime-project")))
+        self.assertEqual(os.listdir(worktree_path), [])
 
     def test_does_not_copy_a_non_local_project(self):
         repo = WorktreeCreationTestRepo(
@@ -582,7 +585,7 @@ class TestWorktreeProject(TestGitMixinsUsage):
 
         repo.create_new_worktree("abc123", worktree_path)
 
-        self.assertFalse(os.path.exists(os.path.join(worktree_path, "repo.sublime-project")))
+        self.assertEqual(os.listdir(worktree_path), [])
 
     def test_does_not_copy_a_tracked_project(self):
         repo = WorktreeCreationTestRepo(
@@ -593,7 +596,7 @@ class TestWorktreeProject(TestGitMixinsUsage):
 
         repo.create_new_worktree("abc123", worktree_path)
 
-        self.assertFalse(os.path.exists(os.path.join(worktree_path, "repo.sublime-project")))
+        self.assertEqual(os.listdir(worktree_path), [])
 
     def test_does_not_overwrite_a_project_from_the_start_point(self):
         repo = WorktreeCreationTestRepo(
@@ -604,18 +607,21 @@ class TestWorktreeProject(TestGitMixinsUsage):
 
         repo.create_new_worktree("abc123", worktree_path)
 
+        self.assertEqual(os.listdir(worktree_path), ["repo.sublime-project"])
         with open(os.path.join(worktree_path, "repo.sublime-project"), encoding="utf-8") as file:
             self.assertEqual(file.read(), "from the start point")
 
-    def test_copies_project_when_opening_an_external_worktree(self) -> None:
+    @p.expand(["", os.sep])
+    def test_copies_project_when_opening_an_external_worktree(self, suffix: str) -> None:
         repo = WorktreeCreationTestRepo(
             self.repo_path, self.project_file, self.project_data
         )
         worktree_path = self._external_worktree_path()
 
-        self._open_worktree(repo, worktree_path)
+        self._open_worktree(repo, worktree_path + suffix)
 
-        with open(os.path.join(worktree_path, "repo.sublime-project"), encoding="utf-8") as file:
+        self.assertEqual(os.listdir(worktree_path), ["feature.sublime-project"])
+        with open(os.path.join(worktree_path, "feature.sublime-project"), encoding="utf-8") as file:
             copied_data = sublime.decode_value(file.read())
         self.assertEqual(copied_data, {
             "folders": [
