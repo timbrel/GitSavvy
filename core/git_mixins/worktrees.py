@@ -131,8 +131,10 @@ class WorktreesMixin(mixin_base):
     def move_worktree(self, path: str, new_path: str) -> None:
         self.git("worktree", "move", path, new_path)
 
-    def remove_worktree(self, path: str, *, force: bool = False):
-        self.git("worktree", "remove", "-f" if force else None, path)
+    def remove_worktree(self, path: str, *, force: bool = False, unlock: bool = False) -> None:
+        if unlock:
+            self.git_throwing_silently("worktree", "unlock", path)
+        self.git_throwing_silently("worktree", "remove", "-f" if force else None, path)
 
     def _copy_active_project_to_worktree(self, path: str) -> None:
         if (
