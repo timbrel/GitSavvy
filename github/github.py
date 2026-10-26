@@ -76,7 +76,9 @@ def parse_remote(remote_url: str) -> GitHubRepo:
         raise ValueError("Invalid github url: {}".format(url))
 
     fqdn, owner, repo = match.groups()
-    token = app_settings.get("api_tokens", {}).get(fqdn) or os.environ.get("GITHUB_TOKEN")
+    token = app_settings.get("api_tokens", {}).get(fqdn) or (
+        os.environ.get("GITHUB_TOKEN") if fqdn.lower() == "github.com" else None
+    )
     return GitHubRepo(url, fqdn, owner, repo, token)
 
 
@@ -156,13 +158,13 @@ def open_issues(remote_url):
     open_in_browser("{}/issues".format(github_repo.url))
 
 
-def get_api_fqdn(github_repo):
+def get_api_fqdn(github_repo: GitHubRepo) -> tuple[bool, str]:
     """
     Determine if the provided GitHub repo object refers to a GitHub
     Enterprise instance or publicly hosted GitHub.com, and indicate
     the base FQDN to use for API requests.
     """
-    if github_repo.fqdn[-10:] == "github.com":
+    if github_repo.fqdn.lower() == "github.com":
         return False, "api.github.com"
     return True, github_repo.fqdn
 

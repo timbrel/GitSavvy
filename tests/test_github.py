@@ -1,8 +1,72 @@
+from __future__ import annotations
+
 from unittesting import DeferrableTestCase
 
 from GitSavvy.github import github
-from GitSavvy.tests.mockito import unstub, when
+from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
+
+
+class TestGitHubAuthentication(DeferrableTestCase):
+    def tearDown(self):
+        unstub()
+
+    @p.expand([
+        ("github.com", {}, "env-token", "env-token"),
+        ("GITHUB.COM", {}, "env-token", "env-token"),
+        ("github.com", {"github.com": "host-token"}, "env-token", "host-token"),
+        ("github.com", {"github.com": ""}, "env-token", "env-token"),
+        ("github.com", {}, None, None),
+        ("github.example.com", {}, "env-token", None),
+        ("github.example.com", {"github.com": "public-token"}, "env-token", None),
+        ("github.example.com", {"github.example.com": "host-token"}, "env-token", "host-token"),
+        ("github.example.com", {"github.example.com": ""}, "env-token", None),
+        ("evilgithub.com", {}, "env-token", None),
+        ("sub.github.com", {}, "env-token", None),
+        ("github.com.example.com", {}, "env-token", None),
+    ])
+    def test_token_selection(
+        self, host: str, tokens: dict[str, str], env_token: str | None, expected_token: str | None
+    ) -> None:
+        when(github.app_settings).get("api_tokens", {}).thenReturn(tokens)
+        when(github.os.environ).get("GITHUB_TOKEN").thenReturn(env_token)
+
+        repository = github.parse_remote("https://{}/owner/repo".format(host))
+
+        self.assertEqual(expected_token, repository.token)
+
+    @p.expand([
+        ("github.example.com",),
+        ("evilgithub.com",),
+        ("sub.github.com",),
+        ("github.com.example.com",),
+    ])
+    def test_query_does_not_send_env_token_to_other_hosts(self, host: str) -> None:
+        when(github.app_settings).get("api_tokens", {}).thenReturn({})
+        when(github.os.environ).get("GITHUB_TOKEN").thenReturn("env-token")
+        response = mock({"status": 200, "is_json": True, "payload": {}})
+        when(github.interwebs).get(
+            host, 443, "/api/v3/repos/owner/repo?", https=True, auth=None
+        ).thenReturn(response)
+        repository = github.parse_remote("https://{}/owner/repo".format(host))
+
+        github.get_repo_data(repository)
+
+        verify(github.interwebs).get(
+            host, 443, "/api/v3/repos/owner/repo?", https=True, auth=None
+        )
+
+    @p.expand([
+        ("github.com", (False, "api.github.com")),
+        ("GITHUB.COM", (False, "api.github.com")),
+        ("github.example.com", (True, "github.example.com")),
+        ("evilgithub.com", (True, "evilgithub.com")),
+        ("sub.github.com", (True, "sub.github.com")),
+    ])
+    def test_api_host_selection(self, host: str, expected: tuple) -> None:
+        repository = github.GitHubRepo("", host, "owner", "repo", None)
+
+        self.assertEqual(expected, github.get_api_fqdn(repository))
 
 
 class TestGitHubRemoteParsing(DeferrableTestCase):
