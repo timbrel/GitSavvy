@@ -44,6 +44,13 @@ This command will display all open pull requests for the integrated GitHub remot
 
 This command will create a pull request in the browser on the integrated GitHub remote repo.
 
+## `github: create repo` / `github: create private repo`
+
+These command palette commands create a public or private repository on GitHub.com under the authenticated user's account.  Both require an API token configured as described in Setup above, with permission to create repositories.
+
+Enter the new repository's name, then choose a local remote name (defaulting to `origin`) and its HTTPS or SSH URL.  GitSavvy adds the remote to your local repository; it does not push any commits automatically.
+
+
 ## `github: create fork`
 
 This command will create a fork of the current GitHub remote repo in the configured user.

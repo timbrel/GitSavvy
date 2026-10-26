@@ -175,6 +175,11 @@
         "command": "gs_github_create_repo"
     },
     {
+        "caption": "github: create private repo",
+        "command": "gs_github_create_repo",
+        "args": { "private": true }
+    },
+    {
         "caption": "github: create fork",
         "command": "gs_github_create_fork"
     },

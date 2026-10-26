@@ -311,15 +311,15 @@ def create_fork(github_repo: GitHubRepo, default_branch_only: bool = False):
     )
 
 
-def create_user_repo(token: str, repo_name: str) -> dict:
-    return create_repo(token, None, repo_name)
+def create_user_repo(token: str, repo_name: str, private: bool = False) -> dict:
+    return create_repo(token, None, repo_name, private=private)
 
 
-def create_repo(token: str, org: str | None, repo_name: str) -> dict:
+def create_repo(token: str, org: str | None, repo_name: str, private: bool = False) -> dict:
     host = "api.github.com"
     path = f"/orgs/{org}/repos" if org else "/user/repos"
     auth = (token, "x-oauth-basic")
-    payload = {"name": repo_name}
+    payload = {"name": repo_name, "private": private}
 
     response = interwebs.post(host, 443, path, auth=auth, payload=payload)
     validate_response(response, method="POST")

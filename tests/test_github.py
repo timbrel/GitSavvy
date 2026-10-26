@@ -69,6 +69,34 @@ class TestGitHubAuthentication(DeferrableTestCase):
         self.assertEqual(expected, github.get_api_fqdn(repository))
 
 
+class TestGitHubRepoCreation(DeferrableTestCase):
+    def tearDown(self):
+        unstub()
+
+    @p.expand([(False,), (True,)])
+    def test_create_user_repo(self, private: bool) -> None:
+        payload = {"name": "new-repo", "private": private}
+        response = mock({"payload": payload})
+        when(github.interwebs).post(
+            "api.github.com", 443, "/user/repos",
+            auth=("token", "x-oauth-basic"), payload=payload
+        ).thenReturn(response)
+        when(github).validate_response(response, method="POST").thenReturn(None)
+
+        result = github.create_user_repo("token", "new-repo", private=private)
+
+        self.assertEqual(payload, result)
+        verify(github).validate_response(response, method="POST")
+
+    def test_create_user_repo_is_public_by_default(self) -> None:
+        payload = {"name": "new-repo", "private": False}
+        when(github).create_repo(
+            "token", None, "new-repo", private=False
+        ).thenReturn(payload)
+
+        self.assertEqual(payload, github.create_user_repo("token", "new-repo"))
+
+
 class TestGitHubRemoteParsing(DeferrableTestCase):
     def tearDown(self):
         unstub()
