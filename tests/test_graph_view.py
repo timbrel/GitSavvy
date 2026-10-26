@@ -6,7 +6,7 @@ from unittesting import DeferrableTestCase, expectedFailure
 from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.mockito import spy2, unstub, when
 
-from GitSavvy.core import app_state
+from GitSavvy.core import app_state, store
 from GitSavvy.core.commands.log_graph import (
     extract_commit_hash,
     navigate_to_symbol,
@@ -195,6 +195,27 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
             yield from self.await_active_panel_to_be('output.show_commit_info')
 
         return log_view
+
+    @p.expand([(0, False, 0), (8, False, 8), (8, True, 10), (12, True, 12)])
+    def test_graph_learns_lengths_when_extracting_hashes(self, cached, wide_graph, expected):
+        self.set_app_state('graph_show_more_commit_info', False, default=True)
+        self.set_app_setting('git_status_in_status_bar', False)
+        repo_path = '/not/there'
+        state = store.current_state(repo_path)
+        previous = state.get('short_hash_length')
+        self.addCleanup(lambda: (
+            state.pop('short_hash_length', None) if previous is None
+            else state.update({'short_hash_length': previous})
+        ))
+        state['short_hash_length'] = cached
+        graph_art = '/ ' * 24 if wide_graph else ''
+        log = (
+            "* fec0aca|HEAD -> main|Current|Today, Author|parent\n"
+            f"{graph_art}* abcdef1234||Longer hash|Today, Author|parent\n"
+            "* 57b00b1||Shorter again|Today, Author|parent\n"
+        )
+        yield from self.create_graph_view_async(repo_path, log, wait_for='57b00b1')
+        self.assertEqual(expected, state['short_hash_length'])
 
     def test_hidden_info_panel_after_create(self):
         yield from self.setup_graph_view_async(show_commit_info_setting=False)

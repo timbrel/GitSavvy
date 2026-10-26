@@ -326,9 +326,16 @@ class HistoryMixin(mixin_base):
     def get_short_hash_length(self) -> int:
         short_hash_length = self.current_state().get("short_hash_length")
         if not short_hash_length:
-            short_hash_length = len(self.resolve("HEAD", short=True))
-            self.update_store({"short_hash_length": short_hash_length})
+            short_hash_length = self.update_short_hash_length(len(self.resolve("HEAD", short=True)))
 
+        return short_hash_length
+
+    def update_short_hash_length(self, observed_length: int) -> int:
+        """Remember the longest observed abbreviation; never shrink our cached length."""
+        cached_length = self.current_state().get("short_hash_length", 0)
+        short_hash_length = max(cached_length, observed_length)
+        if short_hash_length != cached_length:
+            self.update_store({"short_hash_length": short_hash_length})
         return short_hash_length
 
     def filename_at_commit(self, filename: FullPath, commit_hash: str) -> FullPath:

@@ -44,13 +44,12 @@ class ActiveBranchMixin(mixin_base):
             except IndexError:
                 pass
             else:
-                self.update_store({"short_hash_length": len(short_hash)})
+                self.update_short_hash_length(len(short_hash))
 
         return stdout or "No commits yet."
 
     @cache_in_store_as("recent_commits")
-    def get_latest_commits(self):
-        # type: () -> List[Commit]
+    def get_latest_commits(self) -> List[Commit]:
         commits = [
             Commit(*line.split("%00"))
             for line in self.git(
@@ -66,8 +65,7 @@ class ActiveBranchMixin(mixin_base):
             ).strip().splitlines()
         ]
         if commits:
-            short_hash_length = len(commits[0].hash)
-            self.update_store({"short_hash_length": short_hash_length})
+            self.update_short_hash_length(max(len(commit.hash) for commit in commits))
 
         return commits
 

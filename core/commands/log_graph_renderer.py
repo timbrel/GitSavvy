@@ -641,6 +641,7 @@ class gs_log_graph_refresh(GsTextCommand):
         SHORTENED_ASCII_ART = ".. / \n"
         in_overview_mode = settings.get("git_savvy.log_graph_view.overview")
         awaiting_head_commit = True
+        short_hash_length = self.current_state().get("short_hash_length", 0)
         additional_decorations = resolve_refs_from_the_logs()
 
         def simplify_decoration(decoration):
@@ -659,9 +660,8 @@ class gs_log_graph_refresh(GsTextCommand):
                 if "/" not in d or d[d.index("/") + 1:] not in decoration_parts_
             )
 
-        def format_line(line):
-            # type: (Union[str, GraphLine]) -> str
-            nonlocal awaiting_head_commit
+        def format_line(line: Union[str, GraphLine]) -> str:
+            nonlocal awaiting_head_commit, short_hash_length
             if isinstance(line, str):
                 if len(line) > ASCII_ART_LENGHT_LIMIT:
                     return SHORTENED_ASCII_ART
@@ -678,10 +678,14 @@ class gs_log_graph_refresh(GsTextCommand):
                 or additional_decorations
             ):
                 commit_hash = hash.rsplit(" ", 1)[1]
+                hash_length = len(commit_hash)
+                if hash_length > short_hash_length:
+                    short_hash_length = self.update_short_hash_length(hash_length)
+
                 if len(hash) > ASCII_ART_LENGHT_LIMIT:
                     hash = f".. {DEFAULT_NODE_CHAR} {commit_hash}"
                 elif in_overview_mode:
-                    hash = hash.ljust(len(commit_hash) + 6)
+                    hash = hash.ljust(hash_length + 6)
 
                 if commit_hash in additional_decorations:
                     ref = additional_decorations.pop(commit_hash)
