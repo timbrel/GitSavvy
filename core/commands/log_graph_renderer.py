@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from collections import deque
+import configparser
 from functools import lru_cache, partial
 from itertools import chain, groupby, islice
+import os
 from queue import Empty
 import re
 import shlex
@@ -58,6 +60,7 @@ from .log_graph_helper import (
     FIND_COMMIT_HASH,
     GRAPH_HEIGHT,
     ROOT_NODE_CHAR,
+    WORKTREE_MARKER,
 )
 
 T = TypeVar("T")
@@ -474,12 +477,11 @@ class gs_log_graph_refresh(GsTextCommand):
 
     def run_impl(
         self,
-        initial_draw,
-        assume_complete_redraw,
-        prelude_text,
-        should_abort,
-    ):
-        # type: (bool, bool, str, ShouldAbort) -> None
+        initial_draw: bool,
+        assume_complete_redraw: bool,
+        prelude_text: str,
+        should_abort: ShouldAbort
+    ) -> None:
         settings = self.view.settings()
         try:
             # In case of `assume_complete_redraw` we later clear the graph content
@@ -643,9 +645,11 @@ class gs_log_graph_refresh(GsTextCommand):
         awaiting_head_commit = True
         short_hash_length = self.current_state().get("short_hash_length", 0)
         additional_decorations = resolve_refs_from_the_logs()
+        worktree_branches, detached_worktree_commits = self.get_worktree_markers()
+        mark_worktree_branches = make_worktree_branch_marker(worktree_branches)
+        detached_worktree_short_commits: dict[int, set[str]] = {}
 
-        def simplify_decoration(decoration):
-            # type: (str) -> str
+        def simplify_decoration(decoration: str) -> str:
             """Simplify decoration by omitting remote branches if they match
             local branches.
             """
@@ -676,6 +680,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 len(hash) > ASCII_ART_LENGHT_LIMIT
                 or in_overview_mode
                 or additional_decorations
+                or detached_worktree_commits
             ):
                 commit_hash = hash.rsplit(" ", 1)[1]
                 hash_length = len(commit_hash)
@@ -705,9 +710,21 @@ class gs_log_graph_refresh(GsTextCommand):
                     remember_drawn_repo_status(self.view, bool(repo_is_dirty))
                 if in_overview_mode:
                     decoration = simplify_decoration(decoration)
-                left = f"{hash} ({decoration})"
-            else:
-                left = f"{hash}"
+
+                if mark_worktree_branches:
+                    decoration = mark_worktree_branches(decoration)
+
+            if detached_worktree_commits:
+                if hash_length not in detached_worktree_short_commits:
+                    # Match this line's actual abbreviation length, not the repo's
+                    # cached maximum: Git may print shorter hashes on later lines.
+                    detached_worktree_short_commits[hash_length] = {
+                        full_hash[:hash_length] for full_hash in detached_worktree_commits
+                    }
+                if commit_hash in detached_worktree_short_commits[hash_length]:
+                    decoration = f"{decoration}, {WORKTREE_MARKER}" if decoration else WORKTREE_MARKER
+
+            left = f"{hash} ({decoration})" if decoration else hash
             left_width = len(left) if left.isascii() else text_width(left)
             return f"{left} {trunc_and_pad(subject, max(2, LEFT_COLUMN_WIDTH - left_width))} \u200b {info}\n"
 
@@ -929,6 +946,44 @@ class gs_log_graph_refresh(GsTextCommand):
 
         run_on_new_thread(reader)
 
+    def get_worktree_markers(self) -> tuple[set[str], set[FullHash]]:
+        """Read only other checkouts' branch names and detached commit IDs."""
+        git_dir = os.path.normcase(os.path.realpath(self.git_dir))
+        common_dir = self.git_common_dir
+        # `worktrees/` contains only linked checkouts.  When we're in one of
+        # those, include the main checkout separately and exclude our own entry.
+        heads = (
+            [os.path.join(common_dir, "HEAD")]
+            if os.path.normcase(os.path.realpath(common_dir)) != git_dir and has_main_worktree(common_dir)
+            else []
+        )
+        try:
+            with os.scandir(os.path.join(common_dir, "worktrees")) as entries:
+                heads.extend(
+                    os.path.join(entry.path, "HEAD") for entry in entries
+                    if entry.is_dir() and os.path.normcase(os.path.realpath(entry.path)) != git_dir
+                )
+        except OSError:
+            pass
+
+        branches: set[str] = set()
+        detached_commits: set[FullHash] = set()
+        for path in heads:
+            try:
+                with open(path, encoding="utf-8") as f:
+                    head = f.read().strip()
+            except (OSError, UnicodeError):
+                # Worktrees can disappear or change while the graph refreshes.
+                continue
+            if not head:
+                continue
+            if head.startswith("ref: refs/heads/"):
+                if branch := head[len("ref: refs/heads/"):]:
+                    branches.add(branch)
+            else:
+                detached_commits.add(FullHash(head))
+        return branches, detached_commits
+
     def read_graph(self, got_proc=None):
         # type: (Callable[[subprocess.Popen], None]) -> Iterator[str]
         args = self.build_git_command()
@@ -1015,6 +1070,35 @@ class gs_log_graph_refresh(GsTextCommand):
             args += ["--"] + paths
 
         return args
+
+
+def make_worktree_branch_marker(branches: set[str]) -> Optional[Callable[[str], str]]:
+    """For {"foo"}, turn "foo, main" into "foo ■, main".
+
+    Leave "tag: foo" and "origin/foo" unchanged; return None for no branches.
+    """
+    if not branches:
+        return None
+    # Match whole branch decorations, never a tag or a similarly named remote.
+    names = "|".join(map(re.escape, branches))
+    pattern = re.compile(rf"(?:^|, )(?:HEAD\*? -> )?(?:{names})(?=, |$)")
+    return partial(pattern.sub, rf"\g<0> {WORKTREE_MARKER}")
+
+
+def has_main_worktree(common_dir: str) -> bool:
+    """Exclude a bare common repository without launching another Git process."""
+    config = configparser.RawConfigParser(
+        strict=False, allow_no_value=True, inline_comment_prefixes=("#", ";")
+    )
+    try:
+        with open(os.path.join(common_dir, "config"), encoding="utf-8") as f:
+            config.read_file(f)
+        core = next((section for section in config.sections() if section.lower() == "core"), "core")
+        bare = config.get(core, "bare", fallback="false")
+    except (OSError, UnicodeError, configparser.Error):
+        # Don't invent a main checkout if its configuration cannot be read.
+        return False
+    return bare is not None and config.BOOLEAN_STATES.get(bare.strip('"').lower()) is False
 
 
 def prelude(view):

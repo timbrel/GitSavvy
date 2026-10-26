@@ -25,6 +25,18 @@ Performs a similar function to `git: log`, but restricts your search to the hist
 
 Opens a special view that displays an ASCII-graphic representation of the repo's commit and branch history.
 
+Branches checked out in other worktrees have a `■` marker after their name,
+for example `(feature ■, bookmark)`. Only `feature` is checked out elsewhere;
+`bookmark` merely points to the same commit. The current checkout keeps its
+usual `HEAD` decoration.
+
+A detached checkout in another worktree appears as a standalone marker:
+`(main, ■)`, or `(■)` when the commit has no other decorations. Markers are
+display-only: copying refs and running graph actions still use the original
+branch names, tags, and commit IDs.
+
+The `■` character is reserved for worktree markers in graph decorations.
+
 Use `.` to go to next commit and use `,` to go to previous commit.
 
 Pressing `m` while your cursor is over a particular line will toggle display of a quick panel containing more info about the selected commit. GitSavvy remembers the selection for the next graph view.

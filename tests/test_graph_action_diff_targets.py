@@ -19,8 +19,8 @@ class TestGraphActionDiffTargets(DeferrableTestCase):
             "origin/main": mock({"is_local": False})
         }
         lines = {
-            1: "● ac0ffee Intermediate commit",
-            2: "● baddad (origin/main, main) Branch commit"
+            1: "● ac0ffee (■) Intermediate commit",
+            2: "● baddad (origin/main, main ■) Branch commit"
         }
         self.assertEqual(
             {

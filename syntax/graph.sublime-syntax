@@ -92,6 +92,8 @@ contexts:
             1: storage.type.git-savvy.graph
             2: punctuation.separator.other.git-savvy
             3: entity.name.tag.branch-name.git-savvy
+        - match: '■(?=[,)])'
+          scope: punctuation.definition.worktree.git-savvy
         - match: ','
           scope: punctuation.separator.other.git-savvy
         - match: '->'

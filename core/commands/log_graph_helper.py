@@ -14,6 +14,7 @@ GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
 COMMIT_NODE_CHARS = "●⌂*"
 DEFAULT_NODE_CHAR = "●"
 ROOT_NODE_CHAR = "⌂"
+WORKTREE_MARKER = "■"
 GRAPH_HEIGHT = 5000
 COMMIT_LINE = re.compile(
     r"^[{graph_chars}]*(?P<dot>[{node_chars}])[{graph_chars}]* "
@@ -47,8 +48,14 @@ def describe_graph_line(line: str, known_branches: Dict[str, Branch]) -> Optiona
 
     rv: LineInfo = {"commit": commit_hash}
     if decoration:
-        names = decoration.split(", ")
-        if names[0].startswith("HEAD"):
+        # Worktree markers are display-only, never revision names.
+        suffix = f" {WORKTREE_MARKER}"
+        names = [
+            name[:-len(suffix)] if name.endswith(suffix) else name
+            for name in decoration.split(", ")
+            if name != WORKTREE_MARKER
+        ]
+        if names and names[0].startswith("HEAD"):
             head, *names = names
             if head == "HEAD" or head == "HEAD*":
                 rv["HEAD"] = commit_hash
@@ -62,8 +69,8 @@ def describe_graph_line(line: str, known_branches: Dict[str, Branch]) -> Optiona
                 tags.append(name[len("tag: "):])
             else:
                 branches.append(name)
-                branch = known_branches.get(name)
-                if branch and branch.is_local:
+                known_branch = known_branches.get(name)
+                if known_branch and known_branch.is_local:
                     local_branches.append(name)
         if branches:
             rv["branches"] = branches
