@@ -1,9 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from itertools import dropwhile
+from itertools import dropwhile, takewhile
 import os
 import re
-import string
 
 from GitSavvy.core.fns import tail
 from GitSavvy.core.types import FullHash, ShortHash, ShortPath
@@ -12,8 +11,11 @@ from typing import Iterable, List, Literal, NamedTuple, Optional, TYPE_CHECKING,
 
 
 class HeadState(NamedTuple):
+    """One status snapshot; commit_hash is None before the initial commit."""
+
     detached: bool
     branch: Optional[str]
+    commit_hash: Optional[FullHash]
     remote: Optional[str]
     clean: bool
     ahead: Optional[str]
@@ -82,22 +84,10 @@ RebaseHashFile = Literal[
 
 class StatusMixin(mixin_base):
 
-    def _get_status(self):
-        # type: () -> List[str]
-        return self.git(
-            "status",
-            "--porcelain",
-            "-z",
-            "-b",
-            custom_environ={"GIT_OPTIONAL_LOCKS": "0"}
-        ).rstrip("\x00").split("\x00")
-
-    def update_working_dir_status(self):
-        # type: () -> None
+    def update_working_dir_status(self) -> None:
         self.get_working_dir_status()
 
-    def get_working_dir_status(self):
-        # type: () -> WorkingDirState
+    def get_working_dir_status(self) -> WorkingDirState:
         lines = self._get_status()
         files = self._parse_status_for_file_statuses(lines)
         working_dir_status = self._group_status_entries(files)
@@ -116,27 +106,43 @@ class StatusMixin(mixin_base):
         })
         return working_dir_status
 
-    def _parse_status_for_file_statuses(self, lines):
-        # type: (List[str]) -> List[FileStatus]
-        porcelain_entries = iter(lines[1:])
+    def _get_status(self) -> List[str]:
+        return self.git(
+            "status",
+            "--porcelain=v2",
+            "-z",
+            "-b",
+            custom_environ={"GIT_OPTIONAL_LOCKS": "0"}
+        ).rstrip("\x00").split("\x00")
+
+    def _parse_status_for_file_statuses(self, lines: List[str]) -> List[FileStatus]:
+        porcelain_entries = iter(dropwhile(lambda line: line.startswith("# "), lines))
         entries = []
 
         for entry in porcelain_entries:
             if not entry:
                 continue
-            index_status = entry[0].strip()
-            working_status = entry[1].strip()
-            path = ShortPath(entry[3:])
-            path_alt = (
-                ShortPath(next(porcelain_entries))
-                if index_status in ["R", "C"] or working_status in ["R", "C"]
-                else None)
-            entries.append(FileStatus(path, path_alt, index_status, working_status))
+            kind = entry[0]
+            path_alt = None
+            if kind in ("?", "!"):
+                xy = kind * 2
+                path = entry[2:]
+            else:
+                # V2 records have 8 (ordinary), 9 (rename/copy), or 10
+                # (unmerged) fields before the path. Paths can contain spaces.
+                fields_before_path = {"1": 8, "2": 9, "u": 10}[kind]
+                xy = entry[2:4]
+                path = entry.split(" ", fields_before_path)[-1]
+                if kind == "2":
+                    # With -z the original path is a separate, unprefixed record.
+                    path_alt = ShortPath(next(porcelain_entries))
+            entries.append(FileStatus(
+                ShortPath(path), path_alt, xy[0].strip("."), xy[1].strip(".")
+            ))
 
         return entries
 
-    def _group_status_entries(self, file_status_list):
-        # type: (List[FileStatus]) -> WorkingDirState
+    def _group_status_entries(self, file_status_list: List[FileStatus]) -> WorkingDirState:
         """
         Take entries from `git status` and sort them into groups.
         """
@@ -161,50 +167,35 @@ class StatusMixin(mixin_base):
             merge_conflicts=conflicts,
         )
 
-    def _get_branch_status_components(self, lines):
-        # type: (List[str]) -> HeadState
-        """
-        Return a tuple of:
+    def _get_branch_status_components(self, lines: List[str]) -> HeadState:
+        header_lines = list(takewhile(lambda line: line.startswith("# "), lines))
+        headers = dict(line[2:].split(" ", 1) for line in header_lines)
+        oid = headers["branch.oid"]
+        branch = headers["branch.head"]
+        remote = headers.get("branch.upstream")
+        ahead_behind = headers.get("branch.ab")
+        ahead = behind = None
+        if ahead_behind:
+            ahead_count, behind_count = ahead_behind.split()
+            ahead = ahead_count[1:] if ahead_count != "+0" else None
+            behind = behind_count[1:] if behind_count != "-0" else None
 
-          0) boolean indicating whether repo is in detached state
-          1) active branch name
-          2) remote branch name
-          3) boolean indicating whether branch is clean
-          4) # commits ahead of remote
-          5) # commits behind of remote
-          6) boolean indicating whether the remote branch is gone
-        """
+        return HeadState(
+            detached=branch == "(detached)",
+            branch=None if branch == "(detached)" else branch,
+            commit_hash=None if oid == "(initial)" else FullHash(oid),
+            remote=remote,
+            clean=len(lines) == len(header_lines),
+            ahead=ahead,
+            behind=behind,
+            # Git omits branch.ab when the configured upstream no longer exists.
+            gone=remote is not None and ahead_behind is None
+        )
 
-        first_line, *addl_lines = lines
-        # Any additional lines will mean files have changed or are untracked.
-        clean = len(addl_lines) == 0
-
-        if first_line.startswith("## HEAD (no branch)"):
-            return HeadState(True, None, None, clean, None, None, False)
-
-        if (
-            first_line.startswith("## No commits yet on ")
-            # older git used these
-            or first_line.startswith("## Initial commit on ")
-        ):
-            first_line = first_line[:3] + first_line[21:]
-
-        valid_punctuation = "".join(c for c in string.punctuation if c not in "~^:?*[\\")
-        branch_pattern = "[A-Za-z0-9" + re.escape(valid_punctuation) + "\u263a-\U0001f645]+?"
-        branch_suffix = r"( \[((ahead (\d+))(, )?)?(behind (\d+))?(gone)?\])?)"
-        short_status_pattern = "## (" + branch_pattern + r")(\.\.\.(" + branch_pattern + ")" + branch_suffix + "?$"
-        status_match = re.match(short_status_pattern, first_line)
-
-        if not status_match:
-            return HeadState(False, None if clean else addl_lines[0], None, clean, None, None, False)
-
-        branch, _, remote, _, _, _, ahead, _, _, behind, gone = status_match.groups()
-
-        return HeadState(False, branch, remote, clean, ahead, behind, bool(gone))
-
-    def _format_branch_status(self, branch_status, working_dir_status, delim="\n           "):
-        # type: (HeadState, WorkingDirState, str) -> str
-        detached, branch, remote, clean, ahead, behind, gone = branch_status
+    def _format_branch_status(
+        self, branch_status: HeadState, working_dir_status: WorkingDirState, delim: str = "\n           "
+    ) -> str:
+        detached, branch, _, remote, clean, ahead, behind, gone = branch_status
 
         secondary = []
 
@@ -268,8 +259,7 @@ class StatusMixin(mixin_base):
 
         return delim.join([status] + secondary) if secondary else status
 
-    def _format_branch_status_short(self, branch_status):
-        # type: (HeadState) -> str
+    def _format_branch_status_short(self, branch_status: HeadState) -> str:
         if self.in_rebase():
             rebase_progress = self._rebase_progress()
             return "(no branch, rebasing {}{})".format(
@@ -277,7 +267,7 @@ class StatusMixin(mixin_base):
                 " {}".format(rebase_progress) if rebase_progress else ""
             )
 
-        detached, branch, remote, clean, ahead, behind, gone = branch_status
+        detached, branch, _, remote, clean, ahead, behind, gone = branch_status
 
         dirty = "" if clean else "*"
 

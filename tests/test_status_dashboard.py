@@ -12,6 +12,11 @@ from GitSavvy.common import ui
 from GitSavvy.core.interfaces.status import StatusInterfaceCommand, GitCommand
 
 
+SHA = "a" * 40
+FILE_FIELDS = "N... 100644 100644 100644 {0} {0}".format(SHA)
+CONFLICT_FIELDS = "N... 100644 100644 100644 100644 {0} {0} {0}".format(SHA)
+
+
 class TestStatusDashboard(DeferrableTestCase):
     @classmethod
     def setUpClass(cls):
@@ -72,15 +77,16 @@ class TestStatusDashboard(DeferrableTestCase):
 
     def test_extract_clickable_filepaths_from_view(self):
         REPO_PATH = '/not/here'
-        FILE_STATUS = dedent("""\
-            ## the-branch
-             M modified_file
-            ?? new_file
-            A  staged_file
-            R  moved_file_new
-            moved_file_old
-            MM staged_and_unstaged_changes
-        """.rstrip()).replace('\n', '\x00')
+        FILE_STATUS = '\x00'.join([
+            '# branch.oid ' + SHA,
+            '# branch.head the-branch',
+            '1 .M ' + FILE_FIELDS + ' modified_file',
+            '? new_file',
+            '1 A. ' + FILE_FIELDS + ' staged_file',
+            '2 R. ' + FILE_FIELDS + ' R100 moved_file_new',
+            'moved_file_old',
+            '1 MM ' + FILE_FIELDS + ' staged_and_unstaged_changes'
+        ])
         LAST_COMMIT = 'd9b34774 The last commit message'
         STASH_LIST = dedent("""\
             stash@{0}: On fix-1055: /not/here/but_like_a_filename.py
@@ -111,9 +117,7 @@ class TestStatusDashboard(DeferrableTestCase):
 
     def test_clean_working_dir_has_no_clickable_elements(self):
         REPO_PATH = '/not/here'
-        FILE_STATUS = dedent("""\
-            ## the-branch
-        """.rstrip()).replace('\n', '\x00')
+        FILE_STATUS = '\x00'.join(['# branch.oid ' + SHA, '# branch.head the-branch'])
         LAST_COMMIT = 'd9b34774 The last commit message'
         STASH_LIST = dedent("""\
             stash@{0}: On fix-1055: /not/here/but_like_a_filename.py
@@ -132,15 +136,16 @@ class TestStatusDashboard(DeferrableTestCase):
 
     def await_std_interface(self):
         REPO_PATH = '/not/here'
-        FILE_STATUS = dedent("""\
-            ## the-branch
-             M modified_file
-            ?? new_file
-            A  staged_file
-            R  moved_file_new
-            moved_file_old
-            UU conflicting_file
-        """.rstrip()).replace('\n', '\x00')
+        FILE_STATUS = '\x00'.join([
+            '# branch.oid ' + SHA,
+            '# branch.head the-branch',
+            '1 .M ' + FILE_FIELDS + ' modified_file',
+            '? new_file',
+            '1 A. ' + FILE_FIELDS + ' staged_file',
+            '2 R. ' + FILE_FIELDS + ' R100 moved_file_new',
+            'moved_file_old',
+            'u UU ' + CONFLICT_FIELDS + ' conflicting_file'
+        ])
         LAST_COMMIT = 'd9b34774 The last commit message'
         STASH_LIST = dedent("""\
             stash@{0}: On fix-1055: /not/here/but_like_a_filename.py
