@@ -27,13 +27,15 @@ class GsInterfaceFocusEventListener(EventListener):
 
     # When the user just opened e.g. the goto or command palette overlay
     # prevent a refresh signal on closing that panel.
-    # Whitelist "Terminus" which reports itself as a widget.
-    def on_deactivated(self, view):
+    # Whitelist Terminus and dired, which report themselves as widgets but
+    # can change the repository while focused.
+    def on_deactivated(self, view: sublime.View) -> None:
         global IGNORE_NEXT_ACTIVATE
         settings = view.settings()
         IGNORE_NEXT_ACTIVATE = (
             settings.get("is_widget")
             and not settings.get("terminus_view")
+            and not settings.get("dired_path")
         )
 
     def on_activated(self, view):
