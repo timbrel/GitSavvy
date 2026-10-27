@@ -174,6 +174,14 @@
     },
 
     /*
+        Hosts of GitHub Enterprise Server instances, e.g. "github.example.com".
+        Only github.com and the hosts listed here are queried for GitHub CI
+        status; a token in `api_tokens` alone does not identify a host as
+        GitHub.
+     */
+    "github_enterprise_hosts": [],
+
+    /*
         Only supported on GitHub.
         When creating a fork, do only copy the main branch.  Especially do
         *not* copy the tags from the original repo to your repo.
