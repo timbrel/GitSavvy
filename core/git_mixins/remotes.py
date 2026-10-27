@@ -19,6 +19,8 @@ RemoteUrl: TypeAlias = str
 
 NOTSET = "<NOTSET>"
 UPSTREAM_NOT_SET = Upstream("", "", "", "")
+# Git's fallback length for abbreviated hashes
+DEFAULT_ABBREV = 7
 
 if TYPE_CHECKING:
     from GitSavvy.core.git_command import (BranchesMixin, StatusMixin, _GitCommand)
@@ -192,7 +194,8 @@ class RemotesMixin(mixin_base):
         perform default `git push`.
 
         Return what Git reports for each push destination: its effective
-        url and the refs it updated.
+        url and the refs it updated.  The output panel still shows Git's
+        human-readable report, see `PushPorcelainFormatter`.
         """
         output = self.git(
             "push",
@@ -201,7 +204,8 @@ class RemotesMixin(mixin_base):
             "--force-with-lease" if force_with_lease else None,
             "--set-upstream" if set_upstream else None,
             remote,
-            branch if not remote_branch else "{}:{}".format(branch, remote_branch)
+            branch if not remote_branch else "{}:{}".format(branch, remote_branch),
+            stdout_formatter=PushPorcelainFormatter
         )
         return parse_push_porcelain(output)
 
@@ -336,8 +340,83 @@ def parse_push_porcelain(output: str) -> list[PushDestination]:
     for line in output.splitlines():
         if line.startswith("To "):
             destinations.append(PushDestination(line[3:], []))
-        elif destinations and line.count("\t") >= 2:
-            flag, refs, summary = line.split("\t", 2)
-            src, _, dst = refs.partition(":")
-            destinations[-1].refs.append(PushedRef(flag, src, dst, summary))
+        elif destinations and (ref := parse_pushed_ref(line)):
+            destinations[-1].refs.append(ref)
     return destinations
+
+
+class PushPorcelainFormatter:
+    """
+    Render the lines of `git push --porcelain` as a plain `git push`
+    reports them, line by line as they arrive: up-to-date refs are
+    omitted, "To <url>" is held back until its destination shows a ref,
+    and the closing "Done" becomes "Everything up-to-date" if all refs
+    of the destination were up to date.  Other lines pass through.
+
+    Git pads the summary column to fit the longest abbreviated hash of
+    all refs of a destination.  We only see the hashes of the refs so
+    far, and assume Git's default abbreviation if there is none yet.
+    """
+
+    def __init__(self) -> None:
+        self.refs: list[PushedRef] | None = None
+        self.header = ""
+        self.abbrev = 0
+
+    def __call__(self, line: str) -> str:
+        text = line.rstrip("\r\n")
+        if text.startswith("To "):
+            self.refs, self.header, self.abbrev = [], text + "\n", 0
+            return ""
+        if self.refs is None:
+            return line
+        if text == "Done":
+            refs, self.refs = self.refs, None
+            if all(ref.flag == "=" for ref in refs):
+                return "Everything up-to-date\n"
+            return ""
+        ref = parse_pushed_ref(text)
+        if not ref:
+            return line
+        self.refs.append(ref)
+        self.abbrev = max(self.abbrev, abbrev_length(ref.summary))
+        if ref.flag == "=":
+            return ""
+        header, self.header = self.header, ""
+        return header + format_pushed_ref(ref, self.abbrev or DEFAULT_ABBREV)
+
+
+def parse_pushed_ref(line: str) -> PushedRef | None:
+    """Parse a "<flag>\\t<src>:<dst>\\t<summary>" line of `git push --porcelain`."""
+    if line.count("\t") < 2:
+        return None
+    flag, refs, summary = line.split("\t", 2)
+    src, _, dst = refs.partition(":")
+    return PushedRef(flag, src, dst, summary)
+
+
+def format_pushed_ref(ref: PushedRef, abbrev: int) -> str:
+    """Format `ref` like Git's `print_ref_status()` does without --porcelain."""
+    summary, _, reason = ref.summary.partition(" (")
+    refs = (
+        "{} -> {}".format(short_ref_name(ref.src), short_ref_name(ref.dst))
+        if ref.src else
+        short_ref_name(ref.dst)
+    )
+    return " {} {:<{}} {}{}\n".format(
+        ref.flag, summary, 2 * abbrev + 3, refs, " (" + reason if reason else ""
+    )
+
+
+def abbrev_length(summary: str) -> int:
+    """Return the length of the abbreviated hashes in a summary like "a1b2..c3d4"."""
+    match = re.match(r"([0-9a-f]+)\.\.\.?([0-9a-f]+)", summary)
+    return max(len(match[1]), len(match[2])) if match else 0
+
+
+def short_ref_name(ref: str) -> str:
+    """Strip the prefixes Git's `prettify_refname()` strips."""
+    for prefix in ("refs/heads/", "refs/tags/", "refs/remotes/"):
+        if ref.startswith(prefix):
+            return ref[len(prefix):]
+    return ref

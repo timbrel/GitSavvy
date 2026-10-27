@@ -9,6 +9,7 @@ from GitSavvy.core.git_mixins.remotes import (
     ConfigEntry,
     PushDestination,
     PushedRef,
+    PushPorcelainFormatter,
     RemoteInfo,
     RemoteInfoBlob,
     parse_push_porcelain,
@@ -263,7 +264,10 @@ class TestPush(DeferrableTestCase):
                 PushedRef("*", "refs/heads/main", "refs/heads/main2", "[new branch]"),
             ])
         ])
-        verify(repo).git("push", "--porcelain", None, None, None, "origin", "main:main2")
+        verify(repo).git(
+            "push", "--porcelain", None, None, None, "origin", "main:main2",
+            stdout_formatter=PushPorcelainFormatter
+        )
 
     def test_parses_one_entry_per_destination(self) -> None:
         output = (
@@ -287,3 +291,126 @@ class TestPush(DeferrableTestCase):
     def test_ignores_lines_outside_of_destinations(self) -> None:
         self.assertEqual(parse_push_porcelain(""), [])
         self.assertEqual(parse_push_porcelain(" \trefs/heads/a:refs/heads/a\tx\n"), [])
+
+
+# The pairs are captured from Git 2.56: `git push --porcelain` stdout and
+# the stderr of the same push without `--porcelain`.
+class TestPushPorcelainFormatter(DeferrableTestCase):
+    @p.expand([
+        ("fast-forward", (
+            "To ../r1.git\n"
+            " \trefs/heads/main:refs/heads/main\teebd022..8f52cc8\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            "   eebd022..8f52cc8  main -> main\n"
+        )),
+        ("forced update moves the reason to the end", (
+            "To ../r1.git\n"
+            "+\trefs/heads/main:refs/heads/main\t8f52cc8...71c34ea (forced update)\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            " + 8f52cc8...71c34ea main -> main (forced update)\n"
+        )),
+        ("new refs, deletion and non-ref sources", (
+            "To ../r1.git\n"
+            "=\trefs/heads/b1:refs/heads/b1\t[up to date]\n"
+            "-\t:refs/heads/gone\t[deleted]\n"
+            " \trefs/heads/main:refs/heads/main\teebd022..8f52cc8\n"
+            "*\tHEAD:refs/heads/fh\t[new branch]\n"
+            "*\teebd022d0de51d32c6dba0c5ce819db3daa1d037:refs/heads/fs\t[new branch]\n"
+            "*\trefs/tags/v1:refs/tags/v1\t[new tag]\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            " - [deleted]         gone\n"
+            "   eebd022..8f52cc8  main -> main\n"
+            " * [new branch]      HEAD -> fh\n"
+            " * [new branch]      eebd022d0de51d32c6dba0c5ce819db3daa1d037 -> fs\n"
+            " * [new tag]         v1 -> v1\n"
+        )),
+        ("rejected", (
+            "To ../r1.git\n"
+            "!\trefs/heads/main:refs/heads/main\t[rejected] (non-fast-forward)\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            " ! [rejected]        main -> main (non-fast-forward)\n"
+        )),
+        ("remote rejected", (
+            "To ../r1.git\n"
+            "!\trefs/heads/main:refs/heads/main\t[remote rejected] (pre-receive hook declined)\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            " ! [remote rejected] main -> main (pre-receive hook declined)\n"
+        )),
+        ("up to date", (
+            "To ../r1.git\n"
+            "=\trefs/heads/main:refs/heads/main\t[up to date]\n"
+            "Done\n"
+        ), (
+            "Everything up-to-date\n"
+        )),
+        ("one block per push url", (
+            "To ../r1.git\n"
+            "=\trefs/heads/b1:refs/heads/b1\t[up to date]\n"
+            " \trefs/heads/main:refs/heads/main\teebd022..8f52cc8\n"
+            "Done\n"
+            "To ../r2.git\n"
+            "*\trefs/heads/main:refs/heads/main\t[new branch]\n"
+            "*\trefs/heads/b1:refs/heads/b1\t[new branch]\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            "   eebd022..8f52cc8  main -> main\n"
+            "To ../r2.git\n"
+            " * [new branch]      main -> main\n"
+            " * [new branch]      b1 -> b1\n"
+        )),
+        ("up to date per push url", (
+            "To ../r1.git\n"
+            "=\trefs/heads/main:refs/heads/main\t[up to date]\n"
+            "Done\n"
+            "To ../r2.git\n"
+            "=\trefs/heads/main:refs/heads/main\t[up to date]\n"
+            "Done\n"
+        ), (
+            "Everything up-to-date\n"
+            "Everything up-to-date\n"
+        )),
+        ("width follows the abbreviated hashes", (
+            "To ../r1.git\n"
+            " \trefs/heads/b1:refs/heads/b1\teebd022d0d..912905b14b\n"
+            " \trefs/heads/main:refs/heads/main\teebd022d0d..8f52cc898d\n"
+            "*\trefs/heads/main:refs/heads/nb\t[new branch]\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            "   eebd022d0d..912905b14b  b1 -> b1\n"
+            "   eebd022d0d..8f52cc898d  main -> main\n"
+            " * [new branch]            main -> nb\n"
+        )),
+        ("other lines pass through", (
+            "To ../r1.git\n"
+            "*\trefs/heads/su:refs/heads/su\t[new branch]\n"
+            "branch 'su' set up to track 'origin/su'.\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            " * [new branch]      su -> su\n"
+            "branch 'su' set up to track 'origin/su'.\n"
+        )),
+        ("lines outside of destinations pass through", (
+            "Done\n"
+            "*\trefs/heads/su:refs/heads/su\t[new branch]\n"
+        ), (
+            "Done\n"
+            "*\trefs/heads/su:refs/heads/su\t[new branch]\n"
+        )),
+    ])
+    def test_renders_the_human_readable_report(self, _, porcelain, expected) -> None:
+        format_line = PushPorcelainFormatter()
+        lines = porcelain.splitlines(keepends=True)
+        self.assertEqual("".join(map(format_line, lines)), expected)
