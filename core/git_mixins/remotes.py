@@ -86,7 +86,7 @@ class RemotesMixin(mixin_base):
                 url
             )
             for remote_name, config in remote_configs.items()
-            if (url := last(self.by_raw_key(config, "url"), None))
+            if (url := last(by_raw_key(config, "url"), None))
         ]
 
     def _extract_remote_configs(
@@ -122,14 +122,6 @@ class RemotesMixin(mixin_base):
             key, value = line, ""
 
         return ConfigEntry(key, value)
-
-    def by_raw_key(self, config_entries: list[ConfigEntry], raw_key: str) -> list[str]:
-        raw_key = raw_key.lower()
-        return [
-            value
-            for key, value in config_entries
-            if key.lower() == raw_key
-        ]
 
     def fetch(self, remote=None, refspec=None, prune=True, local_branch=None, remote_branch=None):
         # type: (str, str, bool, str, str) -> None
@@ -211,7 +203,7 @@ class RemotesMixin(mixin_base):
             if config_entries is None:
                 config_entries = self.read_config_entries()
             configured_remote_name = last(
-                self.by_raw_key(config_entries, "gitsavvy.ghremote"),
+                by_raw_key(config_entries, "gitsavvy.ghremote"),
                 None
             )
         if configured_remote_name in available_remotes:
@@ -243,7 +235,7 @@ class RemotesMixin(mixin_base):
 
         if config_entries is None:
             config_entries = self.read_config_entries()
-        get = partial(self.by_raw_key, config_entries)
+        get = partial(by_raw_key, config_entries)
 
         for key in chain(get("gitsavvy.pushdefault"), get("remote.pushdefault"), ["fork", "origin"]):
             if key in available_remotes:
@@ -306,3 +298,12 @@ def rewrite_url(url: RemoteUrl, config_entries: list[ConfigEntry]) -> RemoteUrl:
         ):
             base, prefix = key[len("url."):-len(".insteadof")], value
     return base + url[len(prefix):] if prefix else url
+
+
+def by_raw_key(config_entries: list[ConfigEntry], raw_key: str) -> list[str]:
+    raw_key = raw_key.lower()
+    return [
+        value
+        for key, value in config_entries
+        if key.lower() == raw_key
+    ]
