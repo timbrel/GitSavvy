@@ -12,7 +12,7 @@ Create a stash including untracked files.
 
 ## `git: stash save staged changes only` 
 
-Create a stash from staged changes only. This works by creating a stash of only unstages files. Then creating a stash of all files and pop the first stash(or something in these lines).
+Create a stash from staged changes only using `git stash push --staged` (requires Git 2.35 or newer). Unstaged and untracked changes are left in the working directory.
 
 ## `git: stash show` 
 
