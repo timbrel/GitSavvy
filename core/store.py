@@ -4,6 +4,7 @@ from functools import partial
 import threading
 import uuid
 
+from .caches import Cache
 from .utils import eat_but_log_errors
 from GitSavvy.core import app_state
 
@@ -50,14 +51,21 @@ if TYPE_CHECKING:
         recent_commits: List[Commit]
         descriptions: Dict[str, str]
         default_graph_options: Dict[str, str]
+        # Rendered GitHub CI text by (branch name, full commit hash);
+        # owned and published by `github.ci_status`.
+        github_ci_status: Cache
     RepoPath = str
     SubscriberKey = str
     Keys = AbstractSet[str]
 
 
+GITHUB_CI_STATUS_CACHE_SIZE = 64
+
+
 def initial_state() -> RepoStore:
     return {
         "last_branches": deque([None] * 2, 2),
+        "github_ci_status": Cache(maxsize=GITHUB_CI_STATUS_CACHE_SIZE),
     }
 
 

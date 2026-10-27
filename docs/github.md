@@ -14,6 +14,15 @@ When interacting with a public repository, no configuration is required.  Howeve
 5. You can alternatively set the `GITHUB_TOKEN` environment variable. GitSavvy uses it as a fallback when no token is configured for `github.com` in `api_tokens`. GitHub Enterprise instances *require* a host-specific entry in `api_tokens`.
 
 
+## CI status after pushing
+
+After a successful push with GitSavvy, the status bar shows GitHub's check status of the pushed commit, the same aggregate GitHub shows next to a commit, including external CI.  While checks are running you see an animated `[◇]`.  A success is acknowledged with `[CI: ok]` for a few seconds and then disappears; a failure shows `[CI: failed]` and then stays as `[red]` for that branch and commit.
+
+The checks are looked up in the integrated remote (see below), so pushing to your fork reports the checks of the upstream repository for your commit.  Monitoring requires an API token as described above, and is skipped for non-GitHub hosts, mirrors, and pushes to multiple destinations.  GitHub Enterprise hosts must be listed in the `github_enterprise_hosts` setting.
+
+Set `github_ci_status_in_status_bar` to `false` to turn this off.  It is independent of `git_status_in_status_bar`.
+
+
 ## Choosing a remote
 
 By default, GitSavvy will use the URL of `origin` to get its GitHub API URL.  If you would like to use a remote other than origin, run `github: set remote for integration` in the command palette.  You will be presented with a list of remotes.  Once one is selected, this remote will be used for all attempts at integration with GitHub.

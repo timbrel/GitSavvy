@@ -296,6 +296,17 @@
     "git_status_in_status_bar": true,
 
     /*
+        When set to `true`, GitSavvy watches GitHub's check status of a
+        commit after you pushed it with GitSavvy and shows it in the status
+        bar next to (or, with `git_status_in_status_bar` turned off, instead
+        of) the Git status: an animated `[◇]` while checks run, a short
+        `[CI: ok]` on success, and `[red]` for failures.
+
+        Requires a GitHub API token, see `api_tokens`.
+     */
+    "github_ci_status_in_status_bar": true,
+
+    /*
         Sort branches by recency.
         Change this to `true` to sort branches by "committerdate".
         Change this to `false` to sort branches by their name.

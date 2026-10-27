@@ -1,12 +1,15 @@
+from __future__ import annotations
 from functools import partial
 
 import sublime
 
 from ...common import util
+from ...github import ci_status
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import enqueue_on_worker, run_on_new_thread
+from GitSavvy.core.utils import eat_but_log_errors
 from ..ui__quick_panel import noop, show_actions_panel
 
 
@@ -17,7 +20,7 @@ __all__ = (
 )
 
 
-from typing import TypeVar
+from typing import Optional, TypeVar
 from GitSavvy.core.base_commands import Args, GsCommand, Kont
 T = TypeVar("T")
 
@@ -30,16 +33,21 @@ CONFIRM_FORCE_PUSH = ("You are about to `git push {}`. Would you  "
 class PushMixin(GsWindowCommand):
     def do_push(
         self,
-        remote,
-        branch,
-        force=False,
-        force_with_lease=False,
-        remote_branch=None,
-        set_upstream=False
-    ):
-        # type: (str, str, bool, bool, str, bool) -> None
+        remote: str,
+        branch: str,
+        force: bool = False,
+        force_with_lease: bool = False,
+        remote_branch: Optional[str] = None,
+        set_upstream: bool = False,
+        local_branch_sha: Optional[str] = None
+    ) -> None:
         """
         Perform `git push remote branch`.
+
+        `local_branch_sha` is the commit `branch` pointed to when the
+        command looked it up.  After a successful push, GitHub CI for
+        that commit is observed; without it, we fall back to the store's
+        HEAD snapshot if `branch` is checked out.
         """
         if self.app_settings.get("confirm_force_push", True):
             if force:
@@ -50,7 +58,7 @@ class PushMixin(GsWindowCommand):
                     return
 
         self.window.status_message("Pushing {} to {}...".format(branch, remote))
-        self.push(
+        destinations = self.push(
             remote,
             branch,
             remote_branch=remote_branch,
@@ -60,6 +68,18 @@ class PushMixin(GsWindowCommand):
         )
         self.window.status_message(END_PUSH_MESSAGE)
         util.view.refresh_gitsavvy_interfaces(self.window)
+        with eat_but_log_errors():
+            ci_status.on_successful_push(
+                self,
+                remote,
+                destinations,
+                branch,
+                local_branch_sha or self.head_commit_of(branch)
+            )
+
+    def head_commit_of(self, branch: str) -> Optional[str]:
+        head = self.current_state().get("head")
+        return head.commit_hash if head and head.branch == branch else None
 
 
 class gs_push(PushMixin):
@@ -90,7 +110,8 @@ class gs_push(PushMixin):
                 local_branch.name,
                 remote_branch=remote_branch,
                 force=force,
-                force_with_lease=force_with_lease
+                force_with_lease=force_with_lease,
+                local_branch_sha=local_branch.commit_hash
             )
             if not force and not force_with_lease and "behind" in upstream.status:
                 show_actions_panel(self.window, [
@@ -110,17 +131,17 @@ class gs_push(PushMixin):
         else:
             self.window.run_command("gs_push_to_branch_name", {
                 "local_branch_name": local_branch.name,
+                "local_branch_sha": local_branch.commit_hash,
                 "set_upstream": True,
                 "force": force,
                 "force_with_lease": force_with_lease
             })
 
 
-def take_current_branch_name(cmd, args, done):
-    # type: (GsWindowCommand, Args, Kont) -> None
-    current_branch_name = cmd.get_current_branch_name()
-    if current_branch_name:
-        done(current_branch_name)
+def take_current_branch_name(cmd: GsWindowCommand, args: Args, done: Kont) -> None:
+    current_branch = cmd.get_current_branch()
+    if current_branch:
+        done(current_branch.name, local_branch_sha=current_branch.commit_hash)
     else:
         cmd.window.status_message("Can't push a detached HEAD.")
 
@@ -189,15 +210,15 @@ class gs_push_to_branch_name(PushMixin):
 
     def run(
         self,
-        local_branch_name,
-        remote,
-        branch_name,
-        set_upstream=False,
-        force=False,
-        force_with_lease=False,
-        remember_used_remote=False,
-    ):
-        # type: (str, str, str, bool, bool, bool, bool) -> None
+        local_branch_name: str,
+        remote: str,
+        branch_name: str,
+        set_upstream: bool = False,
+        force: bool = False,
+        force_with_lease: bool = False,
+        remember_used_remote: bool = False,
+        local_branch_sha: Optional[str] = None
+    ) -> None:
         if remember_used_remote:
             run_on_new_thread(self.git, "config", "--local", "gitsavvy.pushdefault", remote)
             self.update_store({"last_remote_used_for_push": remote})
@@ -209,7 +230,8 @@ class gs_push_to_branch_name(PushMixin):
             remote_branch=branch_name,
             force=force,
             force_with_lease=force_with_lease,
-            set_upstream=set_upstream
+            set_upstream=set_upstream,
+            local_branch_sha=local_branch_sha
         )
 
 
@@ -222,12 +244,14 @@ class gs_push_to_branch(PushMixin):
         "remote_branch": ask_for_remote_branch
     }
 
-    def run(self, local_branch_name, remote_branch):
-        # type: (str, str) -> None
+    def run(
+        self, local_branch_name: str, remote_branch: str, local_branch_sha: Optional[str] = None
+    ) -> None:
         remote, branch_name = remote_branch.split("/", 1)
         enqueue_on_worker(
             self.do_push,
             remote,
             local_branch_name,
-            remote_branch=branch_name
+            remote_branch=branch_name,
+            local_branch_sha=local_branch_sha
         )
