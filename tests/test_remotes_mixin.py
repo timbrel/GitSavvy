@@ -7,8 +7,11 @@ from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.git_mixins.remotes import (
     ConfigEntry,
+    PushDestination,
+    PushedRef,
     RemoteInfo,
     RemoteInfoBlob,
+    parse_push_porcelain,
     rewrite_url
 )
 
@@ -231,3 +234,56 @@ class TestGuessRemoteToPushTo(DeferrableTestCase):
 
         self.assertEqual(repo.guess_remote_to_push_to(["origin", "michaelblyons"]), "michaelblyons")
         verify(repo, times=1).git("config", "--get-regexp", ...)
+
+
+# Captured from `git push --porcelain origin main :gone v1 main:main2`
+PUSH_OUTPUT = (
+    "To ../r.git\n"
+    "-\t:refs/heads/gone\t[deleted]\n"
+    " \trefs/heads/main:refs/heads/main\tdf749db..eade9cb\n"
+    "*\trefs/tags/v1:refs/tags/v1\t[new tag]\n"
+    "*\trefs/heads/main:refs/heads/main2\t[new branch]\n"
+    "Done\n"
+)
+
+
+class TestPush(DeferrableTestCase):
+    def tearDown(self) -> None:
+        unstub()
+
+    def test_returns_the_parsed_porcelain_report(self) -> None:
+        repo = GitCommand()
+        when(repo).git(...).thenReturn(PUSH_OUTPUT)
+
+        self.assertEqual(repo.push("origin", "main", remote_branch="main2"), [
+            PushDestination("../r.git", [
+                PushedRef("-", "", "refs/heads/gone", "[deleted]"),
+                PushedRef(" ", "refs/heads/main", "refs/heads/main", "df749db..eade9cb"),
+                PushedRef("*", "refs/tags/v1", "refs/tags/v1", "[new tag]"),
+                PushedRef("*", "refs/heads/main", "refs/heads/main2", "[new branch]"),
+            ])
+        ])
+        verify(repo).git("push", "--porcelain", None, None, None, "origin", "main:main2")
+
+    def test_parses_one_entry_per_destination(self) -> None:
+        output = (
+            "To https://example.com/a.git\n"
+            "=\trefs/heads/main:refs/heads/main\t[up to date]\n"
+            "Done\n"
+            "To https://example.com/b.git\n"
+            "!\trefs/heads/main:refs/heads/main\t[rejected] (non-fast-forward)\n"
+            "Done\n"
+        )
+
+        self.assertEqual(parse_push_porcelain(output), [
+            PushDestination("https://example.com/a.git", [
+                PushedRef("=", "refs/heads/main", "refs/heads/main", "[up to date]"),
+            ]),
+            PushDestination("https://example.com/b.git", [
+                PushedRef("!", "refs/heads/main", "refs/heads/main", "[rejected] (non-fast-forward)"),
+            ]),
+        ])
+
+    def test_ignores_lines_outside_of_destinations(self) -> None:
+        self.assertEqual(parse_push_porcelain(""), [])
+        self.assertEqual(parse_push_porcelain(" \trefs/heads/a:refs/heads/a\tx\n"), [])

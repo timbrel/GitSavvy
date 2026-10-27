@@ -38,6 +38,20 @@ class RemoteInfoBlob(NamedTuple):
     integration_remote: str | None
 
 
+class PushDestination(NamedTuple):
+    url: RemoteUrl
+    refs: list[PushedRef]
+
+
+class PushedRef(NamedTuple):
+    # One of " " (fast-forward), "+" (forced update), "-" (deleted),
+    # "*" (new ref), "!" (rejected), "=" (up to date)
+    flag: str
+    src: str
+    dst: str
+    summary: str
+
+
 class RemoteInfo(NamedTuple):
     name: RemoteName
     # The effective url with `url.<base>.insteadOf` applied, as `git remote -v`
@@ -165,27 +179,31 @@ class RemotesMixin(mixin_base):
         )
 
     def push(
-            self,
-            remote=None,
-            branch=None,
-            force=False,
-            force_with_lease=False,
-            remote_branch=None,
-            set_upstream=False):
+        self,
+        remote: str | None = None,
+        branch: str | None = None,
+        force: bool = False,
+        force_with_lease: bool = False,
+        remote_branch: str | None = None,
+        set_upstream: bool = False
+    ) -> list[PushDestination]:
         """
         Push to the specified remote and branch if provided, otherwise
         perform default `git push`.
+
+        Return what Git reports for each push destination: its effective
+        url and the refs it updated.
         """
-        # Do not return the output. It is always empty since the output
-        # of "git push" actually goes to stderr.
-        self.git(
+        output = self.git(
             "push",
+            "--porcelain",
             "--force" if force else None,
             "--force-with-lease" if force_with_lease else None,
             "--set-upstream" if set_upstream else None,
             remote,
             branch if not remote_branch else "{}:{}".format(branch, remote_branch)
         )
+        return parse_push_porcelain(output)
 
     def guess_integration_remote(
         self,
@@ -307,3 +325,19 @@ def by_raw_key(config_entries: list[ConfigEntry], raw_key: str) -> list[str]:
         for key, value in config_entries
         if key.lower() == raw_key
     ]
+
+
+def parse_push_porcelain(output: str) -> list[PushDestination]:
+    """
+    Parse the output of `git push --porcelain`: a "To <url>" line per
+    destination, each followed by "<flag>\t<src>:<dst>\t<summary>" lines.
+    """
+    destinations: list[PushDestination] = []
+    for line in output.splitlines():
+        if line.startswith("To "):
+            destinations.append(PushDestination(line[3:], []))
+        elif destinations and line.count("\t") >= 2:
+            flag, refs, summary = line.split("\t", 2)
+            src, _, dst = refs.partition(":")
+            destinations[-1].refs.append(PushedRef(flag, src, dst, summary))
+    return destinations
