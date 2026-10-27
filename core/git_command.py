@@ -36,6 +36,8 @@ from typing import (
     Any, Callable, Deque, Dict, IO, Iterable, Iterator, List, Optional, Sequence,
     Tuple, TypeVar, Union)
 T = TypeVar("T")
+#: Renders a line of output for display, see `_GitCommand.git`
+LineFormatter = Callable[[str], str]
 
 
 def map_(it: Iterable[T], k: Callable[[T], object]):
@@ -99,14 +101,22 @@ def timer(timeout: Optional[float]) -> TimeoutManager:
     return TimeoutManager(timeout) if timeout else NeverTimeout
 
 
-def communicate_and_log(proc, stdin, log, timeout=None):
-    # type: (subprocess.Popen, bytes, Callable[[bytes], None], Optional[float]) -> Tuple[bytes, bytes]
+def communicate_and_log(
+    proc: subprocess.Popen,
+    stdin: Optional[bytes],
+    log: Callable[[bytes], None],
+    timeout: Optional[float] = None,
+    log_stdout: Optional[Callable[[bytes], None]] = None
+) -> Tuple[bytes, bytes]:
     """
     Emulates Popen.communicate
     Writes stdin (if provided)
-    Logs output from both stdout and stderr
+    Logs output from both stdout and stderr, stdout via `log_stdout`
+    if provided
     Returns stdout, stderr
     """
+    if log_stdout is None:
+        log_stdout = log
     if stdin is not None:
         assert proc.stdin
         proc.stdin.write(stdin)
@@ -117,7 +127,7 @@ def communicate_and_log(proc, stdin, log, timeout=None):
     for line in stream_stdout_and_err(proc, timeout):
         if isinstance(line, Out):
             stdout += line
-            log(line)
+            log_stdout(line)
         elif isinstance(line, Err):
             stderr += line
             log(line)
@@ -271,7 +281,8 @@ class _GitCommand(SettingsMixin):
         stdin_encoding="utf-8",
         custom_environ=None,
         just_the_proc=False,
-        timeout=NOT_SET
+        timeout=NOT_SET,
+        stdout_formatter: Optional[Callable[[], LineFormatter]] = None
     ):
         """
         Run the git command specified in `*args` and return the output
@@ -281,6 +292,13 @@ class _GitCommand(SettingsMixin):
         the git process.  If `working_dir` is provided, set this as the
         current working directory for the git process; otherwise,
         the `repo_path` value will be used.
+
+        If `stdout_formatter` is provided, it is called to create a fresh,
+        possibly stateful, formatter for each rendering of stdout.  That
+        formatter receives each line of stdout, including its line ending,
+        and returns the text to show instead, or "" to hide the line.  It
+        only changes what the output panel and the error message show; the
+        returned stdout and `GitSavvyError.stdout` stay unformatted.
         """
         if timeout == NOT_SET:
             try:
@@ -354,8 +372,18 @@ class _GitCommand(SettingsMixin):
 
             if log:
                 log_b = lambda line: log(line.decode("utf-8", "replace"))
+                log_stdout_b = log_b
+                if stdout_formatter:
+                    format_line = stdout_formatter()
+
+                    def log_stdout_b(line: bytes) -> None:
+                        if text := format_line(line.decode("utf-8", "replace")):
+                            log(text)
+
                 # May raise TimeoutError
-                stdout, stderr = communicate_and_log(p, stdin, log_b, timeout=timeout)
+                stdout, stderr = communicate_and_log(
+                    p, stdin, log_b, timeout=timeout, log_stdout=log_stdout_b
+                )
             else:
                 # May raise TimeoutExpired
                 stdout, stderr = p.communicate(stdin, timeout=timeout)
@@ -447,7 +475,11 @@ class _GitCommand(SettingsMixin):
             raise GitSavvyError(
                 "$ {}\n\n{}{}".format(
                     command_str,
-                    stdout_s,
+                    (
+                        "".join(map(stdout_formatter(), stdout_s.splitlines(keepends=True)))
+                        if stdout_formatter else
+                        stdout_s
+                    ),
                     (
                         "<no output, exit code: {}>".format(p.returncode)
                         if not stdout_s and not stderr_s else
