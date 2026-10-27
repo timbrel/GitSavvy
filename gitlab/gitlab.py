@@ -163,11 +163,11 @@ def validate_response(response, method="GET"):
 
 def get_common_kwargs(gitlab_repo):
     """
-    Prepare ommon parameters for the request such as port, https
+    Prepare common parameters for the request such as port
     and authentication headers
     """
     headers = {'Private-Token': gitlab_repo.token} if gitlab_repo.token else None
-    return dict(port=443, https=True, headers=headers)
+    return dict(port=443, headers=headers)
 
 
 def query_gitlab(api_url_template, gitlab_repo, url_params={}, query_params={}):
