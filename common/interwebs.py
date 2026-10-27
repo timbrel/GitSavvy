@@ -47,25 +47,23 @@ def request(verb, host, port, path, payload=None, https=False, headers=None, aut
         connection = (http.client.HTTPSConnection(host, port)
                       if https
                       else http.client.HTTPConnection(host, port))
-        connection.request(verb, path, body=payload, headers=headers)
-
-        response = connection.getresponse()
+        try:
+            connection.request(verb, path, body=payload, headers=headers)
+            with connection.getresponse() as response:
+                response_payload = response.read()
+                response_headers = Headers(response)
+                status = response.status
+        finally:
+            connection.close()
 
     scheme = "https" if https else "http"
     dprint(f" >-> {verb:<7} > {scheme}://{host}:{port}{path} [{ms.get()}ms]")
     if payload:
         dprint("    ", payload)
 
-    response_payload = response.read()
-    response_headers = Headers(response)
-    status = response.status
-
     is_json = "application/json" in response_headers["content-type"]
     if is_json:
         response_payload = json.loads(response_payload.decode("utf-8"))
-
-    response.close()
-    connection.close()
 
     if redirect and verb == "GET" and status == 301 or status == 302:
         return request_url(
