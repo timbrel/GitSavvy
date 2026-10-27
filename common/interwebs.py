@@ -25,7 +25,10 @@ class Headers(dict):
             self[key] = value
 
 
-def request(verb, host, port, path, payload=None, https=False, headers=None, auth=None, redirect=True):
+def request(
+    verb, host, port, path, payload=None, https=False, headers=None, auth=None,
+    redirect=True, timeout=None
+):
     """
     Make an HTTP(S) request with the provided HTTP verb, host FQDN, port number, path,
     payload, protocol, headers, and auth information.  Return a response object with
@@ -44,9 +47,10 @@ def request(verb, host, port, path, payload=None, https=False, headers=None, aut
         payload = json.dumps(payload)
 
     with measure_runtime() as ms:
-        connection = (http.client.HTTPSConnection(host, port)
+        options = {"timeout": timeout} if timeout is not None else {}
+        connection = (http.client.HTTPSConnection(host, port, **options)
                       if https
-                      else http.client.HTTPConnection(host, port))
+                      else http.client.HTTPConnection(host, port, **options))
         try:
             connection.request(verb, path, body=payload, headers=headers)
             with connection.getresponse() as response:
@@ -70,13 +74,14 @@ def request(verb, host, port, path, payload=None, https=False, headers=None, aut
             verb,
             response_headers["location"],
             headers=headers,
-            auth=auth
+            auth=auth,
+            timeout=timeout
         )
 
     return Response(response_payload, response_headers, status, is_json)
 
 
-def request_url(verb, url, payload=None, headers=None, auth=None):
+def request_url(verb, url, payload=None, headers=None, auth=None, timeout=None):
     parsed = urlparse(url)
     https = parsed.scheme == "https"
     return request(
@@ -89,7 +94,8 @@ def request_url(verb, url, payload=None, headers=None, auth=None):
         headers=headers,
         auth=([parsed.username, parsed.password]
               if parsed.username and parsed.password
-              else None)
+              else None),
+        timeout=timeout
     )
 
 
