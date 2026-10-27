@@ -12,6 +12,7 @@ from ...common import util
 from ..fns import filter_, take, unique
 from ..git_command import GitCommand
 from ..git_mixins.branches import Branch
+from ..git_mixins.worktrees import WorktreeLocation
 from ..text_helper import line_from_pt
 from ..types import FullPath
 from ..ui__quick_panel import ActionType, SEPARATOR, show_actions_panel, show_quick_panel
@@ -56,13 +57,8 @@ class gs_log_graph_delete_decoration(WindowCommand, GitCommand):
     def delete_actions(
         self, view: sublime.View, info: LineInfo
     ) -> Sequence[ActionType]:
-        return [
-            (
-                "Delete branch '{}'".format(branch_name),
-                partial(self.delete_branch, branch_name, view.id())
-            )
-            for branch_name in info.get("local_branches", [])
-        ] + [
+        worktrees = self.current_state().get("worktree_locations", [])
+        return branch_and_worktree_delete_actions(self, view, info, worktrees) + [
             (
                 "Delete tag '{}'".format(tag_name),
                 partial(self.delete_tag, tag_name, view.id())
@@ -257,6 +253,8 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         head_is_on_a_branch = head_info and head_info["HEAD"] != head_info["commit"]
         cursor_is_not_on_head = head_info and head_info["commit"] != info["commit"]
         in_bisect = self.in_bisect()
+        worktrees = self.current_state().get("worktree_locations", [])
+        checked_out_branches = {wt.branch_name for wt in worktrees}
 
         def get_list(info: LineInfo, key: ListItems) -> List[str]:
             return info.get(key, [])
@@ -295,8 +293,22 @@ class gs_log_graph_action(WindowCommand, GitCommand):
             actions += [
                 ("Checkout '{}'".format(branch_name), partial(self.checkout, branch_name))
                 for branch_name in info.get("local_branches", [])
-                if info.get("HEAD") != branch_name
+                if info.get("HEAD") != branch_name and branch_name not in checked_out_branches
             ]
+
+        detached_count = sum(
+            1 for wt in worktrees
+            if wt.detached_commit and wt.detached_commit.startswith(commit_hash)
+        )
+        actions += [
+            (
+                "Open {} in a new window".format(
+                    "detached worktree" if wt.is_detached and detached_count == 1 else name
+                ),
+                partial(self.open_worktree_in_new_window, wt.path)
+            )
+            for wt, name in worktree_targets(info, worktrees)
+        ]
 
         if "HEAD" not in info or info["HEAD"] != commit_hash:
             actions += [
@@ -438,13 +450,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
                     for branch_name in info.get("local_branches", [])
                 ]
 
-            actions += [
-                (
-                    "Delete branch '{}'".format(branch_name),
-                    partial(self.delete_branch, branch_name, view.id())
-                )
-                for branch_name in info.get("local_branches", [])
-            ]
+            actions += branch_and_worktree_delete_actions(self, view, info, worktrees)
 
             if "HEAD" not in info:
                 actions += [
@@ -752,6 +758,64 @@ class gs_log_graph_action(WindowCommand, GitCommand):
         )
         self.checkout_ref(commit_hash, fpath=file_path)
         util.view.refresh_gitsavvy_interfaces(self.window)
+
+
+def branch_and_worktree_delete_actions(
+    cmd: gs_log_graph_action | gs_log_graph_delete_decoration,
+    view: sublime.View,
+    info: LineInfo,
+    worktrees: list[WorktreeLocation]
+) -> list[ActionType]:
+    targets = worktree_targets(info, worktrees)
+    worktree_branches = {wt.branch_name for wt, _ in targets}
+    return [  # type: ignore[return-value]
+        (
+            f"Delete branch '{branch_name}'",
+            partial(cmd.delete_branch, branch_name, view.id())
+        )
+        for branch_name in info.get("local_branches", [])
+        if branch_name not in worktree_branches
+    ] + [
+        (
+            f"Delete worktree at {name}",
+            partial(delete_worktree_from_graph, cmd, wt.path)
+        )
+        for wt, name in targets
+    ]
+
+
+def worktree_targets(
+    info: LineInfo, worktrees: list[WorktreeLocation]
+) -> list[tuple[WorktreeLocation, str]]:
+    detached = [
+        wt for wt in worktrees
+        if wt.detached_commit and wt.detached_commit.startswith(info["commit"])
+    ]
+    prefix = os.path.commonprefix([wt.path for wt in detached]) if len(detached) > 1 else ""
+    return [
+        (
+            wt,
+            wt.branch_name or (
+                wt.path[len(prefix):].lstrip("/\\") or os.path.basename(wt.path)
+                if len(detached) > 1 else info["commit"]
+            )
+        )
+        for wt in worktrees
+        if not wt.is_current and (
+            wt.branch_name in info.get("local_branches", [])
+            or wt in detached
+        )
+    ]
+
+
+@util.actions.destructive(description="delete a worktree")
+def delete_worktree_from_graph(
+    cmd: gs_log_graph_action | gs_log_graph_delete_decoration, path: str
+) -> None:
+    try:
+        cmd.remove_worktree(path)
+    finally:
+        util.view.refresh_gitsavvy_interfaces(cmd.window, refresh_sidebar=True)
 
 
 def delete_tag_from_graph(
