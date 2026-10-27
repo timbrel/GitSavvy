@@ -10,8 +10,9 @@ from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.core.commands.log_graph import _find_symbol
 from GitSavvy.core.commands.log_graph_renderer import (
-    make_worktree_branch_marker, gs_log_graph_refresh, has_main_worktree
+    make_worktree_branch_marker, gs_log_graph_refresh
 )
+from GitSavvy.core.git_mixins.worktrees import WorktreesMixin, main_worktree_path
 from GitSavvy.core.commands.log_graph_smart_copy import (
     read_branches_in_region, read_commit_message, read_tags_in_region
 )
@@ -42,8 +43,14 @@ class TestGraphWorktreeHeads(DeferrableTestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.addCleanup(unstub)
-        self.common_dir = directory.name
-        self.command = mock({"git_common_dir": self.common_dir, "git_dir": self.common_dir})
+        self.common_dir = os.path.join(directory.name, ".git")
+        self.command = mock({
+            "git_common_dir": self.common_dir, "git_dir": self.common_dir, "repo_path": directory.name
+        })
+        when(self.command).update_store(...).thenReturn(None)
+        when(self.command).get_worktree_locations().thenAnswer(
+            lambda: WorktreesMixin.get_worktree_locations(self.command)
+        )
         when(self.command).get_worktrees().thenReturn([])
         self.write_head(self.common_dir, "ref: refs/heads/main\n")
         with open(os.path.join(self.common_dir, "config"), "w", encoding="utf-8") as f:
@@ -95,6 +102,7 @@ class TestGraphWorktreeHeads(DeferrableTestCase):
         self.write_head(path, "a" * 40)
         self.assertEqual((set(), {"a" * 40}), self.markers())
         os.remove(os.path.join(path, "HEAD"))
+        os.remove(os.path.join(path, "gitdir"))
         os.rmdir(path)
         self.assertEqual((set(), set()), self.markers())
 
@@ -108,19 +116,54 @@ class TestGraphWorktreeHeads(DeferrableTestCase):
         self.write_head(self.linked_dir("valid"), "ref: refs/heads/feature")
         self.assertEqual(({"feature"}, set()), self.markers())
 
+    def test_locations_preserve_duplicate_detached_heads_and_paths(self) -> None:
+        for name in ("one", "two"):
+            self.write_head(self.linked_dir(name), "a" * 40)
+        locations = self.command.get_worktree_locations()
+        detached = [wt for wt in locations if wt.detached_commit]
+        self.assertEqual(2, len(detached))
+        self.assertEqual({"one", "two"}, {os.path.basename(wt.path) for wt in detached})
+        self.assertTrue(locations[0].is_current)
+        verify(self.command).update_store({"worktree_locations": locations})
+        _, commits = gs_log_graph_refresh.get_worktree_markers(self.command)
+        self.assertEqual(["a" * 40, "a" * 40], commits)
+
+    def test_relative_gitfile_is_resolved_against_registration(self) -> None:
+        directory = self.linked_dir("relative")
+        self.write_head(directory, "a" * 40)
+        checkout = os.path.join(os.path.dirname(self.common_dir), "relative")
+        with open(os.path.join(directory, "gitdir"), "w", encoding="utf-8") as f:
+            f.write(os.path.relpath(os.path.join(checkout, ".git"), directory))
+        locations = self.command.get_worktree_locations()
+        self.assertEqual([checkout], [wt.path for wt in locations if wt.is_detached])
+
+    def test_missing_path_is_not_invented(self) -> None:
+        directory = self.linked_dir("unknown")
+        self.write_head(directory, "a" * 40)
+        os.remove(os.path.join(directory, "gitdir"))
+        self.assertEqual((set(), set()), self.markers())
+
+    def test_reftable_does_not_invent_loose_head_information(self) -> None:
+        os.mkdir(os.path.join(self.common_dir, "reftable"))
+        self.assertEqual([], self.command.get_worktree_locations())
+
     def test_scan_failure_still_allows_the_other_main_checkout(self) -> None:
         self.command.git_dir = self.linked_dir("current")
         when(os).scandir(os.path.join(self.common_dir, "worktrees")).thenRaise(PermissionError)
         self.assertEqual(({"main"}, set()), self.markers())
 
     def markers(self) -> tuple[set[str], set[str]]:
-        return gs_log_graph_refresh.get_worktree_markers(self.command)
+        branches, detached = gs_log_graph_refresh.get_worktree_markers(self.command)
+        return branches, set(detached)
 
     def linked_dir(self, name: str) -> str:
         return os.path.join(self.common_dir, "worktrees", name)
 
     def write_head(self, directory: str, contents: str | bytes) -> None:
         os.makedirs(directory, exist_ok=True)
+        if directory != self.common_dir:
+            with open(os.path.join(directory, "gitdir"), "w", encoding="utf-8") as f:
+                f.write(os.path.join(os.path.dirname(self.common_dir), os.path.basename(directory), ".git"))
         data = contents.encode("utf-8") if isinstance(contents, str) else contents
         with open(os.path.join(directory, "HEAD"), "wb") as f:
             f.write(data)
@@ -140,13 +183,27 @@ class TestMainWorktreeConfig(DeferrableTestCase):
     ])
     def test_reads_git_boolean_without_spawning_git(self, contents, expected):
         with tempfile.TemporaryDirectory() as directory:
-            with open(os.path.join(directory, "config"), "w", encoding="utf-8") as f:
+            git_dir = os.path.join(directory, ".git")
+            os.mkdir(git_dir)
+            with open(os.path.join(git_dir, "config"), "w", encoding="utf-8") as f:
                 f.write(contents)
-            self.assertEqual(expected, has_main_worktree(directory))
+            self.assertEqual(expected, main_worktree_path(git_dir) is not None)
+
+    @p.expand([
+        ('[core]\nbare = false\nworktree = /elsewhere\n',),
+        ('[core]\nbare = false\n[include]\npath = other-config\n',)
+    ])
+    def test_complex_config_does_not_invent_a_main_checkout(self, contents) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            git_dir = os.path.join(directory, ".git")
+            os.mkdir(git_dir)
+            with open(os.path.join(git_dir, "config"), "w", encoding="utf-8") as f:
+                f.write(contents)
+            self.assertIsNone(main_worktree_path(git_dir))
 
     def test_missing_config_does_not_invent_a_main_checkout(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            self.assertFalse(has_main_worktree(directory))
+            self.assertIsNone(main_worktree_path(directory))
 
 
 class TestWorktreeDecorationReaders(DeferrableTestCase):
@@ -154,6 +211,7 @@ class TestWorktreeDecorationReaders(DeferrableTestCase):
         ("feature ■, bookmark, origin/feature, tag: v1, ■", ["feature", "bookmark", "origin/feature"], ["v1"]),
         ("bookmark, ■", ["bookmark"], []),
         ("■", [], []),
+        ("■, ■", [], []),
         ("HEAD* -> main, feature ■", ["main", "feature"], [])
     ])
     def test_scopes_preserve_copy_and_navigation_targets(self, decoration, branches, tags):

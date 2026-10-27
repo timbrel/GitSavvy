@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from collections import deque
-import configparser
 from functools import lru_cache, partial
 from itertools import chain, groupby, islice
-import os
 from queue import Empty
 import re
 import shlex
@@ -946,43 +944,12 @@ class gs_log_graph_refresh(GsTextCommand):
 
         run_on_new_thread(reader)
 
-    def get_worktree_markers(self) -> tuple[set[str], set[FullHash]]:
-        """Read only other checkouts' branch names and detached commit IDs."""
-        git_dir = os.path.normcase(os.path.realpath(self.git_dir))
-        common_dir = self.git_common_dir
-        # `worktrees/` contains only linked checkouts.  When we're in one of
-        # those, include the main checkout separately and exclude our own entry.
-        heads = (
-            [os.path.join(common_dir, "HEAD")]
-            if os.path.normcase(os.path.realpath(common_dir)) != git_dir and has_main_worktree(common_dir)
-            else []
+    def get_worktree_markers(self) -> tuple[set[str], list[FullHash]]:
+        locations = self.get_worktree_locations()
+        return (
+            {wt.branch_name for wt in locations if not wt.is_current and wt.branch_name},
+            [wt.detached_commit for wt in locations if not wt.is_current and wt.detached_commit]
         )
-        try:
-            with os.scandir(os.path.join(common_dir, "worktrees")) as entries:
-                heads.extend(
-                    os.path.join(entry.path, "HEAD") for entry in entries
-                    if entry.is_dir() and os.path.normcase(os.path.realpath(entry.path)) != git_dir
-                )
-        except OSError:
-            pass
-
-        branches: set[str] = set()
-        detached_commits: set[FullHash] = set()
-        for path in heads:
-            try:
-                with open(path, encoding="utf-8") as f:
-                    head = f.read().strip()
-            except (OSError, UnicodeError):
-                # Worktrees can disappear or change while the graph refreshes.
-                continue
-            if not head:
-                continue
-            if head.startswith("ref: refs/heads/"):
-                if branch := head[len("ref: refs/heads/"):]:
-                    branches.add(branch)
-            else:
-                detached_commits.add(FullHash(head))
-        return branches, detached_commits
 
     def read_graph(self, got_proc=None):
         # type: (Callable[[subprocess.Popen], None]) -> Iterator[str]
@@ -1083,22 +1050,6 @@ def make_worktree_branch_marker(branches: set[str]) -> Optional[Callable[[str], 
     names = "|".join(map(re.escape, branches))
     pattern = re.compile(rf"(?:^|, )(?:HEAD\*? -> )?(?:{names})(?=, |$)")
     return partial(pattern.sub, rf"\g<0> {WORKTREE_MARKER}")
-
-
-def has_main_worktree(common_dir: str) -> bool:
-    """Exclude a bare common repository without launching another Git process."""
-    config = configparser.RawConfigParser(
-        strict=False, allow_no_value=True, inline_comment_prefixes=("#", ";")
-    )
-    try:
-        with open(os.path.join(common_dir, "config"), encoding="utf-8") as f:
-            config.read_file(f)
-        core = next((section for section in config.sections() if section.lower() == "core"), "core")
-        bare = config.get(core, "bare", fallback="false")
-    except (OSError, UnicodeError, configparser.Error):
-        # Don't invent a main checkout if its configuration cannot be read.
-        return False
-    return bare is not None and config.BOOLEAN_STATES.get(bare.strip('"').lower()) is False
 
 
 def prelude(view):

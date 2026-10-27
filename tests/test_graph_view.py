@@ -166,7 +166,8 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         spy2('os.path.exists')
         when(os.path).exists(repo_path).thenReturn(True)
         when(GitCommand).get_working_dir_status().thenReturn(CLEAN_WORKING_DIR)
-        when(gs_log_graph_refresh).get_worktrees().thenReturn([])
+        when(gs_log_graph_refresh).get_worktrees().thenRaise(AssertionError("Unexpected Git query"))
+        when(gs_log_graph_refresh).get_worktree_locations().thenReturn([])
         if markers is not None:
             when(gs_log_graph_refresh).get_worktree_markers().thenReturn(markers)
         self.window.run_command('gs_graph', {'repo_path': repo_path})
