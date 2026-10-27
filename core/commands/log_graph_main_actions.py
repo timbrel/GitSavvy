@@ -13,7 +13,9 @@ from ..fns import filter_, take, unique
 from ..git_command import GitCommand
 from ..git_mixins.branches import Branch
 from ..git_mixins.worktrees import WorktreeLocation
+from ..runtime import on_new_thread
 from ..text_helper import line_from_pt
+from ..ui__worktrees import remove_worktree_with_recovery
 from ..types import FullPath
 from ..ui__quick_panel import ActionType, SEPARATOR, show_actions_panel, show_quick_panel
 from . import multi_selector
@@ -809,11 +811,18 @@ def worktree_targets(
 
 
 @util.actions.destructive(description="delete a worktree")
+@on_new_thread
 def delete_worktree_from_graph(
-    cmd: gs_log_graph_action | gs_log_graph_delete_decoration, path: str
+    cmd: gs_log_graph_action | gs_log_graph_delete_decoration,
+    path: str,
+    force: bool = False,
+    *,
+    unlock: bool = False
 ) -> None:
     try:
-        cmd.remove_worktree(path)
+        remove_worktree_with_recovery(
+            cmd, cmd.window, path, force, unlock, partial(delete_worktree_from_graph, cmd)
+        )
     finally:
         util.view.refresh_gitsavvy_interfaces(cmd.window, refresh_sidebar=True)
 

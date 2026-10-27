@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
+from functools import partial
 
 from unittesting import DeferrableTestCase
 
 from GitSavvy.common.util import actions
 from GitSavvy.core import runtime
+from GitSavvy.core.commands import log_graph_main_actions as graph
 from GitSavvy.core.exceptions import GitSavvyError
 from GitSavvy.core.interfaces import branch
 from GitSavvy.tests.mockito import mock, unstub, verify, when
@@ -150,3 +152,25 @@ class TestWorktreeDeletion(DeferrableTestCase):
         self.assertEqual(self.command.interface.state["worktree_deletions_in_progress"], set())
         verify(branch.util.view, atleast=1).refresh_gitsavvy(self.view)
         verify(self.settings, atleast=1).set("git_savvy.update_view_in_a_blocking_manner", True)
+
+
+class TestGraphWorktreeDeletion(TestWorktreeDeletion):
+    command_class = graph.gs_log_graph_action
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.command = self.command_class(self.window)
+        self.command.delete_worktree = partial(graph.delete_worktree_from_graph, self.command)
+        when(self.command).git(...).thenReturn("")
+        when(graph.util.view).refresh_gitsavvy_interfaces(
+            self.window, refresh_sidebar=True
+        ).thenReturn(None)
+
+    def _assert_refreshed(self) -> None:
+        verify(graph.util.view, atleast=1).refresh_gitsavvy_interfaces(
+            self.window, refresh_sidebar=True
+        )
+
+
+class TestGraphDecorationWorktreeDeletion(TestGraphWorktreeDeletion):
+    command_class = graph.gs_log_graph_delete_decoration
