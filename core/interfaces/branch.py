@@ -251,7 +251,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                 worktree_path=wt.path,
             )
             for wt in worktrees
-            if wt.is_detached and not wt.is_main
+            if wt.is_detached and not wt.is_current
             if wt.path not in self.state["worktree_deletions_in_progress"]
         ]
         detached_head = [
@@ -261,7 +261,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                 worktree_path="."
             )
             for wt in worktrees
-            if wt.is_detached and wt.is_main
+            if wt.is_detached and wt.is_current
         ]
 
         has_distance_to_head_information = any(b.distance_to_head for b in local_branches)

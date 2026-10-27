@@ -31,7 +31,7 @@ class Worktree(NamedTuple):
     path: str
     commit_hash: FullHash
     branch_name: str | None
-    is_main: bool
+    is_current: bool
     locked: str | bool
     prunable: str | bool
 
@@ -68,12 +68,12 @@ class WorktreesMixin(mixin_base):
             path = info["path"]
             commit_hash = info["commit_hash"]
             branch_name = info.get("branch")
-            is_main = path == normalized_repo_path
+            is_current = path == normalized_repo_path
             locked = info.get("locked", False)
             prunable = info.get("prunable", False)
 
             worktrees.append(Worktree(
-                path, commit_hash, branch_name, is_main,
+                path, commit_hash, branch_name, is_current,
                 locked, prunable
             ))
 
