@@ -35,7 +35,8 @@
 		],
 		"tab_size": 4,
 		"translate_tabs_to_spaces": true,
-		"SublimeLinter.linters.ruff.disable": true,
+		"SublimeLinter.linters.flake8.executable": ["uvx", "--python", "3.8", "flake8@5.0.4"],
+		"SublimeLinter.linters.ruff.executable": ["uvx", "ruff@0.14.13"],
 		"SublimeLinter.linters.ruff-lsp.disable": true,
 	},
 }

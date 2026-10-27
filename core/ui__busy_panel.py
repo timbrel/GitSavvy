@@ -39,15 +39,15 @@ T = TypeVar("T")
 
 
 @overload
-def show_busy_panel(  # noqa: E704
+def show_busy_panel(
     window: sublime.Window, text: busy_text, task: Callable[[], None], kont: Callable[[], None]
 ) -> None: ...
 @overload             # noqa: E302
-def show_busy_panel(  # noqa: E704
+def show_busy_panel(
     window: sublime.Window, text: busy_text, task: Callable[[], None], kont: Callable[[Any], None]
 ) -> None: ...
 @overload             # noqa: E302
-def show_busy_panel(  # noqa: E704
+def show_busy_panel(
     window: sublime.Window, text: busy_text, task: Callable[[], T], kont: Callable[[T], None]
 ) -> None: ...
 

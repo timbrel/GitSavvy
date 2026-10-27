@@ -246,10 +246,11 @@ def run_or_timeout(fn, timeout):
         if not cond.wait(timeout):
             raise TimeoutError()
 
+    # The worker binds exactly one of these closure cells; the other stays unbound.
     try:
-        raise exc
+        raise exc  # noqa: F821
     except UnboundLocalError:
-        return result
+        return result  # noqa: F821
 
 
 def run_and_check_timeout(fn, timeout, callback):

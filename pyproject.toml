@@ -8,5 +8,50 @@ dependencies = []
 
 [dependency-groups]
 dev = [
-    "flake8==5.*",
+    "ruff==0.14.13",
+    "flake8==5.0.4",
 ]
+
+[tool.ruff]
+required-version = "==0.14.13"
+target-version = "py38"
+# Keep the former isort wrapping width; lint still allows 120 columns.
+line-length = 90
+# Flake8 checked Python sources, not the mypy stubs.
+include = ["*.py"]
+extend-exclude = ["tests/mockito", "tests/parameterized", "CVS"]
+force-exclude = true
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "ICN003"]
+# E704, W503 and W504 have no Ruff equivalents; docstring rules remain disabled.
+# Flake8 temporarily owns F401 because Ruff cannot read legacy type comments.
+ignore = ["E401", "E731", "F401"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401", "F403"]
+"git_savvy.py" = ["E402", "F401", "F403"]
+# Import sorting remains opt-in, as it was with standalone isort.
+"docs/**" = ["I"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 120
+
+[tool.ruff.lint.flake8-import-conventions]
+# ICN003 matches spellings, not resolved modules. Cover the relative forms in
+# the current package layout; extend this list if deeper packages are added.
+banned-from = [
+    "GitSavvy.common.interwebs",
+    "common.interwebs",
+    ".interwebs",
+    "..interwebs",
+    ".common.interwebs",
+    "..common.interwebs",
+    "...common.interwebs",
+]
+
+[tool.ruff.lint.isort]
+known-local-folder = ["GitSavvy"]
+force-sort-within-sections = true
+lines-after-imports = 2
+combine-as-imports = true

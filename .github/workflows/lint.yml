@@ -22,8 +22,12 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
-    - run: pip install "flake8<6.0.0"
-    - uses: TrueBrain/actions-flake8@v2
+    - name: Install uv
+      run: pip install uv
+    - name: Check with Ruff
+      run: uvx ruff@0.14.13 check .
+    - name: Check unused imports (legacy type comments)
+      run: uvx --python 3.8 flake8@5.0.4 --select F401 .
 
   mypy:
     strategy:

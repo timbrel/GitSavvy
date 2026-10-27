@@ -12,11 +12,11 @@ def fuzzy(event, base=None, date_format=None):
 
     if date_format:
         event = datetime.strptime(event, date_format)
-    elif type(event) == str:
+    elif type(event) is str:
         event = datetime.fromtimestamp(int(event))
-    elif type(event) == int:
+    elif type(event) is int:
         event = datetime.fromtimestamp(event)
-    elif type(event) != datetime:
+    elif type(event) is not datetime:
         raise Exception(
             "Cannot convert object `{}` to fuzzy date string".format(event))
 

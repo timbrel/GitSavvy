@@ -1,13 +1,47 @@
 # Package Testing
 
 We try to cover the most crucial functionality with unit tests using
-[UnitTesting](https://github.com/randy3k/UnitTesting). To run the tests
-locally, you should install UnitTesting via Package Control.
+[UnitTesting](https://github.com/SublimeText/UnitTesting). Tests run inside
+Sublime Text, either headlessly in Docker or in your editor.
 
-## Run the test specs locally
+## Run the tests headlessly (Docker)
 
-First you need to [clone](https://github.com/timbrel/GitSavvy#less-simple) GitSavvy repo from source.
-Open the directory `GitSavvy` and simply run the command `UnitTesting: Test Current Project`
+Install [UnitTesting via Package Control](https://packagecontrol.io/packages/UnitTesting).
+The package includes the `docker/ut-run-tests` launcher (on Windows,
+`docker/ut-run-tests.cmd`). You need Docker running and Python available to
+the launcher. Optionally add its directory to `PATH` or create an alias so
+you can invoke it as `ut-run-tests`, as in the examples below.
+
+From the GitSavvy repository root:
+
+```sh
+# Run all categories: unit tests, syntax tests, and syntax compatibility checks.
+ut-run-tests .
+
+# Run one concrete test file (path relative to the repository root).
+ut-run-tests . --file tests/test_app_state.py
+```
+
+If the launcher is not on `PATH`, invoke
+`<Packages>/UnitTesting/docker/ut-run-tests` instead (on Windows, use
+`ut-run-tests.cmd`). The launcher builds the local Docker image when needed,
+runs Sublime Text headlessly using UnitTesting's CI entrypoints, and caches
+its setup in a Docker volume for faster reruns. Categories without matching
+resources are skipped successfully.
+
+Use `ut-run-tests --help` for current options. Use `--refresh-image` to
+rebuild the image, `--refresh-cache` to recreate the cached Sublime setup,
+or `--refresh` for both. See `docker/README.md` in the installed UnitTesting
+package for setup details.
+
+## Run the tests in Sublime Text
+
+[Clone GitSavvy from source](../README.md#less-simple) and install
+[UnitTesting via Package Control](https://packagecontrol.io/packages/UnitTesting).
+Open the `GitSavvy` directory and run `UnitTesting: Test Current Project`.
+
+CI runs unit tests on Linux and Windows, plus syntax tests on Linux; see the
+[test workflow](../.github/workflows/test.yml).
 
 ## Some details about DeferrableTestCase
 
@@ -26,7 +60,7 @@ the following
 
 - Otherwise, the `yield` statement will always wait for 10 ms.
   
-[1]: https://github.com/randy3k/UnitTesting/blob/dc810ee334bb031710b859478faaf50293880995/unittesting/core/st3/runner.py#L49
-[2]: https://github.com/randy3k/UnitTesting/blob/dc810ee334bb031710b859478faaf50293880995/unittesting/core/st3/runner.py#L7
-[3]: https://github.com/randy3k/UnitTesting/blob/dc810ee334bb031710b859478faaf50293880995/unittesting/core/st3/runner.py#L49
-[4]: https://github.com/randy3k/UnitTesting/blob/dc810ee334bb031710b859478faaf50293880995/unittesting/core/st3/runner.py#L57
+[1]: https://github.com/SublimeText/UnitTesting/blob/master/unittesting/core/py38/case.py
+[2]: https://github.com/SublimeText/UnitTesting/blob/master/unittesting/core/py38/runner.py
+[3]: https://github.com/SublimeText/UnitTesting#deferred-testing
+[4]: https://github.com/SublimeText/UnitTesting#deferred-testing

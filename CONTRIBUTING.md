@@ -15,24 +15,27 @@ Either way is fine, so long as you remember your PR may not be accepted as-is or
 Some other things to remember:
 
 - Please respect the project layout and hierarchy, to keep things organized.
-- All Python code should be PEP8 compliant with few exceptions (e.g. imports in `__init__.py` files).
 - Include docstrings for all classes and functions, unless functionality is obvious at a glance.
 - Include descriptions for issues and PRs.
 
 
-## Commit message structure
+## Code hygiene
 
-Please follow the following commit message structure when submitting your pull request to GitSavvy:
+Prefer lines around 80 columns and generally stay within 100. The 120-column
+lint limit is a pragmatic ceiling, not a target: it leaves room for long
+strings, URLs, and type comments without adding suppression comments.
+Ruff's 90-column wrapping setting is separate from that lint ceiling.
 
-    TYPE: Short commit message
+Run both pinned lint checks locally, just as in CI:
 
-    Detailed
-    commit
-    info
+```sh
+uvx ruff@0.14.13 check .
+uvx --python 3.8 flake8@5.0.4 --select F401 .
+```
 
-For the value of **`TYPE`**, please use one of **`Feature`**, **`Enhancement`**, or **`Fix`**.
-
-This is done in order to help us automate tasks such as changelog generation.
+Run tests headlessly with our Docker runner: `ut-run-tests .` (or
+`ut-run-tests . --file tests/test_app_state.py` for one file).
+See [Package Testing](docs/testing.md#run-the-tests-headlessly-docker) for setup.
 
 
 # Bugs
