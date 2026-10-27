@@ -65,7 +65,7 @@ def request(verb, host, port, path, payload=None, https=False, headers=None, aut
     if is_json:
         response_payload = json.loads(response_payload.decode("utf-8"))
 
-    if redirect and verb == "GET" and status == 301 or status == 302:
+    if redirect and verb == "GET" and status in (301, 302):
         return request_url(
             verb,
             response_headers["location"],
