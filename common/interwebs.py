@@ -89,9 +89,7 @@ def request_url(verb, url, payload=None, headers=None, auth=None, timeout=None):
         parsed.path,
         payload=payload,
         headers=headers,
-        auth=([parsed.username, parsed.password]
-              if parsed.username and parsed.password
-              else None),
+        auth=auth,
         timeout=timeout
     )
 

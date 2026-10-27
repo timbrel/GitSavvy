@@ -77,6 +77,26 @@ class TestHttpRequests(DeferrableTestCase):
             "User-Agent": "GitSavvy Sublime Plug-in"
         })
 
+    def test_request_url_uses_explicit_auth(self) -> None:
+        when(interwebs.http.client).HTTPSConnection("example.com", 443).thenReturn(self.connection)
+
+        interwebs.request_url("HEAD", "https://example.com/path", auth=("token", "x-oauth-basic"))
+
+        verify(self.connection).request("HEAD", "/path", body=None, headers={
+            "User-Agent": "GitSavvy Sublime Plug-in",
+            "Authorization": "Basic dG9rZW46eC1vYXV0aC1iYXNpYw=="
+        })
+
+    def test_url_credentials_do_not_override_explicit_auth(self) -> None:
+        when(interwebs.http.client).HTTPSConnection("example.com", 443).thenReturn(self.connection)
+
+        interwebs.get_url("https://other:secret@example.com/path", auth=("token", "x-oauth-basic"))
+
+        verify(self.connection).request("GET", "/path", body=None, headers={
+            "User-Agent": "GitSavvy Sublime Plug-in",
+            "Authorization": "Basic dG9rZW46eC1vYXV0aC1iYXNpYw=="
+        })
+
     def test_https_urls_preserve_explicit_ports(self) -> None:
         when(interwebs.http.client).HTTPSConnection("example.com", 8443).thenReturn(self.connection)
 
