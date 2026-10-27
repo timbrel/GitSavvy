@@ -308,7 +308,7 @@ class gs_log_graph_action(WindowCommand, GitCommand):
 
         actions += [
             (
-                "Checkout '{}' in a new worktreee".format(good_commit_name),
+                "Checkout '{}' in a new worktree".format(good_commit_name),
                 partial(self.create_worktree, commit_hash)
             ),
         ]
