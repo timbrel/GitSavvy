@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import deque
+from collections import Counter, deque
 from functools import lru_cache, partial
 from itertools import chain, groupby, islice
 from queue import Empty
@@ -645,7 +645,7 @@ class gs_log_graph_refresh(GsTextCommand):
         additional_decorations = resolve_refs_from_the_logs()
         worktree_branches, detached_worktree_commits = self.get_worktree_markers()
         mark_worktree_branches = make_worktree_branch_marker(worktree_branches)
-        detached_worktree_short_commits: dict[int, set[str]] = {}
+        detached_worktree_short_commits: dict[int, Counter[str]] = {}
 
         def simplify_decoration(decoration: str) -> str:
             """Simplify decoration by omitting remote branches if they match
@@ -716,11 +716,12 @@ class gs_log_graph_refresh(GsTextCommand):
                 if hash_length not in detached_worktree_short_commits:
                     # Match this line's actual abbreviation length, not the repo's
                     # cached maximum: Git may print shorter hashes on later lines.
-                    detached_worktree_short_commits[hash_length] = {
+                    detached_worktree_short_commits[hash_length] = Counter(
                         full_hash[:hash_length] for full_hash in detached_worktree_commits
-                    }
-                if commit_hash in detached_worktree_short_commits[hash_length]:
-                    decoration = f"{decoration}, {WORKTREE_MARKER}" if decoration else WORKTREE_MARKER
+                    )
+                if count := detached_worktree_short_commits[hash_length][commit_hash]:
+                    markers = ", ".join([WORKTREE_MARKER] * count)
+                    decoration = f"{decoration}, {markers}" if decoration else markers
 
             left = f"{hash} ({decoration})" if decoration else hash
             left_width = len(left) if left.isascii() else text_width(left)

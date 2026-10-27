@@ -224,6 +224,19 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         self.assertIn("abcd123 Unrelated commit", text)
         verify(gs_log_graph_refresh, times=0).get_worktrees()
 
+    def test_multiple_detached_worktrees_each_get_a_marker(self):
+        self.set_app_state('graph_show_more_commit_info', False, default=True)
+        self.set_app_setting('git_status_in_status_bar', False)
+        log = (
+            "* fec0aca|HEAD -> main|Current|Today, Author|parent\n"
+            "* f461ea1||Detached|Today, Author|\n"
+        )
+        view = yield from self.create_graph_view_async(
+            "/not/there", log, wait_for="f461ea1",
+            markers=(set(), ["f461ea1" + "0" * 33] * 2)
+        )
+        self.assertIn("f461ea1 (■, ■)", view.substr(sublime.Region(0, view.size())))
+
     @p.expand(["123456", "123456789abc", "123456789abc" + "0" * 28])
     def test_detached_markers_use_the_displayed_hash_length(self, short_hash):
         self.set_app_state('graph_show_more_commit_info', False, default=True)
