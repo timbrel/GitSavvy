@@ -61,7 +61,7 @@ def request(verb, host, port, path, payload=None, https=False, headers=None, aut
     if payload:
         dprint("    ", payload)
 
-    is_json = "application/json" in response_headers["content-type"]
+    is_json = "application/json" in response_headers.get("content-type", "")
     if is_json:
         response_payload = json.loads(response_payload.decode("utf-8"))
 
