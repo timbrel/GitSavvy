@@ -78,6 +78,34 @@ class TestRemotesDashboard(DeferrableTestCase):
   #############
 """)
 
+    def test_reveals_the_configured_url_only_if_rewritten(self) -> None:
+        output = render_dashboard([
+            RemoteInfo(
+                "origin",
+                "git@github.com:kaste/GitSavvy",
+                [ConfigEntry("url", "gh:kaste/GitSavvy")],
+                "gh:kaste/GitSavvy"
+            ),
+            remote("backup", "https://example.com/backup.git", [
+                ConfigEntry("url", "https://example.com/backup.git")
+            ])
+        ])
+
+        self.assertEqual(output, """
+  ROOT:    /repo
+
+  BRANCH:  On branch `main`.
+  HEAD:    1234567 A commit
+
+  REMOTE:
+    origin  git@github.com:kaste/GitSavvy
+      url = gh:kaste/GitSavvy
+
+    backup  https://example.com/backup.git
+
+  #############
+""")
+
 
 def render_dashboard(
     remotes: list[RemoteInfo],
@@ -103,4 +131,4 @@ def remote(
     url: str,
     config: list[ConfigEntry] | None = None
 ) -> RemoteInfo:
-    return RemoteInfo(name, url, config or [])
+    return RemoteInfo(name, url, config or [], url)

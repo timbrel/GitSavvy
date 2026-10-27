@@ -40,8 +40,12 @@ class RemoteInfoBlob(NamedTuple):
 
 class RemoteInfo(NamedTuple):
     name: RemoteName
+    # The effective url with `url.<base>.insteadOf` applied, as `git remote -v`
+    # shows it.
     url: RemoteUrl
     config: list[ConfigEntry]
+    # The url as written in `remote.<name>.url`.
+    configured_url: RemoteUrl
 
 
 class RemotesMixin(mixin_base):
@@ -77,8 +81,9 @@ class RemotesMixin(mixin_base):
         return [
             RemoteInfo(
                 remote_name,
-                url,
-                config
+                rewrite_url(url, config_entries),
+                config,
+                url
             )
             for remote_name, config in remote_configs.items()
             if (url := last(self.by_raw_key(config, "url"), None))
@@ -104,7 +109,7 @@ class RemotesMixin(mixin_base):
             for line in self.git(
                 "config",
                 "--get-regexp",
-                r"^(remote\.|gitsavvy\.|.*\.pushdefault$)",
+                r"^(remote\.|gitsavvy\.|url\..*\.insteadof$|.*\.pushdefault$)",
                 throw_on_error=False
             ).splitlines()
             if line.strip()
@@ -286,3 +291,18 @@ class RemotesMixin(mixin_base):
                 if line.startswith("ref: refs/heads/"):
                     return line[16:].split()[0]
         return None
+
+
+def rewrite_url(url: RemoteUrl, config_entries: list[ConfigEntry]) -> RemoteUrl:
+    """Apply `url.<base>.insteadOf` like Git does: the longest prefix wins."""
+    base, prefix = "", ""
+    for key, value in config_entries:
+        lowered = key.lower()
+        if (
+            lowered.startswith("url.")
+            and lowered.endswith(".insteadof")
+            and url.startswith(value)
+            and len(value) > len(prefix)
+        ):
+            base, prefix = key[len("url."):-len(".insteadof")], value
+    return base + url[len(prefix):] if prefix else url

@@ -3,11 +3,13 @@ from __future__ import annotations
 from unittesting import DeferrableTestCase
 
 from GitSavvy.tests.mockito import expect, unstub, verify, when
+from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.git_mixins.remotes import (
     ConfigEntry,
     RemoteInfo,
-    RemoteInfoBlob
+    RemoteInfoBlob,
+    rewrite_url
 )
 
 
@@ -67,11 +69,11 @@ class TestRemoteConfigParsing(DeferrableTestCase):
                 RemoteInfo("origin", "https://github.com/packagecontrol/st_package_reviewer.git", [
                     ConfigEntry("url", "https://github.com/packagecontrol/st_package_reviewer.git"),
                     ConfigEntry("fetch", "+refs/heads/*:refs/remotes/origin/*"),
-                ]),
+                ], "https://github.com/packagecontrol/st_package_reviewer.git"),
                 RemoteInfo("kaste", "https://github.com/kaste/st_package_reviewer.git", [
                     ConfigEntry("url", "https://github.com/kaste/st_package_reviewer.git"),
                     ConfigEntry("fetch", "+refs/heads/*:refs/remotes/kaste/*"),
-                ]),
+                ], "https://github.com/kaste/st_package_reviewer.git"),
                 RemoteInfo(
                     "michaelblyons",
                     "https://github.com/michaelblyons/SublimeText-PC-Package-Reviewer.git",
@@ -85,7 +87,8 @@ class TestRemoteConfigParsing(DeferrableTestCase):
                         ConfigEntry("tagopt", "--no-tags"),
                         ConfigEntry("followremotehead", "never"),
                         ConfigEntry("fetch", "^refs/heads/main"),
-                    ]
+                    ],
+                    "https://github.com/michaelblyons/SublimeText-PC-Package-Reviewer.git"
                 ),
             ],
             push_remote="michaelblyons",
@@ -99,6 +102,57 @@ class TestRemoteConfigParsing(DeferrableTestCase):
                 "michaelblyons": "https://github.com/michaelblyons/SublimeText-PC-Package-Reviewer.git",
             }
         })
+
+    def test_get_remote_info_resolves_insteadof(self) -> None:
+        repo = GitCommand()
+        when(repo).git("config", "--get-regexp", ...).thenReturn(
+            "url.git@github.com:.insteadof gh:\n"
+            "remote.origin.url gh:kaste/GitSavvy\n"
+            "remote.other.url https://example.com/other.git\n"
+        )
+        when(repo).current_state().thenReturn({})
+        expect(repo).update_store(...)
+
+        remotes = repo.get_remote_info().remotes
+
+        self.assertEqual([
+            ("origin", "git@github.com:kaste/GitSavvy", "gh:kaste/GitSavvy"),
+            ("other", "https://example.com/other.git", "https://example.com/other.git"),
+        ], [(r.name, r.url, r.configured_url) for r in remotes])
+        verify(repo).update_store({
+            "remotes": {
+                "origin": "git@github.com:kaste/GitSavvy",
+                "other": "https://example.com/other.git",
+            }
+        })
+
+
+class TestRewriteUrl(DeferrableTestCase):
+    @p.expand([
+        ("rewrites the prefix", "gh:me/p", [
+            ("url.https://github.com/.insteadof", "gh:")
+        ], "https://github.com/me/p"),
+        ("longest prefix wins", "gh:me/p", [
+            ("url.https://a/.insteadof", "gh:"),
+            ("url.https://github.com/x/.insteadof", "gh:me/"),
+        ], "https://github.com/x/p"),
+        ("no matching prefix", "https://github.com/me/p", [
+            ("url.https://a/.insteadof", "gh:")
+        ], "https://github.com/me/p"),
+        ("prefix is case-sensitive", "GH:me/p", [
+            ("url.https://github.com/.insteadof", "gh:")
+        ], "GH:me/p"),
+        ("base keeps its case", "gh:me/p", [
+            ("url.https://GitHub.com/.insteadof", "gh:")
+        ], "https://GitHub.com/me/p"),
+        ("other config is ignored", "https://github.com/me/p", [
+            ("remote.origin.url", "https:")
+        ], "https://github.com/me/p"),
+    ])
+    def test_rewrite_url(self, _, url, entries, expected) -> None:
+        config_entries = [ConfigEntry(key, value) for key, value in entries]
+
+        self.assertEqual(expected, rewrite_url(url, config_entries))
 
 
 class TestGuessRemoteToPushTo(DeferrableTestCase):

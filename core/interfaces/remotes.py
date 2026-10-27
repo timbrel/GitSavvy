@@ -177,13 +177,15 @@ class RemotesInterface(ui.ReactiveInterface):
         return [
             config
             for config in remote.config
-            if self.should_show_remote_config(remote.name, config.key, config.value)
+            if self.should_show_remote_config(remote, config.key, config.value)
         ]
 
-    def should_show_remote_config(self, remote_name: str, key: str, value: str) -> bool:
+    def should_show_remote_config(self, remote: RemoteInfo, key: str, value: str) -> bool:
+        # The main line shows the effective url; reveal the configured one
+        # only if `url.<base>.insteadOf` rewrote it.
         return not (
-            key == "url"
-            or key == "fetch" and value == "+refs/heads/*:refs/remotes/{}/*".format(remote_name)
+            key == "url" and remote.url == remote.configured_url
+            or key == "fetch" and value == "+refs/heads/*:refs/remotes/{}/*".format(remote.name)
         )
 
     def marker_for_remote(
