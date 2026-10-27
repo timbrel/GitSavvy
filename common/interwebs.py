@@ -67,9 +67,14 @@ def request(
         response_payload = json.loads(response_payload.decode("utf-8"))
 
     if redirect and verb == "GET" and status in (301, 302):
+        location = response_headers["location"]
+        target = urlparse(location)
+        if (target.scheme, target.hostname, target.port or 443) != ("https", host.lower(), port):
+            headers = {key: value for key, value in headers.items() if key.lower() != "authorization"}
+            auth = None
         return request_url(
             verb,
-            response_headers["location"],
+            location,
             headers=headers,
             auth=auth,
             timeout=timeout

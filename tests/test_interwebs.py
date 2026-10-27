@@ -4,6 +4,7 @@ from unittesting import DeferrableTestCase
 
 from GitSavvy.common import interwebs
 from GitSavvy.tests.mockito import mock, unstub, verify, when
+from GitSavvy.tests.parameterized import parameterized as p
 
 
 class TestHttpRequests(DeferrableTestCase):
@@ -66,6 +67,66 @@ class TestHttpRequests(DeferrableTestCase):
         verify(interwebs).request_url("GET", "https://other.example.com/", headers={
             "User-Agent": "GitSavvy Sublime Plug-in"
         }, auth=None, timeout=4)
+
+    @p.expand([
+        ("https://other.example.com/", 443),
+        ("https://example.com.evil/", 443),
+        ("https://example.com:8443/", 443),
+        ("https://example.com/", 8443),
+    ])
+    def test_cross_origin_redirects_strip_auth(self, location: str, port: int) -> None:
+        when(interwebs.http.client).HTTPSConnection(...).thenReturn(self.connection)
+        self.response.status = 302
+        when(self.response).getheaders().thenReturn([("Location", location)])
+        when(interwebs).request_url(...).thenReturn("redirected")
+        headers = {"Accept": "application/json"}
+
+        result = interwebs.get(
+            "example.com", port, "/", headers=headers, auth=("token", "x-oauth-basic"), timeout=4
+        )
+
+        self.assertEqual(result, "redirected")
+        verify(interwebs).request_url("GET", location, headers={
+            "Accept": "application/json",
+            "User-Agent": "GitSavvy Sublime Plug-in"
+        }, auth=None, timeout=4)
+        self.assertEqual(headers["Authorization"], "Basic dG9rZW46eC1vYXV0aC1iYXNpYw==")
+
+    @p.expand([("Authorization",), ("authorization",), ("AUTHORIZATION",)])
+    def test_cross_origin_redirects_strip_auth_headers_case_insensitively(self, header: str) -> None:
+        when(interwebs.http.client).HTTPSConnection(...).thenReturn(self.connection)
+        self.response.status = 301
+        location = "https://other.example.com/"
+        when(self.response).getheaders().thenReturn([("Location", location)])
+        when(interwebs).request_url(...).thenReturn("redirected")
+        headers = {header: "Bearer token"}
+
+        interwebs.get("example.com", 443, "/", headers=headers)
+
+        verify(interwebs).request_url("GET", location, headers={
+            "User-Agent": "GitSavvy Sublime Plug-in"
+        }, auth=None, timeout=None)
+        self.assertEqual(headers[header], "Bearer token")
+
+    @p.expand([
+        ("https://example.com/", 443),
+        ("https://example.com:443/", 443),
+        ("https://EXAMPLE.COM/", 443),
+        ("https://example.com:8443/", 8443),
+    ])
+    def test_same_origin_redirects_keep_auth(self, location: str, port: int) -> None:
+        when(interwebs.http.client).HTTPSConnection(...).thenReturn(self.connection)
+        self.response.status = 302
+        when(self.response).getheaders().thenReturn([("Location", location)])
+        when(interwebs).request_url(...).thenReturn("redirected")
+        auth = ("token", "x-oauth-basic")
+
+        interwebs.get("EXAMPLE.COM", port, "/", auth=auth)
+
+        verify(interwebs).request_url("GET", location, headers={
+            "User-Agent": "GitSavvy Sublime Plug-in",
+            "Authorization": "Basic dG9rZW46eC1vYXV0aC1iYXNpYw=="
+        }, auth=auth, timeout=None)
 
     def test_url_helpers_use_https_and_forward_timeout(self) -> None:
         when(interwebs.http.client).HTTPSConnection("example.com", 443, timeout=3).thenReturn(self.connection)
