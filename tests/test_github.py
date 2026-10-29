@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittesting import DeferrableTestCase
 
 from GitSavvy.github import github
+from GitSavvy.github.commands import pull_request
 from GitSavvy.github.commands.pull_request import gs_github_pull_request
 from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
@@ -39,6 +40,45 @@ class TestMissingPullRequestHead(DeferrableTestCase):
 
         verify(command).git("fetch", "upstream", "refs/pull/42/head")
         verify(window).run_command("gs_checkout_branch", {"branch": "FETCH_HEAD"})
+
+
+    @p.expand([(1, True), (2, False)])
+    def test_branch_action_suggests_pr_number(self, index, checkout):
+        future = mock()
+        when(future).result(4.0).thenReturn({"number": 42, "head": {"repo": None}})
+        command = mock({"pr_": future})
+        callbacks = []
+        when(pull_request).show_single_line_input_panel(
+            "Enter branch name for PR 42:", "pr-42", ...
+        ).thenAnswer(lambda caption, name, callback: callbacks.append(callback))
+        when(command).create_branch_for_pr("chosen-name", checkout=checkout).thenReturn(None)
+
+        gs_github_pull_request.on_select_action(command, index)
+        callbacks[0]("chosen-name")
+
+        verify(command).create_branch_for_pr("chosen-name", checkout=checkout)
+
+    @p.expand([(False,), (True,)])
+    def test_local_branch_has_no_upstream(self, checkout):
+        window = mock()
+        command = mock({
+            "window": window,
+            "base_remote_name": "upstream",
+            "pr": {"number": 42, "head": {"repo": None}},
+        })
+        when(window).status_message(...).thenReturn(None)
+        when(command).git("fetch", "upstream", "refs/pull/42/head").thenReturn("")
+        when(command).git("branch", "--no-track", "pr-42", "FETCH_HEAD").thenReturn("")
+        when(window).run_command("gs_checkout_branch", {"branch": "pr-42"}).thenReturn(None)
+        when(pull_request.util.view).refresh_gitsavvy_interfaces(window).thenReturn(None)
+        when(pull_request.sublime).yes_no_cancel_dialog(...).thenRaise(AssertionError("Unexpected prompt"))
+
+        gs_github_pull_request.create_branch_for_pr(command, "pr-42", checkout=checkout)
+
+        verify(command).git("fetch", "upstream", "refs/pull/42/head")
+        verify(command).git("branch", "--no-track", "pr-42", "FETCH_HEAD")
+        verify(window, times=int(checkout)).run_command("gs_checkout_branch", {"branch": "pr-42"})
+        verify(pull_request.util.view, times=int(not checkout)).refresh_gitsavvy_interfaces(window)
 
 
 class TestPullRequestTransport(DeferrableTestCase):

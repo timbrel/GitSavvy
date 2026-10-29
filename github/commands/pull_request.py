@@ -115,13 +115,14 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
         elif idx == -1:
             return
 
-        owner = self.pr["head"]["repo"]["owner"]["login"]
-
-        if owner == self.base_remote.owner:
+        head_repo = self.pr["head"]["repo"]
+        if head_repo is None:
+            branch_name = "pr-{}".format(self.pr["number"])
+        elif head_repo["owner"]["login"] == self.base_remote.owner:
             # don't add prefix for integrated remote
             branch_name = self.pr["head"]["ref"]
         else:
-            branch_name = "{}-{}".format(owner, self.pr["head"]["ref"])
+            branch_name = "{}-{}".format(head_repo["owner"]["login"], self.pr["head"]["ref"])
 
         if idx == 1:
             show_single_line_input_panel(
@@ -149,6 +150,16 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
 
     def create_branch_for_pr(self, branch_name, checkout=False, ask_set_upstream=True):
         if not branch_name:
+            return
+
+        if self.pr["head"]["repo"] is None:
+            self.window.status_message("Creating local branch for PR...")
+            self.git("fetch", self.base_remote_name, "refs/pull/{}/head".format(self.pr["number"]))
+            self.git("branch", "--no-track", branch_name, "FETCH_HEAD")
+            if checkout:
+                self.window.run_command("gs_checkout_branch", {"branch": branch_name})
+            else:
+                util.view.refresh_gitsavvy_interfaces(self.window)
             return
 
         url = self.best_remote_url_for_pr()
