@@ -103,7 +103,10 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
             self.window.status_message(f"Timeout: could not fetch the PR details within {timeout} seconds.")
             return
 
-        if idx == 3:
+        if idx == 0:
+            self.checkout_detached()
+            return
+        elif idx == 3:
             self.view_diff_for_pr()
             return
         elif idx == 4:
@@ -120,9 +123,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
         else:
             branch_name = "{}-{}".format(owner, self.pr["head"]["ref"])
 
-        if idx == 0:
-            self.checkout_detached()
-        elif idx == 1:
+        if idx == 1:
             show_single_line_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
                 branch_name,
@@ -138,9 +139,12 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
     def checkout_detached(self):
         self.window.status_message("Checking out PR...")
 
-        url = self.best_remote_url_for_pr()
-        ref = self.pr["head"]["ref"]
-        self.git("fetch", url, ref)
+        if self.pr["head"]["repo"] is None:
+            self.git("fetch", self.base_remote_name, "refs/pull/{}/head".format(self.pr["number"]))
+        else:
+            url = self.best_remote_url_for_pr()
+            ref = self.pr["head"]["ref"]
+            self.git("fetch", url, ref)
         self.window.run_command("gs_checkout_branch", {"branch": "FETCH_HEAD"})
 
     def create_branch_for_pr(self, branch_name, checkout=False, ask_set_upstream=True):

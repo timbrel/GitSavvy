@@ -12,7 +12,7 @@ class TestMissingPullRequestHead(DeferrableTestCase):
     def tearDown(self):
         unstub()
 
-    @p.expand([(3, "view_diff_for_pr"), (4, "open_pr_in_browser")])
+    @p.expand([(0, "checkout_detached"), (3, "view_diff_for_pr"), (4, "open_pr_in_browser")])
     def test_non_checkout_actions_do_not_require_head_repo(self, index, action):
         future = mock()
         when(future).result(4.0).thenReturn({"number": 42, "head": {"repo": None}})
@@ -22,6 +22,23 @@ class TestMissingPullRequestHead(DeferrableTestCase):
         gs_github_pull_request.on_select_action(command, index)
 
         getattr(verify(command), action)()
+
+
+    def test_detached_checkout_fetches_base_repo_pr_ref(self):
+        window = mock()
+        command = mock({
+            "window": window,
+            "base_remote_name": "upstream",
+            "pr": {"number": 42, "head": {"repo": None}},
+        })
+        when(window).status_message(...).thenReturn(None)
+        when(window).run_command("gs_checkout_branch", {"branch": "FETCH_HEAD"}).thenReturn(None)
+        when(command).git("fetch", "upstream", "refs/pull/42/head").thenReturn("")
+
+        gs_github_pull_request.checkout_detached(command)
+
+        verify(command).git("fetch", "upstream", "refs/pull/42/head")
+        verify(window).run_command("gs_checkout_branch", {"branch": "FETCH_HEAD"})
 
 
 class TestPullRequestTransport(DeferrableTestCase):
