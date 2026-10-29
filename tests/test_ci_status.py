@@ -11,6 +11,7 @@ from GitSavvy.core.git_mixins.remotes import (
     RemoteInfoBlob,
     parse_push_porcelain
 )
+from GitSavvy.core.git_mixins.status import HeadState
 from GitSavvy.github import ci_status, github
 from GitSavvy.github.github import CiObservation, GitHubRepo, PushTarget
 from GitSavvy.tests.mockito import any as ANY, mock, unstub, verify, when
@@ -42,6 +43,8 @@ class CiWatcherTestCase(DeferrableTestCase):
     def tearDown(self):
         unstub()
         ci_status.runs.clear()
+        ci_status.lookups.clear()
+        ci_status.observed_heads.clear()
         ci_status.known_sources.clear()
         store.state.pop(REPO, None)
 
@@ -575,6 +578,228 @@ class TestPushCapture(DeferrableTestCase):
         verify(ci_status, times=0).start_run(...)
 
 
+class TestHeadObservation(DeferrableTestCase):
+    def setUp(self):
+        self.cmd = mock({"repo_path": REPO})
+        for state in ("rebase", "merge", "cherry_pick", "revert", "bisect"):
+            getattr(when(self.cmd), "in_" + state)().thenReturn(False)
+        when(self.cmd).get_remote_info().thenReturn(RemoteInfoBlob(
+            [
+                RemoteInfo("origin", "git@github.com:me/project.git", [], "git@github.com:me/project.git"),
+                RemoteInfo("upstream", UPSTREAM_URL, [], UPSTREAM_URL),
+            ],
+            "origin",
+            "upstream"
+        ))
+        self.scheduled: list[tuple] = []
+        when(ci_status).is_enabled().thenReturn(True)
+        when(ci_status).enqueue_on_ui(...).thenAnswer(lambda fn, *args: fn(*args))
+        when(ci_status).schedule_lookup(...).thenAnswer(lambda *args: self.scheduled.append(args))
+        when(github.app_settings).get("api_tokens", {}).thenReturn({"github.com": "secret"})
+        when(github.app_settings).get("github_enterprise_hosts").thenReturn([])
+
+    def tearDown(self):
+        unstub()
+        ci_status.observed_heads.clear()
+
+    def observe(self, **kwargs):
+        ci_status.on_head_observed(self.cmd, head(**kwargs))
+
+    def test_schedules_a_lookup_of_the_local_commit_in_the_integration_repository(self):
+        self.observe()
+
+        self.assertEqual([(REPO, KEY, UPSTREAM, UPSTREAM_URL)], self.scheduled)
+
+    def test_same_head_stays_fresh(self):
+        self.observe()
+        self.observe(behind="2", clean=False)
+
+        self.assertEqual(1, len(self.scheduled))
+        verify(self.cmd, times=1).get_remote_info()
+
+    def test_moving_away_and_back_looks_up_again(self):
+        self.observe()
+        self.observe(branch="main", commit_hash=OTHER_OID)
+        self.observe()
+
+        self.assertEqual(
+            [KEY, ("main", OTHER_OID), KEY],
+            [key for _, key, _, _ in self.scheduled]
+        )
+
+    def test_becoming_eligible_looks_up(self):
+        # E.g. a commit pushed outside of GitSavvy.
+        self.observe(ahead="1")
+        self.observe()
+
+        self.assertEqual([KEY], [key for _, key, _, _ in self.scheduled])
+
+    @p.expand([
+        ("detached", dict(detached=True, branch=None)),
+        ("initial_commit", dict(commit_hash=None)),
+        ("no_upstream", dict(remote=None)),
+        ("ahead", dict(ahead="1")),
+        ("diverged", dict(ahead="1", behind="2")),
+    ])
+    def test_ineligible_heads(self, _, kwargs):
+        self.observe(**kwargs)
+
+        self.assertEqual([], self.scheduled)
+        verify(self.cmd, times=0).get_remote_info()
+
+    @p.expand([("rebase",), ("merge",), ("cherry_pick",), ("revert",), ("bisect",)])
+    def test_ineligible_while_in_progress(self, state):
+        getattr(when(self.cmd), "in_" + state)().thenReturn(True)
+
+        self.observe()
+
+        self.assertEqual([], self.scheduled)
+
+    def test_missing_token_skips(self):
+        when(github.app_settings).get("api_tokens", {}).thenReturn({})
+        when(github.os.environ).get("GITHUB_TOKEN").thenReturn(None)
+
+        self.observe()
+
+        self.assertEqual([], self.scheduled)
+
+    def test_disabled_reads_nothing(self):
+        when(ci_status).is_enabled().thenReturn(False)
+
+        self.observe()
+
+        self.assertEqual([], self.scheduled)
+        verify(self.cmd, times=0).get_remote_info()
+        self.assertEqual({}, ci_status.observed_heads)
+
+    def test_unsupported_integration_is_skipped_quietly(self):
+        when(github.app_settings).get("api_tokens", {}).thenReturn({})
+        when(github.os.environ).get("GITHUB_TOKEN").thenReturn(None)
+        when(ci_status).dprint(...).thenReturn(None)
+
+        self.observe()
+        verify(ci_status, times=0).dprint(...)
+
+        ci_status.integration_repository(self.cmd.get_remote_info())
+        verify(ci_status).dprint("CI status: skip, no API token for github.com")
+
+
+class TestPassiveLookups(CiWatcherTestCase):
+    def setUp(self):
+        super().setUp()
+        self.lookups: list[ci_status.Lookup] = []
+        when(ci_status).request_lookup(...).thenAnswer(self.lookups.append)
+
+    def look_up(self, key=KEY):
+        ci_status.observed_heads[REPO] = key
+        ci_status.lookup_if_settled(REPO, key, UPSTREAM, UPSTREAM_URL)
+
+    def answer(self, state, **kwargs):
+        ci_status.on_lookup_result(self.lookups.pop(0), CiObservation(state, **kwargs))
+
+    @p.expand([
+        ("failure", "[red]"),
+        ("success", ""),
+        ("pending", ""),
+        ("no_checks", ""),
+    ])
+    def test_presentation(self, state, expected):
+        self.look_up()
+        self.assertIsNone(self.text(), "no busy text while looking up")
+
+        self.answer(state)
+
+        self.assertEqual(expected, self.text())
+        self.assertEqual({}, ci_status.lookups)
+
+    def test_rerun_clears_an_earlier_failure(self):
+        self.look_up()
+        self.answer("failure")
+        ci_status.observed_heads.clear()
+
+        self.look_up()
+        self.answer("pending")
+
+        self.assertEqual("", self.text())
+
+    def test_unknown_keeps_the_published_text(self):
+        self.look_up()
+        self.answer("failure")
+
+        self.look_up()
+        self.answer("unknown", transient=True)
+
+        self.assertEqual("[red]", self.text())
+
+    def test_head_moved_on_before_settling(self):
+        ci_status.observed_heads[REPO] = ("main", OTHER_OID)
+
+        ci_status.lookup_if_settled(REPO, KEY, UPSTREAM, UPSTREAM_URL)
+
+        self.assertEqual([], self.lookups)
+
+    def test_one_lookup_in_flight_per_key(self):
+        self.look_up()
+        self.look_up()
+
+        self.assertEqual(1, len(self.lookups))
+
+    def test_active_push_run_blocks_lookups(self):
+        self.start()
+
+        self.look_up()
+
+        self.assertEqual([], self.lookups)
+        self.assertEqual("[CI: ◇]", self.text())
+
+    def test_push_run_supersedes_a_lookup_in_flight(self):
+        self.look_up()
+        self.start()
+
+        self.answer("failure")
+
+        self.assertEqual("[CI: ◇]", self.text())
+
+    def test_lookup_after_the_push_run_finished(self):
+        self.start()
+        self.respond_at(1.0, "failure")
+        self.at(6.0)
+        self.assertEqual({}, ci_status.runs)
+
+        self.look_up()
+        self.answer("success")
+
+        self.assertEqual("", self.text())
+
+    def test_disabled_makes_no_request(self):
+        when(ci_status).is_enabled().thenReturn(False)
+
+        self.look_up()
+
+        self.assertEqual([], self.lookups)
+
+    def test_stop_invalidates_outstanding_lookups(self):
+        self.look_up()
+
+        try:
+            ci_status.stop()
+            self.answer("failure")
+        finally:
+            ci_status.start()
+
+        self.assertIsNone(self.text())
+
+    def test_changed_integration_source_forgets_observed_heads(self):
+        self.look_up()
+        self.answer("failure")
+        known = ci_status.known_sources[REPO]
+
+        ci_status.reset_repo_if_source_is(REPO, known)
+
+        self.assertEqual(0, len(store.current_state(REPO)["github_ci_status"]))
+        self.assertNotIn(REPO, ci_status.observed_heads)
+
+
 class TestSingleBranchUpdate(DeferrableTestCase):
     @p.expand([
         (" ", ("https://github.com/me/p", "refs/heads/main")),
@@ -594,6 +819,20 @@ class TestSingleBranchUpdate(DeferrableTestCase):
     def test_nothing_pushed(self):
         self.assertIsNone(ci_status.single_branch_update([]))
         self.assertIsNone(ci_status.single_branch_update([PushDestination("https://github.com/me/p", [])]))
+
+
+def head(**kwargs) -> HeadState:
+    return HeadState(**{
+        "detached": False,
+        "branch": "feature",
+        "commit_hash": OID,
+        "remote": "origin/feature",
+        "clean": True,
+        "ahead": None,
+        "behind": None,
+        "gone": False,
+        **kwargs
+    })
 
 
 def porcelain(url, flag, refs):

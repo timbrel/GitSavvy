@@ -6,6 +6,7 @@ import re
 
 from GitSavvy.core.fns import tail
 from GitSavvy.core.types import FullHash, ShortHash, ShortPath
+from GitSavvy.github import ci_status
 
 from typing import Iterable, List, Literal, NamedTuple, Optional, TYPE_CHECKING, overload
 
@@ -104,6 +105,7 @@ class StatusMixin(mixin_base):
             "long_status": self._format_branch_status(branch_status, working_dir_status),
             "short_status": self._format_branch_status_short(branch_status),
         })
+        ci_status.on_head_observed(self, branch_status)  # type: ignore[arg-type]
         return working_dir_status
 
     def _get_status(self) -> List[str]:

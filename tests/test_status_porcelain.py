@@ -5,6 +5,7 @@ from collections import deque
 from unittesting import DeferrableTestCase
 
 from GitSavvy.core.git_command import GitCommand
+from GitSavvy.core.git_mixins import status
 from GitSavvy.core.git_mixins.status import FileStatus
 from GitSavvy.tests.mockito import unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
@@ -26,6 +27,7 @@ class TestPorcelainStatus(DeferrableTestCase):
         when(self.git).in_cherry_pick().thenReturn(False)
         when(self.git).in_revert().thenReturn(False)
         when(self.git).in_bisect().thenReturn(False)
+        when(status.ci_status).on_head_observed(...).thenReturn(None)
 
     def tearDown(self) -> None:
         unstub()
@@ -51,6 +53,11 @@ class TestPorcelainStatus(DeferrableTestCase):
             "status", "--porcelain=v2", "-z", "-b",
             custom_environ={"GIT_OPTIONAL_LOCKS": "0"}
         )
+
+    def test_ci_status_observes_each_head(self) -> None:
+        self.read_status(["# branch.oid " + SHA, "# branch.head main"])
+
+        verify(status.ci_status).on_head_observed(self.git, self.state["head"])
 
     def test_headers_can_be_reordered_and_extended(self) -> None:
         self.read_status([

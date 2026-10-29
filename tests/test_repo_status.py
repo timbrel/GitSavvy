@@ -7,6 +7,7 @@ from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.core import git_mixins
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.git_mixins import active_branch
+from GitSavvy.github import ci_status
 
 
 TestShortBranchStatusTestcases = [
@@ -136,6 +137,9 @@ TestShortBranchStatusTestcases = [
 
 
 class TestShortBranchStatus(DeferrableTestCase):
+    def setUp(self):
+        when(ci_status).on_head_observed(...).thenReturn(None)
+
     def tearDown(self):
         unstub()
 
@@ -323,6 +327,9 @@ TestLongBranchStatusTestcases = [
 
 
 class TestLongBranchStatus(DeferrableTestCase):
+    def setUp(self):
+        when(ci_status).on_head_observed(...).thenReturn(None)
+
     def tearDown(self):
         unstub()
 
