@@ -103,6 +103,15 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
             self.window.status_message(f"Timeout: could not fetch the PR details within {timeout} seconds.")
             return
 
+        if idx == 3:
+            self.view_diff_for_pr()
+            return
+        elif idx == 4:
+            self.open_pr_in_browser()
+            return
+        elif idx == -1:
+            return
+
         owner = self.pr["head"]["repo"]["owner"]["login"]
 
         if owner == self.base_remote.owner:
@@ -125,10 +134,6 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
                 branch_name,
                 lambda branch_name: self.create_branch_for_pr(branch_name, checkout=False)
             )
-        elif idx == 3:
-            self.view_diff_for_pr()
-        elif idx == 4:
-            self.open_pr_in_browser()
 
     def checkout_detached(self):
         self.window.status_message("Checking out PR...")

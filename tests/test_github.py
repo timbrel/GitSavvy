@@ -8,6 +8,22 @@ from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 
+class TestMissingPullRequestHead(DeferrableTestCase):
+    def tearDown(self):
+        unstub()
+
+    @p.expand([(3, "view_diff_for_pr"), (4, "open_pr_in_browser")])
+    def test_non_checkout_actions_do_not_require_head_repo(self, index, action):
+        future = mock()
+        when(future).result(4.0).thenReturn({"number": 42, "head": {"repo": None}})
+        command = mock({"pr_": future})
+        getattr(when(command), action)().thenReturn(None)
+
+        gs_github_pull_request.on_select_action(command, index)
+
+        getattr(verify(command), action)()
+
+
 class TestPullRequestTransport(DeferrableTestCase):
     @p.expand([
         ("git@github.com:owner/repo.git", "ssh_url"),
