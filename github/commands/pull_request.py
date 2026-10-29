@@ -188,7 +188,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
     def best_remote_url_for_pr(self):
         clone_url = self.pr["head"]["repo"]["clone_url"]
         ssh_url = self.pr["head"]["repo"]["ssh_url"]
-        return ssh_url if self.base_remote_url.startswith("git@") else clone_url
+        return ssh_url if self.base_remote_url.startswith(("git@", "ssh://")) else clone_url
 
     def view_diff_for_pr(self):
         response = interwebs.get_url(self.pr["diff_url"])

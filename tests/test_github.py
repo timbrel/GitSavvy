@@ -3,8 +3,28 @@ from __future__ import annotations
 from unittesting import DeferrableTestCase
 
 from GitSavvy.github import github
+from GitSavvy.github.commands.pull_request import gs_github_pull_request
 from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
+
+
+class TestPullRequestTransport(DeferrableTestCase):
+    @p.expand([
+        ("git@github.com:owner/repo.git", "ssh_url"),
+        ("ssh://git@github.com/owner/repo.git", "ssh_url"),
+        ("ssh://git@github.example.com:2222/owner/repo.git", "ssh_url"),
+        ("https://github.com/owner/repo.git", "clone_url"),
+    ])
+    def test_preserves_transport(self, remote_url: str, expected_key: str) -> None:
+        repo = {
+            "ssh_url": "git@github.com:contributor/repo.git",
+            "clone_url": "https://github.com/contributor/repo.git",
+        }
+        command = mock({"base_remote_url": remote_url, "pr": {"head": {"repo": repo}}})
+
+        actual = gs_github_pull_request.best_remote_url_for_pr(command)
+
+        self.assertEqual(repo[expected_key], actual)
 
 
 class TestGitHubAuthentication(DeferrableTestCase):
