@@ -4,7 +4,6 @@ import urllib
 
 from .. import github
 from .. import git_mixins
-from ...common import interwebs
 from ...common import util
 from ...core.commands.push import gs_push_to_branch_name
 from ...core.fns import filter_
@@ -211,13 +210,13 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
         return ssh_url if self.base_remote_url.startswith(("git@", "ssh://")) else clone_url
 
     def view_diff_for_pr(self):
-        response = interwebs.get_url(self.pr["diff_url"])
+        diff = github.get_pull_request_diff(self.pr["number"], self.base_remote)
 
         diff_view = util.view.create_scratch_view(self.window, "pr_diff", {
             "title": "PR #{}".format(self.pr["number"]),
             "syntax": "Packages/GitSavvy/syntax/diff.sublime-syntax",
         })
-        replace_view_content(diff_view, response.payload.decode("utf-8"))
+        replace_view_content(diff_view, diff)
 
     def open_pr_in_browser(self):
         open_in_browser(self.pr["html_url"])

@@ -191,13 +191,13 @@ def github_api_url(
         query_params=interwebs.urlencode(kwargs))
 
 
-def validate_response(response, method="GET"):
+def validate_response(response, method="GET", *, expect_json=True):
     action = {"GET": 'querying', "POST": 'posting to'}[method]
 
     if response.status in [401, 403]:
         raise FailedGithubRequest(AUTH_ERROR_TEMPLATE.format(action=action))
 
-    if response.status < 200 or response.status > 299 or not response.is_json:
+    if response.status < 200 or response.status > 299 or (expect_json and not response.is_json):
         raise FailedGithubRequest(GITHUB_ERROR_TEMPLATE.format(
             action=action, payload=response.payload))
 
@@ -272,6 +272,19 @@ def search_pull_requests(repository: GitHubRepo, q: str):
 
 def get_pull_request(nr: str | int, github_repo: GitHubRepo):
     return get_from_github(f"/repos/{{owner}}/{{repo}}/pulls/{nr}", github_repo)
+
+
+def get_pull_request_diff(nr: int, github_repo: GitHubRepo) -> str:
+    fqdn, path = github_api_url(f"/repos/{{owner}}/{{repo}}/pulls/{nr}", github_repo)
+    auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
+    response = interwebs.get(
+        fqdn, 443, path, auth=auth,
+        headers={
+            "Accept": "application/vnd.github.diff",
+            "X-GitHub-Api-Version": "2022-11-28"
+        })
+    validate_response(response, expect_json=False)
+    return response.payload.decode("utf-8")
 
 
 def get_from_github(api_url_template: str, github_repo: GitHubRepo):

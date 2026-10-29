@@ -9,6 +9,49 @@ from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 
+class TestPullRequestDiff(DeferrableTestCase):
+    def tearDown(self):
+        unstub()
+
+    @p.expand([
+        ("github.com", "api.github.com", "", "token"),
+        ("github.com", "api.github.com", "", None),
+        ("github.example.com", "github.example.com", "/api/v3", "token"),
+    ])
+    def test_downloads_diff_from_api(self, host, api_host, prefix, token):
+        repository = github.GitHubRepo("", host, "owner", "repo", token)
+        response = github.interwebs.Response(b"diff --git a/file b/file\n", {}, 200, False)
+        when(github.interwebs).get(
+            api_host, 443, prefix + "/repos/owner/repo/pulls/42?",
+            auth=(token, "x-oauth-basic") if token else None,
+            headers={"Accept": "application/vnd.github.diff", "X-GitHub-Api-Version": "2022-11-28"}
+        ).thenReturn(response)
+
+        self.assertEqual("diff --git a/file b/file\n", github.get_pull_request_diff(42, repository))
+
+    @p.expand([(401,), (403,), (404,), (500,)])
+    def test_rejects_error_responses(self, status):
+        repository = github.GitHubRepo("", "github.com", "owner", "repo", "token")
+        when(github.interwebs).get(...).thenReturn(
+            github.interwebs.Response(b"error page", {}, status, False)
+        )
+
+        with self.assertRaises(github.FailedGithubRequest):
+            github.get_pull_request_diff(42, repository)
+
+    def test_command_uses_authenticated_diff_helper(self):
+        repository = github.GitHubRepo("", "github.com", "owner", "repo", "token")
+        window, view = mock(), mock()
+        command = mock({"window": window, "base_remote": repository, "pr": {"number": 42}})
+        when(github).get_pull_request_diff(42, repository).thenReturn("diff content")
+        when(pull_request.util.view).create_scratch_view(window, "pr_diff", ...).thenReturn(view)
+        when(pull_request).replace_view_content(view, "diff content").thenReturn(None)
+
+        gs_github_pull_request.view_diff_for_pr(command)
+
+        verify(pull_request).replace_view_content(view, "diff content")
+
+
 class TestMissingPullRequestHead(DeferrableTestCase):
     def tearDown(self):
         unstub()
