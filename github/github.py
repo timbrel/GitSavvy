@@ -274,6 +274,22 @@ def get_pull_request(nr: str | int, github_repo: GitHubRepo):
     return get_from_github(f"/repos/{{owner}}/{{repo}}/pulls/{nr}", github_repo)
 
 
+def commit_exists(commit: str, github_repo: GitHubRepo) -> bool:
+    fqdn, path = github_api_url(f"/repos/{{owner}}/{{repo}}/commits/{commit}", github_repo)
+    auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
+    response = interwebs.request(
+        "HEAD", fqdn, 443, path, auth=auth,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+        })
+    # GitHub returns 422 for an unknown SHA, and 404 for a missing repository.
+    if response.status in (404, 422):
+        return False
+    validate_response(response, expect_json=False)
+    return True
+
+
 def get_pull_request_diff(nr: int, github_repo: GitHubRepo) -> str:
     fqdn, path = github_api_url(f"/repos/{{owner}}/{{repo}}/pulls/{nr}", github_repo)
     auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None

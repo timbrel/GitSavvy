@@ -2,11 +2,83 @@ from __future__ import annotations
 
 from unittesting import DeferrableTestCase
 
+from GitSavvy.core.commands import show_commit
 from GitSavvy.github import github
 from GitSavvy.github.commands import pull_request
 from GitSavvy.github.commands.pull_request import gs_github_pull_request
-from GitSavvy.tests.mockito import mock, unstub, verify, when
+from GitSavvy.tests.mockito import any_, mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
+
+
+class TestCommitChecks(DeferrableTestCase):
+    def tearDown(self):
+        unstub()
+        show_commit.url_cache.clear()
+
+    @p.expand([
+        ("github.com", "api.github.com", "", "token"),
+        ("github.com", "api.github.com", "", None),
+        ("github.example.com", "github.example.com", "/api/v3", "token"),
+    ])
+    def test_checks_commit_using_api_head(self, host, api_host, prefix, token):
+        repository = github.GitHubRepo("", host, "owner", "repo", token)
+        when(github.interwebs).request(
+            "HEAD", api_host, 443, prefix + "/repos/owner/repo/commits/abc123?",
+            auth=(token, "x-oauth-basic") if token else None,
+            headers={"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
+        ).thenReturn(github.interwebs.Response(b"", {}, 200, True))
+
+        self.assertTrue(github.commit_exists("abc123", repository))
+
+    @p.expand([(404, False), (422, False), (200, True)])
+    def test_commit_presence(self, status, expected):
+        repository = github.GitHubRepo("", "github.com", "owner", "repo", "token")
+        when(github.interwebs).request(...).thenReturn(github.interwebs.Response(b"", {}, status, True))
+
+        self.assertEqual(expected, github.commit_exists("abc123", repository))
+
+    @p.expand([(401,), (403,), (500,)])
+    def test_errors_are_not_reported_as_missing_commits(self, status):
+        repository = github.GitHubRepo("", "github.com", "owner", "repo", "token")
+        when(github.interwebs).request(...).thenReturn(github.interwebs.Response(b"", {}, status, True))
+
+        with self.assertRaises(github.FailedGithubRequest):
+            github.commit_exists("abc123", repository)
+
+    @p.expand([(True,), (False,)])
+    def test_open_command_checks_api_but_opens_website(self, exists):
+        url = "https://github.com/owner/repo"
+        repository = github.GitHubRepo(url, "github.com", "owner", "repo", "token")
+        view = mock()
+        command = mock({"view": view})
+        when(command).commits().thenReturn(iter(["abc123"]))
+        when(command).get_integrated_remote_url().thenReturn(url)
+        when(github).parse_remote(url).thenReturn(repository)
+        when(github).commit_exists("abc123", repository).thenReturn(exists)
+        when(show_commit).open_in_browser(url + "/commit/abc123").thenReturn(None)
+        when(show_commit).flash(view, ...).thenReturn(None)
+
+        show_commit.gs_show_commit_open_on_github.run(command, None)
+
+        verify(show_commit, times=int(exists)).open_in_browser(url + "/commit/abc123")
+        verify(show_commit, times=int(not exists)).flash(view, "commit abc123 not found on " + url)
+
+    @p.expand([(True,), (False,)])
+    def test_annotation_checks_api(self, exists):
+        url = "https://github.com/owner/repo"
+        repository = github.GitHubRepo(url, "github.com", "owner", "repo", "token")
+        command = mock()
+        when(command).get_integrated_remote_url().thenReturn(url)
+        when(show_commit).cached_until_focus_switch(command.get_integrated_remote_url).thenReturn(url)
+        when(github).parse_remote(url).thenReturn(repository)
+        when(github).commit_exists("abc123", repository).thenReturn(exists)
+        expected_url = url + "/commit/abc123" if exists else None
+        when(show_commit).ensure_on_ui(...).thenReturn(None)
+
+        show_commit.gs_show_commit_refresh.annotate_with_github_link.__wrapped__(command, "abc123")
+
+        verify(show_commit).ensure_on_ui(any_(), expected_url)
+        self.assertEqual(expected_url, show_commit.url_cache.get("abc123"))
 
 
 class TestPullRequestDiff(DeferrableTestCase):

@@ -63,7 +63,7 @@ def request(
         dprint("    ", payload)
 
     is_json = "application/json" in response_headers.get("content-type", "")
-    if is_json:
+    if is_json and verb != "HEAD":
         response_payload = json.loads(response_payload.decode("utf-8"))
 
     if redirect and verb == "GET" and status in (301, 302):

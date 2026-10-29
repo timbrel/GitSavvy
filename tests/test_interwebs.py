@@ -30,6 +30,17 @@ class TestHttpRequests(DeferrableTestCase):
         verify(self.response).__exit__(None, None, None)
         verify(self.connection).close()
 
+    @p.expand([(200,), (404,), (403,)])
+    def test_head_does_not_decode_empty_json_body(self, status):
+        when(interwebs.http.client).HTTPSConnection("example.com", 443).thenReturn(self.connection)
+        self.response.status = status
+        when(self.response).read().thenReturn(b"")
+
+        response = interwebs.request("HEAD", "example.com", 443, "/")
+
+        self.assertEqual(response.status, status)
+        self.assertEqual(response.payload, b"")
+
     def test_explicit_timeout_applies_to_the_socket(self):
         when(interwebs.http.client).HTTPSConnection("example.com", 443, timeout=3).thenReturn(self.connection)
         interwebs.post("example.com", 443, "/graphql", timeout=3, payload={"query": "x"})
