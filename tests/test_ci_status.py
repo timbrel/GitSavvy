@@ -634,9 +634,20 @@ class TestHeadObservation(DeferrableTestCase):
 
         self.assertEqual([KEY], [key for _, key, _, _ in self.scheduled])
 
+    def test_detached_head_is_looked_up_under_the_detached_pseudo_branch(self):
+        self.observe(detached=True, branch=None, remote=None)
+
+        self.assertEqual([(REPO, ("", OID), UPSTREAM, UPSTREAM_URL)], self.scheduled)
+
+    def test_detaching_at_the_same_commit_looks_up_again(self):
+        self.observe()
+        self.observe(detached=True, branch=None, remote=None)
+
+        self.assertEqual([KEY, ("", OID)], [key for _, key, _, _ in self.scheduled])
+
     @p.expand([
-        ("detached", dict(detached=True, branch=None)),
         ("initial_commit", dict(commit_hash=None)),
+        ("detached_initial_commit", dict(detached=True, branch=None, remote=None, commit_hash=None)),
         ("no_upstream", dict(remote=None)),
         ("ahead", dict(ahead="1")),
         ("diverged", dict(ahead="1", behind="2")),
@@ -647,11 +658,18 @@ class TestHeadObservation(DeferrableTestCase):
         self.assertEqual([], self.scheduled)
         verify(self.cmd, times=0).get_remote_info()
 
-    @p.expand([("rebase",), ("merge",), ("cherry_pick",), ("revert",), ("bisect",)])
-    def test_ineligible_while_in_progress(self, state):
+    @p.expand([
+        (state, detached)
+        for state in ("rebase", "merge", "cherry_pick", "revert", "bisect")
+        for detached in (False, True)
+    ])
+    def test_ineligible_while_in_progress(self, state, detached):
         getattr(when(self.cmd), "in_" + state)().thenReturn(True)
 
-        self.observe()
+        if detached:
+            self.observe(detached=True, branch=None, remote=None)
+        else:
+            self.observe()
 
         self.assertEqual([], self.scheduled)
 

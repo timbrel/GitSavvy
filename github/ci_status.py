@@ -8,8 +8,10 @@ rendered strings into the store at
     store.current_state(repo_path)["github_ci_status"][(branch, full_sha)]
 
 Additionally, `on_head_observed` looks up the CI result once whenever
-`git status` observes that HEAD moved to a pushed branch commit, e.g.
-after a checkout, a pull, or on startup.  These lookups are passive: no
+`git status` observes that HEAD moved to a pushed branch commit or a
+detached commit, e.g. after a checkout, a pull, or on startup.  A
+detached HEAD's result is published under the branch name "".  These
+lookups are passive: no
 animation and no acknowledgements, only a failure shows as `[red]`.
 
 The status bar only selects the applicable string; it never schedules
@@ -67,6 +69,7 @@ CacheKey = Tuple[str, str]  # (branch name, full commit hash)
 RunKey = Tuple[RepoPath, CacheKey]
 Source = Tuple[str, str, str]  # lowercased (host, owner, repo) of the queried repository
 Result = Literal["success", "failure"]
+DETACHED = ""  # the branch name of passive lookups for a detached HEAD
 
 
 class KnownSource(NamedTuple):
@@ -177,10 +180,13 @@ def on_head_observed(cmd: GitCommand, head: HeadState) -> None:
     moves: observing the same eligible `(branch, sha)` again never queries
     again.  Moving away and back, or becoming eligible again, does.
 
-    Only a branch that looks pushed is eligible: attached, with an
-    upstream, not ahead of it, and not in the middle of a rebase, merge,
-    cherry-pick, revert, or bisect.  The lookup itself waits until HEAD
-    stayed put for `SETTLE_DELAY`.
+    A branch is eligible if it looks pushed: it has an upstream and is not
+    ahead of it.  A detached HEAD is always eligible, as we cannot tell
+    locally if GitHub knows the commit; if not, the lookup answers
+    "unknown" and shows nothing.  Its result is published under the
+    `DETACHED` pseudo branch.  Nothing is eligible in the middle of a
+    rebase, merge, cherry-pick, revert, or bisect.  The lookup itself
+    waits until HEAD stayed put for `SETTLE_DELAY`.
     """
     if not is_enabled():
         return
@@ -558,9 +564,9 @@ def forget_observed_heads(repo_path: Optional[RepoPath] = None) -> None:
 
 
 def passive_key(cmd: GitCommand, head: HeadState) -> Optional[CacheKey]:
-    if head.detached or not head.branch or not head.commit_hash:
+    if not head.commit_hash:
         return None
-    if not head.remote or head.ahead:
+    if not head.detached and (not head.branch or not head.remote or head.ahead):
         return None
     if (
         cmd.in_rebase()
@@ -570,7 +576,7 @@ def passive_key(cmd: GitCommand, head: HeadState) -> Optional[CacheKey]:
         or cmd.in_bisect()
     ):
         return None
-    return (head.branch, head.commit_hash)
+    return (head.branch or DETACHED, head.commit_hash)
 
 
 def integration_repository(

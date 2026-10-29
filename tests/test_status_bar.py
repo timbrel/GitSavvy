@@ -69,6 +69,7 @@ class TestSelectCiStatus(DeferrableTestCase):
     @p.expand([
         ("other commit", {("master", OTHER_OID): "[red]"}),
         ("other branch at same commit", {("feature", OID): "[red]"}),
+        ("detached lookup of the same commit", {("", OID): "[red]"}),
         ("empty cache", {}),
     ])
     def test_attached_cache_miss_selects_nothing(self, _, ci):
@@ -76,6 +77,11 @@ class TestSelectCiStatus(DeferrableTestCase):
 
     def test_detached_head_reuses_any_branch_with_that_commit(self):
         ci = {("feature", OID): "[red]", ("master", OTHER_OID): "[CI: ok]"}
+
+        self.assertEqual("[red]", status_bar.select_ci_status(state(head=detached(OID), ci=ci)))
+
+    def test_detached_head_selects_its_own_lookup(self):
+        ci = {("", OID): "[red]", ("", OTHER_OID): ""}
 
         self.assertEqual("[red]", status_bar.select_ci_status(state(head=detached(OID), ci=ci)))
 

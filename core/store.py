@@ -51,7 +51,8 @@ if TYPE_CHECKING:
         recent_commits: List[Commit]
         descriptions: Dict[str, str]
         default_graph_options: Dict[str, str]
-        # Rendered GitHub CI text by (branch name, full commit hash);
+        # Rendered GitHub CI text by (branch name, full commit hash), with
+        # "" as the branch name of a detached HEAD's lookups;
         # owned and published by `github.ci_status`.
         github_ci_status: Cache
     RepoPath = str
