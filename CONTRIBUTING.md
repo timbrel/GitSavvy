@@ -58,6 +58,39 @@ Please include the following information when filing a bug:
 If you make changes, please remember to update the user documentation to reflect the new behavior.
 
 
+## Website preview
+
+The website lives in `docs/index.md`, independently of the root README.
+The in-editor documentation starts at `docs/help.md`. Website styling and
+layout live in `docs/assets/` and `docs/_layouts/`.
+
+With Docker Desktop running, start the preview from the repository root:
+
+```sh
+docker compose -f compose.docs.yml up --build
+```
+
+Open <http://localhost:4000/GitSavvy/>. Edit the Markdown or CSS in Sublime
+and save; Jekyll rebuilds the site and reloads the browser automatically.
+Polling makes file watching work with Windows bind mounts. The first build
+downloads Ruby and the pinned GitHub Pages dependencies; later starts reuse
+the image. No local Ruby installation is needed.
+
+This renders the actual Jekyll layout, including caption classes such as
+`{: .caption }`, which generic Markdown previews may not support. There is
+no browser-based editor: edit the source files in your usual editor.
+
+Press Ctrl+C to stop. To remove the stopped container:
+
+```sh
+docker compose -f compose.docs.yml down
+```
+
+Only localhost can access the preview. Source files are mounted read-only;
+generated HTML stays inside the container. Publishing is still handled by
+GitHub Pages from the branch's `/docs` directory, not by this preview command.
+
+
 ## Package Testing
 
 Check the implementation details of the [tests](docs/testing.md).

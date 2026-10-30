@@ -46,7 +46,7 @@ def get_page_and_anchor(view):
                   else "git-diff-current-file-inline-cached")
         return "staging.md", anchor
 
-    return "README.md", None
+    return "help.md", None
 
 
 class GsHelp(WindowCommand):

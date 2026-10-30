@@ -1,0 +1,6 @@
+title: GitSavvy
+description: Full git and GitHub integration with Sublime Text
+url: https://timbrel.github.io
+baseurl: /GitSavvy
+plugins:
+  - jekyll-seo-tag
