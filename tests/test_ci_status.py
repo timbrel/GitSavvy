@@ -82,21 +82,48 @@ class TestPendingPresentation(CiWatcherTestCase):
     def test_frames_and_label_transition(self, elapsed, expected):
         self.assertEqual(expected, ci_status.pending_text(elapsed))
 
-    def test_publishes_busy_text_immediately_and_animates(self):
+    def test_busy_text_starts_and_animates_once_checks_are_seen(self):
         self.start()
+        self.at(5.0)
+        self.assertIsNone(self.text())
+
+        self.respond_at(5.5, "pending")
+        self.at(5.5)
         self.assertEqual("[CI: ◇]", self.text())
 
-        self.at(0.2)
+        self.at(5.7)
         self.assertEqual("[CI: ◈]", self.text())
 
-        self.at(3.0)
+        self.at(8.5)
         self.assertEqual("[◇]", self.text())
+
+    @p.expand([("pending",), ("success",)])
+    def test_states_that_reveal_checks(self, state):
+        self.start()
+        self.respond_at(0.5, state)
+        self.at(0.5)
+
+        self.assertEqual("[CI: ◇]", self.text())
+
+    def test_discovery_keeps_an_earlier_result(self):
+        ci_status.publish(REPO, KEY, "[red]")
+
+        self.start()
+        self.at(5.0)
+        self.assertEqual("[red]", self.text())
+
+        self.respond_at(5.5, "pending")
+        self.at(5.5)
+        self.assertEqual("[CI: ◇]", self.text())
 
     def test_cache_updates_notify_subscribers(self):
         notifications = []
         unsubscribe = store.subscribe(REPO, {"github_ci_status"}, lambda *args: notifications.append(args))
         try:
             self.start()
+            self.assertEqual(0, len(notifications))
+            self.respond_at(0.5, "pending")
+            self.at(0.5)
         finally:
             unsubscribe()
 
@@ -144,6 +171,7 @@ class TestSettling(CiWatcherTestCase):
     def test_success_needs_two_observations_ten_seconds_apart(self):
         self.start()
         self.respond_at(0.5, "success")
+        self.at(0.5)
         self.assertTrue(self.text().startswith("[CI: "))
         self.assertNotEqual("[CI: ok]", self.text())
 
@@ -202,15 +230,14 @@ class TestSettling(CiWatcherTestCase):
 
 
 class TestTermination(CiWatcherTestCase):
-    def test_no_checks_keep_busy_text_during_discovery_then_clear(self):
+    def test_no_checks_show_nothing_during_discovery_then_stop(self):
         self.start()
         t = 0.0
         while t < 50.0:
             self.respond_at(t + 0.5, "no_checks")
-            self.assertTrue(self.text().startswith("["))
-            self.assertNotIn(self.text(), ("", "[CI: ok]"))
             t += 10.5
             self.at(t)
+            self.assertIsNone(self.text())
 
         self.respond_at(60.0, "no_checks")
 
@@ -228,7 +255,8 @@ class TestTermination(CiWatcherTestCase):
     def test_transient_failures_retry_after_10_20_40_seconds(self):
         self.start()
         self.respond_at(1.0, "unknown", transient=True)
-        self.assertNotEqual("", self.text())
+        self.at(1.0)
+        self.assertIsNone(self.text())
         for delay, failed_at in ((10.0, 1.0), (20.0, 11.0), (40.0, 31.0)):
             self.at(failed_at + delay - 0.001)
             self.assertEqual([], self.requests)
@@ -300,8 +328,7 @@ class TestRunIdentity(CiWatcherTestCase):
 
         ci_status.on_observation(old_run, CiObservation("failure"))
 
-        self.assertNotIn(self.text(), ("[CI: failed]", "[red]"))
-        self.assertEqual("[CI: ◇]", self.text())
+        self.assertIsNone(self.text())
 
     def test_runs_for_other_keys_publish_to_their_own_keys(self):
         other_key = ("feature", OTHER_OID)
@@ -311,7 +338,7 @@ class TestRunIdentity(CiWatcherTestCase):
         self.respond_at(1.0, "failure")
 
         self.assertEqual("[CI: failed]", self.text())
-        self.assertEqual("[CI: ◇]", self.text(other_key))
+        self.assertIsNone(self.text(other_key))
 
     def test_returning_to_a_settled_key_does_not_replay_transitions(self):
         self.start()
@@ -328,19 +355,22 @@ class TestRunIdentity(CiWatcherTestCase):
         old_run, _ = self.requests.pop(0)
         self.start(key=("other", OTHER_OID))
         self.requests.clear()
+        ci_status.publish(REPO, ("other", OTHER_OID), "[red]")
         elsewhere = GitHubRepo("", "github.com", "someone", "else", "secret")
 
         self.start(key=("third", OID), repository=elsewhere, url="git@github.com:someone/else")
         ci_status.on_observation(old_run, CiObservation("failure"))
 
-        cache = store.current_state(REPO)["github_ci_status"]
-        self.assertEqual([("third", OID)], list(cache.keys()))
+        self.assertEqual(0, len(store.current_state(REPO)["github_ci_status"]))
+        self.assertEqual({(REPO, ("third", OID))}, set(ci_status.runs))
 
     def test_same_source_keeps_cache(self):
         self.start()
+        ci_status.publish(REPO, KEY, "[red]")
         self.start(key=("other", OTHER_OID), url="https://github.com/UPSTREAM/project")
 
-        self.assertEqual({KEY, ("other", OTHER_OID)}, set(store.current_state(REPO)["github_ci_status"]))
+        self.assertEqual({KEY}, set(store.current_state(REPO)["github_ci_status"]))
+        self.assertEqual(2, len(ci_status.runs))
 
 
 class TestRemoteInfoUpdates(CiWatcherTestCase):
@@ -348,6 +378,8 @@ class TestRemoteInfoUpdates(CiWatcherTestCase):
         super().setUp()
         when(ci_status).enqueue_on_ui(...).thenAnswer(lambda fn, *args: fn(*args))
         self.start()
+        self.respond_at(0.5, "pending")
+        self.at(0.5)
 
     def publish_remote_info(self, remotes, integration_remote):
         blob = RemoteInfoBlob(
@@ -407,7 +439,10 @@ class TestEnablement(CiWatcherTestCase):
 
     def test_stop_invalidates_outstanding_callbacks(self):
         self.start()
+        self.respond_at(0.5, "pending")
+        self.at(10.5)
         run, _ = self.requests.pop(0)
+        busy_text = self.text()
 
         try:
             ci_status.stop()
@@ -416,7 +451,7 @@ class TestEnablement(CiWatcherTestCase):
             ci_status.start()
 
         self.assertEqual({}, ci_status.runs)
-        self.assertEqual("[CI: ◇]", self.text())
+        self.assertEqual(busy_text, self.text())
 
 
 class TestPushCapture(DeferrableTestCase):
@@ -768,7 +803,7 @@ class TestPassiveLookups(CiWatcherTestCase):
         self.look_up()
 
         self.assertEqual([], self.lookups)
-        self.assertEqual("[CI: ◇]", self.text())
+        self.assertIsNone(self.text())
 
     def test_push_run_supersedes_a_lookup_in_flight(self):
         self.look_up()
@@ -776,7 +811,7 @@ class TestPassiveLookups(CiWatcherTestCase):
 
         self.answer("failure")
 
-        self.assertEqual("[CI: ◇]", self.text())
+        self.assertIsNone(self.text())
 
     def test_lookup_after_the_push_run_finished(self):
         self.start()

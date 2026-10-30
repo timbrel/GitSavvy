@@ -87,7 +87,8 @@ class Run:
     started_at: float
     next_request_at: float
     in_flight: bool = False
-    checks_seen: bool = False
+    # When GitHub first reported checks; the busy text only shows from then on.
+    checks_seen_at: Optional[float] = None
     first_success_at: Optional[float] = None
     consecutive_failures: int = 0
     result: Optional[Result] = None
@@ -300,7 +301,9 @@ def advance(run: Run, t: float) -> None:
                 return
             run.in_flight = True
             request_observation(run)
-        publish(run.repo_path, run.key, pending_text(t - run.started_at))
+        # Stay silent while finding out if there are checks at all.
+        if run.checks_seen_at is not None:
+            publish(run.repo_path, run.key, pending_text(t - run.checks_seen_at))
         return
 
     acknowledged = t - run.settled_at >= ACKNOWLEDGE_DURATION
@@ -341,13 +344,14 @@ def on_observation(run: Run, observation: github.CiObservation) -> None:
         run.consecutive_failures = 0
     if state != "success":
         run.first_success_at = None
+    if state in ("success", "pending") and run.checks_seen_at is None:
+        run.checks_seen_at = t
 
     if state == "failure":
         settle(run, "failure", t)
         return
 
     if state == "success":
-        run.checks_seen = True
         if run.first_success_at is None:
             run.first_success_at = t
         elif t - run.first_success_at >= GREEN_CONFIRMATION:
@@ -356,11 +360,10 @@ def on_observation(run: Run, observation: github.CiObservation) -> None:
         run.next_request_at = t + POLL_INTERVAL
 
     elif state == "pending":
-        run.checks_seen = True
         run.next_request_at = t + POLL_INTERVAL
 
     elif state == "no_checks":
-        if not run.checks_seen and t - run.started_at >= DISCOVERY_GRACE:
+        if run.checks_seen_at is None and t - run.started_at >= DISCOVERY_GRACE:
             dprint("CI status: {} has no checks".format(run.key))
             terminate(run)
             return

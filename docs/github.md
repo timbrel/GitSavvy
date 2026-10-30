@@ -16,7 +16,7 @@ When interacting with a public repository, no configuration is required.  Howeve
 
 ## CI status after pushing
 
-After a successful push with GitSavvy, the status bar shows GitHub's check status of the pushed commit, the same aggregate GitHub shows next to a commit, including external CI.  While checks are running you see an animated `[◇]`.  A success is acknowledged with `[CI: ok]` for a few seconds and then disappears; a failure shows `[CI: failed]` and then stays as `[red]` for that branch and commit.
+After a successful push with GitSavvy, the status bar shows GitHub's check status of the pushed commit, the same aggregate GitHub shows next to a commit, including external CI.  While checks are running you see an animated `[◇]`; until GitHub reports any checks for the commit, nothing is shown, so a repository without CI stays quiet.  A success is acknowledged with `[CI: ok]` for a few seconds and then disappears; a failure shows `[CI: failed]` and then stays as `[red]` for that branch and commit.
 
 GitSavvy also looks up the checks once whenever it sees that you moved to another commit of a branch which has an upstream and is not ahead of it, or checked out a commit directly (detached HEAD), e.g. after switching branches, after pulling, or when you open a repository.  These lookups are silent: there is no animation, and only a failure shows as `[red]`.  Nothing is looked up for unpushed commits on a branch, or during a rebase, merge, cherry-pick, revert, or bisect.
 
