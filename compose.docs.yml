@@ -1,0 +1,8 @@
+services:
+  docs:
+    build: .github/pages-preview
+    ports:
+      - "127.0.0.1:4000:4000"
+      - "127.0.0.1:35729:35729"
+    volumes:
+      - ./docs:/site:ro

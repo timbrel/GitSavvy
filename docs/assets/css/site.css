@@ -1,0 +1,100 @@
+/* Layout: one reading column, tables and code scroll inside their own box. */
+  :root {
+    --paper: #fbfbfc;
+    --ink: #1b1f24;
+    --muted: #5a6370;
+    --rule: #dde1e6;
+    --chip: #eef1f4;
+    --accent: #2f6f73;
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #14171b; --ink: #e3e7ec; --muted: #9aa4b0; --rule: #2c3238;
+      --chip: #1f2429; --accent: #7cc2c4; color-scheme: dark;
+    }
+  }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 15px/1.6 var(--sans);
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  article {
+    max-width: 72ch;
+    margin: 0 auto;
+    padding-block: 40px 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+  .eyebrow {
+    font: 500 12px/1 var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  h1 { font: 600 28px/1.2 var(--sans); margin: 0; text-wrap: balance; }
+  .lede { color: var(--muted); margin: 0; }
+  h2 {
+    font: 600 19px/1.3 var(--sans);
+    margin: 24px 0 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--rule);
+    text-wrap: balance;
+  }
+  h3, h4 { font: 600 16px/1.35 var(--sans); margin: 12px 0 0; text-wrap: balance; }
+  p, ul, ol, pre, blockquote { margin: 0; }
+  ul, ol { padding-left: 1.4em; display: flex; flex-direction: column; gap: 6px; }
+  li > ul, li > ol { margin-top: 6px; }
+  strong { font-weight: 600; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  code {
+    font: 0.88em var(--mono);
+    background: var(--chip);
+    padding: 1px 4px;
+    border-radius: 3px;
+    overflow-wrap: anywhere;
+  }
+  pre {
+    background: var(--chip);
+    padding: 10px 12px;
+    border-radius: 3px;
+    overflow-x: auto;
+  }
+  pre code { background: none; padding: 0; overflow-wrap: normal; font-size: 13px; }
+  blockquote { border-left: 3px solid var(--rule); padding-left: 12px; color: var(--muted); }
+  hr { border: 0; border-top: 1px solid var(--rule); width: 100%; margin: 8px 0; }
+  img { max-width: 100%; }
+  .table { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--rule); }
+  th {
+    font: 500 11px/1.3 var(--mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom-color: var(--ink);
+  }
+  td:first-child { font-family: var(--mono); font-size: 13px; color: var(--accent); white-space: nowrap; }
+
+/* Keep wide code and long links within the reading column. */
+article > * { min-width: 0; }
+p, li { overflow-wrap: anywhere; }
+img { height: auto; }
+
+/* Screenshot explanations retain the preview's styling, without nowrap. */
+.caption {
+  font: 13px/1.6 var(--mono);
+  color: var(--accent);
+  border-top: 1px solid var(--rule);
+  padding: 7px 10px;
+  margin-bottom: 18px;
+}
+.caption code { font-size: inherit; }
+.table td:first-child { white-space: normal; }

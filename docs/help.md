@@ -1,6 +1,6 @@
 # GitSavvy Documentation
 
-You've found GitSavvy's online documentation.
+You've found GitSavvy's in-editor documentation.
 
 All documentation is in markdown.  Beyond what you might expect, if you see a link to a different page, you can browse to that page by pressing **SUPER-Enter** while the link is under your cursor (**CTRL-Enter** on Windows).
 
