@@ -1,5 +1,5 @@
 """
-A simple HTTP interface for making GET, PUT and POST requests.
+A simple HTTPS interface for making GET, PUT and POST requests.
 """
 
 import http.client
@@ -25,10 +25,13 @@ class Headers(dict):
             self[key] = value
 
 
-def request(verb, host, port, path, payload=None, https=False, headers=None, auth=None, redirect=True):
+def request(
+    verb, host, port, path, payload=None, headers=None, auth=None,
+    redirect=True, timeout=None
+):
     """
-    Make an HTTP(S) request with the provided HTTP verb, host FQDN, port number, path,
-    payload, protocol, headers, and auth information.  Return a response object with
+    Make an HTTPS request with the provided HTTP verb, host FQDN, port number, path,
+    payload, headers, and auth information.  Return a response object with
     payload, headers, JSON flag, and HTTP status number.
     """
     if not headers:
@@ -44,54 +47,55 @@ def request(verb, host, port, path, payload=None, https=False, headers=None, aut
         payload = json.dumps(payload)
 
     with measure_runtime() as ms:
-        connection = (http.client.HTTPSConnection(host, port)
-                      if https
-                      else http.client.HTTPConnection(host, port))
-        connection.request(verb, path, body=payload, headers=headers)
+        options = {"timeout": timeout} if timeout is not None else {}
+        connection = http.client.HTTPSConnection(host, port, **options)
+        try:
+            connection.request(verb, path, body=payload, headers=headers)
+            with connection.getresponse() as response:
+                response_payload = response.read()
+                response_headers = Headers(response)
+                status = response.status
+        finally:
+            connection.close()
 
-        response = connection.getresponse()
-
-    scheme = "https" if https else "http"
-    dprint(f" >-> {verb:<7} > {scheme}://{host}:{port}{path} [{ms.get()}ms]")
+    dprint(f" >-> {verb:<7} > https://{host}:{port}{path} [{ms.get()}ms]")
     if payload:
         dprint("    ", payload)
 
-    response_payload = response.read()
-    response_headers = Headers(response)
-    status = response.status
-
-    is_json = "application/json" in response_headers["content-type"]
+    is_json = "application/json" in response_headers.get("content-type", "")
     if is_json:
         response_payload = json.loads(response_payload.decode("utf-8"))
 
-    response.close()
-    connection.close()
-
-    if redirect and verb == "GET" and status == 301 or status == 302:
+    if redirect and verb == "GET" and status in (301, 302):
+        location = response_headers["location"]
+        target = urlparse(location)
+        if (target.scheme, target.hostname, target.port or 443) != ("https", host.lower(), port):
+            headers = {key: value for key, value in headers.items() if key.lower() != "authorization"}
+            auth = None
         return request_url(
             verb,
-            response_headers["location"],
+            location,
             headers=headers,
-            auth=auth
+            auth=auth,
+            timeout=timeout
         )
 
     return Response(response_payload, response_headers, status, is_json)
 
 
-def request_url(verb, url, payload=None, headers=None, auth=None):
+def request_url(verb, url, payload=None, headers=None, auth=None, timeout=None):
     parsed = urlparse(url)
-    https = parsed.scheme == "https"
+    if parsed.scheme != "https":
+        raise ValueError("Only HTTPS URLs are supported")
     return request(
         verb,
         parsed.hostname,
-        parsed.port or 443 if https else 80,
+        parsed.port or 443,
         parsed.path,
         payload=payload,
-        https=https,
         headers=headers,
-        auth=([parsed.username, parsed.password]
-              if parsed.username and parsed.password
-              else None)
+        auth=auth,
+        timeout=timeout
     )
 
 

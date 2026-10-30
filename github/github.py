@@ -211,7 +211,7 @@ def query_github(api_url_template: str, github_repo: GitHubRepo):
     fqdn, path = github_api_url(api_url_template, github_repo)
     auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
 
-    response = interwebs.get(fqdn, 443, path, https=True, auth=auth)
+    response = interwebs.get(fqdn, 443, path, auth=auth)
     validate_response(response)
 
     return response.payload
@@ -248,7 +248,7 @@ def iteratively_query_github(
 
             path = match.group(1)
 
-        response = interwebs.get(fqdn, 443, path, https=True, auth=auth)
+        response = interwebs.get(fqdn, 443, path, auth=auth)
         validate_response(response)
 
         if response.payload:
@@ -279,7 +279,7 @@ def get_from_github(api_url_template: str, github_repo: GitHubRepo):
     auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
 
     response = interwebs.get(
-        fqdn, 443, path, https=True, auth=auth,
+        fqdn, 443, path, auth=auth,
         headers={
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28"
@@ -297,7 +297,7 @@ def post_to_github(api_url_template, github_repo, payload=None):
     fqdn, path = github_api_url(api_url_template, github_repo)
     auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
 
-    response = interwebs.post(fqdn, 443, path, https=True, auth=auth, payload=payload)
+    response = interwebs.post(fqdn, 443, path, auth=auth, payload=payload)
     validate_response(response, method="POST")
 
     return response.payload
@@ -321,7 +321,7 @@ def create_repo(token: str, org: str | None, repo_name: str) -> dict:
     auth = (token, "x-oauth-basic")
     payload = {"name": repo_name}
 
-    response = interwebs.post(host, 443, path, https=True, auth=auth, payload=payload)
+    response = interwebs.post(host, 443, path, auth=auth, payload=payload)
     validate_response(response, method="POST")
 
     return response.payload

@@ -46,14 +46,14 @@ class TestGitHubAuthentication(DeferrableTestCase):
         when(github.os.environ).get("GITHUB_TOKEN").thenReturn("env-token")
         response = mock({"status": 200, "is_json": True, "payload": {}})
         when(github.interwebs).get(
-            host, 443, "/api/v3/repos/owner/repo?", https=True, auth=None
+            host, 443, "/api/v3/repos/owner/repo?", auth=None
         ).thenReturn(response)
         repository = github.parse_remote("https://{}/owner/repo".format(host))
 
         github.get_repo_data(repository)
 
         verify(github.interwebs).get(
-            host, 443, "/api/v3/repos/owner/repo?", https=True, auth=None
+            host, 443, "/api/v3/repos/owner/repo?", auth=None
         )
 
     @p.expand([
